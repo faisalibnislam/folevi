@@ -673,6 +673,9 @@
 
 /* The app never zooms its text on rotation by itself. */
 :root[data-iphone] { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+/* In the iPhone and iPad app a tap is never the first half of a double-tap zoom (the page doesn't zoom), so
+   WebKit answers it at once instead of waiting to see whether a second tap follows (docs/IOS_PERFORMANCE.md). */
+:root[data-native="ios"] { touch-action: manipulation; }
 :root[data-iphone] body { background: var(--color-canvas); overscroll-behavior: none; }
 /* A sheet floating inset from the screen's edges (components/iphone/Sheet.tsx): its bottom corners run
    parallel to the screen's (Shell sets --iphone-sheet-bottom from the iPhone's screen size). */
@@ -718,6 +721,9 @@
 :root[data-iphone][data-iphone-keyboard] :is([data-iphone-scroll], main#main.overflow-y-auto) { padding-bottom: 66px; }
 /* A note without artwork fills the screen like a sheet of paper (no card on a grey backdrop). */
 :root[data-iphone] [data-iphone-plain] > .fb-sheet { max-width: none !important; min-height: 100%; border-radius: 0; box-shadow: none; padding-top: calc(env(safe-area-inset-top) + 40px); }
+/* A note with a theme or a colour: the page edge to edge too, its cover band starting right under the bar (the
+   app's chrome stays neutral; the note carries its colour). No backdrop shows at its sides. */
+:root[data-iphone] [data-iphone-scroll][data-backdrop] > .fb-sheet { max-width: none !important; width: 100%; min-height: 100%; border-radius: 0; box-shadow: none; margin-inline: 0; }
 /* A task's own words head its Edit task card. */
 :root[data-iphone] .ui-task-title { font-size: 17px; line-height: 1.35; font-weight: 500; color: var(--color-ink); }
 /* Keyboard shortcut hints mean nothing on a phone. */
@@ -728,51 +734,36 @@
 /* ------------------------------------------------------------------------------------------------
  * iOS polish WP1: the shell, lists and Home on the iPhone (docs/IOS_POLISH_PLAN.md §2). Phone layout only.
  * --------------------------------------------------------------------------------------------- */
-/* The top bar's material (components/iphone/Screen.tsx): it appears once content has scrolled 4 points under
-   the bar, frosted in the screen's own colour, with a hairline at its foot. */
+/* The top bar's material (components/iphone/Screen.tsx): once content has scrolled 4 points under the bar, the
+   screen's own neutral colour, solid (what passes under it, a large title or a note, is hidden by it rather
+   than showing through behind the buttons), with a hairline at its foot. Solid also costs the web view no blur
+   of what's under it on every frame of a scroll (docs/IOS_PERFORMANCE.md). */
 .iphone-bar {
   --bar-solid: var(--color-canvas);
-  --bar-fill: color-mix(in oklab, var(--bar-solid) 78%, transparent);
   position: absolute;
   inset-inline: 0;
   top: 0;
   z-index: 20;
   height: calc(env(safe-area-inset-top) + 52px);
   pointer-events: none;
-  background: var(--bar-fill);
-  -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  backdrop-filter: blur(20px) saturate(1.8);
+  background: var(--bar-solid);
   box-shadow: inset 0 -0.5px 0 var(--iphone-separator);
   opacity: 0;
-  transition: opacity 180ms ease-out;
+  transition: opacity 120ms ease-out;
 }
 .iphone-bar[data-on] { opacity: 1; }
 .iphone-bar[data-surface="grouped"] { --bar-solid: var(--iphone-grouped); }
 /* A folder's screen: the bar takes the folder's wash. */
 .iphone-bar[data-surface="tint"] { --bar-solid: color-mix(in oklab, var(--view-tint) var(--view-tint-amount, 10%), var(--color-canvas)); }
-/* Over a note's artwork: clear glass, so the art shows through. */
-.iphone-bar[data-surface="clear"] { --bar-fill: var(--liquid-fill); }
 /* The small title in the bar fades in with the scroll (Screen.tsx sets --title-in from 0 to 1). */
 .iphone-small-title { opacity: var(--title-in, 0); transform: translateY(calc((1 - var(--title-in, 0)) * 4px)); }
 @media (prefers-reduced-motion: reduce) { .iphone-small-title { transform: none; } }
 /* Caption caps: grouped list headers, the place above Home's title (§2.2). */
 .ui-caption-caps { font-size: 13px; line-height: 18px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-muted); }
-/* Content fades out over the 24 points above the floating tab bar instead of showing through it: the screen's
-   own colour rises over it (a layer, not a mask on the scrolling view, which would also hide what's fixed in it). */
-.iphone-tab-edge {
-  --bar-solid: var(--color-canvas);
-  --tab-edge: calc(max(10px, env(safe-area-inset-bottom) - 10px) + 64px);
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  z-index: 10;
-  height: calc(var(--tab-edge) + 24px);
-  pointer-events: none;
-  background: linear-gradient(to top, var(--bar-solid) 0, var(--bar-solid) var(--tab-edge), color-mix(in oklab, var(--bar-solid) 55%, transparent) calc(var(--tab-edge) + 8px), transparent 100%);
-}
-:root[data-iphone-keyboard] .iphone-tab-edge { display: none; }
-.iphone-tab-edge[data-surface="grouped"] { --bar-solid: var(--iphone-grouped); }
-.iphone-tab-edge[data-surface="tint"] { --bar-solid: color-mix(in oklab, var(--view-tint) var(--view-tint-amount, 10%), var(--color-canvas)); }
+/* Nothing fades the content out above the floating tab bar: it scrolls under the bar at full strength, and the
+   bar's capsules are glass a little more opaque than the rest (the page's colour at 72 %) so they read over it. */
+:root[data-iphone] .iphone-tab-pill { --liquid-fill: rgb(255 255 255 / 0.72); }
+:root[data-iphone][data-theme="dark"] .iphone-tab-pill { --liquid-fill: rgb(36 36 40 / 0.72); }
 /* No focus ring after a touch, anywhere (§2.3): rings only while a hardware keyboard moves focus (chrome.tsx marks
    <html data-input="key">), 2 points in the focus colour, 2 points out. */
 :root[data-iphone]:not([data-input="key"]) :focus-visible { outline: none !important; --tw-ring-shadow: 0 0 #0000 !important; --tw-ring-offset-shadow: 0 0 #0000 !important; }

@@ -32,6 +32,8 @@ export default defineConfig<BackendModeOptions>({
     // Folevi for Mac's web layer on WebKit, the native app's engine (docs/MAC_WEBKIT_PLAN.md §7): the specs tagged
     // @mac, against the shell export's dev server, in local mode. (npx playwright install webkit, once.)
     { name: "mac-webkit", grep: /@mac\b/, use: { ...devices["Desktop Safari"], viewport: { width: 1440, height: 900 }, baseURL: localBaseURL, backendMode: "local" } },
+    // The iPhone app's speed on WebKit, its engine (e2e/iphone-perf.spec.ts, docs/IOS_PERFORMANCE.md).
+    { name: "iphone-webkit", grep: /@iphone-perf\b/, use: { ...devices["Desktop Safari"], baseURL: localBaseURL, backendMode: "local" } },
   ],
   webServer: process.env.E2E_NO_SERVER
     ? undefined

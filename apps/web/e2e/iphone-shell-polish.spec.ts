@@ -71,6 +71,29 @@ const ringOf = (page: Page) =>
     return ring || outline || "none";
   });
 
+/**
+ * What lies over the bottom 140 points of the screen besides the tab bar's capsules: a fade, a scrim, any wide
+ * layer with a colour or a gradient that isn't part of the screen's own content (should be nothing).
+ */
+async function bottomCovers(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const pills = [...document.querySelectorAll<HTMLElement>(".iphone-tab-pill")];
+    const band = innerHeight - 140;
+    const out: string[] = [];
+    for (const el of document.querySelectorAll<HTMLElement>("body *")) {
+      if (el.closest("main") || pills.some((p) => p.contains(el) || el.contains(p))) continue;
+      const r = el.getBoundingClientRect();
+      if (r.bottom <= band || r.top >= innerHeight || r.width < innerWidth * 0.4) continue;
+      const st = getComputedStyle(el);
+      if (st.display === "none" || st.visibility === "hidden" || Number(st.opacity) === 0) continue;
+      const fill = st.backgroundImage !== "none" || !/rgba\(0, 0, 0, 0\)|transparent/.test(st.backgroundColor);
+      // (The screen's own frame fills the whole screen under the content; only what sits over it counts.)
+      if (fill && r.height < innerHeight * 0.9) out.push(`${el.tagName.toLowerCase()}.${String(el.className).slice(0, 60)}`);
+    }
+    return out;
+  });
+}
+
 test("iPhone shell polish: bar material, tab bar, Home, cards, focus rings, swipes, Select mode, empty screens", async ({ browser, browserName }) => {
   test.skip(browserName !== "chromium", "Touch input is driven through Chromium's DevTools protocol.");
   test.setTimeout(420_000);
@@ -90,18 +113,17 @@ test("iPhone shell polish: bar material, tab bar, Home, cards, focus rings, swip
   const titleBlock = page.getByRole("heading", { level: 1, name: "Home" }).locator("..");
   await expect(titleBlock).not.toContainText("Personal");
 
-  // The tab bar: a 64-point capsule; content fades out above it.
+  // The tab bar: a 64-point capsule; content scrolls under it at full strength (no fade or scrim over the
+  // bottom of the screen): anywhere along the bottom outside the capsules, what's under the finger is the screen.
   const tabs = page.getByRole("navigation", { name: "Tabs" });
   expect(Math.round((await tabs.boundingBox())!.height)).toBe(64);
-  const edge = page.locator(".iphone-tab-edge");
-  expect(await edge.evaluate((e) => getComputedStyle(e).backgroundImage)).toContain("linear-gradient");
-  expect(Math.round((await edge.boundingBox())!.height)).toBeGreaterThanOrEqual(64 + 24);
+  expect(await bottomCovers(page)).toEqual([]);
 
-  // The bar's material: none at rest, frosted with a hairline once content passes under it; the small title
-  // fades in with the scroll.
+  // The bar's material: none at rest, the screen's solid neutral colour with a hairline once content passes
+  // under it (nothing shows through behind the avatar and buttons); the small title fades in with the scroll.
   const bar = page.locator(".iphone-bar");
   await expect(bar).not.toHaveAttribute("data-on", "");
-  expect(await bar.evaluate((b) => getComputedStyle(b).backdropFilter || getComputedStyle(b).getPropertyValue("-webkit-backdrop-filter"))).toContain("blur(20px)");
+  expect(await bar.evaluate((b) => getComputedStyle(b).backgroundColor)).toBe(await page.locator("body").evaluate((b) => getComputedStyle(b).backgroundColor));
   const small = page.locator(".iphone-small-title");
   expect(Number(await small.evaluate((s) => getComputedStyle(s).opacity))).toBe(0);
   await page.locator("main#main").evaluate((m) => (m.scrollTop = 20));

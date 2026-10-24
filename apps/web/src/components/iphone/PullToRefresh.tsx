@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppState } from "@/lib/app/state";
 import { useBackendMode } from "@/lib/mode";
-import { useLibraryControl, useLibraryStatus } from "@/lib/local/useLibrary";
+import { useLibraryControl, useLibraryStatusPick } from "@/lib/local/useLibrary";
 import { feel, prepareFeel } from "@/lib/native/ui";
 import { prefersReducedMotion } from "@/lib/native/physics";
 
@@ -22,7 +22,7 @@ export function useListRefresh(): (() => Promise<void>) | null {
   const mode = useBackendMode();
   const { engine, outbox } = useAppState();
   const control = useLibraryControl();
-  const status = useLibraryStatus(control);
+  const kind = useLibraryStatusPick(control, (s) => s?.info?.kind ?? null);
   if (mode === "account") {
     if (!engine && !outbox) return null;
     return async () => {
@@ -30,7 +30,6 @@ export function useListRefresh(): (() => Promise<void>) | null {
       outbox?.scheduleFlush(0);
     };
   }
-  const kind = status?.info?.kind;
   if (!control || !(kind === "icloud" || kind === "dropbox" || kind === "gdrive")) return null;
   return () => control.syncNow();
 }

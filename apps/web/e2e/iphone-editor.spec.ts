@@ -104,7 +104,7 @@ async function finger(page: Page, x: number, y: number, ms: number, path: { x: n
 const keyboard = (page: Page, height: number) => page.evaluate((h) => (window as unknown as { __native: { keyboard: (h: number) => void } }).__native.keyboard(h), height);
 const body = (page: Page) => page.getByRole("textbox", { name: "Document body" });
 
-test("iPhone note: the bar on the keyboard, writing without the top bar, Insert and Format from it @local", async ({ browser }, testInfo) => {
+test("iPhone note: the bar on the keyboard, the top bar with Done while writing, Insert and Format from it @local", async ({ browser }, testInfo) => {
   test.setTimeout(240_000);
   const { context, page } = await iphone(browser, testInfo);
   await openNote(page, /Trip Sketch/);
@@ -112,12 +112,16 @@ test("iPhone note: the bar on the keyboard, writing without the top bar, Insert 
   const back = page.getByRole("button", { name: "Back" });
   await expect(back).toBeVisible();
 
-  // Writing: the bar rides on the keyboard, 8 pt above it; the top bar steps aside; no grip beside the line.
+  // Writing: the bar rides on the keyboard, 8 pt above it; the top bar stays, with Back and Done (in place of
+  // Share and "…"); no grip beside the line.
   await body(page).locator("p").first().tap();
   const bar = page.getByRole("toolbar", { name: "Writing tools" });
   await expect(bar).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("data-iphone-writing", "");
-  await expect(back).toBeHidden();
+  await expect(back).toBeVisible();
+  const done = page.getByRole("button", { name: "Done", exact: true });
+  await expect(done).toBeVisible();
+  await expect(page.getByRole("group", { name: "Note actions" })).toBeHidden();
   await expect(page.locator("[data-block-grip]")).toBeHidden();
   await keyboard(page, 336);
   await expect.poll(async () => Math.round((await bar.boundingBox())!.y + (await bar.boundingBox())!.height), { timeout: 5_000 }).toBe(874 - 336 - 8);
@@ -196,6 +200,16 @@ test("iPhone note: the bar on the keyboard, writing without the top bar, Insert 
   await expect(bar).toBeHidden();
   await expect(back).toBeVisible();
   await expect(page.getByRole("toolbar", { name: "Note tools" })).toBeVisible();
+  // Done in the top bar puts the keyboard away too, and Share and "…" come back.
+  await body(page).locator("p").first().tap();
+  await keyboard(page, 336);
+  await expect(done).toBeVisible();
+  await done.tap();
+  await keyboard(page, 0);
+  await expect.poll(() => page.evaluate(() => document.activeElement?.closest('[aria-label="Document body"]') != null)).toBe(false);
+  await expect(page.locator("html")).not.toHaveAttribute("data-iphone-writing", "");
+  await expect(done).toBeHidden();
+  await expect(page.getByRole("group", { name: "Note actions" })).toBeVisible();
   await context.close();
 });
 

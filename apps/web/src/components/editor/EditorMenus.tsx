@@ -1996,7 +1996,9 @@ function BlockHandle({
         const el = blockElements(dom)[idx];
         if (!el || el.classList.contains("fb-hidden")) return setHover(null);
         const line = handleLine(el);
-        setHover({ index: idx, top: line.top, left: blockIndentLeft(el), height: line.height });
+        const next = { index: idx, top: line.top, left: blockIndentLeft(el), height: line.height };
+        // Typing and scrolling ask every frame; the grip only draws again when it has somewhere else to be.
+        setHover((had) => (had && !had.gripOnly && had.index === next.index && had.top === next.top && had.left === next.left && had.height === next.height ? had : next));
       });
     };
     place();

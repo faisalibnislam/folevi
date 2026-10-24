@@ -52,7 +52,7 @@ export function NoteBars({ editor, ai, open, tab, onPick, readOnly }: { editor: 
     setKeyboardInteractiveDismiss(true);
     return () => setKeyboardInteractiveDismiss(false);
   }, [editor, readOnly]);
-  if ((writing || leaving !== "none") && editor && !readOnly) return open ? null : <KeyboardBar editor={editor} onPick={onPick} ride={ride} leaving={!writing} />;
+  if ((writing || leaving !== "none") && editor && !readOnly) return open ? null : <KeyboardBar editor={editor} ai={ai} onPick={onPick} ride={ride} leaving={!writing} />;
   const on = (t: InspectorTab) => open && tab === t;
   const btn = (t: InspectorTab, label: string, icon: ReactNode) => (
     <PillButton
@@ -265,26 +265,59 @@ function useKeyboardRide(): (el: HTMLElement | null) => void {
   }, []);
 }
 
+/** The kind of the top-level block the caret is in ("paragraph", "todo", ...). */
+function lineType(editor: Editor): string | undefined {
+  const $from = editor.state.selection.$from;
+  return $from.depth >= 1 ? $from.node(1).type.name : undefined;
+}
+
+interface BarState {
+  type: string | undefined;
+  link: boolean;
+  undo: boolean;
+  redo: boolean;
+}
+
+/**
+ * The keyboard bar's state, read once a frame after the note changes or the caret moves (not on every
+ * keystroke's transaction and selection change, which drew the whole bar twice a key), and handed on only when
+ * it's different (docs/IOS_PERFORMANCE.md).
+ */
+function useBarState(editor: Editor): BarState {
+  const read = useCallback((): BarState => ({ type: lineType(editor), link: editor.isActive("link"), undo: editor.can().undo(), redo: editor.can().redo() }), [editor]);
+  const [state, setState] = useState(read);
+  useEffect(() => {
+    let frame = 0;
+    const later = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const next = read();
+        setState((had) => (had.type === next.type && had.link === next.link && had.undo === next.undo && had.redo === next.redo ? had : next));
+      });
+    };
+    later();
+    editor.on("selectionUpdate", later);
+    editor.on("transaction", later);
+    return () => {
+      cancelAnimationFrame(frame);
+      editor.off("selectionUpdate", later);
+      editor.off("transaction", later);
+    };
+  }, [editor, read]);
+  return state;
+}
+
 /** The bar over the keyboard while writing. Its buttons never take focus, so the keyboard stays up. */
-function KeyboardBar({ editor, onPick, ride, leaving = false }: { editor: Editor; onPick: (t: InspectorTab) => void; ride: (el: HTMLElement | null) => void; /** Riding down with the keyboard: not for tapping. */ leaving?: boolean }) {
-  // Re-render as the caret moves, so the buttons show what the line is.
-  const [, refresh] = useReducer((n: number) => n + 1, 0);
+function KeyboardBar({ editor, ai, onPick, ride, leaving = false }: { editor: Editor; ai: boolean; onPick: (t: InspectorTab) => void; ride: (el: HTMLElement | null) => void; /** Riding down with the keyboard: not for tapping. */ leaving?: boolean }) {
+  // What the buttons show (the line's kind, a link, undo and redo), drawn again only when it changes.
+  const bar = useBarState(editor);
+  const type = bar.type;
   // Where a finger went down: lifting it far from there was a scroll along the bar, not a tap.
   const down = useRef<{ x: number; y: number } | null>(null);
   const toast = useToast();
-  useEffect(() => {
-    editor.on("selectionUpdate", refresh);
-    editor.on("transaction", refresh);
-    return () => {
-      editor.off("selectionUpdate", refresh);
-      editor.off("transaction", refresh);
-    };
-  }, [editor]);
-  const node = editor.state.selection.$from.depth >= 1 ? editor.state.selection.$from.node(1) : null;
-  const type = node?.type.name;
   const toggle = (t: string, attrs: Record<string, unknown> = {}) => {
     feel("choose");
-    if (type === t) turnInto(editor, "paragraph");
+    if (lineType(editor) === t) turnInto(editor, "paragraph");
     else turnInto(editor, t, attrs);
   };
   const link = async () => {
@@ -341,6 +374,12 @@ function KeyboardBar({ editor, onPick, ride, leaving = false }: { editor: Editor
             feel("toggle");
             onPick("format");
           }, { menu: true })}
+          {ai
+            ? key("Foli AI", <AiIcon size={22} />, () => {
+                feel("toggle");
+                onPick("ai");
+              }, { menu: true })
+            : null}
           {key("To-do", <SquareCheck {...icon} />, () => toggle("todo", { checked: false }), { pressed: type === "todo" })}
           {key("Indent", <IndentIncrease {...icon} />, () => {
             feel("choose");
@@ -350,14 +389,14 @@ function KeyboardBar({ editor, onPick, ride, leaving = false }: { editor: Editor
             feel("choose");
             changeDepth(editor, -1);
           })}
-          {key("Link", <Link2 {...icon} />, () => void link(), { pressed: editor.isActive("link") })}
+          {key("Link", <Link2 {...icon} />, () => void link(), { pressed: bar.link })}
           {key("Mention a date or page", <AtSign {...icon} />, () => {
             feel("choose");
             editor.chain().focus().insertContent("@").run();
           })}
           {key("Image", <ImageIcon {...icon} />, () => requestSpecialInsert(editor, "image"))}
-          {key("Undo", <Undo2 {...icon} />, () => editor.commands.undo(), { disabled: !editor.can().undo() })}
-          {key("Redo", <Redo2 {...icon} />, () => editor.commands.redo(), { disabled: !editor.can().redo() })}
+          {key("Undo", <Undo2 {...icon} />, () => editor.commands.undo(), { disabled: !bar.undo })}
+          {key("Redo", <Redo2 {...icon} />, () => editor.commands.redo(), { disabled: !bar.redo })}
         </div>
         <span aria-hidden className="mx-0.5 h-6 w-px flex-none bg-[var(--iphone-separator)]" />
         {key("Hide keyboard", <ChevronDown size={24} strokeWidth={2.2} aria-hidden />, () => {

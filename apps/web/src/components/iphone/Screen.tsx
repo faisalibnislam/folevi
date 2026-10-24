@@ -126,6 +126,12 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
       // scroll (not on a timer), as UIKit's navigation bar does.
       const small = smallRef.current;
       if (small && !small.hasAttribute("data-status")) small.style.setProperty("--title-in", String(Math.min(1, Math.max(0, (top - (at - 12)) / 12))));
+      // The large title fades as it goes under the bar (from its top reaching the bar to where the small one
+      // takes over), so it never shows beside or behind the bar's buttons.
+      if (t) {
+        const h = t.offsetHeight;
+        t.style.opacity = String(1 - Math.min(1, Math.max(0, (top - (at - h)) / Math.max(1, h - 12))));
+      }
     };
     const onScroll = (e: Event) => {
       cancelAnimationFrame(frame);
@@ -153,7 +159,9 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
     const trail = trailRef.current;
     if (!small || !lead || !trail) return;
     const fit = () => {
-      const mid = window.innerWidth / 2;
+      // In the bar's own coordinates: the screen may be mid-slide (transformed) when this runs.
+      const base = (small.offsetParent ?? small.parentElement ?? document.body).getBoundingClientRect();
+      const mid = base.width / 2;
       // (A `display: contents` wrapper has no box of its own: its children count.)
       const boxes = (el: Element): Element[] => [...el.children].flatMap((c) => (getComputedStyle(c).display === "contents" ? boxes(c) : [c]));
       // (Only what's drawn in the bar itself: not a menu or anything else positioned elsewhere from inside it.)
@@ -165,8 +173,8 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
       };
       const l = kids(lead);
       const r = kids(trail);
-      const left = l.length ? Math.max(...l.map((x) => x.right)) : lead.getBoundingClientRect().left;
-      const right = r.length ? Math.min(...r.map((x) => x.left)) : trail.getBoundingClientRect().right;
+      const left = (l.length ? Math.max(...l.map((x) => x.right)) : lead.getBoundingClientRect().left) - base.left;
+      const right = (r.length ? Math.min(...r.map((x) => x.left)) : trail.getBoundingClientRect().right) - base.left;
       const centred = 2 * Math.min(mid - left, right - mid) - 16;
       const natural = (small.firstElementChild as HTMLElement | null)?.scrollWidth ?? 0;
       // Too long to sit centred: it moves to the middle of the room there is, as UIKit's title does.
@@ -196,6 +204,9 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
   }, []);
 
   const goBack = useCallback(() => {
+    // Writing: the keyboard goes first (what was typed is saved as always).
+    const active = document.activeElement as HTMLElement | null;
+    if (active && active !== document.body && (active.isContentEditable || active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement)) active.blur();
     if (canBack) {
       markBackButton();
       goBackInHistory();
@@ -265,8 +276,6 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
         {header}
         {children}
       </main>
-      {/* Content fades out above the floating tab bar (globals.css, .iphone-tab-edge). */}
-      {innerScroll ? null : <div aria-hidden data-surface={tint ? "tint" : grouped ? "grouped" : "canvas"} className="iphone-tab-edge" />}
       {overlay}
     </div>
   );

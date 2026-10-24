@@ -837,7 +837,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         title: pageTitle,
         large: false,
         innerScroll: true,
-        edge: pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "clear" : "canvas",
+        edge: "canvas",
         collapseAt: 96,
         center: meta ? (
           <NotePlaceChip
@@ -932,7 +932,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         {findBar && editor ? <FindBar editor={editor} withReplace={findBar.replace} focusKey={findBar.key} readOnly={readOnly} onClose={() => setFindBar(null)} /> : null}
 
         {/* Blur background: the backdrop sits blurred behind the scrolling page, which is then see-through. */}
-        {blurredBackdrop ? <BlurredBackdrop background={blurredBackdrop} className="inset-x-1.5 bottom-2 top-0 rounded-panel sm:inset-0" /> : null}
+        {blurredBackdrop && !iphone ? <BlurredBackdrop background={blurredBackdrop} className="inset-x-1.5 bottom-2 top-0 rounded-panel sm:inset-0" /> : null}
         <div
           id="doc-scroll"
           ref={setScrollEl}
@@ -940,7 +940,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
           data-iphone-plain={iphone && !pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "" : undefined}
           className={
             iphone
-              ? `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "px-2.5 pt-[calc(env(safe-area-inset-top)+58px)]" : ""}`
+              ? `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? "pt-[calc(env(safe-area-inset-top)+52px)]" : ""}`
               : `fb-page relative h-full overflow-y-auto rounded-panel px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`
           }
           data-backdrop={pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ? (blurredBackdrop ? "blur" : "on") : undefined}
@@ -951,7 +951,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
             ["--doc-accent" as string]: style.accent === "accent" ? "var(--color-ember)" : `var(--color-${style.accent})`,
             ["--doc-accent-ink" as string]: style.accent === "accent" ? "var(--color-ember-ink)" : `var(--color-${style.accent}-ink)`,
             ["--doc-accent-soft" as string]: style.accent === "accent" ? "var(--color-ember-soft)" : `var(--color-${style.accent}-soft)`,
-            background: blurredBackdrop ? "transparent" : (pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ?? (iphone ? "transparent" : "var(--color-surface-sunken)")),
+            // On the iPhone the note fills the screen's width under the app's neutral bar: no backdrop around it
+            // (globals.css, [data-iphone-scroll] > .fb-sheet).
+            background: iphone ? "var(--color-canvas)" : blurredBackdrop ? "transparent" : (pageBackdrop(style, summary?.cover ?? DEFAULT_COVER, coverImageUrl) ?? "var(--color-surface-sunken)"),
           }}
         >
           {meta?.breadcrumbs.length && !iphone ? <NestedPath crumbs={meta.breadcrumbs} title={pageTitle} /> : null}
@@ -1397,6 +1399,12 @@ function coverTone(tone: "deep" | "light", colors: { paper?: string; ink?: strin
   return { background: `linear-gradient(180deg, color-mix(in oklab, ${tint} 50%, transparent) 0%, color-mix(in oklab, ${tint} 75%, transparent) 100%)`, mixBlendMode: tone === "light" ? "screen" : "multiply" };
 }
 
+/** Sizes the title's field to its lines. */
+function fitTitle(el: HTMLTextAreaElement) {
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
+}
+
 function DocumentHeader({
   documentId,
   note,
@@ -1484,25 +1492,33 @@ function DocumentHeader({
     if (!freshTitle.current || !el || document.activeElement !== el || !value) return;
     el.setSelectionRange(0, el.value.length);
   }, [value]);
-  // The title grows with its lines: as it changes, and as its width does (a theme moves it onto the cover,
-  // a phone turns), which re-wraps it.
+  // The title grows with its lines: as it changes, as its look does (a theme, a cover), and as its width does
+  // (a theme moves it onto the cover, a phone turns), which re-wraps it. Only then: measuring it lays out the
+  // whole page, which in a long note costs a frame (docs/IOS_PERFORMANCE.md), so not on every render (each
+  // save draws the header again).
+  useEffect(() => {
+    const el = titleRef.current;
+    if (el) fitTitle(el);
+  }, [value, style, cover, iphone]);
   useEffect(() => {
     const el = titleRef.current;
     if (!el) return;
-    const fit = () => {
-      el.style.height = "auto";
-      el.style.height = `${el.scrollHeight}px`;
-    };
-    fit();
     let width = el.clientWidth;
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => {
       if (el.clientWidth === width) return;
       width = el.clientWidth;
-      fit();
+      fitTitle(el);
     }) : null;
     ro?.observe(el);
-    return () => ro?.disconnect();
-  });
+    // The note's fonts arriving re-wrap it too.
+    let live = true;
+    void document.fonts?.ready.then(() => live && fitTitle(el));
+    return () => {
+      live = false;
+      ro?.disconnect();
+    };
+    // (Again if the field is drawn somewhere else: on a cover, in the phone's layout.)
+  }, [cover.kind, iphone]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleSince = useRef(0);
   const flushTitle = useRef<(() => void) | null>(null);

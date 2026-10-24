@@ -9,7 +9,7 @@ import { AppStateProvider, FullPageMessage } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { shell } from "@/lib/shell";
 import { clearSetupIntent, setupIntent } from "@/lib/local/libraryPlace";
-import { useLibraryControl, useLibraryStatus } from "@/lib/local/useLibrary";
+import { useLibraryControl, useLibraryStatusPick } from "@/lib/local/useLibrary";
 import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/components/ui/Toast";
 import { Shell } from "./Shell";
@@ -47,13 +47,16 @@ export function LocalGate() {
   const me = useQuery(api.users.me, {});
   const local = useLocalClient();
   const control = useLibraryControl();
-  const status = useLibraryStatus(control);
+  // Only the facts this gate decides on: it draws the whole app, so not again on every sync step and save.
+  const locked = useLibraryStatusPick(control, (s) => s?.state === "locked");
+  const settled = useLibraryStatusPick(control, (s) => !!s && s.lastSyncAt !== null && !s.syncing && !s.health.downloading.some((h) => h.path.startsWith("index/")));
+  const found = useLibraryStatusPick(control, (s) => s?.notes.total ?? 0);
+  const where = useLibraryStatusPick(control, (s) => s?.info?.displayPath ?? null);
   const { route } = useAppRouter();
   const started = useRef(false);
   const [setupError, setSetupError] = useState<string | null>(null);
   const [joining, setJoining] = useState<boolean | null>(null);
   const needsSetup = me?.state === "needs_bootstrap";
-  const locked = status?.state === "locked";
 
   // The product uses neutral chrome so the notes carry the colour (globals.css, data-chrome).
   useEffect(() => {
@@ -89,7 +92,6 @@ export function LocalGate() {
   }, [needsSetup, joining, locked, local]);
 
   // Joining: wait for the profile to arrive with the library's index.
-  const settled = !!status && status.lastSyncAt !== null && !status.syncing && !status.health.downloading.some((h) => h.path.startsWith("index/"));
   useEffect(() => {
     if (!needsSetup || joining !== true || locked || !settled) return;
     const timer = setTimeout(() => runSetup(false), 3000);
@@ -110,10 +112,10 @@ export function LocalGate() {
       </FullPageMessage>
     );
   }
-  if (locked && control) return <LockedLibrary control={control} where={status?.info?.displayPath ?? null} />;
+  if (locked && control) return <LockedLibrary control={control} where={where} />;
   if (me?.state !== "ready") {
     if (needsSetup && joining) {
-      const count = status?.notes.total ?? 0;
+      const count = found;
       return (
         <FullPageMessage
           title="Joining your library…"

@@ -8,12 +8,33 @@ import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { GlassPill, PillButton } from "./Glass";
 import { MoreMenu } from "./RootBar";
 import { Sheet } from "./Sheet";
+import { feel } from "@/lib/native/ui";
 import type { InspectorTab } from "@/components/doc/Inspector";
 
 /** Top right of a note: Share and the note's "…" menu (the same actions as on the web). */
 export function NoteTrailing({ onShare, shared, actions }: { onShare?: () => void; shared: boolean; actions: MenuEntry[] }) {
   return (
-    <GlassPill label="Note actions">
+    <>
+      {/* While writing (editor-phone.css, [data-iphone-writing]): Done puts the keyboard away. */}
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => {
+          feel("toggle");
+          (document.activeElement as HTMLElement | null)?.blur();
+        }}
+        className="iphone-done ui-liquid ui-glass-press h-11 items-center rounded-capsule px-4 text-[17px] font-semibold leading-[22px] text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      >
+        Done
+      </button>
+      <NoteActions onShare={onShare} shared={shared} actions={actions} />
+    </>
+  );
+}
+
+function NoteActions({ onShare, shared, actions }: { onShare?: () => void; shared: boolean; actions: MenuEntry[] }) {
+  return (
+    <GlassPill label="Note actions" className="iphone-note-actions">
       {onShare ? (
         <PillButton label={shared ? "Shared: sharing settings" : "Share"} onClick={onShare}>
           <Share size={20} strokeWidth={1.9} aria-hidden className="-mt-0.5" />

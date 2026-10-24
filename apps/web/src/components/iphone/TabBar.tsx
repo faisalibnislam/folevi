@@ -63,7 +63,7 @@ export function TabBar({ onNewFolder }: { onNewFolder: () => void }) {
       inert={hidden}
       className={`pointer-events-none fixed inset-x-0 bottom-0 z-40 flex items-end justify-between gap-3 px-4 pb-[max(10px,calc(env(safe-area-inset-bottom)-10px))] pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))] transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${hidden ? "translate-y-[140%] opacity-0" : ""}`}
     >
-      <nav aria-label="Tabs" className="ui-liquid pointer-events-auto flex h-16 items-center gap-0.5 rounded-capsule p-1">
+      <nav aria-label="Tabs" className="ui-liquid iphone-tab-pill pointer-events-auto flex h-16 items-center gap-0.5 rounded-capsule p-1">
         {/* The current tab sits in a glass lens that slides to the tab you pick (each tab is 64 px, 2 px apart), on a spring. */}
         {lens >= 0 ? (
           <span
@@ -91,7 +91,7 @@ export function TabBar({ onNewFolder }: { onNewFolder: () => void }) {
           );
         })}
       </nav>
-      <div role="group" aria-label="Create" className="ui-liquid pointer-events-auto flex h-16 items-center gap-1 rounded-capsule p-1">
+      <div role="group" aria-label="Create" className="ui-liquid iphone-tab-pill pointer-events-auto flex h-16 items-center gap-1 rounded-capsule p-1">
         {aiOn ? (
           <button
             type="button"

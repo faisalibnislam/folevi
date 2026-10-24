@@ -9,11 +9,11 @@
 /* No grip beside the line on a phone: there's no room for a finger's target in the margin without covering
    the text. A long press on a line opens its menu, and holding it then moving lifts it (blockDrag.ts). */
 :root[data-iphone] [data-block-grip] { display: none; }
-/* Writing: the note has the screen, as in Craft; only the bar on the keyboard stays (NoteBars.tsx). The
-   top bar comes back when the keyboard goes. */
-:root[data-iphone] :is(header, .iphone-bar):has(~ main#main) { transition: opacity 200ms ease-out, visibility 0s linear 0s; }
-:root[data-iphone][data-iphone-writing] :is(header, .iphone-bar):has(~ main#main) { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 160ms ease-in, visibility 0s linear 160ms; }
-@media (prefers-reduced-motion: reduce) { :root[data-iphone] :is(header, .iphone-bar):has(~ main#main) { transition-duration: 150ms; } }
+/* Writing: the top bar stays (Back, and Done in place of Share and "…", which puts the keyboard away), with the
+   bar on the keyboard below (NoteBars.tsx). <html data-iphone-writing> while the keyboard is up for the note. */
+:root[data-iphone] .iphone-done { display: none; }
+:root[data-iphone][data-iphone-writing] .iphone-done { display: flex; }
+:root[data-iphone][data-iphone-writing] .iphone-note-actions { display: none; }
 /* Tables: a wider fade at the screen's edge while there's more to scroll to, and a 44 pt "+" after the last
    column and under the last row (TableView.tsx). */
 :root[data-iphone] .fb-editor .fb-hscroll[data-more-start] { --fade-start: 36px; }

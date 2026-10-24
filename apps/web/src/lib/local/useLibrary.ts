@@ -36,6 +36,19 @@ export function useLibraryStatus(control: LibraryControl | null): LibraryStatus 
   return useSyncExternalStore(control ? control.subscribe : noSubscription, control ? control.status : nothing, nothing);
 }
 
+/**
+ * One fact about the library's status (`pick` returns a string, number, boolean or null), kept current. The
+ * component draws again only when that fact changes, not on every status change (a sync's progress, each
+ * save), which matters for what sits high in the tree (LocalGate draws the whole app; docs/IOS_PERFORMANCE.md).
+ */
+export function useLibraryStatusPick<T extends string | number | boolean | null | undefined>(control: LibraryControl | null, pick: (status: LibraryStatus | null) => T): T {
+  return useSyncExternalStore(
+    control ? control.subscribe : noSubscription,
+    () => pick(control ? control.status() : null),
+    () => pick(null),
+  );
+}
+
 /** Dropbox and Google Drive's connection (null on a host without them). */
 export function useCloudStatus(): CloudStatus | null {
   const [status, setStatus] = useState<CloudStatus | null>(null);

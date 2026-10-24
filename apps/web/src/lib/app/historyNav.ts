@@ -25,6 +25,20 @@ const moving = (kind: "push" | "pop") => {
   for (const l of moveListeners) l(kind);
 };
 
+// Where the window is (path and query), for the app's router (router.tsx): told the moment the address
+// changes here, so the next page is drawn in the same frame as the tap. Next.js hears pushState too, but
+// follows it in a transition (a render it may put off for a while); the router reads this first.
+const locationListeners = new Set<() => void>();
+export function notifyLocation() {
+  for (const l of locationListeners) l();
+}
+export function subscribeLocation(l: () => void) {
+  locationListeners.add(l);
+  return () => locationListeners.delete(l);
+}
+/** The address on screen ("/d/abc?x=1"); a string, so an unchanged one compares equal. */
+export const locationSnapshot = () => `${window.location.pathname}${window.location.search}`;
+
 function emit(next: State) {
   if (next.at === state.at && next.top === state.top) return;
   state = next;
@@ -58,6 +72,7 @@ function onPopState(e: PopStateEvent) {
   popped = true;
   const at = (e.state as Record<string, unknown> | null)?.[KEY];
   if (typeof at === "number") emit({ at, top: Math.max(state.top, at) });
+  notifyLocation();
 }
 if (typeof window !== "undefined") {
   // (Once: a module loaded again while developing replaces its listener.)
@@ -115,6 +130,7 @@ export function rewriteHistory(entries: string[]): Promise<void> {
       staleAbove = top;
       popped = false;
       emit({ at: top, top });
+      notifyLocation();
       resolve();
     };
     let timer = 0;
@@ -134,11 +150,13 @@ export function pushEntry(href: string) {
   const at = state.at + 1;
   window.history.pushState(stateWith(at), "", href);
   emit({ at, top: at });
+  notifyLocation();
 }
 
 /** The same step, a different address (the position stays). */
 export function replaceEntry(href: string) {
   window.history.replaceState(stateWith(state.at), "", href);
+  notifyLocation();
 }
 
 /** Whether the latest move was Back or Forward. */

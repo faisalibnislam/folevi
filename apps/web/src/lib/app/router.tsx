@@ -2,7 +2,8 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, type AnchorHTMLAttributes, type MouseEvent, type ReactNode } from "react";
-import { historyNavServerSnapshot, historyNavSnapshot, pushEntry, replaceEntry, startHistoryNav, subscribeHistoryNav } from "./historyNav";
+import { historyNavServerSnapshot, historyNavSnapshot, locationSnapshot, notifyLocation, pushEntry, replaceEntry, startHistoryNav, subscribeHistoryNav, subscribeLocation } from "./historyNav";
+import { APP_ROUTE_HEADS } from "./routes";
 
 /**
  * Client-side routing for the product shell. Every product URL is rendered by one catch-all route, and
@@ -126,18 +127,32 @@ export interface RouterValue {
 
 const RouterContext = createContext<RouterValue | null>(null);
 
+const noLocation = () => null;
+
 export function AppRouterProvider({ children }: { children: ReactNode }) {
-  const pathname = usePathname() ?? "/documents";
+  const nextPathname = usePathname() ?? "/documents";
+  const searchParams = useSearchParams();
+  const nextSearch = searchParams?.toString() ?? "";
+  // The address as it changes (historyNav tells at once), not when Next.js's own transition catches up: the
+  // next page draws on the frame after the tap instead of a render or two later (docs/IOS_PERFORMANCE.md).
+  // Until hydrated, and for an address outside the app (a sign-in page Next.js is about to draw), Next's.
+  const live = useSyncExternalStore(subscribeLocation, locationSnapshot, noLocation);
+  const at = live ? live.indexOf("?") : -1;
+  const livePath = live ? (at < 0 ? live : live.slice(0, at)) : null;
+  const inApp = livePath !== null && APP_ROUTE_HEADS.has(livePath.split("/").filter(Boolean)[0] ?? "");
+  const pathname = inApp ? livePath : nextPathname;
+  const searchString = inApp ? (at < 0 ? "" : live!.slice(at + 1)) : nextSearch;
+  // Anything else that moved the address (Next's own router, a replaceState of the query) is read again.
+  useEffect(() => notifyLocation(), [nextPathname, nextSearch]);
   // When the offline shell is served for a different URL, re-sync the router with the address bar.
   useEffect(() => {
     startHistoryNav();
-    if (typeof window !== "undefined" && window.location.pathname !== pathname) {
+    if (typeof window !== "undefined" && window.location.pathname !== nextPathname) {
       replaceEntry(`${window.location.pathname}${window.location.search}${window.location.hash}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const nav = useSyncExternalStore(subscribeHistoryNav, historyNavSnapshot, historyNavServerSnapshot);
-  const searchParams = useSearchParams();
   const route = useMemo(() => parseRoute(pathname), [pathname]);
   const navigate = useCallback((href: string, opts?: { replace?: boolean }) => {
     startHistoryNav();
@@ -154,7 +169,7 @@ export function AppRouterProvider({ children }: { children: ReactNode }) {
   const forward = useCallback(() => window.history.forward(), []);
   const canBack = nav.at > 0;
   const canForward = nav.at < nav.top;
-  const search = useMemo(() => new URLSearchParams(searchParams?.toString() ?? ""), [searchParams]);
+  const search = useMemo(() => new URLSearchParams(searchString), [searchString]);
   const value = useMemo(() => ({ route, pathname, search, navigate, back, forward, canBack, canForward }), [route, pathname, search, navigate, back, forward, canBack, canForward]);
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>;
 }

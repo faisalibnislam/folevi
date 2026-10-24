@@ -2,11 +2,11 @@
   "name": "@folevi/ios",
   "version": "1.0.0",
   "private": true,
-  "description": "Folevi for iPhone and iPad: the web app in a Capacitor shell, with Face ID lock, haptics, in-app Safari for links and folevi:// links, a share extension, widgets, Siri and Shortcuts, Spotlight and a document scanner.",
+  "description": "Folevi for iPhone and iPad: the web app in Folevi's own web view host (no Capacitor), with Face ID lock, haptics, in-app Safari for links and folevi:// links, a share extension, widgets, Siri and Shortcuts, Spotlight and a document scanner.",
   "type": "module",
   "scripts": {
-    "sync": "cap sync ios",
-    "sync:dev": "FOLEVI_URL=http://app.localhost:3002 cap sync ios",
+    "sync": "node scripts/sync-web.mjs",
+    "sync:dev": "FOLEVI_URL=http://app.localhost:3002 node scripts/sync-web.mjs",
     "build": "node scripts/simulator.mjs build",
     "start": "node scripts/simulator.mjs run",
     "test": "node scripts/simulator.mjs test",
@@ -14,18 +14,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "shell": "node scripts/bundle-cloud.mjs && node ../web/scripts/build-shell.mjs --platform ios",
     "release": "node scripts/release.mjs",
-    "bundle-cloud": "node scripts/bundle-cloud.mjs"
-  },
-  "dependencies": {
-    "@capacitor/app": "8.1.2",
-    "@capacitor/core": "8.5.3",
-    "@capacitor/haptics": "8.0.2",
-    "@capacitor/ios": "8.5.3",
-    "@capacitor/keyboard": "8.0.6",
-    "@capacitor/status-bar": "8.0.4"
+    "bundle-cloud": "node scripts/bundle-cloud.mjs",
+    "upgrade-test": "node scripts/upgrade-test.mjs"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.3",
     "@types/node": "24.13.6",
     "typescript": "6.0.3"
   }

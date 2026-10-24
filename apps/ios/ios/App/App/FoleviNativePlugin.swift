@@ -1,69 +1,67 @@
-// The app's own Capacitor plugin ("FoleviNative"), called through `window.foleviNative` (bridge.js): the
+// The app's own plugin ("FoleviNative", Native/Host/Bridge.swift), called through `window.foleviNative` (bridge.js): the
 // Face ID lock's settings, and where links go (and, in Native/NativeServices.swift, the device's token for
 // the widgets and extensions, kept shares and the scanner). Every call checks the web view is showing Folevi's own site
-// (capacitor.config.ts server.url): App-Bound Domains already keep other sites out of the web view, this
+// (folevi-host.json, WebHost.config): App-Bound Domains already keep other sites out of the web view, this
 // makes sure of it.
 //
 // Links: Folevi's own pages stay in the web view (one opened as a new window loads there too); a link to
 // another site opens in an in-app Safari view (never Folevi's pricing page); mail, phone and folevi:// links
 // go to the system.
-import Capacitor
 import SafariServices
 import UIKit
 import WebKit
 
-@objc(FoleviNativePlugin)
-final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
-    let identifier = "FoleviNativePlugin"
-    let jsName = "FoleviNative"
-    let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "getSettings", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setSettings", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openExternal", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "retry", returnType: CAPPluginReturnPromise),
+final class FoleviNativePlugin: BridgePlugin {
+    override var jsName: String { "FoleviNative" }
+    override var methods: Set<String> { Self.names }
+    static let names: Set<String> = [
+        "getSettings",
+        "setSettings",
+        "openExternal",
+        "retry",
         // Native/NativeServices.swift: the device's token, kept shares, the scanner.
-        CAPPluginMethod(name: "device", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setCredential", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "clearCredential", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "takeShares", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "finishShare", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "scanDocument", returnType: CAPPluginReturnPromise),
+        "device",
+        "setCredential",
+        "clearCredential",
+        "takeShares",
+        "finishShare",
+        "scanDocument",
         // Native/PushBridge.swift: notifications on this device, and the app icon's badge.
-        CAPPluginMethod(name: "pushStatus", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "enablePush", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "disablePush", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setBadge", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openNotificationSettings", returnType: CAPPluginReturnPromise),
+        "pushStatus",
+        "enablePush",
+        "disablePush",
+        "setBadge",
+        "openNotificationSettings",
         // Native/SystemSettings.swift: Reduce Transparency, Increase Contrast, the text size.
-        CAPPluginMethod(name: "accessibility", returnType: CAPPluginReturnPromise),
+        "accessibility",
         // Native/SystemSettings.swift: the colour behind the web view, which the keyboard's corners show.
-        CAPPluginMethod(name: "setBackdrop", returnType: CAPPluginReturnPromise),
+        "setBackdrop",
         // Native/NativeServices.swift: signing in with Google in iOS's sign-in sheet.
-        CAPPluginMethod(name: "authenticate", returnType: CAPPluginReturnPromise),
+        "authenticate",
         // Native/TextRecognition.swift: the words in an image, read on the device (search in files).
-        CAPPluginMethod(name: "recognizeText", returnType: CAPPluginReturnPromise),
+        "recognizeText",
         // Native/AppleSignIn.swift: Sign in with Apple in Apple's own sheet.
-        CAPPluginMethod(name: "signInWithApple", returnType: CAPPluginReturnPromise),
+        "signInWithApple",
         // Native/LocalExtensions.swift: the widgets, Shortcuts and Spotlight in local mode.
-        CAPPluginMethod(name: "setWidgetSnapshot", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "takeLocalActions", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "finishLocalAction", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "indexSpotlight", returnType: CAPPluginReturnPromise),
+        "setWidgetSnapshot",
+        "takeLocalActions",
+        "finishLocalAction",
+        "indexSpotlight",
         // Native/UI: the native UI layer (docs/IOS_POLISH_PLAN.md §4): haptics, the long press's lifted
         // preview, action sheets and alerts, the pickers and share sheet, the keyboard's moves.
-        CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "hapticPrepare", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "liftArm", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "lift", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "liftDrop", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "liftMove", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "actionSheet", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "alert", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "copyText", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "pickDate", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "pickColor", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "share", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "keyboard", returnType: CAPPluginReturnPromise),
+        "haptic",
+        "hapticPrepare",
+        "liftArm",
+        "lift",
+        "liftDrop",
+        "liftMove",
+        "actionSheet",
+        "alert",
+        "copyText",
+        "pickDate",
+        "pickColor",
+        "share",
+        "keyboard",
     ]
 
     override func load() {
@@ -71,7 +69,7 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
         Task { @MainActor in KeyboardBridge.shared.attach(self) }
     }
 
-    var appOrigin: String { AppOrigin.of(bridge?.config.serverURL) }
+    var appOrigin: String { AppOrigin.of(bridge?.serverURL) }
 
     /// Whether the page asking is Folevi's own (not the offline page, never another site).
     @MainActor var fromFolevi: Bool {
@@ -81,7 +79,7 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: Face ID lock
 
-    @objc func getSettings(_ call: CAPPluginCall) {
+    @objc func getSettings(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             call.resolve(Self.settings())
@@ -90,7 +88,7 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
 
     /// { lock?: boolean, lockAfter?: 0 | 60 | 300 | 900 }. Turning the lock on asks to unlock once first,
     /// so it's never on for someone who can't get back in.
-    @objc func setSettings(_ call: CAPPluginCall) {
+    @objc func setSettings(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             if let after = call.getInt("lockAfter") {
@@ -114,7 +112,7 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: Links
 
-    @objc func openExternal(_ call: CAPPluginCall) {
+    @objc func openExternal(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             guard let raw = call.getString("url"), let url = URL(string: raw), self.openOutside(url) else { return call.reject("Can't open this link") }
@@ -123,10 +121,10 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     /// The offline page's "Try again": Folevi again, from the network or the site's cache.
-    @objc func retry(_ call: CAPPluginCall) {
+    @objc func retry(_ call: BridgeCall) {
         Task { @MainActor in
             guard let bridge = self.bridge, let webView = bridge.webView else { return call.resolve() }
-            webView.load(URLRequest(url: bridge.config.serverURL))
+            webView.load(URLRequest(url: bridge.serverURL))
             call.resolve()
         }
     }
@@ -149,7 +147,7 @@ final class FoleviNativePlugin: CAPPlugin, CAPBridgedPlugin {
             // Embeds (a video in a note) load in their frame; leaving Folevi opens Safari over the app.
             guard topLevel else { return nil }
             // The built-in interface: a link to one of the app's own pages on the website opens here.
-            if FoleviViewController.bundled(bridge), AppOrigin.of(url) == AppOrigin.of(ShellAuth.shared.service), let link = DeepLink.fromWeb(url) ?? DeepLink.fromPath(url.path) {
+            if bridge?.config.bundled == true, AppOrigin.of(url) == AppOrigin.of(ShellAuth.shared.service), let link = DeepLink.fromWeb(url) ?? DeepLink.fromPath(url.path) {
                 DispatchQueue.main.async { DeepLinkRouter.open(link) }
                 return true
             }

@@ -1,7 +1,7 @@
-// Folevi for iPhone and iPad. Everything happens in the one scene (SceneDelegate): the web app in Capacitor's
-// web view, plus the native parts (FoleviViewController, FoleviNativePlugin, AppLock). Notifications
-// (PushNotifications) start here, so one that launches the app is heard.
-import Capacitor
+// Folevi for iPhone and iPad. Everything happens in the one scene (SceneDelegate): the web app in Folevi's own web
+// view (Native/Host/WebHost.swift), plus the native parts (FoleviViewController, FoleviNativePlugin, AppLock).
+// Notifications (PushNotifications) start here, so one that launches the app is heard, and the page starts
+// loading here too (WebHost.prewarm()), before the window exists.
 import UIKit
 
 @main
@@ -14,6 +14,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         Keychain.forgetAfterReinstall()
         // Several places: what was saved to an account that isn't open goes to it in the background too.
         BackgroundRefresh.register()
+        // The page starts loading now (a background launch for a refresh or a silent push doesn't need it).
+        if application.applicationState != .background { WebHost.prewarm() }
         return true
     }
 
@@ -41,16 +43,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return config
     }
 
-    // Links and activities that arrive without a scene still reach Capacitor's plugins.
+    // Links and activities that arrive without a scene go to the page as folevi:// links.
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        ApplicationDelegateProxy.shared.application(app, open: url, options: options)
+        DeepLinkRouter.open(url)
+        return true
     }
 
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        if let url = DeepLinkRouter.link(for: userActivity) {
-            DeepLinkRouter.open(url)
-            return true
-        }
-        return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
+        guard let url = DeepLinkRouter.link(for: userActivity) else { return false }
+        DeepLinkRouter.open(url)
+        return true
     }
 }

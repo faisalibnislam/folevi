@@ -1,7 +1,6 @@
 // The page's haptics (docs/IOS_POLISH_PLAN.md §2.5, lib/native/ui.ts feel()): iOS's own feedback generators,
 // kept warm. `foleviNative.hapticPrepare(kind)` readies one when a finger lands on a control that will fire it
 // (a generator that isn't prepared can play a few milliseconds late), `haptic(kind)` plays it.
-import Capacitor
 import UIKit
 
 enum NativeHaptics {
@@ -67,7 +66,7 @@ enum NativeHaptics {
 
 extension FoleviNativePlugin {
     /// { kind }: plays it.
-    @objc func haptic(_ call: CAPPluginCall) {
+    @objc func haptic(_ call: BridgeCall) {
         guard let kind = NativeHaptics.kind(call.getString("kind")) else { return call.reject("Unknown haptic") }
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
@@ -77,7 +76,7 @@ extension FoleviNativePlugin {
     }
 
     /// { kind }: readies its generator.
-    @objc func hapticPrepare(_ call: CAPPluginCall) {
+    @objc func hapticPrepare(_ call: BridgeCall) {
         guard let kind = NativeHaptics.kind(call.getString("kind")) else { return call.reject("Unknown haptic") }
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }

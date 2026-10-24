@@ -14,7 +14,6 @@
 //    gone, or was dragged away).
 //
 // Reduce Motion: no spring, the picture fades in and out (150 ms).
-import Capacitor
 import UIKit
 import WebKit
 
@@ -253,7 +252,7 @@ final class PreviewView: UIView {
 
 extension FoleviNativePlugin {
     /// { id, rect: { x, y, width, height }, radius }: takes the picture of what a finger is resting on.
-    @objc func liftArm(_ call: CAPPluginCall) {
+    @objc func liftArm(_ call: BridgeCall) {
         guard let id = call.getString("id"), !id.isEmpty, id.count <= 64, let rect = LiftPreview.rect(call.getObject("rect")) else { return call.reject("A lift needs an id and a rectangle") }
         let radius = CGFloat(call.getDouble("radius") ?? 12)
         Task { @MainActor in
@@ -264,7 +263,7 @@ extension FoleviNativePlugin {
     }
 
     /// { id, from }: lifts the picture; { value: false } when there's none.
-    @objc func lift(_ call: CAPPluginCall) {
+    @objc func lift(_ call: BridgeCall) {
         guard let id = call.getString("id") else { return call.reject("A lift needs an id") }
         let from = CGFloat(call.getDouble("from") ?? 1)
         Task { @MainActor in
@@ -275,7 +274,7 @@ extension FoleviNativePlugin {
     }
 
     /// { id, dy }: moves the lifted picture `dy` points up (0: back), so the page's menu fits under it.
-    @objc func liftMove(_ call: CAPPluginCall) {
+    @objc func liftMove(_ call: BridgeCall) {
         guard let id = call.getString("id") else { return call.reject("A lift needs an id") }
         let dy = CGFloat(call.getDouble("dy") ?? 0)
         guard dy.isFinite else { return call.reject("Not a distance") }
@@ -287,7 +286,7 @@ extension FoleviNativePlugin {
     }
 
     /// { id, to: "back" | "fade" }: lets the picture go; resolves once it's back in place.
-    @objc func liftDrop(_ call: CAPPluginCall) {
+    @objc func liftDrop(_ call: BridgeCall) {
         guard let id = call.getString("id") else { return call.reject("A lift needs an id") }
         let to = call.getString("to") == "fade" ? "fade" : "back"
         Task { @MainActor in

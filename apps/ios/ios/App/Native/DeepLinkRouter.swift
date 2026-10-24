@@ -1,9 +1,9 @@
-// Every way into the app lands here and goes to the page as a folevi:// link, through Capacitor's App
-// plugin (appUrlOpen, which the page reads with lib/deepLink.ts): links from other apps and widgets
-// (openURLContexts), App Intents (PendingLink), Spotlight results (CSSearchableItemActionType) and Handoff of
-// a Folevi page. Links that arrive before the web view and its plugins exist (a cold launch) wait here until
-// FoleviViewController says it's ready; the App plugin then keeps them until the page listens.
-import Capacitor
+// Every way into the app lands here and goes to the page as a folevi:// link, as the "appUrlOpen" event of
+// the "App" plugin (what Capacitor's App plugin sent; bridge.js hands it to foleviNative.onCommand, which
+// the page reads with lib/deepLink.ts): links from other apps and widgets (openURLContexts), App Intents
+// (PendingLink), Spotlight results (CSSearchableItemActionType) and Handoff of a Folevi page. Links that arrive
+// before the web view exists (a cold launch) wait here until FoleviViewController.prepare says it's ready; the
+// page's host then keeps them until its bridge is up (WebHost.openLink), and bridge.js until the page listens.
 import CoreSpotlight
 import UIKit
 
@@ -28,7 +28,8 @@ enum DeepLinkRouter {
         let url = link
         guard DeepLink.parse(url.absoluteString) != nil else { return }
         guard ready else { return waiting.append(url) }
-        _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: url, options: [:])
+        guard let host = WebHost.current else { return waiting.append(url) }
+        host.openLink(url)
     }
 
     /// The web view and its plugins exist: links that came early go now, then any an intent left behind.

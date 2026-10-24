@@ -4,7 +4,6 @@
 // sheet is a popover from what the page names (`anchor`).
 //
 // The page answers with the chosen action's id (and the field's text), or null when the person tapped away.
-import Capacitor
 import UIKit
 
 enum NativeAlerts {
@@ -92,7 +91,7 @@ private final class PopoverDismissal: NSObject, UIPopoverPresentationControllerD
 
 extension FoleviNativePlugin {
     /// { title?, message?, actions: [{ id, title, style }], anchor? }: { value: id } or { value: null }.
-    @objc func actionSheet(_ call: CAPPluginCall) {
+    @objc func actionSheet(_ call: BridgeCall) {
         guard let actions = NativeAlerts.actions(call.getArray("actions")) else { return call.reject("An action sheet needs actions") }
         let anchor = LiftPreview.rect(call.getObject("anchor"))
         Task { @MainActor in
@@ -121,7 +120,7 @@ extension FoleviNativePlugin {
     }
 
     /// { title, message?, actions, field?: { value, placeholder, capitalize } }: { id, text? } or null.
-    @objc func alert(_ call: CAPPluginCall) {
+    @objc func alert(_ call: BridgeCall) {
         guard let title = call.getString("title"), !title.isEmpty, let actions = NativeAlerts.actions(call.getArray("actions")) else { return call.reject("An alert needs a title and actions") }
         let field = NativeAlerts.field(call.getObject("field"))
         Task { @MainActor in

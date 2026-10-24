@@ -3,7 +3,6 @@
 // document scanner. Like every FoleviNative call, each one checks the page is Folevi's own first. The token
 // goes one way only: the page hands it over, native code never gives it back.
 import AuthenticationServices
-import Capacitor
 import UIKit
 
 /// The sign-in sheet on show (kept alive while it's up) and the window it's shown over.
@@ -27,7 +26,7 @@ extension FoleviNativePlugin {
     /// inside the app's web view). The sheet opens Folevi's /app-google page (only Folevi's own address), and
     /// closes on the folevi://auth/google link that page ends on; the page in the app gets that link (with a
     /// one-time code) and redeems it itself. Answers { url: null } if the sheet was closed.
-    @objc func authenticate(_ call: CAPPluginCall) {
+    @objc func authenticate(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             guard let raw = call.getString("url"), let url = URL(string: raw), AppOrigin.of(url) == self.appOrigin, url.path == "/app-google" else {
@@ -57,7 +56,7 @@ extension FoleviNativePlugin {
     }
 
     /// { id, family, model, accountId, tokenId, scanner }: this device and which token the app holds.
-    @objc func device(_ call: CAPPluginCall) {
+    @objc func device(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             let holds = DeviceCredential.shared.token != nil
@@ -76,7 +75,7 @@ extension FoleviNativePlugin {
 
     /// { token, tokenId, accountId }: keeps the token in the Keychain for the extensions, then refreshes
     /// what they show.
-    @objc func setCredential(_ call: CAPPluginCall) {
+    @objc func setCredential(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             guard let token = call.getString("token"), token.hasPrefix("fvpat_"), token.count < 200, let tokenId = call.getString("tokenId"), let accountId = call.getString("accountId") else { return call.reject("That isn't a token") }
@@ -91,14 +90,14 @@ extension FoleviNativePlugin {
             if let userId { SaveTargets.keep(userId: userId, accountId: accountId, tokenId: tokenId, token: token) }
             SharedAccount.accountId = accountId
             SharedAccount.tokenId = tokenId
-            AppServices.launched(serverURL: self.bridge?.config.serverURL)
+            AppServices.launched(serverURL: self.bridge?.serverURL)
             AppServices.refresh()
             call.resolve(["value": true])
         }
     }
 
     /// Signing out: the token, the widgets' copy, the share sheet's places and Spotlight's notes go.
-    @objc func clearCredential(_ call: CAPPluginCall) {
+    @objc func clearCredential(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             if let userId = ShellPlaces.currentUserId { SaveTargets.forget(userId: userId) }
@@ -108,7 +107,7 @@ extension FoleviNativePlugin {
     }
 
     /// The shares the extension kept for this account (or shared while signed out), with their files.
-    @objc func takeShares(_ call: CAPPluginCall) {
+    @objc func takeShares(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             let queue = ShareQueue.shared
@@ -131,7 +130,7 @@ extension FoleviNativePlugin {
     }
 
     /// A kept share was saved: it goes from the queue.
-    @objc func finishShare(_ call: CAPPluginCall) {
+    @objc func finishShare(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             if let id = call.getString("id") { ShareQueue.shared.remove(id) }
@@ -140,7 +139,7 @@ extension FoleviNativePlugin {
     }
 
     /// { source: "camera" | "photos" }: the pages (base64 JPEG) and their text, or null when cancelled.
-    @objc func scanDocument(_ call: CAPPluginCall) {
+    @objc func scanDocument(_ call: BridgeCall) {
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }
             guard let presenter = self.topController() else { return call.reject("Can't scan right now") }

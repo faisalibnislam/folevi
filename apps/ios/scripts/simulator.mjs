@@ -1,6 +1,6 @@
 // Builds Folevi (the app, its share extension and widgets) for the iOS Simulator and runs it there (no Apple
-// Developer team needed: Simulator builds aren't signed for a device). Run `pnpm sync` (or `pnpm sync:dev`) first: it writes the Capacitor config
-// and the offline page into the Xcode project.
+// Developer team needed: Simulator builds aren't signed for a device). Run `pnpm sync` (or `pnpm sync:dev`) first: it writes the page and
+// folevi-host.json into the Xcode project (scripts/sync-web.mjs).
 //
 //   node scripts/simulator.mjs build [device]   compile (default device: "iPhone 18 Pro")
 //   node scripts/simulator.mjs run [device]     boot the device if needed, build, install and open Folevi
@@ -41,7 +41,7 @@ function deviceId(name) {
 }
 
 function build(device) {
-  if (!existsSync(resolve(project, "App/capacitor.config.json"))) throw new Error("Run `pnpm sync` (or `pnpm sync:dev`) first.");
+  if (!existsSync(resolve(project, "App/folevi-host.json"))) throw new Error("Run `pnpm sync` (or `pnpm sync:dev`) first.");
   // The shared Dropbox and Google Drive code for the built-in interface.
   sh("node", [resolve(here, "bundle-cloud.mjs")]);
   sh("xcodebuild", ["-quiet", "-project", resolve(project, "App.xcodeproj"), "-scheme", "App", "-configuration", "Debug", "-destination", `platform=iOS Simulator,id=${device.udid}`, "-derivedDataPath", derived, "build"]);
@@ -90,7 +90,7 @@ if (command === "build") {
   }
 } else if (command === "test") {
   const device = deviceId(args[0]);
-  if (!existsSync(resolve(project, "App/capacitor.config.json"))) throw new Error("Run `pnpm sync` (or `pnpm sync:dev`) first.");
+  if (!existsSync(resolve(project, "App/folevi-host.json"))) throw new Error("Run `pnpm sync` (or `pnpm sync:dev`) first.");
   sh("xcodebuild", ["-quiet", "-project", resolve(project, "App.xcodeproj"), "-scheme", "App", "-destination", `platform=iOS Simulator,id=${device.udid}`, "-derivedDataPath", derived, "test"]);
 } else {
   console.log("Usage: node scripts/simulator.mjs build|run|test [device] | eval '<js>' [device] | native '<json>' [device] | widgets <folder> [device]");

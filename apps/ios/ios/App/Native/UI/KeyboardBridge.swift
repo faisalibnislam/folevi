@@ -9,7 +9,6 @@
 //
 // WKWebView's own bar above the keyboard ("‹ › Done") is already hidden by Capacitor's Keyboard plugin (its
 // hideFormAccessoryBar is on from launch).
-import Capacitor
 import UIKit
 import WebKit
 
@@ -161,7 +160,7 @@ private final class DisplayTarget: NSObject {
 
 extension FoleviNativePlugin {
     /// { interactiveDismiss }: whether a drag down in a scrolling view takes the keyboard with the finger.
-    @objc func keyboard(_ call: CAPPluginCall) {
+    @objc func keyboard(_ call: BridgeCall) {
         let on = call.getBool("interactiveDismiss") ?? false
         Task { @MainActor in
             guard self.fromFolevi else { return call.reject("Not allowed here") }

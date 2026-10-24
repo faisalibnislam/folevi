@@ -1,17 +1,74 @@
 // The only thing the web page gets from the iPhone and iPad app: `window.foleviNative`, a few calls that reach
-// the app (through Capacitor's bridge, window.Capacitor). Added before the page's own scripts
-// (FoleviViewController), on Folevi's own site only: the app fills in that one origin below. The page's
+// the app, and in the built-in interface `window.foleviShell`. Added before the page's own scripts
+// (FoleviViewController.prepare), on Folevi's own page only: the app fills in that one origin below. The page's
 // typed view of this is apps/web/src/lib/nativeApp.ts.
+//
+// The transport is the Mac app's (docs/NATIVE_APP_PLAN.md N1, apps/mac/Folevi/Bridge/mac-bridge.js), no longer
+// Capacitor's: call(plugin, method, options) posts { plugin, method, options } to the "folevi" message handler
+// (Native/Host/Bridge.swift) and resolves with the answer, or rejects with { code, message, data } (the shape
+// Capacitor's errors had, so the page reads them alike). Options or answers above 256 KB go through
+// capacitor://localhost/_bridge/<id>. Native events arrive through window.__foleviEmit(plugin, event, data).
 (function () {
   "use strict";
   var ORIGIN = "__FOLEVI_ORIGIN__";
   var VERSION = "__FOLEVI_VERSION__";
   if (location.origin !== ORIGIN || window.top !== window) return;
-  var cap = window.Capacitor;
-  if (!cap || typeof cap.nativePromise !== "function") return;
+  var handler = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.folevi;
+  if (!handler || typeof handler.postMessage !== "function") return;
+  // Taken now, before any page script runs: the page replacing either later changes nothing here.
+  var post = handler.postMessage.bind(handler);
+  var send = window.fetch.bind(window);
+  var LIMIT = 256 * 1024;
+  // Always the app's own scheme handler (Native/Host/AppScheme.swift), whichever page this is (a development
+  // server's page reaches it with CORS).
+  var BRIDGE_URL = "capacitor://localhost/_bridge/";
 
+  var nextId = 0;
+  var newId = function () {
+    nextId += 1;
+    var rand = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : Math.random().toString(36).slice(2) + Date.now().toString(36);
+    return "c" + nextId + rand;
+  };
+  var failure = function (e) {
+    var err = e && typeof e === "object" ? e : {};
+    var out = { message: typeof err.message === "string" ? err.message : "Folevi couldn't do that." };
+    if (typeof err.code === "string") out.code = err.code;
+    out.data = err.data && typeof err.data === "object" ? err.data : typeof err.path === "string" ? { path: err.path } : {};
+    return out;
+  };
+  var answer = function (r) {
+    if (!r || typeof r !== "object") throw failure(null);
+    if (r.ok !== true) throw failure(r.error);
+    if (typeof r.bodyId === "string") {
+      return send(BRIDGE_URL + r.bodyId).then(function (res) {
+        if (!res.ok) throw failure({ code: "io", message: "Folevi couldn't read that answer." });
+        return res.json();
+      });
+    }
+    return r.value === undefined ? {} : r.value;
+  };
+
+  /** One call to the app: a promise of its answer (a plain object). */
   var call = function (plugin, method, options) {
-    return cap.nativePromise(plugin, method, options || {});
+    var text;
+    try {
+      text = JSON.stringify(options || {});
+    } catch (e) {
+      return Promise.reject(failure({ code: "invalid_argument", message: "Folevi couldn't send that." }));
+    }
+    var sent;
+    if (text.length > LIMIT) {
+      var id = newId();
+      sent = send(BRIDGE_URL + id, { method: "POST", body: text, headers: { "content-type": "text/plain" } }).then(function (res) {
+        if (!res.ok) throw failure({ code: "io", message: "Folevi couldn't send that." });
+        return post({ plugin: String(plugin), method: String(method), bodyId: id });
+      });
+    } else {
+      sent = post({ plugin: String(plugin), method: String(method), options: JSON.parse(text) });
+    }
+    return Promise.resolve(sent).then(answer, function (e) {
+      throw failure(e && typeof e === "object" && "code" in e ? e : { code: "unavailable", message: "Folevi couldn't reach the app." });
+    });
   };
   var quietly = function (promise) {
     return promise.then(
@@ -23,6 +80,44 @@
       },
     );
   };
+
+  // Native events, for this page only (WebHost.emit).
+  var listeners = Object.create(null);
+  /** Listens to a native event; returns the function that stops. */
+  var listen = function (plugin, event, cb) {
+    var key = String(plugin) + "\u0000" + String(event);
+    var list = listeners[key] || (listeners[key] = []);
+    var entry = { cb: cb };
+    list.push(entry);
+    return function () {
+      var at = list.indexOf(entry);
+      if (at >= 0) list.splice(at, 1);
+    };
+  };
+  // folevi:// links that came before the page listened (a cold launch from a link): kept for the first listener,
+  // as Capacitor's App plugin kept them.
+  var earlyLinks = [];
+  Object.defineProperty(window, "__foleviEmit", {
+    value: function (plugin, event, data) {
+      var list = listeners[String(plugin) + "\u0000" + String(event)];
+      if (plugin === "App" && event === "appUrlOpen" && (!list || !list.length)) {
+        if (earlyLinks.length < 20) earlyLinks.push(data);
+        return;
+      }
+      if (!list) return;
+      list.slice().forEach(function (entry) {
+        try {
+          entry.cb(data);
+        } catch (e) {
+          /* the page's own listener failing changes nothing here */
+        }
+      });
+    },
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  });
+
   var HAPTICS = { light: 1, medium: 1, heavy: 1, rigid: 1, soft: 1, selection: 1, success: 1, warning: 1, error: 1 };
   // A rectangle on screen from the page ({ x, y, width, height }, CSS pixels of what's visible), as plain numbers.
   var rect = function (r) {
@@ -133,7 +228,7 @@
     },
     /** Every move of the keyboard ({ height, duration, curve, visible, late }); returns the function that stops. */
     onKeyboard: function (listener) {
-      var handle = cap.addListener("FoleviNative", "keyboard", function (event) {
+      return listen("FoleviNative", "keyboard", function (event) {
         if (!event) return;
         try {
           // How long the news took to get here (the app stamps it as the keyboard sets off): a bar moving with the
@@ -144,11 +239,6 @@
           /* the page's own listener failing changes nothing here */
         }
       });
-      return function () {
-        void Promise.resolve(handle).then(function (h) {
-          if (h && h.remove) h.remove();
-        });
-      };
     },
     /** The status bar's text for the page's theme: "dark" (a dark page, light text) or "light". */
     setStatusBar: function (theme) {
@@ -277,12 +367,19 @@
      * the function that stops listening.
      */
     onCommand: function (listener) {
-      var handle = cap.addListener("App", "appUrlOpen", function (event) {
+      var deliver = function (event) {
         if (event && typeof event.url === "string") listener({ type: "link", url: event.url });
-      });
-      return function () {
-        void handle.remove();
       };
+      var stop = listen("App", "appUrlOpen", deliver);
+      // Links that came before anyone listened go to this first listener.
+      var early = earlyLinks;
+      earlyLinks = [];
+      early.forEach(function (event) {
+        setTimeout(function () {
+          deliver(event);
+        }, 0);
+      });
+      return stop;
     },
   });
 
@@ -325,16 +422,7 @@
     /*__FOLEVI_SHELL_BRIDGE__*/
     var shellBridge = foleviShellBridge(SHELL, {
       call: call,
-      listen: function (plugin, event, cb) {
-        var handle = cap.addListener(plugin, event, cb);
-        return function () {
-          if (handle && typeof handle.remove === "function") void handle.remove();
-          else
-            void Promise.resolve(handle).then(function (h) {
-              if (h && h.remove) h.remove();
-            });
-        };
-      },
+      listen: listen,
       platform: "ios",
       version: VERSION,
       deviceName: "iPhone",
@@ -347,7 +435,7 @@
 
   // The app coming back to the front, said reliably (a web view's visibilitychange doesn't always fire when
   // iOS suspends and resumes the app): the page picks up what the share extension kept, for one.
-  cap.addListener("App", "appStateChange", function (state) {
+  listen("App", "appStateChange", function (state) {
     if (state && state.isActive) window.dispatchEvent(new Event("folevi:app-active"));
   });
 
@@ -462,4 +550,6 @@
     },
     { once: true },
   );
+  // The bridge is up: links the app kept for this page come now (WebHost.openLink).
+  void quietly(call("FoleviHost", "ready"));
 })();

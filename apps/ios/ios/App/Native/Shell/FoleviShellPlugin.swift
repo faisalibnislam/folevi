@@ -1,19 +1,17 @@
-// "FoleviShell": the Capacitor plugin behind `window.foleviShell` in the built-in interface (bridge.js,
+// "FoleviShell": the plugin behind `window.foleviShell` in the built-in interface (bridge.js,
 // docs/LOCAL_MODE_PLAN.md §4.1; the page's types are apps/web/src/lib/shell/types.ts). The iOS twin of the
 // Mac's preload.ts and main-process handlers: the library (LibraryService), secrets, sign-in (ShellAuth), Foli
 // AI (ShellAI), the lock, reminders, saving files, fetching calendars and previews, and this device's
 // end-to-end encryption keys (E2eeKeys). Every call checks the web view is showing the app's own page first.
 // Bytes cross as base64; failures reject with the library's code (and `data.path`, the reason) so the page
 // reads them as `{ code, message, path }`.
-import Capacitor
 import UIKit
 import WebKit
 
-@objc(FoleviShellPlugin)
-final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
-    let identifier = "FoleviShellPlugin"
-    let jsName = "FoleviShell"
-    let pluginMethods: [CAPPluginMethod] = [
+final class FoleviShellPlugin: BridgePlugin {
+    override var jsName: String { "FoleviShell" }
+    override var methods: Set<String> { Self.names }
+    static let names: Set<String> = [
         "setMode",
         "placesList", "placesSwitch", "placesSignIn", "placesDescribe", "placesSignOut", "placesForgetLibrary", "placesConvexToken", "placesQuickAdd", "placesSetQuickAdd",
         "libSetup", "libInfo", "libList", "libRead", "libWrite", "libRemove", "libConflictVersions", "libResolveConflicts", "libStartDownload",
@@ -25,9 +23,9 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         "e2eeDeviceKeys", "e2eeOpen", "e2eeSign", "e2eeReset", "e2eeSettings", "e2eeSetTouchId",
         "cloudStatus", "cloudConnect", "cloudCancel", "cloudSignOut", "cloudRequest", "libSetCloud",
         "mirrorRead", "mirrorWrite", "mirrorDelete", "mirrorPaths", "mirrorLoadState", "mirrorSaveState",
-    ].map { CAPPluginMethod(name: $0, returnType: CAPPluginReturnPromise) }
+    ]
 
-    private var appOrigin: String { AppOrigin.of(bridge?.config.serverURL) }
+    private var appOrigin: String { AppOrigin.of(bridge?.serverURL) }
     private var library: LibraryService { LibraryService.shared }
     private var aiTasks: [String: Task<Void, Never>] = [:]
     private let aiLock = NSLock()
@@ -48,14 +46,14 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     /// Runs `work` for a call from the app's own page, answering a refusal otherwise.
-    private func guarded(_ call: CAPPluginCall, _ work: @escaping () -> Void) {
+    private func guarded(_ call: BridgeCall, _ work: @escaping () -> Void) {
         Task { @MainActor in
             guard self.fromApp else { return call.reject("Not allowed here", "unavailable") }
             work()
         }
     }
 
-    private func fail(_ call: CAPPluginCall, _ error: Error) {
+    private func fail(_ call: BridgeCall, _ error: Error) {
         if let e = error as? LibraryError {
             call.reject(e.message, e.code.rawValue, nil, e.path.map { ["path": $0] } ?? [:])
         } else if let e = error as? E2eeError {
@@ -66,7 +64,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     /// Library work on the library's queue, answered with its value.
-    private func onLibrary(_ call: CAPPluginCall, _ work: @escaping () throws -> Any?) {
+    private func onLibrary(_ call: BridgeCall, _ work: @escaping () throws -> Any?) {
         guarded(call) {
             self.library.queue.async {
                 do {
@@ -79,14 +77,14 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    private func bytes(_ call: CAPPluginCall, _ key: String) throws -> Data {
+    private func bytes(_ call: BridgeCall, _ key: String) throws -> Data {
         guard let b64 = call.getString(key), let d = Data(base64Encoded: b64) else { throw LibraryError(.invalidArgument, "Bytes are needed.") }
         return d
     }
 
     // MARK: mode
 
-    @objc func setMode(_ call: CAPPluginCall) {
+    @objc func setMode(_ call: BridgeCall) {
         guarded(call) {
             guard let mode = call.getString("mode"), mode == "local" || mode == "account" else { return call.reject("Unknown mode", "invalid_argument") }
             // Several places (ShellPlaces): "local" opens the library (one of the places from now on); "account" the
@@ -121,11 +119,11 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func placesList(_ call: CAPPluginCall) {
+    @objc func placesList(_ call: BridgeCall) {
         guarded(call) { self.libraryInfo { kind, path, configured in call.resolve(["places": ShellPlaces.list(libraryKind: kind, displayPath: path, configured: configured)]) } }
     }
 
-    @objc func placesSwitch(_ call: CAPPluginCall) {
+    @objc func placesSwitch(_ call: BridgeCall) {
         guarded(call) {
             guard let id = call.getString("id"), ShellPlaces.has(id) else { return call.reject("That place isn't on this device.", "invalid_argument") }
             let path = call.getString("path").flatMap { $0.hasPrefix("/") && !$0.hasPrefix("//") && $0.count <= 500 ? $0 : nil } ?? "/documents"
@@ -136,7 +134,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func placesSignIn(_ call: CAPPluginCall) {
+    @objc func placesSignIn(_ call: BridgeCall) {
         guarded(call) {
             Task { @MainActor in
                 guard let u = await ShellAuth.shared.signInAccount(window: self.bridge?.viewController?.view.window, provider: call.getString("provider")) else { return call.resolve(["value": NSNull()]) }
@@ -149,14 +147,14 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func placesDescribe(_ call: CAPPluginCall) {
+    @objc func placesDescribe(_ call: BridgeCall) {
         guarded(call) {
             if let place = ShellPlaces.state.current, ShellPlaces.userIdOf(place) != nil { ShellPlaces.describe(place, call.options as? [String: Any] ?? [:]) }
             call.resolve()
         }
     }
 
-    @objc func placesSignOut(_ call: CAPPluginCall) {
+    @objc func placesSignOut(_ call: BridgeCall) {
         guarded(call) {
             guard let id = call.getString("id"), let user = ShellPlaces.userIdOf(id), ShellPlaces.has(id) else { return call.reject("That account isn't on this device.", "invalid_argument") }
             let next = call.getString("next")
@@ -176,7 +174,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func placesForgetLibrary(_ call: CAPPluginCall) {
+    @objc func placesForgetLibrary(_ call: BridgeCall) {
         guarded(call) {
             self.library.queue.async {
                 self.library.forget()
@@ -192,7 +190,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func placesConvexToken(_ call: CAPPluginCall) {
+    @objc func placesConvexToken(_ call: BridgeCall) {
         guarded(call) {
             // Only a page that is itself signed in moves notes between accounts.
             guard let id = call.getString("id"), let user = ShellPlaces.userIdOf(id), ShellPlaces.has(id), ShellPlaces.currentUserId != nil else { return call.resolve(["value": NSNull()]) }
@@ -200,12 +198,12 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func placesQuickAdd(_ call: CAPPluginCall) {
+    @objc func placesQuickAdd(_ call: BridgeCall) {
         // The place chosen last anywhere: in the app's Quick Add, the share sheet, Siri or a widget (SaveTargets).
         guarded(call) { call.resolve(["value": ([SaveTargets.last(), ShellPlaces.state.quickAdd, ShellPlaces.state.current].compactMap { $0 }.first { ShellPlaces.has($0) }).map { $0 as Any } ?? NSNull()]) }
     }
 
-    @objc func placesSetQuickAdd(_ call: CAPPluginCall) {
+    @objc func placesSetQuickAdd(_ call: BridgeCall) {
         guarded(call) {
             if let id = call.getString("id") { ShellPlaces.setQuickAdd(id) }
             call.resolve()
@@ -214,7 +212,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: library
 
-    @objc func libSetup(_ call: CAPPluginCall) {
+    @objc func libSetup(_ call: BridgeCall) {
         guarded(call) {
             let kind = call.getString("kind") ?? ""
             guard ["icloud", "folder", "device"].contains(kind) else { return call.reject("This place isn't on iPhone and iPad.", "unavailable", nil, ["path": "unsupported"]) }
@@ -231,7 +229,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func libMove(_ call: CAPPluginCall) {
+    @objc func libMove(_ call: BridgeCall) {
         guarded(call) {
             let kind = call.getString("kind") ?? ""
             guard ["icloud", "folder", "device"].contains(kind) else { return call.reject("This place isn't on iPhone and iPad.", "unavailable", nil, ["path": "unsupported"]) }
@@ -250,16 +248,16 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func libInfo(_ call: CAPPluginCall) { onLibrary(call) { self.library.info() } }
+    @objc func libInfo(_ call: BridgeCall) { onLibrary(call) { self.library.info() } }
 
-    @objc func libList(_ call: CAPPluginCall) {
+    @objc func libList(_ call: BridgeCall) {
         onLibrary(call) {
             if let root = call.getString("root") { return ["entries": try self.library.filesAt(root).list(try LibraryPaths.checkDir(call.getString("dir") ?? "")).map(\.json)] }
             return ["entries": try self.library.list(call.getString("dir") ?? "")]
         }
     }
 
-    @objc func libRead(_ call: CAPPluginCall) {
+    @objc func libRead(_ call: BridgeCall) {
         onLibrary(call) {
             let path = call.getString("path") ?? ""
             let r = try call.getString("root").map { try self.library.filesAt($0).read(try LibraryPaths.check(path)) } ?? self.library.read(path)
@@ -270,7 +268,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func libWrite(_ call: CAPPluginCall) {
+    @objc func libWrite(_ call: BridgeCall) {
         onLibrary(call) {
             let ifMatch: IfMatch
             switch call.getString("mode") {
@@ -290,81 +288,81 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func libRemove(_ call: CAPPluginCall) {
+    @objc func libRemove(_ call: BridgeCall) {
         onLibrary(call) {
             try self.library.remove(call.getString("path") ?? "", ifMatch: call.getString("ifMatch"))
             return nil
         }
     }
 
-    @objc func libConflictVersions(_ call: CAPPluginCall) {
+    @objc func libConflictVersions(_ call: BridgeCall) {
         onLibrary(call) { ["versions": try self.library.conflictVersions(call.getString("path") ?? "").map { ["id": $0.id, "bytes": $0.bytes.base64EncodedString()] }] }
     }
 
-    @objc func libResolveConflicts(_ call: CAPPluginCall) {
+    @objc func libResolveConflicts(_ call: BridgeCall) {
         onLibrary(call) {
             try self.library.resolveConflicts(call.getString("path") ?? "", ids: (call.getArray("ids") ?? []).compactMap { $0 as? String })
             return nil
         }
     }
 
-    @objc func libStartDownload(_ call: CAPPluginCall) {
+    @objc func libStartDownload(_ call: BridgeCall) {
         onLibrary(call) {
             try self.library.startDownload((call.getArray("paths") ?? []).compactMap { $0 as? String })
             return nil
         }
     }
 
-    @objc func libWatch(_ call: CAPPluginCall) { onLibrary(call) { nil } }
-    @objc func libUnwatch(_ call: CAPPluginCall) { onLibrary(call) { nil } }
+    @objc func libWatch(_ call: BridgeCall) { onLibrary(call) { nil } }
+    @objc func libUnwatch(_ call: BridgeCall) { onLibrary(call) { nil } }
 
-    @objc func libRescan(_ call: CAPPluginCall) {
+    @objc func libRescan(_ call: BridgeCall) {
         onLibrary(call) {
             self.library.rescan()
             return nil
         }
     }
 
-    @objc func journalAppend(_ call: CAPPluginCall) {
+    @objc func journalAppend(_ call: BridgeCall) {
         onLibrary(call) {
             try self.library.journal().append(try self.bytes(call, "record"))
             return nil
         }
     }
 
-    @objc func journalRead(_ call: CAPPluginCall) {
+    @objc func journalRead(_ call: BridgeCall) {
         onLibrary(call) { ["records": try self.library.journal().records().map { $0.base64EncodedString() }] }
     }
 
-    @objc func journalTruncate(_ call: CAPPluginCall) {
+    @objc func journalTruncate(_ call: BridgeCall) {
         onLibrary(call) {
             try self.library.journal().truncate(call.getInt("n") ?? -1)
             return nil
         }
     }
 
-    @objc func libUnlock(_ call: CAPPluginCall) { onLibrary(call) { try self.library.unlock(call.getString("passphrase") ?? "") } }
+    @objc func libUnlock(_ call: BridgeCall) { onLibrary(call) { try self.library.unlock(call.getString("passphrase") ?? "") } }
 
-    @objc func libSetPassphrase(_ call: CAPPluginCall) {
+    @objc func libSetPassphrase(_ call: BridgeCall) {
         onLibrary(call) {
             try self.library.setPassphrase(call.getString("passphrase"))
             return nil
         }
     }
 
-    @objc func libChangePassphrase(_ call: CAPPluginCall) {
+    @objc func libChangePassphrase(_ call: BridgeCall) {
         onLibrary(call) { try self.library.changePassphrase(call.getString("old") ?? "", call.getString("new") ?? "") }
     }
 
     // MARK: Dropbox and Google Drive (ShellCloud.swift; the provider code itself runs in the bridge)
 
-    private func cloudFail(_ call: CAPPluginCall, _ error: Error) {
+    private func cloudFail(_ call: BridgeCall, _ error: Error) {
         if let e = error as? CloudError { call.reject(e.message, e.code) } else { fail(call, error) }
     }
 
-    @objc func cloudStatus(_ call: CAPPluginCall) { guarded(call) { call.resolve(ShellCloud.shared.status()) } }
+    @objc func cloudStatus(_ call: BridgeCall) { guarded(call) { call.resolve(ShellCloud.shared.status()) } }
 
-    @objc func cloudConnect(_ call: CAPPluginCall) {
+    @objc func cloudConnect(_ call: BridgeCall) {
         guarded(call) {
             Task { @MainActor in
                 do { call.resolve(try await ShellCloud.shared.connect(call.getString("provider") ?? "", window: self.bridge?.viewController?.view.window)) } catch { self.cloudFail(call, error) }
@@ -372,16 +370,16 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func cloudCancel(_ call: CAPPluginCall) {
+    @objc func cloudCancel(_ call: BridgeCall) {
         guarded(call) {
             ShellCloud.shared.cancel()
             call.resolve()
         }
     }
 
-    @objc func cloudSignOut(_ call: CAPPluginCall) { guarded(call) { Task { call.resolve(await ShellCloud.shared.signOut()) } } }
+    @objc func cloudSignOut(_ call: BridgeCall) { guarded(call) { Task { call.resolve(await ShellCloud.shared.signOut()) } } }
 
-    @objc func cloudRequest(_ call: CAPPluginCall) {
+    @objc func cloudRequest(_ call: BridgeCall) {
         guarded(call) {
             var headers: [String: String] = [:]
             for (k, v) in (call.options["headers"] as? [String: Any]) ?? [:] { if let s = v as? String { headers[k] = s } }
@@ -395,33 +393,33 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func libSetCloud(_ call: CAPPluginCall) { onLibrary(call) { try self.library.setCloud(kind: call.getString("kind") ?? "", libraryId: call.getString("libraryId") ?? "") } }
+    @objc func libSetCloud(_ call: BridgeCall) { onLibrary(call) { try self.library.setCloud(kind: call.getString("kind") ?? "", libraryId: call.getString("libraryId") ?? "") } }
 
-    @objc func mirrorRead(_ call: CAPPluginCall) {
+    @objc func mirrorRead(_ call: BridgeCall) {
         onLibrary(call) {
             guard let r = try ShellCloud.mirrorRead(call.getString("provider") ?? "", call.getString("path") ?? "") else { return ["missing": true] }
             return ["data": r.data.base64EncodedString(), "etag": r.etag]
         }
     }
 
-    @objc func mirrorWrite(_ call: CAPPluginCall) {
+    @objc func mirrorWrite(_ call: BridgeCall) {
         onLibrary(call) {
             try ShellCloud.mirrorWrite(call.getString("provider") ?? "", call.getString("path") ?? "", try self.bytes(call, "data"), etag: call.getString("etag") ?? "")
             return nil
         }
     }
 
-    @objc func mirrorDelete(_ call: CAPPluginCall) {
+    @objc func mirrorDelete(_ call: BridgeCall) {
         onLibrary(call) {
             try ShellCloud.mirrorDelete(call.getString("provider") ?? "", call.getString("path") ?? "")
             return nil
         }
     }
 
-    @objc func mirrorPaths(_ call: CAPPluginCall) { onLibrary(call) { ["paths": try ShellCloud.mirrorPaths(call.getString("provider") ?? "")] } }
-    @objc func mirrorLoadState(_ call: CAPPluginCall) { onLibrary(call) { ["state": (try ShellCloud.mirrorLoadState(call.getString("provider") ?? "")).map { $0 as Any } ?? NSNull()] } }
+    @objc func mirrorPaths(_ call: BridgeCall) { onLibrary(call) { ["paths": try ShellCloud.mirrorPaths(call.getString("provider") ?? "")] } }
+    @objc func mirrorLoadState(_ call: BridgeCall) { onLibrary(call) { ["state": (try ShellCloud.mirrorLoadState(call.getString("provider") ?? "")).map { $0 as Any } ?? NSNull()] } }
 
-    @objc func mirrorSaveState(_ call: CAPPluginCall) {
+    @objc func mirrorSaveState(_ call: BridgeCall) {
         onLibrary(call) {
             try ShellCloud.mirrorSaveState(call.getString("provider") ?? "", call.getString("state") ?? "null")
             return nil
@@ -430,9 +428,9 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: secrets
 
-    @objc func secretsHas(_ call: CAPPluginCall) { guarded(call) { call.resolve(["value": ShellSecrets.has(call.getString("name") ?? "")]) } }
+    @objc func secretsHas(_ call: BridgeCall) { guarded(call) { call.resolve(["value": ShellSecrets.has(call.getString("name") ?? "")]) } }
 
-    @objc func secretsSet(_ call: CAPPluginCall) {
+    @objc func secretsSet(_ call: BridgeCall) {
         guarded(call) {
             do {
                 try ShellSecrets.set(call.getString("name") ?? "", call.getString("value") ?? "")
@@ -441,7 +439,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func secretsDelete(_ call: CAPPluginCall) {
+    @objc func secretsDelete(_ call: BridgeCall) {
         guarded(call) {
             do {
                 try ShellSecrets.delete(call.getString("name") ?? "")
@@ -452,7 +450,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: sign-in
 
-    @objc func authSignIn(_ call: CAPPluginCall) {
+    @objc func authSignIn(_ call: BridgeCall) {
         guarded(call) {
             Task { @MainActor in
                 // Several places: the account becomes one of them. From the library the page goes on itself (move my
@@ -468,7 +466,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func authSignOut(_ call: CAPPluginCall) {
+    @objc func authSignOut(_ call: BridgeCall) {
         guarded(call) {
             Task {
                 if let place = ShellPlaces.state.current, let user = ShellPlaces.userIdOf(place) {
@@ -483,7 +481,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func authFetch(_ call: CAPPluginCall) {
+    @objc func authFetch(_ call: BridgeCall) {
         guarded(call) {
             Task {
                 do {
@@ -493,7 +491,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func authConvexToken(_ call: CAPPluginCall) {
+    @objc func authConvexToken(_ call: BridgeCall) {
         guarded(call) {
             Task {
                 do { call.resolve(["value": try await ShellAuth.shared.convexToken() ?? NSNull()]) } catch { self.fail(call, error) }
@@ -503,9 +501,9 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: Foli AI
 
-    @objc func aiCapabilities(_ call: CAPPluginCall) { guarded(call) { call.resolve(ShellAI.capabilities()) } }
+    @objc func aiCapabilities(_ call: BridgeCall) { guarded(call) { call.resolve(ShellAI.capabilities()) } }
 
-    @objc func aiGenerate(_ call: CAPPluginCall) {
+    @objc func aiGenerate(_ call: BridgeCall) {
         guarded(call) {
             guard let id = call.getString("id"), id.count <= 64, let raw = call.options["req"] as? [String: Any] else { return call.reject("Not a request Foli AI can send.", "invalid_argument") }
             switch ShellAI.check(raw) {
@@ -522,7 +520,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func aiCancel(_ call: CAPPluginCall) {
+    @objc func aiCancel(_ call: BridgeCall) {
         guarded(call) {
             let t = self.aiLock.withLock { self.aiTasks[call.getString("id") ?? ""] }
             t?.cancel()
@@ -530,7 +528,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func aiTestKey(_ call: CAPPluginCall) {
+    @objc func aiTestKey(_ call: BridgeCall) {
         guarded(call) { Task { call.resolve(await ShellAI.testKey(call.getString("provider") ?? "")) } }
     }
 
@@ -540,9 +538,9 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         ["lock": LockSettings.enabled, "lockAfter": LockSettings.after, "method": LockSettings.method()]
     }
 
-    @objc func lockGet(_ call: CAPPluginCall) { guarded(call) { call.resolve(Self.lockSettings()) } }
+    @objc func lockGet(_ call: BridgeCall) { guarded(call) { call.resolve(Self.lockSettings()) } }
 
-    @objc func lockSet(_ call: CAPPluginCall) {
+    @objc func lockSet(_ call: BridgeCall) {
         guarded(call) {
             Task { @MainActor in
                 if let after = call.getInt("lockAfter") {
@@ -563,7 +561,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: reminders, files, the web
 
-    @objc func notifySchedule(_ call: CAPPluginCall) {
+    @objc func notifySchedule(_ call: BridgeCall) {
         guarded(call) {
             guard let id = call.getString("id"), let at = call.getDouble("at") else { return call.reject("Not a reminder.", "invalid_argument") }
             Task {
@@ -575,25 +573,25 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func notifyCancel(_ call: CAPPluginCall) {
+    @objc func notifyCancel(_ call: BridgeCall) {
         guarded(call) {
             ShellNotify.cancel(id: call.getString("id") ?? "")
             call.resolve()
         }
     }
 
-    @objc func filesSave(_ call: CAPPluginCall) {
+    @objc func filesSave(_ call: BridgeCall) {
         guarded(call) {
             guard let data = try? self.bytes(call, "bytes") else { return call.reject("Bytes are needed.", "invalid_argument") }
             Task { @MainActor in call.resolve(["value": await ShellFiles.shared.save(name: call.getString("name") ?? "Folevi export", bytes: data, from: self.topController())]) }
         }
     }
 
-    @objc func httpPreview(_ call: CAPPluginCall) {
+    @objc func httpPreview(_ call: BridgeCall) {
         guarded(call) { Task { call.resolve(["value": await ShellHTTP.shared.preview(call.getString("url") ?? "") ?? NSNull()]) } }
     }
 
-    @objc func httpCalendar(_ call: CAPPluginCall) {
+    @objc func httpCalendar(_ call: BridgeCall) {
         guarded(call) {
             let prev = (call.options["previous"] as? [String: Any]) ?? [:]
             Task { call.resolve(await ShellHTTP.shared.calendar(call.getString("url") ?? "", etag: prev["etag"] as? String, lastModified: prev["lastModified"] as? String)) }
@@ -602,7 +600,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: end-to-end encryption
 
-    @objc func e2eeDeviceKeys(_ call: CAPPluginCall) {
+    @objc func e2eeDeviceKeys(_ call: BridgeCall) {
         guarded(call) {
             do {
                 let k = try E2eeKeys.shared.deviceKeys()
@@ -611,7 +609,7 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func e2eeOpen(_ call: CAPPluginCall) {
+    @objc func e2eeOpen(_ call: BridgeCall) {
         guarded(call) {
             guard let box = try? self.bytes(call, "box"), let context = call.getString("context") else { return call.reject("Not a sealed Folevi box.", "invalid_argument") }
             Task {
@@ -620,27 +618,27 @@ final class FoleviShellPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func e2eeSign(_ call: CAPPluginCall) {
+    @objc func e2eeSign(_ call: BridgeCall) {
         guarded(call) {
             do { call.resolve(["value": try E2eeKeys.shared.sign(kind: call.getString("kind") ?? "", body: call.getString("body") ?? "")]) } catch { self.fail(call, error) }
         }
     }
 
-    @objc func e2eeReset(_ call: CAPPluginCall) {
+    @objc func e2eeReset(_ call: BridgeCall) {
         guarded(call) {
             E2eeKeys.shared.reset()
             call.resolve()
         }
     }
 
-    @objc func e2eeSettings(_ call: CAPPluginCall) {
+    @objc func e2eeSettings(_ call: BridgeCall) {
         guarded(call) {
             let s = E2eeKeys.shared.settings()
             call.resolve(["touchId": s.touchId, "available": s.available])
         }
     }
 
-    @objc func e2eeSetTouchId(_ call: CAPPluginCall) {
+    @objc func e2eeSetTouchId(_ call: BridgeCall) {
         guarded(call) {
             Task {
                 do {

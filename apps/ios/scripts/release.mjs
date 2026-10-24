@@ -5,7 +5,7 @@
 //   node scripts/release.mjs [--build <n>] [--no-upload] [--skip-shell]
 //
 // 1. The built-in interface for production (apps/web build-shell.mjs --platform ios --production) into web/.
-// 2. `cap sync ios` with the production settings (https://app.folevi.com, bundled).
+// 2. scripts/sync-web.mjs with the production settings (https://app.folevi.com, bundled).
 // 3. The version and build: version.json's (scripts/version.mjs at the repo root writes them into the project for
 //    every target); --build <n> raises the hidden build there first (App Store Connect needs a new one per upload).
 //    "Folevi 1.0.00" is what people see; the build number is never shown.
@@ -95,7 +95,7 @@ const env = { ...process.env };
 delete env.FOLEVI_URL;
 delete env.FOLEVI_SHELL_URL;
 delete env.FOLEVI_SERVICE_URL;
-run("npx", ["cap", "sync", "ios"], { cwd: ios, env });
+run("node", [join(here, "sync-web.mjs")], { cwd: ios, env });
 
 const build = value("--build");
 if (build) {

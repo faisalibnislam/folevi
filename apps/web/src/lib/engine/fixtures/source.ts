@@ -11,6 +11,7 @@
 // - "event": one event's data.
 // - "envelope": raw messages in both directions (handshake, errors, a batch).
 import { applyDiff, emptyNativeList, nativeRows, windowDiff, withHash, type ListState } from "../diff";
+import { gateEvent } from "../gates";
 import {
   CONTRACT_REVISION,
   PROTOCOL_VERSION,
@@ -256,6 +257,7 @@ export const FIXTURES: Record<string, Fixture> = {
           commands: [...COMMAND_NAMES],
           editorCommands: [...EDITOR_COMMAND_NAMES],
           events: [...EVENT_NAMES],
+          gate: gateEvent({ gate: null }),
         },
       },
     ],
@@ -566,6 +568,8 @@ export const FIXTURES: Record<string, Fixture> = {
     error: { code: "ai_credits_exhausted", message: "You've used this month's AI credits. They reset on November 1." },
   }),
   "command.catchUp.clear": command({ name: "catchUp.clear", description: "Close the brief.", args: {}, result: { ok: true } }),
+  "command.gate.act": command({ name: "gate.act", description: "Unlock with the passphrase typed into the gate's field.", args: { action: "passphrase", values: { passphrase: "correct horse battery staple" } }, result: { ok: true } }),
+  "command.gate.act.wrong": command({ name: "gate.act", description: "A wrong passphrase (the gate also shows it in its error).", args: { action: "passphrase", values: { passphrase: "nope" } }, error: { code: "wrong_secret", message: "That passphrase isn't right." } }),
   "command.toast.action": command({ name: "toast.action", description: "The toast's button was tapped.", args: { id: "t7" }, result: { ok: true } }),
   "command.engine.refresh": command({ name: "engine.refresh", description: "Pull to refresh: send what waits and pull now.", args: {}, result: { ok: true } }),
 
@@ -600,15 +604,92 @@ export const FIXTURES: Record<string, Fixture> = {
 
   // ---- events
   "event.engine.ready": event({ name: "engine.ready", description: "The data layer is up.", data: { place: "acct:user_1", protocol: PROTOCOL_VERSION, revision: CONTRACT_REVISION } }),
-  "event.gate.changed": event({ name: "gate.changed", description: "Signed in and ready: no gate.", data: { gate: null } }),
-  "event.gate.changed.locked": event({ name: "gate.changed", description: "The encrypted space needs unlocking.", data: { gate: "e2eeLocked" } }),
+  "event.gate.changed": event({ name: "gate.changed", description: "Signed in and ready: no gate.", data: gateEvent({ gate: null }) }),
+  "event.gate.changed.loading": event({ name: "gate.changed", description: "Starting: checking the session.", data: gateEvent({ gate: "loading", title: "Opening your folio…", busy: true }) }),
+  "event.gate.changed.mode-choice": event({
+    name: "gate.changed",
+    description: "First launch: where should the notes live?",
+    data: gateEvent({
+      gate: "modeChoice",
+      title: "Where should your notes live?",
+      actions: [
+        { id: "account", label: "Sign in to Folevi", style: "primary", enabled: true },
+        { id: "local", label: "Keep notes on my devices", style: "secondary", enabled: true },
+      ],
+    }),
+  }),
+  "event.gate.changed.signed-out": event({ name: "gate.changed", description: "No session: native signs in.", data: gateEvent({ gate: "signedOut" }) }),
+  "event.gate.changed.device-limit": event({
+    name: "gate.changed",
+    description: "Too many devices on this plan.",
+    data: gateEvent({ gate: "deviceLimit", title: "This plan works on 3 devices", deviceLimit: { limit: 3, devices: [{ id: "sess_a", label: "MacBook Air", lastSeenAt: NOW - DAY }] }, actions: [{ id: "signOut:sess_a", label: "Sign out MacBook Air", style: "secondary", enabled: true }] }),
+  }),
+  "event.gate.changed.onboarding": event({ name: "gate.changed", description: "Onboarding isn't finished.", data: gateEvent({ gate: "onboarding", onboarding: { step: "useCases" } }) }),
+  "event.gate.changed.migration": event({
+    name: "gate.changed",
+    description: "Signed in from a library: move the notes into the account, or keep them separate.",
+    data: gateEvent({
+      gate: "migration",
+      title: "Move your notes to Folevi",
+      message: "Your library folder stays as it is either way.",
+      migration: { direction: "upload", phase: "ready", notes: 412, folders: 9, tags: 4, files: 37, fileBytes: 182_000_000, availableBytes: 10_000_000_000, fits: true, existingNotes: 0, writable: true, versions: true },
+      actions: [
+        { id: "move", label: "Move my notes into this account", style: "primary", enabled: true },
+        { id: "keep", label: "Keep them separate on this iPhone", style: "secondary", enabled: true },
+        { id: "back", label: "Back to my library", style: "quiet", enabled: true },
+      ],
+    }),
+  }),
+  "event.gate.changed.migration-moving": event({
+    name: "gate.changed",
+    description: "The move is running.",
+    data: gateEvent({
+      gate: "migration",
+      title: "Moving your notes to Folevi",
+      busy: true,
+      progress: { done: 120, total: 412, label: "Moving notes" },
+      migration: { direction: "upload", phase: "moving", notes: 412, folders: 9, tags: 4, files: 37, fileBytes: 182_000_000, availableBytes: 10_000_000_000, fits: true, existingNotes: 0, writable: true, versions: true },
+      actions: [{ id: "stop", label: "Stop", style: "secondary", enabled: true }],
+    }),
+  }),
+  "event.gate.changed.locked": event({
+    name: "gate.changed",
+    description: "The encrypted space needs unlocking: with the passphrase or the recovery key.",
+    data: gateEvent({
+      gate: "e2eeLocked",
+      title: "Unlock your encrypted notes",
+      e2ee: { space: "ws_vault", spaceName: "Vault", view: "choose", methods: ["device", "passphrase", "recovery"] },
+      fields: [
+        { id: "passphrase", kind: "secret", label: "Passphrase", placeholder: "" },
+        { id: "recoveryKey", kind: "recoveryKey", label: "Recovery key", placeholder: "XXXX-XXXX-XXXX-XXXX" },
+      ],
+      actions: [
+        { id: "passphrase", label: "Unlock with passphrase", style: "primary", enabled: true },
+        { id: "recovery", label: "Use recovery key", style: "secondary", enabled: true },
+        { id: "personal", label: "Switch to Personal", style: "quiet", enabled: true },
+      ],
+    }),
+  }),
+  "event.gate.changed.wrong-passphrase": event({
+    name: "gate.changed",
+    description: "After a wrong passphrase: the same screen with the error.",
+    data: gateEvent({
+      gate: "e2eeLocked",
+      title: "Unlock your encrypted notes",
+      e2ee: { space: "personal", spaceName: "Personal", view: "passphrase", methods: ["passphrase", "recovery"] },
+      fields: [{ id: "passphrase", kind: "secret", label: "Passphrase", placeholder: "" }],
+      actions: [{ id: "passphrase", label: "Unlock", style: "primary", enabled: true }],
+      error: { code: "wrong_secret", message: "That passphrase isn't right." },
+    }),
+  }),
   "event.sync.status": event({ name: "sync.status", description: "Saving.", data: { ...SYNC_SAVED, state: "saving", label: "Saving…", pending: 1 } }),
   "event.place.changed": event({ name: "place.changed", description: "The space changed.", data: { place: "acct:user_1", space: "ws_studio" } }),
   "event.toast": event({ name: "toast", description: "A toast with Undo.", data: { message: "Moved to Trips", tone: "info", undo: { command: "note.move", args: { ids: ["doc_00001"], folderId: null } }, action: null } }),
   "event.toast.action": event({ name: "toast", description: "A toast from the note page with its own button (revision 2).", data: { message: "Link copied", tone: "success", undo: null, action: { id: "t7", label: "Open" } } }),
   "event.toast.error": event({ name: "toast", description: "An error toast.", data: { message: "1 note couldn’t be changed. You may not have permission.", tone: "error", undo: null, action: null } }),
-  "event.navigate.request": event({ name: "navigate.request", description: "A page link inside a note.", data: { route: "/d/doc_00002", noteId: "doc_00002", external: false } }),
-  "event.navigate.request.external": event({ name: "navigate.request", description: "A web link inside a note.", data: { route: "https://example.com/article", noteId: null, external: true } }),
+  "event.navigate.request": event({ name: "navigate.request", description: "A page link inside a note.", data: { route: "/d/doc_00002", noteId: "doc_00002", external: false, newTab: false } }),
+  "event.navigate.request.new-tab": event({ name: "navigate.request", description: "A page link opened in a new tab (revision 3).", data: { route: "/d/doc_00002", noteId: "doc_00002", external: false, newTab: true } }),
+  "event.navigate.request.external": event({ name: "navigate.request", description: "A web link inside a note.", data: { route: "https://example.com/article", noteId: null, external: true, newTab: true } }),
   "event.note.ready": event({ name: "note.ready", description: "The note's first frame is drawn.", data: { id: "doc_00001", title: "Kyoto in November" } }),
   "event.note.meta": event({
     name: "note.meta",

@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 2;
+export const CONTRACT_REVISION = 3;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -257,6 +257,8 @@ export interface HelloValue {
   commands: string[];
   editorCommands: string[];
   events: string[];
+  /** Revision 3: the screen native should show now (the same as the last `gate.changed`). */
+  gate: GateChangedEvent;
 }
 
 /** The reply to watch. */
@@ -732,6 +734,12 @@ export interface FolderCreateResult {
   id: string;
 }
 
+/** Presses a gate screen's button (`GateChangedEvent.actions`), with its fields' values by field id. */
+export interface GateActArgs {
+  action: string;
+  values?: Record<string, string>;
+}
+
 /** Taps a toast's button (`ToastEvent.action`). */
 export interface ToastActionArgs {
   id: string;
@@ -830,12 +838,103 @@ export interface EngineReadyEvent {
 }
 
 /**
- * Which full screen native shows instead of the app: null when signed in and ready. Values: "loading",
- * "signedOut", "modeChoice", "onboarding", "librarySetup", "libraryLocked", "deviceLimit", "updateRequired",
- * "migration", "e2eeLocked".
+ * Which full screen native shows instead of the app (revision 3 adds everything but `gate`). Null `gate`: signed in
+ * and ready, no screen. Values of `gate`:
+ * - "loading": the page is starting, checking the session or opening the store (`title` says which).
+ * - "modeChoice": first launch, "Where should your notes live?" (actions "account", "local").
+ * - "signedOut": no session; native signs in with ShellAuth, then the page reloads into the account.
+ * - "emailUnverified", "suspended", "setupFailed", "offline", "error": a message with its actions.
+ * - "deviceLimit": too many devices (`deviceLimit`).
+ * - "onboarding": the account hasn't finished onboarding (`onboarding.step`).
+ * - "librarySetup", "libraryLocked": local mode's library needs choosing or unlocking (native's LibraryService).
+ * - "updateRequired": this build is too old for the server.
+ * - "migration": moving a library into an account or out of it, "move or keep" first (`migration`, `progress`).
+ * - "placeMove": a move between places that switched here to run (`progress`).
+ * - "e2eeLocked", "e2eeSetup", "e2eeWaiting", "e2eeTrust": an encrypted space to unlock, set up, wait for, or
+ *   the trust choice right after unlocking (`e2ee`).
+ * Each screen's buttons are `actions`; native sends `gate.act { action, values }` with the `fields` filled in.
  */
 export interface GateChangedEvent {
   gate: string | null;
+  /** The web's own heading and text for the screen (empty when native has its own words). */
+  title: string;
+  message: string;
+  busy: boolean;
+  actions: GateAction[];
+  fields: GateField[];
+  progress: GateProgress | null;
+  migration: MigrationSummary | null;
+  deviceLimit: DeviceLimitInfo | null;
+  e2ee: E2eeGateInfo | null;
+  onboarding: OnboardingGateInfo | null;
+  /** What went wrong with the last action (a wrong passphrase), for the screen to show. */
+  error: EngineError | null;
+}
+
+export interface GateAction {
+  id: string;
+  label: string;
+  style: "primary" | "secondary" | "quiet" | "destructive";
+  /** False while it can't be pressed yet ("Getting ready…"). */
+  enabled: boolean;
+}
+
+export interface GateField {
+  id: string;
+  kind: "text" | "secret" | "recoveryKey" | "code";
+  label: string;
+  placeholder: string;
+}
+
+export interface GateProgress {
+  done: number;
+  total: number | null;
+  label: string;
+}
+
+/** "Move your notes to Folevi" (and back to a library): what moves, and whether it fits. */
+export interface MigrationSummary {
+  direction: "upload" | "export";
+  /** "ready" (asking move or keep), "moving", "stopped", "done". */
+  phase: string;
+  notes: number;
+  folders: number;
+  tags: number;
+  files: number;
+  fileBytes: number;
+  /** The account's free storage; null when unknown. */
+  availableBytes: number | null;
+  fits: boolean;
+  /** Notes the account has already (they stay beside the moved ones). */
+  existingNotes: number;
+  writable: boolean;
+  /** Whether version history comes along (the "versions" action turns it on or off). */
+  versions: boolean;
+}
+
+export interface DeviceLimitInfo {
+  limit: number;
+  /** The other devices signed in; each has the action `signOut:<id>`. */
+  devices: GateDevice[];
+}
+
+export interface GateDevice {
+  id: string;
+  label: string;
+  lastSeenAt: number;
+}
+
+export interface E2eeGateInfo {
+  space: SpaceRef | null;
+  spaceName: string | null;
+  /** "choose", "passphrase", "recovery", "trust", "needsSetup", "waitingForKey", "opening". */
+  view: string;
+  /** Ways this device can unlock: "device" (approve from another device), "passkey", "passphrase", "recovery". */
+  methods: string[];
+}
+
+export interface OnboardingGateInfo {
+  step: string;
 }
 
 export interface PlaceChangedEvent {
@@ -873,6 +972,8 @@ export interface NavigateRequestEvent {
   noteId: string | null;
   /** A web page outside Folevi (native opens it in Safari's sheet). */
   external: boolean;
+  /** Revision 3: asked to open in a new tab or window (a modifier click, "Open in new tab"). */
+  newTab: boolean;
 }
 
 export interface NoteReadyEvent {
@@ -933,6 +1034,7 @@ export interface CommandMap {
   "catchUp.clear": { args: SpaceArgs; result: OkResult };
   "engine.refresh": { args: EmptyArgs; result: OkResult };
   "toast.action": { args: ToastActionArgs; result: OkResult };
+  "gate.act": { args: GateActArgs; result: OkResult };
 }
 
 export interface EditorCommandMap {
@@ -1007,6 +1109,7 @@ const commandNames = [
   "catchUp.clear",
   "engine.refresh",
   "toast.action",
+  "gate.act",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

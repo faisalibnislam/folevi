@@ -94,6 +94,8 @@ import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
 import { NoteBars } from "@/components/iphone/NoteBars";
 import { nativeChrome } from "@/lib/nativeApp";
 import { useNativeNote } from "@/lib/engine/editorCommands";
+import { requestNavigation } from "@/lib/engine/navigation";
+import { nativeToast } from "@/lib/engine/toasts";
 
 /** Native chrome mode (the native apps draw the note's bars): fixed for the page's life. */
 const nativeChromeMode = typeof window !== "undefined" && nativeChrome() !== null;
@@ -747,6 +749,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const lockItem = useLockMenuItem(meta?.isMember && inCurrentScope(meta.document, meta.isMember, scopeKey) ? { kind: "document", id: documentId, name: summary?.title ?? "", locked: (meta.document as { locked?: boolean }).locked } : null);
   const actions: (MenuItem | "separator")[] = [...(noteNotify.length ? [...docActions, "separator" as const, ...noteNotify] : docActions), ...(lockItem ? ["separator" as const, lockItem] : [])];
   // Native chrome mode (the native apps): the note takes the native toolbar's and menus' commands (lib/engine).
+  const duplicateNote = useMutation(api.documents.duplicate);
   useNativeNote({
     documentId,
     editor,
@@ -763,6 +766,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
     menu: {
       share: meta && caps.sharing ? () => setShareOpen(true) : undefined,
       move: canFile || canNest ? () => setMoveOpen(true) : undefined,
+      // The copy opens as its own note: native is asked to show it (navigate.request).
+      duplicate: meta && !meta.inTrash ? () => void duplicateNote({ documentId }).then((d) => void requestNavigation(`/d/${d.id}`), (e) => void nativeToast(errorMessage(e), { tone: "error" })) : undefined,
       copyTo: caps.copyTo && meta && !meta.inTrash && (canCopy || !meta.isMember) ? () => setCopyOpen(true) : undefined,
       export: () => setExportOpen(true),
       history: canEditPage ? () => setHistoryOpen(true) : undefined,

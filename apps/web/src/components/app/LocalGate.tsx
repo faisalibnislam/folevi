@@ -106,7 +106,7 @@ export function LocalGate() {
 
   if (setupError) {
     return (
-      <FullPageMessage title="We couldn't set up your notes" body={setupError}>
+      <FullPageMessage title="We couldn't set up your notes" body={setupError} gate="setupFailed" actions={[{ id: "retry", label: "Try again", style: "primary", run: () => location.reload() }]}>
         <Button variant="primary" onClick={() => location.reload()}>
           Try again
         </Button>

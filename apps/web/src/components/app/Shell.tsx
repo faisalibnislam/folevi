@@ -32,6 +32,7 @@ import { NativeBridge } from "./NativeBridge";
 import { displayCornerRadius, useIpadLayout, useIphoneApp } from "@/lib/iphone";
 import { nativeApp, nativeChrome } from "@/lib/nativeApp";
 import { EngineHost } from "@/lib/engine/EngineHost";
+import { NativeGate } from "@/lib/engine/NativeGate";
 import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
 import { installInputModality } from "@/components/iphone/chrome";
@@ -239,6 +240,8 @@ function NativeContentShell() {
           <Suspense fallback={null}>{content}</Suspense>
         </div>
         <EngineHost />
+        {/* The app is up: no gate screen for native to show. */}
+        <NativeGate gate={null} />
         <NativeBridge />
         <PlaceRunners />
         <OutboxRefusals />

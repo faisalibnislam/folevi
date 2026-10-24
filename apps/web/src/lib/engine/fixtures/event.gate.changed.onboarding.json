@@ -1,0 +1,21 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "Onboarding isn't finished.",
+  "data": {
+    "gate": "onboarding",
+    "title": "",
+    "message": "",
+    "busy": false,
+    "actions": [],
+    "fields": [],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": null,
+    "e2ee": null,
+    "onboarding": {
+      "step": "useCases"
+    },
+    "error": null
+  }
+}

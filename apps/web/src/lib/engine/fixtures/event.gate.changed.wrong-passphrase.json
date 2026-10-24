@@ -1,0 +1,44 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "After a wrong passphrase: the same screen with the error.",
+  "data": {
+    "gate": "e2eeLocked",
+    "title": "Unlock your encrypted notes",
+    "message": "",
+    "busy": false,
+    "actions": [
+      {
+        "id": "passphrase",
+        "label": "Unlock",
+        "style": "primary",
+        "enabled": true
+      }
+    ],
+    "fields": [
+      {
+        "id": "passphrase",
+        "kind": "secret",
+        "label": "Passphrase",
+        "placeholder": ""
+      }
+    ],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": null,
+    "e2ee": {
+      "space": "personal",
+      "spaceName": "Personal",
+      "view": "passphrase",
+      "methods": [
+        "passphrase",
+        "recovery"
+      ]
+    },
+    "onboarding": null,
+    "error": {
+      "code": "wrong_secret",
+      "message": "That passphrase isn't right."
+    }
+  }
+}

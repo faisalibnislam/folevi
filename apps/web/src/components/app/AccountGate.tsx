@@ -41,6 +41,7 @@ import { openPlaceInTab, signedInAccounts, signOutOfAccount } from "@/lib/places
 import { PlacesReporter } from "@/components/places/PlacesReporter";
 import { PlaceSync, reportToParent } from "@/components/places/PlaceSync";
 import { PlaceMoveGate } from "@/components/places/MovePlaces";
+import { NativeGate } from "@/lib/engine/NativeGate";
 
 // Seen once per account, so it loads only for people who haven't finished it.
 const Onboarding = lazy(() => import("./Onboarding").then((m) => ({ default: m.Onboarding })));
@@ -203,7 +204,7 @@ export function AccountGate() {
   }, [me?.state]);
 
   if (phase === "signed_out")
-    return hostAuth() ? <ShellSignIn /> : <FullPageMessage title="Taking you to sign in…" busy />;
+    return hostAuth() ? <ShellSignIn /> : <FullPageMessage title="Taking you to sign in…" busy gate="signedOut" />;
   const ready = me?.state === "ready" && !isLoading ? me.profile : null;
   if (warm || (warmed.current && ready)) {
     const profile = ready ?? warm!.profile;
@@ -236,6 +237,8 @@ export function AccountGate() {
       <FullPageMessage
         title="You're offline"
         body="Folevi can't reach the server right now. Anything you wrote on this device is safe and will sync when you're back online."
+        gate="offline"
+        actions={[{ id: "retry", label: "Try again", style: "primary", run: () => location.reload() }]}
       >
         <Button variant="primary" onClick={() => location.reload()}>
           Try again
@@ -246,7 +249,7 @@ export function AccountGate() {
   if (me === undefined || isLoading) return <FullPageMessage title="Opening your folio…" busy />;
   switch (me.state) {
     case "signed_out":
-      return hostAuth() ? <ShellSignIn /> : <FullPageMessage title="Taking you to sign in…" busy />;
+      return hostAuth() ? <ShellSignIn /> : <FullPageMessage title="Taking you to sign in…" busy gate="signedOut" />;
     case "session_revoked":
       return <FullPageMessage title="Checking your session…" busy />;
     case "email_unverified":
@@ -254,6 +257,11 @@ export function AccountGate() {
         <FullPageMessage
           title="Confirm your email to continue"
           body="Open the confirmation link we emailed you. It expires in 24 hours and works once."
+          gate="emailUnverified"
+          actions={[
+            { id: "resend", label: "Send a new link", style: "primary", run: () => void window.open(websitePage("/verify-email"), "_blank") },
+            { id: "signOut", label: "Sign out", style: "secondary", run: () => signOutNow() },
+          ]}
         >
           <div className="flex gap-2">
             <a
@@ -271,6 +279,8 @@ export function AccountGate() {
         <FullPageMessage
           title="This account is suspended"
           body="If you think this is a mistake, write to support@folevi.com from the address on your account."
+          gate="suspended"
+          actions={[{ id: "signOut", label: "Sign out", style: "secondary", run: () => signOutNow() }]}
         >
           <SignOutButton accountKey={null} />
         </FullPageMessage>
@@ -279,7 +289,7 @@ export function AccountGate() {
       return <DeviceLimitScreen limit={me.limit} />;
     case "needs_bootstrap":
       return bootError ? (
-        <FullPageMessage title="We couldn't finish setting up" body={bootError}>
+        <FullPageMessage title="We couldn't finish setting up" body={bootError} gate="setupFailed" actions={[{ id: "retry", label: "Try again", style: "primary", run: () => location.reload() }]}>
           <Button variant="primary" onClick={() => location.reload()}>
             Try again
           </Button>
@@ -320,9 +330,12 @@ function ReadyApp({
         ) : route === "share" && profile.onboardingStep === "done" ? (
           <ShareSheet />
         ) : profile.onboardingStep !== "done" || route === "onboarding" ? (
-          <Suspense fallback={<FullPageMessage title="Opening your folio…" busy />}>
-            <Onboarding />
-          </Suspense>
+          <>
+            <NativeGate gate="onboarding" onboarding={{ step: String(profile.onboardingStep ?? "start") }} />
+            <Suspense fallback={<FullPageMessage title="Opening your folio…" busy gate="onboarding" onboarding={{ step: String(profile.onboardingStep ?? "start") }} />}>
+              <Onboarding />
+            </Suspense>
+          </>
         ) : (
           <MigrationGate>
             {/* A move between places that switched here to run (components/places/MovePlaces.tsx). */}

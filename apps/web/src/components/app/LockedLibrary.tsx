@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/Button";
 import type { LibraryControl } from "@/lib/local/store/types";
 import { thisDevice } from "./LibrarySetup";
 import { useSystemTheme } from "./ModeChoice";
+import { NativeGate } from "@/lib/engine/NativeGate";
+import { BridgeError } from "@/lib/engine/validate";
 
 export function LockedLibrary({ control, where }: { control: LibraryControl; where: string | null }) {
   useSystemTheme();
@@ -31,6 +33,29 @@ export function LockedLibrary({ control, where }: { control: LibraryControl; whe
     }
   };
   return (
+    <>
+    <NativeGate
+      gate="libraryLocked"
+      title="Unlock your library"
+      message={where ?? ""}
+      fields={[{ id: "passphrase", kind: "secret", label: "Passphrase", placeholder: "" }]}
+      error={problem ? { code: "wrong_secret", message: problem } : null}
+      actions={[
+        {
+          id: "unlock",
+          label: "Unlock",
+          style: "primary",
+          enabled: !busy,
+          run: async (v) => {
+            const ok = await control.unlock(v.passphrase ?? "");
+            if (!ok) {
+              setProblem("That passphrase didn't open the library. Check it and try again.");
+              throw new BridgeError("wrong_secret", "That passphrase didn't open the library. Check it and try again.");
+            }
+          },
+        },
+      ]}
+    />
     <main id="main" tabIndex={-1} className="ui-neutral-chrome grid min-h-dvh place-items-center bg-canvas px-4 py-10 sm:px-6" data-testid="library-locked">
       <form
         className="grid w-full max-w-sm gap-6"
@@ -87,5 +112,6 @@ export function LockedLibrary({ control, where }: { control: LibraryControl; whe
         </div>
       </form>
     </main>
+    </>
   );
 }

@@ -121,7 +121,7 @@ export function EngineHost() {
       persist: (s) => spaceStatus(s).level === "standard",
       spaceStatus: statusOf,
       e2eeSignal,
-      navigate: (path) => navigate(path, { replace: true }),
+      navigate: (path) => navigate(path, { replace: true, engine: true }),
       setSpace: (space) => setContext(space === "personal" ? ({ kind: "personal" } as WireScope) : ({ kind: "workspace", workspaceId: space } as WireScope)),
     }),
     [convex, kept, current, mode, profile, spaces, context, online, today, timeZone, appearance, caps, aiOn, engine, outbox, placesValue, navigate, setContext],

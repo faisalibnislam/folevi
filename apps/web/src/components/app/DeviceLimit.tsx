@@ -60,6 +60,9 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
     <FullPageMessage
       title={`You’re on ${limit} ${limit === 1 ? "device" : "devices"} already`}
       body={`Your plan works on ${limit} ${limit === 1 ? "device" : "devices"} at a time. Sign out of one below to use Folevi here${canPurchaseHere() ? ", or upgrade for unlimited devices" : ""}.`}
+      gate="deviceLimit"
+      deviceLimit={{ limit, devices: others.map((s) => ({ id: s.id, label: s.label, lastSeenAt: s.lastSeenAt })) }}
+      actions={others.map((s) => ({ id: `signOut:${s.id}`, label: `Sign out ${s.label}`, enabled: busy === null, run: () => run(s.id, () => revoke({ sessionId: s.id })) }))}
     >
       <p className="ui-caps mb-2">Signed in on</p>
       <ul className="divide-y divide-line overflow-hidden rounded-control ui-card" aria-busy={sessions === undefined || undefined}>

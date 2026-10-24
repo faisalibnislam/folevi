@@ -13,6 +13,7 @@ import { useAuthPhase } from "@/lib/convex/provider";
 import { activeRouter } from "@/lib/e2ee/router/active";
 import { useBackendMode } from "@/lib/mode";
 import { saveAccountSnapshot } from "./offlineSnapshot";
+import { NativeGate, type NativeGateProps } from "@/lib/engine/NativeGate";
 
 export type Profile = NonNullable<Extract<NonNullable<ReturnType<typeof useMeQuery>>, { state: "ready" }>["profile"]>;
 /** A team workspace you belong to (`workspaces.mine`). Personal is never one of these. */
@@ -444,12 +445,22 @@ function LoadingScreen({ title, body }: { title: string; body?: ReactNode }) {
   );
 }
 
-export function FullPageMessage({ title, body, busy, children }: { title: string; body?: ReactNode; busy?: boolean; children?: ReactNode }) {
+export function FullPageMessage({ title, body, busy, children, gate, ...native }: { title: string; body?: ReactNode; busy?: boolean; children?: ReactNode } & NativeGateExtras) {
   // Shown before the app (and its neutral chrome) is up, starting with the server's first paint: it carries
   // the neutral chrome itself (globals.css), so loading looks like the app, not the warmer marketing palette.
   // While something loads it's the F writing itself (FoleviLoader); a message that needs reading is a card.
-  if (busy && !children) return <LoadingScreen title={title} body={body} />;
+  // The native apps show their own screen for it (native chrome mode: NativeGate tells them which).
+  const report = <NativeGate {...native} gate={gate ?? (busy ? "loading" : "error")} title={title} message={typeof body === "string" ? body : ""} busy={Boolean(busy)} />;
+  if (busy && !children)
+    return (
+      <>
+        <LoadingScreen title={title} body={body} />
+        {report}
+      </>
+    );
   return (
+    <>
+    {report}
     <main id="main" tabIndex={-1} className="ui-neutral-chrome grid min-h-dvh place-items-center bg-canvas px-6">
       <div className="w-full max-w-md rounded-chip border border-line bg-surface p-8 shadow-[0_1px_0_var(--color-line),0_12px_40px_-24px_rgba(24,32,28,0.35)]" aria-busy={busy || undefined}>
         <h1 className="font-display text-3xl leading-tight text-ink">{title}</h1>
@@ -458,7 +469,14 @@ export function FullPageMessage({ title, body, busy, children }: { title: string
         {children ? <div className="mt-6">{children}</div> : null}
       </div>
     </main>
+    </>
   );
 }
+
+/** What a FullPageMessage tells the native apps about itself (lib/engine/NativeGate.tsx). */
+type NativeGateExtras = Omit<NativeGateProps, "gate" | "title" | "message" | "busy"> & {
+  /** The gate name (default "loading" while busy, else "error"). */
+  gate?: string;
+};
 
 export { useMeQuery };

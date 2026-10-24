@@ -3,6 +3,17 @@
   "name": "gate.changed",
   "description": "Signed in and ready: no gate.",
   "data": {
-    "gate": null
+    "gate": null,
+    "title": "",
+    "message": "",
+    "busy": false,
+    "actions": [],
+    "fields": [],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": null,
+    "e2ee": null,
+    "onboarding": null,
+    "error": null
   }
 }

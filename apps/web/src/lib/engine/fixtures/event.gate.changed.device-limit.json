@@ -1,0 +1,35 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "Too many devices on this plan.",
+  "data": {
+    "gate": "deviceLimit",
+    "title": "This plan works on 3 devices",
+    "message": "",
+    "busy": false,
+    "actions": [
+      {
+        "id": "signOut:sess_a",
+        "label": "Sign out MacBook Air",
+        "style": "secondary",
+        "enabled": true
+      }
+    ],
+    "fields": [],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": {
+      "limit": 3,
+      "devices": [
+        {
+          "id": "sess_a",
+          "label": "MacBook Air",
+          "lastSeenAt": 1792746000000
+        }
+      ]
+    },
+    "e2ee": null,
+    "onboarding": null,
+    "error": null
+  }
+}

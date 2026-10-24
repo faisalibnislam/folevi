@@ -7,9 +7,9 @@ public enum EngineContract {
     /// The envelope's major version (`v` on every message to the engine).
     public static let protocolVersion = 1
     /// Bumps with every added view, command, editor command, event or field.
-    public static let revision = 2
+    public static let revision = 3
     /// FNV-1a of the names and revision; the engine's `hello` reply carries the same when this file is current.
-    public static let schemaHash = "8925e71b"
+    public static let schemaHash = "a0c42db3"
     /// The `WKScriptMessageHandler` name the engine posts to.
     public static let messageHandler = "foleviEngine"
     /// The global the host calls (`__foleviEngine.handle(json)`).
@@ -56,6 +56,7 @@ public enum CommandName: String, Codable, Hashable, Sendable, CaseIterable {
     case catchUpClear = "catchUp.clear"
     case engineRefresh = "engine.refresh"
     case toastAction = "toast.action"
+    case gateAct = "gate.act"
 }
 
 /// Editor commands (the note page).
@@ -274,6 +275,13 @@ public enum Commands {
         public var args: Args
         public init(_ args: Args) { self.args = args }
     }
+    public struct GateAct: EngineCommandSpec {
+        public static let name = "gate.act"
+        public typealias Args = FoleviEngine.GateActArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
 }
 
 public extension EngineCommandSpec where Self == Commands.SpaceSwitch {
@@ -326,6 +334,10 @@ public extension EngineCommandSpec where Self == Commands.EngineRefresh {
 
 public extension EngineCommandSpec where Self == Commands.ToastAction {
     static func toastAction(id: String) -> Self { Self(FoleviEngine.ToastActionArgs(id: id)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.GateAct {
+    static func gateAct(action: String, values: [String: String]? = nil) -> Self { Self(FoleviEngine.GateActArgs(action: action, values: values)) }
 }
 
 /// Editor commands: `try await client.editor(.notePrepare(id: id))`.
@@ -548,8 +560,8 @@ public enum EngineCatalog {
     public static let viewValues: [String: Model] = ["session": FoleviEngine.SessionValue.self, "places.list": FoleviEngine.PlacesValue.self, "home": FoleviEngine.HomeValue.self, "folders.tree": FoleviEngine.FoldersTreeValue.self, "sync.status": FoleviEngine.SyncStatusValue.self, "note.meta": FoleviEngine.NoteMeta.self]
     public static let listArgs: [String: Model] = ["notes.list": FoleviEngine.NotesListArgs.self]
     public static let listRows: [String: any EngineRow.Type] = ["notes.list": FoleviEngine.NoteRow.self]
-    public static let commandArgs: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchArgs.self, "note.create": FoleviEngine.NoteCreateArgs.self, "note.star": FoleviEngine.NoteStarArgs.self, "note.move": FoleviEngine.NoteMoveArgs.self, "note.archive": FoleviEngine.NoteArchiveArgs.self, "note.trash": FoleviEngine.NoteIdsArgs.self, "note.restore": FoleviEngine.NoteIdsArgs.self, "note.hideFromRecent": FoleviEngine.NoteIdsArgs.self, "folder.create": FoleviEngine.FolderCreateArgs.self, "catchUp.run": FoleviEngine.SpaceArgs.self, "catchUp.clear": FoleviEngine.SpaceArgs.self, "engine.refresh": FoleviEngine.EmptyArgs.self, "toast.action": FoleviEngine.ToastActionArgs.self]
-    public static let commandResults: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchResult.self, "note.create": FoleviEngine.NoteCreateResult.self, "note.star": FoleviEngine.BulkResult.self, "note.move": FoleviEngine.BulkResult.self, "note.archive": FoleviEngine.BulkResult.self, "note.trash": FoleviEngine.BulkResult.self, "note.restore": FoleviEngine.BulkResult.self, "note.hideFromRecent": FoleviEngine.HiddenResult.self, "folder.create": FoleviEngine.FolderCreateResult.self, "catchUp.run": FoleviEngine.CatchUpCard.self, "catchUp.clear": FoleviEngine.OkResult.self, "engine.refresh": FoleviEngine.OkResult.self, "toast.action": FoleviEngine.OkResult.self]
+    public static let commandArgs: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchArgs.self, "note.create": FoleviEngine.NoteCreateArgs.self, "note.star": FoleviEngine.NoteStarArgs.self, "note.move": FoleviEngine.NoteMoveArgs.self, "note.archive": FoleviEngine.NoteArchiveArgs.self, "note.trash": FoleviEngine.NoteIdsArgs.self, "note.restore": FoleviEngine.NoteIdsArgs.self, "note.hideFromRecent": FoleviEngine.NoteIdsArgs.self, "folder.create": FoleviEngine.FolderCreateArgs.self, "catchUp.run": FoleviEngine.SpaceArgs.self, "catchUp.clear": FoleviEngine.SpaceArgs.self, "engine.refresh": FoleviEngine.EmptyArgs.self, "toast.action": FoleviEngine.ToastActionArgs.self, "gate.act": FoleviEngine.GateActArgs.self]
+    public static let commandResults: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchResult.self, "note.create": FoleviEngine.NoteCreateResult.self, "note.star": FoleviEngine.BulkResult.self, "note.move": FoleviEngine.BulkResult.self, "note.archive": FoleviEngine.BulkResult.self, "note.trash": FoleviEngine.BulkResult.self, "note.restore": FoleviEngine.BulkResult.self, "note.hideFromRecent": FoleviEngine.HiddenResult.self, "folder.create": FoleviEngine.FolderCreateResult.self, "catchUp.run": FoleviEngine.CatchUpCard.self, "catchUp.clear": FoleviEngine.OkResult.self, "engine.refresh": FoleviEngine.OkResult.self, "toast.action": FoleviEngine.OkResult.self, "gate.act": FoleviEngine.OkResult.self]
     public static let editorArgs: [String: Model] = ["note.prepare": FoleviEngine.NotePrepareArgs.self, "note.show": FoleviEngine.NoteShowArgs.self, "note.close": FoleviEngine.EmptyArgs.self, "format": FoleviEngine.FormatArgs.self, "insert": FoleviEngine.InsertArgs.self, "link": FoleviEngine.LinkArgs.self, "undo": FoleviEngine.EmptyArgs.self, "redo": FoleviEngine.EmptyArgs.self, "indent": FoleviEngine.EmptyArgs.self, "outdent": FoleviEngine.EmptyArgs.self, "focus": FoleviEngine.EmptyArgs.self, "dismissKeyboard": FoleviEngine.EmptyArgs.self, "panel.open": FoleviEngine.PanelOpenArgs.self, "panel.close": FoleviEngine.EmptyArgs.self, "ai": FoleviEngine.AiArgs.self, "note.menu": FoleviEngine.NoteMenuArgs.self, "scrollToTop": FoleviEngine.EmptyArgs.self, "insets": FoleviEngine.InsetsArgs.self, "state": FoleviEngine.EmptyArgs.self]
     public static let editorResults: [String: Model] = ["note.prepare": FoleviEngine.NoteShownResult.self, "note.show": FoleviEngine.NoteShownResult.self, "note.close": FoleviEngine.OkResult.self, "format": FoleviEngine.OkResult.self, "insert": FoleviEngine.OkResult.self, "link": FoleviEngine.OkResult.self, "undo": FoleviEngine.OkResult.self, "redo": FoleviEngine.OkResult.self, "indent": FoleviEngine.OkResult.self, "outdent": FoleviEngine.OkResult.self, "focus": FoleviEngine.OkResult.self, "dismissKeyboard": FoleviEngine.OkResult.self, "panel.open": FoleviEngine.OkResult.self, "panel.close": FoleviEngine.OkResult.self, "ai": FoleviEngine.OkResult.self, "note.menu": FoleviEngine.OkResult.self, "scrollToTop": FoleviEngine.OkResult.self, "insets": FoleviEngine.OkResult.self, "state": FoleviEngine.EditorStateEvent.self]
     public static let events: [String: Model] = ["engine.ready": FoleviEngine.EngineReadyEvent.self, "gate.changed": FoleviEngine.GateChangedEvent.self, "sync.status": FoleviEngine.SyncStatusValue.self, "place.changed": FoleviEngine.PlaceChangedEvent.self, "toast": FoleviEngine.ToastEvent.self, "navigate.request": FoleviEngine.NavigateRequestEvent.self, "note.ready": FoleviEngine.NoteReadyEvent.self, "note.meta": FoleviEngine.NoteMeta.self, "editor.state": FoleviEngine.EditorStateEvent.self, "editor.panel": FoleviEngine.EditorPanelEvent.self, "memory.relieved": FoleviEngine.MemoryRelievedEvent.self]

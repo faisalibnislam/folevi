@@ -427,13 +427,13 @@ function RunPending({ move }: { move: Pending }) {
   };
   if (!result) {
     return (
-      <FullPageMessage title={move.mode === "move" ? "Moving your notes" : "Copying your notes"} body="Keep Folevi open. If it closes, this goes on from here next time.">
+      <FullPageMessage title={move.mode === "move" ? "Moving your notes" : "Copying your notes"} body="Keep Folevi open. If it closes, this goes on from here next time." gate="placeMove" progress={{ done: progress?.notesDone ?? 0, total: progress?.notesTotal ?? null, label: move.mode === "move" ? "Moving notes" : "Copying notes" }}>
         <MoveProgress p={progress} trashing={null} />
       </FullPageMessage>
     );
   }
   return (
-    <FullPageMessage title={"error" in result ? "The move stopped" : "Done"} body={"error" in result ? result.error : <Summary state={result.state} move={move} />}>
+    <FullPageMessage title={"error" in result ? "The move stopped" : "Done"} gate="placeMove" actions={[{ id: "open", label: `Open ${move.to.label}`, style: "primary", run: done }]} body={"error" in result ? result.error : <Summary state={result.state} move={move} />}>
       <div className="flex gap-2">
         <Button variant="primary" onClick={done}>
           Open {move.to.label}

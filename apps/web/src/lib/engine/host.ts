@@ -10,6 +10,8 @@ import { LIST_VIEWS, VALUE_VIEWS, followsSpace, parseViewArgs, type ListViewDef,
 import { COMMANDS } from "./commands";
 import { activeNote, isNoteReady, onNoteHost, resetNoteReady, setNoteEmitter } from "./noteHost";
 import { setToastSink } from "./toasts";
+import { actOnGate, currentGate, onGate } from "./gates";
+import { routeWindowOpen } from "./navigation";
 import { BridgeError, argsOf, bool, id as idArg, only } from "./validate";
 import {
   BIG_PAYLOAD_BYTES,
@@ -120,6 +122,9 @@ export class BridgeHost {
   private readonly schedule: (fn: () => void) => void;
   private readonly upload: (id: string, body: string) => Promise<void>;
   private readonly offNoteHost: () => void;
+  private readonly offGate: () => void;
+  /** The JSON of the last gate.changed sent. */
+  private lastGate: string | undefined = undefined;
   readonly ctx: ViewContext;
 
   constructor(private opts: HostOptions = {}) {
@@ -135,6 +140,9 @@ export class BridgeHost {
     };
     setToastSink((e) => this.emit("toast", e));
     setNoteEmitter((name, data) => this.emit(name, data));
+    // The screen native should show: sent at the next flush when it changed (several reports in one frame are one).
+    this.offGate = onGate(() => this.requestFlush());
+    this.lastGate = JSON.stringify(currentGate());
     // A note that registers or becomes ready may change what editor.state says.
     this.offNoteHost = onNoteHost(() => {
       const note = activeNote();
@@ -159,7 +167,6 @@ export class BridgeHost {
       this.startInternal();
       for (const sub of this.subs.values()) this.restart(sub);
       this.emit("engine.ready", { place: this.place(), protocol: PROTOCOL_VERSION, revision: CONTRACT_REVISION });
-      this.emit("gate.changed", { gate: null });
       return;
     }
     const all = prev.client !== deps.client || prev.app.accountKey !== deps.app.accountKey || prev.app.place !== deps.app.place;
@@ -179,7 +186,6 @@ export class BridgeHost {
     for (const sub of [...this.subs.values(), ...this.internal.values()]) this.stop(sub);
     this.internal.clear();
     this.deps = null;
-    this.emit("gate.changed", { gate: "loading" });
   }
 
   /** Ends everything (the page is going away). */
@@ -187,6 +193,7 @@ export class BridgeHost {
     this.detach();
     this.subs.clear();
     this.offNoteHost();
+    this.offGate();
     setToastSink(null);
     setNoteEmitter(null);
   }
@@ -241,6 +248,15 @@ export class BridgeHost {
       case "query":
         return this.query(msg);
       case "command": {
+        // A gate's button works before the data layer is up (that's when gates show).
+        if (msg.name === "gate.act") {
+          const args = argsOf(msg.args);
+          only(args, ["action", "values"]);
+          const values = argsOf(args.values);
+          if (!Object.values(values).every((v) => typeof v === "string")) throw new BridgeError("invalid_args", "values must be text by field id.");
+          await actOnGate(idArg(args, "action"), values as Record<string, string>);
+          return { ok: true };
+        }
         this.checkPlace(msg);
         if (!isCommandName(msg.name)) throw new BridgeError("unknown_command", `There's no command named “${String(msg.name)}”.`);
         const deps = this.ctx.deps();
@@ -271,6 +287,7 @@ export class BridgeHost {
       commands: [...COMMAND_NAMES],
       editorCommands: [...EDITOR_COMMAND_NAMES],
       events: [...EVENT_NAMES],
+      gate: currentGate(),
     };
   }
 
@@ -362,6 +379,12 @@ export class BridgeHost {
   /** Computes what changed and posts one batch. Public for tests. */
   flush(): void {
     this.scheduled = false;
+    const gate = currentGate();
+    const gateJson = JSON.stringify(gate);
+    if (gateJson !== this.lastGate) {
+      this.lastGate = gateJson;
+      this.queue.push({ kind: "event", name: "gate.changed", data: gate });
+    }
     for (const sub of [...this.internal.values(), ...this.subs.values()]) {
       if (!sub.dirty) continue;
       sub.dirty = false;
@@ -593,6 +616,7 @@ export function installBridgeHost(opts: HostOptions = {}): BridgeHost {
   if (installed) return installed;
   const host = new BridgeHost(opts);
   installed = host;
+  routeWindowOpen();
   (globalThis as unknown as { __foleviEngine?: { handle(m: unknown): Promise<string>; protocol: number } }).__foleviEngine = {
     handle: (m: unknown) => host.handle(m),
     protocol: PROTOCOL_VERSION,

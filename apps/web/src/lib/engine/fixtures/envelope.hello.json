@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "8925e71b"
+        "schemaHash": "a0c42db3"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 2,
+        "revision": 3,
         "build": "dev",
-        "schemaHash": "8925e71b",
+        "schemaHash": "a0c42db3",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -58,7 +58,8 @@
           "catchUp.run",
           "catchUp.clear",
           "engine.refresh",
-          "toast.action"
+          "toast.action",
+          "gate.act"
         ],
         "editorCommands": [
           "note.prepare",
@@ -93,7 +94,21 @@
           "editor.state",
           "editor.panel",
           "memory.relieved"
-        ]
+        ],
+        "gate": {
+          "gate": null,
+          "title": "",
+          "message": "",
+          "busy": false,
+          "actions": [],
+          "fields": [],
+          "progress": null,
+          "migration": null,
+          "deviceLimit": null,
+          "e2ee": null,
+          "onboarding": null,
+          "error": null
+        }
       }
     }
   ]

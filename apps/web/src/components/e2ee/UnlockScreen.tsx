@@ -7,6 +7,8 @@ import { useRadioGroup } from "@/lib/a11y/radioGroup";
 import { copy } from "@/lib/e2ee/copy";
 import { getKeySession, inNativeApp, thisDevice } from "@/lib/e2ee/keys";
 import { NewDeviceApprovalDialog } from "./ApproveDeviceDialog";
+import { NativeGate } from "@/lib/engine/NativeGate";
+import { BridgeError } from "@/lib/engine/validate";
 
 type View = "choose" | "passphrase" | "recovery" | "trust";
 
@@ -21,6 +23,7 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
   const [view, setView] = useState<View>("choose");
   const [approving, setApproving] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [gateError, setGateError] = useState<{ code: string; message: string } | null>(null);
   // No passkeys in the native apps (Mac, iPhone and iPad, Android): they unlock another way (§6.11).
   const onMac = inNativeApp();
   const unlocked = () => {
@@ -28,8 +31,59 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
     setNote(null);
     setView("trust");
   };
+  // The native apps draw this screen themselves (native chrome mode): its ways to unlock, as actions.
+  const methods = [...(onMac ? [] : ["passkey"]), "passphrase", "recovery"];
+  const fail = (code: string, message: string): never => {
+    setGateError({ code, message });
+    throw new BridgeError(code, message);
+  };
+  const native =
+    view === "trust" ? (
+      <NativeGate
+        gate="e2eeTrust"
+        title={u.trustTitle}
+        e2ee={{ space: null, spaceName: null, view: "trust", methods }}
+        actions={[
+          { id: "trustBrowser", label: u.trustBrowser.label, style: "primary", run: async () => { await session.trust("browser"); onDone?.(); } },
+          { id: "public", label: u.publicComputer.label, style: "secondary", run: async () => { await session.trust("public"); onDone?.(); } },
+        ]}
+      />
+    ) : (
+      <NativeGate
+        gate="e2eeLocked"
+        title={u.title}
+        message={u.body}
+        e2ee={{ space: null, spaceName: null, view, methods }}
+        error={gateError}
+        fields={[
+          { id: "passphrase", kind: "secret", label: u.passphraseField, placeholder: "" },
+          { id: "recoveryKey", kind: "recoveryKey", label: u.recoveryField, placeholder: u.recoveryPlaceholder },
+        ]}
+        actions={[
+          { id: "passphrase", label: u.passphrase, style: "primary", run: async (v) => {
+            onStart?.();
+            const r = await session.unlockWithPassphrase((v.passphrase ?? "").normalize("NFC"));
+            if (r === "ok") return void (setGateError(null), unlocked());
+            fail(r === "rate_limited" ? "rate_limited" : "wrong_secret", r === "rate_limited" ? u.rateLimited : u.wrongPassphrase);
+          } },
+          { id: "recovery", label: u.recoveryKey, style: "secondary", run: async (v) => {
+            onStart?.();
+            const r = await session.unlockWithRecoveryKey(v.recoveryKey ?? "");
+            if (r === "ok") return void (setGateError(null), unlocked());
+            fail(r === "rate_limited" ? "rate_limited" : r === "bad_format" ? "bad_format" : "wrong_secret", r === "rate_limited" ? u.rateLimited : r === "bad_format" ? u.badFormat : u.wrongRecovery);
+          } },
+          ...(onMac ? [] : [{ id: "passkey", label: u.passkey, style: "secondary" as const, run: async () => {
+            onStart?.();
+            const r = await session.unlockWithPasskey();
+            if (r === "ok") return void (setGateError(null), unlocked());
+            fail(r === "unsupported" ? "unsupported" : "cancelled", r === "unsupported" ? u.passkeyUnsupported : u.passkeyCancelled);
+          } }]),
+        ]}
+      />
+    );
   return (
     <div className="flex min-h-full w-full items-start justify-center px-4 py-10 sm:items-center sm:py-16">
+      {native}
       <section aria-labelledby="e2ee-unlock-title" className="ui-card w-full max-w-md rounded-container p-6 sm:p-8">
         <span aria-hidden className="grid h-11 w-11 place-items-center rounded-control bg-heading text-canvas">
           <LockKeyhole size={20} />

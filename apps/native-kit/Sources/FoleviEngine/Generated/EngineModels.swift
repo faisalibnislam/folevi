@@ -106,8 +106,10 @@ public struct HelloValue: Codable, Hashable, Sendable {
     public var commands: [String]
     public var editorCommands: [String]
     public var events: [String]
+    /// Revision 3: the screen native should show now (the same as the last `gate.changed`).
+    public var gate: GateChangedEvent
 
-    public init(protocol: Int, revision: Int, build: String, schemaHash: String, ready: Bool, place: String? = nil, features: [String], views: [String], listViews: [String], commands: [String], editorCommands: [String], events: [String]) {
+    public init(protocol: Int, revision: Int, build: String, schemaHash: String, ready: Bool, place: String? = nil, features: [String], views: [String], listViews: [String], commands: [String], editorCommands: [String], events: [String], gate: GateChangedEvent) {
         self.protocol = `protocol`
         self.revision = revision
         self.build = build
@@ -120,6 +122,7 @@ public struct HelloValue: Codable, Hashable, Sendable {
         self.commands = commands
         self.editorCommands = editorCommands
         self.events = events
+        self.gate = gate
     }
 }
 
@@ -990,6 +993,17 @@ public struct FolderCreateResult: Codable, Hashable, Sendable {
     }
 }
 
+/// Presses a gate screen's button (`GateChangedEvent.actions`), with its fields' values by field id.
+public struct GateActArgs: Codable, Hashable, Sendable {
+    public var action: String
+    public var values: [String: String]?
+
+    public init(action: String, values: [String: String]? = nil) {
+        self.action = action
+        self.values = values
+    }
+}
+
 /// Taps a toast's button (`ToastEvent.action`).
 public struct ToastActionArgs: Codable, Hashable, Sendable {
     public var id: String
@@ -1176,14 +1190,192 @@ public struct EngineReadyEvent: Codable, Hashable, Sendable {
     }
 }
 
-/// Which full screen native shows instead of the app: null when signed in and ready. Values: "loading",
-/// "signedOut", "modeChoice", "onboarding", "librarySetup", "libraryLocked", "deviceLimit", "updateRequired",
-/// "migration", "e2eeLocked".
+/// Which full screen native shows instead of the app (revision 3 adds everything but `gate`). Null `gate`: signed in
+/// and ready, no screen. Values of `gate`:
+/// - "loading": the page is starting, checking the session or opening the store (`title` says which).
+/// - "modeChoice": first launch, "Where should your notes live?" (actions "account", "local").
+/// - "signedOut": no session; native signs in with ShellAuth, then the page reloads into the account.
+/// - "emailUnverified", "suspended", "setupFailed", "offline", "error": a message with its actions.
+/// - "deviceLimit": too many devices (`deviceLimit`).
+/// - "onboarding": the account hasn't finished onboarding (`onboarding.step`).
+/// - "librarySetup", "libraryLocked": local mode's library needs choosing or unlocking (native's LibraryService).
+/// - "updateRequired": this build is too old for the server.
+/// - "migration": moving a library into an account or out of it, "move or keep" first (`migration`, `progress`).
+/// - "placeMove": a move between places that switched here to run (`progress`).
+/// - "e2eeLocked", "e2eeSetup", "e2eeWaiting", "e2eeTrust": an encrypted space to unlock, set up, wait for, or
+///   the trust choice right after unlocking (`e2ee`).
+/// Each screen's buttons are `actions`; native sends `gate.act { action, values }` with the `fields` filled in.
 public struct GateChangedEvent: Codable, Hashable, Sendable {
     public var gate: String?
+    /// The web's own heading and text for the screen (empty when native has its own words).
+    public var title: String
+    public var message: String
+    public var busy: Bool
+    public var actions: [GateAction]
+    public var fields: [GateField]
+    public var progress: GateProgress?
+    public var migration: MigrationSummary?
+    public var deviceLimit: DeviceLimitInfo?
+    public var e2ee: E2eeGateInfo?
+    public var onboarding: OnboardingGateInfo?
+    /// What went wrong with the last action (a wrong passphrase), for the screen to show.
+    public var error: EngineError?
 
-    public init(gate: String? = nil) {
+    public init(gate: String? = nil, title: String, message: String, busy: Bool, actions: [GateAction], fields: [GateField], progress: GateProgress? = nil, migration: MigrationSummary? = nil, deviceLimit: DeviceLimitInfo? = nil, e2ee: E2eeGateInfo? = nil, onboarding: OnboardingGateInfo? = nil, error: EngineError? = nil) {
         self.gate = gate
+        self.title = title
+        self.message = message
+        self.busy = busy
+        self.actions = actions
+        self.fields = fields
+        self.progress = progress
+        self.migration = migration
+        self.deviceLimit = deviceLimit
+        self.e2ee = e2ee
+        self.onboarding = onboarding
+        self.error = error
+    }
+}
+
+public struct GateAction: Codable, Hashable, Sendable {
+    public enum Style: String, Codable, Hashable, Sendable, CaseIterable {
+        case primary
+        case secondary
+        case quiet
+        case destructive
+    }
+
+    public var id: String
+    public var label: String
+    public var style: Style
+    /// False while it can't be pressed yet ("Getting ready…").
+    public var enabled: Bool
+
+    public init(id: String, label: String, style: Style, enabled: Bool) {
+        self.id = id
+        self.label = label
+        self.style = style
+        self.enabled = enabled
+    }
+}
+
+public struct GateField: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case text
+        case secret
+        case recoveryKey
+        case code
+    }
+
+    public var id: String
+    public var kind: Kind
+    public var label: String
+    public var placeholder: String
+
+    public init(id: String, kind: Kind, label: String, placeholder: String) {
+        self.id = id
+        self.kind = kind
+        self.label = label
+        self.placeholder = placeholder
+    }
+}
+
+public struct GateProgress: Codable, Hashable, Sendable {
+    public var done: Int
+    public var total: Int?
+    public var label: String
+
+    public init(done: Int, total: Int? = nil, label: String) {
+        self.done = done
+        self.total = total
+        self.label = label
+    }
+}
+
+/// "Move your notes to Folevi" (and back to a library): what moves, and whether it fits.
+public struct MigrationSummary: Codable, Hashable, Sendable {
+    public enum Direction: String, Codable, Hashable, Sendable, CaseIterable {
+        case upload
+        case export
+    }
+
+    public var direction: Direction
+    /// "ready" (asking move or keep), "moving", "stopped", "done".
+    public var phase: String
+    public var notes: Int
+    public var folders: Int
+    public var tags: Int
+    public var files: Int
+    public var fileBytes: Int
+    /// The account's free storage; null when unknown.
+    public var availableBytes: Int?
+    public var fits: Bool
+    /// Notes the account has already (they stay beside the moved ones).
+    public var existingNotes: Int
+    public var writable: Bool
+    /// Whether version history comes along (the "versions" action turns it on or off).
+    public var versions: Bool
+
+    public init(direction: Direction, phase: String, notes: Int, folders: Int, tags: Int, files: Int, fileBytes: Int, availableBytes: Int? = nil, fits: Bool, existingNotes: Int, writable: Bool, versions: Bool) {
+        self.direction = direction
+        self.phase = phase
+        self.notes = notes
+        self.folders = folders
+        self.tags = tags
+        self.files = files
+        self.fileBytes = fileBytes
+        self.availableBytes = availableBytes
+        self.fits = fits
+        self.existingNotes = existingNotes
+        self.writable = writable
+        self.versions = versions
+    }
+}
+
+public struct DeviceLimitInfo: Codable, Hashable, Sendable {
+    public var limit: Int
+    /// The other devices signed in; each has the action `signOut:<id>`.
+    public var devices: [GateDevice]
+
+    public init(limit: Int, devices: [GateDevice]) {
+        self.limit = limit
+        self.devices = devices
+    }
+}
+
+public struct GateDevice: Codable, Hashable, Sendable {
+    public var id: String
+    public var label: String
+    public var lastSeenAt: Double
+
+    public init(id: String, label: String, lastSeenAt: Double) {
+        self.id = id
+        self.label = label
+        self.lastSeenAt = lastSeenAt
+    }
+}
+
+public struct E2eeGateInfo: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    public var spaceName: String?
+    /// "choose", "passphrase", "recovery", "trust", "needsSetup", "waitingForKey", "opening".
+    public var view: String
+    /// Ways this device can unlock: "device" (approve from another device), "passkey", "passphrase", "recovery".
+    public var methods: [String]
+
+    public init(space: SpaceRef? = nil, spaceName: String? = nil, view: String, methods: [String]) {
+        self.space = space
+        self.spaceName = spaceName
+        self.view = view
+        self.methods = methods
+    }
+}
+
+public struct OnboardingGateInfo: Codable, Hashable, Sendable {
+    public var step: String
+
+    public init(step: String) {
+        self.step = step
     }
 }
 
@@ -1248,11 +1440,14 @@ public struct NavigateRequestEvent: Codable, Hashable, Sendable {
     public var noteId: String?
     /// A web page outside Folevi (native opens it in Safari's sheet).
     public var external: Bool
+    /// Revision 3: asked to open in a new tab or window (a modifier click, "Open in new tab").
+    public var newTab: Bool
 
-    public init(route: String, noteId: String? = nil, external: Bool) {
+    public init(route: String, noteId: String? = nil, external: Bool, newTab: Bool) {
         self.route = route
         self.noteId = noteId
         self.external = external
+        self.newTab = newTab
     }
 }
 

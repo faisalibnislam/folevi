@@ -1,0 +1,32 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "First launch: where should the notes live?",
+  "data": {
+    "gate": "modeChoice",
+    "title": "Where should your notes live?",
+    "message": "",
+    "busy": false,
+    "actions": [
+      {
+        "id": "account",
+        "label": "Sign in to Folevi",
+        "style": "primary",
+        "enabled": true
+      },
+      {
+        "id": "local",
+        "label": "Keep notes on my devices",
+        "style": "secondary",
+        "enabled": true
+      }
+    ],
+    "fields": [],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": null,
+    "e2ee": null,
+    "onboarding": null,
+    "error": null
+  }
+}

@@ -5,6 +5,7 @@
   "data": {
     "route": "https://example.com/article",
     "noteId": null,
-    "external": true
+    "external": true,
+    "newTab": true
   }
 }

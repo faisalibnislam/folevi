@@ -1,0 +1,19 @@
+{
+  "kind": "event",
+  "name": "gate.changed",
+  "description": "No session: native signs in.",
+  "data": {
+    "gate": "signedOut",
+    "title": "",
+    "message": "",
+    "busy": false,
+    "actions": [],
+    "fields": [],
+    "progress": null,
+    "migration": null,
+    "deviceLimit": null,
+    "e2ee": null,
+    "onboarding": null,
+    "error": null
+  }
+}

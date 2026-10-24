@@ -5,6 +5,7 @@
   "data": {
     "route": "/d/doc_00002",
     "noteId": "doc_00002",
-    "external": false
+    "external": false,
+    "newTab": false
   }
 }

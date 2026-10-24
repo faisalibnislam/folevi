@@ -9,7 +9,7 @@ import { useEffect, useRef } from "react";
 import type { Editor } from "@tiptap/core";
 import { applyLink, changeDepth, insertBlockAfterCurrent, removeLink, turnInto } from "@/components/editor/commands";
 import { requestSpecialInsert, type SpecialInsert } from "@/components/editor/EditorMenus";
-import { AI_FOCUS_EVENT } from "@/components/ai/chat/events";
+import { AI_FOCUS_EVENT, askNoteAi } from "@/components/ai/chat/events";
 import { nativeChrome } from "@/lib/nativeApp";
 import { bridgeListening, emitNoteEvent, markNoteReady, registerNote, type NoteHandle } from "./noteHost";
 import { BridgeError, num, oneOf, only, text } from "./validate";
@@ -156,10 +156,12 @@ export function runEditorCommand(o: NativeNoteOptions, name: EditorCommandName, 
     case "ai": {
       only(args, ["action", "prompt"]);
       const action = oneOf(args, "action", ["open", "ask"] as const);
-      if (action === "ask") text(args, "prompt", { max: 4000, optional: true });
+      const prompt = action === "ask" ? (text(args, "prompt", { max: 4000, optional: true }) ?? "").trim() : "";
+      // The question waits for the panel, which takes it when it opens (or at once when it's open).
+      if (prompt) askNoteAi(prompt);
       o.openPanel("ai");
-      // The panel's composer takes focus (⌘J's event), ready for the question.
-      if (action === "ask") window.dispatchEvent(new Event(AI_FOCUS_EVENT));
+      // No question: the panel's composer takes focus (⌘J's event), ready for one.
+      if (action === "ask" && !prompt) window.dispatchEvent(new Event(AI_FOCUS_EVENT));
       return ok;
     }
     case "note.menu": {

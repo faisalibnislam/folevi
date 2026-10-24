@@ -6,6 +6,8 @@ import { registerNote, markNoteReady, resetNoteHost } from "@/lib/engine/noteHos
 import { nativeToast } from "@/lib/engine/toasts";
 import { applyDiff, emptyNativeList, nativeRows } from "@/lib/engine/diff";
 import { forgetCatchUps } from "@/lib/engine/catchUp";
+import { gateEvent, pushGate, resetGates } from "@/lib/engine/gates";
+import { navigationRequest, requestNavigation } from "@/lib/engine/navigation";
 import { PROTOCOL_VERSION, schemaHash, type HomeValue, type ListDiff, type Reply } from "@/lib/engine/protocol";
 import { Posts, pagedList, rig, summary, type Rig } from "./fakes";
 
@@ -43,6 +45,7 @@ afterEach(() => {
   host.dispose();
   resetNoteHost();
   forgetCatchUps();
+  resetGates();
 });
 
 describe("handshake and errors", () => {
@@ -74,7 +77,6 @@ describe("handshake and errors", () => {
     host.attach(r.deps());
     host.flush();
     expect(posts.events("engine.ready")[0]!.data).toEqual({ place: PLACE, protocol: 1, revision: expect.any(Number) });
-    expect(posts.events("gate.changed")[0]!.data).toEqual({ gate: null });
   });
 
   it("refuses messages for another place, unknown views, commands and subscriptions, and bad args", async () => {
@@ -440,7 +442,7 @@ describe("transport", () => {
     host.emit("editor.panel", { panel: null });
     host.flush();
     expect(posts.raw).toHaveLength(1);
-    expect(posts.batches[0]!.map((m) => m.kind === "event" && m.name)).toEqual(["engine.ready", "gate.changed", "memory.relieved", "editor.panel", "sync.status"]);
+    expect(posts.batches[0]!.map((m) => m.kind === "event" && m.name)).toEqual(["engine.ready", "memory.relieved", "editor.panel", "sync.status"]);
   });
 
   it("a batch over 256 KB is uploaded to /_bridge and the message names it", async () => {
@@ -463,11 +465,63 @@ describe("transport", () => {
     host.detach();
     expect(r.client.watching("organization:sidebar")).toBe(0);
     host.flush();
-    expect(posts.events("gate.changed").at(-1)!.data).toEqual({ gate: "loading" });
     posts.clear();
     host.attach(r.deps());
     host.flush();
     expect(posts.updates("tree")).toHaveLength(1);
     expect(posts.updates("tree")[0]!.rev).toBe(2);
+  });
+});
+
+describe("gates", () => {
+  it("hello carries the screen to show; a new one is sent as gate.changed once per frame", async () => {
+    const hello = (await ok({ kind: "hello", app: { protocol: 1 } })) as { gate: { gate: string | null } };
+    expect(hello.gate.gate).toBe("loading");
+    const a = pushGate(gateEvent({ gate: "modeChoice", actions: [{ id: "account", label: "Sign in", style: "primary", enabled: true }] }), new Map([["account", () => undefined]]));
+    const b = pushGate(gateEvent({ gate: "signedOut" }), new Map());
+    host.flush();
+    expect(posts.events("gate.changed").map((e) => (e.data as { gate: string }).gate)).toEqual(["signedOut"]);
+    b.release();
+    a.release();
+    pushGate(gateEvent({ gate: null }), new Map());
+    host.flush();
+    expect(posts.events("gate.changed").map((e) => (e.data as { gate: string | null }).gate)).toEqual(["signedOut", null]);
+  });
+
+  it("gate.act presses the current screen's button before the data layer is up, with its fields' values", async () => {
+    const seen: Record<string, string>[] = [];
+    pushGate(
+      gateEvent({ gate: "e2eeLocked", actions: [{ id: "passphrase", label: "Unlock", style: "primary", enabled: true }, { id: "later", label: "Later", style: "quiet", enabled: false }] }),
+      new Map([
+        ["passphrase", (v: Record<string, string>) => void seen.push(v)],
+        ["later", () => undefined],
+      ]),
+    );
+    expect(await ok({ kind: "command", place: PLACE, name: "gate.act", args: { action: "passphrase", values: { passphrase: "s3cret" } } })).toEqual({ ok: true });
+    expect(seen).toEqual([{ passphrase: "s3cret" }]);
+    expect((await errorOf({ kind: "command", place: PLACE, name: "gate.act", args: { action: "later" } })).code).toBe("unavailable");
+    expect((await errorOf({ kind: "command", place: PLACE, name: "gate.act", args: { action: "gone" } })).code).toBe("unavailable");
+    expect((await errorOf({ kind: "command", place: PLACE, name: "gate.act", args: { action: "passphrase", values: { passphrase: 1 } } })).code).toBe("invalid_args");
+  });
+
+  it("a refused action's own error comes back (a wrong passphrase)", async () => {
+    const { BridgeError } = await import("@/lib/engine/validate");
+    pushGate(gateEvent({ gate: "e2eeLocked", actions: [{ id: "passphrase", label: "Unlock", style: "primary", enabled: true }] }), new Map([["passphrase", () => { throw new BridgeError("wrong_secret", "That passphrase isn't right."); }]]));
+    expect(await errorOf({ kind: "command", place: PLACE, name: "gate.act", args: { action: "passphrase", values: { passphrase: "x" } } })).toEqual({ code: "wrong_secret", message: "That passphrase isn't right." });
+  });
+});
+
+describe("navigation", () => {
+  it("names notes, keeps app routes relative and marks other sites external", () => {
+    expect(navigationRequest("/d/doc_7?new=1")).toEqual({ route: "/d/doc_7?new=1", noteId: "doc_7", external: false, newTab: false });
+    expect(navigationRequest("/tasks/today", { newTab: true })).toEqual({ route: "/tasks/today", noteId: null, external: false, newTab: true });
+    expect(navigationRequest("https://example.com/a")).toEqual({ route: "https://example.com/a", noteId: null, external: true, newTab: false });
+  });
+
+  it("a request goes to native as navigate.request while the host listens", () => {
+    host.attach(r.deps());
+    expect(requestNavigation("/d/doc_2")).toBe(true);
+    host.flush();
+    expect(posts.events("navigate.request")[0]!.data).toEqual({ route: "/d/doc_2", noteId: "doc_2", external: false, newTab: false });
   });
 });

@@ -210,6 +210,13 @@ export const COMMANDS: Record<CommandName, CommandDef> = {
     },
   },
 
+  "gate.act": {
+    // (The host runs it itself, before checking for the data layer: gates show when there's none.)
+    async run() {
+      throw new BridgeError("failed", "gate.act is handled by the bridge host.");
+    },
+  },
+
   "toast.action": {
     async run(_deps, args) {
       only(args, ["id"]);

@@ -13,6 +13,7 @@ import { ModeChoice } from "./ModeChoice";
 import { rememberSignInNext } from "./ShellSignIn";
 import { ProductApp } from "./ProductApp";
 import { MacPolish } from "./MacPolish";
+import { NativeGate } from "@/lib/engine/NativeGate";
 
 // The host's mode never changes under a loaded page (a switch reloads it), so there's nothing to subscribe to.
 const noSubscription = () => () => {};
@@ -55,6 +56,8 @@ function ShellScreens() {
   if (mode === "unset") {
     if (setup)
       return (
+        <>
+        <NativeGate gate="librarySetup" actions={[{ id: "back", label: "Back", style: "quiet", run: () => setSetup(false) }]} />
         <LibrarySetup
           onBack={() => setSetup(false)}
           onDone={async () => {
@@ -64,22 +67,38 @@ function ShellScreens() {
             setChosen("local");
           }}
         />
+        </>
       );
+    const choose = async (next: Backend) => {
+      if (next === "local" && shell()?.library) {
+        setSetup(true);
+        return;
+      }
+      if (next === "account") rememberSignInNext();
+      await setShellMode(next);
+      setChosen(next);
+    };
     return (
-      <ModeChoice
-        onChoose={async (next) => {
-          if (next === "local" && shell()?.library) {
-            setSetup(true);
-            return;
-          }
-          if (next === "account") rememberSignInNext();
-          await setShellMode(next);
-          setChosen(next);
-        }}
-      />
+      <>
+        <NativeGate
+          gate="modeChoice"
+          title="Where should your notes live?"
+          actions={[
+            { id: "account", label: "Sign in to Folevi", style: "primary", run: () => choose("account") },
+            { id: "local", label: "Keep notes on my devices", style: "secondary", run: () => choose("local") },
+          ]}
+        />
+        <ModeChoice onChoose={choose} />
+      </>
     );
   }
   if (hostLibrary && configured === null) return <FullPageMessage title="Opening your folio…" busy />;
-  if (hostLibrary && configured === false) return <LibrarySetup onDone={async () => setConfigured(true)} />;
+  if (hostLibrary && configured === false)
+    return (
+      <>
+        <NativeGate gate="librarySetup" />
+        <LibrarySetup onDone={async () => setConfigured(true)} />
+      </>
+    );
   return <ProductApp backend={mode} />;
 }

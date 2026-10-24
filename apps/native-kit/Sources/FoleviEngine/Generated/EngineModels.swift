@@ -84,6 +84,7 @@ public enum BridgeErrorCode: String, Codable, Hashable, Sendable, CaseIterable {
     case invalidArgs = "invalid_args"
     case noNote = "no_note"
     case readOnly = "read_only"
+    case unavailable
     case pageGone = "page_gone"
     case failed
 }

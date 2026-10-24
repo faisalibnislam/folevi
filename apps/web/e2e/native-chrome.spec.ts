@@ -5,7 +5,7 @@
 //   E2E_LOCAL_BASE_URL=http://localhost:3010 E2E_BASE_URL=http://localhost:3010 E2E_NO_SERVER=1 \
 //     npx playwright test e2e/native-chrome.spec.ts --project local --workers=1
 import type { Page } from "@playwright/test";
-import { expect, test } from "./fixtures/localShell";
+import { expect, prepareContext, test } from "./fixtures/localShell";
 import type { EngineBatch, EventMessage, HomeValue, ListDiff, Reply, UpdateMessage } from "../src/lib/engine/protocol";
 
 declare global {
@@ -104,11 +104,39 @@ test.describe("native chrome mode", { tag: "@local" }, () => {
     await value(page, { kind: "editor", name: "panel.open", args: { panel: "style" } });
     await expect.poll(async () => (await events(page, "editor.panel")).some((e) => (e.data as { panel: string | null }).panel === "style"), { timeout: 10_000 }).toBe(true);
 
+    // Navigation is native's: window.open and links ask with navigate.request; the page doesn't move.
+    await page.evaluate(() => window.open("/d/someone_else", "_blank"));
+    await expect.poll(async () => (await events(page, "navigate.request")).map((e) => e.data), { timeout: 10_000 }).toContainEqual({ route: "/d/someone_else", noteId: "someone_else", external: false, newTab: true });
+    await expect(page).toHaveURL(new RegExp(`/d/${created.id}`));
+
+    // The gate: the app is up, so there's no screen for native to show instead.
+    const gate = await value<{ gate: { gate: string | null } }>(page, { kind: "hello", app: { platform: "macos", version: "1.1.00", build: "e2e", protocol: 1 } });
+    expect(gate.gate.gate).toBeNull();
+
     // Back to a list screen: the note goes, the page is idle again.
     await value(page, { kind: "editor", name: "note.close" });
     await expect(page).toHaveURL(/\/native$/);
     const none = await call(page, { kind: "editor", name: "undo" });
     expect(none.ok ? null : none.error.code).toBe("no_note");
+  });
+
+  test("first launch: gate.changed names the mode choice, and gate.act presses its button", async ({ browser, backendMode }, testInfo) => {
+    test.skip(backendMode !== "local", "runs on a local library");
+    test.setTimeout(120_000);
+    const context = await browser.newContext();
+    await prepareContext(context, testInfo, { initialMode: "unset", configured: false, libraryName: `native-${Date.now()}` });
+    const page = await context.newPage();
+    await nativeHost(page);
+    await page.goto("/native");
+    await expect.poll(() => page.evaluate(() => typeof (window as unknown as { __foleviEngine?: unknown }).__foleviEngine), { timeout: 60_000 }).toBe("object");
+    await expect
+      .poll(async () => (await value<{ gate: { gate: string | null } }>(page, { kind: "hello", app: { platform: "macos", version: "1.1.00", build: "e2e", protocol: 1 } })).gate.gate, { timeout: 60_000 })
+      .toBe("modeChoice");
+    const hello = await value<{ gate: { actions: { id: string }[] } }>(page, { kind: "hello", app: { platform: "macos", version: "1.1.00", build: "e2e", protocol: 1 } });
+    expect(hello.gate.actions.map((a) => a.id)).toEqual(["account", "local"]);
+    expect(await value(page, { kind: "command", place: "library", name: "gate.act", args: { action: "local" } })).toEqual({ ok: true });
+    await expect.poll(async () => (await events(page, "gate.changed")).map((e) => (e.data as { gate: string | null }).gate), { timeout: 30_000 }).toContain("librarySetup");
+    await context.close();
   });
 
   test("without the marker nothing changes: no engine global, the web frame as before", async ({ page, backendMode }) => {

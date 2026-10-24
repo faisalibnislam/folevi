@@ -322,7 +322,7 @@ struct SearchRowView: View {
             if let f = h.folder { parts.append(f.name) }
             if h.matchIn == "file" { parts.append(h.page.map { "In a file, page \($0)" } ?? "In a file") }
             if h.archived { parts.append("Archived") }
-            parts.append(AgeText.age(Date(timeIntervalSince1970: h.updatedAt / 1000), now: now))
+            if h.updatedAt > 0 { parts.append(AgeText.age(Date(timeIntervalSince1970: h.updatedAt / 1000), now: now)) }
             return parts.joined(separator: " · ")
         case .recentNote(let r):
             return [r.folder?.name, AgeText.age(Date(timeIntervalSince1970: r.updatedAt / 1000), now: now)].compactMap { $0 }.joined(separator: " · ")

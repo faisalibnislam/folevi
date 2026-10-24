@@ -98,6 +98,11 @@ public final class PlacesModel {
         }
     }
 
+    /// The name an avatar takes its initials from: words of letters only ("Faisal (work)" reads "Faisal work").
+    static func avatarName(_ s: String) -> String {
+        s.components(separatedBy: CharacterSet.letters.inverted).filter { !$0.isEmpty }.joined(separator: " ")
+    }
+
     public var items: [PlaceItem] {
         var out: [PlaceItem] = []
         let s = session.value
@@ -120,7 +125,7 @@ public final class PlacesModel {
             switch p.kind {
             case .account:
                 let title = p.name.isEmpty ? (p.email ?? "Folevi account") : p.name
-                out.append(PlaceItem(id: p.id, kind: .otherAccount(place: p.id, workspaceId: nil), title: title, subtitle: p.name.isEmpty ? nil : p.email, detail: nil, avatarName: title, checked: switchingTo == p.id, nested: false, unread: p.unread, dot: p.reminders > 0))
+                out.append(PlaceItem(id: p.id, kind: .otherAccount(place: p.id, workspaceId: nil), title: title, subtitle: p.name.isEmpty ? nil : p.email, detail: nil, avatarName: Self.avatarName(title), checked: switchingTo == p.id, nested: false, unread: p.unread, dot: p.reminders > 0))
                 for w in p.workspaces {
                     out.append(PlaceItem(id: "\(p.id):\(w.id)", kind: .otherAccount(place: p.id, workspaceId: w.id), title: w.name, subtitle: nil, detail: nil, avatarName: w.name, checked: switchingTo == "\(p.id):\(w.id)", nested: true, unread: 0, dot: false))
                 }

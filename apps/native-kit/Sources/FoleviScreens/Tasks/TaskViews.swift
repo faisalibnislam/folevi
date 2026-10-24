@@ -106,7 +106,7 @@ public struct TaskLineView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.top, facts.isEmpty && task.repeat == nil ? 4 : 0)
+            .padding(.top, facts.isEmpty && task.repeat == nil ? 9 : 5)
             .accessibilityLabel(task.status == "done" ? "Mark \(task.title) as not done" : task.status == "canceled" ? "Reopen canceled task \(task.title)" : "Mark \(task.title) as done")
             .accessibilityAddTraits(.isToggle)
             .accessibilityIdentifier("task-box-\(task.id)")

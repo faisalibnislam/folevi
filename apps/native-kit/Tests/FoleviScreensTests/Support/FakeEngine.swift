@@ -74,8 +74,13 @@ final class FakeEngine {
     var rows: [JSONValue]
     /// Answers commands by name; the default says every note was done.
     var onCommand: (String, JSONValue) throws -> JSONValue
+    /// Answers a watched view by name and args before `values` (views whose value depends on their args).
+    var resolve: ((String, JSONValue) throws -> JSONValue?)?
     private(set) var commands: [(name: String, args: JSONValue)] = []
     private(set) var watches: [String: JSONValue] = [:]
+    private(set) var queries: [(name: String, args: JSONValue)] = []
+    /// Answers `query` by view name (else the view's value).
+    var queryAnswers: [String: (JSONValue) throws -> JSONValue] = [:]
     private(set) var windows: [ListWindow] = []
     private var revs: [String: Int] = [:]
     lazy var transport = ScriptedTransport { m in try await self.respond(m) } // strong: the engine lives as long as its clients (a test-only cycle)
@@ -122,7 +127,7 @@ final class FakeEngine {
                 let win = ListWindow(start: Int(m["window"]?["start"]?.number ?? 0), count: Int(m["window"]?["count"]?.number ?? 200))
                 windows.append(win)
                 Task { @MainActor in self.pushWindow(sub, win) }
-            } else if let value = values[name] {
+            } else if let value = try resolve?(name, m["args"] ?? .object([:])) ?? values[name] {
                 Task { @MainActor in self.pushValue(sub, value) }
             } else {
                 throw EngineFailure.engine(EngineError(code: "unknown_view", message: "No view \(name)."))
@@ -137,6 +142,12 @@ final class FakeEngine {
             windows.append(win)
             Task { @MainActor in self.pushWindow(sub, win) }
             return .object(["ok": .bool(true)])
+        case "query":
+            let name = m["name"]?.string ?? ""
+            queries.append((name, m["args"] ?? .object([:])))
+            if let answer = queryAnswers[name] { return try answer(m["args"] ?? .object([:])) }
+            if let value = values[name] { return value }
+            throw EngineFailure.engine(EngineError(code: "unknown_view", message: "No view \(name)."))
         case "command":
             let name = m["name"]?.string ?? ""
             let args = m["args"] ?? .object([:])

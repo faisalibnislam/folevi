@@ -613,7 +613,7 @@ final class SidebarCell: NSTableCellView {
         case "ember", "coral", "red": return .systemOrange
         case "moss", "green": return .systemGreen
         case "marigold", "yellow", "amber": return .systemYellow
-        case "plum", "purple": return .systemPurple
+        case "plum", "purple", "violet": return .systemPurple
         default: return .secondaryLabelColor
         }
     }

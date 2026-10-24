@@ -195,7 +195,7 @@ struct SidebarTests {
     @Test func capabilitiesHideRows() {
         let demo = DemoEngine()
         var s = demo.session
-        s.capabilities = Capabilities(sharing: false, changes: false, workspaces: false, ai: false, purchases: false)
+        s.capabilities = Capabilities(graph: false, sharing: false, changes: false, workspaces: false, ai: false, purchases: false)
         var home = demo.homeValue
         home.catchUp.available = false
         let top = SidebarModel.sections(session: s, home: home, tree: nil)[0].children.map(\.title)

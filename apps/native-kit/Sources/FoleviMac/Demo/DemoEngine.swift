@@ -13,6 +13,7 @@ public final class DemoEngine {
     public let place = "acct:demo"
 
     public var notes: [NoteRow] = []
+    public var notificationRows: [NotificationRow] = []
     public var folders: [FolderNode] = []
     public var tags: [TagRow] = []
     public var space = "personal"
@@ -130,6 +131,13 @@ public final class DemoEngine {
         case "note.meta":
             let id = args["id"]?.string ?? ""
             return try .from(meta(id))
+        case "notifications.list":
+            return try .from(NotificationsValue(unread: notificationRows.filter { !$0.read }.count, rows: notificationRows))
+        case "search":
+            let text = args["text"]?.string ?? ""
+            let hits = notes.filter { !$0.inTrash && (text.isEmpty || $0.title.localizedCaseInsensitiveContains(text) || $0.excerpt.localizedCaseInsensitiveContains(text)) }
+                .map { SearchHit(id: $0.id, title: $0.title, icon: $0.icon, snippet: $0.excerpt, folder: $0.folder, updatedAt: $0.updatedAt, archived: $0.archived, kind: $0.kind, matchIn: "text") }
+            return try .from(SearchValue(text: text, hits: hits, meaningAvailable: false))
         case "notes.list":
             let a = try args.decode(NotesListArgs.self)
             let rows = list(a)
@@ -155,7 +163,7 @@ public final class DemoEngine {
                 SpaceInfo(id: "ws_airly", kind: .workspace, name: "Airly Studio", role: "admin", canEdit: true, canManage: true, encrypted: false, locked: false),
             ],
             space: space, online: online, today: "2026-10-24", timeZone: "Asia/Dhaka", appearance: .system,
-            capabilities: Capabilities(sharing: true, changes: true, workspaces: true, ai: true, purchases: false)
+            capabilities: Capabilities(graph: true, sharing: true, changes: true, workspaces: true, ai: true, purchases: false)
         )
     }
 
@@ -294,6 +302,13 @@ public final class DemoEngine {
             space = args["space"]?.string ?? "personal"
             emit("place.changed", .object(["place": .string(place), "space": .string(space)]))
             return .object(["space": .string(space)])
+        case "notification.markRead":
+            let read = args["read"]?.bool ?? true
+            for i in notificationRows.indices where ids.contains(notificationRows[i].id) { notificationRows[i].read = read }
+            return .object(["ok": .bool(true)])
+        case "notification.markAllRead":
+            for i in notificationRows.indices { notificationRows[i].read = true }
+            return .object(["ok": .bool(true)])
         case "engine.refresh", "catchUp.run", "catchUp.clear", "toast.action":
             return .object(["ok": .bool(true)])
         default:
@@ -369,18 +384,18 @@ public final class DemoEngine {
     private func seedData(now: Date) {
         func ago(_ h: Double) -> Date { now.addingTimeInterval(-h * 3600) }
         folders = [
-            FolderNode(id: "fld_work", name: "Work", color: "ember", parentId: nil, depth: 0, rank: "a", childCount: 1, noteCount: 0, encrypted: false, sync: .saved),
+            FolderNode(id: "fld_work", name: "Work", color: "orange", parentId: nil, depth: 0, rank: "a", childCount: 1, noteCount: 0, encrypted: false, sync: .saved),
             FolderNode(id: "fld_projects", name: "Projects", color: nil, parentId: "fld_work", depth: 1, rank: "a", childCount: 1, noteCount: 0, encrypted: false, sync: .saved),
-            FolderNode(id: "fld_launch", name: "Launch 1.1", color: "plum", parentId: "fld_projects", depth: 2, rank: "a", childCount: 0, noteCount: 0, encrypted: false, sync: .saved),
-            FolderNode(id: "fld_trips", name: "Trips", color: "moss", parentId: nil, depth: 0, rank: "b", childCount: 0, noteCount: 0, encrypted: false, sync: .saved),
-            FolderNode(id: "fld_reading", name: "Reading", color: "marigold", parentId: nil, depth: 0, rank: "c", childCount: 0, noteCount: 0, encrypted: false, sync: .waiting),
+            FolderNode(id: "fld_launch", name: "Launch 1.1", color: "violet", parentId: "fld_projects", depth: 2, rank: "a", childCount: 0, noteCount: 0, encrypted: false, sync: .saved),
+            FolderNode(id: "fld_trips", name: "Trips", color: "green", parentId: nil, depth: 0, rank: "b", childCount: 0, noteCount: 0, encrypted: false, sync: .saved),
+            FolderNode(id: "fld_reading", name: "Reading", color: "amber", parentId: nil, depth: 0, rank: "c", childCount: 0, noteCount: 0, encrypted: false, sync: .waiting),
             FolderNode(id: "fld_recipes", name: "Recipes", color: "coral", parentId: nil, depth: 0, rank: "d", childCount: 0, noteCount: 0, encrypted: false, sync: .saved),
         ]
-        tags = [TagRow(id: "tag_ideas", name: "ideas", color: "marigold"), TagRow(id: "tag_people", name: "people", color: "plum")]
-        let work = FolderChip(id: "fld_work", name: "Work", color: "ember")
-        let launch = FolderChip(id: "fld_launch", name: "Launch 1.1", color: "plum")
-        let trips = FolderChip(id: "fld_trips", name: "Trips", color: "moss")
-        let reading = FolderChip(id: "fld_reading", name: "Reading", color: "marigold")
+        tags = [TagRow(id: "tag_ideas", name: "ideas", color: "amber"), TagRow(id: "tag_people", name: "people", color: "violet")]
+        let work = FolderChip(id: "fld_work", name: "Work", color: "orange")
+        let launch = FolderChip(id: "fld_launch", name: "Launch 1.1", color: "violet")
+        let trips = FolderChip(id: "fld_trips", name: "Trips", color: "green")
+        let reading = FolderChip(id: "fld_reading", name: "Reading", color: "amber")
         let recipes = FolderChip(id: "fld_recipes", name: "Recipes", color: "coral")
         let ideas = TagChip(id: "tag_ideas", name: "ideas", color: "marigold")
         notes = [
@@ -400,6 +415,13 @@ public final class DemoEngine {
         var trashed = Self.row(id: "doc_trash", title: "Scratch", excerpt: "", folder: nil, updated: ago(100))
         trashed.inTrash = true
         notes += [archived, trashed]
+        let ms = { (h: Double) in ago(h).timeIntervalSince1970 * 1000 }
+        notificationRows = [
+            NotificationRow(id: "n1", kind: "mention", title: "Lina mentioned you in Launch plan", body: "Can you check the Mac frame screenshots?", at: ms(0.5), read: false, route: "/d/doc_launch", actorName: "Lina", noteId: "doc_launch", noteTitle: "Launch plan", count: 1),
+            NotificationRow(id: "n2", kind: "comment", title: "2 new comments on Kyoto in November", body: "", at: ms(3), read: false, route: "/d/doc_kyoto", actorName: "Sam", noteId: "doc_kyoto", noteTitle: "Kyoto in November", count: 2),
+            NotificationRow(id: "n3", kind: "share", title: "Sam shared Reading list with you", body: "", at: ms(30), read: false, route: "/shared", actorName: "Sam", count: 1),
+            NotificationRow(id: "n4", kind: "reminder", title: "Book the ryokan", body: "Due today", at: ms(50), read: true, route: "/d/doc_kyoto", noteId: "doc_kyoto", noteTitle: "Kyoto in November", count: 1),
+        ]
         recount()
     }
 }

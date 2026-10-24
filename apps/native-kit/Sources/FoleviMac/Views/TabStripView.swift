@@ -237,7 +237,7 @@ final class TabItemView: NSView {
     var idealWidth: CGFloat {
         if tab.isHome { return 40 }
         let text = (tab.title as NSString).size(withAttributes: [.font: title.font as Any]).width
-        return ceil(12 + 16 + 6 + text + 6 + 16 + 8)
+        return ceil(12 + 16 + 6 + text + 10 + 16 + 8)
     }
 
     private func refresh() {

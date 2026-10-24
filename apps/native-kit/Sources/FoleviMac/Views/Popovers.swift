@@ -44,7 +44,7 @@ struct NotificationsPopover: View {
                 Text("Notifications").foleviFont(.headline).foregroundStyle(Folevi.color.heading)
                 Spacer()
                 if let n = model.notifications, n.unread > 0 {
-                    Button("Mark all read") { model.markNotificationsRead(n.rows.filter { !$0.read }.map(\.id)) }.buttonStyle(.folevi(.ghost, size: .small))
+                    Button("Mark all read") { model.markAllNotificationsRead() }.buttonStyle(.folevi(.ghost, size: .small))
                 }
             }
             .padding(.horizontal, 16).padding(.vertical, 12)
@@ -55,7 +55,7 @@ struct NotificationsPopover: View {
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
-                            ForEach(n.rows) { row in
+                            ForEach(n.rows, id: \.id) { row in
                                 Button {
                                     if !row.read { model.markNotificationsRead([row.id]) }
                                     if let r = row.route { model.open(FrameRoute(path: r)) }
@@ -77,7 +77,8 @@ struct NotificationsPopover: View {
                             }
                         }
                     }
-                    .frame(maxHeight: 380)
+                    // A popover sizes to its content's ideal size, which a ScrollView doesn't have.
+                    .frame(height: min(CGFloat(n.rows.count) * 72, 380))
                 }
             } else {
                 VStack(alignment: .leading, spacing: 6) {

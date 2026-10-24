@@ -188,8 +188,8 @@ struct CatchUpScreen: View {
     }
 }
 
-/// Search over the place: the engine's `search` (a pending view) when it answers, else the loaded notes of All
-/// notes filtered by their title and first lines.
+/// Search over the place: the engine's `search` (revision 4), else (an older engine) the loaded notes of All notes
+/// filtered by their title and first lines.
 @MainActor
 @Observable
 final class SearchState {
@@ -224,7 +224,7 @@ struct SearchScreen: View {
             }
         }
         .task(id: text) {
-            if let v = try? await model.client.query(MacPending.Search(.init(text: text))) {
+            if let v = try? await model.client.query(.search(text: text)) {
                 state.hits = v.hits
             } else {
                 state.hits = nil

@@ -111,7 +111,7 @@ public final class FrameModel {
     /// Nil while the engine is up; "loading" while it isn't attached (signed out, switching places, a lock).
     public private(set) var gate: String?
     public private(set) var toasts: [FrameToast] = []
-    /// Notifications (`notifications.list`, a pending view): nil until the engine answers it.
+    /// Notifications (`notifications.list`): nil until the engine answers.
     public private(set) var notifications: NotificationsValue?
     public private(set) var notificationsUnavailable = false
 
@@ -398,7 +398,7 @@ public final class FrameModel {
         switch u.command {
         case .noteStar: if let a = decode(NoteStarArgs.self) { perform { try await self.client.command(Commands.NoteStar(a)) } }
         case .noteArchive: if let a = decode(NoteArchiveArgs.self) { perform { try await self.client.command(Commands.NoteArchive(a)) } }
-        case .noteMove: if let a = decode(MacPending.NoteMove.Args.self) { perform { try await self.client.command(MacPending.NoteMove(a)) } }
+        case .noteMove: if let a = decode(NoteMoveArgs.self) { perform { try await self.client.command(Commands.NoteMove(a)) } }
         case .noteTrash: if let a = decode(NoteIdsArgs.self) { perform { try await self.client.command(Commands.NoteTrash(a)) } }
         case .noteRestore: if let a = decode(NoteIdsArgs.self) { perform { try await self.client.command(Commands.NoteRestore(a)) } }
         default: toast("That can't be undone from here.", tone: .error)
@@ -453,10 +453,11 @@ public final class FrameModel {
     }
 
     public func move(notes ids: [String], to folderId: String?) {
-        perform { _ = try await self.client.command(MacPending.NoteMove(.init(ids: ids, folderId: folderId))) }
+        perform { _ = try await self.client.command(.noteMove(ids: ids, folderId: folderId)) }
     }
 
-    /// Nests, un-nests or reorders a folder (a pending command, see PendingContract.swift).
+    /// Nests, un-nests or reorders a folder (refused here first by the web's rules, so a drag never offers a move
+    /// the engine would refuse).
     public func move(folder id: String, into parent: String?, after: String?) {
         if let refusal = FolderTree(folders.value?.folders ?? []).canMove(id, into: parent) {
             switch refusal {
@@ -465,7 +466,7 @@ public final class FrameModel {
             }
             return
         }
-        perform { _ = try await self.client.command(MacPending.FolderMove(.init(id: id, parentId: parent, afterId: after))) }
+        perform { _ = try await self.client.command(.folderMove(id: id, parentId: parent, afterId: after)) }
     }
 
     /// Switches the space inside this place (Personal or a workspace).
@@ -504,13 +505,13 @@ public final class FrameModel {
         if editorPanel == .ai { editor(.panelClose) } else { editor(.ai(action: .open)) }
     }
 
-    // MARK: notifications (pending view)
+    // MARK: notifications
 
     public func loadNotifications() {
         Task { [weak self] in
             guard let self else { return }
             do {
-                self.notifications = try await self.client.query(MacPending.NotificationsList())
+                self.notifications = try await self.client.query(.notificationsList)
                 self.notificationsUnavailable = false
             } catch {
                 self.notificationsUnavailable = true
@@ -520,7 +521,14 @@ public final class FrameModel {
 
     public func markNotificationsRead(_ ids: [String]) {
         perform {
-            _ = try await self.client.command(MacPending.NotificationMarkRead(.init(ids: ids, read: true)))
+            _ = try await self.client.command(.notificationMarkRead(ids: ids, read: true))
+            self.loadNotifications()
+        }
+    }
+
+    public func markAllNotificationsRead() {
+        perform {
+            _ = try await self.client.command(.notificationMarkAllRead)
             self.loadNotifications()
         }
     }

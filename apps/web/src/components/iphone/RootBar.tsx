@@ -11,6 +11,7 @@ import { PersonalMark, WorkspaceLogo } from "@/components/app/WorkspaceMenu";
 import { t } from "@/i18n";
 import { GlassPill, PillButton } from "./Glass";
 import { useIphoneActions } from "./IphoneShell";
+import { useNotificationList } from "@/components/app/NotificationsButton";
 
 /** Top left of Home, Tasks and Calendar: you (or the workspace you're in); opens the account and places sheet. */
 export function RootAvatar() {
@@ -34,6 +35,8 @@ export function RootPill({ more, moreLabel = "More" }: { more?: MenuEntry[]; mor
   // Local mode has no notifications bell.
   const { notifications } = useCapabilities();
   const unread = useQuery(api.notifications.unreadCount, notifications ? {} : "skip") ?? 0;
+  // The list too, kept up to date in the background: the sheet opens on it, not on a placeholder.
+  useNotificationList(notifications);
   // Signed in, the sync status sits beside the bell (a library on this device has nothing to sync with Folevi).
   const synced = useBackendMode() === "account";
   if (!notifications && !more?.length && !synced) return null;

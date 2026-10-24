@@ -1,11 +1,13 @@
 "use client";
 // Foli AI's floating chat, loaded on first use (docs/MAC_WEBKIT_PLAN.md "Memory", step 4).
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "convex/react";
 import { History, Maximize2, MoreHorizontal, Plus, X } from "lucide-react";
 import { useIphoneApp } from "@/lib/iphone";
+import { inIosApp } from "@/lib/nativeApp";
+import { KEYBOARD_EASE, onKeyboardFrame } from "@/lib/native/ui";
 import { SHEET_BUTTON, Sheet } from "@/components/iphone/Sheet";
 import { api } from "@/lib/convex/api";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -26,7 +28,7 @@ const HEADER_BUTTON = "grid h-8 w-8 place-items-center rounded-chip text-muted t
  * while it's open. It shows the current conversation (saved like any other: the AI page lists it), and "Open in
  * full view" moves it to the AI page. With history off, closing it deletes the conversation.
  */
-export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLauncher }: AskAiProps) {
+export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLauncher, appear = true }: AskAiProps & { appear?: boolean }) {
   const [mounted, setMounted] = useState(false);
   const { route, navigate } = useAppRouter();
   // Where focus was when it opened (⌘J, the command palette): it goes back there on close.
@@ -52,7 +54,8 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
   // Share with the workspace, copy, download or save as a note (once there's a conversation).
   const current = convo?.conversation;
   const actions = useConversationActions(current ? { id: current.id, title: current.title, shared: current.shared, workspace: current.scope.kind === "workspace", ephemeral: current.ephemeral } : null);
-  useEffect(() => setMounted(true), []);
+  // (Before the first paint: taking over from AskAiChat's stand-in sheet leaves no frame without one.)
+  useLayoutEffect(() => setMounted(true), []);
   const iphone = useIphoneApp();
   useEffect(() => {
     if (!open) return;
@@ -72,6 +75,66 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
     setConversationId(null);
     setThread((n) => n + 1);
   }, [open, folder]);
+
+  // The iPad app: the floating chat stays where it is when the keyboard comes, getting shorter so its composer
+  // sits on the keyboard, in step with it (the web view shrinks only once the keyboard has landed, Capacitor:
+  // laid out from the bottom of the window, the chat would sit under the keyboard until then, then jump).
+  const sectionRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const el = sectionRef.current;
+    if (!open || !el || iphone || !inIosApp()) return;
+    let screenH = window.innerHeight;
+    let base = { top: el.offsetTop, height: el.offsetHeight };
+    let keyboard = 0;
+    let anims: Animation[] = [];
+    const fix = (top: number, height: number) => {
+      el.style.top = `${top}px`;
+      el.style.bottom = "auto";
+      el.style.height = `${height}px`;
+    };
+    fix(base.top, base.height);
+    const place = (ms: number, curve: string) => {
+      const dock = el.querySelector<HTMLElement>("[data-sheet-dock]");
+      const d0 = dock?.getBoundingClientRect().bottom;
+      const t0 = el.getBoundingClientRect().top;
+      for (const a of anims) a.cancel();
+      anims = [];
+      // Room above the keyboard (16 pt over it, as above the screen's edge).
+      const room = screenH - keyboard - 16;
+      let height = base.height;
+      let top = base.top;
+      if (keyboard && top + height > room) {
+        height = Math.max(260, room - top);
+        top = Math.max(12, room - height);
+      }
+      fix(top, height);
+      if (!ms || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const dt = t0 - top;
+      const ease = { duration: ms, easing: curve === "linear" ? "linear" : KEYBOARD_EASE };
+      if (Math.abs(dt) > 0.5) anims.push(el.animate([{ transform: `translateY(${dt}px)` }, { transform: "none" }], ease));
+      const d1 = dock?.getBoundingClientRect().bottom;
+      if (dock && d0 !== undefined && d1 !== undefined && Math.abs(d0 - d1 - dt) > 0.5) anims.push(dock.animate([{ transform: `translateY(${d0 - d1 - dt}px)` }, { transform: "none" }], ease));
+    };
+    const off = onKeyboardFrame((f) => {
+      keyboard = f.visible ? Math.round(f.height) : 0;
+      place(f.duration, f.curve);
+    });
+    const onResize = () => {
+      if (keyboard) return;
+      // The window changed with the keyboard away (turned, Split View): placed by its CSS again.
+      el.style.top = el.style.bottom = el.style.height = "";
+      screenH = window.innerHeight;
+      base = { top: el.offsetTop, height: el.offsetHeight };
+      fix(base.top, base.height);
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      off();
+      window.removeEventListener("resize", onResize);
+      for (const a of anims) a.cancel();
+      el.style.top = el.style.bottom = el.style.height = "";
+    };
+  }, [open, iphone, mounted]);
 
   if (!mounted || onAiPage) return null;
 
@@ -99,28 +162,31 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
           size="medium"
           title={current?.title || "New chat"}
           bodyClassName="ai-chat flex flex-col"
+          appear={appear}
+          // Conversations (and this one's options) at the start; New chat and Close at the end: two a side at
+          // most, so the title has the middle to itself.
           leading={
-            <button
-              type="button"
-              aria-label="Conversations"
-              onClick={() => {
-                onClose();
-                navigate(conversationId && convo ? `/ai/${conversationId}` : "/ai");
-              }}
-              className={sheetButton}
-            >
-              <History size={15} strokeWidth={2.4} aria-hidden />
-            </button>
+            <>
+              <button
+                type="button"
+                aria-label="Conversations"
+                onClick={() => {
+                  onClose();
+                  navigate(conversationId && convo ? `/ai/${conversationId}` : "/ai");
+                }}
+                className={sheetButton}
+              >
+                <History size={15} strokeWidth={2.4} aria-hidden />
+              </button>
+              {actions.items.length ? <MenuButton label="Conversation options" triggerClassName={sheetButton} trigger={<MoreHorizontal size={15} strokeWidth={2.4} aria-hidden />} items={actions.items} /> : null}
+            </>
           }
           trailing={
-            <>
-              {actions.items.length ? <MenuButton label="Conversation options" triggerClassName={sheetButton} trigger={<MoreHorizontal size={15} strokeWidth={2.4} aria-hidden />} items={actions.items} /> : null}
-              {conversationId ? (
-                <button type="button" aria-label="New chat" onClick={startOver} className={sheetButton}>
-                  <Plus size={16} strokeWidth={2.4} aria-hidden />
-                </button>
-              ) : null}
-            </>
+            conversationId ? (
+              <button type="button" aria-label="New chat" onClick={startOver} className={sheetButton}>
+                <Plus size={16} strokeWidth={2.4} aria-hidden />
+              </button>
+            ) : null
           }
         >
           {sealedSpace ? (
@@ -138,6 +204,7 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
     <div className="ai-chat">
       {/* Kept mounted while closed so the conversation survives closing and reopening. */}
       <section
+        ref={sectionRef}
         hidden={!open}
         role="dialog"
         aria-modal="false"

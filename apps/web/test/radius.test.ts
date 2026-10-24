@@ -70,8 +70,9 @@ describe("corners", () => {
     expect(tokens.radius).toEqual({ none: 0, tiny: 4, chip: 6, small: 8, control: 10, panel: 14, container: 18, sheet: 28, float: 40, capsule: 999 });
   });
 
-  // (Foli AI's composer is shared, and draws its iPhone look in its own iPhone branch.)
-  const IPHONE_BRANCHES = ["components/ai/chat/ChatThread.tsx"];
+  // (Shared components that draw their iPhone look in their own iPhone branch: Foli AI's composer, the
+  // iPhone stand-in sheet for the chat, and the notifications sheet's first-load rows.)
+  const IPHONE_BRANCHES = ["components/ai/chat/ChatThread.tsx", "components/ai/AskAiChat.tsx", "components/app/NotificationsButton.tsx"];
   test("sheet, float and capsule corners are only used by the iPhone app's interface", () => {
     const outside = files(SRC)
       .filter((path) => !relative(SRC, path).startsWith("components/iphone/") && !path.endsWith("globals.css") && !IPHONE_BRANCHES.includes(relative(SRC, path)))

@@ -262,9 +262,11 @@ export function AiPanel({
   // to the agent, which proposes the changes (previewed, approved, one Undo).
   if (mode === "ask") {
     return (
-      <div className="text-sm">
+      // It fills the tool panel's height (composer at the bottom); where the panel takes its height from what's
+      // in it (the narrow window's pop-up), it starts at the height it always had.
+      <div data-ai-fill className="flex min-h-0 flex-[1_1_min(70vh,640px)] flex-col text-sm [&>:first-child]:flex-none">
         {modes}
-        <div className="flex h-[min(70vh,640px)] flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
           <ChatThread conversationId={chatConversation} onConversation={setChatConversation} initialContext={noteContext} variant="panel" autoFocus autoSend={handoff ?? undefined} onInsert={editor && !readOnly ? (md) => void insertAiMarkdown(editor, md, { kind: "cursor" }) : undefined} />
         </div>
       </div>

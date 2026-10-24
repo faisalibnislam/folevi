@@ -215,3 +215,61 @@ batch is cheaper.)
 Menu items the page owned (View > Focus Mode, As Cards / As List, Appearance, Format > Move Block Up/Down,
 Duplicate Block, Note > Lock) have no editor command and no state. Request editor commands `block.move { dir }`,
 `block.duplicate`, `focus.toggle`, `note.lock`, and `editor.state` fields `focus` and `locked`.
+
+---
+
+## N5 iPhone frame and N6 editor commands (2026-10-24)
+
+Found while wiring the native iPhone frame (`apps/ios/ios/App/Native/Phone/`) to the Page View on the iOS 27
+Simulator. Each says what native does meanwhile.
+
+### R5.1 `insert { kind: "slash" }`: the slash menu at the caret **open**
+
+The keyboard toolbar's first key is "/" (the web keyboard bar and Craft both start with it). `insert` has no kind
+that opens the slash menu where the caret is. Add `"slash"` to the kinds `insert` takes: types "/" at the
+selection, which opens the editor's own slash menu (`SlashMenu`), as typing it does.
+
+Meanwhile "/" opens the Insert panel (`panel.open { panel: "insert" }`).
+
+### R5.2 The onboarding gate has no actions **open**
+
+`AccountGate.tsx` reports `<NativeGate gate="onboarding" onboarding={{ step }} />` with no `actions`, so a native
+screen can't move a new account past onboarding (N14 draws the steps; this frame only shows the gate). Either
+actions on the gate (at least `skip`, the web's "Skip setup", which runs `users.completeOnboardingStep({ step:
+"ai" })` and then the summary) or commands:
+
+```ts
+export interface OnboardingStepArgs { step: "uses" | "style" | "appearance" | "ai" | "welcome"; useCases?: string[]; noteStyle?: string; appearance?: "system" | "light" | "dark"; aiEnabled?: boolean }
+// CommandMap
+"onboarding.complete": { args: OnboardingStepArgs; result: OkResult };   // users.completeOnboardingStep
+"onboarding.skip": { args: EmptyArgs; result: OkResult };                 // Onboarding.tsx skipAll
+```
+
+Meanwhile the gate screen shows "Welcome to Folevi" with no way on; the UI tests finish onboarding on the server.
+
+### R5.3 The note page's iPhone layout in native chrome mode **open**
+
+With `platform: "ios"` in the marker, a note draws as on the iPad and Mac: a centred page card on the grey
+backdrop, its top starting well below the bar. The owner's iPhone rule (docs/IOS_PERFORMANCE.md, "The owner's
+chrome requests") is that a note fills the width under the neutral bar, its theme colour starting right below the
+bar, with no backdrop around it. Please give native chrome mode on `ios` (not `ipados`) the iPhone page layout
+that `components/iphone` gives the page today (`editor-phone.css`), minus the web bars.
+
+Native gives the page no safe area of its own (the Page View's holder cancels the status bar, the bar and the home
+indicator, so `env(safe-area-inset-*)` reads 0) and sends the bars' room in `insets` (top: the status bar plus the
+navigation bar, 116 pt on an iPhone 18 Pro; bottom: the floating buttons, or the keyboard plus its toolbar while
+writing). The page should pad by `--native-inset-top` / `--native-inset-bottom` only.
+
+### R5.4 A new note opens with the caret in its title **open**
+
+`note.show { id, focus: true }` on a note `note.create` just made puts the caret in the body; the first line typed
+lands under "Untitled". The web's new note (`?new=1`) starts in the title. Please make `focus` on an untitled,
+empty note focus the title (and `editor.state.focused` true while the title has it, so the keyboard toolbar and
+Done show).
+
+### R5.5 `editor.state` after the keyboard comes up without a tap in the body **open**
+
+Opening the note's "..." menu (a native UIMenu) on a note that had the keyboard up left the keyboard showing
+while `editor.state.focused` was false, so native hid its toolbar and Done. Please send `editor.state` on
+`focusin`/`focusout` of the title and the editor (not only on the editor's selection updates), so `focused` follows
+whatever holds the keyboard on the note page.

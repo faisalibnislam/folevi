@@ -1,6 +1,7 @@
 // The Mac frame's models against the scripted engine (DemoEngine over ScriptedTransport): tabs with the web's
 // rules, routes, the sidebar's sections and folder tree, drop rules, the tab strip's layout, and the frame model
 // end to end (views, commands, editor commands, events, gates).
+#if os(macOS)
 import Foundation
 import Testing
 import FoleviEngine
@@ -403,3 +404,4 @@ struct FrameModelTests {
         #expect(demo.editorLog.contains("ai") && demo.editorLog.contains("panel.close"))
     }
 }
+#endif

@@ -227,7 +227,7 @@ function RunStatus({ label, onStop, iphone, className = "" }: { label: string; o
     <div className={`flex items-center gap-2.5 ${iphone ? "min-h-11" : "min-h-8"} ${className}`}>
       <span aria-hidden className="flex flex-none items-center gap-[3px] text-muted">
         {[0, 160, 320].map((d) => (
-          <span key={d} className="h-[5px] w-[5px] animate-pulse rounded-capsule bg-current motion-reduce:animate-none" style={{ animationDelay: `${d}ms` }} />
+          <span key={d} className="h-[5px] w-[5px] animate-pulse rounded-chip bg-current motion-reduce:animate-none" style={{ animationDelay: `${d}ms` }} />
         ))}
       </span>
       <p role="status" className={`min-w-0 truncate text-muted ${iphone ? "text-[15px]" : "text-[13px]"}`}>
@@ -237,11 +237,11 @@ function RunStatus({ label, onStop, iphone, className = "" }: { label: string; o
         <button
           type="button"
           onClick={onStop}
-          className={`relative ml-1 inline-flex flex-none items-center gap-1.5 rounded-capsule bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] font-medium text-heading outline-none transition-opacity hover:bg-[color-mix(in_oklab,var(--color-ink)_11%,transparent)] focus-visible:ring-2 focus-visible:ring-focus active:opacity-60 ${
+          className={`relative ml-1 inline-flex flex-none items-center gap-1.5 rounded-container bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] font-medium text-heading outline-none transition-opacity hover:bg-[color-mix(in_oklab,var(--color-ink)_11%,transparent)] focus-visible:ring-2 focus-visible:ring-focus active:opacity-60 ${
             iphone ? "h-8 px-3 text-[14px] after:absolute after:-inset-y-1.5 after:inset-x-0" : "h-7 px-2.5 text-[12px]"
           }`}
         >
-          <span aria-hidden className="h-[9px] w-[9px] rounded-[2px] bg-current" /> Stop
+          <span aria-hidden className="h-[9px] w-[9px] rounded-tiny bg-current" /> Stop
         </button>
       ) : null}
     </div>

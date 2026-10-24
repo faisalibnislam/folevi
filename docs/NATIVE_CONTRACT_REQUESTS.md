@@ -182,3 +182,36 @@ Filed by the web bridge builder from the Mac frame's stand-ins, so they're on re
 `updatedAfter`, `includeArchived`, `meaning` and `limit`; `SearchHit` also has `archived`, `kind`, `space`,
 `spaceName`, `matchIn` ("text", "file", "meaning"), `blockId` and `page`; `SearchValue` also has `text` and
 `meaningAvailable`. It works as a one-off `query` (debounced) or as a live view.
+
+### R8.5 `note.create` with body text (open)
+
+The Mac's Services menu, Shortcuts/App Intents and "New note with text" (`new-note-with-text`, the page's
+DesktopBridge handled it) need a note made from text: `note.create { ..., text?: string }`, where the first line
+becomes the title and the rest the body (the web's `newNoteFromText`). Until then a framed window can't answer
+those app commands (they reach no page: DesktopBridge isn't rendered in native chrome mode).
+
+### R8.6 notification actions from macOS banners (open)
+
+A banner's actions (`notification` app command: reply to a comment, mark done, snooze a reminder) went to the
+page's DesktopBridge. Request: `notification.act { id, action, text? }` with the action names Notifications.swift
+sends (`reply`, `done`, `snooze`, `open`). "Open" works natively now (the frame opens `path`).
+
+### R8.7 moving or copying notes between places (open)
+
+The account menu's "Move or copy notes…" opened the web's MovePlaces dialog. Request: a view
+`places.move.preview { to, folders?, notes? }` (counts, fits) and a command `places.move { to, folders, notes,
+copy }` with progress through `gate.changed` `placeMove` (it already reports it). Until then the item opens
+Settings > Data (takeout).
+
+### R8.8 `note.meta` for the tab strip without showing the note (open, small)
+
+Restored tabs show their saved titles; a note renamed elsewhere keeps its old title until it's shown. A list view
+`notes.meta { ids }` (title, icon, inTrash per id), or `note.meta` answered from the device copy for notes not
+open, would keep restored tabs current. (`query note.meta` works today for one id; the frame could poll, but a
+batch is cheaper.)
+
+### R8.9 web menu state in native chrome mode (open)
+
+Menu items the page owned (View > Focus Mode, As Cards / As List, Appearance, Format > Move Block Up/Down,
+Duplicate Block, Note > Lock) have no editor command and no state. Request editor commands `block.move { dir }`,
+`block.duplicate`, `focus.toggle`, `note.lock`, and `editor.state` fields `focus` and `locked`.

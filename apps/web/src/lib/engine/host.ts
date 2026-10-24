@@ -115,6 +115,7 @@ export class BridgeHost {
   private bodies = 0;
   private uploading = 0;
   private shownNote: string | null = null;
+  private lastPanel: string | null | undefined = undefined;
   private readonly post: (json: string) => void;
   private readonly schedule: (fn: () => void) => void;
   private readonly upload: (id: string, body: string) => Promise<void>;
@@ -450,6 +451,12 @@ export class BridgeHost {
 
   /** Sends an event in the next batch. */
   emit<N extends EventName>(name: N, data: EventMap[N]): void {
+    // (The panel is said once per change, however many parts of the page notice it.)
+    if (name === "editor.panel") {
+      const panel = (data as EventMap["editor.panel"]).panel;
+      if (panel === this.lastPanel) return;
+      this.lastPanel = panel;
+    }
     this.queue.push({ kind: "event", name, data });
     this.requestFlush();
   }

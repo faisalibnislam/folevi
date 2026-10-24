@@ -9,8 +9,7 @@ import { FIXTURES, type ListFixture } from "@/lib/engine/fixtures/source";
 import { applyDiff, emptyNativeList, nativeRows, rowHash } from "@/lib/engine/diff";
 import { COMMAND_NAMES, EDITOR_COMMAND_NAMES, EVENT_NAMES, LIST_VIEW_NAMES, VIEW_NAMES } from "@/lib/engine/protocol";
 
-// (vitest runs from apps/web)
-const DIR = join(process.cwd(), "src/lib/engine/fixtures");
+const DIR = join(import.meta.dirname, "../../src/lib/engine/fixtures");
 // The 5,000-row story is written on one line (it would be half a megabyte indented).
 const json = (value: unknown, name = "") => `${name.endsWith(".5000") ? JSON.stringify(value) : JSON.stringify(value, null, 2)}\n`;
 

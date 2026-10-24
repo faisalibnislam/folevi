@@ -77,6 +77,16 @@ final class ScreenModels {
         return m
     }
 
+    /// The note list on screen for a route, when it has been shown.
+    func listModel(for route: FrameRoute) -> NotesListModel? {
+        switch route {
+        case .notes(let v): return lists[NotesListKind(v)]
+        case .folder(let id): return lists[.folder(id)]
+        case .tag(let id): return lists[.tag(id)]
+        default: return nil
+        }
+    }
+
     /// Lets go of the screens whose tabs closed (Home stays).
     func keep(only routes: Set<FrameRoute>) {
         lists = lists.filter { kind, _ in

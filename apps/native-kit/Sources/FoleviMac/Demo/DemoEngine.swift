@@ -131,6 +131,19 @@ public final class DemoEngine {
         case "note.meta":
             let id = args["id"]?.string ?? ""
             return try .from(meta(id))
+        case "notes.meta":
+            let ids = (try? args["ids"]?.decode([String].self)) ?? []
+            return try .from(NotesMetaValue(notes: ids.map { id in
+                let n = notes.first { $0.id == id }
+                return NoteBrief(id: id, found: n != nil, title: n?.title ?? "", icon: n?.icon, inTrash: n?.inTrash ?? false)
+            }))
+        case "places.move.preview":
+            let dests = [
+                PlaceMoveDestination(value: "acct:work|personal", label: "Faisal at Airly", place: "acct:work", space: "personal", switches: false),
+                PlaceMoveDestination(value: "library|personal", label: "On this Mac", place: "library", space: "personal", switches: true),
+            ]
+            let to = args["to"]?.string.flatMap { v in dests.first { $0.value == v } }
+            return try .from(PlaceMovePreview(from: place, destinations: dests, to: to, folders: folders.count, notes: notes.count, everything: true, fits: to == nil ? nil : true))
         case "notifications.list":
             return try .from(NotificationsValue(unread: notificationRows.filter { !$0.read }.count, rows: notificationRows))
         case "search":
@@ -254,7 +267,9 @@ public final class DemoEngine {
             nextId += 1
             let id = "doc_new\(nextId)"
             let folder = args["folderId"]?.string.flatMap { fid in folders.first { $0.id == fid } }.map { FolderChip(id: $0.id, name: $0.name, color: $0.color) }
-            notes.append(Self.row(id: id, title: args["title"]?.string ?? "", excerpt: "", folder: folder, updated: Date()))
+            let text = args["text"]?.string ?? ""
+            let lines = text.split(separator: "\n", maxSplits: 1).map(String.init)
+            notes.append(Self.row(id: id, title: args["title"]?.string ?? lines.first ?? "", excerpt: lines.count > 1 ? lines[1] : "", folder: folder, updated: Date()))
             return .object(["id": .string(id)])
         case "note.star":
             let on = args["starred"]?.bool ?? true
@@ -309,7 +324,12 @@ public final class DemoEngine {
         case "notification.markAllRead":
             for i in notificationRows.indices { notificationRows[i].read = true }
             return .object(["ok": .bool(true)])
-        case "engine.refresh", "catchUp.run", "catchUp.clear", "toast.action":
+        case "task.create":
+            nextId += 1
+            return .object(["id": .string("task_\(nextId)"), "noteId": .string("inbox"), "where": .string("Inbox")])
+        case "places.move":
+            return .object(["status": .string("done"), "notes": .number(Double(notes.count)), "problems": .number(0)])
+        case "engine.refresh", "catchUp.run", "catchUp.clear", "toast.action", "notification.act", "settings.update":
             return .object(["ok": .bool(true)])
         default:
             throw EngineFailure.engine(EngineError(code: "unknown_command", message: "No command named \(name)."))

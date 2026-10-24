@@ -118,6 +118,11 @@ public final class FrameModel {
     /// The sidebar is collapsed (⌘\, View > Hide Sidebar).
     public var sidebarCollapsed = false
 
+    /// Titles of the note tabs (`notes.meta`, revision 8), so restored tabs and notes renamed elsewhere stay current.
+    @ObservationIgnored private var tabMeta: ValueStore<NotesMetaValue>?
+    @ObservationIgnored private var tabMetaIds: [String] = []
+    @ObservationIgnored private var tabMetaObserver: Task<Void, Never>?
+
     @ObservationIgnored private var eventsTask: Task<Void, Never>?
     @ObservationIgnored private var closeNoteTask: Task<Void, Never>?
     /// How long a note stays mounted in the Page View after a native screen comes in front (plan 2.4).
@@ -144,6 +149,8 @@ public final class FrameModel {
     public func stop() {
         eventsTask?.cancel()
         closeNoteTask?.cancel()
+        tabMetaObserver?.cancel()
+        tabMeta?.cancel()
         session.cancel()
         home.cancel()
         folders.cancel()
@@ -290,6 +297,7 @@ public final class FrameModel {
 
     /// Folder and tag tabs take their names from the tree.
     private func updateViewTitles() {
+        watchTabTitles()
         guard let tree = folders.value else { return }
         for t in tabs.tabs {
             switch t.route {
@@ -297,6 +305,35 @@ public final class FrameModel {
             case .tag(let id): if let g = tree.tags.first(where: { $0.id == id }) { tabs.setTitle("#\(g.name)", for: t.id) }
             default: break
             }
+        }
+    }
+
+    /// Keeps a `notes.meta` view on the note tabs (one subscription for all of them, up to 200).
+    private func watchTabTitles() {
+        let ids = Array(tabs.tabs.compactMap { $0.route.noteId }.prefix(200))
+        guard ids != tabMetaIds else { return }
+        tabMetaIds = ids
+        tabMeta?.cancel()
+        tabMetaObserver?.cancel()
+        guard !ids.isEmpty else { tabMeta = nil; return }
+        let store = client.watch(.notesMeta(ids: ids))
+        tabMeta = store
+        tabMetaObserver = Task { [weak self, weak store] in
+            while !Task.isCancelled {
+                guard let self, let store else { return }
+                self.applyTabMeta(store.value)
+                await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+                    withObservationTracking { _ = store.value } onChange: { c.resume() }
+                }
+            }
+        }
+    }
+
+    func applyTabMeta(_ value: NotesMetaValue?) {
+        for n in value?.notes ?? [] where n.found {
+            tabs.setTitle(n.title.isEmpty ? "Untitled" : n.title, icon: n.icon, for: n.id)
+            // A note moved to Trash elsewhere leaves the strip (unless it's on screen).
+            if n.inTrash, route.noteId != n.id { _ = tabs.forget(noteId: n.id) }
         }
     }
 
@@ -429,6 +466,29 @@ public final class FrameModel {
         }
     }
 
+    /// A note made from text (Services, Shortcuts): its first line the title, the rest the body. Opens it.
+    @discardableResult
+    public func newNote(text: String) async throws -> String {
+        let r = try await client.command(.noteCreate(text: text))
+        open(.note(r.id))
+        return r.id
+    }
+
+    /// A task in the Inbox (Shortcuts' Add Task); natural dates are the engine's.
+    public func addTask(text: String, dueDate: String?) async throws -> TaskCreateResult {
+        try await client.command(.taskCreate(text: text, dueDate: dueDate))
+    }
+
+    /// A banner's action (reply, read, done, snooze-hour, snooze-evening, snooze-tomorrow).
+    public func notificationAction(id: String, action: String, text: String?, thread: String?) {
+        perform { _ = try await self.client.command(.notificationAct(id: id, action: action, text: text, thread: thread)) }
+    }
+
+    /// Settings > Appearance from the View menu.
+    public func setAppearance(_ a: SettingsUpdateArgs.Appearance) {
+        perform { _ = try await self.client.command(.settingsUpdate(appearance: a)) }
+    }
+
     public func newFolder(name: String = "New folder", parent: String? = nil) {
         perform { _ = try await self.client.command(.folderCreate(name: name, parentId: parent)) }
     }
@@ -499,6 +559,10 @@ public final class FrameModel {
 
     /// The note's "..." menu actions: native commands where the engine has them, the note page otherwise.
     public func noteMenu(_ action: NoteMenuAction) { editor(.noteMenu(action: action)) }
+
+    public var focusMode: Bool { editorState?.focus ?? false }
+    public var noteLocked: Bool { editorState?.locked ?? false }
+    public var canLockNote: Bool { editorState?.canLock ?? false }
 
     /// The Foli AI toggle on a note: its web panel opens or closes.
     public func toggleNoteAI() {

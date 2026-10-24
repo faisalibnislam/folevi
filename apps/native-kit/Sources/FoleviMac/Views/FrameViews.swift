@@ -219,6 +219,15 @@ public final class ContentViewController: NSViewController {
         view.window?.title = route.isNote ? (model.activeNote?.title.nonEmpty ?? model.tabs.active.title) : model.tabs.active.title
     }
 
+    /// View > As Cards / As List for the note list on screen (nil: no list on screen).
+    public var listShowsCards: Bool? {
+        models.listModel(for: model.route).map { $0.layout == .cards }
+    }
+
+    public func setListCards(_ cards: Bool) {
+        models.listModel(for: model.route)?.layout = cards ? .cards : .list
+    }
+
     /// Whether a native screen covers the Page View now (tests).
     public var showsNativeScreen: Bool { screen.map { !$0.isHidden } ?? false }
 }

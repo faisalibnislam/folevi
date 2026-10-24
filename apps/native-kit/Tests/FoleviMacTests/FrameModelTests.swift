@@ -403,5 +403,37 @@ struct FrameModelTests {
         await eventually("panel closed") { model.editorPanel == nil }
         #expect(demo.editorLog.contains("ai") && demo.editorLog.contains("panel.close"))
     }
+    @Test func restoredTabsTakeCurrentTitles() async {
+        let (demo, model) = await make()
+        var stale = FrameTab(route: .note("doc_books"))
+        stale.title = "Old name"
+        model.restore(.init(tabs: [stale], active: "home"))
+        await eventually("title from notes.meta") { model.tabs.tabs.first { $0.id == "doc_books" }?.title == "Books to read" }
+        // Trashed elsewhere: the tab goes.
+        if let i = demo.notes.firstIndex(where: { $0.id == "doc_books" }) { demo.notes[i].inTrash = true }
+        demo.refreshAll()
+        await eventually("trashed tab closed") { !model.tabs.tabs.contains { $0.id == "doc_books" } }
+    }
+
+    @Test func noteFromTextAndTasks() async throws {
+        let (demo, model) = await make()
+        let id = try await model.newNote(text: "Groceries\nMilk, eggs")
+        #expect(demo.notes.first { $0.id == id }?.title == "Groceries")
+        #expect(model.route == .note(id))
+        let t = try await model.addTask(text: "Call Lina tomorrow", dueDate: nil)
+        #expect(t.where == "Inbox")
+        model.notificationAction(id: "n1", action: "snooze-hour", text: nil, thread: nil)
+        await eventually("act sent") { demo.commandLog.contains("notification.act") }
+    }
+
+    @Test func moveOrCopyPreviewAndRun() async throws {
+        let (demo, model) = await make()
+        let p = try await model.client.query(.placesMovePreview())
+        #expect(p.destinations.count == 2)
+        #expect(p.everything)
+        let r = try await model.client.command(.placesMove(to: p.destinations[0].value, copy: true))
+        #expect(r.status == "done")
+        #expect(demo.commandLog.contains("places.move"))
+    }
 }
 #endif

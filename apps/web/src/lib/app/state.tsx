@@ -386,6 +386,8 @@ function browserLabel(): string {
 
 /** After this long on the loading screen, it offers a reload; after LOADING_RELOAD_MS it reloads by itself (once). */
 export const LOADING_SLOW_MS = 12_000;
+/** How long the loading screen stays blank (the app's background) before the loader shows. */
+export const LOADING_QUIET_MS = 500;
 export const LOADING_RELOAD_MS = 30_000;
 const AUTO_RELOAD_KEY = "folevi:loading-reload-at";
 
@@ -396,6 +398,13 @@ const AUTO_RELOAD_KEY = "folevi:loading-reload-at";
  */
 function LoadingScreen({ title, body }: { title: string; body?: ReactNode }) {
   const [slow, setSlow] = useState(false);
+  // A load that finishes quickly (most do) never shows the loader: for its first moments the screen is only
+  // the app's background, as the iPhone and iPad app's launch screen is, so nothing flashes in between.
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const show = setTimeout(() => setShown(true), LOADING_QUIET_MS);
+    return () => clearTimeout(show);
+  }, []);
   useEffect(() => {
     const offer = setTimeout(() => setSlow(true), LOADING_SLOW_MS);
     const reload = setTimeout(() => {
@@ -417,7 +426,7 @@ function LoadingScreen({ title, body }: { title: string; body?: ReactNode }) {
   return (
     <main id="main" tabIndex={-1} className="ui-neutral-chrome grid min-h-dvh place-items-center bg-canvas px-6" aria-busy>
       <h1 className="sr-only">{title}</h1>
-      <div className="grid justify-items-center gap-3">
+      <div className={`grid justify-items-center gap-3 ${shown ? "animate-[iphone-fade-in_200ms_ease-out]" : "invisible"}`}>
         <div aria-hidden className="grid justify-items-center gap-3">
           <FoleviLoader title={title} />
           {body ? <div className="max-w-sm text-center text-[14px] text-muted">{body}</div> : null}

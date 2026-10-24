@@ -7,8 +7,18 @@ import { useAuthPhase } from "@/lib/convex/provider";
 import { authClient } from "@/lib/auth/client";
 import { hostAuth, websitePage } from "@/lib/auth/shellFetch";
 import { forgetThisDevice } from "@/lib/nativeDevice";
-import { AppStateProvider, FullPageMessage, useMeQuery } from "@/lib/app/state";
-import { loadAccountSnapshot, type AccountSnapshot } from "@/lib/app/offlineSnapshot";
+import {
+  AppStateProvider,
+  FullPageMessage,
+  useMeQuery,
+  type Profile,
+  type Workspace,
+} from "@/lib/app/state";
+import {
+  loadAccountSnapshot,
+  loadStartSnapshot,
+  type AccountSnapshot,
+} from "@/lib/app/offlineSnapshot";
 import { useAppRouter } from "@/lib/app/router";
 import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/components/ui/Toast";
@@ -36,7 +46,9 @@ import { PlaceMoveGate } from "@/components/places/MovePlaces";
 const Onboarding = lazy(() => import("./Onboarding").then((m) => ({ default: m.Onboarding })));
 
 function currentPath(): string {
-  return typeof window === "undefined" ? "/documents" : `${window.location.pathname}${window.location.search}`;
+  return typeof window === "undefined"
+    ? "/documents"
+    : `${window.location.pathname}${window.location.search}`;
 }
 
 /** Routes the signed-in person through the account states the backend reports before showing the app. */
@@ -66,12 +78,31 @@ export function AccountGate() {
   useEffect(() => {
     if (offlineStart && snapshot === undefined) void loadAccountSnapshot().then(setSnapshot);
   }, [offlineStart, snapshot]);
+  // A warm start in the apps (docs/IOS_PERFORMANCE.md): the last-known folio opens at once from this device
+  // (its lists from the query cache) while the session is checked and the server connects, instead of
+  // "Opening your folio…" until the server answers. The server's answer then takes over in place; anything but
+  // "ready" (signed out, revoked, a device limit) replaces it as before.
+  const [start, setStart] = useState<AccountSnapshot | null | undefined>(undefined);
+  useEffect(() => {
+    let live = true;
+    void loadStartSnapshot().then((s) => live && setStart(s));
+    return () => {
+      live = false;
+    };
+  }, []);
+  const waiting = phase !== "signed_out" && (me === undefined || isLoading || offlineStart);
+  const warm = waiting && start ? start : null;
+  // Once the folio is on screen from the snapshot it stays the same tree (offline too), so nothing remounts.
+  const warmed = useRef(false);
+  if (warm) warmed.current = true;
 
   useEffect(() => {
     if (me?.state !== "needs_bootstrap" || started.current) return;
     started.current = true;
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-    bootstrap({ timeZone, locale: (navigator.language || "en").slice(0, 5) }).catch((e) => setBootError(errorMessage(e)));
+    bootstrap({ timeZone, locale: (navigator.language || "en").slice(0, 5) }).catch((e) =>
+      setBootError(errorMessage(e)),
+    );
   }, [me?.state, bootstrap]);
 
   // The server says there is no session (signed out elsewhere, revoked, expired): go sign in. Work
@@ -88,13 +119,19 @@ export function AccountGate() {
       return;
     }
     let cancelled = false;
-    const go = (others = false) => window.location.replace(`/signin?notice=session_ended${others ? "&add=1" : ""}&returnTo=${encodeURIComponent(currentPath())}`);
-    const withTimeout = <T,>(p: Promise<T>) => Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), 3000))]);
+    const go = (others = false) =>
+      window.location.replace(
+        `/signin?notice=session_ended${others ? "&add=1" : ""}&returnTo=${encodeURIComponent(currentPath())}`,
+      );
+    const withTimeout = <T,>(p: Promise<T>) =>
+      Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), 3000))]);
     void (async () => {
       // Check once more before acting: a server hiccup (5xx, rate limit) also ends up here, and must never
       // sign anyone out. Only a definite "no session" drops the dead cookie (keeping this device's notes),
       // so the sign-in and sign-up pages don't take it for a live session and bounce back here.
-      const check = await withTimeout(authClient.getSession({ query: { disableCookieCache: true } }).catch(() => null));
+      const check = await withTimeout(
+        authClient.getSession({ query: { disableCookieCache: true } }).catch(() => null),
+      );
       if (cancelled) return;
       if (check?.data?.session) {
         window.location.reload();
@@ -117,7 +154,8 @@ export function AccountGate() {
       // Several accounts in one browser (docs/MULTI_ACCOUNT_PLAN.md §2.1): only this tab's account ended. Its
       // cookies go; every other account stays signed in. (Better Auth's own sign-out would end them all.)
       const pinned = pinnedUserId();
-      const others = (await withTimeout(signedInAccounts()))?.filter((a) => a.userId !== pinned) ?? [];
+      const others =
+        (await withTimeout(signedInAccounts()))?.filter((a) => a.userId !== pinned) ?? [];
       if (pinned) {
         await withTimeout(signOutOfAccount(pinned));
         forgetAccount(pinned);
@@ -154,19 +192,42 @@ export function AccountGate() {
         }
         await new Promise((r) => setTimeout(r, 700));
       }
-      if (!cancelled) await signOutNow(`/signin?notice=session_ended&returnTo=${encodeURIComponent(currentPath())}`);
+      if (!cancelled)
+        await signOutNow(
+          `/signin?notice=session_ended&returnTo=${encodeURIComponent(currentPath())}`,
+        );
     })();
     return () => {
       cancelled = true;
     };
   }, [me?.state]);
 
-  if (phase === "signed_out") return hostAuth() ? <ShellSignIn /> : <FullPageMessage title="Taking you to sign in…" busy />;
-  if (offlineStart && snapshot === undefined) return <FullPageMessage title="Opening your folio…" busy />;
+  if (phase === "signed_out")
+    return hostAuth() ? <ShellSignIn /> : <FullPageMessage title="Taking you to sign in…" busy />;
+  const ready = me?.state === "ready" && !isLoading ? me.profile : null;
+  if (warm || (warmed.current && ready)) {
+    const profile = ready ?? warm!.profile;
+    return (
+      <ReadyApp
+        key={profile.id}
+        profile={profile}
+        offlineWorkspaces={ready ? undefined : warm!.workspaces}
+        route={route.name}
+      />
+    );
+  }
+  if (offlineStart && snapshot === undefined)
+    return <FullPageMessage title="Opening your folio…" busy />;
   if (offlineStart && snapshot) {
     return (
       <AppStateProvider profile={snapshot.profile} offlineWorkspaces={snapshot.workspaces}>
-        {route.name === "share" ? <ShareSheet /> : route.name === "quick-add" && snapshot.profile.onboardingStep === "done" ? <DesktopQuickAdd /> : <Shell />}
+        {route.name === "share" ? (
+          <ShareSheet />
+        ) : route.name === "quick-add" && snapshot.profile.onboardingStep === "done" ? (
+          <DesktopQuickAdd />
+        ) : (
+          <Shell />
+        )}
       </AppStateProvider>
     );
   }
@@ -190,9 +251,15 @@ export function AccountGate() {
       return <FullPageMessage title="Checking your session…" busy />;
     case "email_unverified":
       return (
-        <FullPageMessage title="Confirm your email to continue" body="Open the confirmation link we emailed you. It expires in 24 hours and works once.">
+        <FullPageMessage
+          title="Confirm your email to continue"
+          body="Open the confirmation link we emailed you. It expires in 24 hours and works once."
+        >
           <div className="flex gap-2">
-            <a className="ui-btn ui-btn-primary h-9 px-4 text-sm" href={websitePage("/verify-email")}>
+            <a
+              className="ui-btn ui-btn-primary h-9 px-4 text-sm"
+              href={websitePage("/verify-email")}
+            >
               Send a new link
             </a>
             <SignOutButton accountKey={null} />
@@ -201,7 +268,10 @@ export function AccountGate() {
       );
     case "suspended":
       return (
-        <FullPageMessage title="This account is suspended" body="If you think this is a mistake, write to support@folevi.com from the address on your account.">
+        <FullPageMessage
+          title="This account is suspended"
+          body="If you think this is a mistake, write to support@folevi.com from the address on your account."
+        >
           <SignOutButton accountKey={null} />
         </FullPageMessage>
       );
@@ -215,41 +285,58 @@ export function AccountGate() {
           </Button>
         </FullPageMessage>
       ) : (
-        <FullPageMessage title="Setting up your folio…" body="Setting up your Personal space with a few pages to start from." busy />
+        <FullPageMessage
+          title="Setting up your folio…"
+          body="Setting up your Personal space with a few pages to start from."
+          busy
+        />
       );
     case "ready":
-      return (
-        <ShellUpdateGate>
-          <KeySessionStarter profileId={me.profile.id} email={me.profile.email ?? undefined} />
-          <AppStateProvider profile={me.profile}>
-            <PlacesReporter />
-            {route.name === "place-sync" ? (
-              <PlaceSync />
-            ) : route.name === "oauth-consent" ? (
-              <OauthConsent />
-            ) : route.name === "quick-add" && me.profile.onboardingStep === "done" ? (
-              <DesktopQuickAdd />
-            ) : route.name === "share" && me.profile.onboardingStep === "done" ? (
-              <ShareSheet />
-            ) : me.profile.onboardingStep !== "done" || route.name === "onboarding" ? (
-              <Suspense fallback={<FullPageMessage title="Opening your folio…" busy />}>
-                <Onboarding />
-              </Suspense>
-            ) : (
-              <MigrationGate>
-                {/* A move between places that switched here to run (components/places/MovePlaces.tsx). */}
-                <PlaceMoveGate>
-                  {/* End-to-end encryption: the unlock screen for encrypted spaces; Standard passes straight through. */}
-                  <E2eeGate>
-                    <Shell />
-                  </E2eeGate>
-                </PlaceMoveGate>
-              </MigrationGate>
-            )}
-          </AppStateProvider>
-        </ShellUpdateGate>
-      );
+      return <ReadyApp key={me.profile.id} profile={me.profile} route={route.name} />;
   }
+}
+
+/** The signed-in app, for the server's profile (or, on a warm start, the last-known one from this device). */
+function ReadyApp({
+  profile,
+  offlineWorkspaces,
+  route,
+}: {
+  profile: Profile;
+  offlineWorkspaces?: Workspace[];
+  route: string;
+}) {
+  return (
+    <ShellUpdateGate>
+      <KeySessionStarter profileId={profile.id} email={profile.email ?? undefined} />
+      <AppStateProvider profile={profile} offlineWorkspaces={offlineWorkspaces}>
+        <PlacesReporter />
+        {route === "place-sync" ? (
+          <PlaceSync />
+        ) : route === "oauth-consent" ? (
+          <OauthConsent />
+        ) : route === "quick-add" && profile.onboardingStep === "done" ? (
+          <DesktopQuickAdd />
+        ) : route === "share" && profile.onboardingStep === "done" ? (
+          <ShareSheet />
+        ) : profile.onboardingStep !== "done" || route === "onboarding" ? (
+          <Suspense fallback={<FullPageMessage title="Opening your folio…" busy />}>
+            <Onboarding />
+          </Suspense>
+        ) : (
+          <MigrationGate>
+            {/* A move between places that switched here to run (components/places/MovePlaces.tsx). */}
+            <PlaceMoveGate>
+              {/* End-to-end encryption: the unlock screen for encrypted spaces; Standard passes straight through. */}
+              <E2eeGate>
+                <Shell />
+              </E2eeGate>
+            </PlaceMoveGate>
+          </MigrationGate>
+        )}
+      </AppStateProvider>
+    </ShellUpdateGate>
+  );
 }
 
 /**
@@ -259,7 +346,12 @@ export function AccountGate() {
  */
 function KeySessionStarter({ profileId, email }: { profileId: string; email?: string }) {
   useEffect(() => {
-    void startKeySession({ server: convexKeysServer(getConvexClient()), profileId, email, newDeviceId: () => loadDeviceId(profileId) }).catch(() => undefined);
+    void startKeySession({
+      server: convexKeysServer(getConvexClient()),
+      profileId,
+      email,
+      newDeviceId: () => loadDeviceId(profileId),
+    }).catch(() => undefined);
   }, [profileId, email]);
   return null;
 }

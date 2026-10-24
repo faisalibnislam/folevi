@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "calendar.feedWorkspaces",
+  "description": "Personal's tasks only.",
+  "args": {
+    "includeWorkspaces": false
+  },
+  "result": {
+    "ok": true
+  }
+}

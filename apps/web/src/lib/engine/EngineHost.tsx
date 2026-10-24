@@ -27,6 +27,12 @@ import { FOLEVI_VERSION } from "@/lib/version";
 // place's store: hello works at once, and views answer engine_not_ready until EngineHost attaches the data layer.
 if (typeof window !== "undefined" && nativeChrome()) installBridgeHost({ build: FOLEVI_VERSION, marker: nativeChrome() });
 
+/** A workspace's plan as workspaces.mine names it ("Team", "Business"), or null. */
+function planNameOf(w: unknown): string | null {
+  const plan = (w as { plan?: { shortName?: unknown; name?: unknown } } | undefined)?.plan;
+  return typeof plan?.shortName === "string" ? plan.shortName : typeof plan?.name === "string" ? plan.name : null;
+}
+
 /** Fires when the E2EE router (spaces, replicas, the lock) changes, or a router comes or goes. */
 const e2eeSignal: Signal = {
   subscribe(cb) {
@@ -91,10 +97,10 @@ export function EngineHost() {
         (p): PlaceRow =>
           p.kind === "library"
             ? { id: p.id, kind: "library", name: "On this device", email: null, avatarUrl: null, syncs: p.syncs, workspaces: [], unread: p.unread, reminders: p.reminders, waiting: p.waiting }
-            : { id: p.id, kind: "account", name: p.name, email: p.email, avatarUrl: p.avatarUrl, syncs: null, workspaces: p.workspaces.map((w) => ({ id: w.id, name: w.name, logoUrl: w.logoUrl })), unread: p.unread, reminders: p.reminders, waiting: p.waiting },
+            : { id: p.id, kind: "account", name: p.name, email: p.email, avatarUrl: p.avatarUrl, syncs: null, workspaces: p.workspaces.map((w) => ({ id: w.id, name: w.name, logoUrl: w.logoUrl, planName: p.id === current ? planNameOf(workspaces.find((x) => x.id === w.id)) : null })), unread: p.unread, reminders: p.reminders, waiting: p.waiting },
       ),
     }),
-    [places, current],
+    [places, current, workspaces],
   );
 
   const kept = useMemo<KeptAnswers>(() => ({ read: (name, args) => keptAnswer(profile.id, name, args), write: (name, args, value) => keepAnswer(profile.id, name, args, value) }), [profile.id]);

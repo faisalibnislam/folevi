@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 8;
+export const CONTRACT_REVISION = 9;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -459,6 +459,8 @@ export interface PlaceWorkspaceInfo {
   id: string;
   name: string;
   logoUrl: string | null;
+  /** Revision 9 (R11.3): the workspace's plan, when this device knows it (the open account's); null otherwise. */
+  planName: string | null;
 }
 
 export interface PlaceRow {
@@ -1246,6 +1248,8 @@ export interface SearchArgs {
   /** Only notes edited after this (milliseconds since 1970). */
   updatedAfter?: number;
   includeArchived?: boolean;
+  /** Revision 9 (R11.1): only notes this person created (a profile id; with `scope: "place"` only). */
+  creatorId?: string;
   /** Also search by meaning where the plan has it (`meaningAvailable`). */
   meaning?: boolean;
   /** Default 20, at most 40. */
@@ -1457,6 +1461,13 @@ export interface TaskUpdateArgs {
   priority?: "none" | "low" | "medium" | "high";
   assigneeId?: string | null;
   reminderAt?: number | null;
+  /**
+   * Revision 9 (R10.2): "daily", "weekly", "weekdays", "monthly", "yearly", or a rule ("every 2 weeks on mon,thu",
+   * "every 3 days"); null: no repeat. Needs `noteId`: the repeat is the to-do line's own, saved through the note.
+   */
+  repeat?: string | null;
+  /** The task's note (required with `repeat`). */
+  noteId?: string;
 }
 
 export interface TaskMoveArgs {
@@ -1515,6 +1526,8 @@ export interface AccountSpace {
   logoUrl: string | null;
   role: string;
   storage: StorageInfo | null;
+  /** Revision 9 (R11.3): the space's plan ("Free", "Team", "Business"); null when unknown. */
+  planName: string | null;
 }
 
 /** `account.details`: the open account for the account and place switcher and Settings > Account. */
@@ -2200,6 +2213,73 @@ export interface AvatarArgs {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Revision 9: the Tasks, Calendar, Search, Notifications and Places requests (R10.2 to R11.5)
+// ---------------------------------------------------------------------------------------------------------------
+
+/** R10.3: the calendar feed (tasks in another calendar app). */
+export interface CalendarFeedValue {
+  /** A link exists. */
+  active: boolean;
+  /** Always null here: the link is shown once, when it's made (`calendar.feedCreate`); the server keeps only its hash. */
+  url: string | null;
+  createdAt: number | null;
+  lastFetchedAt: number | null;
+  /** The feed has workspaces' tasks too, not only Personal's. */
+  includeWorkspaces: boolean;
+}
+
+export interface CalendarFeedCreateArgs {
+  includeWorkspaces?: boolean;
+}
+
+export interface CalendarFeedCreateResult {
+  /** The .ics link, shown once (making a new one ends the old one). */
+  url: string;
+}
+
+export interface CalendarFeedWorkspacesArgs {
+  includeWorkspaces: boolean;
+}
+
+/** R11.4 */
+export interface FileUrlsArgs {
+  ids: string[];
+}
+
+export interface FileLink {
+  /** A short-lived signed link, or null when the file can't be had. */
+  url: string | null;
+  filename: string | null;
+  mimeType: string | null;
+  size: number | null;
+  /** End-to-end encrypted: the bytes behind `url` are ciphertext (opened in the note page). */
+  sealed: boolean;
+}
+
+export interface FileUrlsValue {
+  urls: Record<string, FileLink>;
+}
+
+/** R11.5 */
+export interface RecentArgs {
+  /** "place" (the space shown) or "everywhere" (every space of this place). Default "place". */
+  scope?: "place" | "everywhere";
+  /** Default 10, at most 30. */
+  limit?: number;
+}
+
+/** A recent note and the space it's in. */
+export interface RecentRow {
+  row: NoteRow;
+  space: SpaceRef;
+  spaceName: string;
+}
+
+export interface RecentValue {
+  rows: RecentRow[];
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // The maps (names to argument and result types). The codegen reads these interfaces.
 // ---------------------------------------------------------------------------------------------------------------
 
@@ -2240,6 +2320,10 @@ export interface ViewMap {
   "places.move.preview": { args: PlaceMovePreviewArgs; value: PlaceMovePreview };
   "notes.meta": { args: NotesMetaArgs; value: NotesMetaValue };
   "ai.research": { args: ResearchArgs; value: ResearchValue };
+  "calendar.feed": { args: EmptyArgs; value: CalendarFeedValue };
+  "tasks.unscheduled": { args: SpaceArgs; value: TasksRangeValue };
+  "files.urls": { args: FileUrlsArgs; value: FileUrlsValue };
+  recent: { args: RecentArgs; value: RecentValue };
 }
 
 export interface ListViewMap {
@@ -2319,6 +2403,9 @@ export interface CommandMap {
   "ai.agentDiscard": { args: AgentRunArgs; result: OkResult };
   "ai.agentUndo": { args: AgentUndoArgs; result: AgentUndoResult };
   "settings.setAvatar": { args: AvatarArgs; result: OkResult };
+  "calendar.feedCreate": { args: CalendarFeedCreateArgs; result: CalendarFeedCreateResult };
+  "calendar.feedRevoke": { args: EmptyArgs; result: OkResult };
+  "calendar.feedWorkspaces": { args: CalendarFeedWorkspacesArgs; result: OkResult };
 }
 
 export interface EditorCommandMap {
@@ -2382,7 +2469,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -2457,6 +2544,9 @@ const commandNames = [
   "ai.agentDiscard",
   "ai.agentUndo",
   "settings.setAvatar",
+  "calendar.feedCreate",
+  "calendar.feedRevoke",
+  "calendar.feedWorkspaces",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

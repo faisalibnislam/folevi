@@ -1,6 +1,7 @@
 // Revision 5's commands (docs/NATIVE_APP_PLAN.md sections 5.8 and 5.12): Quick Add's task (dates read as the web
 // reads them; kept on the device and sent later when offline, like the web's Quick Add), task changes and moves,
 // and calendar subscriptions.
+import { parseRepeatPhrase, type RepeatRule, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { quickAddOnDevice } from "@/lib/quickAddOffline";
 import type { EngineDeps } from "./context";
@@ -23,6 +24,44 @@ function dateArg(args: Record<string, unknown>, key: string, re: RegExp, what: s
 async function noteTitle(deps: EngineDeps, noteId: string): Promise<string> {
   const titles = await Promise.race([deps.client.query(api.documents.titles, { documentIds: [noteId] }) as Promise<Record<string, { title: string }>>, new Promise<undefined>((r) => setTimeout(() => r(undefined), 1500))]).catch(() => undefined);
   return titles?.[noteId]?.title || "Untitled";
+}
+
+const SIMPLE_REPEATS = ["daily", "weekly", "weekdays", "monthly", "yearly"] as const;
+const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+/** A repeat as native sends it: a kind ("weekly") or a rule in words ("every 2 weeks on mon,thu"). */
+export function repeatRuleFrom(value: string): RepeatRule {
+  const v = value.trim().toLowerCase();
+  if ((SIMPLE_REPEATS as readonly string[]).includes(v)) return { repeat: v as RepeatRule["repeat"] };
+  const parsed = parseRepeatPhrase(v.startsWith("every") ? v : `every ${v}`);
+  if (!parsed) throw invalid(`“${value}” isn't a repeat Folevi knows (daily, weekly, weekdays, monthly, yearly, or “every 2 weeks on mon”).`);
+  // "every 2 weeks on mon,thu": the days after "on" (the phrase reader takes the interval or the days, not both).
+  const on = /\bon\s+([a-z,&\s]+)$/.exec(v);
+  if (parsed.rule.repeat === "weekly" && on) {
+    const days = [...new Set(on[1]!.split(/\s*(?:,|and|&|\s)\s*/).map((d) => DAYS.indexOf(d.slice(0, 3)) + 1).filter((d) => d > 0))].sort((a, b) => a - b);
+    if (days.length) return { ...parsed.rule, days };
+  }
+  return parsed.rule;
+}
+
+/** Sets (or, with null, removes) a to-do's repeat by changing its block through the sync engine. */
+async function setTaskRepeat(deps: EngineDeps, noteId: string, blockId: string, rule: RepeatRule | null): Promise<void> {
+  const engine = deps.app.engine;
+  if (!engine) throw new BridgeError("engine_not_ready", "Folevi is still starting. Try again in a moment.");
+  let block = engine.documentBlocks(noteId).find((b) => b.id === blockId);
+  if (!block) {
+    const got = (await Promise.race([deps.client.query(api.blocks.list, { documentId: noteId }) as Promise<{ blocks: WireBlock[] } | null>, new Promise<null>((r) => setTimeout(() => r(null), 3000))]).catch(() => null)) as { blocks: WireBlock[] } | null;
+    block = got?.blocks.find((b) => b.id === blockId);
+  }
+  if (!block) throw new BridgeError("not_found", "That task isn't there any more.");
+  if (block.type !== "todo") throw invalid("That isn't a task.");
+  const props: Record<string, unknown> = { ...(block.props as Record<string, unknown>) };
+  delete props.repeat;
+  delete props.repeatEvery;
+  delete props.repeatDays;
+  for (const [k, v] of Object.entries(repeatProps(rule))) if (v !== null) props[k] = v;
+  engine.upsertBlock(noteId, { ...block, props } as WireBlock, ["content"], (block as { revision?: number | null }).revision ?? engine.serverRevision(blockId));
+  await engine.persisted();
 }
 
 export const WORK_COMMANDS = {
@@ -57,7 +96,7 @@ export const WORK_COMMANDS = {
 
   "task.update": {
     async run(deps, args) {
-      only(args, ["id", "checked", "canceled", "dueDate", "dueTime", "priority", "assigneeId", "reminderAt"]);
+      only(args, ["id", "checked", "canceled", "dueDate", "dueTime", "priority", "assigneeId", "reminderAt", "repeat", "noteId"]);
       const patch: Record<string, unknown> = { blockId: id(args, "id") };
       if (args.checked !== undefined) patch.checked = bool(args, "checked");
       if (args.canceled !== undefined) patch.canceled = bool(args, "canceled");
@@ -68,8 +107,14 @@ export const WORK_COMMANDS = {
       if (args.priority !== undefined) patch.priority = oneOf(args, "priority", ["none", ...PRIORITIES] as const);
       if (args.assigneeId !== undefined) patch.assigneeId = args.assigneeId === null ? null : id(args, "assigneeId");
       if (args.reminderAt !== undefined) patch.reminderAt = args.reminderAt === null ? null : num(args, "reminderAt", { min: 0 });
-      if (Object.keys(patch).length === 1) throw invalid("Say what to change.");
-      await deps.client.mutation(api.tasks.update, patch);
+      const repeating = args.repeat !== undefined;
+      if (Object.keys(patch).length === 1 && !repeating) throw invalid("Say what to change.");
+      // The repeat is the to-do line's own props, saved through the note like an edit (works offline).
+      if (repeating) {
+        const rule = args.repeat === null ? null : repeatRuleFrom(text(args, "repeat", { max: 100 }) as string);
+        await setTaskRepeat(deps, id(args, "noteId"), patch.blockId as string, rule);
+      }
+      if (Object.keys(patch).length > 1) await deps.client.mutation(api.tasks.update, patch);
       return { ok: true };
     },
   },

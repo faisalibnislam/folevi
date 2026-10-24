@@ -4,7 +4,8 @@
   "description": "Search this space: a title match, a match in a PDF, and one by meaning.",
   "args": {
     "text": "kyoto",
-    "meaning": true
+    "meaning": true,
+    "creatorId": "prof_1"
   },
   "value": {
     "text": "kyoto",

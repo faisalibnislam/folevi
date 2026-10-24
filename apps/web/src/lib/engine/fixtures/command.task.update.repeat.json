@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "task.update",
+  "description": "Repeat a task every 2 weeks on Monday and Thursday (revision 9).",
+  "args": {
+    "id": "blk_t5",
+    "noteId": "doc_00001",
+    "repeat": "every 2 weeks on mon,thu"
+  },
+  "result": {
+    "ok": true
+  }
+}

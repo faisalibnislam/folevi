@@ -1,0 +1,15 @@
+{
+  "kind": "command",
+  "name": "task.update",
+  "description": "No date, no reminder, no repeat (null clears).",
+  "args": {
+    "id": "blk_t5",
+    "noteId": "doc_00001",
+    "dueDate": null,
+    "reminderAt": null,
+    "repeat": null
+  },
+  "result": {
+    "ok": true
+  }
+}

@@ -227,7 +227,7 @@ const notificationsList: ValueViewDef = {
 type SearchData = { id: string; title: string; icon: string | null; kind: string; updatedAt: number; snippet: string; match: { blockId: string; page: number | null } | null; archived: boolean; homeFolder: { id: string; name: string; color: string | null } | null; place?: { id: string; name: string } }[];
 
 export function parseSearchArgs(args: Args): SearchArgs {
-  only(args, ["text", "scope", "space", "folderId", "tagId", "updatedAfter", "includeArchived", "meaning", "limit"]);
+  only(args, ["text", "scope", "space", "folderId", "tagId", "updatedAfter", "includeArchived", "meaning", "limit", "creatorId"]);
   const out: SearchArgs = { text: text(args, "text", { max: 500, allowEmpty: true }) as string };
   if (args.scope !== undefined) out.scope = oneOf(args, "scope", ["place", "everywhere"] as const);
   const space = optionalId(args, "space");
@@ -240,6 +240,8 @@ export function parseSearchArgs(args: Args): SearchArgs {
   if (args.includeArchived !== undefined) out.includeArchived = bool(args, "includeArchived");
   if (args.meaning !== undefined) out.meaning = bool(args, "meaning");
   if (args.limit !== undefined) out.limit = num(args, "limit", { min: 1, max: 40 });
+  const creatorId = optionalId(args, "creatorId");
+  if (creatorId !== undefined) out.creatorId = creatorId;
   return out;
 }
 
@@ -278,7 +280,7 @@ const search: ValueViewDef = {
     const query = q
       ? everywhere
         ? source<SearchData>(ctx, api.search.everywhere, { query: q, limit }, null)
-        : source<SearchData>(ctx, api.search.documents, { scope: space.scope, query: q, limit, ...(args.folderId ? { folderId: args.folderId } : {}), ...(args.tagId ? { tagId: args.tagId } : {}), ...(args.updatedAfter ? { updatedAfter: args.updatedAfter } : {}), ...(args.includeArchived ? { includeArchived: true } : {}) }, space.scope)
+        : source<SearchData>(ctx, api.search.documents, { scope: space.scope, query: q, limit, ...(args.folderId ? { folderId: args.folderId } : {}), ...(args.tagId ? { tagId: args.tagId } : {}), ...(args.updatedAfter ? { updatedAfter: args.updatedAfter } : {}), ...(args.includeArchived ? { includeArchived: true } : {}), ...(args.creatorId ? { creatorId: args.creatorId } : {}) }, space.scope)
       : null;
     const meaningOk = deps.app.mode === "account" ? source<boolean>(ctx, api.search.meaningAvailable, { scope: space.scope }, null) : null;
     // Search by meaning is an action: asked once, then laid after the keyword matches.

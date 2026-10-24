@@ -384,7 +384,7 @@ type includes `null`, generate a three-state field (keep, clear, set), for examp
 `?: ... | null` (`NoteCreateArgs.folderId`, `TaskCreateArgs.dueDate`/`dueTime`). Until then native sends `task.update`
 through `PendingN10Commands.TaskPatch` (`TaskPatchArgs` with `PatchField`).
 
-### R10.2 Repeating tasks: set and change the repeat **open**
+### R10.2 Repeating tasks: set and change the repeat **added** (revision 9: `task.update { repeat, noteId }`; `noteId` is required with `repeat` because the repeat is the to-do block's own props, saved through the note by the sync engine, so it works offline and in encrypted notes. `repeat` takes a kind or words: "every 2 weeks on mon,thu", "3 days"; null removes it)
 
 The web's task sheet shows the repeat read-only and Quick Add reads it from the words; native matches that. To edit it
 natively (the plan's "due/repeat editing with native pickers"):
@@ -397,7 +397,7 @@ export interface TaskUpdateArgs {
 }
 ```
 
-### R10.3 Calendar feed link (tasks in another calendar app) **open**
+### R10.3 Calendar feed link (tasks in another calendar app) **added** (revision 9: `calendar.feed` has `active`, `createdAt`, `lastFetchedAt`, `includeWorkspaces`; `url` is always null there because the server keeps only the link's hash, so the link shows once, in `calendar.feedCreate { includeWorkspaces? }`'s reply; also `calendar.feedRevoke` and `calendar.feedWorkspaces { includeWorkspaces }`)
 
 `CalendarFeedDialog.tsx` ("Show your tasks in your calendar", `convex/calendarFeeds.ts`) has no command. Native leaves it
 out of the Calendars sheet until:
@@ -409,18 +409,18 @@ export interface CalendarFeedValue { url: string | null; createdAt: number | nul
 "calendar.feedRevoke": { args: EmptyArgs; result: OkResult };
 ```
 
-### R10.4 Tasks without a date, for the Calendar's "Unscheduled" list (iPad, Mac) **open**
+### R10.4 Tasks without a date, for the Calendar's "Unscheduled" list (iPad, Mac) **added** (revision 9, `tasks.unscheduled`)
 
 `CalendarView.tsx` lists open tasks without a date beside the month to drag onto a day. `tasks.range` only returns dated
 tasks. Please add `"tasks.unscheduled": { args: SpaceArgs; value: TasksRangeValue }` (open, no due date, newest first,
 at most 200). Native drops onto days already work for any task row it has.
 
-### R11.1 Search: "Created by" filter **open**
+### R11.1 Search: "Created by" filter **added** (revision 9, `SearchArgs.creatorId`)
 
 The web palette filters by creator in workspaces (`creatorId`). Add to `SearchArgs`: `creatorId?: string;` (ignored with
 `scope: "everywhere"`). Native shows the Folder, Tag, Updated and Archived filters; Created by comes with this.
 
-### R11.2 Declining an invitation **open**
+### R11.2 Declining an invitation **open: needs a backend change** (there's no `workspaces.declineInvite` or `sharing.declinePageInvite` in convex yet; the web can't decline either. Reported to the coordinator before touching the backend; keep the `notification.remove` fallback until then)
 
 The bell can only accept. Native offers Decline next to Accept:
 
@@ -431,7 +431,7 @@ export interface InviteDeclineArgs { inviteId: string; kind: "workspace" | "page
 
 Until then native catches `unknown_command` and removes the notification instead (`notification.remove`).
 
-### R11.3 Plans per workspace in the account and place switcher **open**
+### R11.3 Plans per workspace in the account and place switcher **added** (revision 9: `AccountSpace.planName` (Personal's from its plan, workspaces' from workspaces.mine) and `PlaceWorkspaceInfo.planName` (the open account's workspaces; null for other accounts', which this device doesn't know))
 
 The redesigned account menu shows each place with its plan ("Pro", "Team"). `AccountDetails.plan` covers Personal;
 `AccountSpace` and `PlaceWorkspaceInfo` have none, so native shows the role ("Admin") for workspaces. Add:
@@ -441,13 +441,13 @@ export interface AccountSpace { /* ... */ planName: string | null }      // "Tea
 export interface PlaceWorkspaceInfo { /* ... */ planName: string | null } // other accounts' workspaces
 ```
 
-### R11.4 A notification's file download **open**
+### R11.4 A notification's file download **added** (revision 9: `files.urls { ids }` gives `{ urls: { [id]: { url, filename, mimeType, size, sealed } } }`; links last about two hours; an end-to-end encrypted file's bytes are ciphertext (`sealed`))
 
 Rows with `fileId` (an export ready to download) need a signed link. Native sends the frame
 `ScreenIntent.downloadFile(id:)`; the frame needs `"files.urls": { args: { ids: string[] }; value: { urls: Record<string, { url: string | null }> } }`
 (the `files.urls` the plan's 3.10 already names) to fetch it.
 
-### R11.5 Recent notes across spaces before typing in Search **open (small)**
+### R11.5 Recent notes across spaces before typing in Search **added** (revision 9: `recent { scope?, limit? }` gives `{ rows: { row: NoteRow, space, spaceName }[] }`, newest first; a locked encrypted space is left out)
 
 Before typing, native shows Home's recents (`home.recents`, this space only). With scope Everywhere the web shows the
 same. If the engine has recents across every space of the place, `"recent": { args: { scope?: "place" | "everywhere"; limit?: number }; value: { rows: NoteRow[] } }`

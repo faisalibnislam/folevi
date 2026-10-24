@@ -1,0 +1,46 @@
+{
+  "kind": "view",
+  "name": "tasks.unscheduled",
+  "description": "Open tasks with no date, newest first.",
+  "args": {},
+  "value": {
+    "tasks": [
+      {
+        "id": "blk_t7",
+        "noteId": "doc_00001",
+        "noteTitle": "Kyoto in November",
+        "noteIcon": "🗺️",
+        "title": "Task 7",
+        "status": "open",
+        "dueDate": null,
+        "dueTime": null,
+        "priority": null,
+        "assigneeId": null,
+        "assigneeName": null,
+        "reminderAt": null,
+        "repeat": null,
+        "completedAt": null,
+        "updatedAt": 1792831980000,
+        "overdue": false
+      },
+      {
+        "id": "blk_t8",
+        "noteId": "doc_00002",
+        "noteTitle": "Q4 planning",
+        "noteIcon": null,
+        "title": "Task 8",
+        "status": "open",
+        "dueDate": null,
+        "dueTime": null,
+        "priority": null,
+        "assigneeId": null,
+        "assigneeName": null,
+        "reminderAt": null,
+        "repeat": null,
+        "completedAt": null,
+        "updatedAt": 1792831920000,
+        "overdue": false
+      }
+    ]
+  }
+}

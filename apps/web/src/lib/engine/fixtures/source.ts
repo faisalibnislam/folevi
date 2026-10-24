@@ -382,7 +382,7 @@ export const FIXTURES: Record<string, Fixture> = {
     value: {
       current: "acct:user_1",
       places: [
-        { id: "acct:user_1", kind: "account", name: "Faisal", email: "faisal@example.com", avatarUrl: null, syncs: null, workspaces: [{ id: "ws_studio", name: "Airly Studio", logoUrl: null }], unread: 2, reminders: 0, waiting: 0 },
+        { id: "acct:user_1", kind: "account", name: "Faisal", email: "faisal@example.com", avatarUrl: null, syncs: null, workspaces: [{ id: "ws_studio", name: "Airly Studio", logoUrl: null, planName: "Team" }], unread: 2, reminders: 0, waiting: 0 },
         { id: "acct:user_2", kind: "account", name: "Faisal (work)", email: "f@work.example", avatarUrl: "https://example.com/a.png", syncs: null, workspaces: [], unread: 0, reminders: 1, waiting: 3 },
         { id: "library", kind: "library", name: "On this iPhone", email: null, avatarUrl: null, syncs: "Syncs with iCloud Drive", workspaces: [], unread: 0, reminders: 0, waiting: 0 },
       ],
@@ -632,7 +632,7 @@ export const FIXTURES: Record<string, Fixture> = {
   "view.search": view({
     name: "search",
     description: "Search this space: a title match, a match in a PDF, and one by meaning.",
-    args: { text: "kyoto", meaning: true },
+    args: { text: "kyoto", meaning: true, creatorId: "prof_1" },
     value: {
       text: "kyoto",
       meaningAvailable: true,
@@ -746,8 +746,8 @@ export const FIXTURES: Record<string, Fixture> = {
       devicesActive: 3,
       deviceLimit: null,
       spaces: [
-        { id: "personal", kind: "personal", name: "Personal", logoUrl: null, role: "owner", storage: { usedBytes: 1_200_000_000, limitBytes: 10_000_000_000 } },
-        { id: "ws_studio", kind: "workspace", name: "Airly Studio", logoUrl: "https://example.com/logo.png", role: "admin", storage: { usedBytes: 300_000_000, limitBytes: 5_000_000_000 } },
+        { id: "personal", kind: "personal", name: "Personal", logoUrl: null, role: "owner", storage: { usedBytes: 1_200_000_000, limitBytes: 10_000_000_000 }, planName: "Pro" },
+        { id: "ws_studio", kind: "workspace", name: "Airly Studio", logoUrl: "https://example.com/logo.png", role: "admin", storage: { usedBytes: 300_000_000, limitBytes: 5_000_000_000 }, planName: "Team" },
       ],
     },
   }),
@@ -1003,6 +1003,27 @@ export const FIXTURES: Record<string, Fixture> = {
   "editor.block.duplicate": editor({ name: "block.duplicate", description: "Duplicate the block.", args: {}, result: { ok: true } }),
   "editor.focus.toggle": editor({ name: "focus.toggle", description: "Focus Mode on or off (editor.state says which).", args: {}, result: { ok: true } }),
   "editor.note.lock": editor({ name: "note.lock", description: "Lock: the note's Always fully encrypted dialog.", args: {}, result: { ok: true } }),
+
+  // ---- revision 9
+  "view.calendar.feed": view({ name: "calendar.feed", description: "A calendar feed link exists (its link was shown once, when made).", args: {}, value: { active: true, url: null, createdAt: NOW - 30 * DAY, lastFetchedAt: NOW - 3_600_000, includeWorkspaces: true } }),
+  "view.tasks.unscheduled": view({ name: "tasks.unscheduled", description: "Open tasks with no date, newest first.", args: {}, value: { tasks: [task(7, { dueDate: null }), task(8, { dueDate: null })].map((t) => taskRow(t, TODAY)) } }),
+  "view.files.urls": view({
+    name: "files.urls",
+    description: "A signed link for a notification's export, and one that can't be had.",
+    args: { ids: ["file_export", "file_gone"] },
+    value: { urls: { file_export: { url: "https://files.folevi.com/signed/abc", filename: "Folevi export.zip", mimeType: "application/zip", size: 48_000_000, sealed: false }, file_gone: { url: null, filename: null, mimeType: null, size: null, sealed: false } } },
+  }),
+  "view.recent": view({
+    name: "recent",
+    description: "Recent notes across every space, before typing in Search.",
+    args: { scope: "everywhere", limit: 3 },
+    value: { rows: [{ row: seedRow(0), space: "personal", spaceName: "Personal" }, { row: seedRow(1), space: "ws_studio", spaceName: "Airly Studio" }, { row: seedRow(2), space: "personal", spaceName: "Personal" }] },
+  }),
+  "command.task.update.repeat": command({ name: "task.update", description: "Repeat a task every 2 weeks on Monday and Thursday (revision 9).", args: { id: "blk_t5", noteId: "doc_00001", repeat: "every 2 weeks on mon,thu" }, result: { ok: true } }),
+  "command.task.update.clear": command({ name: "task.update", description: "No date, no reminder, no repeat (null clears).", args: { id: "blk_t5", noteId: "doc_00001", dueDate: null, reminderAt: null, repeat: null }, result: { ok: true } }),
+  "command.calendar.feedCreate": command({ name: "calendar.feedCreate", description: "A new calendar feed link, shown once (the old one stops).", args: { includeWorkspaces: true }, result: { url: "https://app.folevi.com/api/calendar/Fq9k2LmZp4Rt7wXy0aBcDeFgHi.ics" } }),
+  "command.calendar.feedRevoke": command({ name: "calendar.feedRevoke", description: "Stop the calendar feed.", args: {}, result: { ok: true } }),
+  "command.calendar.feedWorkspaces": command({ name: "calendar.feedWorkspaces", description: "Personal's tasks only.", args: { includeWorkspaces: false }, result: { ok: true } }),
   // ---- commands
   "command.space.switch": command({ name: "space.switch", description: "Show the team workspace.", args: { space: "ws_studio" }, result: { space: "ws_studio" } }),
   "command.note.create": command({ name: "note.create", description: "A new note in a folder (works offline).", args: { folderId: "fld_trips", title: "" }, result: { id: "01JB7Z8K3Q4ABCDEF0123456789" } }),

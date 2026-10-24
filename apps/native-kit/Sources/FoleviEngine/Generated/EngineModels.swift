@@ -587,11 +587,14 @@ public struct PlaceWorkspaceInfo: Codable, Hashable, Sendable {
     public var id: String
     public var name: String
     public var logoUrl: String?
+    /// Revision 9 (R11.3): the workspace's plan, when this device knows it (the open account's); null otherwise.
+    public var planName: String?
 
-    public init(id: String, name: String, logoUrl: String? = nil) {
+    public init(id: String, name: String, logoUrl: String? = nil, planName: String? = nil) {
         self.id = id
         self.name = name
         self.logoUrl = logoUrl
+        self.planName = planName
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -599,6 +602,7 @@ public struct PlaceWorkspaceInfo: Codable, Hashable, Sendable {
         try c.encode(id, forKey: .id)
         try c.encode(name, forKey: .name)
         try c.encode(logoUrl, forKey: .logoUrl)
+        try c.encode(planName, forKey: .planName)
     }
 }
 
@@ -2431,12 +2435,14 @@ public struct SearchArgs: Codable, Hashable, Sendable {
     /// Only notes edited after this (milliseconds since 1970).
     public var updatedAfter: Int?
     public var includeArchived: Bool?
+    /// Revision 9 (R11.1): only notes this person created (a profile id; with `scope: "place"` only).
+    public var creatorId: String?
     /// Also search by meaning where the plan has it (`meaningAvailable`).
     public var meaning: Bool?
     /// Default 20, at most 40.
     public var limit: Int?
 
-    public init(text: String, scope: Scope? = nil, space: SpaceRef? = nil, folderId: String? = nil, tagId: String? = nil, updatedAfter: Int? = nil, includeArchived: Bool? = nil, meaning: Bool? = nil, limit: Int? = nil) {
+    public init(text: String, scope: Scope? = nil, space: SpaceRef? = nil, folderId: String? = nil, tagId: String? = nil, updatedAfter: Int? = nil, includeArchived: Bool? = nil, creatorId: String? = nil, meaning: Bool? = nil, limit: Int? = nil) {
         self.text = text
         self.scope = scope
         self.space = space
@@ -2444,6 +2450,7 @@ public struct SearchArgs: Codable, Hashable, Sendable {
         self.tagId = tagId
         self.updatedAfter = updatedAfter
         self.includeArchived = includeArchived
+        self.creatorId = creatorId
         self.meaning = meaning
         self.limit = limit
     }
@@ -2934,6 +2941,11 @@ public struct TaskUpdateArgs: Codable, Hashable, Sendable {
     public var priority: Priority?
     public var assigneeId: Patch<String>
     public var reminderAt: Patch<Double>
+    /// Revision 9 (R10.2): "daily", "weekly", "weekdays", "monthly", "yearly", or a rule ("every 2 weeks on mon,thu",
+    /// "every 3 days"); null: no repeat. Needs `noteId`: the repeat is the to-do line's own, saved through the note.
+    public var `repeat`: Patch<String>
+    /// The task's note (required with `repeat`).
+    public var noteId: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -2944,9 +2956,11 @@ public struct TaskUpdateArgs: Codable, Hashable, Sendable {
         case priority
         case assigneeId
         case reminderAt
+        case `repeat`
+        case noteId
     }
 
-    public init(id: String, checked: Bool? = nil, canceled: Bool? = nil, dueDate: String? = nil, dueTime: String? = nil, priority: Priority? = nil, assigneeId: String? = nil, reminderAt: Double? = nil) {
+    public init(id: String, checked: Bool? = nil, canceled: Bool? = nil, dueDate: String? = nil, dueTime: String? = nil, priority: Priority? = nil, assigneeId: String? = nil, reminderAt: Double? = nil, repeat: String? = nil, noteId: String? = nil) {
         self.id = id
         self.checked = checked
         self.canceled = canceled
@@ -2955,6 +2969,8 @@ public struct TaskUpdateArgs: Codable, Hashable, Sendable {
         self.priority = priority
         self.assigneeId = Patch(assigneeId)
         self.reminderAt = Patch(reminderAt)
+        self.repeat = Patch(`repeat`)
+        self.noteId = noteId
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -2967,6 +2983,8 @@ public struct TaskUpdateArgs: Codable, Hashable, Sendable {
         try c.encodeIfPresent(priority, forKey: .priority)
         try c.encodePatch(assigneeId, forKey: .assigneeId)
         try c.encodePatch(reminderAt, forKey: .reminderAt)
+        try c.encodePatch(`repeat`, forKey: .`repeat`)
+        try c.encodeIfPresent(noteId, forKey: .noteId)
     }
 
     public init(from decoder: any Decoder) throws {
@@ -2979,6 +2997,8 @@ public struct TaskUpdateArgs: Codable, Hashable, Sendable {
         self.priority = try c.decodeIfPresent(Priority.self, forKey: .priority)
         self.assigneeId = try c.decodePatch(String.self, forKey: .assigneeId)
         self.reminderAt = try c.decodePatch(Double.self, forKey: .reminderAt)
+        self.repeat = try c.decodePatch(String.self, forKey: .`repeat`)
+        self.noteId = try c.decodeIfPresent(String.self, forKey: .noteId)
     }
 }
 
@@ -3095,14 +3115,17 @@ public struct AccountSpace: Codable, Hashable, Sendable {
     public var logoUrl: String?
     public var role: String
     public var storage: StorageInfo?
+    /// Revision 9 (R11.3): the space's plan ("Free", "Team", "Business"); null when unknown.
+    public var planName: String?
 
-    public init(id: SpaceRef, kind: Kind, name: String, logoUrl: String? = nil, role: String, storage: StorageInfo? = nil) {
+    public init(id: SpaceRef, kind: Kind, name: String, logoUrl: String? = nil, role: String, storage: StorageInfo? = nil, planName: String? = nil) {
         self.id = id
         self.kind = kind
         self.name = name
         self.logoUrl = logoUrl
         self.role = role
         self.storage = storage
+        self.planName = planName
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -3113,6 +3136,7 @@ public struct AccountSpace: Codable, Hashable, Sendable {
         try c.encode(logoUrl, forKey: .logoUrl)
         try c.encode(role, forKey: .role)
         try c.encode(storage, forKey: .storage)
+        try c.encode(planName, forKey: .planName)
     }
 }
 
@@ -4641,5 +4665,142 @@ public struct AvatarArgs: Codable, Hashable, Sendable {
         self.bodyId = bodyId
         self.mimeType = mimeType
         self.name = name
+    }
+}
+
+/// R10.3: the calendar feed (tasks in another calendar app).
+public struct CalendarFeedValue: Codable, Hashable, Sendable {
+    /// A link exists.
+    public var active: Bool
+    /// Always null here: the link is shown once, when it's made (`calendar.feedCreate`); the server keeps only its hash.
+    public var url: String?
+    public var createdAt: Double?
+    public var lastFetchedAt: Double?
+    /// The feed has workspaces' tasks too, not only Personal's.
+    public var includeWorkspaces: Bool
+
+    public init(active: Bool, url: String? = nil, createdAt: Double? = nil, lastFetchedAt: Double? = nil, includeWorkspaces: Bool) {
+        self.active = active
+        self.url = url
+        self.createdAt = createdAt
+        self.lastFetchedAt = lastFetchedAt
+        self.includeWorkspaces = includeWorkspaces
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(active, forKey: .active)
+        try c.encode(url, forKey: .url)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(lastFetchedAt, forKey: .lastFetchedAt)
+        try c.encode(includeWorkspaces, forKey: .includeWorkspaces)
+    }
+}
+
+public struct CalendarFeedCreateArgs: Codable, Hashable, Sendable {
+    public var includeWorkspaces: Bool?
+
+    public init(includeWorkspaces: Bool? = nil) {
+        self.includeWorkspaces = includeWorkspaces
+    }
+}
+
+public struct CalendarFeedCreateResult: Codable, Hashable, Sendable {
+    /// The .ics link, shown once (making a new one ends the old one).
+    public var url: String
+
+    public init(url: String) {
+        self.url = url
+    }
+}
+
+public struct CalendarFeedWorkspacesArgs: Codable, Hashable, Sendable {
+    public var includeWorkspaces: Bool
+
+    public init(includeWorkspaces: Bool) {
+        self.includeWorkspaces = includeWorkspaces
+    }
+}
+
+/// R11.4
+public struct FileUrlsArgs: Codable, Hashable, Sendable {
+    public var ids: [String]
+
+    public init(ids: [String]) {
+        self.ids = ids
+    }
+}
+
+public struct FileLink: Codable, Hashable, Sendable {
+    /// A short-lived signed link, or null when the file can't be had.
+    public var url: String?
+    public var filename: String?
+    public var mimeType: String?
+    public var size: Int?
+    /// End-to-end encrypted: the bytes behind `url` are ciphertext (opened in the note page).
+    public var sealed: Bool
+
+    public init(url: String? = nil, filename: String? = nil, mimeType: String? = nil, size: Int? = nil, sealed: Bool) {
+        self.url = url
+        self.filename = filename
+        self.mimeType = mimeType
+        self.size = size
+        self.sealed = sealed
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(url, forKey: .url)
+        try c.encode(filename, forKey: .filename)
+        try c.encode(mimeType, forKey: .mimeType)
+        try c.encode(size, forKey: .size)
+        try c.encode(sealed, forKey: .sealed)
+    }
+}
+
+public struct FileUrlsValue: Codable, Hashable, Sendable {
+    public var urls: [String: FileLink]
+
+    public init(urls: [String: FileLink]) {
+        self.urls = urls
+    }
+}
+
+/// R11.5
+public struct RecentArgs: Codable, Hashable, Sendable {
+    public enum Scope: String, Codable, Hashable, Sendable, CaseIterable {
+        case place
+        case everywhere
+    }
+
+    /// "place" (the space shown) or "everywhere" (every space of this place). Default "place".
+    public var scope: Scope?
+    /// Default 10, at most 30.
+    public var limit: Int?
+
+    public init(scope: Scope? = nil, limit: Int? = nil) {
+        self.scope = scope
+        self.limit = limit
+    }
+}
+
+/// A recent note and the space it's in.
+public struct RecentRow: Codable, Hashable, Sendable {
+    public var row: NoteRow
+    public var space: SpaceRef
+    public var spaceName: String
+
+    public init(row: NoteRow, space: SpaceRef, spaceName: String) {
+        self.row = row
+        self.space = space
+        self.spaceName = spaceName
+    }
+}
+
+public struct RecentValue: Codable, Hashable, Sendable {
+    public var rows: [RecentRow]
+
+    public init(rows: [RecentRow]) {
+        self.rows = rows
     }
 }

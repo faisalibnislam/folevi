@@ -104,6 +104,17 @@ export class FakeEngine {
   scheduleFlush() {
     this.flushes++;
   }
+  blocks = new Map<string, Record<string, unknown>[]>();
+  upserts: { documentId: string; block: Record<string, unknown>; baseRevision: unknown }[] = [];
+  documentBlocks(documentId: string) {
+    return this.blocks.get(documentId) ?? [];
+  }
+  upsertBlock(documentId: string, block: Record<string, unknown>, _fields: string[], baseRevision?: unknown) {
+    this.upserts.push({ documentId, block, baseRevision });
+  }
+  serverRevision() {
+    return null;
+  }
 }
 
 export class FakeOutbox {

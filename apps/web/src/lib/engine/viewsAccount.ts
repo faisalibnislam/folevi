@@ -3,6 +3,7 @@
 // security's sessions), a note's sharing, and invitation links. Settings read the profile the page already has
 // (users.me), so they change the moment a setting is saved.
 import { api } from "@/lib/convex/api";
+import { TIER_NAMES } from "@/lib/plans";
 import type { EngineDeps, ViewContext } from "./context";
 import { source, type ValueViewDef } from "./views";
 import { id, oneOf, only, text } from "./validate";
@@ -42,6 +43,7 @@ export function accountDetails(deps: EngineDeps, billing: BillingData | undefine
         logoUrl: (w?.logoUrl as string | null | undefined) ?? (s.kind === "personal" ? deps.app.profile.avatarUrl : null),
         role: s.role,
         storage: s.kind === "personal" ? (billing ? { usedBytes: billing.storageUsedBytes, limitBytes: billing.storageLimitBytes ?? null } : null) : used === null ? null : { usedBytes: used, limitBytes: num(w?.storageQuotaBytes) },
+        planName: s.kind === "personal" ? (e && typeof e.plan === "string" ? (TIER_NAMES[e.plan as keyof typeof TIER_NAMES] ?? null) : null) : str((w?.plan as { shortName?: string } | undefined)?.shortName) || null,
       };
     }),
   };

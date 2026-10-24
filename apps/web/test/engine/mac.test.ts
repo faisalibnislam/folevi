@@ -45,7 +45,7 @@ beforeEach(() => {
         current: PLACE,
         places: [
           { id: PLACE, kind: "account", name: "Faisal", email: "f@x", avatarUrl: null, syncs: null, workspaces: [], unread: 0, reminders: 0, waiting: 0 },
-          { id: "acct:user_2", kind: "account", name: "Work", email: "w@x", avatarUrl: null, syncs: null, workspaces: [{ id: "ws9", name: "Acme", logoUrl: null }], unread: 0, reminders: 0, waiting: 0 },
+          { id: "acct:user_2", kind: "account", name: "Work", email: "w@x", avatarUrl: null, syncs: null, workspaces: [{ id: "ws9", name: "Acme", logoUrl: null, planName: null }], unread: 0, reminders: 0, waiting: 0 },
           { id: "library", kind: "library", name: "On this device", email: null, avatarUrl: null, syncs: "iCloud", workspaces: [], unread: 0, reminders: 0, waiting: 0 },
         ],
       },

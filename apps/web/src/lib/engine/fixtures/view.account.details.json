@@ -34,7 +34,8 @@
         "storage": {
           "usedBytes": 1200000000,
           "limitBytes": 10000000000
-        }
+        },
+        "planName": "Pro"
       },
       {
         "id": "ws_studio",
@@ -45,7 +46,8 @@
         "storage": {
           "usedBytes": 300000000,
           "limitBytes": 5000000000
-        }
+        },
+        "planName": "Team"
       }
     ]
   }

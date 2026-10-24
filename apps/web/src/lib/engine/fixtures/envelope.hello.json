@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "c0e1bbf7"
+        "schemaHash": "050e1ac0"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 8,
+        "revision": 9,
         "build": "dev",
-        "schemaHash": "c0e1bbf7",
+        "schemaHash": "050e1ac0",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -70,7 +70,11 @@
           "ai.capabilities",
           "places.move.preview",
           "notes.meta",
-          "ai.research"
+          "ai.research",
+          "calendar.feed",
+          "tasks.unscheduled",
+          "files.urls",
+          "recent"
         ],
         "listViews": [
           "notes.list"
@@ -147,7 +151,10 @@
           "ai.agentApprove",
           "ai.agentDiscard",
           "ai.agentUndo",
-          "settings.setAvatar"
+          "settings.setAvatar",
+          "calendar.feedCreate",
+          "calendar.feedRevoke",
+          "calendar.feedWorkspaces"
         ],
         "editorCommands": [
           "note.prepare",

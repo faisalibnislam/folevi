@@ -32,31 +32,44 @@ public struct FolderMenuContext: Sendable {
     /// Another place exists (another account or the library).
     public var otherPlaces: Bool
     public var links: [FolderRules.Link]
-    public init(canEdit: Bool, inviteSpace: SpaceRef?, aiOn: Bool, otherPlaces: Bool, links: [FolderRules.Link]) {
+    /// "Always fully encrypted" is offered here (an account with encryption, and this person may).
+    public var canLock: Bool
+    /// The space's level, "standard" or "encrypted" (the stop wording differs).
+    public var level: String
+    public var lockedIds: Set<String>
+    public init(canEdit: Bool, inviteSpace: SpaceRef?, aiOn: Bool, otherPlaces: Bool, links: [FolderRules.Link], canLock: Bool = false, level: String = "standard", lockedIds: Set<String> = []) {
         self.canEdit = canEdit
         self.inviteSpace = inviteSpace
         self.aiOn = aiOn
         self.otherPlaces = otherPlaces
         self.links = links
+        self.canLock = canLock
+        self.level = level
+        self.lockedIds = lockedIds
     }
 
     @MainActor
-    public init(session: SessionValue?, places: PlacesValue?, links: [FolderRules.Link]) {
+    public init(session: SessionValue?, places: PlacesValue?, links: [FolderRules.Link], locks: FolderLocksValue? = nil) {
         let space = session.flatMap { s in s.spaces.first { $0.id == s.space } }
         self.init(
             canEdit: space?.canEdit ?? true,
             inviteSpace: (space?.kind == .workspace && space?.canManage == true) ? space?.id : nil,
             aiOn: session?.capabilities.ai ?? false,
             otherPlaces: (places?.places.count ?? 0) > 1,
-            links: links
+            links: links,
+            canLock: locks?.canLock ?? false,
+            level: locks?.level ?? "standard",
+            lockedIds: Set(locks?.locked ?? [])
         )
     }
+
+    public func isLocked(_ id: String) -> Bool { lockedIds.contains(id) }
 
     public func subfolderCount(_ id: String) -> Int { links.filter { $0.parentId == id }.count }
 }
 
 public enum FolderMenuItem: Hashable, Sendable {
-    case newNote, newFolderInside, rename, color, move, movePlaces, moveToTop, askAI, copyLink, invite, delete
+    case newNote, newFolderInside, rename, color, move, movePlaces, moveToTop, askAI, lock, copyLink, invite, delete
 
     public var title: String {
         switch self {
@@ -68,6 +81,7 @@ public enum FolderMenuItem: Hashable, Sendable {
         case .movePlaces: "Move to another place…"
         case .moveToTop: "Move to top level"
         case .askAI: "Ask Foli AI about this folder…"
+        case .lock: "Always fully encrypted"
         case .copyLink: "Copy link"
         case .invite: "Invite people…"
         case .delete: "Delete folder…"
@@ -84,6 +98,7 @@ public enum FolderMenuItem: Hashable, Sendable {
         case .movePlaces: "arrow.left.arrow.right"
         case .moveToTop: "arrow.uturn.up"
         case .askAI: "sparkles"
+        case .lock: "lock"
         case .copyLink: "link"
         case .invite: "person.badge.plus"
         case .delete: "trash"
@@ -104,6 +119,7 @@ public enum FolderMenuItem: Hashable, Sendable {
         }
         var share: [FolderMenuItem] = []
         if context.aiOn { share.append(.askAI) }
+        if context.canLock { share.append(.lock) }
         share.append(.copyLink)
         if context.inviteSpace != nil { share.append(.invite) }
         groups.append(share)
@@ -119,6 +135,8 @@ public enum FolderDialog: Identifiable, Hashable, Sendable {
     case newFolder(parent: MenuFolder?)
     case move(MenuFolder)
     case delete(MenuFolder, subfolders: Int)
+    /// Turning Always fully encrypted on (`locked` false now) or off.
+    case lock(MenuFolder, locked: Bool, level: String)
 
     public var id: String {
         switch self {
@@ -126,6 +144,7 @@ public enum FolderDialog: Identifiable, Hashable, Sendable {
         case .newFolder(let p): "new:\(p?.id ?? "top")"
         case .move(let f): "move:\(f.id)"
         case .delete(let f, _): "delete:\(f.id)"
+        case .lock(let f, _, _): "lock:\(f.id)"
         }
     }
 }
@@ -164,7 +183,13 @@ public struct FolderMenuItems: View {
         ForEach(Array(groups.enumerated()), id: \.offset) { index, group in
             if index > 0 { Divider() }
             ForEach(group, id: \.self) { item in
-                if item == .color {
+                if item == .lock {
+                    Toggle(isOn: Binding(get: { context.isLocked(folder.id) }, set: { _ in
+                        dialogs.open(.lock(folder, locked: context.isLocked(folder.id), level: context.level))
+                    })) {
+                        Label(item.title, systemImage: item.symbol)
+                    }
+                } else if item == .color {
                     Menu {
                         ForEach(FoleviTokens.folderColors) { c in
                             Button {
@@ -193,7 +218,7 @@ public struct FolderMenuItems: View {
             }
         case .newFolderInside: dialogs.open(.newFolder(parent: folder))
         case .rename: dialogs.open(.rename(folder))
-        case .color: break
+        case .color, .lock: break
         case .move: dialogs.open(.move(folder))
         case .movePlaces: navigator.open(.movePlaces(folders: [folder.id], notes: []), nil)
         case .moveToTop:
@@ -262,21 +287,10 @@ struct FolderDialogsModifier: ViewModifier {
     @Bindable var state: FolderDialogState
     let actions: NoteActions
     let tree: [FolderNode]
+    @Environment(\.screenNavigator) private var navigator
 
-    private var promptShown: Binding<Bool> {
-        Binding {
-            switch state.dialog {
-            case .rename, .newFolder: true
-            default: false
-            }
-        } set: { if !$0 { state.dialog = nil } }
-    }
-
-    private var deleteShown: Binding<Bool> {
-        Binding {
-            if case .delete = state.dialog { return true }
-            return false
-        } set: { if !$0 { state.dialog = nil } }
+    private func shown(_ match: @escaping (FolderDialog) -> Bool) -> Binding<Bool> {
+        Binding { state.dialog.map(match) ?? false } set: { if !$0 { state.dialog = nil } }
     }
 
     private var moveFolder: Binding<MenuFolder?> {
@@ -286,14 +300,24 @@ struct FolderDialogsModifier: ViewModifier {
         } set: { if $0 == nil { state.dialog = nil } }
     }
 
+    private var newFolder: Binding<NewFolderRequest?> {
+        Binding {
+            if case .newFolder(let parent) = state.dialog { return NewFolderRequest(parent: parent) }
+            return nil
+        } set: { if $0 == nil { state.dialog = nil } }
+    }
+
     func body(content: Content) -> some View {
         content
-            .alert(promptTitle, isPresented: promptShown) {
+            .alert("Rename folder", isPresented: shown { if case .rename = $0 { true } else { false } }) {
                 TextField("Folder name", text: $state.text)
                 Button("Cancel", role: .cancel) { state.dialog = nil }
-                Button(promptButton) { submitPrompt() }
+                Button("Rename") {
+                    if case .rename(let f) = state.dialog { let name = state.text; Task { await actions.renameFolder(f.id, to: name) } }
+                    state.dialog = nil
+                }
             }
-            .alert(deleteTitle, isPresented: deleteShown) {
+            .alert(deleteTitle, isPresented: shown { if case .delete = $0 { true } else { false } }) {
                 Button("Cancel", role: .cancel) { state.dialog = nil }
                 Button("Delete folder", role: .destructive) {
                     if case .delete(let f, _) = state.dialog { Task { await actions.deleteFolder(f.id) } }
@@ -301,6 +325,15 @@ struct FolderDialogsModifier: ViewModifier {
                 }
             } message: {
                 Text(deleteMessage)
+            }
+            .alert(lockText.title, isPresented: shown { if case .lock = $0 { true } else { false } }) {
+                Button("Cancel", role: .cancel) { state.dialog = nil }
+                Button(lockText.button, role: lockText.destructive ? .destructive : nil) {
+                    if case .lock(let f, let locked, _) = state.dialog { Task { await actions.lockFolder(f.id, name: f.name, locked: !locked) } }
+                    state.dialog = nil
+                }
+            } message: {
+                Text(lockText.message)
             }
             .sheet(item: moveFolder) { folder in
                 MoveFolderSheet(folder: folder, tree: tree) { place, name in
@@ -310,30 +343,19 @@ struct FolderDialogsModifier: ViewModifier {
                     state.dialog = nil
                 }
             }
-    }
-
-    private var promptTitle: String {
-        switch state.dialog {
-        case .rename: "Rename folder"
-        case .newFolder(let parent?): "New folder in “\(parent.name)”"
-        case .newFolder(nil): "New folder"
-        default: ""
-        }
-    }
-
-    private var promptButton: String {
-        if case .rename = state.dialog { return "Rename" }
-        return "Create folder"
-    }
-
-    private func submitPrompt() {
-        let text = state.text
-        switch state.dialog {
-        case .rename(let f): Task { await actions.renameFolder(f.id, to: text) }
-        case .newFolder(let parent): Task { await actions.createFolder(name: text, parentId: parent?.id) }
-        default: break
-        }
-        state.dialog = nil
+            .sheet(item: newFolder) { request in
+                NewFolderSheet(parent: request.parent, tree: tree) { name, color, parentId in
+                    state.dialog = nil
+                    Task {
+                        if let id = await actions.createFolder(name: name, parentId: parentId, color: color) {
+                            // Create opens it (web NewFolderSheet).
+                            navigator.open(.folder(id: id), nil)
+                        }
+                    }
+                } onCancel: {
+                    state.dialog = nil
+                }
+            }
     }
 
     private var deleteTitle: String {
@@ -348,4 +370,19 @@ struct FolderDialogsModifier: ViewModifier {
         }
         return "The folder is removed. Its documents are kept and move to Drafts."
     }
+
+    /// The web's LockDialog wording (lib/e2ee/copy.ts `lock`).
+    private var lockText: (title: String, message: String, button: String, destructive: Bool) {
+        guard case .lock(let f, let locked, let level) = state.dialog else { return ("", "", "", false) }
+        if locked {
+            let standard = level == "standard"
+            return ("Stop encrypting \(f.name)?", standard ? "Its notes will be readable by Folevi again." : "Its notes stay encrypted. Features you've turned on for this space can use them again.", "Stop encrypting", standard)
+        }
+        return ("Always fully encrypt \(f.name)?", "Its notes are encrypted on your devices and never shared in a readable form, even with features you've turned on for this space. Foli AI, search on our servers and apps can't use them.", "Encrypt", false)
+    }
+}
+
+struct NewFolderRequest: Identifiable {
+    let parent: MenuFolder?
+    var id: String { parent?.id ?? "top" }
 }

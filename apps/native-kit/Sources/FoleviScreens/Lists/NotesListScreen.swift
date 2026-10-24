@@ -15,6 +15,7 @@ public struct NotesListScreen: View {
     /// moves; it grows with Dynamic Type.
     @ScaledMetric(relativeTo: .body) private var rowHeight: CGFloat = 62
     @Environment(\.screenNavigator) private var navigator
+    @Environment(\.screenFeedback) private var feedback
     @Environment(\.dynamicTypeSize) private var typeSize
 
     public init(model: NotesListModel) { self.model = model }
@@ -52,6 +53,21 @@ public struct NotesListScreen: View {
                 Task { await model.move(request.ids, to: target) }
             } onCancel: { model.moving = nil }
         }
+        .sheet(isPresented: Binding(get: { model.generating != nil }, set: { if !$0 { model.generating = nil } })) {
+            if let g = model.generating {
+                GenerateSheet(model: g) { id in
+                    model.generating = nil
+                    feedback.toast(ScreenToast("Saved to Templates", tone: .success, actionTitle: "Open") { navigator.open(.note(id: id), nil) })
+                } onCancel: { model.generating = nil }
+            }
+        }
+        .sheet(item: copyingBinding) { request in
+            CopyToSheet(client: model.client, spaces: model.copyTargets, count: request.ids.count) { space, folder in
+                model.copying = nil
+                model.selecting = false
+                Task { await model.actions.copy(request.ids, to: space, folder: folder) }
+            } onCancel: { model.copying = nil }
+        }
         .alert(confirmTitle, isPresented: confirmShown, presenting: model.confirmation) { c in
             Button("Cancel", role: .cancel) { model.confirmation = nil }
             Button(model.confirmationText(c).button, role: .destructive) { Task { await model.confirm(c) } }
@@ -84,18 +100,11 @@ public struct NotesListScreen: View {
 
     @ViewBuilder private var subfolders: some View {
         let cards = model.subfolders
-        if !cards.isEmpty || model.parentFolder != nil {
+        if !cards.isEmpty || model.kind.view == .folder {
             VStack(alignment: .leading, spacing: 6) {
-                if let parent = model.parentFolder {
-                    // Drop a folder here to take it out of this folder, into the parent.
-                    Button { navigator.open(.folder(id: parent.id), nil) } label: {
-                        Label("In \(parent.name)", systemImage: "arrow.turn.left.up").foleviFont(.footnote).foregroundStyle(Folevi.color.inkMuted)
-                    }
-                    .buttonStyle(.plain)
+                // Where this folder is: chips that open its ancestors and take drops (un-nesting a folder).
+                FolderPathBar(ancestors: model.ancestors, actions: model.actions, links: model.folderLinks)
                     .padding(.horizontal, gutter)
-                    .onDrop(of: [.foleviFolderRef], delegate: SectionDrop { item in Task { await model.dropFolder(item, on: parent.id, zone: .inside) } })
-                    .accessibilityHint("Opens the folder this one is in")
-                }
                 if !cards.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(alignment: .top, spacing: 12) {
@@ -229,7 +238,8 @@ public struct NotesListScreen: View {
                 selected: selected,
                 onTap: { open(row, $0) },
                 onToggle: { model.toggle(row.id) },
-                accessibilityActions: accessibilityActions(row)
+                accessibilityActions: accessibilityActions(row),
+                drag: model.dragItem(for: row)
             ) {
                 rowMenu(row)
             }
@@ -352,7 +362,11 @@ public struct NotesListScreen: View {
                 .frame(height: rowHeight)
                 .opacity(model.actions.isHidden(row.id) ? 0.35 : 1)
                 .modifier(RecordsFrame(id: row.id, kind: .noteRow))
-                .draggable(NoteDragItem(id: row.id, title: row.title, folderId: row.folder?.id))
+                .draggable(model.dragItem(for: row)) {
+                    DragStack(count: model.dragItem(for: row).notes.count) {
+                        NoteRowView(row: row, title: row.title.isEmpty ? "Untitled" : row.title, subtitle: model.subtitle(row), starred: model.isStarred(row)).frame(width: 300).padding(.horizontal, 10).background(Folevi.color.surfaceRaised)
+                    }
+                }
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                     ForEach(model.leadingSwipes(row), id: \.self) { action in swipeButton(action, row) }
                 }
@@ -424,7 +438,7 @@ public struct NotesListScreen: View {
             ForEach(model.bulkActions) { action in
                 Button(role: action.destructive ? .destructive : nil) {
                     model.selection = ids
-                    Task { await model.runBulk(action, copyTo: model.copyTargets.first) }
+                    Task { await model.runBulk(action) }
                 } label: {
                     Label("\(action.title) \(notesText(rows.count))", systemImage: action.symbol)
                 }
@@ -469,6 +483,10 @@ public struct NotesListScreen: View {
         Binding { model.moving.map { MoveRequest(ids: $0) } } set: { if $0 == nil { model.moving = nil } }
     }
 
+    private var copyingBinding: Binding<MoveRequest?> {
+        Binding { model.copying.map { MoveRequest(ids: $0) } } set: { if $0 == nil { model.copying = nil } }
+    }
+
     private var confirmShown: Binding<Bool> {
         Binding { model.confirmation != nil } set: { if !$0 { model.confirmation = nil } }
     }
@@ -485,21 +503,9 @@ struct SelectionBar: View {
     var body: some View {
         HStack(spacing: 2) {
             ForEach(model.bulkActions) { action in
-                if action == .copy && model.copyTargets.count > 1 {
-                    Menu {
-                        ForEach(model.copyTargets, id: \.id) { space in
-                            Button(space.name) { Task { await model.runBulk(.copy, copyTo: space) } }
-                        }
-                    } label: { barLabel(action) }
-                    .menuStyle(.button)
+                Button { Task { await model.runBulk(action) } } label: { barLabel(action) }
                     .buttonStyle(.plain)
-                    .menuIndicator(.hidden)
                     .disabled(model.selection.isEmpty)
-                } else {
-                    Button { Task { await model.runBulk(action, copyTo: model.copyTargets.first) } } label: { barLabel(action) }
-                        .buttonStyle(.plain)
-                        .disabled(model.selection.isEmpty)
-                }
             }
         }
         .padding(4)

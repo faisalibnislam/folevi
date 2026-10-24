@@ -68,7 +68,12 @@ public struct HomeToolbar: ToolbarContent {
     public init(model: HomeModel) { self.model = model }
 
     public var body: some ToolbarContent {
-        ToolbarItem(placement: .navigation) { HomeAvatarButton(model: model) }
+        // The avatar is its own rounded square: no system glass around it (iOS 26 and macOS 26 add one).
+        if #available(iOS 26, macOS 26, *) {
+            ToolbarItem(placement: .navigation) { HomeAvatarButton(model: model) }.sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .navigation) { HomeAvatarButton(model: model) }
+        }
         ToolbarItem(placement: .primaryAction) { HomeTrailingPill(model: model, glass: !SystemGlass.inToolbars) }
     }
 }

@@ -1,6 +1,10 @@
 // Hosts a screen in a real window at a device size and takes its picture (ImageRenderer can't draw List or
 // ScrollView, which the screens are made of). iOS: a UIHostingController in a UIWindow, drawn with
 // drawHierarchy; macOS: an NSHostingView in an off-screen NSWindow, drawn with cacheDisplay.
+//
+// Known capture artifact: on iOS 26 and later, drawHierarchy draws the system toolbar's glass behind bar items as
+// a flat white shape in dark mode (the bell and badge in Home's bar look like a white tile). On screen it's right:
+// checked 2026-10-24 with a scratch app showing the same view on the Simulator and `simctl io screenshot`.
 import Foundation
 import SwiftUI
 import Testing

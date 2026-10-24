@@ -73,6 +73,8 @@ struct NoteCardCell<Menu: View>: View {
     var onTap: (CardSource?) -> Void
     var onToggle: () -> Void = {}
     var accessibilityActions: [(String, () -> Void)] = []
+    /// What a drag carries (the whole selection when this note is part of one).
+    var drag: NoteDragItem? = nil
     @ViewBuilder var menu: () -> Menu
     @Environment(\.screenNavigator) private var navigator
 
@@ -92,8 +94,8 @@ struct NoteCardCell<Menu: View>: View {
         .contextMenu { if !selecting { menu() } } preview: {
             NoteCardView(model).frame(width: 240)
         }
-        .draggable(NoteDragItem(id: row.id, title: row.title, folderId: row.folder?.id)) {
-            NoteCardView(model).frame(width: 150)
+        .draggable(drag ?? NoteDragItem(id: row.id, title: row.title, folderId: row.folder?.id)) {
+            DragStack(count: drag?.notes.count ?? 1) { NoteCardView(model).frame(width: 150) }
         }
         .accessibilityLabel(model.accessibilityText)
         .accessibilityAddTraits(selecting && selected ? [.isButton, .isSelected] : .isButton)
@@ -216,6 +218,8 @@ struct FolderCardCell: View {
     var onDropFolder: (FolderDragItem, FolderRules.Zone) -> Void
     @State private var hovering = false
     @State private var dropZone: FolderRules.Zone?
+    @State private var spring = SpringLoader()
+    @State private var width: CGFloat = 142
 
     var body: some View {
         Button {
@@ -255,7 +259,8 @@ struct FolderCardCell: View {
         .draggable(FolderDragItem(id: folder.id, name: folder.name, parentId: folder.parentId)) {
             FolderCardView(card).frame(width: 130)
         }
-        .onDrop(of: [.foleviNoteRef, .foleviFolderRef], delegate: FolderCardDrop(zone: $dropZone, onNotes: onDropNotes, onFolder: onDropFolder))
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .onDrop(of: [.foleviNoteRef, .foleviFolderRef], delegate: FolderDrop(folderId: folder.id, axis: .horizontal, length: width, zone: $dropZone, spring: spring, onSpring: { onOpen(nil) }, onNotes: onDropNotes, onFolder: onDropFolder))
         .accessibilityLabel(card.accessibilityText)
         .accessibilityHint("Opens the folder")
         .accessibilityIdentifier("folder-card-\(folder.id)")
@@ -276,48 +281,6 @@ struct FolderCardCell: View {
     }
 }
 
-/// Drops on a folder card: notes go inside; a folder goes before, inside or after by where it's held.
-struct FolderCardDrop: DropDelegate {
-    @Binding var zone: FolderRules.Zone?
-    var onNotes: ([NoteDragItem]) -> Void
-    var onFolder: (FolderDragItem, FolderRules.Zone) -> Void
-    /// Cards are laid out in rows: the leading and trailing quarters are "before" and "after".
-    var width: CGFloat = 142
-
-    private func zone(_ info: DropInfo) -> FolderRules.Zone {
-        info.hasItemsConforming(to: [.foleviFolderRef]) ? FolderRules.zone(at: info.location.x, length: width) : .inside
-    }
-
-    func dropEntered(info: DropInfo) { zone = zone(info) }
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        zone = zone(info)
-        return DropProposal(operation: .move)
-    }
-    func dropExited(info: DropInfo) { zone = nil }
-
-    func performDrop(info: DropInfo) -> Bool {
-        let at = zone(info)
-        zone = nil
-        let folders = info.itemProviders(for: [.foleviFolderRef])
-        if let provider = folders.first {
-            _ = provider.loadTransferable(type: FolderDragItem.self) { result in
-                guard case .success(let item) = result else { return }
-                Task { @MainActor in onFolder(item, at) }
-            }
-            return true
-        }
-        let notes = info.itemProviders(for: [.foleviNoteRef])
-        guard !notes.isEmpty else { return false }
-        let collector = DropCollector(expected: notes.count) { items in onNotes(items) }
-        for provider in notes {
-            _ = provider.loadTransferable(type: NoteDragItem.self) { result in
-                Task { @MainActor in collector.add(try? result.get()) }
-            }
-        }
-        return true
-    }
-}
-
 /// Gathers the notes of a multi-item drop, then hands them over once.
 @MainActor
 final class DropCollector {
@@ -332,5 +295,22 @@ final class DropCollector {
         if let item { items.append(item) }
         remaining -= 1
         if remaining == 0, !items.isEmpty { done(items) }
+    }
+}
+
+/// A drag's preview: the card, with the cards behind it and a count when it carries several.
+struct DragStack<Content: View>: View {
+    let count: Int
+    @ViewBuilder let content: () -> Content
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            if count > 1 {
+                content().rotationEffect(.degrees(4)).opacity(0.6)
+                if count > 2 { content().rotationEffect(.degrees(-3)).opacity(0.6) }
+            }
+            content()
+            if count > 1 { Badge(count: count).offset(x: 6, y: -6) }
+        }
+        .accessibilityLabel(count > 1 ? "\(count) notes" : "")
     }
 }

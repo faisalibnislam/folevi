@@ -218,6 +218,99 @@ Duplicate Block, Note > Lock) have no editor command and no state. Request edito
 
 ---
 
+## N7 follow-up and N9 folders (2026-10-24)
+
+Stand-ins live in `apps/native-kit/Sources/FoleviScreens/Core/PendingContract.swift` with these names and shapes.
+
+### R9.1 Folders "Always fully encrypted" **open**
+
+The folder menu's lock item (web `useLockMenuItem` + `LockDialog`, docs/E2EE_DESIGN.md §10.8). The web shows it
+only when the account has encryption keys (`LOCK_MENU_FOR_EVERYONE` is false) and the person may (Personal: its
+owner; a workspace: owner and admins); the item is checked when the folder is locked.
+
+```ts
+// SpaceInfo
+  /** "Always fully encrypted" is offered in this space's folder and note menus. */
+  canLock: boolean;
+  /** "standard" or "encrypted" (the space's level; the stop wording differs). */
+  level: string;
+// FolderNode and FolderCard
+  /** Always fully encrypted. */
+  locked: boolean;
+
+export interface FolderLockArgs { id: string; locked: boolean }
+// CommandMap: sets it, making the space's key first when the space has none (the web's e2ee_not_set_up retry)
+"folder.lock": { args: FolderLockArgs; result: OkResult };
+```
+
+Stand-in: a value view `folders.locks { space? }` → `{ canLock: boolean; level: string; locked: string[] }` (the
+locked folder ids), so native needn't wait for new fields on generated types; either shape works for native.
+
+### R9.2 Changes: a note's block-by-block changes **open**
+
+The Changes card's body (web `ChangesView` ChangeCard: `diffVersions` of the last-seen and current versions, drawn
+with `ReadOnlyBlocks`). Native draws the blocks from text:
+
+```ts
+export interface ChangeDiffArgs { id: string }
+export interface ChangeDiffBlock {
+  id: string;
+  /** "added", "removed", "changed" or "same" (unchanged blocks around changes, for context; at most 2 each side). */
+  change: string;
+  /** Block type as in PreviewLine.t ("paragraph", "heading", "todo", ...); `l` heading level, `c` checked. */
+  t: string;
+  x: string;
+  l?: number;
+  c?: boolean;
+  /** "changed": the text before. */
+  before?: string;
+  /** Who made it (a person's name, an app, "Foli AI"), when known. */
+  who?: string | null;
+}
+export interface ChangeDiffValue { id: string; title: string; blocks: ChangeDiffBlock[]; truncated: boolean }
+// ViewMap
+"changes.diff": { args: ChangeDiffArgs; value: ChangeDiffValue };
+```
+
+### R9.3 Every folder as a card **open**
+
+All folders (web `OrganizeIndex` / iphone `Organize.tsx`) shows every folder, nested ones too, as cards with "in
+Work / Clients". `folders.cards` gives one level. Add to `FolderCardsArgs`:
+
+```ts
+  /** Every folder of the space, in tree order (parentId is then ignored). */
+  all?: boolean;
+// FolderCard
+  /** Where a nested folder is: its ancestors' names, "Work / Clients"; null at the top level. */
+  path?: string | null;
+  /** For All folders' "Newest" sort. */
+  createdAt?: number;
+```
+
+Stand-in: native builds All folders from `folders.tree` (no previews) until then.
+
+### R9.4 Generate a template (or a note) with Foli AI **open**
+
+Templates' "Generate with Foli AI" (web `AiGenerateDialog`: `useAi().write("template" | "page", { instruction,
+streamId })`, then `saveDraft(kind, title, text)`).
+
+```ts
+export interface AiGenerateArgs {
+  kind: "template" | "note";
+  instruction: string;
+  space?: SpaceRef;
+}
+export interface AiGenerateResult { title: string; text: string /** Markdown */ }
+export interface AiSaveDraftArgs { kind: "template" | "note"; title: string; text: string; space?: SpaceRef; folderId?: string | null }
+// CommandMap ("no_credits" and the other AI problems as error codes, like catchUp.run)
+"ai.generate": { args: AiGenerateArgs; result: AiGenerateResult };
+"ai.saveDraft": { args: AiSaveDraftArgs; result: NoteCreateResult };
+```
+
+Streaming the draft as it's written (the web shows it) can reuse `ai.stream` later; native shows progress meanwhile.
+
+---
+
 ## N5 iPhone frame and N6 editor commands (2026-10-24)
 
 Found while wiring the native iPhone frame (`apps/ios/ios/App/Native/Phone/`) to the Page View on the iOS 27

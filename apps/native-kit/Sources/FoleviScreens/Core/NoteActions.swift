@@ -127,12 +127,14 @@ public final class NoteActions {
         }
     }
 
-    public func copy(_ ids: [String], to space: SpaceInfo) async {
+    /// Copies notes to another space, into one of its folders (nil: its Drafts).
+    public func copy(_ ids: [String], to space: SpaceInfo, folder: FolderTarget = .drafts) async {
         guard !ids.isEmpty else { return }
+        let place = folder.id == nil ? space.name : "\(space.name) / \(folder.name)"
         await perform(ids, undoable: false, rollback: {}, settle: {}) {
-            try await self.client.command(.noteCopyTo(ids: ids, space: space.id))
+            try await self.client.command(.noteCopyTo(ids: ids, space: space.id, folderId: folder.id))
         } message: { n in
-            n == 1 ? "Copied to \(space.name)" : "Copied \(notesText(n)) to \(space.name)"
+            n == 1 ? "Copied to \(place)" : "Copied \(notesText(n)) to \(place)"
         } undo: { _ in }
     }
 
@@ -231,6 +233,29 @@ public final class NoteActions {
 
     public func moveFolder(_ id: String, to place: FolderRules.Place, message: String) async {
         await folderCommand(.folderMove(id: id, parentId: place.parentId, afterId: place.afterId, space: space), message)
+    }
+
+    /// Always fully encrypted, on or off (web LockDialog's wording).
+    public func lockFolder(_ id: String, name: String, locked: Bool) async {
+        do {
+            try await client.command(PendingN7Commands.FolderLock(FolderLockArgs(id: id, locked: locked)))
+            feedback.toast(ScreenToast(locked ? "\(name) is always fully encrypted" : "\(name) is no longer always fully encrypted", tone: .success))
+        } catch {
+            report(error)
+        }
+    }
+
+    /// Creates a folder with a colour (the New folder sheet); returns its id.
+    @discardableResult
+    public func createFolder(name: String, parentId: String?, color: String?) async -> String? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        do {
+            return try await client.command(.folderCreate(space: space, name: trimmed, parentId: parentId, color: color)).id
+        } catch {
+            report(error)
+            return nil
+        }
     }
 
     public func deleteFolder(_ id: String) async {

@@ -10,7 +10,8 @@ public extension UTType {
     static let foleviFolderRef = UTType(exportedAs: "com.folevi.folder-ref")
 }
 
-public struct NoteDragItem: Codable, Hashable, Sendable, Transferable {
+/// One note a drag carries.
+public struct NoteRef: Codable, Hashable, Sendable {
     public var id: String
     public var title: String
     /// Its folder now (nil: Drafts), for Undo after a move.
@@ -20,10 +21,26 @@ public struct NoteDragItem: Codable, Hashable, Sendable, Transferable {
         self.title = title
         self.folderId = folderId
     }
+}
+
+/// A dragged note, or a whole selection: dragging a selected note in Select mode (or with several selected on
+/// the Mac) carries every selected note that's loaded.
+public struct NoteDragItem: Codable, Hashable, Sendable, Transferable {
+    public var notes: [NoteRef]
+    public init(notes: [NoteRef]) { self.notes = notes }
+    public init(id: String, title: String, folderId: String?) { self.notes = [NoteRef(id: id, title: title, folderId: folderId)] }
+
+    public var ids: [String] { notes.map(\.id) }
+    /// Each note's folder now, for Undo.
+    public var from: [String: String?] {
+        var out: [String: String?] = [:]
+        for n in notes { out[n.id] = n.folderId }
+        return out
+    }
 
     public static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: .foleviNoteRef)
-        ProxyRepresentation { (item: NoteDragItem) in URL(string: FoleviLinks.note(item.id))! }
+        ProxyRepresentation { (item: NoteDragItem) in URL(string: FoleviLinks.note(item.notes.first?.id ?? ""))! }
     }
 }
 

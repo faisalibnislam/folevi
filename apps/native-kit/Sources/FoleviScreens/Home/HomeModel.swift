@@ -17,6 +17,8 @@ public final class HomeModel {
     public let places: ValueStore<PlacesValue>
     public let sync: ValueStore<SyncStatusValue>
     public let tree: ValueStore<FoldersTreeValue>
+    /// Which folders are Always fully encrypted (R9.1; an error hides the menu item).
+    public let locks: ValueStore<FolderLocksValue>
     /// The folder menu's open dialog (rename, new folder, move, delete), shared by the screen and its toolbar.
     public let dialogs = FolderDialogState()
 
@@ -34,6 +36,7 @@ public final class HomeModel {
         self.places = client.watch(.placesList)
         self.sync = client.watch(.syncStatus)
         self.tree = client.watch(.foldersTree(space: space))
+        self.locks = client.watch(PendingN7Views.FolderLocks(SpaceArgs(space: space)))
     }
 
     // MARK: What the screen shows
@@ -171,10 +174,10 @@ public final class HomeModel {
 
     /// Notes dropped on a folder card move into it.
     public func dropNotes(_ items: [NoteDragItem], on folder: FolderCard) async {
-        let ids = items.map(\.id)
+        let notes = items.flatMap(\.notes)
         var from: [String: String?] = [:]
-        for item in items { from[item.id] = item.folderId }
-        await actions.move(ids, to: FolderTarget(id: folder.id, name: folder.name), from: from)
+        for n in notes { from[n.id] = n.folderId }
+        await actions.move(notes.map(\.id), to: FolderTarget(id: folder.id, name: folder.name), from: from)
     }
 
     /// A folder dropped on a folder card: before, inside or after it (by where on the card), or on the section

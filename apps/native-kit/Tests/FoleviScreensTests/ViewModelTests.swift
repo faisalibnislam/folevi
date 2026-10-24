@@ -213,7 +213,7 @@ struct NotesListModelTests {
         #expect(menu.contains(.openInNewTab))
         #expect(menu.contains(.move))
         #expect(menu.contains(.duplicate))
-        #expect(menu.contains(.copyTo("ws_studio")), "the session has a team workspace to copy to")
+        #expect(menu.contains(.copyTo), "the session has a team workspace to copy to")
         #expect(menu.last == .trash)
         #expect(model.leadingSwipes(row) == [row.starred ? .unstar : .star])
         #expect(model.trailingSwipes(row) == [.trash, .archive, .move])

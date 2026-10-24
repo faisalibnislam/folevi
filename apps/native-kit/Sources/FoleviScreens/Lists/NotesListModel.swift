@@ -88,6 +88,7 @@ public final class NotesListModel {
     public let tree: ValueStore<FoldersTreeValue>
     public let session: ValueStore<SessionValue>
     public let places: ValueStore<PlacesValue>
+    public let locks: ValueStore<FolderLocksValue>
     /// The folder screen's subfolder cards (with previews), once `folders.cards` answers.
     public let subfolderCards: ValueStore<FolderCardsValue>?
     /// Built-in templates (Templates only).
@@ -128,6 +129,12 @@ public final class NotesListModel {
     public var selection: Set<String> = []
     /// Notes the move sheet is open for.
     public var moving: [String]?
+    /// Notes the Copy to sheet is open for.
+    public var copying: [String]?
+    /// The Generate with Foli AI sheet (Templates).
+    public var generating: GenerateModel?
+
+    public func startGenerating() { generating = GenerateModel(kind: .template, client: client, space: space) }
     public var confirmation: ListConfirmation?
     /// The folder menu's open dialog (a folder's screen: its own menu and its subfolders' menus).
     public let dialogs = FolderDialogState()
@@ -151,6 +158,7 @@ public final class NotesListModel {
         self.tree = client.watch(.foldersTree(space: space))
         self.session = client.watch(.session, snapshotKey: "session.\(client.place)")
         self.places = client.watch(.placesList)
+        self.locks = client.watch(PendingN7Views.FolderLocks(SpaceArgs(space: space)))
         self.subfolderCards = kind.view == .folder ? client.watch(.foldersCards(space: space, parentId: kind.folderId)) : nil
         self.builtIns = kind.view == .templates ? client.watch(.templatesBuiltIn) : nil
     }
@@ -248,6 +256,13 @@ public final class NotesListModel {
         NoteSlot(index: index, row: store.state.row(at: index))
     }
 
+    /// What dragging `row` carries: the whole selection when it's part of one, else just it.
+    public func dragItem(for row: NoteRow) -> NoteDragItem {
+        let many = selection.contains(row.id) && selection.count > 1
+        let rows = many ? loadedRows.filter { selection.contains($0.id) } : [row]
+        return NoteDragItem(notes: rows.map { NoteRef(id: $0.id, title: $0.title, folderId: $0.folder?.id) })
+    }
+
     public var loadedRows: [NoteRow] { store.rows.filter { !actions.isHidden($0.id) } }
 
     public func card(_ row: NoteRow) -> NoteCardModel { CardMapping.noteCard(row, starred: actions.isStarred(row), inTrash: isTrash) }
@@ -299,13 +314,25 @@ public final class NotesListModel {
     public var folderLinks: [FolderRules.Link] { FolderRules.links(tree.value?.folders ?? []) }
 
     public var folderContext: FolderMenuContext {
-        FolderMenuContext(session: session.value, places: places.value, links: folderLinks)
+        FolderMenuContext(session: session.value, places: places.value, links: folderLinks, locks: locks.error == nil ? locks.value : nil)
     }
 
     public func menuFolder(_ id: String) -> MenuFolder? {
         if let node = tree.value?.folders.first(where: { $0.id == id }) { return MenuFolder(node) }
         if let card = subfolderCards?.value?.folders.first(where: { $0.id == id }) { return MenuFolder(card) }
         return nil
+    }
+
+    /// This folder's ancestors, outermost first (the path bar).
+    public var ancestors: [FolderNode] {
+        guard let folders = tree.value?.folders, var at = folder?.parentId else { return [] }
+        var out: [FolderNode] = []
+        while let node = folders.first(where: { $0.id == at }), out.count < 64 {
+            out.insert(node, at: 0)
+            guard let p = node.parentId else { break }
+            at = p
+        }
+        return out
     }
 
     /// The parent of this folder (for the "up" drop target that un-nests a folder), when it has one.
@@ -317,9 +344,10 @@ public final class NotesListModel {
     /// Notes dropped on a subfolder card move into it (and leave this folder's list).
     public func dropNotes(_ items: [NoteDragItem], into folderId: String) async {
         guard let target = menuFolder(folderId) else { return }
+        let notes = items.flatMap(\.notes)
         var from: [String: String?] = [:]
-        for item in items { from[item.id] = item.folderId }
-        await actions.move(items.map(\.id), to: FolderTarget(id: target.id, name: target.name), from: from, leavesList: kind.view == .folder || kind.view == .unsorted)
+        for n in notes { from[n.id] = n.folderId }
+        await actions.move(notes.map(\.id), to: FolderTarget(id: target.id, name: target.name), from: from, leavesList: kind.view == .folder || kind.view == .unsorted)
     }
 
     /// A folder dropped on a subfolder card (before, inside or after it), or on the screen's "up" target
@@ -336,7 +364,7 @@ public final class NotesListModel {
     // MARK: Actions on rows
 
     public enum RowAction: Hashable, Sendable {
-        case open, openInNewTab, star, unstar, move, duplicate, copyTo(SpaceRef), archive, unarchive, select, deselect, moveUp, moveDown, trash, restore, deleteForever, useTemplate, editTemplate
+        case open, openInNewTab, star, unstar, move, duplicate, copyTo, archive, unarchive, select, deselect, moveUp, moveDown, trash, restore, deleteForever, useTemplate, editTemplate
     }
 
     /// The long-press menu of a note (web NoteContextMenu), in the web's order.
@@ -356,7 +384,7 @@ public final class NotesListModel {
         var second: [RowAction] = [actions.isStarred(row) ? .unstar : .star]
         if row.kind != "template" && canEdit { second.append(.move) }
         second.append(.duplicate)
-        for space in copyTargets { second.append(.copyTo(space.id)) }
+        if !copyTargets.isEmpty { second.append(.copyTo) }
         second.append(row.archived ? .unarchive : .archive)
         if selectable { second.append(selected ? .deselect : .select) }
         var groups = [first, second]
@@ -373,7 +401,7 @@ public final class NotesListModel {
         case .unstar: "Unstar"
         case .move: "Move to folder…"
         case .duplicate: "Duplicate"
-        case .copyTo(let space): "Copy to \(copyTargets.first { $0.id == space }?.name ?? "…")"
+        case .copyTo: "Copy to…"
         case .archive: "Archive"
         case .unarchive: "Unarchive"
         case .select: "Select"
@@ -419,8 +447,7 @@ public final class NotesListModel {
         case .unstar: await actions.star(ids, false)
         case .move: moving = ids
         case .duplicate: await actions.duplicate(row.id)
-        case .copyTo(let space):
-            if let s = copyTargets.first(where: { $0.id == space }) { await actions.copy(ids, to: s) }
+        case .copyTo: copying = ids
         case .archive: await actions.archive(ids, true)
         case .unarchive: await actions.archive(ids, false, leavesList: kind.view == .archive)
         case .select:
@@ -499,7 +526,8 @@ public final class NotesListModel {
             moving = ids
             return
         case .copy:
-            if let space { await actions.copy(ids, to: space) }
+            copying = ids
+            return
         case .star: await actions.star(ids, true)
         case .unstar: await actions.star(ids, false)
         case .archive: await actions.archive(ids, true)

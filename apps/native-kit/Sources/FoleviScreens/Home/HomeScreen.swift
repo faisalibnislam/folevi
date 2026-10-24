@@ -211,7 +211,7 @@ public struct HomeScreen: View {
     // MARK: Folders
 
     private var folderContext: FolderMenuContext {
-        FolderMenuContext(session: model.session.value, places: model.places.value, links: model.folderLinks)
+        FolderMenuContext(session: model.session.value, places: model.places.value, links: model.folderLinks, locks: model.locks.error == nil ? model.locks.value : nil)
     }
 
     private var folders: some View {

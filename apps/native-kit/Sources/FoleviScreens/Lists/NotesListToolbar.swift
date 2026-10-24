@@ -99,7 +99,7 @@ public struct NotesListTrailingItems: View {
         case .newTemplate:
             Task { if let id = await model.actions.createTemplate() { navigator.open(.note(id: id), nil) } }
         case .generateTemplate:
-            navigator.open(.foliAI(about: nil), nil)
+            model.startGenerating()
         case .emptyTrash:
             model.confirmation = .emptyTrash(model.total)
         case .refresh:

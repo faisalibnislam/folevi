@@ -159,6 +159,97 @@ struct ScreenSnapshotTests {
         }
     }
 
+    @Test func allFoldersTiles() async {
+        let engine = FakeEngine()
+        sampleValues(engine)
+        let d = UserDefaults(suiteName: "folevi.snap.\(UUID().uuidString)")!
+        let model = AllFoldersModel(client: engine.client(), defaults: d)
+        await run("all-folders-tiles", reference: true, ready: { model.tree.value != nil && model.cards.value != nil }) {
+            Framed(title: "Folders", large: true) { AllFoldersScreen(model: model) } bar: { AllFoldersToolbar(model: model) }
+        }
+    }
+
+    @Test func allFoldersTree() async {
+        let engine = FakeEngine()
+        let d = UserDefaults(suiteName: "folevi.snap.\(UUID().uuidString)")!
+        d.set("tree", forKey: "folevi.folders.layout")
+        d.set(["fld_trips", "fld_japan"], forKey: "folevi.folders.tree.open")
+        let model = AllFoldersModel(client: engine.client(), defaults: d)
+        await run("all-folders-tree", reference: true, ready: { model.tree.value != nil }) {
+            Framed(title: "Folders", large: true) { AllFoldersScreen(model: model) } bar: { AllFoldersToolbar(model: model) }
+        }
+    }
+
+    @Test func folderWithPath() async {
+        let engine = FakeEngine(rows: 6)
+        let model = NotesListModel(client: engine.client(), kind: .folder("fld_kyoto"), defaults: defaults(.list, view: .folder))
+        await run("folder-nested", reference: false, ready: { model.total == 6 && model.tree.value != nil }) {
+            Framed(title: "Kyoto", large: true) { NotesListScreen(model: model) } bar: { NotesListToolbar(model: model) }
+        }
+    }
+
+    @Test func changesWithADiff() async {
+        let engine = FakeEngine()
+        sampleValues(engine)
+        engine.queryAnswers["changes.diff"] = { _ in
+            try JSONValue.from(ChangeDiffValue(id: "x", title: "Reading list", blocks: [
+                ChangeDiffBlock(id: "1", change: "same", t: "heading", x: "This month", l: 2),
+                ChangeDiffBlock(id: "2", change: "added", t: "todo", x: "The Overstory", c: false, who: "Maya"),
+                ChangeDiffBlock(id: "3", change: "changed", t: "paragraph", x: "Finish by Friday", before: "Finish by Thursday", who: "Maya"),
+                ChangeDiffBlock(id: "4", change: "removed", t: "bulleted", x: "Dune again"),
+            ], truncated: false))
+        }
+        let model = ChangesModel(client: engine.client())
+        await eventually("changes") { !model.notes.isEmpty }
+        if let id = model.notes.first?.id { await model.toggleDiff(id) }
+        await run("changes-diff", reference: false, ready: { model.diffs.count == 1 }) {
+            Framed(title: "Changes", large: true) { ChangesScreen(model: model) } bar: { ToolbarItem { EmptyView() } }
+        }
+    }
+
+    @Test func sheets() async {
+        let engine = FakeEngine()
+        let session = Fixtures.decode(SessionValue.self, "view.session.json")
+        let spaces = session.spaces.filter { $0.id != session.space }
+        await run("copy-to-sheet", reference: false, ready: { true }) {
+            CopyToSheet(client: engine.client(), spaces: spaces, count: 3, onPick: { _, _ in }, onCancel: {})
+        }
+        let tree = Fixtures.decode(FoldersTreeValue.self, "view.folders.tree.json").folders
+        await run("new-folder-sheet", reference: false, ready: { true }) {
+            NewFolderSheet(parent: MenuFolder(tree[0]), tree: tree, onCreate: { _, _, _ in }, onCancel: {})
+        }
+        let gen = GenerateModel(kind: .template, client: engine.client())
+        await run("generate-sheet", reference: false, ready: { true }) { GenerateSheet(model: gen, onSaved: { _ in }, onCancel: {}) }
+    }
+
+    /// Dynamic Type: the default, a large size and an accessibility size (plan 7: layouts hold at the largest).
+    @Test func dynamicType() async {
+        for (label, size) in [("xxxl", DynamicTypeSize.xxxLarge), ("ax3", DynamicTypeSize.accessibility3)] {
+            let engine = FakeEngine()
+            let home = HomeModel(client: engine.client())
+            await run("home-type-\(label)", reference: label == "xxxl", ready: { home.value != nil && home.session.value != nil }) {
+                Framed(title: "Home", large: true) {
+                    #if os(iOS)
+                    HomeScreen(model: home)
+                    #else
+                    HomeScreen(model: home, showsHeader: true)
+                    #endif
+                } bar: { HomeToolbar(model: home) }
+                .environment(\.dynamicTypeSize, size)
+            }
+            let list = NotesListModel(client: engine.client(), kind: NotesListKind(.all), defaults: defaults(.list))
+            await run("all-notes-list-type-\(label)", reference: label == "xxxl", ready: { list.total == 25 }) {
+                Framed(title: list.title, large: true) { NotesListScreen(model: list) } bar: { NotesListToolbar(model: list) }
+                .environment(\.dynamicTypeSize, size)
+            }
+            let cards = NotesListModel(client: engine.client(), kind: NotesListKind(.all), defaults: defaults(.cards))
+            await run("all-notes-cards-type-\(label)", reference: false, ready: { cards.total == 25 }) {
+                Framed(title: cards.title, large: true) { NotesListScreen(model: cards) } bar: { NotesListToolbar(model: cards) }
+                .environment(\.dynamicTypeSize, size)
+            }
+        }
+    }
+
     @Test func changes() async {
         let engine = FakeEngine()
         sampleValues(engine)

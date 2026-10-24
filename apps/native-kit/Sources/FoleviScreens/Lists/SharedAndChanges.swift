@@ -101,6 +101,10 @@ public final class ChangesModel {
     public let client: EngineClient
     public let changes: ValueStore<ChangesValue>
     public private(set) var busy: Set<String> = []
+    /// Notes whose changes are shown, and what was loaded for them (`changes.diff`, R9.2).
+    public private(set) var expanded: Set<String> = []
+    public private(set) var diffs: [String: ChangeDiffValue] = [:]
+    public private(set) var diffErrors: [String: String] = [:]
     /// Rows marked as seen (or proposals answered) before the engine's update.
     public private(set) var gone: Set<String> = []
     @ObservationIgnored let feedback: ScreenFeedback
@@ -120,6 +124,22 @@ public final class ChangesModel {
         guard changes.value != nil else { return nil }
         let parts = [proposals.isEmpty ? nil : "\(proposals.count) proposed", notes.isEmpty ? nil : "\(notes.count) \(notes.count == 1 ? "note" : "notes") changed since you last looked"].compactMap { $0 }
         return parts.isEmpty ? "Nothing new" : parts.joined(separator: " · ")
+    }
+
+    /// Shows or hides a note's changes, loading them the first time.
+    public func toggleDiff(_ id: String) async {
+        if expanded.contains(id) {
+            expanded.remove(id)
+            return
+        }
+        expanded.insert(id)
+        guard diffs[id] == nil else { return }
+        do {
+            diffs[id] = try await client.query(PendingN7Views.ChangeDiff(ChangeDiffArgs(id: id)))
+            diffErrors[id] = nil
+        } catch {
+            diffErrors[id] = ScreenErrors.message(error)
+        }
     }
 
     public func markSeen(_ ids: [String]) async {
@@ -201,6 +221,29 @@ public struct ChangesScreen: View {
     }
 
     private func changedRow(_ n: ChangedNoteRow) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            changedRowButton(n)
+            HStack(spacing: 8) {
+                Button(model.expanded.contains(n.id) ? "Hide changes" : "Show changes") { Task { await model.toggleDiff(n.id) } }
+                    .buttonStyle(.folevi(.ghost, size: .small))
+                    .accessibilityIdentifier("changes-toggle-\(n.id)")
+                Button("Mark as seen") { Task { await model.markSeen([n.id]) } }
+                    .buttonStyle(.folevi(.ghost, size: .small))
+            }
+            .padding(.leading, 34)
+            if model.expanded.contains(n.id) {
+                if let diff = model.diffs[n.id] {
+                    ChangeDiffView(diff: diff).padding(.leading, 34)
+                } else if let error = model.diffErrors[n.id] {
+                    Text(error).foleviFont(.footnote).foregroundStyle(Folevi.color.inkMuted).padding(.leading, 34)
+                } else {
+                    ProgressView().padding(.leading, 34)
+                }
+            }
+        }
+    }
+
+    private func changedRowButton(_ n: ChangedNoteRow) -> some View {
         Button { navigator.open(.note(id: n.id), CardFrames.shared.source(for: n.id)) } label: {
             HStack(alignment: .top, spacing: 12) {
                 NoteGlyph(folderColor: nil, plain: true)
@@ -249,5 +292,82 @@ public struct ChangesScreen: View {
             .disabled(model.busy.contains(p.id))
         }
         .padding(.vertical, 8)
+    }
+}
+
+/// A note's changes block by block (web ChangesView ChangeCard): added lines in moss, removed ones struck through
+/// in coral, changed ones with what they were, and a little unchanged text around them for context.
+public struct ChangeDiffView: View {
+    let diff: ChangeDiffValue
+    public init(diff: ChangeDiffValue) { self.diff = diff }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(diff.blocks) { b in block(b) }
+            if diff.truncated {
+                Text("More changes are in the note's version history.").foleviFont(.caption).foregroundStyle(Folevi.color.inkFaint)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.control, style: .continuous).fill(Folevi.color.surfaceSunken))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Changes in \(diff.title.isEmpty ? "Untitled" : diff.title)")
+    }
+
+    private func line(_ b: ChangeDiffBlock, _ text: String) -> String {
+        switch b.t {
+        case "todo": "\(b.c == true ? "☑" : "☐") \(text)"
+        case "bulleted": "• \(text)"
+        case "numbered": "1. \(text)"
+        default: text
+        }
+    }
+
+    @ViewBuilder private func block(_ b: ChangeDiffBlock) -> some View {
+        let style: FoleviTextStyle = b.t.hasPrefix("heading") ? .bodyStrong : .callout
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(mark(b.change)).font(.system(size: 12, weight: .bold, design: .monospaced)).foregroundStyle(color(b.change)).frame(width: 12).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                if b.change == "changed", let before = b.before {
+                    Text(line(b, before)).foleviFont(style).strikethrough().foregroundStyle(Folevi.color.coralInk)
+                }
+                Text(line(b, b.x))
+                    .foleviFont(style)
+                    .strikethrough(b.change == "removed")
+                    .foregroundStyle(b.change == "same" ? Folevi.color.inkFaint : b.change == "removed" ? Folevi.color.coralInk : Folevi.color.mossInk)
+                if let who = b.who, b.change != "same" { Text(who).foleviFont(.caption).foregroundStyle(Folevi.color.inkFaint) }
+            }
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(spoken(b.change)): \(b.x)\(b.before.map { ", was: \($0)" } ?? "")")
+    }
+
+    private func mark(_ change: String) -> String {
+        switch change {
+        case "added": "+"
+        case "removed": "−"
+        case "changed": "~"
+        default: " "
+        }
+    }
+
+    private func color(_ change: String) -> Color {
+        switch change {
+        case "added": Folevi.color.moss
+        case "removed": Folevi.color.coral
+        case "changed": Folevi.color.marigold
+        default: Folevi.color.inkFaint
+        }
+    }
+
+    private func spoken(_ change: String) -> String {
+        switch change {
+        case "added": "Added"
+        case "removed": "Removed"
+        case "changed": "Changed"
+        default: "Unchanged"
+        }
     }
 }

@@ -273,3 +273,89 @@ Opening the note's "..." menu (a native UIMenu) on a note that had the keyboard 
 while `editor.state.focused` was false, so native hid its toolbar and Done. Please send `editor.state` on
 `focusin`/`focusout` of the title and the editor (not only on the editor's selection updates), so `focused` follows
 whatever holds the keyboard on the note page.
+
+---
+
+## N10 Tasks and Calendar, N11 Search, Notifications and Places (2026-10-24)
+
+Stand-ins live in `apps/native-kit/Sources/FoleviScreens/Intents/PendingContractN10.swift` with the same names and
+shapes. Native screens work without the open ones (they hide or fall back as each entry says).
+
+### R10.1 Codegen: `?: T | null` fields must be able to send `null` (bug) **open**
+
+`TaskUpdateArgs.dueDate`, `dueTime`, `assigneeId` and `reminderAt` are `?: T | null` ("left out: unchanged; null:
+clear"). The generated Swift struct has plain optionals with synthesized `Codable`, so nil is left out and "no date",
+"all day", "nobody" and "no reminder" can't be sent. Fix in `scripts/engine-codegen.mjs`: for an optional field whose
+type includes `null`, generate a three-state field (keep, clear, set), for example a generic
+`enum Patch<T> { case keep, clear, set(T) }` encoded as absent / `null` / the value. Other affected args: check every
+`?: ... | null` (`NoteCreateArgs.folderId`, `TaskCreateArgs.dueDate`/`dueTime`). Until then native sends `task.update`
+through `PendingN10Commands.TaskPatch` (`TaskPatchArgs` with `PatchField`).
+
+### R10.2 Repeating tasks: set and change the repeat **open**
+
+The web's task sheet shows the repeat read-only and Quick Add reads it from the words; native matches that. To edit it
+natively (the plan's "due/repeat editing with native pickers"):
+
+```ts
+export interface TaskUpdateArgs {
+  // ...
+  /** "daily", "weekly", "weekdays", "monthly", "yearly", or a rule ("every 2 weeks on mon,thu"); null: no repeat. */
+  repeat?: string | null;
+}
+```
+
+### R10.3 Calendar feed link (tasks in another calendar app) **open**
+
+`CalendarFeedDialog.tsx` ("Show your tasks in your calendar", `convex/calendarFeeds.ts`) has no command. Native leaves it
+out of the Calendars sheet until:
+
+```ts
+export interface CalendarFeedValue { url: string | null; createdAt: number | null }
+"calendar.feed": { args: EmptyArgs; value: CalendarFeedValue };            // view
+"calendar.feedCreate": { args: EmptyArgs; result: { url: string } };       // shown once; ends the old link
+"calendar.feedRevoke": { args: EmptyArgs; result: OkResult };
+```
+
+### R10.4 Tasks without a date, for the Calendar's "Unscheduled" list (iPad, Mac) **open**
+
+`CalendarView.tsx` lists open tasks without a date beside the month to drag onto a day. `tasks.range` only returns dated
+tasks. Please add `"tasks.unscheduled": { args: SpaceArgs; value: TasksRangeValue }` (open, no due date, newest first,
+at most 200). Native drops onto days already work for any task row it has.
+
+### R11.1 Search: "Created by" filter **open**
+
+The web palette filters by creator in workspaces (`creatorId`). Add to `SearchArgs`: `creatorId?: string;` (ignored with
+`scope: "everywhere"`). Native shows the Folder, Tag, Updated and Archived filters; Created by comes with this.
+
+### R11.2 Declining an invitation **open**
+
+The bell can only accept. Native offers Decline next to Accept:
+
+```ts
+export interface InviteDeclineArgs { inviteId: string; kind: "workspace" | "page" }
+"invite.decline": { args: InviteDeclineArgs; result: OkResult };   // workspaces.declineInvite / sharing.declinePageInvite; removes the notification
+```
+
+Until then native catches `unknown_command` and removes the notification instead (`notification.remove`).
+
+### R11.3 Plans per workspace in the account and place switcher **open**
+
+The redesigned account menu shows each place with its plan ("Pro", "Team"). `AccountDetails.plan` covers Personal;
+`AccountSpace` and `PlaceWorkspaceInfo` have none, so native shows the role ("Admin") for workspaces. Add:
+
+```ts
+export interface AccountSpace { /* ... */ planName: string | null }      // "Team", "Business"; null when unknown
+export interface PlaceWorkspaceInfo { /* ... */ planName: string | null } // other accounts' workspaces
+```
+
+### R11.4 A notification's file download **open**
+
+Rows with `fileId` (an export ready to download) need a signed link. Native sends the frame
+`ScreenIntent.downloadFile(id:)`; the frame needs `"files.urls": { args: { ids: string[] }; value: { urls: Record<string, { url: string | null }> } }`
+(the `files.urls` the plan's 3.10 already names) to fetch it.
+
+### R11.5 Recent notes across spaces before typing in Search **open (small)**
+
+Before typing, native shows Home's recents (`home.recents`, this space only). With scope Everywhere the web shows the
+same. If the engine has recents across every space of the place, `"recent": { args: { scope?: "place" | "everywhere"; limit?: number }; value: { rows: NoteRow[] } }`
+(the plan's 5.7 `recent` view) would let native show them for Everywhere.

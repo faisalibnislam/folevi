@@ -181,9 +181,9 @@ final class FakeEngine {
     }
 }
 
-/// Waits (up to two seconds) for the main actor to make a condition true.
+/// Waits (up to 15 seconds: the rendering suites share the main actor) for the main actor to make a condition true.
 @MainActor
-func eventually(_ what: String = "condition", timeout: Duration = .seconds(2), _ condition: () -> Bool, sourceLocation: SourceLocation = #_sourceLocation) async {
+func eventually(_ what: String = "condition", timeout: Duration = .seconds(15), _ condition: () -> Bool, sourceLocation: SourceLocation = #_sourceLocation) async {
     let clock = ContinuousClock()
     let deadline = clock.now + timeout
     while !condition() {

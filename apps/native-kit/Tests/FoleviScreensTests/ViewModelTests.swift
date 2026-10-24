@@ -63,12 +63,12 @@ struct HomeModelTests {
         #expect(model.catchUp == .offer(error: "You're out of AI credits."))
     }
 
-    @Test func droppingNotesOnAFolderMovesThem() async {
+    @Test func droppingNotesOnAFolderMovesThem() async throws {
         let engine = FakeEngine()
         let log = FeedbackLog()
         let model = HomeModel(client: engine.client(), feedback: log.feedback)
         await eventually { model.value != nil }
-        let work = model.folders.first { $0.id == "fld_work" }!
+        let work = try #require(model.folders.first { $0.id == "fld_work" })
         await model.dropNotes([NoteDragItem(id: "doc_00001", title: "Kyoto", folderId: "fld_trips")], on: work)
         let sent = engine.commands(named: "note.move")
         #expect(sent.count == 1)

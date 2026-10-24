@@ -24,11 +24,16 @@ public struct HomeAvatarButton: View {
 /// The trailing pill: notifications (with the unread count) and More.
 public struct HomeTrailingPill: View {
     let model: HomeModel
+    let glass: Bool
     @Environment(\.screenNavigator) private var navigator
-    public init(model: HomeModel) { self.model = model }
+    /// `glass: false` inside a system toolbar that draws its own glass (iOS 26 and macOS 26).
+    public init(model: HomeModel, glass: Bool = true) {
+        self.model = model
+        self.glass = glass
+    }
 
     public var body: some View {
-        GlassPill {
+        GlassWrap(glass) {
             IconButton("bell", label: "Notifications", badge: model.unread) { navigator.open(.notifications, nil) }
                 .accessibilityIdentifier("home-bell")
             Menu {
@@ -64,6 +69,27 @@ public struct HomeToolbar: ToolbarContent {
 
     public var body: some ToolbarContent {
         ToolbarItem(placement: .navigation) { HomeAvatarButton(model: model) }
-        ToolbarItem(placement: .primaryAction) { HomeTrailingPill(model: model) }
+        ToolbarItem(placement: .primaryAction) { HomeTrailingPill(model: model, glass: !SystemGlass.inToolbars) }
+    }
+}
+
+/// Whether the system draws glass behind toolbar items itself (iOS 26, macOS 26 and later).
+public enum SystemGlass {
+    public static var inToolbars: Bool {
+        if #available(iOS 26, macOS 26, *) { return true }
+        return false
+    }
+}
+
+/// The glass pill, or just the items in a row when the toolbar draws the glass.
+struct GlassWrap<Content: View>: View {
+    let glass: Bool
+    let content: Content
+    init(_ glass: Bool, @ViewBuilder content: () -> Content) {
+        self.glass = glass
+        self.content = content()
+    }
+    var body: some View {
+        if glass { GlassPill { content } } else { HStack(spacing: 2) { content } }
     }
 }

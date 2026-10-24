@@ -8,8 +8,13 @@ import FoleviEngine
 
 public struct NotesListTrailingItems: View {
     @Bindable var model: NotesListModel
+    let glass: Bool
     @Environment(\.screenNavigator) private var navigator
-    public init(model: NotesListModel) { self.model = model }
+    /// `glass: false` inside a system toolbar that draws its own glass (iOS 26 and macOS 26).
+    public init(model: NotesListModel, glass: Bool = true) {
+        self.model = model
+        self.glass = glass
+    }
 
     public var body: some View {
         HStack(spacing: 8) {
@@ -22,7 +27,7 @@ public struct NotesListTrailingItems: View {
                     Button("Select") { model.selecting = true }
                         .accessibilityIdentifier("list-select")
                 }
-                GlassPill {
+                GlassWrap(glass) {
                     Menu { menu } label: {
                         Image(systemName: "ellipsis").font(.system(size: 15, weight: .medium)).foregroundStyle(Folevi.color.ink).frame(width: 30, height: 30)
                     }
@@ -123,6 +128,6 @@ public struct NotesListToolbar: ToolbarContent {
     public init(model: NotesListModel) { self.model = model }
     public var body: some ToolbarContent {
         ToolbarItem(placement: .navigation) { NotesListLeadingItems(model: model) }
-        ToolbarItem(placement: .primaryAction) { NotesListTrailingItems(model: model) }
+        ToolbarItem(placement: .primaryAction) { NotesListTrailingItems(model: model, glass: !SystemGlass.inToolbars) }
     }
 }

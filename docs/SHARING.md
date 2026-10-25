@@ -58,7 +58,7 @@ hold restricted pages and other people's notes that a member couldn't hand out o
 ### The Share dialog
 
 `components/app/FolderShareDialog.tsx`, opened from **Share…** in the folder's "…" menu (sidebar rows,
-folder cards) and from **People** on a shared folder's page. It shows:
+folder cards), the **Share** button on the folder's page, and **People** on a shared folder's page. It shows:
 
 - what sharing reaches ("its 12 notes, in its subfolders too, and notes added later");
 - the people with access, guests marked, with role pickers and Remove for managers;

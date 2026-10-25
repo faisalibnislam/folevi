@@ -21,18 +21,24 @@ async function noteInFolder(page: Page, folder: string, title: string): Promise<
   return page.url().replace(/\?.*$/, "");
 }
 
-/** The folder's Share dialog, from its "…" menu in the sidebar. */
-async function openFolderShare(page: Page, folder: string) {
+/** The folder's Share dialog, from its "…" menu in the sidebar, or from the Share button on the folder's page. */
+async function openFolderShare(page: Page, folder: string, from: "menu" | "page" = "menu") {
   await showFolders(page);
-  await nav(page).getByRole("button", { name: `Folder options for ${folder}` }).click();
-  await page.getByRole("menuitem", { name: "Share…" }).click();
+  if (from === "page") {
+    await folderLink(page, folder).click();
+    await page.waitForURL(/\/folders\/[0-9A-Z]{26}$/);
+    await page.getByRole("button", { name: "Share", exact: true }).click();
+  } else {
+    await nav(page).getByRole("button", { name: `Folder options for ${folder}` }).click();
+    await page.getByRole("menuitem", { name: "Share…" }).click();
+  }
   const dialog = page.getByRole("dialog", { name: `Share “${folder}”` });
   await expect(dialog.getByTestId("folder-share-dialog")).toBeVisible({ timeout: 20_000 });
   return dialog;
 }
 
-async function shareFolder(page: Page, folder: string, email: string, role: "Can view" | "Can comment" | "Can edit") {
-  const dialog = await openFolderShare(page, folder);
+async function shareFolder(page: Page, folder: string, email: string, role: "Can view" | "Can comment" | "Can edit", from: "menu" | "page" = "menu") {
+  const dialog = await openFolderShare(page, folder, from);
   await dialog.getByLabel("Email address").fill(email);
   await pick(dialog.getByLabel("Role"), role);
   await dialog.getByRole("button", { name: "Share", exact: true }).click();
@@ -117,7 +123,8 @@ test("share a folder with a new address: they sign up, accept from the bell, and
   await noteInFolder(owner.page, "Recipes", "Bread");
 
   const email = uniqueEmail("folder-guest");
-  const dialog = await shareFolder(owner.page, "Recipes", email, "Can view");
+  // This time from the Share button on the folder's own page.
+  const dialog = await shareFolder(owner.page, "Recipes", email, "Can view", "page");
   await expect(owner.page.getByRole("status").filter({ hasText: `Invitation sent to ${email}` })).toBeVisible();
   await expect(dialog.getByRole("list", { name: "Invited by email" }).getByRole("listitem").filter({ hasText: email })).toContainText("waiting to accept");
   await dialog.getByRole("button", { name: "Close" }).click();

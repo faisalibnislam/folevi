@@ -3,7 +3,7 @@
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, type LucideIcon } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { api } from "@/lib/convex/api";
@@ -43,6 +43,8 @@ import { useAiEnabled } from "@/components/ai/useAi";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useIphoneApp } from "@/lib/iphone";
 import { IphoneNoteList } from "@/components/iphone/NoteList";
+import { useCapabilities } from "@/lib/mode";
+import { FolderShareDialog } from "@/components/app/FolderShareDialog";
 
 // Foli AI's "Generate a template" brings the read-only drawing of every block (its preview): it loads the first
 // time it's opened, not with every list (docs/IOS_PERFORMANCE.md, "Startup").
@@ -191,6 +193,9 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const notes = useNoteActions();
   const [cached, setCached] = useState<Summary[] | null>(null);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
+  // A folder's Share dialog, from the folder page's toolbar (docs/SHARING.md).
+  const [sharingFolder, setSharingFolder] = useState(false);
+  const caps = useCapabilities();
   const trashSummary = useQuery(api.documents.trashSummary, confirmEmpty ? { scope } : "skip");
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [ctx, setCtx] = useState<{ doc: Summary; at: { x: number; y: number } } | null>(null);
@@ -396,6 +401,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
 
   const dialogs = (
     <>
+      {sharingFolder && folderId ? <FolderShareDialog open onClose={() => setSharingFolder(false)} folderId={folderId} name={org?.folders.find((f) => f.id === folderId)?.name ?? ""} /> : null}
       <MoveToFolderDialog
         open={bulkMoveOpen}
         onClose={() => setBulkMoveOpen(false)}
@@ -586,6 +592,11 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
             ))}
           </div>
           {/* Page actions share the toolbar row (new notes come from the tab bar). */}
+          {view === "folder" && folderId && caps.sharing ? (
+            <Button variant="secondary" onClick={() => setSharingFolder(true)}>
+              <Share2 size={14} aria-hidden /> Share
+            </Button>
+          ) : null}
           {view === "trash" && results.length ? (
             <Button variant="quiet" onClick={() => setConfirmEmpty(true)}>
               Empty Trash

@@ -45,6 +45,8 @@ const SharedView = lazy(() => import("@/components/views/SharedView").then((m) =
 const HelpView = lazy(() => import("@/components/views/HelpView").then((m) => ({ default: m.HelpView })));
 const InviteView = lazy(() => import("@/components/views/InviteView").then((m) => ({ default: m.InviteView })));
 const ShareInviteView = lazy(() => import("@/components/views/ShareInviteView").then((m) => ({ default: m.ShareInviteView })));
+const SharedFolderView = lazy(() => import("@/components/views/SharedFolderView").then((m) => ({ default: m.SharedFolderView })));
+const FolderInviteView = lazy(() => import("@/components/views/FolderInviteView").then((m) => ({ default: m.FolderInviteView })));
 
 /** A page whose code is still on its way: its frame and title, nothing in it yet. */
 function Later({ title, children }: { title: string; children: React.ReactNode }) {
@@ -91,7 +93,8 @@ function Routes() {
   const iphone = useIphoneApp();
   const caps = useCapabilities();
   if (!caps.changes && route.name === "changes") return <AccountOnly title="Changes" />;
-  if (!caps.sharing && route.name === "shared") return <AccountOnly title="Shared with Me" />;
+  if (!caps.sharing && (route.name === "shared" || route.name === "shared-folder")) return <AccountOnly title="Shared with Me" />;
+  if (!caps.sharing && route.name === "folder-invite") return <AccountOnly title="Invitation" />;
   if (!caps.workspaces && route.name === "invite") return <AccountOnly title="Invitation" />;
   if (!caps.sharing && route.name === "share-invite") return <AccountOnly title="Invitation" />;
   switch (route.name) {
@@ -152,6 +155,18 @@ function Routes() {
       return (
         <Later title="Shared with Me">
           <SharedView />
+        </Later>
+      );
+    case "shared-folder":
+      return (
+        <Later title="Shared folder">
+          <SharedFolderView key={route.id} folderId={route.id} />
+        </Later>
+      );
+    case "folder-invite":
+      return (
+        <Later title="Invitation">
+          <FolderInviteView token={route.token} />
         </Later>
       );
     case "settings":

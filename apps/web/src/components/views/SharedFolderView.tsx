@@ -25,7 +25,7 @@ export function SharedFolderView({ folderId }: { folderId: string }) {
   const facts = data ? [sharedPlace(data), data.roleLabel ?? (data.access === "write" || data.access === "manage" ? "Can edit" : data.access === "comment" ? "Can comment" : "Can view")].join(" · ") : undefined;
   return (
     <ViewChrome
-      title={<h1 className="truncate text-sm font-semibold">{title}</h1>}
+      title={<h1 className="truncate text-subheadline font-semibold">{title}</h1>}
       subtitle={facts}
       tabTitle={title || "Shared folder"}
       iphone={{ title: title || "Shared folder", subtitle: facts }}
@@ -44,7 +44,7 @@ export function SharedFolderView({ folderId }: { folderId: string }) {
           <EmptyState icon={FolderX} title="You can’t open this folder" body="It may have been unshared, moved or deleted. Folders shared with you are in Shared with Me." />
         ) : (
           <>
-            <nav aria-label="Folder path" className="mb-4 flex flex-wrap items-center gap-1 text-xs text-muted">
+            <nav aria-label="Folder path" className="mb-4 flex flex-wrap items-center gap-1 text-footnote text-muted">
               <AppLink href="/shared" className="hover:text-heading">
                 Shared with Me
               </AppLink>
@@ -60,7 +60,7 @@ export function SharedFolderView({ folderId }: { folderId: string }) {
               <span className="text-heading">{data.folder.name || "Untitled"}</span>
             </nav>
             {data.sharedBy ? (
-              <p className="mb-4 text-xs text-muted">
+              <p className="mb-4 text-footnote text-muted">
                 Shared with you by {data.sharedBy}
                 {data.role ? ` (${roleLabel(data.role).toLowerCase()})` : ""}. Notes added to this folder later show up here too.
               </p>
@@ -72,7 +72,7 @@ export function SharedFolderView({ folderId }: { folderId: string }) {
                     <AppLink href={`/shared/${f.id}`} className="flex items-center gap-3 ui-card rounded-control px-3 py-2.5 hover:bg-surface">
                       <FolderGlyph color={f.color} size={20} />
                       <span className="min-w-0 flex-1 truncate font-medium">{f.name || "Untitled"}</span>
-                      <span className="text-xs text-muted">{f.noteCount === 1 ? "1 note" : `${f.noteCount} notes`}</span>
+                      <span className="text-footnote text-muted">{f.noteCount === 1 ? "1 note" : `${f.noteCount} notes`}</span>
                     </AppLink>
                   </li>
                 ))}
@@ -88,8 +88,8 @@ export function SharedFolderView({ folderId }: { folderId: string }) {
                       <FileText size={16} className="mt-0.5 flex-none text-muted" aria-hidden />
                       <span className="min-w-0 flex-1">
                         <span className="block font-medium">{d.title || "Untitled"}</span>
-                        {d.excerpt ? <span className="block truncate text-sm text-muted">{d.excerpt}</span> : null}
-                        <span className="block text-xs text-faint">
+                        {d.excerpt ? <span className="block truncate text-subheadline text-muted">{d.excerpt}</span> : null}
+                        <span className="block text-footnote text-faint">
                           {d.access === "write" || d.access === "manage" ? "Can edit" : d.access === "comment" ? "Can comment" : "Can view"} · updated {formatRelative(d.updatedAt)}
                         </span>
                       </span>

@@ -42,9 +42,9 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
   return (
     <Dialog open={open} onClose={onClose} title={`Share “${name || "Untitled"}”`} size="md">
       {!data ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-subheadline text-muted">Loading…</p>
       ) : (
-        <div className="space-y-6 pb-3 text-sm" data-testid="folder-share-dialog">
+        <div className="space-y-6 pb-3 text-subheadline" data-testid="folder-share-dialog">
           <p className="rounded-chip border border-line p-3 text-muted" data-testid="folder-share-summary">
             {folderAccessSummary({ noteCount: data.noteCount, people: data.people.length, personal: data.personal })}
           </p>
@@ -59,11 +59,11 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
           <section>
             <h3 className="mb-2 font-semibold">People</h3>
             {data.youAreGuest ? (
-              <p className="mb-3 text-xs text-muted">
+              <p className="mb-3 text-footnote text-muted">
                 This folder was shared with you{data.sharedBy ? ` by ${data.sharedBy}` : ""}. {data.ownerName ? `It belongs to ${data.ownerName}.` : ""} Only its owner{data.personal ? "" : " and the workspace’s admins"} can share it.
               </p>
             ) : !data.canManage ? (
-              <p className="mb-3 text-xs text-muted">Only the folder’s owner and the workspace’s owners and admins can share it.</p>
+              <p className="mb-3 text-footnote text-muted">Only the folder’s owner and the workspace’s owners and admins can share it.</p>
             ) : null}
             {data.canManage && !data.blocked ? (
               <form
@@ -96,7 +96,7 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
                 <Button type="submit" variant="primary" disabled={sending}>
                   Share
                 </Button>
-                <p className="w-full text-xs text-muted">
+                <p className="w-full text-footnote text-muted">
                   {data.personal
                     ? "Anyone with an email address. People without a Folevi account get an invitation by email."
                     : "People outside the workspace join as guests on this folder only and aren’t billed. People without a Folevi account get an invitation by email."}
@@ -110,10 +110,10 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5 truncate font-medium">
                       <span className="truncate">{p.displayName}</span>
-                      {p.isYou ? <span className="text-xs font-normal text-muted">(you)</span> : null}
-                      {p.guest ? <span className="flex-none rounded-chip border border-line px-1.5 py-px text-[11px] font-medium text-muted">Guest</span> : null}
+                      {p.isYou ? <span className="text-footnote font-normal text-muted">(you)</span> : null}
+                      {p.guest ? <span className="flex-none rounded-chip border border-line px-1.5 py-px text-caption-2 font-medium text-muted">Guest</span> : null}
                     </span>
-                    {p.email ? <span className="block truncate text-xs text-muted">{p.email}</span> : null}
+                    {p.email ? <span className="block truncate text-footnote text-muted">{p.email}</span> : null}
                   </span>
                   {p.canChange ? (
                     <>
@@ -121,7 +121,7 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
                         aria-label={`Access for ${p.displayName}`}
                         value={p.role}
                         onChange={(e) => void run(setRole({ folderId, profileId: p.profileId, role: e.target.value as ShareRole }), "Access changed")}
-                        className="h-8 ui-input rounded-chip px-2.5 text-xs"
+                        className="h-8 ui-input rounded-chip px-2.5 text-footnote"
                       >
                         <option value="viewer">Can view</option>
                         <option value="commenter">Can comment</option>
@@ -132,7 +132,7 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
                       </IconButton>
                     </>
                   ) : (
-                    <span className="text-xs text-muted">{roleLabel(p.role)}</span>
+                    <span className="text-footnote text-muted">{roleLabel(p.role)}</span>
                   )}
                   {p.isYou && data.youAreGuest ? (
                     <Button size="sm" variant="quiet" onClick={() => void run(revoke({ folderId, profileId: p.profileId }).then(onClose), "You left the folder")}>
@@ -145,7 +145,7 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
 
             {data.inherited.length ? (
               <>
-                <h4 className="mb-1.5 mt-4 text-xs font-semibold uppercase tracking-[0.06em] text-faint">From folders above</h4>
+                <h4 className="mb-1.5 mt-4 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">From folders above</h4>
                 <ul className="divide-y divide-line rounded-chip border border-line" aria-label="Access from folders above">
                   {data.inherited.flatMap((f) =>
                     f.people.map((p) => (
@@ -153,11 +153,11 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-medium">
                             {p.displayName}
-                            {p.isYou ? <span className="ml-1.5 text-xs font-normal text-muted">(you)</span> : null}
+                            {p.isYou ? <span className="ml-1.5 text-footnote font-normal text-muted">(you)</span> : null}
                           </span>
-                          <span className="block truncate text-xs text-muted">From folder {f.folderName || "Untitled"}</span>
+                          <span className="block truncate text-footnote text-muted">From folder {f.folderName || "Untitled"}</span>
                         </span>
-                        <span className="text-xs text-muted">{roleLabel(p.role)}</span>
+                        <span className="text-footnote text-muted">{roleLabel(p.role)}</span>
                       </li>
                     )),
                   )}
@@ -167,12 +167,12 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
 
             {data.pendingInvites.length ? (
               <>
-                <h4 className="mb-1.5 mt-4 text-xs font-semibold uppercase tracking-[0.06em] text-faint">Invited by email</h4>
+                <h4 className="mb-1.5 mt-4 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">Invited by email</h4>
                 <ul className="divide-y divide-line rounded-chip border border-line" aria-label="Invited by email">
                   {data.pendingInvites.map((i) => (
                     <li key={i.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
                       <span className="min-w-0 flex-1 truncate">{i.email}</span>
-                      <span className="text-xs text-muted">
+                      <span className="text-footnote text-muted">
                         {roleLabel(i.role)} · {i.expired ? "expired" : "waiting to accept"}
                       </span>
                       <Button size="sm" variant="quiet" onClick={() => void run(revokeInvite({ inviteId: i.id }), "Invitation revoked")}>
@@ -186,13 +186,13 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
           </section>
 
           {data.youAreGuest ? (
-            <p className="text-xs text-muted">
+            <p className="text-footnote text-muted">
               <AppLink href={`/shared/${folderId}`} className="underline underline-offset-2" onClick={onClose}>
                 Open the shared folder
               </AppLink>
             </p>
           ) : (
-            <p className="text-xs text-muted">Public links are for single notes: share a note to make one.</p>
+            <p className="text-footnote text-muted">Public links are for single notes: share a note to make one.</p>
           )}
         </div>
       )}

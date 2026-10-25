@@ -19,11 +19,11 @@ import { SwipeRow } from "@/components/iphone/Swipe";
 
 type Item = FunctionReturnType<typeof api.notifications.list>[number];
 
-/** Where a notification leads: the note, scrolled to the comment thread or block when there is one. */
-export function notificationHref(n: Pick<Item, "documentId" | "threadId" | "blockId"> & { toChanges?: boolean }): string | null {
+/** Where a notification leads: the note, scrolled to the comment thread or block when there is one; a shared folder. */
+export function notificationHref(n: Pick<Item, "documentId" | "threadId" | "blockId"> & { toChanges?: boolean; folderId?: string | null }): string | null {
   // A change proposed for review waits in Changes, not in the note.
   if (n.toChanges) return "/changes";
-  if (!n.documentId) return null;
+  if (!n.documentId) return n.folderId ? `/shared/${n.folderId}` : null;
   const hash = n.threadId ? `#comment-${n.threadId}` : n.blockId ? `#block-${n.blockId}` : "";
   return `/d/${n.documentId}${hash}`;
 }
@@ -332,12 +332,14 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
   const acceptPage = useMutation(api.sharing.acceptPageInvite);
   const decline = useMutation(api.workspaces.declineInvite);
   const declinePage = useMutation(api.sharing.declinePageInvite);
+  const acceptFolder = useMutation(api.folderSharing.acceptInvite);
+  const declineFolder = useMutation(api.folderSharing.declineInvite);
   const { navigate } = useAppRouter();
   const toast = useToast();
   // The phone layout: phone-sized text, swipe actions, and the row's options in its long-press menu (no "…").
   const phone = useIphoneApp();
   const fail = (e: unknown) => toast.show(errorMessage(e), { tone: "error" });
-  const actionable = Boolean(n.documentId) || n.toChanges;
+  const actionable = Boolean(n.documentId) || n.toChanges || Boolean(n.folderId);
   const toggleRead = () => void (n.read ? markUnread({ ids: [n.id] }) : markRead({ ids: [n.id] })).catch(fail);
   const drop = () => void remove({ ids: [n.id] }).catch(fail);
   const row = (
@@ -380,9 +382,32 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
         </span>
         {n.read ? null : <span aria-hidden className={`absolute h-2 w-2 rounded-tiny bg-coral transition-opacity ${phone ? "right-4 top-5" : "right-3.5 top-4 group-hover:opacity-0 group-focus-within:opacity-0"}`} />}
       </button>
-      {n.fileId || (n.kind === "invite" && n.inviteId) || n.pageInviteId ? (
+      {n.fileId || (n.kind === "invite" && n.inviteId) || n.pageInviteId || n.folderInviteId ? (
         <div className={`-mt-1 flex gap-1.5 pb-2.5 ${phone ? "pl-[68px]" : "pl-[50px]"}`}>
           {n.fileId ? <DownloadFile fileId={n.fileId} /> : null}
+          {n.folderInviteId ? (
+            <button
+              type="button"
+              className={`ui-btn ui-btn-primary font-medium ${phone ? "h-9 px-3.5 text-subheadline" : "h-7 px-2.5 text-footnote"}`}
+              onClick={() =>
+                acceptFolder({ inviteId: n.folderInviteId! }).then((r) => {
+                  toast.show("The folder was added to Shared with Me.", { tone: "success" });
+                  navigate(`/shared/${r.folderId}`);
+                }, fail)
+              }
+            >
+              Accept and open
+            </button>
+          ) : null}
+          {n.folderInviteId ? (
+            <button
+              type="button"
+              className={`ui-btn font-medium ${phone ? "h-9 px-3.5 text-subheadline" : "h-7 px-2.5 text-footnote"}`}
+              onClick={() => declineFolder({ inviteId: n.folderInviteId! }).then(() => toast.show("Invitation declined."), fail)}
+            >
+              Decline
+            </button>
+          ) : null}
           {n.pageInviteId ? (
             <button
               type="button"
@@ -400,7 +425,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           {n.pageInviteId ? (
             <button
               type="button"
-              className={`ui-btn font-medium ${phone ? "h-9 px-3.5 text-[15px]" : "h-7 px-2.5 text-xs"}`}
+              className={`ui-btn font-medium ${phone ? "h-9 px-3.5 text-subheadline" : "h-7 px-2.5 text-footnote"}`}
               onClick={() => declinePage({ inviteId: n.pageInviteId! }).then(() => toast.show("Invitation declined."), fail)}
             >
               Decline
@@ -423,7 +448,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
           {n.kind === "invite" && n.inviteId ? (
             <button
               type="button"
-              className={`ui-btn font-medium ${phone ? "h-9 px-3.5 text-[15px]" : "h-7 px-2.5 text-xs"}`}
+              className={`ui-btn font-medium ${phone ? "h-9 px-3.5 text-subheadline" : "h-7 px-2.5 text-footnote"}`}
               onClick={() => decline({ inviteId: n.inviteId! }).then(() => toast.show("Invitation declined."), fail)}
             >
               Decline

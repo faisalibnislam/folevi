@@ -802,9 +802,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
   if (readyNow) everReady.current = true;
   const ready = everReady.current;
 
+  // Someone else's page (shared with them, on its own or through a folder) isn't in their folders or Drafts:
+  // it's under Shared with Me.
+  const guestHere = meta !== undefined && meta !== null && !meta.isMember;
   const trail: Crumb[] = [
-    ...folderAbove.map((f) => ({ href: `/folders/${f.id}`, label: f.name })),
-    folder ? { href: `/folders/${folder.id}`, label: folder.name } : { href: "/drafts", label: "Drafts" },
+    ...(guestHere ? [] : folderAbove.map((f) => ({ href: `/folders/${f.id}`, label: f.name }))),
+    guestHere ? { href: "/shared", label: "Shared with Me" } : folder ? { href: `/folders/${folder.id}`, label: folder.name } : { href: "/drafts", label: "Drafts" },
     ...(meta?.breadcrumbs ?? []).map((b) => ({ href: `/d/${b.id}`, label: b.title || "Untitled", icon: null })),
   ];
   const pageTitle = summary?.title || localTitle || "Untitled";

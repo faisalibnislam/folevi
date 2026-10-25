@@ -18,10 +18,13 @@ import { copy as e2eeCopy, e2eeErrorMessage } from "@/lib/e2ee/copy";
 import { createEncryptedLink, isSealedDocument, publishPlainCopy, revokeEncryptedLink, useE2eeSpaceStatus } from "@/components/e2ee/hooks";
 import { useAppState } from "@/lib/app/state";
 import { PublishCopyDialog } from "@/components/e2ee/PublishCopyDialog";
+import { roleLabel } from "@/lib/app/folderSharing";
 
 /** `personal`: the page is in someone's Personal, which has no members. Only the people added here (and its owner) can open it. */
 export function ShareDialog({ open, onClose, documentId, title, personal = false }: { open: boolean; onClose: () => void; documentId: string; title: string; personal?: boolean }) {
   const data = useQuery(api.sharing.get, open ? { documentId } : "skip");
+  // People who have it through a folder it's in (docs/SHARING.md), changed in that folder's Share dialog.
+  const folderAccess = useQuery(api.folderSharing.forNote, open ? { documentId } : "skip");
   const setMode = useMutation(api.sharing.setAccessMode);
   const grant = useMutation(api.sharing.grant);
   const revoke = useMutation(api.sharing.revoke);
@@ -144,7 +147,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
               </form>
             ) : null}
             <ul className="mt-3 divide-y divide-line rounded-chip border border-line">
-              {data.people.length === 0 ? <li className="px-3 py-2.5 text-muted">{data.youAreGuest ? "It was shared with you through a page above it." : "No one has been added directly."}</li> : null}
+              {data.people.length === 0 ? <li className="px-3 py-2.5 text-muted">{data.youAreGuest ? (folderAccess?.folders.length ? "It was shared with you through its folder." : "It was shared with you through a page above it.") : "No one has been added directly."}</li> : null}
               {data.people.map((p) => (
                 <li key={p.profileId} className="flex items-center gap-3 px-3 py-2">
                   <span className="min-w-0 flex-1">
@@ -182,6 +185,31 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                   ))}
                 </ul>
               </>
+            ) : null}
+            {folderAccess?.folders.length ? (
+              <>
+                <h4 className="mb-1.5 mt-4 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">From folders</h4>
+                <ul className="divide-y divide-line rounded-chip border border-line" aria-label="Access from folders" data-testid="share-from-folders">
+                  {folderAccess.folders.flatMap((f) =>
+                    f.people.map((p) => (
+                      <li key={`${f.id}:${p.profileId}`} className="flex items-center gap-3 px-3 py-2">
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-1.5 truncate font-medium">
+                            <span className="truncate">{p.displayName}</span>
+                            {p.isYou ? <span className="text-footnote font-normal text-muted">(you)</span> : null}
+                            {p.guest ? <span className="flex-none rounded-chip border border-line px-1.5 py-px text-caption-2 font-medium text-muted">Guest</span> : null}
+                          </span>
+                          <span className="block truncate text-footnote text-muted">Through the folder {f.name || "Untitled"}</span>
+                        </span>
+                        <span className="text-footnote text-muted">{roleLabel(p.role)}</span>
+                      </li>
+                    )),
+                  )}
+                </ul>
+                <p className="mt-1.5 text-footnote text-muted">Change this in the folder’s Share dialog. Moving the note out of the folder ends it.</p>
+              </>
+            ) : folderAccess?.reason === "restricted" ? (
+              <p className="mt-3 text-footnote text-muted">Only invited people: people its folder is shared with don’t see this page.</p>
             ) : null}
           </section>
 

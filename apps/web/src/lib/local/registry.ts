@@ -145,6 +145,7 @@ export function undefineLocal(ref: AnyPublicRef): void {
  */
 export const LOCAL_HIDDEN: Readonly<Record<string, Capability>> = {
   "sharing:*": "sharing",
+  "folderSharing:*": "sharing",
   "workspaces:*": "workspaces",
   "workspaceBilling:*": "billing",
   "billing:*": "billing",

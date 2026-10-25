@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "invite.acceptLink",
+  "description": "Accept a folder invitation link and open the folder (revision 12).",
+  "args": {
+    "kind": "folder",
+    "token": "tok_folder"
+  },
+  "result": {
+    "noteId": null,
+    "space": null,
+    "folderId": "fld_recipes"
+  }
+}

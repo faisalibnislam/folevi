@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "folderSharing.invite",
+  "description": "Share a folder with an existing account.",
+  "args": {
+    "folderId": "fld_garden",
+    "email": "lee@example.com",
+    "role": "editor"
+  },
+  "result": {
+    "status": "shared"
+  }
+}

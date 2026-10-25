@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "folderInvite.accept",
+  "description": "Accept a folder invitation from the bell and open the folder.",
+  "args": {
+    "inviteId": "finv_1"
+  },
+  "result": {
+    "folderId": "fld_recipes"
+  }
+}

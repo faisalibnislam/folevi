@@ -1,0 +1,17 @@
+{
+  "kind": "view",
+  "name": "invite.preview",
+  "description": "A folder invitation link opened in the app (revision 12).",
+  "args": {
+    "kind": "folder",
+    "token": "tok_folder"
+  },
+  "value": {
+    "valid": true,
+    "kind": "folder",
+    "inviterName": "Sam",
+    "name": "Recipes",
+    "roleLabel": "Can view",
+    "emailMatches": true
+  }
+}

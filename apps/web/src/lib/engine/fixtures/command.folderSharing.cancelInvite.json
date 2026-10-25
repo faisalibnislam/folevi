@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "folderSharing.cancelInvite",
+  "description": "Cancel a folder invitation.",
+  "args": {
+    "inviteId": "finv_2"
+  },
+  "result": {
+    "ok": true
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "kind": "view",
+  "name": "sharedFolder.open",
+  "description": "A folder that was unshared or deleted.",
+  "args": {
+    "id": "fld_gone"
+  },
+  "value": {
+    "found": false,
+    "id": "fld_gone",
+    "name": "",
+    "color": null,
+    "access": "none",
+    "roleLabel": null,
+    "sharedBy": null,
+    "sharedFolderId": null,
+    "ownerName": null,
+    "workspaceName": null,
+    "inYourPlace": false,
+    "path": [],
+    "subfolders": [],
+    "notes": []
+  }
+}

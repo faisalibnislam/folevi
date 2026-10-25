@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 11;
+export const CONTRACT_REVISION = 12;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -1260,6 +1260,10 @@ export interface NotificationRow {
   inviteId: string | null;
   /** A page invitation to accept (`pageInvite.accept`), or null. */
   pageInviteId: string | null;
+  /** A folder shared with this person (revision 12): `route` opens it (`/shared/<id>`, `sharedFolder.open`). */
+  folderId: string | null;
+  /** A folder invitation to accept (`folderInvite.accept`) or decline (`invite.decline { kind: "folder" }`), or null (revision 12). */
+  folderInviteId: string | null;
   /** A file to download, or null. */
   fileId: string | null;
 }
@@ -1821,17 +1825,17 @@ export interface PublicLinkIdArgs {
 }
 
 export interface InviteTokenArgs {
-  /** "workspace" or "page". */
-  kind: "workspace" | "page";
+  /** "workspace" or "page"; "folder" since revision 12 (/share-invite/folder/<token>). */
+  kind: "workspace" | "page" | "folder";
   token: string;
 }
 
 /** `invite.preview`: an invitation link opened in the app. */
 export interface InvitePreview {
   valid: boolean;
-  kind: "workspace" | "page";
+  kind: "workspace" | "page" | "folder";
   inviterName: string | null;
-  /** The workspace's name or the page's title (null when the invitation is for another address). */
+  /** The workspace's name, the page's title or the folder's name (null when the invitation is for another address). */
   name: string | null;
   roleLabel: string | null;
   emailMatches: boolean;
@@ -1841,6 +1845,8 @@ export interface InviteTokenAcceptResult {
   /** The page to open (page invitations) or the workspace to show. */
   noteId: string | null;
   space: SpaceRef | null;
+  /** The folder to open (folder invitations, revision 12), else null. */
+  folderId: string | null;
 }
 
 /** Web pages the native app shows in the Page View with its own bars (owner decision Q1 and Q2). */
@@ -2424,7 +2430,8 @@ export interface ShareRoleArgs {
 
 /** `invite.decline` (R11.2): by the notification's id, or by the link's token (`invite.preview`). */
 export interface InviteDeclineArgs {
-  kind: "workspace" | "page";
+  /** "folder" since revision 12. */
+  kind: "workspace" | "page" | "folder";
   inviteId?: string;
   token?: string;
 }
@@ -2522,6 +2529,174 @@ export interface AiSaveDraftArgs {
   folderId?: string | null;
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Revision 12: sharing folders (R14.4, docs/SHARING.md). A folder's people reach every note in it and in its
+// subfolders, notes added later too; restricted, encrypted and locked notes are never reached. Revision 12 also
+// lets `invite.preview`, `invite.acceptLink` and `invite.decline` take `kind: "folder"`, adds
+// `InviteTokenAcceptResult.folderId`, and `NotificationRow.folderId` / `folderInviteId`.
+// ---------------------------------------------------------------------------------------------------------------
+
+/** Someone a folder is shared with (on it, or on a folder above it in `inherited`). */
+export interface FolderShareGrant {
+  profileId: string;
+  name: string;
+  /** Only for people who manage the folder; null otherwise and in `inherited`. */
+  email: string | null;
+  /** "editor", "commenter", "viewer". */
+  role: string;
+  /** Not a member of the folder's place (no seat, not billed). */
+  guest: boolean;
+  isYou: boolean;
+  /** Role and removal can be changed here (`folderSharing.setRole`, `folderSharing.revoke`). */
+  canChange: boolean;
+}
+
+/** People who have this folder through a folder above it (changed in that folder's sharing). */
+export interface FolderShareInherited {
+  folderId: string;
+  folderName: string;
+  people: FolderShareGrant[];
+}
+
+/** `folderSharing.get { id }`: who a folder is shared with and what this person may change. */
+export interface FolderSharingValue {
+  folderId: string;
+  name: string;
+  color: string | null;
+  /** "read", "comment", "write" or "manage". */
+  yourAccess: string;
+  /** Add people, change roles, remove people and invitations: the Personal's owner, a workspace's owners and admins. */
+  canManage: boolean;
+  /** Shared with this person from someone else's place: the list shows only them; they may `folderSharing.revoke` themselves (leave). */
+  youAreGuest: boolean;
+  ownerName: string | null;
+  /** Null in a Personal. */
+  workspaceName: string | null;
+  personal: boolean;
+  sharedBy: string | null;
+  /** Notes people with access see through it (its subfolders' too). */
+  noteCount: number;
+  /** Why it can't be shared as a folder (end-to-end encryption), or null. Show it; offer no invite field. */
+  blocked: string | null;
+  people: FolderShareGrant[];
+  inherited: FolderShareInherited[];
+  /** Pending invitations by email (managers only). */
+  invites: ShareInvite[];
+}
+
+export interface FolderShareInviteArgs {
+  folderId: string;
+  email: string;
+  role: "editor" | "commenter" | "viewer";
+}
+
+export interface FolderShareRoleArgs {
+  folderId: string;
+  profileId: string;
+  role: "editor" | "commenter" | "viewer";
+}
+
+/** `folderSharing.revoke`: a manager removes someone, or anyone removes themselves (leaves the folder). */
+export interface FolderShareRevokeArgs {
+  folderId: string;
+  profileId: string;
+}
+
+export interface FolderInviteIdArgs {
+  inviteId: string;
+}
+
+export interface FolderInviteAcceptResult {
+  /** The folder to open (`sharedFolder.open`). */
+  folderId: string;
+}
+
+/** A folder shared with this person (Shared with Me). One inside another shared folder is left out. */
+export interface SharedFolderRow {
+  id: string;
+  name: string;
+  color: string | null;
+  /** "editor", "commenter", "viewer". */
+  role: string;
+  sharedBy: string;
+  sharedAt: number;
+  workspaceName: string | null;
+  ownerName: string | null;
+  noteCount: number;
+  updatedAt: number;
+  /** In one of this person's own places (they could see it already; the share raised their access). */
+  inYourPlace: boolean;
+}
+
+/** `shared.folders`: folders shared with this person, newest share first (Shared with Me lists them above pages). */
+export interface SharedFoldersValue {
+  rows: SharedFolderRow[];
+}
+
+export interface SharedFolderPathItem {
+  id: string;
+  name: string;
+}
+
+export interface SharedSubfolder {
+  id: string;
+  name: string;
+  color: string | null;
+  noteCount: number;
+}
+
+/** A note in a shared folder, with this person's access to it. */
+export interface SharedFolderNote {
+  id: string;
+  title: string;
+  icon: string | null;
+  /** "document", "template", ... (open). */
+  kind: string;
+  excerpt: string;
+  updatedAt: number;
+  /** "read", "comment", "write" or "manage". */
+  access: string;
+}
+
+/** `sharedFolder.open { id }`: a folder shared with this person, opened like a folder. `found: false` once it can't be opened. */
+export interface SharedFolderValue {
+  found: boolean;
+  id: string;
+  name: string;
+  color: string | null;
+  /** "read", "comment", "write" or "manage" (none when not found). */
+  access: string;
+  /** "Can edit", "Can comment", "Can view", or null when it's theirs some other way. */
+  roleLabel: string | null;
+  sharedBy: string | null;
+  /** The folder the access comes from (this one, or one above it). */
+  sharedFolderId: string | null;
+  ownerName: string | null;
+  workspaceName: string | null;
+  inYourPlace: boolean;
+  /** The folders above it this person can open, outermost first. */
+  path: SharedFolderPathItem[];
+  subfolders: SharedSubfolder[];
+  notes: SharedFolderNote[];
+}
+
+/** `notes.moveCheck`: would moving these notes to `folderId` (null: Drafts) change who sees them through folder sharing? */
+export interface NotesMoveCheckArgs {
+  ids: string[];
+  folderId: string | null;
+}
+
+/** Ask before moving when `title` isn't null: show `title` and `message`, with Move and Cancel. */
+export interface NotesMoveCheckValue {
+  gainCount: number;
+  loseCount: number;
+  /** Up to 5 names each way. */
+  gains: string[];
+  loses: string[];
+  title: string | null;
+  message: string | null;
+}
+
 export interface ViewMap {
   session: { args: EmptyArgs; value: SessionValue };
   "places.list": { args: EmptyArgs; value: PlacesValue };
@@ -2566,6 +2741,10 @@ export interface ViewMap {
   "device.storage": { args: EmptyArgs; value: DeviceStorageValue };
   "support.topics": { args: EmptyArgs; value: SupportTopicsValue };
   "changes.diff": { args: ChangeDiffArgs; value: ChangeDiffValue };
+  "folderSharing.get": { args: NoteIdArgs; value: FolderSharingValue };
+  "shared.folders": { args: EmptyArgs; value: SharedFoldersValue };
+  "sharedFolder.open": { args: NoteIdArgs; value: SharedFolderValue };
+  "notes.moveCheck": { args: NotesMoveCheckArgs; value: NotesMoveCheckValue };
 }
 
 export interface ListViewMap {
@@ -2658,6 +2837,11 @@ export interface CommandMap {
   "folder.lock": { args: FolderLockArgs; result: OkResult };
   "ai.generate": { args: AiGenerateArgs; result: AiGenerateResult };
   "ai.saveDraft": { args: AiSaveDraftArgs; result: NoteCreateResult };
+  "folderSharing.invite": { args: FolderShareInviteArgs; result: ShareInviteResult };
+  "folderSharing.setRole": { args: FolderShareRoleArgs; result: OkResult };
+  "folderSharing.revoke": { args: FolderShareRevokeArgs; result: OkResult };
+  "folderSharing.cancelInvite": { args: FolderInviteIdArgs; result: OkResult };
+  "folderInvite.accept": { args: FolderInviteIdArgs; result: FolderInviteAcceptResult };
 }
 
 export interface EditorCommandMap {
@@ -2721,7 +2905,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -2809,6 +2993,11 @@ const commandNames = [
   "folder.lock",
   "ai.generate",
   "ai.saveDraft",
+  "folderSharing.invite",
+  "folderSharing.setRole",
+  "folderSharing.revoke",
+  "folderSharing.cancelInvite",
+  "folderInvite.accept",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

@@ -1,0 +1,21 @@
+{
+  "kind": "view",
+  "name": "notes.moveCheck",
+  "description": "Moving a note out of a shared folder: ask first.",
+  "args": {
+    "ids": [
+      "doc_g1"
+    ],
+    "folderId": null
+  },
+  "value": {
+    "gainCount": 0,
+    "loseCount": 1,
+    "gains": [],
+    "loses": [
+      "Lee"
+    ],
+    "title": "Move and stop sharing?",
+    "message": "Lee will no longer see this note: it was shared with them through the folder it’s in now."
+  }
+}

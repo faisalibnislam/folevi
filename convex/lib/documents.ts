@@ -13,7 +13,7 @@ import {
   type WireBlock,
 } from "@folevi/editor-schema";
 import { insertScoped, scopeOfRow, type Scope } from "./scope";
-import { accessAtLeast, documentAccess, membership } from "./auth";
+import { accessAtLeast, documentAccess, folderAccessInfo, membership } from "./auth";
 import { sharedLabels } from "./linkLabels";
 import { emitWebhook } from "./webhooks";
 import { notesShowingInPlace, withSyncedShared } from "./synced";
@@ -99,6 +99,7 @@ export class IdResolver {
 export class Placement {
   private members = new Map<string, boolean>();
   private readable = new Map<string, boolean>();
+  private folders = new Map<string, boolean>();
   constructor(
     private ctx: Ctx,
     private profile: Doc<"profiles">,
@@ -127,10 +128,21 @@ export class Placement {
     return ok;
   }
 
+  /** Whether the reader can open this folder: in its scope, or shared with them (docs/SHARING.md). */
+  async canSeeFolder(id: Id<"folders">): Promise<boolean> {
+    let ok = this.folders.get(id);
+    if (ok === undefined) {
+      const folder = await this.ctx.db.get(id);
+      ok = folder !== null && accessAtLeast((await folderAccessInfo(this.ctx, this.profile, folder)).access, "read");
+      this.folders.set(id, ok);
+    }
+    return ok;
+  }
+
   /** toSummary as this reader may see it. */
   async summary(ids: IdResolver, doc: Doc<"documents">): Promise<DocumentSummary> {
     const s = await toSummary(ids, doc);
-    const folderId = s.folderId !== null && (await this.inScope(doc)) ? s.folderId : null;
+    const folderId = s.folderId !== null && ((await this.inScope(doc)) || (doc.folderId !== undefined && (await this.canSeeFolder(doc.folderId)))) ? s.folderId : null;
     const parentDocumentId = doc.parentDocumentId !== undefined && (await this.canOpen(doc.parentDocumentId)) ? s.parentDocumentId : null;
     if (s.lockedVia !== undefined && !(await this.inScope(doc))) {
       const { lockedVia: _hidden, ...rest } = s;

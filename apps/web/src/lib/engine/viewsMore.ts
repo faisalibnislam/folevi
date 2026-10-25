@@ -184,14 +184,18 @@ type NotificationData = {
   count: number;
   inviteId: string | null;
   pageInviteId: string | null;
+  /** A folder shared with them, and a folder invitation waiting (revision 12). */
+  folderId?: string | null;
+  folderInviteId?: string | null;
   createdAt: number;
   read: boolean;
 };
 
 /** Where tapping a notification goes (components/app/NotificationsButton.tsx notificationHref, the same rule). */
-export function notificationRoute(n: Pick<NotificationData, "documentId" | "threadId" | "blockId" | "toChanges">): string | null {
+export function notificationRoute(n: Pick<NotificationData, "documentId" | "threadId" | "blockId" | "toChanges"> & { folderId?: string | null }): string | null {
   if (n.toChanges) return "/changes";
-  if (!n.documentId) return null;
+  // A folder shared with them opens it (revision 12).
+  if (!n.documentId) return n.folderId ? `/shared/${n.folderId}` : null;
   const hash = n.threadId ? `#comment-${n.threadId}` : n.blockId ? `#block-${n.blockId}` : "";
   return `/d/${n.documentId}${hash}`;
 }
@@ -212,6 +216,8 @@ export function notificationRow(n: NotificationData): NotificationRow {
     count: n.count ?? 1,
     inviteId: n.inviteId ?? null,
     pageInviteId: n.pageInviteId ?? null,
+    folderId: n.folderId ?? null,
+    folderInviteId: n.folderInviteId ?? null,
     fileId: n.fileId ?? null,
   };
 }

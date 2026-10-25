@@ -1,0 +1,50 @@
+{
+  "kind": "view",
+  "name": "sharedFolder.open",
+  "description": "A shared folder opened like a folder: a subfolder and two notes.",
+  "args": {
+    "id": "fld_garden"
+  },
+  "value": {
+    "found": true,
+    "id": "fld_garden",
+    "name": "Garden club",
+    "color": "moss",
+    "access": "write",
+    "roleLabel": "Can edit",
+    "sharedBy": "Faisal",
+    "sharedFolderId": "fld_garden",
+    "ownerName": "Faisal",
+    "workspaceName": null,
+    "inYourPlace": false,
+    "path": [],
+    "subfolders": [
+      {
+        "id": "fld_seeds",
+        "name": "Seeds",
+        "color": null,
+        "noteCount": 3
+      }
+    ],
+    "notes": [
+      {
+        "id": "doc_g1",
+        "title": "Seed list",
+        "icon": null,
+        "kind": "document",
+        "excerpt": "Tomatoes, basil, beans.",
+        "updatedAt": 1792828800000,
+        "access": "write"
+      },
+      {
+        "id": "doc_g2",
+        "title": "Plot map",
+        "icon": "🗺️",
+        "kind": "document",
+        "excerpt": "",
+        "updatedAt": 1792746000000,
+        "access": "write"
+      }
+    ]
+  }
+}

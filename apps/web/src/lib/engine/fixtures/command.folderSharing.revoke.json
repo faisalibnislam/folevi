@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "folderSharing.revoke",
+  "description": "Remove someone from a folder (their own id: leave it).",
+  "args": {
+    "folderId": "fld_garden",
+    "profileId": "prof_9"
+  },
+  "result": {
+    "ok": true
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "kind": "view",
+  "name": "folderSharing.get",
+  "description": "The same folder seen by the guest: only their own access.",
+  "args": {
+    "id": "fld_garden"
+  },
+  "value": {
+    "folderId": "fld_garden",
+    "name": "Garden club",
+    "color": "moss",
+    "yourAccess": "write",
+    "canManage": false,
+    "youAreGuest": true,
+    "ownerName": "Faisal",
+    "workspaceName": null,
+    "personal": true,
+    "sharedBy": "Faisal",
+    "noteCount": 12,
+    "blocked": null,
+    "people": [
+      {
+        "profileId": "prof_9",
+        "name": "Lee",
+        "email": null,
+        "role": "editor",
+        "guest": true,
+        "isYou": true,
+        "canChange": false
+      }
+    ],
+    "inherited": [],
+    "invites": []
+  }
+}

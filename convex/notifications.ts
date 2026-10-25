@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { accessAtLeast, documentAccess, getDocumentByPublicId, requireProfile } from "./lib/auth";
+import { accessAtLeast, documentAccess, folderAccessInfo, getDocumentByPublicId, requireProfile } from "./lib/auth";
 import { identityImageUrl } from "./lib/identityImages";
 import { noteMode } from "./lib/notify";
 import { insertScoped, scopeOfRow } from "./lib/scope";
@@ -48,6 +48,14 @@ export const list = query({
       }
       return readable.get(id)!;
     };
+    const folders = new Map<string, Doc<"folders"> | null>();
+    const folderOf = async (id: Id<"folders">) => {
+      if (!folders.has(id)) {
+        const f = await ctx.db.get(id);
+        folders.set(id, f && accessAtLeast((await folderAccessInfo(ctx, profile, f)).access, "read") ? f : null);
+      }
+      return folders.get(id)!;
+    };
     const out = [];
     for (const n of rows) {
       const actor = n.actorId ? await actorOf(n.actorId) : null;
@@ -55,6 +63,10 @@ export const list = query({
       const invite = n.inviteId ? await ctx.db.get(n.inviteId) : null;
       const pageInvite = n.pageInviteId ? await ctx.db.get(n.pageInviteId) : null;
       const openPageInvite = pageInvite && pageInvite.status === "pending" && (args.now === undefined || pageInvite.expiresAt > args.now) ? pageInvite : null;
+      // A folder shared with them (docs/SHARING.md): linked while they can still open it.
+      const folder = n.folderId ? await folderOf(n.folderId) : null;
+      const folderInvite = n.folderInviteId ? await ctx.db.get(n.folderInviteId) : null;
+      const openFolderInvite = folderInvite && folderInvite.status === "pending" && (args.now === undefined || folderInvite.expiresAt > args.now) ? folderInvite : null;
       const thread = doc && n.threadId ? await ctx.db.get(n.threadId) : null;
       out.push({
         id: n._id as string,
@@ -81,6 +93,11 @@ export const list = query({
         /** A page shared with this person before they had an account, waiting to be accepted. */
         pageInviteId: openPageInvite ? openPageInvite.publicId : null,
         pageInviteExpiresAt: openPageInvite ? openPageInvite.expiresAt : null,
+        /** A folder shared with this person (opens the shared folder). */
+        folderId: folder ? folder.publicId : null,
+        /** A folder shared with this person before they had an account, waiting to be accepted or declined. */
+        folderInviteId: openFolderInvite ? openFolderInvite.publicId : null,
+        folderInviteExpiresAt: openFolderInvite ? openFolderInvite.expiresAt : null,
         createdAt: n.createdAt,
         read: n.readAt !== undefined,
       });

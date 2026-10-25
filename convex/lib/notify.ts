@@ -297,10 +297,15 @@ const quote = (s: string, max: number) => `“${(s.trim() || "Untitled").slice(0
 /** A note as access-change texts name it: its title, or "a note" when it's encrypted (the server can't read it). */
 const noteName = (doc: Doc<"documents">) => (isSealed(doc) ? "a note" : quote(doc.title, 100));
 
+/** A folder as access-change texts name it: its name, or "a folder" when it's encrypted. */
+const folderName = (folder: Doc<"folders">) => (folder.sealedName ? "a folder" : quote(folder.name, 80));
+
 export type AccessChange =
   | { type: "document_role"; doc: Doc<"documents">; role: string }
   | { type: "document_revoked"; doc: Doc<"documents"> }
   | { type: "document_restricted"; doc: Doc<"documents"> }
+  | { type: "folder_role"; folder: Doc<"folders">; role: string }
+  | { type: "folder_revoked"; folder: Doc<"folders"> }
   | { type: "workspace_role"; workspace: Doc<"workspaces">; role: string }
   | { type: "workspace_removed"; workspace: Doc<"workspaces"> }
   | { type: "workspace_guest"; workspace: Doc<"workspaces"> }
@@ -315,6 +320,10 @@ export function describeAccessChange(change: AccessChange): string {
       return `removed your access to ${noteName(change.doc)}.`;
     case "document_restricted":
       return `limited ${noteName(change.doc)} to people who were given access, so you can no longer open it.`;
+    case "folder_role":
+      return `changed your access to the folder ${folderName(change.folder)} to ${shareRoleLabel(change.role)}.`;
+    case "folder_revoked":
+      return `removed your access to the folder ${folderName(change.folder)} and the notes in it.`;
     case "workspace_role":
       return `changed your role in ${quote(change.workspace.name, 80)} to ${workspaceRoleLabel(change.role)}.`;
     case "workspace_removed":
@@ -346,7 +355,7 @@ export async function notifyAccessChange(ctx: MutationCtx, input: { recipientId:
   const emailNow = wantsImmediateEmail(recipient.notificationPrefs, "access_changed");
   if (!inApp && !emailNow) return;
   const summary = describeAccessChange(change);
-  const workspaceId = doc ? doc.workspaceId : "workspace" in change ? change.workspace._id : undefined;
+  const workspaceId = doc ? doc.workspaceId : "workspace" in change ? change.workspace._id : "folder" in change ? change.folder.workspaceId : undefined;
   const now = Date.now();
   const notificationId = await ctx.db.insert("notifications", {
     profileId: recipient._id,
@@ -355,13 +364,15 @@ export async function notifyAccessChange(ctx: MutationCtx, input: { recipientId:
     kind: "share_change",
     actorId: input.actor._id,
     documentId: stillReadable ? doc!._id : undefined,
+    // A folder whose access changed (still theirs to open: the shared folder opens from it).
+    ...(change.type === "folder_role" ? { folderId: change.folder._id } : {}),
     title: `${input.actor.displayName} ${summary}`.slice(0, 200),
     createdAt: now,
     ...(doc && isSealed(doc) ? { sealedDocument: true } : {}),
     ...(inApp ? {} : { silent: true, readAt: now }),
   });
   if (!emailNow) return;
-  const actionUrl = stillReadable && doc ? `${appUrl()}/d/${doc.publicId}` : `${appUrl()}/documents`;
+  const actionUrl = stillReadable && doc ? `${appUrl()}/d/${doc.publicId}` : change.type === "folder_role" ? `${appUrl()}/shared/${change.folder.publicId}` : `${appUrl()}/documents`;
   await ctx.scheduler.runAfter(0, internal.email.sendTemplate, {
     key: "access_changed",
     profileId: recipient._id,
@@ -448,4 +459,43 @@ export async function removeInviteNotices(ctx: MutationCtx, profileId: Id<"profi
     .order("desc")
     .take(500);
   for (const n of notes) if (about(n)) await ctx.db.delete(n._id);
+}
+
+/**
+ * Tells someone a folder was shared with them (docs/SHARING.md): in the bell, and by the share email when
+ * they allow share emails. Only for people who can open the folder now (they were just given it).
+ */
+export async function notifyFolderShare(ctx: MutationCtx, input: { recipientId: Id<"profiles">; actor: Doc<"profiles">; folder: Doc<"folders">; role: string }): Promise<void> {
+  if (input.recipientId === input.actor._id) return;
+  const recipient = await ctx.db.get(input.recipientId);
+  if (!recipient || recipient.status !== "active") return;
+  const inApp = wantsInApp(recipient.notificationPrefs, "share");
+  const emailNow = wantsImmediateEmail(recipient.notificationPrefs, "share_notification");
+  if (!inApp && !emailNow) return;
+  const name = input.folder.sealedName ? "a folder" : quote(input.folder.name, 100);
+  const now = Date.now();
+  const notificationId = await ctx.db.insert("notifications", {
+    profileId: recipient._id,
+    workspaceId: input.folder.workspaceId,
+    kind: "share",
+    actorId: input.actor._id,
+    folderId: input.folder._id,
+    title: `${input.actor.displayName} shared the folder ${name} with you`.slice(0, 200),
+    createdAt: now,
+    ...(inApp ? {} : { silent: true, readAt: now }),
+  });
+  if (!emailNow) return;
+  await ctx.scheduler.runAfter(0, internal.email.sendTemplate, {
+    key: "share_notification",
+    profileId: recipient._id,
+    idempotencyKey: `notify:${notificationId}`,
+    dataVariables: {
+      actorName: input.actor.displayName.slice(0, 80),
+      documentTitle: `the folder ${name}`.slice(0, 120),
+      role: shareRoleLabel(input.role),
+      documentUrl: `${appUrl()}/shared/${input.folder.publicId}`,
+      preferencesUrl: `${appUrl()}/settings/notifications`,
+    },
+  });
+  await ctx.db.patch(notificationId, { emailedAt: Date.now() });
 }

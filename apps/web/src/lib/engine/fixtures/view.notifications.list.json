@@ -21,6 +21,8 @@
         "count": 1,
         "inviteId": null,
         "pageInviteId": null,
+        "folderId": null,
+        "folderInviteId": null,
         "fileId": null
       },
       {
@@ -38,6 +40,8 @@
         "count": 1,
         "inviteId": "inv_1",
         "pageInviteId": null,
+        "folderId": null,
+        "folderInviteId": null,
         "fileId": null
       },
       {
@@ -55,6 +59,46 @@
         "count": 1,
         "inviteId": null,
         "pageInviteId": "pinv_1",
+        "folderId": null,
+        "folderInviteId": null,
+        "fileId": null
+      },
+      {
+        "id": "n4",
+        "kind": "share",
+        "title": "Maya shared the folder “Garden club” with you",
+        "body": "",
+        "at": 1792573200000,
+        "read": true,
+        "route": "/shared/fld_garden",
+        "actorName": "Maya",
+        "actorAvatarUrl": null,
+        "noteId": null,
+        "noteTitle": null,
+        "count": 1,
+        "inviteId": null,
+        "pageInviteId": null,
+        "folderId": "fld_garden",
+        "folderInviteId": null,
+        "fileId": null
+      },
+      {
+        "id": "n5",
+        "kind": "share",
+        "title": "Sam invited you to the folder “Recipes”",
+        "body": "",
+        "at": 1792486800000,
+        "read": false,
+        "route": null,
+        "actorName": "Sam",
+        "actorAvatarUrl": null,
+        "noteId": null,
+        "noteTitle": null,
+        "count": 1,
+        "inviteId": null,
+        "pageInviteId": null,
+        "folderId": null,
+        "folderInviteId": "finv_1",
         "fileId": null
       }
     ]

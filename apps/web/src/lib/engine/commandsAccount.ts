@@ -182,14 +182,18 @@ export const ACCOUNT_COMMANDS = {
   "invite.acceptLink": {
     async run(deps, args) {
       only(args, ["kind", "token"]);
-      const kind = oneOf(args, "kind", ["workspace", "page"] as const);
+      const kind = oneOf(args, "kind", ["workspace", "page", "folder"] as const);
       const token = text(args, "token", { max: 200 }) as string;
+      if (kind === "folder") {
+        const r = (await deps.client.mutation(api.folderSharing.acceptInvite, { token })) as { folderId: string };
+        return { noteId: null, space: null, folderId: r.folderId };
+      }
       if (kind === "page") {
         const r = (await deps.client.mutation(api.sharing.acceptPageInvite, { token })) as { documentId: string };
-        return { noteId: r.documentId, space: null };
+        return { noteId: r.documentId, space: null, folderId: null };
       }
       const r = (await deps.client.mutation(api.workspaces.acceptInvite, { token })) as { workspaceId?: string } | null;
-      return { noteId: null, space: r?.workspaceId ?? null };
+      return { noteId: null, space: r?.workspaceId ?? null, folderId: null };
     },
   },
 } satisfies Partial<Record<CommandName, CommandDef>>;

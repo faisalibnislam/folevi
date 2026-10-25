@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "8faa5d67"
+        "schemaHash": "8850707c"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 11,
+        "revision": 12,
         "build": "dev",
-        "schemaHash": "8faa5d67",
+        "schemaHash": "8850707c",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -77,7 +77,11 @@
           "recent",
           "device.storage",
           "support.topics",
-          "changes.diff"
+          "changes.diff",
+          "folderSharing.get",
+          "shared.folders",
+          "sharedFolder.open",
+          "notes.moveCheck"
         ],
         "listViews": [
           "notes.list"
@@ -167,7 +171,12 @@
           "support.send",
           "folder.lock",
           "ai.generate",
-          "ai.saveDraft"
+          "ai.saveDraft",
+          "folderSharing.invite",
+          "folderSharing.setRole",
+          "folderSharing.revoke",
+          "folderSharing.cancelInvite",
+          "folderInvite.accept"
         ],
         "editorCommands": [
           "note.prepare",

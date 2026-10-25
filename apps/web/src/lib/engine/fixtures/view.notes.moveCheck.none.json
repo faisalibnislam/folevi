@@ -1,0 +1,19 @@
+{
+  "kind": "view",
+  "name": "notes.moveCheck",
+  "description": "A move that changes nobody's access: move without asking.",
+  "args": {
+    "ids": [
+      "doc_00001"
+    ],
+    "folderId": "fld_trips"
+  },
+  "value": {
+    "gainCount": 0,
+    "loseCount": 0,
+    "gains": [],
+    "loses": [],
+    "title": null,
+    "message": null
+  }
+}

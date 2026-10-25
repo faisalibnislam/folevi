@@ -297,25 +297,31 @@ const sharingGet: ValueViewDef = {
 
 type WorkspaceInvitePreview = { valid: false } | { valid: true; workspaceName: string; inviterName: string; roleLabel: string; emailMatches: boolean };
 type PageInvitePreview = { valid: false } | { valid: true; emailMatches: boolean; inviterName: string; title: string | null; roleLabel: string };
+type FolderInvitePreview = { valid: false } | { valid: true; emailMatches: boolean; inviterName: string; name: string | null; roleLabel: string };
 
 const invitePreview: ValueViewDef = {
   kind: "value",
   parse: (args) => {
     only(args, ["kind", "token"]);
-    return { kind: oneOf(args, "kind", ["workspace", "page"] as const), token: text(args, "token", { max: 200 }) as string };
+    return { kind: oneOf(args, "kind", ["workspace", "page", "folder"] as const), token: text(args, "token", { max: 200 }) as string };
   },
   create: (ctx, args) => {
-    const kind = args.kind as "workspace" | "page";
-    const src = kind === "workspace" ? source<WorkspaceInvitePreview>(ctx, api.workspaces.previewInvite, { token: args.token }, null) : source<PageInvitePreview>(ctx, api.sharing.previewPageInvite, { token: args.token }, null);
+    const kind = args.kind as "workspace" | "page" | "folder";
+    const src =
+      kind === "workspace"
+        ? source<WorkspaceInvitePreview>(ctx, api.workspaces.previewInvite, { token: args.token }, null)
+        : kind === "folder"
+          ? source<FolderInvitePreview>(ctx, api.folderSharing.previewInvite, { token: args.token }, null)
+          : source<PageInvitePreview>(ctx, api.sharing.previewPageInvite, { token: args.token }, null);
     return {
       signals: [src],
       compute: () => {
         const s = src.snapshot();
         if (s.error) return { value: undefined, stale: false, error: s.error };
-        const v = s.value as WorkspaceInvitePreview | PageInvitePreview | undefined;
+        const v = s.value as WorkspaceInvitePreview | PageInvitePreview | FolderInvitePreview | undefined;
         if (v === undefined) return { value: undefined, stale: true, error: null };
         if (!v.valid) return { value: { valid: false, kind, inviterName: null, name: null, roleLabel: null, emailMatches: false }, stale: false, error: null };
-        const name = "workspaceName" in v ? v.workspaceName : (v as { title: string | null }).title;
+        const name = "workspaceName" in v ? v.workspaceName : "title" in v ? v.title : v.name;
         return { value: { valid: true, kind, inviterName: v.inviterName, name: name ?? null, roleLabel: v.roleLabel, emailMatches: v.emailMatches }, stale: s.stale, error: null };
       },
     };

@@ -1,0 +1,59 @@
+{
+  "kind": "view",
+  "name": "folderSharing.get",
+  "description": "A Personal folder shared with a guest, an invitation waiting, and someone from the folder above.",
+  "args": {
+    "id": "fld_garden"
+  },
+  "value": {
+    "folderId": "fld_garden",
+    "name": "Garden club",
+    "color": "moss",
+    "yourAccess": "manage",
+    "canManage": true,
+    "youAreGuest": false,
+    "ownerName": "Faisal",
+    "workspaceName": null,
+    "personal": true,
+    "sharedBy": null,
+    "noteCount": 12,
+    "blocked": null,
+    "people": [
+      {
+        "profileId": "prof_9",
+        "name": "Lee",
+        "email": "lee@example.com",
+        "role": "editor",
+        "guest": true,
+        "isYou": false,
+        "canChange": true
+      }
+    ],
+    "inherited": [
+      {
+        "folderId": "fld_home",
+        "folderName": "Home",
+        "people": [
+          {
+            "profileId": "prof_4",
+            "name": "Maya",
+            "email": null,
+            "role": "viewer",
+            "guest": true,
+            "isYou": false,
+            "canChange": false
+          }
+        ]
+      }
+    ],
+    "invites": [
+      {
+        "id": "finv_2",
+        "email": "kim@example.com",
+        "role": "viewer",
+        "expiresAt": 1793696400000,
+        "expired": false
+      }
+    ]
+  }
+}

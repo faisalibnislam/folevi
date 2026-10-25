@@ -8,15 +8,16 @@ import type { AiGenerateResult, CommandName, NoteCreateResult, SupportSendResult
 
 export const EXTRA_COMMANDS = {
   "invite.decline": {
-    // Nobody is told; the invitation's notification goes from the bell (workspaces.declineInvite, sharing.declinePageInvite).
+    // Nobody is told; the invitation's notification goes from the bell (workspaces.declineInvite, sharing.declinePageInvite,
+    // folderSharing.declineInvite).
     async run(deps, args) {
       only(args, ["kind", "inviteId", "token"]);
-      const kind = oneOf(args, "kind", ["workspace", "page"] as const);
+      const kind = oneOf(args, "kind", ["workspace", "page", "folder"] as const);
       const inviteId = optionalId(args, "inviteId");
       const token = text(args, "token", { max: 200, optional: true });
       if ((inviteId === undefined) === (token === undefined)) throw new BridgeError("invalid_args", "invite.decline needs an inviteId or a token.");
       const by = inviteId !== undefined ? { inviteId } : { token };
-      await deps.client.mutation(kind === "page" ? api.sharing.declinePageInvite : api.workspaces.declineInvite, by);
+      await deps.client.mutation(kind === "folder" ? api.folderSharing.declineInvite : kind === "page" ? api.sharing.declinePageInvite : api.workspaces.declineInvite, by);
       return { ok: true };
     },
   },

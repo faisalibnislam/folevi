@@ -1496,6 +1496,50 @@ export default defineSchema({
     // Expiring pending invitations (maintenance.housekeeping).
     .index("by_status_expires", ["status", "expiresAt"]),
 
+  /**
+   * Folder grants (docs/SHARING.md): a folder shared with someone reaches every note in it and in its
+   * subfolders, recursively, including notes added later; moving a note out takes the access away. Never
+   * reaches a restricted page or an end-to-end encrypted note (lib/auth.ts folderGrantOf). Scoped like the folder.
+   */
+  folderPermissions: defineTable({
+    folderId: v.id("folders"),
+    ...scoped,
+    profileId: v.id("profiles"),
+    role: vShareRole,
+    grantedBy: v.id("profiles"),
+    createdAt: v.number(),
+  })
+    .index("by_folder", ["folderId"])
+    .index("by_profile", ["profileId"])
+    .index("by_folder_profile", ["folderId", "profileId"])
+    // Whether someone holds any folder grant in a scope (one read, so access checks skip the folder walk).
+    .index("by_profile_workspace", ["profileId", "workspaceId"])
+    .index("by_profile_owner", ["profileId", "ownerProfileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** A folder shared with an email address that has no (verified, active) account: like `pageInvites`. */
+  folderInvites: defineTable({
+    publicId: v.string(),
+    folderId: v.id("folders"),
+    ...scoped,
+    email: v.string(),
+    role: vShareRole,
+    tokenHash: v.string(),
+    invitedBy: v.id("profiles"),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("revoked"), v.literal("expired"), v.literal("declined")),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    acceptedBy: v.optional(v.id("profiles")),
+  })
+    .index("by_folder", ["folderId"])
+    .index("by_email", ["email"])
+    .index("by_token_hash", ["tokenHash"])
+    .index("by_public_id", ["publicId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"])
+    .index("by_status_expires", ["status", "expiresAt"]),
+
   publicLinks: defineTable({
     publicId: v.string(),
     documentId: v.id("documents"),
@@ -1958,6 +2002,10 @@ export default defineSchema({
     inviteId: v.optional(v.id("workspaceInvites")),
     /** A page invitation (a page shared with an address that had no account) waiting for this person. */
     pageInviteId: v.optional(v.id("pageInvites")),
+    /** A folder shared with this person (opens the shared folder while they can still open it). */
+    folderId: v.optional(v.id("folders")),
+    /** A folder invitation (a folder shared with an address that had no account) waiting for this person. */
+    folderInviteId: v.optional(v.id("folderInvites")),
     /** A file for the person to download (an export prepared for them). */
     fileId: v.optional(v.string()),
     title: v.string(),

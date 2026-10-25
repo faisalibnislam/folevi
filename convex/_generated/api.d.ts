@@ -67,6 +67,7 @@ import type * as fcmSend from "../fcmSend.js";
 import type * as fileText from "../fileText.js";
 import type * as files from "../files.js";
 import type * as flowchartAi from "../flowchartAi.js";
+import type * as folderSharing from "../folderSharing.js";
 import type * as http from "../http.js";
 import type * as identity from "../identity.js";
 import type * as imports from "../imports.js";
@@ -296,6 +297,7 @@ declare const fullApi: ApiFromModules<{
   fileText: typeof fileText;
   files: typeof files;
   flowchartAi: typeof flowchartAi;
+  folderSharing: typeof folderSharing;
   http: typeof http;
   identity: typeof identity;
   imports: typeof imports;

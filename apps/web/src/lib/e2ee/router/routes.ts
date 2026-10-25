@@ -54,6 +54,9 @@ export const E2EE_ROUTES: Record<string, Route> = {
   "routines:*": pass,
   "proposals:*": pass,
   "e2ee:*": pass,
+  // A folder in an encrypted space, or an always fully encrypted one, can't be shared as a folder (the server
+  // refuses), so only Standard folders' names and notes come back here.
+  "folderSharing:*": pass,
   // Content modules are listed function by function, so a new function there has to be classified.
   ...each(pass, "documents", "bulkUpdate emptyTrash hideFromRecent move moveToTrash recordView reorder restoreFromTrash setArchived setStarred showInRecent purgeSnapshots seenMark"),
   ...each(pass, "comments", "deleteThread markThreadRead markThreadUnread mentionable react remove setResolved unreadCount"),

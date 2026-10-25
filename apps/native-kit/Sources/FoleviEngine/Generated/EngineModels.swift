@@ -2393,10 +2393,14 @@ public struct NotificationRow: Codable, Hashable, Sendable {
     public var inviteId: String?
     /// A page invitation to accept (`pageInvite.accept`), or null.
     public var pageInviteId: String?
+    /// A folder shared with this person (revision 12): `route` opens it (`/shared/<id>`, `sharedFolder.open`).
+    public var folderId: String?
+    /// A folder invitation to accept (`folderInvite.accept`) or decline (`invite.decline { kind: "folder" }`), or null (revision 12).
+    public var folderInviteId: String?
     /// A file to download, or null.
     public var fileId: String?
 
-    public init(id: String, kind: String, title: String, body: String, at: Double, read: Bool, route: String? = nil, actorName: String? = nil, actorAvatarUrl: String? = nil, noteId: String? = nil, noteTitle: String? = nil, count: Int, inviteId: String? = nil, pageInviteId: String? = nil, fileId: String? = nil) {
+    public init(id: String, kind: String, title: String, body: String, at: Double, read: Bool, route: String? = nil, actorName: String? = nil, actorAvatarUrl: String? = nil, noteId: String? = nil, noteTitle: String? = nil, count: Int, inviteId: String? = nil, pageInviteId: String? = nil, folderId: String? = nil, folderInviteId: String? = nil, fileId: String? = nil) {
         self.id = id
         self.kind = kind
         self.title = title
@@ -2411,6 +2415,8 @@ public struct NotificationRow: Codable, Hashable, Sendable {
         self.count = count
         self.inviteId = inviteId
         self.pageInviteId = pageInviteId
+        self.folderId = folderId
+        self.folderInviteId = folderInviteId
         self.fileId = fileId
     }
 
@@ -2430,6 +2436,8 @@ public struct NotificationRow: Codable, Hashable, Sendable {
         try container.encode(self.count, forKey: .count)
         try container.encode(self.inviteId, forKey: .inviteId)
         try container.encode(self.pageInviteId, forKey: .pageInviteId)
+        try container.encode(self.folderId, forKey: .folderId)
+        try container.encode(self.folderInviteId, forKey: .folderInviteId)
         try container.encode(self.fileId, forKey: .fileId)
     }
 }
@@ -3771,9 +3779,10 @@ public struct InviteTokenArgs: Codable, Hashable, Sendable {
     public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
         case workspace
         case page
+        case folder
     }
 
-    /// "workspace" or "page".
+    /// "workspace" or "page"; "folder" since revision 12 (/share-invite/folder/<token>).
     public var kind: Kind
     public var token: String
 
@@ -3788,12 +3797,13 @@ public struct InvitePreview: Codable, Hashable, Sendable {
     public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
         case workspace
         case page
+        case folder
     }
 
     public var valid: Bool
     public var kind: Kind
     public var inviterName: String?
-    /// The workspace's name or the page's title (null when the invitation is for another address).
+    /// The workspace's name, the page's title or the folder's name (null when the invitation is for another address).
     public var name: String?
     public var roleLabel: String?
     public var emailMatches: Bool
@@ -3822,16 +3832,20 @@ public struct InviteTokenAcceptResult: Codable, Hashable, Sendable {
     /// The page to open (page invitations) or the workspace to show.
     public var noteId: String?
     public var space: SpaceRef?
+    /// The folder to open (folder invitations, revision 12), else null.
+    public var folderId: String?
 
-    public init(noteId: String? = nil, space: SpaceRef? = nil) {
+    public init(noteId: String? = nil, space: SpaceRef? = nil, folderId: String? = nil) {
         self.noteId = noteId
         self.space = space
+        self.folderId = folderId
     }
 
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.noteId, forKey: .noteId)
         try container.encode(self.space, forKey: .space)
+        try container.encode(self.folderId, forKey: .folderId)
     }
 }
 
@@ -5043,8 +5057,10 @@ public struct InviteDeclineArgs: Codable, Hashable, Sendable {
     public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
         case workspace
         case page
+        case folder
     }
 
+    /// "folder" since revision 12.
     public var kind: Kind
     public var inviteId: String?
     public var token: String?
@@ -5276,5 +5292,406 @@ public struct AiSaveDraftArgs: Codable, Hashable, Sendable {
         self.text = try container.decode(String.self, forKey: .text)
         self.space = try container.decodeIfPresent(SpaceRef.self, forKey: .space)
         self.folderId = try container.decodePatch(String.self, forKey: .folderId)
+    }
+}
+
+/// Someone a folder is shared with (on it, or on a folder above it in `inherited`).
+public struct FolderShareGrant: Codable, Hashable, Sendable {
+    public var profileId: String
+    public var name: String
+    /// Only for people who manage the folder; null otherwise and in `inherited`.
+    public var email: String?
+    /// "editor", "commenter", "viewer".
+    public var role: String
+    /// Not a member of the folder's place (no seat, not billed).
+    public var guest: Bool
+    public var isYou: Bool
+    /// Role and removal can be changed here (`folderSharing.setRole`, `folderSharing.revoke`).
+    public var canChange: Bool
+
+    public init(profileId: String, name: String, email: String? = nil, role: String, guest: Bool, isYou: Bool, canChange: Bool) {
+        self.profileId = profileId
+        self.name = name
+        self.email = email
+        self.role = role
+        self.guest = guest
+        self.isYou = isYou
+        self.canChange = canChange
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.profileId, forKey: .profileId)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.email, forKey: .email)
+        try container.encode(self.role, forKey: .role)
+        try container.encode(self.guest, forKey: .guest)
+        try container.encode(self.isYou, forKey: .isYou)
+        try container.encode(self.canChange, forKey: .canChange)
+    }
+}
+
+/// People who have this folder through a folder above it (changed in that folder's sharing).
+public struct FolderShareInherited: Codable, Hashable, Sendable {
+    public var folderId: String
+    public var folderName: String
+    public var people: [FolderShareGrant]
+
+    public init(folderId: String, folderName: String, people: [FolderShareGrant]) {
+        self.folderId = folderId
+        self.folderName = folderName
+        self.people = people
+    }
+}
+
+/// `folderSharing.get { id }`: who a folder is shared with and what this person may change.
+public struct FolderSharingValue: Codable, Hashable, Sendable {
+    public var folderId: String
+    public var name: String
+    public var color: String?
+    /// "read", "comment", "write" or "manage".
+    public var yourAccess: String
+    /// Add people, change roles, remove people and invitations: the Personal's owner, a workspace's owners and admins.
+    public var canManage: Bool
+    /// Shared with this person from someone else's place: the list shows only them; they may `folderSharing.revoke` themselves (leave).
+    public var youAreGuest: Bool
+    public var ownerName: String?
+    /// Null in a Personal.
+    public var workspaceName: String?
+    public var personal: Bool
+    public var sharedBy: String?
+    /// Notes people with access see through it (its subfolders' too).
+    public var noteCount: Int
+    /// Why it can't be shared as a folder (end-to-end encryption), or null. Show it; offer no invite field.
+    public var blocked: String?
+    public var people: [FolderShareGrant]
+    public var inherited: [FolderShareInherited]
+    /// Pending invitations by email (managers only).
+    public var invites: [ShareInvite]
+
+    public init(folderId: String, name: String, color: String? = nil, yourAccess: String, canManage: Bool, youAreGuest: Bool, ownerName: String? = nil, workspaceName: String? = nil, personal: Bool, sharedBy: String? = nil, noteCount: Int, blocked: String? = nil, people: [FolderShareGrant], inherited: [FolderShareInherited], invites: [ShareInvite]) {
+        self.folderId = folderId
+        self.name = name
+        self.color = color
+        self.yourAccess = yourAccess
+        self.canManage = canManage
+        self.youAreGuest = youAreGuest
+        self.ownerName = ownerName
+        self.workspaceName = workspaceName
+        self.personal = personal
+        self.sharedBy = sharedBy
+        self.noteCount = noteCount
+        self.blocked = blocked
+        self.people = people
+        self.inherited = inherited
+        self.invites = invites
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.folderId, forKey: .folderId)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.color, forKey: .color)
+        try container.encode(self.yourAccess, forKey: .yourAccess)
+        try container.encode(self.canManage, forKey: .canManage)
+        try container.encode(self.youAreGuest, forKey: .youAreGuest)
+        try container.encode(self.ownerName, forKey: .ownerName)
+        try container.encode(self.workspaceName, forKey: .workspaceName)
+        try container.encode(self.personal, forKey: .personal)
+        try container.encode(self.sharedBy, forKey: .sharedBy)
+        try container.encode(self.noteCount, forKey: .noteCount)
+        try container.encode(self.blocked, forKey: .blocked)
+        try container.encode(self.people, forKey: .people)
+        try container.encode(self.inherited, forKey: .inherited)
+        try container.encode(self.invites, forKey: .invites)
+    }
+}
+
+public struct FolderShareInviteArgs: Codable, Hashable, Sendable {
+    public enum Role: String, Codable, Hashable, Sendable, CaseIterable {
+        case editor
+        case commenter
+        case viewer
+    }
+
+    public var folderId: String
+    public var email: String
+    public var role: Role
+
+    public init(folderId: String, email: String, role: Role) {
+        self.folderId = folderId
+        self.email = email
+        self.role = role
+    }
+}
+
+public struct FolderShareRoleArgs: Codable, Hashable, Sendable {
+    public enum Role: String, Codable, Hashable, Sendable, CaseIterable {
+        case editor
+        case commenter
+        case viewer
+    }
+
+    public var folderId: String
+    public var profileId: String
+    public var role: Role
+
+    public init(folderId: String, profileId: String, role: Role) {
+        self.folderId = folderId
+        self.profileId = profileId
+        self.role = role
+    }
+}
+
+/// `folderSharing.revoke`: a manager removes someone, or anyone removes themselves (leaves the folder).
+public struct FolderShareRevokeArgs: Codable, Hashable, Sendable {
+    public var folderId: String
+    public var profileId: String
+
+    public init(folderId: String, profileId: String) {
+        self.folderId = folderId
+        self.profileId = profileId
+    }
+}
+
+public struct FolderInviteIdArgs: Codable, Hashable, Sendable {
+    public var inviteId: String
+
+    public init(inviteId: String) {
+        self.inviteId = inviteId
+    }
+}
+
+public struct FolderInviteAcceptResult: Codable, Hashable, Sendable {
+    /// The folder to open (`sharedFolder.open`).
+    public var folderId: String
+
+    public init(folderId: String) {
+        self.folderId = folderId
+    }
+}
+
+/// A folder shared with this person (Shared with Me). One inside another shared folder is left out.
+public struct SharedFolderRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    public var color: String?
+    /// "editor", "commenter", "viewer".
+    public var role: String
+    public var sharedBy: String
+    public var sharedAt: Double
+    public var workspaceName: String?
+    public var ownerName: String?
+    public var noteCount: Int
+    public var updatedAt: Double
+    /// In one of this person's own places (they could see it already; the share raised their access).
+    public var inYourPlace: Bool
+
+    public init(id: String, name: String, color: String? = nil, role: String, sharedBy: String, sharedAt: Double, workspaceName: String? = nil, ownerName: String? = nil, noteCount: Int, updatedAt: Double, inYourPlace: Bool) {
+        self.id = id
+        self.name = name
+        self.color = color
+        self.role = role
+        self.sharedBy = sharedBy
+        self.sharedAt = sharedAt
+        self.workspaceName = workspaceName
+        self.ownerName = ownerName
+        self.noteCount = noteCount
+        self.updatedAt = updatedAt
+        self.inYourPlace = inYourPlace
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.color, forKey: .color)
+        try container.encode(self.role, forKey: .role)
+        try container.encode(self.sharedBy, forKey: .sharedBy)
+        try container.encode(self.sharedAt, forKey: .sharedAt)
+        try container.encode(self.workspaceName, forKey: .workspaceName)
+        try container.encode(self.ownerName, forKey: .ownerName)
+        try container.encode(self.noteCount, forKey: .noteCount)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+        try container.encode(self.inYourPlace, forKey: .inYourPlace)
+    }
+}
+
+/// `shared.folders`: folders shared with this person, newest share first (Shared with Me lists them above pages).
+public struct SharedFoldersValue: Codable, Hashable, Sendable {
+    public var rows: [SharedFolderRow]
+
+    public init(rows: [SharedFolderRow]) {
+        self.rows = rows
+    }
+}
+
+public struct SharedFolderPathItem: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+
+    public init(id: String, name: String) {
+        self.id = id
+        self.name = name
+    }
+}
+
+public struct SharedSubfolder: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    public var color: String?
+    public var noteCount: Int
+
+    public init(id: String, name: String, color: String? = nil, noteCount: Int) {
+        self.id = id
+        self.name = name
+        self.color = color
+        self.noteCount = noteCount
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.color, forKey: .color)
+        try container.encode(self.noteCount, forKey: .noteCount)
+    }
+}
+
+/// A note in a shared folder, with this person's access to it.
+public struct SharedFolderNote: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var icon: String?
+    /// "document", "template", ... (open).
+    public var kind: String
+    public var excerpt: String
+    public var updatedAt: Double
+    /// "read", "comment", "write" or "manage".
+    public var access: String
+
+    public init(id: String, title: String, icon: String? = nil, kind: String, excerpt: String, updatedAt: Double, access: String) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+        self.kind = kind
+        self.excerpt = excerpt
+        self.updatedAt = updatedAt
+        self.access = access
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.icon, forKey: .icon)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.excerpt, forKey: .excerpt)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+        try container.encode(self.access, forKey: .access)
+    }
+}
+
+/// `sharedFolder.open { id }`: a folder shared with this person, opened like a folder. `found: false` once it can't be opened.
+public struct SharedFolderValue: Codable, Hashable, Sendable {
+    public var found: Bool
+    public var id: String
+    public var name: String
+    public var color: String?
+    /// "read", "comment", "write" or "manage" (none when not found).
+    public var access: String
+    /// "Can edit", "Can comment", "Can view", or null when it's theirs some other way.
+    public var roleLabel: String?
+    public var sharedBy: String?
+    /// The folder the access comes from (this one, or one above it).
+    public var sharedFolderId: String?
+    public var ownerName: String?
+    public var workspaceName: String?
+    public var inYourPlace: Bool
+    /// The folders above it this person can open, outermost first.
+    public var path: [SharedFolderPathItem]
+    public var subfolders: [SharedSubfolder]
+    public var notes: [SharedFolderNote]
+
+    public init(found: Bool, id: String, name: String, color: String? = nil, access: String, roleLabel: String? = nil, sharedBy: String? = nil, sharedFolderId: String? = nil, ownerName: String? = nil, workspaceName: String? = nil, inYourPlace: Bool, path: [SharedFolderPathItem], subfolders: [SharedSubfolder], notes: [SharedFolderNote]) {
+        self.found = found
+        self.id = id
+        self.name = name
+        self.color = color
+        self.access = access
+        self.roleLabel = roleLabel
+        self.sharedBy = sharedBy
+        self.sharedFolderId = sharedFolderId
+        self.ownerName = ownerName
+        self.workspaceName = workspaceName
+        self.inYourPlace = inYourPlace
+        self.path = path
+        self.subfolders = subfolders
+        self.notes = notes
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.found, forKey: .found)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.color, forKey: .color)
+        try container.encode(self.access, forKey: .access)
+        try container.encode(self.roleLabel, forKey: .roleLabel)
+        try container.encode(self.sharedBy, forKey: .sharedBy)
+        try container.encode(self.sharedFolderId, forKey: .sharedFolderId)
+        try container.encode(self.ownerName, forKey: .ownerName)
+        try container.encode(self.workspaceName, forKey: .workspaceName)
+        try container.encode(self.inYourPlace, forKey: .inYourPlace)
+        try container.encode(self.path, forKey: .path)
+        try container.encode(self.subfolders, forKey: .subfolders)
+        try container.encode(self.notes, forKey: .notes)
+    }
+}
+
+/// `notes.moveCheck`: would moving these notes to `folderId` (null: Drafts) change who sees them through folder sharing?
+public struct NotesMoveCheckArgs: Codable, Hashable, Sendable {
+    public var ids: [String]
+    public var folderId: String?
+
+    public init(ids: [String], folderId: String? = nil) {
+        self.ids = ids
+        self.folderId = folderId
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.ids, forKey: .ids)
+        try container.encode(self.folderId, forKey: .folderId)
+    }
+}
+
+/// Ask before moving when `title` isn't null: show `title` and `message`, with Move and Cancel.
+public struct NotesMoveCheckValue: Codable, Hashable, Sendable {
+    public var gainCount: Int
+    public var loseCount: Int
+    /// Up to 5 names each way.
+    public var gains: [String]
+    public var loses: [String]
+    public var title: String?
+    public var message: String?
+
+    public init(gainCount: Int, loseCount: Int, gains: [String], loses: [String], title: String? = nil, message: String? = nil) {
+        self.gainCount = gainCount
+        self.loseCount = loseCount
+        self.gains = gains
+        self.loses = loses
+        self.title = title
+        self.message = message
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.gainCount, forKey: .gainCount)
+        try container.encode(self.loseCount, forKey: .loseCount)
+        try container.encode(self.gains, forKey: .gains)
+        try container.encode(self.loses, forKey: .loses)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.message, forKey: .message)
     }
 }

@@ -420,7 +420,7 @@ at most 200). Native drops onto days already work for any task row it has.
 The web palette filters by creator in workspaces (`creatorId`). Add to `SearchArgs`: `creatorId?: string;` (ignored with
 `scope: "everywhere"`). Native shows the Folder, Tag, Updated and Archived filters; Created by comes with this.
 
-### R11.2 Declining an invitation **open: needs a backend change** (there's no `workspaces.declineInvite` or `sharing.declinePageInvite` in convex yet; the web can't decline either. Reported to the coordinator before touching the backend; keep the `notification.remove` fallback until then)
+### R11.2 Declining an invitation **added** (revision 11, `invite.decline`, with `workspaces.declineInvite` and `sharing.declinePageInvite` on the server; revision 12 adds `kind: "folder"` (`folderSharing.declineInvite`). The `notification.remove` fallback can go)
 
 The bell can only accept. Native offers Decline next to Accept:
 
@@ -517,7 +517,7 @@ With R5.2's actions (or `onboarding.complete`), native adds the use-case, theme,
 which only the host can make. Request: the gate's action `chooseFolder` marked as native (`GateAction.native?: "pickFolder"`),
 so the screen asks the host (LibraryService) and then sends `gate.act { action: "useFolder", values: { bookmark } }`.
 
-### R14.4 Sharing folders, and changing a person's role **added in part** (revision 10: `sharing.setRole { noteId, profileId, role }`. Folder sharing needs a backend change: there's no folder sharing on the server at all. Reported to the coordinator)
+### R14.4 Sharing folders, and changing a person's role **added** (revision 10: `sharing.setRole { noteId, profileId, role }`; revision 12: folder sharing, with the server's `convex/folderSharing.ts`, docs/SHARING.md. Views `folderSharing.get { id }`, `shared.folders`, `sharedFolder.open { id }`, `notes.moveCheck { ids, folderId }` (ask before a move when `title` isn't null); commands `folderSharing.invite`, `folderSharing.setRole`, `folderSharing.revoke` (their own id: leave), `folderSharing.cancelInvite`, `folderInvite.accept`; `invite.preview`, `invite.acceptLink` (result `folderId`) and `invite.decline` take `kind: "folder"`; `NotificationRow.folderId` (its `route` is `/shared/<id>`) and `folderInviteId`. New names instead of `sharing.get { folderId }`, so `sharing.get` keeps its shape. No native screens yet: native work is paused)
 
 `sharing.get` takes a note id. Request `sharing.get { folderId }` (the folder's people and access) and
 `sharing.setRole { noteId | folderId, profileId, role }`; today a role changes only by removing and inviting again.

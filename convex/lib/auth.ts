@@ -285,13 +285,19 @@ export async function requireRowScope(ctx: Ctx, profile: Doc<"profiles">, row: S
   return await resolveScope(ctx, profile, { kind: "workspace", workspaceId: workspace.publicId }, minLevel);
 }
 
-/** The highest page grant `profile` holds on `doc` or any of its ancestors (grants are inherited). */
-async function inheritedGrant(ctx: Ctx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<{ grant: Access; restricted: boolean }> {
+/**
+ * The highest page grant `profile` holds on `doc` or any of its ancestors (grants are inherited), whether a
+ * page on the way is restricted, and the page's home folder (its own, or its top-level page's: nested pages
+ * live where their top-level note does).
+ */
+async function inheritedGrant(ctx: Ctx, profile: Doc<"profiles">, doc: Doc<"documents">): Promise<{ grant: Access; restricted: boolean; homeFolderId: Id<"folders"> | undefined }> {
   let restricted = false;
   let grant: Access = "none";
+  let homeFolderId: Id<"folders"> | undefined;
   let cursor: Doc<"documents"> | null = doc;
   for (let depth = 0; cursor && depth < 12; depth++) {
     if (cursor.accessMode === "restricted") restricted = true;
+    if (homeFolderId === undefined && cursor.folderId !== undefined) homeFolderId = cursor.folderId;
     const current: Doc<"documents"> = cursor;
     const permission = await ctx.db
       .query("documentPermissions")
@@ -300,7 +306,116 @@ async function inheritedGrant(ctx: Ctx, profile: Doc<"profiles">, doc: Doc<"docu
     if (permission) grant = maxAccess(grant, roleToAccess(permission.role));
     cursor = current.parentDocumentId ? await ctx.db.get(current.parentDocumentId) : null;
   }
-  return { grant, restricted };
+  return { grant, restricted, homeFolderId };
+}
+
+// ---------------------------------------------------------------- folder grants (docs/SHARING.md)
+
+/** Folders nest at most MAX_FOLDER_DEPTH levels; the walk up is bounded a little above that. */
+const FOLDER_WALK = 16;
+
+/** Whether `profileId` holds any folder grant in `scope` (one indexed read; most people hold none). */
+export async function hasFolderGrantsIn(ctx: Ctx, profileId: Id<"profiles">, scope: Scope): Promise<boolean> {
+  const base = ctx.db.query("folderPermissions");
+  const first = await (
+    scope.kind === "personal"
+      ? base.withIndex("by_profile_owner", (q) => q.eq("profileId", profileId).eq("ownerProfileId", scope.profileId))
+      : base.withIndex("by_profile_workspace", (q) => q.eq("profileId", profileId).eq("workspaceId", scope.workspaceId))
+  ).first();
+  return first !== null;
+}
+
+/**
+ * The folder and the folders above it, nearest first, that are live and in the same scope as `start` (a
+ * deleted folder grants nothing: its notes moved to Drafts when it went).
+ */
+export async function folderChain(ctx: Ctx, folderId: Id<"folders"> | undefined, scope?: Scope): Promise<Doc<"folders">[]> {
+  const out: Doc<"folders">[] = [];
+  let id = folderId;
+  for (let depth = 0; id && depth < FOLDER_WALK; depth++) {
+    const f: Doc<"folders"> | null = await ctx.db.get(id);
+    if (!f || f.deletedAt !== undefined || !hasValidScope(f)) break;
+    if (scope && !sameScope(scopeOfRow(f), scope)) break;
+    if (out.some((o) => o._id === f._id)) break;
+    out.push(f);
+    id = f.parentFolderId;
+  }
+  return out;
+}
+
+/** The highest folder grant `profileId` holds on `folderId` or a folder above it, and the folder that gives it. */
+export async function folderChainGrant(ctx: Ctx, profileId: Id<"profiles">, folderId: Id<"folders"> | undefined, scope: Scope): Promise<{ grant: Access; via: Doc<"folders"> | null }> {
+  let grant: Access = "none";
+  let via: Doc<"folders"> | null = null;
+  if (!folderId || !(await hasFolderGrantsIn(ctx, profileId, scope))) return { grant, via };
+  for (const f of await folderChain(ctx, folderId, scope)) {
+    const row = await ctx.db
+      .query("folderPermissions")
+      .withIndex("by_folder_profile", (q) => q.eq("folderId", f._id).eq("profileId", profileId))
+      .unique();
+    if (row && ACCESS_RANK[roleToAccess(row.role)] > ACCESS_RANK[grant]) {
+      grant = roleToAccess(row.role);
+      via = f;
+    }
+  }
+  return { grant, via };
+}
+
+/**
+ * Whether folder grants can reach this note at all: never an end-to-end encrypted or locked note (its key
+ * is shared note by note, docs/E2EE_DESIGN.md §8.4), never synced content (it has no folder).
+ */
+export function folderGrantsReach(doc: Doc<"documents">): boolean {
+  return doc.sealedAt === undefined && doc.locked !== true && doc.lockedVia === undefined && doc.kind !== "synced";
+}
+
+/** The access a folder grant gives `profileId` on `doc` (through its home folder or a folder above it). */
+async function folderGrantOf(ctx: Ctx, profileId: Id<"profiles">, doc: Doc<"documents">, homeFolderId: Id<"folders"> | undefined): Promise<Access> {
+  if (!homeFolderId || !folderGrantsReach(doc) || !hasValidScope(doc)) return "none";
+  return (await folderChainGrant(ctx, profileId, homeFolderId, scopeOfRow(doc))).grant;
+}
+
+/** How someone stands on a folder (for sharing it and for opening it as a shared folder). */
+export interface FolderAccessInfo {
+  access: Access;
+  /** Its Personal's owner, or a member of its workspace. */
+  inScope: boolean;
+  member: Doc<"workspaceMembers"> | null;
+  /** Their folder grant on it or a folder above it (none for most people in its scope). */
+  grant: Access;
+  /** The folder that grant is on. */
+  via: Doc<"folders"> | null;
+}
+
+/**
+ * Access to a folder. In its scope: the Personal's owner and a workspace's owners and admins manage it,
+ * members have their membership's access (raised by a folder grant). Anyone else only through a folder grant
+ * on it or a folder above it (a guest). Same rules as documentAccess for suspended and departing places.
+ */
+export async function folderAccessInfo(ctx: Ctx, profile: Doc<"profiles">, folder: Doc<"folders">): Promise<FolderAccessInfo> {
+  const none: FolderAccessInfo = { access: "none", inScope: false, member: null, grant: "none", via: null };
+  if (folder.deletedAt !== undefined || !hasValidScope(folder)) return none;
+  const scope = scopeOfRow(folder);
+  if (scope.kind === "personal") {
+    if (scope.profileId === profile._id) return { access: "manage", inScope: true, member: null, grant: "none", via: null };
+    const owner = await ctx.db.get(scope.profileId);
+    if (!owner || owner.status === "deleted") return none;
+    const { grant, via } = await folderChainGrant(ctx, profile._id, folder._id, scope);
+    return { ...none, access: personalGuestVerdict(owner, grant).access, grant, via };
+  }
+  const workspace = await ctx.db.get(scope.workspaceId);
+  if (!workspace || workspace.status === "deleting") return none;
+  const member = await membership(ctx, profile._id, workspace._id);
+  if (isScheduledForDeletion(workspace)) {
+    const v = scheduledVerdict(member);
+    return { ...none, access: v.access, inScope: v.inScope, member: v.member };
+  }
+  const level = member ? memberLevel(member) : null;
+  if (level === "owner" || level === "admin") return { access: workspace.status === "suspended" && level !== "owner" ? "read" : "manage", inScope: true, member, grant: "none", via: null };
+  const { grant, via } = await folderChainGrant(ctx, profile._id, folder._id, scope);
+  if (workspace.status === "suspended") return { access: member || grant !== "none" ? "read" : "none", inScope: member !== null, member, grant, via };
+  const base: Access = member ? memberToAccess(member) : "none";
+  return { access: maxAccess(base, grant), inScope: member !== null, member, grant, via };
 }
 
 /**
@@ -353,15 +468,30 @@ async function directAccessInfo(ctx: Ctx, profile: Doc<"profiles">, doc: Doc<"do
     if (scope.profileId === profile._id) return { access: "manage", inScope: true, member: null, restricted: false };
     const owner = await ctx.db.get(scope.profileId);
     if (!owner || owner.status === "deleted") return noAccess();
-    return personalGuestVerdict(owner, (await inheritedGrant(ctx, profile, doc)).grant);
+    const { grant, homeFolderId } = await inheritedGrant(ctx, profile, doc);
+    // A folder shared with them reaches the notes in it (docs/SHARING.md); the highest grant wins.
+    const viaFolder = accessAtLeast(grant, "write") ? "none" : await folderGrantOf(ctx, profile._id, doc, homeFolderId);
+    return personalGuestVerdict(owner, maxAccess(grant, viaFolder));
   }
   const workspace = await ctx.db.get(scope.workspaceId);
   if (!workspace || workspace.status === "deleting") return noAccess();
   const member = await membership(ctx, profile._id, workspace._id);
   if (isScheduledForDeletion(workspace)) return scheduledVerdict(member);
-  const { grant, restricted } = await inheritedGrant(ctx, profile, doc);
+  const { grant, restricted, homeFolderId } = await inheritedGrant(ctx, profile, doc);
   // A synced block's content isn't open to every member: they see it through the notes showing it (above).
-  return workspaceVerdict(profile._id, doc, workspace, member, grant, restricted || doc.kind === "synced");
+  const closed = restricted || doc.kind === "synced";
+  // A folder grant reaches the notes in the folder, never a restricted page (only its own invitations open
+  // that), and is read only when it could raise what they have.
+  const viaFolder = !closed && folderGrantCouldRaise(member, grant) ? await folderGrantOf(ctx, profile._id, doc, homeFolderId) : "none";
+  return workspaceVerdict(profile._id, doc, workspace, member, maxAccess(grant, viaFolder), closed);
+}
+
+/** Whether a folder grant (at most "write") could raise a workspace member's or guest's access. */
+function folderGrantCouldRaise(member: Doc<"workspaceMembers"> | null, grant: Access): boolean {
+  const level = member ? memberLevel(member) : null;
+  if (level === "owner" || level === "admin") return false;
+  const base: Access = member ? memberToAccess(member) : "none";
+  return !accessAtLeast(maxAccess(base, grant), "write");
 }
 
 function noAccess(): DocumentAccessInfo {
@@ -426,9 +556,11 @@ export class PageAudience {
     // The same walk as inheritedGrant, with every grant on each page instead of one person's.
     const grants = new Map<string, Access>();
     let restricted = false;
+    let homeFolderId: Id<"folders"> | undefined;
     let cursor: Doc<"documents"> | null = doc;
     for (let depth = 0; cursor && depth < 12; depth++) {
       if (cursor.accessMode === "restricted") restricted = true;
+      if (homeFolderId === undefined && cursor.folderId !== undefined) homeFolderId = cursor.folderId;
       const current: Doc<"documents"> = cursor;
       for (const g of await ctx.db
         .query("documentPermissions")
@@ -439,6 +571,17 @@ export class PageAudience {
       cursor = current.parentDocumentId ? await ctx.db.get(current.parentDocumentId) : null;
     }
     const scope = hasValidScope(doc) ? scopeOfRow(doc) : null;
+    // Folder grants on its home folder and the folders above it (never on a restricted or encrypted note).
+    if (scope && homeFolderId && !restricted && folderGrantsReach(doc)) {
+      for (const f of await folderChain(ctx, homeFolderId, scope)) {
+        for (const g of await ctx.db
+          .query("folderPermissions")
+          .withIndex("by_folder", (q) => q.eq("folderId", f._id))
+          .collect()) {
+          grants.set(g.profileId, maxAccess(grants.get(g.profileId) ?? "none", roleToAccess(g.role)));
+        }
+      }
+    }
     const owner = scope?.kind === "personal" ? await ctx.db.get(scope.profileId) : null;
     const workspace = scope?.kind === "workspace" ? await ctx.db.get(scope.workspaceId) : null;
     return new PageAudience(ctx, doc, grants, restricted, owner, workspace);

@@ -91,8 +91,8 @@ describe("sharing and invitations", () => {
     await command("sharing.setAccessMode", { noteId: "d1", mode: "restricted" });
     await command("sharing.revoke", { noteId: "d1", profileId: "p1" });
     await command("publicLink.revoke", { linkId: "l1" });
-    expect(await command("invite.acceptLink", { kind: "page", token: "t" })).toEqual({ noteId: "d5", space: null });
-    expect(await command("invite.acceptLink", { kind: "workspace", token: "t" })).toEqual({ noteId: null, space: "ws1" });
+    expect(await command("invite.acceptLink", { kind: "page", token: "t" })).toEqual({ noteId: "d5", space: null, folderId: null });
+    expect(await command("invite.acceptLink", { kind: "workspace", token: "t" })).toEqual({ noteId: null, space: "ws1", folderId: null });
   });
 
   it("invite.preview for a workspace and an expired page invitation", async () => {

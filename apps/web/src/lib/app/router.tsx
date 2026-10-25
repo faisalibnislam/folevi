@@ -29,6 +29,8 @@ export type Route =
   | { name: "changes" }
   | { name: "daily"; date: string | null }
   | { name: "shared" }
+  /** A folder shared with this person, opened like a folder (docs/SHARING.md). */
+  | { name: "shared-folder"; id: string }
   | { name: "templates" }
   | { name: "starred" }
   | { name: "archive" }
@@ -52,6 +54,8 @@ export type Route =
   | { name: "oauth-consent" }
   | { name: "invite"; token: string }
   | { name: "share-invite"; token: string }
+  /** A folder invitation's link (/share-invite/folder/<token>). */
+  | { name: "folder-invite"; token: string }
   /** The native apps' idle page (native chrome mode, docs/NATIVE_APP_PLAN.md section 8): the engine, nothing drawn. */
   | { name: "native" }
   | { name: "not_found" };
@@ -81,9 +85,10 @@ export function parseRoute(pathname: string): Route {
       return { name: "calendar", month: a && /^\d{4}-\d{2}$/.test(a) ? a : null };
     case "daily":
       return { name: "daily", date: a && /^\d{4}-\d{2}-\d{2}$/.test(a) ? a : null };
+    case "shared":
+      return a ? { name: "shared-folder", id: a } : { name: "shared" };
     case "review":
     case "changes":
-    case "shared":
     case "templates":
     case "starred":
     case "archive":
@@ -109,6 +114,7 @@ export function parseRoute(pathname: string): Route {
     case "invite":
       return a ? { name: "invite", token: a } : { name: "not_found" };
     case "share-invite":
+      if (a === "folder") return parts[2] ? { name: "folder-invite", token: parts[2] } : { name: "not_found" };
       return a ? { name: "share-invite", token: a } : { name: "not_found" };
     case "native":
       return { name: "native" };

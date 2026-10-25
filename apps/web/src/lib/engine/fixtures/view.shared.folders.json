@@ -1,0 +1,36 @@
+{
+  "kind": "view",
+  "name": "shared.folders",
+  "description": "Folders shared with this person.",
+  "args": {},
+  "value": {
+    "rows": [
+      {
+        "id": "fld_garden",
+        "name": "Garden club",
+        "color": "moss",
+        "role": "editor",
+        "sharedBy": "Faisal",
+        "sharedAt": 1792746000000,
+        "workspaceName": null,
+        "ownerName": "Faisal",
+        "noteCount": 12,
+        "updatedAt": 1792828800000,
+        "inYourPlace": false
+      },
+      {
+        "id": "fld_launch",
+        "name": "Launch",
+        "color": null,
+        "role": "viewer",
+        "sharedBy": "Maya",
+        "sharedAt": 1792314000000,
+        "workspaceName": "Airly Studio",
+        "ownerName": "Maya",
+        "noteCount": 4,
+        "updatedAt": 1792659600000,
+        "inYourPlace": false
+      }
+    ]
+  }
+}

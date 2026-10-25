@@ -491,6 +491,14 @@ async function revokeWorkspaceGrants(ctx: MutationCtx, workspace: Doc<"workspace
     if (e2ee) await dropNoteGrant(ctx, g.documentId, profileId);
     n++;
   }
+  // Folders shared with them here go too (docs/SHARING.md).
+  for (const g of await ctx.db
+    .query("folderPermissions")
+    .withIndex("by_profile_workspace", (q) => q.eq("profileId", profileId).eq("workspaceId", workspace._id))
+    .take(500)) {
+    await ctx.db.delete(g._id);
+    n++;
+  }
   return n;
 }
 
@@ -593,7 +601,12 @@ async function requireGuest(ctx: MutationCtx, workspace: Doc<"workspaces">, rawP
       .withIndex("by_profile", (q) => q.eq("profileId", guest._id))
       .collect()
   ).filter((g) => g.workspaceId === workspace._id);
-  if (!grants.length) fail("not_found", "Guest not found.");
+  // A folder shared with them is guest access too (docs/SHARING.md).
+  const viaFolder = await ctx.db
+    .query("folderPermissions")
+    .withIndex("by_profile_workspace", (q) => q.eq("profileId", guest._id).eq("workspaceId", workspace._id))
+    .first();
+  if (!grants.length && !viaFolder) fail("not_found", "Guest not found.");
   return { guest, grants };
 }
 
@@ -626,6 +639,16 @@ export const guests = query({
       list.push(g);
       byPerson.set(g.profileId, list);
     }
+    // Folders shared with people outside the workspace (docs/SHARING.md).
+    const folderGrants = new Map<string, Doc<"folderPermissions">[]>();
+    for (const g of await ctx.db
+      .query("folderPermissions")
+      .withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id))
+      .take(2000)) {
+      if (members.has(g.profileId)) continue;
+      folderGrants.set(g.profileId, [...(folderGrants.get(g.profileId) ?? []), g]);
+      if (!byPerson.has(g.profileId)) byPerson.set(g.profileId, []);
+    }
     const out = [];
     for (const [id, list] of byPerson) {
       const p = await ctx.db.get(id as Id<"profiles">);
@@ -646,7 +669,14 @@ export const guests = query({
         });
       }
       pages.sort((a, b) => a.title.localeCompare(b.title));
-      out.push({ profileId: p._id as string, displayName: p.displayName, email: p.email, pages });
+      const folders = [];
+      for (const g of folderGrants.get(id) ?? []) {
+        const f = await ctx.db.get(g.folderId);
+        if (!f || f.deletedAt !== undefined) continue;
+        folders.push({ folderId: f.publicId, name: f.name || "Untitled", role: g.role, grantedAt: g.createdAt });
+      }
+      folders.sort((a, b) => a.name.localeCompare(b.name));
+      out.push({ profileId: p._id as string, displayName: p.displayName, email: p.email, pages, folders });
     }
     out.sort((a, b) => a.displayName.localeCompare(b.displayName));
     const pending = [];

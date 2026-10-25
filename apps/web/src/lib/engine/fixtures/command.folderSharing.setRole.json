@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "folderSharing.setRole",
+  "description": "Make someone a commenter on a folder.",
+  "args": {
+    "folderId": "fld_garden",
+    "profileId": "prof_9",
+    "role": "commenter"
+  },
+  "result": {
+    "ok": true
+  }
+}

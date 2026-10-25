@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "invite.decline",
+  "description": "Decline a folder invitation from the bell (revision 12).",
+  "args": {
+    "kind": "folder",
+    "inviteId": "finv_1"
+  },
+  "result": {
+    "ok": true
+  }
+}

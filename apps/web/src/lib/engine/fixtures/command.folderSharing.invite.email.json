@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "folderSharing.invite",
+  "description": "Share a folder with an address that has no account: an invitation goes out.",
+  "args": {
+    "folderId": "fld_garden",
+    "email": "kim@example.com",
+    "role": "viewer"
+  },
+  "result": {
+    "status": "invited"
+  }
+}

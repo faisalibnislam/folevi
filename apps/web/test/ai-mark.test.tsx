@@ -62,16 +62,16 @@ describe("AiMark", () => {
 
   test("surprises: a bloom only after a quiet spell, never while someone is typing", () => {
     vi.useFakeTimers();
-    // Each chance comes after the shortest wait (90 s).
+    // Each chance comes after the shortest wait (the first at 10 s, then every 20 s).
     vi.spyOn(Math, "random").mockReturnValue(0);
     draw({ surprises: true });
     // Someone types just before the first chance: no bloom then.
-    vi.advanceTimersByTime(85_000);
+    vi.advanceTimersByTime(8_000);
     window.dispatchEvent(new KeyboardEvent("keydown"));
-    vi.advanceTimersByTime(5_000);
+    vi.advanceTimersByTime(2_000);
     expect(calls).toHaveLength(0);
     // Left alone, the next chance blooms (eight petals, one after another).
-    vi.advanceTimersByTime(90_000);
+    vi.advanceTimersByTime(20_000);
     expect(calls).toHaveLength(8);
     expect(calls.map((c) => c.options.delay)).toEqual([0, 70, 140, 210, 280, 350, 420, 490]);
   });

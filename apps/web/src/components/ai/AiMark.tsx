@@ -14,9 +14,10 @@ const SPRING = "cubic-bezier(.34,1.56,.64,1)";
 const DRIFT = 34;
 const BURST = 110;
 
-/** An automatic bloom at most this often, and only after the page has been quiet this long. */
-const SURPRISE_EVERY_MS = [90_000, 180_000] as const;
-const QUIET_MS = 8_000;
+/** The first automatic bloom comes this soon, then one at a random moment in this range; only after the page has been quiet this long. */
+const FIRST_SURPRISE_MS = [10_000, 25_000] as const;
+const SURPRISE_EVERY_MS = [20_000, 60_000] as const;
+const QUIET_MS = 3_000;
 
 const shift = (i: number, by: number) => {
   const a = (ANGLES[i]! * Math.PI) / 180;
@@ -72,8 +73,10 @@ export function AiMark({ size = 17, thinking = false, replied = 0, surprises = f
     window.addEventListener("keydown", onInput, true);
     window.addEventListener("pointerdown", onInput, true);
     let timer: ReturnType<typeof setTimeout>;
+    let first = true;
     const next = () => {
-      const [min, max] = SURPRISE_EVERY_MS;
+      const [min, max] = first ? FIRST_SURPRISE_MS : SURPRISE_EVERY_MS;
+      first = false;
       timer = setTimeout(() => {
         if (!document.hidden && Date.now() - lastInput > QUIET_MS) {
           petalsOf(svgRef.current).forEach((p, i) => p.animate([{ transform: "scale(1)" }, { transform: "scale(1.18)" }, { transform: "scale(1)" }], { duration: 420, delay: i * 70, easing: "ease-in-out" }));

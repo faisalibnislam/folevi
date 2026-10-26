@@ -26,15 +26,16 @@ export interface FolderSummary {
 /**
  * A folder card drawn as a real folder (portrait): the drawing (FolderCardArt, shared with the site's
  * replica) inside a link to the folder, with the folder's menu over the cover on hover. The page count sits
- * top-left of the front cover, the last update top-right, and the name bottom-left in large serif.
+ * top-left of the front cover, the last update top-right, and the name bottom-left in large serif. `labelScale`
+ * keeps those labels at a bigger card's size on a smaller card (a folder page's subfolders).
  */
-export function FolderCard({ folder: f, parentName }: { folder: FolderSummary; parentName?: string }) {
+export function FolderCard({ folder: f, parentName, labelScale }: { folder: FolderSummary; parentName?: string; labelScale?: number }) {
   const label = `${f.name}${parentName ? `, in ${parentName}` : ""}, ${pages(f.documentCount)}, updated ${formatRelative(f.updatedAt)}`;
   const { canEdit } = useAppState();
   // Notes and folders dropped on the card go inside it (components/app/FolderDropLayer.tsx); it can be dragged too.
   const hint = useDropHint(`card:${f.id}`);
   return (
-    <div data-ctx-host="" data-drop-folder={f.id} data-drop-name={f.name} data-drop-key={`card:${f.id}`} data-drop-state={hint ? (hint.refused ? "refused" : "inside") : undefined} className={FOLDER_CARD_BOX}>
+    <div data-ctx-host="" data-drop-folder={f.id} data-drop-name={f.name} data-drop-key={`card:${f.id}`} data-drop-state={hint ? (hint.refused ? "refused" : "inside") : undefined} className={FOLDER_CARD_BOX} style={labelScale ? ({ "--fc-text": labelScale } as React.CSSProperties) : undefined}>
       {hint && !hint.refused ? <span aria-hidden className="pointer-events-none absolute -inset-2 z-0 rounded-panel bg-[var(--glass-active)] shadow-[inset_0_0_0_2px_var(--color-heading)]" /> : null}
       {hint?.refused ? <DropRefusal text={hint.refused} className="bottom-2 left-1/2 -translate-x-1/2" /> : null}
       <AppLink

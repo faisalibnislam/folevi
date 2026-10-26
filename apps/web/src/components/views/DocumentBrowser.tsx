@@ -5,18 +5,15 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } 
 import { createPortal } from "react-dom";
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
-import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { api } from "@/lib/convex/api";
-import { endFolderDrag, startFolderDrag, useFolderTree, useFolderTreeState } from "@/lib/app/folders";
-import { useOutboxEntries } from "@/lib/sync/queryCache";
+import { useFolderTree, useFolderTreeState } from "@/lib/app/folders";
+import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
 import { hasNative } from "@/lib/native/ui";
-import { pendingNoteFolders } from "@/lib/sync/overlays";
+import { overlayFolderIndex, pendingNoteFolders } from "@/lib/sync/overlays";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useEngineSelector, useLocalStorage } from "@/lib/hooks/useEngine";
 import { startNoteDrag, NOTE_MIME } from "@/lib/app/noteDrag";
-import { useDropHint } from "@/lib/app/dragSession";
-import { DropRefusal } from "@/components/app/FolderDropLayer";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ContextMenu, MenuButton, type MenuItem } from "@/components/ui/Menu";
@@ -31,6 +28,7 @@ import { localDb } from "@/lib/sync/db";
 import { TemplateTile } from "@/components/ui/TemplateIcon";
 import { DocumentCardPreview, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderBadge } from "./FolderBadge";
+import { FolderCard, type FolderSummary } from "./FolderCard";
 import { pendingByDocument, type PendingDocument } from "@/lib/hooks/usePendingDocs";
 import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
 import { Select } from "@/components/ui/Select";
@@ -170,7 +168,7 @@ function cachedViewFilter(view: View, sort: Sort, online: boolean): ((d: KeptRow
 }
 
 function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
-  const { scope, scopeKey, profile, online, engine, outbox, canEdit } = useAppState();
+  const { scope, scopeKey, profile, online, engine, outbox } = useAppState();
   const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
   const [sort, setSort] = useLocalStorage<Sort>(`folevi:sort:${view}`, "updated");
   // A folder made on this device whose creation is still in the outbox (just made, or made offline) isn't on
@@ -397,6 +395,13 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const allFolders = org?.folders ?? [];
   const crumbs = view === "folder" && folderId ? folderAncestors(allFolders, folderId) : [];
   const subfolders = view === "folder" && folderId ? allFolders.filter((f) => f.parentFolderId === folderId) : [];
+  // The folders inside, drawn as folder cards like All folders: their page counts, last change and previews come
+  // from the same index (and offline cache) All folders reads; until it's here, the tree's names and colours.
+  const servedIndex = useOfflineQuery(api.organization.index, subfolders.length ? { scope, only: "folders" } : "skip");
+  const folderIndex = useMemo(() => (servedIndex ? overlayFolderIndex(servedIndex, queued, scope) : servedIndex), [servedIndex, queued, scope]);
+  const subfolderCards: FolderSummary[] = subfolders.map(
+    (f) => folderIndex?.folders.find((x) => x.id === f.id) ?? { id: f.id, name: f.name, color: f.color, parentFolderId: f.parentFolderId, updatedAt: 0, documentCount: 0 },
+  );
   const heading = <h1 className="truncate text-subheadline font-semibold">{title}</h1>;
 
   const dialogs = (
@@ -619,12 +624,15 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         ) : null}
         </div>
 
-        {subfolders.length ? (
-          <nav aria-label="Folders inside" className="mb-6 flex flex-wrap gap-2">
-            {subfolders.map((f) => (
-              <SubfolderChip key={f.id} folder={f} canEdit={canEdit} />
+        {subfolderCards.length ? (
+          // A third smaller than All folders' cards: the page's own notes stay the main thing here.
+          <ul aria-label="Folders inside" className="mb-10 grid grid-cols-[repeat(auto-fill,152px)] gap-x-6 gap-y-8">
+            {subfolderCards.map((f) => (
+              <li key={f.id}>
+                <FolderCard folder={f} labelScale={SUBFOLDER_LABELS} />
+              </li>
             ))}
-          </nav>
+          </ul>
         ) : null}
 
         {view === "templates" && builtIns?.length ? (
@@ -783,28 +791,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   );
 }
 
-/**
- * A folder inside this one, as a chip: it opens the folder, and notes or folders dropped on it go inside
- * (components/app/FolderDropLayer.tsx reads its data attributes); it can be dragged onto another folder too.
- */
-function SubfolderChip({ folder: f, canEdit }: { folder: { id: string; name: string; color: string | null }; canEdit: boolean }) {
-  const hint = useDropHint(`chip:${f.id}`);
-  return (
-    <span className="relative inline-flex" data-drop-folder={f.id} data-drop-name={f.name} data-drop-key={`chip:${f.id}`} data-drop-state={hint ? (hint.refused ? "refused" : "inside") : undefined}>
-      <AppLink
-        href={`/folders/${f.id}`}
-        draggable={canEdit ? true : undefined}
-        onDragStart={canEdit ? (e) => startFolderDrag(e, f.id) : undefined}
-        onDragEnd={canEdit ? endFolderDrag : undefined}
-        className={`inline-flex h-9 max-w-[16rem] items-center gap-2 rounded-chip px-3 text-subheadline ui-card transition-[box-shadow] motion-reduce:transition-none hover:shadow-[var(--shadow-pop)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${hint && !hint.refused ? "bg-[var(--glass-active)] shadow-[inset_0_0_0_2px_var(--color-heading)]" : ""} ${hint?.refused ? "shadow-[inset_0_0_0_1.5px_var(--color-danger)]" : ""}`}
-      >
-        <FolderGlyph color={f.color} size={17} />
-        <span className="truncate">{f.name}</span>
-      </AppLink>
-      {hint?.refused ? <DropRefusal text={hint.refused} className="left-0 top-full mt-1" /> : null}
-    </span>
-  );
-}
+/** A subfolder card is 152 px wide, about two thirds of All folders' (~234 px): its labels stay that card's size. */
+const SUBFOLDER_LABELS = 234 / 152;
 
 /** The check on a selected card (the card also gets a ring). */
 function SelectedMark() {

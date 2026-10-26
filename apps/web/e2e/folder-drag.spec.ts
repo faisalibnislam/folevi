@@ -120,11 +120,11 @@ test("mouse: notes onto folders from a list, a folder page's chips, Home, search
   await folderLink(page, "Shelf").click();
   await expect(page.getByRole("main").getByText(title).first()).toBeVisible();
 
-  // On the folder's page: the note onto its subfolder's chip.
-  const chip = page.getByRole("navigation", { name: "Folders inside" }).getByRole("link", { name: "Inner" });
+  // On the folder's page: the note onto its subfolder's card.
+  const inner = page.getByRole("list", { name: "Folders inside" }).getByRole("link", { name: /^Inner,/ });
   const card = page.getByRole("main").locator("[data-card-id]").filter({ hasText: title }).first();
-  d = await drag(page, card, chip, 0.5);
-  await expect(page.locator('[data-drop-key^="chip:"]')).toHaveAttribute("data-drop-state", "inside");
+  d = await drag(page, card, inner, 0.5);
+  await expect(page.getByRole("list", { name: "Folders inside" }).locator('[data-drop-key^="card:"]')).toHaveAttribute("data-drop-state", "inside");
   await d.drop();
   await expect(toast(page, "Moved to Inner")).toBeVisible();
   await expect(page.getByRole("main").locator("[data-card-id]").filter({ hasText: title })).toHaveCount(0);

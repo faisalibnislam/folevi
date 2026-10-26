@@ -6,7 +6,7 @@ import { History, X } from "lucide-react";
 import { useIphoneApp } from "@/lib/iphone";
 import { inIosApp } from "@/lib/nativeApp";
 import { SHEET_BUTTON, Sheet } from "@/components/iphone/Sheet";
-import { AiIcon } from "@/components/ai/AiIcon";
+import { AiMark } from "@/components/ai/AiMark";
 import { useAppRouter } from "@/lib/app/router";
 import { modKey } from "@/lib/hooks/useEngine";
 
@@ -27,8 +27,11 @@ export interface AskAiProps {
 const loadPanel = () => import("./AskAiPanel").then((m) => ({ default: m.AskAiPanel }));
 const AskAiPanel = lazy(loadPanel);
 
-/** The floating "Ask Foli AI" button. */
-export const AskAiLauncher = forwardRef<HTMLButtonElement, { open: boolean; onClick: () => void; onWarm?: () => void }>(function AskAiLauncher({ open, onClick, onWarm }, ref) {
+/**
+ * The floating "Ask Foli AI" button. Its flower blooms now and then, drifts while Foli AI works (`thinking`, the
+ * chat may be closed meanwhile) and bursts when an answer lands (each new `replied` count): AiMark.
+ */
+export const AskAiLauncher = forwardRef<HTMLButtonElement, { open: boolean; onClick: () => void; onWarm?: () => void; thinking?: boolean; replied?: number }>(function AskAiLauncher({ open, onClick, onWarm, thinking = false, replied = 0 }, ref) {
   return (
     <button
       ref={ref}
@@ -41,7 +44,7 @@ export const AskAiLauncher = forwardRef<HTMLButtonElement, { open: boolean; onCl
       onFocus={onWarm}
       className={`ui-fab fixed bottom-9 right-[calc(2.25rem+var(--tools-panel,0px))] z-[70] inline-flex h-12 items-center gap-2.5 rounded-panel bg-black pl-4 pr-5 text-body font-medium text-white ${SHADOW} transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-[#1c1c1f] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black max-sm:bottom-3 max-sm:right-3`}
     >
-      {open ? <X size={18} aria-hidden /> : <AiIcon size={17} />}
+      {open ? <X size={18} aria-hidden /> : <AiMark size={17} thinking={thinking} replied={replied} surprises />}
       <span>Ask Foli AI</span>
     </button>
   );

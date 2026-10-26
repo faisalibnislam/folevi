@@ -1,7 +1,7 @@
 "use client";
 // Foli AI's floating chat, loaded on first use (docs/MAC_WEBKIT_PLAN.md "Memory", step 4).
 
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "convex/react";
 import { History, Maximize2, MoreHorizontal, Plus, X } from "lucide-react";
@@ -10,7 +10,7 @@ import { inIosApp } from "@/lib/nativeApp";
 import { KEYBOARD_EASE, onKeyboardFrame } from "@/lib/native/ui";
 import { SHEET_BUTTON, Sheet } from "@/components/iphone/Sheet";
 import { api } from "@/lib/convex/api";
-import { AiIcon } from "@/components/ai/AiIcon";
+import { AiMark } from "@/components/ai/AiMark";
 import { useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { AskAiLauncher, type AskAiProps } from "./AskAiChat";
@@ -41,6 +41,13 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
   const launcherRef = useRef<HTMLButtonElement>(null);
   const uid = useId();
   const [conversationId, setConversationId] = useState<string | null>(null);
+  // The flower on the launcher and in the header: drifting while Foli AI works, a burst for each answer.
+  const [thinking, setThinking] = useState(false);
+  const [replied, setReplied] = useState(0);
+  const onWorking = useCallback((working: boolean, answered: boolean) => {
+    setThinking(working);
+    if (answered) setReplied((n) => n + 1);
+  }, []);
   // A new chat (New chat, a folder, another place) starts a fresh thread; the first question only names it.
   const [thread, setThread] = useState(0);
   const startOver = () => {
@@ -218,7 +225,7 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
         className={`ui-pop ui-fab-panel fixed bottom-[104px] right-9 z-[70] flex h-[min(640px,calc(100dvh-136px))] w-[min(420px,calc(100vw-2.5rem))] origin-bottom-right flex-col overflow-hidden !rounded-container animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none max-sm:bottom-[84px] max-sm:right-3 max-sm:w-[calc(100vw-1.5rem)]`}
       >
         <header className="flex flex-none items-center gap-1 border-b border-line/70 py-3 pl-4 pr-3">
-          <AiIcon size={20} aria-hidden className="mr-1.5 flex-none" />
+          <AiMark size={20} thinking={thinking} replied={replied} className="mr-1.5 flex-none" />
           <h2 id={`${uid}-title`} className="flex-1 text-body font-semibold text-heading">
             Foli AI
           </h2>
@@ -255,13 +262,14 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
             initialDraft={initial}
             autoFocus={open}
             onNavigate={close}
+            onWorking={onWorking}
           />
         )}
       </section>
       {/* Outside the chat, so Escape in it doesn't close the chat too. */}
       {actions.dialog}
       {/* On a note the floating bar's AI button opens it; elsewhere this floating button does. */}
-      {onNote || hideLauncher ? null : <AskAiLauncher ref={launcherRef} open={open} onClick={() => (open ? close() : onOpen())} />}
+      {onNote || hideLauncher ? null : <AskAiLauncher ref={launcherRef} open={open} onClick={() => (open ? close() : onOpen())} thinking={thinking} replied={replied} />}
     </div>,
     document.body,
   );

@@ -69,6 +69,7 @@ export function ChatThread({
   initialMode,
   autoSend,
   onInsert,
+  onWorking,
 }: {
   conversationId: string | null;
   onConversation: (id: string) => void;
@@ -87,6 +88,8 @@ export function ChatThread({
   autoSend?: string;
   /** In a note's Foli AI panel: answers can be put into the note. */
   onInsert?: (markdown: string) => void;
+  /** Told when Foli AI starts and stops working, and whether it just finished an answer (the launcher's flower reacts). */
+  onWorking?: (working: boolean, replied: boolean) => void;
 }) {
   const { scope } = useAppState();
   const { navigate } = useAppRouter();
@@ -168,6 +171,14 @@ export function ChatThread({
   // Said once when an answer has finished (the streaming text itself isn't announced word by word).
   const lastMessage = messages[messages.length - 1];
   const announce = useDoneAnnouncement(working, lastMessage?.role !== "assistant" || lastMessage.status === "error" ? "" : lastMessage.status === "stopped" ? "Stopped." : "Answer ready.");
+  const wasWorking = useRef(false);
+  const lastDone = lastMessage?.role === "assistant" && lastMessage.status === "done";
+  useEffect(() => {
+    if (working === wasWorking.current) return;
+    const replied = wasWorking.current && !working && lastDone;
+    wasWorking.current = working;
+    onWorking?.(working, replied);
+  }, [working, lastDone, onWorking]);
   const context: ChatContext = conversation ? { kind: conversation.context.kind, ids: conversation.context.items.map((i) => i.id) } : newContext;
   const names: Record<string, string> = { ...initialNames, ...Object.fromEntries((conversation?.context.items ?? []).map((i) => [i.id, i.name])) };
   const lastUser = messages.map((m) => m.role).lastIndexOf("user");

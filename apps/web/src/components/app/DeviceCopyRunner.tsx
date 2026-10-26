@@ -118,12 +118,16 @@ export function DeviceCopyRunner() {
       if (warm.has(id) || !navigator.onLine) return;
       // The note's own queries start now, so they've answered (or nearly) by the time it opens.
       const offs = [watch(api.documents.get, { documentId: id }), watch(api.blocks.list, { documentId: id })];
+      // Once only: Convex's unsubscribe throws when called twice (the timer used to fire after the cleanup had
+      // already stopped these, whenever the effect re-ran).
       const stop = () => {
-        for (const off of offs) off();
+        clearTimeout(timer);
+        if (warm.get(id) !== stop) return;
         warm.delete(id);
+        for (const off of offs) off();
       };
       warm.set(id, stop);
-      setTimeout(stop, WARM_MS);
+      const timer = setTimeout(stop, WARM_MS);
     };
     const down = (e: Event) => intent(e.target);
     let hoverTimer: ReturnType<typeof setTimeout> | null = null;

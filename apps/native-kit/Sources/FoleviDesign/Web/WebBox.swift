@@ -35,6 +35,8 @@ public struct WebGradient: Hashable, Sendable {
 
 /// What WebKit computed for one element in one theme.
 public struct WebComputedStyle: Hashable, Sendable {
+    /// Where the element was in its page (the app's window for app styles), in points from the top left.
+    public var x: CGFloat, y: CGFloat
     public var width: CGFloat, height: CGFloat
     public var padding: WebInsets
     public var margin: WebInsets
@@ -54,7 +56,9 @@ public struct WebComputedStyle: Hashable, Sendable {
     public var gap: CGFloat
     public var backdropBlur: CGFloat
 
-    public init(width: CGFloat, height: CGFloat, padding: WebInsets, margin: WebInsets, radius: CGFloat, background: RGBA, gradient: WebGradient?, shadows: [ShadowLayer], borderWidth: CGFloat, borderColor: RGBA, color: RGBA, opacity: CGFloat, family: WebFontFamily, fontSize: CGFloat?, fontWeight: CGFloat?, lineHeight: CGFloat?, letterSpacing: CGFloat, gap: CGFloat, backdropBlur: CGFloat) {
+    public init(x: CGFloat = 0, y: CGFloat = 0, width: CGFloat, height: CGFloat, padding: WebInsets, margin: WebInsets, radius: CGFloat, background: RGBA, gradient: WebGradient?, shadows: [ShadowLayer], borderWidth: CGFloat, borderColor: RGBA, color: RGBA, opacity: CGFloat, family: WebFontFamily, fontSize: CGFloat?, fontWeight: CGFloat?, lineHeight: CGFloat?, letterSpacing: CGFloat, gap: CGFloat, backdropBlur: CGFloat) {
+        self.x = x
+        self.y = y
         self.width = width
         self.height = height
         self.padding = padding

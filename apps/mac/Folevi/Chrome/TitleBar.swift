@@ -12,6 +12,7 @@
 // A window with the native frame (N8) draws its own chrome: its buttons sit on the frame's 52 pt top bar (the
 // same spot rule, at zoom 1), the page's reports are ignored, and the frame names the window.
 import AppKit
+import FoleviDesign
 import WebKit
 
 /// Where the page wants the window buttons (CSS px from the window's top left).
@@ -30,7 +31,12 @@ enum TitleBar {
     /// Windows with the native frame (their spot is the frame's, never the page's).
     static var nativeWindows = Set<ObjectIdentifier>()
     /// The frame's spot: the first button at x 20, centred on the 52 pt top bar (polish 2.1).
-    static let nativeSpot = ButtonSpot(x: 18, y: 0, height: 52)
+    /// The native frame's spot: where the web's sidebar keeps its .ui-traffic-space (the sidebar's top bar, after
+    /// its padding), from the web's computed styles.
+    static var nativeSpot: ButtonSpot {
+        let bar = WebStyles.named("frame.sidebar.topbar").light
+        return ButtonSpot(x: Double(bar.x + bar.padding.left), y: Double(bar.y), height: Double(bar.height))
+    }
     private static var observations: [ObjectIdentifier: [NSKeyValueObservation]] = [:]
     private static var installed = false
 

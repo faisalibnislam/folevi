@@ -8,10 +8,14 @@
 //
 //   pnpm styles:gen [--base http://app.localhost:3012]      (needs the web dev server)
 //   pnpm styles:gen --check                                  (fails when the Swift file is out of date)
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+//   pnpm styles:gen --app [--only frame,home]                (also reads the live app's elements listed in
+//                                                            packages/design-tokens/match/app-styles/<area>.json
+//                                                            from the Debug Mac app's web frame, into
+//                                                            app-styles-cache/<area>.json)
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(join(repo, "apps/web/package.json"));
@@ -25,7 +29,23 @@ const base = (arg("--base") ?? process.env.FOLEVI_MATCH_BASE ?? "http://app.loca
 const check = process.argv.includes("--check");
 
 /** Runs in the page: every [data-style] element's computed style, colours resolved to sRGB through a canvas. */
-function extract() {
+function extract(tags) {
+  // (App mode: mark the elements first, by selector, as the samples page marks its own with data-style.)
+  if (tags) {
+    // No transitions: a window behind others doesn't run them, so a colour caught mid-change would stay there.
+    if (!document.getElementById("__webStylesStill")) {
+      const still = document.createElement("style");
+      still.id = "__webStylesStill";
+      still.textContent = "*, *::before, *::after { transition: none !important; animation: none !important; }";
+      document.documentElement.appendChild(still);
+    }
+    for (const [id, t] of Object.entries(tags)) {
+      if (id === "__vars") continue;
+      let el = [...document.querySelectorAll(t.selector)][t.nth ?? 0];
+      for (let i = 0; el && i < (t.parent ?? 0); i++) el = el.parentElement;
+      if (el) el.setAttribute("data-style", id);
+    }
+  }
   const ctx = new OffscreenCanvas(1, 1).getContext("2d", { willReadFrequently: true });
   const probe = document.createElement("i");
   document.body.append(probe);
@@ -116,10 +136,18 @@ function extract() {
   };
   const px = (v) => (v === "normal" || v === "" ? null : Number.parseFloat(v));
   const result = {};
+  // CSS custom properties that are colours (app mode: the Mac's own variables), as "var:<name>".
+  for (const name of tags?.__vars?.names ?? []) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();
+    if (v) result[`var:${name}`] = { color: rgba(v) };
+  }
   for (const el of document.querySelectorAll("[data-style]")) {
+    if (tags && !tags[el.dataset.style]) continue;
     const cs = getComputedStyle(el);
     const r = el.getBoundingClientRect();
     result[el.dataset.style] = {
+      x: Math.round(r.left * 100) / 100,
+      y: Math.round(r.top * 100) / 100,
       width: Math.round(r.width * 100) / 100,
       height: Math.round(r.height * 100) / 100,
       padding: [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft].map(px),
@@ -143,6 +171,62 @@ function extract() {
   return result;
 }
 
+/**
+ * App mode: the running web app in the Debug Mac app's web frame (screens.mjs's scratch library). Each file in
+ * packages/design-tokens/match/app-styles/ lists one area's screens and elements (frame.json, home.json, ...);
+ * its result goes to app-styles-cache/<same name>, so areas are read (and merged) independently.
+ */
+const APP_DIR = join(repo, "packages/design-tokens/match/app-styles");
+const CACHE_DIR = join(repo, "packages/design-tokens/match/app-styles-cache");
+
+async function fromApp(only) {
+  const mac = await import(pathToFileURL(join(repo, "apps/mac/scripts/mac.mjs")).href);
+  const dir = join(repo, "apps/mac/build/run/screens");
+  if (!existsSync(join(dir, "fixture.json"))) throw new Error("No scratch library yet: run node apps/mac/scripts/screens.mjs --fresh first.");
+  const files = readdirSync(APP_DIR).filter((f) => f.endsWith(".json") && (!only || only.includes(f.replace(/\.json$/, ""))));
+  await mac.launch({ dir, env: { FOLEVI_TEST_FOLDER: `${dir}-library`, FOLEVI_WEB_FRAME: "1" } });
+  try {
+    await mac.waitFor(dir, `return document.readyState === "complete" && !!document.querySelector('nav[aria-label="Folio"]')`, 90_000);
+    await mac.command(dir, { cmd: "resize", width: 1280, height: 820 });
+    for (const file of files) {
+      const spec = JSON.parse(readFileSync(join(APP_DIR, file), "utf8"));
+      const out = { light: {}, dark: {} };
+      for (const scheme of ["light", "dark"]) {
+        await mac.command(dir, { cmd: "appearance", value: scheme });
+        for (const [screen, link] of Object.entries(spec.screens)) {
+          await mac.command(dir, { cmd: "open", url: link });
+          await new Promise((r) => setTimeout(r, 1500));
+          // A screen may need a step first (open a menu, a dialog): its `prepare` script runs in the page.
+          if (spec.prepare?.[screen]) {
+            await mac.evaluate(dir, spec.prepare[screen]);
+            await new Promise((r) => setTimeout(r, 600));
+          }
+          const tags = Object.fromEntries(Object.entries(spec.styles).filter(([, t]) => t.screen === screen));
+          if (screen === Object.keys(spec.screens)[0]) tags.__vars = { names: spec.vars ?? [] };
+          const found = await mac.evaluate(dir, `return (${extract.toString()})(${JSON.stringify(tags)})`);
+          Object.assign(out[scheme], found);
+        }
+      }
+      const missing = Object.keys(spec.styles).filter((id) => !out.light[id]);
+      if (missing.length) console.warn(`${file}: not found in the app: ${missing.join(", ")}`);
+      mkdirSync(CACHE_DIR, { recursive: true });
+      writeFileSync(join(CACHE_DIR, file), JSON.stringify(out, null, 1) + "\n");
+      console.log(`${file}: ${Object.keys(out.light).length} styles`);
+    }
+  } finally {
+    await mac.command(dir, { cmd: "quit" }).catch(() => undefined);
+  }
+}
+
+const onlyArg = process.argv.includes("--only") ? process.argv[process.argv.indexOf("--only") + 1].split(",") : null;
+if (process.argv.includes("--app")) await fromApp(onlyArg);
+const appCache = { light: {}, dark: {} };
+for (const f of existsSync(CACHE_DIR) ? readdirSync(CACHE_DIR).filter((f) => f.endsWith(".json")).sort() : []) {
+  const c = JSON.parse(readFileSync(join(CACHE_DIR, f), "utf8"));
+  Object.assign(appCache.light, c.light);
+  Object.assign(appCache.dark, c.dark);
+}
+
 const browser = await webkit.launch();
 const themes = {};
 for (const scheme of ["light", "dark"]) {
@@ -160,15 +244,18 @@ for (const scheme of ["light", "dark"]) {
   await page.close();
 }
 await browser.close();
+Object.assign(themes.light, appCache.light);
+Object.assign(themes.dark, appCache.dark);
 
-const ids = Object.keys(themes.light).sort();
+const vars = Object.keys(themes.light).filter((k) => k.startsWith("var:")).sort();
+const ids = Object.keys(themes.light).filter((k) => !k.startsWith("var:")).sort();
 const n = (v) => (v === null || v === undefined || Number.isNaN(v) ? "nil" : `${Math.round(v * 1000) / 1000}`);
 const color = ([r, g, b, a]) => `RGBA(${r}, ${g}, ${b}${a === 1 ? "" : `, ${n(a)}`})`;
 const family = (f) => (/spectral/i.test(f) ? ".display" : /mono/i.test(f) ? ".mono" : ".sans");
 const style = (s) => {
   const grad = s.gradient && !s.gradient.unsupported ? `WebGradient(angle: ${n(s.gradient.angle)}, stops: [${s.gradient.stops.map(color).join(", ")}])` : "nil";
   const shadows = s.shadows.map((l) => `ShadowLayer(x: ${n(l.x)}, y: ${n(l.y)}, blur: ${n(l.blur)}, spread: ${n(l.spread)}, color: ${color(l.color)}${l.inset ? ", inset: true" : ""})`).join(", ");
-  return `WebComputedStyle(width: ${n(s.width)}, height: ${n(s.height)}, padding: WebInsets(${s.padding.map((p) => n(p ?? 0)).join(", ")}), margin: WebInsets(${s.margin.map((p) => n(p ?? 0)).join(", ")}), radius: ${n(s.radius)}, background: ${color(s.background)}, gradient: ${grad}, shadows: [${shadows}], borderWidth: ${n(s.border.width)}, borderColor: ${color(s.border.color)}, color: ${color(s.color)}, opacity: ${n(s.opacity)}, family: ${family(s.fontFamily)}, fontSize: ${n(s.fontSize)}, fontWeight: ${n(s.fontWeight)}, lineHeight: ${n(s.lineHeight)}, letterSpacing: ${n(s.letterSpacing)}, gap: ${n(s.gap)}, backdropBlur: ${n(s.backdropBlur)})`;
+  return `WebComputedStyle(x: ${n(s.x)}, y: ${n(s.y)}, width: ${n(s.width)}, height: ${n(s.height)}, padding: WebInsets(${s.padding.map((p) => n(p ?? 0)).join(", ")}), margin: WebInsets(${s.margin.map((p) => n(p ?? 0)).join(", ")}), radius: ${n(s.radius)}, background: ${color(s.background)}, gradient: ${grad}, shadows: [${shadows}], borderWidth: ${n(s.border.width)}, borderColor: ${color(s.border.color)}, color: ${color(s.color)}, opacity: ${n(s.opacity)}, family: ${family(s.fontFamily)}, fontSize: ${n(s.fontSize)}, fontWeight: ${n(s.fontWeight)}, lineHeight: ${n(s.lineHeight)}, letterSpacing: ${n(s.letterSpacing)}, gap: ${n(s.gap)}, backdropBlur: ${n(s.backdropBlur)})`;
 };
 const unsupported = ids.filter((id) => themes.light[id].gradient?.unsupported || themes.dark[id]?.gradient?.unsupported);
 if (unsupported.length) console.warn(`backgrounds drawn as their colour only (unsupported image): ${unsupported.join(", ")}`);
@@ -180,6 +267,11 @@ import CoreGraphics
 public enum WebStyles {
     public static let all: [String: WebStylePair] = [
 ${ids.map((id) => `        ${JSON.stringify(id)}: WebStylePair(\n            light: ${style(themes.light[id])},\n            dark: ${style(themes.dark[id])}\n        )`).join(",\n")},
+    ]
+
+    /// The Mac's CSS colour variables (\`--mac-selected\`, \`--glass-hover\`), light and dark.
+    public static let vars: [String: ColorPair] = [
+${vars.map((k) => `        ${JSON.stringify(k.slice(4))}: ColorPair(light: ${color(themes.light[k].color)}, dark: ${color(themes.dark[k].color)})`).join(",\n")},
     ]
 
     /// A style by its \`data-style\` id ("button.primary.md"). Missing ids are a programming error (the

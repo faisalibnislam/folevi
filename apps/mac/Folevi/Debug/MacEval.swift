@@ -11,6 +11,10 @@
 //   { id, cmd: "windows" }                      the windows: number, frame, address, place, key
 //   { id, cmd: "newWindow", path? }             another main window
 //   { id, cmd: "quit" }
+//   { id, cmd: "windowShot", out, window? }     a PNG of the whole window's content at 2x: the native frame drawn by
+//                                               AppKit, with the page (WKWebView's snapshot) where it shows, for the
+//                                               web vs native screenshot diffs (apps/mac/scripts/screens.mjs)
+//   { id, cmd: "resize", width, height, window? } the window's content size, in points
 //
 // Other packages add commands through MacEval.commands (WM2: "menu", WM1: "places").
 #if DEBUG
@@ -59,6 +63,47 @@ enum MacEval {
         return WindowManager.shared.frontMain?.view
     }
 
+    /// The window's content at 2x in sRGB: AppKit draws the native views; the page, a GPU layer cacheDisplay can't
+    /// read, is its own snapshot drawn where it sits (when it is showing).
+    private static func windowShot(content: NSView, page: FoleviWebView, path: String, done: @escaping ([String: Any]) -> Void) {
+        let size = content.bounds.size
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width * 2), pixelsHigh: Int(size.height * 2), bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)?.retagging(with: .sRGB) else { return done(["error": "no bitmap"]) }
+        rep.size = size
+        content.cacheDisplay(in: content.bounds, to: rep)
+        let write = { (image: NSImage?, frame: CGRect) in
+            if let image, let ctx = NSGraphicsContext(bitmapImageRep: rep) {
+                NSGraphicsContext.saveGraphicsState()
+                NSGraphicsContext.current = ctx
+                image.draw(in: frame)
+                NSGraphicsContext.restoreGraphicsState()
+            }
+            guard let png = rep.representation(using: .png, properties: [:]) else { return done(["error": "no png"]) }
+            do {
+                try png.write(to: URL(fileURLWithPath: path))
+                done(["value": ["path": path, "width": rep.pixelsWide, "height": rep.pixelsHigh]])
+            } catch {
+                done(["error": error.localizedDescription])
+            }
+        }
+        let visible = !page.isHidden && page.alphaValue > 0.01 && page.window != nil && !page.bounds.isEmpty && Self.showing(page, in: content)
+        guard visible else { return write(nil, .zero) }
+        // (Flipped to the content view's bottom-left origin, as NSImage draws.)
+        let frame = page.convert(page.bounds, to: content)
+        let drawn = content.isFlipped ? CGRect(x: frame.minX, y: size.height - frame.maxY, width: frame.width, height: frame.height) : frame
+        page.takeSnapshot(with: nil) { image, _ in write(image, drawn) }
+    }
+
+    /// Whether the page shows (no opaque native screen covers it): every ancestor visible.
+    private static func showing(_ view: NSView, in root: NSView) -> Bool {
+        var v: NSView? = view
+        while let cur = v, cur !== root {
+            if cur.isHidden || cur.alphaValue < 0.01 { return false }
+            v = cur.superview
+        }
+        return true
+    }
+
     private static func handle(_ req: [String: Any], _ done: @escaping ([String: Any]) -> Void) {
         let cmd = req["cmd"] as? String ?? ""
         switch cmd {
@@ -85,6 +130,15 @@ enum MacEval {
                     done(["error": error.localizedDescription])
                 }
             }
+        case "windowShot":
+            guard let main = WindowManager.shared.mains.indices.contains(req["window"] as? Int ?? -1) ? WindowManager.shared.mains[req["window"] as! Int] : WindowManager.shared.frontMain,
+                  let content = main.window?.contentView, let path = req["out"] as? String else { return done(["error": "no window or no out"]) }
+            windowShot(content: content, page: main.view, path: path, done: done)
+        case "resize":
+            guard let main = WindowManager.shared.frontMain, let window = main.window, let w = req["width"] as? Double, let h = req["height"] as? Double else { return done(["error": "no window or size"]) }
+            window.setContentSize(NSSize(width: w, height: h))
+            window.contentView?.layoutSubtreeIfNeeded()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { done(["value": [window.contentView?.bounds.width ?? 0, window.contentView?.bounds.height ?? 0]]) }
         case "open":
             guard let raw = req["url"] as? String, let url = URL(string: raw), let app = NSApp.delegate as? AppDelegate else { return done(["error": "no url"]) }
             app.open(url)

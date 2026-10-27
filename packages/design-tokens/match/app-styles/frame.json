@@ -1,0 +1,222 @@
+{
+  "$description": "The window frame (sidebar, top bar, tabs, content card). One file per area: its screens (links), elements (selector, nth, parent) and CSS colour variables; scripts/web-styles.mjs --app reads them from the Debug Mac app's web frame into ../app-styles-cache/<same name>.",
+  "screens": {
+    "home": "folevi-dev://documents",
+    "notes": "folevi-dev://notes"
+  },
+  "styles": {
+    "frame.sidebar": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio']"
+    },
+    "frame.sidebar.column": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio']",
+      "parent": 1
+    },
+    "frame.sidebar.topbar": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] > div:first-child"
+    },
+    "frame.sidebar.search": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] button.ui-well"
+    },
+    "frame.sidebar.search.label": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] button.ui-well > span.flex-1"
+    },
+    "frame.sidebar.search.kbd": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] button.ui-well kbd"
+    },
+    "frame.sidebar.search.icon": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] button.ui-well > svg"
+    },
+    "frame.sidebar.list": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] > div.overflow-y-auto"
+    },
+    "frame.sidebar.item": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] a[href='/notes']"
+    },
+    "frame.sidebar.item.icon": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] a[href='/notes'] > span:first-child"
+    },
+    "frame.sidebar.item.label": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] a[href='/notes'] > span.flex-1"
+    },
+    "frame.sidebar.item.active": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] a[aria-current='page']"
+    },
+    "frame.sidebar.item.active.icon": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] a[aria-current='page'] > span:first-child"
+    },
+    "frame.sidebar.item.count": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] a[href='/drafts'] > span:last-child"
+    },
+    "frame.sidebar.section": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] section"
+    },
+    "frame.sidebar.section.header": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] section > div:first-child"
+    },
+    "frame.sidebar.section.title": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] section a.ui-caps"
+    },
+    "frame.sidebar.section.chevron": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] section button.ui-caps"
+    },
+    "frame.sidebar.section.action": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] section > div:first-child > button"
+    },
+    "frame.sidebar.section.body": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] section > div:nth-child(2)"
+    },
+    "frame.sidebar.folder.row": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] [data-drop-tree]"
+    },
+    "frame.sidebar.folder.toggle": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] [data-drop-tree] > button"
+    },
+    "frame.sidebar.folder.item": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] [data-drop-tree] a"
+    },
+    "frame.sidebar.starred.toggle": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] .group\\/starred > button"
+    },
+    "frame.sidebar.starred.item": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] [aria-label='Starred pages'] a"
+    },
+    "frame.sidebar.bottom": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] > div:last-child"
+    },
+    "frame.sidebar.account": {
+      "screen": "home",
+      "selector": "nav[aria-label='Folio'] > div:last-child button"
+    },
+    "frame.topbar": {
+      "screen": "home",
+      "selector": "nav[aria-label='Open pages']",
+      "parent": 1
+    },
+    "frame.tabs": {
+      "screen": "home",
+      "selector": "nav[aria-label='Open pages']"
+    },
+    "frame.tab.home": {
+      "screen": "home",
+      "selector": "nav[aria-label='Open pages'] > *:first-child"
+    },
+    "frame.tab": {
+      "screen": "notes",
+      "selector": "nav[aria-label='Open pages'] > [data-tab]"
+    },
+    "frame.main": {
+      "screen": "home",
+      "selector": "main#main"
+    },
+    "frame.content": {
+      "screen": "home",
+      "selector": "main#main",
+      "parent": 2
+    },
+    "frame.window": {
+      "screen": "home",
+      "selector": "body"
+    },
+    "frame.html": {
+      "screen": "home",
+      "selector": "html"
+    },
+    "frame.canvas": {
+      "screen": "home",
+      "selector": ".ui-canvas"
+    },
+    "frame.topbar.back": {
+      "screen": "notes",
+      "selector": "button[aria-label^='Back']"
+    },
+    "frame.topbar.forward": {
+      "screen": "notes",
+      "selector": "button[aria-label^='Forward']"
+    },
+    "frame.topbar.divider": {
+      "screen": "home",
+      "selector": "nav[aria-label='Open pages'] ~ span, span.h-5.w-px"
+    },
+    "frame.topbar.new": {
+      "screen": "home",
+      "selector": "nav[aria-label='Open pages'] ~ button:last-of-type"
+    },
+    "frame.topbar.new.icon": {
+      "screen": "home",
+      "selector": "nav[aria-label='Open pages'] ~ button:last-of-type svg"
+    },
+    "frame.tab.home.icon": {
+      "screen": "home",
+      "selector": "nav[aria-label='Open pages'] > a:first-child svg"
+    },
+    "frame.tab.off": {
+      "screen": "home",
+      "selector": "nav[aria-label='Open pages'] > [data-tab]"
+    },
+    "frame.tab.home.off": {
+      "screen": "notes",
+      "selector": "nav[aria-label='Open pages'] > a[data-tab-home]"
+    },
+    "frame.tab.link": {
+      "screen": "notes",
+      "selector": "nav[aria-label='Open pages'] > [data-tab] > a"
+    },
+    "frame.tab.icon": {
+      "screen": "notes",
+      "selector": "nav[aria-label='Open pages'] > [data-tab] > a > svg"
+    },
+    "frame.tab.label": {
+      "screen": "notes",
+      "selector": "nav[aria-label='Open pages'] > [data-tab] > a > span"
+    },
+    "frame.tab.close": {
+      "screen": "notes",
+      "selector": "nav[aria-label='Open pages'] > [data-tab] > button"
+    }
+  },
+  "vars": [
+    "mac-hover",
+    "mac-press",
+    "mac-selected",
+    "mac-selected-inactive",
+    "mac-highlight",
+    "glass-hover",
+    "glass-active",
+    "glass-border",
+    "color-canvas",
+    "color-sidebar",
+    "color-heading",
+    "color-ink",
+    "color-ink-muted",
+    "color-ink-faint",
+    "color-line",
+    "color-line-strong"
+  ]
+}

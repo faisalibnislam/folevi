@@ -41,7 +41,7 @@ enum NativeFrame {
         guard !installed else { return }
         installed = true
         _ = FoleviFonts.register()
-        SidebarViewController.defaults = Paths.defaults
+        WebSidebarController.defaults = Paths.defaults
         // FOLEVI_WEB_GATES=1: every gate is the page's own screen, full window (the fallback).
         FrameRootViewController.nativeGates = env["FOLEVI_WEB_GATES"] != "1"
         #if DEBUG
@@ -269,7 +269,7 @@ final class FrameController: FrameHost {
     func frameStateChanged() { WindowRestore.changed() }
 
     /// The window's sidebar (menus: ⌘K focuses its search, View > Hide Sidebar).
-    var sidebar: SidebarViewController { root.split.sidebar }
+    var sidebar: WebSidebarController { root.split.sidebar }
 }
 
 /// The menu bar's page commands (MenuModel `.page`) in a window with the native frame. Unknown ids fall back to

@@ -1,10 +1,10 @@
 // The Mac window's native frame, put together (docs/NATIVE_APP_PLAN.md section 4.5):
 //
 //   FrameRootViewController
-//   ├── FrameSplitViewController (NSSplitViewController)
-//   │   ├── sidebar item: SidebarViewController (translucent source list)
-//   │   └── content item: ContentViewController
-//   │       ├── TopBarView (52 pt: back, forward, the tab strip, New note, and on a note Share, "...", Foli AI)
+//   ├── FrameSplitViewController (the web's layout: the window colour, the sidebar, the content card)
+//   │   ├── WebSidebarController: WebSidebar (SwiftUI, the web's Sidebar.tsx)
+//   │   └── ContentViewController: the rounded card
+//   │       ├── WebTopBar (the web's glass bar: back, forward, tabs, New note)
 //   │       └── body: the native screen (SwiftUI) over the Page View, or the Page View (a note)
 //   └── the Page View full window while the engine isn't up (the web's sign-in, onboarding and lock gates)
 //
@@ -112,16 +112,20 @@ public final class FrameRootViewController: NSViewController {
     public var showsNativeGate: Bool { gateHost != nil }
 }
 
+/// The window's frame laid out as the web app's (Shell.tsx as Folevi for Mac shows it, from "frame.*" styles):
+/// the window's own background, the sidebar 8 pt from the edges, and the content as a rounded card beside it,
+/// its glass top bar floating inside. (The name is kept from the split view it replaced: menus and the eval hook
+/// reach the sidebar and the content through it.)
 @MainActor
-public final class FrameSplitViewController: NSSplitViewController {
+public final class FrameSplitViewController: NSViewController {
     public let model: FrameModel
-    public let sidebar: SidebarViewController
+    public let sidebar: WebSidebarController
     public let content: ContentViewController
-    private var sidebarItem: NSSplitViewItem!
+    private var observers: [Observer] = []
 
     init(model: FrameModel, pageView: NSView) {
         self.model = model
-        sidebar = SidebarViewController(model: model)
+        sidebar = WebSidebarController(model: model)
         content = ContentViewController(model: model, pageView: pageView)
         super.init(nibName: nil, bundle: nil)
     }
@@ -129,55 +133,70 @@ public final class FrameSplitViewController: NSSplitViewController {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not from a nib") }
 
+    public override func loadView() {
+        let root = WebFrameView()
+        view = root
+        addChild(sidebar)
+        addChild(content)
+        root.addSubview(sidebar.view)
+        root.addSubview(content.view)
+    }
+
     public override func viewDidLoad() {
         super.viewDidLoad()
-        splitView.dividerStyle = .thin
-        splitView.autosaveName = "FoleviFrameSplit"
-        let side = NSSplitViewItem(sidebarWithViewController: sidebar)
-        side.minimumThickness = 220
-        side.maximumThickness = 360
-        side.canCollapse = true
-        side.allowsFullHeightLayout = true
-        side.titlebarSeparatorStyle = .none
-        sidebarItem = side
-        let main = NSSplitViewItem(viewController: content)
-        main.titlebarSeparatorStyle = .none
-        main.minimumThickness = 480
-        addSplitViewItem(side)
-        addSplitViewItem(main)
-        // 264 wide to start (polish 2.1).
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.splitView.autosaveName.map({ UserDefaults.standard.object(forKey: "NSSplitView Subview Frames \($0)") == nil }) ?? true else { return }
-            self.splitView.setPosition(264, ofDividerAt: 0)
+        observers.append(Observer { [weak self] in
+            guard let self else { return }
+            _ = self.model.sidebarCollapsed
+            self.view.needsLayout = true
+        })
+    }
+
+    public override func viewDidLayout() {
+        super.viewDidLayout()
+        let b = view.bounds
+        let side = WebStyles.named("frame.sidebar").light
+        let card = WebStyles.named("frame.content").light
+        let m = side.y
+        sidebar.view.isHidden = model.sidebarCollapsed
+        // (AppKit's origin is the bottom left.)
+        sidebar.view.frame = CGRect(x: side.x, y: m, width: side.width, height: max(0, b.height - m * 2))
+        let left = model.sidebarCollapsed ? m : card.x
+        content.view.frame = CGRect(x: left, y: m, width: max(0, b.width - left - m), height: max(0, b.height - m * 2))
+    }
+
+    /// ⌘\, View > Hide Sidebar.
+    @objc public func toggleSidebar(_ sender: Any?) {
+        model.sidebarCollapsed.toggle()
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.18
+            view.layoutSubtreeIfNeeded()
         }
     }
 
-    public override func splitViewDidResizeSubviews(_ notification: Notification) {
-        super.splitViewDidResizeSubviews(notification)
-        let collapsed = sidebarItem?.isCollapsed ?? false
-        if model.sidebarCollapsed != collapsed { model.sidebarCollapsed = collapsed }
-    }
-
-    public var isSidebarCollapsed: Bool { sidebarItem?.isCollapsed ?? false }
+    public var isSidebarCollapsed: Bool { model.sidebarCollapsed }
 }
 
+/// The window's background behind the sidebar and the card: the system window colour, as the web page in the
+/// shipped app is transparent over it.
 @MainActor
-public final class ContentViewController: NSViewController {
-    let model: FrameModel
-    let pageView: NSView
-    public let topBar: TopBarView
-    private let body = NSView()
-    private var screen: NSHostingView<ScreenRoot>?
-    private lazy var models = ScreenModels(frame: model)
-    private var toasts: NSHostingView<ToastStack>?
-    private var observers: [Observer] = []
-    private var shownRoute: FrameRoute?
-    static let barHeight: CGFloat = 52
+final class WebFrameView: NSView {
+    override var isFlipped: Bool { false }
+    override var wantsUpdateLayer: Bool { true }
+    override func updateLayer() { layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor }
+}
 
-    init(model: FrameModel, pageView: NSView) {
+/// The web-drawn sidebar in the frame, with the popovers its buttons open.
+@MainActor
+public final class WebSidebarController: NSViewController {
+    let model: FrameModel
+    private var popover: NSPopover?
+    private lazy var notifications = NotificationsModel(client: model.client, feedback: ScreenModels(frame: model).feedback)
+    private lazy var tasks: ValueStore<TaskCounts> = model.client.watch(.tasksCounts(), snapshotKey: "tasks.counts")
+    /// Where sidebar choices are kept (the app sets its own domain).
+    public static var defaults: UserDefaults = .standard
+
+    init(model: FrameModel) {
         self.model = model
-        self.pageView = pageView
-        topBar = TopBarView(model: model)
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -185,28 +204,129 @@ public final class ContentViewController: NSViewController {
     required init?(coder: NSCoder) { fatalError("not from a nib") }
 
     public override func loadView() {
-        let root = CanvasView()
+        var actions = WebSidebarActions()
+        actions.notifications = { [weak self] anchor in self?.showNotifications(anchor) }
+        actions.account = { [weak self] anchor in self?.showAccount(anchor) }
+        actions.sync = { [weak self] anchor in self?.showSync(anchor) }
+        let host = NSHostingView(rootView: WebSidebar(model: model, tasks: tasks, actions: actions).defaultAppStorage(Self.defaults))
+        host.sizingOptions = []
+        host.safeAreaRegions = []
+        view = host
+    }
+
+    /// ⌘K / Open Quickly / Search All Notes: the search page (the web's palette).
+    public func focusSearch() {
+        if model.sidebarCollapsed { model.sidebarCollapsed = false }
+        model.open(.search(""))
+    }
+
+    private func showNotifications(_ anchor: NSView?) {
+        let close: @MainActor () -> Void = { [weak self] in self?.popover?.close() }
+        let content = NotificationsContent(model: notifications, phone: false)
+            .frame(width: 384, height: 480)
+            .environment(\.screenIntents, FrameNavigation.intents(model, close: close))
+            .environment(\.screenNavigator, FrameNavigation.navigator(model))
+            .environment(\.screenFeedback, ScreenModels(frame: model).feedback)
+            .accessibilityIdentifier("popover.notifications")
+        show(AnyView(content), from: anchor)
+    }
+
+    private func showSync(_ anchor: NSView?) { show(AnyView(SyncPopover(model: model)), from: anchor) }
+
+    private func showAccount(_ anchor: NSView?) {
+        let menu = AccountMenu.build(model: model)
+        let at = anchor.map { view.convert($0.bounds.origin, from: $0) } ?? NSPoint(x: 10, y: 60)
+        menu.popUp(positioning: nil, at: at, in: view)
+    }
+
+    private func show(_ content: AnyView, from anchor: NSView?) {
+        popover?.close()
+        let p = NSPopover()
+        p.behavior = .transient
+        p.contentViewController = NSHostingController(rootView: content)
+        let target = anchor ?? view
+        p.show(relativeTo: target.bounds, of: target, preferredEdge: .maxY)
+        popover = p
+    }
+
+    /// The popover on screen (tests, the eval hook).
+    public var shownPopover: NSPopover? { popover?.isShown == true ? popover : nil }
+    public func openSyncPopover() { showSync(nil) }
+    public func openNotificationsPopover() { showNotifications(nil) }
+}
+
+@MainActor
+public final class ContentViewController: NSViewController {
+    let model: FrameModel
+    let pageView: NSView
+    public let topBar: NSHostingView<WebTopBar>
+    private let body = NSView()
+    private var screen: NSHostingView<ScreenRoot>?
+    private lazy var models = ScreenModels(frame: model)
+    private var toasts: NSHostingView<ToastStack>?
+    private var observers: [Observer] = []
+    private var shownRoute: FrameRoute?
+    /// Where the content starts under the glass bar (the web's main: padding-top 56).
+    static var barHeight: CGFloat { WebStyles.named("frame.main").light.padding.top }
+
+    init(model: FrameModel, pageView: NSView) {
+        self.model = model
+        self.pageView = pageView
+        topBar = NSHostingView(rootView: WebTopBar(model: model))
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not from a nib") }
+
+    /// The card: its fill and shadows (the web's frame.content) behind, everything inside clipped to its corners.
+    public override func loadView() {
+        let card = WebStyles.named("frame.content")
+        let root = NSView()
         view = root
+        let back = NSHostingView(rootView: Color.clear.webBox(card))
+        // (The frame draws under the title bar, as the web page does: no safe area anywhere in it.)
+        back.safeAreaRegions = []
+        topBar.safeAreaRegions = []
+        back.translatesAutoresizingMaskIntoConstraints = false
+        root.addSubview(back)
+        let clip = NSView()
+        clip.wantsLayer = true
+        clip.layer?.cornerRadius = card.light.radius
+        clip.layer?.masksToBounds = true
+        clip.translatesAutoresizingMaskIntoConstraints = false
+        root.addSubview(clip)
         topBar.translatesAutoresizingMaskIntoConstraints = false
         body.translatesAutoresizingMaskIntoConstraints = false
-        root.addSubview(body)
-        root.addSubview(topBar)
+        clip.addSubview(body)
+        clip.addSubview(topBar)
         let toastView = NSHostingView(rootView: ToastStack(model: model))
+        toastView.safeAreaRegions = []
         toastView.translatesAutoresizingMaskIntoConstraints = false
-        root.addSubview(toastView)
+        clip.addSubview(toastView)
         toasts = toastView
+        let bar = WebStyles.named("frame.topbar").light
+        let inset = bar.y - card.light.y
         NSLayoutConstraint.activate([
-            topBar.topAnchor.constraint(equalTo: root.topAnchor),
-            topBar.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            topBar.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            topBar.heightAnchor.constraint(equalToConstant: Self.barHeight),
-            body.topAnchor.constraint(equalTo: topBar.bottomAnchor),
-            body.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            body.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            body.bottomAnchor.constraint(equalTo: root.bottomAnchor),
-            toastView.centerXAnchor.constraint(equalTo: root.centerXAnchor),
-            toastView.bottomAnchor.constraint(equalTo: root.bottomAnchor),
-            toastView.widthAnchor.constraint(lessThanOrEqualTo: root.widthAnchor, constant: -40),
+            back.topAnchor.constraint(equalTo: root.topAnchor),
+            back.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            back.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            back.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            clip.topAnchor.constraint(equalTo: root.topAnchor),
+            clip.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            clip.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            clip.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            topBar.topAnchor.constraint(equalTo: clip.topAnchor, constant: inset),
+            topBar.leadingAnchor.constraint(equalTo: clip.leadingAnchor, constant: bar.x - card.light.x),
+            topBar.trailingAnchor.constraint(equalTo: clip.trailingAnchor, constant: -(bar.x - card.light.x)),
+            topBar.heightAnchor.constraint(equalToConstant: bar.height),
+            body.topAnchor.constraint(equalTo: clip.topAnchor, constant: Self.barHeight),
+            body.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
+            body.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
+            body.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
+            toastView.centerXAnchor.constraint(equalTo: clip.centerXAnchor),
+            toastView.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
+            toastView.widthAnchor.constraint(lessThanOrEqualTo: clip.widthAnchor, constant: -40),
         ])
     }
 
@@ -245,6 +365,7 @@ public final class ContentViewController: NSViewController {
                 s.isHidden = false
             } else {
                 let s = NSHostingView(rootView: ScreenRoot(model: model, models: models, route: route))
+                s.safeAreaRegions = []
                 s.frame = body.bounds
                 s.autoresizingMask = [.width, .height]
                 body.addSubview(s, positioned: .above, relativeTo: pageView.superview === body ? pageView : nil)
@@ -271,134 +392,6 @@ public final class ContentViewController: NSViewController {
 
     /// Whether a native screen covers the Page View now (tests).
     public var showsNativeScreen: Bool { screen.map { !$0.isHidden } ?? false }
-}
-
-/// The content's background (white / near-black, the neutral chrome).
-@MainActor
-final class CanvasView: NSView {
-    override var wantsUpdateLayer: Bool { true }
-    override func updateLayer() {
-        layer?.backgroundColor = NSColor(name: nil) { a in
-            a.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(srgbRed: 16 / 255, green: 16 / 255, blue: 17 / 255, alpha: 1) : .white
-        }.cgColor
-    }
-}
-
-/// The content's top bar (polish 2.1: 52 tall, the window buttons' centre line; 28 pt icon buttons).
-@MainActor
-public final class TopBarView: DragBand, TabStripDelegate {
-    let model: FrameModel
-    public let strip = TabStripView()
-    let toggle = TopBarView.button("sidebar.left", "Show Sidebar", tip: "Show Sidebar ⌘\\")
-    let back = TopBarView.button("chevron.left", "Back", tip: "Back ⌘[")
-    let forward = TopBarView.button("chevron.right", "Forward", tip: "Forward ⌘]")
-    let newNote = TopBarView.button("square.and.pencil", "New Note", tip: "New Note ⌘N")
-    let share = TopBarView.button("square.and.arrow.up", "Share", tip: "Share")
-    let more = TopBarView.button("ellipsis.circle", "More", tip: "More")
-    let ai = TopBarView.button("sparkles", "Foli AI", tip: "Foli AI ⌘J")
-    private var observers: [Observer] = []
-    private var fullScreen = false
-
-    init(model: FrameModel) {
-        self.model = model
-        super.init(frame: .zero)
-        strip.delegate = self
-        for (b, sel, id) in [(toggle, #selector(toggleSidebar), "toggle"), (back, #selector(goBack), "back"), (forward, #selector(goForward), "forward"), (newNote, #selector(makeNote), "newNote"), (share, #selector(shareNote), "share"), (more, #selector(moreMenu(_:)), "more"), (ai, #selector(toggleAI), "ai")] {
-            b.target = self
-            b.action = sel
-            b.setAccessibilityIdentifier("topbar.\(id)")
-            addSubview(b)
-        }
-        addSubview(strip)
-        strip.setAccessibilityIdentifier("topbar.tabs")
-        observers.append(Observer { [weak self] in self?.refresh() })
-        let nc = NotificationCenter.default
-        for name in [NSWindow.didEnterFullScreenNotification, NSWindow.didExitFullScreenNotification] {
-            nc.addObserver(forName: name, object: nil, queue: .main) { [weak self] n in
-                let source = (n.object as AnyObject?).map(ObjectIdentifier.init)
-                let entering = n.name == NSWindow.didEnterFullScreenNotification
-                MainActor.assumeIsolated {
-                    guard let self, let w = self.window, source == ObjectIdentifier(w) else { return }
-                    self.fullScreen = entering
-                    self.needsLayout = true
-                }
-            }
-        }
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("not from a nib") }
-
-    static func button(_ symbol: String, _ label: String, tip: String) -> NSButton {
-        let b = HoverButton()
-        b.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
-        b.symbolConfiguration = .init(pointSize: 14, weight: .regular)
-        b.toolTip = tip
-        b.setAccessibilityLabel(label)
-        return b
-    }
-
-    private func refresh() {
-        let note = model.route.isNote
-        strip.update(tabs: model.tabs.tabs, activeID: model.tabs.activeID)
-        back.isEnabled = model.history.canGoBack
-        forward.isEnabled = model.history.canGoForward
-        share.isHidden = !note
-        more.isHidden = !note
-        ai.isHidden = !note || model.session.value?.capabilities.ai == false
-        (ai as? HoverButton)?.isOn = model.editorPanel == .ai
-        toggle.isHidden = !model.sidebarCollapsed
-        needsLayout = true
-    }
-
-    public override func layout() {
-        super.layout()
-        let h = bounds.height
-        let s: CGFloat = 28
-        let y = (h - s) / 2
-        // Room for the window buttons when the sidebar is hidden (they sit over the bar then), none in full screen.
-        var x: CGFloat = model.sidebarCollapsed ? (fullScreen ? 12 : 84) : 12
-        if !toggle.isHidden {
-            toggle.frame = CGRect(x: x, y: y, width: s, height: s)
-            x += s + 6
-        }
-        back.frame = CGRect(x: x, y: y, width: s, height: s)
-        x += s + 2
-        forward.frame = CGRect(x: x, y: y, width: s, height: s)
-        x += s + 10
-        var right = bounds.width - 12
-        for b in [ai, more, share, newNote] where !b.isHidden {
-            right -= s
-            b.frame = CGRect(x: right, y: y, width: s, height: s)
-            right -= 4
-        }
-        strip.frame = CGRect(x: x, y: 0, width: max(0, right - 8 - x), height: h)
-    }
-
-    // MARK: actions
-
-    @objc private func toggleSidebar() { window?.firstResponder?.tryToPerform(#selector(NSSplitViewController.toggleSidebar(_:)), with: nil) }
-    @objc private func goBack() { model.goBack() }
-    @objc private func goForward() { model.goForward() }
-    @objc private func makeNote() { model.newNote() }
-    @objc private func shareNote() { model.noteMenu(.share) }
-    @objc private func toggleAI() { model.toggleNoteAI() }
-
-    @objc private func moreMenu(_ sender: NSButton) {
-        NoteMenu.build(model: model).popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 4), in: sender)
-    }
-
-    // MARK: the strip
-
-    public func tabStrip(select id: String) { model.selectTab(id) }
-    public func tabStrip(close id: String) { model.closeTab(id) }
-    public func tabStrip(move id: String, to index: Int) { model.moveTab(id, to: index) }
-    public func tabStrip(closeOthers id: String) { model.closeOtherTabs(id) }
-    public func tabStrip(closeToTheRight id: String) { model.closeTabsToTheRight(of: id) }
-    public func tabStrip(openInNewWindow id: String) {
-        guard let t = model.tabs.tabs.first(where: { $0.id == id }) else { return }
-        model.host?.frameOpenInNewWindow(t.route)
-    }
 }
 
 /// A 28 pt toolbar button with the Mac's quiet hover and press fills (polish 2.4), and an "on" state.

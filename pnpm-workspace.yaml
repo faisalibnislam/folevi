@@ -8,3 +8,11 @@ onlyBuiltDependencies:
 # Security: patched versions of transitive dependencies (pnpm audit).
 overrides:
   lodash-es: ">=4.18.0"
+  # Security fixes for packages that come in through other packages (docs/SECURITY_PLAN.md P0.1).
+  dompurify: ">=3.4.17"
+  sharp: ">=0.35.5"
+  zod: ">=4.6.6"
+  undici: ">=8.12.2"
+  source-map-js: ">=1.2.2"
+  vite: "8.3.5"
+  katex: ">=0.18.2"

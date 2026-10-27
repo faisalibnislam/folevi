@@ -28,3 +28,4 @@
 - [Cloudflare cost plan](cloudflare-cost-plan.md): 2026-10-23 files to private R2 + signed links, AI Gateway (no logs) + Workers AI embeddings, compressed covers; DNS/email/images stay
 - [iPhone feedback also iPad](iphone-feedback-applies-to-ipad.md): every iPhone fix/request also applies to and is verified on iPad (since 2026-10-24)
 - [Native UI decisions](native-ui-decisions.md): 2026-10-24 everything but the editor goes native Swift on iPhone/iPad/Mac, data via web layer bridge, one big release
+- [Mac rebuild decisions](mac-rebuild-decisions.md): 2026-10-27 native Mac rebuild, everything native but the editor, pixel match with web, account-free local mode; plan docs/MAC_REBUILD_PLAN.md

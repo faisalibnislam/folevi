@@ -29,6 +29,7 @@ import { accessAtLeast, documentAccess, requireDocument, requireIdentity, requir
 import { fail } from "./lib/errors";
 import { consume } from "./lib/rateLimit";
 import { aiAccountFor, aiBlockedIn, estimateCredits, holdCredits, settleHold, sweepHolds, type CallUsage, type PlannedCall } from "./lib/credits";
+import { assertAiNotPaused, sweepRefusalCounts } from "./lib/ai/safety";
 import { liveBlocks, toWireBlock } from "./lib/documents";
 import { ReaderLabels } from "./lib/linkLabels";
 import { inScope, sameScope, scopeOfRow, vScopeArg, type Scope, type ScopeArg } from "./lib/scope";
@@ -165,7 +166,10 @@ export const dropStream = internalMutation({
   },
 });
 
-/** Hourly: removes any stream rows older than an hour (a crashed call, a closed tab), and stale credit holds. */
+/**
+ * Hourly: removes any stream rows older than an hour (a crashed call, a closed tab), stale credit holds,
+ * and refusal counts past their 90 days.
+ */
 export const sweepStreams = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -174,7 +178,7 @@ export const sweepStreams = internalMutation({
       .withIndex("by_created", (q) => q.lt("createdAt", Date.now() - 60 * 60_000))
       .take(500);
     for (const r of old) await ctx.db.delete(r._id);
-    return { deleted: old.length, holds: await sweepHolds(ctx) };
+    return { deleted: old.length, holds: await sweepHolds(ctx), refusalCounts: await sweepRefusalCounts(ctx) };
   },
 });
 
@@ -234,7 +238,8 @@ async function streamed(ctx: RunCtx, streamId: Id<"aiStreams"> | undefined, req:
 }
 
 const vPlannedCall = v.object({ fast: v.boolean(), inputChars: v.number(), maxOutputTokens: v.number(), searches: v.optional(v.number()) });
-const vCallUsage = v.object({ model: v.string(), promptTokens: v.number(), outputTokens: v.number(), thoughtsTokens: v.number(), searches: v.optional(v.number()) });
+const vRefusalKind = v.union(v.literal("harmful"), v.literal("crisis"), v.literal("other"), v.literal("filtered"));
+const vCallUsage = v.object({ model: v.string(), promptTokens: v.number(), outputTokens: v.number(), thoughtsTokens: v.number(), searches: v.optional(v.number()), refused: v.optional(v.object({ kind: vRefusalKind, free: v.boolean() })) });
 
 /**
  * Auth, whether AI may be used where it's asked for, the hourly abuse limit, and a hold on the request's
@@ -260,6 +265,8 @@ export const begin = internalMutation({
   handler: async (ctx, args): Promise<{ holdId: Id<"aiCreditHolds">; sealed: boolean }> => {
     const profile = await requireProfile(ctx);
     if (profile.aiEnabled === false) fail("forbidden", ASK_MESSAGES.aiOff);
+    // Paused after repeated harmful requests (lib/ai/safety.ts).
+    await assertAiNotPaused(ctx, profile._id);
     const docs = [...(args.documentId ? [args.documentId] : []), ...(args.documentIds ?? [])].slice(0, 12);
     let target: Scope;
     const also: Scope[] = [];

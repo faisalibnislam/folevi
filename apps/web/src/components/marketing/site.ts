@@ -30,7 +30,8 @@ export const MARKETING_ROUTES = [
   { path: "/changelog", priority: 0.6, changeFrequency: "weekly", updated: "2026-09-30" },
   { path: "/status", priority: 0.3, changeFrequency: "monthly", updated: "2026-09-29" },
   { path: "/privacy", priority: 0.3, changeFrequency: "yearly", updated: "2026-09-30" },
-  { path: "/terms", priority: 0.3, changeFrequency: "yearly", updated: "2026-09-30" },
+  { path: "/terms", priority: 0.3, changeFrequency: "yearly", updated: "2026-10-27" },
+  { path: "/ai-policy", priority: 0.3, changeFrequency: "yearly", updated: "2026-10-27" },
 ] as const;
 
 export function absoluteUrl(path: string): string {

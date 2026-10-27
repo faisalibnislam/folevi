@@ -30,6 +30,7 @@ import { AiAnnouncer, useDoneAnnouncement } from "./announce";
 import { asksToChange } from "./editIntent";
 import { openFindTodos, scheduleResultTodos } from "./FindTodos";
 import { hasTodoLines } from "@/lib/ai/actionItems";
+import { MARKETING_URL } from "@/lib/env";
 
 const NOTE_ACTIONS: { task: AiTask; label: string; icon: React.ReactNode }[] = [
   { task: "summarize", label: "Summarize", icon: <FileText size={15} /> },
@@ -567,7 +568,12 @@ export function AiPanel({
         </>
       ) : null}
 
-      <p className="px-1 text-footnote text-muted">Foli AI can make mistakes.</p>
+      <p className="px-1 text-footnote text-muted">
+        Foli AI can make mistakes.{" "}
+        <a href={`${MARKETING_URL}/ai-policy`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+          AI policy
+        </a>
+      </p>
     </div>
   );
 }

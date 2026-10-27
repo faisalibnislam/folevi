@@ -90,6 +90,7 @@ import type * as lib_ai_provider from "../lib/ai/provider.js";
 import type * as lib_ai_research from "../lib/ai/research.js";
 import type * as lib_ai_retrieval from "../lib/ai/retrieval.js";
 import type * as lib_ai_routines from "../lib/ai/routines.js";
+import type * as lib_ai_safety from "../lib/ai/safety.js";
 import type * as lib_ai_sharing from "../lib/ai/sharing.js";
 import type * as lib_ai_studyTools from "../lib/ai/studyTools.js";
 import type * as lib_ai_suggestions from "../lib/ai/suggestions.js";
@@ -331,6 +332,7 @@ declare const fullApi: ApiFromModules<{
   "lib/ai/research": typeof lib_ai_research;
   "lib/ai/retrieval": typeof lib_ai_retrieval;
   "lib/ai/routines": typeof lib_ai_routines;
+  "lib/ai/safety": typeof lib_ai_safety;
   "lib/ai/sharing": typeof lib_ai_sharing;
   "lib/ai/studyTools": typeof lib_ai_studyTools;
   "lib/ai/suggestions": typeof lib_ai_suggestions;

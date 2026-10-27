@@ -28,6 +28,7 @@ import type { RateRuleName } from "./rateLimit";
 import type { Scope } from "./scope";
 import { priceOf, SEARCH_GROUNDING_NANO_PER_QUERY } from "./ai/capabilities";
 import { recordFeatureUse, type AiFeature } from "./ai/usage";
+import { recordRefusal, refusalIn, type RefusalKind } from "./ai/safety";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -49,6 +50,8 @@ export interface CallUsage {
   thoughtsTokens: number;
   /** Google Search queries a grounded call ran (web research), each billed on top of the tokens. */
   searches?: number;
+  /** The reply declined (lib/ai/gemini.ts): its kind, and whether it was short enough to be free. */
+  refused?: { kind: RefusalKind; free: boolean };
 }
 
 /** The cost of some calls, in nano-dollars (integers, so rounding is exact). */
@@ -399,13 +402,17 @@ export async function recordAiUsage(ctx: MutationCtx, profileId: Id<"profiles">,
 
 /**
  * Ends a request: releases its hold and charges what its calls really cost (nothing when no call was
- * made), counted under the hold's feature for the usage card. Idempotent: a hold is settled once.
+ * made, or when the reply was a short refusal), counted under the hold's feature for the usage card.
+ * Idempotent: a hold is settled once.
  */
 export async function settleHold(ctx: MutationCtx, holdId: Id<"aiCreditHolds">, calls: CallUsage[], now = Date.now()): Promise<{ credits: number; overrun: number } | null> {
   const hold = await ctx.db.get(holdId);
   if (!hold) return null;
   await ctx.db.delete(hold._id);
-  const credits = creditsFor(calls);
+  // A refusal is counted (never its text) and, when short, not charged (docs/AI_GUARDRAILS.md).
+  const refusal = refusalIn(calls);
+  if (refusal) await recordRefusal(ctx, hold.profileId, refusal.kind, hold.feature, now);
+  const credits = refusal?.free ? 0 : creditsFor(calls);
   if (!credits) return { credits: 0, overrun: 0 };
   const account = await accountByKey(ctx, hold.profileId, hold.workspaceId, now);
   const { overrun } = await deductCredits(ctx, account, credits, now);

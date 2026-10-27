@@ -235,6 +235,7 @@ import type * as vaultItems from "../vaultItems.js";
 import type * as vaultKeys from "../vaultKeys.js";
 import type * as vaultLog from "../vaultLog.js";
 import type * as vaultPeople from "../vaultPeople.js";
+import type * as vaultShares from "../vaultShares.js";
 import type * as webhooks from "../webhooks.js";
 import type * as wireframeAi from "../wireframeAi.js";
 import type * as workspaceBilling from "../workspaceBilling.js";
@@ -474,6 +475,7 @@ declare const fullApi: ApiFromModules<{
   vaultKeys: typeof vaultKeys;
   vaultLog: typeof vaultLog;
   vaultPeople: typeof vaultPeople;
+  vaultShares: typeof vaultShares;
   webhooks: typeof webhooks;
   wireframeAi: typeof wireframeAi;
   workspaceBilling: typeof workspaceBilling;

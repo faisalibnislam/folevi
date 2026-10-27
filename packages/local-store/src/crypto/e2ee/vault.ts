@@ -57,6 +57,10 @@ export const vaultCtx = {
   itemSummary: (vaultId: string, itemId: string) => c("item-summary", part(vaultId, "vault id"), part(itemId, "item id")),
   /** An export file, sealed with a key from the passphrase the exporter chose. */
   exportFile: (vaultId: string, exportId: string) => c("export", part(vaultId, "vault id"), part(exportId, "export id")),
+  /** An item key sealed to one person it's shared with (FLS1, their account X25519 key). */
+  shareKey: (vaultId: string, itemId: string, profileId: string) => c("share", part(vaultId, "vault id"), part(itemId, "item id"), part(profileId, "profile id")),
+  /** An item key wrapped by a one-time link's key (from the link's fragment). */
+  linkKey: (vaultId: string, itemId: string, linkId: string) => c("link", part(vaultId, "vault id"), part(itemId, "item id"), part(linkId, "link id")),
   /** A vault note's key wrapped by VK "vault/wrap". */
   noteKey: (vaultId: string, docId: string, noteVersion: number, keyVersion: number) => c("note-key", part(vaultId, "vault id"), part(docId, "document id"), version(noteVersion), version(keyVersion)),
   /** A vault file's bytes (FLV1 0x04 with the file's own key). */

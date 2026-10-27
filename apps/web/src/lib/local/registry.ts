@@ -153,6 +153,7 @@ export const LOCAL_HIDDEN: Readonly<Record<string, Capability>> = {
   "vaultLog:*": "account",
   "vaultFiles:*": "account",
   "vaultPeople:*": "account",
+  "vaultShares:*": "account",
   "workspaces:*": "workspaces",
   "workspaceBilling:*": "billing",
   "billing:*": "billing",

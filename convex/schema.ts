@@ -3062,6 +3062,58 @@ export default defineSchema({
     .index("by_owner", ["ownerProfileId"]),
 
   /**
+   * A vault note or item shared with one person outside the Vault (docs/VAULT_PLAN.md §6): its item key sealed to
+   * their account key. They open just that item, from Shared with Me; every open is logged.
+   */
+  vaultShares: defineTable({
+    publicId: v.string(),
+    vaultId: v.id("vaults"),
+    ...scoped,
+    itemId: v.id("vaultItems"),
+    profileId: v.id("profiles"),
+    canEdit: v.boolean(),
+    /** The item key sealed to the recipient's account X25519 key (their epoch). */
+    wrappedKey: v.bytes(),
+    epoch: v.number(),
+    /** Required for people outside the workspace. */
+    expiresAt: v.optional(v.number()),
+    sharedBy: v.id("profiles"),
+    createdAt: v.number(),
+  })
+    .index("by_public_id", ["publicId"])
+    .index("by_item", ["itemId"])
+    .index("by_profile", ["profileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /**
+   * A one-time secret link to a vault item: its item key wrapped by a key that lives only in the link's fragment.
+   * Works a set number of times (1 to 10) until it expires; the wrapped key is deleted once it's used up.
+   */
+  vaultLinks: defineTable({
+    publicId: v.string(),
+    vaultId: v.id("vaults"),
+    ...scoped,
+    itemId: v.id("vaultItems"),
+    /** Deleted (undefined) once the link is used up, revoked or expired. */
+    wrappedKey: v.optional(v.bytes()),
+    maxViews: v.number(),
+    views: v.number(),
+    expiresAt: v.number(),
+    /** An optional extra password (hashed), on top of the key in the fragment. */
+    passwordHash: v.optional(v.string()),
+    passwordSalt: v.optional(v.string()),
+    createdBy: v.id("profiles"),
+    createdAt: v.number(),
+    endedAt: v.optional(v.number()),
+    endedHow: v.optional(v.union(v.literal("usedUp"), v.literal("revoked"), v.literal("expired"))),
+  })
+    .index("by_public_id", ["publicId"])
+    .index("by_item", ["itemId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /**
    * The Vault's log (docs/VAULT_PLAN.md §7). Written only by convex/lib/vault/log.ts; nothing edits or deletes an
    * entry except the 3-year expiry. Not scoped: it keeps the vault's public id and place, so it outlives them.
    */

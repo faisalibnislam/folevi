@@ -64,6 +64,7 @@ export const E2EE_ROUTES: Record<string, Route> = {
   ...each(pass, "vaultItems", "list open create update history restoreVersion remove restore importBatch exportPage reuse breachRange"),
   ...each(pass, "vaultLog", "list record exportPage verify"),
   ...each(pass, "vaultPeople", "list add setRole remove reviewed keyHolders rotate"),
+  ...each(pass, "vaultShares", "share ofItem unshare mine openShared saveShared createLink revokeLink openLink"),
   ...each(pass, "vaultFiles", "folders createFolder updateFolder removeFolder createNote uploadUrl saveFile saveNote fileUrl moveItem moveOut emptyTrash"),
   // Content modules are listed function by function, so a new function there has to be classified.
   ...each(pass, "documents", "bulkUpdate emptyTrash hideFromRecent move moveToTrash recordView reorder restoreFromTrash setArchived setStarred showInRecent purgeSnapshots seenMark"),

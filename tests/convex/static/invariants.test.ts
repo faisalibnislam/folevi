@@ -26,7 +26,7 @@ describe("backend invariants", () => {
   });
 
   test("every public function authenticates (requireProfile/requirePlatformRole/optionalProfile) or is explicitly public", () => {
-    const allowPublic = new Set(["users.ts:me", "settings.ts:status", "settings.ts:ping", "sharing.ts:openPublicLink", "authEmails.ts:devMailbox", "users.ts:bootstrap", "users.ts:registerSession", "users.ts:heartbeat", "users.ts:listSessions", "users.ts:revokeOtherSessions", "themes.ts:list"]);
+    const allowPublic = new Set(["users.ts:me", "settings.ts:status", "settings.ts:ping", "sharing.ts:openPublicLink", "vaultShares.ts:openLink", "authEmails.ts:devMailbox", "users.ts:bootstrap", "users.ts:registerSession", "users.ts:heartbeat", "users.ts:listSessions", "users.ts:revokeOtherSessions", "themes.ts:list"]);
     for (const { p, s } of sources) {
       // The Better Auth component's functions are only reachable from Folevi's own functions, never the internet.
       if (p.includes("/betterAuth/")) continue;

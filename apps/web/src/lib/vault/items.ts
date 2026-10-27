@@ -175,6 +175,19 @@ export async function sealItem(vaultId: string, itemId: string, keyVersion: numb
   return await sealParts(vaultId, itemId, keyVersion, keys, { kind: c.kind, ...c.summary }, c.secrets, password ? await vaultPasswordMac(keys.mac, password) : undefined);
 }
 
+/** An item key's raw bytes from its wrap (to seal it to someone it's shared with, or to a link). Zero them after. */
+export async function rawItemKey(vaultId: string, itemId: string, keyVersion: number, keys: VaultKeys, wrappedKey: ArrayBuffer): Promise<Uint8Array> {
+  return await openRecord(keys.wrap, vaultCtx.itemKey(vaultId, itemId, keyVersion), bytes(wrappedKey));
+}
+
+/** Opens a row's two records with an item key already in hand (a share's or a link's). */
+export async function openWithItemKey<S, T>(vaultId: string, itemId: string, raw: Uint8Array, row: { sealedSummary: ArrayBuffer; sealed?: ArrayBuffer }): Promise<{ summary: S; secrets: T | null }> {
+  const key = await importAead(raw.slice());
+  const summary = JSON.parse(dec.decode(await openRecord(key, vaultCtx.itemSummary(vaultId, itemId), bytes(row.sealedSummary)))) as S;
+  const secrets = row.sealed ? (JSON.parse(dec.decode(await openRecord(key, vaultCtx.item(vaultId, itemId), bytes(row.sealed)))) as T) : null;
+  return { summary, secrets };
+}
+
 /** An item's key from its wrap (the vault key of the item's version opens it). */
 async function itemKeyOf(vaultId: string, itemId: string, keyVersion: number, keys: VaultKeys, wrappedKey: ArrayBuffer) {
   const raw = await openRecord(keys.wrap, vaultCtx.itemKey(vaultId, itemId, keyVersion), bytes(wrappedKey));

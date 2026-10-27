@@ -93,6 +93,8 @@ export const SCOPED_TABLES = [
   "vaultFolders",
   "vaultItems",
   "vaultItemVersions",
+  "vaultShares",
+  "vaultLinks",
 ] as const satisfies readonly TableNames[];
 export type ScopedTable = (typeof SCOPED_TABLES)[number];
 
@@ -200,6 +202,8 @@ const WORKSPACE_INDEX: Record<ScopedTable, string> = {
   vaultFolders: "by_workspace",
   vaultItems: "by_workspace",
   vaultItemVersions: "by_workspace",
+  vaultShares: "by_workspace",
+  vaultLinks: "by_workspace",
 };
 const OWNER_INDEX: Record<ScopedTable, string> = {
   folders: "by_owner",
@@ -261,6 +265,8 @@ const OWNER_INDEX: Record<ScopedTable, string> = {
   vaultFolders: "by_owner",
   vaultItems: "by_owner",
   vaultItemVersions: "by_owner",
+  vaultShares: "by_owner",
+  vaultLinks: "by_owner",
 };
 
 export type AnyScopedRow = ScopedRow & { _id: Id<ScopedTable>; _creationTime: number };

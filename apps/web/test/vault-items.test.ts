@@ -162,3 +162,30 @@ describe("vault files, notes and folders", () => {
     void bytes;
   });
 });
+
+describe("sharing vault items", () => {
+  test("a share opens with the recipient's account key; a link only with its fragment's secret", async () => {
+    const { deriveAccountKeys, randomBytes } = await import("@folevi/local-store/e2ee");
+    const { sealItemTo, openShared, makeLink, linkSecret, openLinkItem } = await import("@/lib/vault/shares");
+    const keys = await deriveVaultKeys(newVaultKey());
+    const id = newItemId();
+    const content = splitItem("login", "Router", { username: "admin", password: "pw-123" });
+    const row = { id, ...(await sealItem("v1", id, 1, keys, content)) };
+    const them = await deriveAccountKeys(randomBytes(32));
+    const wrappedKey = await sealItemTo("v1", row, keys, { profileId: "p9", x25519Pub: them.x25519.publicKey });
+    const opened = await openShared<{ title: string }, { fields: Record<string, string> }>({ vaultId: "v1", id, wrappedKey, sealedSummary: row.sealedSummary, sealed: row.sealed }, { profileId: "p9", account: them.x25519 });
+    expect(opened.summary.title).toBe("Router");
+    expect(opened.secrets?.fields.password).toBe("pw-123");
+    // Someone else's account key can't open it.
+    const other = await deriveAccountKeys(randomBytes(32));
+    await expect(openShared({ vaultId: "v1", id, wrappedKey, sealedSummary: row.sealedSummary }, { profileId: "p9", account: other.x25519 })).rejects.toThrow();
+
+    const link = await makeLink("v1", row, keys, "https://app.folevi.com");
+    expect(link.url).toMatch(new RegExp(`^https://app\\.folevi\\.com/vault-link/${link.linkId}#k=`));
+    const secret = linkSecret(new URL(link.url).hash)!;
+    const viaLink = await openLinkItem<{ title: string }, { fields: Record<string, string> }>({ vaultId: "v1", itemId: id, wrappedKey: link.wrappedKey, sealedSummary: row.sealedSummary, sealed: row.sealed }, link.linkId, secret);
+    expect(viaLink.secrets?.fields.password).toBe("pw-123");
+    expect(linkSecret("#nothing")).toBeNull();
+    await expect(openLinkItem({ vaultId: "v1", itemId: id, wrappedKey: link.wrappedKey, sealedSummary: row.sealedSummary, sealed: row.sealed }, link.linkId, randomBytes(32))).rejects.toThrow();
+  });
+});

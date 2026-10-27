@@ -3,6 +3,8 @@
 // Keychain or library), by pressing the page's own buttons, so the web frame and the native frame reach the same
 // state the same way. Used by screens.mjs --gates (web vs native diffs) and web-styles.mjs (area files with
 // "gates": true).
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,7 +23,10 @@ const click = (text) => `
   return true;`;
 const until = (text) => `return document.body.innerText.includes(${JSON.stringify(text)})`;
 
-/** The gate screens: the steps from a first launch to each. */
+/**
+ * The gate screens: the steps from a first launch to each. `site` ones need the website the build signs in
+ * through (shell/build.json siteUrl, the web dev server) and run only with FOLEVI_GATES_SITE=1.
+ */
 export const GATES = [
   { id: "first-launch", steps: [] , ready: "Where should your notes live?" },
   { id: "library-setup", steps: [["Keep notes on my devices", "Where should your library live?"]], ready: "Where should your library live?" },
@@ -34,10 +39,12 @@ export const GATES = [
     ready: "Your library is ready",
   },
   // Needs the website the shell build signs in through (shell/build.json siteUrl) to answer "no session".
-  { id: "sign-in", steps: [["Sign in to Folevi", "Continue with Apple"]], ready: "Continue with Apple" },
+  // (The window reloads into account mode and shows the choice again: its "go straight on" note in
+  // sessionStorage doesn't survive the Mac's reload into the other mode, so Sign in is pressed twice.)
+  { id: "sign-in", site: true, steps: [["Sign in to Folevi", "Where should your notes live?", 6000], ["Sign in to Folevi", "Continue with Apple"]], ready: "Continue with Apple" },
   // No network: account mode opens on "You're offline" (a FullPageMessage card with one button).
   { id: "offline", env: { FOLEVI_OFFLINE: "1" }, steps: [["Sign in to Folevi", "You're offline"]], ready: "You're offline" },
-];
+].filter((g) => !g.site || process.env.FOLEVI_GATES_SITE === "1");
 
 function stop(dir) {
   try {
@@ -56,12 +63,20 @@ export async function enterGate(gate, { web }) {
   rmSync(dir, { recursive: true, force: true });
   rmSync(library, { recursive: true, force: true });
   mkdirSync(library, { recursive: true });
+  // The run's settings live in a defaults suite named after the folder (Paths.runTag), not in the folder: a fresh
+  // first launch needs it gone too (the mode would say "account" or "local" from the last run).
+  const tag = createHash("sha256").update(dir).digest("hex").slice(0, 8);
+  try {
+    execFileSync("defaults", ["delete", `com.folevi.mac.dev.run-${tag}`], { stdio: "ignore" });
+  } catch {
+    // Nothing kept yet.
+  }
   await launch({ dir, env: { FOLEVI_TEST_FOLDER: library, ...(gate.env ?? {}), ...(web ? { FOLEVI_WEB_FRAME: "1" } : {}) } });
   await waitFor(dir, until("Where should your notes live?"), 90_000);
-  for (const [button, next] of gate.steps) {
+  for (const [button, next, settle] of gate.steps) {
     await sleep(600);
     await evaluate(dir, click(button));
-    await sleep(1500);
+    await sleep(settle ?? 1500);
     await waitFor(dir, until(next), 90_000);
   }
   await sleep(1200);

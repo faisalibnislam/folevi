@@ -5,6 +5,7 @@
 // light and dark; diff.mjs compares the two.
 //
 //   node apps/mac/scripts/screens.mjs [--fresh] [--only home,notes] [--size 1280x820]
+//   node apps/mac/scripts/screens.mjs --gates [--only first-launch]   (the screens before the app, gates.mjs)
 //
 // Everything lives in apps/mac/build/run/screens (the app's data) and apps/mac/build/run/screens-library (the
 // library folder, FOLEVI_TEST_FOLDER): never the installed app's folder, Keychain or library. --fresh starts
@@ -164,6 +165,42 @@ async function shoot(kind) {
     }
   }
   await quit();
+}
+
+// --gates: the screens before the app instead (gates.mjs: first launch, library setup, offline), each from a
+// fresh scratch folder of its own, into apps/mac/screens-report/gates.
+if (process.argv.includes("--gates")) {
+  const { GATES, enterGate, quitGate } = await import("./gates.mjs");
+  const gates = GATES.filter((g) => !only || only.includes(g.id));
+  const gout = join(out, "gates");
+  for (const d of ["web", "native", "diff"]) {
+    rmSync(join(gout, d), { recursive: true, force: true });
+    mkdirSync(join(gout, d), { recursive: true });
+  }
+  for (const kind of ["native", "web"]) {
+    for (const g of gates) {
+      const gdir = await enterGate(g, { web: kind === "web" });
+      try {
+        ensure(await command(gdir, { cmd: "resize", width, height }));
+        for (const scheme of ["light", "dark"]) {
+          ensure(await command(gdir, { cmd: "appearance", value: scheme }));
+          await evaluate(gdir, STILL).catch(() => undefined);
+          await sleep(1200);
+          const number = ensure(await command(gdir, { cmd: "windows" }))[0].number;
+          execFileSync("screencapture", ["-x", "-o", "-l", String(number), join(gout, kind, `${g.id}-${scheme}.png`)]);
+        }
+      } finally {
+        await quitGate(gdir);
+      }
+    }
+  }
+  const threshold = { channel: 24, radius: 1, maxRatio: 0.01 };
+  const browser = await webkit.launch();
+  const results = await diffAll(browser, gout, gates.flatMap((g) => ["light", "dark"].map((scheme) => ({ id: g.id, scheme }))), threshold);
+  await browser.close();
+  writeReport(gout, { title: "Screens before the app: web vs Folevi for Mac", note: `Each from a fresh scratch folder, ${width} x ${height} pt, the web frame vs the native frame.`, threshold, results, imageWidth: 520 });
+  for (const r of results) console.log(`${r.id} ${r.scheme}: ${(r.ratio * 100).toFixed(2)}%${r.pass ? "" : " (over)"}${r.reason ? ` ${r.reason}` : ""}`);
+  process.exit(results.every((r) => r.pass) ? 0 : 1);
 }
 
 try {

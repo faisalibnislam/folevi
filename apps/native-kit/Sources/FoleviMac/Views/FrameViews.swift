@@ -24,16 +24,16 @@ public final class FrameRootViewController: NSViewController {
     let pageView: NSView
     private var observers: [Observer] = []
     private var gateShown = false
-    /// The native gate screen (FoleviScreens' GateScreen), over the frame while it shows.
+    /// The native gate screen (WebGateScreen, the web's screens before the app), over the frame while it shows.
     private var gateHost: NSHostingView<AnyView>?
     private lazy var gateModel = GateModel(client: model.client, feedback: ScreenModels(frame: model).feedback, device: .mac)
-    /// Which gates draw natively; the rest (and every gate with `nativeGates` off) are the page's own screens,
-    /// full window. Sign-in needs the host's AuthService and the library's setup and lock its folder pickers,
-    /// which the Mac doesn't hand the screens yet, so those stay the page's.
+    /// Which gates draw natively: every gate the page names (its buttons are `gate.act`, so the page's handlers
+    /// open the folder picker and the sign-in sheet); an unknown one (and every gate with `nativeGates` off) is
+    /// the page's own screen, full window.
     public static var nativeGates = true
     nonisolated static func drawsNatively(_ kind: GateKind) -> Bool {
         switch kind {
-        case .loading, .signedOut, .librarySetup, .libraryLocked, .other: return false
+        case .other: return false
         default: return true
         }
     }
@@ -77,7 +77,8 @@ public final class FrameRootViewController: NSViewController {
         if on && native {
             if gateShown { leaveWebGate() }
             if gateHost == nil {
-                let host = NSHostingView(rootView: AnyView(GateScreen(model: gateModel, signIn: nil).frame(maxWidth: .infinity, maxHeight: .infinity).background(Folevi.color.canvas)))
+                let host = NSHostingView(rootView: AnyView(WebGateScreen(model: gateModel)))
+                host.safeAreaRegions = []
                 host.frame = view.bounds
                 host.autoresizingMask = [.width, .height]
                 view.addSubview(host, positioned: .above, relativeTo: nil)

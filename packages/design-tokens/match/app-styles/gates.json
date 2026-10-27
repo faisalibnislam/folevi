@@ -5,7 +5,8 @@
     "first-launch": "",
     "library-setup": "",
     "library-ready": "",
-    "offline": ""
+    "offline": "",
+    "sign-in": ""
   },
   "vars": [
     "glass-hover",
@@ -240,6 +241,50 @@
     "gates.card.button": {
       "screen": "offline",
       "selector": "main > div > div.mt-6 > button"
+    },
+    "gates.signin.card": {
+      "screen": "sign-in",
+      "selector": "main > div"
+    },
+    "gates.signin.title": {
+      "screen": "sign-in",
+      "selector": "main > div > h1"
+    },
+    "gates.signin.body": {
+      "screen": "sign-in",
+      "selector": "main > div > h1 + div"
+    },
+    "gates.signin.list": {
+      "screen": "sign-in",
+      "selector": "[data-testid='shell-sign-in']"
+    },
+    "gates.signin.apple": {
+      "screen": "sign-in",
+      "selector": "[data-testid='shell-sign-in'] > button",
+      "nth": 0
+    },
+    "gates.signin.apple.icon": {
+      "screen": "sign-in",
+      "selector": "[data-testid='shell-sign-in'] > button:nth-child(1) > svg"
+    },
+    "gates.signin.google": {
+      "screen": "sign-in",
+      "selector": "[data-testid='shell-sign-in'] > button",
+      "nth": 1
+    },
+    "gates.signin.google.icon": {
+      "screen": "sign-in",
+      "selector": "[data-testid='shell-sign-in'] > button:nth-child(2) > svg"
+    },
+    "gates.signin.email": {
+      "screen": "sign-in",
+      "selector": "[data-testid='shell-sign-in'] > button",
+      "nth": 2
+    },
+    "gates.signin.local": {
+      "screen": "sign-in",
+      "selector": "[data-testid='shell-sign-in'] > button",
+      "nth": 3
     }
   }
 }

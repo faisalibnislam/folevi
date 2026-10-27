@@ -83,15 +83,21 @@ struct WebShapeBox: View {
             ForEach(Array(shadows.enumerated().filter { !$0.element.inset && $0.element.color.a > 0 }.reversed()), id: \.offset) { item in
                 let l = item.element
                 let reach = abs(l.x) + abs(l.y) + abs(l.spread) + l.blur * 1.5 + 4
-                shape.grown(l.spread)
-                    .fill(l.color.color)
-                    .offset(x: l.x, y: l.y)
-                    .blur(radius: l.blur / 2, opaque: false)
-                    .padding(-reach)
+                GeometryReader { geo in
+                    let w = geo.size.width, h = geo.size.height
+                    ZStack {
+                        shape.grown(l.spread)
+                            .fill(l.color.color)
+                            .frame(width: w, height: h)
+                            .offset(x: l.x, y: l.y)
+                            .blur(radius: l.blur / 2, opaque: false)
+                    }
+                    .frame(width: w + reach * 2, height: h + reach * 2)
                     .mask {
                         OutsideOf(shape: shape, reach: reach).fill(style: FillStyle(eoFill: true))
                     }
-                    .padding(reach)
+                    .position(x: w / 2, y: h / 2)
+                }
             }
             if let fill { shape.fill(fill) }
             ForEach(Array(shadows.enumerated().filter { $0.element.inset && $0.element.color.a > 0 }.reversed()), id: \.offset) { item in
@@ -559,7 +565,7 @@ struct WebFolderNote: View {
                             .webText(WebTextStyle(size: 3.2 * cq, leading: 3.2 * cq * 1.45))
                             .foregroundStyle(ink.oklabMix(paper, 0.82).color)
                             .padding(.top, 2 * cq)
-                            .frame(width: w * 0.6, alignment: .leading)
+                            .frame(width: w * 0.53, alignment: .leading)
                     }
                     .frame(width: w * 0.8, alignment: .topLeading)
                     .padding(.top, h * 0.07)

@@ -308,9 +308,27 @@ struct WebSortSelect<T: Hashable>: View {
             WebMenuButton(width: max(160, select.width), entries: {
                 options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == value)) { value = o.0 } }
             }) {
-                WebSelectTrigger(options.first { $0.0 == value }?.1 ?? "", minWidth: 0).fixedSize()
+                trigger(options.first { $0.0 == value }?.1 ?? "")
             }
         }
+    }
+}
+
+extension WebSortSelect {
+    /// The Select trigger at its content's width (label, 6 pt, chevron), as `.ui-input` draws it.
+    func trigger(_ label: String) -> some View {
+        let style = WebStyles.named("notes.toolbar.select")
+        let s = style.resolve(scheme)
+        let chevron = WebStyles.named("select.trigger.chevron").resolve(scheme)
+        return HStack(spacing: s.gap) {
+            Text(label).webText(notesStyle("toolbar.select.label", scheme).text).lineLimit(1)
+            WebIconView(.chevronDown, size: 14).opacity(chevron.opacity)
+        }
+        .padding(s.padding.edgeInsets)
+        .frame(height: s.height)
+        .foregroundStyle(s.color.color)
+        .webBox(style)
+        .fixedSize()
     }
 }
 
@@ -805,7 +823,14 @@ struct WebNoteBrowser: View {
             }
             if model.kind.view == .templates {
                 if model.screenActions.contains(.generateTemplate) {
-                    WebButton("Generate with AI", icon: .sparkles, variant: .secondary) { model.startGenerating() }
+                    Button { model.startGenerating() } label: {
+                        HStack(spacing: WebStyles.named("button.secondary.md").resolve(scheme).gap) {
+                            WebAiMark(size: 14)
+                            Text("Generate with AI").webText(WebStyles.named("button.secondary.md").resolve(scheme).text).lineLimit(1).fixedSize()
+                        }
+                        .webElement(WebStyles.named("button.secondary.md"))
+                    }
+                    .buttonStyle(.plain)
                 }
                 WebButton("New template", icon: .plus, variant: .primary) {
                     Task { if let id = await model.actions.createTemplate() { frame.open(.note(id)) } }
@@ -854,7 +879,7 @@ struct WebNoteBrowser: View {
                                 Text(t.description).webText(.role(.subheadline)).foregroundStyle(webVar("color-ink-muted", scheme).color)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
-                            Spacer(minLength: 0)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .padding(16)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -1071,7 +1096,7 @@ struct WebTemplateTile: View {
     static let icons: [(String, WebIcon?)] = [
         ("book-open", .bookOpen), ("briefcase", .briefcase), ("bug", .bug), ("calendar-check", .calendarCheck), ("calendar-range", .calendarRange),
         ("chef-hat", .chefHat), ("clipboard-list", .clipboardList), ("compass", .compass), ("dumbbell", .dumbbell), ("flask-conical", .flaskConical),
-        ("graduation-cap", .graduationCap), ("heart", .heart), ("history", nil), ("lightbulb", .lightbulb), ("messages-square", .messagesSquare),
+        ("graduation-cap", .graduationCap), ("heart", .heart), ("history", .rotateCcwClock), ("lightbulb", .lightbulb), ("messages-square", .messagesSquare),
         ("party-popper", .partyPopper), ("pen-line", .penLine), ("plane", .plane), ("refresh-cw", .refreshCw), ("scale", .scale),
         ("sun", .sun), ("target", .target), ("timer", .timer), ("user-round-search", .userRoundSearch), ("users", .users), ("wallet", .wallet),
     ]
@@ -1123,10 +1148,12 @@ struct WebFoldersIndex: View {
         let content = notesStyle("index.content", scheme)
         let total = allFolders.value?.folders.count ?? 0
         let shown = list
+        GeometryReader { geo in
+        let inner = min(1180, geo.size.width) - 64
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 12) {
-                    WebIndexSearch(placeholder: "Search folders", text: $query)
+                    WebIndexSearch(placeholder: "Search folders", text: $query, width: min(384, max(160, (inner - 290) / 2)))
                     Text(allFolders.value == nil ? "Loading…" : !query.trimmingCharacters(in: .whitespaces).isEmpty ? "\(shown.count) of \(total) folders" : "\(total) \(total == 1 ? "folder" : "folders")")
                         .webText(notesStyle("index.status", scheme).text).lineLimit(1).foregroundStyle(notesStyle("index.status", scheme).color.color)
                     Spacer(minLength: 0)
@@ -1151,6 +1178,7 @@ struct WebFoldersIndex: View {
             .frame(maxWidth: .infinity)
         }
         .safeAreaInset(edge: .top, spacing: 0) { actions }
+        }
         .folderDialogs(home.dialogs, actions: home.actions, tree: home.tree.value?.folders ?? [])
         .accessibilityIdentifier("screen.folders")
     }
@@ -1220,6 +1248,8 @@ struct WebFoldersIndex: View {
 struct WebIndexSearch: View {
     let placeholder: String
     @Binding var text: String
+    /// `flex-1 max-w-sm` next to a spacer that shares the row: half of what the row leaves, at most 384.
+    var width: CGFloat = 327
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -1234,7 +1264,7 @@ struct WebIndexSearch: View {
         }
         .padding(s.padding.edgeInsets)
         .frame(height: s.height)
-        .frame(maxWidth: 384)
+        .frame(width: width)
         .foregroundStyle(s.color.color)
         .webBox(style)
         .overlay(alignment: .leading) {

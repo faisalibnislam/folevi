@@ -28,6 +28,8 @@ public struct MatchSpecimen: Decodable, Sendable, Identifiable {
     public var items: [Item]?
     public var icons: [Icon]?
     public var swatches: [String]?
+    /// Component samples by id (apps/web/src/app/dev/match/samples.tsx), in a column.
+    public var samples: [String]?
 
     public struct Grid: Decodable, Sendable {
         public let cell: CGFloat
@@ -65,6 +67,13 @@ public struct MatchSpecimenView: View {
                 VStack(alignment: .leading, spacing: specimen.gap ?? 0) {
                     ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                         line(item)
+                    }
+                }
+            }
+            if let samples = specimen.samples {
+                VStack(alignment: .leading, spacing: specimen.gap ?? 0) {
+                    ForEach(samples, id: \.self) { id in
+                        MatchSamples.view(id)
                     }
                 }
             }

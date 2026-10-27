@@ -499,6 +499,57 @@
         "success",
         "warning"
       ]
+    },
+    {
+      "id": "components-buttons",
+      "width": 560,
+      "padding": 16,
+      "gap": 12,
+      "samples": [
+        "button.primary.md",
+        "button.primary.sm",
+        "button.secondary.md",
+        "button.secondary.sm",
+        "button.ghost.md",
+        "button.ghost.sm",
+        "button.quiet.md",
+        "button.quiet.sm",
+        "button.danger.md",
+        "button.danger.sm",
+        "button.quiet.icon",
+        "button.quiet.icon.pressed"
+      ]
+    },
+    {
+      "id": "components-controls",
+      "width": 560,
+      "padding": 24,
+      "gap": 16,
+      "samples": [
+        "select.trigger",
+        "input",
+        "chip",
+        "kbd",
+        "card"
+      ]
+    },
+    {
+      "id": "components-menu",
+      "width": 560,
+      "padding": 40,
+      "gap": 0,
+      "samples": [
+        "menu"
+      ]
+    },
+    {
+      "id": "components-dialog",
+      "width": 560,
+      "padding": 40,
+      "gap": 0,
+      "samples": [
+        "dialog"
+      ]
     }
   ]
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { icons, type LucideIcon } from "lucide-react";
 import specimens from "@folevi/design-tokens/match/specimens.json";
+import { Samples } from "../samples";
 
 export const metadata: Metadata = { title: "Match specimen", robots: { index: false, follow: false } };
 
@@ -10,6 +11,8 @@ type Spec = (typeof specimens.specimens)[number] & {
   items?: { text: string; style: Style }[];
   icons?: { name: string; size: number; strokeWidth: number }[];
   swatches?: string[];
+  /** Component samples (../samples.tsx) by id, in a column. */
+  samples?: string[];
   grid?: { cell: number; gap: number };
   gap?: number;
 };
@@ -46,6 +49,7 @@ export default async function MatchSpecimenPage({ params }: { params: Promise<{ 
           ))}
         </div>
       ) : null}
+      {spec.samples ? <Samples ids={spec.samples} gap={spec.gap ?? 0} /> : null}
       {spec.icons ? (
         <div style={grid}>
           {spec.icons.map((icon, i) => {

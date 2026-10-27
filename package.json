@@ -20,6 +20,7 @@
     "schema:gen": "pnpm --filter @folevi/editor-schema generate",
     "engine:gen": "node scripts/engine-codegen.mjs",
     "icons:gen": "node scripts/icons-codegen.mjs",
+    "styles:gen": "node scripts/web-styles.mjs",
     "match": "node apps/mac/scripts/match.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

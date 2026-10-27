@@ -181,9 +181,10 @@ extension WebTextStyle: Equatable {
 extension WebFontFamily: Hashable {}
 
 /// Sets text in a web text style with CSS line boxes. CSS centres the glyphs (ascent plus descent) in a line box
-/// `leading` tall, so the first baseline sits at half the leftover plus the ascent. SwiftUI lays a line out in
-/// the font's height rounded up to a point, so instead of padding, the text's top is aligned so its first
-/// baseline lands exactly there; a single line (`lineLimit(1)`) is then exactly `leading` tall.
+/// `leading` tall, so a line's baseline sits at half the leftover plus the ascent. SwiftUI lays each line out in
+/// the ascent and descent rounded to whole points, baseline at the rounded ascent (measured, ZZ probes of
+/// 2026-10-27). So: line spacing makes the pitch `leading`, and padding moves the first baseline to where CSS
+/// has it and makes the whole block `lines x leading` tall. A single line (`lineLimit(1)`) is framed exactly.
 struct WebTextModifier: ViewModifier {
     let style: WebTextStyle
     @Environment(\.lineLimit) private var lineLimit
@@ -191,20 +192,23 @@ struct WebTextModifier: ViewModifier {
     func body(content: Content) -> some View {
         let font = style.ctFont
         let ascent = CTFontGetAscent(font), descent = CTFontGetDescent(font)
-        let baseline = (style.leading - ascent - descent) / 2 + ascent
+        let cssBaseline = (style.leading - ascent - descent) / 2 + ascent
+        let line = ascent.rounded() + descent.rounded()
+        let spacing = max(0, style.leading - line)
+        let top = cssBaseline - ascent.rounded()
         let text = content
             .font(Font(font))
             .tracking(style.letterSpacing)
-            .lineSpacing(max(0, style.leading - ascent - descent))
+            .lineSpacing(spacing)
         return Group {
             if lineLimit == 1 {
                 text
-                    .alignmentGuide(.top) { d in d[.firstTextBaseline] - baseline }
+                    .alignmentGuide(.top) { d in d[.firstTextBaseline] - cssBaseline }
                     .frame(height: style.leading, alignment: .top)
             } else {
                 text
-                    .alignmentGuide(.top) { d in d[.firstTextBaseline] - baseline }
-                    .padding(.bottom, (style.leading - ascent - descent) / 2)
+                    .padding(.top, top)
+                    .padding(.bottom, spacing - top)
             }
         }
     }

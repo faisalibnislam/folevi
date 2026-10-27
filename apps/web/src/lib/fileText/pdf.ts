@@ -8,8 +8,8 @@ type PdfJs = typeof import("pdfjs-dist");
 
 let loading: Promise<PdfJs> | null = null;
 
-/** pdf.js, loaded once, with a worker of its own (the page's thread stays free). */
-function pdfjs(): Promise<PdfJs> {
+/** pdf.js, loaded once, with a worker of its own (the page's thread stays free). Also draws Vault previews. */
+export function pdfjs(): Promise<PdfJs> {
   loading ??= import("pdfjs-dist/legacy/build/pdf.mjs").then((lib) => {
     const pdf = lib as unknown as PdfJs;
     if (typeof Worker !== "undefined" && !pdf.GlobalWorkerOptions.workerPort) {

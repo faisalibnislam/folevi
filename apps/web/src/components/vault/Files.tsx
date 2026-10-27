@@ -21,6 +21,7 @@ import { useRecordEvent } from "./useVault";
 import { NoteEditor } from "./NoteEditor";
 import { blocksFromVaultDoc, writeRegularNote } from "./moveNote";
 import { ShareDialog } from "./ShareDialog";
+import { FilePreview } from "./FilePreview";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 
@@ -46,6 +47,7 @@ export function Files({ vaultId, role }: { vaultId: string; role: string }) {
   const [naming, setNaming] = useState<"folder" | "note" | null>(null);
   const [note, setNote] = useState<Entry | null>(null);
   const [busy, setBusy] = useState(false);
+  const [previewing, setPreviewing] = useState<string | null>(null);
   // Grid (cards) or Lines (rows), for folders and files alike; remembered on this device.
   const [layout, setLayout] = useLocalStorage<"grid" | "list">("folevi:vault-files-layout", "grid");
 
@@ -165,7 +167,7 @@ export function Files({ vaultId, role }: { vaultId: string; role: string }) {
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-2">
           {entries.map((e) => (
             <li key={e.id}>
-              <button type="button" onClick={() => (e.kind === "file" ? void download(e) : setNote(e))} className="flex h-full w-full flex-col gap-2 rounded-control ui-card p-3 text-left hover:bg-surface">
+              <button type="button" onClick={() => (e.kind === "file" ? setPreviewing(e.id) : setNote(e))} className="flex h-full w-full flex-col gap-2 rounded-control ui-card p-3 text-left hover:bg-surface">
                 {e.kind === "file" ? <Upload size={17} aria-hidden className="text-muted" /> : <FileText size={17} aria-hidden className="text-muted" />}
                 <span className="min-w-0">
                   <span className="block truncate text-subheadline font-medium text-ink">{e.title}</span>
@@ -179,7 +181,7 @@ export function Files({ vaultId, role }: { vaultId: string; role: string }) {
         <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
           {entries.map((e) => (
             <li key={e.id}>
-              <button type="button" onClick={() => (e.kind === "file" ? void download(e) : setNote(e))} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface">
+              <button type="button" onClick={() => (e.kind === "file" ? setPreviewing(e.id) : setNote(e))} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface">
                 {e.kind === "file" ? <Upload size={15} aria-hidden className="flex-none text-muted" /> : <FileText size={15} aria-hidden className="flex-none text-muted" />}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-subheadline font-medium text-ink">{e.title}</span>
@@ -208,6 +210,15 @@ export function Files({ vaultId, role }: { vaultId: string; role: string }) {
           }
         }}
       />
+      {previewing && entries ? (
+        <FilePreview
+          vaultId={vaultId}
+          files={entries.filter((e) => e.kind === "file")}
+          startId={previewing}
+          onClose={() => setPreviewing(null)}
+          onDownload={(f) => void download(entries.find((e) => e.id === f.id)!)}
+        />
+      ) : null}
       {note ? <NoteDialog vaultId={vaultId} entry={note} custodian={role !== "member"} onClose={() => setNote(null)} /> : null}
     </section>
   );

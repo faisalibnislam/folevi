@@ -1,6 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
 import { APP, newPerson } from "./helpers";
 
+const PDF = `%PDF-1.4
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
+3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 144]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj
+4 0 obj<</Length 44>>stream
+BT /F1 24 Tf 40 70 Td (Vault PDF) Tj ET
+endstream endobj
+5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj
+trailer<</Root 1 0 R>>
+%%EOF`;
+
 /** Health, Activity, People, Trash and Settings open from the ⋯ menu beside Lock. */
 async function vaultSection(page: Page, name: string) {
   await page.getByRole("button", { name: "More in the Vault" }).click();
@@ -194,6 +205,30 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   await expect(noteDialog.locator("h3, h2, h4").filter({ hasText: "Root access" })).toBeVisible({ timeout: 30_000 });
   await expect(noteDialog.getByRole("checkbox")).toHaveCount(1);
   await noteDialog.getByRole("button", { name: "Close" }).first().click();
+
+  // Files open in a preview, decrypted on this device: a CSV as a table, text as text, a PDF drawn page by page;
+  // ← and → move between them (newest first), and each preview is logged.
+  const upload = page.locator('section[aria-label="Files and notes"] input[type=file]');
+  await upload.setInputFiles({ name: "accounts.csv", mimeType: "text/csv", buffer: Buffer.from('Service,User\nAWS,"ops, root"\nGitHub,sam\n') });
+  await expect(page.getByText("accounts.csv added to the Vault")).toBeVisible({ timeout: 30_000 });
+  await upload.setInputFiles({ name: "readme.txt", mimeType: "text/plain", buffer: Buffer.from("Rotate keys every quarter.") });
+  await expect(page.getByText("readme.txt added to the Vault")).toBeVisible({ timeout: 30_000 });
+  await upload.setInputFiles({ name: "policy.pdf", mimeType: "application/pdf", buffer: Buffer.from(PDF) });
+  await expect(page.getByText("policy.pdf added to the Vault")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: /^accounts\.csv/ }).click();
+  const preview = page.getByRole("dialog", { name: "accounts.csv" });
+  await expect(preview.getByRole("cell", { name: "ops, root" })).toBeVisible({ timeout: 30_000 });
+  await expect(preview.getByRole("columnheader", { name: "Service" })).toBeVisible();
+  await shot(page, "11-preview-csv");
+  await page.getByRole("dialog").getByRole("button", { name: "Previous file" }).click();
+  await expect(page.getByRole("dialog").getByText("Rotate keys every quarter.")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("dialog").getByRole("button", { name: "Previous file" }).click();
+  await expect(page.getByRole("dialog").getByRole("img", { name: "Page 1" })).toBeVisible({ timeout: 30_000 });
+  await shot(page, "12-preview-pdf");
+  await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).last().click();
+  await vaultSection(page, "Activity");
+  await expect(log).toContainText("Previewed a file");
+  await page.getByRole("tab", { name: "Files & Notes" }).click();
 
   // Settings > Notifications has the Vault's switch.
   await page.goto(`${APP}/settings/notifications`);

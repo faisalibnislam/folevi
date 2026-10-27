@@ -65,8 +65,10 @@ describe("the Vault on this device", { timeout: 60_000 }, () => {
     const v = vaultSessions();
     v.bind(client, { profileId: "p1", epoch: 1, account: account.x25519, deviceId: "dev-1" });
 
-    await expect(v.setUp("vault-1", "short")).rejects.toThrow(/at least 8/);
-    const { recoveryText } = await v.setUp("vault-1", "a good passcode");
+    await expect(v.setUp("vault-1", "12345")).rejects.toThrow(/6, 8 or 12 digits/);
+    await expect(v.setUp("vault-1", "1234567")).rejects.toThrow(/6, 8 or 12 digits/);
+    await expect(v.setUp("vault-1", "a good passcode")).rejects.toThrow(/numbers only/);
+    const { recoveryText } = await v.setUp("vault-1", "246810");
     expect(recoveryText.length).toBeGreaterThan(20);
     expect(v.isOpen("vault-1")).toBe(true);
     const check = v.keys("vault-1").check;
@@ -75,9 +77,9 @@ describe("the Vault on this device", { timeout: 60_000 }, () => {
     expect(v.isOpen("vault-1")).toBe(false);
     expect(() => v.keys("vault-1")).toThrow(/locked/);
 
-    expect(await v.unlock("vault-1", { passcode: "not the passcode" })).toEqual({ status: "wrong" });
+    expect(await v.unlock("vault-1", { passcode: "000000" })).toEqual({ status: "wrong" });
     expect(v.isOpen("vault-1")).toBe(false);
-    expect(await v.unlock("vault-1", { passcode: "a good passcode" })).toEqual({ status: "ok" });
+    expect(await v.unlock("vault-1", { passcode: "246810" })).toEqual({ status: "ok" });
     expect(Array.from(v.keys("vault-1").check)).toEqual(Array.from(check));
     await v.lock("vault-1", "manual");
 
@@ -86,10 +88,10 @@ describe("the Vault on this device", { timeout: 60_000 }, () => {
     await v.lock("vault-1", "manual");
 
     // Forgot the passcode: the recovery key proves it, a new passcode replaces the old one.
-    expect(await v.changePasscode("vault-1", { recoveryText }, "a brand new passcode")).toEqual({ status: "ok" });
+    expect(await v.changePasscode("vault-1", { recoveryText }, "135791357913")).toEqual({ status: "ok" });
     await v.lock("vault-1", "manual");
-    expect(await v.unlock("vault-1", { passcode: "a good passcode" })).toEqual({ status: "wrong" });
-    expect(await v.unlock("vault-1", { passcode: "a brand new passcode" })).toEqual({ status: "ok" });
+    expect(await v.unlock("vault-1", { passcode: "246810" })).toEqual({ status: "wrong" });
+    expect(await v.unlock("vault-1", { passcode: "135791357913" })).toEqual({ status: "ok" });
 
     expect(s.log).toEqual([
       "setUp",
@@ -119,7 +121,7 @@ describe("the Vault on this device", { timeout: 60_000 }, () => {
     const account = await deriveAccountKeys(randomBytes(32));
     const v = vaultSessions();
     v.bind(client, { profileId: "p1", epoch: 1, account: account.x25519 });
-    await v.setUp("vault-2", "a good passcode");
+    await v.setUp("vault-2", "246810");
     vi.useFakeTimers();
     vi.advanceTimersByTime(4 * 60_000);
     expect(v.isOpen("vault-2")).toBe(true);

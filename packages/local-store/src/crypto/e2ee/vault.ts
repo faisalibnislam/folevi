@@ -83,13 +83,13 @@ export async function deriveVaultKeys(vk: Uint8Array): Promise<VaultKeys> {
 /** A new vault key (32 random bytes). */
 export const newVaultKey = (): Uint8Array => randomBytes(32);
 
-/** Passcodes: at least 8 characters (docs/VAULT_PLAN.md §11.2). */
-export const VAULT_PASSCODE_MIN = 8;
+/** Passcodes: a PIN of 6, 8 or 12 digits, the owner's choice (docs/VAULT_PLAN.md §11.2). */
+export const VAULT_PASSCODE_LENGTHS = [6, 8, 12] as const;
 
 export function checkVaultPasscode(passcode: string): string | null {
   const p = passcode.normalize("NFC");
-  if (p.length < VAULT_PASSCODE_MIN) return `Use at least ${VAULT_PASSCODE_MIN} characters.`;
-  if (/^\d+$/.test(p) && p.length < 12) return "Use letters too, or at least 12 digits.";
+  if (!/^\d*$/.test(p)) return "Use numbers only.";
+  if (!(VAULT_PASSCODE_LENGTHS as readonly number[]).includes(p.length)) return "Use 6, 8 or 12 digits.";
   return null;
 }
 

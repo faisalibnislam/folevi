@@ -114,7 +114,7 @@ export {
 } from "./sas";
 export * from "./wire";
 export {
-  VAULT_PASSCODE_MIN,
+  VAULT_PASSCODE_LENGTHS,
   checkVaultPasscode,
   deriveVaultKeys,
   innerOfGrant,

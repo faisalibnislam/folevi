@@ -30,6 +30,8 @@ public struct WebSidebar: View {
     @AppStorage("folevi.sidebar.starredOpen") private var starredOpen = true
     @AppStorage("folevi.sidebar.section.folders") private var foldersOpen = true
     @AppStorage("folevi.sidebar.section.tags") private var tagsOpen = false
+    /// On a note: the note's own tools ("document", the web's default) or the folders (`folevi:doc-sidebar-mode`).
+    @AppStorage("folevi.sidebar.docMode") private var docMode = "document"
     @State private var openFolders: Set<String> = []
 
     /// The first few starred notes, folders and tags; the rest are a click away on their own pages.
@@ -50,7 +52,22 @@ public struct WebSidebar: View {
             search
                 .padding(.horizontal, list.padding.left)
                 .padding(.top, style("search").y - style("topbar").y - style("topbar").height)
-            ScrollView(.vertical) {
+            if let noteId = model.route.noteId, docMode == "document" {
+                // The note's own sidebar (DocumentSidebar.tsx), between the search and the account.
+                WebNoteSidebar(model: model, noteId: noteId)
+                    .padding(.top, WebStyles.named("notetools.card.wrap").resolve(scheme).y - style("search").y - style("search").height)
+            } else {
+                appList
+            }
+            account
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// The app's places, folders and tags (Sidebar.tsx's list).
+    private var appList: some View {
+        let list = style("list")
+        return ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     destinations.padding(.top, style("item.active").y - style("list").y)
                     foldersSection
@@ -65,9 +82,6 @@ public struct WebSidebar: View {
                 .padding(.bottom, list.padding.bottom)
             }
             .scrollIndicators(.never)
-            account
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     // MARK: the top bar
@@ -99,7 +113,11 @@ public struct WebSidebar: View {
     private var sidebarMenu: [WebMenuEntry] {
         [
             WebMenuEntry(.item(model.sidebarCollapsed ? "Show sidebar" : "Hide sidebar", icon: .panelLeft, shortcut: "⌘\\")) { model.sidebarCollapsed.toggle() },
-        ]
+        ] + (model.route.isNote ? [
+            .separator(),
+            WebMenuEntry(.item("Show folders", checked: docMode == "folders")) { docMode = "folders" },
+            WebMenuEntry(.item("Show document", checked: docMode == "document")) { docMode = "document" },
+        ] : [])
     }
 
     // MARK: search

@@ -131,7 +131,7 @@ final class PhoneModel {
                 title = "Undo"
             }
             push(PhoneToast(message: e.message, tone: e.tone == .error ? .error : e.tone == .success ? .success : .info, actionTitle: title, action: action))
-        case .placeChanged, .syncStatus, .memoryRelieved, .unknown:
+        case .placeChanged, .syncStatus, .memoryRelieved, .noteTools, .unknown:
             break
         }
     }

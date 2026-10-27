@@ -1,0 +1,11 @@
+{
+  "kind": "editor",
+  "name": "thread.open",
+  "description": "Open a comment thread in the note.",
+  "args": {
+    "threadId": "thr_1"
+  },
+  "result": {
+    "ok": true
+  }
+}

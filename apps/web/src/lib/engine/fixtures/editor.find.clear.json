@@ -1,0 +1,9 @@
+{
+  "kind": "editor",
+  "name": "find.clear",
+  "description": "Stop finding: the matches lose their highlight.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

@@ -7,9 +7,9 @@ public enum EngineContract {
     /// The envelope's major version (`v` on every message to the engine).
     public static let protocolVersion = 1
     /// Bumps with every added view, command, editor command, event or field.
-    public static let revision = 12
+    public static let revision = 16
     /// FNV-1a of the names and revision; the engine's `hello` reply carries the same when this file is current.
-    public static let schemaHash = "8850707c"
+    public static let schemaHash = "76864d9e"
     /// The `WKScriptMessageHandler` name the engine posts to.
     public static let messageHandler = "foleviEngine"
     /// The global the host calls (`__foleviEngine.handle(json)`).
@@ -202,6 +202,11 @@ public enum EditorCommandName: String, Codable, Hashable, Sendable, CaseIterable
     case blockDuplicate = "block.duplicate"
     case focusToggle = "focus.toggle"
     case noteLock = "note.lock"
+    case blockJump = "block.jump"
+    case taskToggle = "task.toggle"
+    case threadOpen = "thread.open"
+    case find
+    case findClear = "find.clear"
 }
 
 /// Events from the engine.
@@ -217,6 +222,7 @@ public enum EventName: String, Codable, Hashable, Sendable, CaseIterable {
     case editorState = "editor.state"
     case editorPanel = "editor.panel"
     case memoryRelieved = "memory.relieved"
+    case noteTools = "note.tools"
 }
 
 /// Value views: `client.watch(.home())`, `client.query(.noteMeta(id: id))`.
@@ -1919,6 +1925,41 @@ public enum EditorCommands {
         public var args: Args
         public init(_ args: Args = .init()) { self.args = args }
     }
+    public struct BlockJump: EngineEditorSpec {
+        public static let name = "block.jump"
+        public typealias Args = FoleviEngine.BlockJumpArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct TaskToggle: EngineEditorSpec {
+        public static let name = "task.toggle"
+        public typealias Args = FoleviEngine.TaskToggleArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct ThreadOpen: EngineEditorSpec {
+        public static let name = "thread.open"
+        public typealias Args = FoleviEngine.ThreadOpenArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct Find: EngineEditorSpec {
+        public static let name = "find"
+        public typealias Args = FoleviEngine.FindArgs
+        public typealias Result = FoleviEngine.FindResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct FindClear: EngineEditorSpec {
+        public static let name = "find.clear"
+        public typealias Args = FoleviEngine.EmptyArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args = .init()) { self.args = args }
+    }
 }
 
 public extension EngineEditorSpec where Self == EditorCommands.NotePrepare {
@@ -2017,6 +2058,26 @@ public extension EngineEditorSpec where Self == EditorCommands.NoteLock {
     static var noteLock: Self { Self() }
 }
 
+public extension EngineEditorSpec where Self == EditorCommands.BlockJump {
+    static func blockJump(blockId: String) -> Self { Self(FoleviEngine.BlockJumpArgs(blockId: blockId)) }
+}
+
+public extension EngineEditorSpec where Self == EditorCommands.TaskToggle {
+    static func taskToggle(blockId: String) -> Self { Self(FoleviEngine.TaskToggleArgs(blockId: blockId)) }
+}
+
+public extension EngineEditorSpec where Self == EditorCommands.ThreadOpen {
+    static func threadOpen(threadId: String) -> Self { Self(FoleviEngine.ThreadOpenArgs(threadId: threadId)) }
+}
+
+public extension EngineEditorSpec where Self == EditorCommands.Find {
+    static func find(query: String, index: Int? = nil) -> Self { Self(FoleviEngine.FindArgs(query: query, index: index)) }
+}
+
+public extension EngineEditorSpec where Self == EditorCommands.FindClear {
+    static var findClear: Self { Self() }
+}
+
 /// Every name with its Swift types, for tools that work by name (the contract tests, the debug console).
 public enum EngineCatalog {
     public typealias Model = any (Codable & Sendable).Type
@@ -2026,9 +2087,9 @@ public enum EngineCatalog {
     public static let listRows: [String: any EngineRow.Type] = ["notes.list": FoleviEngine.NoteRow.self]
     public static let commandArgs: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchArgs.self, "note.create": FoleviEngine.NoteCreateArgs.self, "note.star": FoleviEngine.NoteStarArgs.self, "note.move": FoleviEngine.NoteMoveArgs.self, "note.archive": FoleviEngine.NoteArchiveArgs.self, "note.trash": FoleviEngine.NoteIdsArgs.self, "note.restore": FoleviEngine.NoteIdsArgs.self, "note.hideFromRecent": FoleviEngine.NoteIdsArgs.self, "folder.create": FoleviEngine.FolderCreateArgs.self, "catchUp.run": FoleviEngine.SpaceArgs.self, "catchUp.clear": FoleviEngine.SpaceArgs.self, "engine.refresh": FoleviEngine.EmptyArgs.self, "toast.action": FoleviEngine.ToastActionArgs.self, "gate.act": FoleviEngine.GateActArgs.self, "note.deleteForever": FoleviEngine.NoteIdsArgs.self, "note.duplicate": FoleviEngine.NoteIdArgs.self, "note.copyTo": FoleviEngine.NoteCopyToArgs.self, "note.reorder": FoleviEngine.NoteReorderArgs.self, "note.showInRecent": FoleviEngine.NoteIdsArgs.self, "template.create": FoleviEngine.TemplateCreateArgs.self, "trash.empty": FoleviEngine.SpaceArgs.self, "folder.rename": FoleviEngine.FolderRenameArgs.self, "folder.setColor": FoleviEngine.FolderSetColorArgs.self, "folder.move": FoleviEngine.FolderMoveArgs.self, "folder.delete": FoleviEngine.FolderIdArgs.self, "changes.markSeen": FoleviEngine.NoteIdsArgs.self, "proposal.accept": FoleviEngine.ProposalIdArgs.self, "proposal.reject": FoleviEngine.ProposalIdArgs.self, "notification.markRead": FoleviEngine.NotificationMarkArgs.self, "notification.markAllRead": FoleviEngine.EmptyArgs.self, "notification.remove": FoleviEngine.NotificationIdsArgs.self, "invite.accept": FoleviEngine.InviteAcceptArgs.self, "pageInvite.accept": FoleviEngine.InviteAcceptArgs.self, "task.create": FoleviEngine.TaskCreateArgs.self, "task.update": FoleviEngine.TaskUpdateArgs.self, "task.moveToNote": FoleviEngine.TaskMoveArgs.self, "calendar.add": FoleviEngine.CalendarAddArgs.self, "calendar.update": FoleviEngine.CalendarUpdateArgs.self, "calendar.remove": FoleviEngine.CalendarIdArgs.self, "calendar.refresh": FoleviEngine.CalendarIdArgs.self, "settings.update": FoleviEngine.SettingsUpdateArgs.self, "settings.setAiPref": FoleviEngine.AiPrefArgs.self, "settings.setNotificationTopic": FoleviEngine.NotificationTopicArgs.self, "settings.setNotificationEmails": FoleviEngine.NotificationEmailsArgs.self, "settings.removeAvatar": FoleviEngine.EmptyArgs.self, "session.revoke": FoleviEngine.SessionIdArgs.self, "sharing.invite": FoleviEngine.ShareInviteArgs.self, "sharing.revoke": FoleviEngine.ShareRevokeArgs.self, "sharing.cancelInvite": FoleviEngine.ShareInviteIdArgs.self, "sharing.setAccessMode": FoleviEngine.AccessModeArgs.self, "publicLink.create": FoleviEngine.PublicLinkCreateArgs.self, "publicLink.setTheme": FoleviEngine.PublicLinkThemeArgs.self, "publicLink.revoke": FoleviEngine.PublicLinkIdArgs.self, "invite.acceptLink": FoleviEngine.InviteTokenArgs.self, "ai.send": FoleviEngine.ChatSendArgs.self, "ai.stop": FoleviEngine.ChatMessageArgs.self, "ai.regenerate": FoleviEngine.ChatConversationArgs.self, "ai.edit": FoleviEngine.ChatEditArgs.self, "ai.rename": FoleviEngine.ChatRenameArgs.self, "ai.pin": FoleviEngine.ChatPinArgs.self, "ai.remove": FoleviEngine.ChatConversationArgs.self, "ai.saveAsNote": FoleviEngine.ChatSaveArgs.self, "ai.actions": FoleviEngine.ChatActionsArgs.self, "ai.memory": FoleviEngine.ChatMemoryArgs.self, "notification.act": FoleviEngine.NotificationActArgs.self, "places.move": FoleviEngine.PlaceMoveArgs.self, "ai.researchCancel": FoleviEngine.ResearchIdArgs.self, "ai.researchSave": FoleviEngine.ResearchSaveArgs.self, "ai.agentApprove": FoleviEngine.AgentApproveArgs.self, "ai.agentDiscard": FoleviEngine.AgentRunArgs.self, "ai.agentUndo": FoleviEngine.AgentUndoArgs.self, "settings.setAvatar": FoleviEngine.AvatarArgs.self, "calendar.feedCreate": FoleviEngine.CalendarFeedCreateArgs.self, "calendar.feedRevoke": FoleviEngine.EmptyArgs.self, "calendar.feedWorkspaces": FoleviEngine.CalendarFeedWorkspacesArgs.self, "device.keepAll": FoleviEngine.DeviceKeepAllArgs.self, "device.download": FoleviEngine.EmptyArgs.self, "device.removeCopy": FoleviEngine.DeviceRemoveCopyArgs.self, "device.removeFiles": FoleviEngine.EmptyArgs.self, "sharing.setRole": FoleviEngine.ShareRoleArgs.self, "invite.decline": FoleviEngine.InviteDeclineArgs.self, "support.send": FoleviEngine.SupportSendArgs.self, "folder.lock": FoleviEngine.FolderLockArgs.self, "ai.generate": FoleviEngine.AiGenerateArgs.self, "ai.saveDraft": FoleviEngine.AiSaveDraftArgs.self, "folderSharing.invite": FoleviEngine.FolderShareInviteArgs.self, "folderSharing.setRole": FoleviEngine.FolderShareRoleArgs.self, "folderSharing.revoke": FoleviEngine.FolderShareRevokeArgs.self, "folderSharing.cancelInvite": FoleviEngine.FolderInviteIdArgs.self, "folderInvite.accept": FoleviEngine.FolderInviteIdArgs.self]
     public static let commandResults: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchResult.self, "note.create": FoleviEngine.NoteCreateResult.self, "note.star": FoleviEngine.BulkResult.self, "note.move": FoleviEngine.BulkResult.self, "note.archive": FoleviEngine.BulkResult.self, "note.trash": FoleviEngine.BulkResult.self, "note.restore": FoleviEngine.BulkResult.self, "note.hideFromRecent": FoleviEngine.HiddenResult.self, "folder.create": FoleviEngine.FolderCreateResult.self, "catchUp.run": FoleviEngine.CatchUpCard.self, "catchUp.clear": FoleviEngine.OkResult.self, "engine.refresh": FoleviEngine.OkResult.self, "toast.action": FoleviEngine.OkResult.self, "gate.act": FoleviEngine.OkResult.self, "note.deleteForever": FoleviEngine.BulkResult.self, "note.duplicate": FoleviEngine.NoteCreateResult.self, "note.copyTo": FoleviEngine.BulkResult.self, "note.reorder": FoleviEngine.OkResult.self, "note.showInRecent": FoleviEngine.HiddenResult.self, "template.create": FoleviEngine.NoteCreateResult.self, "trash.empty": FoleviEngine.TrashEmptyResult.self, "folder.rename": FoleviEngine.OkResult.self, "folder.setColor": FoleviEngine.OkResult.self, "folder.move": FoleviEngine.OkResult.self, "folder.delete": FoleviEngine.OkResult.self, "changes.markSeen": FoleviEngine.OkResult.self, "proposal.accept": FoleviEngine.OkResult.self, "proposal.reject": FoleviEngine.OkResult.self, "notification.markRead": FoleviEngine.OkResult.self, "notification.markAllRead": FoleviEngine.OkResult.self, "notification.remove": FoleviEngine.OkResult.self, "invite.accept": FoleviEngine.OkResult.self, "pageInvite.accept": FoleviEngine.PageInviteAcceptResult.self, "task.create": FoleviEngine.TaskCreateResult.self, "task.update": FoleviEngine.OkResult.self, "task.moveToNote": FoleviEngine.OkResult.self, "calendar.add": FoleviEngine.CalendarAddResult.self, "calendar.update": FoleviEngine.OkResult.self, "calendar.remove": FoleviEngine.OkResult.self, "calendar.refresh": FoleviEngine.OkResult.self, "settings.update": FoleviEngine.OkResult.self, "settings.setAiPref": FoleviEngine.OkResult.self, "settings.setNotificationTopic": FoleviEngine.OkResult.self, "settings.setNotificationEmails": FoleviEngine.OkResult.self, "settings.removeAvatar": FoleviEngine.OkResult.self, "session.revoke": FoleviEngine.OkResult.self, "sharing.invite": FoleviEngine.ShareInviteResult.self, "sharing.revoke": FoleviEngine.OkResult.self, "sharing.cancelInvite": FoleviEngine.OkResult.self, "sharing.setAccessMode": FoleviEngine.OkResult.self, "publicLink.create": FoleviEngine.PublicLinkCreateResult.self, "publicLink.setTheme": FoleviEngine.OkResult.self, "publicLink.revoke": FoleviEngine.OkResult.self, "invite.acceptLink": FoleviEngine.InviteTokenAcceptResult.self, "ai.send": FoleviEngine.ChatSendResult.self, "ai.stop": FoleviEngine.OkResult.self, "ai.regenerate": FoleviEngine.ChatSendResult.self, "ai.edit": FoleviEngine.ChatSendResult.self, "ai.rename": FoleviEngine.OkResult.self, "ai.pin": FoleviEngine.OkResult.self, "ai.remove": FoleviEngine.OkResult.self, "ai.saveAsNote": FoleviEngine.NoteCreateResult.self, "ai.actions": FoleviEngine.OkResult.self, "ai.memory": FoleviEngine.OkResult.self, "notification.act": FoleviEngine.OkResult.self, "places.move": FoleviEngine.PlaceMoveResult.self, "ai.researchCancel": FoleviEngine.OkResult.self, "ai.researchSave": FoleviEngine.NoteCreateResult.self, "ai.agentApprove": FoleviEngine.OkResult.self, "ai.agentDiscard": FoleviEngine.OkResult.self, "ai.agentUndo": FoleviEngine.AgentUndoResult.self, "settings.setAvatar": FoleviEngine.OkResult.self, "calendar.feedCreate": FoleviEngine.CalendarFeedCreateResult.self, "calendar.feedRevoke": FoleviEngine.OkResult.self, "calendar.feedWorkspaces": FoleviEngine.OkResult.self, "device.keepAll": FoleviEngine.OkResult.self, "device.download": FoleviEngine.OkResult.self, "device.removeCopy": FoleviEngine.DeviceRemoveCopyResult.self, "device.removeFiles": FoleviEngine.OkResult.self, "sharing.setRole": FoleviEngine.OkResult.self, "invite.decline": FoleviEngine.OkResult.self, "support.send": FoleviEngine.SupportSendResult.self, "folder.lock": FoleviEngine.OkResult.self, "ai.generate": FoleviEngine.AiGenerateResult.self, "ai.saveDraft": FoleviEngine.NoteCreateResult.self, "folderSharing.invite": FoleviEngine.ShareInviteResult.self, "folderSharing.setRole": FoleviEngine.OkResult.self, "folderSharing.revoke": FoleviEngine.OkResult.self, "folderSharing.cancelInvite": FoleviEngine.OkResult.self, "folderInvite.accept": FoleviEngine.FolderInviteAcceptResult.self]
-    public static let editorArgs: [String: Model] = ["note.prepare": FoleviEngine.NotePrepareArgs.self, "note.show": FoleviEngine.NoteShowArgs.self, "note.close": FoleviEngine.EmptyArgs.self, "format": FoleviEngine.FormatArgs.self, "insert": FoleviEngine.InsertArgs.self, "link": FoleviEngine.LinkArgs.self, "undo": FoleviEngine.EmptyArgs.self, "redo": FoleviEngine.EmptyArgs.self, "indent": FoleviEngine.EmptyArgs.self, "outdent": FoleviEngine.EmptyArgs.self, "focus": FoleviEngine.EmptyArgs.self, "dismissKeyboard": FoleviEngine.EmptyArgs.self, "panel.open": FoleviEngine.PanelOpenArgs.self, "panel.close": FoleviEngine.EmptyArgs.self, "ai": FoleviEngine.AiArgs.self, "note.menu": FoleviEngine.NoteMenuArgs.self, "scrollToTop": FoleviEngine.EmptyArgs.self, "insets": FoleviEngine.InsetsArgs.self, "state": FoleviEngine.EmptyArgs.self, "web.show": FoleviEngine.WebShowArgs.self, "block.move": FoleviEngine.BlockMoveArgs.self, "block.duplicate": FoleviEngine.EmptyArgs.self, "focus.toggle": FoleviEngine.EmptyArgs.self, "note.lock": FoleviEngine.EmptyArgs.self]
-    public static let editorResults: [String: Model] = ["note.prepare": FoleviEngine.NoteShownResult.self, "note.show": FoleviEngine.NoteShownResult.self, "note.close": FoleviEngine.OkResult.self, "format": FoleviEngine.OkResult.self, "insert": FoleviEngine.OkResult.self, "link": FoleviEngine.OkResult.self, "undo": FoleviEngine.OkResult.self, "redo": FoleviEngine.OkResult.self, "indent": FoleviEngine.OkResult.self, "outdent": FoleviEngine.OkResult.self, "focus": FoleviEngine.OkResult.self, "dismissKeyboard": FoleviEngine.OkResult.self, "panel.open": FoleviEngine.OkResult.self, "panel.close": FoleviEngine.OkResult.self, "ai": FoleviEngine.OkResult.self, "note.menu": FoleviEngine.OkResult.self, "scrollToTop": FoleviEngine.OkResult.self, "insets": FoleviEngine.OkResult.self, "state": FoleviEngine.EditorStateEvent.self, "web.show": FoleviEngine.NoteShownResult.self, "block.move": FoleviEngine.OkResult.self, "block.duplicate": FoleviEngine.OkResult.self, "focus.toggle": FoleviEngine.OkResult.self, "note.lock": FoleviEngine.OkResult.self]
-    public static let events: [String: Model] = ["engine.ready": FoleviEngine.EngineReadyEvent.self, "gate.changed": FoleviEngine.GateChangedEvent.self, "sync.status": FoleviEngine.SyncStatusValue.self, "place.changed": FoleviEngine.PlaceChangedEvent.self, "toast": FoleviEngine.ToastEvent.self, "navigate.request": FoleviEngine.NavigateRequestEvent.self, "note.ready": FoleviEngine.NoteReadyEvent.self, "note.meta": FoleviEngine.NoteMeta.self, "editor.state": FoleviEngine.EditorStateEvent.self, "editor.panel": FoleviEngine.EditorPanelEvent.self, "memory.relieved": FoleviEngine.MemoryRelievedEvent.self]
+    public static let editorArgs: [String: Model] = ["note.prepare": FoleviEngine.NotePrepareArgs.self, "note.show": FoleviEngine.NoteShowArgs.self, "note.close": FoleviEngine.EmptyArgs.self, "format": FoleviEngine.FormatArgs.self, "insert": FoleviEngine.InsertArgs.self, "link": FoleviEngine.LinkArgs.self, "undo": FoleviEngine.EmptyArgs.self, "redo": FoleviEngine.EmptyArgs.self, "indent": FoleviEngine.EmptyArgs.self, "outdent": FoleviEngine.EmptyArgs.self, "focus": FoleviEngine.EmptyArgs.self, "dismissKeyboard": FoleviEngine.EmptyArgs.self, "panel.open": FoleviEngine.PanelOpenArgs.self, "panel.close": FoleviEngine.EmptyArgs.self, "ai": FoleviEngine.AiArgs.self, "note.menu": FoleviEngine.NoteMenuArgs.self, "scrollToTop": FoleviEngine.EmptyArgs.self, "insets": FoleviEngine.InsetsArgs.self, "state": FoleviEngine.EmptyArgs.self, "web.show": FoleviEngine.WebShowArgs.self, "block.move": FoleviEngine.BlockMoveArgs.self, "block.duplicate": FoleviEngine.EmptyArgs.self, "focus.toggle": FoleviEngine.EmptyArgs.self, "note.lock": FoleviEngine.EmptyArgs.self, "block.jump": FoleviEngine.BlockJumpArgs.self, "task.toggle": FoleviEngine.TaskToggleArgs.self, "thread.open": FoleviEngine.ThreadOpenArgs.self, "find": FoleviEngine.FindArgs.self, "find.clear": FoleviEngine.EmptyArgs.self]
+    public static let editorResults: [String: Model] = ["note.prepare": FoleviEngine.NoteShownResult.self, "note.show": FoleviEngine.NoteShownResult.self, "note.close": FoleviEngine.OkResult.self, "format": FoleviEngine.OkResult.self, "insert": FoleviEngine.OkResult.self, "link": FoleviEngine.OkResult.self, "undo": FoleviEngine.OkResult.self, "redo": FoleviEngine.OkResult.self, "indent": FoleviEngine.OkResult.self, "outdent": FoleviEngine.OkResult.self, "focus": FoleviEngine.OkResult.self, "dismissKeyboard": FoleviEngine.OkResult.self, "panel.open": FoleviEngine.OkResult.self, "panel.close": FoleviEngine.OkResult.self, "ai": FoleviEngine.OkResult.self, "note.menu": FoleviEngine.OkResult.self, "scrollToTop": FoleviEngine.OkResult.self, "insets": FoleviEngine.OkResult.self, "state": FoleviEngine.EditorStateEvent.self, "web.show": FoleviEngine.NoteShownResult.self, "block.move": FoleviEngine.OkResult.self, "block.duplicate": FoleviEngine.OkResult.self, "focus.toggle": FoleviEngine.OkResult.self, "note.lock": FoleviEngine.OkResult.self, "block.jump": FoleviEngine.OkResult.self, "task.toggle": FoleviEngine.OkResult.self, "thread.open": FoleviEngine.OkResult.self, "find": FoleviEngine.FindResult.self, "find.clear": FoleviEngine.OkResult.self]
+    public static let events: [String: Model] = ["engine.ready": FoleviEngine.EngineReadyEvent.self, "gate.changed": FoleviEngine.GateChangedEvent.self, "sync.status": FoleviEngine.SyncStatusValue.self, "place.changed": FoleviEngine.PlaceChangedEvent.self, "toast": FoleviEngine.ToastEvent.self, "navigate.request": FoleviEngine.NavigateRequestEvent.self, "note.ready": FoleviEngine.NoteReadyEvent.self, "note.meta": FoleviEngine.NoteMeta.self, "editor.state": FoleviEngine.EditorStateEvent.self, "editor.panel": FoleviEngine.EditorPanelEvent.self, "memory.relieved": FoleviEngine.MemoryRelievedEvent.self, "note.tools": FoleviEngine.NoteToolsEvent.self]
 }
 
 /// An event from the engine with its typed data. Unknown names (a newer engine) arrive as `.unknown`.
@@ -2044,6 +2105,7 @@ public enum EngineEvent: Sendable {
     case editorState(EditorStateEvent)
     case editorPanel(EditorPanelEvent)
     case memoryRelieved(MemoryRelievedEvent)
+    case noteTools(NoteToolsEvent)
     case unknown(name: String, data: JSONValue)
 
     public var name: String {
@@ -2059,6 +2121,7 @@ public enum EngineEvent: Sendable {
         case .editorState: "editor.state"
         case .editorPanel: "editor.panel"
         case .memoryRelieved: "memory.relieved"
+        case .noteTools: "note.tools"
         case .unknown(let name, _): name
         }
     }
@@ -2077,6 +2140,7 @@ public enum EngineEvent: Sendable {
         case "editor.state": .editorState(try c.decode(FoleviEngine.EditorStateEvent.self, forKey: key))
         case "editor.panel": .editorPanel(try c.decode(FoleviEngine.EditorPanelEvent.self, forKey: key))
         case "memory.relieved": .memoryRelieved(try c.decode(FoleviEngine.MemoryRelievedEvent.self, forKey: key))
+        case "note.tools": .noteTools(try c.decode(FoleviEngine.NoteToolsEvent.self, forKey: key))
         default: .unknown(name: name, data: try c.decodeIfPresent(JSONValue.self, forKey: key) ?? .null)
         }
     }

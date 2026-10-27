@@ -109,6 +109,8 @@ public final class FrameModel {
     public private(set) var noteMeta: [String: NoteMeta] = [:]
     public private(set) var editorState: EditorStateEvent?
     public private(set) var editorPanel: EditorPanel?
+    /// What each note's own sidebar shows (`note.tools`, revision 14), by note id.
+    public private(set) var noteTools: [String: NoteToolsEvent] = [:]
     /// The note the Page View shows now (after note.show answered).
     public private(set) var shownNote: String?
     /// Which full-screen web gate the page shows (sign in, onboarding, lock), as `gate.changed` says.
@@ -372,6 +374,8 @@ public final class FrameModel {
             editorState = e
         case .editorPanel(let e):
             editorPanel = e.panel
+        case .noteTools(let e):
+            if noteTools[e.noteId] != e { noteTools[e.noteId] = e }
         case .navigateRequest(let e):
             if e.external, let url = URL(string: e.route) {
                 host?.frameOpenExternal(url)

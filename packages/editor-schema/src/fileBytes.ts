@@ -308,5 +308,7 @@ export function safeFilename(name: string): string {
 }
 
 export const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
-export const MAX_FILE_BYTES = 100 * 1024 * 1024;
+// 50 MB: the upload check (convex/files.ts finalize) reads the whole file in an action, which has 64 MB of
+// memory; a 70 MB file ran out on dev (2026-10-27). Raise it only once that check streams.
+export const MAX_FILE_BYTES = 50 * 1024 * 1024;
 export const MAX_IMAGE_PIXELS = 50_000_000;

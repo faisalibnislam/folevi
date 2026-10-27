@@ -14,7 +14,10 @@ import type { PlannedCall } from "../credits";
 
 /** Audio tokens a second of recording costs (Gemini counts 32). */
 export const AUDIO_TOKENS_PER_SECOND = 32;
-/** Bytes a second the recorder writes (64 kbit/s), for a recording whose length isn't known. */
+/**
+ * Bytes a second (64 kbit/s), for a recording whose length isn't known: an audio file added without one.
+ * Folevi's own recordings keep the length measured while recording (they're 32 kbit/s since 2026-10-27).
+ */
 const BYTES_PER_SECOND = 8_000;
 /** Transcript tokens a minute of speech, about 150 words: for the estimate shown before transcribing. */
 export const TRANSCRIPT_TOKENS_PER_MINUTE = 200;

@@ -71,7 +71,7 @@ public enum FrameRoute: Hashable, Sendable {
         case "archive": self = .notes(.archive)
         case "trash": self = .notes(.trash)
         case "templates": self = .notes(.templates)
-        case "shared": self = .shared
+        case "shared": self = a.map { .web("/shared/\(Self.escape($0))") } ?? .shared
         case "changes": self = .changes
         case "inbox": self = .tasks(.inbox)
         case "tasks": self = .tasks(a.flatMap(TaskViewName.init(rawValue:)) ?? .today)
@@ -136,7 +136,12 @@ public enum FrameRoute: Hashable, Sendable {
         case .calendar: return "Calendar"
         case .search(let q): return q.isEmpty ? "Search" : "Search: \(q)"
         case .note: return "Untitled"
-        case .web: return "Folevi"
+        case .web(let p):
+            if p.hasPrefix("/help") { return "Help" }
+            if p.hasPrefix("/graph") { return "Graph" }
+            if p.hasPrefix("/review") { return "Reviews" }
+            if p.hasPrefix("/shared/") { return "Shared folder" }
+            return "Folevi"
         }
     }
 

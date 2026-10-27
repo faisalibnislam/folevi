@@ -42,6 +42,8 @@ final class ScreenModels {
     private var tasks: TasksModel?
     private var calendar: CalendarModel?
     private var search: SearchModel?
+    /// Help, Graph, Reviews and shared folders (Views/More).
+    lazy var more = MoreModels(frame: frame, feedback: feedback)
 
     init(frame: FrameModel) { self.frame = frame }
 
@@ -241,7 +243,7 @@ struct ScreenRoot: View {
             case .search: SearchScreen(model: models.searchModel(), showsCancel: false)
             case .tasks: TasksScreen(model: models.tasksModel(), showsHeader: true)
             case .calendar: CalendarScreen(model: models.calendarModel(), showsHeader: true)
-            case .web(let path): Placeholder(symbol: "globe", title: "Not here yet", message: "\(path) doesn't have a screen in the Mac app yet.")
+            case .web(let path): MoreScreen(model: model, more: models.more, path: path)
             case .note: Color.clear
             }
         }

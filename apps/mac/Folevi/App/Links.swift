@@ -63,7 +63,7 @@ enum Links {
 
     private static let noteId = #"^[0-9A-Z]{26}$"#
     private static let inboxId = #"^inbox-[0-9a-z]{1,40}$"#
-    private static let pages: Set<String> = ["documents", "tasks", "calendar", "inbox", "settings", "foli-ai", "trash", "templates", "help"]
+    private static let pages: Set<String> = ["documents", "tasks", "calendar", "inbox", "settings", "foli-ai", "trash", "templates", "help", "graph", "review", "shared", "changes"]
 
     private static func matches(_ s: String, _ pattern: String) -> Bool { s.range(of: pattern, options: .regularExpression) != nil }
 

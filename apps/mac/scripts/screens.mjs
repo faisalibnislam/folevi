@@ -46,6 +46,10 @@ export const SCREENS = [
   { id: "templates", link: "folevi-dev://templates" },
   { id: "archive", link: "folevi-dev://archive" },
   { id: "trash", link: "folevi-dev://trash" },
+  // mr/more: Help, Graph, Reviews.
+  { id: "help", link: "folevi-dev://help" },
+  { id: "graph", link: "folevi-dev://graph" },
+  { id: "review", link: "folevi-dev://review" },
 ];
 const only = arg("--only")?.split(",");
 const screens = SCREENS.filter((s) => !only || only.includes(s.id));

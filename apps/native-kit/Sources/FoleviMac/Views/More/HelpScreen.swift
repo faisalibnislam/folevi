@@ -82,12 +82,15 @@ struct HelpScreen: View {
 
     private var header: some View {
         let h2 = s("h2"), intro = s("intro"), link = s("link")
-        let text = Text(verbatim: "The full guide lives at ")
-            + Text(verbatim: "folevi.com/docs").foregroundColor(link.color.color).underline()
-            + Text(verbatim: ". Questions or problems? Contact support below, or write to support@folevi.com. Security reports: security@folevi.com.")
+        let words = "The full guide lives at folevi.com/docs. Questions or problems? Contact support below, or write to support@folevi.com. Security reports: security@folevi.com."
+        var text = AttributedString(WebPrettyWrap.lines(words, style: intro.text, width: intro.width).joined(separator: "\n"))
+        if let r = text.range(of: "folevi.com/docs") {
+            text[r].foregroundColor = link.color.color
+            text[r].underlineStyle = .single
+        }
         return VStack(alignment: .leading, spacing: 0) {
             Text("Help").webText(h2.text).lineLimit(1).foregroundStyle(h2.color.color)
-            text.webText(intro.text).foregroundStyle(intro.color.color)
+            Text(text).webText(intro.text).foregroundStyle(intro.color.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .onTapGesture { open("https://folevi.com/docs") }
         }
@@ -98,8 +101,8 @@ struct HelpScreen: View {
         let b = button.resolve(scheme)
         return VStack(alignment: .leading, spacing: 0) {
             Text(account ? "Your support requests" : "Support").webText(h3.text).lineLimit(1).foregroundStyle(h3.color.color)
-            Text(account ? "A person on the Folevi team reads every request and replies by email. Replies show here too." : "A person on the Folevi team reads every email and replies.")
-                .webText(p.text).foregroundStyle(p.color.color)
+            WebPrettyText(account ? "A person on the Folevi team reads every request and replies by email. Replies show here too." : "A person on the Folevi team reads every email and replies.", style: p.text)
+                .foregroundStyle(p.color.color)
                 .padding(.top, p.margin.top)
             Button { open("mailto:support@folevi.com") } label: {
                 Text(account ? "Contact support" : "Email support").webText(b.text).lineLimit(1).fixedSize()
@@ -134,9 +137,8 @@ struct HelpScreen: View {
             .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: table.light.radius, style: .circular))
             .webBox(table)
-            Text(verbatim: "Type / on an empty line for every block type, [[ to link a page, and @ to mention someone or a date. Markdown shortcuts like “# ”, “- ”, “[] ” and “```” work at the start of a line.")
-                .webText(foot.text).foregroundStyle(foot.color.color)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            WebPrettyText("Type / on an empty line for every block type, [[ to link a page, and @ to mention someone or a date. Markdown shortcuts like “# ”, “- ”, “[] ” and “```” work at the start of a line.", style: foot.text)
+                .foregroundStyle(foot.color.color)
                 .padding(.top, foot.margin.top)
         }
     }

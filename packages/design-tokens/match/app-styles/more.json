@@ -1,35 +1,200 @@
 {
   "$description": "Search, notifications, Shared with Me, Changes, Help, Graph, Reviews and the dialogs the frame opens (mr/more). Read with pnpm styles:gen --app --only more --no-samples.",
   "screens": {
-    "help": "folevi-dev://help"
+    "help": "folevi-dev://help",
+    "graph": "folevi-dev://graph",
+    "review": "folevi-dev://review"
   },
   "styles": {
-    "more.help.title": { "screen": "help", "selector": "section#support", "parent": 1, "nth": 0 },
-    "more.help.h2": { "screen": "help", "selector": "h2.text-large-title" },
-    "more.help.intro": { "screen": "help", "selector": "h2.text-large-title + p" },
-    "more.help.link": { "screen": "help", "selector": "h2.text-large-title + p a" },
-    "more.help.support": { "screen": "help", "selector": "section#support" },
-    "more.help.h3": { "screen": "help", "selector": "#h-support" },
-    "more.help.support.text": { "screen": "help", "selector": "section#support > p" },
-    "more.help.support.button": { "screen": "help", "selector": "section#support > a" },
-    "more.help.shortcuts": { "screen": "help", "selector": "section[aria-labelledby='h-shortcuts']" },
-    "more.help.shortcuts.h3": { "screen": "help", "selector": "#h-shortcuts" },
-    "more.help.table": { "screen": "help", "selector": "section[aria-labelledby='h-shortcuts'] table" },
-    "more.help.row": { "screen": "help", "selector": "section[aria-labelledby='h-shortcuts'] tr" },
-    "more.help.row.last": { "screen": "help", "selector": "section[aria-labelledby='h-shortcuts'] tr:last-child" },
-    "more.help.th": { "screen": "help", "selector": "section[aria-labelledby='h-shortcuts'] th" },
-    "more.help.td": { "screen": "help", "selector": "section[aria-labelledby='h-shortcuts'] td" },
-    "more.help.kbd": { "screen": "help", "selector": "section[aria-labelledby='h-shortcuts'] td kbd" },
-    "more.help.footnote": { "screen": "help", "selector": "section[aria-labelledby='h-shortcuts'] > p" },
-    "more.help.sync": { "screen": "help", "selector": "section[aria-labelledby='h-sync']" },
-    "more.help.sync.h3": { "screen": "help", "selector": "#h-sync" },
-    "more.help.grid": { "screen": "help", "selector": "section[aria-labelledby='h-sync'] dl" },
-    "more.help.card": { "screen": "help", "selector": "section[aria-labelledby='h-sync'] dl > div" },
-    "more.help.card2": { "screen": "help", "selector": "section[aria-labelledby='h-sync'] dl > div", "nth": 1 },
-    "more.help.card3": { "screen": "help", "selector": "section[aria-labelledby='h-sync'] dl > div", "nth": 2 },
-    "more.help.dt": { "screen": "help", "selector": "section[aria-labelledby='h-sync'] dt" },
-    "more.help.dd": { "screen": "help", "selector": "section[aria-labelledby='h-sync'] dd" },
-    "more.help.main": { "screen": "help", "selector": "section#support", "parent": 2 }
+    "more.help.title": {
+      "screen": "help",
+      "selector": "section#support",
+      "parent": 1,
+      "nth": 0
+    },
+    "more.help.h2": {
+      "screen": "help",
+      "selector": "h2.text-large-title"
+    },
+    "more.help.intro": {
+      "screen": "help",
+      "selector": "h2.text-large-title + p"
+    },
+    "more.help.link": {
+      "screen": "help",
+      "selector": "h2.text-large-title + p a"
+    },
+    "more.help.support": {
+      "screen": "help",
+      "selector": "section#support"
+    },
+    "more.help.h3": {
+      "screen": "help",
+      "selector": "#h-support"
+    },
+    "more.help.support.text": {
+      "screen": "help",
+      "selector": "section#support > p"
+    },
+    "more.help.support.button": {
+      "screen": "help",
+      "selector": "section#support > a"
+    },
+    "more.help.shortcuts": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-shortcuts']"
+    },
+    "more.help.shortcuts.h3": {
+      "screen": "help",
+      "selector": "#h-shortcuts"
+    },
+    "more.help.table": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-shortcuts'] table"
+    },
+    "more.help.row": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-shortcuts'] tr"
+    },
+    "more.help.row.last": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-shortcuts'] tr:last-child"
+    },
+    "more.help.th": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-shortcuts'] th"
+    },
+    "more.help.td": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-shortcuts'] td"
+    },
+    "more.help.kbd": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-shortcuts'] td kbd"
+    },
+    "more.help.footnote": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-shortcuts'] > p"
+    },
+    "more.help.sync": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-sync']"
+    },
+    "more.help.sync.h3": {
+      "screen": "help",
+      "selector": "#h-sync"
+    },
+    "more.help.grid": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-sync'] dl"
+    },
+    "more.help.card": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-sync'] dl > div"
+    },
+    "more.help.card2": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-sync'] dl > div",
+      "nth": 1
+    },
+    "more.help.card3": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-sync'] dl > div",
+      "nth": 2
+    },
+    "more.help.dt": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-sync'] dt"
+    },
+    "more.help.dd": {
+      "screen": "help",
+      "selector": "section[aria-labelledby='h-sync'] dd"
+    },
+    "more.help.main": {
+      "screen": "help",
+      "selector": "section#support",
+      "parent": 2
+    },
+    "more.empty": {
+      "screen": "graph",
+      "selector": "[data-empty-state]"
+    },
+    "more.empty.tile": {
+      "screen": "graph",
+      "selector": "[data-empty-state] > span"
+    },
+    "more.empty.title": {
+      "screen": "graph",
+      "selector": "[data-empty-state] > h2"
+    },
+    "more.empty.body": {
+      "screen": "graph",
+      "selector": "[data-empty-state] > p"
+    },
+    "more.review.header": {
+      "screen": "review",
+      "selector": "header:has(button[aria-label='New cards a day'])"
+    },
+    "more.review.subtitle": {
+      "screen": "review",
+      "selector": "header:has(button[aria-label='New cards a day']) [role='status']"
+    },
+    "more.review.select": {
+      "screen": "review",
+      "selector": "button[aria-label='New cards a day']"
+    },
+    "more.review.region": {
+      "screen": "review",
+      "selector": "[role='region'][aria-label='Review cards']"
+    },
+    "more.review.empty": {
+      "screen": "review",
+      "selector": "[role='region'][aria-label='Review cards'] [data-empty-state]"
+    },
+    "more.review.empty.title": {
+      "screen": "review",
+      "selector": "[role='region'][aria-label='Review cards'] [data-empty-state] > h2"
+    },
+    "more.review.empty.body": {
+      "screen": "review",
+      "selector": "[role='region'][aria-label='Review cards'] [data-empty-state] > p"
+    },
+    "more.review.empty.hint": {
+      "screen": "review",
+      "selector": "[role='region'][aria-label='Review cards'] [data-empty-state] > p:nth-of-type(2)"
+    },
+    "more.review.empty.tile": {
+      "screen": "review",
+      "selector": "[role='region'][aria-label='Review cards'] [data-empty-state] > span"
+    },
+    "more.review.select.label": {
+      "screen": "review",
+      "selector": "button[aria-label='New cards a day'] > span"
+    },
+    "more.review.select.chevron": {
+      "screen": "review",
+      "selector": "button[aria-label='New cards a day'] > svg"
+    }
   },
-  "vars": ["color-accent", "color-surface", "color-surface-sunken", "color-line", "color-ink-faint", "color-accent-soft", "color-coral", "color-moss", "color-marigold", "color-plum", "color-focus"]
+  "vars": [
+    "color-accent",
+    "color-surface",
+    "color-surface-sunken",
+    "color-line",
+    "color-ink-faint",
+    "color-accent-soft",
+    "color-coral",
+    "color-moss",
+    "color-marigold",
+    "color-plum",
+    "color-focus",
+    "color-ink-muted",
+    "color-line-strong",
+    "color-canvas",
+    "color-heading",
+    "color-ink",
+    "glass-hover",
+    "glass-active",
+    "color-danger"
+  ]
 }

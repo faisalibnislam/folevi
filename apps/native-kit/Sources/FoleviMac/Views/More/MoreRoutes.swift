@@ -44,6 +44,12 @@ final class MoreModels {
 }
 
 struct MoreScreen: View {
+    /// The routes drawn here, over the content card's own fill as the web's are.
+    static func clear(_ route: FrameRoute) -> Bool {
+        if case .web(let p) = route { return ["/help", "/graph", "/review", "/shared/"].contains { p.hasPrefix($0) } }
+        return false
+    }
+
     let model: FrameModel
     let more: MoreModels
     let path: String

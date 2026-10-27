@@ -249,7 +249,8 @@ struct ScreenRoot: View {
         }
         .id(route.tabKey)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Folevi.color.canvas)
+        // Help, Graph, Reviews and shared folders show the content card through (the web's main is clear).
+        .background(MoreScreen.clear(route) ? Color.clear : Folevi.color.canvas)
         // Another place or space: the screen crossfades instead of cutting.
         .placeCrossfade("\(model.session.value?.place ?? "")|\(model.session.value?.space ?? "")")
         .environment(\.screenNavigator, FrameNavigation.navigator(model))

@@ -124,51 +124,51 @@
     },
     "ai.dock": {
       "screen": "page",
-      "selector": "main section.flex-col > div.flex-none.px-4"
+      "selector": "main section.flex-col > div.pb-4"
     },
     "ai.dock.inner": {
       "screen": "page",
-      "selector": "main section.flex-col > div.flex-none.px-4 > div"
+      "selector": "main section.flex-col > div.pb-4 > div"
     },
     "ai.dock.chips": {
       "screen": "page",
-      "selector": "main section.flex-col > div.flex-none.px-4 div.mb-2.flex-wrap"
+      "selector": "main section.flex-col > div.pb-4 div.mb-2.flex-wrap"
     },
     "ai.chip": {
       "screen": "page",
-      "selector": "main section.flex-col > div.flex-none.px-4 [aria-label='What Foli AI reads'] > span"
+      "selector": "main section.flex-col > div.pb-4 [aria-label='What Foli AI reads'] > span"
     },
     "ai.chip.icon": {
       "screen": "page",
-      "selector": "main section.flex-col > div.flex-none.px-4 [aria-label='What Foli AI reads'] > span svg"
+      "selector": "main section.flex-col > div.pb-4 [aria-label='What Foli AI reads'] > span svg"
     },
     "ai.chip.add": {
       "screen": "page",
-      "selector": "main section.flex-col > div.flex-none.px-4 [aria-label='Add to what Foli AI reads']"
+      "selector": "main section.flex-col > div.pb-4 [aria-label='Add to what Foli AI reads']"
     },
     "ai.composer": {
       "screen": "page",
-      "selector": "main section.flex-col > div.flex-none.px-4 div.relative.w-full"
+      "selector": "main section.flex-col > div.pb-4 div.relative.w-full"
     },
     "ai.composer.input": {
       "screen": "page",
-      "selector": "main section.flex-col > div.flex-none.px-4 textarea"
+      "selector": "main section.flex-col > div.pb-4 textarea"
     },
     "ai.composer.bar": {
       "screen": "page",
-      "selector": "main section.flex-col > div.flex-none.px-4 div.relative.w-full > div.flex"
+      "selector": "main section.flex-col > div.pb-4 div.relative.w-full > div.flex"
     },
     "ai.composer.send": {
       "screen": "page",
-      "selector": "main section.flex-col > div.flex-none.px-4 button[aria-label='Ask']"
+      "selector": "main section.flex-col > div.pb-4 button[aria-label='Ask']"
     },
     "ai.footnote": {
       "screen": "page",
-      "selector": "main section.flex-col > div.flex-none.px-4 p.text-footnote"
+      "selector": "main section.flex-col > div.pb-4 p.text-footnote"
     },
     "ai.footnote.link": {
       "screen": "page",
-      "selector": "main section.flex-col > div.flex-none.px-4 p.text-footnote a"
+      "selector": "main section.flex-col > div.pb-4 p.text-footnote a"
     },
     "ai.row.active": {
       "screen": "chat",
@@ -277,7 +277,7 @@
     },
     "ai.chat.composer.input": {
       "screen": "chat",
-      "selector": "main section.flex-col > div.flex-none.px-4 textarea"
+      "selector": "main section.flex-col > div.pb-4 textarea"
     },
     "ai.panel": {
       "screen": "panel",

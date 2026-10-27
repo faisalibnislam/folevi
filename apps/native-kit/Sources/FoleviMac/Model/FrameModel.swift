@@ -573,6 +573,19 @@ public final class FrameModel {
     public var noteLocked: Bool { editorState?.locked ?? false }
     public var canLockNote: Bool { editorState?.canLock ?? false }
 
+    /// The floating Ask Foli AI chat (⌘J off a note and off the AI page; FoliAI/AiAskPanel.swift).
+    public var askAiOpen = false
+
+    /// ⌘J: on a note its own Foli AI panel (in the note page), on the AI page its box, elsewhere the floating chat.
+    public func askAI() {
+        if route.isNote { return toggleNoteAI() }
+        if route.tabKey == "view:ai" { return NotificationCenter.default.post(name: Self.focusAiComposer, object: nil) }
+        askAiOpen.toggle()
+    }
+
+    /// Asks the AI page's box to take the keys.
+    public static let focusAiComposer = Notification.Name("FoleviAiFocusComposer")
+
     /// The Foli AI toggle on a note: its web panel opens or closes.
     public func toggleNoteAI() {
         if editorPanel == .ai { editor(.panelClose) } else { editor(.ai(action: .open)) }

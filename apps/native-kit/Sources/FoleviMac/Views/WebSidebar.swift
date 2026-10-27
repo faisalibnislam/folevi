@@ -132,7 +132,7 @@ public struct WebSidebar: View {
         let starred = home?.starred.rows ?? []
         return VStack(alignment: .leading, spacing: 2) {
             item(.home, icon: .house, title: "Home")
-            if caps?.ai ?? false { item(.web("/ai"), icon: .sparkles, title: "Work with Foli AI") }
+            if caps?.ai ?? false { item(.web("/ai"), icon: .sparkles, title: "Work with Foli AI", glyph: AnyView(AiMarkGlyph(size: 16))) }
             ZStack(alignment: .trailing) {
                 item(.notes(.starred), icon: .star, title: "Starred")
                 if !starred.isEmpty {
@@ -168,7 +168,7 @@ public struct WebSidebar: View {
 
     /// One row (the web's NavItem): icon, label, an optional count; the page's own row is selected.
     private func item(_ route: FrameRoute, icon: WebIcon, iconSize: CGFloat = 18, title: String, count: Int? = nil, newTab: Bool = false, glyph: AnyView? = nil) -> some View {
-        let selected = model.route == route
+        let selected = model.route == route || (route.tabKey == "view:ai" && model.route.tabKey == "view:ai")
         let base = WebStyles.named(selected ? "frame.sidebar.item.active" : "frame.sidebar.item")
         let s = base.resolve(scheme)
         let selectedFill = (WebStyles.vars[active == .inactive ? "mac-selected-inactive" : "mac-selected"] ?? FoleviTokens.Chrome.surfaceSunken).resolve(scheme)

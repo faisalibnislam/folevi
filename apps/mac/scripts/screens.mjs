@@ -42,7 +42,12 @@ export const SCREENS = [
   { id: "drafts", link: "folevi-dev://drafts" },
   { id: "tasks-today", link: "folevi-dev://tasks/today" },
   { id: "tasks-upcoming", link: "folevi-dev://tasks/upcoming" },
-  { id: "calendar", link: "folevi-dev://calendar" },
+  { id: "tasks-all", link: "folevi-dev://tasks/all" },
+  { id: "tasks-completed", link: "folevi-dev://tasks/completed" },
+  // The calendar's layout is kept per device: each frame is set to the one the screen shows (the web by its
+  // switch, the native screen by a notification the Debug app posts).
+  { id: "calendar", link: "folevi-dev://calendar", layout: "month" },
+  { id: "calendar-week", link: "folevi-dev://calendar", layout: "week" },
   { id: "templates", link: "folevi-dev://templates" },
   { id: "archive", link: "folevi-dev://archive" },
   { id: "trash", link: "folevi-dev://trash" },
@@ -154,6 +159,11 @@ async function shoot(kind) {
       const fixture = JSON.parse(readFileSync(join(dir, "fixture.json"), "utf8"));
       ensure(await command(dir, { cmd: "open", url: typeof s.link === "function" ? s.link(fixture) : s.link }));
       await sleep(1600);
+      if (s.layout) {
+        if (kind === "web") await evaluate(dir, `const b = [...document.querySelectorAll("[role=radio]")].find((b) => b.textContent.trim() === ${JSON.stringify(s.layout)}); if (b) b.click(); return true;`).catch(() => undefined);
+        else await command(dir, { cmd: "frame", do: "post", name: "folevi.calendar.layout", value: s.layout }).catch(() => undefined);
+        await sleep(600);
+      }
       // A window behind others doesn't run CSS animations (a note's sheet would stay at its first, invisible
       // frame): the end state at once, in both frames alike.
       await evaluate(dir, STILL).catch(() => undefined);

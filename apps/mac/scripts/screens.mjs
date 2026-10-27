@@ -47,7 +47,11 @@ export const SCREENS = [
   { id: "archive", link: "folevi-dev://archive" },
   { id: "trash", link: "folevi-dev://trash" },
   // The first fixture note ("Kyoto in November"), by its id from fixture.json.
-  { id: "note", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 2500 },
+  { id: "note", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 2500, ...noteTool("contents", "Table of contents") },
+  // The note's own sidebar, each tool tab (the web's tab clicked, the native one chosen in its defaults).
+  { id: "note-comments", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 1200, ...noteTool("comments", "Comments") },
+  { id: "note-tasks", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 1200, ...noteTool("tasks", "Tasks in this page") },
+  { id: "note-attachments", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 1200, ...noteTool("attachments", "Attachments and links") },
   // The library's Vault (docs/MAC_REBUILD_PLAN.md §5.6), locked first, then opened with the fixture's PIN.
   { id: "vault-locked", link: "folevi-dev://vault", prepare: (kind) => vaultLock(kind), settle: 800 },
   { id: "vault-files", link: "folevi-dev://vault", prepare: (kind) => vaultOpen(kind, ["tab", "Files & Notes"]), settle: 800 },
@@ -135,6 +139,14 @@ const VAULT_FIXTURE = `
   await run("vault.lock", { vaultId });
   return folder.id;
 `;
+
+/** A note screen showing one tab of the note's sidebar: `defaults` for the native frame, `web` run in the web frame. */
+function noteTool(tab, title) {
+  return {
+    defaults: { "folevi.noteSidebar.tab": tab },
+    web: `for (let i = 0; i < 40 && !document.querySelector('[aria-label="Page tools"]'); i++) await new Promise((r) => setTimeout(r, 100)); document.querySelector('[aria-label="Page tools"] > button[title="${title}"]')?.click(); return true;`,
+  };
+}
 const only = arg("--only")?.split(",");
 const screens = SCREENS.filter((s) => !only || only.includes(s.id));
 
@@ -240,8 +252,10 @@ async function shoot(kind) {
     ensure(await command(dir, { cmd: "appearance", value: scheme }));
     for (const s of screens) {
       const fixture = JSON.parse(readFileSync(join(dir, "fixture.json"), "utf8"));
+      if (kind === "native") for (const [key, value] of Object.entries(s.defaults ?? {})) ensure(await command(dir, { cmd: "setDefault", key, value }));
       ensure(await command(dir, { cmd: "open", url: typeof s.link === "function" ? s.link(fixture) : s.link }));
       await sleep(1600);
+      if (kind === "web" && s.web) await evaluate(dir, s.web).catch(() => undefined);
       // A window behind others doesn't run CSS animations (a note's sheet would stay at its first, invisible
       // frame): the end state at once, in both frames alike.
       await evaluate(dir, STILL).catch(() => undefined);

@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "fc83d567"
+        "schemaHash": "cff84587"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 13,
+        "revision": 15,
         "build": "dev",
-        "schemaHash": "fc83d567",
+        "schemaHash": "cff84587",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -245,7 +245,12 @@
           "block.move",
           "block.duplicate",
           "focus.toggle",
-          "note.lock"
+          "note.lock",
+          "block.jump",
+          "task.toggle",
+          "thread.open",
+          "find",
+          "find.clear"
         ],
         "events": [
           "engine.ready",
@@ -258,7 +263,8 @@
           "note.meta",
           "editor.state",
           "editor.panel",
-          "memory.relieved"
+          "memory.relieved",
+          "note.tools"
         ],
         "gate": {
           "gate": null,

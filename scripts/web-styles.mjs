@@ -187,7 +187,7 @@ async function fromApp(only) {
   const files = readdirSync(APP_DIR).filter((f) => f.endsWith(".json") && (!only || only.includes(f.replace(/\.json$/, ""))));
   await mac.launch({ dir, env: { FOLEVI_TEST_FOLDER: `${dir}-library`, FOLEVI_WEB_FRAME: "1" } });
   try {
-    await mac.waitFor(dir, `return document.readyState === "complete" && !!document.querySelector('nav[aria-label="Folio"]')`, 90_000);
+    await mac.waitFor(dir, `return document.readyState === "complete" && !!document.querySelector('nav[aria-label="Folio"], [role="tablist"][aria-label="Page tools"]')`, 90_000);
     await mac.command(dir, { cmd: "resize", width: 1280, height: 820 });
     for (const file of files) {
       const spec = JSON.parse(readFileSync(join(APP_DIR, file), "utf8"));

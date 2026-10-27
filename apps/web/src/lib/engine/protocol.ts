@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 12;
+export const CONTRACT_REVISION = 13;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2697,6 +2697,106 @@ export interface NotesMoveCheckValue {
   message: string | null;
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Revision 13: the Graph and Reviews pages, native on the Mac (docs/MAC_REBUILD_PLAN.md: all native but the editor)
+// ---------------------------------------------------------------------------------------------------------------
+
+/** `graph { space?, kinds? }`: the space's notes and links (aiGraph.graph); `kinds` limits the entities shown. */
+export interface GraphArgs {
+  space?: SpaceRef;
+  /** "person", "project", "organization", "topic", "decision"; left out: all of them. */
+  kinds?: string[];
+}
+
+/** A node, placed by the web's own force layout (lib/graph/layout.ts Simulation, deterministic) in world units. */
+export interface GraphNode {
+  id: string;
+  /** "note", or an entity's kind (open). */
+  kind: string;
+  label: string;
+  x: number;
+  y: number;
+  /** How many edges it has. */
+  degree: number;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  /** "link", "mention", "similar", "related", "references", "contradicts", "supersedes" (open). */
+  kind: string;
+  inferred: boolean;
+}
+
+export interface GraphValue {
+  /** Entities (people, projects...) are in the plan, so their filters show. */
+  full: boolean;
+  /** Why some of the graph isn't there (the plan, Foli AI off), or null. */
+  note: string | null;
+  /** The plan is why: point at plans. */
+  upgrade: boolean;
+  /** Only the most recently edited notes are shown. */
+  truncated: boolean;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+/** `reviews { noteId?, space? }`: the cards due now. Neither: everywhere; `space`: one space; `noteId`: one note. */
+export interface ReviewsArgs {
+  noteId?: string;
+  space?: SpaceRef;
+}
+
+/** How long until a card comes back after each rating (ms). */
+export interface ReviewIntervals {
+  again: number;
+  hard: number;
+  good: number;
+  easy: number;
+}
+
+export interface ReviewCard {
+  blockId: string;
+  /** "flashcard", "quiz" (open). */
+  kind: string;
+  noteId: string;
+  noteTitle: string;
+  front: string;
+  back: string;
+  isNew: boolean;
+  lastReview: number | null;
+  intervals: ReviewIntervals;
+}
+
+export interface ReviewsValue {
+  /** False when the note asked for can't be opened any more. */
+  found: boolean;
+  /** In order, at most 20 (study.queue). */
+  cards: ReviewCard[];
+  due: number;
+  new: number;
+  /** Due later today. */
+  later: number;
+  total: number;
+  hasCards: boolean;
+  /** The note's title when one note is reviewed, else null. */
+  noteTitle: string | null;
+  /** New cards a day (0, 10, 20, 30, 50, 100). */
+  newPerDay: number;
+}
+
+/** `review.rate`: how well a card was known ("again", "hard", "good", "easy"). */
+export interface ReviewRateArgs {
+  blockId: string;
+  rating: string;
+  lastReview: number | null;
+}
+
+/** `review.setNewPerDay`: one of 0, 10, 20, 30, 50, 100. */
+export interface ReviewNewPerDayArgs {
+  value: number;
+}
+
 export interface ViewMap {
   session: { args: EmptyArgs; value: SessionValue };
   "places.list": { args: EmptyArgs; value: PlacesValue };
@@ -2745,6 +2845,8 @@ export interface ViewMap {
   "shared.folders": { args: EmptyArgs; value: SharedFoldersValue };
   "sharedFolder.open": { args: NoteIdArgs; value: SharedFolderValue };
   "notes.moveCheck": { args: NotesMoveCheckArgs; value: NotesMoveCheckValue };
+  graph: { args: GraphArgs; value: GraphValue };
+  reviews: { args: ReviewsArgs; value: ReviewsValue };
 }
 
 export interface ListViewMap {
@@ -2842,6 +2944,8 @@ export interface CommandMap {
   "folderSharing.revoke": { args: FolderShareRevokeArgs; result: OkResult };
   "folderSharing.cancelInvite": { args: FolderInviteIdArgs; result: OkResult };
   "folderInvite.accept": { args: FolderInviteIdArgs; result: FolderInviteAcceptResult };
+  "review.rate": { args: ReviewRateArgs; result: OkResult };
+  "review.setNewPerDay": { args: ReviewNewPerDayArgs; result: OkResult };
 }
 
 export interface EditorCommandMap {
@@ -2905,7 +3009,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "graph", "reviews"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -2998,6 +3102,8 @@ const commandNames = [
   "folderSharing.revoke",
   "folderSharing.cancelInvite",
   "folderInvite.accept",
+  "review.rate",
+  "review.setNewPerDay",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

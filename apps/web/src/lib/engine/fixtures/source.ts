@@ -22,6 +22,7 @@ import { notificationSettings, sharingValue } from "../viewsAccount";
 import { folderSharingValue, moveCheckValue, sharedFolderRow, sharedFolderValue } from "../viewsFolders";
 import { chatMessage, conversationRow, conversationValue } from "../viewsAi";
 import { researchJob } from "../viewsMac";
+import { graphValue, layOut, reviewsValue } from "../viewsScreens";
 import {
   CONTRACT_REVISION,
   PROTOCOL_VERSION,
@@ -996,6 +997,59 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.folderSharing.revoke": command({ name: "folderSharing.revoke", description: "Remove someone from a folder (their own id: leave it).", args: { folderId: "fld_garden", profileId: "prof_9" }, result: { ok: true } }),
   "command.folderSharing.cancelInvite": command({ name: "folderSharing.cancelInvite", description: "Cancel a folder invitation.", args: { inviteId: "finv_2" }, result: { ok: true } }),
   "command.folderInvite.accept": command({ name: "folderInvite.accept", description: "Accept a folder invitation from the bell and open the folder.", args: { inviteId: "finv_1" }, result: { folderId: "fld_recipes" } }),
+  "view.graph": view({
+    name: "graph",
+    description: "Three notes, two of them linked, and a person one mentions, laid out by the web's force layout.",
+    args: {},
+    value: graphValue(
+      {
+        full: true,
+        note: null,
+        upgrade: false,
+        truncated: false,
+        nodes: [
+          { id: "doc_00001", kind: "note", label: "Kyoto in November" },
+          { id: "doc_00002", kind: "note", label: "Packing list" },
+          { id: "doc_00003", kind: "note", label: "Reading list" },
+          { id: "ent_sam", kind: "person", label: "Sam" },
+        ],
+        edges: [
+          { source: "doc_00001", target: "doc_00002", kind: "link", inferred: false },
+          { source: "doc_00001", target: "ent_sam", kind: "mention", inferred: true },
+        ],
+      },
+      layOut(
+        [
+          { id: "doc_00001", kind: "note", label: "Kyoto in November" },
+          { id: "doc_00002", kind: "note", label: "Packing list" },
+          { id: "doc_00003", kind: "note", label: "Reading list" },
+          { id: "ent_sam", kind: "person", label: "Sam" },
+        ],
+        [
+          { source: "doc_00001", target: "doc_00002", kind: "link", inferred: false },
+          { source: "doc_00001", target: "ent_sam", kind: "mention", inferred: true },
+        ],
+      ),
+    ),
+  }),
+  "view.reviews": view({
+    name: "reviews",
+    description: "One new flashcard due now, everywhere.",
+    args: {},
+    value: reviewsValue({
+      cards: [
+        { blockId: "blk_card1", kind: "flashcard", documentId: "doc_00001", documentTitle: "Kyoto in November", front: "Where is the moss garden?", back: "Saiho-ji", isNew: true, lastReview: null, intervals: { again: 60_000, hard: 360_000, good: 600_000, easy: 345_600_000 } },
+      ],
+      counts: { due: 0, new: 1, later: 0 },
+      total: 1,
+      hasCards: true,
+      documentTitle: null,
+      newPerDay: 20,
+    }),
+  }),
+  "view.reviews.empty": view({ name: "reviews", description: "Nothing to review and no cards yet.", args: {}, value: reviewsValue({ cards: [], counts: { due: 0, new: 0, later: 0 }, total: 0, hasCards: false, documentTitle: null, newPerDay: 20 }) }),
+  "command.review.rate": command({ name: "review.rate", description: "A card known well.", args: { blockId: "blk_card1", rating: "good", lastReview: null }, result: { ok: true } }),
+  "command.review.setNewPerDay": command({ name: "review.setNewPerDay", description: "Ten new cards a day.", args: { value: 10 }, result: { ok: true } }),
   "command.support.send": command({ name: "support.send", description: "Send a support request from the app.", args: { topic: "sync", message: "My notes didn't sync after I came back online." }, result: { number: 1042 } }),
   "command.folder.lock": command({ name: "folder.lock", description: "Make a folder always fully encrypted.", args: { id: "fld_work", locked: true }, result: { ok: true } }),
   "command.ai.generate": command({ name: "ai.generate", description: "A template written by Foli AI.", args: { kind: "template", instruction: "A weekly review with wins, problems and next steps" }, result: { title: "Weekly review", text: "## Wins\n\n- \n\n## Problems\n\n- \n\n## Next steps\n\n- [ ] " } }),

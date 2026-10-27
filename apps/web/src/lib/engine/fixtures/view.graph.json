@@ -1,0 +1,60 @@
+{
+  "kind": "view",
+  "name": "graph",
+  "description": "Three notes, two of them linked, and a person one mentions, laid out by the web's force layout.",
+  "args": {},
+  "value": {
+    "full": true,
+    "note": null,
+    "upgrade": false,
+    "truncated": false,
+    "nodes": [
+      {
+        "id": "doc_00001",
+        "kind": "note",
+        "label": "Kyoto in November",
+        "x": 11.071539775662156,
+        "y": 104.97443796377159,
+        "degree": 2
+      },
+      {
+        "id": "doc_00002",
+        "kind": "note",
+        "label": "Packing list",
+        "x": -142.31885019548514,
+        "y": 65.54745821909779,
+        "degree": 1
+      },
+      {
+        "id": "doc_00003",
+        "kind": "note",
+        "label": "Reading list",
+        "x": -5.007690876489969,
+        "y": -328.82016909139975,
+        "degree": 0
+      },
+      {
+        "id": "ent_sam",
+        "kind": "person",
+        "label": "Sam",
+        "x": 149.676180571302,
+        "y": 170.2795460614471,
+        "degree": 1
+      }
+    ],
+    "edges": [
+      {
+        "source": "doc_00001",
+        "target": "doc_00002",
+        "kind": "link",
+        "inferred": false
+      },
+      {
+        "source": "doc_00001",
+        "target": "ent_sam",
+        "kind": "mention",
+        "inferred": true
+      }
+    ]
+  }
+}

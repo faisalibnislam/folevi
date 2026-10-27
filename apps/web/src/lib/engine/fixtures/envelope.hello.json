@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "8850707c"
+        "schemaHash": "49025267"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 12,
+        "revision": 13,
         "build": "dev",
-        "schemaHash": "8850707c",
+        "schemaHash": "49025267",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -81,7 +81,9 @@
           "folderSharing.get",
           "shared.folders",
           "sharedFolder.open",
-          "notes.moveCheck"
+          "notes.moveCheck",
+          "graph",
+          "reviews"
         ],
         "listViews": [
           "notes.list"
@@ -176,7 +178,9 @@
           "folderSharing.setRole",
           "folderSharing.revoke",
           "folderSharing.cancelInvite",
-          "folderInvite.accept"
+          "folderInvite.accept",
+          "review.rate",
+          "review.setNewPerDay"
         ],
         "editorCommands": [
           "note.prepare",

@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "review.setNewPerDay",
+  "description": "Ten new cards a day.",
+  "args": {
+    "value": 10
+  },
+  "result": {
+    "ok": true
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "kind": "view",
+  "name": "reviews",
+  "description": "Nothing to review and no cards yet.",
+  "args": {},
+  "value": {
+    "found": true,
+    "cards": [],
+    "due": 0,
+    "new": 0,
+    "later": 0,
+    "total": 0,
+    "hasCards": false,
+    "noteTitle": null,
+    "newPerDay": 20
+  }
+}

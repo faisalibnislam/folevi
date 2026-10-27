@@ -4,6 +4,8 @@
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { sha256Hex } from "../crypto";
+import { findActiveSession } from "../authStore";
+import { sessionIdOf } from "../auth";
 import type { VaultRole } from "./access";
 
 /** How long an entry is kept: 3 years from when it was written. */
@@ -99,6 +101,22 @@ async function placeOf(ctx: MutationCtx, vault: Doc<"vaults">): Promise<{ kind: 
 export async function appendLog(ctx: MutationCtx, vault: Doc<"vaults">, entry: LogEntry): Promise<number> {
   // Re-read the vault so two entries in one mutation chain correctly.
   const current = (await ctx.db.get(vault._id)) ?? vault;
+  // The network and browser as the person's sign-in session recorded them (functions don't see the request).
+  if (!entry.client?.ip && entry.actor.profile) {
+    const identity = await ctx.auth.getUserIdentity();
+    const sid = identity ? sessionIdOf(identity) : null;
+    const session = sid ? await findActiveSession(ctx, sid).catch(() => null) : null;
+    if (session?.ipAddress || session?.userAgent) {
+      entry = {
+        ...entry,
+        client: {
+          ...entry.client,
+          ...(session.ipAddress ? { ip: session.ipAddress } : {}),
+          ...(!entry.client?.deviceLabel && session.userAgent ? { deviceLabel: session.userAgent.slice(0, 120) } : {}),
+        },
+      };
+    }
+  }
   const now = Date.now();
   const actor = entry.actor;
   const row: Omit<Doc<"vaultLog">, "_id" | "_creationTime" | "hash"> = {

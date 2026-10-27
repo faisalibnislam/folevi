@@ -103,8 +103,9 @@ File key FK(file)                 as today, wrapped by the owning note's or item
 
 - **Folders and subfolders**, names encrypted. Not shareable (as decided). Custodians and the item's adder can
   rename, move and delete.
-- **Notes** are the normal editor, sealed with keys that only the Vault key opens. Comments, version history
-  and attachments work inside the Vault for people in it.
+- **Notes** use the normal editor. Built as vault items (2026-10-27), not as documents of the space: a note's
+  content is its item's sealed secrets, saved whole, each save keeping the version before. This keeps vault notes
+  out of every list, sync feed and derived index by construction. Comments inside vault notes come later.
 - **Files** of any kind, encrypted on the device before upload (the existing sealed-file path). Images and PDFs
   preview inside the Vault after unlocking; other files download. Downloading is logged.
 - **Moving in**: "Move to Vault" in a note's and a file's menu. The note is sealed with a new key, its readable

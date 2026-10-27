@@ -59,6 +59,8 @@ export const vaultCtx = {
   exportFile: (vaultId: string, exportId: string) => c("export", part(vaultId, "vault id"), part(exportId, "export id")),
   /** A vault note's key wrapped by VK "vault/wrap". */
   noteKey: (vaultId: string, docId: string, noteVersion: number, keyVersion: number) => c("note-key", part(vaultId, "vault id"), part(docId, "document id"), version(noteVersion), version(keyVersion)),
+  /** A vault file's bytes (FLV1 0x04 with the file's own key). */
+  fileBytes: (vaultId: string, itemId: string) => c("file", part(vaultId, "vault id"), part(itemId, "item id")),
   /** A folder's name (VK "vault/meta"). */
   folder: (vaultId: string, folderId: string) => c("folder", part(vaultId, "vault id"), part(folderId, "folder id")),
   /** A log entry's names and paths (VK "vault/meta"). */

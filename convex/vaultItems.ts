@@ -28,7 +28,7 @@ const EXPORT_PAGE = 500;
 /** Field names a change may name for the log (letters, digits and a few separators). */
 const FIELD_NAME = /^[\w .:-]{1,60}$/;
 
-const vSealedItem = v.object({
+export const vSealedItem = v.object({
   sealedSummary: v.bytes(),
   sealed: v.bytes(),
   wrappedKey: v.bytes(),
@@ -36,7 +36,7 @@ const vSealedItem = v.object({
   passwordMac: v.optional(v.string()),
 });
 
-function checkSealed(i: { sealedSummary: ArrayBuffer; sealed: ArrayBuffer; wrappedKey: ArrayBuffer; passwordMac?: string }) {
+export function checkSealed(i: { sealedSummary: ArrayBuffer; sealed: ArrayBuffer; wrappedKey: ArrayBuffer; passwordMac?: string }) {
   if (i.sealedSummary.byteLength < 28 || i.sealedSummary.byteLength > MAX_SUMMARY) fail("invalid_argument", "Invalid item.");
   if (i.sealed.byteLength < 28 || i.sealed.byteLength > MAX_SECRET) fail("invalid_argument", "This item is too big.");
   if (i.wrappedKey.byteLength < 28 || i.wrappedKey.byteLength > MAX_KEY) fail("invalid_argument", "Invalid item.");
@@ -44,11 +44,11 @@ function checkSealed(i: { sealedSummary: ArrayBuffer; sealed: ArrayBuffer; wrapp
 }
 
 /** Items are sealed under the Vault's current key; anything else is a stale device. */
-function checkKeyVersion(vault: Doc<"vaults">, keyVersion: number) {
+export function checkKeyVersion(vault: Doc<"vaults">, keyVersion: number) {
   if (keyVersion !== vault.keyVersion) fail("conflict", "The Vault's key changed. Open it again.");
 }
 
-async function itemOf(ctx: Ctx, vault: Doc<"vaults">, itemId: string): Promise<Doc<"vaultItems">> {
+export async function itemOf(ctx: Ctx, vault: Doc<"vaults">, itemId: string): Promise<Doc<"vaultItems">> {
   const item = await ctx.db
     .query("vaultItems")
     .withIndex("by_public_id", (q) => q.eq("publicId", itemId))
@@ -58,14 +58,14 @@ async function itemOf(ctx: Ctx, vault: Doc<"vaults">, itemId: string): Promise<D
 }
 
 /** Members change what they added; custodians anything (docs/VAULT_PLAN.md §1). */
-function requireCanChange(role: VaultRole, item: Doc<"vaultItems">, profileId: Id<"profiles">) {
+export function requireCanChange(role: VaultRole, item: Doc<"vaultItems">, profileId: Id<"profiles">) {
   if (item.createdBy !== profileId && !vaultRoleAtLeast(role, "custodian")) fail("forbidden", "You can change only what you added. Ask a custodian.");
 }
 
 const nameOf = async (ctx: Ctx, id: Id<"profiles">) => (await ctx.db.get(id))?.displayName ?? "Someone";
 
 /** What a list row carries: the sealed summary, never the secrets. */
-async function row(ctx: Ctx, i: Doc<"vaultItems">) {
+export async function row(ctx: Ctx, i: Doc<"vaultItems">) {
   return {
     id: i.publicId,
     kind: i.kind,
@@ -80,8 +80,7 @@ async function row(ctx: Ctx, i: Doc<"vaultItems">) {
     createdAt: i.createdAt,
     updatedAt: i.updatedAt,
     deletedAt: i.deletedAt ?? null,
-    documentId: i.documentId ?? null,
-    fileId: i.fileId ?? null,
+    size: i.size ?? null,
   };
 }
 
@@ -186,7 +185,7 @@ export const create = mutation({
 });
 
 /** Keeps the item as it is now in its history, before a change. */
-async function keepVersion(ctx: MutationCtx, item: Doc<"vaultItems">) {
+export async function keepVersion(ctx: MutationCtx, item: Doc<"vaultItems">) {
   await insertScoped(ctx, "vaultItemVersions", scopeOfRow(item), {
     itemId: item._id,
     vaultId: item.vaultId,
@@ -301,7 +300,9 @@ export const restore = mutation({
     const item = await itemOf(ctx, vault, args.itemId);
     requireCanChange(role, item, profile._id);
     if (item.deletedAt === undefined) return null;
-    await ctx.db.patch(item._id, { deletedAt: undefined });
+    // Its folder went to Trash meanwhile: it comes back at the top of Files & Notes.
+    const folder = item.folderId ? await ctx.db.get(item.folderId) : null;
+    await ctx.db.patch(item._id, { deletedAt: undefined, ...(folder && folder.deletedAt !== undefined ? { folderId: undefined } : {}) });
     await appendLog(ctx, vault, { event: "item.restored", actor: { profile, role }, item: { publicId: item.publicId, kind: item.kind }, client: args.client });
     return null;
   },

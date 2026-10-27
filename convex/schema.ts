@@ -3002,9 +3002,9 @@ export default defineSchema({
     .index("by_owner", ["ownerProfileId"]),
 
   /**
-   * A password item (login, API key, card…), a note or a file in the Vault. Its title and fields are one sealed
-   * record under its own item key, which the vault key wraps. Notes and files point to their sealed document or
-   * file row.
+   * A password item (login, API key, card…), a note or a file in the Vault: a summary and its secrets, sealed under
+   * its own item key, which the vault key wraps. A note's content is its secrets record; a file's bytes are stored
+   * encrypted with their own file key, which the secrets record holds.
    */
   vaultItems: defineTable({
     publicId: v.string(),
@@ -3022,8 +3022,9 @@ export default defineSchema({
     keyVersion: v.number(),
     /** Blind index of a password (HMAC with the vault's mac key) so reuse is found without reading it. */
     passwordMac: v.optional(v.string()),
-    documentId: v.optional(v.id("documents")),
-    fileId: v.optional(v.id("files")),
+    /** A file's encrypted bytes (only ciphertext is stored) and their size, counted toward the place's storage. */
+    storageId: v.optional(v.id("_storage")),
+    size: v.optional(v.number()),
     revision: v.number(),
     createdBy: v.id("profiles"),
     updatedBy: v.id("profiles"),
@@ -3035,7 +3036,7 @@ export default defineSchema({
     .index("by_vault_kind", ["vaultId", "kind"])
     .index("by_vault_folder", ["vaultId", "folderId"])
     .index("by_vault_mac", ["vaultId", "passwordMac"])
-    .index("by_document", ["documentId"])
+    .index("by_vault_deleted", ["vaultId", "deletedAt"])
     .index("by_workspace", ["workspaceId"])
     .index("by_owner", ["ownerProfileId"]),
 

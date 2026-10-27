@@ -149,28 +149,30 @@ export function mainPassword(c: ItemContent): string | null {
 }
 
 /**
- * Seals an item for the server under the Vault's current key: a fresh item key wraps both records and is itself
- * wrapped by VK "vault/wrap"; a blind index of its password lets the server count reuse without reading it.
+ * Seals an item's two records under a fresh item key, which VK "vault/wrap" of the current version wraps: a summary
+ * (what lists show) and its secrets. Shared by password items, notes and files.
  */
-export async function sealItem(vaultId: string, itemId: string, keyVersion: number, keys: VaultKeys, c: ItemContent) {
+export async function sealParts(vaultId: string, itemId: string, keyVersion: number, keys: VaultKeys, summary: unknown, secrets: unknown, passwordMac?: string) {
   const raw = randomBytes(32);
   try {
     // A copy: a fallback backend keeps the bytes it's given as the key, and `raw` is zeroed below.
     const itemKey = await importAead(raw.slice());
     const wrappedKey = await sealRecord(keys.wrap, keyVersion, vaultCtx.itemKey(vaultId, itemId, keyVersion), raw);
-    const sealedSummary = await sealRecord(itemKey, 1, vaultCtx.itemSummary(vaultId, itemId), enc.encode(JSON.stringify({ kind: c.kind, ...c.summary })));
-    const sealed = await sealRecord(itemKey, 1, vaultCtx.item(vaultId, itemId), enc.encode(JSON.stringify(c.secrets)));
-    const password = mainPassword(c);
-    return {
-      sealedSummary: wire(sealedSummary),
-      sealed: wire(sealed),
-      wrappedKey: wire(wrappedKey),
-      keyVersion,
-      ...(password ? { passwordMac: await vaultPasswordMac(keys.mac, password) } : {}),
-    };
+    const sealedSummary = await sealRecord(itemKey, 1, vaultCtx.itemSummary(vaultId, itemId), enc.encode(JSON.stringify(summary)));
+    const sealed = await sealRecord(itemKey, 1, vaultCtx.item(vaultId, itemId), enc.encode(JSON.stringify(secrets)));
+    return { sealedSummary: wire(sealedSummary), sealed: wire(sealed), wrappedKey: wire(wrappedKey), keyVersion, ...(passwordMac ? { passwordMac } : {}) };
   } finally {
     raw.fill(0);
   }
+}
+
+/**
+ * Seals a password item for the server under the Vault's current key, with a blind index of its password so the
+ * server can count reuse without reading it.
+ */
+export async function sealItem(vaultId: string, itemId: string, keyVersion: number, keys: VaultKeys, c: ItemContent) {
+  const password = mainPassword(c);
+  return await sealParts(vaultId, itemId, keyVersion, keys, { kind: c.kind, ...c.summary }, c.secrets, password ? await vaultPasswordMac(keys.mac, password) : undefined);
 }
 
 /** An item's key from its wrap (the vault key of the item's version opens it). */
@@ -181,6 +183,18 @@ async function itemKeyOf(vaultId: string, itemId: string, keyVersion: number, ke
   } finally {
     raw.fill(0);
   }
+}
+
+/** Opens a row's summary as whatever it holds (a note's or a file's summary). */
+export async function openSummaryAs<T>(vaultId: string, row: { id: string; keyVersion: number; wrappedKey: ArrayBuffer; sealedSummary: ArrayBuffer }, keysOf: (version: number) => VaultKeys): Promise<T> {
+  const key = await itemKeyOf(vaultId, row.id, row.keyVersion, keysOf(row.keyVersion), row.wrappedKey);
+  return JSON.parse(dec.decode(await openRecord(key, vaultCtx.itemSummary(vaultId, row.id), bytes(row.sealedSummary)))) as T;
+}
+
+/** Opens a row's secrets as whatever they hold (a note's content, a file's key). */
+export async function openSecretsAs<T>(vaultId: string, row: { id: string; keyVersion: number; wrappedKey: ArrayBuffer; sealed: ArrayBuffer }, keysOf: (version: number) => VaultKeys): Promise<T> {
+  const key = await itemKeyOf(vaultId, row.id, row.keyVersion, keysOf(row.keyVersion), row.wrappedKey);
+  return JSON.parse(dec.decode(await openRecord(key, vaultCtx.item(vaultId, row.id), bytes(row.sealed)))) as T;
 }
 
 /** Opens what a list row carries. */

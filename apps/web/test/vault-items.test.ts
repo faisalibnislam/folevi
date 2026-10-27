@@ -133,3 +133,32 @@ describe("import and export", () => {
     await expect(openEncryptedExport(file, "the wrong passphrase")).rejects.toThrow();
   });
 });
+
+describe("vault files, notes and folders", () => {
+  test("a file's bytes, a note and a folder name seal and open, and only in their own place", async () => {
+    const { sealFile, openFile, openFileSummary, sealNote, openNote, openNoteSummary, sealFolderName, openFolderName } = await import("@/lib/vault/files");
+    const { bytes } = await import("@/lib/e2ee/keys/util");
+    const keys = await deriveVaultKeys(newVaultKey());
+    const keysOf = () => keys;
+    const id = newItemId();
+    const data = new Uint8Array(200_000).map((_, i) => i % 251);
+    const { ciphertext, item } = await sealFile("v1", id, 1, keys, { name: "Statement.pdf", type: "application/pdf", bytes: data });
+    expect(ciphertext.length).toBeGreaterThan(data.length);
+    const row = { id, ...item };
+    expect(await openFileSummary("v1", row, keysOf)).toEqual({ kind: "file", title: "Statement.pdf", mime: "application/pdf", size: 200_000 });
+    const opened = await openFile("v1", row, ciphertext, keysOf);
+    expect(opened.name).toBe("Statement.pdf");
+    expect(opened.bytes).toEqual(data);
+    // The bytes under another item's id don't open.
+    await expect(openFile("v1", { ...row, id: newItemId() }, ciphertext, keysOf)).rejects.toThrow();
+
+    const note = await sealNote("v1", "N1", 1, keys, "Board minutes", { type: "doc", content: [] }, "Present: all");
+    expect(await openNoteSummary("v1", { id: "N1", ...note }, keysOf)).toEqual({ kind: "note", title: "Board minutes", excerpt: "Present: all" });
+    expect(await openNote("v1", { id: "N1", ...note }, keysOf)).toEqual({ doc: { type: "doc", content: [] } });
+
+    const name = await sealFolderName("v1", "F1", 1, keys, "Contracts");
+    expect(await openFolderName("v1", "F1", name, keysOf, 1)).toBe("Contracts");
+    await expect(openFolderName("v1", "F2", name, keysOf, 1)).rejects.toThrow();
+    void bytes;
+  });
+});

@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, type Browser } from "@playwright/test";
 import { ConvexHttpClient } from "convex/browser";
-import { APP, convexUrl, createAccount } from "./helpers";
+import { APP, completeOnboarding, convexUrl, createAccount } from "./helpers";
 
 type Expect = "answer" | "answer with care" | "general info + see a professional" | "decline" | "crisis support" | "help, no how-to";
 type Case = { row: string; ask: string; expect: Expect; write?: boolean };
@@ -71,6 +71,8 @@ test.skip(process.env.AI_EVAL !== "1", "Live AI eval: only with AI_EVAL=1 (docs/
 async function client(browser: Browser) {
   const context = await browser.newContext();
   const { page } = await createAccount(context, { name: "AI Eval" });
+  // The account's profile is made during onboarding.
+  await completeOnboarding(page);
   const { token } = (await (await page.request.get(`${APP}/api/auth/convex/token`)).json()) as { token: string };
   const c = new ConvexHttpClient(convexUrl());
   c.setAuth(token);

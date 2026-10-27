@@ -10,7 +10,7 @@ import type { AiFeature } from "./usage";
 
 export { REFUSAL_KINDS, type RefusalKind } from "@folevi/ai-prompts/safety";
 
-/** Harmful refusals within this window that pause Foli AI... */
+/** Harmful or filtered refusals within this window that pause Foli AI... */
 export const PAUSE_AFTER = 5;
 export const PAUSE_WINDOW_MS = 60 * 60_000;
 /** ...for this long. */
@@ -55,8 +55,8 @@ export async function assertAiNotPaused(ctx: QueryCtx | MutationCtx, profileId: 
 }
 
 /**
- * Counts a refusal (its kind, never its text) and, for a harmful one the person asked for themselves,
- * pauses Foli AI when it's the PAUSE_AFTER-th within PAUSE_WINDOW_MS. A crisis never counts toward a pause.
+ * Counts a refusal (its kind, never its text) and, for a harmful or filtered one the person asked for
+ * themselves, pauses Foli AI when it's the PAUSE_AFTER-th within PAUSE_WINDOW_MS. A crisis never counts.
  */
 export async function recordRefusal(ctx: MutationCtx, profileId: Id<"profiles">, kind: RefusalKind, feature: AiFeature | undefined, now = Date.now()): Promise<void> {
   const day = new Date(now).toISOString().slice(0, 10);
@@ -67,7 +67,8 @@ export async function recordRefusal(ctx: MutationCtx, profileId: Id<"profiles">,
     .then((rows) => rows.find((r) => r.kind === kind));
   if (row) await ctx.db.patch(row._id, { count: row.count + 1 });
   else await ctx.db.insert("aiSafetyCounts", { profileId, day, kind, count: 1 });
-  if (kind !== "harmful" || (feature && BACKGROUND.has(feature))) return;
+  // The worst questions are often blocked by Gemini's own filter before the model can decline them, so those count too.
+  if ((kind !== "harmful" && kind !== "filtered") || (feature && BACKGROUND.has(feature))) return;
   const state = await stateOf(ctx, profileId);
   const recent = [...(state?.recentHarmful ?? []).filter((t) => t > now - PAUSE_WINDOW_MS), now].slice(-PAUSE_AFTER);
   const pause = recent.length >= PAUSE_AFTER && !(state?.pausedUntil && state.pausedUntil > now);

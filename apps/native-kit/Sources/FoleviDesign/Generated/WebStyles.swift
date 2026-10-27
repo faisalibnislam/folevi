@@ -628,6 +628,22 @@ public enum WebStyles {
             light: WebComputedStyle(x: 296, y: 77, width: 77.05, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 77, width: 77.05, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         ),
+        "more.toast": WebStylePair(
+            light: WebComputedStyle(x: 491.17, y: 770, width: 297.64, height: 34, padding: WebInsets(8, 10, 8, 20), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(252, 228, 225), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.9), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(74, 47, 44, 0.08)), ShadowLayer(x: 0, y: 4, blur: 10, spread: -2, color: RGBA(74, 47, 44, 0.08)), ShadowLayer(x: 0, y: 24, blur: 48, spread: -12, color: RGBA(74, 47, 44, 0.28))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
+            dark: WebComputedStyle(x: 491.17, y: 770, width: 297.64, height: 34, padding: WebInsets(8, 10, 8, 20), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(61, 30, 27), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 240, 230, 0.07), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 240, 230, 0.1)), ShadowLayer(x: 0, y: 24, blur: 48, spread: -12, color: RGBA(0, 0, 0, 0.7))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
+        ),
+        "more.toast.close": WebStylePair(
+            light: WebComputedStyle(x: 764.81, y: 780, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 0.7, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 764.81, y: 780, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 0.7, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        ),
+        "more.toast.region": WebStylePair(
+            light: WebComputedStyle(x: 0, y: 770, width: 1280, height: 34, padding: WebInsets(0, 16, 0, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
+            dark: WebComputedStyle(x: 0, y: 770, width: 1280, height: 34, padding: WebInsets(0, 16, 0, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
+        ),
+        "more.toast.text": WebStylePair(
+            light: WebComputedStyle(x: 511.17, y: 778, width: 241.64, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 511.17, y: 778, width: 241.64, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        ),
         "select.trigger": WebStylePair(
             light: WebComputedStyle(x: 16, y: 552, width: 160, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 552, width: 160, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0)
@@ -645,10 +661,13 @@ public enum WebStyles {
     /// The Mac's CSS colour variables (`--mac-selected`, `--glass-hover`), light and dark.
     public static let vars: [String: ColorPair] = [
         "color-accent": ColorPair(light: RGBA(31, 31, 34), dark: RGBA(242, 242, 243)),
+        "color-accent-ink": ColorPair(light: RGBA(255, 255, 255), dark: RGBA(16, 16, 17)),
         "color-accent-soft": ColorPair(light: RGBA(0, 0, 0, 0.05), dark: RGBA(255, 255, 255, 0.07)),
+        "color-accent-strong": ColorPair(light: RGBA(11, 11, 12), dark: RGBA(255, 255, 255)),
         "color-canvas": ColorPair(light: RGBA(255, 255, 255), dark: RGBA(16, 16, 17)),
         "color-coral": ColorPair(light: RGBA(242, 113, 111), dark: RGBA(255, 143, 140)),
         "color-danger": ColorPair(light: RGBA(179, 52, 44), dark: RGBA(255, 138, 128)),
+        "color-danger-soft": ColorPair(light: RGBA(252, 228, 225), dark: RGBA(61, 30, 27)),
         "color-focus": ColorPair(light: RGBA(31, 31, 34), dark: RGBA(242, 242, 243)),
         "color-heading": ColorPair(light: RGBA(11, 11, 12), dark: RGBA(250, 250, 250)),
         "color-ink": ColorPair(light: RGBA(24, 24, 27), dark: RGBA(242, 242, 243)),
@@ -660,6 +679,7 @@ public enum WebStyles {
         "color-moss": ColorPair(light: RGBA(63, 174, 110), dark: RGBA(92, 203, 138)),
         "color-plum": ColorPair(light: RGBA(182, 125, 171), dark: RGBA(212, 162, 201)),
         "color-sidebar": ColorPair(light: RGBA(255, 255, 255), dark: RGBA(24, 24, 26)),
+        "color-success-soft": ColorPair(light: RGBA(226, 244, 232), dark: RGBA(27, 46, 34)),
         "color-surface": ColorPair(light: RGBA(255, 255, 255), dark: RGBA(28, 28, 30)),
         "color-surface-sunken": ColorPair(light: RGBA(0, 0, 0, 0.05), dark: RGBA(255, 255, 255, 0.07)),
         "glass-active": ColorPair(light: RGBA(255, 255, 255, 0.85), dark: RGBA(255, 255, 255, 0.12)),
@@ -672,6 +692,7 @@ public enum WebStyles {
         "mac-selected": ColorPair(light: RGBA(0, 0, 0, 0.07), dark: RGBA(255, 255, 255, 0.09)),
         "mac-selected-inactive": ColorPair(light: RGBA(0, 0, 0, 0.043), dark: RGBA(255, 255, 255, 0.055)),
         "mac-sheet-shadow": ColorPair(light: RGBA(24, 24, 27), dark: RGBA(242, 242, 243)),
+        "shadow-pop": ColorPair(light: RGBA(24, 24, 27), dark: RGBA(242, 242, 243)),
     ]
 
     /// A style by its `data-style` id ("button.primary.md"). Missing ids are a programming error (the

@@ -274,6 +274,7 @@ public final class ContentViewController: NSViewController {
     private var screen: NSHostingView<ScreenRoot>?
     private lazy var models = ScreenModels(frame: model)
     private var toasts: NSHostingView<ToastStack>?
+    private var toastCentre: NSLayoutConstraint?
     private var observers: [Observer] = []
     private var shownRoute: FrameRoute?
     /// Where the content starts under the glass bar (the web's main: padding-top 56).
@@ -333,10 +334,21 @@ public final class ContentViewController: NSViewController {
             body.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
             body.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
             body.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
-            toastView.centerXAnchor.constraint(equalTo: clip.centerXAnchor),
             toastView.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
             toastView.widthAnchor.constraint(lessThanOrEqualTo: clip.widthAnchor, constant: -40),
         ])
+        toastCentre = toastView.centerXAnchor.constraint(equalTo: clip.centerXAnchor)
+        toastCentre?.isActive = true
+    }
+
+    /// Toasts sit at the bottom centre of the window, as the web's fixed toast region (not of the content card).
+    public override func viewDidAppear() {
+        super.viewDidAppear()
+        guard let toasts, let cv = view.window?.contentView, toasts.isDescendant(of: cv) else { return }
+        toastCentre?.isActive = false
+        toastCentre = toasts.centerXAnchor.constraint(equalTo: cv.centerXAnchor)
+        toastCentre?.priority = .defaultHigh
+        toastCentre?.isActive = true
     }
 
     public override func viewDidLoad() {

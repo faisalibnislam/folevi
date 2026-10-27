@@ -5,7 +5,8 @@
     "graph": "folevi-dev://graph",
     "review": "folevi-dev://review",
     "palette": "folevi-dev://documents",
-    "newfolder": "folevi-dev://documents"
+    "newfolder": "folevi-dev://documents",
+    "toast": "folevi-dev://documents"
   },
   "styles": {
     "more.help.title": {
@@ -292,6 +293,22 @@
     "more.prompt.submit": {
       "screen": "newfolder",
       "selector": "dialog[open] form button[type='submit']"
+    },
+    "more.toast": {
+      "screen": "toast",
+      "selector": ".ui-toasts [role='alert']"
+    },
+    "more.toast.text": {
+      "screen": "toast",
+      "selector": ".ui-toasts [role='alert'] > span"
+    },
+    "more.toast.close": {
+      "screen": "toast",
+      "selector": ".ui-toasts [role='alert'] > button"
+    },
+    "more.toast.region": {
+      "screen": "toast",
+      "selector": ".ui-toasts"
     }
   },
   "vars": [
@@ -315,10 +332,16 @@
     "glass-active",
     "color-danger",
     "mac-sheet-shadow",
-    "mac-pop-edge"
+    "mac-pop-edge",
+    "color-accent-strong",
+    "color-accent-ink",
+    "color-success-soft",
+    "color-danger-soft",
+    "shadow-pop"
   ],
   "prepare": {
     "palette": "document.querySelectorAll('dialog[open]').forEach(d => d.close()); await new Promise(r => setTimeout(r, 300)); document.querySelector(\"nav[aria-label='Folio'] button.ui-well\").click(); return true",
-    "newfolder": "document.querySelectorAll('dialog[open]').forEach(d => d.close()); await new Promise(r => setTimeout(r, 300)); document.querySelector(\"nav[aria-label='Folio'] section > div:first-child > button\").click(); return true"
+    "newfolder": "document.querySelectorAll('dialog[open]').forEach(d => d.close()); await new Promise(r => setTimeout(r, 300)); document.querySelector(\"nav[aria-label='Folio'] section > div:first-child > button\").click(); return true",
+    "toast": "document.querySelectorAll('dialog[open]').forEach(d => d.close()); window.dispatchEvent(new CustomEvent('folevi:error', { detail: 'Something went wrong. Please try again.' })); await new Promise(r => setTimeout(r, 400)); return true"
   }
 }

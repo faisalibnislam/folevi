@@ -4,7 +4,8 @@
 //   cmd more {"do":"newFolder"}                     the sidebar's New folder
 //   cmd more {"do":"rename"|"color"|"moveFolder","folder":"Travel"}   a folder's dialog, by its name
 //   cmd more {"do":"moveNote","note":"Packing list"}                  Move to folder for a note on Home
-//   cmd more {"do":"close"}                         closes the dialog on screen
+//   cmd more {"do":"toast","message":"…","tone":"error"}             a toast
+//   cmd more {"do":"close"}                         closes the dialog on screen (and the toasts)
 #if DEBUG
 import AppKit
 import FoleviMac
@@ -26,7 +27,10 @@ extension NativeFrame {
             case "moveNote":
                 let note = (req["note"] as? String).flatMap { t in m.home.value?.recents.first { $0.title == t } }
                 if let note { FrameDialogs.moveNotes(m, ids: [note.id], title: note.title, currentFolderId: .some(note.folder?.id)) }
-            case "close": FrameSheets.dismissAll()
+            case "toast": m.toast(req["message"] as? String ?? "Something went wrong. Please try again.", tone: (req["tone"] as? String) == "error" ? .error : (req["tone"] as? String) == "success" ? .success : .info)
+            case "close":
+                FrameSheets.dismissAll()
+                m.toasts.forEach { m.dismissToast($0.id) }
             default: return done(["error": "unknown"])
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { done(["value": FrameSheets.isShowing(m)]) }

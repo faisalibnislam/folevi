@@ -65,6 +65,8 @@ export const SCREENS = [
   { id: "foldercolor", link: "folevi-dev://documents", prepare: { web: folderMenu("Travel", "Change color"), native: { cmd: "more", do: "color", folder: "Travel" } } },
   { id: "movefolder", link: "folevi-dev://documents", prepare: { web: folderMenu("Japan", "Move folder"), native: { cmd: "more", do: "moveFolder", folder: "Japan" } } },
   { id: "renamefolder", link: "folevi-dev://documents", prepare: { web: folderMenu("Work", "Rename"), native: { cmd: "more", do: "rename", folder: "Work" } } },
+  // Last: the web's toast stays up for 8 seconds.
+  { id: "toast", link: "folevi-dev://documents", prepare: { web: `window.dispatchEvent(new CustomEvent("folevi:error", { detail: "Something went wrong. Please try again." })); return true`, native: { cmd: "more", do: "toast", tone: "error", message: "Something went wrong. Please try again." } } },
 ];
 const only = arg("--only")?.split(",");
 const screens = SCREENS.filter((s) => !only || only.includes(s.id));

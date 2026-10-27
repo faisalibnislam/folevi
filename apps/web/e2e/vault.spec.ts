@@ -28,7 +28,9 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   await expect(page.getByRole("heading", { name: "Save your Vault recovery key" })).toBeVisible({ timeout: 60_000 });
   await shot(page, "2-recovery-key");
   const groups = (await page.getByRole("list", { name: "Your recovery key" }).locator("li").allInnerTexts()).map((g) => g.replace(/^Group \d+:\s*/, "").trim());
+  await page.getByRole("button", { name: "I've saved it" }).click();
   await page.getByLabel("Group 3").fill(groups[2]!);
+  await shot(page, "2b-recovery-check");
   await page.getByLabel("Group 7").fill(groups[6]!);
   await page.getByRole("button", { name: "Check and continue" }).click();
 

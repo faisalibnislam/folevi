@@ -77,6 +77,7 @@ async function wizard(page: Page, shot?: (name: string) => Promise<void>) {
   await expect(key.getByRole("listitem")).toHaveCount(9, { timeout: 30_000 });
   await shot?.("06-wizard-recovery-key");
   const groups = (await key.getByRole("listitem").allTextContents()).map((t) => t.replace(/^Group \d+: /, "").trim());
+  await w.getByRole("button", { name: "I've saved it" }).click();
   await w.getByLabel("Group 3").fill(groups[2] === "ZZZZ" ? "YYYY" : "ZZZZ");
   await w.getByLabel("Group 7").fill(groups[6]!);
   await w.getByRole("button", { name: "Check and continue" }).click();

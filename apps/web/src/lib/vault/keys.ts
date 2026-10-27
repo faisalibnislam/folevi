@@ -6,8 +6,10 @@ import type { FunctionArgs, FunctionReference, FunctionReturnType } from "convex
 import { ulid } from "@folevi/editor-schema";
 import {
   checkVaultPasscode,
+  constantTimeEqual,
   deriveVaultKeys,
   innerOfGrant,
+  LIBRARY_VAULT_PERSON,
   newRecoveryKey,
   newVaultKey,
   openVaultGrant,
@@ -34,11 +36,15 @@ export interface VaultClient {
   mutation<F extends FunctionReference<"mutation">>(ref: F, args: FunctionArgs<F>): Promise<FunctionReturnType<F>>;
 }
 
-/** Who is acting on this device: their profile id (it names them in the grants' contexts) and their account keys. */
+/**
+ * Who is acting on this device: their profile id (it names them in the grants' contexts) and their account keys. A
+ * library on this device (no account, docs/MAC_REBUILD_PLAN.md §5.6) acts as `libraryVaultActor()`: no account key, so
+ * its grants are the passcode and recovery layers straight around the vault key.
+ */
 export interface VaultActor {
   profileId: string;
   epoch: number;
-  account: X25519KeyPair;
+  account: X25519KeyPair | null;
   /** This device's id (for the log). */
   deviceId?: string;
 }
@@ -80,6 +86,26 @@ export function vaultClientInfo(o: { deviceId?: string; sessionId?: string } = {
 }
 
 const grantFor = (vaultId: string, keyVersion: number, profileId: string): VaultGrantFor => ({ vaultId, keyVersion, profileId });
+
+/** The actor of a library's Vault (no account). */
+export const libraryVaultActor = (deviceId?: string): VaultActor => ({ profileId: LIBRARY_VAULT_PERSON, epoch: 0, account: null, ...(deviceId ? { deviceId } : {}) });
+
+/** A grant's inner layer: the vault key sealed to the account key, or (a library's Vault) the vault key itself. */
+async function innerFor(vk: Uint8Array, actor: VaultActor, g: VaultGrantFor): Promise<Uint8Array> {
+  return actor.account ? await sealVaultKeyTo(vk, actor.account.publicKey, g) : vk.slice();
+}
+
+/** The vault key from a grant's inner layer, checked against the Vault's check value. */
+async function openInner(inner: Uint8Array, actor: VaultActor, g: VaultGrantFor, check: Uint8Array): Promise<Uint8Array> {
+  if (actor.account) return await openVaultGrant(inner, { kind: "custodian" }, actor.account, g, check);
+  const vk = inner.slice();
+  const keys = await deriveVaultKeys(vk);
+  if (!constantTimeEqual(keys.check, check)) {
+    vk.fill(0);
+    throw new Error("This vault key doesn't match the Vault.");
+  }
+  return vk;
+}
 
 /** Problems with a passcode before anything slow runs, or null. */
 export const passcodeProblem = (passcode: string) => checkVaultPasscode(passcode);
@@ -208,7 +234,7 @@ class VaultSessions {
     const vk = newVaultKey();
     const g = grantFor(vaultId, 1, actor.profileId);
     const keys = await deriveVaultKeys(vk);
-    const inner = await sealVaultKeyTo(vk, actor.account.publicKey, g);
+    const inner = await innerFor(vk, actor, g);
     const salt = randomBytes(16);
     const passcodeKey = await vaultPasscodeKey(passcode, { name: "argon2id", ...KDF, salt }, onProgress);
     const recovery = newRecoveryKey();
@@ -253,7 +279,7 @@ class VaultSessions {
             : await vaultRecoveryKey(recoveryBytes!);
         if (way === "passcode") passcodeKeyUsed = key;
         const inner = await innerOfGrant(bytes(grant.wrapped), { kind: way, key }, g);
-        raw.set(grant.version, await openVaultGrant(inner, { kind: "custodian" }, actor.account, g, checks.get(grant.version)!));
+        raw.set(grant.version, await openInner(inner, actor, g, checks.get(grant.version)!));
         inners.set(grant.version, inner);
       }
     } catch {
@@ -269,7 +295,7 @@ class VaultSessions {
     for (const gr of added) {
       const g = grantFor(vaultId, gr.version, actor.profileId);
       const inner = bytes(gr.wrapped);
-      raw.set(gr.version, await openVaultGrant(inner, { kind: "custodian" }, actor.account, g, checks.get(gr.version)!));
+      raw.set(gr.version, await openInner(inner, actor, g, checks.get(gr.version)!));
       inners.set(gr.version, inner);
     }
     if (added.length && way === "passcode" && passcodeKeyUsed) {
@@ -306,7 +332,7 @@ class VaultSessions {
     for (const grant of r.fromCustodian) {
       const g = grantFor(vaultId, grant.version, actor.profileId);
       const inner = bytes(grant.wrapped);
-      raw.set(grant.version, await openVaultGrant(inner, { kind: "custodian" }, actor.account, g, checks.get(grant.version)!));
+      raw.set(grant.version, await openInner(inner, actor, g, checks.get(grant.version)!));
       grants.push({ version: grant.version, epoch: actor.epoch, wrapped: wire(await wrapWithPasscode(inner, passcodeKey, g)), salt: wire(salt), kdf: KDF });
     }
     await client.mutation(api.vaultKeys.setPasscode, { vaultId, grants, reason: "first", client: this.info() });
@@ -358,7 +384,7 @@ class VaultSessions {
     const grants = [];
     for (const [version, box] of o.raw) {
       const g = grantFor(vaultId, version, actor.profileId);
-      const inner = await box.use((vk) => sealVaultKeyTo(vk, actor.account.publicKey, g));
+      const inner = await box.use((vk) => innerFor(vk, actor, g));
       grants.push({ version, epoch: actor.epoch, wrapped: wire(await wrapWithRecovery(inner, key, g)) });
     }
     await client.mutation(api.vaultKeys.setRecovery, { vaultId, grants, client: this.info(vaultId) });

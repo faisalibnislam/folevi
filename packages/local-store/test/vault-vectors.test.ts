@@ -11,7 +11,9 @@ import {
   deriveVaultKeys,
   forceBackend,
   innerOfGrant,
+  LIBRARY_VAULT_PERSON,
   linkWrapKey,
+  openLibraryVaultKey,
   openRecord,
   openSealed,
   openVaultGrant,
@@ -22,6 +24,7 @@ import {
   vaultPasscodeKey,
   vaultPasswordMac,
   vaultRecoveryKey,
+  wrapLibraryVaultKey,
   wrapWithPasscode,
   wrapWithRecovery,
   x25519FromSeed,
@@ -75,11 +78,16 @@ async function compute(): Promise<Vectors> {
     // The outer layers as wrapWithPasscode and wrapWithRecovery make them, with a fixed nonce.
     grantPasscode: toHex(await sealRecord(passcodeKey, g.keyVersion, vaultCtx.passcode(g.vaultId, g.keyVersion, g.profileId), inner, opts)),
     grantRecovery: toHex(await sealRecord(await vaultRecoveryKey(IN.recovery), g.keyVersion, vaultCtx.recovery(g.vaultId, g.keyVersion, g.profileId), inner, opts)),
+    // A library's Vault (no account): the passcode and recovery layers straight around the vault key, for "library".
+    libraryGrantPasscode: toHex(await sealRecord(passcodeKey, g.keyVersion, vaultCtx.passcode(g.vaultId, g.keyVersion, LIBRARY_VAULT_PERSON), IN.vk, opts)),
+    libraryGrantRecovery: toHex(await sealRecord(await vaultRecoveryKey(IN.recovery), g.keyVersion, vaultCtx.recovery(g.vaultId, g.keyVersion, LIBRARY_VAULT_PERSON), IN.vk, opts)),
     linkWrap: toHex(await sealRecord(await linkWrapKey(IN.linkSecret), 1, vaultCtx.linkKey(IN.vaultId, IN.itemId, IN.linkId), IN.itemKey, opts)),
     contexts: JSON.stringify({
       grant: vaultCtx.grant(g.vaultId, g.keyVersion, g.profileId),
       passcode: vaultCtx.passcode(g.vaultId, g.keyVersion, g.profileId),
       recovery: vaultCtx.recovery(g.vaultId, g.keyVersion, g.profileId),
+      libraryPasscode: vaultCtx.passcode(g.vaultId, g.keyVersion, LIBRARY_VAULT_PERSON),
+      libraryRecovery: vaultCtx.recovery(g.vaultId, g.keyVersion, LIBRARY_VAULT_PERSON),
       itemKey: vaultCtx.itemKey(IN.vaultId, IN.itemId, IN.keyVersion),
       item: vaultCtx.item(IN.vaultId, IN.itemId),
       itemSummary: vaultCtx.itemSummary(IN.vaultId, IN.itemId),
@@ -151,5 +159,26 @@ describe("vault vectors", () => {
     expect(toHex(await openVaultGrant(viaRec, { kind: "recovery", key: await vaultRecoveryKey(IN.recovery) }, account, g, check))).toBe(toHex(IN.vk));
     const keys = await deriveVaultKeys(IN.vk);
     await expect(openRecord(keys.wrap, vaultCtx.itemKey("VAULT02", IN.itemId, IN.keyVersion), fromHex(f.itemKeyWrap!))).rejects.toThrow();
+  });
+
+  it("a library's Vault grants open to the vault key by passcode and by recovery key, and nowhere else", async () => {
+    forceBackend(null);
+    const f = JSON.parse(readFileSync(fixturePath, "utf8")) as Vectors;
+    const ctx = JSON.parse(f.contexts!) as Record<string, string>;
+    const check = fromHex(f.check!);
+    const passcodeKey = await vaultPasscodeKey(IN.passcode, IN.kdf);
+    const recoveryKey = await vaultRecoveryKey(IN.recovery);
+    expect(toHex(await openLibraryVaultKey(fromHex(f.libraryGrantPasscode!), { kind: "passcode", key: passcodeKey }, IN.vaultId, IN.keyVersion, check))).toBe(toHex(IN.vk));
+    expect(toHex(await openLibraryVaultKey(fromHex(f.libraryGrantRecovery!), { kind: "recovery", key: recoveryKey }, IN.vaultId, IN.keyVersion, check))).toBe(toHex(IN.vk));
+    // node:crypto opens the recovery layer: HKDF "vault/recovery" of the key's 20 bytes, straight around the vault key.
+    expect(toHex(nodeOpenRecord(nodeHkdf(IN.recovery, "vault/recovery"), ctx.libraryRecovery!, fromHex(f.libraryGrantRecovery!)))).toBe(toHex(IN.vk));
+    await expect(openLibraryVaultKey(fromHex(f.libraryGrantPasscode!), { kind: "passcode", key: await vaultPasscodeKey("000000", IN.kdf) }, IN.vaultId, IN.keyVersion, check)).rejects.toThrow();
+    await expect(openLibraryVaultKey(fromHex(f.libraryGrantPasscode!), { kind: "passcode", key: passcodeKey }, "VAULT02", IN.keyVersion, check)).rejects.toThrow();
+    await expect(openLibraryVaultKey(fromHex(f.libraryGrantPasscode!), { kind: "passcode", key: passcodeKey }, IN.vaultId, IN.keyVersion, fromHex("00".repeat(16)))).rejects.toThrow();
+    // An account grant is not a library grant (another person in the context).
+    await expect(openLibraryVaultKey(fromHex(f.grantPasscode!), { kind: "passcode", key: passcodeKey }, IN.vaultId, IN.keyVersion, check)).rejects.toThrow();
+    // The app's own wraps (random nonces) open the same way.
+    const made = await wrapLibraryVaultKey(IN.vk, { kind: "passcode", key: passcodeKey }, IN.vaultId, IN.keyVersion);
+    expect(toHex(await openLibraryVaultKey(made, { kind: "passcode", key: passcodeKey }, IN.vaultId, IN.keyVersion, check))).toBe(toHex(IN.vk));
   });
 });

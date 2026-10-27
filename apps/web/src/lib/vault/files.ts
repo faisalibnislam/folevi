@@ -84,3 +84,28 @@ export async function openFile(vaultId: string, row: { id: string; keyVersion: n
     raw.fill(0);
   }
 }
+
+/**
+ * Sends a sealed file's bytes to where `uploadUrl` said (vaultFiles.uploadUrl): the server's storage, or, for a
+ * library's Vault, this device (lib/local/vault/files.ts). Returns the storage id saveFile takes.
+ */
+export async function sendCiphertext(uploadUrl: string, ciphertext: Uint8Array): Promise<string> {
+  const local = await import("@/lib/local/vault/files");
+  if (uploadUrl.startsWith(local.UPLOAD_PREFIX)) {
+    const intent = uploadUrl.slice(local.UPLOAD_PREFIX.length);
+    local.stageUpload(intent, ciphertext);
+    return intent;
+  }
+  const res = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: new Blob([ciphertext.slice()]) });
+  if (!res.ok) throw new Error("The upload didn't go through. Try again.");
+  return ((await res.json()) as { storageId: string }).storageId;
+}
+
+/** A sealed file's bytes from where `fileUrl` said (vaultFiles.fileUrl): the server's storage or this device. */
+export async function fetchCiphertext(url: string): Promise<Uint8Array> {
+  const local = await import("@/lib/local/vault/files");
+  if (url.startsWith(local.FILE_PREFIX)) return await local.readVaultFile(url.slice(local.FILE_PREFIX.length));
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("The file couldn't be fetched. Try again.");
+  return new Uint8Array(await res.arrayBuffer());
+}

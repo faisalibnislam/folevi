@@ -114,15 +114,18 @@ export {
 } from "./sas";
 export * from "./wire";
 export {
+  LIBRARY_VAULT_PERSON,
   VAULT_PASSCODE_LENGTHS,
   checkVaultPasscode,
   deriveVaultKeys,
   innerOfGrant,
   newVaultKey,
+  openLibraryVaultKey,
   openVaultGrant,
   sealVaultKeyTo,
   vaultCtx,
   wrapWithPasscode,
+  wrapLibraryVaultKey,
   wrapWithRecovery,
   type VaultGrantFor,
   vaultPasscodeKey,

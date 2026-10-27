@@ -19,6 +19,7 @@ import { VaultGate } from "./VaultGate";
 import { useRecordEvent, useRecoveryToSave, useVaultBinding, useVaultInfo, useVaultOpen } from "./useVault";
 import { RecoveryKeyPanel } from "@/components/e2ee/RecoveryKeyPanel";
 import { useAppState } from "@/lib/app/state";
+import { useBackendMode } from "@/lib/mode";
 
 type Tab = "passwords" | "files" | "health" | "trash" | "activity" | "people" | "settings";
 
@@ -29,6 +30,8 @@ export function VaultView() {
   const open = useVaultOpen(vaultId);
   const recoveryToSave = useRecoveryToSave(vaultId);
   const { profile } = useAppState();
+  // A library's Vault (no account) has no log to read and nobody to share with (docs/MAC_REBUILD_PLAN.md §5.6).
+  const local = useBackendMode() === "local";
   const [tab, setTab] = useState<Tab>("files");
   const [jumpTo, setJumpTo] = useState<string | null>(null);
   const toast = useToast();
@@ -68,7 +71,7 @@ export function VaultView() {
   ];
   const more: [Tab, string, LucideIcon][] = [
     ["health", "Health", HeartPulse],
-    ["activity", "Activity", ActivityIcon],
+    ...(local ? [] : ([["activity", "Activity", ActivityIcon]] as [Tab, string, LucideIcon][])),
     ...(info.personal ? [] : ([["people", "People", Users]] as [Tab, string, LucideIcon][])),
     ["trash", "Trash", Trash2],
     ["settings", "Settings", Settings],

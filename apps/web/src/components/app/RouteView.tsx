@@ -93,10 +93,12 @@ function Routes() {
   const { route } = useAppRouter();
   const iphone = useIphoneApp();
   const caps = useCapabilities();
+  // A library on this device has its own Vault (docs/MAC_REBUILD_PLAN.md §5.6) where local mode has it.
+  const vaultHere = useCanCall(api.vault.get);
   if (!caps.changes && route.name === "changes") return <AccountOnly title="Changes" />;
   if (!caps.sharing && (route.name === "shared" || route.name === "shared-folder")) return <AccountOnly title="Shared with Me" />;
   if (!caps.sharing && route.name === "folder-invite") return <AccountOnly title="Invitation" />;
-  if (!caps.sharing && route.name === "vault") return <AccountOnly title="Vault" />;
+  if (!caps.sharing && !vaultHere && route.name === "vault") return <AccountOnly title="Vault" />;
   if (!caps.workspaces && route.name === "invite") return <AccountOnly title="Invitation" />;
   if (!caps.sharing && route.name === "share-invite") return <AccountOnly title="Invitation" />;
   switch (route.name) {

@@ -1,7 +1,7 @@
 // Where each kind of row lives in a library (docs/LOCAL_MODE_PLAN.md §3.1, §3.3, §3.5):
 //
 //   documents, blocks, notices, files, fileTexts, collections (and a row note's `row`)   the note's file
-//   folders, tags, synced meta keys, studyReviews, calendars                              index/library.findex
+//   folders, tags, synced meta keys, studyReviews, calendars, vault (sealed rows)        index/library.findex
 //   versions                                                                             history/<note>/*.fver
 //   recents, device-local meta keys, any table not listed here                           this device only
 //
@@ -24,12 +24,13 @@ const PLACEMENT: Partial<Record<LocalTable, Placement>> = {
   meta: "index",
   studyReviews: "index",
   calendars: "index",
+  vault: "index",
   versions: "history",
   recents: "device",
 };
 
 /** Tables whose rows sync as whole rows through the index (last writer wins per row). */
-export const INDEX_ROW_TABLES: ReadonlySet<LocalTable> = new Set<LocalTable>(["studyReviews", "calendars"]);
+export const INDEX_ROW_TABLES: ReadonlySet<LocalTable> = new Set<LocalTable>(["studyReviews", "calendars", "vault"]);
 
 const warned = new Set<string>();
 

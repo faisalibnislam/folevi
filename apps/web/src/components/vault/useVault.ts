@@ -8,7 +8,8 @@ import { useAppState } from "@/lib/app/state";
 import { getKeySession, sessionImpl } from "@/lib/e2ee/keys/session";
 import { useKeySession } from "@/lib/e2ee/keys/useKeys";
 import { setup } from "@/lib/e2ee/keys/setup";
-import { vaultSessions, type VaultClient } from "@/lib/vault/keys";
+import { libraryVaultActor, vaultSessions, type VaultClient } from "@/lib/vault/keys";
+import { useBackendMode } from "@/lib/mode";
 import { DEVICE_EVENTS_FOR_UI, type VaultDeviceEvent } from "./events";
 
 /** The place's Vault as the server describes it (null: none to see here). */
@@ -26,7 +27,13 @@ export function useVaultBinding() {
   const convex = useConvex();
   const { profile } = useAppState();
   const { state } = useKeySession();
+  const local = useBackendMode() === "local";
   useEffect(() => {
+    // A library on this device has no account keys: its Vault opens with the passcode alone (lib/vault/keys.ts).
+    if (local) {
+      vaultSessions().bind(convex as unknown as VaultClient, libraryVaultActor());
+      return;
+    }
     if (state !== "unlocked") {
       vaultSessions().bind(convex as unknown as VaultClient, null);
       return;
@@ -37,8 +44,8 @@ export function useVaultBinding() {
     } catch {
       vaultSessions().bind(convex as unknown as VaultClient, null);
     }
-  }, [convex, state, profile.id]);
-  return state;
+  }, [convex, state, profile.id, local]);
+  return local ? "unlocked" : state;
 }
 
 /** Binds the Vault session to this device's unlocked account now (not waiting for a render). */

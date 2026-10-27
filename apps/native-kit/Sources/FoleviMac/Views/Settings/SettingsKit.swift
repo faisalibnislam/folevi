@@ -18,7 +18,79 @@ enum SettingsColor {
     static func v(_ name: String, _ scheme: ColorScheme) -> Color { (WebStyles.vars[name]?.resolve(scheme) ?? RGBA(0, 0, 0, 1)).color }
 }
 
-/// Text in a settings style: its font, line box and colour.
+/// Where the web breaks paragraphs (`p { text-wrap: pretty }`): asked of the page (settings.run text.lines), kept
+/// by text, width and type, so a paragraph wraps at the same words as on the web.
+@MainActor
+@Observable
+final class SettingsLineBreaks {
+    private var known: [String: [Int]] = [:]
+    @ObservationIgnored private var asked: Set<String> = []
+    @ObservationIgnored private var queue: [(String, [String: JSONValue])] = []
+    @ObservationIgnored private weak var client: EngineClient?
+
+    init(client: EngineClient) { self.client = client }
+
+    static func key(_ text: String, _ width: CGFloat, _ s: WebTextStyle) -> String { "\(Int((width * 2).rounded()))|\(s.size)|\(s.weight)|\(s.family == .display)|\(text)" }
+
+    /// The last word of each line but the last, when known (nil until the page answers).
+    func breaks(_ text: String, width: CGFloat, style: WebTextStyle) -> [Int]? {
+        let k = Self.key(text, width, style)
+        if let b = known[k] { return b }
+        if !asked.contains(k) {
+            asked.insert(k)
+            queue.append((k, ["text": .string(text), "width": .number(Double(width)), "size": .number(Double(style.size)), "leading": .number(Double(style.leading)), "weight": .number(Double(style.weight)), "tracking": .number(Double(style.letterSpacing)), "display": .bool(style.family == .display)]))
+            if queue.count == 1 { DispatchQueue.main.async { MainActor.assumeIsolated { self.flush() } } }
+        }
+        return nil
+    }
+
+    private func flush() {
+        let batch = queue
+        queue = []
+        guard let client, !batch.isEmpty else { return }
+        Task {
+            guard let r = try? await client.command(.settingsRun(key: .textLines, args: ["texts": .array(batch.map { .object($0.1) })])),
+                  case .object(let o) = r.data, case .array(let lines)? = o["lines"] else { return }
+            for (i, item) in batch.enumerated() where i < lines.count {
+                if case .array(let b) = lines[i] { known[item.0] = b.compactMap { if case .number(let n) = $0 { Int(n) } else { nil } } }
+            }
+        }
+    }
+
+    /// The text with a line break after each word the web ends a line on.
+    static func apply(_ text: String, _ breaks: [Int]) -> String {
+        guard !breaks.isEmpty else { return text }
+        var out = ""
+        var word = -1
+        var inWord = false
+        let set = Set(breaks)
+        var pendingBreak = false
+        for ch in text {
+            if ch == " " {
+                if inWord { inWord = false; if set.contains(word) { pendingBreak = true; continue } }
+                if pendingBreak { continue }
+                out.append(ch)
+            } else {
+                if !inWord { inWord = true; word += 1; if pendingBreak { out.append("\n"); pendingBreak = false } }
+                out.append(ch)
+            }
+        }
+        return out
+    }
+}
+
+private struct LineBreaksKey: EnvironmentKey {
+    static let defaultValue: SettingsLineBreaks? = nil
+}
+
+extension EnvironmentValues {
+    var settingsLineBreaks: SettingsLineBreaks? {
+        get { self[LineBreaksKey.self] }
+        set { self[LineBreaksKey.self] = newValue }
+    }
+}
+
+/// Text in a settings style: its font, line box and colour; a paragraph wraps where the web wraps it.
 struct SText: View {
     let text: String
     let style: String
@@ -26,6 +98,8 @@ struct SText: View {
     var color: Color?
     var lines: Int?
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.settingsLineBreaks) private var breaker
+    @State private var width: CGFloat = 0
 
     init(_ text: String, _ style: String, weight: CGFloat? = nil, color: Color? = nil, lines: Int? = nil) {
         self.text = text
@@ -39,11 +113,19 @@ struct SText: View {
         let s = SettingsStyle.pair(style).resolve(scheme)
         var t = s.text
         if let weight { t = t.weight(weight) }
-        return Text(text)
+        // A paragraph (long enough to wrap) takes its container's width, as a <p> does, and wraps as the web wraps it.
+        let paragraph = lines != 1 && text.count > 60
+        let shown: String = {
+            guard paragraph, let breaker, width > 0, let b = breaker.breaks(text, width: width, style: t) else { return text }
+            return SettingsLineBreaks.apply(text, b)
+        }()
+        return Text(shown)
             .webText(t)
             .lineLimit(lines)
             .foregroundStyle(color ?? s.color.color)
             .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: paragraph ? .infinity : nil, alignment: .leading)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { if paragraph { width = $0 } }
     }
 }
 

@@ -101,6 +101,7 @@ public final class MacSettingsModel {
     @ObservationIgnored private(set) lazy var storage: ValueStore<DeviceStorageValue> = client.watch(.deviceStorage)
     /// Keys of commands running now ("library.syncNow").
     var busy: Set<String> = []
+    @ObservationIgnored private(set) lazy var lineBreaks = SettingsLineBreaks(client: client)
 
     public init(frame: FrameModel) { self.frame = frame }
 
@@ -241,6 +242,7 @@ public struct SettingsScreen: View {
         }
         // The Settings window's page is the surface colour (Shell.tsx .ui-settings-window).
         .background(windowed ? SettingsColor.v("color-surface", scheme) : Color.clear)
+        .environment(\.settingsLineBreaks, model.lineBreaks)
         .accessibilityIdentifier("screen.settings")
     }
 }

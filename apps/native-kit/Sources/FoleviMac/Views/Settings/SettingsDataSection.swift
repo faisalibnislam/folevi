@@ -33,8 +33,8 @@ struct DataSettings: View {
             SettingsCard("Import into \(whereName)", description: "Markdown and text files, a folder or a ZIP (an Obsidian vault works), a Notion export (Export → Markdown & CSV, as a ZIP), an Evernote export (.enex), Word documents (.docx), HTML and CSV files. Pages keep their headings, lists, to-dos, links, code, quotes, tables and images; Notion pages stay nested and linked, a folder or ZIP keeps its subfolders, and Evernote notes go into a folder named after the notebook. Anything we can’t convert is kept as text and listed below.") {
                 VStack(alignment: .leading, spacing: 0) {
                     SettingsButtons {
-                        WebButton(importing ? "Importing…" : "Choose files…", icon: .upload) { pick(folder: false) }.disabled(importing)
-                        WebButton("Import a folder…", icon: .folderUp) { pick(folder: true) }.disabled(importing)
+                        WebButton(importing ? "Importing…" : "Choose files…", icon: .upload, iconSize: 14) { pick(folder: false) }.disabled(importing)
+                        WebButton("Import a folder…", icon: .folderUp, iconSize: 14) { pick(folder: true) }.disabled(importing)
                     }
                     Group { if progress.isEmpty { Color.clear.frame(height: 0) } else { SText(progress, "progress") } }.padding(.top, SettingsStyle.pair("progress").light.margin.top)
                     if !results.isEmpty { resultList.padding(.top, 12) }

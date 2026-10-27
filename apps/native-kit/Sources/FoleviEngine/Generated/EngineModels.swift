@@ -5724,6 +5724,7 @@ public enum SettingsRunKey: String, Codable, Hashable, Sendable, CaseIterable {
     case localAiSetChoice = "localAi.setChoice"
     case desktopSet = "desktop.set"
     case desktopPauseShortcut = "desktop.pauseShortcut"
+    case textLines = "text.lines"
     case dataImport = "data.import"
     case takeoutImport = "takeout.import"
     case convexMutation = "convex.mutation"

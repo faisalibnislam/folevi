@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 12;
+export const CONTRACT_REVISION = 17;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2721,6 +2721,7 @@ export type SettingsRunKey =
   | "localAi.setChoice"
   | "desktop.set"
   | "desktop.pauseShortcut"
+  | "text.lines"
   | "data.import"
   | "takeout.import"
   | "convex.mutation"
@@ -3090,7 +3091,7 @@ export const NOTES_SORTS: readonly NotesSort[] = ["updated", "created", "title",
 export const WEB_PAGES: readonly WebPage[] = ["settings.connectedApps", "settings.workspaceData", "settings.data", "settings.aiExport", "reviews", "graph", "settings.security", "settings.privacy", "settings.workspace", "settings.deleteAccount"];
 export const AI_PREF_KEYS: readonly AiPrefKey[] = ["history", "memory", "suggestions", "attachments", "webResearch", "digests", "readImages", "deviceText"];
 export const SETTINGS_QUERY_KEYS: readonly SettingsQueryKey[] = ["library", "localAi", "desktop", "convex"];
-export const SETTINGS_RUN_KEYS: readonly SettingsRunKey[] = ["library.syncNow", "library.move", "library.cloudConnect", "library.cloudCancel", "library.cloudSignOut", "library.setPassphrase", "library.changePassphrase", "library.removePassphrase", "library.lock", "library.forget", "localAi.setKey", "localAi.removeKey", "localAi.testKey", "localAi.setChoice", "desktop.set", "desktop.pauseShortcut", "data.import", "takeout.import", "convex.mutation", "convex.action"];
+export const SETTINGS_RUN_KEYS: readonly SettingsRunKey[] = ["library.syncNow", "library.move", "library.cloudConnect", "library.cloudCancel", "library.cloudSignOut", "library.setPassphrase", "library.changePassphrase", "library.removePassphrase", "library.lock", "library.forget", "localAi.setKey", "localAi.removeKey", "localAi.testKey", "localAi.setChoice", "desktop.set", "desktop.pauseShortcut", "text.lines", "data.import", "takeout.import", "convex.mutation", "convex.action"];
 export const TASK_VIEWS: readonly TaskViewName[] = ["inbox", "today", "upcoming", "all", "completed", "mine"];
 
 /** Features the hello reply lists (for native to check before using something newer than the protocol). */

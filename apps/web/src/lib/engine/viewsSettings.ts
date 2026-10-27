@@ -591,6 +591,45 @@ async function runKey(deps: EngineDeps, key: SettingsRunKey, a: Args): Promise<u
     case "desktop.pauseShortcut":
       desktop()?.pauseShortcut(a.paused === true);
       return { ok: true };
+    case "text.lines": {
+      // Where the web breaks a paragraph into lines (`p { text-wrap: pretty }` in globals.css), for native text to
+      // break at the same words: each text laid out in this page at its width and type, the last word of each line.
+      const list = Array.isArray(a.texts) ? a.texts.slice(0, 200) : [];
+      const box = document.createElement("div");
+      box.setAttribute("aria-hidden", "true");
+      box.style.cssText = "position:fixed;left:-10000px;top:0;visibility:hidden;pointer-events:none";
+      document.body.appendChild(box);
+      try {
+        return {
+          lines: list.map((raw) => {
+            const t = obj(raw);
+            const p = document.createElement("p");
+            p.style.cssText = `margin:0;width:${Number(t.width)}px;font-size:${Number(t.size)}px;line-height:${Number(t.leading)}px;font-weight:${Number(t.weight)};letter-spacing:${Number(t.tracking)}px;${t.display ? "font-family:var(--font-display),Spectral,serif;" : ""}text-wrap:${t.balance ? "balance" : "pretty"}`;
+            p.textContent = String(t.text ?? "");
+            box.appendChild(p);
+            const node = p.firstChild;
+            const breaks: number[] = [];
+            if (node) {
+              const r = document.createRange();
+              let top: number | null = null;
+              let n = 0;
+              for (const m of String(t.text).matchAll(/\S+/g)) {
+                r.setStart(node, m.index!);
+                r.setEnd(node, m.index! + 1);
+                const y = Math.round(r.getBoundingClientRect().top);
+                if (top !== null && y !== top) breaks.push(n - 1);
+                top = y;
+                n++;
+              }
+            }
+            p.remove();
+            return breaks;
+          }),
+        };
+      } finally {
+        box.remove();
+      }
+    }
     case "data.import": {
       const scope: WireScope = typeof a.workspaceId === "string" ? { kind: "workspace", workspaceId: a.workspaceId } : { kind: "personal" };
       const notes: string[] = [];

@@ -7,3 +7,12 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
+  # The clipper and the iPhone app keep their own lockfiles, outside the workspace (docs/SECURITY_PLAN.md P0.3).
+  - package-ecosystem: npm
+    directory: /apps/clipper
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 3
+  - package-ecosystem: npm
+    directory: /apps/ios
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 3

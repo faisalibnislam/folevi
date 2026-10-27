@@ -46,6 +46,8 @@ export const SCREENS = [
   { id: "templates", link: "folevi-dev://templates" },
   { id: "archive", link: "folevi-dev://archive" },
   { id: "trash", link: "folevi-dev://trash" },
+  // The first fixture note ("Kyoto in November"), by its id from fixture.json.
+  { id: "note", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 2500 },
   // mr/more: Help, Graph, Reviews.
   { id: "help", link: "folevi-dev://help" },
   { id: "graph", link: "folevi-dev://graph" },
@@ -84,8 +86,10 @@ const FIXTURE = `
   }
   await run("note.star", { ids: [ids[0], ids[2]], starred: true });
   for (const t of ["Book the ryokan tomorrow", "Call Sam on Friday 3pm", "Renew passport next week", "Buy matcha today"]) await run("task.create", { text: t });
-  return ids.length;
+  return ids;
 `;
+
+const STILL = `if (!document.getElementById("__screensStill")) { const s = document.createElement("style"); s.id = "__screensStill"; s.textContent = "*, *::before, *::after { animation: none !important; transition: none !important; }"; document.documentElement.appendChild(s); } return true;`;
 
 const ensure = (r) => {
   if (r && r.error) throw new Error(r.error);
@@ -151,8 +155,13 @@ async function shoot(kind) {
   for (const scheme of ["light", "dark"]) {
     ensure(await command(dir, { cmd: "appearance", value: scheme }));
     for (const s of screens) {
-      ensure(await command(dir, { cmd: "open", url: s.link }));
+      const fixture = JSON.parse(readFileSync(join(dir, "fixture.json"), "utf8"));
+      ensure(await command(dir, { cmd: "open", url: typeof s.link === "function" ? s.link(fixture) : s.link }));
       await sleep(1600);
+      // A window behind others doesn't run CSS animations (a note's sheet would stay at its first, invisible
+      // frame): the end state at once, in both frames alike.
+      await evaluate(dir, STILL).catch(() => undefined);
+      await sleep(s.settle ?? 400);
       // The window as the screen shows it (macOS's own capture, no window shadow): the same path for both frames.
       const number = ensure(await command(dir, { cmd: "windows" }))[0].number;
       execFileSync("screencapture", ["-x", "-o", "-l", String(number), join(out, kind, `${s.id}-${scheme}.png`)]);

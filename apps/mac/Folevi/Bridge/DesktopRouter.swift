@@ -120,7 +120,7 @@ final class DesktopRouter {
                 "fullscreen": window?.styleMask.contains(.fullScreen) == true,
                 "active": window?.isKeyWindow == true || view.role == .quickAdd,
                 "keyboard": NSApp.isFullKeyboardAccessEnabled,
-                "vibrancy": view.role == .main ? "sidebar" : view.role == .quickAdd ? "hud" : "",
+                "vibrancy": view.role == .main && TitleBar.vibrancy ? "sidebar" : view.role == .quickAdd ? "hud" : "",
                 "panel": view.role == .quickAdd ? "quick-add" : (window != nil && window === SettingsWindow.shared.window ? "settings" : ""),
             ]
 

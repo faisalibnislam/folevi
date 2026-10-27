@@ -103,6 +103,9 @@ import { NotePlaceChip, NoteSyncTrailing, NoteTrailing, ToolSheet } from "@/comp
 
 /** Native chrome mode (the native apps draw the note's bars): fixed for the page's life. */
 const nativeChromeMode = typeof window !== "undefined" && nativeChrome() !== null;
+// Folevi for Mac's native frame draws the window, sidebar and tabs; the note's own tools (the floating dock and
+// the panels it opens) are part of the note page, as on the web (docs/MAC_REBUILD_PLAN.md: only the note stays web).
+const macNativeFrame = typeof window !== "undefined" && nativeChrome()?.platform === "macos";
 import { useKeyboardInset } from "@/lib/hooks/useVisualViewport";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
@@ -1149,7 +1152,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         </div>
         {/* The floating bar: AI, Insert, Format and Style, then the note's people, Share and its "…" menu. A tool opens
             in the right sidebar (on a phone, a sheet above the bar); AI opens the assistant on this note. */}
-        {nativeChromeMode ? null : iphone ? (
+        {nativeChromeMode && !macNativeFrame ? null : iphone ? (
           <NoteBars
             editor={editor}
             ai={aiOn}

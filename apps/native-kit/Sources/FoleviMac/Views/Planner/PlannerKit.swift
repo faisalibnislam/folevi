@@ -311,13 +311,13 @@ struct PlannerEmpty: View {
             if inline {
                 Text(title).webText(.role(.body, weight: 600)).foregroundStyle(heading).multilineTextAlignment(.center)
                 if let message {
-                    Text(message).webText(WebTextStyle(size: 13, leading: 13 * 1.375)).foregroundStyle(muted).multilineTextAlignment(.center).padding(.top, 4)
+                    PrettyText(message, WebTextStyle(size: 13, leading: 13 * 1.375), center: true).foregroundStyle(muted).padding(.top, 4)
                 }
             } else {
                 let t = PS("empty.title").resolve(scheme)
                 Text(title).webText(t.text).foregroundStyle(t.color.color).multilineTextAlignment(.center)
                 if let message {
-                    Text(message).webText(WebTextStyle(size: 14, leading: 14 * 1.625)).foregroundStyle(muted).multilineTextAlignment(.center).padding(.top, 8)
+                    PrettyText(message, WebTextStyle(size: 14, leading: 14 * 1.625), center: true).foregroundStyle(muted).padding(.top, 8)
                 }
             }
         }
@@ -511,7 +511,7 @@ struct PlannerDialog<Content: View>: View {
                     StyledText(title, "dialog.title", lines: nil)
                     if let description {
                         let d = PS("quick.description").resolve(scheme)
-                        Text(description).webText(d.text).foregroundStyle(d.color.color).fixedSize(horizontal: false, vertical: true).padding(.top, d.margin.top)
+                        PrettyText(description, d.text).foregroundStyle(d.color.color).padding(.top, d.margin.top)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -535,6 +535,99 @@ struct WebMaterial: View {
     let radius: CGFloat
     var body: some View {
         RoundedRectangle(cornerRadius: radius, style: .circular).fill(.regularMaterial)
+    }
+}
+#endif
+
+// MARK: Paragraphs (`p { text-wrap: pretty }`)
+
+#if os(macOS)
+/// The web's paragraphs wrap with `text-wrap: pretty`: as many lines as plain wrapping takes, the breaks moved so
+/// the lines come out even (no word alone on the last line). Lines are measured with the style's font and
+/// tracking, the breaks chosen by least squared slack (the last line's at three quarters), and the text drawn with those breaks.
+enum PrettyWrap {
+    static func measure(_ s: Substring, _ style: WebTextStyle) -> CGFloat {
+        let attr = NSAttributedString(string: String(s), attributes: [.font: style.ctFont as Any, .kern: style.letterSpacing])
+        let line = CTLineCreateWithAttributedString(attr)
+        return CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
+    }
+
+    static func lines(_ text: String, _ style: WebTextStyle, width: CGFloat, lastWeight: CGFloat = 0.75) -> String {
+        guard width > 0, !text.contains("\n") else { return text }
+        let words = text.split(separator: " ", omittingEmptySubsequences: false)
+        guard words.count > 2 else { return text }
+        let w = words.map { measure($0, style) }
+        let space = measure(" ", style)
+        func span(_ i: Int, _ j: Int) -> CGFloat { // words i..<j on one line
+            var s: CGFloat = 0
+            for k in i..<j { s += w[k] }
+            return s + CGFloat(j - i - 1) * space
+        }
+        let limit = width - 0.5
+        // Plain wrapping's line count.
+        var count = 0, i = 0
+        while i < words.count {
+            var j = i + 1
+            while j < words.count, span(i, j + 1) <= limit { j += 1 }
+            count += 1
+            i = j
+        }
+        guard count > 1 else { return text }
+        let n = words.count
+        // best[k][i]: least cost to set words i..<n in k lines.
+        var best = Array(repeating: Array(repeating: CGFloat.infinity, count: n + 1), count: count + 1)
+        var next = Array(repeating: Array(repeating: n, count: n + 1), count: count + 1)
+        best[0][n] = 0
+        for k in 1...count {
+            for i in stride(from: n - 1, through: 0, by: -1) {
+                for j in (i + 1)...n {
+                    let s = span(i, j)
+                    if s > limit { break }
+                    let rest = best[k - 1][j]
+                    if rest == .infinity { continue }
+                    let slack = limit - s
+                    // The last line's slack counts three quarters (WebKit lets it be shorter; fitted to the web frame's breaks).
+                    let c = slack * slack * (j == n ? lastWeight : 1) + rest
+                    if c < best[k][i] { best[k][i] = c; next[k][i] = j }
+                }
+            }
+        }
+        guard best[count][0] < .infinity else { return text }
+        var out: [String] = []
+        var at = 0, k = count
+        while at < n, k > 0 {
+            let j = next[k][at]
+            out.append(words[at..<j].joined(separator: " "))
+            at = j
+            k -= 1
+        }
+        return out.joined(separator: "\n")
+    }
+}
+
+/// A paragraph in a web text style that wraps as the web's `text-wrap: pretty` does.
+struct PrettyText: View {
+    let text: String
+    let style: WebTextStyle
+    var strike = false
+    var center = false
+    @State private var width: CGFloat = 0
+
+    init(_ text: String, _ style: WebTextStyle, strike: Bool = false, center: Bool = false) {
+        self.text = text
+        self.style = style
+        self.strike = strike
+        self.center = center
+    }
+
+    var body: some View {
+        Text(PrettyWrap.lines(text, style, width: width))
+            .strikethrough(strike)
+            .webText(style)
+            .multilineTextAlignment(center ? .center : .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: center ? .center : .leading)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
     }
 }
 #endif

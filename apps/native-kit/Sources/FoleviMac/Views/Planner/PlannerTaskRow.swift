@@ -171,12 +171,8 @@ struct PlannerTaskRow<Action: View>: View {
                 .accessibilityLabel(t.status == "done" ? "Mark “\(t.title)” as not done" : t.status == "canceled" ? "Reopen canceled task “\(t.title)”" : "Mark “\(t.title)” as done")
             VStack(alignment: .leading, spacing: 0) {
                 let title = PS(closed ? "tasks.title.done" : "tasks.title").resolve(scheme)
-                Text(t.title.isEmpty ? "Untitled task" : t.title)
-                    .webText(title.text)
-                    .strikethrough(closed)
+                PrettyText(t.title.isEmpty ? "Untitled task" : t.title, title.text, strike: closed)
                     .foregroundStyle(closed ? muted : title.color.color)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 meta(t)
                     .padding(.top, PS("tasks.meta").resolve(scheme).margin.top)
                 let extra = action()
@@ -198,10 +194,11 @@ struct PlannerTaskRow<Action: View>: View {
             if let d = t.dueDate {
                 let due = PS("tasks.due").resolve(scheme)
                 Text("\(overdue ? "Overdue · " : "")\(PlannerDates.dueLabel(d, today: today))\(t.dueTime.map { " \($0)" } ?? "")")
-                    .webText(overdue ? due.text(weight: 500) : due.text)
+                    // (Its colour and weight by name: the style read may be of an overdue task.)
+                    .webText(due.text(weight: overdue ? 500 : 400))
                     .lineLimit(1)
                     .fixedSize()
-                    .foregroundStyle(overdue ? PV("color-danger").c(scheme) : due.color.color)
+                    .foregroundStyle(overdue ? PV("color-danger").c(scheme) : muted)
                     .padding(.top, due.margin.top)
                     .topAligned()
             }

@@ -47,8 +47,8 @@ struct CalendarsPopover: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 StyledText("Calendars", "cals.head.title")
-                StyledText("Calendars you subscribe to by link show beside your tasks. They’re read-only here. Turn one off to hide its events.", "cals.head.text", lines: nil)
-                    .fixedSize(horizontal: false, vertical: true)
+                PrettyText("Calendars you subscribe to by link show beside your tasks. They’re read-only here. Turn one off to hide its events.", PS("cals.head.text").resolve(scheme).text)
+                    .foregroundStyle(PS("cals.head.text").resolve(scheme).color.color)
                     .padding(.top, 2)
             }
             .padding(head.padding.edgeInsets)

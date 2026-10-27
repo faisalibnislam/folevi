@@ -38,9 +38,9 @@ final class WebCalendarState {
         client = base.client
         let today = base.today
         layout = UserDefaults.standard.string(forKey: Self.layoutKey).flatMap(WebCalendarLayout.init(rawValue:)) ?? .month
-        month = String(base.selected.prefix(7))
+        month = String(today.prefix(7))
         anchor = today
-        selected = base.selected
+        selected = today
         tasks = base.client.watch(.tasksRange(from: today, to: today, includeCompleted: true))
         unscheduled = base.client.watch(.tasksUnscheduled())
         calendars = base.client.watch(.calendarsList)
@@ -252,7 +252,8 @@ struct WebCalendarScreen: View {
             .focusEffectDisabled()
             .onKeyPress(phases: .down) { press in arrows(press, week: 7) }
             .accessibilityLabel(PlannerDates.format("\(state.month)-01", "MMMMyyyy"))
-            aside(byDate: byDate, events: events).frame(width: 300)
+            .topAligned()
+            aside(byDate: byDate, events: events).frame(width: 300).topAligned()
         }
         .fixedSize(horizontal: false, vertical: true)
     }
@@ -288,8 +289,8 @@ struct WebCalendarScreen: View {
                 }
                 .padding(.top, 16)
             }
-            StyledText("Drag tasks between days to reschedule, or use a task’s edit button to pick a date. Arrow keys move between days.", "cal.aside.hint", lines: nil)
-                .fixedSize(horizontal: false, vertical: true)
+            PrettyText("Drag tasks between days to reschedule, or use a task’s edit button to pick a date. Arrow keys move between days.", PS("cal.aside.hint").resolve(scheme).text)
+                .foregroundStyle(PS("cal.aside.hint").resolve(scheme).color.color)
                 .padding(.top, PS("cal.aside.hint").resolve(scheme).margin.top)
             unscheduled(target: state.selected)
         }
@@ -360,8 +361,10 @@ struct WebCalendarScreen: View {
                 HStack(alignment: .top, spacing: 0) {
                     Text("All day").webText(label.text).foregroundStyle(label.color.color).lineLimit(1)
                         .padding(label.padding.edgeInsets).frame(width: 56, alignment: .trailing)
+                        .topAligned()
                     ForEach(days, id: \.self) { d in
                         AllDayCell(day: d, selected: state.selected == d, items: (byDate[d] ?? []).filter { TaskDates.minutes($0.dueTime) == nil }, events: (events[d] ?? []).filter(\.allDay), state: state, tasks: tasks)
+                            .topAligned()
                     }
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -376,7 +379,8 @@ struct WebCalendarScreen: View {
             .clipShape(RoundedRectangle(cornerRadius: r, style: .circular))
             .webBox(card)
             let hint = PS("week.hint").resolve(scheme)
-            StyledText("Drag a task to a time to set it, or to the all-day row to keep just the date. Select a task to edit it.", "week.hint", lines: nil)
+            PrettyText("Drag a task to a time to set it, or to the all-day row to keep just the date. Select a task to edit it.", hint.text)
+                .foregroundStyle(hint.color.color)
                 .padding(.top, hint.margin.top)
             unscheduled(target: days.contains(state.selected) ? state.selected : state.today)
         }
@@ -694,9 +698,13 @@ struct HourGrid: View {
             ScrollView {
                 ZStack(alignment: .topLeading) {
                     // Where it opens: 6:00 less 10 pt.
-                    Color.clear.frame(width: 1, height: 1).offset(y: CGFloat(CalendarMath.firstVisibleHour) * Self.hour - 10).id("start")
+                    VStack(spacing: 0) {
+                        Color.clear.frame(width: 1, height: CGFloat(CalendarMath.firstVisibleHour) * Self.hour - 10)
+                        Color.clear.frame(width: 1, height: 1).id("start")
+                    }
                     HStack(alignment: .top, spacing: 0) {
                         ZStack(alignment: .topTrailing) {
+                            Color.clear
                             ForEach(1..<24, id: \.self) { h in
                                 Text(PlannerDates.time(h * 60)).webText(label.text).monospacedDigit().foregroundStyle(label.color.color)
                                     .padding(.trailing, 8)

@@ -83,6 +83,27 @@ const scoped = {
  * row; see lib/seq.ts and SYNC_PROTOCOL.md). Client-visible identity uses
  * `publicId` (ULID) fields; Convex `_id`s never leave the backend as identity.
  */
+/** A role in a team Vault (docs/VAULT_PLAN.md §1). */
+export const vVaultRole = v.union(v.literal("custodian"), v.literal("member"));
+/** Who did something, for the Vault's log. */
+export const vVaultLogRole = v.union(v.literal("owner"), v.literal("custodian"), v.literal("member"), v.literal("recipient"), v.literal("link"), v.literal("system"));
+export const vVaultGrantLayer = v.union(v.literal("passcode"), v.literal("recovery"), v.literal("custodian"));
+export const vVaultPendingReason = v.union(v.literal("added"), v.literal("reset"), v.literal("rotation"));
+/** What a vault item is (password items, and Files & Notes' notes and files). */
+export const vVaultItemKind = v.union(
+  v.literal("login"),
+  v.literal("apiKey"),
+  v.literal("card"),
+  v.literal("bankAccount"),
+  v.literal("secureNote"),
+  v.literal("sshKey"),
+  v.literal("wifi"),
+  v.literal("licence"),
+  v.literal("identity"),
+  v.literal("note"),
+  v.literal("file"),
+);
+
 export default defineSchema({
   profiles: defineTable({
     tokenIdentifier: v.string(),
@@ -728,6 +749,32 @@ export default defineSchema({
     .index("by_profile_day", ["profileId", "day"])
     .index("by_day", ["day"])
     .index("by_workspace_day", ["workspaceId", "day"]),
+
+  /**
+   * Foli AI's refusals per person per day, by kind (lib/ai/safety.ts, docs/AI_GUARDRAILS.md). Never the
+   * question, the answer or any note text. Kept 90 days.
+   */
+  aiSafetyCounts: defineTable({
+    profileId: v.id("profiles"),
+    day: v.string(),
+    kind: v.union(v.literal("harmful"), v.literal("crisis"), v.literal("other"), v.literal("filtered")),
+    count: v.number(),
+  })
+    .index("by_profile_day", ["profileId", "day"])
+    .index("by_day", ["day"]),
+
+  /**
+   * Whether Foli AI is paused for a person (lib/ai/safety.ts): the times of their latest harmful refusals
+   * (at most 5, within the last hour), and the pause they led to.
+   */
+  aiSafetyState: defineTable({
+    profileId: v.id("profiles"),
+    recentHarmful: v.array(v.number()),
+    pausedUntil: v.optional(v.number()),
+    pausedAt: v.optional(v.number()),
+  })
+    .index("by_profile", ["profileId"])
+    .index("by_paused_until", ["pausedUntil"]),
 
   /**
    * AI credits used per credit account per period (lib/credits.ts). An account is a person in Personal
@@ -1995,8 +2042,11 @@ export default defineSchema({
       v.literal("share"),
       v.literal("share_change"),
       v.literal("system"),
+      v.literal("vault"),
     ),
     actorId: v.optional(v.id("profiles")),
+    /** A change in a Vault (docs/VAULT_PLAN.md §8): who and what kind only; it opens the Vault. */
+    vaultId: v.optional(v.id("vaults")),
     documentId: v.optional(v.id("documents")),
     threadId: v.optional(v.id("commentThreads")),
     inviteId: v.optional(v.id("workspaceInvites")),
@@ -2849,4 +2899,297 @@ export default defineSchema({
     lastError: v.optional(v.string()),
     createdAt: v.number(),
   }),
+
+  // ---- Vault (docs/VAULT_PLAN.md) ------------------------------------------------------------------------------
+  // One Vault per workspace and one in each Personal, always end-to-end encrypted whatever the space's level.
+  // Content rows are scoped (they go with their place); the log is deliberately not (it outlives the place, 3
+  // years from each entry, and nothing deletes an entry before then).
+
+  /** A Vault: its current key version, its settings and its log's chain head. One per scope. */
+  vaults: defineTable({
+    publicId: v.string(),
+    ...scoped,
+    /** The current vault key version; 0 until the first person opens it and makes the key. */
+    keyVersion: v.number(),
+    /** Locks after this many idle minutes (1 to 30; 5 by default). */
+    autoLockMinutes: v.number(),
+    /** The owner's choice: custodians may name other custodians (otherwise only the owner does). */
+    custodiansNameCustodians: v.boolean(),
+    /** The log's last entry: its number and hash (the next entry chains to it). */
+    logSeq: v.number(),
+    logHead: v.string(),
+    /** Someone lost access: the next custodian device to open the Vault makes a new key version for everyone left. */
+    rotationNeeded: v.optional(v.boolean()),
+    /** When a custodian last confirmed who has access (a reminder comes every 90 days). */
+    accessReviewedAt: v.optional(v.number()),
+    createdBy: v.id("profiles"),
+    createdAt: v.number(),
+  })
+    .index("by_public_id", ["publicId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** Someone with access to a team Vault, and their role. The workspace owner is always a custodian (no row needed). */
+  vaultMembers: defineTable({
+    vaultId: v.id("vaults"),
+    ...scoped,
+    profileId: v.id("profiles"),
+    role: vVaultRole,
+    addedBy: v.id("profiles"),
+    createdAt: v.number(),
+  })
+    .index("by_vault", ["vaultId"])
+    .index("by_vault_profile", ["vaultId", "profileId"])
+    .index("by_profile", ["profileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** One row per vault key version: a check value the device verifies after unwrapping. */
+  vaultKeys: defineTable({
+    vaultId: v.id("vaults"),
+    ...scoped,
+    version: v.number(),
+    check: v.bytes(),
+    createdBy: v.id("profiles"),
+    createdAt: v.number(),
+    retiredAt: v.optional(v.number()),
+  })
+    .index("by_vault_version", ["vaultId", "version"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /**
+   * A vault key version for one person: sealed to their account key, then wrapped again with a key from their
+   * passcode (a slow key function run on their device). The server holds it and can open neither layer.
+   */
+  vaultGrants: defineTable({
+    vaultId: v.id("vaults"),
+    ...scoped,
+    profileId: v.id("profiles"),
+    version: v.number(),
+    /**
+     * passcode: the inner layer sealed again with their passcode key; recovery: with their vault recovery key;
+     * custodian: only the inner layer, from a custodian's device, until the person sets their passcode.
+     */
+    layer: vVaultGrantLayer,
+    /** The person's account epoch the inner layer was sealed to. */
+    epoch: v.number(),
+    wrapped: v.bytes(),
+    /** The passcode layer's salt and key-function parameters (the device needs them to unwrap). */
+    passcodeSalt: v.optional(v.bytes()),
+    kdf: v.optional(v.object({ m: v.number(), t: v.number(), p: v.number() })),
+    grantedBy: v.id("profiles"),
+    createdAt: v.number(),
+  })
+    .index("by_vault_profile", ["vaultId", "profileId", "version"])
+    .index("by_vault_profile_layer", ["vaultId", "profileId", "layer", "version"])
+    .index("by_vault_version", ["vaultId", "version"])
+    .index("by_profile", ["profileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** Someone waiting for a custodian's device to grant them the vault key (added, reset their passcode, a rotation). */
+  vaultPendingGrants: defineTable({
+    vaultId: v.id("vaults"),
+    ...scoped,
+    profileId: v.id("profiles"),
+    reason: vVaultPendingReason,
+    createdAt: v.number(),
+  })
+    .index("by_vault", ["vaultId"])
+    .index("by_vault_profile", ["vaultId", "profileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** Wrong passcodes in a row for one person in one Vault, and the lockout they caused. */
+  vaultThrottles: defineTable({
+    vaultId: v.id("vaults"),
+    ...scoped,
+    profileId: v.id("profiles"),
+    failures: v.number(),
+    lockedUntil: v.optional(v.number()),
+    lockouts: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_vault_profile", ["vaultId", "profileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** A folder in the Vault's Files & Notes (name sealed with the vault key; folders are never shared). */
+  vaultFolders: defineTable({
+    publicId: v.string(),
+    vaultId: v.id("vaults"),
+    ...scoped,
+    parentFolderId: v.optional(v.id("vaultFolders")),
+    sealedName: v.bytes(),
+    keyVersion: v.number(),
+    createdBy: v.id("profiles"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    /** In the Vault's Trash since then (emptied by custodians, or after 30 days). */
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_public_id", ["publicId"])
+    .index("by_vault_parent", ["vaultId", "parentFolderId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /**
+   * A password item (login, API key, card…), a note or a file in the Vault: a summary and its secrets, sealed under
+   * its own item key, which the vault key wraps. A note's content is its secrets record; a file's bytes are stored
+   * encrypted with their own file key, which the secrets record holds.
+   */
+  vaultItems: defineTable({
+    publicId: v.string(),
+    vaultId: v.id("vaults"),
+    ...scoped,
+    kind: vVaultItemKind,
+    /** Files & Notes only (password items live in their own section). */
+    folderId: v.optional(v.id("vaultFolders")),
+    /** What the list shows (title, username, website, icon), sealed with the item key. */
+    sealedSummary: v.bytes(),
+    /** The secrets (passwords, keys, 2FA seeds, custom hidden fields): served only by vaultItems.open, which logs it. */
+    sealed: v.bytes(),
+    /** The item key, wrapped by the vault key version `keyVersion`. */
+    wrappedKey: v.bytes(),
+    keyVersion: v.number(),
+    /** Blind index of a password (HMAC with the vault's mac key) so reuse is found without reading it. */
+    passwordMac: v.optional(v.string()),
+    /** A file's encrypted bytes (only ciphertext is stored) and their size, counted toward the place's storage. */
+    storageId: v.optional(v.id("_storage")),
+    size: v.optional(v.number()),
+    revision: v.number(),
+    createdBy: v.id("profiles"),
+    updatedBy: v.id("profiles"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_public_id", ["publicId"])
+    .index("by_vault_kind", ["vaultId", "kind"])
+    .index("by_vault_folder", ["vaultId", "folderId"])
+    .index("by_vault_mac", ["vaultId", "passwordMac"])
+    .index("by_vault_deleted", ["vaultId", "deletedAt"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /** Every earlier version of an item (an old password can be brought back). */
+  vaultItemVersions: defineTable({
+    itemId: v.id("vaultItems"),
+    vaultId: v.id("vaults"),
+    ...scoped,
+    revision: v.number(),
+    sealedSummary: v.bytes(),
+    sealed: v.bytes(),
+    wrappedKey: v.bytes(),
+    keyVersion: v.number(),
+    editedBy: v.id("profiles"),
+    editedAt: v.number(),
+  })
+    .index("by_item", ["itemId", "revision"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /**
+   * A vault note or item shared with one person outside the Vault (docs/VAULT_PLAN.md §6): its item key sealed to
+   * their account key. They open just that item, from Shared with Me; every open is logged.
+   */
+  vaultShares: defineTable({
+    publicId: v.string(),
+    vaultId: v.id("vaults"),
+    ...scoped,
+    itemId: v.id("vaultItems"),
+    profileId: v.id("profiles"),
+    canEdit: v.boolean(),
+    /** The item key sealed to the recipient's account X25519 key (their epoch). */
+    wrappedKey: v.bytes(),
+    epoch: v.number(),
+    /** Required for people outside the workspace. */
+    expiresAt: v.optional(v.number()),
+    sharedBy: v.id("profiles"),
+    createdAt: v.number(),
+  })
+    .index("by_public_id", ["publicId"])
+    .index("by_item", ["itemId"])
+    .index("by_profile", ["profileId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /**
+   * A one-time secret link to a vault item: its item key wrapped by a key that lives only in the link's fragment.
+   * Works a set number of times (1 to 10) until it expires; the wrapped key is deleted once it's used up.
+   */
+  vaultLinks: defineTable({
+    publicId: v.string(),
+    vaultId: v.id("vaults"),
+    ...scoped,
+    itemId: v.id("vaultItems"),
+    /** Deleted (undefined) once the link is used up, revoked or expired. */
+    wrappedKey: v.optional(v.bytes()),
+    maxViews: v.number(),
+    views: v.number(),
+    expiresAt: v.number(),
+    /** An optional extra password (hashed), on top of the key in the fragment. */
+    passwordHash: v.optional(v.string()),
+    passwordSalt: v.optional(v.string()),
+    createdBy: v.id("profiles"),
+    createdAt: v.number(),
+    endedAt: v.optional(v.number()),
+    endedHow: v.optional(v.union(v.literal("usedUp"), v.literal("revoked"), v.literal("expired"))),
+  })
+    .index("by_public_id", ["publicId"])
+    .index("by_item", ["itemId"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_owner", ["ownerProfileId"]),
+
+  /**
+   * The Vault's log (docs/VAULT_PLAN.md §7). Written only by convex/lib/vault/log.ts; nothing edits or deletes an
+   * entry except the 3-year expiry. Not scoped: it keeps the vault's public id and place, so it outlives them.
+   */
+  vaultLog: defineTable({
+    vaultPublicId: v.string(),
+    place: v.object({ kind: v.union(v.literal("personal"), v.literal("workspace")), id: v.string() }),
+    seq: v.number(),
+    at: v.number(),
+    timeZone: v.optional(v.string()),
+    actorId: v.optional(v.id("profiles")),
+    /** As they were at that moment (kept after they leave or delete their account). */
+    actorName: v.string(),
+    actorEmail: v.optional(v.string()),
+    actorRole: vVaultLogRole,
+    event: v.string(),
+    outcome: v.union(v.literal("ok"), v.literal("failed")),
+    reason: v.optional(v.string()),
+    itemPublicId: v.optional(v.string()),
+    itemKind: v.optional(v.string()),
+    /** Names and paths, sealed with the vault key (only people with access read them). */
+    sealedDetail: v.optional(v.bytes()),
+    /** Facts that aren't secret: changed field names, counts, recipient, role, expiry, file type and size. */
+    detail: v.optional(v.any()),
+    device: v.optional(v.object({ id: v.optional(v.string()), label: v.optional(v.string()), kind: v.optional(v.string()) })),
+    ip: v.optional(v.string()),
+    location: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+    source: v.union(v.literal("server"), v.literal("device")),
+    prevHash: v.string(),
+    hash: v.string(),
+    expiresAt: v.number(),
+  })
+    .index("by_vault_seq", ["vaultPublicId", "seq"])
+    .index("by_vault_actor", ["vaultPublicId", "actorId", "seq"])
+    .index("by_vault_item", ["vaultPublicId", "itemPublicId", "seq"])
+    .index("by_expires", ["expiresAt"]),
+
+  /** Each day, the server's signature over every Vault's latest log hash (the chain can then be checked). */
+  vaultLogAnchors: defineTable({
+    vaultPublicId: v.string(),
+    seq: v.number(),
+    hash: v.string(),
+    signature: v.string(),
+    at: v.number(),
+    expiresAt: v.number(),
+  })
+    .index("by_vault_seq", ["vaultPublicId", "seq"])
+    .index("by_expires", ["expiresAt"]),
 });
+

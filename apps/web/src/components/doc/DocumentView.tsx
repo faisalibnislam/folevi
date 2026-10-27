@@ -55,6 +55,7 @@ import { sameItems, useEngineSelector, useLocalStorage } from "@/lib/hooks/useEn
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { localDb } from "@/lib/sync/db";
 import { isSealedDocument } from "@/lib/e2ee/router/hooks";
+import { MoveToVaultDialog } from "@/components/vault/MoveToVaultDialog";
 import { Button } from "@/components/ui/Button";
 import { SyncedRedirect } from "@/components/editor/synced/SyncedRedirect";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
@@ -226,6 +227,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [historyVersion, setHistoryVersion] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [vaultMoveOpen, setVaultMoveOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const canCopy = useCanCopyElsewhere();
   const [exportOpen, setExportOpen] = useState(false);
@@ -738,6 +740,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const canNest = Boolean(meta && !readOnly && (meta.access === "write" || meta.access === "manage"));
   // The note's flashcards in the review queue: "Review 12 cards in this note".
   const reviewWindow = useReviewWindow(5 * 60_000);
+  // "Move to the Vault…" for a note of this place that its editor can manage, where there's a Vault (its flag on).
+  const vaultHere = useQuery(api.vault.get, caps.sharing && meta && !meta.inTrash && meta.document.kind !== "template" && inCurrentScope(meta.document, meta.isMember, scopeKey) ? { scope: documentScope(meta.document) } : "skip");
   const studyCards = useQuery(api.study.summary, meta && !meta.inTrash ? { documentId, ...reviewWindow } : "skip");
   const docActions = useDocumentActions({
     documentId,
@@ -762,6 +766,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
     },
     onDelete: () => setDeleteOpen(true),
     onMove: () => setMoveOpen(true),
+    onMoveToVault: vaultHere && (meta?.access === "manage" || meta?.access === "write") ? () => setVaultMoveOpen(true) : undefined,
     // A copy in Personal or a workspace (your own places; a page shared with you can be copied into them too).
     onCopyTo: caps.copyTo && meta && !meta.inTrash && (canCopy || !meta.isMember) ? () => setCopyOpen(true) : undefined,
     onFind: editor ? () => openFind(!readOnly) : undefined,
@@ -818,7 +823,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               )
             : null}
           <div className="mx-auto max-w-lg px-6 py-24 text-center">
-            <h1 className="ui-display text-4xl">This page isn’t available</h1>
+            <h1 className="ui-display text-large-title">This page isn’t available</h1>
             <p className="mt-3 text-muted">It may have been deleted, or you don’t have access. If someone shared it with you, ask them to check the sharing settings.</p>
             <AppLink href="/documents" className="mt-6 inline-block text-accent underline underline-offset-2">
               Back to Home
@@ -841,9 +846,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
   if (readyNow) everReady.current = true;
   const ready = everReady.current;
 
+  // Someone else's page (shared with them, on its own or through a folder) isn't in their folders or Drafts:
+  // it's under Shared with Me.
+  const guestHere = meta !== undefined && meta !== null && !meta.isMember;
   const trail: Crumb[] = [
-    ...folderAbove.map((f) => ({ href: `/folders/${f.id}`, label: f.name })),
-    folder ? { href: `/folders/${folder.id}`, label: folder.name } : { href: "/drafts", label: "Drafts" },
+    ...(guestHere ? [] : folderAbove.map((f) => ({ href: `/folders/${f.id}`, label: f.name }))),
+    guestHere ? { href: "/shared", label: "Shared with Me" } : folder ? { href: `/folders/${folder.id}`, label: folder.name } : { href: "/drafts", label: "Drafts" },
     ...(meta?.breadcrumbs ?? []).map((b) => ({ href: `/d/${b.id}`, label: b.title || "Untitled", icon: null })),
   ];
   const pageTitle = summary?.title || localTitle || "Untitled";
@@ -873,7 +881,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setShareOpen(true)}
           title={shareState === "link" ? "Anyone with the link can view" : shareState === "people" ? "Shared with other people" : "Only you can open this"}
-          className={`inline-flex h-10 items-center gap-2 rounded-control px-3 text-[13.5px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${
+          className={`inline-flex h-10 items-center gap-2 rounded-control px-3 text-body font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${
             shareState ? "bg-accent-soft text-heading hover:bg-[color-mix(in_oklab,var(--color-accent-soft)_80%,var(--color-ink)_8%)]" : "text-ink hover:bg-accent-soft hover:text-heading"
           }`}
         >
@@ -915,9 +923,9 @@ export function DocumentView({ documentId }: { documentId: string }) {
       }}
       title={
         sidebarOpen ? (
-          readOnly ? <span className="ui-chip h-6 bg-sunken text-[11px] text-muted">{meta?.inTrash ? "In Trash" : "View only"}</span> : null
+          readOnly ? <span className="ui-chip h-6 bg-sunken text-footnote text-muted">{meta?.inTrash ? "In Trash" : "View only"}</span> : null
         ) : (
-        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-[13.5px]">
+        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-body">
           {folderAbove.length > shownAbove.length ? (
             <>
               <span className="px-1 text-faint" title={folderAbove.map((f) => f.name).join(" / ")}>
@@ -960,7 +968,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
           <span className="truncate rounded-chip px-2 py-1 font-semibold text-heading" aria-current="page">
             {look?.title || localTitle || "Untitled"}
           </span>
-          {readOnly ? <span className="ui-chip ml-1 h-6 flex-none bg-sunken text-[11px] text-muted">{meta?.inTrash ? "In Trash" : "View only"}</span> : null}
+          {readOnly ? <span className="ui-chip ml-1 h-6 flex-none bg-sunken text-footnote text-muted">{meta?.inTrash ? "In Trash" : "View only"}</span> : null}
         </nav>
         )
       }
@@ -1010,7 +1018,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 ? // Native chrome mode: the bars' room is the holder's padding (--native-inset-*), so the page
                   // starts right under the native bar and needs only a little room at the end.
                   "fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-6"
-                : `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "pt-[calc(env(safe-area-inset-top)+52px)]" : ""}`
+                : `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "pt-[calc(env(safe-area-inset-top)+60px)]" : ""}`
               : `fb-page relative h-full overflow-y-auto rounded-panel px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`
           }
           data-backdrop={pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? (blurredBackdrop ? "blur" : "on") : undefined}
@@ -1288,6 +1296,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
       ) : null}
       {meta && caps.sharing ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} personal={meta.document.workspaceId === null} /> : null}
       {canEditPage ? <VersionHistory open={historyOpen} onClose={() => (setHistoryOpen(false), setHistoryVersion(null))} initialVersion={historyVersion} documentId={documentId} title={summary?.title ?? ""} style={style} cover={summary?.cover ?? DEFAULT_COVER} /> : null}
+      {vaultMoveOpen ? <MoveToVaultDialog documentId={documentId} title={summary?.title ?? ""} onClose={() => setVaultMoveOpen(false)} /> : null}
       <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={documentId} title={summary?.title ?? ""} />
       {meta ? (
         <MoveNoteDialog
@@ -1389,7 +1398,7 @@ function EditorsBar({ authors, onHide }: { authors: { authors: [string, string, 
   for (const [, key] of authors.authors) counts.set(key, (counts.get(key) ?? 0) + 1);
   const people = [...counts.entries()].sort((a, b) => b[1] - a[1]);
   return (
-    <div role="status" className="mx-5 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)] px-3 py-2 text-xs text-muted sm:mx-16">
+    <div role="status" className="mx-5 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)] px-3 py-2 text-footnote text-muted sm:mx-16">
       <span>Each line shows who last edited it.</span>
       {people.map(([key]) => (
         <span key={key} className="inline-flex items-center gap-1.5 text-ink">
@@ -1422,7 +1431,7 @@ function BarAvatars({ me, others }: { me: { name: string; avatarUrl: string | nu
           </span>
         ))}
       </div>
-      {more > 0 ? <span className="ml-1.5 text-xs font-medium text-muted">+{more}</span> : null}
+      {more > 0 ? <span className="ml-1.5 text-footnote font-medium text-muted">+{more}</span> : null}
     </div>
   );
 }
@@ -1437,7 +1446,7 @@ function NestedPath({ crumbs, title }: { crumbs: { id: string; title: string }[]
   const parent = crumbs[crumbs.length - 1]!;
   return (
     <nav aria-label="Page path" className="relative mx-auto -mt-5 mb-2.5" style={{ maxWidth: "calc(var(--editor-width) + 8rem)" }}>
-      <ol className="ui-glass inline-flex max-w-full min-w-0 items-center gap-0.5 rounded-control p-0.5 text-[12.5px]">
+      <ol className="ui-glass inline-flex max-w-full min-w-0 items-center gap-0.5 rounded-control p-0.5 text-subheadline">
         <li className="flex-none">
           <AppLink href={`/d/${parent.id}`} aria-label={`Back to ${parent.title || "Untitled"}`} title={`Back to ${parent.title || "Untitled"}`} className="grid h-6 w-6 place-items-center rounded-chip text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
             <ArrowLeft size={13} aria-hidden />
@@ -1702,7 +1711,7 @@ function DocumentHeader({
             }
           }}
           style={titleColor ? { color: titleColor, textShadow: whiteTitle ? "0 1px 14px rgb(0 0 0 / 0.4)" : "0 1px 12px rgb(255 255 255 / 0.5)" } : undefined}
-          className={`block w-full resize-none overflow-hidden bg-transparent text-[40px] font-semibold leading-[1.12] outline-none ${titleColor ? "placeholder:text-current placeholder:opacity-55" : "text-heading placeholder:text-[var(--color-ink-faint)]"} ${onCover ? "" : "mt-4"} ${style.font === "mono" ? "[font-family:var(--note-mono,var(--font-mono))] [font-size-adjust:ex-height_0.55] text-[34px] tracking-[-0.02em]" : style.font === "rounded" ? "[font-family:var(--note-soft,var(--font-rounded))] [font-size-adjust:ex-height_0.52] tracking-[-0.02em]" : "[font-family:var(--note-serif,var(--font-serif))] [font-size-adjust:ex-height_0.45] tracking-[-0.012em]"}`}
+          className={`block w-full resize-none overflow-hidden bg-transparent text-[40px] font-semibold leading-[1.12] outline-none ${titleColor ? "placeholder:text-current placeholder:opacity-55" : "text-heading placeholder:text-[var(--color-ink-faint)]"} ${onCover ? "" : "mt-4"} ${style.font === "mono" ? "[font-family:var(--note-mono,var(--font-mono))] [font-size-adjust:ex-height_0.55] text-large-title tracking-[-0.02em]" : style.font === "rounded" ? "[font-family:var(--note-soft,var(--font-rounded))] [font-size-adjust:ex-height_0.52] tracking-[-0.02em]" : "[font-family:var(--note-serif,var(--font-serif))] [font-size-adjust:ex-height_0.45] tracking-[-0.012em]"}`}
           aria-describedby={readOnly ? `ro-${documentId}` : undefined}
         />
       </h1>
@@ -1759,7 +1768,7 @@ function DocumentHeader({
               setSuggesting(false);
             }
           }}
-          className={`mt-2 inline-flex items-center gap-1.5 rounded-chip px-3 py-1 text-[12.5px] font-medium backdrop-blur-md transition-colors disabled:opacity-60 ${titleColor ? "bg-black/20 text-white hover:bg-black/30" : "bg-[var(--glass-hover)] text-ink hover:bg-[var(--glass-active)]"}`}
+          className={`mt-2 inline-flex items-center gap-1.5 rounded-chip px-3 py-1 text-subheadline font-medium backdrop-blur-md transition-colors disabled:opacity-60 ${titleColor ? "bg-black/20 text-white hover:bg-black/30" : "bg-[var(--glass-hover)] text-ink hover:bg-[var(--glass-active)]"}`}
         >
           <AiIcon size={13} aria-hidden className={suggesting ? "animate-pulse motion-reduce:animate-none" : ""} />
           {suggesting ? "Thinking of a title…" : "Suggest a title"}
@@ -1770,7 +1779,7 @@ function DocumentHeader({
   return (
     <header>
       {onCover ? (
-        <div className="relative isolate flex min-h-40 items-end overflow-hidden rounded-t-chip border-b border-line/60 px-5 pb-6 pt-14 sm:min-h-48 sm:px-16">
+        <div data-note-cover className="relative isolate flex min-h-40 items-end overflow-hidden rounded-t-chip border-b border-line/60 px-5 pb-6 pt-14 sm:min-h-48 sm:px-16">
           {/* The theme's image, toned in its own colour under the title so the title reads: darkened (multiply)
               with a deep shade of its key colour where the title is white, lightened (screen) with its page
               colour where the title is dark. */}
@@ -1829,18 +1838,18 @@ function ConflictBanner({ documentId, onResolvedAll }: { documentId: string; /**
   // Not an alert: the sync status already announces conflicts.
   return (
     <section ref={sectionRef} aria-labelledby={`conflict-${c.id}`} className="mx-5 mb-5 rounded-chip bg-plum-soft p-4 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-plum)_30%,transparent)] sm:mx-16">
-      <h2 ref={headingRef} id={`conflict-${c.id}`} tabIndex={-1} className="text-sm font-semibold text-plum-ink outline-none">
+      <h2 ref={headingRef} id={`conflict-${c.id}`} tabIndex={-1} className="text-subheadline font-semibold text-plum-ink outline-none">
         {conflicts.length === 1 ? "This block was changed in two places" : `${conflicts.length} blocks were changed in two places`}
       </h2>
-      <p className="mt-1 text-sm text-ink">Both versions are kept. Nothing is lost until you choose.</p>
+      <p className="mt-1 text-subheadline text-ink">Both versions are kept. Nothing is lost until you choose.</p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div className="ui-card rounded-control p-3">
           <p className="ui-caps">{c.reason === "deleted" ? "Deleted elsewhere" : c.reason === "edited" ? "Edited elsewhere" : "Version from elsewhere"}</p>
-          <p className="mt-1 whitespace-pre-wrap text-sm">{c.reason === "deleted" ? "Someone deleted this block." : text(theirs)}</p>
+          <p className="mt-1 whitespace-pre-wrap text-subheadline">{c.reason === "deleted" ? "Someone deleted this block." : text(theirs)}</p>
         </div>
         <div className="ui-card rounded-control p-3 shadow-[var(--shadow-card),0_0_0_2px_color-mix(in_oklab,var(--color-ember)_45%,transparent)]">
           <p className="ui-caps">{c.reason === "edited" ? "You deleted it" : "Your version"}</p>
-          <p className={`mt-1 whitespace-pre-wrap text-sm ${c.reason === "edited" ? "text-muted line-through" : ""}`}>{text(c.client)}</p>
+          <p className={`mt-1 whitespace-pre-wrap text-subheadline ${c.reason === "edited" ? "text-muted line-through" : ""}`}>{text(c.client)}</p>
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -1869,7 +1878,7 @@ function ConflictBanner({ documentId, onResolvedAll }: { documentId: string; /**
           </Button>
         ) : null}
         {conflicts.length > 1 ? (
-          <Select aria-label="Choose conflict" value={c.id} onChange={(e) => setOpenId(e.target.value)} className="ml-auto h-8 ui-raised rounded-chip px-3 text-xs">
+          <Select aria-label="Choose conflict" value={c.id} onChange={(e) => setOpenId(e.target.value)} className="ml-auto h-8 ui-raised rounded-chip px-3 text-footnote">
             {conflicts.map((x, i) => (
               <option key={x.id} value={x.id}>
                 Conflict {i + 1}
@@ -1897,11 +1906,11 @@ function Backlinks({ documentId }: { documentId: string }) {
             <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-chip px-2 py-1.5 text-ink hover:bg-[var(--glass-hover)]">
               <FileText size={14} aria-hidden className="flex-none text-muted" />
               <span className="font-medium">{l.title || "Untitled"}</span>
-              <span className="truncate text-xs text-muted">{l.excerpt}</span>
+              <span className="truncate text-footnote text-muted">{l.excerpt}</span>
             </AppLink>
           </li>
         ))}
-        {!data.linked.length ? <li className="px-2 py-1 text-sm text-muted">No pages link here yet.</li> : null}
+        {!data.linked.length ? <li className="px-2 py-1 text-subheadline text-muted">No pages link here yet.</li> : null}
       </ul>
       {data.unlinked.length ? (
         <>
@@ -1938,6 +1947,7 @@ function useDocumentActions({
   onRelated,
   onDelete,
   onMove,
+  onMoveToVault,
   onCopyTo,
   onFind,
   onExport,
@@ -1967,6 +1977,8 @@ function useDocumentActions({
   onRelated?: () => void;
   onDelete: () => void;
   onMove: () => void;
+  /** Opens "Move to the Vault?" (absent where there's no Vault, or for people who can't manage the note). */
+  onMoveToVault?: () => void;
   /** Opens Copy to (absent when there's nowhere else to copy it). */
   onCopyTo?: () => void;
   /** Opens the find & replace bar (absent until the editor is ready). */
@@ -2017,6 +2029,7 @@ function useDocumentActions({
         "separator" as const,
         { label: "Duplicate", icon: <Copy size={14} />, onSelect: () => void duplicate({ documentId }).then((d) => navigate(`/d/${d.id}`), (e) => toast.show(errorMessage(e), { tone: "error" })) },
         ...(onCopyTo ? [{ label: "Copy to…", icon: <CopyPlus size={14} />, onSelect: onCopyTo }] : []),
+        ...(onMoveToVault ? [{ label: "Move to the Vault…", icon: <Lock size={14} />, onSelect: onMoveToVault }] : []),
         ...(elsewhere ? [{ label: "Move to another place…", icon: <ArrowRightLeft size={14} />, onSelect: () => openMovePlaces({ folders: [], notes: [documentId] }) }] : []),
         ...(kind !== "template" ? [{ label: "Save as template", icon: <LayoutTemplate size={14} />, onSelect: () => void act(duplicate({ documentId, asTemplate: true }), "Saved to Templates") }] : []),
         archived

@@ -15,7 +15,9 @@ import { coverArtOf, coverArtThumbUrl, styleColorsOf } from "@/lib/cover";
 
 export type FolderPreview = { cover: DocumentCover; title?: string; excerpt?: string };
 
-/** The card's box: portrait, and the container its cqw sizes are measured against. `group` drives the hover; it isn't text to select (a held finger opens its menu). */
+/**
+ * The card's box: portrait, and the container its cqw sizes are measured against (`--fc-text` scales the
+ * cover's labels on their own: a small card keeps a full-size card's count, age and name). `group` drives the hover; it isn't text to select (a held finger opens its menu). */
 export const FOLDER_CARD_BOX = "group relative aspect-[820/912] select-none [container-type:inline-size]";
 /** What lifts on hover: the whole drawing (its soft shadow is the back's own, FolderCardArt). */
 export const FOLDER_CARD_FRAME =
@@ -104,17 +106,17 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
         {/* page count */}
         <span
           data-fc="count"
-          className="absolute left-[7%] top-[9.26%] inline-flex items-center rounded-tiny px-[2.2cqw] py-[1.3cqw] font-serif text-[clamp(12px,5.4cqw,22px)] font-semibold leading-none tabular-nums text-[#111114]"
+          className="absolute left-[7%] top-[9.26%] inline-flex items-center rounded-tiny px-[calc(2.2cqw*var(--fc-text,1))] py-[calc(1.3cqw*var(--fc-text,1))] font-serif text-[clamp(12px,calc(5.4cqw*var(--fc-text,1)),22px)] font-semibold leading-none tabular-nums text-[#111114]"
           style={{ background: `color-mix(in oklab, ${base} 55%, #8e94a3)` }}
         >
           {count.toLocaleString()}
         </span>
         {/* last update */}
-        <span data-fc="age" className="absolute right-[7%] top-[10.37%] -mt-[0.15em] max-w-[55%] truncate pb-[0.1em] font-serif text-[clamp(11px,5.6cqw,24px)] leading-[1.2]" style={{ color: `color-mix(in oklab, ${base} 25%, #3c4250)` }}>
+        <span data-fc="age" className="absolute right-[7%] top-[10.37%] -mt-[0.15em] max-w-[55%] truncate pb-[0.1em] font-serif text-[clamp(11px,calc(5.6cqw*var(--fc-text,1)),24px)] leading-[1.2]" style={{ color: `color-mix(in oklab, ${base} 25%, #3c4250)` }}>
           {age}
         </span>
         {/* name */}
-        <span data-fc="name" className="absolute bottom-[11.48%] left-[7%] right-[7%] line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[clamp(16px,9.4cqw,40px)] leading-[1.12] tracking-[-0.01em] text-[#0d0d10]">
+        <span data-fc="name" className="absolute bottom-[11.48%] left-[7%] right-[7%] line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[clamp(16px,calc(9.4cqw*var(--fc-text,1)),40px)] leading-[1.12] tracking-[-0.01em] text-[#0d0d10]">
           {name}
         </span>
       </div>

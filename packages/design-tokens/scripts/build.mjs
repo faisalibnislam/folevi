@@ -26,14 +26,19 @@ const shadowCss = (layers) =>
   layers.map(([x, y, blur, spread, c, inset]) => `${inset ? "inset " : ""}${x}px ${y}px ${blur}px ${spread}px ${c}`).join(", ");
 const shadowVars = (theme) => Object.entries(tokens.shadow[theme]).map(([k, v]) => `  --shadow-${kebab(k)}: ${shadowCss(v)};`);
 
+/** The UI type scale's roles (largeTitle → --type-large-title, title1 → --type-title-1) with their line heights. */
+const roleName = (r) => kebab(r).replace(/(\d)/, "-$1");
+const typeVars = (scale) => Object.entries(scale).flatMap(([r, { size, leading }]) => [`  --type-${roleName(r)}: ${size}px;`, `  --type-${roleName(r)}-leading: ${leading}px;`]);
+
 function buildCss() {
   const { color, space, radius, font, layout, motion } = tokens;
   const light = [...cssVars(color.light, "color"), ...shadowVars("light")].join("\n");
   const dark = [...cssVars(color.dark, "color"), ...shadowVars("dark")].join("\n");
   const shared = [
-    ...cssVars(space, "space", "px"),
+    ...Object.entries(stripMeta(space)).map(([k, v]) => `  --space-${k.replace(".", "_")}: ${v}px;`),
     ...cssVars(radius, "radius", "px"),
-    ...cssVars(font.size, "text", "px"),
+    ...typeVars(font.role.desktop),
+    `  --type-input-min: ${font.inputMin}px;`,
     ...Object.entries(font.lineHeight).map(([k, v]) => `  --leading-${kebab(k)}: ${v};`),
     ...Object.entries(font.weight).map(([k, v]) => `  --weight-${kebab(k)}: ${v};`),
     ...Object.entries(font.tracking).map(([k, v]) => `  --tracking-${kebab(k)}: ${v}em;`),
@@ -50,6 +55,11 @@ function buildCss() {
 ${shared}
   color-scheme: light;
 ${light}
+}
+
+/* The iPhone and iPad apps (and Android's): Apple's default Dynamic Type sizes for the same roles. */
+:root:is([data-iphone], [data-native]) {
+${typeVars(font.role.ios).join("\n")}
 }
 
 @media (prefers-color-scheme: dark) {
@@ -83,6 +93,29 @@ ${glassLight}
 
 :root[data-theme="dark"] {
 ${glassDark}
+}
+
+/* .ui-invert: one part of the page in the other theme, everything else unchanged (the Vault's panel: dark in
+   light mode, light in dark mode). Colours, shadows, the app's neutral chrome and glass, so its contents follow. */
+.ui-invert {
+  color-scheme: dark;
+${dark}
+${chromeDark}
+${glassDark}
+}
+
+:root[data-theme="dark"] .ui-invert {
+  color-scheme: light;
+${light}
+${chromeLight}
+${glassLight}
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ui-invert {
+    color-scheme: light;
+${[light, chromeLight, glassLight].join("\n").replace(/^ {2}/gm, "    ")}
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -129,7 +162,7 @@ const swiftName = (k) => (/^[0-9]/.test(k) ? `s${k.replace(".", "_")}` : k.repla
 const swiftString = (s) => JSON.stringify(String(s));
 
 function buildSwift() {
-  const { color, chrome, glass, space, radius, font, layout, motion, shadow } = tokens;
+  const { color, chrome, glass, space, spaceRoles, radius, font, layout, motion, shadow } = tokens;
   const covers = JSON.parse(readFileSync(resolve(root, "covers/covers.json"), "utf8"));
   const folders = JSON.parse(readFileSync(resolve(root, "covers/folder-colors.json"), "utf8"));
   const legacy = JSON.parse(readFileSync(resolve(root, "covers/folder-colors-legacy.json"), "utf8"));
@@ -148,7 +181,14 @@ function buildSwift() {
       return `        public static let ${swiftName(k)} = ShadowPair(light: [${layers("light")}], dark: [${layers("dark")}])`;
     })
     .join("\n");
-  const numbers = (obj) => Object.entries(obj).map(([k, v]) => `        public static let ${swiftName(k)}: CGFloat = ${num(v)}`).join("\n");
+  const numbers = (obj) => Object.entries(stripMeta(obj)).map(([k, v]) => `        public static let ${swiftName(k)}: CGFloat = ${num(v)}`).join("\n");
+  // The type scale's roles ({ size, leading } per platform) and the spacing roles, as the web's CSS has them.
+  const roles = (scale) => Object.entries(scale).map(([k, { size, leading }]) => `            public static let ${swiftName(k)} = TypeMetrics(size: ${num(size)}, leading: ${num(leading)})`).join("\n");
+  const spaceRole = (platform) =>
+    Object.entries(stripMeta(spaceRoles))
+      .filter(([, v]) => typeof v[platform] === "number")
+      .map(([k, v]) => `            public static let ${swiftName(k)}: CGFloat = ${num(v[platform])}`)
+      .join("\n");
   const bezier = String(motion.easing).match(/cubic-bezier\(([^)]+)\)/)[1].split(",").map((x) => num(Number(x.trim())));
   const themes = covers
     .map(
@@ -190,6 +230,41 @@ ${numbers(space)}
 ${numbers(radius)}
     }
 
+    /// The UI type scale (font.role, docs/DESIGN_SYSTEM.md "Type scale"): Desktop is the web app's compact scale,
+    /// which Folevi for Mac draws as is; Ios is Apple's default Dynamic Type sizes for the iPhone and iPad apps.
+    public enum TypeScale {
+        public enum Desktop {
+${roles(font.role.desktop)}
+        }
+        public enum Ios {
+${roles(font.role.ios)}
+        }
+    }
+
+    /// The note's own typography (font.document), outside the UI scale.
+    public enum DocumentType {
+${numbers(font.document)}
+    }
+
+    /// CSS font weights (100 to 900); the bundled variable fonts draw any of them.
+    public enum FontWeight {
+${numbers(font.weight)}
+    }
+
+    /// The smallest text field font size on a touch screen.
+    public static let inputMinSize: CGFloat = ${num(font.inputMin)}
+
+    /// Spacing by role (spaceRoles, docs/DESIGN_SYSTEM.md "Spacing").
+    public enum SpaceRole {
+        public enum Desktop {
+${spaceRole("desktop")}
+        }
+        public enum Ios {
+${spaceRole("ios")}
+        }
+    }
+
+    /// Legacy sizes (font.size), read by the iOS text styles until they move to TypeScale.Ios.
     public enum FontSize {
 ${numbers(font.size)}
     }

@@ -242,7 +242,7 @@ function PhoneTile({ tile, editor, disabled, onDone }: { tile: Tile; editor: Edi
       >
         {tile.picture}
       </span>
-      <span className="line-clamp-2 w-full break-words px-0.5 text-center text-[13px] leading-4 text-ink">{tile.label}</span>
+      <span className="line-clamp-2 w-full break-words px-0.5 text-center text-subheadline leading-4 text-ink">{tile.label}</span>
     </button>
   );
 }
@@ -261,7 +261,7 @@ function TileButton({ tile, editor, disabled }: { tile: Tile; editor: Editor | n
       <span className={`${PICTURE} ${disabled ? "" : PICTURE_LIVE}`} aria-hidden>
         {tile.picture}
       </span>
-      <span className={`line-clamp-2 w-full break-words px-0.5 text-center text-[11.5px] font-medium leading-tight text-muted ${disabled ? "" : "group-hover:text-ink"}`}>
+      <span className={`line-clamp-2 w-full break-words px-0.5 text-center text-footnote font-medium leading-tight text-muted ${disabled ? "" : "group-hover:text-ink"}`}>
         {tile.label}
       </span>
     </button>
@@ -290,7 +290,7 @@ function TableSizePicker({ editor, disabled }: { editor: Editor | null; disabled
   };
   return (
     <div>
-      <p id={hintId} className="mb-2 px-1 text-[12px] leading-snug text-muted">
+      <p id={hintId} className="mb-2 px-1 text-footnote leading-snug text-muted">
         Pick a size, then click to add the table.
       </p>
       <div
@@ -342,7 +342,7 @@ function TableSizePicker({ editor, disabled }: { editor: Editor | null; disabled
           }),
         )}
       </div>
-      <p className="mt-1.5 px-1 text-center text-[11.5px] font-medium tabular-nums text-muted" aria-live="polite">
+      <p className="mt-1.5 px-1 text-center text-footnote font-medium tabular-nums text-muted" aria-live="polite">
         {active ? `${active.r} × ${active.c}` : " "}
       </p>
     </div>
@@ -377,15 +377,15 @@ export function InsertPanel({ editor, disabled, onDone }: { editor: Editor | nul
         // Under the sheet's title, staying there while the tiles scroll (it isn't focused on open: that would
         // bring the keyboard up over the tiles).
         <div className="iphone-insert-search sticky top-0 z-10 -mx-4 px-4 pb-2 pt-0.5">
-          <label className="flex h-10 items-center gap-2 rounded-control bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] px-3 text-[17px] text-muted">
+          <label className="flex h-10 items-center gap-2 rounded-control bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] px-3 text-body text-muted">
             <Search size={17} strokeWidth={2.2} aria-hidden />
             <input type="search" enterKeyHint="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search blocks" className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-[var(--color-ink-faint)] [&::-webkit-search-cancel-button]:hidden" />
           </label>
         </div>
       ) : (
         <>
-          <p className="mb-2 px-1 text-[12.5px] text-muted">Drag and drop any item to the document</p>
-          <label className="ui-well flex h-9 items-center gap-2 rounded-chip px-3 text-[13px] text-muted focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
+          <p className="mb-2 px-1 text-subheadline text-muted">Drag and drop any item to the document</p>
+          <label className="ui-well flex h-9 items-center gap-2 rounded-chip px-3 text-subheadline text-muted focus-within:shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_22%,transparent)]">
             <Search size={14} aria-hidden />
             <input data-autofocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search blocks" className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-[var(--color-ink-faint)]" />
           </label>
@@ -410,7 +410,7 @@ export function InsertPanel({ editor, disabled, onDone }: { editor: Editor | nul
           ) : null}
           {s.title === DATA && showTable ? (
             <div role="group" aria-label="Quick table" className={s.tiles.length ? "mt-4" : ""}>
-              <h4 className="mb-1.5 px-1 text-[12px] font-medium text-ink">Quick table</h4>
+              <h4 className="mb-1.5 px-1 text-footnote font-medium text-ink">Quick table</h4>
               <TableSizePicker editor={editor} disabled={d} />
             </div>
           ) : null}
@@ -418,8 +418,8 @@ export function InsertPanel({ editor, disabled, onDone }: { editor: Editor | nul
       ))}
       {!sections.length && !showTable ? (
         <div className="mt-8 px-2 text-center">
-          <p className="text-[13px] font-medium text-ink">No matches</p>
-          <p className="mt-1 text-[12px] text-muted">Nothing called “{q.trim()}”. Try another word.</p>
+          <p className="text-subheadline font-medium text-ink">No matches</p>
+          <p className="mt-1 text-footnote text-muted">Nothing called “{q.trim()}”. Try another word.</p>
         </div>
       ) : null}
     </div>

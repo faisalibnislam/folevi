@@ -100,7 +100,7 @@ export const FOLEVI_ROWS: Record<FoleviRowKey, { label: string; value: string }>
   publish: { label: "Public sharing", value: "Public links with an optional password and expiry date, revocable at any time" },
   export: { label: "Export", value: "A page as Markdown, HTML or PDF (through print). Everything as a ZIP of Markdown files." },
   import: { label: "Import", value: "Markdown and text files, folders and ZIPs, with their images" },
-  storage: { label: "Storage", value: `${gb(STORAGE_BYTES.free)} on Free, ${gb(STORAGE_BYTES.core)} on Core and Pro, ${gb(STORAGE_BYTES.pro_ai)} on Pro AI. Files up to 100 MB.` },
+  storage: { label: "Storage", value: `${gb(STORAGE_BYTES.free)} on Free, ${gb(STORAGE_BYTES.core)} on Core and Pro, ${gb(STORAGE_BYTES.pro_ai)} on Pro AI. Files up to 50 MB.` },
   encryption: { label: "Encryption", value: "Encrypted in transit and at rest. Not end-to-end encrypted." },
   templates: { label: "Templates", value: `${TEMPLATE_COUNT} built-in templates, plus your own` },
   history: { label: "Version history", value: `${VERSION_DAYS} days on every plan` },

@@ -101,7 +101,7 @@ export function SourcePanel({
         <div className="fb-chart-ai-buttons">
           <button
             type="button"
-            className="ui-btn ui-btn-primary h-8 px-3 text-[13px] pointer-coarse:h-11"
+            className="ui-btn ui-btn-primary h-8 px-3 text-callout pointer-coarse:h-11"
             disabled={!pasted.trim()}
             onClick={() => {
               const rows = textToChartRows(pasted);
@@ -111,7 +111,7 @@ export function SourcePanel({
           >
             Use these rows
           </button>
-          <button type="button" className="ui-btn ui-btn-ghost h-8 px-3 text-[13px] pointer-coarse:h-11" onClick={() => setStep("menu")}>
+          <button type="button" className="ui-btn ui-btn-ghost h-8 px-3 text-callout pointer-coarse:h-11" onClick={() => setStep("menu")}>
             Back
           </button>
         </div>
@@ -247,7 +247,7 @@ function CollectionStep({ chart, onSource, onBack }: { chart: ChartData; onSourc
       <div className="fb-chart-ai-buttons">
         <button
           type="button"
-          className="ui-btn ui-btn-primary h-8 px-3 text-[13px] pointer-coarse:h-11"
+          className="ui-btn ui-btn-primary h-8 px-3 text-callout pointer-coarse:h-11"
           disabled={!data || !picked}
           onClick={() => {
             if (!data) return;
@@ -258,7 +258,7 @@ function CollectionStep({ chart, onSource, onBack }: { chart: ChartData; onSourc
         >
           Chart this collection
         </button>
-        <button type="button" className="ui-btn ui-btn-ghost h-8 px-3 text-[13px] pointer-coarse:h-11" onClick={onBack}>
+        <button type="button" className="ui-btn ui-btn-ghost h-8 px-3 text-callout pointer-coarse:h-11" onClick={onBack}>
           Back
         </button>
       </div>

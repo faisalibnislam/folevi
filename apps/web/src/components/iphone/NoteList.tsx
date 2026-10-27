@@ -229,10 +229,10 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
                 {selecting ? <SelectCircle on={on} /> : <NoteGlyph folderColor={d.kind === "template" ? undefined : d.homeFolder ? d.homeFolder.color : null} />}
                 <span className="ui-row-sep flex min-h-16 min-w-0 flex-1 flex-col justify-center py-2.5">
                   <span className="flex min-w-0 items-center gap-1.5">
-                    <span className="truncate text-[17px] leading-[22px] text-ink">{d.title || "Untitled"}</span>
+                    <span className="truncate text-body leading-[22px] text-ink">{d.title || "Untitled"}</span>
                     {d.starred ? <Star size={13} aria-label="Starred" className="flex-none fill-current text-faint" /> : null}
                   </span>
-                  <span className="mt-0.5 truncate text-[15px] leading-5 text-muted">
+                  <span className="mt-0.5 truncate text-subheadline leading-5 text-muted">
                     {view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}
                     {d.homeFolder && d.kind !== "template" ? ` · ${d.homeFolder.name}` : d.kind !== "template" ? " · Draft" : ""}
                     {unsynced.has(d.id) ? " · Waiting to sync" : ""}
@@ -246,7 +246,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
       )}
       {canLoadMore && !query ? (
         <div className="px-4 pt-6 text-center">
-          <button type="button" onClick={onLoadMore} className="h-11 rounded-capsule px-5 text-[16px] font-medium text-heading ui-liquid">
+          <button type="button" onClick={onLoadMore} className="h-11 rounded-capsule px-5 text-callout font-medium text-heading ui-liquid">
             Show more
           </button>
         </div>
@@ -318,7 +318,7 @@ function SelectBar({ count, actions, onAction }: { count: number; actions: Selec
             type="button"
             disabled={!count}
             onClick={() => onAction(a)}
-            className={`ui-glass-press flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-capsule px-1 text-[11px] font-medium leading-[13px] outline-none disabled:opacity-35 ${a.danger ? "text-danger" : "text-heading"}`}
+            className={`ui-glass-press flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-capsule px-1 text-caption-2 font-medium leading-[13px] outline-none disabled:opacity-35 ${a.danger ? "text-danger" : "text-heading"}`}
           >
             <span aria-hidden className="[&_svg]:h-[22px] [&_svg]:w-[22px]">{a.icon}</span>
             <span className="max-w-full truncate">{a.label.replace(/…$/, "").replace("Move to folder", "Move").replace("Move to Trash", "Trash").replace("Delete permanently", "Delete")}</span>

@@ -50,9 +50,9 @@
 .fb-editor > .fb.fb-presence::after {
   content: attr(data-presence);
   position: absolute; right: -4px; top: -10px;
-  font: 500 10px/1.4 var(--font-sans);
+  font: 500 var(--type-caption-2)/1.4 var(--font-sans);
   color: var(--color-canvas); background: var(--presence-ink, var(--presence));
-  padding: 0 5px; border-radius: var(--radius-tiny); pointer-events: none;
+  padding: 0 6px; border-radius: var(--radius-tiny); pointer-events: none;
 }
 /* "Show editors": each block carries a bar in the colour of whoever last changed it; hover says who and when.
    The colour and label are variables from a stylesheet keyed by block id (authorSheet in plugins.ts); :where()
@@ -62,7 +62,7 @@
 :where(.fb-editor.fb-show-editors > .fb:not(.is-empty, [data-decoration="focus"])):hover::after {
   content: var(--author-label);
   position: absolute; right: -4px; top: -12px; z-index: 1;
-  font: 500 10.5px/1.5 var(--font-sans);
+  font: 500 var(--type-footnote)/1.5 var(--font-sans);
   color: var(--color-canvas); background: var(--author-ink, var(--author));
   padding: 0 6px; border-radius: var(--radius-tiny); pointer-events: none; white-space: nowrap;
 }
@@ -106,9 +106,9 @@
 }
 .fb-remote-caret-label {
   position: absolute; left: -2px; bottom: 100%;
-  font: 500 10.5px/1.5 var(--font-sans); white-space: nowrap;
+  font: 500 var(--type-caption-2)/1.5 var(--font-sans); white-space: nowrap;
   color: var(--color-canvas); background: var(--caret-ink, var(--caret));
-  padding: 0 5px; border-radius: var(--radius-tiny) var(--radius-tiny) var(--radius-tiny) 0;
+  padding: 0 6px; border-radius: var(--radius-tiny) var(--radius-tiny) var(--radius-tiny) 0;
   /* (With reduced motion the fade has no length: the name just goes after the delay.) */
   animation: fb-caret-label 400ms var(--motion-easing) 3s forwards;
 }
@@ -128,7 +128,7 @@
 .fb-comment-chip {
   display: inline-flex; align-items: center; gap: 6px;
   height: 22px; padding: 0 8px 0 3px; border-radius: var(--radius-chip);
-  font: 500 12px/1 var(--font-sans); letter-spacing: 0;
+  font: 500 var(--type-footnote)/1 var(--font-sans); letter-spacing: 0;
   color: color-mix(in oklab, var(--doc-accent-ink, var(--color-ink)) 55%, var(--color-ink-muted));
   background: transparent; cursor: pointer;
   transition: background-color 150ms var(--motion-easing), color 150ms var(--motion-easing);
@@ -138,7 +138,7 @@
 .fb-comment-faces { display: inline-flex; }
 .fb-comment-faces > * {
   display: grid; place-items: center; width: 16px; height: 16px; margin-left: -4px; border-radius: var(--radius-chip); object-fit: cover;
-  font-size: 9px; font-weight: 650; background: var(--doc-accent-soft); color: var(--doc-accent-ink, var(--color-heading));
+  font-size: var(--type-caption-2); font-weight: 650; background: var(--doc-accent-soft); color: var(--doc-accent-ink, var(--color-heading));
   box-shadow: 0 0 0 1.5px var(--color-surface);
 }
 .fb-comment-faces > :first-child { margin-left: 0; }
@@ -247,7 +247,7 @@
 .fb-todo[data-checked="true"] > .fb-content { color: var(--color-ink-muted); text-decoration: line-through; text-decoration-color: color-mix(in oklab, var(--color-ink-muted) 60%, transparent); }
 .fb-task-meta { flex: none; }
 .fb-due-chip {
-  font: 550 12px/24px var(--font-sans); min-height: 24px; padding: 0 9px; border-radius: var(--radius-tiny);
+  font: 550 var(--type-footnote)/24px var(--font-sans); min-height: 24px; padding: 0 10px; border-radius: var(--radius-tiny);
   background: var(--color-surface-sunken); color: var(--color-ink-muted); margin-top: 0.15em;
 }
 .fb-due-chip:hover { color: var(--color-ink); }
@@ -400,8 +400,8 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 .fb-drag-ghost .fb-editor { padding-bottom: 0; }
 .fb-drag-ghost .fb-editor > .fb { background: transparent !important; }
 .fb-drag-chip {
-  padding: 9px 16px; border-radius: var(--radius-chip); white-space: nowrap;
-  font: 600 13px/1.2 var(--font-sans); color: var(--color-heading);
+  padding: 10px 16px; border-radius: var(--radius-chip); white-space: nowrap;
+  font: 600 var(--type-subheadline)/1.2 var(--font-sans); color: var(--color-heading);
   -webkit-mask-image: none; mask-image: none;
 }
 @keyframes fb-lift { from { opacity: 0.5; box-shadow: var(--shadow-card); } }
@@ -624,7 +624,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 .fb-ai-answer .fb-editor,
 .fb-page .fb-ai-answer .fb-editor {
   font-family: var(--font-sans, inherit);
-  font-size: 13.5px;
+  font-size: var(--type-body);
   font-size-adjust: none;
   line-height: 1.55;
   letter-spacing: 0;
@@ -682,11 +682,11 @@ td.fb-cell-number, th.fb-cell-number { text-align: right; font-variant-numeric: 
 .fb-table .fb-table-totals.with-tools .fb-cell, .fb-table .fb-table-totals.with-tools .fb-cell-editor { padding-left: 1.75rem; }
 .fb-table .fb-total-pick { position: absolute; left: 4px; top: 6px; }
 .fb-table .fb-cell-changed { background: color-mix(in oklab, var(--color-ember-soft) 80%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-ember) 45%, transparent); }
-.fb-table-label { min-width: 0.9rem; font: 600 10.5px/1 var(--font-sans); letter-spacing: 0.02em; color: var(--color-ink-faint); text-align: center; transition: color 140ms; }
+.fb-table-label { min-width: 0.9rem; font: 600 var(--type-caption-2)/1 var(--font-sans); letter-spacing: 0.02em; color: var(--color-ink-faint); text-align: center; transition: color 140ms; }
 .fb-table-label.is-on { color: var(--color-heading); }
 .fb-table.fb-table-formula tbody .fb-cell { cursor: cell; }
-.fb-table-hint { margin: 0.1rem 0 0.4rem; font-size: 12px; color: var(--color-ink-muted); }
-.fb-table-viewbar { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.4rem; font-size: 12px; color: var(--color-ink-muted); }
+.fb-table-hint { margin: 0.1rem 0 0.4rem; font-size: var(--type-footnote); color: var(--color-ink-muted); }
+.fb-table-viewbar { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.4rem; font-size: var(--type-footnote); color: var(--color-ink-muted); }
 .fb-table-viewbar button { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.15rem 0.45rem; border-radius: var(--radius-chip); color: var(--color-ink-muted); }
 .fb-table-viewbar button:hover { background: var(--color-accent-soft); color: var(--color-heading); }
 .fb-table-ai { margin: 0.25rem 0 0.75rem; border-radius: var(--radius-panel); padding: 0.4rem; }

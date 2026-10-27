@@ -100,7 +100,7 @@ export function AudioPlayer({
         )}
       </button>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{name ?? "Audio recording"}</p>
+        <p className="truncate text-subheadline font-medium">{name ?? "Audio recording"}</p>
         <div className="mt-1.5 flex items-center gap-2.5">
           <div
             role="slider"
@@ -147,11 +147,11 @@ export function AudioPlayer({
               style={{ left: `${progress * 100}%` }}
             />
           </div>
-          <span className="flex-none text-xs tabular-nums text-muted">
+          <span className="flex-none text-footnote tabular-nums text-muted">
             {formatDuration(time)} / {formatDuration(length)}
           </span>
         </div>
-        <p className="mt-0.5 text-xs text-muted" role={status ? "status" : undefined}>
+        <p className="mt-0.5 text-footnote text-muted" role={status ? "status" : undefined}>
           {size ? formatBytes(size) : ""}
           {status
             ? ` · ${status}`
@@ -169,7 +169,7 @@ export function AudioPlayer({
         }}
         aria-label={`Playback speed ${speed} times`}
         title="Playback speed"
-        className="h-8 min-w-11 flex-none rounded-chip px-1.5 text-xs font-semibold tabular-nums text-muted hover:bg-[var(--glass-hover)] hover:text-heading"
+        className="h-8 min-w-11 flex-none rounded-chip px-1.5 text-footnote font-semibold tabular-nums text-muted hover:bg-[var(--glass-hover)] hover:text-heading"
       >
         {speed}×
       </button>

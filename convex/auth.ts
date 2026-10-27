@@ -9,7 +9,7 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { bearer } from "better-auth/plugins/bearer";
 import { multiSession } from "better-auth/plugins/multi-session";
@@ -27,6 +27,29 @@ import { appleClientSecret, appleRevocationFor, appleSignInConfig, type AppleSig
 import { appleNative } from "./lib/appleNative";
 import { guardRefreshTokenRevoke } from "./lib/authAdapter";
 import { ACCESS_TOKEN_PREFIX, mcpResourceUrl, OAUTH_SCOPES, REFRESH_TOKEN_PREFIX } from "./lib/mcp/config";
+
+/** Linking an account needs a sign-in this recent (the session's freshAge). */
+const FRESH_LINK_MS = 10 * 60_000;
+
+/**
+ * When the caller's session began (ms), or null with no session. Read from the cookie, or from a bearer token
+ * (the apps send one; the bearer plugin turns it into a cookie only after hooks like ours have run).
+ */
+async function sessionStart(hookCtx: Parameters<Parameters<typeof createAuthMiddleware>[0]>[0]): Promise<number | null> {
+  const fromCookie = await getSessionFromCtx(hookCtx);
+  if (fromCookie) return new Date(fromCookie.session.createdAt).getTime();
+  const auth = hookCtx.headers?.get("authorization") ?? "";
+  const bearer = /^Bearer\s+(\S+)$/i.exec(auth)?.[1];
+  if (!bearer) return null;
+  const found = (await hookCtx.context.internalAdapter.findSession(bearer.split(".")[0]!)) as { session: { createdAt: Date | string | number } } | null;
+  return found ? new Date(found.session.createdAt).getTime() : null;
+}
+
+/** Ends API tokens and connected apps for a Better Auth user (convex/apiTokens.ts endAllAccess). */
+async function endAllAccess(ctx: unknown, authUserId: string, reason: "password_reset" | "password_changed") {
+  const runMutation = (ctx as { runMutation?: (fn: never, args: never) => Promise<unknown> }).runMutation;
+  if (runMutation) await runMutation(internal.apiTokens.endAllAccess as never, { authUserId, reason } as never);
+}
 
 export const authComponent = createClient<DataModel, typeof authSchema>(components.betterAuth, {
   local: { schema: authSchema },
@@ -207,6 +230,10 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
       maxPasswordLength: 128,
       resetPasswordTokenExpiresIn: 60 * 60,
       revokeSessionsOnPasswordReset: true,
+      // A reset also ends API tokens and connected apps (docs/SECURITY_PLAN.md P0.5).
+      onPasswordReset: async ({ user }) => {
+        await endAllAccess(ctx, user.id, "password_reset");
+      },
       sendResetPassword: async ({ user, url, token }) => {
         await queueIdentityEmail(ctx, {
           key: "auth_password_reset",
@@ -312,6 +339,13 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
     },
     hooks: {
       before: createAuthMiddleware(async (hookCtx) => {
+        // Linking a Google or Apple account needs a sign-in in the last 10 minutes: a stolen session can't link
+        // the attacker's own account to come back later (docs/SECURITY_PLAN.md P0.5).
+        if (hookCtx.path === "/link-social") {
+          const signedInAt = await sessionStart(hookCtx);
+          // No session at all: the endpoint itself refuses (it needs one).
+          if (signedInAt !== null && Date.now() - signedInAt > FRESH_LINK_MS) throw new APIError("FORBIDDEN", { message: "Sign in again to link an account.", code: "SESSION_NOT_FRESH" });
+        }
         // Admins can pause new sign-ups (Admin → Configuration → Feature flags → new_signups).
         if (hookCtx.path === "/sign-up/email") {
           const runQuery = (ctx as { runQuery?: (fn: never, args: never) => Promise<unknown> }).runQuery;
@@ -322,6 +356,11 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
         }
       }),
       after: createAuthMiddleware(async (hookCtx) => {
+        // A password changed in Settings ends API tokens and connected apps too (the reset does it in onPasswordReset).
+        if (hookCtx.path === "/change-password" && !(hookCtx.context.returned instanceof Error)) {
+          const userId = hookCtx.context.session?.user.id ?? hookCtx.context.newSession?.user.id;
+          if (userId) await endAllAccess(ctx, userId, "password_changed");
+        }
         // A removed passkey's "last used" goes with it (convex/passkeyUsage.ts; kept if it's still there).
         if (hookCtx.path === "/passkey/delete-passkey") {
           const id = (hookCtx.body as { id?: unknown } | undefined)?.id;

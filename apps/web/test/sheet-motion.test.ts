@@ -88,13 +88,13 @@ describe("the dim behind", () => {
 });
 
 describe("the spring as keyframes", () => {
-  test("one a frame, from 0 to exactly 1, for as long as the spring takes to settle", () => {
+  test("one a ProMotion frame (120 a second), from 0 to exactly 1, for as long as the spring takes to settle", () => {
     const { progress, ms } = springFrames(SPRINGS.sheet);
     expect(progress[0]).toBe(0);
     expect(progress[progress.length - 1]).toBe(1);
     expect(ms).toBeGreaterThan(300);
     expect(ms).toBeLessThan(1200);
-    expect(progress.length).toBeCloseTo(Math.round((ms / 1000) * 60) + 1, -1);
+    expect(progress.length).toBeCloseTo(Math.round((ms / 1000) * 120) + 1, -1);
     // Damping 0.92 passes its end only a hair.
     expect(Math.max(...progress)).toBeLessThan(1.01);
   });

@@ -28,7 +28,7 @@ import { ChoiceButton, PRE_APP_PAGE, mobileApp, preAppBackground, preAppTitle, u
 export const MIN_PASSPHRASE = 8;
 
 /** A plain text button in the phone and tablet apps' screens before the app (Back, Choose another place): 17 pt, 44 tall. */
-export const MOBILE_TEXT_BUTTON = "mx-auto flex min-h-11 items-center justify-center rounded-control px-4 text-[17px] text-heading outline-none transition-opacity active:opacity-50 focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-40";
+export const MOBILE_TEXT_BUTTON = "mx-auto flex min-h-11 items-center justify-center rounded-control px-4 text-body text-heading outline-none transition-opacity active:opacity-50 focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-40";
 
 /** Whether this host can encrypt a library with a passphrase (not in Folevi for Android yet). */
 export function passphraseHere(): boolean {
@@ -143,7 +143,7 @@ export function PlaceList({ onPick, current, label }: { onPick: (kind: LibraryKi
         ))}
       </div>
       {problem ? (
-        <p role="alert" className="rounded-control bg-[color-mix(in_oklab,var(--color-danger)_9%,transparent)] px-3.5 py-3 text-[13.5px] leading-snug text-ink">
+        <p role="alert" className="rounded-control bg-[color-mix(in_oklab,var(--color-danger)_9%,transparent)] px-3.5 py-3 text-body leading-snug text-ink">
           {problem.text}
         </p>
       ) : null}
@@ -159,8 +159,8 @@ function Connecting({ provider }: { provider: CloudProvider }) {
     <div role="status" aria-live="polite" className={`grid justify-items-center gap-4 px-5 py-8 text-center ${mobileApp() ? "rounded-container bg-[var(--iphone-row)] shadow-[0_0_0_0.5px_var(--iphone-separator)]" : "rounded-control border border-line bg-surface"}`} data-testid="cloud-connecting">
       <Loader2 size={22} aria-hidden className="animate-spin text-heading motion-reduce:animate-none" />
       <div className="grid gap-1.5">
-        <p className="text-[15px] font-semibold text-heading">Finish signing in to {name} in {deviceWords().ios ? "the sign-in sheet" : "your browser"}</p>
-        <p className="text-[13.5px] leading-snug text-muted">Folevi opened {name}'s sign-in page. Once you allow access there, come back here. Folevi only gets its own folder.</p>
+        <p className="text-headline font-semibold text-heading">Finish signing in to {name} in {deviceWords().ios ? "the sign-in sheet" : "your browser"}</p>
+        <p className="text-body leading-snug text-muted">Folevi opened {name}'s sign-in page. Once you allow access there, come back here. Folevi only gets its own folder.</p>
       </div>
       <Button
         disabled={cancelling}
@@ -200,28 +200,28 @@ export function PassphraseFields({
   const id = useId();
   return (
     <div className="grid gap-3">
-      <div className="flex gap-2.5 rounded-control bg-[color-mix(in_oklab,var(--color-danger)_9%,transparent)] px-3.5 py-3 text-[13.5px] leading-snug text-ink" id={`${id}-warning`}>
+      <div className="flex gap-2.5 rounded-control bg-[color-mix(in_oklab,var(--color-danger)_9%,transparent)] px-3.5 py-3 text-body leading-snug text-ink" id={`${id}-warning`}>
         <ShieldAlert size={18} aria-hidden className="mt-px flex-none text-danger" />
         <p>
           <strong className="font-semibold">If you lose this passphrase, nobody can open the synced copy of your notes.</strong> Folevi can't reset it or recover it. Write it down and keep it somewhere safe.
         </p>
       </div>
-      <label className="grid gap-1 text-[13px] text-muted" htmlFor={`${id}-p`}>
+      <label className="grid gap-1 text-subheadline text-muted" htmlFor={`${id}-p`}>
         {newLabel}
-        <input id={`${id}-p`} type="password" autoComplete="new-password" value={passphrase} onChange={(e) => onPassphrase(e.target.value)} className="ui-input h-10 rounded-chip px-3 text-[15px] text-ink" aria-describedby={`${id}-hint`} />
+        <input id={`${id}-p`} type="password" autoComplete="new-password" value={passphrase} onChange={(e) => onPassphrase(e.target.value)} className="ui-input h-10 rounded-chip px-3 text-body text-ink" aria-describedby={`${id}-hint`} />
       </label>
-      <label className="grid gap-1 text-[13px] text-muted" htmlFor={`${id}-c`}>
+      <label className="grid gap-1 text-subheadline text-muted" htmlFor={`${id}-c`}>
         Type it again
-        <input id={`${id}-c`} type="password" autoComplete="new-password" value={confirm} onChange={(e) => onConfirm(e.target.value)} className="ui-input h-10 rounded-chip px-3 text-[15px] text-ink" />
+        <input id={`${id}-c`} type="password" autoComplete="new-password" value={confirm} onChange={(e) => onConfirm(e.target.value)} className="ui-input h-10 rounded-chip px-3 text-body text-ink" />
       </label>
-      <p id={`${id}-hint`} className="text-[12.5px] text-muted">
+      <p id={`${id}-hint`} className="text-subheadline text-muted">
         Use at least {MIN_PASSPHRASE} characters. A few unrelated words are easy to remember and hard to guess.
       </p>
       <Checkbox checked={understood} onChange={onUnderstood} describedBy={`${id}-warning`}>
         I understand Folevi can't recover a lost passphrase
       </Checkbox>
       {problem ? (
-        <p role="alert" className="text-[13.5px] text-danger">
+        <p role="alert" className="text-body text-danger">
           {problem}
         </p>
       ) : null}
@@ -337,14 +337,14 @@ export function LibrarySetup({ onDone, onBack }: { onDone: (result: { joining: b
           {made ? (
             <>
               <h1 className={preAppTitle()}>Your library is ready</h1>
-              <p className={mobileApp() ? "text-[15px] leading-[20px] text-muted" : "text-[14px] leading-relaxed text-muted"}>
+              <p className={mobileApp() ? "text-subheadline leading-[20px] text-muted" : "text-body leading-relaxed text-muted"}>
                 Folevi keeps your notes as files in <span className="font-medium text-ink">{made.displayPath}</span>.
               </p>
             </>
           ) : (
             <>
               <h1 className={preAppTitle()}>Where should your library live?</h1>
-              <p className={mobileApp() ? "text-[15px] leading-[20px] text-muted" : "text-[14px] leading-relaxed text-muted"}>Folevi keeps your notes as files in one folder. Pick where that folder goes. If the place already holds your Folevi library, Folevi opens it.</p>
+              <p className={mobileApp() ? "text-subheadline leading-[20px] text-muted" : "text-body leading-relaxed text-muted"}>Folevi keeps your notes as files in one folder. Pick where that folder goes. If the place already holds your Folevi library, Folevi opens it.</p>
             </>
           )}
         </div>
@@ -420,10 +420,10 @@ function NewLibrary({ info, onOpen, onElsewhere, failed }: { info: LibraryInfo; 
             <Lock size={18} aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className={`font-semibold text-heading ${mobileApp() ? "text-[17px] leading-[22px]" : "text-[15px]"}`} aria-hidden>
+            <p className={`font-semibold text-heading ${mobileApp() ? "text-headline leading-[22px]" : "text-headline"}`} aria-hidden>
               Encrypt with a passphrase
             </p>
-            <p id={descId} className={`mt-0.5 text-muted ${mobileApp() ? "text-[15px] leading-[20px]" : "text-[13px] leading-snug"}`}>
+            <p id={descId} className={`mt-0.5 text-muted ${mobileApp() ? "text-subheadline leading-[20px]" : "text-subheadline leading-snug"}`}>
               {synced ? "Optional. The synced copy can't be read without it, by anyone, including Folevi." : "Optional. The library's files can't be read without it, by anyone, including Folevi."}
             </p>
           </div>
@@ -432,12 +432,12 @@ function NewLibrary({ info, onOpen, onElsewhere, failed }: { info: LibraryInfo; 
         {encrypt ? <PassphraseFields passphrase={passphrase} confirm={confirm} understood={understood} onPassphrase={setPassphrase} onConfirm={setConfirm} onUnderstood={setUnderstood} problem={problem} /> : null}
       </section> : null}
       {failed ? (
-        <p role="alert" className="text-center text-[13.5px] text-danger">
+        <p role="alert" className="text-center text-body text-danger">
           {failed}
         </p>
       ) : null}
       <div className="grid gap-2">
-        <Button type="submit" variant="primary" className={mobileApp() ? "h-[50px] w-full rounded-control text-[17px] font-semibold" : "h-11 w-full text-[15px]"} disabled={busy}>
+        <Button type="submit" variant="primary" className={mobileApp() ? "h-[50px] w-full rounded-control text-headline font-semibold" : "h-11 w-full text-headline"} disabled={busy}>
           {busy ? <Loader2 size={16} aria-hidden className="animate-spin motion-reduce:animate-none" /> : null}
           {busy && encrypt ? "Encrypting…" : "Open Folevi"}
         </Button>

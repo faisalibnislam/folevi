@@ -45,6 +45,9 @@ const SharedView = lazy(() => import("@/components/views/SharedView").then((m) =
 const HelpView = lazy(() => import("@/components/views/HelpView").then((m) => ({ default: m.HelpView })));
 const InviteView = lazy(() => import("@/components/views/InviteView").then((m) => ({ default: m.InviteView })));
 const ShareInviteView = lazy(() => import("@/components/views/ShareInviteView").then((m) => ({ default: m.ShareInviteView })));
+const VaultView = lazy(() => import("@/components/vault/VaultView").then((m) => ({ default: m.VaultView })));
+const SharedFolderView = lazy(() => import("@/components/views/SharedFolderView").then((m) => ({ default: m.SharedFolderView })));
+const FolderInviteView = lazy(() => import("@/components/views/FolderInviteView").then((m) => ({ default: m.FolderInviteView })));
 
 /** A page whose code is still on its way: its frame and title, nothing in it yet. */
 function Later({ title, children }: { title: string; children: React.ReactNode }) {
@@ -91,7 +94,9 @@ function Routes() {
   const iphone = useIphoneApp();
   const caps = useCapabilities();
   if (!caps.changes && route.name === "changes") return <AccountOnly title="Changes" />;
-  if (!caps.sharing && route.name === "shared") return <AccountOnly title="Shared with Me" />;
+  if (!caps.sharing && (route.name === "shared" || route.name === "shared-folder")) return <AccountOnly title="Shared with Me" />;
+  if (!caps.sharing && route.name === "folder-invite") return <AccountOnly title="Invitation" />;
+  if (!caps.sharing && route.name === "vault") return <AccountOnly title="Vault" />;
   if (!caps.workspaces && route.name === "invite") return <AccountOnly title="Invitation" />;
   if (!caps.sharing && route.name === "share-invite") return <AccountOnly title="Invitation" />;
   switch (route.name) {
@@ -154,6 +159,24 @@ function Routes() {
           <SharedView />
         </Later>
       );
+    case "vault":
+      return (
+        <Later title="Vault">
+          <VaultView />
+        </Later>
+      );
+    case "shared-folder":
+      return (
+        <Later title="Shared folder">
+          <SharedFolderView key={route.id} folderId={route.id} />
+        </Later>
+      );
+    case "folder-invite":
+      return (
+        <Later title="Invitation">
+          <FolderInviteView token={route.token} />
+        </Later>
+      );
     case "settings":
       return (
         <Suspense fallback={<ViewChrome title="Settings">{null}</ViewChrome>}>
@@ -182,7 +205,7 @@ function Routes() {
       return (
         <ViewChrome title="Not found">
           <div className="mx-auto max-w-lg px-6 py-24 text-center">
-            <h1 className="ui-display text-4xl">This page doesn’t exist</h1>
+            <h1 className="ui-display text-large-title">This page doesn’t exist</h1>
             <p className="mt-3 text-muted">It may have been moved, or the link is incomplete.</p>
             <a href="/documents" className="mt-6 inline-block text-accent underline underline-offset-2">
               Go to Home

@@ -82,7 +82,7 @@ export function ConnectApp({ clientId, redirectUri, codeChallenge, codeChallenge
         </SubmitButton>
         <button
           type="button"
-          className="ui-btn h-11 w-full text-[15px]"
+          className="ui-btn h-11 w-full text-body"
           disabled={busy}
           onClick={() => returnToApp(redirectUri, { error: "access_denied" }, state)}
         >
@@ -90,7 +90,7 @@ export function ConnectApp({ clientId, redirectUri, codeChallenge, codeChallenge
         </button>
       </form>
       {!isPending ? (
-        <p className="mt-6 text-sm text-muted">
+        <p className="mt-6 text-subheadline text-muted">
           <button
             type="button"
             className="font-medium text-accent underline decoration-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] underline-offset-2 hover:decoration-current"

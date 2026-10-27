@@ -77,7 +77,7 @@ export function UsersView() {
           setNonce((x) => x + 1);
         }}
       >
-        <div className="min-w-[260px] flex-[2] text-sm">
+        <div className="min-w-[260px] flex-[2] text-subheadline">
           <label htmlFor={`${uid}-q`} className="mb-1 block font-medium">
             Email or name
           </label>
@@ -93,7 +93,7 @@ export function UsersView() {
             className={inputCls}
           />
         </div>
-        <div className="min-w-[180px] flex-1 text-sm">
+        <div className="min-w-[180px] flex-1 text-subheadline">
           <label htmlFor={`${uid}-status`} className="mb-1 block font-medium">
             Status
           </label>
@@ -109,7 +109,7 @@ export function UsersView() {
         <Button type="submit" variant="primary">
           <Search size={15} aria-hidden /> Search
         </Button>
-        <p id={`${uid}-q-hint`} className="basis-full text-xs text-muted">
+        <p id={`${uid}-q-hint`} className="basis-full text-footnote text-muted">
           An address containing “@” is matched exactly (status is ignored). Otherwise results are 50 accounts per page, newest first, filtered by name on each page. Use Next to keep looking. Leave empty to browse.
         </p>
       </form>
@@ -176,7 +176,7 @@ export function UsersView() {
                         ) : null}
                       </span>
                       {u.interval || u.planEndsAt ? (
-                        <span className="mt-0.5 block text-[12px] text-muted">
+                        <span className="mt-0.5 block text-footnote text-muted">
                           {u.interval === "year" ? "Yearly" : u.interval === "month" ? "Monthly" : ""}
                           {u.planEndsAt ? `${u.interval ? " · " : ""}ends ${shortDate(u.planEndsAt)}` : ""}
                         </span>

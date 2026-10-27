@@ -62,6 +62,8 @@ export const vInAppPrefs = v.object({
   access: v.boolean(),
   /** Task reminders in the bell (and as Mac notifications). Unset = on. */
   reminders: v.optional(v.boolean()),
+  /** The Vault's changes (docs/VAULT_PLAN.md §8). Unset = on. Security notices to custodians always show. */
+  vault: v.optional(v.boolean()),
 });
 /** Notification preferences. The top-level booleans are email choices (kept for existing rows). */
 export const vNotificationPrefs = v.object({
@@ -77,6 +79,8 @@ export const vNotificationPrefs = v.object({
   access: v.optional(v.boolean()),
   /** Email when a task reminder you set comes due (the email shows the to-do line). Unset = on. */
   reminders: v.optional(v.boolean()),
+  /** Push notifications about the Vault's changes. Unset = on. */
+  vault: v.optional(v.boolean()),
   /** In-app (bell) notifications per kind. Unset = all on. */
   inApp: v.optional(vInAppPrefs),
 });

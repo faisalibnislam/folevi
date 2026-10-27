@@ -85,17 +85,17 @@ export function OauthConsent() {
   if (!clientId || !signed) {
     return card(
       <>
-        <h1 className="ui-display text-[34px] leading-[1.08]">This link doesn’t work</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted">Start connecting again from the app you were using.</p>
+        <h1 className="ui-display text-large-title leading-[1.08]">This link doesn’t work</h1>
+        <p className="mt-2 text-body leading-relaxed text-muted">Start connecting again from the app you were using.</p>
       </>,
     );
   }
-  if (info === undefined) return card(<p className="text-[15px] text-muted">Loading…</p>);
+  if (info === undefined) return card(<p className="text-body text-muted">Loading…</p>);
   if (info === null) {
     return card(
       <>
-        <h1 className="ui-display text-[34px] leading-[1.08]">This app isn’t registered</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted">Start connecting again from the app you were using.</p>
+        <h1 className="ui-display text-large-title leading-[1.08]">This app isn’t registered</h1>
+        <p className="mt-2 text-body leading-relaxed text-muted">Start connecting again from the app you were using.</p>
       </>,
     );
   }
@@ -108,12 +108,12 @@ export function OauthConsent() {
 
   return card(
     <>
-      <h1 className="ui-display text-[34px] leading-[1.08]">Connect {info.name} to Folevi</h1>
-      <p className="mt-2 text-[15px] leading-relaxed text-muted">
+      <h1 className="ui-display text-large-title leading-[1.08]">Connect {info.name} to Folevi</h1>
+      <p className="mt-2 text-body leading-relaxed text-muted">
         <strong className="text-ink">{info.name}</strong> wants to {writeOnly ? "add notes to Folevi" : "use your notes"} as <strong className="text-ink">{info.email}</strong>. It will send you back to{" "}
         <strong className="text-ink">{info.redirectHosts.join(", ") || "the app"}</strong>.
       </p>
-      <p className="mt-2 inline-flex items-start gap-1.5 rounded-chip bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] px-2 py-0.5 text-[12px] text-muted">
+      <p className="mt-2 inline-flex items-start gap-1.5 rounded-chip bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] px-2 py-0.5 text-footnote text-muted">
         <ShieldAlert size={12} aria-hidden className="mt-[calc((1lh-12px)/2)] flex-none" /> The app named itself. Folevi hasn’t checked it.
       </p>
 
@@ -123,7 +123,7 @@ export function OauthConsent() {
           {offered.map((s) => (
             <Checkbox
               key={s.scope}
-              className="text-[14px]"
+              className="text-body"
               checked={chosenScopes.has(s.scope)}
               disabled={s.required}
               onChange={(on) => {
@@ -142,11 +142,11 @@ export function OauthConsent() {
       <fieldset className="mt-5">
         <legend className="ui-caps mb-2">Where</legend>
         <div className="space-y-2">
-          <Checkbox className="text-[14px]" checked={chosenPlaces.personal} onChange={(on) => setPlaces({ ...chosenPlaces, personal: on })}>
+          <Checkbox className="text-body" checked={chosenPlaces.personal} onChange={(on) => setPlaces({ ...chosenPlaces, personal: on })}>
             <span className="text-ink">Personal</span>
           </Checkbox>
           {info.workspaces.map((w) => (
-            <Checkbox key={w.id} className="text-[14px]" checked={chosenPlaces.workspaceIds.includes(w.id)} onChange={(on) => togglePlace(w.id, on)}>
+            <Checkbox key={w.id} className="text-body" checked={chosenPlaces.workspaceIds.includes(w.id)} onChange={(on) => togglePlace(w.id, on)}>
               <span className="text-ink">{w.name}</span>
             </Checkbox>
           ))}
@@ -157,8 +157,8 @@ export function OauthConsent() {
         {writeOnly ? null : (
           <label className="flex items-center justify-between gap-3">
             <span className="min-w-0">
-              <span className="block text-[14px] text-ink">Pages shared with you</span>
-              <span id="consent-shared-hint" className="block text-xs text-muted">
+              <span className="block text-body text-ink">Pages shared with you</span>
+              <span id="consent-shared-hint" className="block text-footnote text-muted">
                 Read pages other people shared with you from elsewhere.
               </span>
             </span>
@@ -168,8 +168,8 @@ export function OauthConsent() {
         {writes ? (
           <label className="flex items-center justify-between gap-3">
             <span className="min-w-0">
-              <span className="block text-[14px] text-ink">Only add new things</span>
-              <span id="consent-add-only-hint" className="block text-xs text-muted">
+              <span className="block text-body text-ink">Only add new things</span>
+              <span id="consent-add-only-hint" className="block text-footnote text-muted">
                 {writeOnly ? "It asked only to add, so it can’t read your notes or change what’s already there." : "It can create notes and tasks and add to notes, but never change what’s already there."}
               </span>
             </span>
@@ -178,12 +178,12 @@ export function OauthConsent() {
         ) : null}
       </div>
 
-      <p className="mt-5 text-[12.5px] leading-relaxed text-muted">
+      <p className="mt-5 text-subheadline leading-relaxed text-muted">
         {writeOnly ? `${info.name} can’t read your notes.` : `Notes can hold text other people wrote, and ${info.name} may act on what it reads.`} Every change it makes is saved in the note’s version history. You can disconnect it any time in Settings → Connected apps.
       </p>
 
       {error ? (
-        <p role="alert" className="mt-4 text-sm text-danger">
+        <p role="alert" className="mt-4 text-subheadline text-danger">
           {error}
         </p>
       ) : null}
@@ -196,7 +196,7 @@ export function OauthConsent() {
           Allow
         </Button>
       </div>
-      {nothingChosen ? <p className="mt-2 text-xs text-muted">Choose at least one place.</p> : null}
+      {nothingChosen ? <p className="mt-2 text-footnote text-muted">Choose at least one place.</p> : null}
     </>,
   );
 }

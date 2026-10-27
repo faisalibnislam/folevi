@@ -122,7 +122,7 @@ export function CopyToDialog({
     >
       <div className="space-y-4">
         <div>
-          <label htmlFor={`${ids}-place`} className="block text-sm font-medium">
+          <label htmlFor={`${ids}-place`} className="block text-subheadline font-medium">
             Copy to
           </label>
           <Select
@@ -132,7 +132,7 @@ export function CopyToDialog({
               setPlace(e.target.value);
               setFolderId("");
             }}
-            className="ui-input mt-1.5 h-10 w-full rounded-chip px-3 text-sm"
+            className="ui-input mt-1.5 h-10 w-full rounded-chip px-3 text-callout"
           >
             {places.map((p) => (
               <option key={p.key} value={p.key}>
@@ -142,10 +142,10 @@ export function CopyToDialog({
           </Select>
         </div>
         <div>
-          <label htmlFor={`${ids}-folder`} className="block text-sm font-medium">
+          <label htmlFor={`${ids}-folder`} className="block text-subheadline font-medium">
             Folder
           </label>
-          <Select id={`${ids}-folder`} value={folderId} onChange={(e) => setFolderId(e.target.value)} className="ui-input mt-1.5 h-10 w-full rounded-chip px-3 text-sm" disabled={org === undefined}>
+          <Select id={`${ids}-folder`} value={folderId} onChange={(e) => setFolderId(e.target.value)} className="ui-input mt-1.5 h-10 w-full rounded-chip px-3 text-callout" disabled={org === undefined}>
             <option value="">No folder (Drafts)</option>
             {flattenFolders(org?.folders ?? []).map(({ folder: f, depth }) => (
               <option key={f.id} value={f.id}>
@@ -156,9 +156,9 @@ export function CopyToDialog({
           </Select>
         </div>
         <Checkbox checked={withSubpages} onChange={setWithSubpages} describedBy={`${ids}-sub`}>
-          <span className="text-sm">Include sub-pages</span>
+          <span className="text-subheadline">Include sub-pages</span>
         </Checkbox>
-        <p id={`${ids}-sub`} className="text-[13px] text-muted">
+        <p id={`${ids}-sub`} className="text-subheadline text-muted">
           Links between the copied pages lead to the copies. Images and files are copied too and count toward the storage there. A collection is copied as a table of what it shows.
         </p>
       </div>

@@ -53,7 +53,7 @@ export function SupportRequests({ onContact }: { onContact: () => void }) {
     return (
       <div className="ui-card flex flex-wrap items-center gap-3 rounded-control px-4 py-3.5">
         <LifeBuoy size={18} aria-hidden className="flex-none text-muted" />
-        <p className="min-w-0 flex-1 text-sm text-muted">No support requests yet. Requests you send from here, and our replies, will show up in this list.</p>
+        <p className="min-w-0 flex-1 text-subheadline text-muted">No support requests yet. Requests you send from here, and our replies, will show up in this list.</p>
         <Button size="sm" onClick={onContact}>
           Contact support
         </Button>
@@ -75,14 +75,14 @@ export function SupportRequests({ onContact }: { onContact: () => void }) {
               className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
             >
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-heading">
+                <span className="block truncate text-subheadline font-medium text-heading">
                   #{r.number} · {r.subject}
                 </span>
-                <span className="block truncate text-[12.5px] text-muted">
+                <span className="block truncate text-subheadline text-muted">
                   {r.topicLabel} · {replies === 0 ? "No reply yet" : replies === 1 ? "1 reply" : `${replies} replies`} · {formatRelative(r.lastMessageAt)}
                 </span>
               </span>
-              <span className={`flex-none rounded-chip px-2 py-px text-[11.5px] font-semibold leading-[18px] ${STATUS_TONE[r.status] ?? STATUS_TONE.open}`}>{STATUS_LABEL[r.status] ?? r.status}</span>
+              <span className={`flex-none rounded-chip px-2 py-px text-footnote font-semibold leading-[18px] ${STATUS_TONE[r.status] ?? STATUS_TONE.open}`}>{STATUS_LABEL[r.status] ?? r.status}</span>
               <ChevronDown size={15} aria-hidden className={`flex-none text-muted transition-transform ${expanded ? "rotate-180" : ""}`} />
             </button>
             {expanded ? (
@@ -90,13 +90,13 @@ export function SupportRequests({ onContact }: { onContact: () => void }) {
                 <ol className="space-y-3" aria-label={`Messages in request ${r.number}`}>
                   {r.messages.map((m) => (
                     <li key={m.id} className={`rounded-control px-3 py-2.5 ${m.from === "support" ? "bg-[var(--glass-hover)]" : "shadow-[inset_0_0_0_1px_var(--color-line)]"}`}>
-                      <p className="text-[12px] text-muted">
+                      <p className="text-footnote text-muted">
                         <span className="font-semibold text-heading">{m.from === "support" ? "Folevi support" : "You"}</span> ·{" "}
                         <time dateTime={new Date(m.createdAt).toISOString()} title={formatDateTime(m.createdAt)}>
                           {formatRelative(m.createdAt)}
                         </time>
                       </p>
-                      <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{m.body}</p>
+                      <p className="mt-1 whitespace-pre-wrap break-words text-subheadline text-ink">{m.body}</p>
                     </li>
                   ))}
                 </ol>
@@ -137,7 +137,7 @@ function ReplyBox({ number, closed }: { number: number; closed: boolean }) {
         }
       }}
     >
-      <label htmlFor={`${uid}-reply`} className="mb-1 block text-[12.5px] font-medium text-heading">
+      <label htmlFor={`${uid}-reply`} className="mb-1 block text-subheadline font-medium text-heading">
         {closed ? "Reply (this reopens the request)" : "Reply"}
       </label>
       <textarea
@@ -151,10 +151,10 @@ function ReplyBox({ number, closed }: { number: number; closed: boolean }) {
         }}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${uid}-error` : undefined}
-        className="ui-input w-full resize-y rounded-chip px-3 py-2 text-sm text-ink"
+        className="ui-input w-full resize-y rounded-chip px-3 py-2 text-callout text-ink"
       />
       {error ? (
-        <p id={`${uid}-error`} role="alert" className="mt-1 text-[12.5px] text-danger">
+        <p id={`${uid}-error`} role="alert" className="mt-1 text-subheadline text-danger">
           {error}
         </p>
       ) : null}

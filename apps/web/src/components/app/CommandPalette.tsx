@@ -24,7 +24,7 @@ import { useIphoneApp } from "@/lib/iphone";
 import { IphoneScopes } from "@/components/iphone/SearchScopes";
 
 /** A group's heading in the iPhone's search: caption caps (13/18 600, uppercase) at the 20 pt inset. */
-const IPHONE_CAPS = "px-5 pb-1.5 pt-6 text-[13px] font-semibold uppercase leading-[18px] tracking-[0.04em] text-muted";
+const IPHONE_CAPS = "px-5 pb-1.5 pt-6 text-footnote font-semibold uppercase leading-[18px] tracking-[0.04em] text-muted";
 
 type Item =
   | { kind: "action"; id: string; label: string; hint?: string; icon: React.ReactNode; run: () => void }
@@ -233,11 +233,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                   else if (items[active]) run(items[active]!);
                 }
               }}
-              className={iphone ? "h-full min-w-0 flex-1 bg-transparent text-[17px] outline-none placeholder:text-[var(--color-ink-faint)]" : "h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-[var(--color-ink-faint)]"}
+              className={iphone ? "h-full min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-[var(--color-ink-faint)]" : "h-14 flex-1 bg-transparent text-body outline-none placeholder:text-[var(--color-ink-faint)]"}
             />
             </span>
             {iphone ? (
-              <button type="button" onClick={onClose} className="h-11 flex-none px-1 text-[17px] text-heading">
+              <button type="button" onClick={onClose} className="h-11 flex-none px-1 text-body text-heading">
                 Cancel
               </button>
             ) : (
@@ -254,7 +254,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               place={manyPlaces ? { here: workspace ? workspace.name : "Personal", all: allPlaces, onAll: setEverywhere } : null}
             />
           ) : (
-          <div className="flex flex-wrap items-center gap-1.5 px-5 py-2.5 text-xs shadow-[inset_0_-1px_0_var(--color-line)]" role="group" aria-label="Search filters">
+          <div className="flex flex-wrap items-center gap-1.5 px-5 py-2.5 text-footnote shadow-[inset_0_-1px_0_var(--color-line)]" role="group" aria-label="Search filters">
             <Select aria-label="Folder" disabled={allPlaces} value={filters.folderId ?? ""} onChange={(e) => setFilters({ ...filters, folderId: e.target.value || undefined })} className="ui-well h-7 rounded-chip px-2.5 text-muted">
               <option value="">Any folder</option>
               {flattenFolders(org?.folders ?? []).map(({ folder: f, depth }) => (
@@ -299,15 +299,15 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           </div>
           )}
           <div className={iphone ? "min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+16px)]" : "max-h-[55vh] overflow-y-auto p-2"}>
-            {debounced && results === undefined ? <p className={iphone ? "px-5 py-3 text-[15px] text-muted" : "px-3 py-2 text-sm text-muted"}>Searching…</p> : null}
-            {debounced && results?.length === 0 && onDevice.length === 0 ? <p className={iphone ? "px-5 py-3 text-[15px] text-muted" : "px-3 py-2 text-sm text-muted"}>No {iphone ? "notes" : "documents"} match “{debounced}”.</p> : null}
+            {debounced && results === undefined ? <p className={iphone ? "px-5 py-3 text-subheadline text-muted" : "px-3 py-2 text-subheadline text-muted"}>Searching…</p> : null}
+            {debounced && results?.length === 0 && onDevice.length === 0 ? <p className={iphone ? "px-5 py-3 text-subheadline text-muted" : "px-3 py-2 text-subheadline text-muted"}>No {iphone ? "notes" : "documents"} match “{debounced}”.</p> : null}
             <p className={iphone ? IPHONE_CAPS.replace("pt-6", "pt-3") : "ui-caps px-3 pb-1.5 pt-2"}>{debounced ? (iphone ? "Notes" : "Documents") : "Recent"}</p>
             <ul id={listId} role="listbox" aria-label="Results">
               {items.map((item, i) => {
                 const selected = i === active;
                 // The iPhone: full-width list rows (one or two lines, 52 or 64 pt), hairlines inset to the text.
                 const cls = iphone
-                  ? "flex cursor-pointer items-center gap-3 pl-5 pr-4 transition-colors active:bg-[var(--liquid-press)] [&_.text-sm]:text-[17px] [&_.text-sm]:leading-[22px] [&_.text-sm]:font-normal [&_.text-xs]:text-[15px] [&_.text-xs]:leading-5 [&_.text-xs]:mt-0.5"
+                  ? "flex cursor-pointer items-center gap-3 pl-5 pr-4 transition-colors active:bg-[var(--liquid-press)] [&_.text-subheadline]:text-body [&_.text-subheadline]:font-normal [&_.text-footnote]:text-subheadline [&_.text-footnote]:mt-0.5"
                   : `flex cursor-pointer items-start gap-3 rounded-chip px-3 py-2.5 transition-colors ${selected ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_18%,transparent)]" : ""}`;
                 const prev = items[i - 1];
                 const headCls = iphone ? IPHONE_CAPS : "ui-caps px-3 pb-1.5 pt-3";
@@ -338,17 +338,17 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                             <FileText size={iphone ? 22 : 16} strokeWidth={iphone ? 1.8 : 2} className={iphone ? "" : "inline text-muted"} />
                           </span>
                           <span className={iphone ? "ui-row-sep flex min-h-16 min-w-0 flex-1 flex-col justify-center py-2.5" : "min-w-0 flex-1"}>
-                            <span className="block truncate text-sm font-medium">
+                            <span className="block truncate text-subheadline font-medium">
                               <Highlight text={item.title || "Untitled"} query={debounced} />
                             </span>
                             {item.snippet ? (
-                              <span className="line-clamp-2 block text-xs text-muted">
+                              <span className="line-clamp-2 block text-footnote text-muted">
                                 {item.place ? <span className="text-faint">{item.place} · </span> : null}
                                 {item.match ? <span className="text-faint">{fileTextLabel(item.match.source, item.match.page)} · </span> : null}
                                 <Highlight text={item.snippet} query={debounced} />
                               </span>
                             ) : item.updatedAt ? (
-                              <span className="block text-xs text-faint">
+                              <span className="block text-footnote text-faint">
                                 {item.place ? `${item.place} · ` : ""}Edited {formatRelative(item.updatedAt)}
                               </span>
                             ) : null}
@@ -360,8 +360,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                           <span className={iphone ? "grid w-7 flex-none place-items-center text-muted [&_svg]:h-[22px] [&_svg]:w-[22px]" : "mt-0.5 text-muted"} aria-hidden>
                             {item.icon}
                           </span>
-                          <span className={iphone ? "ui-row-sep flex min-h-[52px] min-w-0 flex-1 items-center text-[17px] leading-[22px] text-ink" : "flex-1 text-sm"}>{item.label}</span>
-                          {item.hint && !iphone ? <span className="text-xs text-faint">{item.hint}</span> : null}
+                          <span className={iphone ? "ui-row-sep flex min-h-[52px] min-w-0 flex-1 items-center text-body leading-[22px] text-ink" : "flex-1 text-subheadline"}>{item.label}</span>
+                          {item.hint && !iphone ? <span className="text-footnote text-faint">{item.hint}</span> : null}
                         </>
                       )}
                     </li>

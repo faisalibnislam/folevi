@@ -3,20 +3,17 @@
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, type LucideIcon } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
-import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { api } from "@/lib/convex/api";
-import { endFolderDrag, startFolderDrag, useFolderTree, useFolderTreeState } from "@/lib/app/folders";
-import { useOutboxEntries } from "@/lib/sync/queryCache";
+import { useFolderTree, useFolderTreeState } from "@/lib/app/folders";
+import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
 import { hasNative } from "@/lib/native/ui";
-import { pendingNoteFolders } from "@/lib/sync/overlays";
+import { overlayFolderIndex, pendingNoteFolders } from "@/lib/sync/overlays";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useEngineSelector, useLocalStorage } from "@/lib/hooks/useEngine";
 import { startNoteDrag, NOTE_MIME } from "@/lib/app/noteDrag";
-import { useDropHint } from "@/lib/app/dragSession";
-import { DropRefusal } from "@/components/app/FolderDropLayer";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ContextMenu, MenuButton, type MenuItem } from "@/components/ui/Menu";
@@ -31,6 +28,7 @@ import { localDb } from "@/lib/sync/db";
 import { TemplateTile } from "@/components/ui/TemplateIcon";
 import { DocumentCardPreview, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderBadge } from "./FolderBadge";
+import { FolderCard, type FolderSummary } from "./FolderCard";
 import { pendingByDocument, type PendingDocument } from "@/lib/hooks/usePendingDocs";
 import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
 import { Select } from "@/components/ui/Select";
@@ -43,6 +41,8 @@ import { useAiEnabled } from "@/components/ai/useAi";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useIphoneApp } from "@/lib/iphone";
 import { IphoneNoteList } from "@/components/iphone/NoteList";
+import { useCapabilities } from "@/lib/mode";
+import { FolderShareDialog } from "@/components/app/FolderShareDialog";
 
 // Foli AI's "Generate a template" brings the read-only drawing of every block (its preview): it loads the first
 // time it's opened, not with every list (docs/IOS_PERFORMANCE.md, "Startup").
@@ -51,7 +51,7 @@ const AiGenerateDialog = lazy(() => import("@/components/ai/AiGenerateDialog").t
 /** Marks a page with edits on this device the server hasn't confirmed yet. */
 function UnsyncedMarker({ className = "" }: { className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-1 text-[11px] font-medium text-heading ${className}`} title="Changes on this device haven’t synced yet">
+    <span className={`inline-flex items-center gap-1 text-footnote font-medium text-heading ${className}`} title="Changes on this device haven’t synced yet">
       <span className="inline-block h-1.5 w-1.5 rounded-tiny bg-heading" aria-hidden />
       <span>Waiting to sync</span>
     </span>
@@ -118,13 +118,13 @@ function MissingContainer({ kind }: { kind: "folder" | "tag" }) {
   const here = workspace ? workspace.name : "Personal";
   const title = kind === "folder" ? "Folder not found" : "Tag not found";
   return (
-    <ViewChrome title={<h1 className="truncate text-sm font-semibold">{title}</h1>} tabTitle={title}>
+    <ViewChrome title={<h1 className="truncate text-subheadline font-semibold">{title}</h1>} tabTitle={title}>
       <div className="mx-auto max-w-lg px-6 py-24 text-center">
-        <h2 className="ui-display text-4xl">{kind === "folder" ? "This folder isn’t here" : "This tag isn’t here"}</h2>
+        <h2 className="ui-display text-large-title">{kind === "folder" ? "This folder isn’t here" : "This tag isn’t here"}</h2>
         <p className="mt-3 text-muted">
           It may have been deleted{workspaces.length ? `, or it belongs somewhere other than ${here}` : ""}. Links to {kind === "folder" ? "folders" : "tags"} only work in their own Personal or workspace. Switch there from the menu at the bottom of the sidebar.
         </p>
-        <AppLink href="/documents" className="ui-btn ui-btn-primary mt-6 h-9 px-4 text-sm">
+        <AppLink href="/documents" className="ui-btn ui-btn-primary mt-6 h-9 px-4 text-callout">
           Go to Home
         </AppLink>
       </div>
@@ -168,7 +168,7 @@ function cachedViewFilter(view: View, sort: Sort, online: boolean): ((d: KeptRow
 }
 
 function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
-  const { scope, scopeKey, profile, online, engine, outbox, canEdit } = useAppState();
+  const { scope, scopeKey, profile, online, engine, outbox } = useAppState();
   const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
   const [sort, setSort] = useLocalStorage<Sort>(`folevi:sort:${view}`, "updated");
   // A folder made on this device whose creation is still in the outbox (just made, or made offline) isn't on
@@ -191,6 +191,9 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const notes = useNoteActions();
   const [cached, setCached] = useState<Summary[] | null>(null);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
+  // A folder's Share dialog, from the folder page's toolbar (docs/SHARING.md).
+  const [sharingFolder, setSharingFolder] = useState(false);
+  const caps = useCapabilities();
   const trashSummary = useQuery(api.documents.trashSummary, confirmEmpty ? { scope } : "skip");
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [ctx, setCtx] = useState<{ doc: Summary; at: { x: number; y: number } } | null>(null);
@@ -392,10 +395,18 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const allFolders = org?.folders ?? [];
   const crumbs = view === "folder" && folderId ? folderAncestors(allFolders, folderId) : [];
   const subfolders = view === "folder" && folderId ? allFolders.filter((f) => f.parentFolderId === folderId) : [];
-  const heading = <h1 className="truncate text-sm font-semibold">{title}</h1>;
+  // The folders inside, drawn as folder cards like All folders: their page counts, last change and previews come
+  // from the same index (and offline cache) All folders reads; until it's here, the tree's names and colours.
+  const servedIndex = useOfflineQuery(api.organization.index, subfolders.length ? { scope, only: "folders" } : "skip");
+  const folderIndex = useMemo(() => (servedIndex ? overlayFolderIndex(servedIndex, queued, scope) : servedIndex), [servedIndex, queued, scope]);
+  const subfolderCards: FolderSummary[] = subfolders.map(
+    (f) => folderIndex?.folders.find((x) => x.id === f.id) ?? { id: f.id, name: f.name, color: f.color, parentFolderId: f.parentFolderId, updatedAt: 0, documentCount: 0 },
+  );
+  const heading = <h1 className="truncate text-subheadline font-semibold">{title}</h1>;
 
   const dialogs = (
     <>
+      {sharingFolder && folderId ? <FolderShareDialog open onClose={() => setSharingFolder(false)} folderId={folderId} name={org?.folders.find((f) => f.id === folderId)?.name ?? ""} /> : null}
       <MoveToFolderDialog
         open={bulkMoveOpen}
         onClose={() => setBulkMoveOpen(false)}
@@ -484,7 +495,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         before={
           view === "templates" && builtIns?.length ? (
             <section aria-labelledby="builtin-title" className="pt-3">
-              <h2 id="builtin-title" className="px-5 pb-1 text-[13px] font-medium uppercase tracking-[0.02em] text-muted">
+              <h2 id="builtin-title" className="px-5 pb-1 text-subheadline font-medium uppercase tracking-[0.02em] text-muted">
                 Built-in templates
               </h2>
               {builtIns.map((t) => (
@@ -497,12 +508,12 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                 >
                   <TemplateTile name={t.icon} />
                   <span className="ui-row-sep min-w-0 flex-1 py-2.5">
-                    <span className="block truncate text-[17px] text-ink">{t.name}</span>
-                    <span className="block truncate text-[13px] text-muted">{t.description}</span>
+                    <span className="block truncate text-body text-ink">{t.name}</span>
+                    <span className="block truncate text-subheadline text-muted">{t.description}</span>
                   </span>
                 </button>
               ))}
-              <h2 className="px-5 pb-1 pt-6 text-[13px] font-medium uppercase tracking-[0.02em] text-muted">Your templates</h2>
+              <h2 className="px-5 pb-1 pt-6 text-subheadline font-medium uppercase tracking-[0.02em] text-muted">Your templates</h2>
             </section>
           ) : null
         }
@@ -521,7 +532,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     <ViewChrome
       title={
         crumbs.length ? (
-          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-sm">
+          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-subheadline">
             {crumbs.map((c) => (
               <span key={c.id} className="flex min-w-0 items-center gap-0.5">
                 <AppLink href={`/folders/${c.id}`} className="min-w-0 max-w-[10rem] truncate rounded-chip px-1.5 py-0.5 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
@@ -549,14 +560,14 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       <div className="min-h-full" onPointerDown={selection.onSurfacePointerDown}>
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         <div className="mb-5 flex flex-wrap items-center gap-3">
-          <p role="status" className="mr-auto min-w-0 truncate text-[13px] text-muted">
+          <p role="status" className="mr-auto min-w-0 truncate text-subheadline text-muted">
             {loading
           ? undefined
           : `${docs.length}${canLoadMore ? "+" : ""} ${view === "templates" ? (docs.length === 1 ? "template" : "templates") : docs.length === 1 ? "note" : "notes"}${!online && cached ? " · saved on this device" : ""}${canArrange ? " · drag to arrange" : ""}`}
           </p>
-          <label className="flex items-center gap-2 text-sm text-muted">
+          <label className="flex items-center gap-2 text-subheadline text-muted">
             <span>Sort</span>
-            <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-9 ui-input rounded-chip px-3 text-sm text-ink">
+            <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-9 ui-input rounded-chip px-3 text-callout text-ink">
               <option value="updated">Last edited</option>
               <option value="created">Created</option>
               <option value="title">Title</option>
@@ -586,6 +597,11 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
             ))}
           </div>
           {/* Page actions share the toolbar row (new notes come from the tab bar). */}
+          {view === "folder" && folderId && caps.sharing ? (
+            <Button variant="secondary" onClick={() => setSharingFolder(true)}>
+              <Share2 size={14} aria-hidden /> Share
+            </Button>
+          ) : null}
           {view === "trash" && results.length ? (
             <Button variant="quiet" onClick={() => setConfirmEmpty(true)}>
               Empty Trash
@@ -608,17 +624,20 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         ) : null}
         </div>
 
-        {subfolders.length ? (
-          <nav aria-label="Folders inside" className="mb-6 flex flex-wrap gap-2">
-            {subfolders.map((f) => (
-              <SubfolderChip key={f.id} folder={f} canEdit={canEdit} />
+        {subfolderCards.length ? (
+          // A third smaller than All folders' cards: the page's own notes stay the main thing here.
+          <ul aria-label="Folders inside" className="mb-10 grid grid-cols-[repeat(auto-fill,152px)] gap-x-6 gap-y-8">
+            {subfolderCards.map((f) => (
+              <li key={f.id}>
+                <FolderCard folder={f} labelScale={SUBFOLDER_LABELS} />
+              </li>
             ))}
-          </nav>
+          </ul>
         ) : null}
 
         {view === "templates" && builtIns?.length ? (
           <section aria-labelledby="builtin-title" className="mb-10">
-            <h3 id="builtin-title" className="mb-3 text-[12px] font-semibold uppercase tracking-[0.06em] text-faint">
+            <h3 id="builtin-title" className="mb-3 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">
               Built-in templates
             </h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -633,12 +652,12 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   <TemplateTile name={t.icon} />
                   <span>
                     <span className="block font-medium">{t.name}</span>
-                    <span className="block text-sm text-muted">{t.description}</span>
+                    <span className="block text-subheadline text-muted">{t.description}</span>
                   </span>
                 </button>
               ))}
             </div>
-            <h3 className="mb-3 mt-8 text-[12px] font-semibold uppercase tracking-[0.06em] text-faint">Your templates</h3>
+            <h3 className="mb-3 mt-8 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">Your templates</h3>
           </section>
         ) : null}
 
@@ -686,8 +705,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   </AppLink>
                   {unsynced.has(d.id) ? <UnsyncedMarker /> : null}
                   {d.kind !== "template" ? <FolderBadge folder={d.homeFolder} /> : null}
-                  <span className="hidden text-xs text-muted sm:block">{d.tags.map((t) => `#${t.name}`).join(" ")}</span>
-                  <span className="w-28 text-right text-xs text-faint">{view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}</span>
+                  <span className="hidden text-footnote text-muted sm:block">{d.tags.map((t) => `#${t.name}`).join(" ")}</span>
+                  <span className="w-28 text-right text-footnote text-faint">{view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}</span>
                   {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} /> : null}
                   <DocMenu {...menuProps(d)} />
                 </li>
@@ -772,28 +791,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   );
 }
 
-/**
- * A folder inside this one, as a chip: it opens the folder, and notes or folders dropped on it go inside
- * (components/app/FolderDropLayer.tsx reads its data attributes); it can be dragged onto another folder too.
- */
-function SubfolderChip({ folder: f, canEdit }: { folder: { id: string; name: string; color: string | null }; canEdit: boolean }) {
-  const hint = useDropHint(`chip:${f.id}`);
-  return (
-    <span className="relative inline-flex" data-drop-folder={f.id} data-drop-name={f.name} data-drop-key={`chip:${f.id}`} data-drop-state={hint ? (hint.refused ? "refused" : "inside") : undefined}>
-      <AppLink
-        href={`/folders/${f.id}`}
-        draggable={canEdit ? true : undefined}
-        onDragStart={canEdit ? (e) => startFolderDrag(e, f.id) : undefined}
-        onDragEnd={canEdit ? endFolderDrag : undefined}
-        className={`inline-flex h-9 max-w-[16rem] items-center gap-2 rounded-chip px-3 text-sm ui-card transition-[box-shadow] motion-reduce:transition-none hover:shadow-[var(--shadow-pop)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${hint && !hint.refused ? "bg-[var(--glass-active)] shadow-[inset_0_0_0_2px_var(--color-heading)]" : ""} ${hint?.refused ? "shadow-[inset_0_0_0_1.5px_var(--color-danger)]" : ""}`}
-      >
-        <FolderGlyph color={f.color} size={17} />
-        <span className="truncate">{f.name}</span>
-      </AppLink>
-      {hint?.refused ? <DropRefusal text={hint.refused} className="left-0 top-full mt-1" /> : null}
-    </span>
-  );
-}
+/** A subfolder card is 152 px wide, about two thirds of All folders' (~234 px): its labels stay that card's size. */
+const SUBFOLDER_LABELS = 234 / 152;
 
 /** The check on a selected card (the card also gets a ring). */
 function SelectedMark() {
@@ -826,7 +825,7 @@ function UseTemplateButton({ doc, raised }: { doc: Summary; raised?: boolean }) 
     <button
       type="button"
       onClick={() => void createDocument({ title: doc.title, templateId: doc.id })}
-      className={`ui-btn ${raised ? "ui-btn-secondary" : "ui-btn-ghost"} h-8 gap-1 px-2.5 text-xs`}
+      className={`ui-btn ${raised ? "ui-btn-secondary" : "ui-btn-ghost"} h-8 gap-1 px-2.5 text-footnote`}
       aria-label={`New page from template ${doc.title || "Untitled"}`}
     >
       <FilePlus2 size={13} aria-hidden /> Use
@@ -970,10 +969,10 @@ export function PermanentDeleteDialog({ open, onClose, documentId, title }: { op
         </>
       }
     >
-      <label className="block text-sm" htmlFor="confirm-title">
+      <label className="block text-subheadline" htmlFor="confirm-title">
         Document title
       </label>
-      <input id="confirm-title" value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus className="mt-1 h-10 w-full ui-input rounded-chip px-3 text-sm" />
+      <input id="confirm-title" value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus className="mt-1 h-10 w-full ui-input rounded-chip px-3 text-callout" />
     </Dialog>
   );
 }

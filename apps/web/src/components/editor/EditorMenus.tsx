@@ -291,7 +291,7 @@ function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }
       else if (top + item.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = top + item.offsetHeight - list.clientHeight;
     }
   }, [active, listId]);
-  if (!items.length) return <p className="px-3 py-2 text-sm text-muted">{emptyLabel}</p>;
+  if (!items.length) return <p className="px-3 py-2 text-subheadline text-muted">{emptyLabel}</p>;
   return (
     // The list is the scroll container. It is focusable (axe: scrollable-region-focusable) but focus
     // normally stays in the editor, which points at the active option with aria-activedescendant.
@@ -315,13 +315,13 @@ function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }
             if (i !== active) setActive(i);
           }}
           onClick={() => onRun(item)}
-          className={`flex cursor-pointer items-center gap-2.5 rounded-chip px-2 py-1.5 text-sm transition-colors ${i === active ? "ui-row-active" : ""}`}
+          className={`flex cursor-pointer items-center gap-2.5 rounded-chip px-2 py-1.5 text-subheadline transition-colors ${i === active ? "ui-row-active" : ""}`}
         >
           <span className="grid h-7 w-7 flex-none place-items-center rounded-chip bg-surface text-heading shadow-[var(--shadow-control)]" aria-hidden>
             {item.icon}
           </span>
           <span className="min-w-0 flex-1 truncate">{item.label}</span>
-          {item.hint ? <span className="text-xs text-faint">{keyLabel(item.hint)}</span> : null}
+          {item.hint ? <span className="text-footnote text-faint">{keyLabel(item.hint)}</span> : null}
         </li>,
       ])}
     </ul>
@@ -1012,7 +1012,7 @@ export function EditorMenus({
         label: m.displayName,
         hint: m.isYou ? "you" : m.guest ? "guest" : undefined,
         keywords: "",
-        icon: <span className="text-xs font-semibold">{m.displayName.slice(0, 1)}</span>,
+        icon: <span className="text-footnote font-semibold">{m.displayName.slice(0, 1)}</span>,
         run: () => void editor.chain().focus().insertContent({ type: "mention", attrs: { userId: m.profileId, label: m.displayName } }).insertContent(" ").run(),
       }));
     return [...peopleItems, ...dateItems];
@@ -1306,7 +1306,7 @@ function LinkPrompt({
           onSubmit(result.href);
         }}
       >
-        <label htmlFor={`${formId}-url`} className="text-sm font-medium">
+        <label htmlFor={`${formId}-url`} className="text-subheadline font-medium">
           Web address
         </label>
         <input
@@ -1319,12 +1319,12 @@ function LinkPrompt({
           aria-describedby={error ? `${formId}-err` : hint ? `${formId}-hint` : undefined}
         />
         {hint && !error ? (
-          <p id={`${formId}-hint`} className="mt-1 text-xs text-muted">
+          <p id={`${formId}-hint`} className="mt-1 text-footnote text-muted">
             {hint}
           </p>
         ) : null}
         {error ? (
-          <p id={`${formId}-err`} className="mt-1 text-xs text-danger">
+          <p id={`${formId}-err`} className="mt-1 text-footnote text-danger">
             {error}
           </p>
         ) : null}
@@ -1373,7 +1373,7 @@ function DatePopover({ editor, anchor, mode, today, onClose }: { editor: Editor;
         }}
       >
         <div
-          className="grid gap-2.5 p-1 text-sm"
+          className="grid gap-2.5 p-1 text-subheadline"
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               e.preventDefault();
@@ -1394,7 +1394,7 @@ function DatePopover({ editor, anchor, mode, today, onClose }: { editor: Editor;
               </button>
             ))}
             {mode.mode === "edit" ? (
-              <button type="button" className="ui-btn ui-btn-quiet ml-auto h-7 px-2.5 text-xs text-danger" onClick={remove}>
+              <button type="button" className="ui-btn ui-btn-quiet ml-auto h-7 px-2.5 text-footnote text-danger" onClick={remove}>
                 Remove
               </button>
             ) : null}
@@ -1694,15 +1694,15 @@ function SelectionBubble({ editor, onComment, inCell = false }: { editor: Editor
             aria-label="Link address"
             aria-invalid={Boolean(linkError)}
             aria-describedby={linkError ? linkErrorId : undefined}
-            className={`ui-input h-8 w-60 rounded-chip px-3 text-sm ${linkError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
+            className={`ui-input h-8 w-60 rounded-chip px-3 text-callout ${linkError ? "shadow-[0_0_0_1.5px_var(--color-danger)]" : ""}`}
           />
-          <button type="submit" className="ui-btn ui-btn-primary h-8 px-3 text-xs">
+          <button type="submit" className="ui-btn ui-btn-primary h-8 px-3 text-footnote">
             Apply
           </button>
           {editor.isActive("link") ? (
             <button
               type="button"
-              className="ui-btn ui-btn-quiet h-8 px-2.5 text-xs"
+              className="ui-btn ui-btn-quiet h-8 px-2.5 text-footnote"
               onClick={() => {
                 removeLink(editor);
                 close();
@@ -1712,7 +1712,7 @@ function SelectionBubble({ editor, onComment, inCell = false }: { editor: Editor
             </button>
           ) : null}
           {linkError ? (
-            <span id={linkErrorId} role="alert" className="basis-full px-1 pb-0.5 pt-1 text-xs text-danger">
+            <span id={linkErrorId} role="alert" className="basis-full px-1 pb-0.5 pt-1 text-footnote text-danger">
               {linkError}
             </span>
           ) : null}
@@ -1743,7 +1743,7 @@ function SelectionBubble({ editor, onComment, inCell = false }: { editor: Editor
               }}
               className="grid h-7 w-7 place-items-center rounded-chip hover:bg-accent-soft focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none"
             >
-              <span className={`fb-color-${c} text-sm font-semibold`} aria-hidden>
+              <span className={`fb-color-${c} text-subheadline font-semibold`} aria-hidden>
                 A
               </span>
             </button>
@@ -1766,7 +1766,7 @@ function SelectionBubble({ editor, onComment, inCell = false }: { editor: Editor
           ))}
           <button
             type="button"
-            className="ui-btn ui-btn-quiet h-7 px-2.5 text-xs"
+            className="ui-btn ui-btn-quiet h-7 px-2.5 text-footnote"
             onClick={() => {
               editor.chain().unsetMark("textColor").unsetMark("highlight").run();
               afterAction();
@@ -2311,8 +2311,8 @@ function BlockHandle({
         <>
           <div className="fixed inset-0 z-40" onMouseDown={() => closeMenu(false)} aria-hidden />
           <Popover anchor={menu} label="Block options" width={240} popRef={menuRef} tall>
-            <div className="p-1 text-sm" role="menu" aria-label={count > 1 ? `Options for ${count} blocks` : "Block options"} onKeyDown={onMenuKey}>
-              {count > 1 ? <p className="px-2 pb-1 pt-0.5 text-xs text-muted">{count} blocks selected</p> : null}
+            <div className="p-1 text-subheadline" role="menu" aria-label={count > 1 ? `Options for ${count} blocks` : "Block options"} onKeyDown={onMenuKey}>
+              {count > 1 ? <p className="px-2 pb-1 pt-0.5 text-footnote text-muted">{count} blocks selected</p> : null}
               {anyText ? (
                 <>
                   <p className="ui-caps px-2 pb-1.5 pt-1" aria-hidden>
@@ -2457,7 +2457,7 @@ function BlockHandle({
                     {item.icon}
                   </span>
                   <span className="flex-1">{item.label}</span>
-                  <span className="text-xs text-faint">{keyLabel(item.hint)}</span>
+                  <span className="text-footnote text-faint">{keyLabel(item.hint)}</span>
                 </button>
               ))}
             </div>
@@ -2549,7 +2549,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
         }}
       >
         <form
-          className="grid gap-3 p-2 text-sm"
+          className="grid gap-3 p-2 text-subheadline"
           onSubmit={(e) => {
             e.preventDefault();
             close();
@@ -2562,7 +2562,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
           }}
         >
           <div className="grid gap-1">
-            <span className="text-xs text-muted">Due</span>
+            <span className="text-footnote text-muted">Due</span>
             <span className="grid grid-cols-[1fr_auto] gap-1.5">
               <DateField
                 autoFocus
@@ -2574,7 +2574,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
             </span>
           </div>
           <label className="grid gap-1">
-            <span className="text-xs text-muted">Priority</span>
+            <span className="text-footnote text-muted">Priority</span>
             <Select value={(node.attrs.priority as string) ?? "none"} onChange={(e) => set({ priority: e.target.value === "none" ? null : e.target.value })} className="h-8 ui-input rounded-chip px-3">
               <option value="none">None</option>
               <option value="low">Low</option>
@@ -2584,7 +2584,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
           </label>
           {members && members.members.length > 1 ? (
             <label className="grid gap-1">
-              <span className="text-xs text-muted">Assignee</span>
+              <span className="text-footnote text-muted">Assignee</span>
               <Select value={(node.attrs.assigneeId as string) ?? ""} onChange={(e) => set({ assigneeId: e.target.value || null })} className="h-8 ui-input rounded-chip px-3">
                 <option value="">Unassigned</option>
                 {members.members.map((m) => (
@@ -2597,7 +2597,7 @@ function TaskDetails({ editor }: { editor: Editor }) {
             </label>
           ) : null}
           <div className="grid gap-1">
-            <span className="text-xs text-muted">Reminder</span>
+            <span className="text-footnote text-muted">Reminder</span>
             <DateTimeField
               value={(node.attrs.reminderAt as number | null) ?? null}
               onChange={(ts) => {
@@ -2614,10 +2614,10 @@ function TaskDetails({ editor }: { editor: Editor }) {
             onChange={(rule) => set(repeatProps(rule))}
           />
           <div className="flex justify-between">
-            <button type="button" className="text-xs text-muted hover:text-ink" onClick={() => set({ dueDate: null, dueTime: null, priority: null, reminderAt: null, assigneeId: null, ...repeatProps(null) })}>
+            <button type="button" className="text-footnote text-muted hover:text-ink" onClick={() => set({ dueDate: null, dueTime: null, priority: null, reminderAt: null, assigneeId: null, ...repeatProps(null) })}>
               Clear all
             </button>
-            <button type="submit" className="h-8 ui-btn ui-btn-primary px-3.5 text-xs">
+            <button type="submit" className="h-8 ui-btn ui-btn-primary px-3.5 text-footnote">
               Done
             </button>
           </div>

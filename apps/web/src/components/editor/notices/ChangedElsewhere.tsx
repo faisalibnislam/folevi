@@ -159,7 +159,7 @@ function Notice({ notice, text, onOpen, onDismiss }: { notice: NoteNotice; text:
       aria-label={text}
       data-testid="changed-elsewhere"
       data-block={notice.blockId ?? ""}
-      className="flex min-h-8 max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-control bg-[color-mix(in_oklab,var(--color-marigold)_14%,var(--color-surface))] py-1 pl-3 pr-1 text-[13px] text-ink shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-marigold)_30%,transparent)]"
+      className="flex min-h-8 max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-control bg-[color-mix(in_oklab,var(--color-marigold)_14%,var(--color-surface))] py-1 pl-3 pr-1 text-subheadline text-ink shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-marigold)_30%,transparent)]"
     >
       <span className="min-w-0">
         {text}

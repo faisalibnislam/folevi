@@ -125,7 +125,7 @@ export function Calendar({
   return (
     <div className={`${fill ? "w-full" : "w-[244px]"} select-none`}>
       <div className="mb-1.5 flex items-center justify-between px-0.5">
-        <span id={labelId} className={`${fill ? "px-1.5 text-[17px]" : "text-[13px]"} font-semibold text-heading`} aria-live="polite">
+        <span id={labelId} className={`${fill ? "px-1.5 text-headline" : "text-subheadline"} font-semibold text-heading`} aria-live="polite">
           {title}
         </span>
         <span className="flex gap-0.5">
@@ -140,7 +140,7 @@ export function Calendar({
       <div ref={grid} role="grid" aria-labelledby={labelId} onKeyDown={onKey} className="grid grid-cols-7 gap-0.5">
         <div role="row" className="contents">
           {weekdays.map((w, i) => (
-            <span key={`w${i}`} role="columnheader" className={`grid h-7 place-items-center ${fill ? "text-[13px]" : "text-[11px]"} font-semibold text-faint`}>
+            <span key={`w${i}`} role="columnheader" className={`grid h-7 place-items-center ${fill ? "text-footnote" : "text-footnote"} font-semibold text-faint`}>
               {w}
             </span>
           ))}
@@ -163,7 +163,7 @@ export function Calendar({
                   aria-current={isToday ? "date" : undefined}
                   aria-label={dateLabel(day)}
                   onClick={() => onPick(day)}
-                  className={`grid ${fill ? "h-11 text-[17px]" : "h-8 text-[13px]"} place-items-center rounded-chip tabular-nums transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none ${
+                  className={`grid ${fill ? "h-11 text-body" : "h-8 text-subheadline"} place-items-center rounded-chip tabular-nums transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] focus-visible:outline-none ${
                     selected
                       ? "bg-[var(--color-heading)] font-semibold text-[var(--color-surface)]"
                       : isToday
@@ -260,7 +260,7 @@ export function DateField({
         className={
           bare
             ? "flex w-full min-w-0 items-center bg-transparent text-left outline-none disabled:opacity-50"
-            : `ui-input flex ${size === "lg" ? "h-9" : "h-8"} w-full min-w-0 items-center gap-2 rounded-chip pl-2.5 pr-8 text-left text-[13px] disabled:opacity-50`
+            : `ui-input flex ${size === "lg" ? "h-9" : "h-8"} w-full min-w-0 items-center gap-2 rounded-chip pl-2.5 pr-8 text-left text-callout disabled:opacity-50`
         }
       >
         {bare ? null : <CalendarDays size={14} aria-hidden className="flex-none text-muted" />}
@@ -315,7 +315,7 @@ export function DateField({
                 <div className="mt-1.5 flex justify-end border-t border-line pt-1.5">
                   <button
                     type="button"
-                    className="ui-btn ui-btn-quiet h-7 px-2.5 text-xs"
+                    className="ui-btn ui-btn-quiet h-7 px-2.5 text-footnote"
                     onClick={() => {
                       onChange("");
                       close();
@@ -379,7 +379,7 @@ export function TimeField({
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       aria-label={ariaLabel}
-      className={`${size === "lg" ? "h-9" : "h-8"} ui-input rounded-chip px-2.5 text-[13px] ${className}`}
+      className={`${size === "lg" ? "h-9" : "h-8"} ui-input rounded-chip px-2.5 text-callout ${className}`}
     >
       {allowEmpty || !value ? <option value="">{emptyLabel}</option> : null}
       {times.map((t) => (

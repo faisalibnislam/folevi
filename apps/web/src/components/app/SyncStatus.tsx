@@ -112,7 +112,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
         className={
           compact
             ? `relative grid h-8 w-8 place-items-center rounded-chip transition-colors hover:bg-accent-soft ${tone}`
-            : `ui-well inline-flex h-8 w-[7.75rem] items-center justify-center gap-1.5 rounded-chip px-2.5 text-[12px] font-semibold transition-colors hover:text-heading ${tone}`
+            : `ui-well inline-flex h-8 w-[7.75rem] items-center justify-center gap-1.5 rounded-chip px-2.5 text-footnote font-semibold transition-colors hover:text-heading ${tone}`
         }
         data-testid="sync-status"
         data-status={status}
@@ -120,8 +120,8 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
         {compact ? (
           <>
             {status === "saved" ? <Cloud size={16} aria-hidden /> : icon}
-            <span className={`absolute bottom-[7px] right-[6px] h-2 w-2 rounded-tiny ring-2 ring-[var(--color-canvas)] ${dot}`} aria-hidden />
-            {status === "offline" && pending ? <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-chip bg-heading px-1 text-[9.5px] font-bold tabular-nums text-canvas">{pending}</span> : null}
+            <span className={`absolute bottom-1.5 right-1.5 h-2 w-2 rounded-tiny ring-2 ring-[var(--color-canvas)] ${dot}`} aria-hidden />
+            {status === "offline" && pending ? <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-chip bg-heading px-1 text-caption-2 font-bold tabular-nums text-canvas">{pending}</span> : null}
           </>
         ) : (
           <>
@@ -136,7 +136,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
         {announce}
       </span>
       {open ? (
-        <div ref={panelRef} id={panelId} role="dialog" aria-label="Sync details" popover="manual" style={panelStyle} className={`ui-pop z-[100] border-0 text-ink w-72 max-w-[calc(100vw-2rem)] rounded-panel px-4 py-3.5 text-[13px] leading-snug animate-[folio-rise_160ms_var(--ease-folio)]`}>
+        <div ref={panelRef} id={panelId} role="dialog" aria-label="Sync details" popover="manual" style={panelStyle} className={`ui-pop z-[100] border-0 text-ink w-72 max-w-[calc(100vw-2rem)] rounded-panel px-4 py-3.5 text-subheadline leading-snug animate-[folio-rise_160ms_var(--ease-folio)]`}>
           <p className="flex items-center gap-2 font-semibold text-heading">
             <span className={`h-2 w-2 flex-none rounded-tiny ${dot}`} aria-hidden />
             {LABELS[status]}
@@ -153,7 +153,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
           <PendingList onNavigate={() => setOpen(false)} />
           <OutboxList />
           {errors.length ? (
-            <ul className="mt-2 list-disc pl-5 text-xs text-muted">
+            <ul className="mt-2 list-disc pl-5 text-footnote text-muted">
               {errors.slice(-3).map((e) => (
                 <li key={e.opId}>{describeError(e)}</li>
               ))}
@@ -164,7 +164,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
             {status !== "saved" ? (
               <button
                 type="button"
-                className="ui-btn ui-btn-secondary h-8 px-3 text-xs"
+                className="ui-btn ui-btn-secondary h-8 px-3 text-footnote"
                 onClick={() => {
                   // Refused changes whose content was kept are sent again (a refused rank is repaired first).
                   engine?.retryRejected();
@@ -177,7 +177,7 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
               </button>
             ) : null}
             {errors.length ? (
-              <button type="button" className="ui-btn ui-btn-quiet h-8 px-3 text-xs" onClick={() => engine?.clearErrors()}>
+              <button type="button" className="ui-btn ui-btn-quiet h-8 px-3 text-footnote" onClick={() => engine?.clearErrors()}>
                 Dismiss
               </button>
             ) : null}
@@ -221,7 +221,7 @@ function OutboxList() {
   const shown = entries.slice(0, LIST_LIMIT);
   return (
     <div className="mt-3 border-t border-line pt-3" data-testid="sync-outbox-list">
-      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">Other changes</p>
+      <p className="text-footnote font-semibold uppercase tracking-[0.08em] text-muted">Other changes</p>
       <ul className="mt-1.5 space-y-1">
         {shown.map((e) => (
           <li key={e.id} className="flex items-start gap-2 py-0.5">
@@ -230,24 +230,24 @@ function OutboxList() {
               <p className="truncate text-ink">{e.label}</p>
               {e.failed ? (
                 <>
-                  <p className="text-xs text-danger">Not saved: {e.failed.message}</p>
+                  <p className="text-footnote text-danger">Not saved: {e.failed.message}</p>
                   <div className="mt-1 flex gap-1.5">
-                    <button type="button" className="ui-btn ui-btn-secondary h-7 px-2.5 text-xs" onClick={() => outbox?.retry(e.id)}>
+                    <button type="button" className="ui-btn ui-btn-secondary h-7 px-2.5 text-footnote" onClick={() => outbox?.retry(e.id)}>
                       Retry
                     </button>
-                    <button type="button" className="ui-btn ui-btn-quiet h-7 px-2.5 text-xs" onClick={() => outbox?.discard(e.id)}>
+                    <button type="button" className="ui-btn ui-btn-quiet h-7 px-2.5 text-footnote" onClick={() => outbox?.discard(e.id)}>
                       Discard
                     </button>
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-muted">{outbox?.sending === e.id ? "Sending…" : "Waiting to send"}</p>
+                <p className="text-footnote text-muted">{outbox?.sending === e.id ? "Sending…" : "Waiting to send"}</p>
               )}
             </div>
           </li>
         ))}
       </ul>
-      {entries.length > LIST_LIMIT ? <p className="mt-1 text-xs text-muted">{t("sync.outbox.more", { count: entries.length - LIST_LIMIT })}</p> : null}
+      {entries.length > LIST_LIMIT ? <p className="mt-1 text-footnote text-muted">{t("sync.outbox.more", { count: entries.length - LIST_LIMIT })}</p> : null}
     </div>
   );
 }
@@ -276,7 +276,7 @@ function PendingList({ onNavigate }: { onNavigate: () => void }) {
   const shown = pending.slice(0, LIST_LIMIT);
   return (
     <div className="mt-3 border-t border-line pt-3" data-testid="sync-pending-list">
-      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted">{t("sync.pending.heading")}</p>
+      <p className="text-footnote font-semibold uppercase tracking-[0.08em] text-muted">{t("sync.pending.heading")}</p>
       <ul className="mt-1.5 space-y-0.5">
         {shown.map((p) => {
           const title = titles.get(p.documentId) || (p.isNew ? t("sync.pending.newPage") : t("sync.pending.untitled"));
@@ -289,7 +289,7 @@ function PendingList({ onNavigate }: { onNavigate: () => void }) {
               >
                 <FileText size={14} aria-hidden className="flex-none text-muted" />
                 <span className="min-w-0 flex-1 truncate">{title}</span>
-                <span className="flex-none text-xs tabular-nums text-muted">
+                <span className="flex-none text-footnote tabular-nums text-muted">
                   {p.changes ? t("sync.pending.changes", { count: p.changes }) : null}
                   {p.uploads ? (
                     <span className="ml-1.5 inline-flex items-center gap-0.5" title={t("sync.pending.uploads", { count: p.uploads })}>
@@ -304,7 +304,7 @@ function PendingList({ onNavigate }: { onNavigate: () => void }) {
           );
         })}
       </ul>
-      {pending.length > LIST_LIMIT ? <p className="mt-1 text-xs text-muted">{t("sync.pending.more", { count: pending.length - LIST_LIMIT })}</p> : null}
+      {pending.length > LIST_LIMIT ? <p className="mt-1 text-footnote text-muted">{t("sync.pending.more", { count: pending.length - LIST_LIMIT })}</p> : null}
     </div>
   );
 }

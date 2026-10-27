@@ -135,17 +135,26 @@ public enum FoleviTokens {
 
     public enum Space {
         public static let s0: CGFloat = 0
-        public static let s1: CGFloat = 8
-        public static let s2: CGFloat = 16
-        public static let s3: CGFloat = 24
-        public static let s4: CGFloat = 32
-        public static let s5: CGFloat = 40
-        public static let s6: CGFloat = 48
-        public static let s8: CGFloat = 64
-        public static let s10: CGFloat = 80
-        public static let s12: CGFloat = 96
-        public static let s0_5: CGFloat = 4
-        public static let s1_5: CGFloat = 12
+        public static let s1: CGFloat = 4
+        public static let s2: CGFloat = 8
+        public static let s3: CGFloat = 12
+        public static let s4: CGFloat = 16
+        public static let s5: CGFloat = 20
+        public static let s6: CGFloat = 24
+        public static let s7: CGFloat = 28
+        public static let s8: CGFloat = 32
+        public static let s9: CGFloat = 36
+        public static let s10: CGFloat = 40
+        public static let s11: CGFloat = 44
+        public static let s12: CGFloat = 48
+        public static let s14: CGFloat = 56
+        public static let s16: CGFloat = 64
+        public static let s20: CGFloat = 80
+        public static let s24: CGFloat = 96
+        public static let s0_5: CGFloat = 2
+        public static let s1_5: CGFloat = 6
+        public static let s2_5: CGFloat = 10
+        public static let s3_5: CGFloat = 14
     }
 
     public enum Radius {
@@ -161,6 +170,91 @@ public enum FoleviTokens {
         public static let capsule: CGFloat = 999
     }
 
+    /// The UI type scale (font.role, docs/DESIGN_SYSTEM.md "Type scale"): Desktop is the web app's compact scale,
+    /// which Folevi for Mac draws as is; Ios is Apple's default Dynamic Type sizes for the iPhone and iPad apps.
+    public enum TypeScale {
+        public enum Desktop {
+            public static let largeTitle = TypeMetrics(size: 32, leading: 38)
+            public static let title1 = TypeMetrics(size: 24, leading: 30)
+            public static let title2 = TypeMetrics(size: 20, leading: 26)
+            public static let title3 = TypeMetrics(size: 17, leading: 22)
+            public static let headline = TypeMetrics(size: 15, leading: 20)
+            public static let body = TypeMetrics(size: 14, leading: 20)
+            public static let callout = TypeMetrics(size: 13, leading: 18)
+            public static let subheadline = TypeMetrics(size: 13, leading: 18)
+            public static let footnote = TypeMetrics(size: 12, leading: 16)
+            public static let caption1 = TypeMetrics(size: 12, leading: 16)
+            public static let caption2 = TypeMetrics(size: 11, leading: 14)
+        }
+        public enum Ios {
+            public static let largeTitle = TypeMetrics(size: 34, leading: 41)
+            public static let title1 = TypeMetrics(size: 28, leading: 34)
+            public static let title2 = TypeMetrics(size: 22, leading: 28)
+            public static let title3 = TypeMetrics(size: 20, leading: 25)
+            public static let headline = TypeMetrics(size: 17, leading: 22)
+            public static let body = TypeMetrics(size: 17, leading: 22)
+            public static let callout = TypeMetrics(size: 16, leading: 21)
+            public static let subheadline = TypeMetrics(size: 15, leading: 20)
+            public static let footnote = TypeMetrics(size: 13, leading: 18)
+            public static let caption1 = TypeMetrics(size: 12, leading: 16)
+            public static let caption2 = TypeMetrics(size: 11, leading: 13)
+        }
+    }
+
+    /// The note's own typography (font.document), outside the UI scale.
+    public enum DocumentType {
+        public static let body: CGFloat = 16
+        public static let title: CGFloat = 38
+    }
+
+    /// CSS font weights (100 to 900); the bundled variable fonts draw any of them.
+    public enum FontWeight {
+        public static let regular: CGFloat = 400
+        public static let medium: CGFloat = 500
+        public static let semibold: CGFloat = 600
+        public static let bold: CGFloat = 700
+    }
+
+    /// The smallest text field font size on a touch screen.
+    public static let inputMinSize: CGFloat = 16
+
+    /// Spacing by role (spaceRoles, docs/DESIGN_SYSTEM.md "Spacing").
+    public enum SpaceRole {
+        public enum Desktop {
+            public static let screenMargin: CGFloat = 32
+            public static let sectionGap: CGFloat = 32
+            public static let headerToContent: CGFloat = 12
+            public static let groupGap: CGFloat = 16
+            public static let rowPaddingX: CGFloat = 10
+            public static let rowPaddingY: CGFloat = 8
+            public static let rowGap: CGFloat = 4
+            public static let listInset: CGFloat = 8
+            public static let iconToLabel: CGFloat = 8
+            public static let buttonPaddingX: CGFloat = 12
+            public static let controlGap: CGFloat = 8
+            public static let sheetInset: CGFloat = 20
+            public static let barToContent: CGFloat = 8
+            public static let toolbarGap: CGFloat = 4
+        }
+        public enum Ios {
+            public static let screenMargin: CGFloat = 16
+            public static let sectionGap: CGFloat = 28
+            public static let headerToContent: CGFloat = 8
+            public static let groupGap: CGFloat = 20
+            public static let rowPaddingX: CGFloat = 16
+            public static let rowPaddingY: CGFloat = 12
+            public static let rowGap: CGFloat = 0
+            public static let listInset: CGFloat = 16
+            public static let iconToLabel: CGFloat = 12
+            public static let buttonPaddingX: CGFloat = 16
+            public static let controlGap: CGFloat = 8
+            public static let sheetInset: CGFloat = 16
+            public static let barToContent: CGFloat = 12
+            public static let toolbarGap: CGFloat = 8
+        }
+    }
+
+    /// Legacy sizes (font.size), read by the iOS text styles until they move to TypeScale.Ios.
     public enum FontSize {
         public static let xs: CGFloat = 12
         public static let sm: CGFloat = 13

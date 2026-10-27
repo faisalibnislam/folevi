@@ -1,0 +1,81 @@
+name: Backup
+
+# A daily backup of production, off Convex (docs/SECURITY_PLAN.md P0.4, docs/DEPLOYMENT.md "Backups and restore"):
+# a full export with file storage, encrypted with an age public key (the private key is kept offline, never in
+# GitHub), uploaded to a Cloudflare R2 bucket with a retention lock, so neither a stolen deploy key nor stolen R2
+# keys can delete or change a backup before it expires. Skipped (successfully) until the secrets are set.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Export, encrypt, store
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check the secrets
+        id: ready
+        env:
+          KEY: ${{ secrets.BACKUP_CONVEX_DEPLOY_KEY }}
+          RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+          R2_KEY: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
+        run: |
+          if [ -z "$KEY" ] || [ -z "$RECIPIENT" ] || [ -z "$R2_KEY" ]; then
+            echo "Backups aren't set up yet (see docs/DEPLOYMENT.md); skipping."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: steps.ready.outputs.go == 'true'
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        if: steps.ready.outputs.go == 'true'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        if: steps.ready.outputs.go == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: steps.ready.outputs.go == 'true'
+      - name: Install age
+        if: steps.ready.outputs.go == 'true'
+        run: sudo apt-get update -q && sudo apt-get install -y -q age
+      # The deploy key is given to this one step only.
+      - name: Export production (with file storage)
+        if: steps.ready.outputs.go == 'true'
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.BACKUP_CONVEX_DEPLOY_KEY }}
+        run: npx convex export --include-file-storage --path "$RUNNER_TEMP/folevi.zip"
+      - name: Encrypt
+        if: steps.ready.outputs.go == 'true'
+        env:
+          RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+        run: |
+          age -r "$RECIPIENT" -o "$RUNNER_TEMP/folevi.zip.age" "$RUNNER_TEMP/folevi.zip"
+          shred -u "$RUNNER_TEMP/folevi.zip"
+          sha256sum "$RUNNER_TEMP/folevi.zip.age" | cut -d' ' -f1 > "$RUNNER_TEMP/folevi.zip.age.sha256"
+      - name: Upload to R2 (daily, and monthly on the 1st)
+        if: steps.ready.outputs.go == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          ENDPOINT: ${{ vars.BACKUP_R2_ENDPOINT }}
+          BUCKET: ${{ vars.BACKUP_R2_BUCKET }}
+        run: |
+          stamp=$(date -u +%Y-%m-%dT%H%MZ)
+          for prefix in daily $( [ "$(date -u +%d)" = "01" ] && echo monthly ); do
+            aws s3 cp --endpoint-url "$ENDPOINT" "$RUNNER_TEMP/folevi.zip.age" "s3://$BUCKET/$prefix/folevi-$stamp.zip.age"
+            aws s3 cp --endpoint-url "$ENDPOINT" "$RUNNER_TEMP/folevi.zip.age.sha256" "s3://$BUCKET/$prefix/folevi-$stamp.zip.age.sha256"
+          done
+          echo "Stored folevi-$stamp.zip.age ($(stat -c %s "$RUNNER_TEMP/folevi.zip.age") bytes)."

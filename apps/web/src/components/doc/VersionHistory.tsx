@@ -209,10 +209,10 @@ function HistoryView({ onClose, documentId, title, style, cover, initialVersion 
             <ArrowLeft size={18} aria-hidden />
           </IconButton>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[15px] font-semibold text-heading">{heading}</h1>
-            {subheading ? <p className="truncate text-xs text-muted">{subheading}</p> : null}
+            <h1 className="truncate text-headline font-semibold text-heading">{heading}</h1>
+            {subheading ? <p className="truncate text-footnote text-muted">{subheading}</p> : null}
           </div>
-          <label className="flex items-center gap-2 text-sm text-muted">
+          <label className="flex items-center gap-2 text-subheadline text-muted">
             <Switch checked={showChanges} onChange={setShowChanges} label="Show changes" />
             <span aria-hidden>Show changes</span>
           </label>
@@ -226,7 +226,7 @@ function HistoryView({ onClose, documentId, title, style, cover, initialVersion 
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           <main className="fb-page min-h-0 min-w-0 flex-1 overflow-y-auto bg-[var(--color-surface-sunken)] px-3 py-6 sm:px-8" data-font={(shown?.style ?? style).font} data-width={(shown?.style ?? style).width} style={themeFontVars(coverArtOf(cover)?.fonts)}>
             {diff && diff.authors.length ? (
-              <div role="group" className="mx-auto mb-3 flex max-w-[calc(var(--editor-width)+8rem)] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" aria-label="Changes in this version by">
+              <div role="group" className="mx-auto mb-3 flex max-w-[calc(var(--editor-width)+8rem)] flex-wrap items-center gap-x-3 gap-y-1 text-footnote text-muted" aria-label="Changes in this version by">
                 <span>Changes by</span>
                 {diff.authors.map((key) => (
                   <PersonChip key={key} person={people[key]} />
@@ -235,7 +235,7 @@ function HistoryView({ onClose, documentId, title, style, cover, initialVersion 
             ) : null}
             <article className="fb-sheet ui-sheet relative mx-auto px-6 pb-16 pt-10 sm:px-14" data-background={(shown?.style ?? style).background} {...sheet} style={{ ...sheet.style, maxWidth: "calc(var(--editor-width) + 8rem)" }}>
               {unreadable ? (
-                <p role="alert" className="py-16 text-center text-sm text-muted">
+                <p role="alert" className="py-16 text-center text-subheadline text-muted">
                   This version can’t be shown. It may have been saved by a newer version of Folevi, or it’s no longer available.
                 </p>
               ) : !shown ? (
@@ -255,7 +255,7 @@ function HistoryView({ onClose, documentId, title, style, cover, initialVersion 
 
           <aside className="flex max-h-[42vh] min-h-0 flex-col border-t border-line md:max-h-none md:w-[300px] md:border-l md:border-t-0" aria-label="Versions">
             <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-3">
-              <h2 className="text-sm font-semibold text-heading">Version history</h2>
+              <h2 className="text-subheadline font-semibold text-heading">Version history</h2>
               <div role="group" aria-label="Show" className="ui-seg bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
                 <button type="button" aria-pressed={!namedOnly} onClick={() => setNamedOnly(false)}>
                   All
@@ -281,9 +281,9 @@ function HistoryView({ onClose, documentId, title, style, cover, initialVersion 
                   menu={[{ label: "Name current version", icon: <Pencil size={14} />, onSelect: () => setNaming(CURRENT) }]}
                 />
               ) : null}
-              {listed === undefined ? <p className="px-3 py-2 text-sm text-muted">Loading…</p> : null}
+              {listed === undefined ? <p className="px-3 py-2 text-subheadline text-muted">Loading…</p> : null}
               {listed?.versions.length === 0 ? (
-                <p className="px-3 py-2 text-sm text-muted">{namedOnly ? "No named versions yet. Name one from its menu." : "No versions yet. They’re saved as you edit."}</p>
+                <p className="px-3 py-2 text-subheadline text-muted">{namedOnly ? "No named versions yet. Name one from its menu." : "No versions yet. They’re saved as you edit."}</p>
               ) : null}
               {groupByDay(listed?.versions ?? []).map(([day, rows]) => (
                 <section key={day} aria-label={day}>
@@ -414,16 +414,16 @@ function VersionRow({
                 onCancelName();
               }
             }}
-            className="ui-input h-8 w-full rounded-chip px-2 text-sm"
+            className="ui-input h-8 w-full rounded-chip px-2 text-callout"
           />
-          <p className="mt-1 text-[11px] text-muted">Enter to save, Esc to cancel. Named versions are kept for good.</p>
+          <p className="mt-1 text-footnote text-muted">Enter to save, Esc to cancel. Named versions are kept for good.</p>
         </form>
       ) : (
         <button id={`version-${id}`} type="button" aria-current={selected ? "true" : undefined} onClick={onSelect} className="block w-full rounded-control px-3 py-2 pr-10 text-left outline-none focus-visible:ring-2 focus-visible:ring-focus">
-          <span className={`block truncate text-sm ${selected ? "font-semibold text-heading" : "font-medium text-ink"}`}>{title}</span>
-          {detail ? <span className="block truncate text-xs text-muted">{detail}</span> : null}
+          <span className={`block truncate text-subheadline ${selected ? "font-semibold text-heading" : "font-medium text-ink"}`}>{title}</span>
+          {detail ? <span className="block truncate text-footnote text-muted">{detail}</span> : null}
           {shown.length ? (
-            <span className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-muted">
+            <span className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-footnote text-muted">
               {shown.map((key) => (
                 <span key={key} className="inline-flex items-center gap-1.5">
                   <PersonAvatar person={people[key]} size={18} />

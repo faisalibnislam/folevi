@@ -24,10 +24,10 @@ function Sheet({ name, defaults, fonts, paper, ink, accent, highlights }: { name
   const title = familyFor(defaults.font === "sans" ? "serif" : defaults.font, fonts);
   return (
     <div className="absolute bottom-0 left-1/2 top-9 w-[70%] -translate-x-1/2 rounded-t-chip px-3 pt-2.5 shadow-[0_8px_22px_-8px_rgb(0_0_0/0.45)]" style={{ background: paper, color: ink }}>
-      <p className="truncate text-[19px] font-semibold leading-tight" style={{ fontFamily: title, fontSizeAdjust: defaults.font === "mono" ? "ex-height 0.55" : defaults.font === "rounded" ? "ex-height 0.52" : "ex-height 0.45" }}>
+      <p className="truncate text-title-3 font-semibold leading-tight" style={{ fontFamily: title, fontSizeAdjust: defaults.font === "mono" ? "ex-height 0.55" : defaults.font === "rounded" ? "ex-height 0.52" : "ex-height 0.45" }}>
         {name}
       </p>
-      <p className="mt-1 line-clamp-2 text-[11.5px] leading-[1.45] opacity-85" style={{ fontFamily: familyFor(defaults.font, fonts) }}>
+      <p className="mt-1 line-clamp-2 text-footnote leading-[1.45] opacity-85" style={{ fontFamily: familyFor(defaults.font, fonts) }}>
         {SAMPLE}
       </p>
       {accent || highlights?.length ? (
@@ -59,7 +59,7 @@ function Card({ label, on, onPick, art, footer, locked, children }: { label: str
             <Check size={14} strokeWidth={2.5} />
           </span>
         ) : locked ? (
-          <span className="absolute right-1 top-1 flex h-6 items-center gap-1 rounded-chip bg-[rgb(0_0_0/0.6)] px-1.5 text-[11px] font-semibold text-white backdrop-blur-sm">
+          <span className="absolute right-1 top-1 flex h-6 items-center gap-1 rounded-chip bg-[rgb(0_0_0/0.6)] px-1.5 text-caption-2 font-semibold text-white backdrop-blur-sm">
             <Lock size={11} strokeWidth={2.5} /> {locked}
           </span>
         ) : null}
@@ -153,7 +153,7 @@ export function ThemeGallery({
             {uploading ? <Loader2 size={15} aria-hidden className="mr-1.5 animate-spin" /> : <ImagePlus size={15} aria-hidden className="mr-1.5" />}
             {uploading ? "Uploading…" : ownImage ? "Replace your image…" : "Use your own image…"}
           </Button>
-          {iphone ? <span className="flex-1" /> : <p className="min-w-0 flex-1 text-[12px] text-muted">{COVER_IMAGE_HINT}</p>}
+          {iphone ? <span className="flex-1" /> : <p className="min-w-0 flex-1 text-footnote text-muted">{COVER_IMAGE_HINT}</p>}
             </>
           ) : (
             <span className="flex-1" />
@@ -168,7 +168,7 @@ export function ThemeGallery({
         <label className="relative min-w-[200px] flex-1">
           <span className="sr-only">Search themes</span>
           <Search size={15} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search themes" className="ui-input h-9 w-full rounded-control pl-9 pr-3 text-[13.5px]" />
+          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search themes" className="ui-input h-9 w-full rounded-control pl-9 pr-3 text-body" />
         </label>
         <div className="ui-seg ui-well" role="group" aria-label="Show themes that start in">
           {[{ id: "all" as const, name: "All" }, ...FONT_TYPES].map((f) => (
@@ -180,18 +180,18 @@ export function ThemeGallery({
       </div>
 
       {notice ? (
-        <p role="status" className="mb-3 flex items-center gap-2 rounded-control bg-[var(--glass-hover)] px-3 py-2.5 text-[13px] text-heading">
+        <p role="status" className="mb-3 flex items-center gap-2 rounded-control bg-[var(--glass-hover)] px-3 py-2.5 text-subheadline text-heading">
           <Lock size={14} aria-hidden className="flex-none" /> {withoutPurchaseHints(notice)}
         </p>
       ) : null}
       <div role="radiogroup" aria-label="Note theme" ref={group.ref} onKeyDown={group.onKeyDown} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {extras && onPickPlain ? (
-          <Card label="Plain" on={currentId === "plain"} onPick={onPickPlain} art={PLAIN_PAPER} footer={<><span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-heading">Plain</span><span className="text-[11.5px] text-muted">Serif</span></>}>
+          <Card label="Plain" on={currentId === "plain"} onPick={onPickPlain} art={PLAIN_PAPER} footer={<><span className="min-w-0 flex-1 truncate text-subheadline font-semibold text-heading">Plain</span><span className="text-footnote text-muted">Serif</span></>}>
             <Sheet name="Plain" defaults={plain} fonts={STANDARD_FONTS} paper={dark ? "#1c1c1f" : "#ffffff"} ink={dark ? "#f2f2f4" : "#1c1c1f"} />
           </Card>
         ) : null}
         {extras && ownImage ? (
-          <Card label="Note theme: Your image" on={currentId === "image"} onPick={() => undefined} art={`${ownImage} center / cover no-repeat`} footer={<><span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-heading">Your image</span><span className="text-[11.5px] text-muted">Standard fonts</span></>}>
+          <Card label="Note theme: Your image" on={currentId === "image"} onPick={() => undefined} art={`${ownImage} center / cover no-repeat`} footer={<><span className="min-w-0 flex-1 truncate text-subheadline font-semibold text-heading">Your image</span><span className="text-footnote text-muted">Standard fonts</span></>}>
             {null}
           </Card>
         ) : null}
@@ -212,8 +212,8 @@ export function ThemeGallery({
               locked={needs}
               footer={
                 <>
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-heading">{t.name}</span>
-                  <span className="flex-none text-[11.5px] text-muted">{fontNameOf(t)}</span>
+                  <span className="min-w-0 flex-1 truncate text-subheadline font-semibold text-heading">{t.name}</span>
+                  <span className="flex-none text-footnote text-muted">{fontNameOf(t)}</span>
                 </>
               }
             >
@@ -222,7 +222,7 @@ export function ThemeGallery({
           );
         })}
       </div>
-      {shown.length === 0 && !extras ? <p className="py-10 text-center text-sm text-muted">No themes match.</p> : null}
+      {shown.length === 0 && !extras ? <p className="py-10 text-center text-subheadline text-muted">No themes match.</p> : null}
     </Dialog>
   );
 }

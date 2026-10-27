@@ -27,7 +27,7 @@ const TONES: Record<Tone, string> = {
 
 export function Badge({ tone = "neutral", children, className, title }: { tone?: Tone; children: ReactNode; className?: string; title?: string }) {
   return (
-    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-chip px-2 py-px text-[11.5px] font-semibold leading-[18px] ${TONES[tone]} ${className ?? ""}`}>
+    <span title={title} className={`inline-flex items-center gap-1 whitespace-nowrap rounded-chip px-2 py-px text-footnote font-semibold leading-[18px] ${TONES[tone]} ${className ?? ""}`}>
       {children}
     </span>
   );
@@ -72,8 +72,8 @@ export function PageHeader({ title, description, actions, eyebrow }: { title: Re
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
         <div className="min-w-0 flex-1">
           {eyebrow ? <div className="mb-2 flex flex-wrap items-center gap-1.5">{eyebrow}</div> : null}
-          <h1 className="break-words ui-display text-[32px] leading-tight">{title}</h1>
-          {description ? <div className="mt-1 max-w-3xl text-sm text-muted">{description}</div> : null}
+          <h1 className="break-words ui-display text-large-title leading-tight">{title}</h1>
+          {description ? <div className="mt-1 max-w-3xl text-subheadline text-muted">{description}</div> : null}
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
@@ -97,10 +97,10 @@ export function Panel({ title, description, actions, children, className, flush 
     <section aria-labelledby={id} className={`min-w-0 overflow-hidden ui-card ${className ?? ""}`}>
       <div className="flex flex-wrap items-start gap-3 px-5 pb-3 pt-4">
         <div className="min-w-0 flex-1">
-          <h2 id={id} className="ui-display text-[17px] leading-snug">
+          <h2 id={id} className="ui-display text-title-3 leading-snug">
             {title}
           </h2>
-          {description ? <div className="mt-0.5 text-[12.5px] text-muted">{description}</div> : null}
+          {description ? <div className="mt-0.5 text-subheadline text-muted">{description}</div> : null}
         </div>
         {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
       </div>
@@ -112,7 +112,7 @@ export function Panel({ title, description, actions, children, className, flush 
 export function Callout({ tone = "neutral", title, children, icon }: { tone?: "neutral" | "warning" | "danger"; title?: string; children: ReactNode; icon?: ReactNode }) {
   const cls = tone === "warning" ? "bg-warning-soft" : tone === "danger" ? "bg-danger-soft" : "bg-[var(--glass-hover)]";
   return (
-    <div className={`flex gap-3 rounded-control px-4 py-3 text-[13px] leading-relaxed text-ink ${cls}`}>
+    <div className={`flex gap-3 rounded-control px-4 py-3 text-subheadline leading-relaxed text-ink ${cls}`}>
       {icon ?? (tone === "warning" || tone === "danger" ? <AlertTriangle size={16} aria-hidden className={`mt-0.5 flex-none ${tone === "danger" ? "text-danger" : "text-warning"}`} /> : null)}
       <div className="min-w-0">
         {title ? <p className="font-semibold text-heading">{title}</p> : null}
@@ -127,7 +127,7 @@ export const tableCard = "overflow-hidden ui-card";
 
 // ---------------------------------------------------------------- tables
 
-export const th = "whitespace-nowrap border-b border-line bg-surface px-3 py-2 text-left text-[12px] font-semibold text-muted first:pl-5 last:pr-5";
+export const th = "whitespace-nowrap border-b border-line bg-surface px-3 py-2 text-left text-footnote font-semibold text-muted first:pl-5 last:pr-5";
 export const td = "border-b border-line px-3 py-2.5 align-top first:pl-5 last:pr-5";
 export const tdNum = `${td} text-right tabular-nums`;
 export const tdMid = "border-b border-line px-3 py-2.5 align-middle first:pl-5 last:pr-5";
@@ -141,8 +141,8 @@ export function DataTable({ caption, captionVisible, children, minWidth = 640 }:
   return (
     // `relative` keeps visually hidden text in the rows (absolutely positioned) inside the scrolling region.
     <div className="relative overflow-x-auto focus-visible:outline-offset-[-2px]" tabIndex={0} role="region" aria-label={caption}>
-      <table className="w-full border-collapse text-[13px] [&_tbody_tr:last-child>*]:border-b-0" style={{ minWidth }}>
-        <caption className={captionVisible ? "px-3 pb-2 pt-3 text-left text-[13px] font-semibold" : "sr-only"}>{caption}</caption>
+      <table className="w-full border-collapse text-subheadline [&_tbody_tr:last-child>*]:border-b-0" style={{ minWidth }}>
+        <caption className={captionVisible ? "px-3 pb-2 pt-3 text-left text-subheadline font-semibold" : "sr-only"}>{caption}</caption>
         {children}
       </table>
     </div>
@@ -152,7 +152,7 @@ export function DataTable({ caption, captionVisible, children, minWidth = 640 }:
 export function EmptyRow({ colSpan, children }: { colSpan: number; children: ReactNode }) {
   return (
     <tr>
-      <td colSpan={colSpan} className="px-5 py-8 text-center text-[13px] text-muted">
+      <td colSpan={colSpan} className="px-5 py-8 text-center text-subheadline text-muted">
         {children}
       </td>
     </tr>
@@ -178,7 +178,7 @@ export function LoadingRows({ colSpan, rows = 4 }: { colSpan: number; rows?: num
 
 export function Pager({ page, hasPrev, hasNext, onPrev, onNext, busy }: { page: number; hasPrev: boolean; hasNext: boolean; onPrev: () => void; onNext: () => void; busy?: boolean }) {
   return (
-    <nav aria-label="Pagination" className="flex items-center justify-end gap-2 px-5 py-2.5 text-[13px] text-muted">
+    <nav aria-label="Pagination" className="flex items-center justify-end gap-2 px-5 py-2.5 text-subheadline text-muted">
       <span aria-live="polite">Page {page}</span>
       <Button size="sm" onClick={onPrev} disabled={!hasPrev || busy}>
         <ChevronLeft size={14} aria-hidden /> Previous
@@ -194,7 +194,7 @@ export function Pager({ page, hasPrev, hasNext, onPrev, onNext, busy }: { page: 
 
 export function Mono({ children, title, wrap }: { children: ReactNode; title?: string; wrap?: boolean }) {
   return (
-    <code title={title} className={`rounded-tiny bg-[var(--glass-hover)] px-1 py-px font-mono text-[12px] text-ink ${wrap ? "break-all" : "whitespace-nowrap"}`}>
+    <code title={title} className={`rounded-tiny bg-[var(--glass-hover)] px-1 py-px font-mono text-footnote text-ink ${wrap ? "break-all" : "whitespace-nowrap"}`}>
       {children}
     </code>
   );
@@ -204,7 +204,7 @@ export function Mono({ children, title, wrap }: { children: ReactNode; title?: s
 export function ShortId({ value, head = 6, tail = 6 }: { value: string; head?: number; tail?: number }) {
   if (value.length <= head + tail + 1) return <Mono>{value}</Mono>;
   return (
-    <code title={value} className="whitespace-nowrap rounded-tiny bg-[var(--glass-hover)] px-1 py-px font-mono text-[12px] text-ink">
+    <code title={value} className="whitespace-nowrap rounded-tiny bg-[var(--glass-hover)] px-1 py-px font-mono text-footnote text-ink">
       <span aria-hidden>
         {value.slice(0, head)}…{value.slice(-tail)}
       </span>
@@ -224,7 +224,7 @@ export function Time({ ts }: { ts: number | null | undefined }) {
 
 export function KeyValues({ items }: { items: { label: string; value: ReactNode }[] }) {
   return (
-    <dl className="grid grid-cols-[minmax(120px,max-content)_1fr] gap-x-4 gap-y-2 text-[13px]">
+    <dl className="grid grid-cols-[minmax(120px,max-content)_1fr] gap-x-4 gap-y-2 text-subheadline">
       {items.map((it) => (
         <div key={it.label} className="contents">
           <dt className="text-muted">{it.label}</dt>
@@ -237,7 +237,7 @@ export function KeyValues({ items }: { items: { label: string; value: ReactNode 
 
 export function ErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   return (
-    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-control bg-danger-soft px-4 py-3 text-[13px]">
+    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-control bg-danger-soft px-4 py-3 text-subheadline">
       <AlertTriangle size={16} aria-hidden className="flex-none text-danger" />
       <span className="flex-1">{errorMessage(error)}</span>
       {onRetry ? (
@@ -252,17 +252,17 @@ export function ErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () =
 export function StatTile({ label, value, hint, footnote }: { label: string; value: ReactNode; hint?: ReactNode; footnote?: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col ui-card px-4 py-3.5">
-      <dt className="text-[12.5px] font-medium text-muted">{label}</dt>
-      <dd className="mt-1.5 ui-display text-[28px] leading-none tabular-nums">{value}</dd>
-      {hint ? <dd className="mt-1.5 text-[12px] text-muted">{hint}</dd> : null}
-      {footnote ? <dd className="mt-1.5 text-[12px] text-muted">{footnote}</dd> : null}
+      <dt className="text-subheadline font-medium text-muted">{label}</dt>
+      <dd className="mt-1.5 ui-display text-title-1 leading-none tabular-nums">{value}</dd>
+      {hint ? <dd className="mt-1.5 text-footnote text-muted">{hint}</dd> : null}
+      {footnote ? <dd className="mt-1.5 text-footnote text-muted">{footnote}</dd> : null}
     </div>
   );
 }
 
 // ---------------------------------------------------------------- form controls
 
-export const inputCls = "ui-input h-9 w-full rounded-chip px-3 text-[13.5px] text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)]";
+export const inputCls = "ui-input h-9 w-full rounded-chip px-3 text-body text-ink placeholder:text-faint aria-[invalid=true]:shadow-[0_0_0_1.5px_var(--color-destructive)]";
 export const selectCls = `${inputCls} pr-2.5`;
 
 /** The app's on/off switch (dark when on). */

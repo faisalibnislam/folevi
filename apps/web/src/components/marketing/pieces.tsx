@@ -9,7 +9,7 @@ import { Avatar, PEOPLE, personNamed, type PersonId } from "./people";
  * Decorative: Float hides them from assistive tech.
  */
 
-const pop = "mk-app-pop rounded-panel text-[12.5px] text-ink";
+const pop = "mk-app-pop rounded-panel text-[13px] text-ink";
 
 export function TaskPiece({ text, due, done = false, className }: { text: string; due?: string; done?: boolean; className?: string }) {
   return (
@@ -26,7 +26,7 @@ export function TaskPiece({ text, due, done = false, className }: { text: string
 export function AiPiece({ text, className }: { text: string; className?: string }) {
   return (
     <div className={cx(pop, "w-[240px] p-3", className)}>
-      <p className="flex items-center gap-1.5 text-[11.5px] font-semibold text-(--color-heading)">
+      <p className="flex items-center gap-1.5 text-[12px] font-semibold text-(--color-heading)">
         <AiIcon size={13} /> Foli AI
       </p>
       <p className="mt-1.5 leading-snug">{text}</p>
@@ -43,7 +43,7 @@ export function CursorPiece({ name, tone = "violet", className }: { name: string
       <svg width="18" height="20" viewBox="0 0 18 20" aria-hidden="true">
         <path d="M2 2l13 7-6 1.6L6.4 17z" fill={color} stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
       </svg>
-      <span className="ml-3 -mt-1 inline-flex items-center gap-1.5 rounded-chip py-0.5 pr-2 text-[11.5px] font-semibold text-white shadow-(--shadow-control)" style={{ background: color, paddingLeft: who ? 2 : 8 }}>
+      <span className="ml-3 -mt-1 inline-flex items-center gap-1.5 rounded-chip py-0.5 pr-2 text-[12px] font-semibold text-white shadow-(--shadow-control)" style={{ background: color, paddingLeft: who ? 2 : 8 }}>
         {who ? <Avatar who={who} size={18} /> : null}
         {name}
       </span>

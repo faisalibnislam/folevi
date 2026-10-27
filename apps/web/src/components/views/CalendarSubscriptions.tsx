@@ -83,12 +83,12 @@ export function EventPopover({ event, anchor, timeZone, onClose }: { event: Exte
   return (
     <Popover open={event !== null} onClose={onClose} anchor={anchor} label={event ? event.title || "Event" : "Event"} className="w-80">
       {event ? (
-        <div className="p-4 text-sm">
-          <p className="flex items-center gap-2 text-xs text-muted">
+        <div className="p-4 text-subheadline">
+          <p className="flex items-center gap-2 text-footnote text-muted">
             <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-chip" style={{ background: calendarColor(event.color) }} />
             {event.calendarName}
           </p>
-          <h3 className="mt-1.5 text-[15px] font-semibold text-heading">{event.title || "Untitled event"}</h3>
+          <h3 className="mt-1.5 text-headline font-semibold text-heading">{event.title || "Untitled event"}</h3>
           <p className="mt-1 text-muted">{eventWhen(event, timeZone)}</p>
           {event.location ? (
             <p className="mt-2 flex items-start gap-1.5 break-words">
@@ -96,8 +96,8 @@ export function EventPopover({ event, anchor, timeZone, onClose }: { event: Exte
               {event.location}
             </p>
           ) : null}
-          {event.description ? <p className="mt-3 max-h-60 overflow-y-auto whitespace-pre-wrap break-words border-t border-line pt-3 text-[13px] text-ink">{event.description}</p> : null}
-          <p className="mt-3 text-xs text-faint">From a calendar you subscribe to. Change it in the app it comes from.</p>
+          {event.description ? <p className="mt-3 max-h-60 overflow-y-auto whitespace-pre-wrap break-words border-t border-line pt-3 text-subheadline text-ink">{event.description}</p> : null}
+          <p className="mt-3 text-footnote text-faint">From a calendar you subscribe to. Change it in the app it comes from.</p>
         </div>
       ) : null}
     </Popover>
@@ -107,10 +107,10 @@ export function EventPopover({ event, anchor, timeZone, onClose }: { event: Exte
 function ColorPicker({ value, onChange, name }: { value: Color; onChange: (c: Color) => void; name: string }) {
   return (
     <fieldset>
-      <legend className="text-xs font-medium text-muted">Color</legend>
+      <legend className="text-footnote font-medium text-muted">Color</legend>
       <div className="mt-1 flex flex-wrap gap-1">
         {COLORS.map((c) => (
-          <label key={c.id} className="flex cursor-pointer items-center gap-1.5 rounded-chip px-1.5 py-0.5 text-xs has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus">
+          <label key={c.id} className="flex cursor-pointer items-center gap-1.5 rounded-chip px-1.5 py-0.5 text-footnote has-[:checked]:bg-accent-soft has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus">
             <input type="radio" name={name} value={c.id} checked={value === c.id} onChange={() => onChange(c.id)} className="sr-only" />
             <span aria-hidden className="inline-block h-3 w-3 rounded-chip" style={{ background: calendarColor(c.id) }} />
             {c.label}
@@ -147,8 +147,8 @@ function SubscriptionRow({ cal }: { cal: Subscription }) {
       <div className="flex items-start gap-2">
         <span aria-hidden className="mt-1.5 inline-block h-2.5 w-2.5 flex-none rounded-chip" style={{ background: calendarColor(cal.color) }} />
         <div className="min-w-0 flex-1">
-          <p className={`truncate text-sm font-medium ${cal.visible ? "" : "text-muted"}`}>{cal.name}</p>
-          <p className="truncate text-xs text-faint" title={host}>
+          <p className={`truncate text-subheadline font-medium ${cal.visible ? "" : "text-muted"}`}>{cal.name}</p>
+          <p className="truncate text-footnote text-faint" title={host}>
             {host}
             {status ? ` · ${status}` : ""}
           </p>
@@ -168,17 +168,17 @@ function SubscriptionRow({ cal }: { cal: Subscription }) {
             setName(cal.name);
             setColor(asColor(cal.color));
           }}
-          className="ui-btn ui-btn-ghost h-7 px-2 text-xs"
+          className="ui-btn ui-btn-ghost h-7 px-2 text-footnote"
         >
           {editing ? "Close" : "Edit"}
         </button>
       </div>
       {cal.lastError ? (
-        <p role="status" className="mt-1.5 rounded-chip bg-danger/10 px-2 py-1 text-xs text-danger">
+        <p role="status" className="mt-1.5 rounded-chip bg-danger/10 px-2 py-1 text-footnote text-danger">
           {cal.lastError}
         </p>
       ) : null}
-      {cal.truncated ? <p className="mt-1.5 text-xs text-muted">This calendar has more events than Folevi shows; the earliest 1,500 are here.</p> : null}
+      {cal.truncated ? <p className="mt-1.5 text-footnote text-muted">This calendar has more events than Folevi shows; the earliest 1,500 are here.</p> : null}
       {editing ? (
         <form
           className="mt-2 space-y-2 rounded-chip ui-well p-2.5"
@@ -190,9 +190,9 @@ function SubscriptionRow({ cal }: { cal: Subscription }) {
             );
           }}
         >
-          <label className="block text-xs font-medium text-muted">
+          <label className="block text-footnote font-medium text-muted">
             Name
-            <input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className="ui-input mt-1 h-8 w-full rounded-chip px-2.5 text-sm text-ink" />
+            <input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className="ui-input mt-1 h-8 w-full rounded-chip px-2.5 text-callout text-ink" />
           </label>
           <ColorPicker value={color} onChange={setColor} name={`calendar-color-${cal.id}`} />
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -216,7 +216,7 @@ function SubscriptionRow({ cal }: { cal: Subscription }) {
               </Button>
             )}
           </div>
-          {confirming ? <p className="text-xs text-muted">Its events leave your Calendar. You can add it again with its link.</p> : null}
+          {confirming ? <p className="text-footnote text-muted">Its events leave your Calendar. You can add it again with its link.</p> : null}
         </form>
       ) : null}
     </li>
@@ -230,7 +230,7 @@ function AddCalendar({ count }: { count: number }) {
   const [color, setColor] = useState<Color>(COLORS[count % COLORS.length]!.id);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  if (count >= 20) return <p className="px-4 py-3 text-xs text-muted">You have 20 calendars, the most you can subscribe to. Remove one to add another.</p>;
+  if (count >= 20) return <p className="px-4 py-3 text-footnote text-muted">You have 20 calendars, the most you can subscribe to. Remove one to add another.</p>;
   return (
     <form
       aria-label="Add calendar"
@@ -251,8 +251,8 @@ function AddCalendar({ count }: { count: number }) {
         }
       }}
     >
-      <h3 className="text-sm font-semibold">Add calendar</h3>
-      <label className="block text-xs font-medium text-muted">
+      <h3 className="text-subheadline font-semibold">Add calendar</h3>
+      <label className="block text-footnote font-medium text-muted">
         Calendar link (ICS)
         <input
           value={url}
@@ -265,21 +265,21 @@ function AddCalendar({ count }: { count: number }) {
           autoComplete="off"
           spellCheck={false}
           aria-invalid={error ? true : undefined}
-          className="ui-input mt-1 h-8 w-full rounded-chip px-2.5 text-sm text-ink"
+          className="ui-input mt-1 h-8 w-full rounded-chip px-2.5 text-callout text-ink"
         />
       </label>
-      <label className="block text-xs font-medium text-muted">
+      <label className="block text-footnote font-medium text-muted">
         Name (optional)
-        <input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className="ui-input mt-1 h-8 w-full rounded-chip px-2.5 text-sm text-ink" />
+        <input value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className="ui-input mt-1 h-8 w-full rounded-chip px-2.5 text-callout text-ink" />
       </label>
       <ColorPicker value={color} onChange={setColor} name="new-calendar-color" />
       {error ? (
-        <p role="alert" className="text-xs text-danger">
+        <p role="alert" className="text-footnote text-danger">
           {error}
         </p>
       ) : null}
       <div className="flex items-center justify-between gap-2 pt-1">
-        <p className="text-[11px] leading-snug text-faint">Read-only. Folevi checks it for changes about once an hour.</p>
+        <p className="text-footnote leading-snug text-faint">Read-only. Folevi checks it for changes about once an hour.</p>
         <Button size="sm" type="submit" variant="primary" disabled={busy || !url.trim()}>
           Add
         </Button>
@@ -307,8 +307,8 @@ export function CalendarsButton() {
       </Button>
       <Popover open={open} onClose={() => setOpen(false)} anchor={anchor} label="Calendars" align="end" className="w-[360px]">
         <div className="border-b border-line px-4 py-3">
-          <h2 className="text-sm font-semibold">Calendars</h2>
-          <p className="mt-0.5 text-xs text-muted">Calendars you subscribe to by link show beside your tasks. They’re read-only here. Turn one off to hide its events.</p>
+          <h2 className="text-subheadline font-semibold">Calendars</h2>
+          <p className="mt-0.5 text-footnote text-muted">Calendars you subscribe to by link show beside your tasks. They’re read-only here. Turn one off to hide its events.</p>
         </div>
         {cals?.length ? (
           <ul className="divide-y divide-line border-b border-line" aria-label="Subscribed calendars">

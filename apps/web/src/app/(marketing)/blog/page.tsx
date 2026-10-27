@@ -55,7 +55,7 @@ export default function BlogIndexPage() {
             Notes from the Folevi <Mark>team.</Mark>
           </h1>
           <p className="mk-lede mt-6 max-w-[60ch]">How Folevi works, and why. Newest first.</p>
-          <p className="mt-5 text-[14.5px] text-muted">
+          <p className="mt-5 text-[15px] text-muted">
             <a href="/blog/rss.xml" className="mk-link inline-flex min-h-11 items-center gap-1.5">
               Follow with RSS <Icon name="arrow-right" size={14} />
             </a>
@@ -80,7 +80,7 @@ export default function BlogIndexPage() {
                     </Link>
                   </h2>
                   <p className="mt-2 flex-1 text-[15px] leading-relaxed text-muted">{post.description}</p>
-                  <span aria-hidden="true" className="mt-5 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-(--color-heading)">
+                  <span aria-hidden="true" className="mt-5 inline-flex items-center gap-1.5 text-[14px] font-medium text-(--color-heading)">
                     Read the post <Icon name="arrow-right" size={14} className="transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transition-none" />
                   </span>
                 </article>

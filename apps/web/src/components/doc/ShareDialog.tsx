@@ -18,10 +18,13 @@ import { copy as e2eeCopy, e2eeErrorMessage } from "@/lib/e2ee/copy";
 import { createEncryptedLink, isSealedDocument, publishPlainCopy, revokeEncryptedLink, useE2eeSpaceStatus } from "@/components/e2ee/hooks";
 import { useAppState } from "@/lib/app/state";
 import { PublishCopyDialog } from "@/components/e2ee/PublishCopyDialog";
+import { roleLabel } from "@/lib/app/folderSharing";
 
 /** `personal`: the page is in someone's Personal, which has no members. Only the people added here (and its owner) can open it. */
 export function ShareDialog({ open, onClose, documentId, title, personal = false }: { open: boolean; onClose: () => void; documentId: string; title: string; personal?: boolean }) {
   const data = useQuery(api.sharing.get, open ? { documentId } : "skip");
+  // People who have it through a folder it's in (docs/SHARING.md), changed in that folder's Share dialog.
+  const folderAccess = useQuery(api.folderSharing.forNote, open ? { documentId } : "skip");
   const setMode = useMutation(api.sharing.setAccessMode);
   const grant = useMutation(api.sharing.grant);
   const revoke = useMutation(api.sharing.revoke);
@@ -61,10 +64,10 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
   return (
     <Dialog open={open} onClose={() => { setFreshLink(null); setPublished(null); onClose(); }} title={`Share “${title || "Untitled"}”`} size="md">
       {!data ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-subheadline text-muted">Loading…</p>
       ) : (
         // (Room below the last card, so it never sits on the dialog's bottom edge.)
-        <div className="space-y-6 pb-3 text-sm">
+        <div className="space-y-6 pb-3 text-subheadline">
           <section>
             <h3 className="mb-2 font-semibold">Who has access</h3>
             {personal ? (
@@ -94,7 +97,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                     </span>
                     <span>
                       <span className="block font-medium">{label}</span>
-                      <span className="block text-xs text-muted">{desc}</span>
+                      <span className="block text-footnote text-muted">{desc}</span>
                     </span>
                   </button>
                 ))}
@@ -105,7 +108,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
           <section>
             <h3 className="mb-2 font-semibold">People</h3>
             {data.youAreGuest ? (
-              <p className="mb-3 text-xs text-muted">
+              <p className="mb-3 text-footnote text-muted">
                 You’re a guest on this page{data.sharedBy ? `, shared with you by ${data.sharedBy}` : ""}. {data.ownerName ? `It belongs to ${data.ownerName}.` : ""} Only its owner and the workspace’s members can share it.
               </p>
             ) : null}
@@ -137,25 +140,25 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                 <Button type="submit" variant="primary">
                   Share
                 </Button>
-                {sealed ? <p className="w-full text-xs text-muted">{e2eeCopy.share.invite}</p> : null}
-                <p className="w-full text-xs text-muted">
+                {sealed ? <p className="w-full text-footnote text-muted">{e2eeCopy.share.invite}</p> : null}
+                <p className="w-full text-footnote text-muted">
                   {personal ? "Anyone with an email address: people without a Folevi account get an invitation by email." : "People outside the workspace join as guests on this page only and aren’t billed. People without a Folevi account get an invitation by email."}
                 </p>
               </form>
             ) : null}
             <ul className="mt-3 divide-y divide-line rounded-chip border border-line">
-              {data.people.length === 0 ? <li className="px-3 py-2.5 text-muted">{data.youAreGuest ? "It was shared with you through a page above it." : "No one has been added directly."}</li> : null}
+              {data.people.length === 0 ? <li className="px-3 py-2.5 text-muted">{data.youAreGuest ? (folderAccess?.folders.length ? "It was shared with you through its folder." : "It was shared with you through a page above it.") : "No one has been added directly."}</li> : null}
               {data.people.map((p) => (
                 <li key={p.profileId} className="flex items-center gap-3 px-3 py-2">
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5 truncate font-medium">
                       <span className="truncate">{p.displayName}</span>
-                      {p.isYou ? <span className="text-xs font-normal text-muted">(you)</span> : null}
-                      {p.guest ? <span className="flex-none rounded-chip border border-line px-1.5 py-px text-[11px] font-medium text-muted">Guest</span> : null}
+                      {p.isYou ? <span className="text-footnote font-normal text-muted">(you)</span> : null}
+                      {p.guest ? <span className="flex-none rounded-chip border border-line px-1.5 py-px text-caption-2 font-medium text-muted">Guest</span> : null}
                     </span>
-                    {p.email ? <span className="block truncate text-xs text-muted">{p.email}</span> : null}
+                    {p.email ? <span className="block truncate text-footnote text-muted">{p.email}</span> : null}
                   </span>
-                  <span className="text-xs text-muted">{p.role === "editor" ? "Can edit" : p.role === "commenter" ? "Can comment" : "Can view"}</span>
+                  <span className="text-footnote text-muted">{p.role === "editor" ? "Can edit" : p.role === "commenter" ? "Can comment" : "Can view"}</span>
                   {p.canChange ? (
                     <IconButton label={`Remove ${p.displayName}`} onClick={() => void run(revoke({ documentId, profileId: p.profileId }))} className="hover:text-danger">
                       <Trash2 size={14} aria-hidden />
@@ -166,13 +169,13 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
             </ul>
             {data.pendingInvites.length ? (
               <>
-                <h4 className="mb-1.5 mt-4 text-xs font-semibold uppercase tracking-[0.06em] text-faint">Invited by email</h4>
-                {sealed ? <p className="mb-1.5 text-xs text-muted">{e2eeCopy.share.pendingPerson}</p> : null}
+                <h4 className="mb-1.5 mt-4 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">Invited by email</h4>
+                {sealed ? <p className="mb-1.5 text-footnote text-muted">{e2eeCopy.share.pendingPerson}</p> : null}
                 <ul className="divide-y divide-line rounded-chip border border-line">
                   {data.pendingInvites.map((i) => (
                     <li key={i.id} className="flex items-center gap-3 px-3 py-2">
                       <span className="min-w-0 flex-1 truncate">{i.email}</span>
-                      <span className="text-xs text-muted">
+                      <span className="text-footnote text-muted">
                         {i.role === "editor" ? "Can edit" : i.role === "commenter" ? "Can comment" : "Can view"} · {i.expired ? "expired" : "waiting to accept"}
                       </span>
                       <Button size="sm" variant="quiet" onClick={() => void run(revokeInvite({ inviteId: i.id }), "Invitation revoked")}>
@@ -183,6 +186,31 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                 </ul>
               </>
             ) : null}
+            {folderAccess?.folders.length ? (
+              <>
+                <h4 className="mb-1.5 mt-4 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">From folders</h4>
+                <ul className="divide-y divide-line rounded-chip border border-line" aria-label="Access from folders" data-testid="share-from-folders">
+                  {folderAccess.folders.flatMap((f) =>
+                    f.people.map((p) => (
+                      <li key={`${f.id}:${p.profileId}`} className="flex items-center gap-3 px-3 py-2">
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-1.5 truncate font-medium">
+                            <span className="truncate">{p.displayName}</span>
+                            {p.isYou ? <span className="text-footnote font-normal text-muted">(you)</span> : null}
+                            {p.guest ? <span className="flex-none rounded-chip border border-line px-1.5 py-px text-caption-2 font-medium text-muted">Guest</span> : null}
+                          </span>
+                          <span className="block truncate text-footnote text-muted">Through the folder {f.name || "Untitled"}</span>
+                        </span>
+                        <span className="text-footnote text-muted">{roleLabel(p.role)}</span>
+                      </li>
+                    )),
+                  )}
+                </ul>
+                <p className="mt-1.5 text-footnote text-muted">Change this in the folder’s Share dialog. Moving the note out of the folder ends it.</p>
+              </>
+            ) : folderAccess?.reason === "restricted" ? (
+              <p className="mt-3 text-footnote text-muted">Only invited people: people its folder is shared with don’t see this page.</p>
+            ) : null}
           </section>
 
           {canManage ? (
@@ -190,15 +218,15 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
               <h3 className="mb-1 flex items-center gap-2 font-semibold">
                 <Globe size={15} aria-hidden /> Public link
               </h3>
-              <p className="text-xs text-muted">
+              <p className="text-footnote text-muted">
                 {sealed ? e2eeCopy.share.encryptedLink : "Off by default. Anyone with the link can read this page (not its comments or nested pages). Search engines skip it unless you let them find it, and you can revoke it instantly."}
               </p>
-              {!data.publicLinksAvailable ? <p className="mt-2 text-xs text-warning">Public links are temporarily turned off for Folevi.</p> : null}
+              {!data.publicLinksAvailable ? <p className="mt-2 text-footnote text-warning">Public links are temporarily turned off for Folevi.</p> : null}
               {freshLink ? (
                 <div className="mt-3 rounded-chip border border-success/40 bg-success-soft p-3">
-                  <p className="text-xs font-medium">{sealed ? e2eeCopy.share.copyWhole : "Copy this link now. For your security, it isn’t shown again."}</p>
+                  <p className="text-footnote font-medium">{sealed ? e2eeCopy.share.copyWhole : "Copy this link now. For your security, it isn’t shown again."}</p>
                   <div className="mt-2 flex gap-2">
-                    <input readOnly value={freshLink} aria-label="Public link" className="h-9 min-w-0 flex-1 ui-well rounded-chip px-2 font-mono text-xs" onFocus={(e) => e.target.select()} />
+                    <input readOnly value={freshLink} aria-label="Public link" className="h-9 min-w-0 flex-1 ui-well rounded-chip px-2 font-mono text-footnote" onFocus={(e) => e.target.select()} />
                     <Button size="sm" onClick={() => void navigator.clipboard.writeText(freshLink).then(() => toast.show("Link copied"))}>
                       <Copy size={13} aria-hidden /> Copy
                     </Button>
@@ -209,14 +237,14 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                 {data.links.filter((l) => !(l as { plainCopy?: boolean }).plainCopy).map((l) => (
                   <li key={l.id} className="flex items-center gap-3 rounded-chip border border-line px-3 py-2">
                     <span className="min-w-0 flex-1">
-                      <span className="block font-mono text-xs">…/s/{l.tokenHint}••••••••</span>
-                      <span className="block text-xs text-muted">
+                      <span className="block font-mono text-footnote">…/s/{l.tokenHint}••••••••</span>
+                      <span className="block text-footnote text-muted">
                         {l.expired ? "Expired" : l.expiresAt ? `Expires ${formatDateTime(l.expiresAt)}` : "No expiry"}
                         {l.hasPassword ? " · Password protected" : ""}
                         {l.allowIndexing ? " · Search engines can find it" : ""} · {l.viewCount} view{l.viewCount === 1 ? "" : "s"}
                       </span>
                     </span>
-                    <Select aria-label={`Look of the link …/s/${l.tokenHint}`} value={publishTheme(l.theme)} onChange={(e) => void run(setLinkTheme({ linkId: l.id, theme: e.target.value as PublishTheme }), "Look changed")} className="h-8 ui-input rounded-chip px-2.5 text-xs">
+                    <Select aria-label={`Look of the link …/s/${l.tokenHint}`} value={publishTheme(l.theme)} onChange={(e) => void run(setLinkTheme({ linkId: l.id, theme: e.target.value as PublishTheme }), "Look changed")} className="h-8 ui-input rounded-chip px-2.5 text-footnote">
                       {PUBLISH_THEMES.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.name}
@@ -261,22 +289,22 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                   }}
                 >
                   <div className="grid items-center gap-x-3 gap-y-1.5 sm:grid-cols-[6.5rem_minmax(0,1fr)]">
-                    <span className="text-[13px] font-medium text-ink">Expires</span>
+                    <span className="text-subheadline font-medium text-ink">Expires</span>
                     <DateTimeField
                       value={linkForm.expires ? new Date(linkForm.expires).getTime() : null}
                       onChange={(ts) => setLinkForm({ ...linkForm, expires: ts ? localDateTimeValue(ts) : "" })}
                       aria-label="Expiry"
                     />
-                    <label htmlFor="share-link-password" className="text-[13px] font-medium text-ink">
+                    <label htmlFor="share-link-password" className="text-subheadline font-medium text-ink">
                       Password
                     </label>
-                    <input id="share-link-password" type="password" autoComplete="new-password" placeholder="None" value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="block h-9 w-full ui-input rounded-chip px-3 text-sm" />
+                    <input id="share-link-password" type="password" autoComplete="new-password" placeholder="None" value={linkForm.password} onChange={(e) => setLinkForm({ ...linkForm, password: e.target.value })} className="block h-9 w-full ui-input rounded-chip px-3 text-callout" />
                   </div>
                   <div>
-                    <span id="share-link-look" className="block text-[13px] font-medium text-ink">
+                    <span id="share-link-look" className="block text-subheadline font-medium text-ink">
                       Look
                     </span>
-                    <span className="block text-xs text-muted">How the public page looks. You can change it later.</span>
+                    <span className="block text-footnote text-muted">How the public page looks. You can change it later.</span>
                     <div role="radiogroup" aria-labelledby="share-link-look" ref={lookGroup.ref} onKeyDown={lookGroup.onKeyDown} className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {PUBLISH_THEMES.map((t) => (
                         <button
@@ -289,8 +317,8 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                           className={`flex flex-col items-center gap-1 rounded-chip border px-2 pb-2 pt-2.5 text-center transition-colors ${linkForm.theme === t.id ? "border-heading bg-[var(--glass-active)] text-heading" : "border-line text-ink hover:bg-[var(--glass-hover)]"}`}
                         >
                           <PublishThemePreview theme={t.id} />
-                          <span className="text-[12.5px] font-medium">{t.name}</span>
-                          <span id={`share-look-${t.id}`} className="text-[11px] leading-tight text-muted">
+                          <span className="text-subheadline font-medium">{t.name}</span>
+                          <span id={`share-look-${t.id}`} className="text-footnote leading-tight text-muted">
                             {t.hint}
                           </span>
                         </button>
@@ -299,8 +327,8 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                   </div>
                   <div className={`flex items-center justify-between gap-3 ${sealed ? "hidden" : ""}`}>
                     <span className="min-w-0">
-                      <span className="block text-[13px] font-medium text-ink">Let search engines find it</span>
-                      <span id="share-link-index-hint" className="block text-xs text-muted">
+                      <span className="block text-subheadline font-medium text-ink">Let search engines find it</span>
+                      <span id="share-link-index-hint" className="block text-footnote text-muted">
                         {linkForm.password ? "Not for a password-protected page." : "Google and others may list the page and show its title."}
                       </span>
                     </span>
@@ -332,7 +360,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                   .filter((l) => (l as { plainCopy?: boolean }).plainCopy)
                   .map((l) => (
                     <li key={l.id} className="flex flex-wrap items-center gap-2 rounded-chip border border-line px-3 py-2">
-                      <span className="min-w-0 flex-1 text-xs text-muted">{e2eeCopy.publish.publishedFrom(formatDateTime((l as { publishedAt?: number }).publishedAt ?? l.createdAt))}</span>
+                      <span className="min-w-0 flex-1 text-footnote text-muted">{e2eeCopy.publish.publishedFrom(formatDateTime((l as { publishedAt?: number }).publishedAt ?? l.createdAt))}</span>
                       <Button size="sm" variant="quiet" onClick={() => void run(publishPlainCopy(documentId, { linkId: l.id }), e2eeCopy.publish.updated)}>
                         {e2eeCopy.publish.update}
                       </Button>
@@ -344,7 +372,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
               </ul>
               {published ? (
                 <div className="mt-2 flex gap-2">
-                  <input readOnly value={published} aria-label={e2eeCopy.publish.row} className="h-9 min-w-0 flex-1 ui-well rounded-chip px-2 font-mono text-xs" onFocus={(e) => e.target.select()} />
+                  <input readOnly value={published} aria-label={e2eeCopy.publish.row} className="h-9 min-w-0 flex-1 ui-well rounded-chip px-2 font-mono text-footnote" onFocus={(e) => e.target.select()} />
                   <Button size="sm" onClick={() => void navigator.clipboard.writeText(published).then(() => toast.show("Link copied"))}>
                     <Copy size={13} aria-hidden /> Copy
                   </Button>

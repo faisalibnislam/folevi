@@ -160,7 +160,7 @@ export function useSafeSignOut(accountKey: string | null) {
         </>
       }
     >
-      <p className="text-sm text-muted">{wait}</p>
+      <p className="text-subheadline text-muted">{wait}</p>
     </Dialog>
   );
   return { request, dialog, busy };

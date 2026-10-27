@@ -127,23 +127,23 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
               : "border-line-strong bg-surface hover:border-moss"
         }`}
       >
-        {task.status === "done" ? <span className="text-[11px] leading-none">✓</span> : task.status === "canceled" ? <span className="text-[11px] leading-none">–</span> : null}
+        {task.status === "done" ? <span className="text-footnote leading-none">✓</span> : task.status === "canceled" ? <span className="text-footnote leading-none">–</span> : null}
       </button>
       <div className="min-w-0 flex-1">
-        <p className={`text-[15px] leading-snug ${closed ? "text-muted line-through" : ""}`}>{task.title || "Untitled task"}</p>
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+        <p className={`text-body leading-snug ${closed ? "text-muted line-through" : ""}`}>{task.title || "Untitled task"}</p>
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-footnote text-muted">
           <AppLink href={noteHref} className="inline-flex min-w-0 items-center gap-1 hover:text-ink hover:underline">
             <FileText size={12} aria-hidden className="flex-none" />
             <span className="truncate">{task.documentTitle || "Untitled"}</span>
           </AppLink>
           {task.assigneeName ? <span>· {task.assigneeName}</span> : null}
-          {task.status === "canceled" ? <span className="rounded-chip bg-sunken px-1.5 text-[11px] font-medium text-muted">Canceled</span> : null}
+          {task.status === "canceled" ? <span className="rounded-chip bg-sunken px-1.5 text-caption-2 font-medium text-muted">Canceled</span> : null}
           {task.completedAt && task.status === "done" ? <span>· done {formatRelative(task.completedAt)}</span> : null}
         </p>
         {action ? <div className="mt-1.5">{action}</div> : null}
       </div>
       {task.priority !== "none" ? (
-        <span className={`mt-0.5 rounded-chip px-2 text-[11px] font-medium ${task.priority === "high" ? "bg-coral-soft text-coral-ink" : task.priority === "medium" ? "bg-marigold-soft text-marigold-ink" : "bg-sunken text-muted"}`}>{PRIORITY_LABEL[task.priority as Priority] ?? task.priority}</span>
+        <span className={`mt-0.5 rounded-chip px-2 text-footnote font-medium ${task.priority === "high" ? "bg-coral-soft text-coral-ink" : task.priority === "medium" ? "bg-marigold-soft text-marigold-ink" : "bg-sunken text-muted"}`}>{PRIORITY_LABEL[task.priority as Priority] ?? task.priority}</span>
       ) : null}
       {task.repeat ? (
         <span className="mt-0.5 text-muted" title={task.repeat}>
@@ -151,7 +151,7 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
         </span>
       ) : null}
       {task.dueDate ? (
-        <span className={`mt-0.5 whitespace-nowrap text-xs ${overdue ? "font-medium text-danger" : "text-muted"}`}>
+        <span className={`mt-0.5 whitespace-nowrap text-footnote ${overdue ? "font-medium text-danger" : "text-muted"}`}>
           {overdue ? "Overdue · " : ""}
           {dueLabel(task.dueDate, today)}
           {task.dueTime ? ` ${task.dueTime}` : ""}
@@ -222,7 +222,7 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
   const [error, setError] = useState<string | null>(null);
   return (
     <>
-      <p className="ui-task-title -mt-2 mb-4 text-sm text-muted">{task.title || "Untitled task"}</p>
+      <p className="ui-task-title -mt-2 mb-4 text-subheadline text-muted">{task.title || "Untitled task"}</p>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -254,22 +254,22 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
         className="grid gap-4"
       >
         <fieldset>
-          <legend className="text-sm font-medium">Status</legend>
+          <legend className="text-subheadline font-medium">Status</legend>
           <div className="ui-seg ui-well mt-2 w-fit">
             {(["open", "done", "canceled"] as const).map((s) => (
-              <button key={s} type="button" aria-pressed={status === s} onClick={() => setStatus(s)} className="!min-h-8 !text-[13px]">
+              <button key={s} type="button" aria-pressed={status === s} onClick={() => setStatus(s)} className="!min-h-8 !text-subheadline">
                 {s === "open" ? "Open" : s === "done" ? "Done" : "Canceled"}
               </button>
             ))}
           </div>
         </fieldset>
         <div className="flex flex-wrap gap-3">
-          <div className="text-sm">
+          <div className="text-subheadline">
             <span className="block text-muted">Due date</span>
             <DateField value={dueDate} onChange={setDueDate} clearable={false} aria-label="Due date" size="lg" className="mt-1 w-44" />
           </div>
           {dueDate ? (
-            <div className="text-sm">
+            <div className="text-subheadline">
               <span className="block text-muted">Time (optional)</span>
               <TimeField value={dueTime} onChange={setDueTime} emptyLabel="All day" aria-label="Due time" size="lg" className="mt-1 w-32" />
             </div>
@@ -281,7 +281,7 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
           ) : null}
         </div>
         <div className="flex flex-wrap gap-3">
-          <label className="text-sm">
+          <label className="text-subheadline">
             <span className="block text-muted">Priority</span>
             <Select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className="mt-1 h-9 ui-input rounded-chip px-3">
               {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
@@ -291,7 +291,7 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
               ))}
             </Select>
           </label>
-          <label className="min-w-0 flex-1 text-sm">
+          <label className="min-w-0 flex-1 text-subheadline">
             <span className="block text-muted">Assignee</span>
             <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="mt-1 h-9 w-full ui-input rounded-chip px-3">
               <option value="">Unassigned</option>
@@ -306,12 +306,12 @@ function TaskEditForm({ task, onClose }: { task: TaskRow; onClose: () => void })
           </label>
         </div>
         {error ? (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-subheadline text-danger">
             {error}
           </p>
         ) : null}
         <div className="flex items-center justify-end gap-2">
-          <AppLink href={`/d/${task.documentId}#block-${task.blockId}`} onClick={onClose} className="mr-auto text-sm text-accent underline underline-offset-2">
+          <AppLink href={`/d/${task.documentId}#block-${task.blockId}`} onClick={onClose} className="mr-auto text-subheadline text-accent underline underline-offset-2">
             Open in {task.documentTitle || "Untitled"}
           </AppLink>
           <Button onClick={onClose}>Cancel</Button>
@@ -349,7 +349,7 @@ export function TasksView({ view }: { view: View }) {
     () =>
       groups.map((g) => (
         <section key={g.key} className="mt-6" aria-label={g.label ?? meta.label}>
-          {g.label ? <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-faint">{g.label}</h3> : null}
+          {g.label ? <h3 className="mb-2 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">{g.label}</h3> : null}
           <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
             {g.items.map((t) => (
               <TaskItem key={t.blockId} task={t} today={today} onToggle={onToggle} onEdit={setEditing} />
@@ -371,12 +371,12 @@ export function TasksView({ view }: { view: View }) {
 
   return (
     <ViewChrome
-      title={<h1 className="text-sm font-semibold">Tasks</h1>}
+      title={<h1 className="text-subheadline font-semibold">Tasks</h1>}
       subtitle={`${meta.label}${tasks === undefined ? "" : ` · ${shown.length} ${view === "completed" ? "done" : "open"}`}`}
       tabTitle={`Tasks · ${meta.label}`}
       actions={
         <>
-          <AppLink href="/calendar" className="ui-btn ui-btn-secondary h-8 gap-1.5 px-3 text-sm pointer-coarse:h-11">
+          <AppLink href="/calendar" className="ui-btn ui-btn-secondary h-8 gap-1.5 px-3 text-callout pointer-coarse:h-11">
             <CalendarDays size={14} aria-hidden /> <span className="max-md:sr-only">Calendar</span>
           </AppLink>
           <Button size="sm" variant="primary" onClick={() => openQuickAdd()}>
@@ -395,17 +395,17 @@ export function TasksView({ view }: { view: View }) {
                 href={`/tasks/${v.id}`}
                 aria-current={v.id === view ? "page" : undefined}
                 data-active={v.id === view}
-                className="!min-h-8 !text-[13px]"
+                className="!min-h-8 !text-subheadline"
               >
                 {v.label}
-                {count ? <span className={`rounded-chip px-1.5 text-[11px] font-semibold leading-[18px] tabular-nums ${v.id === view ? "bg-heading text-canvas" : "text-[var(--color-ink-faint)]"}`}>{count}</span> : null}
+                {count ? <span className={`rounded-chip px-1.5 text-caption-2 font-semibold leading-[18px] tabular-nums ${v.id === view ? "bg-heading text-canvas" : "text-[var(--color-ink-faint)]"}`}>{count}</span> : null}
               </AppLink>
             );
           })}
         </nav>
         <label className="mt-4 block">
           <span className="sr-only">Filter tasks</span>
-          <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by task or page" className="h-9 w-full ui-input rounded-chip px-3 text-sm" />
+          <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by task or page" className="h-9 w-full ui-input rounded-chip px-3 text-callout" />
         </label>
         {tasks === undefined ? (
           <div className="mt-6 space-y-2" aria-busy>

@@ -3286,11 +3286,11 @@ public struct AppearanceSettings: Codable, Hashable, Sendable {
 
     public var appearance: Appearance
     /// Revision 10 (R13.1): the editor's text size on this device, 0.85 to 1.35 (1 is the default).
-    public var editorZoom: Int
+    public var editorZoom: Double
     /// The sizes offered.
-    public var editorZooms: [Int]
+    public var editorZooms: [Double]
 
-    public init(appearance: Appearance, editorZoom: Int, editorZooms: [Int]) {
+    public init(appearance: Appearance, editorZoom: Double, editorZooms: [Double]) {
         self.appearance = appearance
         self.editorZoom = editorZoom
         self.editorZooms = editorZooms
@@ -3435,9 +3435,9 @@ public struct SettingsUpdateArgs: Codable, Hashable, Sendable {
     public var reviewAppEdits: Bool?
     public var aiEnabled: Bool?
     /// Revision 10 (R13.1): the editor's text size on this device (one of `AppearanceSettings.editorZooms`).
-    public var editorZoom: Int?
+    public var editorZoom: Double?
 
-    public init(name: String? = nil, appearance: Appearance? = nil, timeZone: String? = nil, reviewAppEdits: Bool? = nil, aiEnabled: Bool? = nil, editorZoom: Int? = nil) {
+    public init(name: String? = nil, appearance: Appearance? = nil, timeZone: String? = nil, reviewAppEdits: Bool? = nil, aiEnabled: Bool? = nil, editorZoom: Double? = nil) {
         self.name = name
         self.appearance = appearance
         self.timeZone = timeZone

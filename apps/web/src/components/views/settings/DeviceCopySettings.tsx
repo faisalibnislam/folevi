@@ -124,21 +124,21 @@ export function DeviceCopySettings({ iphone }: { iphone: boolean }) {
       <div className="max-w-xl divide-y divide-line/70" data-testid="device-copy-settings">
         <div className="flex items-center justify-between gap-6 py-3 first:pt-0">
           <span className="min-w-0">
-            <span className="block text-sm text-ink">Keep all notes on this device</span>
-            <span id={hint} className="block text-xs text-muted">
+            <span className="block text-subheadline text-ink">Keep all notes on this device</span>
+            <span id={hint} className="block text-footnote text-muted">
               {footer}
             </span>
           </span>
           <Switch checked={on} onChange={(next) => setKeepAllNotes(profile.id, next)} label="Keep all notes on this device" describedBy={hint} />
         </div>
         {places.map((p) => (
-          <div key={p.scopeKey} className="flex items-center justify-between gap-6 py-2 text-sm" data-copy-scope={p.scopeKey} data-copy-phase={p.phase}>
+          <div key={p.scopeKey} className="flex items-center justify-between gap-6 py-2 text-subheadline" data-copy-scope={p.scopeKey} data-copy-phase={p.phase}>
             <span className="text-ink">{p.name}</span>
             <span className="tabular-nums text-muted">{copyProgress(p, on)}</span>
           </div>
         ))}
       </div>
-      {storage ? <p className="mt-3 max-w-xl text-xs text-muted">{storage}</p> : null}
+      {storage ? <p className="mt-3 max-w-xl text-footnote text-muted">{storage}</p> : null}
       <div className="mt-4 flex flex-wrap gap-2">
         <Button onClick={download} disabled={!handle}>
           Download now

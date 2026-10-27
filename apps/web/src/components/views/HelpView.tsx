@@ -54,10 +54,10 @@ export function HelpView() {
   // Local mode: support requests belong to an account, so support is an email (docs/LOCAL_MODE_PLAN.md §2.4).
   const account = useCapabilities().account;
   return (
-    <ViewChrome title={<h1 className="text-sm font-semibold">Help</h1>} tabTitle="Help">
+    <ViewChrome title={<h1 className="text-subheadline font-semibold">Help</h1>} tabTitle="Help">
       <div className="mx-auto max-w-3xl space-y-10 px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8">
         <header>
-          <h2 className="ui-display text-[34px] leading-tight">Help</h2>
+          <h2 className="ui-display text-large-title leading-tight">Help</h2>
           <p className="text-muted">
             The full guide lives at{" "}
             <a className="text-accent underline underline-offset-2" href={`${process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"}/docs`}>
@@ -70,10 +70,10 @@ export function HelpView() {
         <section id="support" aria-labelledby="h-support" className="scroll-mt-20">
           <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h3 id="h-support" className="ui-display text-[20px]">
+              <h3 id="h-support" className="ui-display text-title-2">
                 Your support requests
               </h3>
-              <p className="text-sm text-muted">A person on the Folevi team reads every request and replies by email. Replies show here too.</p>
+              <p className="text-subheadline text-muted">A person on the Folevi team reads every request and replies by email. Replies show here too.</p>
             </div>
             <Button variant="primary" onClick={() => setContacting(true)}>
               Contact support
@@ -84,20 +84,20 @@ export function HelpView() {
         </section>
         ) : (
           <section id="support" aria-labelledby="h-support" className="scroll-mt-20">
-            <h3 id="h-support" className="ui-display text-[20px]">
+            <h3 id="h-support" className="ui-display text-title-2">
               Support
             </h3>
-            <p className="mt-1 text-sm text-muted">A person on the Folevi team reads every email and replies.</p>
-            <a href="mailto:support@folevi.com" className="ui-btn ui-btn-primary mt-3 inline-flex h-9 items-center px-4 text-sm">
+            <p className="mt-1 text-subheadline text-muted">A person on the Folevi team reads every email and replies.</p>
+            <a href="mailto:support@folevi.com" className="ui-btn ui-btn-primary mt-3 inline-flex h-9 items-center px-4 text-callout">
               Email support
             </a>
           </section>
         )}
         <section aria-labelledby="h-shortcuts">
-          <h3 id="h-shortcuts" className="ui-display mb-3 text-[20px]">
+          <h3 id="h-shortcuts" className="ui-display mb-3 text-title-2">
             Keyboard shortcuts
           </h3>
-          <table className="w-full overflow-hidden ui-card rounded-control text-sm">
+          <table className="w-full overflow-hidden ui-card rounded-control text-subheadline">
             <tbody>
               {SHORTCUTS.map(([label, keys]) => (
                 <tr key={label} className="border-b border-line last:border-0">
@@ -111,17 +111,17 @@ export function HelpView() {
               ))}
             </tbody>
           </table>
-          <p className="mt-2 text-xs text-muted">Type / on an empty line for every block type, [[ to link a page, and @ to mention someone or a date. Markdown shortcuts like “# ”, “- ”, “[] ” and “```” work at the start of a line.</p>
+          <p className="mt-2 text-footnote text-muted">Type / on an empty line for every block type, [[ to link a page, and @ to mention someone or a date. Markdown shortcuts like “# ”, “- ”, “[] ” and “```” work at the start of a line.</p>
         </section>
         <section aria-labelledby="h-sync">
-          <h3 id="h-sync" className="ui-display mb-3 text-[20px]">
+          <h3 id="h-sync" className="ui-display mb-3 text-title-2">
             What the save status means
           </h3>
           <dl className="grid gap-3 sm:grid-cols-2">
             {(account ? STATUSES : LOCAL_STATUSES).map(([k, v]) => (
               <div key={k} className="ui-card rounded-control p-3">
                 <dt className="font-medium">{k}</dt>
-                <dd className="text-sm text-muted">{v}</dd>
+                <dd className="text-subheadline text-muted">{v}</dd>
               </div>
             ))}
           </dl>

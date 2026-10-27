@@ -56,10 +56,10 @@ export function TitleAiPill({ anchor, onOpen }: { anchor: HTMLElement | null; on
       onMouseDown={(e) => e.preventDefault()}
       onClick={onOpen}
       style={{ top: pos.top, left: pos.left }}
-      className="ui-pop fixed z-40 inline-flex items-center gap-1.5 rounded-chip px-3 py-1.5 text-[12.5px] font-medium text-ink hover:text-heading"
+      className="ui-pop fixed z-40 inline-flex items-center gap-1.5 rounded-chip px-3 py-1.5 text-subheadline font-medium text-ink hover:text-heading"
     >
       <AiIcon size={14} aria-hidden className="text-[#7c6cf0]" /> Edit with AI
-      <kbd className="ml-1 font-sans text-[11px] text-faint">⌘J</kbd>
+      <kbd className="ml-1 font-sans text-footnote text-faint">⌘J</kbd>
     </button>,
     document.body,
   );
@@ -138,7 +138,7 @@ export function TitleAi({
   };
 
   if (!pos) return null;
-  const item = "flex w-full items-center rounded-control px-2.5 py-1.5 text-left text-[13.5px] text-ink hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-50";
+  const item = "flex w-full items-center rounded-control px-2.5 py-1.5 text-left text-body text-ink hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-50";
 
   return createPortal(
     <div
@@ -170,7 +170,7 @@ export function TitleAi({
           disabled={Boolean(busy)}
           aria-label={whole ? "Ask Foli AI to edit the title" : "Ask Foli AI to edit the selected words"}
           placeholder={whole ? "Ask Foli AI to edit the title…" : "Ask Foli AI to edit the selected words…"}
-          className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-faint"
+          className="min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-faint"
         />
         {instruction.trim() ? (
           <button type="submit" aria-label="Send" disabled={Boolean(busy)} className="grid h-7 w-7 flex-none place-items-center rounded-chip bg-heading text-canvas">
@@ -182,7 +182,7 @@ export function TitleAi({
         </button>
       </form>
       {error ? (
-        <p role="alert" className="mx-3 mb-2 rounded-control bg-danger-soft px-3 py-2 text-[13px] text-danger">
+        <p role="alert" className="mx-3 mb-2 rounded-control bg-danger-soft px-3 py-2 text-subheadline text-danger">
           {error}
         </p>
       ) : null}
@@ -204,8 +204,8 @@ export function TitleAi({
             ))
           : null}
       </ul>
-      {busy === "instruction" ? <p className="px-4 pb-2.5 text-[12.5px] text-muted">Working…</p> : null}
-      <p className="border-t border-line/60 px-4 py-2 text-[11.5px] text-faint">Foli AI can make mistakes. Sent to Google Gemini.</p>
+      {busy === "instruction" ? <p className="px-4 pb-2.5 text-subheadline text-muted">Working…</p> : null}
+      <p className="border-t border-line/60 px-4 py-2 text-footnote text-faint">Foli AI can make mistakes. Sent to Google Gemini.</p>
     </div>,
     document.body,
   );

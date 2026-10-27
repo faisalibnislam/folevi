@@ -152,10 +152,10 @@ export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onC
         maxLength={500}
         aria-invalid={error ? true : undefined}
         aria-describedby={parsed ? "qa-when" : undefined}
-        className="h-11 w-full ui-input rounded-chip px-3 text-[15px] outline-none"
+        className="h-11 w-full ui-input rounded-chip px-3 text-body outline-none"
       />
       {repeat ? (
-        <p className="mt-2 flex items-center gap-2 text-[13px] text-muted">
+        <p className="mt-2 flex items-center gap-2 text-subheadline text-muted">
           <span className="ui-chip bg-accent-soft text-accent-soft-ink">
             <Repeat size={13} aria-hidden />
             <span>{describeRepeat(repeat.rule)}</span>
@@ -166,7 +166,7 @@ export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onC
         </p>
       ) : null}
       {parsed ? (
-        <p id="qa-when" className="mt-2 flex items-center gap-2 text-[13px] text-muted">
+        <p id="qa-when" className="mt-2 flex items-center gap-2 text-subheadline text-muted">
           <span className="ui-chip bg-accent-soft text-accent-soft-ink">
             <CalendarDays size={13} aria-hidden />
             <span>Due {naturalDateLabel(parsed, today)}</span>
@@ -178,17 +178,17 @@ export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onC
         </p>
       ) : null}
       <div className="mt-3 flex flex-wrap items-end gap-3">
-        <div className="text-sm">
+        <div className="text-subheadline">
           <span className="block text-muted">Due date</span>
           <DateField value={due} onChange={setDue} aria-label="Due date" size="lg" className="mt-1 w-44" />
         </div>
         {due ? (
-          <div className="text-sm">
+          <div className="text-subheadline">
             <span className="block text-muted">Time (optional)</span>
             <TimeField value={time} onChange={setTime} emptyLabel="All day" aria-label="Due time" size="lg" className="mt-1 w-32" />
           </div>
         ) : null}
-        <label className="text-sm">
+        <label className="text-subheadline">
           <span className="block text-muted">Priority</span>
           <Select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className="mt-1 h-9 ui-input rounded-chip px-3">
             <option value="none">None</option>
@@ -200,7 +200,7 @@ export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onC
       </div>
       <DocumentPicker scope={scope} value={effective} onChange={setTarget} />
       {error ? (
-        <p role="alert" className="mt-3 text-sm text-danger">
+        <p role="alert" className="mt-3 text-subheadline text-danger">
           {error}
         </p>
       ) : null}
@@ -254,7 +254,7 @@ export function DocumentPicker({ scope, value, onChange, label = "Add to", exclu
   };
   const optionId = (t: Target) => `${listId}-${t ? t.id : "inbox"}`;
   return (
-    <div className="mt-3 text-sm">
+    <div className="mt-3 text-subheadline">
       <label htmlFor={`${listId}-input`} className="block text-muted">
         {label}
       </label>

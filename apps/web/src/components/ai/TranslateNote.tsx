@@ -85,14 +85,14 @@ export function TranslateNote({ documentId, editor, readOnly, disabled }: { docu
         Translate this note
       </h3>
       <div className="flex flex-wrap items-center gap-1.5">
-        <Select aria-label="Translate into" value={language} onChange={(e) => setLanguage(e.target.value)} className="h-8 rounded-chip bg-[var(--glass-hover)] px-2 text-[12.5px] font-medium text-ink">
+        <Select aria-label="Translate into" value={language} onChange={(e) => setLanguage(e.target.value)} className="h-8 rounded-chip bg-[var(--glass-hover)] px-2 text-callout font-medium text-ink pointer-coarse:h-11 pointer-coarse:px-3">
           {AI_LANGUAGES.map((l) => (
             <option key={l} value={l}>
               {l}
             </option>
           ))}
         </Select>
-        <div className="ui-seg ui-well w-full basis-full text-[12px]" role="group" aria-label="Where the translation goes">
+        <div className="ui-seg ui-well w-full basis-full" role="group" aria-label="Where the translation goes">
           <button type="button" aria-pressed={how === "note"} onClick={() => setOutput("note")}>
             New note
           </button>
@@ -100,8 +100,8 @@ export function TranslateNote({ documentId, editor, readOnly, disabled }: { docu
             Replace text
           </button>
         </div>
-        <p className="basis-full px-1 text-[11.5px] text-faint">{how === "note" ? `Makes a copy titled "… (${language})" next to this note.` : "Shows the translation first. A version of the note is saved before anything changes."}</p>
-        <button type="button" disabled={Boolean(busy) || disabled} onClick={() => void translate()} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+        <p className="basis-full px-1 text-footnote text-muted">{how === "note" ? `Makes a copy titled "… (${language})" next to this note.` : "Shows the translation first. A version of the note is saved before anything changes."}</p>
+        <button type="button" disabled={Boolean(busy) || disabled} onClick={() => void translate()} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
           <Languages size={14} aria-hidden /> Translate
         </button>
       </div>
@@ -112,17 +112,17 @@ export function TranslateNote({ documentId, editor, readOnly, disabled }: { docu
           </p>
         ) : null}
         {problem ? <AiProblemNotice problem={problem} /> : null}
-        {notice ? <p className="px-1 text-[12.5px] text-muted">{notice}</p> : null}
+        {notice ? <p className="px-1 text-subheadline text-muted">{notice}</p> : null}
       </div>
       {preview && !busy ? (
         <section aria-label="Translation" className="rounded-panel bg-[var(--glass-active)] p-3 shadow-[var(--glass-edge)]">
-          <p className="mb-2 text-[12px] font-semibold text-muted">In {preview.language}</p>
+          <p className="mb-2 text-footnote font-semibold text-muted">In {preview.language}</p>
           <div className="max-h-[320px] overflow-y-auto pr-1">
             <AiMarkdown markdown={preview.preview} />
           </div>
-          {preview.untranslated ? <p className="mt-2 text-[12px] text-muted">{kept(preview.untranslated)}</p> : null}
+          {preview.untranslated ? <p className="mt-2 text-footnote text-muted">{kept(preview.untranslated)}</p> : null}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <button type="button" disabled={readOnly || !editor} onClick={() => void replace()} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+            <button type="button" disabled={readOnly || !editor} onClick={() => void replace()} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
               <Check size={14} aria-hidden /> Replace note text
             </button>
             <button type="button" onClick={() => setPreview(null)} aria-label="Discard" title="Discard" className="ui-btn ui-btn-ghost ml-auto h-8 w-8 px-0">

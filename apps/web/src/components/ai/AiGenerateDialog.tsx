@@ -133,7 +133,7 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
     >
       {!draft || busy ? (
         <div className="space-y-3">
-          <label htmlFor={`${uid}-prompt`} className="block text-[13px] font-medium text-heading">
+          <label htmlFor={`${uid}-prompt`} className="block text-subheadline font-medium text-heading">
             {kind === "template" ? "What's the template for?" : "What should the note be?"}
           </label>
           <textarea
@@ -149,12 +149,12 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
               }
             }}
             placeholder={kind === "template" ? "A one-on-one with my manager: wins, blockers, feedback, next steps" : "A plan for moving house next month"}
-            className="ui-input block w-full resize-none rounded-control px-3 py-2.5 text-[14px] text-ink placeholder:text-faint"
+            className="ui-input block w-full resize-none rounded-control px-3 py-2.5 text-body text-ink placeholder:text-faint"
           />
           {!busy ? (
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Examples">
               {EXAMPLES[kind].map((x) => (
-                <button key={x} type="button" onClick={() => setPrompt(x)} className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+                <button key={x} type="button" onClick={() => setPrompt(x)} className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-footnote text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
                   {x}
                 </button>
               ))}
@@ -162,7 +162,7 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
           ) : null}
           {busy ? (
             <div className="max-h-[46vh] overflow-y-auto rounded-control bg-[var(--glass-hover)] p-3" aria-busy="true">
-              <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
+              <p className="mb-1.5 flex items-center gap-1.5 text-footnote font-semibold text-muted">
                 <AiIcon size={12} aria-hidden className="animate-pulse motion-reduce:animate-none" /> Writing the {noun}…
               </p>
               {stream.text ? <StreamingText text={stream.text} /> : null}
@@ -173,7 +173,7 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
       ) : (
         <section aria-label={`The ${noun}`} className="space-y-3">
           <div>
-            <label htmlFor={`${uid}-name`} className="mb-1 block text-[12px] font-medium text-muted">
+            <label htmlFor={`${uid}-name`} className="mb-1 block text-footnote font-medium text-muted">
               {kind === "template" ? "Template name" : "Title"}
             </label>
             <input
@@ -182,16 +182,16 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
               value={draft.title}
               maxLength={120}
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-              className="ui-input block h-9 w-full rounded-control px-3 text-[15px] font-semibold text-heading"
+              className="ui-input block h-9 w-full rounded-control px-3 text-headline font-semibold text-heading"
             />
           </div>
           <div className="max-h-[46vh] overflow-y-auto rounded-control bg-[var(--glass-hover)] p-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
             <AiMarkdown markdown={draft.text} />
           </div>
-          <p className="text-[11.5px] text-faint">Foli AI can make mistakes, so check it before you save. Sent to Google Gemini.</p>
+          <p className="text-footnote text-faint">Foli AI can make mistakes, so check it before you save. Sent to Google Gemini.</p>
         </section>
       )}
-      {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-3 rounded-control bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mt-3"} /> : null}
+      {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-3 rounded-control bg-danger-soft px-3 py-2 text-subheadline text-danger" : "mt-3"} /> : null}
       <AiAnnouncer text={announce} />
     </Dialog>
   );

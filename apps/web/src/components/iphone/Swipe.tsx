@@ -157,7 +157,7 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
                 a.onAction();
               }}
               style={{ background: a.tone, flexGrow: full ? (i === (offset > 0 ? 0 : shownActions.length - 1) ? 1 : 0) : 1, flexBasis: full ? 0 : undefined, transition: dragging ? `flex-grow ${SETTLE.ms}ms ${SETTLE.easing}` : undefined }}
-              className={`flex min-w-0 flex-col justify-center gap-1 overflow-hidden px-3 text-[13px] font-medium text-white ${full ? (offset > 0 ? "items-end" : "items-start") : "items-center"}`}
+              className={`flex min-w-0 flex-col justify-center gap-1 overflow-hidden px-3 text-footnote font-medium text-white ${full ? (offset > 0 ? "items-end" : "items-start") : "items-center"}`}
             >
               <span aria-hidden className="[&_svg]:h-5 [&_svg]:w-5">{a.icon}</span>
               <span className="truncate">{a.label}</span>

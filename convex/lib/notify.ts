@@ -32,6 +32,8 @@ export function topicOf(kind: Kind): Topic | null {
     case "share_change":
       return "access";
     case "system":
+    case "vault":
+      // The Vault's own setting (inApp.vault), checked where it notifies (lib/vault/notify.ts).
       return null;
   }
 }
@@ -130,6 +132,8 @@ export function sealedNotificationText(kind: Kind, actorName: string, preview?: 
     case "invite":
     case "system":
       return title ? { title: title } : { title: "Something changed in an encrypted note" };
+    case "vault":
+      return { title: `${who} changed something in the Vault` };
   }
 }
 

@@ -49,9 +49,9 @@ export function ReadOnlyBookmark({
           <Link2 size={18} className="mb-1 text-muted" aria-hidden />
         )}
         <span className="block truncate font-semibold text-ink">{name}</span>
-        {description ? <span className="line-clamp-2 block text-sm leading-snug text-muted">{description}</span> : null}
+        {description ? <span className="line-clamp-2 block text-subheadline leading-snug text-muted">{description}</span> : null}
         {host ? (
-          <span className="block truncate text-xs text-faint">
+          <span className="block truncate text-footnote text-faint">
             {siteName ? `${siteName} · ` : ""}
             {host}
           </span>
@@ -99,11 +99,11 @@ export function ReadOnlyFile({ href, name, size, mimeType }: { href: string | nu
     <>
       <Icon size={20} className="flex-none text-muted" aria-hidden />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium text-ink">{label}</span>
-        {details ? <span className="block text-xs text-muted">{details}</span> : null}
+        <span className="block truncate text-subheadline font-medium text-ink">{label}</span>
+        {details ? <span className="block text-footnote text-muted">{details}</span> : null}
       </span>
       {href ? (
-        <span className="inline-flex h-8 flex-none items-center gap-1.5 rounded-chip border border-line px-2.5 text-xs text-ink print:hidden" aria-hidden>
+        <span className="inline-flex h-8 flex-none items-center gap-1.5 rounded-chip border border-line px-2.5 text-footnote text-ink print:hidden" aria-hidden>
           <Download size={14} /> Download
         </span>
       ) : null}

@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -63,9 +63,9 @@ jobs:
     needs: checks
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -84,12 +84,12 @@ jobs:
         run: |
           pnpm --filter @folevi/web build
           (cd apps/web && npx next start --port 3000 > ../../web.log 2>&1 &)
-          npx wait-on http://localhost:3000 --timeout 120000
+          npx --yes wait-on@9.5.1 http://localhost:3000 --timeout 120000
       - name: Playwright
         run: pnpm --filter @folevi/web exec playwright test
         env:
           E2E_NO_SERVER: "1"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
           name: playwright-report
@@ -105,9 +105,9 @@ jobs:
     needs: checks
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -124,13 +124,13 @@ jobs:
         run: |
           pnpm --filter @folevi/web build
           (cd apps/web && npx next start --port 3000 > ../../web.log 2>&1 &)
-          npx wait-on http://localhost:3000 --timeout 120000
+          npx --yes wait-on@9.5.1 http://localhost:3000 --timeout 120000
       - name: Playwright (production-only checks + offline flows)
         run: pnpm --filter @folevi/web exec playwright test production.spec.ts offline.spec.ts
         env:
           E2E_NO_SERVER: "1"
           E2E_PRODUCTION: "1"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
           name: playwright-report-production
@@ -149,12 +149,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: [checks, e2e]
     timeout-minutes: 10
+    # The production deploy key is given only to the two steps below that need it, never to the whole job: the
+    # checkout, setup and install steps (third-party actions, package install scripts) can't read it
+    # (docs/SECURITY_PLAN.md P0.3).
     env:
-      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
       FOLEVI_DEPLOY_ENVIRONMENT: ${{ vars.FOLEVI_DEPLOY_ENVIRONMENT || 'production' }}
     steps:
       - name: Check for a deploy key
         id: key
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
         run: |
           if [ -z "$CONVEX_DEPLOY_KEY" ]; then
             echo "No CONVEX_DEPLOY_KEY secret; skipping deployment record."
@@ -162,11 +166,11 @@ jobs:
           else
             echo "present=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         if: steps.key.outputs.present == 'true'
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         if: steps.key.outputs.present == 'true'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         if: steps.key.outputs.present == 'true'
         with:
           node-version-file: .nvmrc
@@ -178,6 +182,7 @@ jobs:
         # The commit message is passed through the environment and JSON-encoded by Node, never
         # interpolated into the shell command.
         env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           ARGS=$(node -e 'const m=(process.env.COMMIT_MESSAGE||"").split("\n")[0].slice(0,200); process.stdout.write(JSON.stringify({environment:process.env.FOLEVI_DEPLOY_ENVIRONMENT,commitSha:process.env.GITHUB_SHA,commitMessage:m,source:"github-actions"}))')
@@ -191,9 +196,9 @@ jobs:
       run:
         working-directory: apps/clipper
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -208,17 +213,19 @@ jobs:
     name: Secret scan & dependency audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
       # The whole history, every push (the gitleaks action scans only the pushed range, which fails on a
       # repository's first push).
       - name: Secret scan (gitleaks, full history)
         run: |
-          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz | tar xz -C "$RUNNER_TEMP" gitleaks
+          curl -sSfL -o "$RUNNER_TEMP/gitleaks.tar.gz" https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz
+          echo "9991e0b2903da4c8f6122b5c3186448b927a5da4deef1fe45271c3793f4ee29c  $RUNNER_TEMP/gitleaks.tar.gz" | sha256sum -c -
+          tar xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
           "$RUNNER_TEMP/gitleaks" git --redact --verbose --exit-code 1 .
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .nvmrc
       - run: pnpm audit --prod --audit-level high

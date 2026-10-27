@@ -33,7 +33,7 @@ export function MigrationBar({ progress }: { progress: Progress }) {
   const { line, fraction } = summary(progress);
   return (
     <div className="space-y-1.5">
-      <p className="text-[13px] font-medium text-heading">{line}</p>
+      <p className="text-subheadline font-medium text-heading">{line}</p>
       <div role="progressbar" aria-label={line} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(fraction * 100)} className="h-1.5 overflow-hidden rounded-tiny bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]">
         <div className="h-full rounded-tiny bg-heading transition-[width] duration-300" style={{ width: `${Math.max(fraction * 100, 3)}%` }} />
       </div>
@@ -52,7 +52,7 @@ export function MigrationRow({ scope }: { scope: WireScope }) {
     <section aria-label={summary(progress).line} className="ui-card rounded-control p-4">
       <MigrationBar progress={progress} />
       {progress.paused ? (
-        <p className="mt-2 flex items-center gap-1.5 text-[13px] text-muted">
+        <p className="mt-2 flex items-center gap-1.5 text-subheadline text-muted">
           <Pause size={13} aria-hidden /> {m.paused}
         </p>
       ) : null}
@@ -61,17 +61,17 @@ export function MigrationRow({ scope }: { scope: WireScope }) {
         aria-expanded={open}
         aria-controls={`${uid}-details`}
         onClick={() => setOpen(!open)}
-        className="mt-2 inline-flex h-8 items-center gap-1 rounded-chip px-1.5 text-[13px] font-medium text-muted outline-none hover:text-heading focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11"
+        className="mt-2 inline-flex h-8 items-center gap-1 rounded-chip px-1.5 text-subheadline font-medium text-muted outline-none hover:text-heading focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11"
       >
         {open ? <ChevronDown size={13} aria-hidden /> : <ChevronRight size={13} aria-hidden />} {m.details}
       </button>
       {open ? (
-        <p id={`${uid}-details`} className="mt-1 text-[13px] text-muted">
+        <p id={`${uid}-details`} className="mt-1 text-subheadline text-muted">
           {details(progress)}
         </p>
       ) : null}
       {progress.failed.length ? (
-        <div role="alert" className="mt-3 rounded-control bg-danger-soft p-3 text-[13px] text-ink">
+        <div role="alert" className="mt-3 rounded-control bg-danger-soft p-3 text-subheadline text-ink">
           <p className="flex items-center gap-1.5 font-medium">
             <TriangleAlert size={14} aria-hidden /> {m.failed(progress.failed.length)}
           </p>
@@ -101,7 +101,7 @@ export function SidebarMigrationLine({ scope, href }: { scope: WireScope; href: 
   return (
     <AppLink
       href={href}
-      className="mb-1.5 flex flex-col gap-1 rounded-chip px-2.5 py-1.5 text-[12px] text-muted outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:min-h-11"
+      className="mb-1.5 flex flex-col gap-1 rounded-chip px-2.5 py-1.5 text-footnote text-muted outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:min-h-11"
     >
       <span className="flex items-start gap-1.5 leading-snug">
         {progress.paused ? <Pause size={12} aria-hidden className="mt-0.5 flex-none" /> : <LockKeyhole size={12} aria-hidden className="mt-0.5 flex-none" />}

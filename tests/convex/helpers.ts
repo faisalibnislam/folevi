@@ -136,6 +136,18 @@ export { ulid };
 
 // ---------------------------------------------------------------- end-to-end encryption (docs/E2EE_DESIGN.md, WP2)
 
+/** Turns a feature flag on. */
+export async function enableFlag(t: T, key: string) {
+  await t.run(async (ctx) => {
+    const row = await ctx.db
+      .query("featureFlags")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    if (row) await ctx.db.patch(row._id, { enabled: true });
+    else await ctx.db.insert("featureFlags", { key, enabled: true, description: "test", updatedAt: Date.now() });
+  });
+}
+
 /** Turns the `e2ee` feature flag on (it gates setting encryption up until launch, §5.9). */
 export async function enableE2eeFlag(t: T) {
   await t.run(async (ctx) => {

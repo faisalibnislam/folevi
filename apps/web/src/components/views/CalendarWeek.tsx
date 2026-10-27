@@ -81,7 +81,7 @@ export function CalendarWeek({
   return (
     <div className="overflow-hidden ui-card rounded-control">
       <div ref={gridRef} role="grid" aria-label={label}>
-        <div role="row" className="grid border-b border-line bg-surface text-center text-xs" style={columns}>
+        <div role="row" className="grid border-b border-line bg-surface text-center text-footnote" style={columns}>
           <div role="columnheader">
             <span className="sr-only">Time</span>
           </div>
@@ -93,7 +93,7 @@ export function CalendarWeek({
           ))}
         </div>
         <div role="row" className="grid border-b border-line" style={columns}>
-          <div role="rowheader" className="px-2 py-2 text-right text-[11px] text-muted">
+          <div role="rowheader" className="px-2 py-2 text-right text-footnote text-muted">
             All day
           </div>
           {days.map((date) => {
@@ -135,7 +135,7 @@ export function CalendarWeek({
                         onDragStart={(e) => dragStart(e, t)}
                         onClick={() => onEdit(t)}
                         title={t.title}
-                        className={`block w-full cursor-grab truncate rounded-tiny px-1 text-left text-[11.5px] leading-5 ${taskChipClass(t)}`}
+                        className={`block w-full cursor-grab truncate rounded-tiny px-1 text-left text-footnote leading-5 ${taskChipClass(t)}`}
                       >
                         {t.title || "Untitled task"}
                       </button>
@@ -148,7 +148,7 @@ export function CalendarWeek({
                         onClick={(e) => onOpenEvent(ev, e.currentTarget)}
                         aria-label={`${ev.title || "Untitled event"}, all day, from ${ev.calendarName}`}
                         title={ev.title}
-                        className="block w-full truncate rounded-tiny border-l-2 bg-surface px-1 text-left text-[11.5px] leading-5 text-muted hover:bg-sunken"
+                        className="block w-full truncate rounded-tiny border-l-2 bg-surface px-1 text-left text-footnote leading-5 text-muted hover:bg-sunken"
                         style={{ borderColor: calendarColor(ev.color) }}
                       >
                         {ev.title || "Untitled event"}
@@ -165,7 +165,7 @@ export function CalendarWeek({
         <div className="grid" style={{ ...columns, height: 24 * HOUR_PX }}>
           <div aria-hidden className="relative">
             {Array.from({ length: 23 }, (_, i) => i + 1).map((h) => (
-              <span key={h} className="absolute right-2 -translate-y-1/2 text-[11px] tabular-nums text-faint" style={{ top: h * HOUR_PX }}>
+              <span key={h} className="absolute right-2 -translate-y-1/2 text-caption-2 tabular-nums text-faint" style={{ top: h * HOUR_PX }}>
                 {minutesToTime(h * 60)}
               </span>
             ))}
@@ -226,7 +226,7 @@ export function CalendarWeek({
                       onClick={(e) => onOpenEvent(ev, e.currentTarget)}
                       aria-label={`${ev.title || "Untitled event"}, ${time}, from ${ev.calendarName}`}
                       title={`${time} ${ev.title}`}
-                      className="absolute overflow-hidden rounded-tiny border-l-2 bg-surface px-1 text-left text-[11px] leading-[14px] text-muted shadow-[0_0_0_1px_var(--color-canvas)] hover:bg-sunken"
+                      className="absolute overflow-hidden rounded-tiny border-l-2 bg-surface px-1 text-left text-caption-2 leading-[14px] text-muted shadow-[0_0_0_1px_var(--color-canvas)] hover:bg-sunken"
                       style={{
                         top: minutesToPx(p.start) + 1,
                         height: minutesToPx(p.end - p.start) - 2,
@@ -253,7 +253,7 @@ export function CalendarWeek({
                       onClick={() => onEdit(t)}
                       aria-label={`${t.title || "Untitled task"}, ${t.dueTime}${t.status === "done" ? ", done" : ""}`}
                       title={`${t.dueTime} ${t.title}`}
-                      className={`absolute cursor-grab truncate rounded-tiny px-1 text-left text-[11px] leading-[14px] shadow-[0_0_0_1px_var(--color-canvas)] ${taskChipClass(t)}`}
+                      className={`absolute cursor-grab truncate rounded-tiny px-1 text-left text-caption-2 leading-[14px] shadow-[0_0_0_1px_var(--color-canvas)] ${taskChipClass(t)}`}
                       style={{ top: minutesToPx(start) + 1, height: minutesToPx(TASK_MINUTES) - 2, left: `calc(${(p.col / p.cols) * 100}% + 2px)`, width: `calc(${100 / p.cols}% - 4px)` }}
                     >
                       <span className="mr-1 tabular-nums opacity-80">{t.dueTime}</span>

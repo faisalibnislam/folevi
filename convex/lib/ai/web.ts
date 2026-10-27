@@ -260,6 +260,42 @@ export async function resolveLink(uri: string): Promise<string> {
 }
 
 /** Links in a message (http and https only), at most MAX_URLS, trailing punctuation left off. */
+/** A page's address for comparing two links to it: no fragment, no trailing slash, lower-case host. */
+function pageKey(raw: string): string | null {
+  try {
+    const u = new URL(raw);
+    u.hash = "";
+    u.hostname = u.hostname.toLowerCase();
+    return u.href.replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The web pages Foli AI may open on its own in one run: links the person wrote in the conversation, and pages a web
+ * search returned in that run. An address the model made up, or found inside a note, a file or another web page,
+ * isn't opened: text it read could have built it to carry data out in the address (docs/SECURITY_PLAN.md P0.2).
+ */
+export class AllowedPages {
+  private keys = new Set<string>();
+  constructor(personText: string[]) {
+    for (const t of personText) for (const url of extractUrls(t)) this.add(url);
+  }
+  add(url: string) {
+    const k = pageKey(url);
+    if (k) this.keys.add(k);
+  }
+  allows(url: string): boolean {
+    const k = pageKey(url);
+    return k !== null && this.keys.has(k);
+  }
+}
+
+/** What Foli AI is told when it asks for a page it may not open by itself. */
+export const PAGE_NOT_ALLOWED =
+  "Only pages the person linked in this conversation, or that a web search returned, can be opened. If this page matters, ask the person to paste its link.";
+
 export function extractUrls(text: string): string[] {
   const out: string[] = [];
   for (const m of text.matchAll(/\bhttps?:\/\/[^\s<>"'`]+/gi)) {

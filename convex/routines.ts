@@ -566,7 +566,7 @@ export const deliver = internalMutation({
     // changed (the ones the person can still open), for Open loops the items, each linking to its block.
     const text = unfence(args.markdown).trim();
     const labels = new Map<string, string>();
-    const body: WireBlock[] = text ? markdownToBlocks(text, { titleFromHeading: false }).blocks.slice(0, MAX_NOTE_BLOCKS) : [];
+    const body: WireBlock[] = text ? markdownToBlocks(text, { titleFromHeading: false, remoteImages: "link" }).blocks.slice(0, MAX_NOTE_BLOCKS) : [];
     if (row.kind === "openLoops") {
       body.push(...loopBlocks(body, args.loops.slice(0, MAX_LOOPS)));
     } else {

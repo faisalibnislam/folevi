@@ -61,12 +61,12 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 // The app's sidebar row (components/app/Sidebar.tsx NavItem): the open page comes forward on light glass.
-const ROW = "group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-[13.5px] outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
+const ROW = "group flex h-8 items-center gap-2.5 whitespace-nowrap rounded-chip px-2.5 text-body outline-none transition-[background-color,box-shadow,color] duration-150 focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
 const ROW_ON = "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)]";
 const ROW_OFF = "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading";
 
 // The app's tab strip tabs (components/app/TabStrip.tsx).
-const TAB = "relative flex h-8 min-w-0 items-center gap-2 rounded-chip px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-focus";
+const TAB = "relative flex h-8 min-w-0 items-center gap-2 rounded-chip px-2.5 text-subheadline outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-focus";
 const TAB_ON = "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
 const TAB_OFF = "bg-[var(--glass-hover)] text-muted hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
 const ICON_BTN = "grid h-8 w-8 flex-none place-items-center rounded-chip text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
@@ -80,7 +80,7 @@ class PageBoundary extends Component<{ children: ReactNode }, { error: unknown }
   override render() {
     if (this.state.error) {
       return (
-        <div role="alert" className="rounded-control bg-danger-soft p-5 text-sm">
+        <div role="alert" className="rounded-control bg-danger-soft p-5 text-subheadline">
           <p className="font-semibold text-heading">This page couldn&apos;t load.</p>
           <p className="mt-1">{errorMessage(this.state.error)}</p>
           <Button className="mt-3" size="sm" onClick={() => this.setState({ error: null })}>
@@ -119,7 +119,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <Link href="/admin" aria-label="Folevi admin" title="Go to the dashboard" className="flex items-center rounded-chip px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus">
               <FoleviLogo height={26} title={null} className="flex-none" />
             </Link>
-            <span className="rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-[11.5px] font-semibold text-muted">Admin</span>
+            <span className="rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-footnote font-semibold text-muted">Admin</span>
           </div>
           <nav aria-label="Admin" className="px-2.5 md:min-h-0 md:flex-1 md:overflow-y-auto">
             <div className="flex gap-0.5 overflow-x-auto pb-2 md:block md:overflow-visible md:pb-4">
@@ -139,7 +139,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                             <Icon size={16} aria-hidden className={`flex-none transition-colors ${active ? "text-heading" : "text-muted group-hover:text-heading"}`} />
                             {item.label}
                             {count > 0 ? (
-                              <span className="ml-auto rounded-chip bg-heading px-1.5 text-[11px] font-semibold leading-[18px] text-canvas tabular-nums">
+                              <span className="ml-auto rounded-chip bg-heading px-1.5 text-caption-2 font-semibold leading-[18px] text-canvas tabular-nums">
                                 {count >= 100 ? "99+" : count}
                                 <span className="sr-only"> unread</span>
                               </span>
@@ -165,10 +165,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <div className="mt-1.5 flex h-12 items-center gap-2.5 rounded-chip px-2">
               <Avatar name={admin.displayName} size={28} />
               <span className="min-w-0 flex-1 leading-tight">
-                <span className="block truncate text-[13.5px] font-semibold text-heading" title={admin.displayName}>
+                <span className="block truncate text-body font-semibold text-heading" title={admin.displayName}>
                   {admin.displayName}
                 </span>
-                <span className="block truncate text-[11.5px] text-muted">{ROLE_LABEL[admin.role]}</span>
+                <span className="block truncate text-footnote text-muted">{ROLE_LABEL[admin.role]}</span>
               </span>
             </div>
           </div>
@@ -213,7 +213,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 <p
                   role="note"
                   title="Every view of user data and every change is recorded in the immutable audit log with your name, role, reason and request ID."
-                  className="hidden min-w-0 items-center gap-1.5 truncate pr-2.5 text-[12.5px] text-muted lg:flex"
+                  className="hidden min-w-0 items-center gap-1.5 truncate pr-2.5 text-subheadline text-muted lg:flex"
                 >
                   <Eye size={14} aria-hidden className="flex-none" />
                   <span className="truncate">Every view of user data and every change is recorded in the immutable audit log.</span>
@@ -221,7 +221,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <main id="admin-main" tabIndex={-1} className="mx-auto w-full max-w-[1480px] min-w-0 px-4 pb-20 pt-7 outline-none sm:px-8 lg:px-10">
-              <p role="note" className="mb-4 flex items-start gap-1.5 text-[12.5px] text-muted lg:hidden">
+              <p role="note" className="mb-4 flex items-start gap-1.5 text-subheadline text-muted lg:hidden">
                 <Eye size={14} aria-hidden className="mt-0.5 flex-none" />
                 Every view of user data and every change is recorded in the immutable audit log.
               </p>

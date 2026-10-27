@@ -146,6 +146,14 @@ export function undefineLocal(ref: AnyPublicRef): void {
 export const LOCAL_HIDDEN: Readonly<Record<string, Capability>> = {
   "sharing:*": "sharing",
   "folderSharing:*": "sharing",
+  // The Vault lives in an account (a library on this device has none yet).
+  "vault:*": "account",
+  "vaultKeys:*": "account",
+  "vaultItems:*": "account",
+  "vaultLog:*": "account",
+  "vaultFiles:*": "account",
+  "vaultPeople:*": "account",
+  "vaultShares:*": "account",
   "workspaces:*": "workspaces",
   "workspaceBilling:*": "billing",
   "billing:*": "billing",

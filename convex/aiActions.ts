@@ -98,7 +98,7 @@ export const apply = mutation({
       if (a.type === "createNote") {
         const title = a.title.replace(/[\u0000-\u001F\u007F]/g, " ").trim().slice(0, 300) || "Untitled";
         const folder = folderFor(a);
-        const { blocks } = markdownToBlocks(a.markdown.slice(0, MAX_NOTE_MARKDOWN));
+        const { blocks } = markdownToBlocks(a.markdown.slice(0, MAX_NOTE_MARKDOWN), { remoteImages: "link" });
         if (blocks.length > 2000) fail("limit_exceeded", "That note is too long.");
         const doc = await createDocument(ctx, { scope, actor: profile, title, folderId: folder?.id, blocks });
         notes.push({ id: doc.publicId, title });

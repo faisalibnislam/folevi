@@ -22,7 +22,7 @@ function Panel({ label, title, children, className }: { label: string; title: st
   );
 }
 
-const userBubble = "ml-auto max-w-[85%] rounded-control bg-(--color-heading) px-3 py-2 text-[12.5px] text-(--color-canvas)";
+const userBubble = "ml-auto max-w-[85%] rounded-control bg-(--color-heading) px-3 py-2 text-[13px] text-(--color-canvas)";
 
 /** Ask in a note: "Tidy up the headings" → the agent's proposed changes, with Approve and Undo. */
 export function ChangesPicture() {
@@ -39,9 +39,9 @@ export function ChangesPicture() {
       <div className="space-y-3 p-2">
         <p data-step className={userBubble}>The section numbers are all messed up. Please fix.</p>
         <div data-step className="rounded-control bg-(--glass-hover) p-3">
-          <p className="text-[12.5px] leading-relaxed text-ink">I renumbered the sections and fixed two headings. These changes need your approval.</p>
+          <p className="text-[13px] leading-relaxed text-ink">I renumbered the sections and fixed two headings. These changes need your approval.</p>
           <div className="mt-3 rounded-small bg-(--color-surface) p-2.5 shadow-(--shadow-control)">
-            <p className="mk-caps text-[10.5px]">Proposed changes</p>
+            <p className="mk-caps text-[11px]">Proposed changes</p>
             <p className="mt-1.5 flex items-center gap-1.5 text-[12px] font-medium text-(--color-heading)">
               <FileText size={13} className="text-muted" /> Edit “Website ideas” (3 changes)
             </p>
@@ -58,7 +58,7 @@ export function ChangesPicture() {
                 <Check size={13} /> Approve
               </span>
               <span className="mk-btn mk-btn-secondary h-8 px-3 text-[12px]">Discard</span>
-              <span className="ml-auto flex items-center gap-1 text-[11.5px] text-muted">
+              <span className="ml-auto flex items-center gap-1 text-[12px] text-muted">
                 <Undo2 size={12} /> One Undo
               </span>
             </div>
@@ -106,7 +106,7 @@ export function ThinkPicture() {
         </table>
         <div data-step className="mt-4 flex flex-wrap gap-1.5">
           {["Pros and cons", "SWOT", "Risks", "Pre-mortem", "Mind map", "How might we", "SCAMPER", "Six hats"].map((f) => (
-            <span key={f} className="rounded-chip bg-(--glass-hover) px-2 py-0.5 text-[11.5px] text-ink">
+            <span key={f} className="rounded-chip bg-(--glass-hover) px-2 py-0.5 text-[12px] text-ink">
               {f}
             </span>
           ))}
@@ -124,7 +124,7 @@ export function StudyPicture() {
       label="The Study tab of the Foli AI panel: flashcard 3 of 12 from a biology note, showing the question 'What does the mitochondria do?' and its answer, 'It turns food into energy the cell can use (ATP).' Below are Again and Know it buttons and a progress bar."
     >
       <div className="p-4">
-        <div className="flex items-center justify-between text-[11.5px] text-muted">
+        <div className="flex items-center justify-between text-[12px] text-muted">
           <span>Flashcards · 3 of 12</span>
           <span>Quiz</span>
         </div>
@@ -136,10 +136,10 @@ export function StudyPicture() {
           <p data-step className="mt-3 border-t border-(--color-line) pt-3 text-[13px] leading-relaxed text-ink">It turns food into energy the cell can use (ATP).</p>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <span data-step className="mk-btn mk-btn-secondary h-9 gap-1.5 text-[12.5px]">
+          <span data-step className="mk-btn mk-btn-secondary h-9 gap-1.5 text-[13px]">
             <RotateCcw size={13} /> Again
           </span>
-          <span data-step className="mk-btn mk-btn-primary h-9 gap-1.5 text-[12.5px]">
+          <span data-step className="mk-btn mk-btn-primary h-9 gap-1.5 text-[13px]">
             <Check size={13} /> Know it
           </span>
         </div>
@@ -166,12 +166,12 @@ export function MeetingPicture() {
           </div>
         </div>
         <div data-step>
-          <p className="mk-caps text-[10.5px]">Decisions</p>
-          <p className="mt-1 text-[12.5px] text-ink">Hold the launch event in Lisbon, the first week of November.</p>
+          <p className="mk-caps text-[11px]">Decisions</p>
+          <p className="mt-1 text-[13px] text-ink">Hold the launch event in Lisbon, the first week of November.</p>
         </div>
         <div>
-          <p className="mk-caps text-[10.5px]">Action items</p>
-          <ul className="mt-1.5 space-y-1.5 text-[12.5px] text-ink">
+          <p className="mk-caps text-[11px]">Action items</p>
+          <ul className="mt-1.5 space-y-1.5 text-[13px] text-ink">
             {[
               ["Maya", "send the venue shortlist", "14 Oct"],
               ["Ines", "draft the invite list", "16 Oct"],
@@ -201,7 +201,7 @@ export function ResearchPicture() {
     >
       <div className="space-y-3 p-4">
         <p data-step className={userBubble}>How do heat pumps compare with gas boilers?</p>
-        <ul className="space-y-1 text-[11.5px] text-muted">
+        <ul className="space-y-1 text-[12px] text-muted">
           <li data-step className="flex items-center gap-1.5">
             <Check size={12} /> Searched the web (3 searches)
           </li>
@@ -209,7 +209,7 @@ export function ResearchPicture() {
             <Check size={12} /> Read 6 pages and 2 of your notes
           </li>
         </ul>
-        <div data-step className="rounded-control bg-(--glass-hover) p-3 text-[12.5px] leading-relaxed text-ink">
+        <div data-step className="rounded-control bg-(--glass-hover) p-3 text-[13px] leading-relaxed text-ink">
           <p className="font-semibold text-(--color-heading)">Running costs</p>
           <p className="mt-1">
             A heat pump uses about a third of the energy for the same heat <sup className="text-muted">[1]</sup>, so it costs less to run where electricity isn’t much dearer than gas <sup className="text-muted">[2]</sup>.

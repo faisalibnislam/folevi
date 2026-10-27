@@ -33,7 +33,7 @@ export interface SharedRow {
   lastMessageAt: number;
 }
 
-const ROW_LINK = "flex h-9 items-center gap-2 rounded-chip pl-2.5 text-[13.5px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
+const ROW_LINK = "flex h-9 items-center gap-2 rounded-chip pl-2.5 text-body outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11";
 const rowTone = (active: boolean) => (active ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading");
 
 /**
@@ -50,7 +50,7 @@ export function SharedWithYou({ rows, activeId, onNavigate }: { rows: SharedRow[
           <li key={r.id}>
             <AppLink href={`/ai/${r.id}`} onClick={onNavigate} aria-current={r.id === activeId ? "page" : undefined} title={`Shared by ${r.by}`} className={`${ROW_LINK} pr-2.5 ${rowTone(r.id === activeId)}`}>
               <span className="min-w-0 flex-1 truncate">{r.title}</span>
-              <span className="max-w-[40%] flex-none truncate text-[11.5px] font-normal text-faint">{r.by}</span>
+              <span className="max-w-[40%] flex-none truncate text-footnote font-normal text-faint">{r.by}</span>
             </AppLink>
           </li>
         ))}
@@ -105,7 +105,7 @@ function ConversationRow({ row, active, onNavigate }: { row: Row; active: boolea
                 setEditing(false);
               }
             }}
-            className="ui-input h-8 w-full rounded-chip px-2.5 text-[13.5px]"
+            className="ui-input h-8 w-full rounded-chip px-2.5 text-body"
           />
         </form>
       ) : (
@@ -122,7 +122,7 @@ function ConversationRow({ row, active, onNavigate }: { row: Row; active: boolea
               <span className="sr-only">Shared</span>
             </span>
           ) : null}
-          <span className="flex-none text-[11.5px] font-normal text-faint group-hover/conv:hidden">{ageText(row.lastMessageAt)}</span>
+          <span className="flex-none text-footnote font-normal text-faint group-hover/conv:hidden">{ageText(row.lastMessageAt)}</span>
         </AppLink>
       )}
       {editing ? null : (
@@ -201,7 +201,7 @@ export function ConversationList({ activeId, onNavigate }: { activeId: string | 
   return (
     <nav aria-label="Conversations" className="flex h-full min-h-0 flex-col">
       <div className="flex-none space-y-2 px-2.5 pb-2 pt-3">
-        <AppLink href="/ai" onClick={onNavigate} className="ui-btn ui-btn-secondary flex h-9 w-full items-center justify-center gap-2 text-[13.5px]">
+        <AppLink href="/ai" onClick={onNavigate} className="ui-btn ui-btn-secondary flex h-9 w-full items-center justify-center gap-2 text-body">
           <Plus size={15} aria-hidden /> New chat
         </AppLink>
         <div className="ui-well flex h-9 items-center gap-2 rounded-chip px-2.5">
@@ -216,13 +216,13 @@ export function ConversationList({ activeId, onNavigate }: { activeId: string | 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search conversations"
-            className="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-faint"
+            className="min-w-0 flex-1 bg-transparent text-subheadline text-ink outline-none placeholder:text-faint"
           />
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-4">
         {historyOff ? (
-          <p className="mb-3 rounded-control bg-[var(--glass-hover)] px-3 py-2 text-[12.5px] text-muted">
+          <p className="mb-3 rounded-control bg-[var(--glass-hover)] px-3 py-2 text-subheadline text-muted">
             History is off, so new conversations are deleted when you close them.{" "}
             <AppLink href="/settings/ai" className="underline underline-offset-2 hover:text-heading">
               Change
@@ -246,7 +246,7 @@ export function ConversationList({ activeId, onNavigate }: { activeId: string | 
           <EmptyState size="inline" icon={MessageSquare} title={term ? "No conversations match that" : "No conversations yet"} body={term ? undefined : "Your conversations will show up here."} />
         ) : null}
         {status === "CanLoadMore" ? (
-          <button type="button" onClick={() => loadMore(30)} className="mt-2 h-8 w-full rounded-chip text-[12.5px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+          <button type="button" onClick={() => loadMore(30)} className="mt-2 h-8 w-full rounded-chip text-subheadline text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
             Show more
           </button>
         ) : null}

@@ -39,13 +39,13 @@ function StatusCell({ p }: { p: Product }) {
     <div className="grid gap-1.5">
       <div className="flex flex-wrap items-center gap-1.5">
         {p.status === "mismatch" ? <Badge tone="warning">Mismatch</Badge> : <Badge tone="success">Created</Badge>}
-        {p.source ? <span className="text-[12px] text-muted">{SOURCE[p.source] ?? p.source}</span> : null}
+        {p.source ? <span className="text-footnote text-muted">{SOURCE[p.source] ?? p.source}</span> : null}
       </div>
       {p.polarProductId ? (
         <div className="flex flex-wrap items-center gap-1.5">
           <Mono wrap>{p.polarProductId}</Mono>
           {p.dashboardUrl ? (
-            <a href={p.dashboardUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12px] font-medium text-heading underline decoration-line-strong underline-offset-2 hover:decoration-heading">
+            <a href={p.dashboardUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-footnote font-medium text-heading underline decoration-line-strong underline-offset-2 hover:decoration-heading">
               Open in Polar
               <ExternalLink size={12} aria-hidden />
               <span className="sr-only">(opens in a new tab)</span>
@@ -54,13 +54,13 @@ function StatusCell({ p }: { p: Product }) {
         </div>
       ) : null}
       {p.differences.length ? (
-        <ul className="list-disc pl-4 text-[12.5px] text-ink">
+        <ul className="list-disc pl-4 text-subheadline text-ink">
           {p.differences.map((d) => (
             <li key={d}>{d}</li>
           ))}
         </ul>
       ) : null}
-      {p.status === "mismatch" ? <p className="text-[12px] text-muted">{p.inUse ? "Checkout sells this product. Fix it in Polar, then check again." : "Not used yet. Fix it in Polar and check again, or use it anyway."}</p> : null}
+      {p.status === "mismatch" ? <p className="text-footnote text-muted">{p.inUse ? "Checkout sells this product. Fix it in Polar, then check again." : "Not used yet. Fix it in Polar and check again, or use it anyway."}</p> : null}
     </div>
   );
 }
@@ -131,7 +131,7 @@ export function BillingSetupView() {
 
         <Panel title="Polar connection" description="Whether the server's Polar settings are present. Their values are never shown.">
           {data === undefined ? (
-            <p className="text-sm text-muted">Loading…</p>
+            <p className="text-subheadline text-muted">Loading…</p>
           ) : (
             <KeyValues
               items={[
@@ -186,7 +186,7 @@ export function BillingSetupView() {
                   <tr key={p.key}>
                     <th scope="row" className={`${td} text-left font-normal`}>
                       <span className="block font-medium text-heading">{p.name}</span>
-                      <span className="mt-0.5 block text-[12px] text-muted">
+                      <span className="mt-0.5 block text-footnote text-muted">
                         <Mono>{p.key}</Mono>
                       </span>
                     </th>

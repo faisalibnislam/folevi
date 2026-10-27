@@ -182,17 +182,87 @@ export const tokens = {
   },
   "space": {
     "0": 0,
-    "1": 8,
-    "2": 16,
-    "3": 24,
-    "4": 32,
-    "5": 40,
-    "6": 48,
-    "8": 64,
-    "10": 80,
-    "12": 96,
-    "0.5": 4,
-    "1.5": 12
+    "1": 4,
+    "2": 8,
+    "3": 12,
+    "4": 16,
+    "5": 20,
+    "6": 24,
+    "7": 28,
+    "8": 32,
+    "9": 36,
+    "10": 40,
+    "11": 44,
+    "12": 48,
+    "14": 56,
+    "16": 64,
+    "20": 80,
+    "24": 96,
+    "$description": "The spacing scale (docs/DESIGN_SYSTEM.md, Spacing): a 4 pt grid, with 2, 6, 10 and 14 for the insides of small controls. Keys are Tailwind's steps (p-3 = 12 px), so the classes and the tokens say the same thing. Generated as --space-<step>; `roles` names the spacing each kind of layout uses.",
+    "0.5": 2,
+    "1.5": 6,
+    "2.5": 10,
+    "3.5": 14
+  },
+  "spaceRoles": {
+    "$description": "Spacing by role, in px/pt (desktop is the web app and Folevi for Mac; ios the iPhone and iPad apps).",
+    "screenMargin": {
+      "desktop": 32,
+      "ios": 16,
+      "iosLarge": 20
+    },
+    "sectionGap": {
+      "desktop": 32,
+      "ios": 28
+    },
+    "headerToContent": {
+      "desktop": 12,
+      "ios": 8
+    },
+    "groupGap": {
+      "desktop": 16,
+      "ios": 20
+    },
+    "rowPaddingX": {
+      "desktop": 10,
+      "ios": 16
+    },
+    "rowPaddingY": {
+      "desktop": 8,
+      "ios": 12
+    },
+    "rowGap": {
+      "desktop": 4,
+      "ios": 0
+    },
+    "listInset": {
+      "desktop": 8,
+      "ios": 16
+    },
+    "iconToLabel": {
+      "desktop": 8,
+      "ios": 12
+    },
+    "buttonPaddingX": {
+      "desktop": 12,
+      "ios": 16
+    },
+    "controlGap": {
+      "desktop": 8,
+      "ios": 8
+    },
+    "sheetInset": {
+      "desktop": 20,
+      "ios": 16
+    },
+    "barToContent": {
+      "desktop": 8,
+      "ios": 12
+    },
+    "toolbarGap": {
+      "desktop": 4,
+      "ios": 8
+    }
   },
   "radius": {
     "none": 0,
@@ -207,6 +277,111 @@ export const tokens = {
     "capsule": 999
   },
   "font": {
+    "$typeDescription": "The UI type scale (docs/DESIGN_SYSTEM.md, Type): Apple's text styles as named roles, one size and line height per role and platform. `desktop` is the compact scale of the web app and Folevi for Mac; `ios` is Apple's default Dynamic Type sizes, used by the iPhone and iPad apps (<html data-iphone> or data-native). Headline is semibold. Generated as --type-<role> and --type-<role>-leading; Tailwind classes text-<role>.",
+    "role": {
+      "desktop": {
+        "largeTitle": {
+          "size": 32,
+          "leading": 38
+        },
+        "title1": {
+          "size": 24,
+          "leading": 30
+        },
+        "title2": {
+          "size": 20,
+          "leading": 26
+        },
+        "title3": {
+          "size": 17,
+          "leading": 22
+        },
+        "headline": {
+          "size": 15,
+          "leading": 20
+        },
+        "body": {
+          "size": 14,
+          "leading": 20
+        },
+        "callout": {
+          "size": 13,
+          "leading": 18
+        },
+        "subheadline": {
+          "size": 13,
+          "leading": 18
+        },
+        "footnote": {
+          "size": 12,
+          "leading": 16
+        },
+        "caption1": {
+          "size": 12,
+          "leading": 16
+        },
+        "caption2": {
+          "size": 11,
+          "leading": 14
+        }
+      },
+      "ios": {
+        "largeTitle": {
+          "size": 34,
+          "leading": 41
+        },
+        "title1": {
+          "size": 28,
+          "leading": 34
+        },
+        "title2": {
+          "size": 22,
+          "leading": 28
+        },
+        "title3": {
+          "size": 20,
+          "leading": 25
+        },
+        "headline": {
+          "size": 17,
+          "leading": 22
+        },
+        "body": {
+          "size": 17,
+          "leading": 22
+        },
+        "callout": {
+          "size": 16,
+          "leading": 21
+        },
+        "subheadline": {
+          "size": 15,
+          "leading": 20
+        },
+        "footnote": {
+          "size": 13,
+          "leading": 18
+        },
+        "caption1": {
+          "size": 12,
+          "leading": 16
+        },
+        "caption2": {
+          "size": 11,
+          "leading": 13
+        }
+      },
+      "weight": {
+        "headline": 600
+      }
+    },
+    "inputMin": 16,
+    "document": {
+      "$description": "The note's own typography (the editor's body and headings, page titles), separate from the UI scale.",
+      "body": 16,
+      "title": 38
+    },
+    "$sizeDescription": "Legacy sizes read by the native kit's token generator (FoleviTokens.FontSize) until it moves to font.role; the web doesn't use them.",
     "size": {
       "xs": 12,
       "sm": 13,
@@ -242,7 +417,8 @@ export const tokens = {
       "snug": -0.012,
       "normal": -0.006,
       "caps": 0.06
-    }
+    },
+    "$inputMinDescription": "The smallest font size a text field may have on a touch screen: iOS zooms the page into smaller ones (--type-input-min)."
   },
   "layout": {
     "sidebarMin": 240,

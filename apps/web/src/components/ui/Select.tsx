@@ -256,7 +256,7 @@ export function Select({
         popover="manual"
         tabIndex={-1}
         style={pos ? { position: "fixed", left: pos.left, top: pos.top ?? "auto", bottom: pos.bottom ?? "auto", minWidth: pos.width, maxHeight: pos.maxHeight, right: "auto", margin: 0 } : undefined}
-        className="ui-pop z-[100] max-w-[min(420px,calc(100vw-16px))] overflow-y-auto overscroll-contain border-0 p-1.5 text-[13.5px] text-ink animate-[folio-rise_120ms_var(--ease-folio)] motion-reduce:animate-none"
+        className="ui-pop z-[100] max-w-[min(420px,calc(100vw-16px))] overflow-y-auto overscroll-contain border-0 p-1.5 text-body text-ink animate-[folio-rise_120ms_var(--ease-folio)] motion-reduce:animate-none"
         onMouseDown={(e) => e.preventDefault()}
       >
         {options.map((o, i) => {

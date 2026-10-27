@@ -1550,7 +1550,7 @@ public extension EngineCommandSpec where Self == Commands.CalendarRefresh {
 }
 
 public extension EngineCommandSpec where Self == Commands.SettingsUpdate {
-    static func settingsUpdate(name: String? = nil, appearance: FoleviEngine.SettingsUpdateArgs.Appearance? = nil, timeZone: String? = nil, reviewAppEdits: Bool? = nil, aiEnabled: Bool? = nil, editorZoom: Int? = nil) -> Self { Self(FoleviEngine.SettingsUpdateArgs(name: name, appearance: appearance, timeZone: timeZone, reviewAppEdits: reviewAppEdits, aiEnabled: aiEnabled, editorZoom: editorZoom)) }
+    static func settingsUpdate(name: String? = nil, appearance: FoleviEngine.SettingsUpdateArgs.Appearance? = nil, timeZone: String? = nil, reviewAppEdits: Bool? = nil, aiEnabled: Bool? = nil, editorZoom: Double? = nil) -> Self { Self(FoleviEngine.SettingsUpdateArgs(name: name, appearance: appearance, timeZone: timeZone, reviewAppEdits: reviewAppEdits, aiEnabled: aiEnabled, editorZoom: editorZoom)) }
 }
 
 public extension EngineCommandSpec where Self == Commands.SettingsSetAiPref {

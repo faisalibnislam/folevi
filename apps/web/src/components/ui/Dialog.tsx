@@ -108,11 +108,11 @@ export function Dialog({
         <div className="flex max-h-[85dvh] flex-col">
           <header className="flex items-start gap-3 px-6 pb-2 pt-5">
             <div className="min-w-0 flex-1">
-              <h2 id={titleId} className="ui-display text-[21px] leading-snug">
+              <h2 id={titleId} className="ui-display text-title-2 leading-snug">
                 {title}
               </h2>
               {description ? (
-                <div id={descId} className="mt-1 text-sm text-muted">
+                <div id={descId} className="mt-1 text-subheadline text-muted">
                   {description}
                 </div>
               ) : null}

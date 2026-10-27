@@ -86,12 +86,12 @@ export function SignUpForm({ template, social = { google: false, apple: false },
           error={fieldError.password}
         />
         <SubmitButton busy={busy}>Create account</SubmitButton>
-        <p className="text-xs leading-relaxed text-muted">
+        <p className="text-footnote leading-relaxed text-muted">
           By creating an account you agree to the <TextLink href={`${process.env.NEXT_PUBLIC_MARKETING_URL ?? ""}/terms`}>Terms</TextLink> and{" "}
           <TextLink href={`${process.env.NEXT_PUBLIC_MARKETING_URL ?? ""}/privacy`}>Privacy Policy</TextLink>.
         </p>
       </form>
-      <p className="mt-6 text-sm text-muted">
+      <p className="mt-6 text-subheadline text-muted">
         Already have an account? <TextLink href={adding ? "/signin?add=1" : "/signin"}>Sign in</TextLink>
       </p>
     </>

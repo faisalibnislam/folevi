@@ -42,7 +42,7 @@ function Segmented<T extends string>({ label, value, options, onChange }: { labe
             aria-checked={on}
             tabIndex={on ? 0 : -1}
             onClick={() => onChange(o.value)}
-            className="mk-seg-item h-8 px-4 text-[13.5px] font-medium"
+            className="mk-seg-item h-8 px-4 text-[14px] font-medium"
           >
             {o.label}
           </button>
@@ -56,7 +56,7 @@ function FeatureList({ items }: { items: string[] }) {
   return (
     <ul className="mt-5 flex-1 space-y-2.5 border-t mk-hair pt-5">
       {items.map((item) => (
-        <li key={item} className="flex items-start gap-2.5 text-[14.5px] leading-snug text-ink">
+        <li key={item} className="flex items-start gap-2.5 text-[15px] leading-snug text-ink">
           <Check size={16} strokeWidth={2.5} aria-hidden="true" className="mt-px flex-none text-(--mk-violet-strong)" />
           {item}
         </li>
@@ -105,16 +105,16 @@ function PlanCard({ card, audience, interval, headingLevel }: { card: PersonalPl
       </div>
       {/* Stuck on the card's corner; it says something, so it stays readable. */}
       {sticker ? (
-        <Sticker shine tone="violet" rotate={card.tier === "pro_ai" ? 6 : -6} className="absolute -top-3 right-4 text-[12.5px]">
+        <Sticker shine tone="violet" rotate={card.tier === "pro_ai" ? 6 : -6} className="absolute -top-3 right-4 text-[13px]">
           {sticker}
         </Sticker>
       ) : null}
       <p className="mt-5 flex flex-wrap items-baseline gap-x-1.5">
         <span className="mk-display text-[44px] leading-none">{price}</span>
-        {unit ? <span className="text-[14.5px] text-muted">{unit}</span> : null}
+        {unit ? <span className="text-[15px] text-muted">{unit}</span> : null}
       </p>
-      <p className="mt-2 min-h-[40px] text-[13.5px] leading-snug text-muted">{note}</p>
-      <p className="mt-3 text-[14.5px] leading-relaxed text-ink">{card.blurb}</p>
+      <p className="mt-2 min-h-[40px] text-[14px] leading-snug text-muted">{note}</p>
+      <p className="mt-3 text-[15px] leading-relaxed text-ink">{card.blurb}</p>
       <FeatureList items={card.features} />
       <ButtonLink href={SIGN_UP_URL} className="mt-7 h-auto! min-h-11 w-full gap-1.5 whitespace-normal px-2.5! py-2.5 text-center leading-tight" icon="arrow-right" size="md" variant={featured ? undefined : "secondary"}>
         {cta}
@@ -159,7 +159,7 @@ export function PlanPicker({ headingLevel = "h3", align = "left" }: { headingLev
           </Hand>
         </span>
       </div>
-      <p aria-live="polite" className={cx("mt-4 max-w-[64ch] text-[14.5px] leading-relaxed text-muted", align === "center" && "mx-auto text-center")}>
+      <p aria-live="polite" className={cx("mt-4 max-w-[64ch] text-[15px] leading-relaxed text-muted", align === "center" && "mx-auto text-center")}>
         {team
           ? "For a workspace. Paid plans are billed per member, and every member gets the plan’s storage and AI credits there. Guests are free."
           : "For you: your Personal, your devices and your AI credits. A personal plan never changes a workspace’s plan."}

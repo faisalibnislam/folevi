@@ -169,7 +169,7 @@ export function FolderPicker({
             }
           }}
           placeholder="Search folders"
-          className="ui-input h-10 w-full rounded-chip pl-8 pr-3 text-sm"
+          className="ui-input h-10 w-full rounded-chip pl-8 pr-3 text-callout"
         />
       </div>
       <ul ref={listRef} id={`${baseId}-list`} role="listbox" aria-label="Folders" aria-busy={org === undefined} className="mt-3 max-h-[min(360px,50dvh)] space-y-0.5 overflow-y-auto">
@@ -200,18 +200,18 @@ export function FolderPicker({
               )}
               <span className="min-w-0 flex-1 truncate">
                 {o.name}
-                {o.path ? searching ? <span className="ml-1.5 text-[12px] text-faint">in {o.path}</span> : <span className="sr-only">, in {o.path}</span> : null}
+                {o.path ? searching ? <span className="ml-1.5 text-footnote text-faint">in {o.path}</span> : <span className="sr-only">, in {o.path}</span> : null}
               </span>
               {here ? (
-                <span className="inline-flex items-center gap-1 text-[12px] text-muted">
+                <span className="inline-flex items-center gap-1 text-footnote text-muted">
                   <Check size={13} strokeWidth={2.5} aria-hidden /> Current
                 </span>
               ) : null}
             </li>
           );
         })}
-        {org === undefined ? <li className="px-2 py-3 text-sm text-muted">Loading folders…</li> : null}
-        {org && !options.length ? <li className="px-2 py-3 text-sm text-muted">No folders match “{q.trim()}”.</li> : null}
+        {org === undefined ? <li className="px-2 py-3 text-subheadline text-muted">Loading folders…</li> : null}
+        {org && !options.length ? <li className="px-2 py-3 text-subheadline text-muted">No folders match “{q.trim()}”.</li> : null}
       </ul>
     </>
   );

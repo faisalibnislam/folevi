@@ -18,7 +18,7 @@ export function PalettePicture() {
     <div
       role="img"
       aria-label="The search palette with “cal” typed. Filters for folder, tag and time sit under the field. Documents: Planting calendar and Reading list, with the matching words highlighted. Actions: Go to Calendar."
-      className="mk-app-pop mx-auto max-w-[580px] overflow-hidden rounded-panel text-[13.5px]"
+      className="mk-app-pop mx-auto max-w-[580px] overflow-hidden rounded-panel text-[14px]"
     >
       <div aria-hidden="true">
         <div className="flex h-14 items-center gap-3 border-b border-(--color-line) px-4">
@@ -103,7 +103,7 @@ export function CalendarPicture() {
         <div className="flex items-center gap-3 border-b border-(--color-line) px-5 py-3">
           <div className="flex-1">
             <p className="mk-display text-[22px] text-(--color-heading)">Calendar</p>
-            <p className="text-[12.5px] text-muted">October 2026</p>
+            <p className="text-[13px] text-muted">October 2026</p>
           </div>
           <span className="flex rounded-control bg-(--color-surface-sunken) p-1 text-[12px]">
             <span className="rounded-chip bg-(--color-surface-raised) px-2.5 py-1 font-medium text-(--color-heading) shadow-(--shadow-control)">Month</span>
@@ -135,7 +135,7 @@ export function CalendarPicture() {
                   </span>
                   <div className="mt-1 space-y-0.5">
                     {(d.pills ?? []).slice(0, 3).map((p) => (
-                      <p key={p.text} className={cx("truncate rounded-tiny bg-(--glass-hover) px-1 py-px text-[10.5px]", p.done ? "text-faint line-through" : "text-ink")}>
+                      <p key={p.text} className={cx("truncate rounded-tiny bg-(--glass-hover) px-1 py-px text-[11px]", p.done ? "text-faint line-through" : "text-ink")}>
                         {p.time ? <span className="tabular-nums text-muted">{p.time} </span> : null}
                         {p.text}
                       </p>
@@ -181,13 +181,13 @@ export function CommentsPicture() {
     <div
       role="img"
       aria-label="A note with a comment thread on one paragraph. Maya asks Ines to check the hall booking, Ines replies that it is booked for Saturday, and the reply box sits below. Under the paragraph: 2 comments."
-      className="mx-auto max-w-[560px] text-[13.5px]"
+      className="mx-auto max-w-[560px] text-[14px]"
     >
       <div aria-hidden="true">
         <div className="mk-app-pop rounded-panel px-6 pb-5 pt-5">
           <p className="mk-display text-[21px] text-(--color-heading)">Seed swap</p>
           <p className="mt-2 rounded-tiny bg-[color-mix(in_oklab,#f5b43c_18%,transparent)] px-1 leading-relaxed text-ink">The library hall is free on the 5th, from 10 to 2.</p>
-          <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-muted">
+          <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-muted">
             <span className="flex -space-x-1.5">
               <Avatar who="maya" size={24} className="ring-2 ring-(--color-surface)" />
               <Avatar who="ines" size={24} className="ring-2 ring-(--color-surface)" />
@@ -241,7 +241,7 @@ export function VersionsPicture() {
     <div
       role="img"
       aria-label="The version history dialog. On the left, the versions: today at 09:41, autosaved; today at 08:05, saved when closed; yesterday, saved manually. The selected one is previewed on the right, with Restore below it."
-      className="mk-app-pop mx-auto max-w-[760px] overflow-hidden rounded-panel text-[12.5px]"
+      className="mk-app-pop mx-auto max-w-[760px] overflow-hidden rounded-panel text-[13px]"
     >
       <div aria-hidden="true">
         <div className="flex items-start gap-3 border-b border-(--color-line) px-5 py-4">
@@ -262,7 +262,7 @@ export function VersionsPicture() {
             ].map(([when, why, on]) => (
               <div key={String(when)} className={cx("rounded-control px-2.5 py-2", on && "bg-(--color-accent-soft) shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-accent)_14%,transparent)]")}>
                 <p className="font-medium text-(--color-heading)">{when}</p>
-                <p className="text-[11.5px] text-muted">{why}</p>
+                <p className="text-[12px] text-muted">{why}</p>
               </div>
             ))}
             <p className="px-2.5 pt-2">
@@ -284,7 +284,7 @@ export function VersionsPicture() {
               </ul>
             </div>
             <div className="flex justify-end border-t border-(--color-line) px-4 py-3">
-              <span className="mk-btn mk-btn-primary h-8 px-3 text-[12.5px]">Restore…</span>
+              <span className="mk-btn mk-btn-primary h-8 px-3 text-[13px]">Restore…</span>
             </div>
           </div>
         </div>

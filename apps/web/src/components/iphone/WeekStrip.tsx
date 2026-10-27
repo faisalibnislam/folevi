@@ -153,14 +153,14 @@ export function WeekStrip({ today, selected, onSelect, marked }: { today: string
         className="group flex h-12 min-w-0 flex-1 flex-col items-center pt-0.5 outline-none"
       >
         <span
-          className={`grid h-[34px] w-[34px] place-items-center rounded-capsule text-[17px] leading-none tabular-nums transition-[background-color,color,transform] duration-200 group-active:scale-90 group-focus-visible:ring-2 group-focus-visible:ring-focus motion-reduce:transition-none ${
+          className={`grid h-[34px] w-[34px] place-items-center rounded-capsule text-body leading-none tabular-nums transition-[background-color,color,transform] duration-200 group-active:scale-90 group-focus-visible:ring-2 group-focus-visible:ring-focus motion-reduce:transition-none ${
             isSelected ? "bg-heading font-semibold text-canvas" : isToday ? "bg-[color-mix(in_oklab,var(--color-ink)_9%,transparent)] font-semibold text-heading" : "text-ink"
           }`}
           style={!inMonth && !isSelected ? { opacity: 1 - 0.6 * fade } : undefined}
         >
           {Number(date.slice(8))}
         </span>
-        <span aria-hidden className={`mt-[5px] h-[5px] w-[5px] rounded-capsule bg-[color-mix(in_oklab,var(--color-ink)_38%,transparent)] ${has ? "" : "invisible"}`} style={!inMonth ? { opacity: 1 - 0.6 * fade } : undefined} />
+        <span aria-hidden className={`mt-1.5 h-[5px] w-[5px] rounded-capsule bg-[color-mix(in_oklab,var(--color-ink)_38%,transparent)] ${has ? "" : "invisible"}`} style={!inMonth ? { opacity: 1 - 0.6 * fade } : undefined} />
       </button>
     );
   };
@@ -169,7 +169,7 @@ export function WeekStrip({ today, selected, onSelect, marked }: { today: string
     <div ref={area} className="touch-pan-x select-none px-2.5 pb-1 pt-1.5">
       <div aria-hidden className="flex">
         {weekdays.map((w, i) => (
-          <span key={i} className={`flex-1 text-center text-[13px] font-semibold leading-[18px] ${i >= 5 ? "text-faint" : "text-muted"}`} title={weekdayNames[i]}>
+          <span key={i} className={`flex-1 text-center text-footnote font-semibold leading-[18px] ${i >= 5 ? "text-faint" : "text-muted"}`} title={weekdayNames[i]}>
             {w}
           </span>
         ))}

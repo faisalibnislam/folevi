@@ -23,7 +23,7 @@ export function mobileApp(): boolean {
 export const PRE_APP_PAGE = "ui-neutral-chrome grid min-h-dvh place-items-center px-4 py-10 sm:px-6";
 export const preAppBackground = () => (mobileApp() ? "bg-[var(--iphone-grouped)]" : "bg-canvas");
 /** A screen's title before the app: Spectral, 34 in the phone and tablet apps (the large title), 32 elsewhere. */
-export const preAppTitle = () => (mobileApp() ? "font-display text-[34px] font-semibold leading-[41px] tracking-[-0.02em] text-heading" : "font-display text-[2rem] leading-tight text-heading");
+export const preAppTitle = () => (mobileApp() ? "font-display text-large-title font-semibold leading-[41px] tracking-[-0.02em] text-heading" : "font-display text-large-title text-heading");
 
 /**
  * The screens before the app (this one, LibrarySetup, LockedLibrary) follow the Mac's light or dark look as it
@@ -87,13 +87,13 @@ export function ModeChoice({ onChoose }: { onChoose: (mode: Backend) => Promise<
             onClick={() => void choose("local")}
           />
         </div>
-        <p className={`text-center text-[13px] text-muted ${mobileApp() ? "px-4 leading-[18px]" : "leading-relaxed"}`}>
+        <p className={`text-center text-subheadline text-muted ${mobileApp() ? "px-4 leading-[18px]" : "leading-relaxed"}`}>
           {shell()?.platform === "android"
             ? `Notes on your devices stay on ${deviceWords().here}, or in Dropbox or Google Drive if you choose. Folevi's servers never see them.`
             : "Notes on your devices stay in a folder you pick, such as iCloud Drive or Dropbox. Folevi's servers never see them."}
         </p>
         {failed ? (
-          <p role="alert" className="text-center text-[14px] text-danger">
+          <p role="alert" className="text-center text-body text-danger">
             That didn't save. Try again.
           </p>
         ) : null}
@@ -137,9 +137,9 @@ export function ChoiceButton({
       >
         <span className="grid h-10 w-10 flex-none place-items-center rounded-small bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] text-heading">{icon}</span>
         <span className="min-w-0 flex-1">
-          {emphasis ? <span className="block text-[13px] font-semibold uppercase leading-[18px] tracking-[0.04em] text-muted">Recommended</span> : null}
-          <span className="block text-[17px] font-semibold leading-[22px] text-heading">{title}</span>
-          <span className="mt-0.5 block text-[15px] leading-[20px] text-muted">{detail}</span>
+          {emphasis ? <span className="block text-subheadline font-semibold uppercase leading-[18px] tracking-[0.04em] text-muted">Recommended</span> : null}
+          <span className="block text-headline font-semibold leading-[22px] text-heading">{title}</span>
+          <span className="mt-0.5 block text-subheadline leading-[20px] text-muted">{detail}</span>
         </span>
         {busy ? <Loader2 size={18} aria-hidden className="flex-none animate-spin text-muted motion-reduce:animate-none" /> : <ChevronRight size={18} strokeWidth={2.2} aria-hidden className="flex-none text-faint" />}
       </button>
@@ -157,8 +157,8 @@ export function ChoiceButton({
     >
       <span className={`grid h-10 w-10 flex-none place-items-center rounded-small ${emphasis ? "bg-[color-mix(in_oklab,var(--color-canvas)_14%,transparent)]" : "bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]"}`}>{icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-semibold leading-snug">{title}</span>
-        <span className={`mt-0.5 block text-[13px] leading-snug ${emphasis ? "opacity-80" : "text-muted"}`}>{detail}</span>
+        <span className="block text-headline font-semibold leading-snug">{title}</span>
+        <span className={`mt-0.5 block text-subheadline leading-snug ${emphasis ? "opacity-80" : "text-muted"}`}>{detail}</span>
       </span>
       {busy ? (
         <Loader2 size={18} aria-hidden className="flex-none animate-spin motion-reduce:animate-none" />

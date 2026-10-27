@@ -46,7 +46,7 @@ import { changedSince, executeOp, undoPart, undoParts, verifyOp, type ExecEnv } 
 import { addOp, OP_KINDS, vAgentOp, type AgentOp, type OpKind, type RunNote } from "./lib/ai/tools/ops";
 import { compactContents, contentChars, CONTINUE_TEXT, isLongNote, LONG_BUDGET, mustWrapUp, STANDARD_BUDGET, stoppedText, WRAP_UP_RULE, type AgentBudget } from "./lib/ai/agentBudget";
 import { UNTRUSTED_RULE } from "./lib/ai/tools/untrusted";
-import { readPage, searchWeb } from "./lib/ai/web";
+import { AllowedPages, PAGE_NOT_ALLOWED, readPage, searchWeb } from "./lib/ai/web";
 import { metered, PERSONA, type Settled } from "./ai";
 import { hybridSearch } from "./aiIndex";
 import { storedError } from "./aiChat";
@@ -359,12 +359,19 @@ async function runAgent(ctx: ActionCtx, messageId: Id<"aiMessages">): Promise<{ 
           // Bounded per run; searches are paid from this run's credits (the same meter).
           let searches = 0;
           let pages = 0;
+          // Only links the person wrote, or search results of this run, are opened (lib/ai/web.ts AllowedPages).
+          const allowed = new AllowedPages([turn.question, ...turn.history.filter((h) => h.role === "user").map((h) => h.text)]);
           host.web = {
             search: async (query) => {
               if (++searches > MAX_WEB_SEARCHES) fail("limit_exceeded", "That's the most web searches for one request.");
-              return await searchWeb(query, meter);
+              const r = await searchWeb(query, meter);
+              for (const source of r.sources) allowed.add(source.url);
+              return r;
             },
-            read: async (url) => (++pages > MAX_WEB_PAGES ? { ok: false, error: "That's the most web pages for one request." } : await readPage(url)),
+            read: async (url) => {
+              if (!allowed.allows(url)) return { ok: false, error: PAGE_NOT_ALLOWED };
+              return ++pages > MAX_WEB_PAGES ? { ok: false, error: "That's the most web pages for one request." } : await readPage(url);
+            },
           };
         }
         const contents: Content[] = [

@@ -39,7 +39,7 @@ test("a folder inside a folder: make it, file a note in it, and it's all still t
 
   // Work's page lists the folder inside it.
   await nav.getByRole("link", { name: "Work", exact: true }).click();
-  await page.getByRole("navigation", { name: "Folders inside" }).getByRole("link", { name: "Clients" }).click();
+  await page.getByRole("list", { name: "Folders inside" }).getByRole("link", { name: /^Clients,/ }).click();
   await expect(page.getByRole("main").getByText("Kickoff notes")).toBeVisible();
 
   // After a reload: still nested, the note still inside. Closing Work hides Clients, and that's remembered.

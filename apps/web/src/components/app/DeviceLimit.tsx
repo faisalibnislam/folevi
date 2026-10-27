@@ -67,7 +67,7 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
       <p className="ui-caps mb-2">Signed in on</p>
       <ul className="divide-y divide-line overflow-hidden rounded-control ui-card" aria-busy={sessions === undefined || undefined}>
         {sessions === undefined ? (
-          <li className="px-3 py-3 text-sm text-muted">Loading your devices…</li>
+          <li className="px-3 py-3 text-subheadline text-muted">Loading your devices…</li>
         ) : (
           others.map((s) => (
             <li key={s.id} className="flex items-center gap-3 px-3 py-2.5">
@@ -75,8 +75,8 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
                 <DeviceIcon label={s.label} client={s.client} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-heading">{s.label}</span>
-                <span className="block text-xs text-muted">Active {formatRelative(s.lastSeenAt)}</span>
+                <span className="block truncate text-subheadline font-medium text-heading">{s.label}</span>
+                <span className="block text-footnote text-muted">Active {formatRelative(s.lastSeenAt)}</span>
               </span>
               <Button size="sm" onClick={() => void run(s.id, () => revoke({ sessionId: s.id }))} disabled={busy !== null} aria-label={`Sign out ${s.label}`}>
                 {busy === s.id ? "Signing out…" : "Sign out"}
@@ -86,7 +86,7 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
         )}
       </ul>
       {error ? (
-        <p role="alert" className="mt-3 text-sm text-danger">
+        <p role="alert" className="mt-3 text-subheadline text-danger">
           {error}
         </p>
       ) : null}
@@ -103,7 +103,7 @@ export function DeviceLimitScreen({ limit }: { limit: number }) {
         ) : null}
       </div>
       <div className="mt-6 flex items-center justify-between gap-3 border-t border-line pt-4">
-        <p className="text-[13px] text-muted">Not using this device?</p>
+        <p className="text-subheadline text-muted">Not using this device?</p>
         <SignOutButton accountKey={null} label="Sign out here" />
       </div>
     </FullPageMessage>

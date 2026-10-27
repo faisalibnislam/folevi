@@ -12,6 +12,7 @@ export const APP_ROUTE_HEADS = new Set([
   "changes",
   "daily",
   "shared",
+  "vault",
   "templates",
   "starred",
   "archive",

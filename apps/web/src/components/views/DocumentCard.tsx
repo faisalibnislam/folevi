@@ -191,11 +191,11 @@ export function DocumentCardPreview({ title, style, footer }: { title: string; s
       style={{ ["--card-accent" as string]: accentVar(style.accent), ["--card-accent-soft" as string]: softVar(style.accent) }}
     >
       <div className="p-3.5">
-        <h3 className="line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[16.5px] font-semibold leading-snug text-heading">
+        <h3 className="line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-headline font-semibold leading-snug text-heading">
           {title || "Untitled"}
         </h3>
       </div>
-      {footer ? <div className="absolute bottom-3.5 left-4 right-4 flex items-center gap-2 text-[11.5px] text-[var(--color-ink-faint)]">{footer}</div> : null}
+      {footer ? <div className="absolute bottom-3.5 left-4 right-4 flex items-center gap-2 text-footnote text-[var(--color-ink-faint)]">{footer}</div> : null}
       <span aria-hidden className="pointer-events-none absolute inset-0 rounded-chip shadow-[inset_0_0_0_1px_rgb(0_0_0/0.05)]" />
     </div>
   );

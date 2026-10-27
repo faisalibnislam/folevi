@@ -101,11 +101,11 @@ export function DocumentSidebar({
         {/* The note's name and where it lives, in a translucent card. */}
         <div className="rounded-control bg-[var(--glass-hover)] px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--glass-border)]">
           <div className="min-w-0">
-            <p className="truncate text-[13.5px] font-semibold leading-tight text-heading" title={title || "Untitled"}>
+            <p className="truncate text-body font-semibold leading-tight text-heading" title={title || "Untitled"}>
               {title || "Untitled"}
             </p>
             <nav aria-label="Breadcrumb" className="mt-1">
-              <ol className="flex flex-wrap items-center gap-x-0.5 text-[11.5px] leading-5 text-muted">
+              <ol className="flex flex-wrap items-center gap-x-0.5 text-footnote leading-5 text-muted">
                 {trail.map((c, i) => (
                   <li key={`${c.href}-${i}`} className="flex min-w-0 items-center gap-0.5">
                     {i > 0 ? <ChevronRight size={11} className="flex-none text-faint" aria-hidden /> : <span className="flex-none">In</span>}
@@ -180,7 +180,7 @@ export function DocumentSidebar({
 function PanelTitle({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
   return (
     <div className="mb-2 flex items-center justify-between px-1">
-      <h2 className="text-[13px] font-semibold text-heading">{children}</h2>
+      <h2 className="text-subheadline font-semibold text-heading">{children}</h2>
       {aside}
     </div>
   );
@@ -205,7 +205,7 @@ function ContentsPanel({ documentId, title, onJump }: { documentId: string; titl
       <button
         type="button"
         onClick={() => (document.getElementById("doc-scroll") ?? document.getElementById("main"))?.scrollTo({ top: 0, behavior: scrollBehavior() })}
-        className="mb-0.5 block w-full truncate rounded-chip bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] font-semibold text-heading transition-colors hover:bg-[var(--glass-hover)]"
+        className="mb-0.5 block w-full truncate rounded-chip bg-[var(--glass-hover)] px-3 py-1.5 text-left text-subheadline font-semibold text-heading transition-colors hover:bg-[var(--glass-hover)]"
       >
         {title || "Untitled"}
       </button>
@@ -227,9 +227,9 @@ function TasksPanel({ documentId, editor, readOnly, onJump }: { documentId: stri
   };
   return (
     <>
-      <PanelTitle aside={todos.length ? <span className="text-[11.5px] tabular-nums text-muted">{done} of {todos.length} done</span> : null}>Tasks</PanelTitle>
+      <PanelTitle aside={todos.length ? <span className="text-footnote tabular-nums text-muted">{done} of {todos.length} done</span> : null}>Tasks</PanelTitle>
       {!todos.length ? (
-        <p className="px-1 text-[12.5px] leading-relaxed text-muted">Tasks inside this document will appear here. Type “[]” or use Insert → To-do to add one.</p>
+        <p className="px-1 text-subheadline leading-relaxed text-muted">Tasks inside this document will appear here. Type “[]” or use Insert → To-do to add one.</p>
       ) : (
         <ul className="space-y-0.5">
           {todos.map((b) => {
@@ -252,7 +252,7 @@ function TasksPanel({ documentId, editor, readOnly, onJump }: { documentId: stri
                     </svg>
                   ) : null}
                 </button>
-                <button type="button" onClick={() => onJump(b.id)} className={`min-w-0 flex-1 text-left text-[13px] leading-snug ${checked ? "text-muted line-through" : "text-ink"}`}>
+                <button type="button" onClick={() => onJump(b.id)} className={`min-w-0 flex-1 text-left text-subheadline leading-snug ${checked ? "text-muted line-through" : "text-ink"}`}>
                   {text}
                 </button>
               </li>
@@ -298,12 +298,12 @@ function AttachmentsPanel({ documentId, onJump, onNavigate }: { documentId: stri
     <>
       <PanelTitle>Attachments</PanelTitle>
       {!attachments.length ? (
-        <p className="mb-5 px-1 text-[12.5px] text-muted">Images and files in this page will appear here.</p>
+        <p className="mb-5 px-1 text-subheadline text-muted">Images and files in this page will appear here.</p>
       ) : (
         <ul className="mb-5 space-y-0.5">
           {attachments.map((a) => (
             <li key={a.id}>
-              <button type="button" onClick={() => onJump(a.id)} className="flex w-full items-center gap-2 rounded-chip px-2 py-1.5 text-left text-[13px] hover:bg-accent-soft/60">
+              <button type="button" onClick={() => onJump(a.id)} className="flex w-full items-center gap-2 rounded-chip px-2 py-1.5 text-left text-subheadline hover:bg-accent-soft/60">
                 <span aria-hidden className="grid h-7 w-7 flex-none place-items-center rounded-chip bg-sunken text-muted">
                   {a.kind === "image" ? <ImageIcon size={14} /> : a.kind === "audio" ? <Mic size={14} /> : <Paperclip size={14} />}
                 </span>
@@ -315,22 +315,22 @@ function AttachmentsPanel({ documentId, onJump, onNavigate }: { documentId: stri
       )}
       <PanelTitle>Links</PanelTitle>
       {!links.length ? (
-        <p className="px-1 text-[12.5px] text-muted">Links and page links in this page will appear here.</p>
+        <p className="px-1 text-subheadline text-muted">Links and page links in this page will appear here.</p>
       ) : (
         <ul className="space-y-1.5">
           {links.map((l) => (
             <li key={l.key} className="ui-card rounded-control">
               {l.internal ? (
-                <AppLink href={l.href} onClick={onNavigate} className="flex items-center gap-2 px-2.5 py-2 text-[13px] hover:text-heading">
+                <AppLink href={l.href} onClick={onNavigate} className="flex items-center gap-2 px-2.5 py-2 text-subheadline hover:text-heading">
                   <FileText size={14} className="flex-none text-muted" aria-hidden />
                   <span className="min-w-0 flex-1 truncate font-medium">{l.label}</span>
                 </AppLink>
               ) : (
-                <a href={l.href} target="_blank" rel="noopener noreferrer nofollow" className="flex items-center gap-2 px-2.5 py-2 text-[13px] hover:text-heading">
+                <a href={l.href} target="_blank" rel="noopener noreferrer nofollow" className="flex items-center gap-2 px-2.5 py-2 text-subheadline hover:text-heading">
                   <ExternalLink size={14} className="flex-none text-muted" aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{l.label}</span>
-                    <span className="block truncate text-[11px] text-faint">{hostOf(l.href)}</span>
+                    <span className="block truncate text-footnote text-faint">{hostOf(l.href)}</span>
                   </span>
                   <span className="sr-only">(opens in a new tab)</span>
                 </a>
@@ -495,7 +495,7 @@ function FindPanel({ editor }: { editor: Editor | null }) {
             }
           }}
           placeholder="Text in document"
-          className="ui-input h-9 w-full rounded-chip pl-8 pr-8 text-sm"
+          className="ui-input h-9 w-full rounded-chip pl-8 pr-8 text-callout"
           aria-describedby={`${inputId}-count`}
         />
         {query ? (
@@ -505,7 +505,7 @@ function FindPanel({ editor }: { editor: Editor | null }) {
         ) : null}
       </div>
       <div className="mt-2 flex items-center gap-1 px-1">
-        <p id={`${inputId}-count`} role="status" className="flex-1 text-[12px] text-muted">
+        <p id={`${inputId}-count`} role="status" className="flex-1 text-footnote text-muted">
           {!query.trim() ? "Type to search this page" : matches.length ? `${current + 1} of ${matches.length}${matches.length >= 500 ? "+" : ""}` : "No results in this page"}
         </p>
         <IconButton label="Previous match" onClick={() => reveal(current - 1)} disabled={!matches.length} className="!h-7 !w-7">
@@ -523,7 +523,7 @@ function FindPanel({ editor }: { editor: Editor | null }) {
                 type="button"
                 onClick={() => reveal(i)}
                 aria-current={i === current ? "true" : undefined}
-                className={`block w-full rounded-chip px-2 py-1.5 text-left text-[12.5px] leading-snug text-muted transition-colors hover:bg-accent-soft/60 ${i === current ? "bg-accent-soft text-ink" : ""}`}
+                className={`block w-full rounded-chip px-2 py-1.5 text-left text-subheadline leading-snug text-muted transition-colors hover:bg-accent-soft/60 ${i === current ? "bg-accent-soft text-ink" : ""}`}
               >
                 {m.snippet.before}
                 <mark className="rounded-tiny bg-marigold-soft px-0.5 text-ink">{m.snippet.hit}</mark>
@@ -556,7 +556,7 @@ function PageTree({ documentId, onNavigate }: { documentId: string; onNavigate?:
                 href={`/d/${p.id}`}
                 onClick={onNavigate}
                 aria-current={here ? "page" : undefined}
-                className={`flex h-7 min-w-0 items-center gap-1.5 rounded-chip pr-2 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-10 ${here ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"}`}
+                className={`flex h-7 min-w-0 items-center gap-1.5 rounded-chip pr-2 text-subheadline outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-10 ${here ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"}`}
                 style={{ paddingLeft: `${0.5 + p.depth * 0.85}rem` }}
               >
                 <FileText size={13} aria-hidden className="flex-none opacity-60" />
@@ -565,7 +565,7 @@ function PageTree({ documentId, onNavigate }: { documentId: string; onNavigate?:
             </li>
           );
         })}
-        {tree.truncated ? <li className="px-2 py-1 text-xs text-muted">More pages than fit here. Open a page to see its own.</li> : null}
+        {tree.truncated ? <li className="px-2 py-1 text-footnote text-muted">More pages than fit here. Open a page to see its own.</li> : null}
       </ul>
     </nav>
   );

@@ -58,12 +58,12 @@ export function FoldersPageReplica({ className }: { className?: string }) {
           <ListTabs view="Folders" />
           <div className="mk-app-content min-h-0 flex-1 rounded-panel px-4 pb-6 pt-4 sm:px-6 sm:pb-8">
             <div className="flex justify-end">
-              <span className="mk-btn mk-btn-primary h-8 gap-1.5 px-3 text-[12.5px]">
+              <span className="mk-btn mk-btn-primary h-8 gap-1.5 px-3 text-[13px]">
                 <FolderPlus size={14} /> New folder
               </span>
             </div>
             <div className="mt-3 flex items-center gap-2.5">
-              <span className="relative flex h-8 min-w-0 flex-1 items-center rounded-chip bg-(--color-surface) pl-7 text-[12.5px] text-faint shadow-[inset_0_1px_2px_color-mix(in_oklab,var(--color-heading)_8%,transparent),0_0_0_1px_var(--color-line)] sm:max-w-[300px]">
+              <span className="relative flex h-8 min-w-0 flex-1 items-center rounded-chip bg-(--color-surface) pl-7 text-[13px] text-faint shadow-[inset_0_1px_2px_color-mix(in_oklab,var(--color-heading)_8%,transparent),0_0_0_1px_var(--color-line)] sm:max-w-[300px]">
                 <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" />
                 <span className="truncate">Search folders</span>
               </span>

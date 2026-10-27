@@ -66,7 +66,7 @@ function OnOffCard() {
   return (
     <Card title="Foli AI">
       <div className="flex items-start justify-between gap-6">
-        <p id={descId} className="max-w-prose text-sm text-muted">
+        <p id={descId} className="max-w-prose text-subheadline text-muted">
           Foli AI helps you write, answers from your notes and sums them up. In a library on your devices it runs on {deviceWords().onDeviceModel} on {deviceWords().here}, or on your own key with OpenAI, Anthropic or Google, called straight from {deviceWords().here}. Nothing goes through Folevi, and nothing is sent while it&apos;s off.
         </p>
         <Switch
@@ -94,9 +94,9 @@ function OnDeviceCard({ state }: { state: LocalAiState | null }) {
           <Laptop size={16} />
         </span>
         <div className="min-w-0">
-          <p className="text-sm font-medium text-heading">{status === "available" ? deviceWords().onDeviceModel : `${deviceWords().onDeviceModel} isn't available`}</p>
-          <p className="mt-0.5 text-sm text-muted">{ON_DEVICE_COPY[status]}</p>
-          {status === "available" ? <p className="mt-1 text-sm text-muted">It&apos;s a small model: it does writing help, questions about your notes, chats and the smaller block tools. Long notes are cut to what it can read, and wireframes and flowcharts need your own key.</p> : null}
+          <p className="text-subheadline font-medium text-heading">{status === "available" ? deviceWords().onDeviceModel : `${deviceWords().onDeviceModel} isn't available`}</p>
+          <p className="mt-0.5 text-subheadline text-muted">{ON_DEVICE_COPY[status]}</p>
+          {status === "available" ? <p className="mt-1 text-subheadline text-muted">It&apos;s a small model: it does writing help, questions about your notes, chats and the smaller block tools. Long notes are cut to what it can read, and wireframes and flowcharts need your own key.</p> : null}
         </div>
       </div>
     </Card>
@@ -173,11 +173,11 @@ function KeyRow({ provider, stored, busy, onBusy }: { provider: AiKeyProvider; s
     <div className="py-3.5 first:pt-0 last:pb-0" data-testid={`local-ai-key-${provider}`} data-stored={stored ? "true" : "false"}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-2 text-sm font-medium text-heading">
+          <p className="flex items-center gap-2 text-subheadline font-medium text-heading">
             <KeyRound size={14} className="text-muted" aria-hidden />
             {info.label}
           </p>
-          <p className="mt-0.5 text-sm text-muted">{stored ? `Key added. It's kept in ${deviceWords().here}'s Keychain and can't be shown again.` : "No key."}</p>
+          <p className="mt-0.5 text-subheadline text-muted">{stored ? `Key added. It's kept in ${deviceWords().here}'s Keychain and can't be shown again.` : "No key."}</p>
         </div>
         <div className="flex flex-none items-center gap-2">
           {stored ? (
@@ -218,7 +218,7 @@ function KeyRow({ provider, stored, busy, onBusy }: { provider: AiKeyProvider; s
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={`Paste your ${info.label} key`}
-            className="ui-input h-9 min-w-0 flex-1 rounded-chip px-3 text-sm"
+            className="ui-input h-9 min-w-0 flex-1 rounded-chip px-3 text-callout"
           />
           <Button size="sm" variant="primary" type="submit" disabled={busy || !value.trim()}>
             Save
@@ -235,14 +235,14 @@ function KeyRow({ provider, stored, busy, onBusy }: { provider: AiKeyProvider; s
             Cancel
           </Button>
           {info.keyUrl ? (
-            <a href={info.keyUrl} target="_blank" rel="noreferrer" className="w-full text-[13px] text-muted underline underline-offset-2">
+            <a href={info.keyUrl} target="_blank" rel="noreferrer" className="w-full text-subheadline text-muted underline underline-offset-2">
               Get a key from {info.label}
             </a>
           ) : null}
         </form>
       ) : null}
       {result ? (
-        <p role="status" className={`mt-2 flex items-center gap-1.5 text-[13px] ${result.ok ? "text-heading" : "text-muted"}`}>
+        <p role="status" className={`mt-2 flex items-center gap-1.5 text-subheadline ${result.ok ? "text-heading" : "text-muted"}`}>
           {result.ok ? <Check size={14} aria-hidden /> : null}
           {result.text}
         </p>
@@ -282,7 +282,7 @@ function ModelCard({ state }: { state: LocalAiState | null }) {
   if (!choices.length)
     return (
       <Card title="Model">
-        <p className="text-sm text-muted" data-testid="local-ai-model-none">
+        <p className="text-subheadline text-muted" data-testid="local-ai-model-none">
           Foli AI has no model on {deviceWords().here} yet. {deviceWords().ios || shell()?.platform === "mac" ? `Turn on ${deviceWords().onDeviceModel}, or add one of your own keys.` : "Add one of your own keys."}
         </p>
       </Card>
@@ -292,7 +292,7 @@ function ModelCard({ state }: { state: LocalAiState | null }) {
   return (
     <Card title="Model" description={`Which model answers. Folevi picks ${deviceWords().onDeviceModel} when it's on, and otherwise the first key you added.`}>
       <div className="grid gap-4 sm:max-w-md" data-testid="local-ai-model" data-active={active ? `${active.provider}:${active.model}` : ""}>
-        <label className="text-sm" htmlFor={providerId}>
+        <label className="text-subheadline" htmlFor={providerId}>
           <span className="mb-1 block font-medium">Provider</span>
           <Select
             id={providerId}
@@ -303,7 +303,7 @@ function ModelCard({ state }: { state: LocalAiState | null }) {
               const p = v as AiProviderId;
               set({ provider: p, model: PROVIDERS[p].defaultModel });
             }}
-            className="ui-input h-9 w-full rounded-chip px-3 text-sm"
+            className="ui-input h-9 w-full rounded-chip px-3 text-callout"
           >
             <option value={AUTO}>Let Folevi pick</option>
             {choices.map((p) => (
@@ -314,9 +314,9 @@ function ModelCard({ state }: { state: LocalAiState | null }) {
           </Select>
         </label>
         {modelsFor.length ? (
-          <label className="text-sm" htmlFor={modelId}>
+          <label className="text-subheadline" htmlFor={modelId}>
             <span className="mb-1 block font-medium">{PROVIDERS[active!.provider].label} model</span>
-            <Select id={modelId} value={active!.model} onChange={(e) => set({ provider: active!.provider, model: e.target.value })} className="ui-input h-9 w-full rounded-chip px-3 text-sm">
+            <Select id={modelId} value={active!.model} onChange={(e) => set({ provider: active!.provider, model: e.target.value })} className="ui-input h-9 w-full rounded-chip px-3 text-callout">
               {modelsFor.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.label}
@@ -324,11 +324,11 @@ function ModelCard({ state }: { state: LocalAiState | null }) {
               ))}
               {!modelsFor.some((m) => m.id === active!.model) ? <option value={active!.model}>{active!.model}</option> : null}
             </Select>
-            <span className="mt-1 block text-xs text-muted">{modelsFor.find((m) => m.id === active!.model)?.note ?? ""}</span>
+            <span className="mt-1 block text-footnote text-muted">{modelsFor.find((m) => m.id === active!.model)?.note ?? ""}</span>
           </label>
         ) : null}
         {active ? (
-          <p className="text-sm text-muted" role="status">
+          <p className="text-subheadline text-muted" role="status">
             Answering now: {active.provider === "on-device" ? `${deviceWords().onDeviceModel}, on ${deviceWords().here}` : `${modelLabel(active.provider, active.model)} (${PROVIDERS[active.provider].label})`}.
           </p>
         ) : null}
@@ -346,7 +346,7 @@ function HistoryCard() {
   return (
     <Card title="Conversations">
       <div className="flex items-start justify-between gap-6">
-        <p id={descId} className="max-w-prose text-sm text-muted">
+        <p id={descId} className="max-w-prose text-subheadline text-muted">
           Your Foli AI conversations are kept on {deviceWords().here} so you can come back to them, rename, pin and search them. They stay on this device and aren&apos;t synced with your library. When this is off, a conversation is deleted as soon as you close it.
         </p>
         <Switch
@@ -376,7 +376,7 @@ export function LocalAiSection() {
       <>
         <OnOffCard />
         <Card title="On this device">
-          <p className="text-sm text-muted" data-testid="local-ai-no-host">
+          <p className="text-subheadline text-muted" data-testid="local-ai-no-host">
             Foli AI in a library on your devices needs Folevi for Mac: it runs on Apple Intelligence there, or on your own key.
           </p>
         </Card>
@@ -386,7 +386,7 @@ export function LocalAiSection() {
     <>
       <OnOffCard />
       {state?.loaded ? null : (
-        <p className="flex items-center gap-2 text-sm text-muted">
+        <p className="flex items-center gap-2 text-subheadline text-muted">
           <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> Checking Foli AI on {deviceWords().here}…
         </p>
       )}
@@ -520,7 +520,7 @@ function IphoneKey({ provider, stored, busy, onBusy }: { provider: AiKeyProvider
           </IosSection>
         )}
         {result ? (
-          <p role="status" className={`flex items-center gap-1.5 px-8 text-[13px] leading-[18px] ${result.ok ? "text-heading" : "text-danger"}`}>
+          <p role="status" className={`flex items-center gap-1.5 px-8 text-subheadline leading-[18px] ${result.ok ? "text-heading" : "text-danger"}`}>
             {result.ok ? <Check size={14} aria-hidden /> : null}
             {result.text}
           </p>

@@ -73,19 +73,19 @@ export function PrivacyPanel({ scope, workspaceName = null, canChange = true }: 
                   {on ? <span className="h-1.5 w-1.5 rounded-tiny bg-canvas" /> : null}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-heading">
+                  <span className="flex flex-wrap items-center gap-2 text-subheadline font-semibold text-heading">
                     <span className="text-muted">{LEVEL_ICON[level]}</span>
                     {p.levels[level].title}
-                    {level === current ? <span className="ui-chip h-5 bg-[color-mix(in_oklab,var(--color-ink)_10%,transparent)] px-1.5 text-[11px] font-medium text-ink">{p.current}</span> : null}
+                    {level === current ? <span className="ui-chip h-5 bg-[color-mix(in_oklab,var(--color-ink)_10%,transparent)] px-1.5 text-footnote font-medium text-ink">{p.current}</span> : null}
                   </span>
-                  <span className="mt-1 block text-[13px] leading-snug text-muted">{p.levels[level].body}</span>
+                  <span className="mt-1 block text-subheadline leading-snug text-muted">{p.levels[level].body}</span>
                 </span>
               </button>
             );
           })}
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <button type="button" onClick={() => setMeaning(true)} className="inline-flex h-8 items-center rounded-chip px-1 text-[13px] font-medium text-heading underline decoration-line-strong underline-offset-2 outline-none hover:decoration-heading focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11">
+          <button type="button" onClick={() => setMeaning(true)} className="inline-flex h-8 items-center rounded-chip px-1 text-subheadline font-medium text-heading underline decoration-line-strong underline-offset-2 outline-none hover:decoration-heading focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11">
             {p.whatEachMeans}
           </button>
           {changing && canChange ? (
@@ -97,8 +97,8 @@ export function PrivacyPanel({ scope, workspaceName = null, canChange = true }: 
             </span>
           ) : null}
         </div>
-        {current === "standard" && state === "none" && !workspaceName ? <p className="mt-3 text-[13px] text-muted">{p.lockHint}</p> : null}
-        {space && space.lockedCount > 0 ? <p className="mt-3 text-[13px] text-muted">{p.lockedCount(space.lockedCount)}</p> : null}
+        {current === "standard" && state === "none" && !workspaceName ? <p className="mt-3 text-subheadline text-muted">{p.lockHint}</p> : null}
+        {space && space.lockedCount > 0 ? <p className="mt-3 text-subheadline text-muted">{p.lockedCount(space.lockedCount)}</p> : null}
       </Card>
 
       <MigrationRow scope={scope} />
@@ -108,12 +108,12 @@ export function PrivacyPanel({ scope, workspaceName = null, canChange = true }: 
       {workspaceName && space && current !== "standard" ? (
         <Card title={p.keyHolders(space.keyHolders)}>
           {space.keyHolders <= 1 ? (
-            <p role="note" className="flex items-start gap-2 rounded-control bg-[var(--glass-hover)] p-3 text-[13px] text-ink">
+            <p role="note" className="flex items-start gap-2 rounded-control bg-[var(--glass-hover)] p-3 text-subheadline text-ink">
               <TriangleAlert size={15} aria-hidden className="mt-0.5 flex-none" />
               <span>{p.keyHolderWarning}</span>
             </p>
           ) : (
-            <p className="text-[13px] text-muted">{copy.invite.encryptedWorkspace}</p>
+            <p className="text-subheadline text-muted">{copy.invite.encryptedWorkspace}</p>
           )}
         </Card>
       ) : null}
@@ -146,10 +146,10 @@ function SwitchesCard({ scope, switches, canChange }: { scope: WireScope; switch
       <div className="divide-y divide-line/70">
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 py-3.5 first:pt-0">
           <div className="min-w-0 max-w-prose flex-1">
-            <p id={`${uid}-foliAi`} className="text-sm font-medium text-heading">
+            <p id={`${uid}-foliAi`} className="text-subheadline font-medium text-heading">
               {s.foliAi.label}
             </p>
-            <p id={`${uid}-foliAi-desc`} className="mt-0.5 text-sm text-muted">
+            <p id={`${uid}-foliAi-desc`} className="mt-0.5 text-subheadline text-muted">
               {s.foliAi.body}
             </p>
           </div>
@@ -162,7 +162,7 @@ function SwitchesCard({ scope, switches, canChange }: { scope: WireScope; switch
               const v = e.target.value as Switches["foliAi"];
               save({ ...switches, foliAi: v }, s.foliAi.label, v === "off" && switches.foliAi !== "off");
             }}
-            className="h-9 ui-input rounded-control px-3 text-sm pointer-coarse:h-11"
+            className="h-9 ui-input rounded-control px-3 text-callout pointer-coarse:h-11"
           >
             <option value="off">{s.foliAi.options.off}</option>
             <option value="ask">{s.foliAi.options.ask}</option>
@@ -172,8 +172,8 @@ function SwitchesCard({ scope, switches, canChange }: { scope: WireScope; switch
         {SWITCH_ROWS.map((key) => (
           <div key={key} className="flex items-start justify-between gap-6 py-3.5 last:pb-0">
             <div className="min-w-0 max-w-prose">
-              <p className="text-sm font-medium text-heading">{s[key].label}</p>
-              <p id={`${uid}-${key}`} className="mt-0.5 text-sm text-muted">
+              <p className="text-subheadline font-medium text-heading">{s[key].label}</p>
+              <p id={`${uid}-${key}`} className="mt-0.5 text-subheadline text-muted">
                 {s[key].body}
               </p>
             </div>
@@ -189,7 +189,7 @@ function SwitchesCard({ scope, switches, canChange }: { scope: WireScope; switch
           </div>
         ))}
       </div>
-      <p className="mt-4 text-[13px] text-muted">{copy.privacy.switchesFooter}</p>
+      <p className="mt-4 text-subheadline text-muted">{copy.privacy.switchesFooter}</p>
     </Card>
   );
 }
@@ -243,8 +243,8 @@ function MethodsCard() {
               {METHOD_ICON[m.kind]}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-heading">{m.label}</span>
-              <span className="block text-xs text-muted">{p.addedWhen(formatRelative(m.createdAt))}</span>
+              <span className="block truncate text-subheadline font-medium text-heading">{m.label}</span>
+              <span className="block text-footnote text-muted">{p.addedWhen(formatRelative(m.createdAt))}</span>
             </span>
             <MenuButton
               label={`${m.label} options`}
@@ -264,10 +264,10 @@ function MethodsCard() {
             {METHOD_ICON.device}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-medium text-heading">{w.device.label}</span>
-            <span className="block text-xs text-muted">{p.trustedDevices(devices.length)}</span>
+            <span className="block text-subheadline font-medium text-heading">{w.device.label}</span>
+            <span className="block text-footnote text-muted">{p.trustedDevices(devices.length)}</span>
           </span>
-          <AppLink href="/settings/devices" className="ui-btn ui-btn-quiet h-8 px-3 text-[13px] pointer-coarse:h-11">
+          <AppLink href="/settings/devices" className="ui-btn ui-btn-quiet h-8 px-3 text-callout pointer-coarse:h-11">
             {p.devicesLink}
           </AppLink>
         </li>
@@ -277,7 +277,7 @@ function MethodsCard() {
           label={p.addWhich}
           align="start"
           className="mt-3 inline-block"
-          triggerClassName="ui-btn ui-btn-secondary h-9 gap-1.5 px-4 text-sm pointer-coarse:h-11"
+          triggerClassName="ui-btn ui-btn-secondary h-9 gap-1.5 px-4 text-callout pointer-coarse:h-11"
           trigger={
             <>
               <Plus size={14} aria-hidden /> {p.add}

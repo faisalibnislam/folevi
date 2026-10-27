@@ -112,10 +112,10 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
               }
             }}
             aria-describedby={`${id}-count`}
-            className="ui-input h-8 w-full rounded-chip pl-7 pr-2 text-[13px]"
+            className="ui-input h-8 w-full rounded-chip pl-7 pr-2 text-callout"
           />
         </div>
-        <span id={`${id}-count`} role="status" aria-live="polite" className="min-w-[4.5rem] flex-none px-1.5 text-right text-[12px] tabular-nums text-muted">
+        <span id={`${id}-count`} role="status" aria-live="polite" className="min-w-[4.5rem] flex-none px-1.5 text-right text-footnote tabular-nums text-muted">
           {status}
         </span>
         <IconButton
@@ -155,7 +155,7 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
                 replaceCurrent(editor, replacement);
               }
             }}
-            className="ui-input h-8 min-w-0 flex-1 rounded-chip px-2.5 text-[13px]"
+            className="ui-input h-8 min-w-0 flex-1 rounded-chip px-2.5 text-callout"
           />
           <button
             type="button"
@@ -165,7 +165,7 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
               // The last match gone disables this button; keep focus in the bar so Escape still closes it.
               if (count <= 1) findRef.current?.focus();
             }}
-            className="ui-btn ui-btn-secondary h-8 flex-none px-3 text-[12.5px] disabled:opacity-40">
+            className="ui-btn ui-btn-secondary h-8 flex-none px-3 text-callout disabled:opacity-40">
             Replace
           </button>
           <button
@@ -177,7 +177,7 @@ export function FindBar({ editor, withReplace, focusKey, readOnly, onClose }: { 
               findRef.current?.focus();
               if (n) toast.show(`Replaced ${n.toLocaleString()} ${n === 1 ? "match" : "matches"}`, { action: { label: "Undo", onClick: () => editor.commands.undo() } });
             }}
-            className="ui-btn ui-btn-secondary h-8 flex-none px-3 text-[12.5px] disabled:opacity-40"
+            className="ui-btn ui-btn-secondary h-8 flex-none px-3 text-callout disabled:opacity-40"
           >
             Replace all
           </button>

@@ -81,13 +81,13 @@ export function SupportInboxView() {
           apply(draftQ, draftStatus);
         }}
       >
-        <div className="min-w-[240px] flex-[2] text-sm">
+        <div className="min-w-[240px] flex-[2] text-subheadline">
           <label htmlFor={`${uid}-q`} className="mb-1 block font-medium">
             Ticket number or email
           </label>
           <input id={`${uid}-q`} type="search" value={draftQ} onChange={(e) => setDraftQ(e.target.value)} placeholder="1042 or person@example.com" autoComplete="off" className={inputCls} />
         </div>
-        <div className="text-sm">
+        <div className="text-subheadline">
           <label id={`${uid}-status-label`} htmlFor={`${uid}-status`} className="mb-1 block font-medium">
             Status
           </label>
@@ -156,20 +156,20 @@ export function SupportInboxView() {
                   </td>
                   <td className={td}>
                     <div className={t.unread ? "font-semibold text-heading" : "text-heading"}>{t.name}</div>
-                    <div className="break-all text-xs text-muted">{t.email}</div>
+                    <div className="break-all text-footnote text-muted">{t.email}</div>
                   </td>
                   <td className={`${td} max-w-[340px]`}>
                     <div className={`truncate ${t.unread ? "font-semibold text-heading" : ""}`} title={t.subject}>
                       {t.subject}
                     </div>
-                    <div className="text-xs text-muted">{t.topicLabel}</div>
+                    <div className="text-footnote text-muted">{t.topicLabel}</div>
                   </td>
                   <td className={td}>
                     <SupportStatusBadge status={t.status} />
                   </td>
                   <td className={td}>
                     {SOURCE_LABEL[t.source] ?? t.source}
-                    {t.signedIn ? <div className="text-xs text-muted">Signed in</div> : null}
+                    {t.signedIn ? <div className="text-footnote text-muted">Signed in</div> : null}
                   </td>
                   <td className={td}>{t.assignee ? (t.assignedToMe ? "You" : t.assignee) : <span className="text-muted">Nobody</span>}</td>
                   <td className={td}>

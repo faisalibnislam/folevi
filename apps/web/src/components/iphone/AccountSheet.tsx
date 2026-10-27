@@ -76,16 +76,16 @@ function Row({
     >
       {icon}
       <span className="min-w-0 flex-1">
-        <span className={`block truncate text-[17px] leading-[22px] ${danger ? "text-danger" : place ? "font-medium text-heading" : "text-ink"}`}>{label}</span>
+        <span className={`block truncate text-body leading-[22px] ${danger ? "text-danger" : place ? "font-medium text-heading" : "text-ink"}`}>{label}</span>
         {description ? (
-          <span className="mt-px block text-[14px] leading-[18px] text-muted">
+          <span className="mt-px block text-subheadline leading-[18px] text-muted">
             <MiddleCut text={description} />
           </span>
         ) : null}
       </span>
-      {detail ? <span className="flex-none text-[15px] leading-5 text-muted">{detail}</span> : null}
+      {detail ? <span className="flex-none text-subheadline leading-5 text-muted">{detail}</span> : null}
       {badge ? (
-        <span aria-hidden className="grid h-5 min-w-5 flex-none place-items-center rounded-chip bg-coral px-1.5 text-[12px] font-semibold leading-none text-white">
+        <span aria-hidden className="grid h-5 min-w-5 flex-none place-items-center rounded-chip bg-coral px-1.5 text-caption-1 font-semibold leading-none text-white">
           {badge > 99 ? "99+" : badge}
         </span>
       ) : dot ? (

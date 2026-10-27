@@ -34,7 +34,7 @@
   border-radius: var(--radius-chip) var(--radius-chip) 0 0;
   background: transparent;
   color: var(--color-ink-muted);
-  font: 500 13.5px/1.2 var(--font-sans);
+  font: 500 var(--type-body)/1.2 var(--font-sans);
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
@@ -58,7 +58,7 @@
 .fb-tab-button.is-renaming { display: inline-flex; align-items: center; padding: 0 6px; cursor: text; }
 .fb-tab-button.is-renaming:hover { background: transparent; }
 .fb-tab-rename {
-  font: 600 13.5px/1.2 var(--font-sans);
+  font: 600 var(--type-body)/1.2 var(--font-sans);
   color: var(--color-heading);
   background: var(--color-surface-sunken);
   border: 0;
@@ -90,7 +90,7 @@
   border: 0;
   background: transparent;
   color: var(--color-ink-faint, var(--color-ink-muted));
-  font: 400 14px/1.4 var(--font-sans);
+  font: 400 var(--type-body)/1.4 var(--font-sans);
   text-align: start;
   cursor: text;
 }
@@ -109,9 +109,9 @@
 
 /* Touch screens: 44pt targets. */
 @media (pointer: coarse) {
-  .fb-tab-button { min-height: 44px; padding: 0 14px; font-size: 15px; }
+  .fb-tab-button { min-height: 44px; padding: 0 14px; font-size: var(--type-body); }
   .fb-tabs-tool { width: 44px; height: 44px; opacity: 1; }
-  .fb-tabs-empty { min-height: 44px; font-size: 15px; }
+  .fb-tabs-empty { min-height: 44px; font-size: var(--type-body); }
 }
 @media (prefers-reduced-motion: reduce) {
   .fb-tab-button { transition: none; }

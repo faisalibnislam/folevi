@@ -179,7 +179,7 @@ function Account() {
     <div className="mt-auto flex flex-none items-center gap-2.5 px-2 pb-1 pt-2">
       <Avatar who="alex" size={28} />
       <span className="min-w-0 flex-1 leading-tight">
-        <span className="block truncate text-[12.5px] font-semibold text-(--color-heading)">Alex Example</span>
+        <span className="block truncate text-[13px] font-semibold text-(--color-heading)">Alex Example</span>
         <span className="block truncate text-[11px] text-muted">Personal</span>
       </span>
     </div>
@@ -203,11 +203,11 @@ export function PageSidebar({ note, chrome = "web" }: { note: NoteContent; chrom
           </span>
         ))}
       </div>
-      <p className="mt-4 px-3 text-[12.5px] font-semibold text-(--color-heading)">Table of contents</p>
+      <p className="mt-4 px-3 text-[13px] font-semibold text-(--color-heading)">Table of contents</p>
       <ul className="mt-1.5 space-y-0.5 px-1">
-        <li className="mk-app-row-on flex h-8 items-center rounded-chip px-2.5 text-[12.5px]">{note.title}</li>
+        <li className="mk-app-row-on flex h-8 items-center rounded-chip px-2.5 text-[13px]">{note.title}</li>
         {note.toc.map((item, i) => (
-          <li key={item} className="relative flex h-8 items-center rounded-chip pl-5 pr-2 text-[12.5px] text-muted">
+          <li key={item} className="relative flex h-8 items-center rounded-chip pl-5 pr-2 text-[13px] text-muted">
             {i === 0 ? <span className="absolute inset-y-1.5 left-0.5 w-[2px] rounded-chip bg-(--color-heading)" /> : null}
             <span className={cx("truncate", i === 0 && "text-ink")}>{item}</span>
           </li>
@@ -261,42 +261,42 @@ export function MainSidebar({
       </div>
       <ul className="mt-3 space-y-0.5 px-1">
         {rows.map(({ icon: RowIcon, label, count }) => (
-          <li key={label} className={cx("flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[12.5px]", label === activeLabel ? "mk-app-row-on" : "text-ink")}>
+          <li key={label} className={cx("flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[13px]", label === activeLabel ? "mk-app-row-on" : "text-ink")}>
             <RowIcon size={15} className={label === activeLabel ? "text-(--color-heading)" : "text-muted"} />
             <span className="flex-1 truncate">{label}</span>
-            {count ? <span className="min-w-5 rounded-chip bg-(--glass-hover) px-1.5 text-center text-[10.5px] font-semibold leading-5 text-muted">{count}</span> : null}
+            {count ? <span className="min-w-5 rounded-chip bg-(--glass-hover) px-1.5 text-center text-[11px] font-semibold leading-5 text-muted">{count}</span> : null}
           </li>
         ))}
       </ul>
       {sections ? (
-        <p className="mk-caps mt-4 flex items-center gap-1.5 px-2.5 text-[10.5px]">
+        <p className="mk-caps mt-4 flex items-center gap-1.5 px-2.5 text-[11px]">
           <ChevronDown size={11} />
           <span className={cx("-my-1 flex-1 rounded-chip px-1.5 py-1", activeLabel === "Folders" && "bg-(--glass-hover) text-(--color-heading)")}>Folders</span>
           <FolderPlus size={13} className="text-muted" />
         </p>
       ) : (
-        <p className="mk-caps mt-4 px-3.5 text-[10.5px]">Folders</p>
+        <p className="mk-caps mt-4 px-3.5 text-[11px]">Folders</p>
       )}
       <ul className="mt-1 space-y-0.5 px-1">
         {folders.map((folder) => (
-          <li key={folder.label} className="flex h-8 items-center gap-2.5 rounded-chip px-2.5 pl-4 text-[12.5px] text-ink">
+          <li key={folder.label} className="flex h-8 items-center gap-2.5 rounded-chip px-2.5 pl-4 text-[13px] text-ink">
             <FolderGlyph color={folder.color} size={16} />
             <span className="truncate">{folder.label}</span>
           </li>
         ))}
-        {moreFolders ? <li className="flex h-7 items-center px-2.5 pl-4 text-[11.5px] text-muted">+{moreFolders} more</li> : null}
+        {moreFolders ? <li className="flex h-7 items-center px-2.5 pl-4 text-[12px] text-muted">+{moreFolders} more</li> : null}
       </ul>
       {sections ? (
-        <p className="mk-caps mt-4 flex items-center gap-1.5 px-2.5 text-[10.5px]">
+        <p className="mk-caps mt-4 flex items-center gap-1.5 px-2.5 text-[11px]">
           <ChevronRight size={11} />
           Tags
         </p>
       ) : null}
       <ul className="mt-4 space-y-0.5 px-1">
-        <li className="flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[12.5px] text-ink">
+        <li className="flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[13px] text-ink">
           <Archive size={15} className="text-muted" /> Archive
         </li>
-        <li className="flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[12.5px] text-ink">
+        <li className="flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-[13px] text-ink">
           <Trash2 size={15} className="text-muted" /> Trash
         </li>
       </ul>
@@ -330,7 +330,7 @@ export function TabStrip({ title, chrome = "web" }: { title: string; chrome?: "w
         <span className="truncate">Reading list</span>
       </span>
       <span className="flex-1" />
-      <span className="mk-btn mk-btn-primary h-9 flex-none gap-1.5 rounded-control px-2.5 text-[12.5px] sm:px-3">
+      <span className="mk-btn mk-btn-primary h-9 flex-none gap-1.5 rounded-control px-2.5 text-[13px] sm:px-3">
         <Plus size={14} />
         <span className="hidden sm:inline">New note</span>
       </span>
@@ -360,7 +360,7 @@ export function ListTabs({ view }: { view: "Drafts" | "Folders" }) {
         <span className="truncate">Lisbon in April</span>
       </span>
       <span className="flex-1" />
-      <span className="mk-btn mk-btn-primary h-9 flex-none gap-1.5 rounded-control px-2.5 text-[12.5px] sm:px-3">
+      <span className="mk-btn mk-btn-primary h-9 flex-none gap-1.5 rounded-control px-2.5 text-[13px] sm:px-3">
         <Plus size={14} />
         <span className="hidden sm:inline">New note</span>
       </span>
@@ -385,7 +385,7 @@ export function Dock({ active }: { active: DockItem }) {
         <span
           key={item.label}
           className={cx(
-            "flex h-8 items-center gap-1.5 rounded-chip px-2.5 text-[12.5px] font-medium",
+            "flex h-8 items-center gap-1.5 rounded-chip px-2.5 text-[13px] font-medium",
             item.label === active ? "mk-app-dock-on" : "text-ink",
             item.label !== active && (item.label === "Format" || item.label === "Info") && "hidden sm:flex",
           )}
@@ -416,7 +416,7 @@ export function NoteSheet({ art, note, artSize = "large", className }: { art: Co
       <header className="mk-note-cover flex min-h-[112px] items-end px-5 pb-4 pt-10 sm:min-h-[150px] sm:px-12 sm:pb-5" data-tone={art.tone}>
         <p className="mk-note-title text-[27px] sm:text-[38px]">{note.title}</p>
       </header>
-      <div className="space-y-2.5 px-5 pb-24 pt-5 text-[13.5px] leading-[1.6] sm:px-12 sm:text-[14.5px]" style={{ fontFamily: "var(--font-serif)" }}>
+      <div className="space-y-2.5 px-5 pb-24 pt-5 text-[14px] leading-[1.6] sm:px-12 sm:text-[15px]" style={{ fontFamily: "var(--font-serif)" }}>
         {note.blocks.map((block, i) => (
           <NoteBlockView key={i} block={block} />
         ))}
@@ -475,12 +475,12 @@ export function NoteCard({ art, title, lines, folder, when = "Just now" }: { art
       <div className="flex min-w-0 flex-col px-4 pb-3.5 pt-4">
         <p className="mk-note-h text-[18px] leading-tight">{title}</p>
         <p className="mk-note-muted mt-1 text-[12px]">{when}</p>
-        <div className="mt-3 flex-1 space-y-2 text-[12.5px] leading-[1.5]">
+        <div className="mt-3 flex-1 space-y-2 text-[13px] leading-[1.5]">
           {lines.map((line) => (
             <p key={line}>{line}</p>
           ))}
         </div>
-        <p className="mt-4 flex items-center justify-between gap-2 text-[11.5px]">
+        <p className="mt-4 flex items-center justify-between gap-2 text-[12px]">
           <span className="mk-note-muted">{art.name}</span>
           <span className="mk-note-chip rounded-tiny px-1.5 font-medium leading-5">{folder}</span>
         </p>

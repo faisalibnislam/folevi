@@ -22,25 +22,25 @@ export function ShareInviteView({ token }: { token: string }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   return (
-    <ViewChrome title={<h1 className="text-sm font-semibold">Shared page</h1>}>
+    <ViewChrome title={<h1 className="text-subheadline font-semibold">Shared page</h1>}>
       <div className="mx-auto max-w-md px-6 py-20">
         {preview === undefined ? (
           <p className="text-muted">Checking your invitation…</p>
         ) : !preview.valid ? (
           <>
-            <h2 className="ui-display text-3xl">This invitation is no longer valid</h2>
+            <h2 className="ui-display text-large-title">This invitation is no longer valid</h2>
             <p className="mt-2 text-muted">It may have expired, been revoked or already been used. Ask for a new one.</p>
           </>
         ) : !preview.emailMatches ? (
           <>
-            <h2 className="ui-display text-3xl">A page was shared with you</h2>
-            <p className="mt-4 rounded-chip border border-warning/30 bg-warning-soft p-3 text-sm">
+            <h2 className="ui-display text-large-title">A page was shared with you</h2>
+            <p className="mt-4 rounded-chip border border-warning/30 bg-warning-soft p-3 text-subheadline">
               {preview.inviterName} shared a page with a different address than the one you’re signed in with ({profile.email}). Sign in with the invited address to open it.
             </p>
           </>
         ) : (
           <>
-            <h2 className="ui-display text-3xl">{preview.title}</h2>
+            <h2 className="ui-display text-large-title">{preview.title}</h2>
             <p className="mt-2 text-muted">
               {preview.inviterName} shared this page with you ({preview.roleLabel.toLowerCase()}). You’ll see this page and the pages inside it, and nothing else of theirs.
             </p>
@@ -82,7 +82,7 @@ export function ShareInviteView({ token }: { token: string }) {
               </Button>
             </div>
             {error ? (
-              <p role="alert" className="mt-3 text-sm text-danger">
+              <p role="alert" className="mt-3 text-subheadline text-danger">
                 {error}
               </p>
             ) : null}

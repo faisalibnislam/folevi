@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
-import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, Calendar, CheckSquare, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutList, LayoutTemplate, Plus, Share2, Star, Trash2, Waypoints, X, XCircle } from "lucide-react";
+import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, Calendar, CheckSquare, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutList, LayoutTemplate, Lock, Plus, Share2, Star, Trash2, Waypoints, X, XCircle } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { tabHref, tabPage, useTabs } from "@/lib/app/tabs";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -95,6 +95,8 @@ function ViewIcon({ kind }: { kind: string }) {
       return <Settings size={14} aria-hidden className={c} />;
     case "help":
       return <CircleHelp size={14} aria-hidden className={c} />;
+    case "vault":
+      return <Lock size={14} aria-hidden className={c} />;
     default:
       return <LayoutList size={14} aria-hidden className={c} />;
   }
@@ -272,8 +274,8 @@ export function TabStrip() {
   };
   const mask = `linear-gradient(to right, ${overflow.start ? "transparent" : "#000"} 0, #000 ${FADE}px, #000 calc(100% - ${FADE}px), ${overflow.end ? "transparent" : "#000"} 100%)`;
   const tabBase = ipad
-    ? "group relative flex h-10 items-center gap-2 rounded-container px-3.5 text-[15px] outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus focus-visible:ring-2 has-[:focus-visible]:ring-2"
-    : "group relative flex h-9 items-center gap-2 rounded-control px-2.5 text-[13px] outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus ring-offset-1 ring-offset-canvas focus-visible:ring-2 has-[:focus-visible]:ring-2";
+    ? "group relative flex h-10 items-center gap-2 rounded-container px-3.5 text-body outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus focus-visible:ring-2 has-[:focus-visible]:ring-2"
+    : "group relative flex h-9 items-center gap-2 rounded-control px-2.5 text-subheadline outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus ring-offset-1 ring-offset-canvas focus-visible:ring-2 has-[:focus-visible]:ring-2";
   // Every tab is an outlined rounded rectangle. Closed tabs sit back (a light grey fill, quiet text); the
   // open one comes forward: white, a firm dark outline, a soft shadow and bold text. On the iPad: no outline,
   // the open tab a raised capsule, the others plain text that tints under the finger.
@@ -287,7 +289,7 @@ export function TabStrip() {
   return (
     <div
       data-ipad-tabs={ipad ? "" : undefined}
-      className={ipad ? "ui-liquid absolute inset-x-2 top-2 z-30 flex h-[52px] items-center gap-1 px-1.5" : "ui-drag ui-glass ui-glass-sidebar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-panel px-1"}
+      className={ipad ? "ui-liquid absolute inset-x-2 top-2 z-30 flex h-[52px] items-center gap-1 px-1.5" : `ui-drag ui-glass ui-glass-sidebar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-panel px-1 ${route.name === "vault" ? "!bg-surface" : ""}`}
     >
       {/* While the sidebar is hidden, its menu waits here; otherwise it sits in the sidebar. */}
       {!sidebarOpen ? (

@@ -140,7 +140,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
             <a href={process.env.NEXT_PUBLIC_MARKETING_URL ?? "https://folevi.com"} className="inline-flex items-center gap-2 text-ink">
               <FoleviLogo height={22} />
             </a>
-            <span className="text-xs text-muted">Read-only shared page</span>
+            <span className="text-footnote text-muted">Read-only shared page</span>
           </div>
         </div>
       </header>
@@ -153,18 +153,18 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
   if (result.status === "password_required" || result.status === "password_incorrect") {
     return shell(
       <form className="mx-auto mt-16 max-w-sm ui-card rounded-control p-6" action={unlock.bind(null, token)}>
-        <h1 className="ui-display text-3xl">This page is protected</h1>
-        <p className="mt-2 text-sm text-muted">Enter the password the owner gave you.</p>
+        <h1 className="ui-display text-large-title">This page is protected</h1>
+        <p className="mt-2 text-subheadline text-muted">Enter the password the owner gave you.</p>
         {result.status === "password_incorrect" ? (
-          <p role="alert" className="mt-3 text-sm text-danger">
+          <p role="alert" className="mt-3 text-subheadline text-danger">
             That password isn’t right.
           </p>
         ) : null}
-        <label className="mt-4 block text-sm" htmlFor="pw">
+        <label className="mt-4 block text-subheadline" htmlFor="pw">
           Password
         </label>
         <input id="pw" name="password" type="password" required autoComplete="off" className="mt-1 h-10 w-full ui-input rounded-chip px-3" />
-        <button type="submit" className="mt-4 h-10 w-full ui-btn ui-btn-primary text-sm font-medium ">
+        <button type="submit" className="mt-4 h-10 w-full ui-btn ui-btn-primary text-callout font-medium ">
           Open page
         </button>
       </form>,
@@ -179,7 +179,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
           : "This link doesn’t work any more. It may have been revoked.";
     return shell(
       <div className="mx-auto mt-24 max-w-md text-center">
-        <h1 className="ui-display text-4xl">Page unavailable</h1>
+        <h1 className="ui-display text-large-title">Page unavailable</h1>
         <p className="mt-3 text-muted">{copy}</p>
       </div>,
     );
@@ -220,13 +220,13 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
       <div className="px-5 pb-6 pt-4 sm:px-16">
         <h1 className={`mt-2 px-0.5 text-[40px] leading-tight ${look.font === "serif" ? "ui-display [font-family:var(--note-serif,var(--font-serif))]" : look.font === "rounded" ? "font-semibold [font-family:var(--note-soft,var(--font-rounded))]" : look.font === "mono" ? "font-semibold [font-family:var(--note-mono,var(--font-mono))]" : "font-semibold tracking-tight [font-family:var(--note-modern,var(--font-modern))]"}`}>{document.title || "Untitled"}</h1>
         <div className="mb-6 mt-1 flex flex-wrap items-center justify-between gap-2 px-0.5">
-          <p className="text-xs text-muted">{tFor(locale, "share.lastUpdated", { date: formatDate(updated, { dateStyle: "medium", timeZone: "UTC" }, locale) })}</p>
+          <p className="text-footnote text-muted">{tFor(locale, "share.lastUpdated", { date: formatDate(updated, { dateStyle: "medium", timeZone: "UTC" }, locale) })}</p>
           <PresentButton title={document.title} blocks={blocks} style={document.style} cover={document.cover} coverPalette={coverPalette} fileUrls={fileUrls} collections={collections} />
         </div>
         {toc.length > 1 ? (
           // Docs on narrower screens: the same contents, folded away above the note (the side list needs room).
           <details className="fb-publish-toc-compact group mb-6 rounded-control border border-line xl:hidden">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[13px] font-medium text-heading [&::-webkit-details-marker]:hidden">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-subheadline font-medium text-heading [&::-webkit-details-marker]:hidden">
               Contents
               <ChevronDown size={15} aria-hidden className="text-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" />
             </summary>
@@ -275,7 +275,7 @@ const PAGE_WIDTH: Record<string, string> = {
 /** The Docs contents: each heading as a link to it, indented by level. */
 function TocList({ toc }: { toc: ReturnType<typeof tableOfContents> }) {
   return (
-    <ol className="space-y-0.5 text-[13px]">
+    <ol className="space-y-0.5 text-subheadline">
       {toc.map((h) => (
         <li key={h.id} style={{ paddingLeft: `${(h.level - 1) * 0.75}rem` }}>
           <a href={`#block-${h.id}`} className="block truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">

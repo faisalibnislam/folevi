@@ -13,9 +13,9 @@ const variants: Record<Variant, string> = {
   danger: "ui-btn-danger",
 };
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3.5 text-[13px] pointer-coarse:h-11",
-  md: "h-9 px-4 text-sm pointer-coarse:h-11",
-  icon: "h-8 w-8 text-sm pointer-coarse:h-11 pointer-coarse:w-11",
+  sm: "h-8 px-3.5 text-subheadline pointer-coarse:h-11",
+  md: "h-9 px-4 text-subheadline pointer-coarse:h-11",
+  icon: "h-8 w-8 text-subheadline pointer-coarse:h-11 pointer-coarse:w-11",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

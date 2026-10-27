@@ -137,7 +137,7 @@ export function EditDemo({ compact = false }: { compact?: boolean } = {}) {
       </div>
 
       {open ? (
-        <div className="mk-app-pop mk-appear relative z-10 -mt-3 ml-4 overflow-hidden rounded-panel text-[13.5px] sm:ml-10">
+        <div className="mk-app-pop mk-appear relative z-10 -mt-3 ml-4 overflow-hidden rounded-panel text-[14px] sm:ml-10">
           {compact ? null : (
             <p className="truncate border-b border-(--color-line) px-3.5 py-2 text-[12px] text-muted">
               <span className="font-semibold">Editing:</span> “{text}”
@@ -145,7 +145,7 @@ export function EditDemo({ compact = false }: { compact?: boolean } = {}) {
           )}
           {phase.kind === "busy" || phase.kind === "result" ? (
             <div className="border-b border-(--color-line) px-4 pb-2.5 pt-3">
-              <p className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-muted">
+              <p className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
                 <AiIcon size={12} className={cx("text-[var(--mk-violet)]", phase.kind === "busy" && "animate-pulse")} />
                 {ACTIONS[phase.action]!.label === "Translate to…" ? "Translate to Spanish" : ACTIONS[phase.action]!.label}
                 {phase.kind === "busy" ? "…" : ""}
@@ -178,7 +178,7 @@ export function EditDemo({ compact = false }: { compact?: boolean } = {}) {
             </button>
           </div>
           {phase.kind === "result" ? (
-            <div className="flex flex-wrap items-center gap-1.5 border-t border-(--color-line) px-3 py-2.5 text-[12.5px]">
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-(--color-line) px-3 py-2.5 text-[13px]">
               <button
                 type="button"
                 onClick={() => {
@@ -229,7 +229,7 @@ export function EditDemo({ compact = false }: { compact?: boolean } = {}) {
           <p className="border-t border-(--color-line) px-3.5 py-1.5 text-[11px] text-faint">Foli AI can make mistakes. Sent to Google Gemini.</p>
         </div>
       ) : (
-        <p className="mt-4 px-1 text-center text-[12.5px] text-muted">
+        <p className="mt-4 px-1 text-center text-[13px] text-muted">
           {phase.kind === "idle" ? (
             <button
               type="button"

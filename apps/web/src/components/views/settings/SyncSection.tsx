@@ -35,7 +35,7 @@ export function SyncSection() {
           <IosRow label="Changes waiting to sync" value={String(unsent)} />
           <IosRow label="Uploads waiting" value={String(state.uploads.length)} />
           <IosRow label="Unresolved conflicts" value={String(state.conflicts.length)} />
-          <IosRow label="Device id" value={<span className="font-mono text-[13px]">{deviceId}</span>} />
+          <IosRow label="Device id" value={<span className="font-mono text-subheadline">{deviceId}</span>} />
         </IosSection>
         <IosSection>
           <ActionRow
@@ -55,19 +55,19 @@ export function SyncSection() {
   return (
     <>
       <Card title="This device" description="Folevi keeps your recent documents and every unsent change in this browser, so you can keep writing offline and nothing is lost if the tab closes.">
-        <dl className="grid max-w-md grid-cols-2 gap-y-2 text-sm">
+        <dl className="grid max-w-md grid-cols-2 gap-y-2 text-subheadline">
           <dt className="text-muted">Connection</dt>
           <dd>{online ? "Online" : "Offline"}</dd>
           <dt className="text-muted">Changes waiting to sync</dt>
           <dd className="tabular-nums">
-            {unsent} <span className="text-xs text-faint">(Personal, workspaces and shared pages)</span>
+            {unsent} <span className="text-footnote text-faint">(Personal, workspaces and shared pages)</span>
           </dd>
           <dt className="text-muted">Uploads waiting</dt>
           <dd className="tabular-nums">{state.uploads.length}</dd>
           <dt className="text-muted">Unresolved conflicts</dt>
           <dd className="tabular-nums">{state.conflicts.length}</dd>
           <dt className="text-muted">Device id</dt>
-          <dd className="truncate font-mono text-xs">{deviceId}</dd>
+          <dd className="truncate font-mono text-footnote">{deviceId}</dd>
         </dl>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button

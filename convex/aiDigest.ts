@@ -361,7 +361,7 @@ export const deliver = internalMutation({
     const place = await placeOf(ctx, profile, row.contextWorkspaceId);
     if (!place) return await skip(ctx, row, "access");
     // The digest, then links to the notes it covered (the ones the person can still open).
-    const { blocks } = markdownToBlocks(unfence(args.markdown).trim(), { titleFromHeading: false });
+    const { blocks } = markdownToBlocks(unfence(args.markdown).trim(), { titleFromHeading: false, remoteImages: "link" });
     const body: WireBlock[] = blocks.slice(0, MAX_DIGEST_BLOCKS);
     const links: Doc<"documents">[] = [];
     const labels = new Map<string, string>();

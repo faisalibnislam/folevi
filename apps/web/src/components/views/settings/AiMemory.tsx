@@ -41,7 +41,7 @@ const MAX_TEXT = 200;
 
 function KindSelect({ value, onChange, label }: { value: MemoryKind; onChange: (k: MemoryKind) => void; label: string }) {
   return (
-    <Select value={value} onChange={(e) => onChange(e.target.value as MemoryKind)} aria-label={label} className="ui-input h-9 rounded-chip px-3 text-sm w-36 flex-none">
+    <Select value={value} onChange={(e) => onChange(e.target.value as MemoryKind)} aria-label={label} className="ui-input h-9 rounded-chip px-3 text-callout w-36 flex-none">
       {MEMORY_KINDS.map((k) => (
         <option key={k.value} value={k.value}>
           {k.label}
@@ -67,7 +67,7 @@ function Row({ item, onUpdate, onRemove }: { item: MemoryItem; onUpdate: (id: Id
           }}
         >
           <KindSelect value={kind} onChange={setKind} label="Kind" />
-          <input value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX_TEXT} aria-label="What to remember" autoFocus className="ui-input h-9 min-w-0 flex-1 rounded-chip px-3 text-sm" />
+          <input value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX_TEXT} aria-label="What to remember" autoFocus className="ui-input h-9 min-w-0 flex-1 rounded-chip px-3 text-callout" />
           <IconButton type="submit" label="Save" disabled={!text.trim()}>
             <Check size={15} aria-hidden />
           </IconButton>
@@ -87,10 +87,10 @@ function Row({ item, onUpdate, onRemove }: { item: MemoryItem; onUpdate: (id: Id
   }
   return (
     <li className="flex items-center gap-3 py-2">
-      <span className="w-24 flex-none text-[12px] font-medium text-muted">{kindLabel(item.kind)}</span>
-      <span className="min-w-0 flex-1 text-sm text-heading">
+      <span className="w-24 flex-none text-footnote font-medium text-muted">{kindLabel(item.kind)}</span>
+      <span className="min-w-0 flex-1 text-subheadline text-heading">
         {item.text}
-        {item.workspace ? <span className="ml-2 text-[12px] text-faint">Only in {item.workspace.name}</span> : null}
+        {item.workspace ? <span className="ml-2 text-footnote text-faint">Only in {item.workspace.name}</span> : null}
       </span>
       <IconButton label={`Edit "${item.text}"`} onClick={() => setEditing(true)}>
         <Pencil size={14} aria-hidden />
@@ -134,7 +134,7 @@ export function MemoryList({
   return (
     <div className="max-w-xl space-y-4">
       {on ? null : (
-        <p role="status" className="rounded-control bg-sunken px-3 py-2 text-sm text-muted">
+        <p role="status" className="rounded-control bg-sunken px-3 py-2 text-subheadline text-muted">
           Memory is off. Nothing here is used, and Foli AI won&apos;t offer to remember anything. What&apos;s saved stays until you delete it.
         </p>
       )}
@@ -149,9 +149,9 @@ export function MemoryList({
           }}
         >
           <KindSelect value={kind} onChange={setKind} label="Kind" />
-          <input value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX_TEXT} aria-label="What to remember" placeholder={PLACEHOLDER[kind]} className="ui-input h-9 min-w-0 flex-1 rounded-chip px-3 text-sm" />
+          <input value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX_TEXT} aria-label="What to remember" placeholder={PLACEHOLDER[kind]} className="ui-input h-9 min-w-0 flex-1 rounded-chip px-3 text-callout" />
           {workspaces.length ? (
-            <Select value={where} onChange={(e) => setWhere(e.target.value)} aria-label="Applies" className="ui-input h-9 rounded-chip px-3 text-sm w-44 flex-none">
+            <Select value={where} onChange={(e) => setWhere(e.target.value)} aria-label="Applies" className="ui-input h-9 rounded-chip px-3 text-callout w-44 flex-none">
               <option value="">Everywhere</option>
               {workspaces.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -302,7 +302,7 @@ export function AiMemoryCard() {
           onClear={() => report(clear({}), "Memory cleared")}
         />
       ) : (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-subheadline text-muted">Loading…</p>
       )}
     </Card>
   );

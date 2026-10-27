@@ -67,7 +67,7 @@ export function SuggestionChips({
               <li
                 key={s.key}
                 aria-label={`${kind.label}: ${s.label}`}
-                className="flex max-w-full items-center gap-0.5 rounded-chip bg-[var(--glass-hover)] py-0.5 pl-2.5 pr-1 text-[12.5px] text-ink"
+                className="flex max-w-full items-center gap-0.5 rounded-chip bg-[var(--glass-hover)] py-0.5 pl-2.5 pr-1 text-subheadline text-ink"
               >
                 <button
                   type="button"

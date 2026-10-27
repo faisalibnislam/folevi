@@ -21,6 +21,7 @@ import { personalScope, workspaceScope } from "./lib/scope";
 import { PLAN_CATALOG, planName } from "./lib/plans";
 import { seatSummary, seatsChanged } from "./lib/seats";
 import { personalPolarBilled, subscriptionOf, workspacePolarBilled, workspaceSubscriptionOf } from "./lib/billing";
+import { aiPausedUntil, liftPause, refusalCounts } from "./lib/ai/safety";
 
 // Three tiers (stored names kept for existing admins and audit records):
 //   Owner (super_admin):           everything, including admin roles and money matters
@@ -285,6 +286,8 @@ export const viewUser = mutation({
         /** Personal storage (team workspaces count on their own). */
         storageBytes: personalStorage.usedBytes,
       },
+      /** Foli AI's refusals over 30 days by kind (never their text), and any pause (docs/AI_GUARDRAILS.md). */
+      aiSafety: { pausedUntil: await aiPausedUntil(ctx, p._id), refusals: await refusalCounts(ctx, p._id) },
       emails: emails.map((e) => ({ id: e._id as string, templateKey: e.templateKey, status: e.status, attempts: e.attempts, errorCode: e.errorCode ?? null, createdAt: e.createdAt })),
       audit: history.map((h) => ({ action: h.action, actor: actorNames.get(h.actorId) ?? "Admin", reason: h.reason ?? null, createdAt: h.createdAt, requestId: h.requestId })),
     };
@@ -325,6 +328,20 @@ export const suspendUser = mutation({
     for (const m of memberships) await seatsChanged(ctx, m.workspaceId);
     await ctx.scheduler.runAfter(0, internal.identity.setProviderBlocked, { profileId: p._id, blocked: args.suspend });
     await audit(ctx, admin, args.suspend ? "user.suspend" : "user.unsuspend", { type: "profile", id: p._id }, { reason, before, after: { status }, requestId: args.requestId, clientHash: args.clientHash });
+    return null;
+  },
+});
+
+/** Lifts a Foli AI pause (lib/ai/safety.ts) before its 24 hours are up. Owners only. */
+export const liftAiPause = mutation({
+  args: { profileId: v.string(), ...vRequest },
+  handler: async (ctx, args) => {
+    const admin = await requirePlatformRole(ctx, ["super_admin"]);
+    const reason = requireReason(args.reason);
+    const p = await targetProfile(ctx, args.profileId);
+    const until = await liftPause(ctx, p._id);
+    if (!until) fail("invalid_argument", "Foli AI isn't paused for this person.");
+    await audit(ctx, admin, "user.ai_pause_lift", { type: "profile", id: p._id }, { reason, before: { pausedUntil: until }, after: { pausedUntil: null }, requestId: args.requestId, clientHash: args.clientHash });
     return null;
   },
 });

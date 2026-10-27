@@ -5,7 +5,7 @@ import { diffWords, type TextPart } from "@/lib/history/diff";
 
 /** Markdown as the note's text would read once inserted: each block's words on its own line. */
 export function blocksPlain(markdown: string): string {
-  const { blocks } = markdownToBlocks(markdown.trim(), { titleFromHeading: false });
+  const { blocks } = markdownToBlocks(markdown.trim(), { titleFromHeading: false, remoteImages: "link" });
   return blocks
     .map((b) => {
       const p = b.props as { code?: string; latex?: string; rows?: InlineNode[][][] };

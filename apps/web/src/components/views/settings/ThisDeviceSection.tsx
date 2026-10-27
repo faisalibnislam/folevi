@@ -41,11 +41,11 @@ export function ThisDeviceSection() {
   if (!bridge) {
     return (
       <Card title="Folevi for iPhone and iPad" description="These settings are for the Folevi app on iPhone and iPad, like locking it with Face ID. Open Settings in the app to change them.">
-        <p className="text-sm text-muted">You're using Folevi in a browser.</p>
+        <p className="text-subheadline text-muted">You're using Folevi in a browser.</p>
       </Card>
     );
   }
-  if (!settings) return iphone ? null : <p className="text-sm text-muted">Loading…</p>;
+  if (!settings) return iphone ? null : <p className="text-subheadline text-muted">Loading…</p>;
 
   const method = METHOD[settings.method];
   const save = async (patch: Partial<Pick<NativeSettings, "lock" | "lockAfter">>) => {
@@ -65,7 +65,7 @@ export function ThisDeviceSection() {
       <>
         {error ? (
           <div className="px-4">
-            <p role="alert" className="rounded-control bg-danger-soft px-4 py-3 text-[15px] text-ink">
+            <p role="alert" className="rounded-control bg-danger-soft px-4 py-3 text-subheadline text-ink">
               {error}
             </p>
           </div>
@@ -85,8 +85,8 @@ export function ThisDeviceSection() {
       <div className="max-w-xl divide-y divide-line/70">
         <div className="flex items-center justify-between gap-6 py-3 first:pt-0">
           <span className="min-w-0">
-            <span className="block text-sm text-ink">{label}</span>
-            <span id={hintId} className="block text-xs text-muted">
+            <span className="block text-subheadline text-ink">{label}</span>
+            <span id={hintId} className="block text-footnote text-muted">
               {settings.method === "none" ? noLock() : `Off unless you turn it on. Turning it on asks for ${method} once.`}
             </span>
           </span>
@@ -95,12 +95,12 @@ export function ThisDeviceSection() {
         {settings.lock ? (
           <div className="flex items-center justify-between gap-6 py-3 last:pb-0">
             <span className="min-w-0">
-              <span id={afterId} className="block text-sm text-ink">
+              <span id={afterId} className="block text-subheadline text-ink">
                 Ask again
               </span>
-              <span className="block text-xs text-muted">When you come back after Folevi has been in the background this long.</span>
+              <span className="block text-footnote text-muted">When you come back after Folevi has been in the background this long.</span>
             </span>
-            <Select value={String(settings.lockAfter)} onChange={(e) => void save({ lockAfter: Number(e.target.value) as LockAfter })} aria-labelledby={afterId} className="ui-input h-9 w-44 flex-none rounded-chip px-3 text-sm" disabled={busy}>
+            <Select value={String(settings.lockAfter)} onChange={(e) => void save({ lockAfter: Number(e.target.value) as LockAfter })} aria-labelledby={afterId} className="ui-input h-9 w-44 flex-none rounded-chip px-3 text-callout" disabled={busy}>
               {AFTER.map((a) => (
                 <option key={a.value} value={String(a.value)}>
                   {a.label}
@@ -111,7 +111,7 @@ export function ThisDeviceSection() {
         ) : null}
       </div>
       {error ? (
-        <p role="alert" className="mt-3 text-sm text-danger">
+        <p role="alert" className="mt-3 text-subheadline text-danger">
           {error}
         </p>
       ) : null}
@@ -158,8 +158,8 @@ function EncryptedNotesUnlock({ method, iphone = false }: { method: string; ipho
   return (
     <div className="mt-5 flex max-w-xl items-center justify-between gap-6 border-t border-line/70 pt-4" data-testid="e2ee-face-id">
       <span className="min-w-0">
-        <span className="block text-sm text-ink">{label}</span>
-        <span id={hint} className="block text-xs text-muted">
+        <span className="block text-subheadline text-ink">{label}</span>
+        <span id={hint} className="block text-footnote text-muted">
           {footer}
         </span>
       </span>

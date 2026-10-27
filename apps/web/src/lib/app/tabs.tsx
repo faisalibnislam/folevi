@@ -29,7 +29,7 @@ export const tabPage = (t: DocTab) => t.view?.path ?? t.at ?? t.id;
 export const tabHref = (t: DocTab) => (t.view ? t.view.path : `/d/${tabPage(t)}`);
 
 /** Views that get no tab of their own: Home is always the first tab; the rest aren't places you work in. */
-const NO_VIEW_TAB = new Set(["documents", "doc", "onboarding", "quick-add", "invite", "share-invite", "not_found"]);
+const NO_VIEW_TAB = new Set(["documents", "doc", "onboarding", "quick-add", "invite", "share-invite", "folder-invite", "not_found"]);
 /** A view's tab key: one tab per view (it follows you inside it, like Foli AI's conversations), one per folder or tag. */
 function viewKey(route: { name: string; id?: string | null }): string | null {
   if (NO_VIEW_TAB.has(route.name)) return null;
@@ -153,7 +153,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
         while (next.length > MAX_TABS) next = next.filter((t, i) => i !== next.findIndex((x) => x.id !== docId));
         return next;
       });
-    } else if (!["settings", "onboarding", "invite", "share-invite", "not_found", "help"].includes(route.name)) {
+    } else if (!["settings", "onboarding", "invite", "share-invite", "folder-invite", "not_found", "help"].includes(route.name)) {
       const href = `${pathname}${query ? `?${query}` : ""}`;
       if (href !== homeHref) setHomeHref(href);
       // Every view you open gets its own tab, which stays until you close it (it follows you inside the view).

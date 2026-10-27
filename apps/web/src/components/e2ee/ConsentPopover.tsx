@@ -14,18 +14,18 @@ function ConsentBody({ request, onAnswer }: { request: ConsentRequest; onAnswer:
   const c = copy.consent;
   const [remember, setRemember] = useState(false);
   return (
-    <div className="space-y-3 text-sm">
+    <div className="space-y-3 text-subheadline">
       <p className="text-muted">{c.body}</p>
       <ul aria-label="Notes to send" className="max-h-52 divide-y divide-line overflow-y-auto rounded-control border border-line">
         {request.notes.map((note) => (
           <li key={note.id} className="flex items-center gap-2.5 px-3 py-2">
             <FileText size={14} aria-hidden className="flex-none text-muted" />
             <span className="min-w-0 flex-1 truncate text-ink">{note.title || c.untitled}</span>
-            <span className="flex-none text-[12px] tabular-nums text-muted">{c.chars(note.chars)}</span>
+            <span className="flex-none text-footnote tabular-nums text-muted">{c.chars(note.chars)}</span>
           </li>
         ))}
       </ul>
-      <Checkbox checked={remember} onChange={setRemember} className="text-[13px] text-ink">
+      <Checkbox checked={remember} onChange={setRemember} className="text-subheadline text-ink">
         {c.remember}
       </Checkbox>
       <div className="flex justify-end gap-2">
@@ -34,7 +34,7 @@ function ConsentBody({ request, onAnswer }: { request: ConsentRequest; onAnswer:
           {c.send}
         </Button>
       </div>
-      <p className="text-[12px] text-muted">
+      <p className="text-footnote text-muted">
         <AppLink href="/settings/privacy" className="underline decoration-line-strong underline-offset-2 hover:text-heading">
           {c.settingsHint}
         </AppLink>
@@ -65,7 +65,7 @@ export function ConsentHost() {
     return (
       <Popover open onClose={() => answer(false)} anchor={anchor as RefObject<HTMLElement | null>} label={copy.consent.title} className="w-[min(22rem,calc(100vw-2rem))]">
         <div className="p-4">
-          <h2 className="ui-display mb-2 text-[17px]">{copy.consent.title}</h2>
+          <h2 className="ui-display mb-2 text-title-3">{copy.consent.title}</h2>
           <ConsentBody request={pending} onAnswer={onAnswer} />
         </div>
       </Popover>

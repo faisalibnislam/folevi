@@ -116,10 +116,10 @@ export function ShareSheet() {
   if (loaded === null) {
     return frame(
       <>
-        <h1 id="share-heading" className="ui-display text-[24px] leading-tight">
+        <h1 id="share-heading" className="ui-display text-title-1 leading-tight">
           Nothing to save
         </h1>
-        <p className="mt-2 text-[14px] text-muted">Share a page, a link or some text to Folevi, or use the Save to Folevi bookmarklet from Settings.</p>
+        <p className="mt-2 text-body text-muted">Share a page, a link or some text to Folevi, or use the Save to Folevi bookmarklet from Settings.</p>
         <div className="mt-5 flex justify-end">
           <Button variant="primary" onClick={() => navigate("/documents", { replace: true })}>
             Open Folevi
@@ -131,10 +131,10 @@ export function ShareSheet() {
   if (saved) {
     return frame(
       <>
-        <h1 id="share-heading" className="ui-display text-[24px] leading-tight">
+        <h1 id="share-heading" className="ui-display text-title-1 leading-tight">
           Saved to your Inbox
         </h1>
-        <p className="mt-2 text-[14px] text-muted" role="status">
+        <p className="mt-2 text-body text-muted" role="status">
           {saved.synced ? `It’s in the Inbox in ${saved.place}.` : `It’s saved on this device and goes to the Inbox in ${saved.place} as soon as Folevi is back online.`}
           {uploadsLeft ? ` Uploading ${uploadsLeft === 1 ? "1 file" : `${uploadsLeft} files`}: keep Folevi open until it’s done.` : ""}
         </p>
@@ -156,15 +156,15 @@ export function ShareSheet() {
         void save();
       }}
     >
-      <h1 id="share-heading" className="ui-display text-[24px] leading-tight">
+      <h1 id="share-heading" className="ui-display text-title-1 leading-tight">
         Save to Folevi
       </h1>
       <label htmlFor="share-title" className="ui-caps mt-5 mb-1.5 block">
         Title
       </label>
-      <input id="share-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="Untitled" className="h-10 w-full ui-input rounded-chip px-3 text-[15px] outline-none" />
+      <input id="share-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="Untitled" className="h-10 w-full ui-input rounded-chip px-3 text-body outline-none" />
       {payload.url || payload.text || files.length ? (
-        <div className="mt-4 space-y-2 ui-well rounded-chip p-3 text-[13px]" aria-label="What will be saved">
+        <div className="mt-4 space-y-2 ui-well rounded-chip p-3 text-subheadline" aria-label="What will be saved">
           {payload.url ? (
             <p className="flex min-w-0 items-center gap-2 text-ink">
               <Link2 size={14} aria-hidden className="flex-none text-muted" />
@@ -183,7 +183,7 @@ export function ShareSheet() {
         </div>
       ) : null}
       {skipped.length ? (
-        <p className="mt-2 text-[12.5px] text-muted">
+        <p className="mt-2 text-subheadline text-muted">
           {skipped.every((n) => n === "file")
             ? `${skipped.length === 1 ? "A file" : `${skipped.length} files`} couldn’t be received. Open Folevi once on this device, then share again to include files.`
             : `Left out: ${skipped.slice(0, 5).join(", ")}${skipped.length > 5 ? ` and ${skipped.length - 5} more` : ""}. Folevi takes images and PDFs up to 20 MB.`}
@@ -192,16 +192,16 @@ export function ShareSheet() {
       <label id="share-place-label" className="ui-caps mt-5 mb-1.5 block">
         Save to
       </label>
-      <Select value={place} onChange={(e) => setPlace(e.target.value)} aria-labelledby="share-place-label" className="h-10 w-full ui-input rounded-chip px-3 text-sm">
+      <Select value={place} onChange={(e) => setPlace(e.target.value)} aria-labelledby="share-place-label" className="h-10 w-full ui-input rounded-chip px-3 text-callout">
         {places.map((p) => (
           <option key={p.id} value={p.id}>
             {`Inbox in ${p.name}`}
           </option>
         ))}
       </Select>
-      {!online ? <p className="mt-3 text-[12.5px] text-muted">You’re offline. The note is kept on this device and reaches your Inbox when you’re back online.</p> : null}
+      {!online ? <p className="mt-3 text-subheadline text-muted">You’re offline. The note is kept on this device and reaches your Inbox when you’re back online.</p> : null}
       {error ? (
-        <p role="alert" className="mt-3 text-[13px] text-danger">
+        <p role="alert" className="mt-3 text-subheadline text-danger">
           {error}
         </p>
       ) : null}

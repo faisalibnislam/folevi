@@ -53,11 +53,11 @@ p.fb-chart-title { margin-left: 0; padding-left: 0; }
 .fb-chart-title:focus-visible, .fb-chart-takeaway-field:focus-visible { outline: none; box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 18%, transparent); }
 .fb-chart-plot { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
 .fb-chart-canvas { position: relative; }
-.fb-chart-takeaway { margin: 6px 0 0; font: 13px/1.5 var(--font-sans); color: var(--color-ink-muted); }
+.fb-chart-takeaway { margin: 6px 0 0; font: var(--type-subheadline)/1.5 var(--font-sans); color: var(--color-ink-muted); }
 ul.fb-chart-takeaway { padding-left: 1.15em; list-style: disc; }
 ul.fb-chart-takeaway li + li { margin-top: 2px; }
 .fb-chart-takeaway-field { flex: none; width: 100%; min-height: calc(1.5em + 4px); max-height: 6.2em; margin: 4px 0 0 -4px; padding: 2px 4px; border: 0; border-radius: var(--radius-tiny); background: transparent; resize: none; overflow: auto; }
-.fb-chart-reason { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 12px; text-align: center; font: 13px/1.5 var(--font-sans); color: var(--color-ink-muted); }
+.fb-chart-reason { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 12px; text-align: center; font: var(--type-subheadline)/1.5 var(--font-sans); color: var(--color-ink-muted); }
 .fb-chart-reason p { margin: 0; max-width: 40ch; }
 
 /* The empty card's hint and its buttons (the hint layer itself ignores the pointer). */
@@ -73,28 +73,28 @@ ul.fb-chart-takeaway li + li { margin-top: 2px; }
 
 /* Tooltip: values first, the series' line key beside them; never the only way to read a value. */
 .fb-chart-tip {
-  position: absolute; z-index: 4; pointer-events: none; padding: 8px 10px 7px; border-radius: var(--radius-small);
-  font: 12px/1.35 var(--font-sans); color: var(--color-ink);
+  position: absolute; z-index: 4; pointer-events: none; padding: 8px 10px 8px; border-radius: var(--radius-small);
+  font: var(--type-footnote)/1.35 var(--font-sans); color: var(--color-ink);
 }
 .fb-chart-tip p { margin: 0; }
 .fb-chart-tip-title { margin-bottom: 4px !important; color: var(--color-ink-muted); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fb-chart-tip-row { display: flex; align-items: center; gap: 7px; padding: 1px 0; }
+.fb-chart-tip-row { display: flex; align-items: center; gap: 8px; padding: 1px 0; }
 .fb-chart-tip-key { flex: none; width: 12px; height: 3px; border-radius: var(--radius-tiny); }
 .fb-chart-tip-value { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--color-heading); }
 .fb-chart-tip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink-muted); }
 
 /* The data table, edited in place. */
-.fb-chart-grid { flex: 1 1 44%; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid var(--color-line); background: var(--color-surface); font: 13px/1.4 var(--font-sans); }
+.fb-chart-grid { flex: 1 1 44%; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid var(--color-line); background: var(--color-surface); font: var(--type-subheadline)/1.4 var(--font-sans); }
 .fb-canvas-card[data-full] .fb-chart-body[data-grid] { flex-direction: row; }
 .fb-canvas-card[data-full] .fb-chart-body[data-grid] .fb-chart-grid { flex: 0 1 44%; max-width: 640px; border-top: 0; border-left: 1px solid var(--color-line); }
-.fb-chart-grid-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 8px 14px; color: var(--color-ink-muted); font-size: 12.5px; border-bottom: 1px solid var(--color-line); }
+.fb-chart-grid-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 8px 14px; color: var(--color-ink-muted); font-size: var(--type-subheadline); border-bottom: 1px solid var(--color-line); }
 .fb-chart-grid-scroll { flex: 1; min-height: 0; overflow: auto; padding: 6px 10px 8px 4px; }
 .fb-chart-grid table { border-collapse: separate; border-spacing: 0; }
 .fb-chart-grid th, .fb-chart-grid td { padding: 0; border-bottom: 1px solid var(--color-line); border-right: 1px solid var(--color-line); vertical-align: middle; }
 .fb-chart-grid thead th { border-top: 1px solid var(--color-line); background: color-mix(in oklab, var(--color-surface-sunken) 55%, var(--color-surface)); }
 .fb-chart-grid tr > :nth-child(2) { border-left: 1px solid var(--color-line); }
 .fb-chart-grid-corner { border: 0 !important; background: transparent !important; width: 36px; }
-.fb-chart-grid-num { width: 36px; border-right: 0 !important; border-bottom: 0 !important; text-align: right; color: var(--color-ink-faint); font-weight: 500; font-size: 11.5px; }
+.fb-chart-grid-num { width: 36px; border-right: 0 !important; border-bottom: 0 !important; text-align: right; color: var(--color-ink-faint); font-weight: 500; font-size: var(--type-footnote); }
 .fb-chart-grid-num > span { padding-right: 8px; }
 .fb-chart-grid-head { display: flex; align-items: center; }
 .fb-chart-cell { display: block; width: 100%; min-width: 96px; height: 30px; padding: 0 8px; border: 0; background: transparent; font: inherit; color: var(--color-ink); }
@@ -105,7 +105,7 @@ ul.fb-chart-takeaway li + li { margin-top: 2px; }
 .fb-chart-grid td[data-number] .fb-chart-cell { text-align: right; font-variant-numeric: tabular-nums; }
 .fb-chart-grid-menu, .fb-chart-grid-rowbtn {
   display: inline-grid; place-items: center; flex: none; min-width: 24px; height: 24px; margin-right: 3px; border-radius: var(--radius-tiny);
-  color: var(--color-ink-faint); font: 500 11.5px/1 var(--font-sans);
+  color: var(--color-ink-faint); font: 500 var(--type-footnote)/1 var(--font-sans);
 }
 .fb-chart-grid-rowbtn { width: 100%; height: 30px; margin: 0; padding-right: 8px; place-items: center end; }
 .fb-chart-grid-menu:hover, .fb-chart-grid-rowbtn:hover, .fb-chart-grid-menu[aria-expanded="true"] { background: var(--glass-hover); color: var(--color-heading); }
@@ -113,10 +113,10 @@ ul.fb-chart-takeaway li + li { margin-top: 2px; }
 .fb-chart-grid-add { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border-radius: var(--radius-control); color: var(--color-ink-muted); font-weight: 500; }
 .fb-chart-grid-add:hover:not(:disabled) { background: var(--glass-hover); color: var(--color-heading); }
 .fb-chart-grid-add:disabled { opacity: 0.4; }
-.fb-chart-grid-tip { margin-left: auto; font-size: 12px; color: var(--color-ink-faint); }
+.fb-chart-grid-tip { margin-left: auto; font-size: var(--type-footnote); color: var(--color-ink-faint); }
 /* Fingers: 44 point rows and buttons, 16 px text so iOS doesn't zoom in (docs/IOS.md). */
 @media (pointer: coarse) {
-  .fb-chart-cell { height: 44px; font-size: 16px; }
+  .fb-chart-cell { height: 44px; font-size: var(--type-input-min); }
   .fb-chart-grid-rowbtn { height: 44px; }
   .fb-chart-grid-menu { min-width: 36px; height: 36px; }
   .fb-chart-grid-add { height: 44px; }
@@ -124,19 +124,19 @@ ul.fb-chart-takeaway li + li { margin-top: 2px; }
 }
 
 /* ---------------------------------------------------------------- panels: data from, style, Foli AI */
-.fb-chart-panel { display: flex; flex-direction: column; gap: 14px; padding: 12px; font: 13px/1.4 var(--font-sans); color: var(--color-ink); }
+.fb-chart-panel { display: flex; flex-direction: column; gap: 14px; padding: 12px; font: var(--type-subheadline)/1.4 var(--font-sans); color: var(--color-ink); }
 .fb-chart-panel h3 { margin: 0 0 6px; }
 .fb-chart-panel section { display: flex; flex-direction: column; }
-.fb-chart-panel-note { margin: 0; color: var(--color-ink-muted); font-size: 12.5px; }
-.fb-chart-panel-problem { margin: 0; color: var(--color-danger); font-size: 12.5px; }
+.fb-chart-panel-note { margin: 0; color: var(--color-ink-muted); font-size: var(--type-subheadline); }
+.fb-chart-panel-problem { margin: 0; color: var(--color-danger); font-size: var(--type-subheadline); }
 .fb-chart-choices { display: flex; flex-direction: column; gap: 2px; margin: -4px 0 0; padding: 0; list-style: none; }
 .fb-chart-choice { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px; border-radius: var(--radius-small); text-align: left; color: var(--color-ink); }
 .fb-chart-choice > svg { flex: none; margin-top: 1px; color: var(--color-ink-muted); }
-.fb-chart-choice small { display: block; margin-top: 1px; font-size: 12px; color: var(--color-ink-muted); }
+.fb-chart-choice small { display: block; margin-top: 1px; font-size: var(--type-footnote); color: var(--color-ink-muted); }
 .fb-chart-choice:hover { background: var(--glass-hover); }
 .fb-chart-choice[aria-pressed="true"] { background: var(--color-accent-soft); }
 .fb-chart-choice:focus-visible, .fb-chart-swatch:focus-visible, .fb-chart-link:focus-visible, .fb-chart-ai-action:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
-.fb-chart-link { align-self: flex-start; padding: 2px 0; font-size: 12.5px; font-weight: 500; color: var(--color-accent); text-decoration: underline; text-decoration-color: color-mix(in oklab, currentColor 30%, transparent); text-underline-offset: 2px; }
+.fb-chart-link { align-self: flex-start; padding: 2px 0; font-size: var(--type-subheadline); font-weight: 500; color: var(--color-accent); text-decoration: underline; text-decoration-color: color-mix(in oklab, currentColor 30%, transparent); text-underline-offset: 2px; }
 .fb-chart-link:hover { text-decoration-color: currentColor; }
 .fb-chart-color-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; padding: 3px 0; }
 .fb-chart-color-name { min-width: 0; flex: 1 1 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -146,18 +146,18 @@ ul.fb-chart-takeaway li + li { margin-top: 2px; }
 .fb-chart-switches { gap: 2px; }
 .fb-chart-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; }
 .fb-chart-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.fb-chart-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 12px; color: var(--color-ink-muted); }
+.fb-chart-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: var(--type-footnote); color: var(--color-ink-muted); }
 .fb-chart-field-wide { grid-column: 1 / -1; }
-.fb-chart-input { width: 100%; height: 32px; padding: 0 10px; border: 0; font: 13px var(--font-sans); color: var(--color-ink); }
+.fb-chart-input { width: 100%; height: 32px; padding: 0 10px; border: 0; font: var(--type-subheadline) var(--font-sans); color: var(--color-ink); }
 .fb-chart-input::placeholder { color: var(--color-ink-faint); }
-.fb-chart-paste { width: 100%; padding: 8px 10px; border: 0; resize: vertical; font: 12.5px/1.5 var(--font-mono); color: var(--color-ink); }
+.fb-chart-paste { width: 100%; padding: 8px 10px; border: 0; resize: vertical; font: var(--type-subheadline)/1.5 var(--font-mono); color: var(--color-ink); }
 @media (pointer: coarse) {
   .fb-chart-choice { min-height: 44px; }
   .fb-chart-swatch { width: 30px; height: 30px; }
   .fb-chart-swatches { gap: 6px; }
   .fb-chart-switch-row { min-height: 44px; }
-  .fb-chart-input { height: 44px; font-size: 16px; }
-  .fb-chart-paste { font-size: 16px; }
+  .fb-chart-input { height: 44px; font-size: var(--type-input-min); }
+  .fb-chart-paste { font-size: var(--type-input-min); }
 }
 
 .fb-chart-ai-head { display: flex; align-items: center; gap: 6px; margin: 0 0 -4px; font-weight: 600; color: var(--color-heading); }
@@ -166,24 +166,24 @@ ul.fb-chart-takeaway li + li { margin-top: 2px; }
 .fb-chart-ai-action > svg { color: var(--color-ink-muted); }
 .fb-chart-ai-action:hover:not(:disabled) { background: var(--glass-hover); }
 .fb-chart-ai-action:disabled { opacity: 0.5; }
-.fb-chart-ai-form { display: flex; align-items: flex-end; gap: 6px; padding: 7px 7px 7px 10px; }
+.fb-chart-ai-form { display: flex; align-items: flex-end; gap: 6px; padding: 8px 8px 8px 10px; }
 .fb-chart-ai-mark { flex: none; align-self: flex-start; margin-top: 3px; color: var(--color-ink-muted); }
-.fb-chart-ai-form textarea { flex: 1; min-width: 0; border: 0; background: transparent; resize: none; font: 13px/1.45 var(--font-sans); color: var(--color-ink); outline: none; }
+.fb-chart-ai-form textarea { flex: 1; min-width: 0; border: 0; background: transparent; resize: none; font: var(--type-subheadline)/1.45 var(--font-sans); color: var(--color-ink); outline: none; }
 .fb-chart-ai-form textarea::placeholder { color: var(--color-ink-faint); }
 .fb-chart-ai-send { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-control); background: var(--color-accent); color: var(--color-accent-ink); }
 .fb-chart-ai-send:disabled { opacity: 0.35; }
-.fb-chart-ai-status { margin: 0; color: var(--color-ink-muted); font-size: 12.5px; }
-.fb-chart-ai-error { margin: 0; padding: 8px 10px; border-radius: var(--radius-control); background: var(--color-danger-soft); color: var(--color-danger); font-size: 12.5px; }
+.fb-chart-ai-status { margin: 0; color: var(--color-ink-muted); font-size: var(--type-subheadline); }
+.fb-chart-ai-error { margin: 0; padding: 8px 10px; border-radius: var(--radius-control); background: var(--color-danger-soft); color: var(--color-danger); font-size: var(--type-subheadline); }
 .fb-chart-ai-result { padding: 10px 12px; border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-surface-sunken) 70%, transparent); }
 .fb-chart-ai-result > p { margin: 0; }
 .fb-chart-ai-result .fb-chart-takeaway { margin: 0; color: var(--color-ink); }
-.fb-chart-ai-reason { margin-top: 4px !important; color: var(--color-ink-muted); font-size: 12.5px; }
+.fb-chart-ai-reason { margin-top: 4px !important; color: var(--color-ink-muted); font-size: var(--type-subheadline); }
 .fb-chart-ai-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.fb-chart-ai-foot { margin: -4px 0 0; font-size: 11.5px; color: var(--color-ink-faint); }
+.fb-chart-ai-foot { margin: -4px 0 0; font-size: var(--type-footnote); color: var(--color-ink-faint); }
 @media (pointer: coarse) {
   .fb-chart-ai-action { min-height: 44px; }
   .fb-chart-ai-send { width: 44px; height: 44px; }
-  .fb-chart-ai-form textarea { font-size: 16px; }
+  .fb-chart-ai-form textarea { font-size: var(--type-input-min); }
 }
 
 /* ---------------------------------------------------------------- read-only (share pages, version history) */
@@ -198,9 +198,9 @@ ul.fb-chart-takeaway li + li { margin-top: 2px; }
 @media (pointer: coarse) { .fb-chart-zoom-bar { opacity: 1; } }
 .fb-chart-static .fb-chart-svg { margin: 0 auto; }
 .fb-chart-data { margin-top: 8px; }
-.fb-chart-data summary { width: fit-content; cursor: pointer; font-size: 12.5px; color: var(--color-ink-muted); }
+.fb-chart-data summary { width: fit-content; cursor: pointer; font-size: var(--type-subheadline); color: var(--color-ink-muted); }
 .fb-chart-data summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; border-radius: var(--radius-tiny); }
-.fb-chart-data table, .fb-chart-table table { margin-top: 6px; border-collapse: collapse; font-size: 13px; }
+.fb-chart-data table, .fb-chart-table table { margin-top: 6px; border-collapse: collapse; font-size: var(--type-subheadline); }
 .fb-chart-data :is(th, td) { padding: 4px 10px; border-bottom: 1px solid var(--color-line); text-align: left; white-space: nowrap; }
 .fb-chart-data thead th { font-weight: 600; color: var(--color-ink-muted); }
 .fb-chart-data tbody th { font-weight: 500; color: var(--color-ink); }

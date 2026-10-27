@@ -459,21 +459,21 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
     >
       {/* What it's working on */}
       {target ? (
-        <p className="truncate border-b border-line/60 px-3.5 py-2 text-[12px] text-muted">
+        <p className="truncate border-b border-line/60 px-3.5 py-2 text-footnote text-muted">
           <span className="font-semibold">Editing:</span> “{target.text.replace(/\s+/g, " ").slice(0, 140)}”
         </p>
       ) : pageMode && phase.kind === "compose" ? (
-        <p className="border-b border-line/60 px-3.5 py-2 text-[12px] text-muted">Say what the page is for and what it should cover. You'll see it before anything is added.</p>
+        <p className="border-b border-line/60 px-3.5 py-2 text-footnote text-muted">Say what the page is for and what it should cover. You'll see it before anything is added.</p>
       ) : null}
 
       {/* Result: the changes to the selected text, or what will be added */}
       {result ? (
         <div className="max-h-[min(46vh,380px)] overflow-y-auto border-b border-line/60 px-4 pb-2.5 pt-3">
-          <div className="mb-1.5 flex items-center gap-1.5 text-[11.5px] font-semibold text-muted">
+          <div className="mb-1.5 flex items-center gap-1.5 text-footnote font-semibold text-muted">
             <AiIcon size={12} aria-hidden className="text-[#7c6cf0]" />
             <span className="min-w-0 flex-1 truncate">{result.label}</span>
             {diff && !diff.same ? (
-              <div className="ui-seg ui-well text-[11.5px]" role="group" aria-label="Preview">
+              <div className="ui-seg ui-well text-footnote" role="group" aria-label="Preview">
                 <button type="button" aria-pressed={view === "changes"} aria-controls={resultId} onClick={() => setView("changes")}>
                   Changes
                 </button>
@@ -483,8 +483,8 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
               </div>
             ) : null}
           </div>
-          {diff?.same ? <p className="mb-1.5 text-[12.5px] text-muted">No changes needed.</p> : null}
-          {isPage && result.title ? <p className="mb-1 font-serif text-[18px] font-semibold text-heading">{result.title}</p> : null}
+          {diff?.same ? <p className="mb-1.5 text-subheadline text-muted">No changes needed.</p> : null}
+          {isPage && result.title ? <p className="mb-1 font-serif text-title-3 font-semibold text-heading">{result.title}</p> : null}
           <div id={resultId}>
             {diff && !diff.same && view === "changes" ? (
               <>
@@ -503,7 +503,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
       {/* Working */}
       {phase.kind === "busy" ? (
         <div className="max-h-[min(46vh,380px)] overflow-y-auto px-4 pb-2 pt-3.5" aria-busy="true">
-          <p className="mb-1.5 flex items-center gap-2 text-[11.5px] font-semibold text-muted">
+          <p className="mb-1.5 flex items-center gap-2 text-footnote font-semibold text-muted">
             <AiIcon size={12} aria-hidden className="animate-pulse text-[#7c6cf0] motion-reduce:animate-none" /> {phase.label}…
           </p>
           {stream.text ? (
@@ -539,7 +539,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
             aria-activedescendant={phase.kind !== "result" && options[active] ? `${uid}-${options[active]!.id}` : undefined}
             aria-label={phase.kind === "result" ? "Tell Foli AI what to change" : phase.kind === "menu" ? (phase.menu === "languages" ? "Language" : "Tone") : pageMode ? "Describe the page" : "Ask Foli AI to write or edit"}
             placeholder={placeholder}
-            className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-faint"
+            className="min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-faint"
           />
           {input.trim() ? (
             <button
@@ -557,15 +557,15 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
         </div>
       ) : (
         <div className="flex justify-end px-3 pb-2.5">
-          <button type="button" onClick={() => stream.stop()} className="inline-flex items-center gap-1.5 rounded-chip px-2 py-1 text-[12.5px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+          <button type="button" onClick={() => stream.stop()} className="inline-flex items-center gap-1.5 rounded-chip px-2 py-1 text-subheadline text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
             <span aria-hidden className="h-2 w-2 rounded-tiny bg-current" /> Stop
           </button>
         </div>
       )}
 
-      {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mx-3 mb-2.5 rounded-control bg-danger-soft px-3 py-2 text-[13px] text-danger" : "mx-3 mb-2.5 w-auto"} /> : phase.kind === "compose" ? <AiCreditsNote documentId={documentId} className="mx-3 mb-2.5" /> : null}
+      {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mx-3 mb-2.5 rounded-control bg-danger-soft px-3 py-2 text-subheadline text-danger" : "mx-3 mb-2.5 w-auto"} /> : phase.kind === "compose" ? <AiCreditsNote documentId={documentId} className="mx-3 mb-2.5" /> : null}
       {notice ? (
-        <p className="mx-4 mb-2 text-[12.5px] text-muted" role="status">
+        <p className="mx-4 mb-2 text-subheadline text-muted" role="status">
           {notice}
         </p>
       ) : null}
@@ -575,61 +575,61 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
         <div className="space-y-2 border-t border-line/60 px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Use the result">
             {replaceable ? (
-              <button type="button" onClick={() => accept("replace")} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+              <button type="button" onClick={() => accept("replace")} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
                 <Check size={14} aria-hidden /> Replace
               </button>
             ) : (
-              <button type="button" onClick={primary} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+              <button type="button" onClick={primary} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
                 <CornerDownLeft size={14} aria-hidden /> {target ? "Insert below" : "Insert"}
               </button>
             )}
-            <button type="button" onClick={() => accept("above")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+            <button type="button" onClick={() => accept("above")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
               <ArrowUpToLine size={14} aria-hidden /> Insert above
             </button>
             {replaceable ? (
-              <button type="button" onClick={() => accept("below")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+              <button type="button" onClick={() => accept("below")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
                 <CornerDownLeft size={14} aria-hidden /> Insert below
               </button>
             ) : null}
-            <button type="button" onClick={() => accept("end")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+            <button type="button" onClick={() => accept("end")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
               <ArrowDownToLine size={14} aria-hidden /> Append to note
             </button>
             {isTool ? (
-              <button type="button" disabled={saving} onClick={() => void save("note")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+              <button type="button" disabled={saving} onClick={() => void save("note")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
                 <FilePlus2 size={14} aria-hidden /> Create note
               </button>
             ) : null}
             {schedulable ? (
-              <button type="button" onClick={schedule} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+              <button type="button" onClick={schedule} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
                 <CalendarCheck size={14} aria-hidden /> Add dates and people
               </button>
             ) : null}
             {isPage ? (
               <>
-                <button type="button" disabled={saving} onClick={() => void save("note")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+                <button type="button" disabled={saving} onClick={() => void save("note")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
                   <FilePlus2 size={14} aria-hidden /> Create note
                 </button>
-                <button type="button" disabled={saving} onClick={() => void save("template")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+                <button type="button" disabled={saving} onClick={() => void save("template")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
                   <LayoutTemplate size={14} aria-hidden /> Save as template
                 </button>
               </>
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            <button type="button" onClick={copy} className="ui-btn ui-btn-ghost h-8 px-2.5 text-[12.5px]">
+            <button type="button" onClick={copy} className="ui-btn ui-btn-ghost h-8 px-2.5 text-callout">
               <Copy size={13} aria-hidden /> Copy
             </button>
-            <button type="button" onClick={() => void run(result.last, result.label)} className="ui-btn ui-btn-ghost h-8 px-2.5 text-[12.5px]">
+            <button type="button" onClick={() => void run(result.last, result.label)} className="ui-btn ui-btn-ghost h-8 px-2.5 text-callout">
               <RotateCcw size={13} aria-hidden /> Try again
             </button>
-            <button type="button" onClick={close} className="ui-btn ui-btn-ghost ml-auto h-8 px-2.5 text-[12.5px] text-muted">
+            <button type="button" onClick={close} className="ui-btn ui-btn-ghost ml-auto h-8 px-2.5 text-callout text-muted">
               Discard
             </button>
           </div>
           {!isPage ? (
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Quick changes">
               {REFINES.map((r) => (
-                <button key={r} type="button" onClick={() => refine(r)} className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-[12px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
+                <button key={r} type="button" onClick={() => refine(r)} className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-footnote text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading">
                   {r}
                 </button>
               ))}
@@ -657,7 +657,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
           </ul>
         ) : null
       ) : null}
-      <p className="border-t border-line/60 px-3.5 py-1.5 text-[11px] text-faint">Foli AI can make mistakes. Sent to Google Gemini.</p>
+      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">Foli AI can make mistakes. Sent to Google Gemini.</p>
       <AiAnnouncer text={announce} />
     </div>
   );
@@ -667,7 +667,7 @@ function SuggestionRow({ o, id, active, heading, target, onHover, onChoose }: { 
   return (
     <>
       {heading ? (
-        <li role="presentation" className="px-2.5 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">
+        <li role="presentation" className="px-2.5 pb-1 pt-1.5 text-caption-2 font-semibold uppercase tracking-[0.06em] text-faint">
           {heading}
         </li>
       ) : null}
@@ -677,7 +677,7 @@ function SuggestionRow({ o, id, active, heading, target, onHover, onChoose }: { 
         aria-selected={active}
         onPointerMove={onHover}
         onClick={onChoose}
-        className={`flex cursor-default items-center gap-2.5 rounded-control px-2.5 py-2 text-[13.5px] ${active ? "bg-[var(--glass-hover)] text-heading" : "text-ink"}`}
+        className={`flex cursor-default items-center gap-2.5 rounded-control px-2.5 py-2 text-body ${active ? "bg-[var(--glass-hover)] text-heading" : "text-ink"}`}
       >
         <span aria-hidden className="text-muted">
           {o.icon}

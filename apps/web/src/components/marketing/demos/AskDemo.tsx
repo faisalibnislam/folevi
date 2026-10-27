@@ -128,13 +128,13 @@ export function AskDemo({ compact = false }: { compact?: boolean } = {}) {
     <div
       ref={root}
       onPointerDown={() => setAuto(false)}
-      className={cx("mk-app-pop mx-auto flex max-w-[420px] flex-col overflow-hidden rounded-container text-[13.5px]", compact ? "h-[400px]" : "h-[470px]")}
+      className={cx("mk-app-pop mx-auto flex max-w-[420px] flex-col overflow-hidden rounded-container text-[14px]", compact ? "h-[400px]" : "h-[470px]")}
       aria-label="A working sample of Foli AI. Pick a question or type one."
       role="group"
     >
       <div className="flex items-center gap-2.5 border-b border-(--color-line) px-4 py-3">
         <AiIcon size={20} />
-        <p className="flex-1 text-[14.5px] font-semibold text-(--color-heading)">Foli AI</p>
+        <p className="flex-1 text-[15px] font-semibold text-(--color-heading)">Foli AI</p>
         <button
           type="button"
           onClick={() => {
@@ -153,14 +153,14 @@ export function AskDemo({ compact = false }: { compact?: boolean } = {}) {
         {!turn ? (
           <div className="mk-appear">
             <p className="text-[13px] text-muted">Answers come from your notes, with links to the notes used.</p>
-            <p className="mk-caps mt-4 text-[10.5px]">Try asking</p>
+            <p className="mk-caps mt-4 text-[11px]">Try asking</p>
             <div className="mt-2 flex flex-col items-start gap-1.5">
               {QAS.map((qa) => (
                 <button
                   key={qa.q}
                   type="button"
                   onClick={() => pick(qa)}
-                  className="rounded-chip bg-(--glass-hover) px-3 py-1.5 text-left text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] transition-colors hover:bg-(--glass-active) hover:text-(--color-heading)"
+                  className="rounded-chip bg-(--glass-hover) px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] transition-colors hover:bg-(--glass-active) hover:text-(--color-heading)"
                 >
                   {qa.q}
                 </button>
@@ -173,7 +173,7 @@ export function AskDemo({ compact = false }: { compact?: boolean } = {}) {
             <div className="mk-appear rounded-panel rounded-bl-tiny bg-(--glass-active) px-4 py-3 leading-relaxed text-ink shadow-(--glass-edge)">
               {turn.phase === "reading" ? (
                 <div className="space-y-2 py-0.5">
-                  <p className="text-[12.5px] text-muted">Reading your notes…</p>
+                  <p className="text-[13px] text-muted">Reading your notes…</p>
                   {[90, 72, 84].map((w) => (
                     <div key={w} className="h-2.5 animate-pulse rounded-tiny bg-[linear-gradient(90deg,color-mix(in_oklab,#8b7cf6_22%,transparent),color-mix(in_oklab,#f58ab8_18%,transparent))]" style={{ width: `${w}%` }} />
                   ))}
@@ -186,7 +186,7 @@ export function AskDemo({ compact = false }: { compact?: boolean } = {}) {
                   </p>
                   {turn.phase === "done" && turn.qa.sources.length ? (
                     <div className="mk-appear mt-3 border-t border-(--color-line) pt-2.5">
-                      <p className="mk-caps mb-1.5 text-[10.5px]">Sources</p>
+                      <p className="mk-caps mb-1.5 text-[11px]">Sources</p>
                       <div className="flex flex-wrap gap-1.5">
                         {turn.qa.sources.map((title, n) => (
                           <span key={title} className="inline-flex items-center gap-1.5 rounded-chip bg-(--glass-hover) px-2.5 py-1 text-[12px] text-ink">
@@ -219,7 +219,7 @@ export function AskDemo({ compact = false }: { compact?: boolean } = {}) {
             }}
             placeholder={turn ? "Ask a follow-up…" : "Ask anything, or ask Foli AI to tidy or organize…"}
             autoComplete="off"
-            className="h-[52px] w-full bg-transparent pl-3.5 pr-11 text-[13.5px] text-ink outline-none placeholder:text-faint"
+            className="h-[52px] w-full bg-transparent pl-3.5 pr-11 text-[14px] text-ink outline-none placeholder:text-faint"
           />
           <button
             type="submit"

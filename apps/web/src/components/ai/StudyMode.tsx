@@ -39,7 +39,7 @@ export function StudyMode({ editor, canMake, busy, onMake }: { editor: Editor | 
   const others = useMemo(() => unmarkedToggles(lines), [lines]);
   // The fallback: every toggle in the note, for cards people wrote themselves.
   const useAll = others ? (
-    <button type="button" aria-pressed={all} onClick={() => setAll((a) => !a)} className="ui-btn ui-btn-ghost h-8 px-2.5 text-[12.5px]">
+    <button type="button" aria-pressed={all} onClick={() => setAll((a) => !a)} className="ui-btn ui-btn-ghost h-8 px-2.5 text-callout">
       {all ? "Only cards made by AI" : "Use all toggles"}
     </button>
   ) : null;
@@ -50,10 +50,10 @@ export function StudyMode({ editor, canMake, busy, onMake }: { editor: Editor | 
 
   const make = (
     <div className="flex flex-wrap gap-1.5">
-      <button type="button" disabled={!canMake || busy} onClick={() => onMake("flashcards")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+      <button type="button" disabled={!canMake || busy} onClick={() => onMake("flashcards")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
         <Layers size={14} aria-hidden /> Make flashcards
       </button>
-      <button type="button" disabled={!canMake || busy} onClick={() => onMake("quiz")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-[12.5px]">
+      <button type="button" disabled={!canMake || busy} onClick={() => onMake("quiz")} className="ui-btn ui-btn-secondary h-8 px-2.5 text-callout">
         <CircleHelp size={14} aria-hidden /> Make a quiz
       </button>
     </div>
@@ -62,12 +62,12 @@ export function StudyMode({ editor, canMake, busy, onMake }: { editor: Editor | 
   if (!shown) {
     return (
       <section aria-label="Study" className="space-y-3 rounded-panel bg-[var(--glass-hover)] p-3.5">
-        <p className="text-[13.5px] font-semibold text-heading">Nothing to study yet</p>
-        <p className="text-[12.5px] leading-snug text-muted">Make flashcards or a quiz from this note (or the text you've selected). You'll see them before they're added, then study them here.</p>
+        <p className="text-body font-semibold text-heading">Nothing to study yet</p>
+        <p className="text-subheadline leading-snug text-muted">Make flashcards or a quiz from this note (or the text you've selected). You'll see them before they're added, then study them here.</p>
         {make}
         {others ? (
           <div className="space-y-1.5 border-t border-line/60 pt-3">
-            <p className="text-[12px] text-muted">{others === 1 ? "This note has a toggle you could study as a card." : `This note has ${others} toggles you could study as cards.`}</p>
+            <p className="text-footnote text-muted">{others === 1 ? "This note has a toggle you could study as a card." : `This note has ${others} toggles you could study as cards.`}</p>
             {useAll}
           </div>
         ) : null}
@@ -89,7 +89,7 @@ export function StudyMode({ editor, canMake, busy, onMake }: { editor: Editor | 
       ) : null}
       {shown === "cards" ? <CardsDeck cards={cards} /> : <QuizRun questions={quiz} />}
       <div className="space-y-1.5 border-t border-line/60 pt-3">
-        <p className="text-[12px] text-muted">Make more</p>
+        <p className="text-footnote text-muted">Make more</p>
         {make}
         {useAll}
       </div>
@@ -140,7 +140,7 @@ export function CardsDeck({ cards }: { cards: readonly Flashcard[] }) {
 
   return (
     <div className="space-y-2.5" onKeyDown={onKeyDown}>
-      <div className="flex items-center justify-between text-[12px] text-muted">
+      <div className="flex items-center justify-between text-footnote text-muted">
         <span>
           {known} of {cards.length} known
         </span>
@@ -150,29 +150,29 @@ export function CardsDeck({ cards }: { cards: readonly Flashcard[] }) {
       {card ? (
         <>
           <div role="group" aria-roledescription="flashcard" aria-label={`Card: ${card.question}`} className="rounded-panel bg-[var(--glass-active)] p-3.5 shadow-[var(--glass-edge)]">
-            <p className="text-[14px] font-semibold leading-snug text-heading">{card.question}</p>
+            <p className="text-body font-semibold leading-snug text-heading">{card.question}</p>
             <div id={`${uid}-answer`} className="mt-2 min-h-[1.5rem]">
-              {state.flipped ? <p className="whitespace-pre-wrap text-[13.5px] leading-snug text-ink">{card.answer}</p> : <p className="text-[12.5px] text-faint">Answer hidden</p>}
+              {state.flipped ? <p className="whitespace-pre-wrap text-body leading-snug text-ink">{card.answer}</p> : <p className="text-subheadline text-faint">Answer hidden</p>}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            <button ref={flipRef} type="button" aria-expanded={state.flipped} aria-controls={`${uid}-answer`} onClick={() => dispatch({ type: "flip" })} className="ui-btn ui-btn-secondary h-8 px-3 text-[12.5px]">
+            <button ref={flipRef} type="button" aria-expanded={state.flipped} aria-controls={`${uid}-answer`} onClick={() => dispatch({ type: "flip" })} className="ui-btn ui-btn-secondary h-8 px-3 text-callout">
               {state.flipped ? "Hide answer" : "Show answer"}
             </button>
-            <button type="button" onClick={() => act("again")} className="ui-btn ui-btn-ghost h-8 px-2.5 text-[12.5px]">
+            <button type="button" onClick={() => act("again")} className="ui-btn ui-btn-ghost h-8 px-2.5 text-callout">
               <Undo2 size={14} aria-hidden /> Again
             </button>
-            <button type="button" onClick={() => act("know")} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+            <button type="button" onClick={() => act("know")} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
               <Check size={14} aria-hidden /> Know it
             </button>
           </div>
-          <p className="text-[11.5px] text-faint">Keys: F flips, A again, K know it.</p>
+          <p className="text-footnote text-faint">Keys: F flips, A again, K know it.</p>
         </>
       ) : (
         <div className="space-y-2 rounded-panel bg-[var(--glass-hover)] p-3.5">
-          <p className="text-[13.5px] font-semibold text-heading">You know all {cards.length} cards.</p>
-          {state.again.length ? <p className="text-[12.5px] text-muted">{state.again.length === 1 ? "One needed" : `${state.again.length} needed`} another go.</p> : null}
-          <button type="button" onClick={() => (dispatch({ type: "restart", ids }), setSaid(""))} className="ui-btn ui-btn-secondary h-8 px-3 text-[12.5px]">
+          <p className="text-body font-semibold text-heading">You know all {cards.length} cards.</p>
+          {state.again.length ? <p className="text-subheadline text-muted">{state.again.length === 1 ? "One needed" : `${state.again.length} needed`} another go.</p> : null}
+          <button type="button" onClick={() => (dispatch({ type: "restart", ids }), setSaid(""))} className="ui-btn ui-btn-secondary h-8 px-3 text-callout">
             <RotateCcw size={14} aria-hidden /> Study again
           </button>
         </div>
@@ -204,10 +204,10 @@ export function QuizRun({ questions }: { questions: readonly QuizQuestion[] }) {
   if (state.done) {
     return (
       <div className="space-y-2 rounded-panel bg-[var(--glass-hover)] p-3.5" role="status" aria-live="polite">
-        <p className="text-[13.5px] font-semibold text-heading">
+        <p className="text-body font-semibold text-heading">
           You got {score} of {questions.length} right.
         </p>
-        <button type="button" onClick={() => dispatch({ type: "restart" })} className="ui-btn ui-btn-secondary h-8 px-3 text-[12.5px]">
+        <button type="button" onClick={() => dispatch({ type: "restart" })} className="ui-btn ui-btn-secondary h-8 px-3 text-callout">
           <RotateCcw size={14} aria-hidden /> Try again
         </button>
       </div>
@@ -226,7 +226,7 @@ export function QuizRun({ questions }: { questions: readonly QuizQuestion[] }) {
 
   return (
     <div className="space-y-2.5" onKeyDown={onKeyDown}>
-      <div className="flex items-center justify-between text-[12px] text-muted">
+      <div className="flex items-center justify-between text-footnote text-muted">
         <span>
           Question {state.index + 1} of {questions.length}
         </span>
@@ -234,7 +234,7 @@ export function QuizRun({ questions }: { questions: readonly QuizQuestion[] }) {
       </div>
       <Progress value={state.index + (answered ? 1 : 0)} max={questions.length} label="Quiz progress" />
       <fieldset className="space-y-1.5">
-        <legend className="mb-1.5 text-[14px] font-semibold leading-snug text-heading">{q.question}</legend>
+        <legend className="mb-1.5 text-body font-semibold leading-snug text-heading">{q.question}</legend>
         {q.options.map((o, i) => {
           const right = answered && i === q.answer;
           const wrong = answered && i === picked && i !== q.answer;
@@ -245,7 +245,7 @@ export function QuizRun({ questions }: { questions: readonly QuizQuestion[] }) {
               aria-disabled={answered}
               aria-pressed={picked === i}
               onClick={() => !answered && dispatch({ type: "pick", option: i })}
-              className={`flex w-full items-start gap-2 rounded-control px-2.5 py-2 text-left text-[13px] shadow-[inset_0_0_0_1px_var(--glass-border)] ${right ? "bg-success-soft text-success" : wrong ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-ink"} ${answered ? "cursor-default" : "hover:bg-[var(--glass-active)] hover:text-heading"}`}
+              className={`flex w-full items-start gap-2 rounded-control px-2.5 py-2 text-left text-subheadline shadow-[inset_0_0_0_1px_var(--glass-border)] ${right ? "bg-success-soft text-success" : wrong ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-ink"} ${answered ? "cursor-default" : "hover:bg-[var(--glass-active)] hover:text-heading"}`}
             >
               <span className="font-semibold text-muted">{LETTERS[i]}.</span>
               <span className="min-w-0 flex-1">{o}</span>
@@ -256,18 +256,18 @@ export function QuizRun({ questions }: { questions: readonly QuizQuestion[] }) {
       </fieldset>
       <div role="status" aria-live="polite">
         {answered ? (
-          <p className="text-[12.5px] leading-snug text-ink">
+          <p className="text-subheadline leading-snug text-ink">
             <span className="font-semibold text-heading">{picked === q.answer ? "Right." : `Not quite. It's ${LETTERS[q.answer]}.`}</span>
             {q.explanation ? ` ${q.explanation}` : ""}
           </p>
         ) : null}
       </div>
       {answered ? (
-        <button ref={nextRef} type="button" onClick={() => dispatch({ type: "next", total: questions.length })} className="ui-btn ui-btn-primary h-8 px-3 text-[12.5px]">
+        <button ref={nextRef} type="button" onClick={() => dispatch({ type: "next", total: questions.length })} className="ui-btn ui-btn-primary h-8 px-3 text-callout">
           {state.index + 1 >= questions.length ? "See your score" : "Next question"}
         </button>
       ) : (
-        <p className="text-[11.5px] text-faint">Keys: A to {LETTERS[q.options.length - 1]} (or 1 to {q.options.length}) pick an answer.</p>
+        <p className="text-footnote text-faint">Keys: A to {LETTERS[q.options.length - 1]} (or 1 to {q.options.length}) pick an answer.</p>
       )}
     </div>
   );

@@ -206,14 +206,14 @@ export function ConnectDemo() {
               <p className="flex items-center gap-2 text-[14px] font-medium text-ink">
                 <FileText size={14} aria-hidden="true" className="shrink-0 text-muted" />
                 {page.title}
-                <span className="ml-auto text-[11.5px] font-normal text-muted">
+                <span className="ml-auto text-[12px] font-normal text-muted">
                   {count} backlink{count === 1 ? "" : "s"}
                 </span>
               </p>
               {count > 0 ? (
                 <ul className="mt-2 space-y-1 border-t mk-hair pt-2" aria-label={`Backlinks to ${page.title}`}>
                   {linked ? (
-                    <li key={`${id}-${fresh === id ? "fresh" : "static"}`} className={cx("rounded-tiny px-1.5 py-1 text-[12.5px]", fresh === id && "mk-appear mk-flash")}>
+                    <li key={`${id}-${fresh === id ? "fresh" : "static"}`} className={cx("rounded-tiny px-1.5 py-1 text-[13px]", fresh === id && "mk-appear mk-flash")}>
                       <span className="flex items-center gap-1.5 font-medium text-(--color-heading)">
                         <Icon name="link" size={12} /> {SOURCE}
                       </span>
@@ -221,13 +221,13 @@ export function ConnectDemo() {
                     </li>
                   ) : null}
                   {page.staticBacklinks.map((source) => (
-                    <li key={source} className="flex items-center gap-1.5 px-1.5 py-0.5 text-[12.5px] text-muted">
+                    <li key={source} className="flex items-center gap-1.5 px-1.5 py-0.5 text-[13px] text-muted">
                       <Icon name="link" size={12} /> {source}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-1 text-[12.5px] text-faint">No backlinks yet</p>
+                <p className="mt-1 text-[13px] text-faint">No backlinks yet</p>
               )}
             </li>
           );

@@ -77,7 +77,7 @@ export function ThemesView() {
         description="The themes people pick for their notes: an image, the colours it gives, and the separator, font type and typefaces a note starts with. Drag to set the order in the picker."
         actions={
           canEdit ? (
-            <Link href="/admin/themes/new" className="ui-btn ui-btn-primary h-9 gap-1.5 px-4 text-sm">
+            <Link href="/admin/themes/new" className="ui-btn ui-btn-primary h-9 gap-1.5 px-4 text-callout">
               <Plus size={15} aria-hidden /> New theme
             </Link>
           ) : null
@@ -97,13 +97,13 @@ export function ThemesView() {
             </button>
           ))}
         </div>
-        {filter !== "all" ? <p className="text-[12.5px] text-muted">Reorder from All.</p> : null}
+        {filter !== "all" ? <p className="text-subheadline text-muted">Reorder from All.</p> : null}
       </div>
 
       {shown === null ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-subheadline text-muted">Loading…</p>
       ) : shown.length === 0 ? (
-        <p className="text-sm text-muted">No themes here.</p>
+        <p className="text-subheadline text-muted">No themes here.</p>
       ) : (
         <ol className="grid grid-cols-[repeat(auto-fill,minmax(184px,1fr))] gap-3" aria-label="Note themes, in picker order">
           {shown.map((t) => {
@@ -133,14 +133,14 @@ export function ThemesView() {
                   <span aria-hidden className="block aspect-[16/10] bg-sunken" style={{ background: `url(${thumbOf(t)}) center / cover no-repeat` }} />
                   <span className="flex items-start gap-2 px-3 pb-3 pt-2.5">
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13.5px] font-semibold text-heading">{t.name}</span>
+                      <span className="block truncate text-body font-semibold text-heading">{t.name}</span>
                       <span className="mt-1 flex flex-wrap gap-1">
                         <Badge tone={STATUS_TONE[t.status]}>{STATUS_LABEL[t.status]}</Badge>
                         {t.plan !== "free" ? <Badge tone="strong">{THEME_PLANS.find((p) => p.id === t.plan)?.name}</Badge> : null}
                         {!t.builtIn ? <Badge>Added</Badge> : null}
                       </span>
                     </span>
-                    <span className="pt-0.5 text-[11.5px] tabular-nums text-faint">{index + 1}</span>
+                    <span className="pt-0.5 text-footnote tabular-nums text-faint">{index + 1}</span>
                   </span>
                 </Link>
                 {reorderable ? (

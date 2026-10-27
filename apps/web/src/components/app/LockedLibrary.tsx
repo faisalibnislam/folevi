@@ -69,12 +69,12 @@ export function LockedLibrary({ control, where }: { control: LibraryControl; whe
           <span className="grid h-12 w-12 place-items-center rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] text-heading">
             <Lock size={22} aria-hidden />
           </span>
-          <h1 className="font-display text-[1.9rem] leading-tight text-heading">Enter your library's passphrase</h1>
-          <p className="text-[14px] leading-relaxed text-muted">
+          <h1 className="font-display text-large-title text-heading">Enter your library's passphrase</h1>
+          <p className="text-body leading-relaxed text-muted">
             This library{where ? <> in <span className="font-medium text-ink">{where}</span></> : null} is encrypted. Folevi needs the passphrase once on {thisDevice()} to read it.
           </p>
         </div>
-        <label className="grid gap-1 text-[13px] text-muted" htmlFor={`${id}-p`}>
+        <label className="grid gap-1 text-subheadline text-muted" htmlFor={`${id}-p`}>
           Passphrase
           <input
             id={`${id}-p`}
@@ -88,15 +88,15 @@ export function LockedLibrary({ control, where }: { control: LibraryControl; whe
             }}
             aria-invalid={problem ? true : undefined}
             aria-describedby={problem ? `${id}-problem` : undefined}
-            className="ui-input h-11 rounded-chip px-3 text-[15px] text-ink"
+            className="ui-input h-11 rounded-chip px-3 text-body text-ink"
           />
         </label>
         {problem ? (
-          <p id={`${id}-problem`} role="alert" className="-mt-3 text-[13.5px] text-danger">
+          <p id={`${id}-problem`} role="alert" className="-mt-3 text-body text-danger">
             {problem}
           </p>
         ) : null}
-        <Button type="submit" variant="primary" className="h-11 w-full text-[15px]" disabled={busy}>
+        <Button type="submit" variant="primary" className="h-11 w-full text-body" disabled={busy}>
           {busy ? <Loader2 size={16} aria-hidden className="animate-spin motion-reduce:animate-none" /> : null}
           Unlock
         </Button>
@@ -105,7 +105,7 @@ export function LockedLibrary({ control, where }: { control: LibraryControl; whe
             Forgot the passphrase?
           </Button>
           {help ? (
-            <p className="text-[13px] leading-relaxed text-muted">
+            <p className="text-subheadline leading-relaxed text-muted">
               Nobody can reset it, Folevi included. If another device still opens this library, change the passphrase there in Settings, under Library. Without any device that opens it, the synced copy can't be read.
             </p>
           ) : null}

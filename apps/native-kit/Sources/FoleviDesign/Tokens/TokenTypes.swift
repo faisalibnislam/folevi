@@ -68,6 +68,10 @@ public struct ColorPair: Hashable, Sendable {
 
     public func resolve(_ scheme: ColorScheme) -> RGBA { scheme == .dark ? dark : light }
 
+    /// The pair in the other theme (the web's `.ui-invert`: the Vault's panel is dark in light mode and light in
+    /// dark mode).
+    public var inverted: ColorPair { ColorPair(light: dark, dark: light) }
+
     #if canImport(UIKit)
     public var platformColor: UIColor {
         let light = light.platformColor, dark = dark.platformColor
@@ -84,6 +88,17 @@ public struct ColorPair: Hashable, Sendable {
 
     /// A dynamic SwiftUI colour (light and dark from the trait collection / appearance).
     public var color: Color { Color(platformColor) }
+}
+
+/// One role of the type scale: font size and line height (the CSS line box), in points.
+public struct TypeMetrics: Hashable, Sendable {
+    public let size: CGFloat
+    public let leading: CGFloat
+
+    public init(size: CGFloat, leading: CGFloat) {
+        self.size = size
+        self.leading = leading
+    }
 }
 
 /// One layer of a CSS-like box shadow.

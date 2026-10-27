@@ -100,7 +100,7 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
                 label={i.email}
                 description={`${i.title} · ${ROLE_WORDS[i.role]} · ${i.expired ? "expired" : `expires ${formatRelative(i.expiresAt)}`}`}
                 trailing={
-                  <button type="button" aria-label={`Revoke the invitation to ${i.email}`} onClick={() => setRevoking(i.id)} className="-mr-2 flex h-11 items-center px-2 text-[17px] text-danger outline-none">
+                  <button type="button" aria-label={`Revoke the invitation to ${i.email}`} onClick={() => setRevoking(i.id)} className="-mr-2 flex h-11 items-center px-2 text-body text-danger outline-none">
                     Revoke
                   </button>
                 }
@@ -131,7 +131,7 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
         description={`People outside ${workspace.name} who were given access to single pages (and the pages inside them). Guests don't see anything else here, and they're never billed.`}
       >
         {data === undefined ? (
-          <p className="text-sm text-muted">Loading…</p>
+          <p className="text-subheadline text-muted">Loading…</p>
         ) : data.guests.length === 0 ? (
           <EmptyState size="inline" icon={UserPlus} title="No guests" body="Share a page with someone from its Share button to add one." />
         ) : (
@@ -140,8 +140,8 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
               <li key={g.profileId} className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium">{g.displayName}</span>
-                    <span className="block text-xs text-muted">{g.email}</span>
+                    <span className="block text-subheadline font-medium">{g.displayName}</span>
+                    <span className="block text-footnote text-muted">{g.email}</span>
                   </span>
                   <Button size="sm" variant="quiet" onClick={() => setConfirm({ kind: "member", profileId: g.profileId, name: g.displayName })}>
                     Convert to member
@@ -152,16 +152,16 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
                 </div>
                 <ul className="mt-2 space-y-1.5" aria-label={`Pages ${g.displayName} can open`}>
                   {g.pages.map((p) => (
-                    <li key={p.documentId} className="flex flex-wrap items-center gap-2 text-sm">
+                    <li key={p.documentId} className="flex flex-wrap items-center gap-2 text-subheadline">
                       <AppLink href={`/d/${p.documentId}`} className="min-w-0 flex-1 truncate hover:underline">
                         {p.title}
-                        {p.inTrash ? <span className="ml-1.5 text-xs text-faint">(in Trash)</span> : null}
+                        {p.inTrash ? <span className="ml-1.5 text-footnote text-faint">(in Trash)</span> : null}
                       </AppLink>
                       <Select
                         aria-label={`${g.displayName}'s access to ${p.title}`}
                         value={p.role}
                         onChange={(e) => void act(setAccess({ workspaceId: workspace.id, profileId: g.profileId, documentId: p.documentId, role: e.target.value as ShareRole }), `${g.displayName}: ${ROLE_WORDS[e.target.value as ShareRole]} on ${p.title}`)}
-                        className="h-8 ui-input rounded-chip px-3 text-sm"
+                        className="h-8 ui-input rounded-chip px-3 text-callout"
                       >
                         <option value="viewer">Can view</option>
                         <option value="commenter">Can comment</option>
@@ -176,15 +176,15 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
         )}
         {data?.pendingInvites.length ? (
           <>
-            <h4 className="mb-2 mt-5 text-sm font-semibold">Waiting to accept</h4>
-            <p className="mb-2 text-xs text-muted">Pages shared with addresses that don’t have a Folevi account yet. Nothing is shared until they sign up and accept.</p>
+            <h4 className="mb-2 mt-5 text-subheadline font-semibold">Waiting to accept</h4>
+            <p className="mb-2 text-footnote text-muted">Pages shared with addresses that don’t have a Folevi account yet. Nothing is shared until they sign up and accept.</p>
             <ul className="divide-y divide-line rounded-control border border-line">
               {data.pendingInvites.map((i) => (
-                <li key={i.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm">
+                <li key={i.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-subheadline">
                   <span className="min-w-0 flex-1 truncate">
                     {i.email} <span className="text-muted">· {i.title}</span>
                   </span>
-                  <span className="text-xs text-muted">
+                  <span className="text-footnote text-muted">
                     {ROLE_WORDS[i.role]} · {i.expired ? "expired" : `expires ${formatRelative(i.expiresAt)}`}
                   </span>
                   <Button size="sm" variant="quiet" onClick={() => void act(revokeInvite({ inviteId: i.id }), "Invitation revoked")}>

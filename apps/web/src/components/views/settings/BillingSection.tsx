@@ -55,7 +55,7 @@ export function UsageMeter({ label, pct, invert = false }: { label: string; pct:
 export function Tile({ icon, title, children, wide = false }: { icon: ReactNode; title: string; children: ReactNode; wide?: boolean }) {
   return (
     <div className={`rounded-control bg-[var(--glass-hover)] p-4 ${wide ? "sm:col-span-2" : ""}`}>
-      <p className="flex items-center gap-2 text-[13px] font-semibold text-heading">
+      <p className="flex items-center gap-2 text-subheadline font-semibold text-heading">
         {icon} {title}
       </p>
       {children}
@@ -66,12 +66,12 @@ export function Tile({ icon, title, children, wide = false }: { icon: ReactNode;
 /** One place's AI credits: what's left this period, when it resets, and any extra (bought or given) credits. */
 export function CreditLines({ c }: { c: { available: number; allowance: number; monthlyLeft: number; packCredits: number; resetsAt: number; nextPackExpiry: number | null; trialing: boolean } }) {
   // Free after its trial: no monthly credits and nothing bought to use.
-  if (noFreeAi(c)) return <p className="mt-1 text-sm text-muted">{withoutPurchaseHints(FREE_NO_AI)}</p>;
+  if (noFreeAi(c)) return <p className="mt-1 text-subheadline text-muted">{withoutPurchaseHints(FREE_NO_AI)}</p>;
   return (
     <>
-      <p className="mt-1 text-sm text-muted">{creditCount(c.available)} left</p>
+      <p className="mt-1 text-subheadline text-muted">{creditCount(c.available)} left</p>
       {c.allowance > 0 ? <UsageMeter label="Monthly AI credits left" pct={(c.monthlyLeft / c.allowance) * 100} invert /> : null}
-      <p className="mt-2 text-[12.5px] text-faint">
+      <p className="mt-2 text-subheadline text-faint">
         {c.trialing ? `${c.monthlyLeft.toLocaleString()} of ${c.allowance.toLocaleString()} trial credits left. Your trial ends on ${creditDate(c.resetsAt)}.` : `${c.monthlyLeft.toLocaleString()} of ${c.allowance.toLocaleString()} monthly credits left. Resets on ${creditDate(c.resetsAt)}.`}
         {c.packCredits > 0 ? ` Plus ${plural(c.packCredits, "extra credit")}${c.nextPackExpiry ? `, the first expiring on ${creditDate(c.nextPackExpiry)}` : ""}.` : ""}
       </p>
@@ -114,7 +114,7 @@ export function BillingSection() {
     if (q || credits) replaceEntry(window.location.pathname);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!data) return iphone ? <IosSection><IosText muted>Loading your plan…</IosText></IosSection> : <p className="text-sm text-muted">Loading your plan…</p>;
+  if (!data) return iphone ? <IosSection><IosText muted>Loading your plan…</IosText></IosSection> : <p className="text-subheadline text-muted">Loading your plan…</p>;
   const { entitlements: e, subscription: sub, credits } = data;
   const current = PLANS[e.paidPlan];
   const planLabel = e.trialing ? "Pro AI trial" : current.name;
@@ -187,7 +187,7 @@ export function BillingSection() {
         </IosSection>
         <IosSection header="Storage" footer={storageNote}>
           <div className="relative px-4 py-3">
-            <p className="flex items-baseline justify-between gap-3 text-[17px]">
+            <p className="flex items-baseline justify-between gap-3 text-body">
               <span className="text-ink">Used</span>
               <span className="text-muted">
                 {formatBytes(data.storageUsedBytes)} of {formatBytes(data.storageLimitBytes)}
@@ -209,7 +209,7 @@ export function BillingSection() {
           {c.aiIncluded && !noFreeAi(c) ? (
             <>
               <div className="relative px-4 py-3">
-                <p className="flex items-baseline justify-between gap-3 text-[17px]">
+                <p className="flex items-baseline justify-between gap-3 text-body">
                   <span className="text-ink">Left</span>
                   <span className="text-muted">{creditCount(c.available)}</span>
                 </p>
@@ -240,11 +240,11 @@ export function BillingSection() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="flex flex-wrap items-center gap-2">
-              <span className="ui-display text-[24px]">{planLabel}</span>
-              {e.paid && sub?.interval ? <span className="rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-[12px] text-muted">{sub.interval === "year" ? "Annual" : "Monthly"}</span> : null}
-              {status ? <span className={`rounded-chip px-2 py-0.5 text-[12px] ${status === "Past due" ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-muted"}`}>{status}</span> : null}
+              <span className="ui-display text-title-1">{planLabel}</span>
+              {e.paid && sub?.interval ? <span className="rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-footnote text-muted">{sub.interval === "year" ? "Annual" : "Monthly"}</span> : null}
+              {status ? <span className={`rounded-chip px-2 py-0.5 text-footnote ${status === "Past due" ? "bg-danger-soft text-danger" : "bg-[var(--glass-hover)] text-muted"}`}>{status}</span> : null}
             </p>
-            <p className="mt-1 text-sm text-muted">
+            <p className="mt-1 text-subheadline text-muted">
               {e.trialing
                 ? `${trialDaysLeft} ${trialDaysLeft === 1 ? "day" : "days"} of Pro AI left (until ${dateOnly(e.trialEndsAt!)}). Then you'll move to Free${store ? " unless you choose a plan" : ""}.`
                 : e.paid && sub?.status === "past_due"
@@ -284,31 +284,31 @@ export function BillingSection() {
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <Tile icon={<HardDrive size={15} aria-hidden />} title="Storage">
-            <p className="mt-1 text-sm text-muted">
+            <p className="mt-1 text-subheadline text-muted">
               {formatBytes(data.storageUsedBytes)} of {formatBytes(data.storageLimitBytes)} used
             </p>
             <UsageMeter label="Storage used" pct={usedPct} />
-            <p className="mt-2 text-[12.5px] text-faint">{storageNote}</p>
+            <p className="mt-2 text-subheadline text-faint">{storageNote}</p>
           </Tile>
           <Tile icon={<AiIcon size={15} aria-hidden className="text-[#7c6cf0]" />} title="AI credits">
             {credits.aiIncluded ? (
               <CreditLines c={credits} />
             ) : (
-              <p className="mt-1 text-sm text-muted">Core doesn&apos;t include AI, so nothing in your notes is sent to an AI model. Pro and Pro AI come with AI credits every month.</p>
+              <p className="mt-1 text-subheadline text-muted">Core doesn&apos;t include AI, so nothing in your notes is sent to an AI model. Pro and Pro AI come with AI credits every month.</p>
             )}
           </Tile>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-control bg-[var(--glass-hover)] p-4 sm:col-span-2">
             <div className="min-w-0 flex-1">
-              <p className="flex items-center gap-2 text-[13px] font-semibold text-heading">
+              <p className="flex items-center gap-2 text-subheadline font-semibold text-heading">
                 <MonitorSmartphone size={15} aria-hidden /> Devices
               </p>
-              <p className="mt-1 text-sm text-muted">
+              <p className="mt-1 text-subheadline text-muted">
                 {e.devices === null
                   ? `Unlimited${e.trialing ? " during your trial" : ""} · signed in on ${plural(data.devicesActive, "device")}`
                   : `${Math.min(data.devicesActive, e.devices)} of ${e.devices} devices in use${data.devicesActive > e.devices ? ` · ${data.devicesActive - e.devices} waiting` : ""}`}
               </p>
             </div>
-            <AppLink href="/settings/devices" className="text-[13px] font-medium text-heading underline decoration-line-strong underline-offset-2 hover:decoration-heading">
+            <AppLink href="/settings/devices" className="text-subheadline font-medium text-heading underline decoration-line-strong underline-offset-2 hover:decoration-heading">
               Manage devices
             </AppLink>
           </div>
@@ -324,7 +324,7 @@ export function BillingSection() {
               </button>
               <button type="button" aria-pressed={interval === "year"} onClick={() => setInterval("year")} className="h-8 whitespace-nowrap !px-3.5">
                 Yearly
-                <span className="whitespace-nowrap rounded-chip bg-[color-mix(in_oklab,#2f9e62_14%,transparent)] px-2 py-0.5 text-[11px] font-semibold leading-none text-[#1f7a4a] dark:text-[#6fd39b]">Save up to {BEST_YEARLY_SAVING}%</span>
+                <span className="whitespace-nowrap rounded-chip bg-[color-mix(in_oklab,#2f9e62_14%,transparent)] px-2 py-0.5 text-footnote font-semibold leading-none text-[#1f7a4a] dark:text-[#6fd39b]">Save up to {BEST_YEARLY_SAVING}%</span>
               </button>
             </div>
             <PlanRows>
@@ -365,7 +365,7 @@ export function BillingSection() {
                             Switch to Free
                           </Button>
                         ) : polarLive && !sub?.cancelAtPeriodEnd ? (
-                          <p className="text-center text-[12.5px] text-muted">To switch to Free, cancel in Manage billing.</p>
+                          <p className="text-center text-subheadline text-muted">To switch to Free, cancel in Manage billing.</p>
                         ) : null
                       ) : canChoose ? (
                         <Button variant={highlight ? "primary" : "secondary"} className="w-full" onClick={() => void choose(id)} aria-busy={busy === id || undefined} disabled={busy !== null && busy !== id}>
@@ -381,7 +381,7 @@ export function BillingSection() {
                 );
               })}
             </PlanRows>
-            <p className="mt-3 text-[12.5px] text-faint">
+            <p className="mt-3 text-subheadline text-faint">
               {data.checkoutAvailable
                 ? "Payments are handled by Polar. Any tax is added at checkout. "
                 : data.testPurchases
@@ -393,24 +393,24 @@ export function BillingSection() {
 
           <Card title="AI credits" description={`Monthly credits reset each billing period. Extra credits you buy last ${PACK_VALID_MONTHS} months and are used after the monthly ones.`}>
             {!accounts ? (
-              <p className="text-sm text-muted">Loading your AI credits…</p>
+              <p className="text-subheadline text-muted">Loading your AI credits…</p>
             ) : (
               <ul className="divide-y divide-line/70">
                 {accounts.accounts.map((a) => (
                   <li key={a.workspaceId ?? "personal"} aria-label={`AI credits: ${a.name}`} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0">
                     <div className="min-w-0 flex-1 basis-64">
-                      <p className="text-[14px] font-semibold text-heading">
+                      <p className="text-body font-semibold text-heading">
                         {a.name} <span className="font-normal text-muted">· {a.plan}</span>
                       </p>
                       {a.aiIncluded && noFreeAi(a) ? (
-                        <p className="mt-0.5 text-sm text-muted">{FREE_NO_AI}</p>
+                        <p className="mt-0.5 text-subheadline text-muted">{FREE_NO_AI}</p>
                       ) : a.aiIncluded ? (
-                        <p className="mt-0.5 text-sm text-muted">
+                        <p className="mt-0.5 text-subheadline text-muted">
                           {creditCount(a.available)} left · {a.monthlyLeft.toLocaleString()} of {a.allowance.toLocaleString()} {a.trialing ? `trial credits, trial ends on ${creditDate(a.resetsAt)}` : `monthly credits, resets on ${creditDate(a.resetsAt)}`}
                           {a.packCredits > 0 ? ` · ${plural(a.packCredits, "extra credit")}${a.nextPackExpiry ? `, the first expiring on ${creditDate(a.nextPackExpiry)}` : ""}` : ""}
                         </p>
                       ) : (
-                        <p className="mt-0.5 text-sm text-muted">Not included in Core. Nothing is sent to an AI model.</p>
+                        <p className="mt-0.5 text-subheadline text-muted">Not included in Core. Nothing is sent to an AI model.</p>
                       )}
                     </div>
                     {a.canBuy ? (
@@ -418,21 +418,21 @@ export function BillingSection() {
                         Buy credits
                       </Button>
                     ) : a.kind === "personal" && a.aiIncluded && !noFreeAi(a) ? (
-                      <span className="text-[12.5px] text-faint">Extra credits come with Pro and Pro AI.</span>
+                      <span className="text-subheadline text-faint">Extra credits come with Pro and Pro AI.</span>
                     ) : null}
                   </li>
                 ))}
               </ul>
             )}
-            <p className="mt-4 text-[12.5px] text-faint">In free workspaces, and on pages shared with you as a guest, AI uses your Personal credits.</p>
+            <p className="mt-4 text-subheadline text-faint">In free workspaces, and on pages shared with you as a guest, AI uses your Personal credits.</p>
           </Card>
           {buyFor ? <BuyCreditsDialog open onClose={() => setBuyFor(null)} target={buyFor.target} name={buyFor.name} /> : null}
 
           <Card title="Billing history">
             {data.payments.length ? (
-              <table className="w-full text-left text-sm">
+              <table className="w-full text-left text-subheadline">
                 <thead>
-                  <tr className="text-[12px] text-muted">
+                  <tr className="text-footnote text-muted">
                     <th className="pb-2 font-medium">Date</th>
                     <th className="pb-2 font-medium">Plan</th>
                     <th className="pb-2 text-right font-medium">Amount</th>

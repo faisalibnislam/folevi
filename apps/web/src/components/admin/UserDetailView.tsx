@@ -19,7 +19,7 @@ import { VerificationBadges } from "./UsersView";
 import { Badge, Callout, DataTable, DocTitle, EmptyRow, ErrorNotice, KeyValues, LoadingRows, Mono, ShortId, PageHeader, Panel, StatusBadge, Time, humanize, recordLink, td, tdNum, th, thNum } from "./ui";
 
 type UserDetail = FunctionReturnType<typeof api.admin.viewUser>;
-type ActionKind = "suspend" | "revoke" | "verify" | "reset" | "role" | "delete";
+type ActionKind = "suspend" | "revoke" | "verify" | "reset" | "role" | "delete" | "liftAiPause";
 
 export function UserDetailView({ id }: { id: string }) {
   const admin = useAdmin();
@@ -114,6 +114,21 @@ export function UserDetailView({ id }: { id: string }) {
         </div>
       ) : null}
 
+      {user.aiSafety.pausedUntil ? (
+        <div className="mb-4">
+          <Callout tone="warning" title="Foli AI paused">
+            After several harmful requests in an hour, Foli AI is paused for this person until {formatDateTime(user.aiSafety.pausedUntil)}.
+            {admin.role === "super_admin" ? (
+              <span className="mt-2 block">
+                <Button size="sm" onClick={() => setAction("liftAiPause")}>
+                  Lift pause…
+                </Button>
+              </span>
+            ) : null}
+          </Callout>
+        </div>
+      ) : null}
+
       <UserActions user={user} role={admin.role} canManage={admin.can("users.manage")} selfId={admin.id} onAction={setAction} />
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[3fr_2fr]">
@@ -138,10 +153,12 @@ export function UserDetailView({ id }: { id: string }) {
               { label: "Personal documents", value: user.usage.personalDocuments.toLocaleString() },
               { label: "All documents", value: user.usage.documents.toLocaleString() },
               { label: "Personal storage", value: formatBytes(user.usage.storageBytes) },
+              { label: "Harmful AI refusals, 30 days", value: user.aiSafety.refusals.harmful.toLocaleString() },
+              { label: "Other AI refusals, 30 days", value: (user.aiSafety.refusals.crisis + user.aiSafety.refusals.other + user.aiSafety.refusals.filtered).toLocaleString() },
             ].map((s) => (
               <div key={s.label} className="rounded-control bg-[var(--glass-hover)] px-3 py-2.5">
-                <dt className="text-[12px] font-medium text-muted">{s.label}</dt>
-                <dd className="mt-0.5 ui-display text-[24px] leading-tight tabular-nums">{s.value}</dd>
+                <dt className="text-footnote font-medium text-muted">{s.label}</dt>
+                <dd className="mt-0.5 ui-display text-title-1 leading-tight tabular-nums">{s.value}</dd>
               </div>
             ))}
           </dl>
@@ -351,7 +368,7 @@ function UserActions({ user, role, canManage, selfId, onAction }: { user: UserDe
           <Trash2 size={14} aria-hidden /> Schedule deletion…
         </Button>
       </div>
-      {notes.length ? <p className="mt-2 px-0.5 text-xs text-muted">{notes.join(" ")}</p> : null}
+      {notes.length ? <p className="mt-2 px-0.5 text-footnote text-muted">{notes.join(" ")}</p> : null}
     </section>
   );
 }
@@ -363,6 +380,7 @@ function UserActionDialogs({ user, action, onClose, onDone }: { user: UserDetail
   const reset = useMutation(api.admin.initiatePasswordReset);
   const setRole = useMutation(api.admin.setPlatformRole);
   const schedule = useMutation(api.admin.scheduleAccountDeletion);
+  const liftAiPause = useMutation(api.admin.liftAiPause);
   const suspended = user.status === "suspended";
   const confirmEmail = { label: <>Type <strong className="break-all">{user.email}</strong> to confirm</>, expected: user.email, caseInsensitive: true };
   const done = (msg: string) => {
@@ -460,6 +478,17 @@ function UserActionDialogs({ user, action, onClose, onDone }: { user: UserDetail
           <Callout tone="warning">This person can't be given a role until their email is verified and TOTP is set up. Removing a role is always allowed.</Callout>
         ) : null}
       </ActionDialog>
+      <ActionDialog
+        open={action === "liftAiPause"}
+        onClose={onClose}
+        title="Lift the Foli AI pause?"
+        description="Foli AI works for this person again straight away. Their refusal counts stay; a new pattern of harmful requests pauses it again."
+        confirmLabel="Lift pause"
+        onSubmit={async ({ reason, meta }) => {
+          await liftAiPause({ profileId: user.id, reason, ...meta });
+          return done("Foli AI pause lifted");
+        }}
+      />
       <ActionDialog
         open={action === "delete"}
         onClose={onClose}

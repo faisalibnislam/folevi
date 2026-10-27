@@ -1,0 +1,350 @@
+"use client";
+// Files & Notes (docs/VAULT_PLAN.md §5): folders (names opened on this device), files encrypted here before upload and
+// decrypted here after download (the server logs each download), and notes (plain text for now, each save kept as a
+// version; the rich editor comes later).
+import { useMutation, useQuery } from "convex/react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, FilePlus2, FileText, FolderPlus, LayoutGrid, Rows3, Upload } from "lucide-react";
+import { api } from "@/lib/convex/api";
+import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { FolderGlyph } from "@/components/ui/FolderGlyph";
+import { PromptDialog } from "@/components/ui/PromptDialog";
+import { useToast, errorMessage } from "@/components/ui/Toast";
+import { formatRelative } from "@/lib/format";
+import { useLocalStorage } from "@/lib/hooks/useEngine";
+import { vaultSessions } from "@/lib/vault/keys";
+import { newItemId } from "@/lib/vault/items";
+import { openFile, openFileSummary, openFolderName, openNote, openNoteSummary, sealFile, sealFolderName, sealNote } from "@/lib/vault/files";
+import { useRecordEvent } from "./useVault";
+import { NoteEditor } from "./NoteEditor";
+import { blocksFromVaultDoc, writeRegularNote } from "./moveNote";
+import { ShareDialog } from "./ShareDialog";
+import { FilePreview } from "./FilePreview";
+import { useAppState } from "@/lib/app/state";
+import { useAppRouter } from "@/lib/app/router";
+
+const keysOf = (vaultId: string) => (version: number) => vaultSessions().keys(vaultId, version);
+const size = (n: number) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
+
+type Entry = { id: string; kind: "note" | "file"; title: string; detail: string; updatedAt: number; row: { id: string; keyVersion: number; wrappedKey: ArrayBuffer; sealedSummary: ArrayBuffer; revision: number } };
+
+export function Files({ vaultId, role }: { vaultId: string; role: string }) {
+  const [folderId, setFolderId] = useState<string | null>(null);
+  const folders = useQuery(api.vaultFiles.folders, { vaultId });
+  const items = useQuery(api.vaultItems.list, { vaultId, section: "files", folderId });
+  const createFolder = useMutation(api.vaultFiles.createFolder);
+  const createNote = useMutation(api.vaultFiles.createNote);
+  const uploadUrl = useMutation(api.vaultFiles.uploadUrl);
+  const saveFile = useMutation(api.vaultFiles.saveFile);
+  const fileUrl = useMutation(api.vaultFiles.fileUrl);
+  const record = useRecordEvent(vaultId);
+  const toast = useToast();
+  const input = useRef<HTMLInputElement>(null);
+  const [names, setNames] = useState<Record<string, string>>({});
+  const [entries, setEntries] = useState<Entry[] | undefined>(undefined);
+  const [naming, setNaming] = useState<"folder" | "note" | null>(null);
+  const [note, setNote] = useState<Entry | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [previewing, setPreviewing] = useState<string | null>(null);
+  // Grid (cards) or Lines (rows), for folders and files alike; remembered on this device.
+  const [layout, setLayout] = useLocalStorage<"grid" | "list">("folevi:vault-files-layout", "grid");
+
+  useEffect(() => {
+    if (!folders) return;
+    void Promise.all(folders.map(async (f) => [f.id, await openFolderName(vaultId, f.id, f.sealedName, keysOf(vaultId), f.keyVersion).catch(() => "Can't open")] as const)).then((r) => setNames(Object.fromEntries(r)));
+  }, [folders, vaultId]);
+  useEffect(() => {
+    if (!items) return;
+    void Promise.all(
+      items.items.map(async (row): Promise<Entry> => {
+        if (row.kind === "file") {
+          const s = await openFileSummary(vaultId, row, keysOf(vaultId)).catch(() => ({ title: "Can't open", size: 0, mime: "" }));
+          return { id: row.id, kind: "file", title: s.title, detail: size(row.size ?? s.size), updatedAt: row.updatedAt, row };
+        }
+        const s = await openNoteSummary(vaultId, row, keysOf(vaultId)).catch(() => ({ title: "Can't open", excerpt: "" }));
+        return { id: row.id, kind: "note", title: s.title, detail: s.excerpt, updatedAt: row.updatedAt, row };
+      }),
+    ).then(setEntries);
+  }, [items, vaultId]);
+
+  const here = (folders ?? []).filter((f) => f.parentId === folderId);
+  const parent = folderId ? ((folders ?? []).find((f) => f.id === folderId)?.parentId ?? null) : null;
+  const s = vaultSessions();
+
+  const upload = async (file: File) => {
+    setBusy(true);
+    try {
+      const id = newItemId();
+      const { ciphertext, item } = await sealFile(vaultId, id, s.currentVersion(vaultId)!, s.keys(vaultId), { name: file.name, type: file.type, bytes: new Uint8Array(await file.arrayBuffer()) });
+      const res = await fetch(await uploadUrl({ vaultId }), { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: new Blob([ciphertext.slice()]) });
+      if (!res.ok) throw new Error("The upload didn't go through. Try again.");
+      const { storageId } = (await res.json()) as { storageId: string };
+      await saveFile({ vaultId, itemId: id, ...(folderId ? { folderId } : {}), storageId: storageId as never, size: ciphertext.length, item, client: s.info(vaultId) });
+      toast.show(`${file.name} added to the Vault`, { tone: "success" });
+    } catch (e) {
+      toast.show(errorMessage(e), { tone: "error" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const download = async (e: Entry) => {
+    try {
+      const r = await fileUrl({ vaultId, itemId: e.id, purpose: "download", client: s.info(vaultId) });
+      const bytes = new Uint8Array(await (await fetch(r.url)).arrayBuffer());
+      const f = await openFile(vaultId, { id: e.id, keyVersion: r.keyVersion, wrappedKey: r.wrappedKey, sealed: r.sealed }, bytes, keysOf(vaultId));
+      const url = URL.createObjectURL(new Blob([f.bytes.slice()], { type: f.mime }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = f.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch (err) {
+      toast.show(errorMessage(err), { tone: "error" });
+    }
+  };
+
+  return (
+    <section aria-label="Files and notes">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {folderId ? (
+          <Button variant="quiet" onClick={() => setFolderId(parent)}>
+            <ChevronLeft size={14} aria-hidden /> {parent ? names[parent] : "Files & Notes"}
+          </Button>
+        ) : null}
+        <h3 className="mr-auto truncate text-headline font-semibold text-heading">{folderId ? names[folderId] : "Files & Notes"}</h3>
+        <div className="ui-seg ui-well" role="group" aria-label="Layout">
+          <button type="button" aria-pressed={layout === "grid"} aria-label="Grid" title="Grid" onClick={() => setLayout("grid")}>
+            <LayoutGrid size={15} aria-hidden />
+          </button>
+          <button type="button" aria-pressed={layout === "list"} aria-label="Lines" title="Lines" onClick={() => setLayout("list")}>
+            <Rows3 size={15} aria-hidden />
+          </button>
+        </div>
+        <Button variant="secondary" onClick={() => setNaming("folder")}>
+          <FolderPlus size={14} aria-hidden /> Folder
+        </Button>
+        <Button variant="secondary" onClick={() => setNaming("note")}>
+          <FilePlus2 size={14} aria-hidden /> Note
+        </Button>
+        <Button variant="primary" disabled={busy} onClick={() => input.current?.click()}>
+          <Upload size={14} aria-hidden /> {busy ? "Encrypting…" : "Upload"}
+        </Button>
+        <input ref={input} type="file" hidden onChange={(e) => (e.target.files?.[0] ? void upload(e.target.files[0]) : undefined, (e.target.value = ""))} />
+      </div>
+      {here.length ? (
+        layout === "grid" ? (
+          <ul className="mb-4 grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-2">
+            {here.map((f) => (
+              <li key={f.id}>
+                <button type="button" onClick={() => (setFolderId(f.id), record("folder.open"))} className="flex w-full items-center gap-2 rounded-control ui-card px-3 py-2.5 text-left hover:bg-surface">
+                  <FolderGlyph color={null} size={17} />
+                  <span className="truncate text-subheadline font-medium text-ink">{names[f.id] ?? "…"}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <ul className="mb-4 divide-y divide-line overflow-hidden ui-card rounded-control">
+            {here.map((f) => (
+              <li key={f.id}>
+                <button type="button" onClick={() => (setFolderId(f.id), record("folder.open"))} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface">
+                  <FolderGlyph color={null} size={15} />
+                  <span className="min-w-0 flex-1 truncate text-subheadline font-medium text-ink">{names[f.id] ?? "…"}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )
+      ) : null}
+      {entries === undefined ? (
+        <div className="h-24 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" aria-busy />
+      ) : !entries.length ? (
+        here.length ? null : <EmptyState icon={FileText} title="Nothing here yet" body="Upload files of any kind, or write a note. They're encrypted on this device before they leave it." />
+      ) : layout === "grid" ? (
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-2">
+          {entries.map((e) => (
+            <li key={e.id}>
+              <button type="button" onClick={() => (e.kind === "file" ? setPreviewing(e.id) : setNote(e))} className="flex h-full w-full flex-col gap-2 rounded-control ui-card p-3 text-left hover:bg-surface">
+                {e.kind === "file" ? <Upload size={17} aria-hidden className="text-muted" /> : <FileText size={17} aria-hidden className="text-muted" />}
+                <span className="min-w-0">
+                  <span className="block truncate text-subheadline font-medium text-ink">{e.title}</span>
+                  <span className="block truncate text-footnote text-muted">{[e.detail, formatRelative(e.updatedAt)].filter(Boolean).join(" · ")}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
+          {entries.map((e) => (
+            <li key={e.id}>
+              <button type="button" onClick={() => (e.kind === "file" ? setPreviewing(e.id) : setNote(e))} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface">
+                {e.kind === "file" ? <Upload size={15} aria-hidden className="flex-none text-muted" /> : <FileText size={15} aria-hidden className="flex-none text-muted" />}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-subheadline font-medium text-ink">{e.title}</span>
+                  <span className="block truncate text-footnote text-muted">{e.detail}</span>
+                </span>
+                <span className="text-footnote text-faint">{formatRelative(e.updatedAt)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <PromptDialog
+        open={naming !== null}
+        title={naming === "folder" ? "New folder" : "New note"}
+        label={naming === "folder" ? "Folder name" : "Title"}
+        confirmLabel="Create"
+        onClose={() => setNaming(null)}
+        onSubmit={async (name) => {
+          try {
+            const version = s.currentVersion(vaultId)!;
+            const id = newItemId();
+            if (naming === "folder") await createFolder({ vaultId, folderId: id, ...(folderId ? { parentId: folderId } : {}), sealedName: await sealFolderName(vaultId, id, version, s.keys(vaultId), name), keyVersion: version, client: s.info(vaultId) });
+            else await createNote({ vaultId, itemId: id, ...(folderId ? { folderId } : {}), item: await sealNote(vaultId, id, version, s.keys(vaultId), name, { type: "doc", content: [{ type: "paragraph" }] }, ""), client: s.info(vaultId) });
+          } catch (e) {
+            toast.show(errorMessage(e), { tone: "error" });
+          }
+        }}
+      />
+      {previewing && entries ? (
+        <FilePreview
+          vaultId={vaultId}
+          files={entries.filter((e) => e.kind === "file")}
+          startId={previewing}
+          onClose={() => setPreviewing(null)}
+          onDownload={(f) => void download(entries.find((e) => e.id === f.id)!)}
+        />
+      ) : null}
+      {note ? <NoteDialog vaultId={vaultId} entry={note} custodian={role !== "member"} onClose={() => setNote(null)} /> : null}
+    </section>
+  );
+}
+
+function NoteDialog({ vaultId, entry, custodian, onClose }: { vaultId: string; entry: Entry; custodian: boolean; onClose: () => void }) {
+  const open = useMutation(api.vaultItems.open);
+  const save = useMutation(api.vaultFiles.saveNote);
+  const moveOut = useMutation(api.vaultFiles.moveOut);
+  const { engine } = useAppState();
+  const { navigate } = useAppRouter();
+  const toast = useToast();
+  const [movingOut, setMovingOut] = useState<"ask" | "busy" | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [doc, setDoc] = useState<unknown>(undefined);
+  const [edited, setEdited] = useState<{ doc: unknown; text: string } | null>(null);
+  const [revision, setRevision] = useState(entry.row.revision);
+  const [canChange, setCanChange] = useState(false);
+  // The note's item key as opened, kept across saves so whoever it's shared with still opens it.
+  const [wrap, setWrap] = useState<{ keyVersion: number; wrappedKey: ArrayBuffer } | null>(null);
+  useEffect(() => {
+    void open({ vaultId, itemId: entry.id, client: vaultSessions().info(vaultId) }).then(async (r) => {
+      const c = await openNote(vaultId, { id: r.id, keyVersion: r.keyVersion, wrappedKey: r.wrappedKey, sealed: r.sealed }, keysOf(vaultId));
+      setDoc(c.doc ?? null);
+      setWrap({ keyVersion: r.keyVersion, wrappedKey: r.wrappedKey });
+      setRevision(r.revision);
+      setCanChange(r.canChange);
+    });
+  }, [open, vaultId, entry.id]);
+  const s = vaultSessions();
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={entry.title}
+      size="lg"
+      footer={
+        <>
+          {custodian && engine && doc !== undefined ? (
+            <Button variant="quiet" className="mr-auto" onClick={() => setMovingOut("ask")}>
+              Move out of the Vault…
+            </Button>
+          ) : null}
+          {canChange && doc !== undefined ? (
+            <Button variant="secondary" onClick={() => setSharing(true)}>
+              Share
+            </Button>
+          ) : null}
+          <Button onClick={onClose}>Close</Button>
+          {canChange ? (
+            <Button
+              variant="primary"
+              disabled={!edited}
+              onClick={() =>
+                void (async () => {
+                  if (!edited) return;
+                  const version = s.currentVersion(vaultId)!;
+                  const r = await save({ vaultId, itemId: entry.id, baseRevision: revision, item: await sealNote(vaultId, entry.id, version, s.keys(vaultId), entry.title, edited.doc, edited.text.replace(/\s+/g, " ").trim().slice(0, 160), wrap ? { ...wrap, keys: s.keys(vaultId, wrap.keyVersion) } : undefined), client: s.info(vaultId) });
+                  setRevision(r.revision);
+                  setEdited(null);
+                  toast.show("Saved");
+                })().catch((e) => toast.show(errorMessage(e), { tone: "error" }))
+              }
+            >
+              Save
+            </Button>
+          ) : null}
+        </>
+      }
+    >
+      {doc === undefined ? <div className="h-40 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" aria-busy /> : <NoteEditor initial={doc} editable={canChange} onChange={(d, text) => setEdited({ doc: d, text })} />}
+      {sharing ? (
+        <ShareDialog
+          vaultId={vaultId}
+          row={wrap ? { id: entry.id, ...wrap } : entry.row}
+          title={entry.title}
+          allowEdit
+          rekey={async () => {
+            const version = s.currentVersion(vaultId)!;
+            const current = edited ?? { doc, text: entry.detail };
+            const item = await sealNote(vaultId, entry.id, version, s.keys(vaultId), entry.title, current.doc, current.text.slice(0, 160));
+            const r = await save({ vaultId, itemId: entry.id, baseRevision: revision, item, client: s.info(vaultId) });
+            setRevision(r.revision);
+            setWrap({ keyVersion: item.keyVersion, wrappedKey: item.wrappedKey });
+          }}
+          onClose={() => setSharing(false)}
+        />
+      ) : null}
+      {movingOut ? (
+        <Dialog
+          open
+          onClose={() => setMovingOut(null)}
+          title="Move out of the Vault?"
+          size="sm"
+          footer={
+            <>
+              <Button onClick={() => setMovingOut(null)}>Cancel</Button>
+              <Button
+                variant="primary"
+                disabled={movingOut === "busy"}
+                onClick={() =>
+                  void (async () => {
+                    if (!engine) return;
+                    setMovingOut("busy");
+                    try {
+                      // The regular note first, so nothing is lost if the Vault side fails.
+                      const to = await writeRegularNote(engine, entry.title, blocksFromVaultDoc(edited?.doc ?? doc));
+                      await moveOut({ vaultId, itemId: entry.id, toDocumentId: to, client: s.info(vaultId) });
+                      toast.show("Moved out of the Vault");
+                      onClose();
+                      navigate(`/d/${to}`);
+                    } catch (e) {
+                      setMovingOut("ask");
+                      toast.show(errorMessage(e), { tone: "error" });
+                    }
+                  })()
+                }
+              >
+                {movingOut === "busy" ? "Moving…" : "Move out"}
+              </Button>
+            </>
+          }
+        >
+          <p className="pb-2 text-subheadline text-muted">It becomes a regular note here, which anyone who can see this place&apos;s notes may open, and search and Foli AI can read. Its Vault history goes; the Vault&apos;s log keeps that it moved and where.</p>
+        </Dialog>
+      ) : null}
+    </Dialog>
+  );
+}

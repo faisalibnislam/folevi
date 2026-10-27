@@ -61,7 +61,7 @@
 .fb-slide-content > .fb-editor { padding-bottom: 0 !important; }
 .fb-slide-content > .fb-editor > .fb-heading:first-child { margin-top: 0; }
 /* The tab strip at presenting size. */
-.fb-slide .fb-tab-button { font-size: 20px; min-height: 48px; padding: 0 18px; }
+.fb-slide .fb-tab-button { font-size: 20px; min-height: 48px; padding: 0 20px; }
 .fb-slide-title {
   margin: 0 0 0.5em;
   font-family: var(--editor-font);
@@ -83,7 +83,7 @@
   border-radius: var(--radius-panel);
   background: rgb(255 255 255 / 0.08);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
-  font: 500 13px/1 var(--font-sans);
+  font: 500 var(--type-subheadline)/1 var(--font-sans);
   transition: opacity 240ms;
 }
 .fb-present.is-idle .fb-present-bar { opacity: 0.18; }
@@ -108,7 +108,7 @@
 .fb-present-btn:focus-visible { outline: 2px solid #ffffff; outline-offset: 1px; }
 .fb-present-count { min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; color: rgb(255 255 255 / 0.85); }
 .fb-present-sep { width: 1px; height: 18px; margin: 0 4px; background: rgb(255 255 255 / 0.16); }
-.fb-present-hint { margin: 0 auto 8px; font: 400 13px/1.3 var(--font-sans); color: rgb(255 255 255 / 0.6); text-align: center; }
+.fb-present-hint { margin: 0 auto 8px; font: 400 var(--type-subheadline)/1.3 var(--font-sans); color: rgb(255 255 255 / 0.6); text-align: center; }
 
 @media (pointer: coarse) {
   .fb-present-btn { min-width: 44px; height: 44px; }

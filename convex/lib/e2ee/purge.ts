@@ -53,6 +53,8 @@ export function genericNotificationTitle(kind: Doc<"notifications">["kind"], act
       return `${who} invited you`;
     case "system":
       return "A reminder is due";
+    case "vault":
+      return `${who} changed something in the Vault`;
   }
 }
 

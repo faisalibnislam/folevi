@@ -65,7 +65,7 @@ export function TemplateSheet({ blocks, topHeading = 3, title, className, compac
           <p className={cx("mk-note-title text-(--n-heading)", compact ? "text-[22px]" : "text-[30px] sm:text-[38px]")}>{title}</p>
         </div>
       ) : null}
-      <div className={cx("space-y-2", compact ? "px-5 pb-6 pt-2 text-[12.5px] leading-[1.55]" : "px-5 pb-10 pt-3 text-[14.5px] leading-[1.65] sm:px-12 sm:pb-14 sm:text-[15.5px]")}>
+      <div className={cx("space-y-2", compact ? "px-5 pb-6 pt-2 text-[13px] leading-[1.55]" : "px-5 pb-10 pt-3 text-[15px] leading-[1.65] sm:px-12 sm:pb-14 sm:text-[16px]")}>
         <Blocks blocks={blocks} depth={0} top={top} topHeading={topHeading} compact={compact} />
       </div>
     </article>
@@ -97,7 +97,7 @@ function Block({ block, depth, index, top, topHeading, compact }: { block: Block
       const tag = Math.min(6, topHeading + (level - top));
       const Tag = `h${tag}` as "h2" | "h3" | "h4" | "h5";
       return (
-        <Tag className={cx("mk-note-h", level <= top ? (compact ? "pt-2 text-[16px]" : "pt-4 text-[21px] sm:text-[23px]") : compact ? "pt-1.5 text-[14px]" : "pt-3 text-[17.5px]")} style={indent}>
+        <Tag className={cx("mk-note-h", level <= top ? (compact ? "pt-2 text-[16px]" : "pt-4 text-[21px] sm:text-[23px]") : compact ? "pt-1.5 text-[14px]" : "pt-3 text-[18px]")} style={indent}>
           <Inline md={block.md} />
         </Tag>
       );
@@ -158,7 +158,7 @@ function Block({ block, depth, index, top, topHeading, compact }: { block: Block
       const body = header ? rows.slice(1) : rows;
       return (
         <div className="my-2 overflow-x-auto" style={indent}>
-          <table className={cx("w-full border-collapse", compact ? "text-[11.5px]" : "text-[13.5px]")}>
+          <table className={cx("w-full border-collapse", compact ? "text-[12px]" : "text-[14px]")}>
             {header ? (
               <thead>
                 <tr>

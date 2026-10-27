@@ -1,11 +1,14 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useConvex, useMutation } from "convex/react";
 import { useCallback, useMemo } from "react";
 import { api } from "@/lib/convex/api";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { useAppState } from "@/lib/app/state";
 import { requireOutbox } from "@/lib/app/folders";
+import { useCapabilities } from "@/lib/mode";
+import { moveWarning } from "@/lib/app/folderSharing";
+import { confirmMoveWarning } from "@/components/app/MoveWarning";
 
 /** The server takes at most this many notes per bulk call (documents.MAX_BULK); bigger sets go in turns. */
 const CHUNK = 50;
@@ -37,6 +40,8 @@ export function useNoteActions() {
   const unhide = useMutation(api.documents.showInRecent);
   const toast = useToast();
   const { outbox, online } = useAppState();
+  const convex = useConvex();
+  const sharing = useCapabilities().sharing;
 
   const run = useCallback(
     async (ids: string[], action: Action) => {
@@ -95,8 +100,15 @@ export function useNoteActions() {
 
   return useMemo(
     () => ({
-      moveTo: (ids: string[], folder: FolderTarget) =>
-        perform(
+      moveTo: async (ids: string[], folder: FolderTarget) => {
+        // A move that changes who sees the notes through a shared folder asks first (docs/SHARING.md).
+        // Offline, or when the check can't be had, the move goes ahead as before.
+        if (sharing && online && ids.length) {
+          const check = await convex.query(api.folderSharing.moveCheck, { documentIds: ids.slice(0, CHUNK), folderId: folder.id }).catch(() => null);
+          const warning = check ? moveWarning(check, ids.length, folder.name) : null;
+          if (warning && !(await confirmMoveWarning(warning))) return false;
+        }
+        return perform(
           ids,
           { kind: "move", folderId: folder.id },
           (n) => (n === 1 ? `Moved to ${folder.name}` : `Moved ${notes(n)} to ${folder.name}`),
@@ -109,7 +121,8 @@ export function useNoteActions() {
             }
             for (const [folderId, back] of byFolder) quietly(back, { kind: "move", folderId });
           },
-        ),
+        );
+      },
       star: (ids: string[], starred: boolean) =>
         perform(ids, { kind: "star", starred }, (n) => (starred ? (n === 1 ? "Starred" : `Starred ${notes(n)}`) : n === 1 ? "Removed from Starred" : `Unstarred ${notes(n)}`), (r) =>
           quietly(r.done, { kind: "star", starred: !starred }),
@@ -134,6 +147,6 @@ export function useNoteActions() {
         }
       },
     }),
-    [perform, quietly, hide, unhide, toast],
+    [perform, quietly, hide, unhide, toast, sharing, online, convex],
   );
 }

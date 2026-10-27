@@ -225,7 +225,7 @@ export function TableAi({
                 setExplained(null);
                 onMode(m.mode);
               }}
-              className={`rounded-chip px-2.5 py-1 text-[12.5px] ${mode === m.mode ? "bg-accent-soft font-semibold text-heading" : "text-muted hover:bg-accent-soft/70 hover:text-heading"} disabled:opacity-50`}
+              className={`rounded-chip px-2.5 py-1 text-subheadline ${mode === m.mode ? "bg-accent-soft font-semibold text-heading" : "text-muted hover:bg-accent-soft/70 hover:text-heading"} disabled:opacity-50`}
             >
               {m.label}
             </button>
@@ -237,34 +237,34 @@ export function TableAi({
       </div>
       {preview ? (
         <div className="fb-table-ai-body">
-          <p className="text-sm text-ink" role="status">
+          <p className="text-subheadline text-ink" role="status">
             {preview.summary}
             {preview.changed.size ? <span className="text-muted"> {preview.changed.size === 1 ? "1 cell changes" : `${preview.changed.size} cells change`}, marked in the table.</span> : null}
           </p>
           <div className="mt-2 flex gap-1.5">
-            <button type="button" className="ui-btn ui-btn-primary h-8 px-3.5 text-[13px]" onClick={() => onAccept(preview)}>
+            <button type="button" className="ui-btn ui-btn-primary h-8 px-3.5 text-callout" onClick={() => onAccept(preview)}>
               <Check size={14} aria-hidden /> Accept
             </button>
-            <button type="button" className="ui-btn ui-btn-quiet h-8 px-3.5 text-[13px]" onClick={() => onPreview(null)}>
+            <button type="button" className="ui-btn ui-btn-quiet h-8 px-3.5 text-callout" onClick={() => onPreview(null)}>
               Discard
             </button>
           </div>
         </div>
       ) : explained ? (
         <div className="fb-table-ai-body">
-          {explained.summary ? <p className="text-sm text-ink">{explained.summary}</p> : null}
+          {explained.summary ? <p className="text-subheadline text-ink">{explained.summary}</p> : null}
           {explained.points.length ? (
-            <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-sm text-ink">
+            <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-subheadline text-ink">
               {explained.points.map((p, i) => (
                 <li key={i}>{p}</li>
               ))}
             </ul>
           ) : null}
           <div className="mt-2 flex gap-1.5">
-            <button type="button" className="ui-btn ui-btn-primary h-8 px-3.5 text-[13px]" onClick={insertBelow}>
+            <button type="button" className="ui-btn ui-btn-primary h-8 px-3.5 text-callout" onClick={insertBelow}>
               Insert under the table
             </button>
-            <button type="button" className="ui-btn ui-btn-quiet h-8 px-3.5 text-[13px]" onClick={() => setExplained(null)}>
+            <button type="button" className="ui-btn ui-btn-quiet h-8 px-3.5 text-callout" onClick={() => setExplained(null)}>
               Discard
             </button>
           </div>
@@ -278,7 +278,7 @@ export function TableAi({
           }}
         >
           {mode === "formula" ? (
-            <p className="mb-1.5 text-xs text-muted">
+            <p className="mb-1.5 text-footnote text-muted">
               For cell <strong className="font-semibold text-ink">{cellReference(cell.r, cell.c)}</strong> ({columnName(names[cell.c] ?? "", cell.c)}). Click another cell to change it.
             </p>
           ) : null}
@@ -299,7 +299,7 @@ export function TableAi({
                 }}
                 aria-label={placeholder}
                 placeholder={placeholder}
-                className="ui-input min-h-[3.25rem] flex-1 resize-none rounded-chip px-3 py-2 text-sm"
+                className="ui-input min-h-[3.25rem] flex-1 resize-none rounded-chip px-3 py-2 text-callout"
               />
               <button type="submit" className="ui-btn ui-btn-primary grid h-9 w-9 place-items-center p-0" aria-label="Ask Foli AI" disabled={busy || !text.trim()}>
                 <ArrowUp size={15} aria-hidden />
@@ -307,14 +307,14 @@ export function TableAi({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <p className="flex-1 text-sm text-muted">{mode === "clean" ? "Fills empty cells the table makes clear, fixes typos and formats, and removes repeated rows." : "A short summary of what the table says, with its main takeaways."}</p>
-              <button type="submit" autoFocus className="ui-btn ui-btn-primary h-8 px-3.5 text-[13px]" disabled={busy}>
+              <p className="flex-1 text-subheadline text-muted">{mode === "clean" ? "Fills empty cells the table makes clear, fixes typos and formats, and removes repeated rows." : "A short summary of what the table says, with its main takeaways."}</p>
+              <button type="submit" autoFocus className="ui-btn ui-btn-primary h-8 px-3.5 text-callout" disabled={busy}>
                 {mode === "clean" ? "Clean up" : "Explain"}
               </button>
             </div>
           )}
           {busy ? (
-            <p className="mt-2 text-xs text-muted" role="status">
+            <p className="mt-2 text-footnote text-muted" role="status">
               Foli AI is working on the table…
             </p>
           ) : error ? (
@@ -325,7 +325,7 @@ export function TableAi({
                 <ul className="mt-2 flex flex-wrap gap-1" aria-label="Ideas">
                   {ideas.map((idea) => (
                     <li key={idea}>
-                      <button type="button" className="rounded-chip bg-sunken/80 px-2 py-1 text-xs text-ink hover:bg-accent-soft" onClick={() => setText(idea)}>
+                      <button type="button" className="rounded-chip bg-sunken/80 px-2 py-1 text-footnote text-ink hover:bg-accent-soft" onClick={() => setText(idea)}>
                         {idea}
                       </button>
                     </li>
@@ -335,7 +335,7 @@ export function TableAi({
               <AiCreditsNote documentId={documentId} className="mt-2" />
             </>
           )}
-          <p className="mt-1.5 text-[11.5px] text-faint">Foli AI can make mistakes. You see every change before it's made.</p>
+          <p className="mt-1.5 text-footnote text-faint">Foli AI can make mistakes. You see every change before it's made.</p>
         </form>
       )}
     </div>

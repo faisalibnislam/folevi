@@ -79,7 +79,9 @@ export function SignInMethodsCard() {
     // On success the browser is on its way to the provider.
     if (error) {
       setBusy(null);
-      setProblem(authErrorMessage(error));
+      // Linking needs a recent sign-in (convex/auth.ts), as removing does.
+      if ((error as { code?: string }).code === "SESSION_NOT_FRESH") setSignInAgain(true);
+      else setProblem(authErrorMessage(error));
     }
   }
 
@@ -198,7 +200,7 @@ export function SignInMethodsCard() {
         </div>
       ) : null}
       <ul className="ui-card divide-y divide-line overflow-hidden rounded-control" aria-label="Sign-in methods" aria-busy={accounts === null || undefined}>
-        {accounts === null ? <li className="px-4 py-3 text-sm text-muted">Loading…</li> : null}
+        {accounts === null ? <li className="px-4 py-3 text-subheadline text-muted">Loading…</li> : null}
         {accounts !== null
           ? providers.map((p) => (
               <li key={p} className="flex min-h-14 items-center gap-3 px-4 py-2.5">
@@ -206,8 +208,8 @@ export function SignInMethodsCard() {
                   {mark(p)}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-heading">{PROVIDER_NAMES[p]}</span>
-                  <span className="block text-xs text-muted">{facts(p)}</span>
+                  <span className="block truncate text-subheadline font-medium text-heading">{PROVIDER_NAMES[p]}</span>
+                  <span className="block text-footnote text-muted">{facts(p)}</span>
                 </span>
                 {linked(p) ? (
                   <Button size="sm" className="min-h-11 sm:min-h-0" aria-label={`Remove ${PROVIDER_NAMES[p]}`} disabled={busy !== null} onClick={() => setRemoving(p)}>
@@ -222,7 +224,7 @@ export function SignInMethodsCard() {
             ))
           : null}
       </ul>
-      {inApp ? <p className="mt-3 text-sm text-muted">{appNote}</p> : null}
+      {inApp ? <p className="mt-3 text-subheadline text-muted">{appNote}</p> : null}
       {dialogs}
     </Card>
   );

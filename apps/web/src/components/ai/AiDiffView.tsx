@@ -8,7 +8,7 @@ import type { TextPart } from "@/lib/history/diff";
  */
 export function AiDiffView({ parts, id }: { parts: TextPart[]; id?: string }) {
   return (
-    <div id={id} role="group" aria-label="Changes to the selected text" className="fb-ai-diff whitespace-pre-wrap break-words text-[14px] leading-[1.6] text-ink">
+    <div id={id} role="group" aria-label="Changes to the selected text" className="fb-ai-diff whitespace-pre-wrap break-words text-body leading-[1.6] text-ink">
       {parts.map((p, i) =>
         p.kind === "added" ? (
           <ins key={i} className="fb-diff-added">
@@ -29,7 +29,7 @@ export function AiDiffView({ parts, id }: { parts: TextPart[]; id?: string }) {
 /** What the marks mean, under the changes. */
 export function AiDiffLegend() {
   return (
-    <p className="mt-2 flex gap-3 text-[11.5px] text-muted" aria-hidden>
+    <p className="mt-2 flex gap-3 text-footnote text-muted" aria-hidden>
       <span>
         <del className="fb-diff-removed">Removed</del>
       </span>

@@ -102,7 +102,7 @@ export function WriteDemo() {
       onKeyDown={take}
       role="group"
       aria-label="A working sample of Find action items. Run it, change the list with the quick changes, then insert it."
-      className="mk-app-pop mx-auto flex h-[470px] max-w-[460px] flex-col overflow-hidden rounded-container text-[13.5px]"
+      className="mk-app-pop mx-auto flex h-[470px] max-w-[460px] flex-col overflow-hidden rounded-container text-[14px]"
     >
       <div className="px-5 pt-5">
         <p className="mk-display text-[21px] text-(--color-heading)">Thursday call</p>
@@ -136,7 +136,7 @@ export function WriteDemo() {
                   setTicked(0);
                   void run("Find action items", plain);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-chip bg-(--glass-hover) px-3 py-1 text-[12.5px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-(--glass-active) hover:text-(--color-heading)"
+                className="inline-flex items-center gap-1.5 rounded-chip bg-(--glass-hover) px-3 py-1 text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-(--glass-active) hover:text-(--color-heading)"
               >
                 <AiIcon size={13} className={VIOLET} /> {phase.kind === "inserted" ? "Run Find action items again" : "Find action items"}
               </button>
@@ -154,7 +154,7 @@ export function WriteDemo() {
       {label ? (
         <div className="mk-app-pop mk-appear mx-3 mb-3 mt-3 overflow-hidden rounded-panel">
           <div className="border-b border-(--color-line) px-4 pb-3 pt-3">
-            <p className="mb-2 flex items-center gap-1.5 text-[11.5px] font-semibold text-muted">
+            <p className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-muted">
               <AiIcon size={12} className={cx(VIOLET, phase.kind === "reading" && "animate-pulse")} />
               {label}
               {phase.kind === "reading" ? "…" : ""}
@@ -166,7 +166,7 @@ export function WriteDemo() {
                 ))}
               </div>
             ) : (
-              <ul className="space-y-1.5 text-[13.5px] text-ink">
+              <ul className="space-y-1.5 text-[14px] text-ink">
                 {LISTS[label].slice(0, phase.kind === "result" ? phase.items : 0).map((item) => (
                   <li key={item} className="mk-appear flex items-center gap-2.5">
                     <span className="mk-check" />
@@ -177,7 +177,7 @@ export function WriteDemo() {
             )}
           </div>
           <div className="space-y-2 px-3 py-2.5">
-            <div className="flex flex-wrap items-center gap-1.5 text-[12.5px]">
+            <div className="flex flex-wrap items-center gap-1.5 text-[13px]">
               <button
                 type="button"
                 disabled={!done}

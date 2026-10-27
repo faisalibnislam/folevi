@@ -48,18 +48,18 @@ function Section({ title, icon, href, count, children, empty, shelf }: { title: 
     <section
       aria-labelledby={`home-${id}`}
       className={
-        shelf ? "mt-[37px] first:mt-6" : "mt-[46px] first:mt-6"
+        shelf ? "mt-9 first:mt-6" : "mt-12 first:mt-6"
       }
     >
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 id={`home-${id}`} className="ui-display flex items-center gap-2.5 text-[22px]">
+        <h2 id={`home-${id}`} className="ui-display flex items-center gap-2.5 text-title-2">
           <span aria-hidden className="grid h-8 w-8 flex-none place-items-center rounded-chip bg-[var(--glass-hover)] text-heading">
             {icon}
           </span>
           {title}
-          {count ? <span className="ml-2 text-[13px] font-normal text-muted">{count}</span> : null}
+          {count ? <span className="ml-2 text-subheadline font-normal text-muted">{count}</span> : null}
         </h2>
-        <AppLink href={href} className="inline-flex items-center gap-1 rounded-chip px-2.5 py-1 text-[13px] font-medium text-ink transition-colors hover:bg-accent-soft">
+        <AppLink href={href} className="inline-flex items-center gap-1 rounded-chip px-2.5 py-1 text-subheadline font-medium text-ink transition-colors hover:bg-accent-soft">
           See all <span className="sr-only">{title.toLowerCase()}</span>
           <ArrowRight size={13} aria-hidden />
         </AppLink>
@@ -194,15 +194,15 @@ function TodaysReviews() {
         <Layers size={17} strokeWidth={1.9} />
       </span>
       <div className="min-w-0 flex-1">
-        <h2 id="home-reviews" className="text-[14px] font-semibold text-heading">
+        <h2 id="home-reviews" className="text-body font-semibold text-heading">
           Today’s reviews
         </h2>
-        <p className="text-[13px] text-muted">
+        <p className="text-subheadline text-muted">
           {waiting ? `${cardCount(waiting)} to review${today.later ? `, ${today.later} more later today` : ""}.` : today.later ? `All caught up. ${cardCount(today.later)} later today.` : "All caught up for today."}
         </p>
       </div>
       {waiting ? (
-        <AppLink href="/review" className="ui-btn ui-btn-primary h-8 gap-1.5 px-3.5 text-[13px]">
+        <AppLink href="/review" className="ui-btn ui-btn-primary h-8 gap-1.5 px-3.5 text-callout">
           Start review <ArrowRight size={13} aria-hidden />
         </AppLink>
       ) : null}
@@ -231,7 +231,7 @@ export function HomeDashboard() {
 
   return (
     <ViewChrome
-      title={<h1 className="truncate text-sm font-semibold">Home</h1>}
+      title={<h1 className="truncate text-subheadline font-semibold">Home</h1>}
       tabTitle="Home"
     >
       <div className="mx-auto max-w-[1400px] px-4 pb-[max(2rem,var(--fab-clearance))] pt-2 sm:px-8">

@@ -86,7 +86,7 @@ export function FoleviLoader({ title, className }: { title: string; className?: 
       <svg className="folevi-loader-still" viewBox="150 90 260 340" width="104" height="136" aria-hidden>
         <path className="folevi-loader-ink" d={F_PATH} />
       </svg>
-      <p className="font-display text-[19px] leading-tight text-ink">
+      <p className="font-display text-title-3 leading-tight text-ink">
         {words}
         <span className="folevi-loader-dots" aria-hidden>
           <span>.</span>

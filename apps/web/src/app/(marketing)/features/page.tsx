@@ -80,7 +80,7 @@ function CardSticker({ slug }: { slug: string }) {
   if (!sticker) return null;
   return (
     <span aria-hidden="true" className={cx("pointer-events-none absolute -top-3 z-10", sticker.rotate > 0 ? "right-3" : "-left-1.5")}>
-      <Sticker tone={sticker.tone} rotate={sticker.rotate} className="text-[12.5px]">
+      <Sticker tone={sticker.tone} rotate={sticker.rotate} className="text-[13px]">
         {sticker.text}
       </Sticker>
     </span>

@@ -3,7 +3,9 @@
 import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ArrowRightLeft, FilePlus2, FolderInput, FolderPlus, Link2, MoreHorizontal, Palette, PencilLine, Trash2, Undo2, UserPlus } from "lucide-react";
+import { ArrowRightLeft, FilePlus2, FolderInput, FolderPlus, Link2, MoreHorizontal, Palette, PencilLine, Share2, Trash2, Undo2, UserPlus } from "lucide-react";
+import { useCapabilities } from "@/lib/mode";
+import { FolderShareDialog } from "./FolderShareDialog";
 import { placesAvailable, usePlaces } from "@/lib/places";
 import { openMovePlaces } from "@/components/places/MovePlaces";
 import { canNestFolderIn } from "@folevi/editor-schema";
@@ -33,8 +35,8 @@ export interface MenuFolder {
 
 /**
  * The "…" menu for a folder (sidebar rows and folder cards): new note or folder in it, rename, change
- * colour, move it (into another folder or to the top level), copy link, invite people to the team
- * workspace (a modal), and delete.
+ * colour, move it (into another folder or to the top level), share it with people, copy link, invite people
+ * to the team workspace (a modal), and delete.
  */
 export function FolderMenu({
   folder,
@@ -65,6 +67,8 @@ export function FolderMenu({
   const [addingInside, setAddingInside] = useState(false);
   const [moving, setMoving] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const caps = useCapabilities();
   const [deleting, setDeleting] = useState(false);
   const [coloring, setColoring] = useState(false);
   // Personal has no members: inviting people is for team workspaces (single pages are shared instead).
@@ -101,6 +105,8 @@ export function FolderMenu({
       : []),
     ...(aiOn ? [{ label: "Ask Foli AI about this folder…", icon: <AiIcon size={14} className="text-[#7c6cf0]" />, onSelect: () => openAsk(undefined, { id: folder.id, name: folder.name }) }] : []),
     ...(lockItem ? [lockItem] : []),
+    // Everyone in the place sees who has access; the dialog lets its managers change it (docs/SHARING.md).
+    ...(caps.sharing ? [{ label: "Share…", icon: <Share2 size={14} />, onSelect: () => setSharing(true) }] : []),
     { label: "Copy link", icon: <Link2 size={14} />, onSelect: copyLink },
     ...(canManage ? [{ label: "Invite people…", icon: <UserPlus size={14} />, onSelect: () => setInviting(true) }] : []),
     ...(canEdit ? ["separator" as const, { label: "Delete folder…", icon: <Trash2 size={14} />, danger: true, onSelect: () => setDeleting(true) }] : []),
@@ -140,6 +146,7 @@ export function FolderMenu({
         />
       ) : null}
       {inviting && workspace ? <InviteDialog workspace={workspace} open onClose={() => setInviting(false)} /> : null}
+      {sharing ? <FolderShareDialog open onClose={() => setSharing(false)} folderId={folder.id} name={folder.name} /> : null}
       <Dialog
         open={deleting}
         onClose={() => setDeleting(false)}

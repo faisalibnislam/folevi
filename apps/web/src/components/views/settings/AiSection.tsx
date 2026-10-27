@@ -94,11 +94,11 @@ function PrefRow({ item, checked, disabled, onChange }: { item: (typeof SETTINGS
   return (
     <div className="flex items-start justify-between gap-6 py-3.5 first:pt-0 last:pb-0">
       <div className="min-w-0 max-w-prose">
-        <p className="flex items-center gap-2 text-sm font-medium text-heading">
+        <p className="flex items-center gap-2 text-subheadline font-medium text-heading">
           {item.label}
-          {item.soon ? <span className="rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-[11px] font-medium text-muted shadow-[inset_0_0_0_1px_var(--glass-border)]">Coming soon</span> : null}
+          {item.soon ? <span className="rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-footnote font-medium text-muted shadow-[inset_0_0_0_1px_var(--glass-border)]">Coming soon</span> : null}
         </p>
-        <p id={descId} className="mt-0.5 text-sm text-muted">
+        <p id={descId} className="mt-0.5 text-subheadline text-muted">
           {item.body}
         </p>
       </div>

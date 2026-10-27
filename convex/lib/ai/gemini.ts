@@ -10,6 +10,7 @@ import type { AiProvider, Content, EmbedResult, EmbedTask, GenerateRequest, Gene
 import { capabilitiesOf } from "./capabilities";
 import { EMBEDDING_DIMENSIONS, normalize } from "./retrieval";
 import { attachmentTokens } from "./attachments";
+import { DECLINE_RULE, MAX_FREE_REFUSAL_CHARS, readDecline, SAFETY_RULE, visibleSoFar, type RefusalKind } from "@folevi/ai-prompts/safety";
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 export const geminiModel = () => process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
@@ -25,7 +26,17 @@ type GeminiGrounding = {
   groundingSupports?: { segment?: { text?: unknown }; groundingChunkIndices?: unknown[] }[];
   searchEntryPoint?: { renderedContent?: unknown };
 };
-type GeminiChunk = { candidates?: { content?: { parts?: GeminiPart[] }; finishReason?: string; groundingMetadata?: GeminiGrounding }[]; usageMetadata?: GeminiUsage };
+type GeminiChunk = { candidates?: { content?: { parts?: GeminiPart[] }; finishReason?: string; groundingMetadata?: GeminiGrounding }[]; promptFeedback?: { blockReason?: string }; usageMetadata?: GeminiUsage };
+
+/** Finish reasons that mean Gemini's filters stopped the reply (not that it ran out of room or had nothing to say). */
+const BLOCKED_FINISH = new Set(["SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "IMAGE_SAFETY"]);
+/**
+ * Why a reply ended: the candidate's finish reason, or, when Gemini refused the question itself (no
+ * candidate at all, only promptFeedback.blockReason), "BLOCKED_PROMPT".
+ */
+const finishOf = (data: GeminiChunk): string | null => data.candidates?.[0]?.finishReason ?? (data.promptFeedback?.blockReason ? "BLOCKED_PROMPT" : null);
+const blocked = (finish: string | null) => finish === "BLOCKED_PROMPT" || (finish !== null && BLOCKED_FINISH.has(finish));
+const EMPTY = (finish: string | null) => (blocked(finish) ? "The AI couldn't help with that request." : "The AI returned nothing. Try rephrasing.");
 
 /** Characters sent in a request (for a usage estimate when none came back). */
 function charsSent(req: GenerateRequest): number {
@@ -108,6 +119,9 @@ const callsOf = (data: GeminiChunk): ToolCall[] =>
  * The model's turn to send back in the next request of a tool loop: its text and calls, each with the
  * thought signature Gemini 3 attached (a request that drops them is refused), never its thoughts.
  */
+/** The model's turn with any refusal marker taken out of its text (it goes back to the model in a tool loop). */
+const withoutMarker = (parts: Part[]): Part[] => parts.map((p) => ("text" in p && !("functionCall" in p) ? { ...p, text: readDecline(p.text).text } : p));
+
 const modelPartsOf = (parts: GeminiPart[]): Part[] =>
   parts.flatMap((p): Part[] => {
     const sig = typeof p.thoughtSignature === "string" ? { thoughtSignature: p.thoughtSignature } : {};
@@ -117,6 +131,28 @@ const modelPartsOf = (parts: GeminiPart[]): Part[] =>
     if (!p.thought && typeof p.text === "string" && (p.text || sig.thoughtSignature)) return [{ text: p.text, ...sig }];
     return [];
   });
+
+/**
+ * Gemini's own filter, set rather than left at its defaults (which block very little): docs/AI_GUARDRAILS.md.
+ * A reply it blocks finishes with SAFETY and is counted as "filtered".
+ */
+const SAFETY_SETTINGS = ["HARM_CATEGORY_DANGEROUS_CONTENT", "HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH", "HARM_CATEGORY_SEXUALLY_EXPLICIT"].map((category) => ({ category, threshold: "BLOCK_MEDIUM_AND_ABOVE" }));
+
+/**
+ * Every system prompt ends with the safety rules (docs/AI_GUARDRAILS.md), whichever feature built it; a
+ * text reply is also asked to mark a refusal (a JSON reply can't carry the marker, Gemini's filter still applies).
+ */
+export const systemWithSafety = (req: Pick<GenerateRequest, "system" | "json">) => `${req.system}\n\n${SAFETY_RULE}${req.json ? "" : ` ${DECLINE_RULE}`}`;
+
+/**
+ * What a reply declined, if it did: the marker the model wrote, or Gemini's filter (a blocked finish, or the question itself blocked). A short
+ * refusal is free; a long reply that carries a marker is still charged (lib/credits.ts settleHold).
+ */
+function refusalOf(raw: string, finish: string | null): { text: string; refused?: { kind: RefusalKind; free: boolean } } {
+  const { text, declined } = readDecline(raw);
+  const kind: RefusalKind | null = declined ?? (blocked(finish) ? "filtered" : null);
+  return kind ? { text, refused: { kind, free: text.trim().length <= MAX_FREE_REFUSAL_CHARS } } : { text };
+}
 
 /** The request body: the system prompt, the turns (earlier ones, then the question with any files), and settings. */
 function bodyOf(req: GenerateRequest, model: string): string {
@@ -129,7 +165,8 @@ function bodyOf(req: GenerateRequest, model: string): string {
     ...(req.searchGrounding && !req.tools?.length ? [{ google_search: {} }] : []),
   ];
   return JSON.stringify({
-    systemInstruction: { parts: [{ text: req.system }] },
+    systemInstruction: { parts: [{ text: systemWithSafety(req) }] },
+    safetySettings: SAFETY_SETTINGS,
     contents,
     ...(tools.length ? { tools } : {}),
     ...(req.tools?.length && req.toolChoice === "none" ? { toolConfig: { functionCallingConfig: { mode: "NONE" } } } : {}),
@@ -218,7 +255,7 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
               text += textOf(data);
               toolCalls.push(...callsOf(data));
               callParts.push(...modelPartsOf(partsOf(data)).filter((p) => "functionCall" in p));
-              finish = data.candidates?.[0]?.finishReason ?? finish;
+              finish = finishOf(data) ?? finish;
               usage = data.usageMetadata ?? usage;
               grounding = groundingOf(data) ?? grounding;
             } catch {
@@ -242,7 +279,7 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
           while ((cut = buffer.indexOf("\n\n")) >= 0) {
             take(buffer.slice(0, cut));
             buffer = buffer.slice(cut + 2);
-            if (!(await onDelta!(text))) {
+            if (!(await onDelta!(visibleSoFar(text)))) {
               stopped = true;
               controller.abort();
               break;
@@ -251,11 +288,13 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
         }
         if (!stopped && !timedOut && buffer.trim()) take(buffer);
         // A stream cut off by its deadline was still billed for what it produced.
-        const used = withSearches(usageOf(m, usage, req, text), grounding);
+        const refusal = refusalOf(text, finish);
+        const used = { ...withSearches(usageOf(m, usage, req, text), grounding), ...(refusal.refused ? { refused: refusal.refused } : {}) };
+        text = refusal.text;
         meter.push(used);
-        console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, stream: true, finish, stopped, timedOut, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens }));
+        console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, stream: true, finish, stopped, timedOut, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens, ...(refusal.refused ? { refused: refusal.refused.kind } : {}) }));
         if (timedOut) fail("maintenance", TOO_SLOW);
-        if (!text.trim() && !stopped && !toolCalls.length) fail("invalid_argument", finish === "SAFETY" ? "The AI couldn't help with that request." : "The AI returned nothing. Try rephrasing.");
+        if (!text.trim() && !stopped && !toolCalls.length) fail("invalid_argument", EMPTY(finish));
         return { text: text.trim(), toolCalls, parts: [...(text ? [{ text }] : []), ...callParts], finish, stopped, model: m, usage: used, ...(grounding ? { grounding } : {}) };
       }
       if (res.ok) {
@@ -267,15 +306,17 @@ async function generate(req: GenerateRequest, meter: CallUsage[], onDelta?: OnDe
           console.warn(JSON.stringify({ event: "ai.timeout", model: m, stream }));
           fail("maintenance", TOO_SLOW);
         }
-        const text = textOf(data).trim();
+        const raw = textOf(data).trim();
         const toolCalls = callsOf(data);
-        const finish = data.candidates?.[0]?.finishReason ?? null;
+        const finish = finishOf(data);
         const grounding = groundingOf(data);
-        const used = withSearches(usageOf(m, data.usageMetadata, req, text), grounding);
+        const refusal = refusalOf(raw, finish);
+        const text = refusal.text;
+        const used = { ...withSearches(usageOf(m, data.usageMetadata, req, raw), grounding), ...(refusal.refused ? { refused: refusal.refused } : {}) };
         meter.push(used);
-        console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, finish, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens, ...(used.searches ? { searches: used.searches } : {}) }));
-        if (!text && !toolCalls.length) fail("invalid_argument", finish === "SAFETY" ? "The AI couldn't help with that request." : "The AI returned nothing. Try rephrasing.");
-        return { text, toolCalls, parts: modelPartsOf(partsOf(data)), finish, stopped: false, model: m, usage: used, ...(grounding ? { grounding } : {}) };
+        console.log(JSON.stringify({ event: "ai.call", model: m, status: res.status, finish, tokensIn: used.promptTokens, tokensOut: used.outputTokens + used.thoughtsTokens, ...(used.searches ? { searches: used.searches } : {}), ...(refusal.refused ? { refused: refusal.refused.kind } : {}) }));
+        if (!text && !toolCalls.length) fail("invalid_argument", EMPTY(finish));
+        return { text, toolCalls, parts: withoutMarker(modelPartsOf(partsOf(data))), finish, stopped: false, model: m, usage: used, ...(grounding ? { grounding } : {}) };
       }
       console.warn(JSON.stringify({ event: "ai.error", model: m, status: res.status }));
       if (res.status !== 429 && res.status !== 503 && res.status !== 500) break;

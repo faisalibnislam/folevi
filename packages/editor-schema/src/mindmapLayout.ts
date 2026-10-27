@@ -165,9 +165,13 @@ export function mindmapSides(branches: { id: string; side?: MindmapSide; height:
   let left = 0;
   const auto: { id: string; height: number }[] = [];
   for (const b of branches) {
-    if (b.side === "left") (left += b.height), out.set(b.id, "left");
-    else if (b.side === "right") (right += b.height), out.set(b.id, "right");
-    else auto.push(b);
+    if (b.side === "left") {
+      left += b.height;
+      out.set(b.id, "left");
+    } else if (b.side === "right") {
+      right += b.height;
+      out.set(b.id, "right");
+    } else auto.push(b);
   }
   const total = auto.reduce((s, b) => s + b.height, 0);
   let best = 0;

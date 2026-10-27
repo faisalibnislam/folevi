@@ -24,7 +24,7 @@ import {
   isUlid,
   methodKinds,
   requireAccount,
-  requireE2eeFlag,
+  requireAccountSetupFlag,
   requireSigned,
   storeGrants,
   trustedDevices,
@@ -214,7 +214,7 @@ export const createAccount = mutation({
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
-    await requireE2eeFlag(ctx);
+    await requireAccountSetupFlag(ctx);
     const latest = await ctx.db
       .query("e2eeAccounts")
       .withIndex("by_profile", (q) => q.eq("profileId", profile._id))

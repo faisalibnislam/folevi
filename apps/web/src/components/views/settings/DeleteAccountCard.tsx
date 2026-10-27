@@ -72,11 +72,11 @@ export function DeleteAccountCard() {
       <Card title="Delete account" description="Deletes your account, your Personal and everything in it after a 7-day grace period, along with workspaces you own that nobody else is in. Export your data first if you want to keep it.">
         {profile.status === "pending_deletion" ? (
           <div className="flex flex-wrap items-center gap-3">
-            <p className="text-sm">Scheduled for {profile.deletionScheduledFor ? formatDateTime(profile.deletionScheduledFor) : "soon"}.</p>
+            <p className="text-subheadline">Scheduled for {profile.deletionScheduledFor ? formatDateTime(profile.deletionScheduledFor) : "soon"}.</p>
             <Button onClick={() => void cancelDeletion({}).then(() => toast.show("Deletion canceled", { tone: "success" }))}>Cancel deletion</Button>
           </div>
         ) : blockers && blockers.workspaces.length > 0 ? (
-          <div role="status" className="max-w-xl text-sm">
+          <div role="status" className="max-w-xl text-subheadline">
             <p>You own {blockers.workspaces.length === 1 ? "a workspace" : "workspaces"} other people use. Your account can’t be deleted until you make another member the owner (Members → Make owner) or delete {blockers.workspaces.length === 1 ? "it" : "them"} (General → Delete workspace):</p>
             <ul className="mt-2 list-disc space-y-0.5 pl-5 text-muted">
               {blockers.workspaces.map((w) => (
@@ -111,10 +111,10 @@ export function DeleteAccountCard() {
           </>
         }
       >
-        <label className="text-sm" htmlFor="confirm-email">
+        <label className="text-subheadline" htmlFor="confirm-email">
           Type <strong>{profile.email}</strong> to confirm
         </label>
-        <input id="confirm-email" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} className="mt-2 h-10 w-full ui-input rounded-chip px-3 text-sm" autoComplete="off" />
+        <input id="confirm-email" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} className="mt-2 h-10 w-full ui-input rounded-chip px-3 text-callout" autoComplete="off" />
       </Dialog>
     </>
   );

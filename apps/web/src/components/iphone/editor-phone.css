@@ -27,13 +27,13 @@
 }
 :root[data-iphone] .fb-table-add:active { background: color-mix(in oklab, var(--color-ink) 10%, transparent); color: var(--color-heading); }
 :root[data-iphone] .fb-table-add:disabled { opacity: 0.35; }
-:root[data-iphone] .fb-table-tools-phone { gap: 6px; margin-top: 8px; font-size: 15px; }
+:root[data-iphone] .fb-table-tools-phone { gap: 6px; margin-top: 8px; font-size: var(--type-subheadline); }
 :root[data-iphone] .fb-table-tools-phone > button { min-height: 44px; padding-inline: 14px; border-radius: var(--radius-capsule); background: color-mix(in oklab, var(--color-ink) 4.5%, transparent); }
 :root[data-iphone] .fb-table-tools-phone > button[aria-pressed="true"] { background: var(--color-heading); color: var(--color-canvas); }
 :root[data-iphone] .fb-table-tools-phone svg { width: 15px; height: 15px; }
 /* A task's priority on its chip: a dot, not "!!!" (which reads as an error); the chip stays grey. */
 :root[data-iphone] .fb-task-meta[data-priority="high"] .fb-due-chip { color: var(--color-ink-muted); background: var(--color-surface-sunken); }
-:root[data-iphone] .fb-due-chip { font-size: 13px; }
+:root[data-iphone] .fb-due-chip { font-size: var(--type-footnote); }
 :root[data-iphone] .fb-due-chip .fb-prio { font-size: 0; }
 :root[data-iphone] .fb-due-chip .fb-prio::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: var(--radius-capsule); vertical-align: 1px; background: var(--color-ink-faint); }
 :root[data-iphone] .fb-task-meta[data-priority="high"] .fb-due-chip .fb-prio::before { background: var(--color-danger); }
@@ -68,7 +68,7 @@
 :root[data-iphone] .iphone-fmt-list { border-radius: var(--radius-container); background: var(--fmt-wash); overflow: hidden; }
 :root[data-iphone] .iphone-fmt-row {
   position: relative; display: flex; width: 100%; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px;
-  text-align: left; font-size: 17px; line-height: 22px; color: var(--color-ink); transition: background-color 150ms;
+  text-align: left; font-size: var(--type-body); line-height: 22px; color: var(--color-ink); transition: background-color 150ms;
 }
 :root[data-iphone] .iphone-fmt-row:active { background: var(--fmt-press); }
 :root[data-iphone] .iphone-fmt-row + .iphone-fmt-row::before { content: ""; position: absolute; top: 0; right: 0; left: 56px; height: 0.5px; background: var(--iphone-separator); }
@@ -76,7 +76,7 @@
 :root[data-iphone] .iphone-style-list { border-radius: var(--radius-container); background: color-mix(in oklab, var(--color-ink) 5.5%, transparent); overflow: hidden; }
 :root[data-iphone] .iphone-style-row-wrap { position: relative; }
 :root[data-iphone] .iphone-style-row-wrap + .iphone-style-row-wrap::before { content: ""; position: absolute; top: 0; right: 0; left: 16px; height: 0.5px; background: var(--iphone-separator); }
-:root[data-iphone] .iphone-style-row { display: flex; width: 100%; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; text-align: left; font-size: 17px; line-height: 22px; color: var(--color-ink); }
+:root[data-iphone] .iphone-style-row { display: flex; width: 100%; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; text-align: left; font-size: var(--type-body); line-height: 22px; color: var(--color-ink); }
 :root[data-iphone] button.iphone-style-row:active { background: color-mix(in oklab, var(--color-ink) 6%, transparent); }
 :root[data-iphone] button.iphone-style-row:disabled { opacity: 0.4; }
 /* A held line while its menu is open, where the app has no lifted picture of it (the website, Android). */
@@ -87,7 +87,7 @@
 :root[data-theme="dark"][data-iphone] .iphone-collection { box-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.08); }
 :root[data-iphone] .iphone-seg { display: flex; gap: 2px; padding: 2px; overflow-x: auto; border-radius: var(--radius-capsule); background: color-mix(in oklab, var(--color-ink) 6%, transparent); scrollbar-width: none; }
 :root[data-iphone] .iphone-seg::-webkit-scrollbar { display: none; }
-:root[data-iphone] .iphone-seg > button { display: inline-flex; flex: 1 0 auto; min-width: 0; height: 32px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border-radius: var(--radius-capsule); font-size: 15px; color: var(--color-ink); transition: background-color 150ms, box-shadow 150ms; }
+:root[data-iphone] .iphone-seg > button { display: inline-flex; flex: 1 0 auto; min-width: 0; height: 32px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border-radius: var(--radius-capsule); font-size: var(--type-subheadline); color: var(--color-ink); transition: background-color 150ms, box-shadow 150ms; }
 :root[data-iphone] .iphone-seg > button[aria-pressed="true"] { background: var(--color-surface-raised); font-weight: 600; color: var(--color-heading); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.05); }
 :root[data-theme="dark"][data-iphone] .iphone-seg > button[aria-pressed="true"] { background: rgb(255 255 255 / 0.16); }
 :root[data-iphone] .iphone-collection-list > li { position: relative; }

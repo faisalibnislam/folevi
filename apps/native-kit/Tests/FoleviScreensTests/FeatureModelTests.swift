@@ -550,15 +550,16 @@ struct NotificationsModelTests {
         answerCommands(engine)
         let model = NotificationsModel(client: engine.client(), feedback: FeedbackLog().feedback)
         await eventually("rows") { !model.rows.isEmpty }
-        #expect(model.unread == 2)
+        // n1, n2 and n5 (the folder invitation fixture, revision 12) are unread.
+        #expect(model.unread == 3)
         let total = model.rows.count
         model.filter = .unread
-        #expect(model.rows.count == 2)
+        #expect(model.rows.count == 3)
         model.filter = .all
         let first = model.rows[0]
         await model.toggleRead(first)
         #expect(engine.commands(named: "notification.markRead")[0] == .object(["ids": .array([.string("n1")]), "read": .bool(true)]))
-        #expect(model.unread == 1)
+        #expect(model.unread == 2)
         await model.toggleRead(model.rows[0])
         #expect(engine.commands(named: "notification.markRead")[1]["read"] == .bool(false))
         await model.remove(model.rows[0])

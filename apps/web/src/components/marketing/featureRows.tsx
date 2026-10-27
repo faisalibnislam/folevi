@@ -135,7 +135,7 @@ export function SmallFeature({
         {picture}
       </div>
       <h3 className="mk-h3 mt-5 text-[17px]">{title}</h3>
-      <p className="mt-1.5 max-w-[48ch] text-[14.5px] leading-relaxed text-muted">{body}</p>
+      <p className="mt-1.5 max-w-[48ch] text-[15px] leading-relaxed text-muted">{body}</p>
     </div>
   );
 }

@@ -45,6 +45,7 @@ for (const scheme of ["light", "dark"] as const) {
     await expect(key).toBeVisible({ timeout: 30_000 });
     await scan(page, "wizard: recovery key");
     const groups = (await key.getByRole("listitem").allTextContents()).map((t) => t.replace(/^Group \d+: /, "").trim());
+    await w.getByRole("button", { name: "I've saved it" }).click();
     await w.getByLabel("Group 3").fill(groups[2]!);
     await w.getByLabel("Group 7").fill(groups[6]!);
     await w.getByRole("button", { name: "Check and continue" }).click();

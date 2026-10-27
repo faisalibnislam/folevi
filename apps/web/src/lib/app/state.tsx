@@ -469,12 +469,12 @@ function LoadingScreen({ title, body }: { title: string; body?: ReactNode }) {
       <div className={`grid justify-items-center gap-3 ${shown ? "animate-[iphone-fade-in_200ms_ease-out]" : "invisible"}`}>
         <div aria-hidden className="grid justify-items-center gap-3">
           <FoleviLoader title={title} />
-          {body ? <div className="max-w-sm text-center text-[14px] text-muted">{body}</div> : null}
+          {body ? <div className="max-w-sm text-center text-body text-muted">{body}</div> : null}
         </div>
         {slow ? (
-          <div role="status" className="mt-2 grid justify-items-center gap-3 text-center text-[14px] text-muted">
+          <div role="status" className="mt-2 grid justify-items-center gap-3 text-center text-body text-muted">
             This is taking longer than usual.
-            <button type="button" className="ui-btn ui-btn-secondary h-9 px-4 text-[13.5px]" onClick={() => window.location.reload()}>
+            <button type="button" className="ui-btn ui-btn-secondary h-9 px-4 text-body" onClick={() => window.location.reload()}>
               Reload
             </button>
           </div>
@@ -502,7 +502,7 @@ export function FullPageMessage({ title, body, busy, children, gate, ...native }
     {report}
     <main id="main" tabIndex={-1} className="ui-neutral-chrome grid min-h-dvh place-items-center bg-canvas px-6">
       <div className="w-full max-w-md rounded-chip border border-line bg-surface p-8 shadow-[0_1px_0_var(--color-line),0_12px_40px_-24px_rgba(24,32,28,0.35)]" aria-busy={busy || undefined}>
-        <h1 className="font-display text-3xl leading-tight text-ink">{title}</h1>
+        <h1 className="font-display text-large-title leading-tight text-ink">{title}</h1>
         {body ? <div className="mt-3 text-muted">{body}</div> : null}
         {busy ? <div className="mt-6 h-1 overflow-hidden rounded-tiny bg-sunken"><div className="h-full w-1/3 animate-[folio-progress_1.2s_ease-in-out_infinite] rounded-chip bg-accent" /></div> : null}
         {children ? <div className="mt-6">{children}</div> : null}

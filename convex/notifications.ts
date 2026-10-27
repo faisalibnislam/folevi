@@ -70,7 +70,8 @@ export const list = query({
       const thread = doc && n.threadId ? await ctx.db.get(n.threadId) : null;
       out.push({
         id: n._id as string,
-        kind: n.kind,
+        // A Vault notice reads as "system" to apps built before the Vault (their API contract); `toVault` marks it.
+        kind: n.kind === "vault" ? ("system" as const) : n.kind,
         title: n.title,
         // Note and comment text only while the person can still read the note.
         body: n.documentId && !doc ? null : (n.body ?? null),
@@ -80,6 +81,8 @@ export const list = query({
         documentId: doc ? doc.publicId : null,
         /** A change proposed for review: it opens Changes, where it waits. */
         toChanges: n.proposalId !== undefined,
+        /** A change in a Vault (who and what kind only): it opens the Vault. */
+        toVault: n.kind === "vault",
         /** The note's current title (the stored `title` sentence keeps the one it had then). */
         documentTitle: doc ? doc.title || "Untitled" : null,
         // About an end-to-end encrypted note: its title and the text are generic here; the device opens the

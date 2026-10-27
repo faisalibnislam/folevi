@@ -63,6 +63,9 @@
 			<string>Any</string>
 		</dict>
 	</dict>
+	<!-- ProMotion: without this an iPhone caps the app's animations (Core Animation, so the web view's too) at 60 Hz. -->
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

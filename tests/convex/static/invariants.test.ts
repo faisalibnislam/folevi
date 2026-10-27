@@ -26,7 +26,7 @@ describe("backend invariants", () => {
   });
 
   test("every public function authenticates (requireProfile/requirePlatformRole/optionalProfile) or is explicitly public", () => {
-    const allowPublic = new Set(["users.ts:me", "settings.ts:status", "settings.ts:ping", "sharing.ts:openPublicLink", "authEmails.ts:devMailbox", "users.ts:bootstrap", "users.ts:registerSession", "users.ts:heartbeat", "users.ts:listSessions", "users.ts:revokeOtherSessions", "themes.ts:list"]);
+    const allowPublic = new Set(["users.ts:me", "settings.ts:status", "settings.ts:ping", "sharing.ts:openPublicLink", "vaultShares.ts:openLink", "authEmails.ts:devMailbox", "users.ts:bootstrap", "users.ts:registerSession", "users.ts:heartbeat", "users.ts:listSessions", "users.ts:revokeOtherSessions", "themes.ts:list"]);
     for (const { p, s } of sources) {
       // The Better Auth component's functions are only reachable from Folevi's own functions, never the internet.
       if (p.includes("/betterAuth/")) continue;
@@ -120,6 +120,17 @@ describe("backend invariants", () => {
     expect(/setLocalCancel = internalMutation[\s\S]*?requireWorkspaceBilling/.test(s)).toBe(true);
   });
 
+  test("every model request is built in lib/ai/gemini.ts, which adds the safety rules (docs/AI_GUARDRAILS.md)", () => {
+    // geminiFiles.ts only uploads and deletes files (the Files API); it never asks the model anything.
+    const allowed = ["lib/ai/gemini.ts", "lib/ai/geminiFiles.ts"];
+    for (const { p, s } of sources) {
+      if (allowed.some((a) => p.endsWith(a))) continue;
+      expect(/generativelanguage\.googleapis|systemInstruction|:generateContent|streamGenerateContent/.test(s) ? p : "ok").toBe("ok");
+    }
+    const files = sources.find(({ p }) => p.endsWith("lib/ai/geminiFiles.ts"))!.s;
+    expect(/generateContent|systemInstruction/.test(files)).toBe(false);
+  });
+
   test("no module logs note content, tokens or raw emails", () => {
     for (const { p, s } of sources) {
       for (const m of s.matchAll(/console\.(log|warn|error)\(([^;]*)\);/g)) {
@@ -127,5 +138,63 @@ describe("backend invariants", () => {
         if (/\.text\b|searchText|excerpt|\btoken\b|access_token|\.email\b|body/.test(arg)) throw new Error(`${p}: suspicious log: ${arg.slice(0, 80)}`);
       }
     }
+  });
+
+  test("the Vault's log is append-only: written only by lib/vault/log.ts, deleted only by the 3-year expiry (docs/VAULT_PLAN.md §7.4)", () => {
+    const allowed = [join("convex", "schema.ts"), join("lib", "vault", "log.ts"), join("convex", "vaultLog.ts")];
+    for (const { p, s } of sources) {
+      if (p.includes(`${join("convex", "_generated")}`)) continue;
+      if (!/["']vaultLog["']/.test(s)) continue;
+      if (!allowed.some((a) => p.endsWith(a))) throw new Error(`${p}: touches the Vault's log; only lib/vault/log.ts writes it and vaultLog.ts reads and expires it`);
+    }
+    const writer = sources.find(({ p }) => p.endsWith(join("lib", "vault", "log.ts")))!.s;
+    expect(writer).not.toMatch(/\.delete\(|\.replace\(\s*\w+\.\_id/);
+    expect([...writer.matchAll(/\.insert\(\s*"vaultLog"/g)]).toHaveLength(1);
+    const reader = sources.find(({ p }) => p.endsWith(join("convex", "vaultLog.ts")))?.s ?? "";
+    // One delete, in the expiry (entries past expiresAt); nothing patches an entry.
+    expect([...reader.matchAll(/\.delete\(/g)].length).toBeLessThanOrEqual(1);
+    if (/\.delete\(/.test(reader)) expect(reader).toMatch(/expiresAt/);
+    expect(reader).not.toMatch(/\.patch\(/);
+  });
+
+  test("the Vault stays in its own modules: no other door reads it (docs/VAULT_PLAN.md §9, V9)", () => {
+    const vaultModule = (p: string) => /[\\/]vault[A-Z]?\w*\.ts$/.test(p) || p.includes(join("lib", "vault"));
+    // Only the Vault's own modules, the schema, scope's table list and account and workspace deletion name its tables.
+    const allowed = (p: string) => vaultModule(p) || [join("convex", "schema.ts"), join("lib", "scope.ts"), join("convex", "maintenance.ts")].some((a) => p.endsWith(a));
+    for (const { p, s } of sources) {
+      if (p.includes(`${join("convex", "_generated")}`)) continue;
+      if (/"vault[A-Z]\w*"|"vaults"/.test(s) && !allowed(p)) throw new Error(`${p}: names a Vault table; only the Vault's modules read its data`);
+    }
+    // Nothing that serves search, Foli AI, apps (MCP, REST, webhooks), exports, sync or email imports a Vault module.
+    const doors = /[\\/](search|ai\w*|mcp\w*|api\w*|webhooks?|exports?|sync|emailNotes|aiExport|http)\.ts$/;
+    for (const { p, s } of sources) {
+      if (!doors.test(p)) continue;
+      if (/from\s+"\.\/vault|from\s+"\.\/lib\/vault|from\s+"\.\.\/vault/.test(s)) throw new Error(`${p}: imports the Vault; it must never be reachable from here`);
+    }
+  });
+  test("every Vault mutation writes to the Vault's log (docs/VAULT_PLAN.md §7: everything is logged)", () => {
+    // The only mutations that don't, and why.
+    const unlogged = new Map([
+      ["vaultFiles.ts:uploadUrl", "an upload URL; the file only counts once vaultFiles.saveFile (logged) keeps it"],
+      ["vaultLog.ts:anchor", "the log's own daily anchor"],
+      ["vaultLog.ts:expire", "the 3-year expiry: the one delete the log allows"],
+    ]);
+    const seen = new Set<string>();
+    for (const { p, s } of sources) {
+      const file = p.split(/[\\/]/).pop()!;
+      if (!/^vault[A-Z]?\w*\.ts$/.test(file)) continue;
+      for (const m of s.matchAll(/export const (\w+) = (mutation|internalMutation)\(/g)) {
+        const key = `${file}:${m[1]}`;
+        const rest = s.slice(m.index! + m[0].length);
+        const body = rest.slice(0, rest.search(/\nexport |$/));
+        if (unlogged.has(key)) {
+          seen.add(key);
+          continue;
+        }
+        if (!/appendLog\(/.test(body)) throw new Error(`${key}: a Vault mutation that writes nothing to the Vault's log`);
+      }
+    }
+    // The list stays honest: every exception still exists.
+    expect([...seen].sort()).toEqual([...unlogged.keys()].sort());
   });
 });

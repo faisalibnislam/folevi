@@ -218,12 +218,12 @@ export function CalendarView({ month }: { month: string | null }) {
   }
 
   return (
-    <ViewChrome title={<h1 className="text-sm font-semibold">Calendar</h1>} tabTitle="Calendar" iphone={{ title: heading, root: true, leading: <RootAvatar />, trailing: <RootPill more={iphoneMenu} /> }}>
+    <ViewChrome title={<h1 className="text-subheadline font-semibold">Calendar</h1>} tabTitle="Calendar" iphone={{ title: heading, root: true, leading: <RootAvatar />, trailing: <RootPill more={iphoneMenu} /> }}>
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         {/* One row: the period (a section title, as on Home) with its paging, then the calendar's tools. On
             phones the tools wrap onto a second line. */}
         <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h2 aria-live="polite" className={iphone ? "sr-only" : "ui-display text-[22px] leading-8"}>
+          <h2 aria-live="polite" className={iphone ? "sr-only" : "ui-display text-title-2 leading-8"}>
             {heading}
           </h2>
           {pager}
@@ -254,13 +254,13 @@ export function CalendarView({ month }: { month: string | null }) {
               eventsByDate={eventsByDate}
               onOpenEvent={showEvent}
             />
-            <p className="mt-3 text-xs text-muted">Drag a task to a time to set it, or to the all-day row to keep just the date. Select a task to edit it.</p>
+            <p className="mt-3 text-footnote text-muted">Drag a task to a time to set it, or to the all-day row to keep just the date. Select a task to edit it.</p>
             <Unscheduled tasks={unscheduled} today={today} target={weekDays.includes(selected) ? selected : today} onSchedule={reschedule} onToggle={toggle} onEdit={setEditing} />
           </>
         ) : mode === "month" ? (
           <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
             <div ref={gridRef} role="grid" aria-label={monthLabel} className="overflow-hidden ui-card rounded-control">
-              <div role="row" className="grid grid-cols-7 border-b border-line bg-surface text-center text-xs font-medium text-muted">
+              <div role="row" className="grid grid-cols-7 border-b border-line bg-surface text-center text-footnote font-medium text-muted">
                 {weekdays.map((w) => (
                   <div key={w} role="columnheader" className="py-2">
                     {w}
@@ -306,7 +306,7 @@ export function CalendarView({ month }: { month: string | null }) {
                         className={`min-h-[104px] border-b border-r border-line p-1.5 outline-none last:border-r-0 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${inMonth ? "" : "bg-surface/60"} ${selected === date ? "bg-accent-soft/40" : ""}`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={`grid h-6 min-w-6 place-items-center rounded-chip px-1 text-xs tabular-nums ${isToday ? "bg-heading font-semibold text-canvas shadow-[inset_0_1px_0_rgb(255_255_255/0.25)]" : inMonth ? "text-ink" : "text-faint"}`}>{Number(date.slice(8))}</span>
+                          <span className={`grid h-6 min-w-6 place-items-center rounded-chip px-1 text-footnote tabular-nums ${isToday ? "bg-heading font-semibold text-canvas shadow-[inset_0_1px_0_rgb(255_255_255/0.25)]" : inMonth ? "text-ink" : "text-faint"}`}>{Number(date.slice(8))}</span>
                         </div>
                         <ul className="mt-1 space-y-0.5">
                           {items.slice(0, 3).map((t) => (
@@ -314,7 +314,7 @@ export function CalendarView({ month }: { month: string | null }) {
                               key={t.blockId}
                               draggable
                               onDragStart={(e) => e.dataTransfer.setData("application/x-folevi-task", t.blockId)}
-                              className={`cursor-grab truncate rounded-tiny px-1 text-[11.5px] leading-5 ${t.status === "done" ? "bg-sunken text-faint line-through" : "bg-accent-soft text-accent-soft-ink"}`}
+                              className={`cursor-grab truncate rounded-tiny px-1 text-footnote leading-5 ${t.status === "done" ? "bg-sunken text-faint line-through" : "bg-accent-soft text-accent-soft-ink"}`}
                               title={t.title}
                             >
                               {t.dueTime ? `${t.dueTime} ` : ""}
@@ -326,7 +326,7 @@ export function CalendarView({ month }: { month: string | null }) {
                               <EventChip placed={p} onOpen={showEvent} />
                             </li>
                           ))}
-                          {hidden ? <li className="px-1 text-[11px] text-muted">+{hidden} more</li> : null}
+                          {hidden ? <li className="px-1 text-footnote text-muted">+{hidden} more</li> : null}
                         </ul>
                       </div>
                     );
@@ -348,7 +348,7 @@ export function CalendarView({ month }: { month: string | null }) {
               </ul>
               {(eventsByDate.get(selected) ?? []).length ? (
                 <section aria-label="Events" className="mt-4">
-                  <h4 className="mb-2 text-sm font-semibold">Events</h4>
+                  <h4 className="mb-2 text-subheadline font-semibold">Events</h4>
                   <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
                     {(eventsByDate.get(selected) ?? []).map(({ event: ev }) => (
                       <EventRow key={ev.id} event={ev} timeZone={timeZone} onOpen={showEvent} />
@@ -356,7 +356,7 @@ export function CalendarView({ month }: { month: string | null }) {
                   </ul>
                 </section>
               ) : null}
-              <p className="mt-3 text-xs text-muted">Drag tasks between days to reschedule, or use a task’s edit button to pick a date.{keyboard ? " Arrow keys move between days." : ""}</p>
+              <p className="mt-3 text-footnote text-muted">Drag tasks between days to reschedule, or use a task’s edit button to pick a date.{keyboard ? " Arrow keys move between days." : ""}</p>
               <Unscheduled tasks={unscheduled} today={today} target={selected} onSchedule={reschedule} onToggle={toggle} onEdit={setEditing} />
             </aside>
           </div>
@@ -364,7 +364,7 @@ export function CalendarView({ month }: { month: string | null }) {
           <div className="space-y-6">
             {overdue?.length ? (
               <section aria-label="Overdue">
-                <h3 className="mb-2 text-sm font-semibold text-danger">Overdue</h3>
+                <h3 className="mb-2 text-subheadline font-semibold text-danger">Overdue</h3>
                 <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
                   {[...overdue]
                     .sort((a, b) => ((a.dueDate ?? "") < (b.dueDate ?? "") ? -1 : 1))
@@ -378,11 +378,11 @@ export function CalendarView({ month }: { month: string | null }) {
               .filter((d) => byDate.has(d) || eventsByDate.has(d) || d === today)
               .map((d) => (
                 <section key={d} aria-label={d}>
-                  <h3 className="mb-2 flex items-center gap-3 text-sm font-semibold">
+                  <h3 className="mb-2 flex items-center gap-3 text-subheadline font-semibold">
                     {d === today ? "Today" : formatCalendarDate(d, { weekday: "long", month: "long", day: "numeric" })}
                   </h3>
                   <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
-                    {(byDate.get(d) ?? []).length === 0 && !eventsByDate.has(d) ? <li className="px-4 py-3 text-sm text-muted">Nothing due.</li> : null}
+                    {(byDate.get(d) ?? []).length === 0 && !eventsByDate.has(d) ? <li className="px-4 py-3 text-subheadline text-muted">Nothing due.</li> : null}
                     {(byDate.get(d) ?? []).map((t) => (
                       <TaskItem key={t.blockId} task={t} today={today} onToggle={toggle} onEdit={setEditing} />
                     ))}
@@ -408,8 +408,8 @@ function EventRow({ event: ev, timeZone, onOpen }: { event: ExternalEvent; timeZ
       <button type="button" onClick={(e) => onOpen(ev, e.currentTarget)} aria-label={`${ev.title || "Untitled event"}, ${eventWhen(ev, timeZone)}, from ${ev.calendarName}`} className="flex w-full items-start gap-2.5 px-4 py-2.5 text-left hover:bg-surface">
         <span aria-hidden className="mt-1.5 inline-block h-2.5 w-2.5 flex-none rounded-chip" style={{ background: calendarColor(ev.color) }} />
         <span className="min-w-0">
-          <span className="block text-[15px] leading-snug text-muted">{ev.title || "Untitled event"}</span>
-          <span className="block text-xs text-faint">
+          <span className="block text-body leading-snug text-muted">{ev.title || "Untitled event"}</span>
+          <span className="block text-footnote text-faint">
             {eventWhen(ev, timeZone)} · {ev.calendarName}
           </span>
         </span>
@@ -427,7 +427,7 @@ function EventChip({ placed: { event: ev, segment }, onOpen }: { placed: PlacedE
       onClick={(e) => onOpen(ev, e.currentTarget)}
       aria-label={`${ev.title || "Untitled event"}, ${time || "all day"}, from ${ev.calendarName}`}
       title={ev.title}
-      className="flex w-full items-center gap-1 rounded-tiny bg-surface px-1 text-left text-[11.5px] leading-5 text-muted hover:bg-sunken"
+      className="flex w-full items-center gap-1 rounded-tiny bg-surface px-1 text-left text-footnote leading-5 text-muted hover:bg-sunken"
     >
       <span aria-hidden className="inline-block h-1.5 w-1.5 flex-none rounded-chip" style={{ background: calendarColor(ev.color) }} />
       <span className="truncate">
@@ -457,7 +457,7 @@ function Unscheduled({
   const label = target === today ? "today" : formatCalendarDate(target, { month: "short", day: "numeric" });
   return (
     <section aria-label="Unscheduled tasks" className="mt-6">
-      <h3 className="mb-2 text-sm font-semibold">Unscheduled</h3>
+      <h3 className="mb-2 text-subheadline font-semibold">Unscheduled</h3>
       {tasks.length === 0 ? (
         <div className="ui-card rounded-control">
           <EmptyState size="inline" title="Nothing unscheduled" body="Every open task has a date." />
@@ -472,7 +472,7 @@ function Unscheduled({
               onToggle={onToggle}
               onEdit={onEdit}
               action={
-                <button type="button" onClick={() => onSchedule(t.blockId, target)} className="ui-btn ui-btn-ghost -ml-2.5 h-7 gap-1 px-2.5 text-xs" aria-label={`Schedule “${t.title || "Untitled task"}” for ${label}`}>
+                <button type="button" onClick={() => onSchedule(t.blockId, target)} className="ui-btn ui-btn-ghost -ml-2.5 h-7 gap-1 px-2.5 text-footnote" aria-label={`Schedule “${t.title || "Untitled task"}” for ${label}`}>
                   <CalendarPlus size={13} aria-hidden /> Schedule for {label}
                 </button>
               }
@@ -481,7 +481,7 @@ function Unscheduled({
         </ul>
       )}
       {tasks.length > 8 ? (
-        <AppLink href="/tasks/all" className="mt-2 inline-block text-sm text-accent underline underline-offset-2">
+        <AppLink href="/tasks/all" className="mt-2 inline-block text-subheadline text-accent underline underline-offset-2">
           {t("calendar.unscheduled.more", { count: tasks.length - 8 })}
         </AppLink>
       ) : null}

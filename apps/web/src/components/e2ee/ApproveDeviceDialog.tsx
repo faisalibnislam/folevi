@@ -70,7 +70,7 @@ export function NewDeviceApprovalDialog({ open, onClose, onApproved }: { open: b
   }, [open]);
   return (
     <Dialog open={open} onClose={onClose} title={a.waitingTitle} size="sm" footer={<Button onClick={onClose}>{a.cancel}</Button>}>
-      <div className="space-y-3 text-sm" aria-live="polite">
+      <div className="space-y-3 text-subheadline" aria-live="polite">
         {failed ? (
           <p role="alert" className="text-danger">
             {a.failed}
@@ -175,7 +175,7 @@ function IncomingApprovalDialog({ request, onClose }: { request: IncomingApprova
         )
       }
     >
-      <div className="space-y-2 text-sm" aria-live="polite">
+      <div className="space-y-2 text-subheadline" aria-live="polite">
         {cancelled ? (
           <p role="alert" className="text-ink">
             {a.cancelled}

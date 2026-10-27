@@ -10,7 +10,7 @@ export function WaitingToSync({ state = "queued", className = "" }: { state?: "q
   return (
     <span
       data-waiting-to-sync={state}
-      className={`inline-flex items-center gap-1 text-[11px] font-medium ${failed ? "text-danger" : "text-muted"} ${className}`}
+      className={`inline-flex items-center gap-1 text-footnote font-medium ${failed ? "text-danger" : "text-muted"} ${className}`}
       title={failed ? "A change to this note wasn’t saved. Open the sync status to retry." : "Saved on this device. It syncs when you’re back online."}
     >
       <span className={`inline-block h-1.5 w-1.5 rounded-tiny ${failed ? "bg-danger" : "bg-current"}`} aria-hidden />

@@ -22,7 +22,7 @@ export default async function NativeCallbackPage({ searchParams }: { searchParam
   return (
     <>
       <AuthHeading title="Back to Folevi" lede="You're signed in. If Folevi didn't open by itself, open it now. You can close this page." />
-      <a href={intent} className="ui-btn ui-btn-primary inline-flex h-11 w-full items-center justify-center text-[15px]">
+      <a href={intent} className="ui-btn ui-btn-primary inline-flex h-11 w-full items-center justify-center text-subheadline">
         Open Folevi
       </a>
     </>

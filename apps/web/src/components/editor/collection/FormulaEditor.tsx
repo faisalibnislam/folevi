@@ -56,7 +56,7 @@ export function FormulaValue({ result }: { result: CollectionFormulaResult | und
   }
   if (result.kind === "boolean") {
     return (
-      <span role="img" aria-label={result.value ? "True" : "False"} className={`inline-grid h-4 w-4 place-items-center rounded-tiny border text-[10px] leading-none ${result.value ? "border-heading bg-heading text-canvas" : "border-line-strong"}`}>
+      <span role="img" aria-label={result.value ? "True" : "False"} className={`inline-grid h-4 w-4 place-items-center rounded-tiny border text-footnote leading-none ${result.value ? "border-heading bg-heading text-canvas" : "border-line-strong"}`}>
         {result.value ? "✓" : ""}
       </span>
     );
@@ -67,7 +67,7 @@ export function FormulaValue({ result }: { result: CollectionFormulaResult | und
 
 /** Number format choices: plain, number, currency, percent; decimals; the currency. */
 export function NumberFormatFields({ value, onChange, compact }: { value: CollectionNumberFormat | null | undefined; onChange: (next: CollectionNumberFormat | null) => void; compact?: boolean }) {
-  const cls = compact ? "h-7 ui-input rounded-chip px-2 text-xs" : "h-8 ui-input rounded-chip px-3 text-sm";
+  const cls = compact ? "h-7 ui-input rounded-chip px-2 text-footnote" : "h-8 ui-input rounded-chip px-3 text-callout";
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <Select
@@ -257,7 +257,7 @@ function FormulaForm({
   return (
     <div className="space-y-5">
       <div>
-        <label htmlFor={`${listId}-input`} className="mb-1 block text-sm font-semibold">
+        <label htmlFor={`${listId}-input`} className="mb-1 block text-subheadline font-semibold">
           Formula
         </label>
         <textarea
@@ -290,7 +290,7 @@ function FormulaForm({
           onClick={syncCaret}
           onBlur={() => setTimeout(() => setHidden(true), 120)}
           onFocus={() => setHidden(false)}
-          className="block w-full resize-y ui-input rounded-chip px-3 py-2 font-mono text-[13px] leading-5"
+          className="block w-full resize-y ui-input rounded-chip px-3 py-2 font-mono text-callout leading-5"
         />
         {suggestions?.items.length ? (
           <ul id={listId} role="listbox" aria-label="Suggestions" className="mt-1 max-h-56 overflow-y-auto ui-pop rounded-chip p-1">
@@ -304,16 +304,16 @@ function FormulaForm({
                 onMouseEnter={() => setActive(i)}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => put(suggestions, i)}
-                className="ui-menu-item flex cursor-pointer items-baseline gap-2 rounded-tiny px-2 py-1.5 text-sm pointer-coarse:min-h-11 pointer-coarse:items-center"
+                className="ui-menu-item flex cursor-pointer items-baseline gap-2 rounded-tiny px-2 py-1.5 text-subheadline pointer-coarse:min-h-11 pointer-coarse:items-center"
               >
-                <span className={s.kind === "function" ? "font-mono text-[12.5px]" : "font-medium"}>{s.label}</span>
-                <span className="truncate text-xs text-faint">{s.detail}</span>
+                <span className={s.kind === "function" ? "font-mono text-subheadline" : "font-medium"}>{s.label}</span>
+                <span className="truncate text-footnote text-faint">{s.detail}</span>
               </li>
             ))}
           </ul>
         ) : null}
         {problem ? (
-          <p id={errorId} role="alert" className="mt-1.5 text-[13px] text-danger">
+          <p id={errorId} role="alert" className="mt-1.5 text-subheadline text-danger">
             {problem}
           </p>
         ) : null}
@@ -324,7 +324,7 @@ function FormulaForm({
       <section aria-label="Preview">
         <h3 className="ui-caps mb-1.5">Preview</h3>
         {preview.length ? (
-          <table className="w-full border-collapse text-sm">
+          <table className="w-full border-collapse text-subheadline">
             <tbody>
               {preview.map(({ row, result }) => (
                 <tr key={row.id}>
@@ -333,14 +333,14 @@ function FormulaForm({
                   </th>
                   <td className="border-b border-line py-1.5">
                     <FormulaValue result={result} />
-                    {result?.kind === "error" && result.error ? <span className="ml-2 text-xs text-muted">{result.error.message}</span> : null}
+                    {result?.kind === "error" && result.error ? <span className="ml-2 text-footnote text-muted">{result.error.message}</span> : null}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <p className="text-sm text-muted">Add a row to see what the formula gives.</p>
+          <p className="text-subheadline text-muted">Add a row to see what the formula gives.</p>
         )}
       </section>
 
@@ -430,14 +430,14 @@ function WriteWithAi({
           onChange={(e) => setText(e.target.value)}
           placeholder="Write a formula: price times quantity, days until due..."
           maxLength={500}
-          className="h-9 min-w-0 flex-1 ui-input rounded-chip px-3 text-sm"
+          className="h-9 min-w-0 flex-1 ui-input rounded-chip px-3 text-callout"
         />
         <Button size="sm" type="submit" disabled={busy || !text.trim()} aria-label="Write the formula">
           {busy ? "Writing..." : <ArrowUp size={14} aria-hidden />}
         </Button>
       </form>
       {explanation ? (
-        <p className="mt-2 text-[13px] text-muted" role="status">
+        <p className="mt-2 text-subheadline text-muted" role="status">
           {explanation}
         </p>
       ) : null}

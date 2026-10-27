@@ -12,7 +12,7 @@ export function PresentButton(props: Omit<PresentationProps, "onClose">) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" className="ui-btn ui-btn-secondary fb-present-open inline-flex h-8 items-center gap-1.5 rounded-control px-3 text-[13px] font-medium" onClick={() => setOpen(true)} aria-keyshortcuts="Meta+Alt+P">
+      <button type="button" className="ui-btn ui-btn-secondary fb-present-open inline-flex h-8 items-center gap-1.5 rounded-control px-3 text-callout font-medium" onClick={() => setOpen(true)} aria-keyshortcuts="Meta+Alt+P">
         <PresentIcon size={14} aria-hidden />
         Present
       </button>

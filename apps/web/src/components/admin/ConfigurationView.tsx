@@ -53,22 +53,22 @@ export function ConfigurationView() {
         <Panel title="Feature flags" description="Kill switches for product capabilities." flush>
           <ul className="divide-y divide-line">
             {config === undefined ? (
-              <li className="px-4 py-6 text-sm text-muted">Loading…</li>
+              <li className="px-4 py-6 text-subheadline text-muted">Loading…</li>
             ) : (
               config.flags.map((f) => {
                 const descId = `flag-${f.key}-desc`;
                 return (
                   <li key={f.key} className="flex items-start gap-4 px-4 py-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[13.5px] font-medium">
+                      <p className="text-body font-medium">
                         <Mono>{f.key}</Mono>
                       </p>
-                      <p id={descId} className="mt-1 text-[12.5px] text-muted">
+                      <p id={descId} className="mt-1 text-subheadline text-muted">
                         {f.description} {f.updatedAt ? <>Changed <Time ts={f.updatedAt} />.</> : "Default setting."}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 pt-0.5">
-                      <span className="w-7 text-right text-xs text-muted" aria-hidden>
+                      <span className="w-7 text-right text-footnote text-muted" aria-hidden>
                         {f.enabled ? "On" : "Off"}
                       </span>
                       <Switch
@@ -88,7 +88,7 @@ export function ConfigurationView() {
 
         <Panel title="Maintenance" description="A banner shown at the top of the product, and an optional read-only mode.">
           {config === undefined ? (
-            <p className="text-sm text-muted">Loading…</p>
+            <p className="text-subheadline text-muted">Loading…</p>
           ) : (
             <MaintenanceForm
               key={`${config.maintenance.bannerMessage ?? ""}|${String(config.maintenance.readOnly ?? false)}`}
@@ -146,7 +146,7 @@ export function ConfigurationView() {
         <Panel title="Built-in templates" description="Starter templates offered when creating a document. Disabling hides a template for new documents only." flush className="xl:col-span-2">
           <ul className="grid divide-y divide-line md:grid-cols-2 md:divide-y-0">
             {config === undefined ? (
-              <li className="px-4 py-6 text-sm text-muted">Loading…</li>
+              <li className="px-4 py-6 text-subheadline text-muted">Loading…</li>
             ) : (
               config.templates.map((t) => {
                 const descId = `tpl-${t.key}-desc`;
@@ -154,8 +154,8 @@ export function ConfigurationView() {
                   <li key={t.key} className="flex items-start gap-3 border-line px-4 py-3 md:border-b">
                     <TemplateTile name={t.icon} size={32} iconSize={16} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[13.5px] font-medium">{t.name}</p>
-                      <p id={descId} className="mt-0.5 text-[12.5px] text-muted">
+                      <p className="text-body font-medium">{t.name}</p>
+                      <p id={descId} className="mt-0.5 text-subheadline text-muted">
                         {t.description}
                       </p>
                     </div>
@@ -268,7 +268,7 @@ function MaintenanceForm({ current, disabled, onSave }: { current: { bannerMessa
         onSave({ bannerMessage: message.trim(), readOnly });
       }}
     >
-      <div className="text-sm">
+      <div className="text-subheadline">
         <label htmlFor={`${uid}-msg`} className="mb-1 block font-medium">
           Banner message
         </label>
@@ -283,17 +283,17 @@ function MaintenanceForm({ current, disabled, onSave }: { current: { bannerMessa
           placeholder="e.g. Scheduled maintenance Sunday 02:00–02:30 UTC."
           className={`${inputCls} h-auto py-2`}
         />
-        <p id={`${uid}-msg-hint`} className="mt-1 text-xs text-muted">
+        <p id={`${uid}-msg-hint`} className="mt-1 text-footnote text-muted">
           {message.length}/280 characters. Leave empty to hide the banner.
         </p>
       </div>
       <div className="flex items-start gap-3">
         <Switch checked={readOnly} onChange={setReadOnly} label="Read-only mode" describedBy={`${uid}-ro-hint`} disabled={disabled} />
-        <div className="text-sm">
+        <div className="text-subheadline">
           <p className="font-medium" aria-hidden>
             Read-only mode
           </p>
-          <p id={`${uid}-ro-hint`} className="text-xs text-muted">
+          <p id={`${uid}-ro-hint`} className="text-footnote text-muted">
             Blocks all writes from non-admins. Edits stay queued on people&apos;s devices and sync when it&apos;s turned off.
           </p>
         </div>

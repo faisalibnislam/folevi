@@ -16,7 +16,7 @@ export function SignInToCollaborate({ variant = "inline", className = "" }: { va
   if (variant === "page") return <EmptyState icon={Users} title={SIGN_IN_TO_COLLABORATE} body={WHY} className={className} />;
   if (variant === "panel") return <EmptyState icon={Users} size="inline" title={SIGN_IN_TO_COLLABORATE} body={WHY} className={className} />;
   return (
-    <p data-sign-in-to-collaborate="" className={`flex items-center gap-2 px-2 text-[12px] leading-snug text-muted ${className}`}>
+    <p data-sign-in-to-collaborate="" className={`flex items-center gap-2 px-2 text-footnote leading-snug text-muted ${className}`}>
       <Users size={13} aria-hidden className="flex-none text-faint" />
       <span>{SIGN_IN_TO_COLLABORATE}</span>
     </p>

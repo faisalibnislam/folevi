@@ -97,7 +97,7 @@ export function PricingSection() {
                   </span>
                   {tier === "free" ? null : <span className="text-[14px] text-muted">/ month</span>}
                 </p>
-                <p className="mt-3 text-[14.5px] leading-snug text-muted">{plan.blurb}</p>
+                <p className="mt-3 text-[15px] leading-snug text-muted">{plan.blurb}</p>
               </li>
             );
           })}

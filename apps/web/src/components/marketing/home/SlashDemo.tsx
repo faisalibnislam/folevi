@@ -215,7 +215,7 @@ export function SlashDemo() {
                     <li key={item.label} className={cx("flex items-center gap-2.5 rounded-chip px-2 py-1.5", i === s.active ? "mk-app-row-on text-(--color-heading)" : "text-ink")}>
                       <span className="grid size-6 flex-none place-items-center rounded-chip bg-(--color-surface) text-(--color-heading) shadow-(--shadow-control)">{item.icon}</span>
                       <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                      {item.hint ? <span className="text-[11.5px] text-faint">{item.hint}</span> : null}
+                      {item.hint ? <span className="text-[12px] text-faint">{item.hint}</span> : null}
                     </li>
                   ))}
                 </ul>
@@ -258,7 +258,7 @@ function DemoBlock({ block }: { block: Block }) {
       return (
         <p className="min-h-6">
           {block.text}
-          <span className="rounded-tiny bg-(--glass-hover) px-1.5 py-0.5 text-[12.5px] font-medium text-(--color-heading)">
+          <span className="rounded-tiny bg-(--glass-hover) px-1.5 py-0.5 text-[13px] font-medium text-(--color-heading)">
             <CalendarDays size={11} className="mr-1 inline -translate-y-px" />
             Saturday
           </span>
@@ -274,7 +274,7 @@ function DemoBlock({ block }: { block: Block }) {
     case "summary":
       return (
         <div className="min-h-10 rounded-control bg-[color-mix(in_oklab,var(--mk-violet)_10%,transparent)] px-3 py-2">
-          <p className="flex items-center gap-1.5 text-[11.5px] font-semibold text-muted">{ai} Summary</p>
+          <p className="flex items-center gap-1.5 text-[12px] font-semibold text-muted">{ai} Summary</p>
           <p className="mt-1">{block.text || <Caret />}</p>
         </div>
       );
@@ -294,7 +294,7 @@ function DemoBlock({ block }: { block: Block }) {
       );
     case "table":
       return (
-        <div className="grid grid-cols-3 overflow-hidden rounded-control text-[12.5px] shadow-[inset_0_0_0_1px_var(--color-line)]">
+        <div className="grid grid-cols-3 overflow-hidden rounded-control text-[13px] shadow-[inset_0_0_0_1px_var(--color-line)]">
           {["Box", "Room", "Done", "Lamp", "Studio", "Yes", "Plan chest", "Studio", "No"].map((c, i) => (
             <span key={i} className={cx("border-(--color-line) px-2 py-1", i < 3 && "bg-(--glass-hover) font-semibold text-(--color-heading)", i % 3 !== 2 && "border-r", i < 6 && "border-b")}>
               {c}

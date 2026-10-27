@@ -20,7 +20,7 @@ const statusTone: Record<SyncStatus, string> = {
 
 export function StatusPill({ status, detail }: { status: SyncStatus; detail?: string }) {
   return (
-    <span className="mk-mini-sunken inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-chip px-2 text-[11.5px] font-medium text-muted">
+    <span className="mk-mini-sunken inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-chip px-2 text-[12px] font-medium text-muted">
       <span aria-hidden="true" className={cx("inline-block size-1.5 rounded-tiny", statusTone[status])} />
       <span>
         {status === "Saving" || status === "Syncing" ? `${status}…` : status}

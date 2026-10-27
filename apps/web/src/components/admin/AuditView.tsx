@@ -32,9 +32,9 @@ function Diff({ before, after }: { before: unknown; after: unknown }) {
   const b = flatten(before ?? null);
   const a = flatten(after ?? null);
   const keys = [...new Set([...b.keys(), ...a.keys()])].sort();
-  if (keys.length === 0) return <p className="text-[13px] text-muted">This entry records no before/after state (for example a view or search).</p>;
+  if (keys.length === 0) return <p className="text-subheadline text-muted">This entry records no before/after state (for example a view or search).</p>;
   return (
-    <table className="w-full border-collapse font-mono text-[12px]">
+    <table className="w-full border-collapse font-mono text-footnote">
       <caption className="sr-only">Changed fields</caption>
       <thead>
         <tr>
@@ -121,7 +121,7 @@ export function AuditView() {
           setOpen(new Set());
         }}
       >
-        <div className="text-sm">
+        <div className="text-subheadline">
           <label htmlFor={`${uid}-type`} className="mb-1 block font-medium">
             Target type
           </label>
@@ -134,7 +134,7 @@ export function AuditView() {
             ))}
           </Select>
         </div>
-        <div className="min-w-[260px] flex-1 text-sm">
+        <div className="min-w-[260px] flex-1 text-subheadline">
           <label htmlFor={`${uid}-id`} className="mb-1 block font-medium">
             Target ID
           </label>
@@ -150,7 +150,7 @@ export function AuditView() {
             className={inputCls}
           />
           {filterError ? (
-            <p id={`${uid}-id-error`} className="mt-1 text-xs font-medium text-danger">
+            <p id={`${uid}-id-error`} className="mt-1 text-footnote font-medium text-danger">
               {filterError}
             </p>
           ) : null}
@@ -244,7 +244,7 @@ export function AuditView() {
                         <td colSpan={6} className={`${td} bg-surface`}>
                           <div className="grid gap-3 py-1 lg:grid-cols-[2fr_1fr]">
                             <Diff before={e.before} after={e.after} />
-                            <div className="text-[12px] text-muted">
+                            <div className="text-footnote text-muted">
                               <p>Recorded {formatDateTime(e.createdAt)}</p>
                               <p className="mt-1">
                                 Request <Mono wrap>{e.requestId}</Mono>

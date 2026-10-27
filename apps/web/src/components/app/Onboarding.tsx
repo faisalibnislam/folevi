@@ -309,10 +309,10 @@ export function Onboarding() {
                 <AiIcon size={30} />
               </span>
             ) : null}
-            <h1 ref={headingRef} id={headingId} tabIndex={-1} className="ui-display max-w-[16ch] text-[34px] leading-[1.06] outline-none sm:text-[44px]">
+            <h1 ref={headingRef} id={headingId} tabIndex={-1} className="ui-display max-w-[16ch] text-large-title leading-[1.06] outline-none sm:text-[44px]">
               {heading}
             </h1>
-            <p className="mt-3.5 max-w-[46ch] text-[15.5px] leading-relaxed text-muted">{lede}</p>
+            <p className="mt-3.5 max-w-[46ch] text-body leading-relaxed text-muted">{lede}</p>
 
             <div className="mt-7">
               {step === 0 ? <IntroFacts /> : null}
@@ -321,14 +321,14 @@ export function Onboarding() {
               {step === 3 ? (
                 <>
                   <Appearances headingId={headingId} value={look} styleId={chosenArt} onPick={pickAppearance} />
-                  <p className="mt-4 text-[13px] text-muted">Match system follows your device, so Folevi turns dark when your device does.</p>
+                  <p className="mt-4 text-subheadline text-muted">Match system follows your device, so Folevi turns dark when your device does.</p>
                 </>
               ) : null}
               {step === 4 ? <AiChoice on={ai} onChange={setAi} entitlements={profile.entitlements} /> : null}
               {step === LAST ? <Summary pages={starterPagesFor(applied).map((p) => p.title)} style={styleName(savedStyle ?? styleId)} appearance={profile.appearance} ai={profile.aiEnabled} /> : null}
             </div>
             {error ? (
-              <p role="alert" className="mt-5 text-sm text-danger">
+              <p role="alert" className="mt-5 text-subheadline text-danger">
                 {error}
               </p>
             ) : null}
@@ -376,7 +376,7 @@ function Progress({ step }: { step: number }) {
           </li>
         ))}
       </ol>
-      <p aria-hidden="true" className="mt-3 text-[12.5px] font-medium text-muted">
+      <p aria-hidden="true" className="mt-3 text-subheadline font-medium text-muted">
         <span className="text-heading">{step + 1}</span> of {STEPS.length} · {STEPS[step]!.name}
       </p>
     </div>
@@ -398,8 +398,8 @@ function FactList({ items }: { items: { icon: LucideIcon; title: string; body: R
         <li key={item.title} className="ob-rise flex gap-3.5" style={{ ["--i" as string]: i }}>
           <IconTile icon={item.icon} />
           <div className="min-w-0 pt-0.5">
-            <p className="text-[14.5px] font-semibold text-heading">{item.title}</p>
-            <p className="mt-0.5 text-[13.5px] leading-relaxed text-muted">{item.body}</p>
+            <p className="text-body font-semibold text-heading">{item.title}</p>
+            <p className="mt-0.5 text-body leading-relaxed text-muted">{item.body}</p>
           </div>
         </li>
       ))}
@@ -442,8 +442,8 @@ function UseCases({ headingId, picks, applied, onToggle }: { headingId: string; 
                   <span className="ob-art block size-full" style={{ ["--ob-art" as string]: artThumb(u.art) }} />
                 </span>
                 <span className="min-w-0 flex-1 leading-tight">
-                  <span className="block text-[14px] font-semibold text-heading">{u.label}</span>
-                  <span className="mt-1 block text-[12.5px] leading-snug text-muted">{added ? "Added" : listOf(u.pages.map((p) => p.title))}</span>
+                  <span className="block text-body font-semibold text-heading">{u.label}</span>
+                  <span className="mt-1 block text-subheadline leading-snug text-muted">{added ? "Added" : listOf(u.pages.map((p) => p.title))}</span>
                 </span>
                 <span aria-hidden className="ob-check">
                   <CheckGlyph />
@@ -453,7 +453,7 @@ function UseCases({ headingId, picks, applied, onToggle }: { headingId: string; 
           })}
         </div>
       </fieldset>
-      <p aria-live="polite" className="mt-4 min-h-5 text-[13px] text-muted">
+      <p aria-live="polite" className="mt-4 min-h-5 text-subheadline text-muted">
         {pages.length ? `Adds ${pages.length} ${pages.length === 1 ? "page" : "pages"}: ${listOf(pages.map((p) => p.title))}.` : applied.length ? "Those pages are in your Personal." : "Nothing picked yet. You can skip this and add templates any time."}
       </p>
     </>
@@ -474,17 +474,17 @@ function Styles({ headingId, value, onPick }: { headingId: string; value: string
                 className="ob-tile"
                 style={{ background: id === PLAIN_STYLE ? "var(--color-surface)" : `${artThumb(id)} center / cover no-repeat`, boxShadow: id === PLAIN_STYLE ? "inset 0 0 0 1px var(--color-line)" : undefined }}
               >
-                {id === PLAIN_STYLE ? <span className="grid h-full place-items-center font-[family-name:var(--font-display)] text-[26px] font-semibold text-heading">Aa</span> : null}
+                {id === PLAIN_STYLE ? <span className="grid h-full place-items-center font-[family-name:var(--font-display)] text-title-1 font-semibold text-heading">Aa</span> : null}
                 <span className="ob-badge">
                   <Check size={13} strokeWidth={2.6} />
                 </span>
               </span>
-              <span className="mt-1.5 block truncate text-center text-[12.5px] font-medium text-ink">{styleName(id)}</span>
+              <span className="mt-1.5 block truncate text-center text-subheadline font-medium text-ink">{styleName(id)}</span>
             </label>
           ))}
         </div>
       </fieldset>
-      <p className="mt-4 text-[13px] text-muted">
+      <p className="mt-4 text-subheadline text-muted">
         {COVER_ART.length} themes in all. Change any page’s theme from Style in the page tools.
       </p>
     </>
@@ -540,7 +540,7 @@ function Appearances({ headingId, value, styleId, onPick }: { headingId: string;
               )}
             </span>
             {/* Phones: three cards are too narrow for the icon and "Match system" on one line; the label wraps instead. */}
-            <span className="flex items-center gap-2 px-1 pb-0.5 text-[13.5px] font-semibold text-heading max-sm:leading-tight">
+            <span className="flex items-center gap-2 px-1 pb-0.5 text-body font-semibold text-heading max-sm:leading-tight">
               <o.icon size={15} aria-hidden className="hidden flex-none text-muted sm:block" />
               <span className="min-w-0 sm:truncate">{o.label}</span>
             </span>
@@ -576,14 +576,14 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
       />
       <div className="ob-rise mt-6 flex items-start gap-4 rounded-panel bg-surface p-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: 3 }}>
         <div className="min-w-0 flex-1">
-          <p className="text-[14.5px] font-semibold text-heading">Foli AI {on ? "on" : "off"}</p>
-          <p id={descId} className="mt-1 text-[13px] leading-relaxed text-muted">
+          <p className="text-body font-semibold text-heading">Foli AI {on ? "on" : "off"}</p>
+          <p id={descId} className="mt-1 text-subheadline leading-relaxed text-muted">
             When you use it, your request and the notes it needs are sent to Google Gemini. Nothing is sent while it’s off, and Foli AI's buttons are hidden.
           </p>
         </div>
         <Switch checked={on} onChange={onChange} label="Foli AI" describedBy={descId} />
       </div>
-      <p className="mt-3.5 text-[13px] text-muted">{plan}</p>
+      <p className="mt-3.5 text-subheadline text-muted">{plan}</p>
     </>
   );
 }
@@ -601,8 +601,8 @@ function Summary({ pages, style, appearance, ai }: { pages: string[]; style: str
         <li key={row.title} className="ob-rise flex items-center gap-3.5 rounded-panel bg-surface p-3 pr-4 shadow-[var(--shadow-card)]" style={{ ["--i" as string]: i }}>
           {row.icon}
           <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-semibold text-heading">{row.title}</p>
-            <p className="mt-0.5 text-[13px] text-muted">{row.body}</p>
+            <p className="text-body font-semibold text-heading">{row.title}</p>
+            <p className="mt-0.5 text-subheadline text-muted">{row.body}</p>
           </div>
           <span aria-hidden className="ob-draw grid size-6 flex-none place-items-center rounded-chip bg-heading text-canvas" style={{ ["--i" as string]: i }}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">

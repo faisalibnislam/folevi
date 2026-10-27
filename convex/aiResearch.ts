@@ -741,7 +741,7 @@ export const saveAsNote = mutation({
       if (!folder || folder.deletedAt || !sameScopeRows(folder, job)) fail("not_found", "Folder not found.");
       folderId = folder._id;
     }
-    const { blocks } = markdownToBlocks(markdown, { titleFromHeading: false });
+    const { blocks } = markdownToBlocks(markdown, { titleFromHeading: false, remoteImages: "link" });
     if (blocks.length > MAX_DRAFT_BLOCKS) fail("limit_exceeded", "That report has too many blocks to save as a note.");
     const doc = await createDocument(ctx, { scope, actor: profile, title: reportTitle(job.question), folderId, blocks, kind: "document" });
     await ctx.db.patch(job._id, { noteId: doc.publicId, updatedAt: Date.now() });

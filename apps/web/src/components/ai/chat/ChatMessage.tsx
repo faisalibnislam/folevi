@@ -34,10 +34,10 @@ export function openWebCitation(c: WebCitation) {
  * Foli AI's as plain text, both at 17/24 (Craft's way); the bubbles stay on the website and the Mac app.
  */
 const ANSWER = "rounded-panel rounded-bl-tiny bg-[var(--glass-active)] px-4 py-3 shadow-[var(--glass-edge)]";
-const IPHONE_ANSWER = "px-1 [&_.fb-ai-answer]:text-[17px] [&_.fb-ai-answer]:leading-6";
+const IPHONE_ANSWER = "px-1 [&_.fb-ai-answer]:text-body [&_.fb-ai-answer]:leading-6";
 const answerBox = (iphone: boolean) => (iphone ? IPHONE_ANSWER : ANSWER);
 
-const ROW_BUTTON = "ai-row-btn inline-flex h-7 items-center gap-1 rounded-chip px-1.5 text-[12px] text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40";
+const ROW_BUTTON = "ai-row-btn inline-flex h-7 items-center gap-1 rounded-chip px-1.5 text-footnote text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading disabled:opacity-40";
 
 /** Copies text, and says so for a moment. */
 function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
@@ -68,7 +68,7 @@ export function NotSharedChips({ count }: { count: number }) {
   return (
     <ul aria-label="Files not shared" className="mb-1 flex max-w-[85%] flex-wrap justify-end gap-1.5">
       {Array.from({ length: count }, (_, i) => (
-        <li key={i} title="Only the person who uploaded it can open it." className="inline-flex h-7 items-center gap-1.5 rounded-chip bg-[var(--glass-hover)] px-2.5 text-[12.5px] text-muted">
+        <li key={i} title="Only the person who uploaded it can open it." className="inline-flex h-7 items-center gap-1.5 rounded-chip bg-[var(--glass-hover)] px-2.5 text-subheadline text-muted">
           <EyeOff size={12} aria-hidden className="flex-none" /> File not shared
         </li>
       ))}
@@ -113,13 +113,13 @@ export function UserMessage({ text, attachments, onEdit, disabled }: { text: str
               e.currentTarget.form?.requestSubmit();
             }
           }}
-          className="block w-full resize-none bg-transparent px-1.5 py-1 text-[14px] leading-[1.5] text-ink outline-none"
+          className="block w-full resize-none bg-transparent px-1.5 py-1 text-body leading-[1.5] text-ink outline-none"
         />
         <div className="mt-1 flex justify-end gap-1.5">
-          <button type="button" onClick={() => setEditing(false)} className="h-7 rounded-chip px-2.5 text-[12.5px] text-muted hover:bg-[var(--glass-active)] hover:text-heading">
+          <button type="button" onClick={() => setEditing(false)} className="h-7 rounded-chip px-2.5 text-subheadline text-muted hover:bg-[var(--glass-active)] hover:text-heading">
             Cancel
           </button>
-          <button type="submit" disabled={!draft.trim()} className="h-7 rounded-chip bg-heading px-2.5 text-[12.5px] font-medium text-canvas disabled:opacity-40">
+          <button type="submit" disabled={!draft.trim()} className="h-7 rounded-chip bg-heading px-2.5 text-subheadline font-medium text-canvas disabled:opacity-40">
             Send
           </button>
         </div>
@@ -130,7 +130,7 @@ export function UserMessage({ text, attachments, onEdit, disabled }: { text: str
     <div className="group/user flex flex-col items-end gap-0.5">
       {files?.length ? <AttachmentChips files={files} className="mb-1 max-w-[85%] justify-end" /> : null}
       <NotSharedChips count={hidden} />
-      <p className={iphone ? "w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-container bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] px-4 py-2.5 text-[17px] leading-6 text-ink" : "w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-panel rounded-br-tiny bg-heading px-3.5 py-2 text-[14px] text-canvas"}>{text}</p>
+      <p className={iphone ? "w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-container bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] px-4 py-2.5 text-body leading-6 text-ink" : "w-fit max-w-[85%] whitespace-pre-wrap break-words rounded-panel rounded-br-tiny bg-heading px-3.5 py-2 text-body text-canvas"}>{text}</p>
       {onEdit ? (
         <button
           type="button"
@@ -142,7 +142,7 @@ export function UserMessage({ text, attachments, onEdit, disabled }: { text: str
           className={
             iphone
               ? // A small word under the bubble's end (a 44 pt target over it), not a row of its own.
-                "relative mr-2 inline-flex h-7 items-center gap-1 text-[14px] text-muted outline-none after:absolute after:-inset-x-2 after:-inset-y-2 focus-visible:underline active:opacity-60 disabled:opacity-40"
+                "relative mr-2 inline-flex h-7 items-center gap-1 text-body text-muted outline-none after:absolute after:-inset-x-2 after:-inset-y-2 focus-visible:underline active:opacity-60 disabled:opacity-40"
               : `${ROW_BUTTON} opacity-0 focus-visible:opacity-100 group-hover/user:opacity-100 pointer-coarse:opacity-100`
           }
         >
@@ -160,7 +160,7 @@ export function AgentSteps({ steps, live }: { steps: AgentStep[]; live?: boolean
   return (
     <ul aria-label={live ? "What Foli AI is doing" : "What Foli AI did"} className="mb-2 flex flex-wrap gap-1.5">
       {lines.map((l) => (
-        <li key={l} className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-0.5 text-[12px] text-muted">
+        <li key={l} className="rounded-chip bg-[var(--glass-hover)] px-2.5 py-0.5 text-footnote text-muted">
           {l}
         </li>
       ))}
@@ -191,7 +191,7 @@ export function Sources({ citations, webCitations = [], onCite }: { citations: C
             type="button"
             title={c.quote ? `“${c.quote}”` : undefined}
             onClick={() => onCite(c)}
-            className="inline-flex max-w-full items-center gap-1.5 rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-[12.5px] text-ink hover:bg-[var(--glass-active)] hover:text-heading"
+            className="inline-flex max-w-full items-center gap-1.5 rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-subheadline text-ink hover:bg-[var(--glass-active)] hover:text-heading"
           >
             <span className="font-semibold text-muted">{c.n}</span>
             <FileText size={12} aria-hidden className="flex-none text-muted" />
@@ -205,7 +205,7 @@ export function Sources({ citations, webCitations = [], onCite }: { citations: C
             target="_blank"
             rel="noopener noreferrer"
             title={c.url}
-            className="inline-flex max-w-full items-center gap-1.5 rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-[12.5px] text-ink hover:bg-[var(--glass-active)] hover:text-heading"
+            className="inline-flex max-w-full items-center gap-1.5 rounded-chip bg-[var(--glass-hover)] px-2.5 py-1 text-subheadline text-ink hover:bg-[var(--glass-active)] hover:text-heading"
           >
             <span className="font-semibold text-muted">{c.n}</span>
             <Globe size={12} aria-hidden className="flex-none text-muted" />
@@ -230,7 +230,7 @@ function RunStatus({ label, onStop, iphone, className = "" }: { label: string; o
           <span key={d} className="h-[5px] w-[5px] animate-pulse rounded-chip bg-current motion-reduce:animate-none" style={{ animationDelay: `${d}ms` }} />
         ))}
       </span>
-      <p role="status" className={`min-w-0 truncate text-muted ${iphone ? "text-[15px]" : "text-[13px]"}`}>
+      <p role="status" className={`min-w-0 truncate text-muted ${iphone ? "text-subheadline" : "text-subheadline"}`}>
         {label}
       </p>
       {onStop ? (
@@ -238,7 +238,7 @@ function RunStatus({ label, onStop, iphone, className = "" }: { label: string; o
           type="button"
           onClick={onStop}
           className={`relative ml-1 inline-flex flex-none items-center gap-1.5 rounded-container bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] font-medium text-heading outline-none transition-opacity hover:bg-[color-mix(in_oklab,var(--color-ink)_11%,transparent)] focus-visible:ring-2 focus-visible:ring-focus active:opacity-60 ${
-            iphone ? "h-8 px-3 text-[14px] after:absolute after:-inset-y-1.5 after:inset-x-0" : "h-7 px-2.5 text-[12px]"
+            iphone ? "h-8 px-3 text-subheadline after:absolute after:-inset-y-1.5 after:inset-x-0" : "h-7 px-2.5 text-footnote"
           }`}
         >
           <span aria-hidden className="h-[9px] w-[9px] rounded-tiny bg-current" /> Stop
@@ -353,7 +353,7 @@ export function AssistantMessage({
             <AiMarkdown markdown={message.text} />
           </div>
         ) : null}
-        <AiProblemNotice problem={problem} className={problem.kind === "other" ? "rounded-panel bg-danger-soft px-3 py-2.5 text-[13px] text-danger" : undefined} />
+        <AiProblemNotice problem={problem} className={problem.kind === "other" ? "rounded-panel bg-danger-soft px-3 py-2.5 text-subheadline text-danger" : undefined} />
         {last && !readOnly ? (
           <button type="button" disabled={busy} onClick={onRegenerate} className={ROW_BUTTON}>
             <RotateCcw size={12} aria-hidden /> Try again
@@ -392,7 +392,7 @@ export function AssistantMessage({
     <div className="space-y-2">
       <div className={answerBox(iphone)}>
         {message.agent ? <AgentSteps steps={message.agent.steps} /> : null}
-        {message.text ? <AiMarkdown markdown={message.text} cited={cited} onCite={citeBy} onNavigate={onOpen} /> : <p className="text-[13.5px] text-muted">Stopped before it said anything.</p>}
+        {message.text ? <AiMarkdown markdown={message.text} cited={cited} onCite={citeBy} onNavigate={onOpen} /> : <p className="text-body text-muted">Stopped before it said anything.</p>}
         {message.agent?.run && (run || readOnly) ? <AgentRunCard run={message.agent.run} activity={run?.activity ?? { busy: null, error: null }} onApprove={run?.onApprove ?? (() => {})} onDiscard={run?.onDiscard ?? (() => {})} onUndo={run?.onUndo ?? (() => {})} onOpen={onOpen} readOnly={readOnly} /> : null}
         {message.actions && !readOnly ? <ActionsCard actions={message.actions as AiAction[]} outcome={outcome} onApply={onApply} onDismiss={onDismiss} onOpen={onOpen} /> : null}
         {message.memory && message.memory.status !== "dismissed" && !readOnly ? <MessageMemory messageId={message.id} memory={message.memory} /> : null}
@@ -400,18 +400,18 @@ export function AssistantMessage({
         <SearchSuggestions entryPoints={message.searchEntryPoints} />
         {onFix && !readOnly ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button type="button" disabled={busy} onClick={onFix} className="inline-flex h-9 items-center gap-1.5 rounded-control bg-heading px-3 text-[13px] font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-40">
+            <button type="button" disabled={busy} onClick={onFix} className="inline-flex h-9 items-center gap-1.5 rounded-control bg-heading px-3 text-subheadline font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-40">
               <Wand2 size={14} aria-hidden /> Make these changes
             </button>
-            <span className="text-[12px] text-muted">In the note itself. You review them first, and can undo.</span>
+            <span className="text-footnote text-muted">In the note itself. You review them first, and can undo.</span>
           </div>
         ) : null}
         {onContinue && !readOnly ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button type="button" disabled={busy} onClick={onContinue} className="inline-flex h-9 items-center gap-1.5 rounded-control bg-heading px-3 text-[13px] font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-40">
+            <button type="button" disabled={busy} onClick={onContinue} className="inline-flex h-9 items-center gap-1.5 rounded-control bg-heading px-3 text-subheadline font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-40">
               <Play size={14} aria-hidden /> Continue
             </button>
-            <span className="text-[12px] text-muted">Carries on from where it stopped. Changes above stay as they are.</span>
+            <span className="text-footnote text-muted">Carries on from where it stopped. Changes above stay as they are.</span>
           </div>
         ) : null}
         <div className="-mb-1 mt-2 flex flex-wrap items-center gap-0.5">
@@ -428,13 +428,13 @@ export function AssistantMessage({
           ) : null}
           {research && !readOnly ? <ResearchFooter research={research} onOpen={onOpen} /> : null}
           {conversation && !readOnly && message.text && (message.agent || research) ? <AnswerExport conversationId={conversation.id} messageId={message.id} title={conversation.title} saves={!research} /> : null}
-          {message.status === "stopped" && research?.job.status !== "cancelled" ? <span className="px-1.5 text-[12px] text-faint">Stopped</span> : null}
+          {message.status === "stopped" && research?.job.status !== "cancelled" ? <span className="px-1.5 text-footnote text-faint">Stopped</span> : null}
         </div>
       </div>
       {last && message.suggestions.length && !busy && !readOnly ? (
         <div className="flex flex-col items-start gap-1.5" aria-label="Suggested follow-ups" role="group">
           {message.suggestions.map((s) => (
-            <button key={s} type="button" onClick={() => onSuggestion(s)} className={iphone ? "min-h-11 rounded-container bg-[color-mix(in_oklab,var(--color-ink)_6.5%,transparent)] px-4 py-2.5 text-left text-[15px] leading-5 text-ink active:bg-[color-mix(in_oklab,var(--color-ink)_11%,transparent)]" : "rounded-chip bg-[var(--glass-hover)] px-3 py-1.5 text-left text-[13px] text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading"}>
+            <button key={s} type="button" onClick={() => onSuggestion(s)} className={iphone ? "min-h-11 rounded-container bg-[color-mix(in_oklab,var(--color-ink)_6.5%,transparent)] px-4 py-2.5 text-left text-subheadline leading-5 text-ink active:bg-[color-mix(in_oklab,var(--color-ink)_11%,transparent)]" : "rounded-chip bg-[var(--glass-hover)] px-3 py-1.5 text-left text-subheadline text-ink shadow-[inset_0_0_0_1px_var(--glass-border)] hover:bg-[var(--glass-active)] hover:text-heading"}>
               {s}
             </button>
           ))}

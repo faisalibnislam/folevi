@@ -29,7 +29,7 @@ export function AwayBanner({ away, showing, onToggle, onDismiss }: { away: Away;
   const names = away.people.map((p) => p.name);
   const added = away.lines.filter((l) => l[3] === "added").length;
   return (
-    <div role="region" aria-label="Since you were last here" className="mx-5 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)] px-3 py-2 text-xs text-muted sm:mx-16">
+    <div role="region" aria-label="Since you were last here" className="mx-5 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control bg-[color-mix(in_oklab,var(--color-ink)_5%,transparent)] px-3 py-2 text-footnote text-muted sm:mx-16">
       <span className="inline-flex items-center -space-x-1" aria-hidden>
         {away.people.slice(0, 3).map((p) => (
           <Avatar key={p.key} name={p.name} url={p.avatarUrl} size={16} ring={`var(--color-${p.color})`} />

@@ -113,6 +113,23 @@ export {
   type ApprovalCodeInput,
 } from "./sas";
 export * from "./wire";
+export {
+  VAULT_PASSCODE_LENGTHS,
+  checkVaultPasscode,
+  deriveVaultKeys,
+  innerOfGrant,
+  newVaultKey,
+  openVaultGrant,
+  sealVaultKeyTo,
+  vaultCtx,
+  wrapWithPasscode,
+  wrapWithRecovery,
+  type VaultGrantFor,
+  vaultPasscodeKey,
+  vaultPasswordMac,
+  vaultRecoveryKey,
+  type VaultKeys,
+} from "./vault";
 
 export type EnvelopeKind = "file" | "stream" | "record" | "keyedStream" | "sealedBox";
 

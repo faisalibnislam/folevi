@@ -63,7 +63,7 @@ function Tile({ label, icon, onClick, disabled, pressed, tone = "ink" }: { label
       aria-pressed={pressed}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={`group flex flex-col items-center gap-1.5 rounded-chip px-1 py-2.5 text-[11.5px] font-medium transition-[box-shadow,transform,background-color] duration-150 disabled:opacity-40 ${
+      className={`group flex flex-col items-center gap-1.5 rounded-chip px-1 py-2.5 text-footnote font-medium transition-[box-shadow,transform,background-color] duration-150 disabled:opacity-40 ${
         pressed ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_45%,transparent)]" : "ui-raised text-ink hover:-translate-y-px hover:shadow-[var(--shadow-card)]"
       }`}
     >
@@ -120,7 +120,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
       target.off("selectionUpdate", onSelection);
     };
   }, [editor, marks]);
-  if (!editor || !marks) return <p className="text-sm text-muted">Place the cursor in the document to format.</p>;
+  if (!editor || !marks) return <p className="text-subheadline text-muted">Place the cursor in the document to format.</p>;
   const d = disabled || Boolean(cell);
   const node = editor.state.selection.$from.depth >= 1 ? editor.state.selection.$from.node(1) : null;
   const type = node?.type.name;
@@ -134,7 +134,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
   const textStyle = type === "paragraph" ? (fmt.textStyle ?? "body") : null;
   const seg = "flex rounded-control bg-sunken/80 p-1";
   const segBtn = (on: boolean) =>
-    `grid h-9 flex-1 place-items-center rounded-chip text-[13px] transition-colors focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)] disabled:opacity-40 ${on ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "text-ink hover:bg-surface"}`;
+    `grid h-9 flex-1 place-items-center rounded-chip text-subheadline transition-colors focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--color-focus)] disabled:opacity-40 ${on ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "text-ink hover:bg-surface"}`;
   const toggleList = (t: string, attrs: Record<string, unknown> = {}) => (type === t ? turnInto(editor, "paragraph") : turnInto(editor, t, attrs));
   if (phone) {
     // The iPhone layout (docs/IOS_POLISH_PLAN.md §3 Format): one system. Text styles as a row of preview
@@ -144,12 +144,12 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
       run();
     };
     const styles = [
-      ["Title", type === "heading" && level === 1, () => turnInto(editor, "heading", { level: 1 }), "font-[family-name:var(--font-display)] text-[22px] font-semibold leading-none"],
-      ["Subtitle", type === "heading" && level === 2, () => turnInto(editor, "heading", { level: 2 }), "text-[17px] font-semibold leading-none"],
-      ["Heading", type === "heading" && level === 3, () => turnInto(editor, "heading", { level: 3 }), "text-[15px] font-semibold leading-none"],
-      ["Strong", textStyle === "strong", () => turnInto(editor, "paragraph", { textStyle: "strong" }), "text-[15px] font-semibold leading-none"],
-      ["Body", textStyle === "body", () => turnInto(editor, "paragraph", { textStyle: null }), "text-[15px] leading-none"],
-      ["Caption", textStyle === "caption", () => turnInto(editor, "paragraph", { textStyle: "caption" }), "text-[12px] leading-none opacity-70"],
+      ["Title", type === "heading" && level === 1, () => turnInto(editor, "heading", { level: 1 }), "font-[family-name:var(--font-display)] text-title-2 font-semibold leading-none"],
+      ["Subtitle", type === "heading" && level === 2, () => turnInto(editor, "heading", { level: 2 }), "text-headline font-semibold leading-none"],
+      ["Heading", type === "heading" && level === 3, () => turnInto(editor, "heading", { level: 3 }), "text-subheadline font-semibold leading-none"],
+      ["Strong", textStyle === "strong", () => turnInto(editor, "paragraph", { textStyle: "strong" }), "text-subheadline font-semibold leading-none"],
+      ["Body", textStyle === "body", () => turnInto(editor, "paragraph", { textStyle: null }), "text-subheadline leading-none"],
+      ["Caption", textStyle === "caption", () => turnInto(editor, "paragraph", { textStyle: "caption" }), "text-footnote leading-none opacity-70"],
     ] as const;
     const iconBtn = (label: string, icon: React.ReactNode, on: boolean, run: () => unknown, off = false, swatch = false) => (
       <button key={label} type="button" aria-label={label} aria-pressed={on} disabled={off} onMouseDown={(e) => e.preventDefault()} onClick={pick(run)} className={`iphone-fmt-btn ${swatch ? "is-swatch" : ""} ${on ? "is-on" : ""}`}>
@@ -207,8 +207,8 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
             {iconBtn("Indent", <IndentIncrease {...ic} />, false, () => changeDepth(editor, 1), d)}
           </div>
           <div role="group" aria-label="Group" className="iphone-fmt-group">
-            {iconBtn("Page", <span className="flex items-center gap-1.5 text-[15px]"><FileText size={17} strokeWidth={2} aria-hidden /> Page</span>, fmt.group !== "card", () => setBlockFormat(editor, { group: null }), blockOff)}
-            {iconBtn("Card", <span className="flex items-center gap-1.5 text-[15px]"><PanelTop size={17} strokeWidth={2} aria-hidden /> Card</span>, fmt.group === "card", () => setBlockFormat(editor, { group: fmt.group === "card" ? null : "card" }), blockOff)}
+            {iconBtn("Page", <span className="flex items-center gap-1.5 text-subheadline"><FileText size={17} strokeWidth={2} aria-hidden /> Page</span>, fmt.group !== "card", () => setBlockFormat(editor, { group: null }), blockOff)}
+            {iconBtn("Card", <span className="flex items-center gap-1.5 text-subheadline"><PanelTop size={17} strokeWidth={2} aria-hidden /> Card</span>, fmt.group === "card", () => setBlockFormat(editor, { group: fmt.group === "card" ? null : "card" }), blockOff)}
           </div>
           <div role="group" aria-label="Alignment" className="iphone-fmt-group col-span-2">
             {(
@@ -222,8 +222,8 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
           </div>
         </div>
         <div role="group" aria-label="Text color" className="iphone-fmt-group" {...palette?.attrs}>
-          {iconBtn("Default text color", <span className="text-[17px] font-semibold">A</span>, !marks.isActive("textColor"), () => setTextColor(marks, null), marksOff, true)}
-          {TEXT_COLORS.map((c) => iconBtn(`Text color: ${colorName(palette, c)}`, <span className={`fb-color-${c} text-[17px] font-semibold`}>A</span>, marks.isActive("textColor", { value: c }), () => setTextColor(marks, c), marksOff, true))}
+          {iconBtn("Default text color", <span className="text-headline font-semibold">A</span>, !marks.isActive("textColor"), () => setTextColor(marks, null), marksOff, true)}
+          {TEXT_COLORS.map((c) => iconBtn(`Text color: ${colorName(palette, c)}`, <span className={`fb-color-${c} text-headline font-semibold`}>A</span>, marks.isActive("textColor", { value: c }), () => setTextColor(marks, c), marksOff, true))}
         </div>
         <div role="group" aria-label="Highlight" className="iphone-fmt-group" {...palette?.attrs}>
           {iconBtn("No highlight", <span className="h-[18px] w-[18px] iphone-round shadow-[inset_0_0_0_1.5px_var(--color-ink-faint)]" />, !marks.isActive("highlight"), () => setHighlight(marks, null), marksOff, true)}
@@ -247,7 +247,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
         {type === "callout" ? (
           <div role="group" aria-label="Callout tone" className="iphone-fmt-group">
             {["note", "info", "success", "warning", "danger"].map((tone) => (
-              <button key={tone} type="button" disabled={d} aria-pressed={node?.attrs.tone === tone} onMouseDown={(e) => e.preventDefault()} onClick={pick(() => turnInto(editor, "callout", { tone }))} className={`iphone-fmt-btn !w-auto flex-1 px-2 text-[15px] capitalize ${node?.attrs.tone === tone ? "is-on" : ""}`}>
+              <button key={tone} type="button" disabled={d} aria-pressed={node?.attrs.tone === tone} onMouseDown={(e) => e.preventDefault()} onClick={pick(() => turnInto(editor, "callout", { tone }))} className={`iphone-fmt-btn !w-auto flex-1 px-2 text-subheadline capitalize ${node?.attrs.tone === tone ? "is-on" : ""}`}>
                 {tone}
               </button>
             ))}
@@ -263,7 +263,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
                 const pos = editor.state.selection.$from.before(1);
                 editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...node!.attrs, language: e.target.value }));
               }}
-              className="ui-input h-11 w-full rounded-control px-3 text-[17px]"
+              className="ui-input h-11 w-full rounded-control px-3 text-body"
             >
               {["plaintext", "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "html", "java", "javascript", "json", "kotlin", "latex", "markdown", "mermaid", "php", "python", "ruby", "rust", "sql", "swift", "toml", "typescript", "xml", "yaml"].map((l) => (
                 <option key={l} value={l}>
@@ -292,12 +292,12 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
         <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="Text style">
           {(
             [
-              ["Title", type === "heading" && level === 1, () => turnInto(editor, "heading", { level: 1 }), "text-[15px] font-bold"],
-              ["Subtitle", type === "heading" && level === 2, () => turnInto(editor, "heading", { level: 2 }), "text-[14px] font-semibold"],
-              ["Heading", type === "heading" && level === 3, () => turnInto(editor, "heading", { level: 3 }), "text-[13.5px] font-semibold"],
+              ["Title", type === "heading" && level === 1, () => turnInto(editor, "heading", { level: 1 }), "text-headline font-bold"],
+              ["Subtitle", type === "heading" && level === 2, () => turnInto(editor, "heading", { level: 2 }), "text-body font-semibold"],
+              ["Heading", type === "heading" && level === 3, () => turnInto(editor, "heading", { level: 3 }), "text-body font-semibold"],
               ["Strong", textStyle === "strong", () => turnInto(editor, "paragraph", { textStyle: "strong" }), "font-semibold"],
               ["Body", textStyle === "body", () => turnInto(editor, "paragraph", { textStyle: null }), ""],
-              ["Caption", textStyle === "caption", () => turnInto(editor, "paragraph", { textStyle: "caption" }), "text-[12px] text-muted"],
+              ["Caption", textStyle === "caption", () => turnInto(editor, "paragraph", { textStyle: "caption" }), "text-footnote text-muted"],
             ] as const
           ).map(([label, on, run, cls]) => (
             <button key={label} type="button" disabled={d || inCode} aria-pressed={on} onMouseDown={(e) => e.preventDefault()} onClick={run} className={`h-10 rounded-chip ${on ? "bg-accent-soft text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"} disabled:opacity-40 ${cls}`}>
@@ -310,10 +310,10 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
       <section>
         <h3 className="ui-caps mb-2 px-1">Groups</h3>
         <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="Group">
-          <button type="button" disabled={blockOff} aria-pressed={fmt.group !== "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: null })} className={`flex h-11 items-center justify-center gap-2 rounded-chip text-[13.5px] disabled:opacity-40 ${fmt.group !== "card" ? "bg-accent-soft font-semibold text-heading" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+          <button type="button" disabled={blockOff} aria-pressed={fmt.group !== "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: null })} className={`flex h-11 items-center justify-center gap-2 rounded-chip text-body disabled:opacity-40 ${fmt.group !== "card" ? "bg-accent-soft font-semibold text-heading" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
             <FileText size={15} aria-hidden /> Page
           </button>
-          <button type="button" disabled={blockOff} aria-pressed={fmt.group === "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: fmt.group === "card" ? null : "card" })} className={`flex h-11 items-center justify-center gap-2 rounded-chip text-[13.5px] disabled:opacity-40 ${fmt.group === "card" ? "bg-heading font-semibold text-canvas" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+          <button type="button" disabled={blockOff} aria-pressed={fmt.group === "card"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { group: fmt.group === "card" ? null : "card" })} className={`flex h-11 items-center justify-center gap-2 rounded-chip text-body disabled:opacity-40 ${fmt.group === "card" ? "bg-heading font-semibold text-canvas" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
             Card <PanelTop size={15} aria-hidden />
           </button>
         </div>
@@ -380,17 +380,17 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
       <section>
         <h3 className="ui-caps mb-2 px-1">Decorations</h3>
         <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="Decoration">
-          <button type="button" disabled={blockOff} aria-pressed={fmt.decoration === "focus"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { decoration: fmt.decoration === "focus" ? null : "focus" })} className={`flex h-10 items-center justify-center gap-2 rounded-chip text-[13.5px] disabled:opacity-40 ${fmt.decoration === "focus" ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+          <button type="button" disabled={blockOff} aria-pressed={fmt.decoration === "focus"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { decoration: fmt.decoration === "focus" ? null : "focus" })} className={`flex h-10 items-center justify-center gap-2 rounded-chip text-body disabled:opacity-40 ${fmt.decoration === "focus" ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
             <span aria-hidden className="h-4 w-[3px] rounded-chip bg-current" /> Focus
           </button>
-          <button type="button" disabled={blockOff} aria-pressed={fmt.decoration === "block"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { decoration: fmt.decoration === "block" ? null : "block" })} className={`h-10 rounded-chip text-[13.5px] disabled:opacity-40 ${fmt.decoration === "block" ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
+          <button type="button" disabled={blockOff} aria-pressed={fmt.decoration === "block"} onMouseDown={(e) => e.preventDefault()} onClick={() => setBlockFormat(editor, { decoration: fmt.decoration === "block" ? null : "block" })} className={`h-10 rounded-chip text-body disabled:opacity-40 ${fmt.decoration === "block" ? "bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-accent)_35%,transparent)]" : "bg-sunken/80 text-ink hover:bg-accent-soft/70"}`}>
             <span className="rounded-chip bg-[var(--glass-active)] px-3 py-1 shadow-[inset_0_0_0_1px_var(--glass-border)]">Block</span>
           </button>
         </div>
       </section>
 
       <details className="group rounded-chip bg-sunken/50 px-2.5 py-2">
-        <summary className="cursor-pointer list-none text-[13px] font-medium text-ink marker:hidden">
+        <summary className="cursor-pointer list-none text-subheadline font-medium text-ink marker:hidden">
           <span className="inline-flex items-center gap-1.5">
             <ChevronRight size={14} className="transition-transform group-open:rotate-90" aria-hidden /> More: quote, callout, code, links, highlight
           </span>
@@ -433,7 +433,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
             placeholder={marks.state.selection.empty && !linkActive ? "Address to insert as a link" : "Paste or type a link"}
             aria-invalid={Boolean(linkError)}
             aria-describedby={`${linkId}-hint`}
-            className="ui-input h-8 min-w-0 flex-1 rounded-chip px-3 text-sm disabled:opacity-50"
+            className="ui-input h-8 min-w-0 flex-1 rounded-chip px-3 text-callout disabled:opacity-50"
           />
           <Button size="sm" type="submit" disabled={marksOff || !href.trim()}>
             {linkActive ? "Update" : "Link"}
@@ -444,7 +444,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
             </Button>
           ) : null}
         </form>
-        <p id={`${linkId}-hint`} className={`mt-1 px-1 text-xs ${linkError ? "text-danger" : "text-muted"}`} role={linkError ? "alert" : undefined}>
+        <p id={`${linkId}-hint`} className={`mt-1 px-1 text-footnote ${linkError ? "text-danger" : "text-muted"}`} role={linkError ? "alert" : undefined}>
           {linkError ?? "Links the selected text. Shortcut: ⌘⇧K."}
         </p>
       </section>
@@ -468,7 +468,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               title={colorName(palette, c)}
               className={`grid h-8 w-8 place-items-center rounded-chip ui-raised disabled:opacity-40 ${marks.isActive("textColor", { value: c }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
             >
-              <span className={`fb-color-${c} text-sm font-semibold`} aria-hidden>
+              <span className={`fb-color-${c} text-subheadline font-semibold`} aria-hidden>
                 A
               </span>
             </button>
@@ -511,7 +511,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
         </section>
       ) : null}
       {inCode ? (
-        <label className="block text-sm">
+        <label className="block text-subheadline">
           <span className="ui-caps mb-1.5 block px-1">Language</span>
           <Select
             disabled={d}
@@ -520,7 +520,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               const pos = editor.state.selection.$from.before(1);
               editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...node!.attrs, language: e.target.value }));
             }}
-            className="ui-input h-9 w-full rounded-chip px-3 text-sm"
+            className="ui-input h-9 w-full rounded-chip px-3 text-callout"
           >
             {["plaintext", "bash", "c", "cpp", "csharp", "css", "diff", "go", "graphql", "html", "java", "javascript", "json", "kotlin", "latex", "markdown", "mermaid", "php", "python", "ruby", "rust", "sql", "swift", "toml", "typescript", "xml", "yaml"].map((l) => (
               <option key={l} value={l}>
@@ -532,7 +532,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
       ) : null}
         </div>
       </details>
-      <p className="ui-shortcut-hint px-1 text-xs text-muted">Shortcuts: ⌘⌥0–3 headings, ⌘⇧7/8/9 lists and to-dos, Tab / ⇧Tab to nest, ⌥⇧↑↓ to move, ⌘⇧K link, ⌥F10 formatting toolbar, Esc then ⇧↑↓ to select blocks, ⌘. for block options.</p>
+      <p className="ui-shortcut-hint px-1 text-footnote text-muted">Shortcuts: ⌘⌥0–3 headings, ⌘⇧7/8/9 lists and to-dos, Tab / ⇧Tab to nest, ⌥⇧↑↓ to move, ⌘⇧K link, ⌥F10 formatting toolbar, Esc then ⇧↑↓ to select blocks, ⌘. for block options.</p>
     </div>
   );
 }

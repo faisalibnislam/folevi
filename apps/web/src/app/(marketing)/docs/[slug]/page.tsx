@@ -58,7 +58,7 @@ export default async function DocArticlePage({ params }: Params) {
               <Eyebrow>Documentation</Eyebrow>
               <h1 className="mk-display mt-4 text-[36px] sm:text-[48px] lg:text-[52px]"><KeepHyphens text={article.title} /></h1>
               <p className="mk-lede mt-4">{article.description}</p>
-              <p className="mt-4 text-[13.5px] text-muted">
+              <p className="mt-4 text-[14px] text-muted">
                 Updated <time dateTime={article.updated}>{formatDay(article.updated)}</time>
               </p>
             </header>
@@ -67,7 +67,7 @@ export default async function DocArticlePage({ params }: Params) {
             <nav aria-label="Previous and next articles" className="mt-14 grid gap-3 border-t mk-hair pt-8 sm:grid-cols-2">
               {prev ? (
                 <Link href={docPath(prev.slug)} className="mk-card flex min-h-[72px] flex-col justify-center gap-0.5 px-5 py-4 transition-shadow duration-150 hover:shadow-(--shadow-pop)" rel="prev">
-                  <span className="flex items-center gap-1.5 text-[12.5px] text-muted">
+                  <span className="flex items-center gap-1.5 text-[13px] text-muted">
                     <Icon name="chevron-left" size={13} /> Previous
                   </span>
                   <span className="text-[15px] font-semibold text-(--color-heading)">{prev.nav}</span>
@@ -77,14 +77,14 @@ export default async function DocArticlePage({ params }: Params) {
               )}
               {next ? (
                 <Link href={docPath(next.slug)} className="mk-card flex min-h-[72px] flex-col items-end justify-center gap-0.5 px-5 py-4 text-right transition-shadow duration-150 hover:shadow-(--shadow-pop)" rel="next">
-                  <span className="flex items-center gap-1.5 text-[12.5px] text-muted">
+                  <span className="flex items-center gap-1.5 text-[13px] text-muted">
                     Next <Icon name="chevron-right" size={13} />
                   </span>
                   <span className="text-[15px] font-semibold text-(--color-heading)">{next.nav}</span>
                 </Link>
               ) : null}
             </nav>
-            <p className="mt-8 text-[14.5px] text-muted">
+            <p className="mt-8 text-[15px] text-muted">
               Still stuck? <Link href="/support" className="mk-link">Contact support</Link> or write to{" "}
               <a href={`mailto:${SUPPORT_EMAIL}`} className="mk-link">
                 {SUPPORT_EMAIL}

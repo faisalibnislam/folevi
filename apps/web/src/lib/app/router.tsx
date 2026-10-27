@@ -29,6 +29,8 @@ export type Route =
   | { name: "changes" }
   | { name: "daily"; date: string | null }
   | { name: "shared" }
+  /** The place's Vault (docs/VAULT_PLAN.md). */
+  | { name: "vault" }
   /** A folder shared with this person, opened like a folder (docs/SHARING.md). */
   | { name: "shared-folder"; id: string }
   | { name: "templates" }
@@ -87,6 +89,8 @@ export function parseRoute(pathname: string): Route {
       return { name: "daily", date: a && /^\d{4}-\d{2}-\d{2}$/.test(a) ? a : null };
     case "shared":
       return a ? { name: "shared-folder", id: a } : { name: "shared" };
+    case "vault":
+      return { name: "vault" };
     case "review":
     case "changes":
     case "templates":

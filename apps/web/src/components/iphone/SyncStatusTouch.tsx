@@ -132,7 +132,7 @@ function SyncSheet({ open, onClose, sync }: { open: boolean; onClose: () => void
   return (
     <Sheet open={open} onClose={onClose} title={TITLES[status]} size="medium" description={describe(sync)}>
       <div data-testid="sync-sheet" data-status={status} className="grid gap-5 px-4 pb-6">
-        <p className="px-1 text-[15px] text-muted">{sync.lastSynced ? `Last synced ${ageText(sync.lastSynced).toLowerCase()}.` : sync.online ? "" : "Not synced yet on this device."}</p>
+        <p className="px-1 text-subheadline text-muted">{sync.lastSynced ? `Last synced ${ageText(sync.lastSynced).toLowerCase()}.` : sync.online ? "" : "Not synced yet on this device."}</p>
         {shown.length ? (
           <section>
             <h3 className="ui-caption-caps px-4 pb-2">Notes waiting to sync</h3>
@@ -141,16 +141,16 @@ function SyncSheet({ open, onClose, sync }: { open: boolean; onClose: () => void
                 const title = p.localTitle || locals.get(p.documentId)?.title || (p.isNew ? "New note" : "Untitled");
                 return (
                   <li key={p.documentId}>
-                    <AppLink href={`/d/${p.documentId}`} onClick={onClose} className="flex min-h-11 items-center gap-3 px-4 py-2.5 text-[17px] text-ink">
+                    <AppLink href={`/d/${p.documentId}`} onClick={onClose} className="flex min-h-11 items-center gap-3 px-4 py-2.5 text-body text-ink">
                       <FileText size={18} aria-hidden className="flex-none text-muted" />
                       <span className="min-w-0 flex-1 truncate">{title}</span>
-                      <span className="flex-none text-[15px] tabular-nums text-muted">{p.isNew ? "New" : p.changes === 1 ? "1 change" : `${p.changes} changes`}</span>
+                      <span className="flex-none text-subheadline tabular-nums text-muted">{p.isNew ? "New" : p.changes === 1 ? "1 change" : `${p.changes} changes`}</span>
                     </AppLink>
                   </li>
                 );
               })}
             </ul>
-            {pending.length > shown.length ? <p className="px-4 pt-2 text-[13px] text-muted">And {pending.length - shown.length} more.</p> : null}
+            {pending.length > shown.length ? <p className="px-4 pt-2 text-footnote text-muted">And {pending.length - shown.length} more.</p> : null}
           </section>
         ) : null}
         {entries.length ? (
@@ -158,20 +158,20 @@ function SyncSheet({ open, onClose, sync }: { open: boolean; onClose: () => void
             <h3 className="ui-caption-caps px-4 pb-2">Other changes</h3>
             <ul className="ui-grouped">
               {entries.slice(0, 8).map((e) => (
-                <li key={e.id} className="flex min-h-11 items-center gap-3 px-4 py-2.5 text-[17px]">
+                <li key={e.id} className="flex min-h-11 items-center gap-3 px-4 py-2.5 text-body">
                   <ListTodo size={18} aria-hidden className="flex-none text-muted" />
                   <span className="min-w-0 flex-1 truncate text-ink">{e.label}</span>
                   {e.failed ? (
                     <span className="flex flex-none gap-2">
-                      <button type="button" className="text-[15px] font-semibold text-heading" onClick={() => outbox?.retry(e.id)}>
+                      <button type="button" className="text-subheadline font-semibold text-heading" onClick={() => outbox?.retry(e.id)}>
                         Retry
                       </button>
-                      <button type="button" className="text-[15px] text-danger" onClick={() => outbox?.discard(e.id)}>
+                      <button type="button" className="text-subheadline text-danger" onClick={() => outbox?.discard(e.id)}>
                         Discard
                       </button>
                     </span>
                   ) : (
-                    <span className="flex-none text-[15px] text-muted">{outbox?.sending === e.id ? "Sending" : "Waiting"}</span>
+                    <span className="flex-none text-subheadline text-muted">{outbox?.sending === e.id ? "Sending" : "Waiting"}</span>
                   )}
                 </li>
               ))}
@@ -182,7 +182,7 @@ function SyncSheet({ open, onClose, sync }: { open: boolean; onClose: () => void
           <div className="grid gap-2">
             <button
               type="button"
-              className="ui-btn ui-btn-primary flex h-12 items-center justify-center gap-2 rounded-capsule text-[17px] font-semibold disabled:opacity-50"
+              className="ui-btn ui-btn-primary flex h-12 items-center justify-center gap-2 rounded-capsule text-headline font-semibold disabled:opacity-50"
               disabled={!sync.online && status === "offline"}
               onClick={() => {
                 // Refused changes whose content was kept go again (where this build can repair them).
@@ -195,7 +195,7 @@ function SyncSheet({ open, onClose, sync }: { open: boolean; onClose: () => void
               <RefreshCw size={17} aria-hidden /> {status === "offline" ? "Sync when online" : "Retry now"}
             </button>
             {sync.errorCount ? (
-              <button type="button" className="h-11 text-[17px] text-muted" onClick={() => engine?.clearErrors()}>
+              <button type="button" className="h-11 text-body text-muted" onClick={() => engine?.clearErrors()}>
                 Dismiss
               </button>
             ) : null}
@@ -210,7 +210,7 @@ function badgeOf(sync: TouchSync, count: number) {
   if (sync.status === "error" || sync.status === "conflict") return <span aria-hidden className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-capsule bg-coral ring-2 ring-[var(--color-canvas)]" />;
   if (sync.status === "offline" && count)
     return (
-      <span aria-hidden className="absolute -right-0.5 top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-capsule bg-heading px-1 text-[11px] font-bold tabular-nums text-canvas">
+      <span aria-hidden className="absolute -right-0.5 top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-capsule bg-heading px-1 text-caption-2 font-bold tabular-nums text-canvas">
         {count > 99 ? "99+" : count}
       </span>
     );

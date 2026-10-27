@@ -126,7 +126,7 @@ export function Inspector({
           <h2 id={`${baseId}-tab-${tab}`}>{TITLES[tab] ?? "Comments"}</h2>
         ) : hideTabs && tab !== "comments" ? (
           <div className="flex h-9 items-center gap-1 px-1">
-            <h2 id={`${baseId}-tab-${tab}`} className="ui-display flex flex-1 items-center gap-2 text-[18px]">
+            <h2 id={`${baseId}-tab-${tab}`} className="ui-display flex flex-1 items-center gap-2 text-title-3">
               {tab === "ai" ? <AiIcon size={18} aria-hidden /> : null}
               {TITLES[tab]}
             </h2>
@@ -136,10 +136,10 @@ export function Inspector({
           </div>
         ) : tab === "comments" ? (
           <div className="flex h-9 items-center gap-1">
-            <button type="button" onClick={() => onTab(lastTab)} className="inline-flex items-center gap-1 rounded-chip px-2 py-1 text-[13px] text-muted hover:bg-accent-soft hover:text-heading">
+            <button type="button" onClick={() => onTab(lastTab)} className="inline-flex items-center gap-1 rounded-chip px-2 py-1 text-subheadline text-muted hover:bg-accent-soft hover:text-heading">
               <ChevronRight size={14} className="rotate-180" aria-hidden /> {TABS.find((t) => t.id === lastTab)?.label}
             </button>
-            <h2 id={`${baseId}-tab-comments`} className="flex-1 text-center text-[13.5px] font-semibold text-heading">
+            <h2 id={`${baseId}-tab-comments`} className="flex-1 text-center text-body font-semibold text-heading">
               Comments
             </h2>
             <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
@@ -171,7 +171,7 @@ export function Inspector({
                   onTab(TABS[next]!.id);
                   tabRefs.current[next]?.focus();
                 }}
-                className="!min-h-8 min-w-0 flex-1 truncate !px-1.5 text-[13px]"
+                className="!min-h-8 min-w-0 flex-1 truncate !px-1.5 text-subheadline"
               >
                 {t.label}
               </button>
@@ -187,7 +187,7 @@ export function Inspector({
           Insert, Format and Style are grids of controls: they run clear to the edge instead. */}
       {/* Foli AI's chat (data-ai-fill) fills the panel instead, its composer at the bottom with the usual inset. */}
       <div className={`relative min-h-0 flex-1 [&:has([data-ai-fill])>.ui-blur-bottom]:hidden ${tab === "ai" && aiOn ? "flex flex-col" : ""}`}>
-      <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className={`relative h-full ${tab === "ai" && aiOn ? "flex min-h-0 flex-1 flex-col has-[>[data-ai-fill]]:!pb-3" : ""} ${sheet && tab === "insert" ? "" : "overflow-y-auto"} ${sheet ? "px-4 pt-1" : "px-3 pt-3"} ${bare && !toEdge ? "pb-16" : "pb-4"}`}>
+      <div id={`${baseId}-panel`} role={tab === "comments" || hideTabs ? "region" : "tabpanel"} aria-labelledby={`${baseId}-tab-${tab}`} className={`relative h-full ${tab === "ai" && aiOn ? "flex min-h-0 flex-1 flex-col has-[>[data-ai-fill]]:!pb-[calc(var(--sheet-safe-b,0px)+12px)]" : ""} ${sheet && tab === "insert" ? "" : "overflow-y-auto"} ${sheet ? "px-4 pt-1" : "px-3 pt-3"} ${sheet ? "pb-[calc(var(--sheet-safe-b,0px)+16px)]" : bare && !toEdge ? "pb-16" : "pb-4"}`}>
         {/* AI in a note is about this note (the chat with all notes is the floating one, elsewhere). */}
         {tab === "ai" && aiOn ? (
           <Suspense fallback={null}>
@@ -262,7 +262,7 @@ function StyleRow({ label, swatch, open, onToggle, children, disabled }: { label
         aria-expanded={open}
         aria-controls={id}
         onClick={onToggle}
-        className="flex h-10 w-full items-center justify-between rounded-chip px-1 text-left text-[13.5px] text-ink transition-colors hover:bg-accent-soft/60 disabled:opacity-50"
+        className="flex h-10 w-full items-center justify-between rounded-chip px-1 text-left text-body text-ink transition-colors hover:bg-accent-soft/60 disabled:opacity-50"
       >
         {label}
         <span className="flex items-center gap-2">{swatch}</span>
@@ -334,7 +334,7 @@ function ThemeChip({ label, art, on, locked, onPick }: { label: string; art: str
           </span>
         ) : null}
       </span>
-      <span className={`w-full truncate text-center text-[13px] leading-4 ${on ? "font-semibold text-heading" : "text-ink"}`}>{label}</span>
+      <span className={`w-full truncate text-center text-subheadline leading-4 ${on ? "font-semibold text-heading" : "text-ink"}`}>{label}</span>
     </button>
   );
 }
@@ -367,7 +367,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
   const textGroup = useRadioGroup();
   const phone = useIphoneApp();
   const caps = phone ? "ui-caption-caps mb-2 px-1" : "ui-caps mb-2 px-1";
-  if (!meta) return <p className="text-sm text-muted">Style is available once the document has synced.</p>;
+  if (!meta) return <p className="text-subheadline text-muted">Style is available once the document has synced.</p>;
   const style = pendingStyle ?? meta.document.style;
   const cover = meta.document.cover;
   const rev = meta.document.revision;
@@ -427,12 +427,12 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
   const fontFamilyOf = (id: DocumentStyle["font"]) => familyFor(id, art?.fonts);
 
   return (
-    <div className="space-y-5 text-sm">
+    <div className="space-y-5 text-subheadline">
       <section aria-label="Page style">
         <div aria-hidden className="relative block h-32 w-full overflow-hidden rounded-chip shadow-[var(--shadow-card)]" style={{ background: style.blur && hasBackdrop ? undefined : backdropCss }}>
           {style.blur && hasBackdrop ? <BlurredBackdrop background={backdropCss} /> : null}
           <span className="absolute bottom-0 left-1/2 top-3 w-[38%] -translate-x-1/2 rounded-t-chip px-2 pt-2 text-left shadow-[0_6px_18px_-6px_rgb(0_0_0/0.35)]" style={{ background: sheetColor, color: textColor, fontFamily: fontFamilyOf(font.id) }}>
-            <span className="block text-[10.5px] font-semibold leading-tight">{styleName}</span>
+            <span className="block text-footnote font-semibold leading-tight">{styleName}</span>
             <span className="mt-1.5 block h-1 w-4/5 rounded-tiny opacity-25" style={{ background: textColor }} />
             <span className="mt-1 block h-1 w-3/5 rounded-tiny opacity-25" style={{ background: textColor }} />
           </span>
@@ -460,7 +460,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
               <span aria-hidden className="grid h-20 w-16 place-items-center rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_5.5%,transparent)] text-heading">
                 <ChevronRight size={20} strokeWidth={2.2} />
               </span>
-              <span className="w-full truncate text-center text-[13px] leading-4 text-ink">All themes</span>
+              <span className="w-full truncate text-center text-subheadline leading-4 text-ink">All themes</span>
             </button>
           </div>
           <ThemeGallery
@@ -496,7 +496,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
           disabled={disabled}
           aria-haspopup="dialog"
           onClick={() => setGallery(true)}
-          className="flex h-10 w-full items-center justify-between rounded-chip px-1 text-left text-[13.5px] text-ink transition-colors hover:bg-accent-soft/60 disabled:opacity-50"
+          className="flex h-10 w-full items-center justify-between rounded-chip px-1 text-left text-body text-ink transition-colors hover:bg-accent-soft/60 disabled:opacity-50"
         >
           {styleName}
           <span className="flex items-center gap-2">
@@ -518,7 +518,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
         />
         {hasBackdrop ? (
           <div className="flex items-center justify-between gap-3 px-1 pt-2">
-            <span aria-hidden className="text-[13px] text-heading">
+            <span aria-hidden className="text-subheadline text-heading">
               Blur background
             </span>
             <Switch checked={Boolean(style.blur)} label="Blur background" disabled={disabled} onChange={(on) => set({ blur: on || undefined })} />
@@ -533,7 +533,7 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
         <StyleRow label="Document color" swatch={<ColorDot css={sheetColor} />} open={open === "sheet"} onToggle={() => toggle("sheet")} disabled={disabled}>
           <div role="radiogroup" aria-label="Document color" ref={sheetGroup.ref} onKeyDown={sheetGroup.onKeyDown} className={phone ? "grid grid-cols-5 gap-y-3" : "grid grid-cols-4 gap-2"}>
             <Choice label="Auto (from the note theme)" on={!style.sheet} onPick={() => set({ sheet: undefined })}>
-              <span className="grid h-full place-items-center text-[11px]" style={{ background: auto?.paper ?? "var(--color-surface)", color: auto?.ink ?? "var(--color-ink-muted)" }}>Auto</span>
+              <span className="grid h-full place-items-center text-footnote" style={{ background: auto?.paper ?? "var(--color-surface)", color: auto?.ink ?? "var(--color-ink-muted)" }}>Auto</span>
             </Choice>
             {SHEETS.map((s) => (
               <Choice key={s.id} label={`Document color: ${s.name}`} on={style.sheet === s.id} onPick={() => set({ sheet: s.id, ...(s.id === "night" && (!style.text || style.text === "ink") ? { text: "white" as const } : {}), ...(s.id !== "night" && style.text === "white" ? { text: "ink" as const } : {}) })}>
@@ -545,11 +545,11 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
         <StyleRow label="Text color" swatch={<ColorDot css={textColor} />} open={open === "text"} onToggle={() => toggle("text")} disabled={disabled}>
           <div role="radiogroup" aria-label="Text color" ref={textGroup.ref} onKeyDown={textGroup.onKeyDown} className={phone ? "grid grid-cols-5 gap-y-3" : "grid grid-cols-4 gap-2"}>
             <Choice label="Auto (from the note theme)" on={!style.text} onPick={() => set({ text: undefined })}>
-              <span className="grid h-full place-items-center text-[11px] font-semibold" style={{ background: auto?.paper ?? "var(--color-surface)", color: auto?.ink ?? "var(--color-ink)" }}>Auto</span>
+              <span className="grid h-full place-items-center text-footnote font-semibold" style={{ background: auto?.paper ?? "var(--color-surface)", color: auto?.ink ?? "var(--color-ink)" }}>Auto</span>
             </Choice>
             {TEXTS.map((t) => (
               <Choice key={t.id} label={`Text color: ${t.name}`} on={style.text === t.id} onPick={() => set({ text: t.id })}>
-                <span aria-hidden className="grid h-full w-full place-items-center text-[15px] font-semibold" style={{ background: t.id === "white" ? "#1c1c1f" : "#fff", color: t.color }}>
+                <span aria-hidden className="grid h-full w-full place-items-center text-headline font-semibold" style={{ background: t.id === "white" ? "#1c1c1f" : "#fff", color: t.color }}>
                   A
                 </span>
               </Choice>
@@ -640,7 +640,7 @@ function ActionList({ actions }: { actions: (MenuItem | "separator")[] }) {
               type="button"
               disabled={a.disabled}
               onClick={a.onSelect}
-              className={`flex h-9 w-full items-center gap-2.5 rounded-chip px-3 text-left text-[13px] font-medium transition-colors disabled:opacity-40 ${a.danger ? "bg-coral-soft/60 text-coral-ink hover:bg-coral-soft" : "bg-sunken/70 text-ink hover:bg-accent-soft hover:text-heading"}`}
+              className={`flex h-9 w-full items-center gap-2.5 rounded-chip px-3 text-left text-subheadline font-medium transition-colors disabled:opacity-40 ${a.danger ? "bg-coral-soft/60 text-coral-ink hover:bg-coral-soft" : "bg-sunken/70 text-ink hover:bg-accent-soft hover:text-heading"}`}
             >
               <span aria-hidden className={a.danger ? "text-coral-ink" : "text-muted"}>
                 {a.icon}
@@ -668,11 +668,11 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
   const toast = useToast();
   const [newTag, setNewTag] = useState("");
   const [moveOpen, setMoveOpen] = useState(false);
-  if (!meta) return <p className="text-sm text-muted">Details appear once the document has synced.</p>;
+  if (!meta) return <p className="text-subheadline text-muted">Details appear once the document has synced.</p>;
   const tags = meta.document.tags;
   const parent = meta.breadcrumbs[meta.breadcrumbs.length - 1] ?? null;
   return (
-    <div className="space-y-5 text-sm">
+    <div className="space-y-5 text-subheadline">
       <section>
         <h3 className="ui-caps mb-2 px-1">Properties</h3>
         <dl className="space-y-1.5 px-1">
@@ -702,8 +702,8 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
             ["Blocks", info?.blockCount?.toLocaleString(), undefined],
           ].map(([label, value, title]) => (
             <div key={label} className="rounded-chip bg-sunken/70 px-2.5 py-2" title={title}>
-              <dt className="text-[11px] text-muted">{label}</dt>
-              <dd className="text-[15px] font-semibold tabular-nums text-heading">{value ?? "-"}</dd>
+              <dt className="text-footnote text-muted">{label}</dt>
+              <dd className="text-headline font-semibold tabular-nums text-heading">{value ?? "-"}</dd>
             </div>
           ))}
         </dl>
@@ -722,7 +722,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
               toast.show(errorMessage(err), { tone: "error" });
             }
           }}
-          className="ui-input h-9 w-full rounded-chip px-3 text-sm"
+          className="ui-input h-9 w-full rounded-chip px-3 text-callout"
           aria-label="Folder"
         >
           <option value="">Drafts</option>
@@ -792,7 +792,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
               }
             }}
           >
-            <input list="tag-suggestions" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Add a tag" aria-label="Add a tag" className="ui-input h-8 flex-1 rounded-chip px-3 text-sm" />
+            <input list="tag-suggestions" value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="Add a tag" aria-label="Add a tag" className="ui-input h-8 flex-1 rounded-chip px-3 text-callout" />
             <datalist id="tag-suggestions">
               {org?.tags.map((t) => (
                 <option key={t.id} value={t.name} />

@@ -62,7 +62,7 @@ export function NewFolderSheet({ open, onClose }: { open: boolean; onClose: () =
         }}
         className="px-4 pb-4"
       >
-        <label htmlFor={nameId} className="block px-1 pb-1.5 text-[13px] leading-[18px] text-muted">
+        <label htmlFor={nameId} className="block px-1 pb-1.5 text-footnote leading-[18px] text-muted">
           Title
         </label>
         <div className="flex items-center gap-3 rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] px-3">
@@ -76,10 +76,10 @@ export function NewFolderSheet({ open, onClose }: { open: boolean; onClose: () =
             placeholder="Folder name"
             enterKeyHint="done"
             autoComplete="off"
-            className="h-12 min-w-0 flex-1 bg-transparent text-[17px] text-ink outline-none placeholder:text-faint"
+            className="h-12 min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-faint"
           />
         </div>
-        <p id={`${nameId}-color`} className="px-1 pb-1 pt-4 text-[13px] leading-[18px] text-muted">
+        <p id={`${nameId}-color`} className="px-1 pb-1 pt-4 text-footnote leading-[18px] text-muted">
           Color
         </p>
         <div ref={swatches} role="radiogroup" aria-labelledby={`${nameId}-color`} className="-mx-4 flex gap-0.5 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -107,9 +107,9 @@ export function NewFolderSheet({ open, onClose }: { open: boolean; onClose: () =
           })}
         </div>
         {folders.length ? (
-          <label className="mt-4 flex items-center justify-between gap-3 px-1 text-[15px]">
+          <label className="mt-4 flex items-center justify-between gap-3 px-1 text-subheadline">
             <span className="text-muted">Inside</span>
-            <Select value={parent} onChange={(e) => setParent(e.target.value)} className="ui-well h-10 max-w-[60%] rounded-control px-3 text-[15px] text-ink">
+            <Select value={parent} onChange={(e) => setParent(e.target.value)} className="ui-well h-10 max-w-[60%] rounded-control px-3 text-subheadline text-ink">
               <option value="">Top level</option>
               {folders.map(({ folder: f, depth }) => (
                 <option key={f.id} value={f.id}>
@@ -123,7 +123,7 @@ export function NewFolderSheet({ open, onClose }: { open: boolean; onClose: () =
         <button
           type="submit"
           disabled={!name.trim()}
-          className="mt-5 h-12 w-full rounded-panel bg-heading text-[17px] font-semibold text-canvas outline-none transition-[opacity,transform] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-focus disabled:bg-[color-mix(in_oklab,var(--color-ink)_8%,transparent)] disabled:text-faint"
+          className="mt-5 h-12 w-full rounded-panel bg-heading text-headline font-semibold text-canvas outline-none transition-[opacity,transform] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-focus disabled:bg-[color-mix(in_oklab,var(--color-ink)_8%,transparent)] disabled:text-faint"
         >
           Create
         </button>

@@ -28,16 +28,16 @@ export function WhatEachChoiceMeans({ open, onClose }: { open: boolean; onClose:
   return (
     <Dialog open={open} onClose={onClose} title={m.title} size="lg" footer={<Button onClick={onClose}>{m.close}</Button>}>
       {/* Focusable, so the dialog's scrolling body can be scrolled from the keyboard. */}
-      <div tabIndex={0} role="group" aria-label={m.title} className="space-y-6 rounded-chip text-sm outline-none focus-visible:ring-2 focus-visible:ring-focus">
+      <div tabIndex={0} role="group" aria-label={m.title} className="space-y-6 rounded-chip text-subheadline outline-none focus-visible:ring-2 focus-visible:ring-focus">
         {/* Wide screens: one table. Phones: each row as its own short list. */}
         <table className="hidden w-full border-separate border-spacing-0 text-left sm:table">
           <thead>
             <tr>
-              <th scope="col" className="w-[34%] pb-2 pr-3 align-bottom text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">
+              <th scope="col" className="w-[34%] pb-2 pr-3 align-bottom text-caption-2 font-semibold uppercase tracking-[0.06em] text-faint">
                 <span className="sr-only">What</span>
               </th>
               {m.columns.map((c) => (
-                <th key={c} scope="col" className="pb-2 pr-3 align-bottom text-[12.5px] font-semibold text-heading">
+                <th key={c} scope="col" className="pb-2 pr-3 align-bottom text-subheadline font-semibold text-heading">
                   {c}
                 </th>
               ))}
@@ -65,8 +65,8 @@ export function WhatEachChoiceMeans({ open, onClose }: { open: boolean; onClose:
               <dl className="mt-2 space-y-1.5">
                 {r.cells.map((cell, i) => (
                   <div key={i} className="flex items-start justify-between gap-3">
-                    <dt className="min-w-0 text-[12.5px] text-muted">{m.columns[i]}</dt>
-                    <dd className="flex-none text-right text-[12.5px]">
+                    <dt className="min-w-0 text-subheadline text-muted">{m.columns[i]}</dt>
+                    <dd className="flex-none text-right text-subheadline">
                       <CellText cell={cell} />
                     </dd>
                   </div>

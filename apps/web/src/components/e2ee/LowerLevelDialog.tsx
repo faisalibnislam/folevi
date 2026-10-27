@@ -65,7 +65,7 @@ export function LowerLevelDialog({ open, onClose, scope, to, onDone }: { open: b
     >
       {lowering ? (
         wrapId ? (
-          <p role="status" className="flex items-center gap-2 text-sm font-medium text-heading">
+          <p role="status" className="flex items-center gap-2 text-subheadline font-medium text-heading">
             <Check size={15} aria-hidden /> {c.confirmed}
           </p>
         ) : (
@@ -101,7 +101,7 @@ function RecheckForm({ options, onConfirmed }: { options: Recheck[]; onConfirmed
   const label: Record<Recheck, string> = { passphrase: u.passphrase, recoveryKey: u.recoveryKey, passkey: u.passkey };
   const icon: Record<Recheck, React.ReactNode> = { passphrase: <LockKeyhole size={14} aria-hidden />, recoveryKey: <ScrollText size={14} aria-hidden />, passkey: <KeyRound size={14} aria-hidden /> };
   return (
-    <div className="space-y-3 text-sm">
+    <div className="space-y-3 text-subheadline">
       <p className="font-medium text-heading">{copy.lower.recheck}</p>
       <div className="flex flex-wrap gap-2">
         {options.map((k) => (
@@ -146,7 +146,7 @@ function RecheckForm({ options, onConfirmed }: { options: Recheck[]; onConfirmed
               }}
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? `${uid}-error` : undefined}
-              className={`ui-input h-9 min-w-0 flex-1 rounded-control px-3 text-sm pointer-coarse:h-11 ${kind === "recoveryKey" ? "font-mono uppercase" : ""}`}
+              className={`ui-input h-9 min-w-0 flex-1 rounded-control px-3 text-callout pointer-coarse:h-11 ${kind === "recoveryKey" ? "font-mono uppercase" : ""}`}
             />
             <Button type="submit" disabled={!value.trim() || busy} aria-busy={busy || undefined}>
               {busy ? u.unlocking : u.unlock}
@@ -155,7 +155,7 @@ function RecheckForm({ options, onConfirmed }: { options: Recheck[]; onConfirmed
         </form>
       ) : null}
       {error ? (
-        <p id={`${uid}-error`} role="alert" className="text-[13px] text-danger">
+        <p id={`${uid}-error`} role="alert" className="text-subheadline text-danger">
           {error}
         </p>
       ) : null}

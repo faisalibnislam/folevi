@@ -75,7 +75,7 @@ export default async function FeaturePage({ params }: Params) {
               </ButtonLink>
             ) : null}
           </div>
-          <p className="mt-4 text-[13.5px] text-muted">{feature.plans}</p>
+          <p className="mt-4 text-[14px] text-muted">{feature.plans}</p>
         </HeaderCard>
 
         <Card as="div" inner="p-4 sm:p-5">
@@ -110,14 +110,14 @@ export default async function FeaturePage({ params }: Params) {
               </ol>
             </nav>
             <div className="mk-box p-5 sm:px-10 sm:py-8 lg:px-14 xl:p-6">
-              <p className="text-[14.5px] font-semibold text-(--color-heading)">Plans</p>
+              <p className="text-[15px] font-semibold text-(--color-heading)">Plans</p>
               <p className="mt-1 text-[14px] leading-relaxed text-muted">{feature.plans}</p>
               <Link href="/pricing" className="mk-link mt-3 inline-flex min-h-8 items-center gap-1.5 text-[14px]">
                 Compare plans <Icon name="arrow-right" size={14} />
               </Link>
               {feature.docs ? (
                 <>
-                  <p className="mt-5 border-t mk-hair pt-4 text-[14.5px] font-semibold text-(--color-heading)">In the docs</p>
+                  <p className="mt-5 border-t mk-hair pt-4 text-[15px] font-semibold text-(--color-heading)">In the docs</p>
                   <Link href={feature.docs.href} className="mk-link mt-1 inline-flex min-h-8 items-center gap-1.5 text-[14px]">
                     {feature.docs.label} <Icon name="arrow-right" size={14} />
                   </Link>
@@ -140,7 +140,7 @@ export default async function FeaturePage({ params }: Params) {
               </li>
             ))}
           </ul>
-          <p className="mt-6 text-[14.5px] text-muted">
+          <p className="mt-6 text-[15px] text-muted">
             <Link href="/features" className="mk-link">
               All features
             </Link>

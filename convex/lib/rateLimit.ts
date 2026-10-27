@@ -11,6 +11,10 @@ export interface RateRule {
 export const DEFAULT_RATE_RULES = {
   bootstrap: { limit: 10, windowMs: 60 * 60_000 },
   invite: { limit: 30, windowMs: 60 * 60_000 },
+  /** Vault writes (items, imports in batches of 100) per person. */
+  vaultWrite: { limit: 600, windowMs: 60 * 60_000 },
+  // Finding someone by email to share a Vault item with (vaultShares.findPerson): enough to share, too few to probe.
+  vaultLookup: { limit: 30, windowMs: 60 * 60_000 },
   emailResend: { limit: 5, windowMs: 60 * 60_000 },
   passwordReset: { limit: 5, windowMs: 60 * 60_000 },
   publicLinkOpen: { limit: 120, windowMs: 60_000 },

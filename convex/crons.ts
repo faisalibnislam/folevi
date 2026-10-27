@@ -4,6 +4,10 @@ import { internal } from "./_generated/api";
 const crons = cronJobs();
 
 crons.interval("deletion jobs", { minutes: 5 }, internal.maintenance.runDeletionJobs, {});
+// The Vault's log (docs/VAULT_PLAN.md §7.4): a signed anchor per Vault each day, and entries 3 years old expire.
+crons.daily("vault log anchors", { hourUTC: 2, minuteUTC: 10 }, internal.vaultLog.anchor, {});
+crons.daily("vault log expiry", { hourUTC: 2, minuteUTC: 40 }, internal.vaultLog.expire, {});
+crons.daily("vault trash", { hourUTC: 3, minuteUTC: 10 }, internal.vaultFiles.purgeOldTrash, {});
 crons.interval("task reminders", { minutes: 1 }, internal.tasks.processReminders, {});
 crons.interval("presence cleanup", { minutes: 10 }, internal.presence.cleanup, {});
 crons.interval("ai stream cleanup", { minutes: 60 }, internal.ai.sweepStreams, {});

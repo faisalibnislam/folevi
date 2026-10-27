@@ -37,7 +37,7 @@ function Details({ op, id }: { op: AgentOperation; id: string }) {
               const label = e.action === "replace" ? "Changed" : e.action === "insert" ? "Added" : "Removed";
               return (
                 <li key={i}>
-                  <p className="mb-0.5 text-[11.5px] font-medium text-muted">{label}</p>
+                  <p className="mb-0.5 text-footnote font-medium text-muted">{label}</p>
                   <AiDiffView parts={e.action === "delete" ? [{ kind: "removed", text: e.before }] : e.action === "insert" ? [{ kind: "added", text: blocksPlain(e.after) }] : aiDiff(e.before, e.after).parts} />
                 </li>
               );
@@ -48,18 +48,18 @@ function Details({ op, id }: { op: AgentOperation; id: string }) {
         return <AiDiffView parts={[{ kind: "removed", text: op.fromTitle ?? "" }, { kind: "same", text: " " }, { kind: "added", text: op.title ?? "" }]} />;
       case "move_note":
         return (
-          <p className="text-[13px] text-ink">
+          <p className="text-subheadline text-ink">
             From {op.fromFolderName ? <strong className="font-semibold text-heading">{op.fromFolderName}</strong> : "no folder"} to {op.movesOut ? "no folder" : <strong className="font-semibold text-heading">{op.folderName}</strong>}
           </p>
         );
       case "create_folder":
-        return <p className="text-[13px] text-ink">An empty folder, ready for notes.</p>;
+        return <p className="text-subheadline text-ink">An empty folder, ready for notes.</p>;
       case "add_tags":
-        return <p className="text-[13px] text-ink">{op.tags.map((t) => `#${t}`).join("  ")}</p>;
+        return <p className="text-subheadline text-ink">{op.tags.map((t) => `#${t}`).join("  ")}</p>;
       case "create_checklist":
       case "create_tasks":
         return (
-          <ul className="space-y-1 text-[13px] text-ink">
+          <ul className="space-y-1 text-subheadline text-ink">
             {op.items.map((it, i) => (
               <li key={i} className="flex gap-2">
                 <span aria-hidden className="mt-[3px] h-3 w-3 flex-none rounded-tiny shadow-[inset_0_0_0_1.5px_currentColor] opacity-50" />
@@ -73,7 +73,7 @@ function Details({ op, id }: { op: AgentOperation; id: string }) {
         );
       case "merge_notes":
         return (
-          <p className="text-[13px] text-ink">
+          <p className="text-subheadline text-ink">
             Adds {op.sources.map((s) => `“${s.title}”`).join(", ")} to the end of “{op.noteTitle}”, then moves {op.sources.length === 1 ? "it" : "them"} to Trash.
           </p>
         );
@@ -97,10 +97,10 @@ function ProposedRow({ op, checked, onToggle, disabled }: { op: AgentOperation; 
   return (
     <li className="py-1.5">
       <div className="flex items-start gap-2">
-        <Checkbox checked={checked} onChange={onToggle} disabled={disabled} className="flex-1 text-[13px] text-ink">
+        <Checkbox checked={checked} onChange={onToggle} disabled={disabled} className="flex-1 text-subheadline text-ink">
           {op.summary}
         </Checkbox>
-        <button type="button" aria-expanded={open} aria-controls={open ? detailsId : undefined} onClick={() => setOpen(!open)} className="inline-flex h-6 flex-none items-center gap-0.5 rounded-chip px-1.5 text-[12px] text-muted hover:bg-[var(--glass-active)] hover:text-heading">
+        <button type="button" aria-expanded={open} aria-controls={open ? detailsId : undefined} onClick={() => setOpen(!open)} className="inline-flex h-6 flex-none items-center gap-0.5 rounded-chip px-1.5 text-footnote text-muted hover:bg-[var(--glass-active)] hover:text-heading">
           {open ? "Hide" : "Preview"}
           <ChevronDown size={12} aria-hidden className={`transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
@@ -127,13 +127,13 @@ function ResultRow({ op, onOpen, undone }: { op: AgentOperation; onOpen: (href: 
   return (
     <li className="flex items-start gap-2 py-1">
       <span className="mt-0.5 flex-none">{icon}</span>
-      <span className="min-w-0 flex-1 text-[13px]">
+      <span className="min-w-0 flex-1 text-subheadline">
         <span className={op.status === "skipped" ? "text-muted" : "text-ink"}>{op.summary}</span>
         <span className="sr-only">: {state}</span>
-        {op.error ? <span className="block text-[12.5px] text-danger">{op.error}</span> : null}
-        {undone && op.status === "applied" && op.undone === "kept" ? <span className="block text-[12px] text-muted">Left as it was.</span> : null}
+        {op.error ? <span className="block text-subheadline text-danger">{op.error}</span> : null}
+        {undone && op.status === "applied" && op.undone === "kept" ? <span className="block text-footnote text-muted">Left as it was.</span> : null}
         {op.status === "applied" && href && !undone ? (
-          <button type="button" onClick={() => onOpen(href)} className="mt-1 inline-flex max-w-full items-center gap-1.5 rounded-chip bg-[var(--glass-active)] px-2.5 py-0.5 text-[12px] text-ink hover:text-heading">
+          <button type="button" onClick={() => onOpen(href)} className="mt-1 inline-flex max-w-full items-center gap-1.5 rounded-chip bg-[var(--glass-active)] px-2.5 py-0.5 text-footnote text-ink hover:text-heading">
             {op.kind === "create_folder" ? <Folder size={12} aria-hidden className="flex-none text-muted" /> : <FileText size={12} aria-hidden className="flex-none text-muted" />}
             <span className="truncate">Open {op.kind === "create_folder" ? (op.result?.title ?? op.folderName ?? "folder") : (op.result?.title ?? op.noteTitle ?? "note")}</span>
           </button>
@@ -193,7 +193,7 @@ export function AgentRunCard({
           {preview ? "Proposed changes" : (DONE[run.status] ?? "Changes")}
         </h3>
         {preview && !readOnly && run.operations.length > 1 ? (
-          <button type="button" disabled={busy} onClick={() => setChosen(all ? new Set() : new Set(run.operations.map((o) => o.id)))} className="ml-auto text-[12px] text-muted hover:text-heading disabled:opacity-40">
+          <button type="button" disabled={busy} onClick={() => setChosen(all ? new Set() : new Set(run.operations.map((o) => o.id)))} className="ml-auto text-footnote text-muted hover:text-heading disabled:opacity-40">
             {all ? "Select none" : "Select all"}
           </button>
         ) : null}
@@ -201,8 +201,8 @@ export function AgentRunCard({
 
       {preview && readOnly ? (
         <>
-          <p className="mb-1 text-[12.5px] text-muted">Proposed, not approved yet.</p>
-          <ul className="list-disc space-y-0.5 pl-4 text-[13px] text-ink">
+          <p className="mb-1 text-subheadline text-muted">Proposed, not approved yet.</p>
+          <ul className="list-disc space-y-0.5 pl-4 text-subheadline text-ink">
             {run.operations.map((o) => (
               <li key={o.id}>{o.summary}</li>
             ))}
@@ -210,7 +210,7 @@ export function AgentRunCard({
         </>
       ) : preview ? (
         <>
-          <p className="mb-1 text-[12.5px] text-muted">Nothing changes until you approve. A version of each note is saved first, and you can undo it all.</p>
+          <p className="mb-1 text-subheadline text-muted">Nothing changes until you approve. A version of each note is saved first, and you can undo it all.</p>
           <ul className="divide-y divide-line/60">
             {run.operations.map((o) => (
               <ProposedRow key={o.id} op={o} checked={chosen.has(o.id)} onToggle={(on) => toggle(o.id, on)} disabled={busy} />
@@ -227,18 +227,18 @@ export function AgentRunCard({
           </div>
         </>
       ) : run.status === "discarded" ? (
-        <p className="text-[12.5px] text-muted">Nothing was changed.</p>
+        <p className="text-subheadline text-muted">Nothing was changed.</p>
       ) : (
         <>
           {run.status === "executing" || run.status === "undoing" ? (
-            <p role="status" className="mb-1 flex items-center gap-2 text-[12.5px] text-muted">
+            <p role="status" className="mb-1 flex items-center gap-2 text-subheadline text-muted">
               <Loader2 size={13} className="animate-spin motion-reduce:animate-none" aria-hidden />
               {run.status === "undoing" ? "Undoing…" : `Applying ${Math.min(applied + failed + 1, applied + failed + pending)} of ${applied + failed + pending}…`}
             </p>
           ) : run.status === "undone" ? (
-            <p className="mb-1 text-[12.5px] text-muted">Everything Foli AI changed was put back. The notes&apos; versions before the undo are in their version history.</p>
+            <p className="mb-1 text-subheadline text-muted">Everything Foli AI changed was put back. The notes&apos; versions before the undo are in their version history.</p>
           ) : (
-            <p className="mb-1 text-[12.5px] text-muted">
+            <p className="mb-1 text-subheadline text-muted">
               {applied ? `${applied} change${applied === 1 ? "" : "s"} made` : "No changes made"}
               {failed ? `, ${failed} couldn't be made` : ""}.
             </p>
@@ -249,7 +249,7 @@ export function AgentRunCard({
             ))}
           </ul>
           {readOnly ? null : changed ? (
-            <div role="alert" className="mt-3 rounded-control bg-[var(--glass-active)] p-2.5 text-[12.5px] text-ink">
+            <div role="alert" className="mt-3 rounded-control bg-[var(--glass-active)] p-2.5 text-subheadline text-ink">
               <p className="font-medium text-heading">Some of this changed after the AI&apos;s edits:</p>
               <ul className="mt-1 list-disc pl-4">
                 {changed.map((c) => (
@@ -288,7 +288,7 @@ export function AgentRunCard({
         </>
       )}
       {activity.error ? (
-        <p role="alert" className="mt-2 text-[12.5px] text-danger">
+        <p role="alert" className="mt-2 text-subheadline text-danger">
           {activity.error}
         </p>
       ) : null}

@@ -80,16 +80,16 @@ export function GraphView() {
       <div className="flex h-full min-h-0 flex-col">
         <div className="flex flex-none flex-wrap items-center gap-2 px-4 pb-2 pt-1 sm:px-6">
           <div role="group" aria-label="View" className="ui-seg ui-well">
-            <button type="button" aria-pressed={view === "graph"} onClick={() => setView("graph")} className="!min-h-8 px-3 text-[13px]">
+            <button type="button" aria-pressed={view === "graph"} onClick={() => setView("graph")} className="!min-h-8 px-3 text-subheadline">
               Graph
             </button>
-            <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")} className="!min-h-8 px-3 text-[13px]">
+            <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")} className="!min-h-8 px-3 text-subheadline">
               List
             </button>
           </div>
           <label className="ui-input flex h-8 min-w-[10rem] flex-1 items-center gap-1.5 rounded-chip px-2.5 sm:max-w-xs">
             <Search size={14} aria-hidden className="flex-none text-faint" />
-            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find in the graph" aria-label="Find in the graph" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none" />
+            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find in the graph" aria-label="Find in the graph" className="min-w-0 flex-1 bg-transparent text-subheadline outline-none" />
           </label>
           {data?.full ? (
             <div role="group" aria-label="Show" className="flex flex-wrap items-center gap-1">
@@ -110,12 +110,12 @@ export function GraphView() {
               })}
             </div>
           ) : null}
-          <p className="ml-auto text-[12px] tabular-nums text-faint" aria-live="polite">
+          <p className="ml-auto text-footnote tabular-nums text-faint" aria-live="polite">
             {data ? `${notes} ${notes === 1 ? "note" : "notes"}${nodes.length > notes ? `, ${nodes.length - notes} more` : ""}${query.trim() ? ` · ${matches.size} found` : ""}` : null}
           </p>
         </div>
         {data?.note || data?.truncated ? (
-          <p className="flex-none px-4 pb-2 text-[12.5px] text-muted sm:px-6">
+          <p className="flex-none px-4 pb-2 text-subheadline text-muted sm:px-6">
             {data.note}
             {data.upgrade && canPurchaseHere() ? (
               <>
@@ -129,7 +129,7 @@ export function GraphView() {
           </p>
         ) : null}
         {!data ? (
-          <p className="m-auto text-sm text-muted">Loading the graph…</p>
+          <p className="m-auto text-subheadline text-muted">Loading the graph…</p>
         ) : !nodes.length ? (
           <EmptyState icon={Waypoints} title="No notes here yet" body="Notes and the links between them show up here." className="m-auto" />
         ) : view === "list" ? (
@@ -150,7 +150,7 @@ export function GraphList({ nodes, edges, query }: { nodes: GraphNodeData[]; edg
   if (!entries.length) return <EmptyState size="inline" title="Nothing matches" className="m-auto" />;
   const connections = (e: (typeof entries)[number]) =>
     e.connections.length ? (
-      <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[12.5px] text-muted" aria-label={`Connected to ${e.label || "Untitled"}`}>
+      <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-subheadline text-muted" aria-label={`Connected to ${e.label || "Untitled"}`}>
         {e.connections.slice(0, 24).map((c) => (
           <li key={c.id}>
             <span className="text-faint">{EDGE_LABEL[c.edge] ?? "Related"}: </span>
@@ -167,7 +167,7 @@ export function GraphList({ nodes, edges, query }: { nodes: GraphNodeData[]; edg
         ))}
       </ul>
     ) : (
-      <p className="mt-1 text-[12.5px] text-faint">Not connected yet</p>
+      <p className="mt-1 text-subheadline text-faint">Not connected yet</p>
     );
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-10 sm:px-6">
@@ -178,7 +178,7 @@ export function GraphList({ nodes, edges, query }: { nodes: GraphNodeData[]; edg
         <ul className="space-y-3">
           {noteEntries.map((e) => (
             <li key={e.id}>
-              <AppLink href={`/d/${e.id}`} className="inline-flex items-center gap-1.5 text-[14px] font-medium text-heading underline-offset-2 hover:underline">
+              <AppLink href={`/d/${e.id}`} className="inline-flex items-center gap-1.5 text-body font-medium text-heading underline-offset-2 hover:underline">
                 <FileText size={14} aria-hidden className="text-muted" />
                 {e.label || "Untitled"}
               </AppLink>
@@ -195,10 +195,10 @@ export function GraphList({ nodes, edges, query }: { nodes: GraphNodeData[]; edg
           <ul className="space-y-3">
             {entityEntries.map((e) => (
               <li key={e.id}>
-                <span className="inline-flex items-center gap-1.5 text-[14px] font-medium text-heading">
+                <span className="inline-flex items-center gap-1.5 text-body font-medium text-heading">
                   <KindGlyph kind={e.kind} />
                   {e.label}
-                  <span className="text-[12px] font-normal text-faint">{KIND_LABEL[e.kind]}</span>
+                  <span className="text-footnote font-normal text-faint">{KIND_LABEL[e.kind]}</span>
                 </span>
                 {connections(e)}
               </li>
@@ -565,15 +565,15 @@ export function GraphCanvas({ nodes, edges, matches, searching, onOpen }: { node
         </svg>
       </div>
       {!laidOut ? (
-        <p role="status" className="pointer-events-none absolute inset-0 m-auto h-fit text-center text-sm text-muted">
+        <p role="status" className="pointer-events-none absolute inset-0 m-auto h-fit text-center text-subheadline text-muted">
           Laying out the graph…
         </p>
       ) : null}
-      {laidOut && sparse ? <p className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(340px,calc(100%-80px))] rounded-control bg-[var(--glass-hover)] px-3 py-2 text-[12.5px] leading-snug text-muted">{sparse}</p> : null}
+      {laidOut && sparse ? <p className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(340px,calc(100%-80px))] rounded-control bg-[var(--glass-hover)] px-3 py-2 text-subheadline leading-snug text-muted">{sparse}</p> : null}
       {tip && tipAt ? (
-        <div role="tooltip" className="ui-pop pointer-events-none absolute z-10 max-w-[240px] -translate-x-1/2 rounded-control px-2.5 py-1.5 text-[12.5px]" style={{ left: tipAt.x, top: tipAt.y + 16 }}>
+        <div role="tooltip" className="ui-pop pointer-events-none absolute z-10 max-w-[240px] -translate-x-1/2 rounded-control px-2.5 py-1.5 text-subheadline" style={{ left: tipAt.x, top: tipAt.y + 16 }}>
           <span className="font-medium text-heading">{tip.label || "Untitled"}</span>
-          <span className="block text-[11.5px] text-muted">{tip.kind === "note" ? (tipId === focused && !hover ? "Enter opens it" : "Click to open") : `${KIND_LABEL[tip.kind]} · ${tipId === focused && !hover ? "Enter shows its notes" : "Click for its notes"}`}</span>
+          <span className="block text-footnote text-muted">{tip.kind === "note" ? (tipId === focused && !hover ? "Enter opens it" : "Click to open") : `${KIND_LABEL[tip.kind]} · ${tipId === focused && !hover ? "Enter shows its notes" : "Click for its notes"}`}</span>
         </div>
       ) : null}
       {picked ? (
@@ -582,8 +582,8 @@ export function GraphCanvas({ nodes, edges, matches, searching, onOpen }: { node
             <span className="mt-1">
               <KindGlyph kind={picked.kind} />
             </span>
-            <h2 className="min-w-0 flex-1 text-[14px] font-semibold text-heading">
-              {picked.label} <span className="text-[12px] font-normal text-faint">{KIND_LABEL[picked.kind]}</span>
+            <h2 className="min-w-0 flex-1 text-body font-semibold text-heading">
+              {picked.label} <span className="text-footnote font-normal text-faint">{KIND_LABEL[picked.kind]}</span>
             </h2>
             <IconButton label="Close" onClick={closePicked} className="!h-7 !w-7 -mr-1 -mt-1">
               <X size={14} aria-hidden />
@@ -592,7 +592,7 @@ export function GraphCanvas({ nodes, edges, matches, searching, onOpen }: { node
           <ul className="mt-2 max-h-48 space-y-0.5 overflow-y-auto">
             {pickedNotes.map((n) => (
               <li key={n.id}>
-                <AppLink href={`/d/${n.id}`} className="flex items-center gap-1.5 rounded-chip px-1.5 py-1 text-[13px] hover:bg-accent-soft">
+                <AppLink href={`/d/${n.id}`} className="flex items-center gap-1.5 rounded-chip px-1.5 py-1 text-subheadline hover:bg-accent-soft">
                   <FileText size={13} aria-hidden className="flex-none text-muted" />
                   <span className="truncate">{n.label || "Untitled"}</span>
                 </AppLink>

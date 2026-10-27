@@ -86,7 +86,7 @@ export function SealedChatList({ space, activeId, onOpen }: { space: E2eeSpace; 
   const chats = useSealedChats(space);
   return (
     <nav aria-label="Conversations" className="flex h-full flex-col overflow-y-auto p-2">
-      <button type="button" onClick={() => onOpen(null)} className="mb-1 h-9 rounded-control px-3 text-left text-[13px] font-medium text-heading hover:bg-[var(--glass-hover)]">
+      <button type="button" onClick={() => onOpen(null)} className="mb-1 h-9 rounded-control px-3 text-left text-subheadline font-medium text-heading hover:bg-[var(--glass-hover)]">
         New chat
       </button>
       {chats?.length ? (
@@ -97,7 +97,7 @@ export function SealedChatList({ space, activeId, onOpen }: { space: E2eeSpace; 
                 type="button"
                 aria-current={c.id === activeId ? "page" : undefined}
                 onClick={() => onOpen(c.id)}
-                className="block w-full truncate rounded-chip px-3 py-1.5 text-left text-[13px] text-muted hover:bg-[var(--glass-hover)] hover:text-heading aria-[current=page]:bg-[var(--glass-hover)] aria-[current=page]:text-heading"
+                className="block w-full truncate rounded-chip px-3 py-1.5 text-left text-subheadline text-muted hover:bg-[var(--glass-hover)] hover:text-heading aria-[current=page]:bg-[var(--glass-hover)] aria-[current=page]:text-heading"
               >
                 {c.title || "Untitled chat"}
               </button>
@@ -105,7 +105,7 @@ export function SealedChatList({ space, activeId, onOpen }: { space: E2eeSpace; 
           ))}
         </ul>
       ) : (
-        <p className="px-3 py-2 text-[12px] text-faint">{chats ? "No chats yet." : ""}</p>
+        <p className="px-3 py-2 text-footnote text-faint">{chats ? "No chats yet." : ""}</p>
       )}
     </nav>
   );
@@ -208,31 +208,31 @@ export function SealedChatThread({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className={`min-h-0 flex-1 space-y-4 overflow-y-auto py-4 ${pad}`} aria-live="polite">
-        {turns.length === 0 && !working ? <p className="text-[13px] text-muted">Ask about the notes in this space. Foli AI reads only what this device sends it for each question.</p> : null}
+        {turns.length === 0 && !working ? <p className="text-subheadline text-muted">Ask about the notes in this space. Foli AI reads only what this device sends it for each question.</p> : null}
         {turns.map((t, i) =>
           t.role === "user" ? (
-            <p key={i} className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-panel bg-[var(--glass-hover)] px-3 py-2 text-[14px] text-ink">
+            <p key={i} className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-panel bg-[var(--glass-hover)] px-3 py-2 text-body text-ink">
               {t.text}
             </p>
           ) : (
-            <AiMarkdown key={i} markdown={t.text} className="text-[14px]" />
+            <AiMarkdown key={i} markdown={t.text} className="text-body" />
           ),
         )}
         {pendingText ? (
-          <p className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-panel bg-[var(--glass-hover)] px-3 py-2 text-[14px] text-ink">{pendingText}</p>
+          <p className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-panel bg-[var(--glass-hover)] px-3 py-2 text-body text-ink">{pendingText}</p>
         ) : null}
         {working && !consent ? (
-          <p className="text-[13px] text-muted" aria-busy="true">
+          <p className="text-subheadline text-muted" aria-busy="true">
             Thinking…
           </p>
         ) : null}
         {consent ? (
           <section aria-labelledby={`${uid}-consent`} className="ui-card rounded-panel border border-line p-4">
-            <h3 id={`${uid}-consent`} className="text-[14px] font-semibold text-heading">
+            <h3 id={`${uid}-consent`} className="text-body font-semibold text-heading">
               {copy.consent.title}
             </h3>
-            <p className="mt-1 text-[13px] text-muted">{copy.consent.body}</p>
-            <ul className="mt-2 space-y-0.5 text-[13px] text-ink">
+            <p className="mt-1 text-subheadline text-muted">{copy.consent.body}</p>
+            <ul className="mt-2 space-y-0.5 text-subheadline text-ink">
               {consent.request.notes.map((n) => (
                 <li key={n.id} className="flex justify-between gap-3">
                   <span className="truncate">{n.title || copy.consent.untitled}</span>
@@ -240,22 +240,22 @@ export function SealedChatThread({
                 </li>
               ))}
             </ul>
-            <Checkbox checked={remember} onChange={setRemember} className="mt-3 text-[13px]">
+            <Checkbox checked={remember} onChange={setRemember} className="mt-3 text-subheadline">
               {copy.consent.remember}
             </Checkbox>
             <div className="mt-3 flex justify-end gap-2">
-              <button type="button" onClick={() => answerConsent(false)} className="h-9 rounded-control px-3 text-[13px] text-heading ui-btn">
+              <button type="button" onClick={() => answerConsent(false)} className="h-9 rounded-control px-3 text-callout text-heading ui-btn">
                 {copy.consent.dontSend}
               </button>
-              <button type="button" onClick={() => answerConsent(true)} className="h-9 rounded-control px-3 text-[13px] font-medium ui-btn ui-btn-primary">
+              <button type="button" onClick={() => answerConsent(true)} className="h-9 rounded-control px-3 text-callout font-medium ui-btn ui-btn-primary">
                 {copy.consent.send}
               </button>
             </div>
-            <p className="mt-2 text-[11px] text-faint">{copy.consent.settingsHint}</p>
+            <p className="mt-2 text-footnote text-faint">{copy.consent.settingsHint}</p>
           </section>
         ) : null}
         {error ? (
-          <p role="alert" className="text-[13px] text-danger">
+          <p role="alert" className="text-subheadline text-danger">
             {error}
           </p>
         ) : null}
@@ -279,7 +279,7 @@ export function SealedChatThread({
               }
             }}
             placeholder={turns.length ? "Ask a follow-up…" : "Ask about your notes…"}
-            className="block min-h-[3rem] w-full resize-none bg-transparent px-3.5 pb-1.5 pt-3 text-[14px] leading-[1.5] text-ink outline-none placeholder:text-faint"
+            className="block min-h-[3rem] w-full resize-none bg-transparent px-3.5 pb-1.5 pt-3 text-body leading-[1.5] text-ink outline-none placeholder:text-faint"
           />
           <div className="flex justify-end px-1 pb-1">
             <button type="button" aria-label="Ask" disabled={!draft.trim() || working} onClick={() => void send(draft)} className="grid h-9 w-9 place-items-center rounded-control bg-heading text-canvas transition-opacity disabled:opacity-30">
@@ -287,7 +287,7 @@ export function SealedChatThread({
             </button>
           </div>
         </div>
-        <p className="mt-2 px-1 text-[11px] text-faint">Foli AI can make mistakes. This space is end-to-end encrypted: the chat is kept encrypted, and nothing about it stays on our servers.</p>
+        <p className="mt-2 px-1 text-footnote text-faint">Foli AI can make mistakes. This space is end-to-end encrypted: the chat is kept encrypted, and nothing about it stays on our servers.</p>
       </div>
     </div>
   );

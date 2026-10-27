@@ -35,11 +35,11 @@ export function CalendarFeedDialog({ open, onClose }: { open: boolean; onClose: 
 
   return (
     <Dialog open={open} onClose={onClose} title="Your tasks in your calendar" description="Subscribe to this link in Google Calendar, Apple Calendar or Outlook to see tasks with a due date there. It's read-only and updates about every hour.">
-      <div className="space-y-4 text-sm">
+      <div className="space-y-4 text-subheadline">
         <label className="flex items-center justify-between gap-3">
           <span className="min-w-0">
             <span className="block text-ink">Workspace tasks assigned to you</span>
-            <span id="feed-ws-hint" className="block text-xs text-muted">
+            <span id="feed-ws-hint" className="block text-footnote text-muted">
               Your Personal tasks are always in it.
             </span>
           </span>
@@ -52,14 +52,14 @@ export function CalendarFeedDialog({ open, onClose }: { open: boolean; onClose: 
         </label>
         {link ? (
           <div className="rounded-chip border border-success/40 bg-success-soft p-3">
-            <p className="text-xs font-medium">Copy this link now. For your privacy, it isn’t shown again.</p>
+            <p className="text-footnote font-medium">Copy this link now. For your privacy, it isn’t shown again.</p>
             <div className="mt-2 flex gap-2">
-              <input readOnly value={link} aria-label="Calendar link" className="h-9 min-w-0 flex-1 ui-well rounded-chip px-2 font-mono text-xs" onFocus={(e) => e.target.select()} />
+              <input readOnly value={link} aria-label="Calendar link" className="h-9 min-w-0 flex-1 ui-well rounded-chip px-2 font-mono text-footnote" onFocus={(e) => e.target.select()} />
               <Button size="sm" onClick={() => void navigator.clipboard.writeText(link).then(() => toast.show("Link copied"))}>
                 <Copy size={13} aria-hidden /> Copy
               </Button>
             </div>
-            <p className="mt-2 text-xs text-muted">Google Calendar: Other calendars → From URL. Apple Calendar: File → New Calendar Subscription. Outlook: Add calendar → Subscribe from web.</p>
+            <p className="mt-2 text-footnote text-muted">Google Calendar: Other calendars → From URL. Apple Calendar: File → New Calendar Subscription. Outlook: Add calendar → Subscribe from web.</p>
           </div>
         ) : status ? (
           <p className="text-muted">

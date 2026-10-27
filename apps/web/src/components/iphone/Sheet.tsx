@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { X } from "lucide-react";
-import { SPRINGS, VelocityTracker, prefersReducedMotion, springAt, springDuration } from "@/lib/native/physics";
+import { SPRINGS, VelocityTracker, prefersReducedMotion } from "@/lib/native/physics";
 import { safeInsets } from "@/lib/iphone";
 import { KEYBOARD_EASE, onKeyboardFrame } from "@/lib/native/ui";
-import { dimAt, poseFor, releaseTarget, restingDetent, settlePose, springFrames, springStart, type SheetPose } from "./sheetMotion";
+import { dimAt, poseFor, releaseTarget, restingDetent, springFrames, springStart, type SheetPose } from "./sheetMotion";
 
 export type SheetSize = "fit" | "medium" | "large";
 
@@ -112,6 +112,7 @@ export function Sheet({
   labelledBy,
   snapMedium,
   appear = true,
+  bodyPad = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -135,6 +136,8 @@ export function Sheet({
    * after the last block that fits, not part way through one (as iOS's account sheets do).
    */
   snapMedium?: string;
+  /** false: the content scrolls inside a list of its own, which keeps the home indicator's room itself (--sheet-safe-b). */
+  bodyPad?: boolean;
   /** false: it's already on screen (it takes over from a stand-in drawn while its code loaded), so no slide in. */
   appear?: boolean;
 }) {
@@ -316,6 +319,7 @@ export function Sheet({
         kb.current = { height: 0, anims: [] };
         if (wrap.current) wrap.current.style.transform = "";
         panel.current?.style.removeProperty("--sheet-kb");
+        panel.current?.style.removeProperty("--sheet-safe-b");
         if (ref.current?.open) ref.current.close();
         setShown(false);
         setReady(false);
@@ -355,31 +359,49 @@ export function Sheet({
     if (ready && motion.current.entering) enter();
   }, [ready, enter]);
 
-  // Settles from where a finger left the sheet to a detent, on the sheet's spring (a new touch catches it).
+  // Settles from where a finger left the sheet to a detent, on the sheet's spring (a new touch catches it). Only
+  // its transform and the scrim's opacity move, as Web Animations sampled from the spring, so Core Animation
+  // runs it at the display's rate (120 Hz on ProMotion) with nothing for the page to lay out per frame: the
+  // panel takes the larger of its two heights for the way (the part below the screen's edge doesn't show),
+  // slides, and takes its resting height at the end (docs/IOS_PERFORMANCE.md, "120 Hz").
   const settle = useCallback(
     (visible: number, target: number, velocity: number, ds: number[]) => {
+      const p = panel.current;
+      const s = scrim.current;
       const dims = dimsFor(ds);
-      if (prefersReducedMotion()) {
+      if (prefersReducedMotion() || !p || !s) {
         draw(null, restDim());
         return;
       }
       const v0 = springStart(velocity, target - visible);
-      const duration = springDuration(SPRINGS.sheet, v0);
-      const start = performance.now();
-      const step = (now: number) => {
-        const t = (now - start) / 1000;
-        if (t >= duration) {
-          motion.current.raf = 0;
-          draw(null, restDim());
-          return;
-        }
-        let at = visible + (target - visible) * springAt(t, SPRINGS.sheet, v0);
+      const { progress, ms } = springFrames(SPRINGS.sheet, v0);
+      const min = Math.min(...ds);
+      const height = Math.max(visible, target, min);
+      const at = (k: number) => {
+        let v = visible + (target - visible) * k;
         // Flung down onto its smallest detent, a sheet stops there (it doesn't dip below and bounce back up).
-        if (visible >= target && target <= Math.min(...ds) + 0.5 && at < target) at = target;
-        draw(settlePose(at, ds), dimAt(at, ds, dims));
-        motion.current.raf = requestAnimationFrame(step);
+        if (visible >= target && target <= min + 0.5 && v < target) v = target;
+        return v;
       };
-      motion.current.raf = requestAnimationFrame(step);
+      draw({ height, offset: height - visible }, dimAt(visible, ds, dims));
+      // (Caught by a new touch, it's read from where the animation has it: begin() reads the transform.)
+      pose.current = null;
+      p.style.willChange = "transform";
+      const t: KeyframeAnimationOptions = { duration: ms, easing: "linear" };
+      const slide = p.animate(progress.map((k) => ({ transform: `translateY(${Math.round((height - at(k)) * 100) / 100}px)` })), t);
+      const fade = s.animate(progress.map((k) => ({ opacity: Math.max(0, Math.min(1, dimAt(at(k), ds, dims))) })), t);
+      motion.current.anims = [slide, fade];
+      slide.onfinish = () => {
+        if (!motion.current.anims.includes(slide)) return;
+        motion.current.anims = [];
+        p.style.willChange = "";
+        draw(null, restDim());
+        slide.cancel();
+        fade.cancel();
+      };
+      slide.oncancel = () => {
+        p.style.willChange = "";
+      };
     },
     [draw, dimsFor, restDim],
   );
@@ -527,6 +549,9 @@ export function Sheet({
       if (fit) {
         // A fitted sheet lifts whole onto the keyboard.
         const from = currentOffset(w);
+        // Above the keyboard there's no home indicator to keep clear of.
+        if (K) p.style.setProperty("--sheet-safe-b", "0px");
+        else p.style.removeProperty("--sheet-safe-b");
         w.style.transform = K ? `translateY(${-K}px)` : "";
         if (ms) kb.current.anims.push(w.animate([{ transform: `translateY(${from}px)` }, { transform: K ? `translateY(${-K}px)` : "none" }], { duration: ms, easing: ease }));
         return;
@@ -680,17 +705,13 @@ export function Sheet({
           data-iphone-sheet={card ? "card" : "sheet"}
           data-sheet-expanded={expanded ? "" : undefined}
           tabIndex={-1}
-          // (Its bottom margin inline: the keyboard's own rule in globals.css drops a sheet's margins the moment a
-          // field takes the focus, a frame before the keyboard's news moves the sheet, which showed as a jump.)
-          style={card ? undefined : { height: `var(--sheet-drag-h, ${height ?? "auto"})`, ...(expanded ? {} : { marginBottom: 8 }) }}
+          style={card ? undefined : { height: `var(--sheet-drag-h, ${height ?? "auto"})` }}
           className={
             card
               ? `${SURFACE} pointer-events-auto flex max-h-[calc(var(--sheet-max)-var(--sheet-kb,0px))] w-[min(400px,calc(100vw-24px))] flex-col overflow-hidden rounded-sheet outline-none`
-              : // As on iOS 26: a sheet that isn't full height floats, inset from the screen's edges with round
-                // corners all round; pulled up to full height it meets the edges.
-                `${SURFACE} pointer-events-auto flex max-h-[var(--sheet-max)] flex-col overflow-hidden outline-none [@media(orientation:landscape)]:mx-auto [@media(orientation:landscape)]:w-full [@media(orientation:landscape)]:max-w-[560px] ${
-                  expanded ? "rounded-t-sheet pb-[max(var(--sheet-kb,0px),var(--sheet-safe-b))]" : "iphone-sheet-float mx-2 rounded-float pb-[max(8px,calc(var(--sheet-safe-b)-14px))]"
-                }`
+              : // Attached to the screen's bottom and side edges at every height, round only at the top (the
+                // display's own corners round its foot); its surface runs on behind the home indicator.
+                `${SURFACE} pointer-events-auto flex max-h-[var(--sheet-max)] flex-col overflow-hidden rounded-t-sheet pb-[var(--sheet-kb,0px)] outline-none [@media(orientation:landscape)]:mx-auto [@media(orientation:landscape)]:w-full [@media(orientation:landscape)]:max-w-[560px]`
           }
         >
           {card ? null : (
@@ -708,7 +729,7 @@ export function Sheet({
               </div>
               <div className="min-w-0 flex-1 px-1 text-center">
                 {title ? (
-                  <h2 id={titleId} className="truncate text-[17px] font-semibold leading-[22px] text-heading">
+                  <h2 id={titleId} className="truncate text-headline font-semibold text-heading">
                     {title}
                   </h2>
                 ) : null}
@@ -724,15 +745,18 @@ export function Sheet({
             </header>
           ) : null}
           {description ? (
-            <div id={descId} className="flex-none px-5 pb-2 text-center text-[15px] leading-5 text-muted">
+            <div id={descId} className="flex-none px-5 pb-2 text-center text-subheadline text-muted">
               {description}
             </div>
           ) : null}
+          {/* What it shows runs on behind the home indicator: room for it at the end (less what the keyboard
+              covers), so the last row scrolls up clear of it. A list that scrolls inside reads --sheet-safe-b. */}
           <div ref={body} className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${bodyClassName}`}>
             {ready ? children : null}
+            {footer || card || !bodyPad ? null : <div aria-hidden data-sheet-safe-room="" className="h-[max(0px,calc(var(--sheet-safe-b,0px)-var(--sheet-kb,0px)))] flex-none" />}
           </div>
           {footer && ready ? (
-            <footer ref={foot} className="flex flex-none flex-wrap items-center gap-2 px-4 pb-4 pt-2 [&>a]:min-h-12 [&>a]:flex-1 [&>button]:min-h-12 [&>button]:flex-1 [&>button]:text-[17px]">
+            <footer ref={foot} className="flex flex-none flex-wrap items-center gap-2 px-4 pb-[max(16px,calc(var(--sheet-safe-b,0px)-var(--sheet-kb,0px)))] pt-2 [&>a]:min-h-12 [&>a]:flex-1 [&>button]:min-h-12 [&>button]:flex-1 [&>button]:text-body">
               {footer}
             </footer>
           ) : null}

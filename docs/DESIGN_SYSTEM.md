@@ -25,11 +25,111 @@ contrast check (every semantic text pair ≥ 4.5:1 in both themes, focus ≥ 3:1
 | Document font “Serif” | **Spectral** (same family) | `next/font/google` |
 | Document font “Mono”, code | **JetBrains Mono** 400/600 | `next/font/google` |
 
-Scale (px/pt): xs 12 · sm 13 · md 14 · body 16 · lg 18 · xl 22 · h3 20 · h2 25 · h1 32 · title 38 ·
-display 56. Tracking: headings `tight` (−0.022em), titles/large UI `snug` (−0.012em), body `normal`
-(−0.006em), small caps labels `caps` (+0.06em, 11px, semibold, uppercase).
-Headings use `heading` (cocoa) color, weight 600. Page title: 38px, weight 650, `heading`.
-Body text: 16px/1.6, `ink`.
+### Type scale
+
+One scale of named roles, Apple's text styles, for every piece of UI text. Each role has two sizes: the
+compact desktop size (the web app and Folevi for Mac) and Apple's default Dynamic Type size (the iPhone and
+iPad apps, and Android's: `<html data-iphone>` or `data-native`). The tokens live in
+`packages/design-tokens/src/tokens.json` (`font.role`), become `--type-<role>` / `--type-<role>-leading`
+(switched under the app markers in `generated/tokens.css`) and the Tailwind classes below, so one class is
+right on every platform: `text-body` is 14 px on the desktop and 17 pt on the iPhone.
+
+| Role | Class | Desktop (px, size/leading) | iPhone and iPad (pt) | Used for |
+| --- | --- | --- | --- | --- |
+| Large Title | `text-large-title` | 32/38 | 34/41 | a screen's large title, empty pages ("This page isn't here") |
+| Title 1 | `text-title-1` | 24/30 | 28/34 | view titles, plan names, big numbers |
+| Title 2 | `text-title-2` | 20/26 | 22/28 | Home's sections, dialog titles on the Mac, help sections |
+| Title 3 | `text-title-3` | 17/22 | 20/25 | panel and card titles, empty states' titles |
+| Headline | `text-headline` (semibold) | 15/20 | 17/22 | group labels inside a section, emphasised rows, figures |
+| Body | `text-body` | 14/20 | 17/22 | row titles, menu items, inputs, the AI composer, messages |
+| Callout | `text-callout` | 13/18 | 16/21 | buttons, segmented controls, chips, selects |
+| Subheadline | `text-subheadline` | 13/18 | 15/20 | row descriptions, secondary text, list text in panels |
+| Footnote | `text-footnote` | 12/16 | 13/18 | helper text under controls, disclaimers, timestamps, meta |
+| Caption 1 | `text-caption-1` | 12/16 | 12/16 | compact meta on the phone (a chip's count) |
+| Caption 2 | `text-caption-2` | 11/14 | 11/13 | badges, keyboard hints, the desktop's small-caps headers |
+
+- **Section headers**: `.ui-caps`, one style everywhere: small caps (Caption 2, semibold, +0.06em,
+  `ink-faint`) on the desktop; in the apps the inset grouped list's header, Footnote 13 semibold uppercase
+  (+0.04em, `ink-muted`). `.ui-caption-caps` is the same header for code that is only ever on the phone.
+- **Group labels** inside a section are Headline, never smaller than the rows they head.
+- **Helper text** is Footnote in `ink-muted` (13 pt on the phone at least); `ink-faint` is for
+  placeholders and disabled text only.
+- Text fields on a touch screen are at least `--type-input-min` (16 px), or iOS zooms the page.
+- Weights: Regular for text, Medium (500/550) for controls, Semibold (600) for headlines and titles.
+  Display titles (`.ui-display`) set in Spectral take the same roles.
+- **Out of the scale**: the note's own typography (the editor's body 16 px and headings, note titles 38 to
+  40 px, code blocks, sticky notes, mind maps, chart titles, slides), images drawn without CSS (Open Graph),
+  pictures of the app (the onboarding's and the marketing site's miniatures) and the marketing site's display
+  type (whole px, 11 and up). `font.document` keeps the note's body (16) and title (38) sizes.
+
+Tracking: headings `tight` (−0.022em), titles/large UI `snug` (−0.012em), body `normal` (−0.006em), small
+caps `caps` (+0.06em). Headings use the `heading` (cocoa) colour, weight 600.
+
+**Checks.** `apps/web/test/type-scale.test.ts` fails on any font size outside the roles (arbitrary Tailwind
+sizes, Tailwind's own `text-sm`/`text-xs`…, raw px in CSS `font-size`/`font`, inline `fontSize` numbers),
+with a short allow-list for the exceptions above, and checks both scales against Apple's sizes.
+
+## Spacing
+
+A 4 pt grid. The tokens (`space`) use Tailwind's step names, so `p-3`, `--space-3` and 12 px are the same
+thing: 0, 2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 36, 40, 44, 48, 56, 64, 80, 96. 2, 6, 10 and 14 are
+for the insides of small controls; everything from 16 up is a multiple of 4. 1 to 3 px is only for optical
+nudges (a hairline, an icon on a text line).
+
+| Role (`spaceRoles`) | Desktop | iPhone / iPad |
+| --- | --- | --- |
+| Screen side margins | 32 | 16 (20 on the larger phones, Apple's readable margins) |
+| Between sections | 32 | 28 |
+| Section header to its content | 12 | 8 |
+| Between groups in a section | 16 | 20 |
+| Row padding (x / y) | 10 / 8 | 16 / 12 (rows 44 pt, 52 with an icon) |
+| Between rows | 4 | 0 (separators) |
+| List inset | 8 | 16 |
+| Icon to label | 8 | 12 |
+| Button padding (x) | 12 | 16 |
+| Between controls | 8 | 8 |
+| Sheet and panel content inset | 20 | 16 |
+| A bar to the content under it | 8 | 12 (a themed note's cover sits 12 pt under the bar) |
+| Toolbar items | 4 | 8 |
+
+**Checks.** `apps/web/test/spacing-scale.test.ts` fails on padding, margins, gaps and offsets off the grid
+(arbitrary Tailwind values such as `p-[7px]`, steps such as `p-4.5`, odd px in CSS), with a short list of
+measured exceptions (a 44 pt hit target around a smaller control, Apple's 52 pt rows, AppKit's menu insets).
+
+## Native type scale
+
+For the native apps (`apps/native-kit`, `FoleviDesign`): each role is the Dynamic Type text style of the same
+name, so it scales with the person's text size setting. Use the system font for UI text (Instrument Sans
+only where the web shows it as a brand face) and keep the weights above.
+
+| Role | SwiftUI `Font.TextStyle` | UIKit `UIFont.TextStyle` | Default size (pt) | Weight |
+| --- | --- | --- | --- | --- |
+| Large Title | `.largeTitle` | `.largeTitle` | 34 | Semibold for screen titles |
+| Title 1 | `.title` | `.title1` | 28 | Semibold |
+| Title 2 | `.title2` | `.title2` | 22 | Semibold |
+| Title 3 | `.title3` | `.title3` | 20 | Semibold |
+| Headline | `.headline` | `.headline` | 17 | Semibold |
+| Body | `.body` | `.body` | 17 | Regular |
+| Callout | `.callout` | `.callout` | 16 | Regular / Medium for buttons |
+| Subheadline | `.subheadline` | `.subheadline` | 15 | Regular |
+| Footnote | `.footnote` | `.footnote` | 13 | Regular; section headers Semibold uppercase |
+| Caption 1 | `.caption` | `.caption1` | 12 | Regular |
+| Caption 2 | `.caption2` | `.caption2` | 11 | Regular / Semibold for badges |
+
+Section headers: Footnote, semibold, uppercase, +0.04em, secondary label colour. Group labels: Headline.
+Helper text: Footnote, secondary label colour. On macOS (a native Mac window), the desktop column applies.
+
+Where `FoleviDesign` (`Fonts/Typography.swift`, branch native-app) differs today: `body` is 16 (17 here),
+`title` 25 (Title 1 is 28), `title2` 20 (22), `title3` 17 (20), `callout` 14 (16), there is no Subheadline
+(15) for row descriptions, and `caps` is 11 (an iOS section header is Footnote 13). It reads the legacy
+`font.size` tokens, which stay in tokens.json until it moves to `font.role.ios`.
+
+## Native spacing scale
+
+The same 4 pt grid (`space`, `spaceRoles` in tokens.json): screen margins 16 pt (20 on the larger phones),
+sections 28 apart, 8 from a section's header to its rows, rows 44 pt tall (52 with an icon) with 16 pt side
+insets and 12 between an icon and its label, buttons 16 pt side padding and 44 pt tall, sheets 16 pt content
+insets, 12 pt between a bar and the content under it.
 
 ## Color
 

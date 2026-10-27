@@ -35,7 +35,7 @@ export function ReviewView() {
   const target: Target = noteId ? { documentId: noteId } : place === "all" ? {} : place === "personal" ? { scope: { kind: "personal" } } : { scope: { kind: "workspace", workspaceId: place } };
   const picker =
     !noteId && workspaces.length ? (
-      <Select aria-label="What to review" value={place} onChange={(e) => setWhere(e.target.value)} className="h-8 text-[13px]">
+      <Select aria-label="What to review" value={place} onChange={(e) => setWhere(e.target.value)} className="h-8 text-subheadline">
         <option value="all">Everywhere</option>
         <option value="personal">Personal</option>
         {workspaces.map((ws) => (
@@ -149,7 +149,7 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
   const title = data?.documentTitle !== undefined && data?.documentTitle !== null ? `Reviews · ${data.documentTitle || "Untitled"}` : "Reviews";
   return (
     <ViewChrome
-      title={<h1 className="text-sm font-semibold">Reviews</h1>}
+      title={<h1 className="text-subheadline font-semibold">Reviews</h1>}
       subtitle={data ? (left ? `${cardCount(left)} to review` : "All caught up") : undefined}
       tabTitle={title}
       actions={
@@ -161,7 +161,7 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
               aria-label="New cards a day"
               value={String(data.newPerDay)}
               onChange={(e) => void setNewPerDay({ value: Number(e.target.value) }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}
-              className="h-8 text-[13px]"
+              className="h-8 text-subheadline"
             >
               {NEW_PER_DAY_OPTIONS.map((n) => (
                 <option key={n} value={String(n)}>
@@ -175,7 +175,7 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
     >
       <div ref={region} tabIndex={-1} aria-label="Review cards" role="region" className="mx-auto max-w-2xl px-4 pb-[max(4rem,var(--fab-clearance))] pt-6 outline-none sm:px-8">
         {target.documentId && data ? (
-          <p className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted">
+          <p className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-subheadline text-muted">
             <span>
               Cards in{" "}
               <AppLink href={`/d/${target.documentId}`} className="font-medium text-ink underline-offset-2 hover:underline">
@@ -193,11 +193,11 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
           <Empty title="This note isn't available" body="It may have been moved to Trash, or you no longer have access to it." />
         ) : card ? (
           <>
-            <div className="mb-3 flex items-center justify-between gap-3 text-[12.5px] text-muted">
+            <div className="mb-3 flex items-center justify-between gap-3 text-subheadline text-muted">
               <span>
                 Card {reviewed + 1} of {reviewed + left}
               </span>
-              {card.isNew ? <span className="rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-[11.5px] font-medium text-ink">New</span> : null}
+              {card.isNew ? <span className="rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-footnote font-medium text-ink">New</span> : null}
             </div>
             <div
               role="progressbar"
@@ -220,17 +220,17 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
               className={`relative rounded-container bg-[var(--glass-active)] p-6 shadow-[var(--glass-edge),var(--glass-shadow)] transition-transform duration-200 motion-reduce:transition-none sm:p-8 ${touch ? "touch-pan-y select-none" : ""}`}
             >
               {dx ? (
-                <span aria-hidden className={`absolute top-4 rounded-chip px-2 py-0.5 text-[12px] font-semibold ${dx > 0 ? "right-4 bg-[var(--color-moss-soft,var(--glass-hover))] text-heading" : "left-4 bg-[var(--glass-hover)] text-danger"}`} style={{ opacity: Math.min(1, Math.abs(dx) / SWIPE) }}>
+                <span aria-hidden className={`absolute top-4 rounded-chip px-2 py-0.5 text-footnote font-semibold ${dx > 0 ? "right-4 bg-[var(--color-moss-soft,var(--glass-hover))] text-heading" : "left-4 bg-[var(--glass-hover)] text-danger"}`} style={{ opacity: Math.min(1, Math.abs(dx) / SWIPE) }}>
                   {dx > 0 ? "Good" : "Again"}
                 </span>
               ) : null}
-              <p className="ui-display whitespace-pre-wrap text-[22px] leading-snug text-heading">{card.front || "Untitled card"}</p>
+              <p className="ui-display whitespace-pre-wrap text-title-2 leading-snug text-heading">{card.front || "Untitled card"}</p>
               {revealed ? (
                 <div className="mt-5 border-t border-line/70 pt-5">
-                  <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">{card.back || "Nothing inside this card yet."}</p>
+                  <p className="whitespace-pre-wrap text-body leading-relaxed text-ink">{card.back || "Nothing inside this card yet."}</p>
                 </div>
               ) : null}
-              <AppLink href={`/d/${card.documentId}#block-${card.blockId}`} className="mt-6 inline-flex max-w-full items-center gap-1.5 text-[12.5px] text-muted hover:text-heading">
+              <AppLink href={`/d/${card.documentId}#block-${card.blockId}`} className="mt-6 inline-flex max-w-full items-center gap-1.5 text-subheadline text-muted hover:text-heading">
                 <FileText size={12} aria-hidden className="flex-none" />
                 <span className="truncate">{card.documentTitle || "Untitled"}</span>
               </AppLink>
@@ -247,8 +247,8 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
                       onClick={() => rate(r.id)}
                       className={`ui-btn ${r.id === "good" ? "ui-btn-primary" : "ui-btn-secondary"} flex h-auto flex-col gap-0.5 py-2.5`}
                     >
-                      <span className="text-[13.5px] font-semibold">{r.label}</span>
-                      <span className="text-[11.5px] opacity-70">{intervalLabel(card.intervals[r.id])}</span>
+                      <span className="text-body font-semibold">{r.label}</span>
+                      <span className="text-footnote opacity-70">{intervalLabel(card.intervals[r.id])}</span>
                     </button>
                   ))}
                 </div>
@@ -257,7 +257,7 @@ function Session({ target, picker }: { target: Target; picker: React.ReactNode }
                   Show answer
                 </Button>
               )}
-              <p className="mt-3 text-center text-[11.5px] text-faint">
+              <p className="mt-3 text-center text-footnote text-faint">
                 {touch ? (revealed ? "Swipe the card right for Good, left for Again." : "Tap the card to see the answer.") : revealed ? "Keys: 1 Again, 2 Hard, 3 Good, 4 Easy." : "Key: Space shows the answer."}
               </p>
             </div>

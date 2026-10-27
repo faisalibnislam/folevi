@@ -92,7 +92,7 @@ export function NativePushCard() {
     >
       {denied ? (
         <div className="flex max-w-xl items-center justify-between gap-4">
-          <p className="text-sm text-muted">Notifications are turned off for Folevi in {os}. Allow them there, then come back.</p>
+          <p className="text-subheadline text-muted">Notifications are turned off for Folevi in {os}. Allow them there, then come back.</p>
           <Button variant="secondary" onClick={() => void bridge.openNotificationSettings?.()}>
             Open {os}
           </Button>
@@ -100,8 +100,8 @@ export function NativePushCard() {
       ) : (
         <div className="flex max-w-xl items-center justify-between gap-6">
           <span className="min-w-0">
-            <span className="block text-sm text-ink">Notifications on this {device}</span>
-            <span id={hintId} className="block text-xs text-muted">
+            <span className="block text-subheadline text-ink">Notifications on this {device}</span>
+            <span id={hintId} className="block text-footnote text-muted">
               {on ? "On." : status.asked ? "Off." : asks}
               {others ? ` ${others} other device${others === 1 ? "" : "s"} too.` : ""}
             </span>

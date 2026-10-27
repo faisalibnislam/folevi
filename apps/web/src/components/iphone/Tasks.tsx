@@ -145,7 +145,7 @@ export function IphoneTasks({
                     className="group flex h-11 flex-none items-center outline-none"
                   >
                     <span
-                      className={`flex min-h-[34px] items-center gap-1.5 rounded-capsule py-1 pl-3 pr-3.5 text-[15px] font-medium leading-5 transition-[background-color,color,transform] duration-200 group-active:scale-[0.96] group-focus-visible:ring-2 group-focus-visible:ring-focus motion-reduce:transition-none ${
+                      className={`flex min-h-[34px] items-center gap-1.5 rounded-capsule py-1 pl-3 pr-3.5 text-subheadline font-medium leading-5 transition-[background-color,color,transform] duration-200 group-active:scale-[0.96] group-focus-visible:ring-2 group-focus-visible:ring-focus motion-reduce:transition-none ${
                         on ? "bg-heading text-canvas" : "bg-[color-mix(in_oklab,var(--color-ink)_6.5%,transparent)] text-ink"
                       }`}
                     >
@@ -228,7 +228,7 @@ export function IphoneTasks({
 function GroupHeader({ label, detail, href, count, folded, onFold }: { label: string; detail?: string; href?: string; count?: number; folded: boolean; onFold: () => void }) {
   // (A day's header is the Calendar's: the day in the heading's weight, its date muted beside it.)
   const title = (
-    <h2 className="min-w-0 truncate text-[17px] leading-[22px]">
+    <h2 className="min-w-0 truncate text-body leading-[22px]">
       <span className="font-semibold text-heading">{label}</span>
       {detail ? <span className="text-muted"> · {detail}</span> : null}
     </h2>
@@ -245,7 +245,7 @@ function GroupHeader({ label, detail, href, count, folded, onFold }: { label: st
         title
       )}
       <span className="flex-1" />
-      {count ? <span className="pr-0.5 text-[15px] tabular-nums text-muted">{count}</span> : null}
+      {count ? <span className="pr-0.5 text-subheadline tabular-nums text-muted">{count}</span> : null}
       <button type="button" aria-expanded={!folded} aria-label={folded ? `Show ${label}` : `Fold ${label}`} onClick={onFold} className="grid h-11 w-11 place-items-center rounded-capsule text-faint outline-none active:bg-[var(--liquid-press)] focus-visible:ring-2 focus-visible:ring-focus">
         <ChevronDown size={18} strokeWidth={2.4} aria-hidden className={`transition-transform duration-200 motion-reduce:transition-none ${folded ? "-rotate-90" : ""}`} />
       </button>
@@ -258,8 +258,8 @@ export function PhoneEmpty({ Icon, title, body, action }: { Icon?: LucideIcon; t
   return (
     <div data-empty-state="" className="mx-auto flex w-[280px] max-w-full flex-col items-center px-2 pt-[14vh] text-center">
       {Icon ? <Icon size={44} strokeWidth={1.5} aria-hidden className="mb-3 text-faint" /> : null}
-      <h2 className="text-[17px] font-semibold leading-[22px] text-heading">{title}</h2>
-      {body ? <p className="mt-1 text-[15px] leading-5 text-muted">{body}</p> : null}
+      <h2 className="text-headline font-semibold leading-[22px] text-heading">{title}</h2>
+      {body ? <p className="mt-1 text-subheadline leading-5 text-muted">{body}</p> : null}
       {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
@@ -361,9 +361,9 @@ export function TaskLine({
         <TaskBox status={status} />
       </button>
       <button type="button" onClick={onOpen} className={`ui-row-sep -ml-[11px] flex min-w-0 flex-1 flex-col justify-center text-left outline-none ${twoLines ? "min-h-16 py-2.5" : "min-h-[52px] py-[15px]"}`}>
-        <span className={`text-[17px] leading-[22px] transition-colors duration-[250ms] motion-reduce:transition-none ${closed ? "text-muted line-through decoration-[color-mix(in_oklab,var(--color-ink)_30%,transparent)]" : "text-ink"}`}>{task.title || "Untitled task"}</span>
+        <span className={`text-body leading-[22px] transition-colors duration-[250ms] motion-reduce:transition-none ${closed ? "text-muted line-through decoration-[color-mix(in_oklab,var(--color-ink)_30%,transparent)]" : "text-ink"}`}>{task.title || "Untitled task"}</span>
         {twoLines ? (
-          <span className={`mt-0.5 flex items-center gap-1 text-[15px] leading-5 ${overdue ? "text-danger" : "text-muted"}`}>
+          <span className={`mt-0.5 flex items-center gap-1 text-subheadline leading-5 ${overdue ? "text-danger" : "text-muted"}`}>
             {task.repeat ? <Repeat size={13} strokeWidth={2.2} aria-label={task.repeat} className="flex-none" /> : null}
             <span className="truncate">{facts.join(" · ")}</span>
           </span>

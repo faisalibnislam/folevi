@@ -26,7 +26,7 @@ const PRIORITY: { id: Priority; label: string }[] = [
 ];
 
 /** A row of the sheet's grouped lists: 52 pt, an icon, the label, the value in muted, a chevron. */
-const ROW = "relative flex min-h-[52px] w-full items-center gap-3 px-4 text-left text-[17px] leading-[22px] outline-none transition-colors active:bg-[var(--liquid-press)] focus-visible:bg-[var(--liquid-active)] disabled:opacity-40";
+const ROW = "relative flex min-h-[52px] w-full items-center gap-3 px-4 text-left text-body leading-[22px] outline-none transition-colors active:bg-[var(--liquid-press)] focus-visible:bg-[var(--liquid-active)] disabled:opacity-40";
 
 /**
  * A task's details on the iPhone, as a sheet (Reminders' details, in Folevi's look): the task with its box,
@@ -136,7 +136,7 @@ function TaskDetails({ task, onClose }: { task: TaskRow; onClose: () => void }) 
         >
           <TaskBox status={draft.status} />
         </button>
-        <p className={`-ml-[11px] min-w-0 flex-1 text-[17px] font-medium leading-[22px] [overflow-wrap:anywhere] transition-colors duration-[250ms] ${draft.status === "open" ? "text-heading" : "text-muted"}`}>{task.title || "Untitled task"}</p>
+        <p className={`-ml-[11px] min-w-0 flex-1 text-body font-medium leading-[22px] [overflow-wrap:anywhere] transition-colors duration-[250ms] ${draft.status === "open" ? "text-heading" : "text-muted"}`}>{task.title || "Untitled task"}</p>
       </div>
 
       <Segmented
@@ -180,7 +180,7 @@ function TaskDetails({ task, onClose }: { task: TaskRow; onClose: () => void }) 
                 feel("choose");
                 save({ dueDate: d.date });
               }}
-              className={`min-h-[34px] flex-1 rounded-capsule py-1 text-[15px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${draft.dueDate === d.date ? "bg-heading text-canvas" : "bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] text-ink active:bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]"}`}
+              className={`min-h-[34px] flex-1 rounded-capsule py-1 text-subheadline font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${draft.dueDate === d.date ? "bg-heading text-canvas" : "bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] text-ink active:bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]"}`}
             >
               {d.label}
             </button>
@@ -231,7 +231,7 @@ function TaskDetails({ task, onClose }: { task: TaskRow; onClose: () => void }) 
             <FileText />
           </RowIcon>
           <span className="min-w-0 flex-1">
-            <span className="block text-[13px] leading-[18px] text-muted">In the note</span>
+            <span className="block text-footnote leading-[18px] text-muted">In the note</span>
             <span className="block truncate">{task.documentTitle || "Untitled"}</span>
           </span>
           <ChevronRight size={15} strokeWidth={2.4} aria-hidden className="-mr-1 flex-none text-faint" />
@@ -302,7 +302,7 @@ export function Segmented<T extends string>({ label, value, options, onChange }:
             feel("choose");
             onChange(o.id);
           }}
-          className={`relative flex-1 rounded-capsule py-1.5 text-[14px] leading-tight outline-none focus-visible:ring-2 focus-visible:ring-focus ${o.id === value ? "font-semibold text-heading" : "font-medium text-ink"}`}
+          className={`relative flex-1 rounded-capsule py-1.5 text-subheadline leading-tight outline-none focus-visible:ring-2 focus-visible:ring-focus ${o.id === value ? "font-semibold text-heading" : "font-medium text-ink"}`}
         >
           {o.label}
         </button>

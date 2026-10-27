@@ -20,6 +20,7 @@ struct WebEmptyState: View {
         let t = moreStyle("more.empty.title", scheme)
         let b = moreStyle("more.empty.body", scheme)
         let h = moreStyle("more.review.empty.hint", scheme)
+        let inner = box.width - box.padding.left - box.padding.right
         VStack(spacing: 0) {
             if let icon {
                 WebIconView(icon, size: 19, strokeWidth: 1.9)
@@ -28,12 +29,12 @@ struct WebEmptyState: View {
                     .background(RoundedRectangle(cornerRadius: tile.radius, style: .circular).fill(tile.background.color))
                     .padding(.bottom, tile.margin.bottom)
             }
-            Text(verbatim: title).webText(t.text).lineLimit(1).foregroundStyle(t.color.color)
+            WebPrettyText(title, style: t.text, alignment: .center, wrap: .balance, width: inner).foregroundStyle(t.color.color)
             if let message {
-                WebPrettyText(message, style: b.text, alignment: .center).foregroundStyle(b.color.color).padding(.top, b.margin.top)
+                WebPrettyText(message, style: b.text, alignment: .center, width: inner).foregroundStyle(b.color.color).padding(.top, b.margin.top)
             }
             if let hint {
-                WebPrettyText(hint, style: h.text, alignment: .center).foregroundStyle(h.color.color).padding(.top, h.margin.top)
+                WebPrettyText(hint, style: h.text, alignment: .center, width: inner).foregroundStyle(h.color.color).padding(.top, h.margin.top)
             }
         }
         .padding(box.padding.edgeInsets)

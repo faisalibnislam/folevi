@@ -263,7 +263,10 @@ public struct WebSidebar: View {
             WebMenuEntry(.item("Rename…", icon: .pencilLine)) { FrameDialogs.renameFolder(model, f) },
             WebMenuEntry(.item("Change color…", icon: .palette)) { FrameDialogs.folderColor(model, f) },
             WebMenuEntry(.item("Move folder…", icon: .folderInput)) { FrameDialogs.moveFolder(model, f) },
-        ]
+        ] + (model.session.value?.capabilities.sharing ?? false ? [
+            .separator(2),
+            WebMenuEntry(.item("Share…", icon: .share2)) { FrameDialogs.folderShare(model, folderId: f.id, name: f.name) },
+        ] : [])
     }
 
     // MARK: tags

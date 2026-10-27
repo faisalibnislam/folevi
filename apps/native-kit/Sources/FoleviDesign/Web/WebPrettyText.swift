@@ -18,6 +18,41 @@ public enum WebPrettyWrap {
         return CTLineGetTypographicBounds(line, nil, nil, nil)
     }
 
+    /// `text-wrap: balance` (globals.css sets it on h1 to h3): as many lines as the greedy fill, as even as they can
+    /// be (the narrowest width that still needs no more lines, filled greedily).
+    public static func balanced(_ text: String, style: WebTextStyle, width: CGFloat) -> [String] {
+        let target = greedy(text, style: style, width: width).count
+        guard target > 1 else { return [text] }
+        var lo: CGFloat = 1, hi = width
+        while hi - lo > 0.5 {
+            let mid = (lo + hi) / 2
+            if greedy(text, style: style, width: mid).count <= target { hi = mid } else { lo = mid }
+        }
+        return greedy(text, style: style, width: hi)
+    }
+
+    /// The browser's ordinary fill.
+    public static func greedy(_ text: String, style: WebTextStyle, width: CGFloat) -> [String] {
+        let words = text.split(separator: " ", omittingEmptySubsequences: false)
+        let space = Self.width(" ", style)
+        var out: [String] = []
+        var line: [Substring] = []
+        var lw: CGFloat = 0
+        for w in words {
+            let ww = Self.width(w, style)
+            if !line.isEmpty, lw + space + ww > width + 0.01 {
+                out.append(line.joined(separator: " "))
+                line = [w]
+                lw = ww
+            } else {
+                lw += (line.isEmpty ? 0 : space) + ww
+                line.append(w)
+            }
+        }
+        if !line.isEmpty { out.append(line.joined(separator: " ")) }
+        return out
+    }
+
     /// The paragraph's lines for `width`.
     public static func lines(_ text: String, style: WebTextStyle, width: CGFloat, lastLine: CGFloat = WebPrettyWrap.lastLine) -> [String] {
         let words = text.split(separator: " ", omittingEmptySubsequences: false)
@@ -68,26 +103,49 @@ public enum WebPrettyWrap {
     }
 }
 
-/// A paragraph wrapped as `text-wrap: pretty` wraps it, in a web text style.
+/// How a paragraph wraps: `pretty` (every <p>), `balance` (headings) or the plain greedy fill.
+public enum WebWrap: Sendable { case pretty, balance, greedy }
+
+/// A paragraph wrapped as CSS wraps it, in a web text style: its lines found here (`text-wrap: pretty` or
+/// `balance`), each set as its own exact CSS line box (so any font's lines are `leading` apart).
 public struct WebPrettyText: View {
     let text: String
     let style: WebTextStyle
     let alignment: TextAlignment
-    @State private var width: CGFloat = 0
+    let wrap: WebWrap
+    /// The width to break for, when the caller knows it (the element's computed width); else what's offered.
+    let fixedWidth: CGFloat?
+    @State private var measured: CGFloat = 0
 
-    public init(_ text: String, style: WebTextStyle, alignment: TextAlignment = .leading) {
+    public init(_ text: String, style: WebTextStyle, alignment: TextAlignment = .leading, wrap: WebWrap = .pretty, width: CGFloat? = nil) {
         self.text = text
         self.style = style
         self.alignment = alignment
+        self.wrap = wrap
+        self.fixedWidth = width
+    }
+
+    private var width: CGFloat { fixedWidth ?? measured }
+
+    private var lines: [String] {
+        guard width > 0 else { return [text] }
+        switch wrap {
+        case .pretty: return WebPrettyWrap.lines(text, style: style, width: width)
+        case .balance: return WebPrettyWrap.balanced(text, style: style, width: width)
+        case .greedy: return WebPrettyWrap.greedy(text, style: style, width: width)
+        }
     }
 
     public var body: some View {
-        let shown = width > 0 ? WebPrettyWrap.lines(text, style: style, width: width).joined(separator: "\n") : text
-        Text(verbatim: shown)
-            .webText(style)
-            .multilineTextAlignment(alignment)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: alignment == .center ? .center : alignment == .trailing ? .trailing : .leading)
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        let h: HorizontalAlignment = alignment == .center ? .center : alignment == .trailing ? .trailing : .leading
+        VStack(alignment: h, spacing: 0) {
+            // The width offered (never the lines' own): what the lines are broken for.
+            Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measured = $0 }
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                Text(verbatim: line).webText(style).lineLimit(1).fixedSize()
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: Alignment(horizontal: h, vertical: .top))
     }
 }

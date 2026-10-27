@@ -15,6 +15,22 @@ final class MoreModels {
     private var graph: GraphModel?
     private var review: ReviewModel?
     private var sharedFolders: [String: SharedFolderModel] = [:]
+    private var shared: SharedWithMeModel?
+    private var changes: ChangesWebModel?
+
+    func sharedModel() -> SharedWithMeModel {
+        if let shared { return shared }
+        let m = SharedWithMeModel(client: frame.client)
+        shared = m
+        return m
+    }
+
+    func changesModel() -> ChangesWebModel {
+        if let changes { return changes }
+        let m = ChangesWebModel(client: frame.client, feedback: feedback)
+        changes = m
+        return m
+    }
 
     init(frame: FrameModel, feedback: ScreenFeedback) {
         self.frame = frame
@@ -46,8 +62,11 @@ final class MoreModels {
 struct MoreScreen: View {
     /// The routes drawn here, over the content card's own fill as the web's are.
     static func clear(_ route: FrameRoute) -> Bool {
-        if case .web(let p) = route { return ["/help", "/graph", "/review", "/shared/"].contains { p.hasPrefix($0) } }
-        return false
+        switch route {
+        case .web(let p): return ["/help", "/graph", "/review", "/shared/"].contains { p.hasPrefix($0) }
+        case .shared, .changes: return true
+        default: return false
+        }
     }
 
     let model: FrameModel

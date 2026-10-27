@@ -158,13 +158,14 @@ struct WebBackdrop: View {
 /// A dialog's panel: its glass and shadows from a computed style (more.dialog.sm, more.palette).
 struct WebSheetPanel: ViewModifier {
     let style: WebStylePair
+    var width: CGFloat? = nil
     @Environment(\.colorScheme) private var scheme
 
     func body(content: Content) -> some View {
         let s = style.resolve(scheme)
         let shape = RoundedRectangle(cornerRadius: s.radius, style: .circular)
         content
-            .frame(width: s.width)
+            .frame(width: width ?? s.width)
             .clipShape(shape)
             .webBox(style)
             .background(WebBackdrop().clipShape(shape))
@@ -177,6 +178,8 @@ struct WebSheetPanel: ViewModifier {
 struct WebSheetDialog<Body: View, Footer: View>: View {
     let title: String
     var description: String? = nil
+    /// `size="md"` dialogs are 480 pt on the Mac (`dialog.ui-pop.max-w-lg`); nil: the small one's 384.
+    var width: CGFloat? = nil
     let close: @MainActor () -> Void
     @ViewBuilder let content: () -> Body
     @ViewBuilder let footer: () -> Footer
@@ -211,14 +214,15 @@ struct WebSheetDialog<Body: View, Footer: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             footer()
         }
-        .modifier(WebSheetPanel(style: WebStyles.named("more.dialog.sm")))
+        .modifier(WebSheetPanel(style: WebStyles.named("more.dialog.sm"), width: width))
     }
 }
 
 extension WebSheetDialog where Footer == EmptyView {
-    init(title: String, description: String? = nil, close: @escaping @MainActor () -> Void, @ViewBuilder content: @escaping () -> Body) {
+    init(title: String, description: String? = nil, width: CGFloat? = nil, close: @escaping @MainActor () -> Void, @ViewBuilder content: @escaping () -> Body) {
         self.title = title
         self.description = description
+        self.width = width
         self.close = close
         self.content = content
         self.footer = { EmptyView() }

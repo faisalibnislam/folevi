@@ -58,6 +58,9 @@ export const SCREENS = [
   { id: "help", link: "folevi-dev://help" },
   { id: "graph", link: "folevi-dev://graph" },
   { id: "review", link: "folevi-dev://review" },
+  // Account-only pages: in local mode, "Sign in to Folevi to share and collaborate".
+  { id: "shared", link: "folevi-dev://shared" },
+  { id: "changes", link: "folevi-dev://changes" },
   // mr/more's dialogs: opened by `prepare` (a script in the web frame's page, a MacEval command in the native one)
   // over Home, closed again after the capture.
   { id: "palette", link: "folevi-dev://documents", prepare: { web: `document.querySelector("nav[aria-label='Folio'] button.ui-well").click(); return true`, native: { cmd: "more", do: "palette" } } },

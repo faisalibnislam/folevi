@@ -233,11 +233,52 @@ rewrite is deployed. See `docs/MAC_RELEASE.md`. It signs in through the browser 
 
 ## Backups and restore
 
-- Convex keeps automatic backups on paid plans; take manual snapshots before risky migrations (always
-  before the account-model migration, section 6):
-  `npx convex export --deployment <prod-deployment> --path backups/folevi-$(date +%F).zip` (includes file storage with
-  `--include-file-storage`). Restore into a staging deployment with `npx convex import` first.
-- Deleted documents are recoverable from Trash for 30 days; blocks from version history.
+Three layers (docs/SECURITY_PLAN.md P0.4):
+
+1. **In the product:** Trash keeps notes 30 days; deleted blocks 30 days; version history.
+2. **Convex's own backups** (on paid plans): confirm the plan and how long they're kept in the Convex dashboard.
+3. **Folevi's off-platform backup**, daily, by `.github/workflows/backup.yml`: a full export with file storage,
+   encrypted with an [age](https://age-encryption.org) public key, stored in a Cloudflare R2 bucket whose
+   retention lock stops anyone (a stolen deploy key, stolen R2 keys, a mistake) deleting or overwriting a backup
+   before it expires. Dailies are kept 30 days, the copy made on the 1st of each month for a year.
+
+### Setting up the off-platform backup (once)
+
+1. **age key pair** on a trusted computer: `age-keygen -o folevi-backup.key`. Keep `folevi-backup.key` offline
+   (a password manager and a printed copy in a safe place). Never put it in GitHub, Convex or Vercel. The line
+   starting `# public key: age1…` is the recipient.
+2. **R2 bucket** `folevi-backups` (not the public `folevi-updates` one), in the Cloudflare dashboard:
+   - Settings → Bucket lock rules: `daily/` locked 30 days, `monthly/` locked 365 days.
+   - Settings → Object lifecycle rules: delete `daily/` after 31 days, `monthly/` after 366 days.
+   - An R2 API token with **Object Read & Write on this bucket only**.
+3. **A production deploy key** just for backups (Convex dashboard → production → Settings → Deploy keys), so it
+   can be revoked on its own.
+4. **GitHub** (repository Settings → Secrets and variables → Actions):
+   - Secrets: `BACKUP_CONVEX_DEPLOY_KEY`, `BACKUP_R2_ACCESS_KEY_ID`, `BACKUP_R2_SECRET_ACCESS_KEY`.
+   - Variables: `BACKUP_AGE_RECIPIENT` (the `age1…` public key), `BACKUP_R2_BUCKET` (`folevi-backups`),
+     `BACKUP_R2_ENDPOINT` (`https://<account id>.r2.cloudflarestorage.com`).
+5. Run the workflow once by hand (Actions → Backup → Run workflow) and check the file appears in R2.
+
+### Restore drill (every quarter, and before any risky migration)
+
+Into a scratch deployment, never production:
+
+1. Download the newest `daily/folevi-….zip.age` and its `.sha256`; check it: `shasum -a 256 folevi-….zip.age`.
+2. Decrypt on the trusted computer: `age -d -i folevi-backup.key -o folevi.zip folevi-….zip.age`.
+3. Create or reuse a scratch Convex deployment (a dev deployment of a separate project), then
+   `npx convex import --replace-all --include-file-storage folevi.zip` there.
+4. Point a local web build at it, sign in with a test account, open a few notes, files and a workspace.
+5. Write the date, the backup used, how long it took and anything that failed in the table below; delete the
+   decrypted ZIP (`rm -P folevi.zip` on macOS).
+
+| Date | Backup | Time to restore | Result |
+| --- | --- | --- | --- |
+| | | | |
+
+Manual exports before risky changes still work the same way:
+`npx convex export --deployment <prod-deployment> --include-file-storage --path backups/folevi-$(date +%F).zip`.
+Never leave an unencrypted production export on a laptop: encrypt it right away
+(`age -r age1… -o folevi.zip.age folevi.zip && rm -P folevi.zip`).
 
 ## Incident basics
 

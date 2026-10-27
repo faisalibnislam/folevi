@@ -48,6 +48,10 @@ export const SCREENS = [
   { id: "trash", link: "folevi-dev://trash" },
   // The first fixture note ("Kyoto in November"), by its id from fixture.json.
   { id: "note", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 2500 },
+  // A folder with a subfolder (Travel, with Japan), and the Folders and Tags pages.
+  { id: "folder", link: (fx) => `folevi-dev://folders/${fx.folders?.travel}` },
+  { id: "folders", link: "folevi-dev://folders" },
+  { id: "tags", link: "folevi-dev://tags" },
 ];
 const only = arg("--only")?.split(",");
 const screens = SCREENS.filter((s) => !only || only.includes(s.id));
@@ -82,6 +86,7 @@ const FIXTURE = `
   }
   await run("note.star", { ids: [ids[0], ids[2]], starred: true });
   for (const t of ["Book the ryokan tomorrow", "Call Sam on Friday 3pm", "Renew passport next week", "Buy matcha today"]) await run("task.create", { text: t });
+  window.__fxFolders = { travel: travel.id, japan: japan.id, work: work.id };
   return ids;
 `;
 
@@ -122,9 +127,10 @@ async function setUp() {
   await waitFor(dir, `return !!window.__foleviEngine && !!window.__foleviNativeChrome`, 90_000);
   await sleep(1500);
   const made = await evaluate(dir, FIXTURE);
+  const folders = await evaluate(dir, `return window.__fxFolders`).catch(() => null);
   await sleep(1500);
   await quit();
-  writeFileSync(join(dir, "fixture.json"), JSON.stringify({ notes: made, at: new Date().toISOString() }));
+  writeFileSync(join(dir, "fixture.json"), JSON.stringify({ notes: made, folders, at: new Date().toISOString() }));
 }
 
 async function quit() {

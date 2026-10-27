@@ -80,6 +80,8 @@ export const list = query({
         documentId: doc ? doc.publicId : null,
         /** A change proposed for review: it opens Changes, where it waits. */
         toChanges: n.proposalId !== undefined,
+        /** A change in a Vault (who and what kind only): it opens the Vault. */
+        toVault: n.kind === "vault",
         /** The note's current title (the stored `title` sentence keeps the one it had then). */
         documentTitle: doc ? doc.title || "Untitled" : null,
         // About an end-to-end encrypted note: its title and the text are generic here; the device opens the

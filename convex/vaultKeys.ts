@@ -12,6 +12,7 @@ import { insertScoped, scopeOfRow } from "./lib/scope";
 import { activeAccount, requireAccount } from "./lib/e2ee/keyStore";
 import { requireVault, vaultRoleOf } from "./lib/vault/access";
 import { appendLog } from "./lib/vault/log";
+import { notifyVaultSecurity } from "./lib/vault/notify";
 import { vVaultClient } from "./lib/vault/validators";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -199,6 +200,7 @@ export const unlockResult = mutation({
     if (throttle) await ctx.db.patch(throttle._id, { failures, lockouts, updatedAt: now, ...(lockedUntil ? { lockedUntil } : {}) });
     else await insertScoped(ctx, "vaultThrottles", scopeOfRow(vault), { vaultId: vault._id, profileId: profile._id, failures, lockouts, updatedAt: now, ...(lockedUntil ? { lockedUntil } : {}) });
     await appendLog(ctx, vault, { event: "vault.unlock", outcome: "failed", reason: args.way === "passcode" ? "wrong_passcode" : "wrong_recovery_key", actor: { profile, role }, detail: { way: args.way, failuresInARow: failures, ...(lockedUntil ? { lockedUntil } : {}) }, client: args.client, source: "device" });
+    if (failures === NOTIFY_CUSTODIANS_AFTER) await notifyVaultSecurity(ctx, vault, profile, `${profile.displayName.slice(0, 80)} entered a wrong Vault passcode ${failures} times in a row`, "unlock.failures");
     return { lockedUntil: lockedUntil ?? null };
   },
 });

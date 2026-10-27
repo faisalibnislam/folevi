@@ -2016,8 +2016,11 @@ export default defineSchema({
       v.literal("share"),
       v.literal("share_change"),
       v.literal("system"),
+      v.literal("vault"),
     ),
     actorId: v.optional(v.id("profiles")),
+    /** A change in a Vault (docs/VAULT_PLAN.md §8): who and what kind only; it opens the Vault. */
+    vaultId: v.optional(v.id("vaults")),
     documentId: v.optional(v.id("documents")),
     threadId: v.optional(v.id("commentThreads")),
     inviteId: v.optional(v.id("workspaceInvites")),

@@ -15,6 +15,7 @@ import { activeAccount } from "./lib/e2ee/keyStore";
 import { insertScoped, scopeOfRow } from "./lib/scope";
 import { requireVault, vaultRoleOf } from "./lib/vault/access";
 import { appendLog } from "./lib/vault/log";
+import { notifyVaultChange, notifyVaultSecurity } from "./lib/vault/notify";
 import { vVaultClient } from "./lib/vault/validators";
 import { checkSealed, itemOf, keepVersion, requireCanChange, row } from "./vaultItems";
 
@@ -73,6 +74,7 @@ export const share = mutation({
       if (old.profileId === target._id) await ctx.db.delete(old._id);
     await insertScoped(ctx, "vaultShares", scopeOfRow(vault), { publicId: args.shareId, vaultId: vault._id, itemId: item._id, profileId: target._id, canEdit: args.canEdit, wrappedKey: args.wrappedKey, epoch: args.epoch, ...(expiresAt ? { expiresAt } : {}), sharedBy: profile._id, createdAt: now });
     await appendLog(ctx, vault, { event: "item.shared", actor: { profile, role }, item: { publicId: item.publicId, kind: item.kind }, detail: { to: { profileId: target._id, name: target.displayName, email: target.email }, canEdit: args.canEdit, outsideWorkspace: outside, expiresAt: expiresAt ?? null }, client: args.client });
+    if (outside) await notifyVaultSecurity(ctx, vault, profile, `${profile.displayName.slice(0, 80)} shared something from the Vault with someone outside the workspace`, "share.outside");
     return { expiresAt: expiresAt ?? null };
   },
 });
@@ -177,6 +179,7 @@ export const saveShared = mutation({
     await keepVersion(ctx, item);
     await ctx.db.patch(item._id, { sealedSummary: args.sealedSummary, sealed: args.sealed, revision: item.revision + 1, updatedBy: profile._id, updatedAt: Date.now() });
     await appendLog(ctx, vault, { event: "note.edited", actor: { profile, role: "recipient" }, item: { publicId: item.publicId, kind: item.kind }, detail: { revision: item.revision + 1, viaShare: true }, client: args.client });
+    await notifyVaultChange(ctx, vault, profile, { what: "note", verb: "changed" });
     return { revision: item.revision + 1 };
   },
 });

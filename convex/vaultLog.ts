@@ -12,6 +12,7 @@ import { keyedHash } from "./lib/crypto";
 import { requireVault, vaultRoleAtLeast } from "./lib/vault/access";
 import { appendLog, entryHash, genesisHash, LOG_RETENTION_MS } from "./lib/vault/log";
 import { vVaultClient } from "./lib/vault/validators";
+import { notifyVaultSecurity } from "./lib/vault/notify";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -170,6 +171,7 @@ export const exportPage = mutation({
       .withIndex("by_vault_seq", (q) => q.eq("vaultPublicId", vault.publicId).gt("seq", args.after))
       .take(EXPORT_PAGE);
     if (args.after === 0) await appendLog(ctx, vault, { event: "log.exported", actor: { profile, role }, detail: { format: args.format, upToSeq: vault.logSeq }, client: args.client });
+    if (args.after === 0) await notifyVaultSecurity(ctx, vault, profile, `${profile.displayName.slice(0, 80)} exported the Vault's activity log`, "log.exported");
     const entries = rows.map(shape);
     const last = entries.at(-1);
     return {

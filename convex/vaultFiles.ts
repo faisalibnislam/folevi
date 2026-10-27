@@ -13,6 +13,7 @@ import { insertScoped, scopeOfRow } from "./lib/scope";
 import { adjustStorageUsed, assertStorageFor } from "./lib/entitlements";
 import { requireVault, vaultRoleAtLeast } from "./lib/vault/access";
 import { appendLog } from "./lib/vault/log";
+import { notifyVaultChange, notifyVaultSecurity } from "./lib/vault/notify";
 import { vVaultClient } from "./lib/vault/validators";
 import { checkKeyVersion, checkSealed, itemOf, keepVersion, requireCanChange, vSealedItem } from "./vaultItems";
 
@@ -177,6 +178,7 @@ export const createNote = mutation({
     const now = Date.now();
     await insertScoped(ctx, "vaultItems", scopeOfRow(vault), { publicId: args.itemId, vaultId: vault._id, kind: "note", ...(folderId ? { folderId } : {}), sealedSummary: args.item.sealedSummary, sealed: args.item.sealed, wrappedKey: args.item.wrappedKey, keyVersion: args.item.keyVersion, revision: 1, createdBy: profile._id, updatedBy: profile._id, createdAt: now, updatedAt: now });
     await appendLog(ctx, vault, { event: args.movedFrom ? "note.movedIn" : "item.created", actor: { profile, role }, item: { publicId: args.itemId, kind: "note" }, ...(args.movedFrom ? { detail: { from: args.movedFrom.slice(0, 40) } } : {}), client: args.client });
+    await notifyVaultChange(ctx, vault, profile, { what: "note", verb: "added" });
     return null;
   },
 });
@@ -235,6 +237,7 @@ export const saveFile = mutation({
       await ctx.db.patch(existing._id, { storageId: args.storageId, size, sealedSummary: args.item.sealedSummary, sealed: args.item.sealed, wrappedKey: args.item.wrappedKey, keyVersion: args.item.keyVersion, revision: existing.revision + 1, updatedBy: profile._id, updatedAt: now });
       await adjustStorageUsed(ctx, scope, grows, scope.kind === "workspace" ? existing.createdBy : undefined);
       await appendLog(ctx, vault, { event: "file.updated", actor: { profile, role }, item: { publicId: existing.publicId, kind: "file" }, detail: { size, revision: existing.revision + 1 }, client: args.client });
+      await notifyVaultChange(ctx, vault, profile, { what: "file", verb: "changed" });
       return { revision: existing.revision + 1 };
     }
     if (!ID.test(args.itemId)) fail("invalid_argument", "Invalid item id.");
@@ -248,6 +251,7 @@ export const saveFile = mutation({
     await insertScoped(ctx, "vaultItems", scope, { publicId: args.itemId, vaultId: vault._id, kind: "file", ...(folderId ? { folderId } : {}), storageId: args.storageId, size, sealedSummary: args.item.sealedSummary, sealed: args.item.sealed, wrappedKey: args.item.wrappedKey, keyVersion: args.item.keyVersion, revision: 1, createdBy: profile._id, updatedBy: profile._id, createdAt: now, updatedAt: now });
     await adjustStorageUsed(ctx, scope, size, scope.kind === "workspace" ? profile._id : undefined);
     await appendLog(ctx, vault, { event: "file.added", actor: { profile, role }, item: { publicId: args.itemId, kind: "file" }, detail: { size }, client: args.client });
+    await notifyVaultChange(ctx, vault, profile, { what: "file", verb: "added" });
     return { revision: 1 };
   },
 });
@@ -270,6 +274,7 @@ export const saveNote = mutation({
     await keepVersion(ctx, item);
     await ctx.db.patch(item._id, { sealedSummary: args.item.sealedSummary, sealed: args.item.sealed, wrappedKey: args.item.wrappedKey, keyVersion: args.item.keyVersion, revision: item.revision + 1, updatedBy: profile._id, updatedAt: Date.now() });
     await appendLog(ctx, vault, { event: "note.edited", actor: { profile, role }, item: { publicId: item.publicId, kind: "note" }, detail: { revision: item.revision + 1 }, client: args.client });
+    await notifyVaultChange(ctx, vault, profile, { what: "note", verb: "changed" });
     return { revision: item.revision + 1 };
   },
 });

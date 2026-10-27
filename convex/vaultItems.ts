@@ -12,6 +12,7 @@ import { consume } from "./lib/rateLimit";
 import { insertScoped, scopeOfRow } from "./lib/scope";
 import { requireVault, vaultRoleAtLeast, type VaultRole } from "./lib/vault/access";
 import { appendLog } from "./lib/vault/log";
+import { notifyVaultChange, notifyVaultSecurity } from "./lib/vault/notify";
 import { vVaultClient } from "./lib/vault/validators";
 import { vVaultItemKind } from "./schema";
 
@@ -180,6 +181,7 @@ export const create = mutation({
       updatedAt: now,
     });
     await appendLog(ctx, vault, { event: "item.created", actor: { profile, role }, item: { publicId: args.itemId, kind: args.kind }, client: args.client });
+    await notifyVaultChange(ctx, vault, profile, { what: "password", verb: "added" });
     return null;
   },
 });
@@ -230,6 +232,7 @@ export const update = mutation({
       updatedAt: now,
     });
     await appendLog(ctx, vault, { event: "item.edited", actor: { profile, role }, item: { publicId: item.publicId, kind: item.kind }, detail: { fields: [...new Set(args.changed)].sort(), revision: item.revision + 1 }, client: args.client });
+    await notifyVaultChange(ctx, vault, profile, { what: item.kind === "note" ? "note" : item.kind === "file" ? "file" : "password", verb: "changed" });
     return { revision: item.revision + 1 };
   },
 });
@@ -344,6 +347,7 @@ export const importBatch = mutation({
       });
     }
     await appendLog(ctx, vault, { event: "items.imported", actor: { profile, role }, detail: { importId: args.importId.slice(0, 40), source: args.source, count: args.items.length }, client: args.client });
+    await notifyVaultChange(ctx, vault, profile, { what: "password", verb: "added", count: args.items.length });
     return null;
   },
 });
@@ -371,6 +375,7 @@ export const exportPage = mutation({
     const start = args.after ? all.findIndex((i) => i.publicId > args.after!) : 0;
     const page = start < 0 ? [] : all.slice(start, start + EXPORT_PAGE);
     if (args.after === null) await appendLog(ctx, vault, { event: "items.exported", actor: { profile, role }, detail: { format: args.format, count: all.length }, client: args.client });
+    if (args.after === null) await notifyVaultSecurity(ctx, vault, profile, `${profile.displayName.slice(0, 80)} exported the Vault's passwords`, "items.exported");
     return {
       items: await Promise.all(page.map(async (i) => ({ ...(await row(ctx, i)), sealed: i.sealed }))),
       next: start >= 0 && start + EXPORT_PAGE < all.length ? page.at(-1)!.publicId : null,

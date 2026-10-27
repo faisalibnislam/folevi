@@ -11,6 +11,7 @@ import { activeAccount } from "./lib/e2ee/keyStore";
 import { insertScoped, scopeOfRow } from "./lib/scope";
 import { requireVault, vaultMemberRow, vaultRoleOf, type VaultRole } from "./lib/vault/access";
 import { appendLog } from "./lib/vault/log";
+import { notifyVaultChange, notifyVaultSecurity } from "./lib/vault/notify";
 import { vVaultClient } from "./lib/vault/validators";
 import { liveVersions } from "./vaultKeys";
 
@@ -119,6 +120,7 @@ export const add = mutation({
     await insertScoped(ctx, "vaultMembers", scopeOfRow(vault), { vaultId: vault._id, profileId: target._id, role: args.role, addedBy: profile._id, createdAt: now });
     if (vault.keyVersion > 0) await insertScoped(ctx, "vaultPendingGrants", scopeOfRow(vault), { vaultId: vault._id, profileId: target._id, reason: "added", createdAt: now });
     await appendLog(ctx, vault, { event: "person.added", actor: { profile, role }, detail: { profileId: target._id, name: target.displayName, email: target.email, role: args.role } });
+    await notifyVaultChange(ctx, vault, profile, { what: "person", verb: "added", personName: target.displayName });
     return null;
   },
 });
@@ -185,6 +187,7 @@ export const remove = mutation({
     const target = await ctx.db.get(row.profileId);
     await dropFromVault(ctx, vault, row.profileId);
     await appendLog(ctx, vault, { event: leaving ? "person.left" : "person.removed", actor: { profile, role }, detail: { profileId: row.profileId, name: target?.displayName ?? "Someone", email: target?.email ?? null, role: row.role }, client: args.client });
+    await notifyVaultChange(ctx, vault, profile, { what: "person", verb: "removed", personName: leaving ? "themselves" : (target?.displayName ?? "someone") });
     return null;
   },
 });
@@ -263,4 +266,5 @@ export async function vaultMemberLeftWorkspace(ctx: MutationCtx, workspaceId: Id
   const target = await ctx.db.get(profileId);
   if (!(await dropFromVault(ctx, vault, profileId))) return;
   await appendLog(ctx, vault, { event: "person.leftWorkspace", actor: { profile: null, role: "system", name: "Folevi" }, detail: { profileId, name: target?.displayName ?? "Someone", email: target?.email ?? null, role: row?.role ?? "member" } });
+  await notifyVaultChange(ctx, vault, null, { what: "person", verb: "removed", personName: target?.displayName ?? "someone" });
 }

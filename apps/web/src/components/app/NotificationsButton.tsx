@@ -20,9 +20,10 @@ import { SwipeRow } from "@/components/iphone/Swipe";
 type Item = FunctionReturnType<typeof api.notifications.list>[number];
 
 /** Where a notification leads: the note, scrolled to the comment thread or block when there is one; a shared folder. */
-export function notificationHref(n: Pick<Item, "documentId" | "threadId" | "blockId"> & { toChanges?: boolean; folderId?: string | null }): string | null {
+export function notificationHref(n: Pick<Item, "documentId" | "threadId" | "blockId"> & { toChanges?: boolean; folderId?: string | null; toVault?: boolean }): string | null {
   // A change proposed for review waits in Changes, not in the note.
   if (n.toChanges) return "/changes";
+  if (n.toVault) return "/vault";
   if (!n.documentId) return n.folderId ? `/shared/${n.folderId}` : null;
   const hash = n.threadId ? `#comment-${n.threadId}` : n.blockId ? `#block-${n.blockId}` : "";
   return `/d/${n.documentId}${hash}`;
@@ -339,7 +340,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
   // The phone layout: phone-sized text, swipe actions, and the row's options in its long-press menu (no "…").
   const phone = useIphoneApp();
   const fail = (e: unknown) => toast.show(errorMessage(e), { tone: "error" });
-  const actionable = Boolean(n.documentId) || n.toChanges || Boolean(n.folderId);
+  const actionable = Boolean(n.documentId) || n.toChanges || Boolean(n.folderId) || n.toVault;
   const toggleRead = () => void (n.read ? markUnread({ ids: [n.id] }) : markRead({ ids: [n.id] })).catch(fail);
   const drop = () => void remove({ ids: [n.id] }).catch(fail);
   const row = (

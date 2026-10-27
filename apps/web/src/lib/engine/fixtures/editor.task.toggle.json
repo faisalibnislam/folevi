@@ -1,0 +1,11 @@
+{
+  "kind": "editor",
+  "name": "task.toggle",
+  "description": "Check a to-do from the Tasks tab.",
+  "args": {
+    "blockId": "blk_t1"
+  },
+  "result": {
+    "ok": true
+  }
+}

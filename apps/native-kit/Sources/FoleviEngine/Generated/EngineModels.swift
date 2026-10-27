@@ -5695,3 +5695,304 @@ public struct NotesMoveCheckValue: Codable, Hashable, Sendable {
         try container.encode(self.message, forKey: .message)
     }
 }
+
+/// One step of where the note lives ("In Travel > Japan"): a folder or a parent page, outermost first.
+public struct NoteToolsCrumb: Codable, Hashable, Sendable {
+    /// The app path it opens ("/folders/<id>", "/d/<id>", "/documents").
+    public var href: String
+    public var label: String
+
+    public init(href: String, label: String) {
+        self.href = href
+        self.label = label
+    }
+}
+
+/// A row of the Table of contents: a heading (level 1 to 3) or a nested page.
+public struct NoteOutlineItem: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case heading
+        case page
+    }
+
+    public var kind: Kind
+    /// The block's id (what `block.jump` takes).
+    public var id: String
+    /// The heading's text ("" when empty) or the nested page's title.
+    public var text: String
+    /// Headings: 1, 2 or 3; pages: 0.
+    public var level: Int
+    /// Pages: the nested page's note id; headings: null.
+    public var documentId: String?
+
+    public init(kind: Kind, id: String, text: String, level: Int, documentId: String? = nil) {
+        self.kind = kind
+        self.id = id
+        self.text = text
+        self.level = level
+        self.documentId = documentId
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.text, forKey: .text)
+        try container.encode(self.level, forKey: .level)
+        try container.encode(self.documentId, forKey: .documentId)
+    }
+}
+
+/// A to-do in the note.
+public struct NoteToolsTask: Codable, Hashable, Sendable {
+    public var id: String
+    public var text: String
+    public var checked: Bool
+
+    public init(id: String, text: String, checked: Bool) {
+        self.id = id
+        self.text = text
+        self.checked = checked
+    }
+}
+
+/// An image, file or recording in the note.
+public struct NoteToolsAttachment: Codable, Hashable, Sendable {
+    public var id: String
+    /// "image", "file" or "audio".
+    public var kind: String
+    public var name: String
+    /// A file still on its way up.
+    public var uploading: Bool
+
+    public init(id: String, kind: String, name: String, uploading: Bool) {
+        self.id = id
+        self.kind = kind
+        self.name = name
+        self.uploading = uploading
+    }
+}
+
+/// A link in the note: a web address (embed, bookmark, linked text) or a page link.
+public struct NoteToolsLink: Codable, Hashable, Sendable {
+    public var key: String
+    public var blockId: String
+    public var label: String
+    public var href: String
+    /// A page link ("/d/<id>"), opened in the app; otherwise a web address.
+    public var `internal`: Bool
+
+    public init(key: String, blockId: String, label: String, href: String, internal: Bool) {
+        self.key = key
+        self.blockId = blockId
+        self.label = label
+        self.href = href
+        self.internal = `internal`
+    }
+}
+
+/// A comment thread, as the Comments tab lists it.
+public struct NoteToolsThread: Codable, Hashable, Sendable {
+    public enum Status: String, Codable, Hashable, Sendable, CaseIterable {
+        case `open`
+        case resolved
+    }
+
+    public var id: String
+    /// The block it's on (null: on the whole note).
+    public var blockId: String?
+    /// What it's on ("On “Temples to see”", "On the whole note").
+    public var anchor: String
+    public var author: String
+    public var avatarUrl: String?
+    /// The first comment's text (plain).
+    public var text: String
+    public var deleted: Bool
+    public var replies: Int
+    public var status: Status
+    public var resolvedBy: String?
+    public var unread: Bool
+    public var lastActivityAt: Double
+    /// "waiting" or "failed" while it's not on the server yet, else null.
+    public var waiting: String?
+
+    public init(id: String, blockId: String? = nil, anchor: String, author: String, avatarUrl: String? = nil, text: String, deleted: Bool, replies: Int, status: Status, resolvedBy: String? = nil, unread: Bool, lastActivityAt: Double, waiting: String? = nil) {
+        self.id = id
+        self.blockId = blockId
+        self.anchor = anchor
+        self.author = author
+        self.avatarUrl = avatarUrl
+        self.text = text
+        self.deleted = deleted
+        self.replies = replies
+        self.status = status
+        self.resolvedBy = resolvedBy
+        self.unread = unread
+        self.lastActivityAt = lastActivityAt
+        self.waiting = waiting
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.blockId, forKey: .blockId)
+        try container.encode(self.anchor, forKey: .anchor)
+        try container.encode(self.author, forKey: .author)
+        try container.encode(self.avatarUrl, forKey: .avatarUrl)
+        try container.encode(self.text, forKey: .text)
+        try container.encode(self.deleted, forKey: .deleted)
+        try container.encode(self.replies, forKey: .replies)
+        try container.encode(self.status, forKey: .status)
+        try container.encode(self.resolvedBy, forKey: .resolvedBy)
+        try container.encode(self.unread, forKey: .unread)
+        try container.encode(self.lastActivityAt, forKey: .lastActivityAt)
+        try container.encode(self.waiting, forKey: .waiting)
+    }
+}
+
+public struct NoteToolsComments: Codable, Hashable, Sendable {
+    /// False in local mode (no comments: the tab says what they need).
+    public var available: Bool
+    /// The threads have loaded.
+    public var loaded: Bool
+    public var canComment: Bool
+    public var threads: [NoteToolsThread]
+
+    public init(available: Bool, loaded: Bool, canComment: Bool, threads: [NoteToolsThread]) {
+        self.available = available
+        self.loaded = loaded
+        self.canComment = canComment
+        self.threads = threads
+    }
+}
+
+/// A page of the note's page tree (the note, its parent and nested pages), for a note with nested pages.
+public struct NoteToolsPage: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var depth: Int
+
+    public init(id: String, title: String, depth: Int) {
+        self.id = id
+        self.title = title
+        self.depth = depth
+    }
+}
+
+/// `note.tools`: what the open note's sidebar shows, sent when the note opens and whenever it changes.
+public struct NoteToolsEvent: Codable, Hashable, Sendable {
+    public var noteId: String
+    public var title: String
+    public var trail: [NoteToolsCrumb]
+    public var outline: [NoteOutlineItem]
+    /// The heading in view now (the outline marks it), or null.
+    public var current: String?
+    public var tasks: [NoteToolsTask]
+    public var attachments: [NoteToolsAttachment]
+    public var links: [NoteToolsLink]
+    public var comments: NoteToolsComments
+    /// Empty unless the note has nested pages (two or more pages).
+    public var pages: [NoteToolsPage]
+    public var pagesTruncated: Bool
+    public var readOnly: Bool
+
+    public init(noteId: String, title: String, trail: [NoteToolsCrumb], outline: [NoteOutlineItem], current: String? = nil, tasks: [NoteToolsTask], attachments: [NoteToolsAttachment], links: [NoteToolsLink], comments: NoteToolsComments, pages: [NoteToolsPage], pagesTruncated: Bool, readOnly: Bool) {
+        self.noteId = noteId
+        self.title = title
+        self.trail = trail
+        self.outline = outline
+        self.current = current
+        self.tasks = tasks
+        self.attachments = attachments
+        self.links = links
+        self.comments = comments
+        self.pages = pages
+        self.pagesTruncated = pagesTruncated
+        self.readOnly = readOnly
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.trail, forKey: .trail)
+        try container.encode(self.outline, forKey: .outline)
+        try container.encode(self.current, forKey: .current)
+        try container.encode(self.tasks, forKey: .tasks)
+        try container.encode(self.attachments, forKey: .attachments)
+        try container.encode(self.links, forKey: .links)
+        try container.encode(self.comments, forKey: .comments)
+        try container.encode(self.pages, forKey: .pages)
+        try container.encode(self.pagesTruncated, forKey: .pagesTruncated)
+        try container.encode(self.readOnly, forKey: .readOnly)
+    }
+}
+
+public struct BlockJumpArgs: Codable, Hashable, Sendable {
+    public var blockId: String
+
+    public init(blockId: String) {
+        self.blockId = blockId
+    }
+}
+
+public struct TaskToggleArgs: Codable, Hashable, Sendable {
+    public var blockId: String
+
+    public init(blockId: String) {
+        self.blockId = blockId
+    }
+}
+
+public struct ThreadOpenArgs: Codable, Hashable, Sendable {
+    public var threadId: String
+
+    public init(threadId: String) {
+        self.threadId = threadId
+    }
+}
+
+public struct FindArgs: Codable, Hashable, Sendable {
+    /// The text to find (case-insensitive); "" clears.
+    public var query: String
+    /// Which match to show (wraps around; negative counts from the end); left out: the first, not scrolled to.
+    public var index: Int?
+
+    public init(query: String, index: Int? = nil) {
+        self.query = query
+        self.index = index
+    }
+}
+
+/// A match with some text on each side (word boundaries, "…" where cut).
+public struct FindMatch: Codable, Hashable, Sendable {
+    public var before: String
+    public var hit: String
+    public var after: String
+
+    public init(before: String, hit: String, after: String) {
+        self.before = before
+        self.hit = hit
+        self.after = after
+    }
+}
+
+public struct FindResult: Codable, Hashable, Sendable {
+    public var query: String
+    /// Matches found (at most 500).
+    public var count: Int
+    /// The shown match (0-based), or -1 with none.
+    public var current: Int
+    /// More than 500 matches.
+    public var truncated: Bool
+    /// The first 100 matches.
+    public var matches: [FindMatch]
+
+    public init(query: String, count: Int, current: Int, truncated: Bool, matches: [FindMatch]) {
+        self.query = query
+        self.count = count
+        self.current = current
+        self.truncated = truncated
+        self.matches = matches
+    }
+}

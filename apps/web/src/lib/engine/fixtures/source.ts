@@ -1417,4 +1417,72 @@ export const FIXTURES: Record<string, Fixture> = {
   "event.editor.panel": event({ name: "editor.panel", description: "The Format panel opened.", data: { panel: "format" } }),
   "event.editor.panel.closed": event({ name: "editor.panel", description: "The panel closed.", data: { panel: null } }),
   "event.memory.relieved": event({ name: "memory.relieved", description: "Memory was short: the editor and caches were dropped.", data: { dropped: ["editor", "caches"] } }),
+
+  // ---- revision 14: the note page's own sidebar
+  "event.note.tools": event({
+    name: "note.tools",
+    description: "What the note's sidebar shows: where it lives, its outline (the second heading in view), tasks, attachments, links and comments.",
+    data: {
+      noteId: "doc_00001",
+      title: "Kyoto in November",
+      trail: [
+        { href: "/folders/fld_travel", label: "Travel" },
+        { href: "/folders/fld_japan", label: "Japan" },
+      ],
+      outline: [
+        { kind: "heading", id: "blk_h1", text: "Temples", level: 1, documentId: null },
+        { kind: "heading", id: "blk_h2", text: "Saiho-ji", level: 2, documentId: null },
+        { kind: "page", id: "blk_p1", text: "Where to eat", level: 0, documentId: "doc_00002" },
+      ],
+      current: "blk_h2",
+      tasks: [
+        { id: "blk_t1", text: "Book the moss garden", checked: false },
+        { id: "blk_t2", text: "Buy a rail pass", checked: true },
+      ],
+      attachments: [{ id: "blk_i1", kind: "image", name: "Saiho-ji in autumn", uploading: false }],
+      links: [
+        { key: "blk_b1-bm", blockId: "blk_b1", label: "Nishiki Market", href: "https://www.kyoto-nishiki.or.jp/", internal: false },
+        { key: "blk_x1-0", blockId: "blk_x1", label: "Where to eat", href: "/d/doc_00002", internal: true },
+      ],
+      comments: {
+        available: true,
+        loaded: true,
+        canComment: true,
+        threads: [
+          { id: "thr_1", blockId: "blk_h2", anchor: "“Saiho-ji”", author: "Mira", avatarUrl: null, text: "Reservations open two months ahead.", deleted: false, replies: 1, status: "open", resolvedBy: null, unread: true, lastActivityAt: 1761600000000, waiting: null },
+        ],
+      },
+      pages: [
+        { id: "doc_00001", title: "Kyoto in November", depth: 0 },
+        { id: "doc_00002", title: "Where to eat", depth: 1 },
+      ],
+      pagesTruncated: false,
+      readOnly: false,
+    },
+  }),
+  "event.note.tools.local": event({
+    name: "note.tools",
+    description: "A note in local mode with nothing in it yet: no comments (they need an account), Drafts as its place.",
+    data: { noteId: "doc_00003", title: "Untitled", trail: [{ href: "/drafts", label: "Drafts" }], outline: [], current: null, tasks: [], attachments: [], links: [], comments: { available: false, loaded: true, canComment: false, threads: [] }, pages: [], pagesTruncated: false, readOnly: false },
+  }),
+  "editor.block.jump": editor({ name: "block.jump", description: "Scroll the note to a heading (the outline's click).", args: { blockId: "blk_h2" }, result: { ok: true } }),
+  "editor.task.toggle": editor({ name: "task.toggle", description: "Check a to-do from the Tasks tab.", args: { blockId: "blk_t1" }, result: { ok: true } }),
+  "editor.thread.open": editor({ name: "thread.open", description: "Open a comment thread in the note.", args: { threadId: "thr_1" }, result: { ok: true } }),
+  "editor.find": editor({
+    name: "find",
+    description: "Find text and show the second match.",
+    args: { query: "the", index: 1 },
+    result: {
+      query: "the",
+      count: 2,
+      current: 1,
+      truncated: false,
+      matches: [
+        { before: "Temples to see, ", hit: "the", after: " moss garden at Saiho-ji, and where to eat near…" },
+        { before: "…and where to eat near ", hit: "the", after: " market." },
+      ],
+    },
+  }),
+  "editor.find.none": editor({ name: "find", description: "Find text that isn't in the note.", args: { query: "zebra" }, result: { query: "zebra", count: 0, current: -1, truncated: false, matches: [] } }),
+  "editor.find.clear": editor({ name: "find.clear", description: "Stop finding: the matches lose their highlight.", args: {}, result: { ok: true } }),
 };

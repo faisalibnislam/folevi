@@ -61,7 +61,7 @@ export function Outline({ documentId, onJump }: { documentId: string; onJump: (b
 }
 
 /** The last heading whose top has scrolled above ~30% of the viewport. */
-function useCurrentHeading(ids: string[]): string | null {
+export function useCurrentHeading(ids: string[]): string | null {
   const [current, setCurrent] = useState<string | null>(null);
   const key = ids.join(",");
   useEffect(() => {

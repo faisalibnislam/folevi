@@ -1,0 +1,11 @@
+{
+  "kind": "editor",
+  "name": "block.jump",
+  "description": "Scroll the note to a heading (the outline's click).",
+  "args": {
+    "blockId": "blk_h2"
+  },
+  "result": {
+    "ok": true
+  }
+}

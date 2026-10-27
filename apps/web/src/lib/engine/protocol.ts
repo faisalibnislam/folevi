@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 12;
+export const CONTRACT_REVISION = 14;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2697,6 +2697,152 @@ export interface NotesMoveCheckValue {
   message: string | null;
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Revision 14: the note page's own sidebar (components/doc/DocumentSidebar.tsx) drawn natively. The note page
+// sends what the sidebar shows (`note.tools`) and takes its clicks (`block.jump`, `task.toggle`, `thread.open`,
+// `find`, `find.clear`). (Revision 13 is the "more" area's.)
+// ---------------------------------------------------------------------------------------------------------------
+
+/** One step of where the note lives ("In Travel > Japan"): a folder or a parent page, outermost first. */
+export interface NoteToolsCrumb {
+  /** The app path it opens ("/folders/<id>", "/d/<id>", "/documents"). */
+  href: string;
+  label: string;
+}
+
+/** A row of the Table of contents: a heading (level 1 to 3) or a nested page. */
+export interface NoteOutlineItem {
+  kind: "heading" | "page";
+  /** The block's id (what `block.jump` takes). */
+  id: string;
+  /** The heading's text ("" when empty) or the nested page's title. */
+  text: string;
+  /** Headings: 1, 2 or 3; pages: 0. */
+  level: number;
+  /** Pages: the nested page's note id; headings: null. */
+  documentId: string | null;
+}
+
+/** A to-do in the note. */
+export interface NoteToolsTask {
+  id: string;
+  text: string;
+  checked: boolean;
+}
+
+/** An image, file or recording in the note. */
+export interface NoteToolsAttachment {
+  id: string;
+  /** "image", "file" or "audio". */
+  kind: string;
+  name: string;
+  /** A file still on its way up. */
+  uploading: boolean;
+}
+
+/** A link in the note: a web address (embed, bookmark, linked text) or a page link. */
+export interface NoteToolsLink {
+  key: string;
+  blockId: string;
+  label: string;
+  href: string;
+  /** A page link ("/d/<id>"), opened in the app; otherwise a web address. */
+  internal: boolean;
+}
+
+/** A comment thread, as the Comments tab lists it. */
+export interface NoteToolsThread {
+  id: string;
+  /** The block it's on (null: on the whole note). */
+  blockId: string | null;
+  /** What it's on ("On “Temples to see”", "On the whole note"). */
+  anchor: string;
+  author: string;
+  avatarUrl: string | null;
+  /** The first comment's text (plain). */
+  text: string;
+  deleted: boolean;
+  replies: number;
+  status: "open" | "resolved";
+  resolvedBy: string | null;
+  unread: boolean;
+  lastActivityAt: number;
+  /** "waiting" or "failed" while it's not on the server yet, else null. */
+  waiting: string | null;
+}
+
+export interface NoteToolsComments {
+  /** False in local mode (no comments: the tab says what they need). */
+  available: boolean;
+  /** The threads have loaded. */
+  loaded: boolean;
+  canComment: boolean;
+  threads: NoteToolsThread[];
+}
+
+/** A page of the note's page tree (the note, its parent and nested pages), for a note with nested pages. */
+export interface NoteToolsPage {
+  id: string;
+  title: string;
+  depth: number;
+}
+
+/** `note.tools`: what the open note's sidebar shows, sent when the note opens and whenever it changes. */
+export interface NoteToolsEvent {
+  noteId: string;
+  title: string;
+  trail: NoteToolsCrumb[];
+  outline: NoteOutlineItem[];
+  /** The heading in view now (the outline marks it), or null. */
+  current: string | null;
+  tasks: NoteToolsTask[];
+  attachments: NoteToolsAttachment[];
+  links: NoteToolsLink[];
+  comments: NoteToolsComments;
+  /** Empty unless the note has nested pages (two or more pages). */
+  pages: NoteToolsPage[];
+  pagesTruncated: boolean;
+  readOnly: boolean;
+}
+
+export interface BlockJumpArgs {
+  blockId: string;
+}
+
+export interface TaskToggleArgs {
+  blockId: string;
+}
+
+export interface ThreadOpenArgs {
+  threadId: string;
+}
+
+export interface FindArgs {
+  /** The text to find (case-insensitive); "" clears. */
+  query: string;
+  /** Which match to show (wraps around; negative counts from the end); left out: the first, not scrolled to. */
+  index?: number;
+}
+
+/** A match with some text on each side (word boundaries, "…" where cut). */
+export interface FindMatch {
+  before: string;
+  hit: string;
+  after: string;
+}
+
+export interface FindResult {
+  query: string;
+  /** Matches found (at most 500). */
+  count: number;
+  /** The shown match (0-based), or -1 with none. */
+  current: number;
+  /** More than 500 matches. */
+  truncated: boolean;
+  /** The first 100 matches. */
+  matches: FindMatch[];
+}
+
 export interface ViewMap {
   session: { args: EmptyArgs; value: SessionValue };
   "places.list": { args: EmptyArgs; value: PlacesValue };
@@ -2869,6 +3015,11 @@ export interface EditorCommandMap {
   "block.duplicate": { args: EmptyArgs; result: OkResult };
   "focus.toggle": { args: EmptyArgs; result: OkResult };
   "note.lock": { args: EmptyArgs; result: OkResult };
+  "block.jump": { args: BlockJumpArgs; result: OkResult };
+  "task.toggle": { args: TaskToggleArgs; result: OkResult };
+  "thread.open": { args: ThreadOpenArgs; result: OkResult };
+  find: { args: FindArgs; result: FindResult };
+  "find.clear": { args: EmptyArgs; result: OkResult };
 }
 
 export interface EventMap {
@@ -2883,6 +3034,7 @@ export interface EventMap {
   "editor.state": EditorStateEvent;
   "editor.panel": EditorPanelEvent;
   "memory.relieved": MemoryRelievedEvent;
+  "note.tools": NoteToolsEvent;
 }
 
 export type ViewName = keyof ViewMap;
@@ -3024,8 +3176,13 @@ const editorCommandNames = [
   "block.duplicate",
   "focus.toggle",
   "note.lock",
+  "block.jump",
+  "task.toggle",
+  "thread.open",
+  "find",
+  "find.clear",
 ] as const;
-const eventNames = ["engine.ready", "gate.changed", "sync.status", "place.changed", "toast", "navigate.request", "note.ready", "note.meta", "editor.state", "editor.panel", "memory.relieved"] as const;
+const eventNames = ["engine.ready", "gate.changed", "sync.status", "place.changed", "toast", "navigate.request", "note.ready", "note.meta", "editor.state", "editor.panel", "memory.relieved", "note.tools"] as const;
 
 export const VIEW_NAMES: Exhaustive<ViewName, typeof viewNames> = viewNames;
 export const LIST_VIEW_NAMES: Exhaustive<ListViewName, typeof listViewNames> = listViewNames;

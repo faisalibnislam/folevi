@@ -1,0 +1,27 @@
+{
+  "kind": "editor",
+  "name": "find",
+  "description": "Find text and show the second match.",
+  "args": {
+    "query": "the",
+    "index": 1
+  },
+  "result": {
+    "query": "the",
+    "count": 2,
+    "current": 1,
+    "truncated": false,
+    "matches": [
+      {
+        "before": "Temples to see, ",
+        "hit": "the",
+        "after": " moss garden at Saiho-ji, and where to eat near…"
+      },
+      {
+        "before": "…and where to eat near ",
+        "hit": "the",
+        "after": " market."
+      }
+    ]
+  }
+}

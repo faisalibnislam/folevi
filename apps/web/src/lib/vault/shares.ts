@@ -1,9 +1,21 @@
 // Sharing vault items on the device (docs/VAULT_PLAN.md §6): an item's key sealed to one person's account key, or
 // wrapped by a one-time link's key that lives only in the link's fragment (#k=…, never sent to a server). The
 // server's half is convex/vaultShares.ts.
-import { linkWrapKey, openRecord, openSealed, randomBytes, sealRecord, sealTo, toBase64Url, fromBase64Url, vaultCtx, type VaultKeys, type X25519KeyPair } from "@folevi/local-store/e2ee";
+import { linkWrapKey, openRecord, openSealed, openStatement, randomBytes, sealRecord, sealTo, toBase64Url, fromBase64Url, vaultCtx, type VaultKeys, type X25519KeyPair } from "@folevi/local-store/e2ee";
 import { bytes, wire } from "@/lib/e2ee/keys/util";
 import { openWithItemKey, rawItemKey } from "./items";
+
+/**
+ * Someone's account keys as vaultShares.findPerson returned them, if their signed statement vouches for them (the
+ * server can't swap in a key of its own); else null.
+ */
+export async function checkedRecipient(r: { profileId: string; epoch: number; x25519Pub: ArrayBuffer; ed25519Pub: ArrayBuffer; statement: unknown }) {
+  const x = bytes(r.x25519Pub);
+  const ed = bytes(r.ed25519Pub);
+  const body = await openStatement(ed, r.statement as { kind: "account-key"; body: string; sig: string });
+  if (!body || body.profileId !== r.profileId || body.epoch !== r.epoch || body.x25519Pub !== toBase64Url(x) || body.ed25519Pub !== toBase64Url(ed)) return null;
+  return { profileId: r.profileId, epoch: r.epoch, x25519Pub: x };
+}
 
 /** An item's key sealed to someone's account key, for vaultShares.share. */
 export async function sealItemTo(vaultId: string, row: { id: string; keyVersion: number; wrappedKey: ArrayBuffer }, keys: VaultKeys, recipient: { profileId: string; x25519Pub: Uint8Array }) {

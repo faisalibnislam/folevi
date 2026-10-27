@@ -53,6 +53,7 @@ export const EVENT_LABELS: Record<string, string> = {
   "folder.deleted": "Moved a folder to the Trash",
   "trash.emptied": "Emptied the Vault's Trash",
   "trash.expired": "Items left the Trash after 30 days",
+  "share.lookup": "Looked someone up to share with",
   "share.opened": "Opened a shared item",
   "share.ended": "Stopped sharing an item",
   "link.created": "Made a one-time link",

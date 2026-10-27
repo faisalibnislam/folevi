@@ -11,7 +11,7 @@ async function shot(page: Page, name: string) {
 }
 
 test("set up a Personal Vault, add a password, lock and unlock it, and see it all in the log", async ({ browser }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(360_000);
   const { page, context } = await newPerson(browser, "Vault Owner");
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: APP });
   await page.goto(`${APP}/vault`);
@@ -106,5 +106,33 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   await expect(trash.getByText("The Trash is empty")).toBeVisible({ timeout: 30_000 });
   await page.getByRole("tab", { name: "Activity" }).click();
   for (const line of ["Moved an item to the Trash", "Restored an item", "Emptied the Vault's Trash"]) await expect(log).toContainText(line);
+
+  // A one-time link: made in the Share dialog, opened by someone without Folevi, then it's ended.
+  await page.getByRole("tab", { name: "Passwords & Credentials" }).click();
+  await page.getByRole("button", { name: /^Bank Login/ }).click();
+  await page.getByRole("region", { name: "Bank" }).getByRole("button", { name: "Share" }).click();
+  const share = page.getByRole("dialog", { name: "Share Bank" });
+  await share.getByRole("button", { name: "Make link" }).click();
+  const linkBox = share.getByLabel("Link to send");
+  await expect(linkBox).toHaveValue(/\/vault-link\/[A-Za-z0-9_-]+#k=/, { timeout: 30_000 });
+  const url = await linkBox.inputValue();
+  await shot(page, "7-share");
+  const stranger = await browser.newContext();
+  const visitor = await stranger.newPage();
+  await visitor.goto(url);
+  await expect(visitor.getByRole("heading", { name: "Someone shared something with you" })).toBeVisible({ timeout: 30_000 });
+  expect(visitor.url()).not.toContain("#k=");
+  await visitor.getByRole("button", { name: "Reveal" }).click();
+  await expect(visitor.getByRole("region", { name: "Bank" })).toContainText("Correct-Horse-9-Battery", { timeout: 30_000 });
+  await expect(visitor.getByRole("region", { name: "Bank" })).toContainText("the link has now ended");
+  await visitor.screenshot(SHOTS ? { path: `${SHOTS}/8-link-opened.png` } : {});
+  const again = await stranger.newPage();
+  await again.goto(url);
+  await again.getByRole("button", { name: "Reveal" }).click();
+  await expect(again.getByRole("heading", { name: "This link has ended" })).toBeVisible({ timeout: 30_000 });
+  await stranger.close();
+  await share.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("tab", { name: "Activity" }).click();
+  for (const line of ["Made a one-time link", "Someone opened a one-time link", "A one-time link was used up"]) await expect(log).toContainText(line);
   await context.close();
 });

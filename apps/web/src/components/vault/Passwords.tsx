@@ -4,7 +4,7 @@
 // hidden fields shown only on reveal; copying logged and the clipboard cleared after 30 seconds; live 2FA codes).
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useState } from "react";
-import { Copy, Eye, EyeOff, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Copy, Eye, EyeOff, Plus, RefreshCw, Search, Share2, Trash2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -18,6 +18,7 @@ import { passphrase, passwordStrength, randomPassword } from "@/lib/vault/genera
 import { breachStatus } from "@/lib/vault/breach";
 import { parseTotp, totpCode } from "@/lib/vault/totp";
 import { copySecret, useRecordEvent } from "./useVault";
+import { ShareDialog } from "./ShareDialog";
 
 type Row = NonNullable<ReturnType<typeof useRowsQuery>>["items"][number];
 type Opened = { row: Row; summary: ItemSummary & { kind: ItemKind } };
@@ -141,6 +142,7 @@ function ItemPanel({ vaultId, opened, onClosed }: { vaultId: string; opened: Ope
   const [full, setFull] = useState<{ canChange: boolean; revision: number; createdBy: string; updatedBy: string } | null>(null);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const item = { id: opened.row.id, kind: opened.row.kind };
 
   useEffect(() => {
@@ -178,6 +180,9 @@ function ItemPanel({ vaultId, opened, onClosed }: { vaultId: string; opened: Ope
           <>
             <Button size="sm" variant="secondary" onClick={() => setEditing(true)} disabled={!secrets}>
               Edit
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setSharing(true)} disabled={!secrets}>
+              <Share2 size={13} aria-hidden /> Share
             </Button>
             <IconButton
               label="Move to the Vault's Trash"
@@ -239,6 +244,7 @@ function ItemPanel({ vaultId, opened, onClosed }: { vaultId: string; opened: Ope
         </dl>
       )}
       {editing && secrets && full ? <ItemDialog vaultId={vaultId} existing={{ row: opened.row, revision: full.revision, content: { kind: opened.summary.kind, summary: opened.summary, secrets } }} onClose={() => setEditing(false)} onSaved={() => setEditing(false)} /> : null}
+      {sharing && secrets && full ? <ShareDialog vaultId={vaultId} row={opened.row} revision={full.revision} content={{ kind: opened.summary.kind, summary: opened.summary, secrets }} onClose={() => setSharing(false)} /> : null}
     </section>
   );
 }

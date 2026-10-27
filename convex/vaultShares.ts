@@ -79,6 +79,36 @@ export const share = mutation({
   },
 });
 
+/**
+ * Someone to share an item with, by their email (who added the item, or a custodian; rate-limited): their name, their
+ * current account keys and signed statement (the device checks it before sealing the item key), and whether they're
+ * outside the workspace. Null when there's nobody with that email, or they haven't set up encryption. A mutation so
+ * the lookup can be counted.
+ */
+export const findPerson = mutation({
+  args: { vaultId: v.string(), itemId: v.string(), email: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    const { vault, role } = await requireVault(ctx, profile, args.vaultId);
+    requireCanChange(role, await itemOf(ctx, vault, args.itemId), profile._id);
+    await consume(ctx, "vaultLookup", profile._id);
+    const email = args.email.trim().toLowerCase();
+    if (!/^[^\s@]{1,64}@[^\s@]{1,255}$/.test(email)) fail("invalid_argument", "Type an email address.");
+    const target = await ctx.db
+      .query("profiles")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+    const found = target && target.status === "active" && target._id !== profile._id ? target : null;
+    const account = found ? await activeAccount(ctx, found._id) : null;
+    // Logged either way: who was found, never the address typed.
+    await appendLog(ctx, vault, { event: "share.lookup", actor: { profile, role }, detail: found ? { found: true, profileId: found._id, ready: account !== null } : { found: false } });
+    if (!found || !account) return null;
+    const inVault = (await vaultRoleOf(ctx, found, vault)) !== null;
+    const outside = !vault.workspaceId || !(await membership(ctx, found._id, vault.workspaceId));
+    return { profileId: found._id as string, name: found.displayName, inVault, outside, epoch: account.epoch, x25519Pub: account.x25519Pub, ed25519Pub: account.ed25519Pub, statement: account.statement };
+  },
+});
+
 /** An item's shares and links (who added it, or a custodian), for its Share panel. */
 export const ofItem = query({
   args: { vaultId: v.string(), itemId: v.string() },

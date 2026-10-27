@@ -44,6 +44,40 @@ const events = (t: T, vaultId: string) =>
   );
 
 describe("sharing vault items", { timeout: 120_000 }, () => {
+  test("finding someone by email: their checked keys and whether they're outside, logged without the address; members can't", async () => {
+    const t = setup();
+    await enableFlag(t, "vault");
+    const owner = await e2eePerson(t, "vf-owner@example.com");
+    const colleague = await e2eePerson(t, "vf-colleague@example.com");
+    const outsider = await e2eePerson(t, "vf-outsider@example.com");
+    const { workspaceId, scope } = await teamWorkspace(owner);
+    await join(t, owner, colleague, "vf-colleague@example.com", workspaceId, "editor");
+    const { id } = await owner.as.mutation(api.vault.create, { scope });
+    await keyed(t, id, owner.profileId);
+    const login = ulid();
+    await owner.as.mutation(api.vaultItems.create, { vaultId: id, itemId: login, kind: "login", item: sealed() });
+
+    const c = await owner.as.mutation(api.vaultShares.findPerson, { vaultId: id, itemId: login, email: " VF-Colleague@example.com " });
+    expect(c).toMatchObject({ profileId: colleague.profileId, inVault: false, outside: false, epoch: 1 });
+    expect(c!.x25519Pub.byteLength).toBe(32);
+    expect(await owner.as.mutation(api.vaultShares.findPerson, { vaultId: id, itemId: login, email: "vf-outsider@example.com" })).toMatchObject({ profileId: outsider.profileId, outside: true });
+    expect(await owner.as.mutation(api.vaultShares.findPerson, { vaultId: id, itemId: login, email: "nobody@example.com" })).toBeNull();
+    expect(await owner.as.mutation(api.vaultShares.findPerson, { vaultId: id, itemId: login, email: "vf-owner@example.com" })).toBeNull();
+    expect(await codeOf(owner.as.mutation(api.vaultShares.findPerson, { vaultId: id, itemId: login, email: "not an email" }))).toBe("invalid_argument");
+    // Not in the Vault: no lookups.
+    expect(await codeOf(colleague.as.mutation(api.vaultShares.findPerson, { vaultId: id, itemId: login, email: "vf-outsider@example.com" }))).toBeDefined();
+    const lookups = await t.run(async (ctx) =>
+      (
+        await ctx.db
+          .query("vaultLog")
+          .withIndex("by_vault_seq", (q) => q.eq("vaultPublicId", id))
+          .collect()
+      ).filter((e) => e.event === "share.lookup"),
+    );
+    expect(lookups).toHaveLength(4);
+    expect(JSON.stringify(lookups)).not.toContain("nobody@example.com");
+  });
+
   test("with a member outside the Vault and someone outside the workspace; their opens and edits are logged", async () => {
     const t = setup();
     await enableFlag(t, "vault");

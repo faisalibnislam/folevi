@@ -9,6 +9,8 @@ const APP_PATHS = [
   "/api/",
   "/admin",
   "/s/",
+  "/vault",
+  "/vault-link/",
   "/d/",
   "/documents",
   "/tasks",

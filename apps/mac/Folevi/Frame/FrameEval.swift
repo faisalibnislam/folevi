@@ -9,6 +9,7 @@
 //   cmd frame {"do":"newNote"} / {"do":"sidebar"}   ⌘N / ⌘\ ; {"do":"moveOrCopy"} the Move or copy sheet
 //   cmd frame {"do":"popover","which":"sync"|"notifications"|"account"|"none"}
 //   cmd frame {"do":"menu","item":"go.next-tab"}    a menu bar item as if chosen
+//   cmd frame {"do":"post","name":"n","value":"v"}  posts a notification (a screen's own test hook)
 //   cmd frame {"do":"resize","w":1280,"h":820}      the window's content size; {"do":"front"} brings it forward;
 //                                                  {"do":"float","on":true} keeps it over other apps' windows
 //   cmd frameShot {"out":"/path.png","window":0}    the window as drawn (AppKit's own rendering of its views)
@@ -42,6 +43,9 @@ extension NativeFrame {
                 default: frame.sidebar.shownPopover?.close()
                 }
             case "menu": if let id = req["item"] as? String { MainMenu.shared.run(id) }
+            case "post":
+                // A notification a screen listens for (screens.mjs: the calendar's layout).
+                if let name = req["name"] as? String { NotificationCenter.default.post(name: .init(name), object: req["value"]) }
             case "resize":
                 if let w = mains[i].window {
                     let size = NSSize(width: req["w"] as? Double ?? 1280, height: req["h"] as? Double ?? 820)

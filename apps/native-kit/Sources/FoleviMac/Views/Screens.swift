@@ -250,8 +250,8 @@ struct ScreenRoot: View {
             case .changes: ChangesScreen(model: models.changesModel())
             case .catchUp: CatchUpScreen(model: model)
             case .search: SearchScreen(model: models.searchModel(), showsCancel: false)
-            case .tasks: TasksScreen(model: models.tasksModel(), showsHeader: true)
-            case .calendar: CalendarScreen(model: models.calendarModel(), showsHeader: true)
+            case .tasks: WebTasksScreen(model: models.tasksModel(), frame: model)
+            case .calendar: WebCalendarScreen(model: models.calendarModel(), frame: model)
             case .web(let path): Placeholder(symbol: "globe", title: "Not here yet", message: "\(path) doesn't have a screen in the Mac app yet.")
             case .note: Color.clear
             }

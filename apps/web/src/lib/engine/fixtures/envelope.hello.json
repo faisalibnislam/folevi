@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "8850707c"
+        "schemaHash": "fc83d567"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 12,
+        "revision": 13,
         "build": "dev",
-        "schemaHash": "8850707c",
+        "schemaHash": "fc83d567",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -81,7 +81,14 @@
           "folderSharing.get",
           "shared.folders",
           "sharedFolder.open",
-          "notes.moveCheck"
+          "notes.moveCheck",
+          "vault.summary",
+          "vault.items",
+          "vault.folders",
+          "vault.health",
+          "vault.activity",
+          "vault.people",
+          "vault.shares"
         ],
         "listViews": [
           "notes.list"
@@ -176,7 +183,43 @@
           "folderSharing.setRole",
           "folderSharing.revoke",
           "folderSharing.cancelInvite",
-          "folderInvite.accept"
+          "folderInvite.accept",
+          "vault.setUp",
+          "vault.unlock",
+          "vault.reset",
+          "vault.finishPasscode",
+          "vault.changePasscode",
+          "vault.lock",
+          "vault.recoverySaved",
+          "vault.newRecoveryKey",
+          "vault.requestReset",
+          "vault.record",
+          "vault.item.open",
+          "vault.item.save",
+          "vault.item.duplicate",
+          "vault.item.remove",
+          "vault.item.restore",
+          "vault.item.history",
+          "vault.item.restoreVersion",
+          "vault.totp",
+          "vault.generate",
+          "vault.strength",
+          "vault.folder.create",
+          "vault.note.create",
+          "vault.note.open",
+          "vault.note.save",
+          "vault.file.upload",
+          "vault.file.open",
+          "vault.trash.empty",
+          "vault.settings.update",
+          "vault.people.add",
+          "vault.people.remove",
+          "vault.people.setRole",
+          "vault.people.reviewed",
+          "vault.share.person",
+          "vault.share.stop",
+          "vault.link.create",
+          "vault.link.revoke"
         ],
         "editorCommands": [
           "note.prepare",

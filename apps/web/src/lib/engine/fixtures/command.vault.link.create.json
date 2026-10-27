@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "vault.link.create",
+  "description": "A one-time link that works once for a day.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "itemId": "01JITEM0000000000000000001",
+    "maxViews": 1,
+    "lastsMs": 86400000
+  },
+  "result": {
+    "url": "https://app.folevi.com/v/link_1#made-up"
+  }
+}

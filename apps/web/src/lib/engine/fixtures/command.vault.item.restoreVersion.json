@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "vault.item.restoreVersion",
+  "description": "Bring back version 1.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "itemId": "01JITEM0000000000000000001",
+    "revision": 1
+  },
+  "result": {
+    "ok": true
+  }
+}

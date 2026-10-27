@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "vault.finishPasscode",
+  "description": "Choose a passcode after a custodian shared the key.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "passcode": "246813"
+  },
+  "result": {
+    "status": "ok",
+    "until": null,
+    "message": null
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "kind": "command",
+  "name": "vault.reset",
+  "description": "A forgotten passcode: the recovery key sets a new one and opens the Vault.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "recoveryKey": "6PQY-C1ZS-MRVM-GR5F-XKDQ-TP1S-K12E-P020-F4YE",
+    "passcode": "13572468"
+  },
+  "result": {
+    "status": "ok",
+    "until": null,
+    "message": null
+  }
+}

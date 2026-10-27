@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 12;
+export const CONTRACT_REVISION = 13;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2697,6 +2697,445 @@ export interface NotesMoveCheckValue {
   message: string | null;
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// The Vault (revision 13; docs/VAULT_PLAN.md, docs/MAC_REBUILD_PLAN.md §5.6). Everything decrypted here is decrypted
+// by the engine (lib/vault/*), in memory only; keys never cross the bridge and nothing of the Vault is kept on the
+// device by the engine's kept answers. Every open the web logs is logged the same way (the server's log in an
+// account; a library's Vault has none). In a library (local mode) People, sharing and Activity are absent.
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * Where the Vault page is: `none` (no Vault for this person here: the sidebar has no row), `setUp` (its owner can
+ * set it up), `encryptionLocked` (this device must unlock encryption first), `waitingForKey`, `needsPasscode` (a
+ * custodian shared the key), `locked`, `open`.
+ */
+export type VaultState = "none" | "setUp" | "encryptionLocked" | "waitingForKey" | "needsPasscode" | "locked" | "open";
+
+/** The Vault's sections: the two tabs and the ones in the ⋯ menu beside Lock. */
+export type VaultSection = "files" | "passwords" | "health" | "activity" | "people" | "trash" | "settings";
+
+export interface VaultSummaryValue {
+  state: VaultState;
+  /** Null until it exists. */
+  vaultId: string | null;
+  personal: boolean;
+  /** A library's Vault on this device (no account): no People, sharing or Activity. */
+  local: boolean;
+  /** "owner", "custodian" or "member". */
+  role: string;
+  autoLockMinutes: number;
+  /** When it locks itself if nothing happens (open only). */
+  locksAt: number | null;
+  /** The recovery key to show once after set-up or "Make a new recovery key", until `vault.recoverySaved`. */
+  recoveryToSave: string | null;
+  recoveryOutdated: boolean;
+  accessReviewDue: boolean;
+  custodiansNameCustodians: boolean;
+  /** The ⋯ menu's sections, in order (Health, Activity, People, Trash, Settings as this Vault has them). */
+  moreSections: VaultSection[];
+  /** The passcode lengths offered (6, 8, 12). */
+  passcodeLengths: number[];
+}
+
+/** A field of an item kind (lib/vault/items.ts ITEM_KINDS). `type`: text, secret, url, date, multiline, totp. */
+export interface VaultFieldDef {
+  key: string;
+  label: string;
+  type: string;
+}
+
+export interface VaultKindDef {
+  kind: string;
+  label: string;
+  fields: VaultFieldDef[];
+}
+
+export interface VaultItemHealth {
+  strength: number;
+  /** "breached", "ok" or "unknown". */
+  breached: string;
+  checkedAt: number;
+}
+
+/** A row of a list: what its sealed summary holds, opened by the engine. */
+export interface VaultItemRow {
+  id: string;
+  /** A password kind (login, apiKey, …), "note" or "file". */
+  kind: string;
+  kindLabel: string;
+  title: string;
+  /** The web's second line: kind and username for passwords, the excerpt for a note, the size for a file. */
+  detail: string;
+  folderId: string | null;
+  revision: number;
+  updatedAt: number;
+  deletedAt: number | null;
+  /** A file's type and size in bytes. */
+  mime: string | null;
+  size: number | null;
+}
+
+export interface VaultItemsArgs {
+  vaultId: string;
+  section: "passwords" | "files" | "trash";
+  folderId?: string | null;
+}
+
+export interface VaultItemsValue {
+  items: VaultItemRow[];
+  /** The item kinds (for the filter and Add). */
+  kinds: VaultKindDef[];
+}
+
+export interface VaultIdArgs {
+  vaultId: string;
+}
+
+export interface VaultFolderRow {
+  id: string;
+  parentId: string | null;
+  name: string;
+  updatedAt: number;
+}
+
+export interface VaultFoldersValue {
+  folders: VaultFolderRow[];
+}
+
+export interface VaultHealthGroup {
+  /** breached, expired, reused, weak, expiring, unchecked. */
+  issue: string;
+  title: string;
+  body: string;
+  /** danger, warning or muted. */
+  tone: string;
+  items: VaultItemRow[];
+}
+
+export interface VaultHealthValue {
+  /** Items with something other than "not checked yet". */
+  needsLook: number;
+  groups: VaultHealthGroup[];
+}
+
+export interface VaultActivityArgs {
+  vaultId: string;
+  /** An event prefix ("vault.", "item.", …) or left out for everything. */
+  event?: string;
+  failedOnly?: boolean;
+  personId?: string;
+}
+
+export interface VaultLogEntry {
+  seq: number;
+  actorName: string;
+  label: string;
+  failed: boolean;
+  reason: string | null;
+  at: number;
+  /** Role, kind, device, IP and "reported by the device", joined as the web shows them. */
+  detail: string;
+}
+
+export interface VaultActivityValue {
+  /** The owner and custodians see everyone's; a member their own. */
+  everything: boolean;
+  entries: VaultLogEntry[];
+}
+
+export interface VaultPerson {
+  profileId: string;
+  name: string;
+  email: string | null;
+  avatarUrl: string | null;
+  role: string;
+  isYou: boolean;
+  /** "Can open it", "Waiting for the key" or "Hasn't set a passcode yet". */
+  status: string;
+}
+
+export interface VaultCandidate {
+  profileId: string;
+  name: string;
+}
+
+export interface VaultPeopleValue {
+  people: VaultPerson[];
+  canAdd: boolean;
+  canNameCustodians: boolean;
+  onlyOneCustodian: boolean;
+  /** Workspace members not in the Vault (who can be added). */
+  candidates: VaultCandidate[];
+}
+
+export interface VaultItemIdArgs {
+  vaultId: string;
+  itemId: string;
+}
+
+export interface VaultSharePerson {
+  id: string;
+  name: string;
+  email: string | null;
+  canEdit: boolean;
+  expired: boolean;
+  expiresAt: number | null;
+}
+
+export interface VaultShareLink {
+  id: string;
+  views: number;
+  maxViews: number;
+  expiresAt: number;
+  hasPassword: boolean;
+}
+
+export interface VaultSharesValue {
+  people: VaultSharePerson[];
+  links: VaultShareLink[];
+}
+
+export interface VaultSetUpArgs {
+  passcode: string;
+  space?: SpaceRef;
+}
+
+export interface VaultPasscodeArgs {
+  vaultId: string;
+  passcode: string;
+}
+
+export interface VaultResetArgs {
+  vaultId: string;
+  recoveryKey: string;
+  passcode: string;
+}
+
+export interface VaultChangePasscodeArgs {
+  vaultId: string;
+  current: string;
+  next: string;
+}
+
+/** How an unlock went: `ok`, `wrong`, `locked` (until `until`), `notSetUp`, `needsPasscode`, or `oldPasscode` (a passcode from before PINs: choose a PIN with `vault.changePasscode`). `message` is the web's words. */
+export interface VaultUnlockResult {
+  status: string;
+  until: number | null;
+  message: string | null;
+}
+
+export interface VaultRecoveryResult {
+  recoveryKey: string;
+}
+
+/** One field of an opened item, in the kind's order (custom fields after), with its value. */
+export interface VaultFieldValue {
+  key: string;
+  label: string;
+  type: string;
+  value: string;
+}
+
+export interface VaultItemValue {
+  id: string;
+  kind: string;
+  kindLabel: string;
+  title: string;
+  fields: VaultFieldValue[];
+  notes: string;
+  canChange: boolean;
+  revision: number;
+  createdBy: string;
+  updatedBy: string;
+  updatedAt: number;
+}
+
+export interface VaultItemSaveArgs {
+  vaultId: string;
+  /** Left out for a new item. */
+  itemId?: string;
+  kind: string;
+  title: string;
+  values: Record<string, string>;
+  notes: string;
+}
+
+export interface VaultIdResult {
+  id: string;
+}
+
+export interface VaultVersion {
+  revision: number;
+  title: string;
+  editedBy: string;
+  editedAt: number;
+  fields: VaultFieldValue[];
+}
+
+export interface VaultHistoryResult {
+  versions: VaultVersion[];
+}
+
+export interface VaultRevisionArgs {
+  vaultId: string;
+  itemId: string;
+  revision: number;
+}
+
+/** What only the device sees, for the log: item.reveal, item.copy, totp.show, totp.copy, file.preview, section.open, folder.open, history.view. */
+export interface VaultRecordArgs {
+  vaultId: string;
+  event: string;
+  itemId?: string;
+  /** The field revealed or copied, or the section opened. */
+  field?: string;
+}
+
+export interface VaultTotpArgs {
+  secret: string;
+}
+
+/** The 6-digit code now and the seconds it has left; null when the secret isn't one Folevi reads. */
+export interface VaultTotpResult {
+  code: string | null;
+  secondsLeft: number;
+}
+
+export interface VaultGenerateArgs {
+  kind: "password" | "passphrase";
+}
+
+export interface VaultGenerateResult {
+  value: string;
+}
+
+export interface VaultStrengthArgs {
+  password: string;
+}
+
+/** 0 to 4, and the web's words ("Strong", …). */
+export interface VaultStrengthResult {
+  score: number;
+  label: string;
+}
+
+export interface VaultFolderCreateArgs {
+  vaultId: string;
+  parentId?: string | null;
+  name: string;
+}
+
+export interface VaultNoteCreateArgs {
+  vaultId: string;
+  folderId?: string | null;
+  title: string;
+}
+
+/** A note's content as plain paragraphs (the editor's document, read on the Mac as text). */
+export interface VaultNoteValue {
+  id: string;
+  title: string;
+  text: string;
+  canChange: boolean;
+  revision: number;
+}
+
+export interface VaultNoteSaveArgs {
+  vaultId: string;
+  itemId: string;
+  revision: number;
+  text: string;
+}
+
+export interface VaultRevisionResult {
+  revision: number;
+}
+
+export interface VaultUploadArgs {
+  vaultId: string;
+  folderId?: string | null;
+  name: string;
+  mime: string;
+  /** The file's bytes, base64. Sealed by the engine before they go anywhere. */
+  data: string;
+}
+
+export interface VaultFileOpenArgs {
+  vaultId: string;
+  itemId: string;
+  purpose: "preview" | "download";
+}
+
+/** A file decrypted in memory: its name, type, how to show it (image, pdf, text, csv, audio, video, other) and bytes. */
+export interface VaultFileValue {
+  name: string;
+  mime: string;
+  kind: string;
+  /** base64. */
+  data: string;
+}
+
+export interface VaultRemovedResult {
+  removed: number;
+}
+
+export interface VaultSettingsArgs {
+  vaultId: string;
+  autoLockMinutes?: number;
+  custodiansNameCustodians?: boolean;
+}
+
+export interface VaultPersonArgs {
+  vaultId: string;
+  profileId: string;
+}
+
+export interface VaultRoleArgs {
+  vaultId: string;
+  profileId: string;
+  role: "custodian" | "member";
+}
+
+export interface VaultShareArgs {
+  vaultId: string;
+  itemId: string;
+  email: string;
+  /** For someone outside the workspace: how long they have it. */
+  days: number;
+  canEdit: boolean;
+}
+
+/** What happened: `shared`, `notFound`, `inVault`, `unchecked`; `message` says it in the web's words. */
+export interface VaultShareResult {
+  status: string;
+  message: string;
+}
+
+export interface VaultShareStopArgs {
+  vaultId: string;
+  itemId: string;
+  shareId: string;
+}
+
+export interface VaultLinkArgs {
+  vaultId: string;
+  itemId: string;
+  maxViews: number;
+  /** How long it works, in milliseconds (1 hour to 30 days). */
+  lastsMs: number;
+  password?: string;
+}
+
+/** The link, shown only now. */
+export interface VaultLinkResult {
+  url: string;
+}
+
+export interface VaultLinkRevokeArgs {
+  vaultId: string;
+  linkId: string;
+}
+
 export interface ViewMap {
   session: { args: EmptyArgs; value: SessionValue };
   "places.list": { args: EmptyArgs; value: PlacesValue };
@@ -2745,6 +3184,13 @@ export interface ViewMap {
   "shared.folders": { args: EmptyArgs; value: SharedFoldersValue };
   "sharedFolder.open": { args: NoteIdArgs; value: SharedFolderValue };
   "notes.moveCheck": { args: NotesMoveCheckArgs; value: NotesMoveCheckValue };
+  "vault.summary": { args: SpaceArgs; value: VaultSummaryValue };
+  "vault.items": { args: VaultItemsArgs; value: VaultItemsValue };
+  "vault.folders": { args: VaultIdArgs; value: VaultFoldersValue };
+  "vault.health": { args: VaultIdArgs; value: VaultHealthValue };
+  "vault.activity": { args: VaultActivityArgs; value: VaultActivityValue };
+  "vault.people": { args: VaultIdArgs; value: VaultPeopleValue };
+  "vault.shares": { args: VaultItemIdArgs; value: VaultSharesValue };
 }
 
 export interface ListViewMap {
@@ -2842,6 +3288,42 @@ export interface CommandMap {
   "folderSharing.revoke": { args: FolderShareRevokeArgs; result: OkResult };
   "folderSharing.cancelInvite": { args: FolderInviteIdArgs; result: OkResult };
   "folderInvite.accept": { args: FolderInviteIdArgs; result: FolderInviteAcceptResult };
+  "vault.setUp": { args: VaultSetUpArgs; result: VaultRecoveryResult };
+  "vault.unlock": { args: VaultPasscodeArgs; result: VaultUnlockResult };
+  "vault.reset": { args: VaultResetArgs; result: VaultUnlockResult };
+  "vault.finishPasscode": { args: VaultPasscodeArgs; result: VaultUnlockResult };
+  "vault.changePasscode": { args: VaultChangePasscodeArgs; result: VaultUnlockResult };
+  "vault.lock": { args: VaultIdArgs; result: OkResult };
+  "vault.recoverySaved": { args: VaultIdArgs; result: OkResult };
+  "vault.newRecoveryKey": { args: VaultIdArgs; result: VaultRecoveryResult };
+  "vault.requestReset": { args: VaultIdArgs; result: OkResult };
+  "vault.record": { args: VaultRecordArgs; result: OkResult };
+  "vault.item.open": { args: VaultItemIdArgs; result: VaultItemValue };
+  "vault.item.save": { args: VaultItemSaveArgs; result: VaultIdResult };
+  "vault.item.duplicate": { args: VaultItemIdArgs; result: VaultIdResult };
+  "vault.item.remove": { args: VaultItemIdArgs; result: OkResult };
+  "vault.item.restore": { args: VaultItemIdArgs; result: OkResult };
+  "vault.item.history": { args: VaultItemIdArgs; result: VaultHistoryResult };
+  "vault.item.restoreVersion": { args: VaultRevisionArgs; result: OkResult };
+  "vault.totp": { args: VaultTotpArgs; result: VaultTotpResult };
+  "vault.generate": { args: VaultGenerateArgs; result: VaultGenerateResult };
+  "vault.strength": { args: VaultStrengthArgs; result: VaultStrengthResult };
+  "vault.folder.create": { args: VaultFolderCreateArgs; result: VaultIdResult };
+  "vault.note.create": { args: VaultNoteCreateArgs; result: VaultIdResult };
+  "vault.note.open": { args: VaultItemIdArgs; result: VaultNoteValue };
+  "vault.note.save": { args: VaultNoteSaveArgs; result: VaultRevisionResult };
+  "vault.file.upload": { args: VaultUploadArgs; result: VaultIdResult };
+  "vault.file.open": { args: VaultFileOpenArgs; result: VaultFileValue };
+  "vault.trash.empty": { args: VaultIdArgs; result: VaultRemovedResult };
+  "vault.settings.update": { args: VaultSettingsArgs; result: OkResult };
+  "vault.people.add": { args: VaultPersonArgs; result: OkResult };
+  "vault.people.remove": { args: VaultPersonArgs; result: OkResult };
+  "vault.people.setRole": { args: VaultRoleArgs; result: OkResult };
+  "vault.people.reviewed": { args: VaultIdArgs; result: OkResult };
+  "vault.share.person": { args: VaultShareArgs; result: VaultShareResult };
+  "vault.share.stop": { args: VaultShareStopArgs; result: OkResult };
+  "vault.link.create": { args: VaultLinkArgs; result: VaultLinkResult };
+  "vault.link.revoke": { args: VaultLinkRevokeArgs; result: OkResult };
 }
 
 export interface EditorCommandMap {
@@ -2905,7 +3387,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "vault.summary", "vault.items", "vault.folders", "vault.health", "vault.activity", "vault.people", "vault.shares"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -2998,6 +3480,42 @@ const commandNames = [
   "folderSharing.revoke",
   "folderSharing.cancelInvite",
   "folderInvite.accept",
+  "vault.setUp",
+  "vault.unlock",
+  "vault.reset",
+  "vault.finishPasscode",
+  "vault.changePasscode",
+  "vault.lock",
+  "vault.recoverySaved",
+  "vault.newRecoveryKey",
+  "vault.requestReset",
+  "vault.record",
+  "vault.item.open",
+  "vault.item.save",
+  "vault.item.duplicate",
+  "vault.item.remove",
+  "vault.item.restore",
+  "vault.item.history",
+  "vault.item.restoreVersion",
+  "vault.totp",
+  "vault.generate",
+  "vault.strength",
+  "vault.folder.create",
+  "vault.note.create",
+  "vault.note.open",
+  "vault.note.save",
+  "vault.file.upload",
+  "vault.file.open",
+  "vault.trash.empty",
+  "vault.settings.update",
+  "vault.people.add",
+  "vault.people.remove",
+  "vault.people.setRole",
+  "vault.people.reviewed",
+  "vault.share.person",
+  "vault.share.stop",
+  "vault.link.create",
+  "vault.link.revoke",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

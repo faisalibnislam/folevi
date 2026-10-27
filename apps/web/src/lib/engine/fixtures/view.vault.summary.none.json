@@ -1,0 +1,25 @@
+{
+  "kind": "view",
+  "name": "vault.summary",
+  "description": "No Vault for this person here: the sidebar has no row.",
+  "args": {},
+  "value": {
+    "state": "none",
+    "vaultId": null,
+    "personal": false,
+    "local": false,
+    "role": "member",
+    "autoLockMinutes": 5,
+    "locksAt": null,
+    "recoveryToSave": null,
+    "recoveryOutdated": false,
+    "accessReviewDue": false,
+    "custodiansNameCustodians": false,
+    "moreSections": [],
+    "passcodeLengths": [
+      6,
+      8,
+      12
+    ]
+  }
+}

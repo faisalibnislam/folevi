@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "vault.generate",
+  "description": "A memorable password.",
+  "args": {
+    "kind": "passphrase"
+  },
+  "result": {
+    "value": "orbit-lantern-cedar-mosaic-harbor"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "vault.note.save",
+  "description": "Save a note.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "itemId": "01JITEM0000000000000000004",
+    "revision": 2,
+    "text": "Box 4711 at the High Street branch\nKey in the blue envelope"
+  },
+  "result": {
+    "revision": 3
+  }
+}

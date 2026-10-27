@@ -1,0 +1,16 @@
+{
+  "kind": "command",
+  "name": "vault.file.open",
+  "description": "A file decrypted in memory for a preview (logged).",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "itemId": "01JITEM0000000000000000011",
+    "purpose": "preview"
+  },
+  "result": {
+    "name": "notes.txt",
+    "mime": "text/plain",
+    "kind": "text",
+    "data": "SGVsbG8="
+  }
+}

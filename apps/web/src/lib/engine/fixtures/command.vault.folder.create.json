@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "vault.folder.create",
+  "description": "A folder at the top.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "parentId": null,
+    "name": "Contracts"
+  },
+  "result": {
+    "id": "01JFOLDER00000000000000001"
+  }
+}

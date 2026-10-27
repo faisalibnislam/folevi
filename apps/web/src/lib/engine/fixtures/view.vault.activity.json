@@ -1,0 +1,23 @@
+{
+  "kind": "view",
+  "name": "vault.activity",
+  "description": "The log, as a custodian reads it.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "event": "vault."
+  },
+  "value": {
+    "everything": true,
+    "entries": [
+      {
+        "seq": 12,
+        "actorName": "Maya",
+        "label": "Unlocked the Vault",
+        "failed": false,
+        "reason": null,
+        "at": 1793093340000,
+        "detail": "custodian · Folevi for Mac on macOS · reported by the device"
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "vault.newRecoveryKey",
+  "description": "Make a new recovery key.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001"
+  },
+  "result": {
+    "recoveryKey": "Q2W8-ZK1M-4RTA-9PLX-HB7E-C3NV-55TY-JQ0D-MW2R"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "command",
+  "name": "vault.item.save",
+  "description": "Add a login.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "kind": "login",
+    "title": "Mail",
+    "values": {
+      "username": "sam@example.com",
+      "password": "made-up-for-the-fixture"
+    },
+    "notes": ""
+  },
+  "result": {
+    "id": "01JITEM0000000000000000009"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "kind": "command",
+  "name": "vault.item.open",
+  "description": "An item, opened (logged).",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "itemId": "01JITEM0000000000000000001"
+  },
+  "result": {
+    "id": "01JITEM0000000000000000001",
+    "kind": "login",
+    "kindLabel": "Login",
+    "title": "Bank of Kyoto",
+    "fields": [
+      {
+        "key": "username",
+        "label": "Username",
+        "type": "text",
+        "value": "sam@example.com"
+      },
+      {
+        "key": "password",
+        "label": "Password",
+        "type": "secret",
+        "value": "made-up-for-the-fixture"
+      },
+      {
+        "key": "website",
+        "label": "Website",
+        "type": "url",
+        "value": "bank.example"
+      },
+      {
+        "key": "totp",
+        "label": "2FA secret",
+        "type": "totp",
+        "value": ""
+      }
+    ],
+    "notes": "Branch on High Street",
+    "canChange": true,
+    "revision": 2,
+    "createdBy": "Sam",
+    "updatedBy": "Sam",
+    "updatedAt": 1793089800000
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "vault.strength",
+  "description": "How strong a password is.",
+  "args": {
+    "password": "abc"
+  },
+  "result": {
+    "score": 0,
+    "label": "Very weak"
+  }
+}

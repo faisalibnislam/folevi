@@ -5695,3 +5695,1026 @@ public struct NotesMoveCheckValue: Codable, Hashable, Sendable {
         try container.encode(self.message, forKey: .message)
     }
 }
+
+/// Where the Vault page is: `none` (no Vault for this person here: the sidebar has no row), `setUp` (its owner can
+/// set it up), `encryptionLocked` (this device must unlock encryption first), `waitingForKey`, `needsPasscode` (a
+/// custodian shared the key), `locked`, `open`.
+public enum VaultState: String, Codable, Hashable, Sendable, CaseIterable {
+    case none
+    case setUp
+    case encryptionLocked
+    case waitingForKey
+    case needsPasscode
+    case locked
+    case `open`
+}
+
+/// The Vault's sections: the two tabs and the ones in the ⋯ menu beside Lock.
+public enum VaultSection: String, Codable, Hashable, Sendable, CaseIterable {
+    case files
+    case passwords
+    case health
+    case activity
+    case people
+    case trash
+    case settings
+}
+
+public struct VaultSummaryValue: Codable, Hashable, Sendable {
+    public var state: VaultState
+    /// Null until it exists.
+    public var vaultId: String?
+    public var personal: Bool
+    /// A library's Vault on this device (no account): no People, sharing or Activity.
+    public var local: Bool
+    /// "owner", "custodian" or "member".
+    public var role: String
+    public var autoLockMinutes: Int
+    /// When it locks itself if nothing happens (open only).
+    public var locksAt: Double?
+    /// The recovery key to show once after set-up or "Make a new recovery key", until `vault.recoverySaved`.
+    public var recoveryToSave: String?
+    public var recoveryOutdated: Bool
+    public var accessReviewDue: Bool
+    public var custodiansNameCustodians: Bool
+    /// The ⋯ menu's sections, in order (Health, Activity, People, Trash, Settings as this Vault has them).
+    public var moreSections: [VaultSection]
+    /// The passcode lengths offered (6, 8, 12).
+    public var passcodeLengths: [Int]
+
+    public init(state: VaultState, vaultId: String? = nil, personal: Bool, local: Bool, role: String, autoLockMinutes: Int, locksAt: Double? = nil, recoveryToSave: String? = nil, recoveryOutdated: Bool, accessReviewDue: Bool, custodiansNameCustodians: Bool, moreSections: [VaultSection], passcodeLengths: [Int]) {
+        self.state = state
+        self.vaultId = vaultId
+        self.personal = personal
+        self.local = local
+        self.role = role
+        self.autoLockMinutes = autoLockMinutes
+        self.locksAt = locksAt
+        self.recoveryToSave = recoveryToSave
+        self.recoveryOutdated = recoveryOutdated
+        self.accessReviewDue = accessReviewDue
+        self.custodiansNameCustodians = custodiansNameCustodians
+        self.moreSections = moreSections
+        self.passcodeLengths = passcodeLengths
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.state, forKey: .state)
+        try container.encode(self.vaultId, forKey: .vaultId)
+        try container.encode(self.personal, forKey: .personal)
+        try container.encode(self.local, forKey: .local)
+        try container.encode(self.role, forKey: .role)
+        try container.encode(self.autoLockMinutes, forKey: .autoLockMinutes)
+        try container.encode(self.locksAt, forKey: .locksAt)
+        try container.encode(self.recoveryToSave, forKey: .recoveryToSave)
+        try container.encode(self.recoveryOutdated, forKey: .recoveryOutdated)
+        try container.encode(self.accessReviewDue, forKey: .accessReviewDue)
+        try container.encode(self.custodiansNameCustodians, forKey: .custodiansNameCustodians)
+        try container.encode(self.moreSections, forKey: .moreSections)
+        try container.encode(self.passcodeLengths, forKey: .passcodeLengths)
+    }
+}
+
+/// A field of an item kind (lib/vault/items.ts ITEM_KINDS). `type`: text, secret, url, date, multiline, totp.
+public struct VaultFieldDef: Codable, Hashable, Sendable {
+    public var key: String
+    public var label: String
+    public var type: String
+
+    public init(key: String, label: String, type: String) {
+        self.key = key
+        self.label = label
+        self.type = type
+    }
+}
+
+public struct VaultKindDef: Codable, Hashable, Sendable {
+    public var kind: String
+    public var label: String
+    public var fields: [VaultFieldDef]
+
+    public init(kind: String, label: String, fields: [VaultFieldDef]) {
+        self.kind = kind
+        self.label = label
+        self.fields = fields
+    }
+}
+
+public struct VaultItemHealth: Codable, Hashable, Sendable {
+    public var strength: Int
+    /// "breached", "ok" or "unknown".
+    public var breached: String
+    public var checkedAt: Double
+
+    public init(strength: Int, breached: String, checkedAt: Double) {
+        self.strength = strength
+        self.breached = breached
+        self.checkedAt = checkedAt
+    }
+}
+
+/// A row of a list: what its sealed summary holds, opened by the engine.
+public struct VaultItemRow: Codable, Hashable, Sendable {
+    public var id: String
+    /// A password kind (login, apiKey, …), "note" or "file".
+    public var kind: String
+    public var kindLabel: String
+    public var title: String
+    /// The web's second line: kind and username for passwords, the excerpt for a note, the size for a file.
+    public var detail: String
+    public var folderId: String?
+    public var revision: Int
+    public var updatedAt: Double
+    public var deletedAt: Double?
+    /// A file's type and size in bytes.
+    public var mime: String?
+    public var size: Int?
+
+    public init(id: String, kind: String, kindLabel: String, title: String, detail: String, folderId: String? = nil, revision: Int, updatedAt: Double, deletedAt: Double? = nil, mime: String? = nil, size: Int? = nil) {
+        self.id = id
+        self.kind = kind
+        self.kindLabel = kindLabel
+        self.title = title
+        self.detail = detail
+        self.folderId = folderId
+        self.revision = revision
+        self.updatedAt = updatedAt
+        self.deletedAt = deletedAt
+        self.mime = mime
+        self.size = size
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.kindLabel, forKey: .kindLabel)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.detail, forKey: .detail)
+        try container.encode(self.folderId, forKey: .folderId)
+        try container.encode(self.revision, forKey: .revision)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+        try container.encode(self.deletedAt, forKey: .deletedAt)
+        try container.encode(self.mime, forKey: .mime)
+        try container.encode(self.size, forKey: .size)
+    }
+}
+
+public struct VaultItemsArgs: Codable, Hashable, Sendable {
+    public enum Section: String, Codable, Hashable, Sendable, CaseIterable {
+        case passwords
+        case files
+        case trash
+    }
+
+    public var vaultId: String
+    public var section: Section
+    public var folderId: Patch<String>
+
+    enum CodingKeys: String, CodingKey {
+        case vaultId
+        case section
+        case folderId
+    }
+
+    public init(vaultId: String, section: Section, folderId: String? = nil) {
+        self.vaultId = vaultId
+        self.section = section
+        self.folderId = Patch(folderId)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.vaultId, forKey: .vaultId)
+        try container.encode(self.section, forKey: .section)
+        try container.encodePatch(self.folderId, forKey: .folderId)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.vaultId = try container.decode(String.self, forKey: .vaultId)
+        self.section = try container.decode(Section.self, forKey: .section)
+        self.folderId = try container.decodePatch(String.self, forKey: .folderId)
+    }
+}
+
+public struct VaultItemsValue: Codable, Hashable, Sendable {
+    public var items: [VaultItemRow]
+    /// The item kinds (for the filter and Add).
+    public var kinds: [VaultKindDef]
+
+    public init(items: [VaultItemRow], kinds: [VaultKindDef]) {
+        self.items = items
+        self.kinds = kinds
+    }
+}
+
+public struct VaultIdArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+
+    public init(vaultId: String) {
+        self.vaultId = vaultId
+    }
+}
+
+public struct VaultFolderRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var parentId: String?
+    public var name: String
+    public var updatedAt: Double
+
+    public init(id: String, parentId: String? = nil, name: String, updatedAt: Double) {
+        self.id = id
+        self.parentId = parentId
+        self.name = name
+        self.updatedAt = updatedAt
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.parentId, forKey: .parentId)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+    }
+}
+
+public struct VaultFoldersValue: Codable, Hashable, Sendable {
+    public var folders: [VaultFolderRow]
+
+    public init(folders: [VaultFolderRow]) {
+        self.folders = folders
+    }
+}
+
+public struct VaultHealthGroup: Codable, Hashable, Sendable {
+    /// breached, expired, reused, weak, expiring, unchecked.
+    public var issue: String
+    public var title: String
+    public var body: String
+    /// danger, warning or muted.
+    public var tone: String
+    public var items: [VaultItemRow]
+
+    public init(issue: String, title: String, body: String, tone: String, items: [VaultItemRow]) {
+        self.issue = issue
+        self.title = title
+        self.body = body
+        self.tone = tone
+        self.items = items
+    }
+}
+
+public struct VaultHealthValue: Codable, Hashable, Sendable {
+    /// Items with something other than "not checked yet".
+    public var needsLook: Int
+    public var groups: [VaultHealthGroup]
+
+    public init(needsLook: Int, groups: [VaultHealthGroup]) {
+        self.needsLook = needsLook
+        self.groups = groups
+    }
+}
+
+public struct VaultActivityArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    /// An event prefix ("vault.", "item.", …) or left out for everything.
+    public var event: String?
+    public var failedOnly: Bool?
+    public var personId: String?
+
+    public init(vaultId: String, event: String? = nil, failedOnly: Bool? = nil, personId: String? = nil) {
+        self.vaultId = vaultId
+        self.event = event
+        self.failedOnly = failedOnly
+        self.personId = personId
+    }
+}
+
+public struct VaultLogEntry: Codable, Hashable, Sendable {
+    public var seq: Int
+    public var actorName: String
+    public var label: String
+    public var failed: Bool
+    public var reason: String?
+    public var at: Double
+    /// Role, kind, device, IP and "reported by the device", joined as the web shows them.
+    public var detail: String
+
+    public init(seq: Int, actorName: String, label: String, failed: Bool, reason: String? = nil, at: Double, detail: String) {
+        self.seq = seq
+        self.actorName = actorName
+        self.label = label
+        self.failed = failed
+        self.reason = reason
+        self.at = at
+        self.detail = detail
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.seq, forKey: .seq)
+        try container.encode(self.actorName, forKey: .actorName)
+        try container.encode(self.label, forKey: .label)
+        try container.encode(self.failed, forKey: .failed)
+        try container.encode(self.reason, forKey: .reason)
+        try container.encode(self.at, forKey: .at)
+        try container.encode(self.detail, forKey: .detail)
+    }
+}
+
+public struct VaultActivityValue: Codable, Hashable, Sendable {
+    /// The owner and custodians see everyone's; a member their own.
+    public var everything: Bool
+    public var entries: [VaultLogEntry]
+
+    public init(everything: Bool, entries: [VaultLogEntry]) {
+        self.everything = everything
+        self.entries = entries
+    }
+}
+
+public struct VaultPerson: Codable, Hashable, Sendable {
+    public var profileId: String
+    public var name: String
+    public var email: String?
+    public var avatarUrl: String?
+    public var role: String
+    public var isYou: Bool
+    /// "Can open it", "Waiting for the key" or "Hasn't set a passcode yet".
+    public var status: String
+
+    public init(profileId: String, name: String, email: String? = nil, avatarUrl: String? = nil, role: String, isYou: Bool, status: String) {
+        self.profileId = profileId
+        self.name = name
+        self.email = email
+        self.avatarUrl = avatarUrl
+        self.role = role
+        self.isYou = isYou
+        self.status = status
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.profileId, forKey: .profileId)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.email, forKey: .email)
+        try container.encode(self.avatarUrl, forKey: .avatarUrl)
+        try container.encode(self.role, forKey: .role)
+        try container.encode(self.isYou, forKey: .isYou)
+        try container.encode(self.status, forKey: .status)
+    }
+}
+
+public struct VaultCandidate: Codable, Hashable, Sendable {
+    public var profileId: String
+    public var name: String
+
+    public init(profileId: String, name: String) {
+        self.profileId = profileId
+        self.name = name
+    }
+}
+
+public struct VaultPeopleValue: Codable, Hashable, Sendable {
+    public var people: [VaultPerson]
+    public var canAdd: Bool
+    public var canNameCustodians: Bool
+    public var onlyOneCustodian: Bool
+    /// Workspace members not in the Vault (who can be added).
+    public var candidates: [VaultCandidate]
+
+    public init(people: [VaultPerson], canAdd: Bool, canNameCustodians: Bool, onlyOneCustodian: Bool, candidates: [VaultCandidate]) {
+        self.people = people
+        self.canAdd = canAdd
+        self.canNameCustodians = canNameCustodians
+        self.onlyOneCustodian = onlyOneCustodian
+        self.candidates = candidates
+    }
+}
+
+public struct VaultItemIdArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var itemId: String
+
+    public init(vaultId: String, itemId: String) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+    }
+}
+
+public struct VaultSharePerson: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    public var email: String?
+    public var canEdit: Bool
+    public var expired: Bool
+    public var expiresAt: Double?
+
+    public init(id: String, name: String, email: String? = nil, canEdit: Bool, expired: Bool, expiresAt: Double? = nil) {
+        self.id = id
+        self.name = name
+        self.email = email
+        self.canEdit = canEdit
+        self.expired = expired
+        self.expiresAt = expiresAt
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.email, forKey: .email)
+        try container.encode(self.canEdit, forKey: .canEdit)
+        try container.encode(self.expired, forKey: .expired)
+        try container.encode(self.expiresAt, forKey: .expiresAt)
+    }
+}
+
+public struct VaultShareLink: Codable, Hashable, Sendable {
+    public var id: String
+    public var views: Int
+    public var maxViews: Int
+    public var expiresAt: Double
+    public var hasPassword: Bool
+
+    public init(id: String, views: Int, maxViews: Int, expiresAt: Double, hasPassword: Bool) {
+        self.id = id
+        self.views = views
+        self.maxViews = maxViews
+        self.expiresAt = expiresAt
+        self.hasPassword = hasPassword
+    }
+}
+
+public struct VaultSharesValue: Codable, Hashable, Sendable {
+    public var people: [VaultSharePerson]
+    public var links: [VaultShareLink]
+
+    public init(people: [VaultSharePerson], links: [VaultShareLink]) {
+        self.people = people
+        self.links = links
+    }
+}
+
+public struct VaultSetUpArgs: Codable, Hashable, Sendable {
+    public var passcode: String
+    public var space: SpaceRef?
+
+    public init(passcode: String, space: SpaceRef? = nil) {
+        self.passcode = passcode
+        self.space = space
+    }
+}
+
+public struct VaultPasscodeArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var passcode: String
+
+    public init(vaultId: String, passcode: String) {
+        self.vaultId = vaultId
+        self.passcode = passcode
+    }
+}
+
+public struct VaultResetArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var recoveryKey: String
+    public var passcode: String
+
+    public init(vaultId: String, recoveryKey: String, passcode: String) {
+        self.vaultId = vaultId
+        self.recoveryKey = recoveryKey
+        self.passcode = passcode
+    }
+}
+
+public struct VaultChangePasscodeArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var current: String
+    public var next: String
+
+    public init(vaultId: String, current: String, next: String) {
+        self.vaultId = vaultId
+        self.current = current
+        self.next = next
+    }
+}
+
+/// How an unlock went: `ok`, `wrong`, `locked` (until `until`), `notSetUp`, `needsPasscode`, or `oldPasscode` (a passcode from before PINs: choose a PIN with `vault.changePasscode`). `message` is the web's words.
+public struct VaultUnlockResult: Codable, Hashable, Sendable {
+    public var status: String
+    public var until: Int?
+    public var message: String?
+
+    public init(status: String, until: Int? = nil, message: String? = nil) {
+        self.status = status
+        self.until = until
+        self.message = message
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.status, forKey: .status)
+        try container.encode(self.until, forKey: .until)
+        try container.encode(self.message, forKey: .message)
+    }
+}
+
+public struct VaultRecoveryResult: Codable, Hashable, Sendable {
+    public var recoveryKey: String
+
+    public init(recoveryKey: String) {
+        self.recoveryKey = recoveryKey
+    }
+}
+
+/// One field of an opened item, in the kind's order (custom fields after), with its value.
+public struct VaultFieldValue: Codable, Hashable, Sendable {
+    public var key: String
+    public var label: String
+    public var type: String
+    public var value: String
+
+    public init(key: String, label: String, type: String, value: String) {
+        self.key = key
+        self.label = label
+        self.type = type
+        self.value = value
+    }
+}
+
+public struct VaultItemValue: Codable, Hashable, Sendable {
+    public var id: String
+    public var kind: String
+    public var kindLabel: String
+    public var title: String
+    public var fields: [VaultFieldValue]
+    public var notes: String
+    public var canChange: Bool
+    public var revision: Int
+    public var createdBy: String
+    public var updatedBy: String
+    public var updatedAt: Double
+
+    public init(id: String, kind: String, kindLabel: String, title: String, fields: [VaultFieldValue], notes: String, canChange: Bool, revision: Int, createdBy: String, updatedBy: String, updatedAt: Double) {
+        self.id = id
+        self.kind = kind
+        self.kindLabel = kindLabel
+        self.title = title
+        self.fields = fields
+        self.notes = notes
+        self.canChange = canChange
+        self.revision = revision
+        self.createdBy = createdBy
+        self.updatedBy = updatedBy
+        self.updatedAt = updatedAt
+    }
+}
+
+public struct VaultItemSaveArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    /// Left out for a new item.
+    public var itemId: String?
+    public var kind: String
+    public var title: String
+    public var values: [String: String]
+    public var notes: String
+
+    public init(vaultId: String, itemId: String? = nil, kind: String, title: String, values: [String: String], notes: String) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.kind = kind
+        self.title = title
+        self.values = values
+        self.notes = notes
+    }
+}
+
+public struct VaultIdResult: Codable, Hashable, Sendable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+}
+
+public struct VaultVersion: Codable, Hashable, Sendable {
+    public var revision: Int
+    public var title: String
+    public var editedBy: String
+    public var editedAt: Double
+    public var fields: [VaultFieldValue]
+
+    public init(revision: Int, title: String, editedBy: String, editedAt: Double, fields: [VaultFieldValue]) {
+        self.revision = revision
+        self.title = title
+        self.editedBy = editedBy
+        self.editedAt = editedAt
+        self.fields = fields
+    }
+}
+
+public struct VaultHistoryResult: Codable, Hashable, Sendable {
+    public var versions: [VaultVersion]
+
+    public init(versions: [VaultVersion]) {
+        self.versions = versions
+    }
+}
+
+public struct VaultRevisionArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var itemId: String
+    public var revision: Int
+
+    public init(vaultId: String, itemId: String, revision: Int) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.revision = revision
+    }
+}
+
+/// What only the device sees, for the log: item.reveal, item.copy, totp.show, totp.copy, file.preview, section.open, folder.open, history.view.
+public struct VaultRecordArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var event: String
+    public var itemId: String?
+    /// The field revealed or copied, or the section opened.
+    public var field: String?
+
+    public init(vaultId: String, event: String, itemId: String? = nil, field: String? = nil) {
+        self.vaultId = vaultId
+        self.event = event
+        self.itemId = itemId
+        self.field = field
+    }
+}
+
+public struct VaultTotpArgs: Codable, Hashable, Sendable {
+    public var secret: String
+
+    public init(secret: String) {
+        self.secret = secret
+    }
+}
+
+/// The 6-digit code now and the seconds it has left; null when the secret isn't one Folevi reads.
+public struct VaultTotpResult: Codable, Hashable, Sendable {
+    public var code: String?
+    public var secondsLeft: Int
+
+    public init(code: String? = nil, secondsLeft: Int) {
+        self.code = code
+        self.secondsLeft = secondsLeft
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.code, forKey: .code)
+        try container.encode(self.secondsLeft, forKey: .secondsLeft)
+    }
+}
+
+public struct VaultGenerateArgs: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case password
+        case passphrase
+    }
+
+    public var kind: Kind
+
+    public init(kind: Kind) {
+        self.kind = kind
+    }
+}
+
+public struct VaultGenerateResult: Codable, Hashable, Sendable {
+    public var value: String
+
+    public init(value: String) {
+        self.value = value
+    }
+}
+
+public struct VaultStrengthArgs: Codable, Hashable, Sendable {
+    public var password: String
+
+    public init(password: String) {
+        self.password = password
+    }
+}
+
+/// 0 to 4, and the web's words ("Strong", …).
+public struct VaultStrengthResult: Codable, Hashable, Sendable {
+    public var score: Int
+    public var label: String
+
+    public init(score: Int, label: String) {
+        self.score = score
+        self.label = label
+    }
+}
+
+public struct VaultFolderCreateArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var parentId: Patch<String>
+    public var name: String
+
+    enum CodingKeys: String, CodingKey {
+        case vaultId
+        case parentId
+        case name
+    }
+
+    public init(vaultId: String, parentId: String? = nil, name: String) {
+        self.vaultId = vaultId
+        self.parentId = Patch(parentId)
+        self.name = name
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.vaultId, forKey: .vaultId)
+        try container.encodePatch(self.parentId, forKey: .parentId)
+        try container.encode(self.name, forKey: .name)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.vaultId = try container.decode(String.self, forKey: .vaultId)
+        self.parentId = try container.decodePatch(String.self, forKey: .parentId)
+        self.name = try container.decode(String.self, forKey: .name)
+    }
+}
+
+public struct VaultNoteCreateArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var folderId: Patch<String>
+    public var title: String
+
+    enum CodingKeys: String, CodingKey {
+        case vaultId
+        case folderId
+        case title
+    }
+
+    public init(vaultId: String, folderId: String? = nil, title: String) {
+        self.vaultId = vaultId
+        self.folderId = Patch(folderId)
+        self.title = title
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.vaultId, forKey: .vaultId)
+        try container.encodePatch(self.folderId, forKey: .folderId)
+        try container.encode(self.title, forKey: .title)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.vaultId = try container.decode(String.self, forKey: .vaultId)
+        self.folderId = try container.decodePatch(String.self, forKey: .folderId)
+        self.title = try container.decode(String.self, forKey: .title)
+    }
+}
+
+/// A note's content as plain paragraphs (the editor's document, read on the Mac as text).
+public struct VaultNoteValue: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var text: String
+    public var canChange: Bool
+    public var revision: Int
+
+    public init(id: String, title: String, text: String, canChange: Bool, revision: Int) {
+        self.id = id
+        self.title = title
+        self.text = text
+        self.canChange = canChange
+        self.revision = revision
+    }
+}
+
+public struct VaultNoteSaveArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var itemId: String
+    public var revision: Int
+    public var text: String
+
+    public init(vaultId: String, itemId: String, revision: Int, text: String) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.revision = revision
+        self.text = text
+    }
+}
+
+public struct VaultRevisionResult: Codable, Hashable, Sendable {
+    public var revision: Int
+
+    public init(revision: Int) {
+        self.revision = revision
+    }
+}
+
+public struct VaultUploadArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var folderId: Patch<String>
+    public var name: String
+    public var mime: String
+    /// The file's bytes, base64. Sealed by the engine before they go anywhere.
+    public var data: String
+
+    enum CodingKeys: String, CodingKey {
+        case vaultId
+        case folderId
+        case name
+        case mime
+        case data
+    }
+
+    public init(vaultId: String, folderId: String? = nil, name: String, mime: String, data: String) {
+        self.vaultId = vaultId
+        self.folderId = Patch(folderId)
+        self.name = name
+        self.mime = mime
+        self.data = data
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.vaultId, forKey: .vaultId)
+        try container.encodePatch(self.folderId, forKey: .folderId)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.mime, forKey: .mime)
+        try container.encode(self.data, forKey: .data)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.vaultId = try container.decode(String.self, forKey: .vaultId)
+        self.folderId = try container.decodePatch(String.self, forKey: .folderId)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.mime = try container.decode(String.self, forKey: .mime)
+        self.data = try container.decode(String.self, forKey: .data)
+    }
+}
+
+public struct VaultFileOpenArgs: Codable, Hashable, Sendable {
+    public enum Purpose: String, Codable, Hashable, Sendable, CaseIterable {
+        case preview
+        case download
+    }
+
+    public var vaultId: String
+    public var itemId: String
+    public var purpose: Purpose
+
+    public init(vaultId: String, itemId: String, purpose: Purpose) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.purpose = purpose
+    }
+}
+
+/// A file decrypted in memory: its name, type, how to show it (image, pdf, text, csv, audio, video, other) and bytes.
+public struct VaultFileValue: Codable, Hashable, Sendable {
+    public var name: String
+    public var mime: String
+    public var kind: String
+    /// base64.
+    public var data: String
+
+    public init(name: String, mime: String, kind: String, data: String) {
+        self.name = name
+        self.mime = mime
+        self.kind = kind
+        self.data = data
+    }
+}
+
+public struct VaultRemovedResult: Codable, Hashable, Sendable {
+    public var removed: Int
+
+    public init(removed: Int) {
+        self.removed = removed
+    }
+}
+
+public struct VaultSettingsArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var autoLockMinutes: Int?
+    public var custodiansNameCustodians: Bool?
+
+    public init(vaultId: String, autoLockMinutes: Int? = nil, custodiansNameCustodians: Bool? = nil) {
+        self.vaultId = vaultId
+        self.autoLockMinutes = autoLockMinutes
+        self.custodiansNameCustodians = custodiansNameCustodians
+    }
+}
+
+public struct VaultPersonArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var profileId: String
+
+    public init(vaultId: String, profileId: String) {
+        self.vaultId = vaultId
+        self.profileId = profileId
+    }
+}
+
+public struct VaultRoleArgs: Codable, Hashable, Sendable {
+    public enum Role: String, Codable, Hashable, Sendable, CaseIterable {
+        case custodian
+        case member
+    }
+
+    public var vaultId: String
+    public var profileId: String
+    public var role: Role
+
+    public init(vaultId: String, profileId: String, role: Role) {
+        self.vaultId = vaultId
+        self.profileId = profileId
+        self.role = role
+    }
+}
+
+public struct VaultShareArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var itemId: String
+    public var email: String
+    /// For someone outside the workspace: how long they have it.
+    public var days: Int
+    public var canEdit: Bool
+
+    public init(vaultId: String, itemId: String, email: String, days: Int, canEdit: Bool) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.email = email
+        self.days = days
+        self.canEdit = canEdit
+    }
+}
+
+/// What happened: `shared`, `notFound`, `inVault`, `unchecked`; `message` says it in the web's words.
+public struct VaultShareResult: Codable, Hashable, Sendable {
+    public var status: String
+    public var message: String
+
+    public init(status: String, message: String) {
+        self.status = status
+        self.message = message
+    }
+}
+
+public struct VaultShareStopArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var itemId: String
+    public var shareId: String
+
+    public init(vaultId: String, itemId: String, shareId: String) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.shareId = shareId
+    }
+}
+
+public struct VaultLinkArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var itemId: String
+    public var maxViews: Int
+    /// How long it works, in milliseconds (1 hour to 30 days).
+    public var lastsMs: Int
+    public var password: String?
+
+    public init(vaultId: String, itemId: String, maxViews: Int, lastsMs: Int, password: String? = nil) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.maxViews = maxViews
+        self.lastsMs = lastsMs
+        self.password = password
+    }
+}
+
+/// The link, shown only now.
+public struct VaultLinkResult: Codable, Hashable, Sendable {
+    public var url: String
+
+    public init(url: String) {
+        self.url = url
+    }
+}
+
+public struct VaultLinkRevokeArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var linkId: String
+
+    public init(vaultId: String, linkId: String) {
+        self.vaultId = vaultId
+        self.linkId = linkId
+    }
+}

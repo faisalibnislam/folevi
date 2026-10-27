@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "vault.unlock",
+  "description": "A wrong passcode.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "passcode": "000000"
+  },
+  "result": {
+    "status": "wrong",
+    "until": null,
+    "message": "That isn't right. Try again."
+  }
+}

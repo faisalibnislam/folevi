@@ -1,0 +1,286 @@
+{
+  "kind": "view",
+  "name": "vault.items",
+  "description": "Files & Notes at the top.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "section": "files",
+    "folderId": null
+  },
+  "value": {
+    "items": [
+      {
+        "id": "01JITEM0000000000000000004",
+        "kind": "note",
+        "kindLabel": "Note",
+        "title": "Safe deposit box",
+        "detail": "Box 4711 at the High Street branch",
+        "folderId": null,
+        "revision": 1,
+        "updatedAt": 1792920600000,
+        "deletedAt": null,
+        "mime": null,
+        "size": null
+      },
+      {
+        "id": "01JITEM0000000000000000005",
+        "kind": "file",
+        "kindLabel": "File",
+        "title": "lease-2026.pdf",
+        "detail": "212 KB",
+        "folderId": null,
+        "revision": 1,
+        "updatedAt": 1792747800000,
+        "deletedAt": null,
+        "mime": "application/pdf",
+        "size": 217088
+      }
+    ],
+    "kinds": [
+      {
+        "kind": "login",
+        "label": "Login",
+        "fields": [
+          {
+            "key": "username",
+            "label": "Username",
+            "type": "text"
+          },
+          {
+            "key": "password",
+            "label": "Password",
+            "type": "secret"
+          },
+          {
+            "key": "website",
+            "label": "Website",
+            "type": "url"
+          },
+          {
+            "key": "totp",
+            "label": "2FA secret",
+            "type": "totp"
+          }
+        ]
+      },
+      {
+        "kind": "apiKey",
+        "label": "API key",
+        "fields": [
+          {
+            "key": "service",
+            "label": "Service",
+            "type": "text"
+          },
+          {
+            "key": "key",
+            "label": "Key",
+            "type": "secret"
+          },
+          {
+            "key": "secret",
+            "label": "Secret",
+            "type": "secret"
+          },
+          {
+            "key": "environment",
+            "label": "Environment",
+            "type": "text"
+          },
+          {
+            "key": "expires",
+            "label": "Expires",
+            "type": "date"
+          }
+        ]
+      },
+      {
+        "kind": "card",
+        "label": "Card",
+        "fields": [
+          {
+            "key": "holder",
+            "label": "Name on card",
+            "type": "text"
+          },
+          {
+            "key": "number",
+            "label": "Number",
+            "type": "secret"
+          },
+          {
+            "key": "expiry",
+            "label": "Expiry (MM/YY)",
+            "type": "text"
+          },
+          {
+            "key": "cvc",
+            "label": "Security code",
+            "type": "secret"
+          },
+          {
+            "key": "pin",
+            "label": "PIN",
+            "type": "secret"
+          },
+          {
+            "key": "brand",
+            "label": "Brand",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "kind": "bankAccount",
+        "label": "Bank account",
+        "fields": [
+          {
+            "key": "bank",
+            "label": "Bank",
+            "type": "text"
+          },
+          {
+            "key": "holder",
+            "label": "Account holder",
+            "type": "text"
+          },
+          {
+            "key": "accountNumber",
+            "label": "Account number",
+            "type": "secret"
+          },
+          {
+            "key": "routing",
+            "label": "Sort code or routing number",
+            "type": "secret"
+          },
+          {
+            "key": "iban",
+            "label": "IBAN",
+            "type": "secret"
+          },
+          {
+            "key": "swift",
+            "label": "SWIFT / BIC",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "kind": "secureNote",
+        "label": "Secure note",
+        "fields": [
+          {
+            "key": "text",
+            "label": "Note",
+            "type": "multiline"
+          }
+        ]
+      },
+      {
+        "kind": "sshKey",
+        "label": "SSH key",
+        "fields": [
+          {
+            "key": "host",
+            "label": "Host",
+            "type": "text"
+          },
+          {
+            "key": "privateKey",
+            "label": "Private key",
+            "type": "multiline"
+          },
+          {
+            "key": "publicKey",
+            "label": "Public key",
+            "type": "multiline"
+          },
+          {
+            "key": "passphrase",
+            "label": "Passphrase",
+            "type": "secret"
+          }
+        ]
+      },
+      {
+        "kind": "wifi",
+        "label": "Wi-Fi",
+        "fields": [
+          {
+            "key": "network",
+            "label": "Network name",
+            "type": "text"
+          },
+          {
+            "key": "password",
+            "label": "Password",
+            "type": "secret"
+          },
+          {
+            "key": "security",
+            "label": "Security",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "kind": "licence",
+        "label": "Software licence",
+        "fields": [
+          {
+            "key": "product",
+            "label": "Product",
+            "type": "text"
+          },
+          {
+            "key": "licenceKey",
+            "label": "Licence key",
+            "type": "secret"
+          },
+          {
+            "key": "email",
+            "label": "Registered email",
+            "type": "text"
+          },
+          {
+            "key": "expires",
+            "label": "Expires",
+            "type": "date"
+          }
+        ]
+      },
+      {
+        "kind": "identity",
+        "label": "Identity",
+        "fields": [
+          {
+            "key": "fullName",
+            "label": "Full name",
+            "type": "text"
+          },
+          {
+            "key": "dateOfBirth",
+            "label": "Date of birth",
+            "type": "date"
+          },
+          {
+            "key": "documentNumber",
+            "label": "Passport or ID number",
+            "type": "secret"
+          },
+          {
+            "key": "address",
+            "label": "Address",
+            "type": "multiline"
+          },
+          {
+            "key": "phone",
+            "label": "Phone",
+            "type": "text"
+          }
+        ]
+      }
+    ]
+  }
+}

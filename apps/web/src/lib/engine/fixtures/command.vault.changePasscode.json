@@ -1,0 +1,15 @@
+{
+  "kind": "command",
+  "name": "vault.changePasscode",
+  "description": "A new passcode, proven by the current one.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "current": "246813",
+    "next": "13572468"
+  },
+  "result": {
+    "status": "ok",
+    "until": null,
+    "message": null
+  }
+}

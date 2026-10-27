@@ -1,0 +1,39 @@
+{
+  "kind": "view",
+  "name": "vault.people",
+  "description": "A team Vault's people.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001"
+  },
+  "value": {
+    "people": [
+      {
+        "profileId": "prof_1",
+        "name": "Faisal",
+        "email": "f@example.com",
+        "avatarUrl": null,
+        "role": "owner",
+        "isYou": true,
+        "status": "Can open it"
+      },
+      {
+        "profileId": "prof_2",
+        "name": "Maya",
+        "email": "maya@example.com",
+        "avatarUrl": null,
+        "role": "member",
+        "isYou": false,
+        "status": "Waiting for the key"
+      }
+    ],
+    "canAdd": true,
+    "canNameCustodians": true,
+    "onlyOneCustodian": true,
+    "candidates": [
+      {
+        "profileId": "prof_3",
+        "name": "Lee"
+      }
+    ]
+  }
+}

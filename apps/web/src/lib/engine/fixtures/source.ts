@@ -22,6 +22,7 @@ import { notificationSettings, sharingValue } from "../viewsAccount";
 import { folderSharingValue, moveCheckValue, sharedFolderRow, sharedFolderValue } from "../viewsFolders";
 import { chatMessage, conversationRow, conversationValue } from "../viewsAi";
 import { researchJob } from "../viewsMac";
+import { VAULT_FIXTURES } from "./vault";
 import {
   CONTRACT_REVISION,
   PROTOCOL_VERSION,
@@ -1417,4 +1418,6 @@ export const FIXTURES: Record<string, Fixture> = {
   "event.editor.panel": event({ name: "editor.panel", description: "The Format panel opened.", data: { panel: "format" } }),
   "event.editor.panel.closed": event({ name: "editor.panel", description: "The panel closed.", data: { panel: null } }),
   "event.memory.relieved": event({ name: "memory.relieved", description: "Memory was short: the editor and caches were dropped.", data: { dropped: ["editor", "caches"] } }),
+  // ---- revision 13: the Vault (fixtures/vault.ts)
+  ...VAULT_FIXTURES,
 };

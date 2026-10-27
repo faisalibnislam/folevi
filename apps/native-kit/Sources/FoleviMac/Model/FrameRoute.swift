@@ -79,8 +79,8 @@ public enum FrameRoute: Hashable, Sendable {
             let date = comps?.queryItems?.first { $0.name == "date" }?.value ?? a
             self = .calendar(date.flatMap { $0.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil ? $0 : nil })
         case "search": self = .search(comps?.queryItems?.first { $0.name == "q" }?.value ?? "")
-        case "folders": self = a.map { .folder($0) } ?? .home
-        case "tags": self = a.map { .tag($0) } ?? .home
+        case "folders": self = a.map { .folder($0) } ?? .web("/folders")
+        case "tags": self = a.map { .tag($0) } ?? .web("/tags")
         case "d": self = a.map { .note($0) } ?? .home
         default: self = .web(comps?.path ?? trimmed)
         }
@@ -136,6 +136,8 @@ public enum FrameRoute: Hashable, Sendable {
         case .calendar: return "Calendar"
         case .search(let q): return q.isEmpty ? "Search" : "Search: \(q)"
         case .note: return "Untitled"
+        case .web("/folders"): return "Folders"
+        case .web("/tags"): return "Tags"
         case .web: return "Folevi"
         }
     }

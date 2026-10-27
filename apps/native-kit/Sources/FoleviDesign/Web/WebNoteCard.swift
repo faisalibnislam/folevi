@@ -3,6 +3,7 @@
 // "notes.folder.*", app-styles/notes.json): every size is the web's `cqw` value, so a card reads the same at any
 // width (Home's 250 pt carousel, the lists' auto-filled grid, a folder page's 152 pt subfolders). Also the empty
 // state (ui/EmptyState.tsx) and Foli AI's flower mark (ai/AiIcon.tsx), which the note screens share.
+import CoreText
 import SwiftUI
 
 // MARK: colour mixing
@@ -201,7 +202,7 @@ public struct WebNoteCard: View {
                 spine
                     .frame(width: sheetW * 0.06)
                     .overlay(alignment: .trailing) { Rectangle().fill(Color.black.opacity(0.06)).frame(width: 1) }
-                content(cq: cq, heading: heading, faint: faint, muted: muted, chip: chip)
+                content(cq: cq, titleWidth: sheetW * 0.94 - 20 * cq, heading: heading, faint: faint, muted: muted, chip: chip)
             }
             .frame(width: sheetW, height: sheetH)
             .background((pal?.paper ?? sheetStyle.background).color)
@@ -233,20 +234,15 @@ public struct WebNoteCard: View {
         }
     }
 
-    private func content(cq: CGFloat, heading: RGBA, faint: RGBA, muted: RGBA, chip: RGBA) -> some View {
+    private func content(cq: CGFloat, titleWidth: CGFloat, heading: RGBA, faint: RGBA, muted: RGBA, chip: RGBA) -> some View {
         let titleStyle = WebTextStyle(family: .display, size: 6.6 * cq, leading: 6.6 * cq * 1.22, weight: 500, letterSpacing: 0.005 * 6.6 * cq)
         let createdStyle = WebTextStyle(size: 4.5 * cq, leading: 4.5 * cq * 1.3)
         let bodyStyle = WebTextStyle(size: 3.6 * cq, leading: 5 * cq)
         let text = NoteCardView.previewText(model.preview, excerpt: model.excerpt)
         return VStack(alignment: .leading, spacing: 0) {
-            Text(model.title.isEmpty ? "Untitled" : model.title)
-                .webText(titleStyle)
-                .lineLimit(2)
-                .truncationMode(.tail)
+            WebClampedText(model.title.isEmpty ? "Untitled" : model.title, style: titleStyle, maxLines: 2, width: titleWidth)
                 .foregroundStyle(heading.color)
-                .padding(.trailing, 7 * cq)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
             Text(model.createdText)
                 .webText(createdStyle)
                 .lineLimit(1)
@@ -526,12 +522,8 @@ public struct WebFolderCard: View {
                 .fixedSize()
                 .frame(width: w * 0.93, alignment: .trailing)
                 .offset(y: frontH * 0.1037 - 0.15 * ageSize)
-            Text(model.name)
-                .webText(WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.12, letterSpacing: -0.01 * nameSize))
-                .lineLimit(2)
-                .truncationMode(.tail)
+            WebClampedText(model.name, style: WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.12, letterSpacing: -0.01 * nameSize), maxLines: 2, width: w * 0.86)
                 .foregroundStyle(RGBA(13, 13, 16).color)
-                .frame(width: w * 0.86, alignment: .bottomLeading)
                 .frame(width: w, height: frontH * (1 - 0.1148), alignment: .bottomLeading)
                 .offset(x: w * 0.07)
         }
@@ -561,16 +553,13 @@ struct WebFolderNote: View {
                         CoverFill(note.cover).frame(width: w * 0.07, height: h).clipped()
                     }
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(note.title.isEmpty ? "Untitled" : note.title)
-                            .webText(WebTextStyle(family: .display, size: 5.4 * cq, leading: 5.4 * cq * 1.2, weight: 500))
-                            .lineLimit(2)
+                        WebClampedText(note.title.isEmpty ? "Untitled" : note.title, style: WebTextStyle(family: .display, size: 5.4 * cq, leading: 5.4 * cq * 1.2, weight: 500), maxLines: 2, width: w * 0.8)
                             .foregroundStyle(ink.color)
-                            .frame(maxWidth: .infinity, alignment: .leading)
                         Text(WebNoteCard.preLine(note.excerpt))
                             .webText(WebTextStyle(size: 3.2 * cq, leading: 3.2 * cq * 1.45))
                             .foregroundStyle(ink.oklabMix(paper, 0.82).color)
                             .padding(.top, 2 * cq)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(width: w * 0.6, alignment: .leading)
                     }
                     .frame(width: w * 0.8, alignment: .topLeading)
                     .padding(.top, h * 0.07)
@@ -617,14 +606,11 @@ public struct WebEmptyState<Action: View>: View {
                     .background(RoundedRectangle(cornerRadius: tile.radius, style: .circular).fill(tile.background.color))
                     .padding(.bottom, page ? tile.margin.bottom : 12)
             }
-            Text(title)
-                .webText(page ? t.text : WebTextStyle.role(.body, weight: 600))
-                .multilineTextAlignment(.center)
+            let textWidth: CGFloat = page ? 448 - box.padding.left - box.padding.right : 448 - 32
+            WebClampedText(title, style: page ? t.text : WebTextStyle.role(.body, weight: 600), maxLines: 4, width: textWidth, alignment: .center)
                 .foregroundStyle(t.color.color)
             if let message {
-                Text(message)
-                    .webText(page ? b.text : WebTextStyle.role(.subheadline).leading(17.875))
-                    .multilineTextAlignment(.center)
+                WebClampedText(message, style: page ? b.text : WebTextStyle.role(.subheadline).leading(17.875), maxLines: 6, width: textWidth, alignment: .center)
                     .foregroundStyle(b.color.color)
                     .padding(.top, page ? b.margin.top : 4)
             }
@@ -688,5 +674,55 @@ public struct WebAiMark: View {
         }
 
         static let d = "M250.946 287.945C257.302 287.945 262.968 291.951 265.088 297.943L308.487 420.644C308.491 420.654 308.495 420.664 308.498 420.674C311.729 429.871 312.708 439.709 311.354 449.363C310.001 459.017 306.353 468.206 300.717 476.16C295.081 484.114 287.62 490.601 278.961 495.078C270.301 499.555 260.695 501.892 250.946 501.892C241.198 501.892 231.591 499.555 222.932 495.078C214.272 490.601 206.811 484.114 201.175 476.16C195.539 468.206 191.891 459.017 190.537 449.363C189.183 439.709 190.163 429.871 193.394 420.674C193.397 420.664 193.401 420.654 193.404 420.644L236.805 297.943L237.014 297.388C239.279 291.705 244.789 287.945 250.946 287.945ZM207.714 274.179C213.45 271.44 220.289 272.614 224.783 277.108C229.277 281.603 230.451 288.442 227.713 294.178L171.64 411.628C171.635 411.638 171.63 411.648 171.625 411.657C167.406 420.445 161.142 428.095 153.358 433.964C145.575 439.833 136.498 443.751 126.889 445.39C117.279 447.028 107.416 446.34 98.127 443.383C88.8381 440.425 80.3931 435.285 73.5 428.392C66.6069 421.499 61.4663 413.053 58.5088 403.765C55.5513 394.476 54.8631 384.613 56.502 375.003C58.1408 365.393 62.0587 356.316 67.9277 348.532C73.7968 340.749 81.4462 334.485 90.2344 330.267L90.2637 330.252L207.714 274.179ZM277.108 277.108C281.603 272.614 288.442 271.44 294.178 274.179L411.629 330.252L411.657 330.267C420.445 334.486 428.095 340.75 433.964 348.533C439.833 356.317 443.751 365.393 445.39 375.003C447.028 384.613 446.34 394.476 443.383 403.765C440.425 413.053 435.285 421.498 428.392 428.392C421.498 435.285 413.054 440.425 403.765 443.383C394.476 446.34 384.613 447.028 375.003 445.39C365.393 443.751 356.317 439.833 348.533 433.964C340.749 428.095 334.486 420.445 330.267 411.657C330.262 411.648 330.258 411.638 330.253 411.628L274.179 294.178C271.44 288.442 272.614 281.603 277.108 277.108ZM52.5283 190.537C61.8806 189.226 71.4055 190.104 80.3535 193.098L81.2178 193.395L81.248 193.405L203.948 236.805C209.94 238.924 213.946 244.59 213.946 250.946C213.946 257.302 209.94 262.968 203.948 265.088L81.248 308.487C81.238 308.491 81.2278 308.495 81.2178 308.498C72.0204 311.729 62.1822 312.709 52.5283 311.355C42.8744 310.002 33.6853 306.353 25.7314 300.717C17.7777 295.081 11.2904 287.62 6.81348 278.961C2.33647 270.301 0 260.695 0 250.946C0 241.198 2.33647 231.591 6.81348 222.932C11.2904 214.272 17.7777 206.812 25.7314 201.176C33.6853 195.54 42.8744 191.891 52.5283 190.537ZM420.675 193.395C429.872 190.164 439.71 189.183 449.363 190.537C459.017 191.891 468.206 195.54 476.16 201.176C484.114 206.812 490.601 214.272 495.078 222.932C499.555 231.591 501.892 241.198 501.892 250.946C501.892 260.695 499.555 270.301 495.078 278.961C490.601 287.62 484.114 295.081 476.16 300.717C468.206 306.353 459.017 310.002 449.363 311.355C439.71 312.709 429.872 311.729 420.675 308.498C420.665 308.495 420.654 308.491 420.644 308.487L297.944 265.088C291.952 262.968 287.946 257.302 287.946 250.946C287.946 244.59 291.952 238.924 297.944 236.805L420.644 193.405L420.675 193.395ZM98.127 58.5088C107.416 55.5513 117.279 54.8631 126.889 56.502C136.498 58.1408 145.576 62.0587 153.359 67.9277C160.9 73.6134 167.013 80.97 171.224 89.4141L171.625 90.2344L171.64 90.2637L227.713 207.714C230.451 213.45 229.278 220.289 224.783 224.783C220.289 229.277 213.45 230.451 207.714 227.713L90.2637 171.64C90.254 171.635 90.2441 171.63 90.2344 171.625C81.4462 167.406 73.7968 161.142 67.9277 153.358C62.0589 145.575 58.1407 136.498 56.502 126.889C54.8631 117.279 55.5513 107.416 58.5088 98.127C61.4663 88.8381 66.6069 80.3931 73.5 73.5C80.3931 66.6069 88.8381 61.4663 98.127 58.5088ZM375.003 56.502C384.613 54.8631 394.476 55.5513 403.765 58.5088C413.054 61.4663 421.498 66.6069 428.392 73.5C435.285 80.3931 440.425 88.8382 443.383 98.127C446.34 107.416 447.028 117.279 445.39 126.889C443.751 136.498 439.833 145.576 433.964 153.359C428.095 161.143 420.445 167.406 411.657 171.625C411.648 171.63 411.638 171.635 411.629 171.64L294.178 227.713C288.442 230.451 281.604 229.277 277.109 224.783C272.615 220.289 271.44 213.45 274.179 207.714L330.253 90.2637L330.267 90.2344C334.486 81.4462 340.75 73.7968 348.533 67.9277C356.317 62.0589 365.393 58.1408 375.003 56.502ZM250.946 0C260.695 3.9009e-05 270.301 2.33651 278.961 6.81348C287.62 11.2905 295.081 17.7777 300.717 25.7314C306.353 33.6853 310.001 42.8744 311.354 52.5283C312.708 62.1823 311.729 72.0203 308.498 81.2178C308.495 81.2278 308.491 81.238 308.487 81.248L265.088 203.948C262.968 209.94 257.302 213.946 250.946 213.946C244.59 213.946 238.924 209.94 236.805 203.948L193.404 81.248C193.401 81.238 193.397 81.2279 193.394 81.2178C190.163 72.0204 189.183 62.1823 190.537 52.5283C191.891 42.8744 195.539 33.6853 201.175 25.7314C206.811 17.7776 214.272 11.2905 222.932 6.81348C231.591 2.33648 241.198 0 250.946 0Z"
+    }
+}
+
+// MARK: clamped lines
+
+/// Text wrapped and clamped as CSS does it (`line-clamp-2` with a line height tighter than the font's own):
+/// Core Text finds the line breaks at the width, each line is set in its exact CSS line box, and the last one
+/// ends in "…" when there's more. SwiftUI's own wrapping can't lay lines closer than the font's natural height.
+public struct WebClampedText: View {
+    let text: String
+    let style: WebTextStyle
+    let maxLines: Int
+    let width: CGFloat
+    let alignment: HorizontalAlignment
+
+    public init(_ text: String, style: WebTextStyle, maxLines: Int, width: CGFloat, alignment: HorizontalAlignment = .leading) {
+        self.text = text
+        self.style = style
+        self.maxLines = maxLines
+        self.width = width
+        self.alignment = alignment
+    }
+
+    public var body: some View {
+        let lines = Self.lines(text, style: style, width: width, max: maxLines)
+        VStack(alignment: alignment, spacing: 0) {
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                Text(line).webText(style).lineLimit(1).truncationMode(.tail)
+            }
+        }
+        .frame(width: width, alignment: Alignment(horizontal: alignment, vertical: .top))
+    }
+
+    /// The lines CSS would show: up to `max`, the last holding the rest of the text (cut with "…" when drawn).
+    static func lines(_ text: String, style: WebTextStyle, width: CGFloat, max: Int) -> [String] {
+        let s = text as NSString
+        guard s.length > 0, width > 0 else { return [text] }
+        let attributes: [NSAttributedString.Key: Any] = [.font: style.ctFont, .kern: style.letterSpacing]
+        let attributed = NSAttributedString(string: text, attributes: attributes)
+        let typesetter = CTTypesetterCreateWithAttributedString(attributed)
+        var out: [String] = []
+        var start = 0
+        while start < s.length, out.count < max - 1 {
+            let n = CTTypesetterSuggestLineBreak(typesetter, start, Double(width))
+            guard n > 0 else { break }
+            out.append(s.substring(with: NSRange(location: start, length: n)).trimmingCharacters(in: .whitespaces))
+            start += n
+        }
+        if start < s.length { out.append(s.substring(from: start).trimmingCharacters(in: .whitespaces)) }
+        return out
     }
 }

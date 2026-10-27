@@ -102,6 +102,15 @@ struct WebTasksScreen: View {
         .background(TasksKeys(model: model, open: { frame.showQuickAdd(in: tasks.window) }, filter: { filterFocused = true }))
         .plannerAnchor(tasks.anchor)
         .onChange(of: model.list.value) { _, _ in model.reconcile() }
+        // Scripts open the dialogs (the Debug app's `frame {"do":"post"}`): "quick", "edit" (the first task).
+        .onReceive(NotificationCenter.default.publisher(for: .init("folevi.planner.show"))) { n in
+            switch n.object as? String {
+            case "quick": frame.showQuickAdd(in: tasks.window)
+            case "edit": if let t = rows.first { tasks.edit(t) }
+            case "menu": if let t = rows.first, let w = tasks.window { WebMenuWindow.show(tasks.menu(t), at: NSPoint(x: 600, y: 520), in: w) }
+            default: break
+            }
+        }
         .onAppear { model.setVisible(true) }
         .onDisappear { model.setVisible(false) }
         .accessibilityIdentifier("tasks-screen")

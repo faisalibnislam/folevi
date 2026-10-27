@@ -42,6 +42,8 @@ final class ScreenModels {
     private var tasks: TasksModel?
     private var calendar: CalendarModel?
     private var search: SearchModel?
+    /// Every folder as a card (Home's Recent folders, the Folders page).
+    private var allFolders: ValueStore<FolderCardsValue>?
 
     init(frame: FrameModel) { self.frame = frame }
 
@@ -111,6 +113,13 @@ final class ScreenModels {
     }
 
     /// The note list on screen for a route, when it has been shown.
+    func allFolderCards() -> ValueStore<FolderCardsValue> {
+        if let allFolders { return allFolders }
+        let v = frame.client.watch(.foldersCards(all: true))
+        allFolders = v
+        return v
+    }
+
     func listModel(for route: FrameRoute) -> NotesListModel? {
         switch route {
         case .notes(let v): return lists[NotesListKind(v)]
@@ -231,16 +240,18 @@ struct ScreenRoot: View {
     var body: some View {
         Group {
             switch route {
-            case .home: HomeScreen(model: models.homeModel(), showsHeader: true)
-            case .notes(let v): NotesListScreen(model: models.list(NotesListKind(v)))
-            case .folder(let id): NotesListScreen(model: models.list(.folder(id)))
-            case .tag(let id): NotesListScreen(model: models.list(.tag(id)))
+            case .home: WebHomeScreen(frame: model, home: models.homeModel(), list: models.list(NotesListKind(.all)), allFolders: models.allFolderCards())
+            case .notes(let v): WebNoteBrowser(frame: model, model: models.list(NotesListKind(v)))
+            case .folder(let id): WebNoteBrowser(frame: model, model: models.list(.folder(id)))
+            case .tag(let id): WebNoteBrowser(frame: model, model: models.list(.tag(id)))
+            case .web("/folders"): WebFoldersIndex(frame: model, home: models.homeModel(), allFolders: models.allFolderCards())
+            case .web("/tags"): WebTagsIndex(frame: model)
             case .shared: SharedListScreen(model: models.sharedModel())
             case .changes: ChangesScreen(model: models.changesModel())
             case .catchUp: CatchUpScreen(model: model)
             case .search: SearchScreen(model: models.searchModel(), showsCancel: false)
-            case .tasks: TasksScreen(model: models.tasksModel(), showsHeader: true)
-            case .calendar: CalendarScreen(model: models.calendarModel(), showsHeader: true)
+            case .tasks: WebTasksScreen(model: models.tasksModel(), frame: model)
+            case .calendar: WebCalendarScreen(model: models.calendarModel(), frame: model)
             // The Vault (Vault/VaultScreen.swift); /vault/<section> opens a section.
             case .web(let path) where path == "/vault" || path.hasPrefix("/vault/"): VaultScreen(frame: model, path: path)
             case .web(let path): Placeholder(symbol: "globe", title: "Not here yet", message: "\(path) doesn't have a screen in the Mac app yet.")
@@ -249,6 +260,13 @@ struct ScreenRoot: View {
         }
         .id(route.tabKey)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // Foli AI's floating launcher over Home and the note lists (the web's AskAiLauncher).
+        .overlay(alignment: .bottomTrailing) {
+            if model.session.value?.capabilities.ai == true, WebAskFoliPill.shows(on: route) {
+                WebAskFoliPill { model.open(.web("/ai")) }
+                    .padding(WebAskFoliPill.inset)
+            }
+        }
         .background(Folevi.color.canvas)
         // Another place or space: the screen crossfades instead of cutting.
         .placeCrossfade("\(model.session.value?.place ?? "")|\(model.session.value?.space ?? "")")

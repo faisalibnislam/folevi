@@ -42,7 +42,12 @@ export const SCREENS = [
   { id: "drafts", link: "folevi-dev://drafts" },
   { id: "tasks-today", link: "folevi-dev://tasks/today" },
   { id: "tasks-upcoming", link: "folevi-dev://tasks/upcoming" },
-  { id: "calendar", link: "folevi-dev://calendar" },
+  { id: "tasks-all", link: "folevi-dev://tasks/all" },
+  { id: "tasks-completed", link: "folevi-dev://tasks/completed" },
+  // The calendar's layout is kept per device: each frame is set to the one the screen shows (the web by its
+  // switch, the native screen by a notification the Debug app posts).
+  { id: "calendar", link: "folevi-dev://calendar", layout: "month" },
+  { id: "calendar-week", link: "folevi-dev://calendar", layout: "week" },
   { id: "templates", link: "folevi-dev://templates" },
   { id: "archive", link: "folevi-dev://archive" },
   { id: "trash", link: "folevi-dev://trash" },
@@ -52,6 +57,10 @@ export const SCREENS = [
   { id: "note-comments", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 1200, ...noteTool("comments", "Comments") },
   { id: "note-tasks", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 1200, ...noteTool("tasks", "Tasks in this page") },
   { id: "note-attachments", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 1200, ...noteTool("attachments", "Attachments and links") },
+  // A folder with a subfolder (Travel, with Japan), and the Folders and Tags pages.
+  { id: "folder", link: (fx) => `folevi-dev://folders/${fx.folders?.travel}` },
+  { id: "folders", link: "folevi-dev://folders" },
+  { id: "tags", link: "folevi-dev://tags" },
   // The library's Vault (docs/MAC_REBUILD_PLAN.md §5.6), locked first, then opened with the fixture's PIN.
   { id: "vault-locked", link: "folevi-dev://vault", prepare: (kind) => vaultLock(kind), settle: 800 },
   { id: "vault-files", link: "folevi-dev://vault", prepare: (kind) => vaultOpen(kind, ["tab", "Files & Notes"]), settle: 800 },
@@ -180,6 +189,7 @@ const FIXTURE = `
   }
   await run("note.star", { ids: [ids[0], ids[2]], starred: true });
   for (const t of ["Book the ryokan tomorrow", "Call Sam on Friday 3pm", "Renew passport next week", "Buy matcha today"]) await run("task.create", { text: t });
+  window.__fxFolders = { travel: travel.id, japan: japan.id, work: work.id };
   return ids;
 `;
 
@@ -220,11 +230,12 @@ async function setUp() {
   await waitFor(dir, `return !!window.__foleviEngine && !!window.__foleviNativeChrome`, 90_000);
   await sleep(1500);
   const made = await evaluate(dir, FIXTURE);
+  const folders = await evaluate(dir, `return window.__fxFolders`).catch(() => null);
   await sleep(1500);
   await evaluate(dir, VAULT_FIXTURE);
   await sleep(1500);
   await quit();
-  writeFileSync(join(dir, "fixture.json"), JSON.stringify({ notes: made, at: new Date().toISOString() }));
+  writeFileSync(join(dir, "fixture.json"), JSON.stringify({ notes: made, folders, at: new Date().toISOString() }));
 }
 
 async function quit() {
@@ -256,6 +267,11 @@ async function shoot(kind) {
       ensure(await command(dir, { cmd: "open", url: typeof s.link === "function" ? s.link(fixture) : s.link }));
       await sleep(1600);
       if (kind === "web" && s.web) await evaluate(dir, s.web).catch(() => undefined);
+      if (s.layout) {
+        if (kind === "web") await evaluate(dir, `const b = [...document.querySelectorAll("[role=radio]")].find((b) => b.textContent.trim() === ${JSON.stringify(s.layout)}); if (b) b.click(); return true;`).catch(() => undefined);
+        else await command(dir, { cmd: "frame", do: "post", name: "folevi.calendar.layout", value: s.layout }).catch(() => undefined);
+        await sleep(600);
+      }
       // A window behind others doesn't run CSS animations (a note's sheet would stay at its first, invisible
       // frame): the end state at once, in both frames alike.
       await evaluate(dir, STILL).catch(() => undefined);

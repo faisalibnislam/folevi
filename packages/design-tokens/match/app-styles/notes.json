@@ -1,0 +1,433 @@
+{
+  "$description": "Home and every note list (HomeDashboard, NoteCardFace, FolderCard, DocumentBrowser, OrganizeIndex): the screens' links, the elements the native screens are drawn from, and the colour variables. Read by scripts/web-styles.mjs --app into ../app-styles-cache/notes.json. 'noteslist' and 'notescompact' switch All notes to the List and Compact layouts first; 'notesgrid' switches it back (the web keeps the layout in local storage).",
+  "screens": {
+    "home": "folevi-dev://documents",
+    "notes": "folevi-dev://notes",
+    "noteslist": "folevi-dev://notes",
+    "notescompact": "folevi-dev://notes",
+    "notesgrid": "folevi-dev://notes",
+    "archive": "folevi-dev://archive",
+    "folder": "folevi-dev://documents",
+    "folders": "folevi-dev://folders",
+    "tags": "folevi-dev://tags",
+    "notesmenu": "folevi-dev://notes"
+  },
+  "prepare": {
+    "noteslist": "document.querySelector(\"main#main .ui-seg button[aria-label='List']\").click(); return 1",
+    "notescompact": "document.querySelector(\"main#main .ui-seg button[aria-label='Compact cards']\").click(); return 1",
+    "notesgrid": "document.querySelector(\"main#main .ui-seg button[aria-label='Grid']\").click(); return 1",
+    "folder": "[...document.querySelectorAll(\"nav a[href^='/folders/']\")].find((a) => a.textContent.trim() === 'Travel').click(); return 1",
+    "notesmenu": "const b = document.querySelector(\"main#main ul.grid > li [data-card-menu] button\"); b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); b.click(); return 1"
+  },
+  "styles": {
+    "notes.home.content": {
+      "screen": "home",
+      "selector": "main#main > div:nth-child(2)"
+    },
+    "notes.catchup.button": {
+      "screen": "home",
+      "selector": "main#main > div:nth-child(2) > div:first-child > button"
+    },
+    "notes.catchup.hint": {
+      "screen": "home",
+      "selector": "main#main > div:nth-child(2) > div:first-child > span"
+    },
+    "notes.section": {
+      "screen": "home",
+      "selector": "main#main section"
+    },
+    "notes.section.header": {
+      "screen": "home",
+      "selector": "main#main section > div:first-child"
+    },
+    "notes.section.title": {
+      "screen": "home",
+      "selector": "main#main section h2"
+    },
+    "notes.section.icon": {
+      "screen": "home",
+      "selector": "main#main section h2 > span:first-child"
+    },
+    "notes.section.count": {
+      "screen": "home",
+      "selector": "main#main section h2 > span.ml-2"
+    },
+    "notes.section.seeAll": {
+      "screen": "home",
+      "selector": "main#main section > div:first-child > a"
+    },
+    "notes.carousel": {
+      "screen": "home",
+      "selector": "main#main section ul[aria-label='Recent notes']"
+    },
+    "notes.carousel.arrow": {
+      "screen": "home",
+      "selector": "main#main section button[aria-label^='Scroll']"
+    },
+    "notes.folders.grid": {
+      "screen": "home",
+      "selector": "main#main section ul.grid"
+    },
+    "notes.ask": {
+      "screen": "home",
+      "selector": "button.ui-fab"
+    },
+    "notes.ask.label": {
+      "screen": "home",
+      "selector": "button.ui-fab > span"
+    },
+    "notes.card.link": {
+      "screen": "home",
+      "selector": "main#main section a.note-card-r"
+    },
+    "notes.card.page": {
+      "screen": "home",
+      "selector": "main#main section a.note-card-r > div > span:first-child"
+    },
+    "notes.card.sheet": {
+      "screen": "home",
+      "selector": "main#main section a.note-card-r div.fb-sheet"
+    },
+    "notes.card.spine": {
+      "screen": "home",
+      "selector": "main#main section a.note-card-r div.fb-sheet > div:first-child"
+    },
+    "notes.card.face": {
+      "screen": "home",
+      "selector": "main#main section a.note-card-r div.fb-sheet > div:nth-child(2)"
+    },
+    "notes.card.title": {
+      "screen": "home",
+      "selector": "main#main section a.note-card-r h3"
+    },
+    "notes.card.created": {
+      "screen": "home",
+      "selector": "main#main section a.note-card-r [data-card='created']"
+    },
+    "notes.card.body": {
+      "screen": "home",
+      "selector": "main#main section a.note-card-r div.fb-sheet > div:nth-child(2) > div:nth-child(3) > p"
+    },
+    "notes.card.footer": {
+      "screen": "home",
+      "selector": "main#main section a.note-card-r div.fb-sheet > div:nth-child(2) > div:nth-child(4)"
+    },
+    "notes.card.time": {
+      "screen": "home",
+      "selector": "main#main section a.note-card-r div.fb-sheet > div:nth-child(2) > div:nth-child(4) > span:first-child"
+    },
+    "notes.card.chip": {
+      "screen": "home",
+      "selector": "main#main section a.note-card-r div.fb-sheet > div:nth-child(2) > div:nth-child(4) > span:last-child"
+    },
+    "notes.card.edge": {
+      "screen": "home",
+      "selector": "main#main section a.note-card-r [data-card='edge']"
+    },
+    "notes.card.star": {
+      "screen": "home",
+      "selector": "main#main section a.note-card-r div.fb-sheet > span.right-0"
+    },
+    "notes.card.menu": {
+      "screen": "home",
+      "selector": "main#main section [data-card-menu] > div"
+    },
+    "notes.card.menu.button": {
+      "screen": "home",
+      "selector": "main#main section [data-card-menu] button"
+    },
+    "notes.folder.tab": {
+      "screen": "home",
+      "selector": "main#main section [data-fc='back']",
+      "nth": 0
+    },
+    "notes.folder.back": {
+      "screen": "home",
+      "selector": "main#main section [data-fc='back']",
+      "nth": 1
+    },
+    "notes.folder.note": {
+      "screen": "home",
+      "selector": "main#main section ul.grid > li a > div:nth-child(3) > div"
+    },
+    "notes.folder.note.title": {
+      "screen": "home",
+      "selector": "main#main section ul.grid > li a > div:nth-child(3) > div p:first-child"
+    },
+    "notes.folder.note.excerpt": {
+      "screen": "home",
+      "selector": "main#main section ul.grid > li a > div:nth-child(3) > div p:nth-child(2)"
+    },
+    "notes.folder.front": {
+      "screen": "home",
+      "selector": "main#main section [data-fc='front']"
+    },
+    "notes.folder.count": {
+      "screen": "home",
+      "selector": "main#main section [data-fc='count']"
+    },
+    "notes.folder.age": {
+      "screen": "home",
+      "selector": "main#main section [data-fc='age']"
+    },
+    "notes.folder.name": {
+      "screen": "home",
+      "selector": "main#main section [data-fc='name']"
+    },
+    "notes.folder.menu": {
+      "screen": "home",
+      "selector": "main#main section ul.grid > li > div > div.absolute"
+    },
+    "notes.folder.menu.button": {
+      "screen": "home",
+      "selector": "main#main section ul.grid > li > div > div.absolute button"
+    },
+    "notes.browser.content": {
+      "screen": "notes",
+      "selector": "main#main > div:nth-child(2) > div"
+    },
+    "notes.toolbar": {
+      "screen": "notes",
+      "selector": "main#main > div:nth-child(2) > div > div:first-child"
+    },
+    "notes.toolbar.status": {
+      "screen": "notes",
+      "selector": "main#main p[role='status']"
+    },
+    "notes.toolbar.sort": {
+      "screen": "notes",
+      "selector": "main#main label"
+    },
+    "notes.toolbar.sort.label": {
+      "screen": "notes",
+      "selector": "main#main label > span"
+    },
+    "notes.toolbar.select": {
+      "screen": "notes",
+      "selector": "main#main label button[role='combobox']"
+    },
+    "notes.toolbar.select.label": {
+      "screen": "notes",
+      "selector": "main#main label button[role='combobox'] > span"
+    },
+    "notes.toolbar.seg": {
+      "screen": "notes",
+      "selector": "main#main .ui-seg"
+    },
+    "notes.toolbar.seg.on": {
+      "screen": "notes",
+      "selector": "main#main .ui-seg button[aria-checked='true']"
+    },
+    "notes.toolbar.seg.off": {
+      "screen": "notes",
+      "selector": "main#main .ui-seg button[aria-checked='false']"
+    },
+    "notes.grid": {
+      "screen": "notes",
+      "selector": "main#main ul.grid"
+    },
+    "notes.grid.card": {
+      "screen": "notes",
+      "selector": "main#main ul.grid > li"
+    },
+    "notes.grid.title": {
+      "screen": "notes",
+      "selector": "main#main ul.grid > li a.note-card-r h3"
+    },
+    "notes.grid.star": {
+      "screen": "notes",
+      "selector": "main#main ul.grid a.note-card-r div.fb-sheet > span.right-0"
+    },
+    "notes.list": {
+      "screen": "noteslist",
+      "selector": "main#main ul.ui-card"
+    },
+    "notes.list.row": {
+      "screen": "noteslist",
+      "selector": "main#main ul.ui-card > li"
+    },
+    "notes.list.row.second": {
+      "screen": "noteslist",
+      "selector": "main#main ul.ui-card > li",
+      "nth": 1
+    },
+    "notes.list.handle": {
+      "screen": "noteslist",
+      "selector": "main#main ul.ui-card > li > span:first-child"
+    },
+    "notes.list.icon": {
+      "screen": "noteslist",
+      "selector": "main#main ul.ui-card > li > svg"
+    },
+    "notes.list.title": {
+      "screen": "noteslist",
+      "selector": "main#main ul.ui-card > li > a"
+    },
+    "notes.list.badge": {
+      "screen": "noteslist",
+      "selector": "main#main ul.ui-card > li > a + span"
+    },
+    "notes.list.badge.folder": {
+      "screen": "noteslist",
+      "selector": "main#main ul.ui-card > li > a + span",
+      "nth": 4
+    },
+    "notes.list.tags": {
+      "screen": "noteslist",
+      "selector": "main#main ul.ui-card > li > span.hidden"
+    },
+    "notes.list.time": {
+      "screen": "noteslist",
+      "selector": "main#main ul.ui-card > li > span.w-28"
+    },
+    "notes.list.menu": {
+      "screen": "noteslist",
+      "selector": "main#main ul.ui-card > li > div:last-child button"
+    },
+    "notes.compact.grid": {
+      "screen": "notescompact",
+      "selector": "main#main ul.grid"
+    },
+    "notes.compact.link": {
+      "screen": "notescompact",
+      "selector": "main#main ul.grid > li > a"
+    },
+    "notes.compact.card": {
+      "screen": "notescompact",
+      "selector": "main#main ul.grid > li > a > div"
+    },
+    "notes.compact.title": {
+      "screen": "notescompact",
+      "selector": "main#main ul.grid > li > a h3"
+    },
+    "notes.compact.footer": {
+      "screen": "notescompact",
+      "selector": "main#main ul.grid > li > a > div > div:nth-child(2)"
+    },
+    "notes.compact.edge": {
+      "screen": "notescompact",
+      "selector": "main#main ul.grid > li > a > div > span"
+    },
+    "notes.empty": {
+      "screen": "archive",
+      "selector": "main#main [data-empty-state]"
+    },
+    "notes.empty.icon": {
+      "screen": "archive",
+      "selector": "main#main [data-empty-state] > span"
+    },
+    "notes.empty.title": {
+      "screen": "archive",
+      "selector": "main#main [data-empty-state] > h2"
+    },
+    "notes.empty.body": {
+      "screen": "archive",
+      "selector": "main#main [data-empty-state] > p"
+    },
+    "notes.folderpage.tint": {
+      "screen": "folder",
+      "selector": "main#main",
+      "parent": 1
+    },
+    "notes.folderpage.subfolders": {
+      "screen": "folder",
+      "selector": "main#main ul[aria-label='Folders inside']"
+    },
+    "notes.folderpage.count": {
+      "screen": "folder",
+      "selector": "main#main ul[aria-label='Folders inside'] [data-fc='count']"
+    },
+    "notes.folderpage.age": {
+      "screen": "folder",
+      "selector": "main#main ul[aria-label='Folders inside'] [data-fc='age']"
+    },
+    "notes.folderpage.name": {
+      "screen": "folder",
+      "selector": "main#main ul[aria-label='Folders inside'] [data-fc='name']"
+    },
+    "notes.folderpage.note.title": {
+      "screen": "folder",
+      "selector": "main#main ul[aria-label='Folders inside'] a > div:nth-child(3) > div p:first-child"
+    },
+    "notes.folderpage.note.excerpt": {
+      "screen": "folder",
+      "selector": "main#main ul[aria-label='Folders inside'] a > div:nth-child(3) > div p:nth-child(2)"
+    },
+    "notes.index.content": {
+      "screen": "folders",
+      "selector": "main#main > div:nth-child(2)"
+    },
+    "notes.index.search": {
+      "screen": "folders",
+      "selector": "main#main input"
+    },
+    "notes.index.search.icon": {
+      "screen": "folders",
+      "selector": "main#main input",
+      "parent": 1
+    },
+    "notes.index.status": {
+      "screen": "folders",
+      "selector": "main#main p[role='status']"
+    },
+    "notes.index.sort": {
+      "screen": "folders",
+      "selector": "main#main label"
+    },
+    "notes.index.seg": {
+      "screen": "folders",
+      "selector": "main#main .ui-seg"
+    },
+    "notes.index.seg.on": {
+      "screen": "folders",
+      "selector": "main#main .ui-seg button[aria-pressed='true']"
+    },
+    "notes.index.seg.off": {
+      "screen": "folders",
+      "selector": "main#main .ui-seg button[aria-pressed='false']"
+    },
+    "notes.index.grid": {
+      "screen": "folders",
+      "selector": "main#main ul[aria-label='Folders']"
+    },
+    "notes.index.card": {
+      "screen": "folders",
+      "selector": "main#main ul[aria-label='Folders'] > li"
+    },
+    "notes.index.newFolder": {
+      "screen": "folders",
+      "selector": "header button.ui-btn-primary, [data-view-actions] button"
+    },
+    "notes.tags.content": {
+      "screen": "tags",
+      "selector": "main#main > div:nth-child(2)"
+    },
+    "notes.tags.empty": {
+      "screen": "tags",
+      "selector": "main#main [data-empty-state]"
+    },
+    "notes.tags.status": {
+      "screen": "tags",
+      "selector": "main#main p[role='status']"
+    },
+    "notes.docmenu": {
+      "screen": "notesmenu",
+      "selector": "[role='menu']"
+    }
+  },
+  "vars": [
+    "glass-hover",
+    "glass-active",
+    "color-surface",
+    "color-canvas",
+    "color-heading",
+    "color-ink",
+    "color-ink-muted",
+    "color-ink-faint",
+    "color-line",
+    "color-accent-soft",
+    "color-sunken",
+    "color-danger",
+    "color-danger-soft"
+  ]
+}

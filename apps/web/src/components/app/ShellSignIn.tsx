@@ -19,6 +19,7 @@ import { deviceWords } from "@/lib/shell/words";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { ModeChoice, PRE_APP_PAGE, mobileApp, preAppBackground, preAppTitle } from "./ModeChoice";
 import { MOBILE_TEXT_BUTTON } from "./LibrarySetup";
+import { NativeGate, type NativeGateAction } from "@/lib/engine/NativeGate";
 
 /** The phone and tablet apps' sign-in buttons: full width, 50 tall, 17 pt (12 apart, from the grid). */
 const MOBILE_BUTTON = "!h-[50px] w-full !rounded-control !text-headline font-semibold";
@@ -112,9 +113,32 @@ export function ShellSignIn() {
       ) : null}
     </>
   );
+  // Native chrome mode (the Mac's native frame): native draws these screens and presses the same buttons.
+  const nativeActions: NativeGateAction[] = waiting
+    ? [
+        { id: "waiting", label: sheet ? "Waiting for the sign-in sheet…" : "Waiting for your browser…", style: "primary", enabled: false, run: () => undefined },
+        { id: "again", label: sheet ? "Open the sign-in sheet again" : "Open the browser again", style: "secondary", run: () => void start(way) },
+        { id: "another", label: "Sign in another way", style: "secondary", run: () => setState("choose") },
+        { id: "local", label: "Keep notes on my devices instead", style: "quiet", run: () => void keepLocally() },
+      ]
+    : [
+        { id: "apple", label: "Continue with Apple", style: "primary", enabled: apple !== "busy", run: () => void withApple() },
+        { id: "google", label: "Continue with Google", style: "secondary", enabled: apple !== "busy", run: () => void start("google") },
+        { id: "email", label: "Sign in with email", style: "secondary", enabled: apple !== "busy", run: () => void start("email") },
+        { id: "local", label: "Keep notes on my devices instead", style: "quiet", run: () => void keepLocally() },
+      ];
+  const nativeError = typeof apple === "object" && !waiting ? { code: "failed", message: apple.error } : state === "failed" ? { code: "failed", message: "Signing in didn’t finish. Try again." } : null;
   if (state === "idle")
     return (
       <div data-testid="shell-sign-in">
+        <NativeGate
+          gate="modeChoice"
+          title="Where should your notes live?"
+          actions={[
+            { id: "account", label: "Sign in to Folevi", style: "primary", run: () => setState("choose") },
+            { id: "local", label: "Keep notes on my devices", style: "secondary", run: () => void keepLocally() },
+          ]}
+        />
         <ModeChoice
           onChoose={async (mode) => {
             if (mode === "local") await keepLocally();
@@ -143,7 +167,7 @@ export function ShellSignIn() {
       </main>
     );
   return (
-    <FullPageMessage title="Sign in to Folevi" body={body} gate="signedOut">
+    <FullPageMessage title="Sign in to Folevi" body={body} gate="signedOut" actions={nativeActions} error={nativeError}>
       <div className="grid gap-3" data-testid="shell-sign-in">
         {choices}
         <Button variant="ghost" className={MAC_BUTTON} onClick={() => void keepLocally()}>

@@ -15,6 +15,7 @@ import { activeRouter } from "@/lib/e2ee/router/active";
 import { useBackendMode } from "@/lib/mode";
 import { saveAccountSnapshot } from "./offlineSnapshot";
 import { NativeGate, type NativeGateProps } from "@/lib/engine/NativeGate";
+import { useSystemTheme } from "@/components/app/ModeChoice";
 
 export type Profile = NonNullable<Extract<NonNullable<ReturnType<typeof useMeQuery>>, { state: "ready" }>["profile"]>;
 /** A team workspace you belong to (`workspaces.mine`). Personal is never one of these. */
@@ -489,6 +490,8 @@ export function FullPageMessage({ title, body, busy, children, gate, ...native }
   // the neutral chrome itself (globals.css), so loading looks like the app, not the warmer marketing palette.
   // While something loads it's the F writing itself (FoleviLoader); a message that needs reading is a card.
   // The native apps show their own screen for it (native chrome mode: NativeGate tells them which).
+  // Before the app is up nothing else follows the Mac's light or dark look as it changes (as ModeChoice does).
+  useSystemTheme();
   const report = <NativeGate {...native} gate={gate ?? (busy ? "loading" : "error")} title={title} message={typeof body === "string" ? body : ""} busy={Boolean(busy)} />;
   if (busy && !children)
     return (

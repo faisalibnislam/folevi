@@ -269,6 +269,9 @@ public final class ContentViewController: NSViewController {
     private var screen: NSHostingView<ScreenRoot>?
     private lazy var models = ScreenModels(frame: model)
     private var toasts: NSHostingView<ToastStack>?
+    /// Ask Foli AI's floating button and chat (FoliAI/AiAskPanel.swift), over everything but a note.
+    private lazy var askAi = AiAskState(frame: model, feedback: models.feedback)
+    private var askAiView: NSHostingView<AiAskOverlay>?
     private var observers: [Observer] = []
     private var shownRoute: FrameRoute?
     /// Where the content starts under the glass bar (the web's main: padding-top 56).
@@ -307,6 +310,12 @@ public final class ContentViewController: NSViewController {
         let toastView = NSHostingView(rootView: ToastStack(model: model))
         toastView.safeAreaRegions = []
         toastView.translatesAutoresizingMaskIntoConstraints = false
+        let ask = NSHostingView(rootView: AiAskOverlay(frame: model, state: askAi))
+        ask.safeAreaRegions = []
+        ask.sizingOptions = [.intrinsicContentSize]
+        ask.translatesAutoresizingMaskIntoConstraints = false
+        clip.addSubview(ask)
+        askAiView = ask
         clip.addSubview(toastView)
         toasts = toastView
         let bar = WebStyles.named("frame.topbar").light
@@ -328,10 +337,19 @@ public final class ContentViewController: NSViewController {
             body.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
             body.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
             body.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
+            ask.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
+            ask.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
             toastView.centerXAnchor.constraint(equalTo: clip.centerXAnchor),
             toastView.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
             toastView.widthAnchor.constraint(lessThanOrEqualTo: clip.widthAnchor, constant: -40),
         ])
+    }
+
+    public override func viewDidLayout() {
+        super.viewDidLayout()
+        // The floating chat is at most the window's height less 136 pt (the web's min(640px, 100dvh - 136px)).
+        let h = (view.window?.contentView?.bounds.height ?? view.bounds.height) - 136
+        if abs(askAi.maxHeight - h) > 0.5 { askAi.maxHeight = h }
     }
 
     public override func viewDidLoad() {

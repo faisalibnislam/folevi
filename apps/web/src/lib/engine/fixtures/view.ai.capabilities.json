@@ -1,7 +1,7 @@
 {
   "kind": "view",
   "name": "ai.capabilities",
-  "description": "What Foli AI can do here.",
+  "description": "What Foli AI can do here, with the credits that apply (R12.7, running low: the chat says how many are left).",
   "args": {},
   "value": {
     "available": true,
@@ -9,6 +9,16 @@
     "webResearch": true,
     "attachments": true,
     "history": true,
-    "agent": true
+    "agent": true,
+    "unavailable": null,
+    "credits": {
+      "included": true,
+      "available": 8,
+      "low": true,
+      "resetsAt": 1793491200000,
+      "trialing": false,
+      "seat": false,
+      "canBuy": true
+    }
   }
 }

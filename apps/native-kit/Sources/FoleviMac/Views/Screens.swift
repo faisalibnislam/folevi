@@ -44,6 +44,7 @@ final class ScreenModels {
     private var search: SearchModel?
     /// Every folder as a card (Home's Recent folders, the Folders page).
     private var allFolders: ValueStore<FolderCardsValue>?
+    private var aiPage: FoliChatModel?
 
     init(frame: FrameModel) { self.frame = frame }
 
@@ -102,6 +103,18 @@ final class ScreenModels {
         return m
     }
 
+    /// The Foli AI page's chat (one per window, kept while its tab is open).
+    func aiPageModel() -> FoliChatModel {
+        if let aiPage { return aiPage }
+        let m = FoliChatModel(client: frame.client, feedback: feedback)
+        m.onOpen = { [weak frame] route in
+            guard let frame, let r = FrameNavigation.route(route) else { return }
+            frame.open(r)
+        }
+        aiPage = m
+        return m
+    }
+
     /// Brings a kept screen to what the route asks before it shows (a Tasks view, a calendar day, the words).
     func prepare(_ route: FrameRoute) {
         switch route {
@@ -143,6 +156,7 @@ final class ScreenModels {
         if !routes.contains(where: { if case .tasks = $0 { return true } else { return false } }) { tasks = nil }
         if !routes.contains(where: { if case .calendar = $0 { return true } else { return false } }) { calendar = nil }
         if !routes.contains(where: { if case .search = $0 { return true } else { return false } }) { search = nil }
+        if !routes.contains(where: { $0.tabKey == "view:ai" }) { aiPage?.closed(); aiPage = nil }
     }
 }
 
@@ -223,7 +237,7 @@ enum FrameNavigation {
             case .movePlaces: frame.host?.frameMoveOrCopy()
             case .invite: frame.host?.frameOpenSettings(section: "members")
             case .places, .notifications: frame.toast("They're at the bottom of the sidebar: the account button and the bell.")
-            case .foliAI: frame.toast("The Foli AI chat comes to the Mac with the next update.")
+            case .foliAI: frame.askAI()
             default: break
             }
         }, prepareNote: { [weak frame] id in
@@ -254,19 +268,14 @@ struct ScreenRoot: View {
             case .calendar: WebCalendarScreen(model: models.calendarModel(), frame: model)
             // The Vault (Vault/VaultScreen.swift); /vault/<section> opens a section.
             case .web(let path) where path == "/vault" || path.hasPrefix("/vault/"): VaultScreen(frame: model, path: path)
+            case .web(let path) where route.tabKey == "view:ai":
+                AiPageScreen(frame: model, model: models.aiPageModel(), conversationId: path.hasPrefix("/ai/") ? String(path.dropFirst(4)).removingPercentEncoding : nil)
             case .web(let path): Placeholder(symbol: "globe", title: "Not here yet", message: "\(path) doesn't have a screen in the Mac app yet.")
             case .note: Color.clear
             }
         }
         .id(route.tabKey)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        // Foli AI's floating launcher over Home and the note lists (the web's AskAiLauncher).
-        .overlay(alignment: .bottomTrailing) {
-            if model.session.value?.capabilities.ai == true, WebAskFoliPill.shows(on: route) {
-                WebAskFoliPill { model.open(.web("/ai")) }
-                    .padding(WebAskFoliPill.inset)
-            }
-        }
         .background(Folevi.color.canvas)
         // Another place or space: the screen crossfades instead of cutting.
         .placeCrossfade("\(model.session.value?.place ?? "")|\(model.session.value?.space ?? "")")

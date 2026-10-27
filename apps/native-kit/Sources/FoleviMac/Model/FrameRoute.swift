@@ -110,7 +110,8 @@ public enum FrameRoute: Hashable, Sendable {
         case .search: return "view:search"
         // The Vault is one tab whichever section a link opened (as the web's route "vault").
         case .web(let p) where p == "/vault" || p.hasPrefix("/vault/"): return "view:vault"
-        case .web(let p): return "view:web:\(p)"
+        // Foli AI is one tab: a new chat keeps its tab when it gets its address (/ai to /ai/<id>), as on the web.
+        case .web(let p): return p == "/ai" || p.hasPrefix("/ai/") ? "view:ai" : "view:web:\(p)"
         }
     }
 

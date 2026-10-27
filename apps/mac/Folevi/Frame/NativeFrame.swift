@@ -342,7 +342,7 @@ enum FrameCommands {
         case "go.inbox": m.open(.tasks(.inbox))
         case "go.calendar": m.open(.calendar(nil))
         case "go.ask-ai":
-            if noteOpen { m.toggleNoteAI() } else { m.toast("The Foli AI chat comes to the Mac with the next update.") }
+            m.askAI()
         case "go.next-tab": m.nextTab(1)
         case "go.previous-tab": m.nextTab(-1)
         case "help.help": frame.frameOpenHelp()

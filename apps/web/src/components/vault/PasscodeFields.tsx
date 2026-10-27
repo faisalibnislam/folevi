@@ -3,8 +3,23 @@
 import { useEffect, useId, useState } from "react";
 import { VAULT_PASSCODE_LENGTHS } from "@folevi/local-store/e2ee";
 
+/**
+ * Tells password managers to leave a field alone: 1Password, LastPass, Bitwarden, Dashlane (which reads
+ * data-form-type) and the like. The browsers' own saving is avoided by not being a password field at all.
+ */
+export const NOT_A_LOGIN = { "data-1p-ignore": "", "data-lpignore": "true", "data-bwignore": "true", "data-form-type": "other" } as const;
+
+/** Whether this browser draws a text field as dots (-webkit-text-security: every current engine but old Firefox). */
+function useDots(): boolean {
+  const [dots, setDots] = useState(true);
+  useEffect(() => setDots(CSS.supports("-webkit-text-security", "disc")), []);
+  return dots;
+}
+
 export function PasscodeField({ label, value, onChange, autoFocus, digits }: { label: string; value: string; onChange: (v: string) => void; autoFocus?: boolean; digits?: number }) {
   const id = useId();
+  // A text field drawn as dots, not a password field: browsers offer to save, and fill in, only password fields.
+  const dots = useDots();
   return (
     <label htmlFor={id} className="block">
       <span className="mb-1 flex items-baseline justify-between gap-3 text-footnote font-medium text-ink">
@@ -17,14 +32,19 @@ export function PasscodeField({ label, value, onChange, autoFocus, digits }: { l
       </span>
       <input
         id={id}
-        type="password"
+        type={dots ? "text" : "password"}
         autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        {...NOT_A_LOGIN}
         autoFocus={autoFocus}
         value={value}
         inputMode={digits ? "numeric" : undefined}
         pattern={digits ? "[0-9]*" : undefined}
         maxLength={digits}
         onChange={(e) => onChange(digits ? e.target.value.replace(/\D/g, "") : e.target.value)}
+        style={dots ? ({ WebkitTextSecurity: "disc" } as React.CSSProperties) : undefined}
         className={`h-10 w-full ui-input rounded-chip px-3 text-body text-ink ${digits ? "font-mono tracking-[0.3em]" : ""}`}
       />
     </label>

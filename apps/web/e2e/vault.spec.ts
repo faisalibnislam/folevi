@@ -77,6 +77,14 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   await page.getByRole("button", { name: "Lock", exact: true }).click();
   await expect(page.getByRole("heading", { name: "The Vault is locked" })).toBeVisible();
   await expect(page.getByText("Bank")).toHaveCount(0);
+  // Not a password field (so browsers don't offer to save or fill it), drawn as dots, and managers skip it.
+  const passcodeBox = page.getByLabel("Passcode");
+  await expect(passcodeBox).toHaveAttribute("type", "text");
+  await expect(passcodeBox).toHaveAttribute("autocomplete", "off");
+  await expect(passcodeBox).toHaveAttribute("data-1p-ignore", "");
+  await expect(passcodeBox).toHaveAttribute("data-lpignore", "true");
+  expect(await passcodeBox.evaluate((el) => getComputedStyle(el).getPropertyValue("-webkit-text-security"))).toBe("disc");
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
   await page.getByLabel("Passcode").fill("000000");
   await page.getByRole("button", { name: "Unlock" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "That isn't right" })).toBeVisible();

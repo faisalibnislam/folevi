@@ -93,6 +93,20 @@ describe("refusals", () => {
     expect(await counts(t)).toMatchObject([{ kind: "filtered", count: 1 }]);
   });
 
+  test("a question Gemini blocks outright (no reply at all, only promptFeedback) is treated the same way", async () => {
+    const t = setup();
+    const a = await person(t, "prompt-blocked@example.com");
+    process.env.GEMINI_API_KEY = "test-key";
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ promptFeedback: { blockReason: "PROHIBITED_CONTENT" }, usageMetadata: { promptTokenCount: 30_000 } }), { status: 200 })));
+    await expect(write(a)).rejects.toThrow(/couldn't help with that request/);
+    expect(await used(a)).toBe(0);
+    expect(await counts(t)).toMatchObject([{ kind: "filtered", count: 1 }]);
+    // A reply stopped by another of Gemini's filters too.
+    vi.stubGlobal("fetch", vi.fn(async () => geminiReply("", "PROHIBITED_CONTENT")));
+    await expect(write(a)).rejects.toThrow(/couldn't help with that request/);
+    expect(await used(a)).toBe(0);
+  });
+
   test("a streamed refusal never shows the marker, even half-arrived", async () => {
     const t = setup();
     const a = await person(t, "stream@example.com");
@@ -113,17 +127,18 @@ describe("refusals", () => {
 
 describe("the pause", () => {
   const begin = (p: Person) => p.as.mutation(internal.ai.begin, { scope: PERSONAL });
-  const refuse = async (t: T, p: Person, kind: "harmful" | "crisis", feature?: "digests") => {
+  const refuse = async (t: T, p: Person, kind: "harmful" | "crisis" | "filtered" | "other", feature?: "digests") => {
     const { holdId } = await p.as.mutation(internal.ai.begin, { scope: PERSONAL, ...(feature ? { feature } : {}) });
     await t.mutation(internal.ai.settle, { holdId, calls: [{ model: "gemini-3.8-flash", promptTokens: 100, outputTokens: 10, thoughtsTokens: 0, refused: { kind, free: true } }] });
   };
 
-  test("5 harmful refusals in an hour pause Foli AI for 24 hours; crisis and background work never do", async () => {
+  test("5 harmful or filtered refusals in an hour pause Foli AI for 24 hours; crisis, other and background work never do", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(Date.UTC(2026, 9, 27, 10));
     const t = setup();
     const a = await person(t, "pause@example.com");
     for (let i = 0; i < 6; i++) await refuse(t, a, "crisis");
+    for (let i = 0; i < 6; i++) await refuse(t, a, "other");
     for (let i = 0; i < 6; i++) await refuse(t, a, "harmful", "digests");
     for (let i = 0; i < 4; i++) await refuse(t, a, "harmful");
     await begin(a);
@@ -131,7 +146,9 @@ describe("the pause", () => {
     vi.setSystemTime(Date.UTC(2026, 9, 27, 11, 30));
     await refuse(t, a, "harmful");
     await begin(a);
-    for (let i = 0; i < 4; i++) await refuse(t, a, "harmful");
+    for (let i = 0; i < 2; i++) await refuse(t, a, "harmful");
+    // Gemini's filter blocking a question counts too.
+    for (let i = 0; i < 2; i++) await refuse(t, a, "filtered");
     await expect(begin(a)).rejects.toThrow(/Foli AI is paused on your account until/);
     // A day later it works again.
     vi.setSystemTime(Date.UTC(2026, 9, 28, 11, 31));

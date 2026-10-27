@@ -1,7 +1,7 @@
 # Foli AI guardrails
 
 What Foli AI will and won't help with, and how that's enforced. Decided with the owner on 2026-10-27.
-Status: planned, not built.
+Status: built 2026-10-27 (1489e813); first live eval in docs/evals/ai-safety-2026-10-27.md.
 
 ## Where it stands today
 
@@ -44,7 +44,9 @@ One policy for everyone: no workspace or admin topic controls.
 4. **No charge for refusals.** A declined or filtered reply is not charged in AI credits (`lib/credits.ts`).
 5. **Counts, never text.** A new table `aiSafetyCounts` (profile, day, category, count) is written on each
    refusal. No question, answer or note text is kept. Kept 90 days.
-6. **A pause for a pattern.** 5 `harmful` refusals within an hour pauses Foli AI for that account for 24 hours,
+6. **A pause for a pattern.** 5 `harmful` or `filtered` refusals within an hour pauses Foli AI for that account
+   for 24 hours (the first eval showed the worst questions are usually blocked by Gemini's filter before the
+   model can decline them, so filter blocks count too),
    with a plain message ("Foli AI is paused on your account until <time>, after several requests it can't help
    with."). `crisis` never counts toward a pause. Super admins see paused accounts in Admin and can lift one; both
    are written to the admin log.

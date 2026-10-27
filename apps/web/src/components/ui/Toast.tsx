@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { withoutPurchaseHints } from "@/lib/nativeApp";
 
@@ -26,6 +26,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [dismiss],
   );
   const value = useMemo(() => ({ show }), [show]);
+  // Errors from work outside any screen (the background uploader: lib/app/state.tsx) arrive as a window event.
+  useEffect(() => {
+    const onError = (e: Event) => {
+      const message = (e as CustomEvent<unknown>).detail;
+      if (typeof message === "string" && message) show(message, { tone: "error", duration: 8000 });
+    };
+    window.addEventListener("folevi:error", onError);
+    return () => window.removeEventListener("folevi:error", onError);
+  }, [show]);
   return (
     <ToastContext.Provider value={value}>
       {children}

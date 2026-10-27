@@ -9,6 +9,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/lib/convex/api";
 import type { SyncEngine } from "@/lib/sync/engine";
 import { enqueueUpload } from "@/lib/sync/uploads";
+import { MAX_FILE_BYTES, MAX_IMAGE_BYTES } from "@folevi/editor-schema/fileBytes";
 import { decorationsKey, type DecorationInputs, type TriggerState } from "./plugins";
 import { editorExtensions } from "./editorExtensions";
 import { blocksToDoc, docToBlocks, localChanges } from "./convert";
@@ -347,6 +348,13 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       let replaceId = startNode.type.name === "paragraph" && startNode.content.size === 0 ? afterId : null;
       for (const file of files.slice(0, 10)) {
         const isImage = /^image\/(png|jpe?g|gif|webp)$/i.test(file.type);
+        // Over the limit the server would refuse it after the upload: said now, and no block is made for it.
+        const max = isImage ? MAX_IMAGE_BYTES : MAX_FILE_BYTES;
+        if (file.size > max) {
+          const what = isImage ? "Images" : "Files";
+          window.dispatchEvent(new CustomEvent("folevi:error", { detail: `“${file.name}” is too large. ${what} can be up to ${Math.round(max / 1024 / 1024)} MB.` }));
+          continue;
+        }
         const blockId = ulid();
         const node = isImage
           ? ed.schema.nodes.image!.create({ id: blockId, depth, alt: file.name.replace(/\.[^.]+$/, ""), caption: "" })

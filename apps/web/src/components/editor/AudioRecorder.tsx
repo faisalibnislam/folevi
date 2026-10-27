@@ -18,10 +18,12 @@ import { NativeCallRecording, callProblem, callRecordingAvailable, mixAudio, nat
 /** Longest recording, so a forgotten recorder can't fill the storage quota. */
 export const MAX_RECORDING_MS = 3 * 60 * 60_000;
 /**
- * Longest recording in bytes: under the 100 MB a recording may be (convex/lib/images.ts MAX_FILE_BYTES).
- * Three hours at 64 kbit/s is about 86 MB, so this only stops a recorder that writes more than it was asked.
+ * Longest recording in bytes: under the 50 MB a recording may be (convex/lib/images.ts MAX_FILE_BYTES).
+ * Three hours at 32 kbit/s is about 43 MB, so this only stops a recorder that writes more than it was asked.
  */
-export const MAX_RECORDING_BYTES = 95 * 1024 * 1024;
+export const MAX_RECORDING_BYTES = 48 * 1024 * 1024;
+/** Speech-quality bitrate, so three hours fits under the file limit. */
+const RECORDING_BITS_PER_SECOND = 32_000;
 const BARS = 36;
 
 /** The first container this browser records, most compatible first (Chrome/Firefox: WebM, Safari: MP4). */
@@ -284,7 +286,7 @@ export function AudioRecorder({
       const type = recordingType();
       const rec = new MediaRecorder(
         recorded,
-        type ? { mimeType: type, audioBitsPerSecond: 64_000 } : undefined,
+        type ? { mimeType: type, audioBitsPerSecond: RECORDING_BITS_PER_SECOND } : undefined,
       );
       rec.ondataavailable = (e) => {
         if (e.data.size) {

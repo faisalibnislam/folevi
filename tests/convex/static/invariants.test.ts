@@ -161,4 +161,29 @@ describe("backend invariants", () => {
       if (/from\s+"\.\/vault|from\s+"\.\/lib\/vault|from\s+"\.\.\/vault/.test(s)) throw new Error(`${p}: imports the Vault; it must never be reachable from here`);
     }
   });
+  test("every Vault mutation writes to the Vault's log (docs/VAULT_PLAN.md §7: everything is logged)", () => {
+    // The only mutations that don't, and why.
+    const unlogged = new Map([
+      ["vaultFiles.ts:uploadUrl", "an upload URL; the file only counts once vaultFiles.saveFile (logged) keeps it"],
+      ["vaultLog.ts:anchor", "the log's own daily anchor"],
+      ["vaultLog.ts:expire", "the 3-year expiry: the one delete the log allows"],
+    ]);
+    const seen = new Set<string>();
+    for (const { p, s } of sources) {
+      const file = p.split(/[\\/]/).pop()!;
+      if (!/^vault[A-Z]?\w*\.ts$/.test(file)) continue;
+      for (const m of s.matchAll(/export const (\w+) = (mutation|internalMutation)\(/g)) {
+        const key = `${file}:${m[1]}`;
+        const rest = s.slice(m.index! + m[0].length);
+        const body = rest.slice(0, rest.search(/\nexport |$/));
+        if (unlogged.has(key)) {
+          seen.add(key);
+          continue;
+        }
+        if (!/appendLog\(/.test(body)) throw new Error(`${key}: a Vault mutation that writes nothing to the Vault's log`);
+      }
+    }
+    // The list stays honest: every exception still exists.
+    expect([...seen].sort()).toEqual([...unlogged.keys()].sort());
+  });
 });

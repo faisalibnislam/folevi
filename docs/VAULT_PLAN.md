@@ -242,3 +242,34 @@ One release, built in this order so each part is tested on the one before it.
 6. **Emergency access** for a Personal Vault (a trusted person who can request access after a waiting period):
    later, not in this release.
 7. **An outside security review** before release.
+
+## 12. Where it stands (2026-10-27)
+
+V1 to V10 are built on the web and the Convex backend, behind the `vault` flag (off by default; on in dev).
+
+V11 so far:
+
+- **Unit and crypto tests.** `tests/convex/vault*.test.ts` cover every server function with several accounts
+  (owner, custodian, member, a workspace member outside the Vault, someone outside the workspace).
+  `apps/web/test/vault-*.test.ts` cover the device side. `packages/local-store/test/vault-vectors.test.ts` pins every
+  derivation and wrap to `fixtures/vault-vectors.json` on both crypto backends, and checks them against node:crypto.
+- **The log's completeness.** A static rule in `tests/convex/static/invariants.test.ts`: every Vault mutation calls
+  `appendLog`. The three exceptions are listed with their reasons: the upload URL, the daily anchor and the 3-year
+  expiry.
+- **In a browser.** `apps/web/e2e/vault.spec.ts` (one account, plus a visitor without Folevi) covers:
+  - set-up and the recovery key;
+  - adding, revealing and copying;
+  - locking, a wrong passcode and unlocking;
+  - the log and its check;
+  - Health and Trash;
+  - a one-time link opened by the visitor and then used up;
+  - a note in the editor;
+  - the notification switch.
+
+Still to do before release:
+
+- A browser test with two and three accounts: a team Vault, with a custodian sharing the key, a member, and a share
+  to an outsider. The Convex tests cover this on the server; the screens haven't been run that way yet.
+- **An outside security review (§11.7). Required before the flag goes on in production.**
+- Follow-ups: a Vault email template, approximate location from the sign-in IP, history and import or export screens,
+  and moving a note into or out of the Vault from its menu. The server side of each is done.

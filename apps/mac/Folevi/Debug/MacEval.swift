@@ -167,6 +167,11 @@ enum MacEval {
                         "place": m.view.place ?? NSNull(), "key": m.window?.isKeyWindow ?? false, "visible": m.window?.isVisible ?? false, "loaded": m.view.loaded]
             }
             done(["value": list])
+        case "setDefault":
+            // A native screen's remembered choice (a tab, a filter) before a capture (screens.mjs `defaults`).
+            guard let key = req["key"] as? String else { return done(["error": "no key"]) }
+            if let value = req["value"] as? String { Paths.defaults.set(value, forKey: key) } else { Paths.defaults.removeObject(forKey: key) }
+            done(["value": true])
         case "newWindow":
             WindowManager.shared.openMain(path: req["path"] as? String ?? "/")
             done(["value": WindowManager.shared.mains.count])

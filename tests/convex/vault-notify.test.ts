@@ -35,7 +35,7 @@ async function team(t: T) {
   return { owner, custodian, member, id };
 }
 
-const bell = async (p: Person) => (await p.as.query(api.notifications.list, { limit: 50 })).filter((n) => n.kind === "vault").map((n) => n.title);
+const bell = async (p: Person) => (await p.as.query(api.notifications.list, { limit: 50 })).filter((n) => n.toVault).map((n) => n.title);
 
 describe("Vault notifications", { timeout: 60_000 }, () => {
   test("everyone but whoever did it hears what kind of change, never an item's name; bursts fold", async () => {
@@ -48,7 +48,7 @@ describe("Vault notifications", { timeout: 60_000 }, () => {
     expect(await bell(owner)).toEqual(["vn-member added a note to the Vault", "vn-member added 5 passwords to the Vault"]);
     expect(await bell(custodian)).toEqual(await bell(owner));
     expect(await bell(member)).toEqual([]);
-    const row = (await owner.as.query(api.notifications.list, { limit: 50 })).find((n) => n.kind === "vault")!;
+    const row = (await owner.as.query(api.notifications.list, { limit: 50 })).find((n) => n.toVault)!;
     expect(row).toMatchObject({ toVault: true, documentId: null });
 
     // Turning Vault notices off in the bell.

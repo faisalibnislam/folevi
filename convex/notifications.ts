@@ -70,7 +70,8 @@ export const list = query({
       const thread = doc && n.threadId ? await ctx.db.get(n.threadId) : null;
       out.push({
         id: n._id as string,
-        kind: n.kind,
+        // A Vault notice reads as "system" to apps built before the Vault (their API contract); `toVault` marks it.
+        kind: n.kind === "vault" ? ("system" as const) : n.kind,
         title: n.title,
         // Note and comment text only while the person can still read the note.
         body: n.documentId && !doc ? null : (n.body ?? null),

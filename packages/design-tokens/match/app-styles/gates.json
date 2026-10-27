@@ -1,0 +1,245 @@
+{
+  "$description": "The screens before the app (first launch, library setup, sign-in): each from a fresh scratch folder (apps/mac/scripts/gates.mjs), read in the web frame.",
+  "gates": true,
+  "screens": {
+    "first-launch": "",
+    "library-setup": "",
+    "library-ready": "",
+    "offline": ""
+  },
+  "vars": [
+    "glass-hover",
+    "color-line",
+    "color-surface",
+    "color-canvas",
+    "color-heading",
+    "color-ink",
+    "color-muted",
+    "color-faint",
+    "color-danger",
+    "color-focus"
+  ],
+  "styles": {
+    "gates.page": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice']"
+    },
+    "gates.column": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] > div"
+    },
+    "gates.logo": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] > div > div > svg"
+    },
+    "gates.title": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] h1"
+    },
+    "gates.choice.emphasis": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] [role='group'] > button",
+      "nth": 0
+    },
+    "gates.choice.emphasis.tile": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] [role='group'] > button > span:first-child",
+      "nth": 0
+    },
+    "gates.choice.emphasis.title": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] [role='group'] > button > span.flex-1 > span:first-child",
+      "nth": 0
+    },
+    "gates.choice.emphasis.detail": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] [role='group'] > button > span.flex-1 > span:last-child",
+      "nth": 0
+    },
+    "gates.choice.emphasis.chevron": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] [role='group'] > button > svg",
+      "nth": 0
+    },
+    "gates.choice": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] [role='group'] > button",
+      "nth": 1
+    },
+    "gates.choice.tile": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] [role='group'] > button > span:first-child",
+      "nth": 1
+    },
+    "gates.choice.title": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] [role='group'] > button > span.flex-1 > span:first-child",
+      "nth": 1
+    },
+    "gates.choice.detail": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] [role='group'] > button > span.flex-1 > span:last-child",
+      "nth": 1
+    },
+    "gates.choice.chevron": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] [role='group'] > button > svg",
+      "nth": 1
+    },
+    "gates.choice.emphasis.mark": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] [role='group'] > button > span:first-child > svg",
+      "nth": 0
+    },
+    "gates.choice.icon": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] [role='group'] > button > span:first-child > svg",
+      "nth": 1
+    },
+    "gates.footnote": {
+      "screen": "first-launch",
+      "selector": "main[data-testid='mode-choice'] > div > p"
+    },
+    "gates.lib.page": {
+      "screen": "library-setup",
+      "selector": "main[data-testid='library-setup']"
+    },
+    "gates.lib.column": {
+      "screen": "library-setup",
+      "selector": "main[data-testid='library-setup'] > div"
+    },
+    "gates.lib.header": {
+      "screen": "library-setup",
+      "selector": "main[data-testid='library-setup'] > div > div:first-child"
+    },
+    "gates.lib.title": {
+      "screen": "library-setup",
+      "selector": "main[data-testid='library-setup'] h1"
+    },
+    "gates.lib.message": {
+      "screen": "library-setup",
+      "selector": "main[data-testid='library-setup'] > div > div:first-child > p"
+    },
+    "gates.lib.places": {
+      "screen": "library-setup",
+      "selector": "main[data-testid='library-setup'] [role='group']",
+      "parent": 1
+    },
+    "gates.lib.group": {
+      "screen": "library-setup",
+      "selector": "main[data-testid='library-setup'] [role='group']"
+    },
+    "gates.lib.place": {
+      "screen": "library-setup",
+      "selector": "[data-testid='place-icloud']"
+    },
+    "gates.lib.place.folder": {
+      "screen": "library-setup",
+      "selector": "[data-testid='place-folder']"
+    },
+    "gates.lib.place.device": {
+      "screen": "library-setup",
+      "selector": "[data-testid='place-device']"
+    },
+    "gates.lib.place.title": {
+      "screen": "library-setup",
+      "selector": "[data-testid='place-icloud'] > span.flex-1 > span:first-child"
+    },
+    "gates.lib.place.detail": {
+      "screen": "library-setup",
+      "selector": "[data-testid='place-icloud'] > span.flex-1 > span:last-child"
+    },
+    "gates.lib.place.tile": {
+      "screen": "library-setup",
+      "selector": "[data-testid='place-icloud'] > span:first-child"
+    },
+    "gates.lib.back.row": {
+      "screen": "library-setup",
+      "selector": "main[data-testid='library-setup'] > div > div.flex.justify-center"
+    },
+    "gates.lib.back": {
+      "screen": "library-setup",
+      "selector": "main[data-testid='library-setup'] > div > div.flex.justify-center > button"
+    },
+    "gates.ready.column": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] > div"
+    },
+    "gates.ready.title": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] h1"
+    },
+    "gates.ready.message": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] > div > div:first-child > p"
+    },
+    "gates.ready.path": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] > div > div:first-child > p > span"
+    },
+    "gates.ready.form": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] form"
+    },
+    "gates.ready.card": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] form > section"
+    },
+    "gates.ready.card.tile": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] form > section > div > span:first-child"
+    },
+    "gates.ready.card.title": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] form > section > div > div > p:first-child"
+    },
+    "gates.ready.card.detail": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] form > section > div > div > p:last-child"
+    },
+    "gates.ready.switch": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] form > section [role='switch']"
+    },
+    "gates.ready.switch.thumb": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] form > section [role='switch'] > span"
+    },
+    "gates.ready.buttons": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] form > div.grid"
+    },
+    "gates.ready.open": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] form > div.grid > button[type='submit']"
+    },
+    "gates.ready.elsewhere": {
+      "screen": "library-ready",
+      "selector": "main[data-testid='library-setup'] form > div.grid > button:last-child"
+    },
+    "gates.card.page": {
+      "screen": "offline",
+      "selector": "main"
+    },
+    "gates.card": {
+      "screen": "offline",
+      "selector": "main > div"
+    },
+    "gates.card.title": {
+      "screen": "offline",
+      "selector": "main > div > h1"
+    },
+    "gates.card.body": {
+      "screen": "offline",
+      "selector": "main > div > h1 + div"
+    },
+    "gates.card.children": {
+      "screen": "offline",
+      "selector": "main > div > div.mt-6"
+    },
+    "gates.card.button": {
+      "screen": "offline",
+      "selector": "main > div > div.mt-6 > button"
+    }
+  }
+}

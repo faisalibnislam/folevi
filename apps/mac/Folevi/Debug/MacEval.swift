@@ -167,6 +167,15 @@ enum MacEval {
                         "place": m.view.place ?? NSNull(), "key": m.window?.isKeyWindow ?? false, "visible": m.window?.isVisible ?? false, "loaded": m.view.loaded]
             }
             done(["value": list])
+        case "float":
+            // Every main window over other apps' windows (either frame), so an occluded page still paints for a
+            // capture while other Debug apps are open.
+            let on = req["on"] as? Bool ?? true
+            for m in WindowManager.shared.mains {
+                m.window?.level = on ? .floating : .normal
+                m.window?.orderFrontRegardless()
+            }
+            done(["value": on])
         case "newWindow":
             WindowManager.shared.openMain(path: req["path"] as? String ?? "/")
             done(["value": WindowManager.shared.mains.count])

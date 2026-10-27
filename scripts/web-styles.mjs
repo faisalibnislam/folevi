@@ -184,7 +184,44 @@ async function fromApp(only) {
   const mac = await import(pathToFileURL(join(repo, "apps/mac/scripts/mac.mjs")).href);
   const dir = join(repo, "apps/mac/build/run/screens");
   if (!existsSync(join(dir, "fixture.json"))) throw new Error("No scratch library yet: run node apps/mac/scripts/screens.mjs --fresh first.");
-  const files = readdirSync(APP_DIR).filter((f) => f.endsWith(".json") && (!only || only.includes(f.replace(/\.json$/, ""))));
+  let files = readdirSync(APP_DIR).filter((f) => f.endsWith(".json") && (!only || only.includes(f.replace(/\.json$/, ""))));
+  // Areas marked "gates": the screens before the app, each from a fresh scratch folder (apps/mac/scripts/gates.mjs).
+  const gateFiles = files.filter((f) => JSON.parse(readFileSync(join(APP_DIR, f), "utf8")).gates);
+  files = files.filter((f) => !gateFiles.includes(f));
+  if (gateFiles.length) {
+    const g = await import(pathToFileURL(join(repo, "apps/mac/scripts/gates.mjs")).href);
+    for (const file of gateFiles) {
+      const spec = JSON.parse(readFileSync(join(APP_DIR, file), "utf8"));
+      const out = { light: {}, dark: {} };
+      for (const screen of Object.keys(spec.screens)) {
+        const gate = g.GATES.find((x) => x.id === screen);
+        if (!gate) throw new Error(`${file}: no gate ${screen} in apps/mac/scripts/gates.mjs`);
+        const gdir = await g.enterGate(gate, { web: true });
+        try {
+          await mac.command(gdir, { cmd: "resize", width: 1280, height: 820 });
+          for (const scheme of ["light", "dark"]) {
+            await mac.command(gdir, { cmd: "appearance", value: scheme });
+            await new Promise((r) => setTimeout(r, 800));
+            if (spec.prepare?.[screen]) {
+              await mac.evaluate(gdir, spec.prepare[screen]);
+              await new Promise((r) => setTimeout(r, 600));
+            }
+            const tags = Object.fromEntries(Object.entries(spec.styles).filter(([, t]) => t.screen === screen));
+            if (screen === Object.keys(spec.screens)[0]) tags.__vars = { names: spec.vars ?? [] };
+            Object.assign(out[scheme], await mac.evaluate(gdir, `return (${extract.toString()})(${JSON.stringify(tags)})`));
+          }
+        } finally {
+          await g.quitGate(gdir);
+        }
+      }
+      const missing = Object.keys(spec.styles).filter((id) => !out.light[id]);
+      if (missing.length) console.warn(`${file}: not found in the app: ${missing.join(", ")}`);
+      mkdirSync(CACHE_DIR, { recursive: true });
+      writeFileSync(join(CACHE_DIR, file), JSON.stringify(out, null, 1) + "\n");
+      console.log(`${file}: ${Object.keys(out.light).length} styles`);
+    }
+    if (!files.length) return;
+  }
   await mac.launch({ dir, env: { FOLEVI_TEST_FOLDER: `${dir}-library`, FOLEVI_WEB_FRAME: "1" } });
   try {
     await mac.waitFor(dir, `return document.readyState === "complete" && !!document.querySelector('nav[aria-label="Folio"]')`, 90_000);

@@ -126,7 +126,7 @@ export function ShareDialog({ vaultId, row, title, allowEdit = false, rekey, onC
               {people.map((p) => (
                 <li key={p.id} className="flex items-center gap-3 px-3 py-2">
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-ink">{p.name}</span>
+                    <span className="block truncate text-subheadline font-medium text-ink">{p.name}</span>
                     <span className="block truncate text-footnote text-muted">{[p.email, p.canEdit ? "can edit" : null, p.expired ? "ended" : p.expiresAt ? `until ${formatDateTime(p.expiresAt)}` : "no end date"].filter(Boolean).join(" · ")}</span>
                   </span>
                   <Button size="sm" variant="quiet" className="text-danger" disabled={busy} onClick={() => void stop(p.id, p.name)}>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
-import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, Calendar, CheckSquare, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutList, LayoutTemplate, Plus, Share2, Star, Trash2, Waypoints, X, XCircle } from "lucide-react";
+import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, Calendar, CheckSquare, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutList, LayoutTemplate, Lock, Plus, Share2, Star, Trash2, Waypoints, X, XCircle } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { tabHref, tabPage, useTabs } from "@/lib/app/tabs";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -95,6 +95,8 @@ function ViewIcon({ kind }: { kind: string }) {
       return <Settings size={14} aria-hidden className={c} />;
     case "help":
       return <CircleHelp size={14} aria-hidden className={c} />;
+    case "vault":
+      return <Lock size={14} aria-hidden className={c} />;
     default:
       return <LayoutList size={14} aria-hidden className={c} />;
   }
@@ -287,7 +289,7 @@ export function TabStrip() {
   return (
     <div
       data-ipad-tabs={ipad ? "" : undefined}
-      className={ipad ? "ui-liquid absolute inset-x-2 top-2 z-30 flex h-[52px] items-center gap-1 px-1.5" : "ui-drag ui-glass ui-glass-sidebar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-panel px-1"}
+      className={ipad ? "ui-liquid absolute inset-x-2 top-2 z-30 flex h-[52px] items-center gap-1 px-1.5" : `ui-drag ui-glass ui-glass-sidebar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-panel px-1 ${route.name === "vault" ? "!bg-surface" : ""}`}
     >
       {/* While the sidebar is hidden, its menu waits here; otherwise it sits in the sidebar. */}
       {!sidebarOpen ? (

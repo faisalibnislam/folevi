@@ -33,7 +33,7 @@ export function Trash({ vaultId, role }: { vaultId: string; role: string }) {
   const items = data?.items ?? [];
 
   return (
-    <section aria-label="Trash" className="max-w-3xl space-y-3">
+    <section aria-label="Trash" className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <p className="mr-auto text-subheadline text-muted">Deleted items stay here for 30 days, then go for good.</p>
         {role !== "member" && items.length ? (
@@ -53,7 +53,7 @@ export function Trash({ vaultId, role }: { vaultId: string; role: string }) {
             return (
               <li key={row.id} className="flex items-center gap-3 px-4 py-2.5">
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-ink">{titles[row.id] ?? "…"}</span>
+                  <span className="block truncate text-subheadline font-medium text-ink">{titles[row.id] ?? "…"}</span>
                   <span className="block truncate text-footnote text-muted">{[kindLabel(row.kind), `deleted ${formatRelative(row.deletedAt ?? row.updatedAt)}`, `${left} ${left === 1 ? "day" : "days"} left`].join(" · ")}</span>
                 </span>
                 <Button

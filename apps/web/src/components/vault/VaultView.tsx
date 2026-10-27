@@ -3,9 +3,10 @@
 // Passwords & Credentials, Files & Notes, Activity, People (team Vault) and Settings. When a custodian opens it, their
 // device does the custodian's chores: sharing the key with anyone waiting, and a new key version after someone left.
 import { useEffect, useRef, useState } from "react";
-import { Lock, ShieldCheck } from "lucide-react";
+import { Activity as ActivityIcon, FolderLock, HeartPulse, KeyRound, Lock, MoreHorizontal, Settings, ShieldCheck, Trash2, Users, X, type LucideIcon } from "lucide-react";
 import { ViewChrome } from "@/components/app/Shell";
 import { Button } from "@/components/ui/Button";
+import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { vaultSessions } from "@/lib/vault/keys";
@@ -28,7 +29,7 @@ export function VaultView() {
   const open = useVaultOpen(vaultId);
   const recoveryToSave = useRecoveryToSave(vaultId);
   const { profile } = useAppState();
-  const [tab, setTab] = useState<Tab>("passwords");
+  const [tab, setTab] = useState<Tab>("files");
   const [jumpTo, setJumpTo] = useState<string | null>(null);
   const toast = useToast();
   const record = useRecordEvent(vaultId ?? "");
@@ -59,15 +60,26 @@ export function VaultView() {
       </ViewChrome>
     );
 
-  const tabs: [Tab, string][] = [
-    ["passwords", "Passwords & Credentials"],
-    ["files", "Files & Notes"],
-    ["health", "Health"],
-    ["activity", "Activity"],
-    ...(info.personal ? [] : ([["people", "People"]] as [Tab, string][])),
-    ["trash", "Trash"],
-    ["settings", "Settings"],
+  // The two places people work in are tabs; the rest are in the ⋯ menu beside Lock, and the one opened from
+  // there shows as a third tab until it's closed.
+  const tabs: [Tab, string, LucideIcon][] = [
+    ["files", "Files & Notes", FolderLock],
+    ["passwords", "Passwords & Credentials", KeyRound],
   ];
+  const more: [Tab, string, LucideIcon][] = [
+    ["health", "Health", HeartPulse],
+    ["activity", "Activity", ActivityIcon],
+    ...(info.personal ? [] : ([["people", "People", Users]] as [Tab, string, LucideIcon][])),
+    ["trash", "Trash", Trash2],
+    ["settings", "Settings", Settings],
+  ];
+  const openSection = (key: Tab) => (setTab(key), record("section.open", undefined, { section: key }));
+  const fromMenu = more.find(([key]) => key === tab);
+  const FromMenuIcon = fromMenu?.[2];
+  const menu: MenuEntry[] = more.flatMap(([key, label, Icon]): MenuEntry[] => [
+    ...(key === "settings" ? (["separator"] as MenuEntry[]) : []),
+    { label, icon: <Icon size={15} aria-hidden />, checked: tab === key, onSelect: () => openSection(key) },
+  ]);
   const ready = open && info.exists;
 
   return (
@@ -78,12 +90,16 @@ export function VaultView() {
         </h1>
       }
       tabTitle={title}
+      invert
       subtitle={ready ? `Open on this device · locks after ${info.autoLockMinutes} idle ${info.autoLockMinutes === 1 ? "minute" : "minutes"}` : "Locked"}
       actions={
         ready ? (
-          <Button size="sm" variant="secondary" onClick={() => void vaultSessions().lock(info.id, "manual")}>
-            <Lock size={13} aria-hidden /> Lock
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button size="sm" variant="primary" onClick={() => void vaultSessions().lock(info.id, "manual")}>
+              <Lock size={13} aria-hidden /> Lock
+            </Button>
+            <MenuButton label="More in the Vault" align="end" triggerClassName="ui-btn ui-btn-secondary grid h-8 w-8 place-items-center pointer-coarse:h-11 pointer-coarse:w-11" trigger={<MoreHorizontal size={15} aria-hidden />} items={menu} />
+          </div>
         ) : null
       }
     >
@@ -99,21 +115,45 @@ export function VaultView() {
           <VaultGate info={info} onOpen={() => undefined} />
         ) : (
           <>
-            {info.recoveryOutdated ? <p className="mb-3 rounded-chip border border-warning/40 p-3 text-subheadline text-warning">The Vault's key changed since you saved your recovery key. Make a new one in Settings.</p> : null}
-            {info.accessReviewDue ? <p className="mb-3 rounded-chip border border-line p-3 text-subheadline text-muted">It's been 90 days since anyone checked who has access to this Vault. Have a look in People.</p> : null}
+            {info.recoveryOutdated ? <p className="mb-3 rounded-chip border border-warning/40 p-3 text-subheadline text-warning">
+                The Vault's key changed since you saved your recovery key. Make a new one in{" "}
+                <button type="button" className="font-medium underline underline-offset-2" onClick={() => openSection("settings")}>
+                  Settings
+                </button>
+                .
+              </p> : null}
+            {info.accessReviewDue ? <p className="mb-3 rounded-chip border border-line p-3 text-subheadline text-muted">
+                It's been 90 days since anyone checked who has access to this Vault. Have a look in{" "}
+                <button type="button" className="font-medium text-heading underline underline-offset-2" onClick={() => openSection("people")}>
+                  People
+                </button>
+                .
+              </p> : null}
             <div role="tablist" aria-label="Vault sections" className="mb-5 flex flex-wrap gap-1 border-b border-line">
-              {tabs.map(([key, label]) => (
+              {tabs.map(([key, label, Icon]) => (
                 <button
                   key={key}
                   role="tab"
                   type="button"
                   aria-selected={tab === key}
-                  onClick={() => (setTab(key), record("section.open", undefined, { section: key }))}
-                  className={`-mb-px border-b-2 px-3 py-2 text-subheadline font-medium transition-colors ${tab === key ? "border-heading text-heading" : "border-transparent text-muted hover:text-heading"}`}
+                  onClick={() => openSection(key)}
+                  className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-subheadline font-medium transition-colors ${tab === key ? "border-heading text-heading" : "border-transparent text-muted hover:text-heading"}`}
                 >
+                  <Icon size={14} aria-hidden />
                   {label}
                 </button>
               ))}
+              {fromMenu ? (
+                <span className="-mb-px inline-flex items-center gap-1.5 border-b-2 border-heading py-2 pl-3 pr-1 text-subheadline font-medium text-heading">
+                  <span role="tab" aria-selected className="inline-flex items-center gap-1.5">
+                    {FromMenuIcon ? <FromMenuIcon size={14} aria-hidden /> : null}
+                    {fromMenu[1]}
+                  </span>
+                  <button type="button" aria-label={`Close ${fromMenu[1]}`} title="Close" onClick={() => setTab("files")} className="grid h-5 w-5 place-items-center rounded-tiny text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+                    <X size={12} aria-hidden />
+                  </button>
+                </span>
+              ) : null}
             </div>
             <div role="tabpanel">
               {tab === "passwords" ? <Passwords key={jumpTo ?? ""} vaultId={info.id} initialSelected={jumpTo} /> : null}

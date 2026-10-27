@@ -496,7 +496,7 @@ export function Shell() {
 }
 
 /** Top bar shared by all views: sidebar toggle, title/breadcrumbs, and actions. */
-export function ViewChrome({ title, subtitle, leading, actions, children, tabTitle, overlay, tint, iphone }: { title: ReactNode; /** A short fact next to the title (e.g. "48 notes"), announced politely when it changes. */ subtitle?: ReactNode; leading?: ReactNode; actions?: ReactNode; children: ReactNode; tabTitle?: string; /** Floats over the view without scrolling with it (e.g. the bar for selected notes). */ overlay?: ReactNode; /** A colour the view's background takes a faint wash of (a folder's colour). */ tint?: string; /** How the view looks as a screen of the iPhone app (large title, bar actions); only read there. */ iphone?: IphoneScreenOptions }) {
+export function ViewChrome({ title, subtitle, leading, actions, children, tabTitle, overlay, tint, invert, iphone }: { /** The view in the other theme (dark in light mode, light in dark mode), the rest of the app unchanged: the Vault. */ invert?: boolean; title: ReactNode; /** A short fact next to the title (e.g. "48 notes"), announced politely when it changes. */ subtitle?: ReactNode; leading?: ReactNode; actions?: ReactNode; children: ReactNode; tabTitle?: string; /** Floats over the view without scrolling with it (e.g. the bar for selected notes). */ overlay?: ReactNode; /** A colour the view's background takes a faint wash of (a folder's colour). */ tint?: string; /** How the view looks as a screen of the iPhone app (large title, bar actions); only read there. */ iphone?: IphoneScreenOptions }) {
   const { sidebarOpen, toggleSidebar, drawerMode } = useShell();
   const { route } = useAppRouter();
   useDocumentTitle(tabTitle ?? (typeof title === "string" ? title : undefined));
@@ -563,7 +563,7 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   // (The iPad's strip is taller: 52 pt, 8 from the top.)
   const clear = drawerMode ? "" : ipad ? "pt-[68px] [scroll-padding-top:72px]" : "pt-[56px] [scroll-padding-top:60px]";
   return (
-    <div className={`relative flex min-h-0 flex-1 flex-col ${tint ? "ui-view-tint" : ""}`} style={tint ? ({ ["--view-tint" as string]: tint } as React.CSSProperties) : undefined}>
+    <div className={`relative flex min-h-0 flex-1 flex-col ${tint ? "ui-view-tint" : ""} ${invert ? "ui-invert bg-canvas text-ink" : ""}`} style={tint ? ({ ["--view-tint" as string]: tint } as React.CSSProperties) : undefined}>
       {inFlow ? null : <div className={drawerMode ? "" : ipad ? "pt-[68px]" : "pt-[56px]"}>{bar}</div>}
       {/* A note scrolls inside its own page, so <main> doesn't clip: the page's edge and shadow show whole, and the
           tools panel can run to the window's bottom edge. */}

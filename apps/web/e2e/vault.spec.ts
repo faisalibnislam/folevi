@@ -1,6 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 import { APP, newPerson } from "./helpers";
 
+/** Health, Activity, People, Trash and Settings open from the ⋯ menu beside Lock. */
+async function vaultSection(page: Page, name: string) {
+  await page.getByRole("button", { name: "More in the Vault" }).click();
+  await page.getByRole("menuitemradio", { name }).click();
+}
+
 // The Vault (docs/VAULT_PLAN.md) on the website, end to end on the dev backend (its "vault" flag on): set it up with a
 // passcode, save the recovery key, add a login, reveal and copy its password, lock, unlock again, read the log.
 
@@ -42,6 +48,8 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
 
   // Open: add a login.
   await expect(page.getByRole("tab", { name: "Passwords & Credentials" })).toBeVisible({ timeout: 30_000 });
+  // The Vault opens on Files & Notes.
+  await page.getByRole("tab", { name: "Passwords & Credentials" }).click();
   await page.getByRole("button", { name: "Add", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Add to the Vault" });
   await dialog.getByLabel("Title").fill("Bank");
@@ -59,7 +67,7 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   await shot(page, "3-password");
 
   // Settings: change the passcode to a 6 digit PIN (the current one is checked).
-  await page.getByRole("tab", { name: "Settings" }).click();
+  await vaultSection(page, "Settings");
   await page.getByRole("button", { name: "Change passcode" }).click();
   const change = page.getByRole("dialog", { name: "Change passcode" });
   await change.getByLabel("Current passcode").fill("11111111");
@@ -93,7 +101,7 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   await expect(page.getByRole("button", { name: /^Bank/ })).toBeVisible({ timeout: 60_000 });
 
   // The log: every step, the failed unlock too, and it verifies.
-  await page.getByRole("tab", { name: "Activity" }).click();
+  await vaultSection(page, "Activity");
   const log = page.getByRole("region", { name: "Activity" });
   for (const line of ["Set up the Vault", "Added an item", "Opened an item", "Revealed a hidden field", "Copied a field", "Locked the Vault", "Unlocked the Vault (failed: wrong passcode)"]) await expect(log).toContainText(line);
   await page.getByRole("button", { name: "Check the log" }).click();
@@ -110,7 +118,7 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
     await d.getByRole("button", { name: "Save" }).click();
     await expect(page.getByRole("region", { name: title })).toBeVisible({ timeout: 30_000 });
   }
-  await page.getByRole("tab", { name: "Health" }).click();
+  await vaultSection(page, "Health");
   const health = page.getByRole("region", { name: "Health" });
   await expect(health.getByRole("heading", { name: /Weak/ })).toBeVisible({ timeout: 30_000 });
   await expect(health.getByRole("heading", { name: /Used more than once \(2\)/ })).toBeVisible();
@@ -121,7 +129,7 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   await expect(health.getByRole("heading", { name: /Found in a data breach/ })).toBeVisible();
   await health.getByRole("button", { name: /^Old forum/ }).first().click();
   await page.getByRole("button", { name: "Move to the Vault's Trash" }).click();
-  await page.getByRole("tab", { name: "Trash" }).click();
+  await vaultSection(page, "Trash");
   const trash = page.getByRole("region", { name: "Trash" });
   await expect(trash).toContainText("Old forum", { timeout: 30_000 });
   await expect(trash).toContainText("30 days left");
@@ -131,11 +139,11 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   await page.getByRole("tab", { name: "Passwords & Credentials" }).click();
   await page.getByRole("button", { name: /^Old forum/ }).click();
   await page.getByRole("button", { name: "Move to the Vault's Trash" }).click();
-  await page.getByRole("tab", { name: "Trash" }).click();
+  await vaultSection(page, "Trash");
   await trash.getByRole("button", { name: "Empty Trash" }).click();
   await page.getByRole("dialog", { name: "Empty the Trash?" }).getByRole("button", { name: "Delete for good" }).click();
   await expect(trash.getByText("The Trash is empty")).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("tab", { name: "Activity" }).click();
+  await vaultSection(page, "Activity");
   for (const line of ["Moved an item to the Trash", "Restored an item", "Emptied the Vault's Trash"]) await expect(log).toContainText(line);
 
   // A one-time link: made in the Share dialog, opened by someone without Folevi, then it's ended.
@@ -163,7 +171,7 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   await expect(again.getByRole("heading", { name: "This link has ended" })).toBeVisible({ timeout: 30_000 });
   await stranger.close();
   await share.getByRole("button", { name: "Done" }).click();
-  await page.getByRole("tab", { name: "Activity" }).click();
+  await vaultSection(page, "Activity");
   for (const line of ["Made a one-time link", "Someone opened a one-time link", "A one-time link was used up"]) await expect(log).toContainText(line);
 
   // A note: written with the editor's blocks, saved sealed, and the same when opened again.

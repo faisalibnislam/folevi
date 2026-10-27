@@ -3013,6 +3013,9 @@ export default defineSchema({
     kind: vVaultItemKind,
     /** Files & Notes only (password items live in their own section). */
     folderId: v.optional(v.id("vaultFolders")),
+    /** What the list shows (title, username, website, icon), sealed with the item key. */
+    sealedSummary: v.bytes(),
+    /** The secrets (passwords, keys, 2FA seeds, custom hidden fields): served only by vaultItems.open, which logs it. */
     sealed: v.bytes(),
     /** The item key, wrapped by the vault key version `keyVersion`. */
     wrappedKey: v.bytes(),
@@ -3042,6 +3045,7 @@ export default defineSchema({
     vaultId: v.id("vaults"),
     ...scoped,
     revision: v.number(),
+    sealedSummary: v.bytes(),
     sealed: v.bytes(),
     wrappedKey: v.bytes(),
     keyVersion: v.number(),

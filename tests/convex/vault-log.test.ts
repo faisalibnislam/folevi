@@ -35,7 +35,7 @@ async function anItem(t: T, vaultId: string, by: Person) {
       .unique())!;
     const now = Date.now();
     const scope = vault.workspaceId ? { workspaceId: vault.workspaceId } : { ownerProfileId: vault.ownerProfileId! };
-    await ctx.db.insert("vaultItems", { publicId: "item-1", vaultId: vault._id, ...scope, kind: "login", sealed: new ArrayBuffer(40), wrappedKey: new ArrayBuffer(40), keyVersion: 1, revision: 1, createdBy: by.profileId as Id<"profiles">, updatedBy: by.profileId as Id<"profiles">, createdAt: now, updatedAt: now });
+    await ctx.db.insert("vaultItems", { publicId: "item-1", vaultId: vault._id, ...scope, kind: "login", sealedSummary: new ArrayBuffer(40), sealed: new ArrayBuffer(40), wrappedKey: new ArrayBuffer(40), keyVersion: 1, revision: 1, createdBy: by.profileId as Id<"profiles">, updatedBy: by.profileId as Id<"profiles">, createdAt: now, updatedAt: now });
     return "item-1";
   });
 }

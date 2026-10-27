@@ -16,12 +16,12 @@ function fakeServer() {
     },
     async mutation(ref: FunctionReference<"mutation">, args: Record<string, unknown>) {
       const name = getFunctionName(ref);
-      const a = args as Record<string, never>;
+      const a = args as { check?: ArrayBuffer; passcode?: Grant; recovery?: Grant; way?: string; ok?: boolean; grants?: Grant[]; reason?: string; how?: string };
       switch (name) {
         case "vaultKeys:setUp":
-          s.check = a.check;
-          s.passcode = [{ ...(a.passcode as Grant), salt: (a.passcode as { salt: ArrayBuffer }).salt }];
-          s.recovery = [a.recovery as Grant];
+          s.check = a.check!;
+          s.passcode = [{ ...a.passcode! }];
+          s.recovery = [a.recovery!];
           s.log.push("setUp");
           return null;
         case "vaultKeys:unlock":
@@ -39,7 +39,7 @@ function fakeServer() {
           s.log.push(`result:${a.ok ? "ok" : "wrong"}`);
           return { lockedUntil: null };
         case "vaultKeys:setPasscode":
-          s.passcode = (a.grants as unknown as Grant[]).map((g) => ({ ...g }));
+          s.passcode = a.grants!.map((g) => ({ ...g }));
           s.log.push(`setPasscode:${a.reason}`);
           return null;
         case "vaultKeys:lock":

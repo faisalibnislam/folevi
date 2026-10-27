@@ -51,8 +51,12 @@ export const vaultCtx = {
   recovery: (vaultId: string, keyVersion: number, profileId: string) => c("recovery", part(vaultId, "vault id"), version(keyVersion), part(profileId, "profile id")),
   /** An item key wrapped by VK "vault/wrap". */
   itemKey: (vaultId: string, itemId: string, keyVersion: number) => c("item-key", part(vaultId, "vault id"), part(itemId, "item id"), version(keyVersion)),
-  /** An item's title and fields, sealed with its item key. */
+  /** An item's secrets (passwords, keys, hidden fields), sealed with its item key. */
   item: (vaultId: string, itemId: string) => c("item", part(vaultId, "vault id"), part(itemId, "item id")),
+  /** An item's summary (title, username, website: what lists show), sealed with its item key. */
+  itemSummary: (vaultId: string, itemId: string) => c("item-summary", part(vaultId, "vault id"), part(itemId, "item id")),
+  /** An export file, sealed with a key from the passphrase the exporter chose. */
+  exportFile: (vaultId: string, exportId: string) => c("export", part(vaultId, "vault id"), part(exportId, "export id")),
   /** A vault note's key wrapped by VK "vault/wrap". */
   noteKey: (vaultId: string, docId: string, noteVersion: number, keyVersion: number) => c("note-key", part(vaultId, "vault id"), part(docId, "document id"), version(noteVersion), version(keyVersion)),
   /** A folder's name (VK "vault/meta"). */

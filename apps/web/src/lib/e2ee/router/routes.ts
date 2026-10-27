@@ -61,6 +61,8 @@ export const E2EE_ROUTES: Record<string, Route> = {
   // nothing to do for it, whatever the space's level. Listed function by function so a new one is classified.
   ...each(pass, "vault", "get create updateSettings"),
   ...each(pass, "vaultKeys", "setUp unlock unlockResult lock setPasscode setRecovery requestReset pending grant"),
+  ...each(pass, "vaultItems", "list open create update history restoreVersion remove restore importBatch exportPage reuse breachRange"),
+  ...each(pass, "vaultLog", "list record exportPage verify"),
   // Content modules are listed function by function, so a new function there has to be classified.
   ...each(pass, "documents", "bulkUpdate emptyTrash hideFromRecent move moveToTrash recordView reorder restoreFromTrash setArchived setStarred showInRecent purgeSnapshots seenMark"),
   ...each(pass, "comments", "deleteThread markThreadRead markThreadUnread mentionable react remove setResolved unreadCount"),

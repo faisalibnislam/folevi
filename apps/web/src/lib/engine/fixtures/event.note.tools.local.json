@@ -1,0 +1,29 @@
+{
+  "kind": "event",
+  "name": "note.tools",
+  "description": "A note in local mode with nothing in it yet: no comments (they need an account), Drafts as its place.",
+  "data": {
+    "noteId": "doc_00003",
+    "title": "Untitled",
+    "trail": [
+      {
+        "href": "/drafts",
+        "label": "Drafts"
+      }
+    ],
+    "outline": [],
+    "current": null,
+    "tasks": [],
+    "attachments": [],
+    "links": [],
+    "comments": {
+      "available": false,
+      "loaded": true,
+      "canComment": false,
+      "threads": []
+    },
+    "pages": [],
+    "pagesTruncated": false,
+    "readOnly": false
+  }
+}

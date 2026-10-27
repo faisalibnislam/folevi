@@ -14,6 +14,7 @@ import { IconButton } from "@/components/ui/Button";
 import { Outline } from "./Outline";
 import { WorkspaceMenu } from "@/components/app/WorkspaceMenu";
 import { SidebarSearch, SidebarTopBar } from "@/components/app/Sidebar";
+import { clearMatches, findMatches, matchRange, paintMatches, scrollBehavior, MAX_MATCHES, type NoteMatch } from "./findInNote";
 
 export type DocSidebarTab = "contents" | "comments" | "tasks" | "attachments" | "find";
 
@@ -193,11 +194,6 @@ function useBlocks(documentId: string): WireBlock[] {
   return useMemo(() => flattenTree(blocks).map(({ block }) => block), [blocks]);
 }
 
-/** Smooth scrolling, unless the person asked for less motion. */
-function scrollBehavior(): ScrollBehavior {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
-}
-
 function ContentsPanel({ documentId, title, onJump }: { documentId: string; title: string; onJump: (id: string) => void }) {
   return (
     <>
@@ -343,53 +339,7 @@ function AttachmentsPanel({ documentId, onJump, onNavigate }: { documentId: stri
   );
 }
 
-interface Match {
-  from: number;
-  to: number;
-  snippet: { before: string; hit: string; after: string };
-}
-
-const OBJECT = "￼";
-
-/** A short excerpt around a match that starts and ends on word boundaries. */
-function snippetAround(text: string, at: number, length: number) {
-  const clean = (t: string) => t.replaceAll(OBJECT, "…");
-  let before = text.slice(Math.max(0, at - 32), at);
-  if (at > 32) before = `…${before.slice(before.indexOf(" ") + 1)}`;
-  let after = text.slice(at + length, at + length + 48);
-  if (at + length + 48 < text.length) after = `${after.slice(0, Math.max(after.lastIndexOf(" "), 0))}…`;
-  return { before: clean(before), hit: text.slice(at, at + length), after: clean(after) };
-}
-
-function findMatches(editor: Editor, query: string): Match[] {
-  const q = query.toLocaleLowerCase();
-  if (!q) return [];
-  const out: Match[] = [];
-  editor.state.doc.descendants((node, pos) => {
-    if (!node.isTextblock) return true;
-    // Inline atoms (mentions, dates, page links) count as one object character, so string offsets map
-    // straight onto document positions.
-    const text = node.textBetween(0, node.content.size, undefined, OBJECT);
-    const lower = text.toLocaleLowerCase();
-    let at = lower.indexOf(q);
-    while (at !== -1 && out.length < 500) {
-      out.push({
-        from: pos + 1 + at,
-        to: pos + 1 + at + q.length,
-        snippet: snippetAround(text, at, q.length),
-      });
-      at = lower.indexOf(q, at + Math.max(1, q.length));
-    }
-    return false;
-  });
-  return out;
-}
-
-type HighlightRegistry = { set: (name: string, h: unknown) => void; delete: (name: string) => void };
-function highlights(): HighlightRegistry | null {
-  const css = (globalThis as { CSS?: { highlights?: HighlightRegistry } }).CSS;
-  return css?.highlights && typeof (globalThis as { Highlight?: unknown }).Highlight === "function" ? css.highlights : null;
-}
+type Match = NoteMatch;
 
 function FindPanel({ editor }: { editor: Editor | null }) {
   const [query, setQuery] = useState("");
@@ -425,37 +375,14 @@ function FindPanel({ editor }: { editor: Editor | null }) {
   const matches = useMemo(() => (editor ? findMatches(editor, query.trim()) : []), [editor, query, version]);
   const current = matches.length ? Math.min(index, matches.length - 1) : -1;
 
-  const rangeOf = useCallback(
-    (m: Match): Range | null => {
-      if (!editor) return null;
-      try {
-        const a = editor.view.domAtPos(m.from);
-        const b = editor.view.domAtPos(m.to);
-        const r = document.createRange();
-        r.setStart(a.node, a.offset);
-        r.setEnd(b.node, b.offset);
-        return r;
-      } catch {
-        return null;
-      }
-    },
-    [editor],
-  );
+  const rangeOf = useCallback((m: Match): Range | null => (editor ? matchRange(editor, m) : null), [editor]);
 
   // Paint every match, and the current one more strongly (CSS Custom Highlight API; no DOM changes).
   useEffect(() => {
-    const reg = highlights();
-    if (!reg) return;
-    const H = (globalThis as unknown as { Highlight: new (...r: Range[]) => unknown }).Highlight;
-    const all = matches.map(rangeOf).filter((r): r is Range => r !== null);
-    reg.set("folevi-find", new H(...all));
-    const cur = current >= 0 ? rangeOf(matches[current]!) : null;
-    reg.set("folevi-find-current", new H(...(cur ? [cur] : [])));
-    return () => {
-      reg.delete("folevi-find");
-      reg.delete("folevi-find-current");
-    };
-  }, [matches, current, rangeOf]);
+    if (!editor) return;
+    paintMatches(editor, matches, current);
+    return clearMatches;
+  }, [editor, matches, current]);
 
   const reveal = (i: number) => {
     if (!matches.length) return;
@@ -506,7 +433,7 @@ function FindPanel({ editor }: { editor: Editor | null }) {
       </div>
       <div className="mt-2 flex items-center gap-1 px-1">
         <p id={`${inputId}-count`} role="status" className="flex-1 text-footnote text-muted">
-          {!query.trim() ? "Type to search this page" : matches.length ? `${current + 1} of ${matches.length}${matches.length >= 500 ? "+" : ""}` : "No results in this page"}
+          {!query.trim() ? "Type to search this page" : matches.length ? `${current + 1} of ${matches.length}${matches.length >= MAX_MATCHES ? "+" : ""}` : "No results in this page"}
         </p>
         <IconButton label="Previous match" onClick={() => reveal(current - 1)} disabled={!matches.length} className="!h-7 !w-7">
           <ChevronUp size={15} aria-hidden />

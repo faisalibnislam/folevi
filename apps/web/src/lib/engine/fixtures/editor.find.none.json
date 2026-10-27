@@ -1,0 +1,15 @@
+{
+  "kind": "editor",
+  "name": "find",
+  "description": "Find text that isn't in the note.",
+  "args": {
+    "query": "zebra"
+  },
+  "result": {
+    "query": "zebra",
+    "count": 0,
+    "current": -1,
+    "truncated": false,
+    "matches": []
+  }
+}

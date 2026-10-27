@@ -87,6 +87,7 @@ const scoped = {
 export const vVaultRole = v.union(v.literal("custodian"), v.literal("member"));
 /** Who did something, for the Vault's log. */
 export const vVaultLogRole = v.union(v.literal("owner"), v.literal("custodian"), v.literal("member"), v.literal("recipient"), v.literal("link"), v.literal("system"));
+export const vVaultGrantLayer = v.union(v.literal("passcode"), v.literal("recovery"), v.literal("custodian"));
 export const vVaultPendingReason = v.union(v.literal("added"), v.literal("reset"), v.literal("rotation"));
 /** What a vault item is (password items, and Files & Notes' notes and files). */
 export const vVaultItemKind = v.union(
@@ -2933,16 +2934,23 @@ export default defineSchema({
     ...scoped,
     profileId: v.id("profiles"),
     version: v.number(),
+    /**
+     * passcode: the inner layer sealed again with their passcode key; recovery: with their vault recovery key;
+     * custodian: only the inner layer, from a custodian's device, until the person sets their passcode.
+     */
+    layer: vVaultGrantLayer,
     /** The person's account epoch the inner layer was sealed to. */
     epoch: v.number(),
     wrapped: v.bytes(),
     /** The passcode layer's salt and key-function parameters (the device needs them to unwrap). */
-    passcodeSalt: v.bytes(),
-    kdf: v.object({ m: v.number(), t: v.number(), p: v.number() }),
+    passcodeSalt: v.optional(v.bytes()),
+    kdf: v.optional(v.object({ m: v.number(), t: v.number(), p: v.number() })),
     grantedBy: v.id("profiles"),
     createdAt: v.number(),
   })
     .index("by_vault_profile", ["vaultId", "profileId", "version"])
+    .index("by_vault_profile_layer", ["vaultId", "profileId", "layer", "version"])
+    .index("by_vault_version", ["vaultId", "version"])
     .index("by_profile", ["profileId"])
     .index("by_workspace", ["workspaceId"])
     .index("by_owner", ["ownerProfileId"]),

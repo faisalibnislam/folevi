@@ -29,10 +29,12 @@ export const get = query({
     }
     const role = await vaultRoleOf(ctx, profile, vault);
     if (!role) return null;
-    const grant = await ctx.db
+    const grants = await ctx.db
       .query("vaultGrants")
       .withIndex("by_vault_profile", (q) => q.eq("vaultId", vault._id).eq("profileId", profile._id).eq("version", vault.keyVersion))
-      .unique();
+      .collect();
+    const grant = grants.find((g) => g.layer === "passcode") ?? null;
+    const fromCustodian = grants.some((g) => g.layer === "custodian");
     const pending = await ctx.db
       .query("vaultPendingGrants")
       .withIndex("by_vault_profile", (q) => q.eq("vaultId", vault._id).eq("profileId", profile._id))
@@ -46,8 +48,12 @@ export const get = query({
       keyVersion: vault.keyVersion,
       /** This person can unlock now (they have a grant for the current key). */
       hasAccessKey: grant !== null,
+      /** A custodian shared the key: they choose their passcode to finish (vaultKeys.setPasscode). */
+      needsPasscode: grant === null && fromCustodian,
       /** Waiting for a custodian's device to share the key with them. */
-      waitingForKey: pending !== null && grant === null,
+      waitingForKey: pending !== null && grant === null && !fromCustodian,
+      /** They have a recovery key for this Vault. */
+      hasRecovery: grants.some((g) => g.layer === "recovery"),
       autoLockMinutes: vault.autoLockMinutes,
       custodiansNameCustodians: vault.custodiansNameCustodians,
     };

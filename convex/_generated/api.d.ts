@@ -230,6 +230,7 @@ import type * as themes from "../themes.js";
 import type * as unsplash from "../unsplash.js";
 import type * as users from "../users.js";
 import type * as vault from "../vault.js";
+import type * as vaultKeys from "../vaultKeys.js";
 import type * as webhooks from "../webhooks.js";
 import type * as wireframeAi from "../wireframeAi.js";
 import type * as workspaceBilling from "../workspaceBilling.js";
@@ -464,6 +465,7 @@ declare const fullApi: ApiFromModules<{
   unsplash: typeof unsplash;
   users: typeof users;
   vault: typeof vault;
+  vaultKeys: typeof vaultKeys;
   webhooks: typeof webhooks;
   wireframeAi: typeof wireframeAi;
   workspaceBilling: typeof workspaceBilling;

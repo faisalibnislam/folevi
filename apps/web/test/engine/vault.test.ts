@@ -41,7 +41,7 @@ beforeEach(async () => {
   setVaultFileLayer(null);
   client = new LocalClient(new LocalBackend(new MemoryStore(), { deviceId: "dev_here" }));
   await client.local.setup({ timeZone: "UTC", locale: "en", displayName: "Sam", seed: false });
-  host = new BridgeHost({ post: new Posts().post, schedule: () => undefined, marker: { platform: "mac", protocol: 1, place: PLACE }, queryTimeoutMs: 20_000 });
+  host = new BridgeHost({ post: new Posts().post, schedule: () => undefined, marker: { platform: "macos", protocol: 1, place: PLACE }, queryTimeoutMs: 20_000 });
   const deps = rig(PLACE).deps({ mode: "local", capabilities: { graph: false, sharing: false, changes: false, workspaces: false, ai: false, purchases: false } });
   host.attach({ ...deps, client: client as unknown as EngineClient, kept: null });
   n = 0;

@@ -121,18 +121,22 @@ struct VaultSelect: View {
     let selected: String
     let onSelect: (String) -> Void
     @Environment(\.colorScheme) private var scheme
+    private var capturedLabel: String { style == "vault.settings.select" ? "5 minutes" : "All kinds" }
 
     var body: some View {
         let s = VS.style(style, scheme)
         WebMenuButton(width: max(s.width, 180), entries: { options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == selected)) { onSelect(o.0) } } }) {
-            HStack(spacing: s.gap) {
+            let row = HStack(spacing: s.gap) {
                 Text(label).webText(s.text).lineLimit(1)
                 Spacer(minLength: 0)
                 WebIconView(.chevronDown, size: 14).opacity(0.6)
             }
             .padding(s.padding.edgeInsets)
             .frame(height: s.height)
-            .fixedSize(horizontal: true, vertical: false)
+            Group {
+                // The web's trigger is as wide as its label, chevron and padding: the captured width for that label.
+                row.frame(minWidth: label == capturedLabel ? s.width : 0).fixedSize(horizontal: true, vertical: false)
+            }
             .foregroundStyle(s.color.color)
             .webBox(VS.pair(style))
             .contentShape(Rectangle())

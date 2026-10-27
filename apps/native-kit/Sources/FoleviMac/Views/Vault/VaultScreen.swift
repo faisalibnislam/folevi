@@ -93,9 +93,10 @@ extension VaultSection {
 
 struct VaultScreen: View {
     @State private var model: VaultModel
-    @Environment(\.colorScheme) private var appScheme
+    let path: String
 
     init(frame: FrameModel, path: String) {
+        self.path = path
         _model = State(initialValue: VaultModel(frame: frame, section: VaultSection(path: path)))
     }
 
@@ -103,6 +104,8 @@ struct VaultScreen: View {
         VaultBody(model: model)
             .uiInvert()
             .onChange(of: model.summary.value) { _, _ in model.summaryChanged() }
+            // A link to /vault/<section> on the open tab: that section (the Vault stays one tab).
+            .onChange(of: path) { _, p in model.section = VaultSection(path: p) ?? .files }
             .accessibilityIdentifier("screen.vault")
     }
 }
@@ -216,7 +219,7 @@ private struct VaultTabs: View {
             if let s = model.fromMenu { menuTab(s) }
             Spacer(minLength: 0)
         }
-        .frame(height: tabs.height, alignment: .bottom)
+        .frame(minHeight: tabs.height, alignment: .bottom)
         .background(alignment: .bottom) {
             Rectangle().fill(VS.color("line", scheme)).frame(height: 1)
         }

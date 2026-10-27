@@ -45,6 +45,7 @@ const SharedView = lazy(() => import("@/components/views/SharedView").then((m) =
 const HelpView = lazy(() => import("@/components/views/HelpView").then((m) => ({ default: m.HelpView })));
 const InviteView = lazy(() => import("@/components/views/InviteView").then((m) => ({ default: m.InviteView })));
 const ShareInviteView = lazy(() => import("@/components/views/ShareInviteView").then((m) => ({ default: m.ShareInviteView })));
+const VaultView = lazy(() => import("@/components/vault/VaultView").then((m) => ({ default: m.VaultView })));
 const SharedFolderView = lazy(() => import("@/components/views/SharedFolderView").then((m) => ({ default: m.SharedFolderView })));
 const FolderInviteView = lazy(() => import("@/components/views/FolderInviteView").then((m) => ({ default: m.FolderInviteView })));
 
@@ -95,6 +96,7 @@ function Routes() {
   if (!caps.changes && route.name === "changes") return <AccountOnly title="Changes" />;
   if (!caps.sharing && (route.name === "shared" || route.name === "shared-folder")) return <AccountOnly title="Shared with Me" />;
   if (!caps.sharing && route.name === "folder-invite") return <AccountOnly title="Invitation" />;
+  if (!caps.sharing && route.name === "vault") return <AccountOnly title="Vault" />;
   if (!caps.workspaces && route.name === "invite") return <AccountOnly title="Invitation" />;
   if (!caps.sharing && route.name === "share-invite") return <AccountOnly title="Invitation" />;
   switch (route.name) {
@@ -155,6 +157,12 @@ function Routes() {
       return (
         <Later title="Shared with Me">
           <SharedView />
+        </Later>
+      );
+    case "vault":
+      return (
+        <Later title="Vault">
+          <VaultView />
         </Later>
       );
     case "shared-folder":

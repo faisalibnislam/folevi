@@ -2,28 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
-import {
-  Archive,
-  Calendar,
-  CheckSquare,
-  ChevronDown,
-  ChevronRight,
-  FileDiff,
-  FolderPlus,
-  Hash,
-  Files,
-  Inbox,
-  Layers,
-  LayoutTemplate,
-  MoreHorizontal,
-  Search,
-  Share2,
-  Star,
-  Trash2,
-  House as Home,
-  FileText,
-  Waypoints,
-} from "lucide-react";
+import { Archive, Calendar, CheckSquare, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, Star, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter, type Route } from "@/lib/app/router";
@@ -449,6 +428,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   // The graph comes to local mode later (lib/local/registry.ts LOCAL_PLANNED).
   const graph = useCanCall(api.aiGraph.graph);
   const changes = useQuery(api.changes.list, !caps.changes ? "skip" : route.name === "doc" ? { exclude: route.id } : {});
+  // The Vault shows for whoever can see one here (null: none for them; held back while its flag is off).
+  const vault = useQuery(api.vault.get, caps.sharing ? { scope } : "skip");
   // Changes apps proposed count too: they wait there for an answer.
   const minute = useMinute();
   const proposed = useQuery(api.proposals.count, caps.changes ? { now: minute } : "skip");
@@ -568,6 +549,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <NavItem href="/calendar" icon={<Calendar size={16} />} label="Calendar" onNavigate={onNavigate} />
           {reviews?.hasCards || route.name === "review" ? <NavItem href="/review" icon={<Layers size={16} />} label="Reviews" count={reviews ? reviews.due + reviews.new : undefined} onNavigate={onNavigate} /> : null}
           {caps.sharing ? <NavItem href="/shared" icon={<Share2 size={16} />} label="Shared with Me" onNavigate={onNavigate} /> : null}
+          {caps.sharing && vault !== null && vault !== undefined ? <NavItem href="/vault" icon={<Lock size={16} />} label="Vault" onNavigate={onNavigate} /> : null}
           {caps.changes ? <NavItem href="/changes" icon={<FileDiff size={16} />} label="Changes" count={(changes?.notes.length ?? 0) + (proposed ?? 0) || undefined} onNavigate={onNavigate} /> : null}
           <NavItem href="/templates" icon={<LayoutTemplate size={16} />} label="Templates" onNavigate={onNavigate} />
         </div>

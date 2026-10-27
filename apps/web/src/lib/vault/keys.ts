@@ -90,10 +90,24 @@ class VaultSessions {
   private client: VaultClient | null = null;
   private actor: VaultActor | null = null;
   private wired = false;
+  /** A new recovery key not yet confirmed as saved, by Vault: kept here so a page redraw can't lose it. */
+  private recoveryToSave = new Map<string, string>();
+
+  /** The recovery key still to show for a Vault (until `recoverySaved`), or null. */
+  recoveryFor(vaultId: string): string | null {
+    return this.recoveryToSave.get(vaultId) ?? null;
+  }
+
+  recoverySaved(vaultId: string) {
+    this.recoveryToSave.delete(vaultId);
+    this.emit();
+  }
 
   bind(client: VaultClient, actor: VaultActor | null) {
     this.client = client;
-    if (this.actor && actor?.profileId !== this.actor.profileId) this.lockAll("signout");
+    // No account for a moment (the key session between states): keep what's open. Another person: lock everything.
+    if (!actor) return;
+    if (this.actor && actor.profileId !== this.actor.profileId) this.lockAll("signout");
     this.actor = actor;
     this.wire();
   }
@@ -207,6 +221,7 @@ class VaultSessions {
       client: this.info(),
     });
     recovery.bytes.fill(0);
+    this.recoveryToSave.set(vaultId, recovery.text);
     // A new Vault locks after the default 5 minutes until someone changes it.
     await this.adopt(vaultId, new Map([[1, vk]]), 1, "owner", 5);
     return { recoveryText: recovery.text };
@@ -348,6 +363,8 @@ class VaultSessions {
     }
     await client.mutation(api.vaultKeys.setRecovery, { vaultId, grants, client: this.info(vaultId) });
     recovery.bytes.fill(0);
+    this.recoveryToSave.set(vaultId, recovery.text);
+    this.emit();
     return { recoveryText: recovery.text };
   }
 

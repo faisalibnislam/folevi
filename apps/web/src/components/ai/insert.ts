@@ -36,7 +36,7 @@ export interface InsertOptions {
 }
 
 function nodesFor(editor: Editor, markdown: string, baseDepth: number, opts: InsertOptions = {}) {
-  const { blocks } = markdownToBlocks(markdown.trim(), { titleFromHeading: false });
+  const { blocks } = markdownToBlocks(markdown.trim(), { titleFromHeading: false, remoteImages: "link" });
   const nodes = blockNodes(editor, linkPeople(blocks, opts.people), baseDepth);
   opts.onNodes?.(nodes);
   return nodes;

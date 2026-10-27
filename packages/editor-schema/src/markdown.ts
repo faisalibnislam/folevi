@@ -318,6 +318,12 @@ export interface MarkdownImportOptions {
    * text, whose lines are what the person sees, rather than Markdown files wrapped at a fixed width.
    */
   lineBreaks?: boolean;
+  /**
+   * "link": an image from the web becomes a link to it (its alt text, or "Image"), so showing the result never
+   * loads anything from another server. For text Foli AI wrote, which a note, a web page or an email it read could
+   * have steered into carrying data out in an image address (docs/SECURITY_PLAN.md P0.2). Default "image".
+   */
+  remoteImages?: "image" | "link";
 }
 
 /** A link or image target: <anything but brackets>, or a bare one (balanced parentheses allowed, "wiki/A_(b)"). */
@@ -764,6 +770,8 @@ export function markdownToBlocks(markdown: string, opts: MarkdownImportOptions =
       const resolved = opts.resolveImage?.(src) ?? null;
       if (resolved) {
         drafts.push({ id: newId(), type: "image", depth: 0, text: [], props: { fileId: resolved.fileId, alt, caption } });
+      } else if (/^https?:\/\//i.test(src) && opts.remoteImages === "link") {
+        drafts.push({ id: newId(), type: "paragraph", depth: 0, text: [{ type: "text", text: alt || "Image", marks: [{ type: "link", href: sanitizeHref(src) ?? "#" }] }], props: {} });
       } else if (/^https?:\/\//i.test(src)) {
         drafts.push({ id: newId(), type: "image", depth: 0, text: [], props: { url: src, alt, caption } });
       } else {

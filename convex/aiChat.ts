@@ -510,7 +510,7 @@ export const saveAsNote = mutation({
     });
     if (markdown.length > MAX_DRAFT_CHARS) fail("limit_exceeded", "That conversation is too long to save as a note. Save one answer instead.");
     await consume(ctx, "bulk", profile._id);
-    const { blocks } = markdownToBlocks(markdown, { titleFromHeading: false });
+    const { blocks } = markdownToBlocks(markdown, { titleFromHeading: false, remoteImages: "link" });
     if (blocks.length > MAX_DRAFT_BLOCKS) fail("limit_exceeded", "That conversation has too many blocks to save as a note.");
     for (const b of blocks) {
       const ref = NOTE_REF.exec(b.text.map((n) => (n.type === "text" ? n.text : "")).join(""));

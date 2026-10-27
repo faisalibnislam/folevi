@@ -210,7 +210,7 @@ export async function executeOp(ctx: MutationCtx, env: ExecEnv, op: AgentOp, ops
     }
 
     case "create_note":
-      return (await newNote(ctx, env, op, ops, op.title ?? "Untitled", markdownToBlocks(op.markdown ?? "", { titleFromHeading: false }).blocks))!;
+      return (await newNote(ctx, env, op, ops, op.title ?? "Untitled", markdownToBlocks(op.markdown ?? "", { titleFromHeading: false, remoteImages: "link" }).blocks))!;
 
     case "create_checklist":
     case "create_tasks": {
@@ -226,7 +226,7 @@ export async function executeOp(ctx: MutationCtx, env: ExecEnv, op: AgentOp, ops
     case "append_to_note": {
       const doc = await noteNow(ctx, env, op);
       await beforeChange(ctx, env, doc, notes);
-      await appendBlocks(ctx, env, op, doc, markdownToBlocks(op.markdown ?? "", { titleFromHeading: false }).blocks);
+      await appendBlocks(ctx, env, op, doc, markdownToBlocks(op.markdown ?? "", { titleFromHeading: false, remoteImages: "link" }).blocks);
       await afterChange(ctx, doc, notes);
       return { noteId: doc.publicId, title: doc.title || "Untitled" };
     }
@@ -252,7 +252,7 @@ export async function executeOp(ctx: MutationCtx, env: ExecEnv, op: AgentOp, ops
       // between the last and the next, ranks would grow a character every few blocks (long, then refused).
       const anchorOf = (e: (typeof edits)[number]) => (e.action === "replace" ? byId.get(e.blockId!)! : e.afterBlockId ? byId.get(e.afterBlockId)! : null);
       const edits = (op.edits ?? []).filter((e) => e.action !== "delete");
-      const parsed = new Map(edits.map((e) => [e, markdownToBlocks(e.markdown ?? "", { titleFromHeading: false }).blocks]));
+      const parsed = new Map(edits.map((e) => [e, markdownToBlocks(e.markdown ?? "", { titleFromHeading: false, remoteImages: "link" }).blocks]));
       const counts = new Map<string, number>();
       for (const e of edits) {
         const top = parsed.get(e)!.filter((x) => x.parentId === null).length;

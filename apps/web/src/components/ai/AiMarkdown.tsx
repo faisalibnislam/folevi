@@ -80,7 +80,7 @@ export function AiMarkdown({
 }) {
   const segments = useMemo(() => {
     const source = cited ? linkCitations(markdown, cited) : markdown;
-    return answerSegments(markdownToBlocks(source, { titleFromHeading: false }).blocks);
+    return answerSegments(markdownToBlocks(source, { titleFromHeading: false, remoteImages: "link" }).blocks);
   }, [markdown, cited]);
   const onClick = (e: MouseEvent<HTMLDivElement>) => {
     const a = (e.target as HTMLElement).closest("a");

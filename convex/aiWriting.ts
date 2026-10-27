@@ -62,7 +62,7 @@ export const saveDraft = mutation({
       if (!folder || !inScope(folder, scope) || folder.deletedAt) fail("not_found", "Folder not found.");
       folderId = folder._id;
     }
-    const parsed = markdownToBlocks(args.markdown, { titleFromHeading: false }).blocks;
+    const parsed = markdownToBlocks(args.markdown, { titleFromHeading: false, remoteImages: "link" }).blocks;
     const blocks = args.people ? linkPeople(parsed, await mentionableIn(ctx, profile, scope)) : parsed;
     if (blocks.length > MAX_DRAFT_BLOCKS) fail("limit_exceeded", "That draft has too many blocks to save.");
     const title = cleanTitleLine(args.title) || (args.kind === "template" ? "New template" : "Untitled");

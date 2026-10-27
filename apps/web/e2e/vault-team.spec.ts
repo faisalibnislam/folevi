@@ -53,7 +53,7 @@ test("a team Vault: a member gets the key from the owner's device; an outsider o
   await member.page.getByRole("menuitemradio", { name: "Vault Studio" }).click();
 
   // The owner sets up the team's Vault, adds a login and adds the member.
-  await setUpVault(owner.page, "Set up your team's Vault", "team vault passcode");
+  await setUpVault(owner.page, "Set up your team's Vault", "482913");
   await owner.page.getByRole("button", { name: "Add", exact: true }).click();
   const add = owner.page.getByRole("dialog", { name: "Add to the Vault" });
   await add.getByLabel("Title").fill("Deploy key");
@@ -71,12 +71,12 @@ test("a team Vault: a member gets the key from the owner's device; an outsider o
   await member.page.goto(`${APP}/vault`);
   await expect(member.page.getByRole("heading", { name: "Waiting for the Vault's key" })).toBeVisible({ timeout: 30_000 });
   await member.page.waitForTimeout(5_000);
-  await unlock(owner.page, "team vault passcode");
+  await unlock(owner.page, "482913");
   await expect(owner.page.getByText("Shared the Vault's key with someone who was waiting.")).toBeVisible({ timeout: 60_000 });
   await member.page.reload();
   await expect(member.page.getByRole("heading", { name: "Choose your Vault passcode" })).toBeVisible({ timeout: 60_000 });
-  await member.page.getByLabel("Choose a passcode").fill("member vault passcode");
-  await member.page.getByLabel("Type it again").fill("member vault passcode");
+  await member.page.getByLabel("Choose a passcode").fill("731905");
+  await member.page.getByLabel("Type it again").fill("731905");
   await member.page.getByRole("button", { name: "Set passcode and open" }).click();
   await expect(member.page.getByRole("button", { name: /^Deploy key/ })).toBeVisible({ timeout: 60_000 });
   await member.page.getByRole("button", { name: /^Deploy key/ }).click();
@@ -88,7 +88,7 @@ test("a team Vault: a member gets the key from the owner's device; an outsider o
 
   // Someone outside the workspace (with their own Vault, so their account has keys) gets the item shared.
   const outsider = await newPerson(browser, "Vault Outsider");
-  await setUpVault(outsider.page, "Set up your Vault", "outsider passcode");
+  await setUpVault(outsider.page, "Set up your Vault", "604812");
   await owner.page.getByRole("tab", { name: "Passwords & Credentials" }).click();
   await owner.page.getByRole("button", { name: /^Deploy key/ }).click();
   await owner.page.getByRole("region", { name: "Deploy key" }).getByRole("button", { name: "Share" }).click();
@@ -138,7 +138,7 @@ test("a team Vault: a member gets the key from the owner's device; an outsider o
   await waitForSaved(owner.page);
   // Unlocked in the same page (a reload locks the Vault), then back to the note.
   await owner.page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Vault" }).click();
-  await owner.page.getByLabel("Passcode").fill("team vault passcode");
+  await owner.page.getByLabel("Passcode").fill("482913");
   await owner.page.getByRole("button", { name: "Unlock" }).click();
   await expect(owner.page.getByRole("tab", { name: "Passwords & Credentials" })).toBeVisible({ timeout: 60_000 });
   await owner.page.goBack();
@@ -159,7 +159,7 @@ test("a team Vault: a member gets the key from the owner's device; an outsider o
   await expect(owner.page.getByRole("main")).toContainText("The router admin is on the back.", { timeout: 30_000 });
 
   // The log has all of it.
-  await unlock(owner.page, "team vault passcode");
+  await unlock(owner.page, "482913");
   await owner.page.getByRole("tab", { name: "Activity" }).click();
   const log = owner.page.getByRole("region", { name: "Activity" });
   for (const line of ["Shared an item", "Opened a shared item", "Moved a note into the Vault", "Moved a note out of the Vault"]) await expect(log).toContainText(line, { timeout: 30_000 });

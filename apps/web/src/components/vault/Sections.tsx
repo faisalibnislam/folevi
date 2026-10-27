@@ -6,6 +6,7 @@ import { CheckCircle2, Download, ShieldAlert, UserPlus } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -13,6 +14,7 @@ import { formatDateTime } from "@/lib/format";
 import { vaultSessions } from "@/lib/vault/keys";
 import { eventLabel } from "./events";
 import { ImportExport } from "./ImportExport";
+import { NewPasscode, PasscodeField } from "./PasscodeFields";
 
 type Info = { id: string; personal: boolean; role: string; autoLockMinutes: number; custodiansNameCustodians: boolean };
 
@@ -192,6 +194,7 @@ export function VaultSettings({ info }: { info: Info }) {
   const toast = useToast();
   const run = (p: Promise<unknown>, ok: string) => void p.then(() => toast.show(ok), (e) => toast.show(errorMessage(e), { tone: "error" }));
   const manage = info.role !== "member";
+  const [changing, setChanging] = useState(false);
   return (
     <section aria-label="Vault settings" className="max-w-xl space-y-5 text-subheadline">
       {manage ? (
@@ -220,6 +223,9 @@ export function VaultSettings({ info }: { info: Info }) {
       ) : null}
       <ImportExport vaultId={info.id} canExport={info.role !== "member"} />
       <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" onClick={() => setChanging(true)}>
+          Change passcode
+        </Button>
         <Button variant="secondary" onClick={() => void vaultSessions().newRecoveryKey(info.id).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}>
           Make a new recovery key
         </Button>
@@ -227,6 +233,65 @@ export function VaultSettings({ info }: { info: Info }) {
           Lock now
         </Button>
       </div>
+      {changing ? <ChangePasscodeDialog vaultId={info.id} onClose={() => setChanging(false)} /> : null}
     </section>
+  );
+}
+
+/** Your own passcode for this Vault: the current one, then a new PIN of 6, 8 or 12 digits. */
+function ChangePasscodeDialog({ vaultId, onClose }: { vaultId: string; onClose: () => void }) {
+  const toast = useToast();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const save = async () => {
+    if (!current || !next || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await vaultSessions().changePasscode(vaultId, { passcode: current }, next);
+      if (r.status === "ok") {
+        toast.show("Passcode changed", { tone: "success" });
+        onClose();
+      } else if (r.status === "locked") setError(`Too many wrong tries. Try again at ${new Date(r.until).toLocaleTimeString()}.`);
+      else setError("Your current passcode isn't right.");
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title="Change passcode"
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button variant="primary" disabled={!current || !next || busy} onClick={() => void save()}>
+            {busy ? "Saving…" : "Change passcode"}
+          </Button>
+        </>
+      }
+    >
+      <form
+        className="space-y-4 pb-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+      >
+        <PasscodeField label="Current passcode" value={current} onChange={setCurrent} autoFocus />
+        <NewPasscode onChange={setNext} label="New passcode" />
+        {error ? (
+          <p role="alert" className="text-footnote text-danger">
+            {error}
+          </p>
+        ) : null}
+        <button type="submit" hidden />
+      </form>
+    </Dialog>
   );
 }

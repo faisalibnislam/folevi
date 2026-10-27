@@ -195,7 +195,7 @@ File key FK(file)                 as today, wrapped by the owning note's or item
 
 - **Sidebar**: Vault with a lock icon; a dot when there's something new since the last visit.
 - **Unlock**: passcode field, "Forgot your passcode?" (recovery key, or ask a custodian), and nothing else.
-- **First open**: three steps: what the Vault is, choose a passcode (strength meter, 8 characters minimum),
+- **First open**: three steps: what the Vault is, choose a passcode (a PIN of 6, 8 or 12 digits, 6 to start),
   save the recovery key (download or print, then type 4 of its words back).
 - **Vault home**: the three sections, a search field (on the device), a lock button, the time until
   auto-lock.
@@ -232,9 +232,10 @@ One release, built in this order so each part is tested on the one before it.
 
 1. **Offline.** The Vault works online only in the first release (nothing of it on the device
    between visits). An encrypted offline copy can come later.
-2. **Passcode strength.** At least 8 characters (letters, numbers or words), no 4 or 6 digit PINs,
-   because a stolen laptop plus a short PIN is the weakest point. Touch ID or a passkey as a second way to
-   unlock can come after the first release.
+2. **Passcode.** A PIN of 6, 8 or 12 digits, each person's choice (6 to start): the owner's decision on
+   2026-10-27, replacing "at least 8 characters, no 4 or 6 digit PINs". A stolen, unlocked laptop plus a
+   short PIN is the weakest point, so a longer PIN is offered. Passcodes from before must change to a PIN at
+   the next unlock. Touch ID or a passkey as a second way to unlock can come after the first release.
 3. **At least two custodians.** Warn the owner while they're the only custodian ("If you lose
    your recovery key, nobody can open the team Vault").
 4. **Access reviews.** Every 90 days, custodians get a reminder to check who has access.

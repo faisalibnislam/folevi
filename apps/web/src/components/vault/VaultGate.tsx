@@ -3,15 +3,16 @@
 // the recovery key), waiting for a custodian, choosing a passcode after one shared the key, unlocking by passcode or
 // recovery key, or asking to unlock encryption on this browser first. Nothing of the Vault is drawn before this.
 import { useConvex, useMutation } from "convex/react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { KeyRound, Lock, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { UnlockScreen } from "@/components/e2ee/UnlockScreen";
-import { passcodeProblem, vaultSessions, type UnlockResult } from "@/lib/vault/keys";
+import { vaultSessions, type UnlockResult } from "@/lib/vault/keys";
 import { ensureEncryptionAccount, useVaultBinding, useVaultInfo } from "./useVault";
+import { NewPasscode, PasscodeField } from "./PasscodeFields";
 
 type Info = NonNullable<ReturnType<typeof useVaultInfo>>;
 
@@ -27,15 +28,8 @@ function Card({ icon, title, children }: { icon: React.ReactNode; title: string;
   );
 }
 
-function PasscodeField({ label, value, onChange, autoFocus }: { label: string; value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
-  const id = useId();
-  return (
-    <label htmlFor={id} className="block">
-      <span className="mb-1 block text-footnote font-medium text-ink">{label}</span>
-      <input id={id} type="password" autoComplete="off" autoFocus={autoFocus} value={value} onChange={(e) => onChange(e.target.value)} className="h-10 w-full ui-input rounded-chip px-3 text-body text-ink" />
-    </label>
-  );
-}
+/** Passcodes from before PINs had a letter, or more than 12 digits; a mistyped PIN never does. */
+const fromBeforePins = (passcode: string) => /\D/.test(passcode) || passcode.length > 12;
 
 function resultMessage(r: UnlockResult): string | null {
   if (r.status === "wrong") return "That isn't right. Try again.";
@@ -53,7 +47,10 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
   const requestReset = useMutation(api.vaultKeys.requestReset);
   const toast = useToast();
   const [passcode, setPasscode] = useState("");
-  const [confirm, setConfirm] = useState("");
+  // A new passcode once it's chosen and typed twice (a 6, 8 or 12 digit PIN), else null.
+  const [next, setNext] = useState<string | null>(null);
+  // A passcode from before PINs that unlocked nothing yet: it proves who's changing it to a PIN.
+  const [old, setOld] = useState<string | null>(null);
   const [recovery, setRecovery] = useState("");
   const [mode, setMode] = useState<"passcode" | "recovery">("passcode");
   const [busy, setBusy] = useState(false);
@@ -90,7 +87,6 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
   }
 
   if (!info.exists || info.keyVersion === 0) {
-    const problem = passcode ? passcodeProblem(passcode) : null;
     return (
       <Card icon={<ShieldCheck size={20} />} title={info.personal ? "Set up your Vault" : "Set up your team's Vault"}>
         <p>A place for passwords, API keys and sensitive files. It's always end-to-end encrypted, opens with your own passcode, and keeps a record of everything done in it.</p>
@@ -98,20 +94,17 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
-            if (problem || passcode !== confirm) return;
+            if (!next) return;
             void run(async () => {
               await ensureEncryptionAccount(convex, profile.id);
               const id = info.exists ? info.id : (await create({ scope, client: vaultSessions().info() })).id;
-              await vaultSessions().setUp(id, passcode);
+              await vaultSessions().setUp(id, next);
             });
           }}
         >
-          <PasscodeField label="Choose a passcode" value={passcode} onChange={setPasscode} autoFocus />
-          <PasscodeField label="Type it again" value={confirm} onChange={setConfirm} />
-          {problem ? <p className="text-footnote text-warning">{problem}</p> : null}
-          {confirm && confirm !== passcode ? <p className="text-footnote text-warning">The two don't match.</p> : null}
+          <NewPasscode onChange={setNext} autoFocus />
           {error ? <p role="alert" className="text-footnote text-danger">{error}</p> : null}
-          <Button type="submit" variant="primary" disabled={busy || !passcode || Boolean(problem) || passcode !== confirm}>
+          <Button type="submit" variant="primary" disabled={busy || !next}>
             {busy ? "Setting up…" : "Set up the Vault"}
           </Button>
         </form>
@@ -128,7 +121,6 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
   }
 
   if (info.needsPasscode) {
-    const problem = passcode ? passcodeProblem(passcode) : null;
     return (
       <Card icon={<KeyRound size={20} />} title="Choose your Vault passcode">
         <p>A custodian shared the Vault's key with you. Choose the passcode you'll open it with. Nobody else knows it, Folevi included.</p>
@@ -136,20 +128,50 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
-            if (problem || passcode !== confirm) return;
+            if (!next) return;
             void run(async () => {
               await ensureEncryptionAccount(convex, profile.id);
-              return await vaultSessions().finishWithPasscode(info.id, passcode);
+              return await vaultSessions().finishWithPasscode(info.id, next);
             });
           }}
         >
-          <PasscodeField label="Choose a passcode" value={passcode} onChange={setPasscode} autoFocus />
-          <PasscodeField label="Type it again" value={confirm} onChange={setConfirm} />
-          {problem ? <p className="text-footnote text-warning">{problem}</p> : null}
+          <NewPasscode onChange={setNext} autoFocus />
           {error ? <p role="alert" className="text-footnote text-danger">{error}</p> : null}
-          <Button type="submit" variant="primary" disabled={busy || !passcode || Boolean(problem) || passcode !== confirm}>
+          <Button type="submit" variant="primary" disabled={busy || !next}>
             {busy ? "Opening…" : "Set passcode and open"}
           </Button>
+        </form>
+      </Card>
+    );
+  }
+
+  if (old !== null) {
+    return (
+      <Card icon={<KeyRound size={20} />} title="Choose a new passcode">
+        <p>Vault passcodes are now a PIN of 6, 8 or 12 digits. Choose yours to open the Vault; your old passcode stops working.</p>
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!next) return;
+            void run(async () => {
+              const r = await vaultSessions().changePasscode(info.id, { passcode: old }, next);
+              // The old passcode was wrong (or locked out): back to the locked screen to say so.
+              if (r.status !== "ok") setOld(null);
+              return r;
+            });
+          }}
+        >
+          <NewPasscode onChange={setNext} autoFocus label="New passcode" />
+          {error ? <p role="alert" className="text-footnote text-danger">{error}</p> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="submit" variant="primary" disabled={busy || !next}>
+              {busy ? "Opening…" : "Save passcode and open"}
+            </Button>
+            <Button type="button" variant="quiet" onClick={() => (setOld(null), setError(null))}>
+              Back
+            </Button>
+          </div>
         </form>
       </Card>
     );
@@ -161,7 +183,16 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
         className="space-y-3"
         onSubmit={(e) => {
           e.preventDefault();
-          void run(() => (mode === "passcode" ? vaultSessions().unlock(info.id, { passcode }) : vaultSessions().changePasscode(info.id, { recoveryText: recovery }, passcode)));
+          if (mode === "passcode" && fromBeforePins(passcode)) {
+            // A passcode from before PINs: choose a PIN first, then the old one opens the Vault once to switch.
+            setOld(passcode);
+            setPasscode("");
+            setNext(null);
+            setError(null);
+            return;
+          }
+          if (mode === "recovery" && !next) return;
+          void run(() => (mode === "passcode" ? vaultSessions().unlock(info.id, { passcode }) : vaultSessions().changePasscode(info.id, { recoveryText: recovery }, next!)));
         }}
       >
         {mode === "passcode" ? (
@@ -172,12 +203,12 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
               <span className="mb-1 block text-footnote font-medium text-ink">Vault recovery key</span>
               <input autoFocus autoComplete="off" spellCheck={false} value={recovery} onChange={(e) => setRecovery(e.target.value)} className="h-10 w-full ui-input rounded-chip px-3 font-mono text-body text-ink" />
             </label>
-            <PasscodeField label="New passcode" value={passcode} onChange={setPasscode} />
+            <NewPasscode onChange={setNext} label="New passcode" />
           </>
         )}
         {error ? <p role="alert" className="text-footnote text-danger">{error}</p> : null}
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="submit" variant="primary" disabled={busy || !passcode || (mode === "recovery" && !recovery)}>
+          <Button type="submit" variant="primary" disabled={busy || (mode === "passcode" ? !passcode : !recovery || !next)}>
             {busy ? "Unlocking…" : mode === "passcode" ? "Unlock" : "Reset passcode and open"}
           </Button>
           <Button type="button" variant="quiet" onClick={() => (setMode(mode === "passcode" ? "recovery" : "passcode"), setError(null))}>

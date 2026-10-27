@@ -18,10 +18,16 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   await expect(page.getByRole("heading", { name: "Set up your Vault" })).toBeVisible({ timeout: 30_000 });
   await shot(page, "1-setup");
 
-  await page.getByLabel("Choose a passcode").fill("short");
-  await expect(page.getByText("Use at least 8 characters.")).toBeVisible();
-  await page.getByLabel("Choose a passcode").fill("a strong vault passcode");
-  await page.getByLabel("Type it again").fill("a strong vault passcode");
+  // A PIN of 6, 8 or 12 digits (6 to start); letters don't go in, and the button waits for the full length.
+  await expect(page.getByRole("radio", { name: "6 digits" })).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("radio", { name: "8 digits" }).click();
+  await page.getByLabel("Choose a passcode").fill("abc1357");
+  await expect(page.getByLabel("Choose a passcode")).toHaveValue("1357");
+  await page.getByLabel("Choose a passcode").fill("13572468");
+  await page.getByLabel("Type it again").fill("1357246");
+  await expect(page.getByRole("button", { name: "Set up the Vault" })).toBeDisabled();
+  await page.getByLabel("Type it again").fill("13572468");
+  await shot(page, "1b-setup-pin");
   await page.getByRole("button", { name: "Set up the Vault" }).click();
 
   // The recovery key, once: groups 3 and 7 typed back.
@@ -52,14 +58,29 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("Correct-Horse-9-Battery");
   await shot(page, "3-password");
 
+  // Settings: change the passcode to a 6 digit PIN (the current one is checked).
+  await page.getByRole("tab", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Change passcode" }).click();
+  const change = page.getByRole("dialog", { name: "Change passcode" });
+  await change.getByLabel("Current passcode").fill("11111111");
+  await change.getByLabel("New passcode").fill("246810");
+  await change.getByLabel("Type it again").fill("246810");
+  await shot(page, "2c-change-passcode");
+  await change.getByRole("button", { name: "Change passcode" }).click();
+  await expect(change.getByRole("alert")).toContainText("Your current passcode isn't right.", { timeout: 30_000 });
+  await change.getByLabel("Current passcode").fill("13572468");
+  await change.getByRole("button", { name: "Change passcode" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Passcode changed" })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("tab", { name: "Passwords & Credentials" }).click();
+
   // Lock: nothing of the Vault stays on the page; unlock with the passcode.
   await page.getByRole("button", { name: "Lock", exact: true }).click();
   await expect(page.getByRole("heading", { name: "The Vault is locked" })).toBeVisible();
   await expect(page.getByText("Bank")).toHaveCount(0);
-  await page.getByLabel("Passcode").fill("not the passcode");
+  await page.getByLabel("Passcode").fill("000000");
   await page.getByRole("button", { name: "Unlock" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "That isn't right" })).toBeVisible();
-  await page.getByLabel("Passcode").fill("a strong vault passcode");
+  await page.getByLabel("Passcode").fill("246810");
   await page.getByRole("button", { name: "Unlock" }).click();
   await expect(page.getByRole("button", { name: /^Bank/ })).toBeVisible({ timeout: 60_000 });
 

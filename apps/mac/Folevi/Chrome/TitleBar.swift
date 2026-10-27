@@ -104,8 +104,14 @@ enum TitleBar {
         WindowRestore.changed()
     }
 
-    /// The system's sidebar material behind the page, once per main window.
+    /// The October 2026 translucent sidebar (the system's material behind a clear page) is off: the owner chose a
+    /// solid sidebar like the website on 2026-10-27 (docs/MAC_REBUILD_PLAN.md section 0). FOLEVI_VIBRANCY=1 brings
+    /// it back (comparisons with the old app).
+    static let vibrancy = ProcessInfo.processInfo.environment["FOLEVI_VIBRANCY"] == "1"
+
+    /// The system's sidebar material behind the page, once per main window (only with `vibrancy`).
     static func attachMaterial(_ window: NSWindow) {
+        guard vibrancy else { return }
         guard let content = window.contentView, !content.subviews.contains(where: { $0 is SidebarMaterial }) else { return }
         let material = SidebarMaterial(frame: content.bounds)
         material.autoresizingMask = [.width, .height]
@@ -139,7 +145,7 @@ enum TitleBar {
             "fullscreen": window?.styleMask.contains(.fullScreen) == true,
             "active": window?.isKeyWindow == true || view.role == .quickAdd,
             "keyboard": NSApp.isFullKeyboardAccessEnabled,
-            "vibrancy": view.role == .main && !view.nativeFrame ? "sidebar" : view.role == .quickAdd ? "hud" : "",
+            "vibrancy": view.role == .main && !view.nativeFrame && vibrancy ? "sidebar" : view.role == .quickAdd ? "hud" : "",
             "panel": view.role == .quickAdd ? "quick-add" : (window === SettingsWindow.shared.window ? "settings" : ""),
         ]
         view.callAsyncJavaScript("window.__foleviChrome && window.__foleviChrome(attrs)", arguments: ["attrs": attrs], in: nil, in: .page, completionHandler: nil)

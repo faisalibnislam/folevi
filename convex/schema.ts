@@ -2889,6 +2889,10 @@ export default defineSchema({
     /** The log's last entry: its number and hash (the next entry chains to it). */
     logSeq: v.number(),
     logHead: v.string(),
+    /** Someone lost access: the next custodian device to open the Vault makes a new key version for everyone left. */
+    rotationNeeded: v.optional(v.boolean()),
+    /** When a custodian last confirmed who has access (a reminder comes every 90 days). */
+    accessReviewedAt: v.optional(v.number()),
     createdBy: v.id("profiles"),
     createdAt: v.number(),
   })

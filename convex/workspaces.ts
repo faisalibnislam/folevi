@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { vaultMemberLeftWorkspace } from "./vaultPeople";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -508,6 +509,8 @@ async function revokeWorkspaceGrants(ctx: MutationCtx, workspace: Doc<"workspace
  * so they can't read anything new. Nothing happens for a workspace without encryption.
  */
 async function memberLeftKeys(ctx: MutationCtx, workspace: Doc<"workspaces">, profileId: Id<"profiles">): Promise<void> {
+  // Their place in the workspace's Vault goes too, and its key changes (docs/VAULT_PLAN.md §3).
+  await vaultMemberLeftWorkspace(ctx, workspace._id, profileId);
   const scope = workspaceScope(workspace._id);
   if (await dropMemberKeys(ctx, scope, profileId)) await addPendingGrant(ctx, scope, profileId, "rotation");
 }

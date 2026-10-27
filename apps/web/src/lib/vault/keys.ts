@@ -226,6 +226,9 @@ class VaultSessions {
     if (!r.grants.length) return r.fromCustodian.length ? { status: "needsPasscode" } : { status: "notSetUp" };
     const checks = new Map(r.keys.map((k) => [k.version, bytes(k.check)]));
     const raw = new Map<number, Uint8Array>();
+    // Each version's inner layer (sealed to the account key), to wrap again after a new key version.
+    const inners = new Map<number, Uint8Array>();
+    let passcodeKeyUsed: Awaited<ReturnType<typeof vaultPasscodeKey>> | null = null;
     try {
       for (const grant of r.grants) {
         const g = grantFor(vaultId, grant.version, actor.profileId);
@@ -233,7 +236,10 @@ class VaultSessions {
           way === "passcode"
             ? await vaultPasscodeKey((secret as { passcode: string }).passcode, { name: "argon2id", ...grant.kdf!, salt: bytes(grant.salt!) }, grant.version === r.keyVersion ? onProgress : undefined)
             : await vaultRecoveryKey(recoveryBytes!);
-        raw.set(grant.version, await openVaultGrant(bytes(grant.wrapped), { kind: way, key }, actor.account, g, checks.get(grant.version)!));
+        if (way === "passcode") passcodeKeyUsed = key;
+        const inner = await innerOfGrant(bytes(grant.wrapped), { kind: way, key }, g);
+        raw.set(grant.version, await openVaultGrant(inner, { kind: "custodian" }, actor.account, g, checks.get(grant.version)!));
+        inners.set(grant.version, inner);
       }
     } catch {
       for (const vk of raw.values()) vk.fill(0);
@@ -241,6 +247,25 @@ class VaultSessions {
       return res.lockedUntil ? { status: "locked", until: res.lockedUntil } : { status: "wrong" };
     } finally {
       recoveryBytes?.fill(0);
+    }
+    // Versions a custodian sealed to this person since (a new key after someone left): opened with the account key,
+    // then given this person's passcode layer, so the passcode keeps guarding every version.
+    const added = r.fromCustodian.filter((gr) => !raw.has(gr.version));
+    for (const gr of added) {
+      const g = grantFor(vaultId, gr.version, actor.profileId);
+      const inner = bytes(gr.wrapped);
+      raw.set(gr.version, await openVaultGrant(inner, { kind: "custodian" }, actor.account, g, checks.get(gr.version)!));
+      inners.set(gr.version, inner);
+    }
+    if (added.length && way === "passcode" && passcodeKeyUsed) {
+      const salt = randomBytes(16);
+      const passcodeKey = await vaultPasscodeKey((secret as { passcode: string }).passcode, { name: "argon2id", ...KDF, salt });
+      const grants = [];
+      for (const [version, inner] of inners) {
+        const g = grantFor(vaultId, version, actor.profileId);
+        grants.push({ version, epoch: actor.epoch, wrapped: wire(await wrapWithPasscode(inner, passcodeKey, g)), salt: wire(salt), kdf: KDF });
+      }
+      await client.mutation(api.vaultKeys.setPasscode, { vaultId, grants, reason: "rotation", client: this.info() });
     }
     await this.adopt(vaultId, raw, r.keyVersion, r.role, r.autoLockMinutes);
     await client.mutation(api.vaultKeys.unlockResult, { vaultId, ok: true, way, client: this.info(vaultId) });
@@ -350,6 +375,31 @@ class VaultSessions {
       n++;
     }
     return n;
+  }
+
+  /**
+   * A new key version (a custodian's device, when someone lost access): sealed to everyone who holds the key. New
+   * writes use it from now on; each person adds their passcode layer at their next unlock.
+   */
+  async rotate(vaultId: string): Promise<boolean> {
+    const { client } = this.need();
+    const o = this.open.get(vaultId);
+    if (!o) return false;
+    const holders = await client.query(api.vaultPeople.keyHolders, { vaultId });
+    if (!holders.rotationNeeded || holders.keyVersion !== o.current) return false;
+    const version = o.current + 1;
+    const vk = newVaultKey();
+    const keys = await deriveVaultKeys(vk);
+    const grants = [];
+    for (const p of holders.people) {
+      grants.push({ profileId: p.profileId, epoch: p.epoch, wrapped: wire(await sealVaultKeyTo(vk, bytes(p.x25519Pub), grantFor(vaultId, version, p.profileId))) });
+    }
+    await client.mutation(api.vaultPeople.rotate, { vaultId, version, check: wire(keys.check), grants, client: this.info(vaultId) });
+    o.keys.set(version, keys);
+    o.raw.set(version, await SecretBox.hold(vk));
+    o.current = version;
+    this.emit();
+    return true;
   }
 
   /** Locks a Vault on this device: forgets its keys and tells the server how it locked (for the log). */

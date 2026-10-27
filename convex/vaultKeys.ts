@@ -70,8 +70,11 @@ async function replaceGrants(ctx: MutationCtx, vault: Doc<"vaults">, profileId: 
   }
 }
 
-/** The key versions a person must hold: every version still wrapping something, newest last (current = keyVersion). */
-async function liveVersions(ctx: Ctx, vault: Doc<"vaults">): Promise<number[]> {
+/**
+ * The key versions a person must hold: every version, newest last (current = keyVersion). Versions aren't retired:
+ * earlier versions of items stay sealed under the key that was current then.
+ */
+export async function liveVersions(ctx: Ctx, vault: Doc<"vaults">): Promise<number[]> {
   const out: number[] = [];
   for (let version = 1; version <= vault.keyVersion; version++) {
     const row = await ctx.db
@@ -217,7 +220,7 @@ export const lock = mutation({
  * custodian's inner-only grants go once the person's own are in.
  */
 export const setPasscode = mutation({
-  args: { vaultId: v.string(), grants: v.array(vPasscodeGrant), reason: v.union(v.literal("first"), v.literal("changed"), v.literal("reset")), client: v.optional(vVaultClient) },
+  args: { vaultId: v.string(), grants: v.array(vPasscodeGrant), reason: v.union(v.literal("first"), v.literal("changed"), v.literal("reset"), v.literal("rotation")), client: v.optional(vVaultClient) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
@@ -234,7 +237,8 @@ export const setPasscode = mutation({
     for (const old of await grantsOf(ctx, vault._id, profile._id, "custodian")) await ctx.db.delete(old._id);
     const throttle = await throttleOf(ctx, vault, profile._id);
     if (throttle) await ctx.db.patch(throttle._id, { failures: 0, updatedAt: Date.now() });
-    await appendLog(ctx, vault, { event: args.reason === "changed" ? "passcode.changed" : args.reason === "reset" ? "passcode.reset" : "passcode.set", actor: { profile, role }, client: args.client });
+    const event = { changed: "passcode.changed", reset: "passcode.reset", first: "passcode.set", rotation: "key.adopted" }[args.reason];
+    await appendLog(ctx, vault, { event, actor: { profile, role }, ...(args.reason === "rotation" ? { detail: { version: vault.keyVersion } } : {}), client: args.client });
     return null;
   },
 });

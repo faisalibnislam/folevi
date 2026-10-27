@@ -57,6 +57,15 @@ export const get = query({
       waitingForKey: pending !== null && grant === null && !fromCustodian,
       /** They have a recovery key for this Vault. */
       hasRecovery: grants.some((g) => g.layer === "recovery"),
+      /** Their recovery key predates a new key version: they should save a new one. */
+      recoveryOutdated: !grants.some((g) => g.layer === "recovery") && (await ctx.db
+        .query("vaultGrants")
+        .withIndex("by_vault_profile_layer", (q) => q.eq("vaultId", vault._id).eq("profileId", profile._id).eq("layer", "recovery"))
+        .first()) !== null,
+      /** Custodians only: someone lost access, and this device should make a new key version when it opens the Vault. */
+      rotationNeeded: role !== "member" && vault.rotationNeeded === true,
+      /** Custodians only: it's been 90 days since anyone confirmed who has access. */
+      accessReviewDue: role !== "member" && workspace !== null && Date.now() - (vault.accessReviewedAt ?? vault.createdAt) > 90 * 24 * 60 * 60 * 1000,
       autoLockMinutes: vault.autoLockMinutes,
       custodiansNameCustodians: vault.custodiansNameCustodians,
     };

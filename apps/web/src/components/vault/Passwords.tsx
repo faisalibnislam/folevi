@@ -2,7 +2,7 @@
 // Passwords & Credentials (docs/VAULT_PLAN.md §4): the list (summaries, opened on this device), adding and editing an
 // item (each kind's fields, a generator, strength), and an item (its secrets fetched by vaultItems.open, which logs it;
 // hidden fields shown only on reveal; copying logged and the clipboard cleared after 30 seconds; live 2FA codes).
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { Copy, Eye, EyeOff, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
@@ -15,6 +15,7 @@ import { formatRelative } from "@/lib/format";
 import { vaultSessions } from "@/lib/vault/keys";
 import { changedFields, ITEM_KINDS, newItemId, openSecrets, openSummary, sealItem, splitItem, type ItemContent, type ItemKind, type ItemSecrets, type ItemSummary } from "@/lib/vault/items";
 import { passphrase, passwordStrength, randomPassword } from "@/lib/vault/generator";
+import { breachStatus } from "@/lib/vault/breach";
 import { parseTotp, totpCode } from "@/lib/vault/totp";
 import { copySecret, useRecordEvent } from "./useVault";
 
@@ -43,12 +44,12 @@ function useOpenedRows(vaultId: string, rows: Row[] | undefined): Opened[] | und
   return opened;
 }
 
-export function Passwords({ vaultId }: { vaultId: string }) {
+export function Passwords({ vaultId, initialSelected = null }: { vaultId: string; initialSelected?: string | null }) {
   const data = useRowsQuery(vaultId);
   const opened = useOpenedRows(vaultId, data?.items);
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<ItemKind | "all">("all");
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(initialSelected);
   const [adding, setAdding] = useState(false);
   const shown = useMemo(() => {
     const needle = q.trim().toLocaleLowerCase();
@@ -245,6 +246,7 @@ function ItemPanel({ vaultId, opened, onClosed }: { vaultId: string; opened: Ope
 function ItemDialog({ vaultId, existing, onClose, onSaved }: { vaultId: string; existing?: { row: Row; revision: number; content: ItemContent }; onClose: () => void; onSaved: (id: string) => void }) {
   const create = useMutation(api.vaultItems.create);
   const update = useMutation(api.vaultItems.update);
+  const breachRange = useAction(api.vaultItems.breachRange);
   const toast = useToast();
   const uid = useId();
   const [kind, setKind] = useState<ItemKind>(existing?.content.kind ?? "login");
@@ -261,6 +263,9 @@ function ItemDialog({ vaultId, existing, onClose, onSaved }: { vaultId: string; 
       const s = vaultSessions();
       const version = s.currentVersion(vaultId)!;
       const content = splitItem(kind, title, values, notes, existing?.content.secrets.custom ?? [], existing?.content.summary.tags ?? []);
+      // Health, worked out here and sealed with the summary: only 5 characters of the password's SHA-1 leave.
+      const pw = content.secrets.fields.password;
+      if (pw) content.summary.health = { strength: passwordStrength(pw).score, breached: await breachStatus(pw, (prefix) => breachRange({ prefix })), checkedAt: Date.now() };
       if (existing) {
         const itemSealed = await sealItem(vaultId, existing.row.id, version, s.keys(vaultId), content);
         await update({ vaultId, itemId: existing.row.id, baseRevision: existing.revision, item: itemSealed, changed: changedFields(existing.content, content), client: s.info(vaultId) });

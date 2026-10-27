@@ -113,6 +113,17 @@ export interface ItemSummary {
   /** The kind's summary fields (username, website, service…). */
   fields: Record<string, string>;
   tags: string[];
+  /**
+   * The password's health, worked out on the device when it was saved (sealed with the summary, so Health needs no
+   * item opened): its strength score (0 to 4), whether Pwned Passwords knows it, and when that was checked.
+   */
+  health?: ItemHealth;
+}
+
+export interface ItemHealth {
+  strength: number;
+  breached: "breached" | "ok" | "unknown";
+  checkedAt: number;
 }
 
 /** The rest: secrets, notes, custom fields. */

@@ -68,5 +68,43 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   await page.getByRole("button", { name: "Check the log" }).click();
   await expect(log).toContainText("Log verified");
   await shot(page, "4-activity");
+
+  // Health: a weak password and a reused one show up without opening anything.
+  await page.getByRole("tab", { name: "Passwords & Credentials" }).click();
+  for (const [title, password] of [["Old forum", "letmein1"], ["Bank copy", "Correct-Horse-9-Battery"]] as const) {
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    const d = page.getByRole("dialog", { name: "Add to the Vault" });
+    await d.getByLabel("Title").fill(title);
+    await d.getByLabel("Password", { exact: true }).fill(password);
+    await d.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByRole("region", { name: title })).toBeVisible({ timeout: 30_000 });
+  }
+  await page.getByRole("tab", { name: "Health" }).click();
+  const health = page.getByRole("region", { name: "Health" });
+  await expect(health.getByRole("heading", { name: /Weak/ })).toBeVisible({ timeout: 30_000 });
+  await expect(health.getByRole("heading", { name: /Used more than once \(2\)/ })).toBeVisible();
+  await expect(health).toContainText("Old forum");
+  await shot(page, "5-health");
+
+  // Trash: delete one, restore it, delete it again and empty the Trash.
+  await expect(health.getByRole("heading", { name: /Found in a data breach/ })).toBeVisible();
+  await health.getByRole("button", { name: /^Old forum/ }).first().click();
+  await page.getByRole("button", { name: "Move to the Vault's Trash" }).click();
+  await page.getByRole("tab", { name: "Trash" }).click();
+  const trash = page.getByRole("region", { name: "Trash" });
+  await expect(trash).toContainText("Old forum", { timeout: 30_000 });
+  await expect(trash).toContainText("30 days left");
+  await shot(page, "6-trash");
+  await trash.getByRole("button", { name: "Restore" }).click();
+  await expect(trash.getByText("The Trash is empty")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("tab", { name: "Passwords & Credentials" }).click();
+  await page.getByRole("button", { name: /^Old forum/ }).click();
+  await page.getByRole("button", { name: "Move to the Vault's Trash" }).click();
+  await page.getByRole("tab", { name: "Trash" }).click();
+  await trash.getByRole("button", { name: "Empty Trash" }).click();
+  await page.getByRole("dialog", { name: "Empty the Trash?" }).getByRole("button", { name: "Delete for good" }).click();
+  await expect(trash.getByText("The Trash is empty")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("tab", { name: "Activity" }).click();
+  for (const line of ["Moved an item to the Trash", "Restored an item", "Emptied the Vault's Trash"]) await expect(log).toContainText(line);
   await context.close();
 });

@@ -11,13 +11,15 @@ import { useToast } from "@/components/ui/Toast";
 import { vaultSessions } from "@/lib/vault/keys";
 import { Passwords } from "./Passwords";
 import { Files } from "./Files";
+import { Health } from "./Health";
+import { Trash } from "./Trash";
 import { Activity, People, VaultSettings } from "./Sections";
 import { VaultGate } from "./VaultGate";
 import { useRecordEvent, useRecoveryToSave, useVaultBinding, useVaultInfo, useVaultOpen } from "./useVault";
 import { RecoveryKeyPanel } from "@/components/e2ee/RecoveryKeyPanel";
 import { useAppState } from "@/lib/app/state";
 
-type Tab = "passwords" | "files" | "activity" | "people" | "settings";
+type Tab = "passwords" | "files" | "health" | "trash" | "activity" | "people" | "settings";
 
 export function VaultView() {
   const info = useVaultInfo();
@@ -27,6 +29,7 @@ export function VaultView() {
   const recoveryToSave = useRecoveryToSave(vaultId);
   const { profile } = useAppState();
   const [tab, setTab] = useState<Tab>("passwords");
+  const [jumpTo, setJumpTo] = useState<string | null>(null);
   const toast = useToast();
   const record = useRecordEvent(vaultId ?? "");
   const chores = useRef<string | null>(null);
@@ -59,8 +62,10 @@ export function VaultView() {
   const tabs: [Tab, string][] = [
     ["passwords", "Passwords & Credentials"],
     ["files", "Files & Notes"],
+    ["health", "Health"],
     ["activity", "Activity"],
     ...(info.personal ? [] : ([["people", "People"]] as [Tab, string][])),
+    ["trash", "Trash"],
     ["settings", "Settings"],
   ];
   const ready = open && info.exists;
@@ -111,8 +116,10 @@ export function VaultView() {
               ))}
             </div>
             <div role="tabpanel">
-              {tab === "passwords" ? <Passwords vaultId={info.id} /> : null}
+              {tab === "passwords" ? <Passwords key={jumpTo ?? ""} vaultId={info.id} initialSelected={jumpTo} /> : null}
               {tab === "files" ? <Files vaultId={info.id} /> : null}
+              {tab === "health" ? <Health vaultId={info.id} onOpenItem={(id) => (setJumpTo(id), setTab("passwords"))} /> : null}
+              {tab === "trash" ? <Trash vaultId={info.id} role={info.role} /> : null}
               {tab === "activity" ? <Activity info={info} /> : null}
               {tab === "people" && !info.personal ? <People info={info} /> : null}
               {tab === "settings" ? <VaultSettings info={info} /> : null}

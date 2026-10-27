@@ -52,6 +52,10 @@ export const SCREENS = [
   { id: "note-comments", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 1200, ...noteTool("comments", "Comments") },
   { id: "note-tasks", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 1200, ...noteTool("tasks", "Tasks in this page") },
   { id: "note-attachments", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 1200, ...noteTool("attachments", "Attachments and links") },
+  // A folder with a subfolder (Travel, with Japan), and the Folders and Tags pages.
+  { id: "folder", link: (fx) => `folevi-dev://folders/${fx.folders?.travel}` },
+  { id: "folders", link: "folevi-dev://folders" },
+  { id: "tags", link: "folevi-dev://tags" },
 ];
 
 /** A note screen showing one tab of the note's sidebar: `defaults` for the native frame, `web` run in the web frame. */
@@ -94,6 +98,7 @@ const FIXTURE = `
   }
   await run("note.star", { ids: [ids[0], ids[2]], starred: true });
   for (const t of ["Book the ryokan tomorrow", "Call Sam on Friday 3pm", "Renew passport next week", "Buy matcha today"]) await run("task.create", { text: t });
+  window.__fxFolders = { travel: travel.id, japan: japan.id, work: work.id };
   return ids;
 `;
 
@@ -134,9 +139,10 @@ async function setUp() {
   await waitFor(dir, `return !!window.__foleviEngine && !!window.__foleviNativeChrome`, 90_000);
   await sleep(1500);
   const made = await evaluate(dir, FIXTURE);
+  const folders = await evaluate(dir, `return window.__fxFolders`).catch(() => null);
   await sleep(1500);
   await quit();
-  writeFileSync(join(dir, "fixture.json"), JSON.stringify({ notes: made, at: new Date().toISOString() }));
+  writeFileSync(join(dir, "fixture.json"), JSON.stringify({ notes: made, folders, at: new Date().toISOString() }));
 }
 
 async function quit() {

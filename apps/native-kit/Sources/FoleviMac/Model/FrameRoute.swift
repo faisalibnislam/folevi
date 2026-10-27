@@ -108,6 +108,8 @@ public enum FrameRoute: Hashable, Sendable {
         case .tasks: return "view:tasks"
         case .calendar: return "view:calendar"
         case .search: return "view:search"
+        // The Vault is one tab whichever section a link opened (as the web's route "vault").
+        case .web(let p) where p == "/vault" || p.hasPrefix("/vault/"): return "view:vault"
         case .web(let p): return "view:web:\(p)"
         }
     }
@@ -136,6 +138,7 @@ public enum FrameRoute: Hashable, Sendable {
         case .calendar: return "Calendar"
         case .search(let q): return q.isEmpty ? "Search" : "Search: \(q)"
         case .note: return "Untitled"
+        case .web(let p) where p == "/vault" || p.hasPrefix("/vault/"): return "Vault"
         case .web: return "Folevi"
         }
     }

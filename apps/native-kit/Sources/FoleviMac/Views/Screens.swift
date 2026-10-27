@@ -241,6 +241,8 @@ struct ScreenRoot: View {
             case .search: SearchScreen(model: models.searchModel(), showsCancel: false)
             case .tasks: TasksScreen(model: models.tasksModel(), showsHeader: true)
             case .calendar: CalendarScreen(model: models.calendarModel(), showsHeader: true)
+            // The Vault (Vault/VaultScreen.swift); /vault/<section> opens a section.
+            case .web(let path) where path == "/vault" || path.hasPrefix("/vault/"): VaultScreen(frame: model, path: path)
             case .web(let path): Placeholder(symbol: "globe", title: "Not here yet", message: "\(path) doesn't have a screen in the Mac app yet.")
             case .note: Color.clear
             }

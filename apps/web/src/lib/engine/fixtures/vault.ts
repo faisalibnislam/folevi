@@ -1,4 +1,4 @@
-// Revision 13's fixtures: the Vault (lib/engine/viewsVault.ts, commandsVault.ts). Made-up values only: nothing here is
+// Revision 15's fixtures: the Vault (lib/engine/viewsVault.ts, commandsVault.ts). Made-up values only: nothing here is
 // anyone's secret. The Swift tests decode them (VaultFixtureTests) and the Mac's screen captures draw them.
 import type { CommandFixture, ViewFixture } from "./source";
 import type { CommandName, VaultItemRow, VaultKindDef, ViewName } from "../protocol";

@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 13;
+export const CONTRACT_REVISION = 15;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2698,7 +2698,7 @@ export interface NotesMoveCheckValue {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// The Vault (revision 13; docs/VAULT_PLAN.md, docs/MAC_REBUILD_PLAN.md §5.6). Everything decrypted here is decrypted
+// The Vault (revision 15; docs/VAULT_PLAN.md, docs/MAC_REBUILD_PLAN.md §5.6). Everything decrypted here is decrypted
 // by the engine (lib/vault/*), in memory only; keys never cross the bridge and nothing of the Vault is kept on the
 // device by the engine's kept answers. Every open the web logs is logged the same way (the server's log in an
 // account; a library's Vault has none). In a library (local mode) People, sharing and Activity are absent.

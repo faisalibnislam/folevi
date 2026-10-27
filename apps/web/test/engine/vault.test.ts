@@ -1,4 +1,4 @@
-// Revision 13 through the bridge host: the Vault, end to end on a library on this device (lib/local/functions/vault.ts)
+// Revision 15 through the bridge host: the Vault, end to end on a library on this device (lib/local/functions/vault.ts)
 // with the real cryptography: set up, the recovery key, add a login and open it, Health, a 2FA code, a folder, a note
 // and a file, lock, a wrong passcode, unlock, Trash; and what a library's Vault doesn't have (Activity, sharing).
 import { afterEach, beforeEach, describe, expect, it } from "vitest";

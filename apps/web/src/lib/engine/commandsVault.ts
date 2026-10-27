@@ -1,4 +1,4 @@
-// Revision 13's commands: the Vault (lib/engine/vault.ts). Each does what the web's screen does (components/vault/*):
+// Revision 15's commands: the Vault (lib/engine/vault.ts). Each does what the web's screen does (components/vault/*):
 // the same server calls (or, in a library, the device's own), sealed and opened here with lib/vault/*, logged as the
 // web logs them. What an item holds is kept in this page's memory while it's open (to save it again under the same
 // item key), and dropped when the Vault locks.

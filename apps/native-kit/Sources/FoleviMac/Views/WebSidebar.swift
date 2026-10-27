@@ -161,6 +161,8 @@ public struct WebSidebar: View {
             item(.calendar(nil), icon: .calendar, title: "Calendar")
             if let n = count(.reviews), n > 0 { item(.web("/review"), icon: .layers, title: "Reviews", count: n) }
             if caps?.sharing ?? false { item(.shared, icon: .share2, title: "Shared with Me") }
+            // The Vault where there's one for this person (vault.summary; a library's own Vault too, plan 5.6).
+            VaultSidebarRow(model: model) { item(.web("/vault"), icon: .lock, title: "Vault") }
             if caps?.changes ?? false { item(.changes, icon: .fileDiff, title: "Changes", count: count(.changes)) }
             item(.notes(.templates), icon: .layoutTemplate, title: "Templates")
         }

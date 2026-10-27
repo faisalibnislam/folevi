@@ -48,7 +48,93 @@ export const SCREENS = [
   { id: "trash", link: "folevi-dev://trash" },
   // The first fixture note ("Kyoto in November"), by its id from fixture.json.
   { id: "note", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 2500 },
+  // The library's Vault (docs/MAC_REBUILD_PLAN.md §5.6), locked first, then opened with the fixture's PIN.
+  { id: "vault-locked", link: "folevi-dev://vault", prepare: (kind) => vaultLock(kind), settle: 800 },
+  { id: "vault-files", link: "folevi-dev://vault", prepare: (kind) => vaultOpen(kind, ["tab", "Files & Notes"]), settle: 800 },
+  { id: "vault-passwords", link: "folevi-dev://vault/passwords", prepare: (kind) => vaultOpen(kind, ["tab", "Passwords & Credentials"]), settle: 800 },
+  { id: "vault-health", link: "folevi-dev://vault/health", prepare: (kind) => vaultOpen(kind, ["more", "Health"]), settle: 800 },
+  { id: "vault-trash", link: "folevi-dev://vault/trash", prepare: (kind) => vaultOpen(kind, ["more", "Trash"]), settle: 800 },
+  { id: "vault-settings", link: "folevi-dev://vault/settings", prepare: (kind) => vaultOpen(kind, ["more", "Settings"]), settle: 800 },
 ];
+
+/** The fixture Vault's PIN (made up for the scratch library). */
+const VAULT_PIN = "246813";
+
+/** Locks the fixture Vault if an earlier screen (the other scheme's pass) left it open. */
+function vaultLock(kind) {
+  if (kind === "native")
+    return `
+      const engine = window.__foleviEngine; const place = window.__foleviNativeChrome.place;
+      const ask = async (k, name, args) => JSON.parse(await engine.handle({ v: 1, id: "vl" + Math.random(), kind: k, place, name, args }));
+      const s = (await ask("query", "vault.summary", {})).value;
+      if (s && s.state === "open") await ask("command", "vault.lock", { vaultId: s.vaultId });
+      return true;`;
+  return `
+    const lock = [...document.querySelectorAll(".ui-invert main > header button")].find((b) => b.textContent.trim() === "Lock");
+    if (lock) { lock.click(); for (let t = 0; t < 5000 && !document.querySelector(".ui-invert .rounded-panel.ui-card"); t += 100) await new Promise((r) => setTimeout(r, 100)); }
+    return true;`;
+}
+
+/**
+ * Opens the fixture Vault on the screen shown: in the native frame through the engine (the native screen follows
+ * vault.summary), in the web frame by typing the PIN on the web's own unlock screen; then, in the web frame, the
+ * tab or the ⋯ menu's section (the native screen opens it from the link's path).
+ */
+function vaultOpen(kind, section) {
+  if (kind === "native")
+    return `
+      const engine = window.__foleviEngine; const place = window.__foleviNativeChrome.place;
+      const ask = async (k, name, args) => JSON.parse(await engine.handle({ v: 1, id: "vo" + Math.random(), kind: k, place, name, args }));
+      const s = (await ask("query", "vault.summary", {})).value;
+      if (s && s.state === "locked") await ask("command", "vault.unlock", { vaultId: s.vaultId, passcode: ${JSON.stringify(VAULT_PIN)} });
+      return true;`;
+  return `
+    const wait = async (fn, ms = 20000) => { for (let t = 0; t < ms; t += 100) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 100)); } return null; };
+    const byText = (sel, text) => [...document.querySelectorAll(sel)].find((e) => e.textContent.trim() === text);
+    const field = await wait(() => document.querySelector('[role="tablist"][aria-label="Vault sections"]') || [...document.querySelectorAll("label")].find((l) => l.textContent.trim().startsWith("Passcode"))?.querySelector("input"));
+    if (field && field.tagName === "INPUT") {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(field, ${JSON.stringify(VAULT_PIN)});
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 100));
+      byText("button", "Unlock").click();
+      await wait(() => document.querySelector('[role="tablist"][aria-label="Vault sections"]'));
+    }
+    const section = ${JSON.stringify(section)};
+    if (section && section[0] === "tab") byText('[role="tab"]', section[1])?.click();
+    if (section && section[0] === "more") {
+      document.querySelector('button[aria-label="More in the Vault"]').click();
+      (await wait(() => byText('[role="menuitemradio"]', section[1])))?.click();
+    }
+    await new Promise((r) => setTimeout(r, 300));
+    return true;`;
+}
+
+/** The fixture Vault: set up with the PIN, a few passwords, a folder with a note, and a file. */
+const VAULT_FIXTURE = `
+  const engine = window.__foleviEngine;
+  const place = window.__foleviNativeChrome && window.__foleviNativeChrome.place;
+  let n = 0;
+  const run = async (name, args) => {
+    const reply = JSON.parse(await engine.handle({ v: 1, id: "vf" + n++, kind: "command", place, name, args }));
+    if (reply.error) throw new Error(name + ": " + JSON.stringify(reply.error));
+    return reply.value;
+  };
+  await run("vault.setUp", { passcode: ${JSON.stringify(VAULT_PIN)} });
+  const s = JSON.parse(await engine.handle({ v: 1, id: "vfs", kind: "query", place, name: "vault.summary", args: {} })).value;
+  const vaultId = s.vaultId;
+  await run("vault.recoverySaved", { vaultId });
+  await run("vault.item.save", { vaultId, kind: "wifi", title: "Studio Wi-Fi", values: { network: "Studio", password: "abc123", security: "WPA3" }, notes: "" });
+  await run("vault.item.save", { vaultId, kind: "apiKey", title: "Maps API key", values: { service: "Maps", key: "made-up-key-for-screens", environment: "Production" }, notes: "" });
+  await run("vault.item.save", { vaultId, kind: "login", title: "Bank of Kyoto", values: { username: "sam@example.com", password: "Plum-Lantern-42-Harbor", website: "bank.example" }, notes: "" });
+  const folder = await run("vault.folder.create", { vaultId, parentId: null, name: "Contracts" });
+  await run("vault.folder.create", { vaultId, parentId: null, name: "Passports" });
+  await run("vault.note.create", { vaultId, folderId: null, title: "Safe deposit box" });
+  await run("vault.file.upload", { vaultId, folderId: null, name: "packing-list.txt", mime: "text/plain", data: btoa("Passport\\nAdapters\\nRain jacket\\n") });
+  const old = await run("vault.item.save", { vaultId, kind: "secureNote", title: "Old alarm code", values: { text: "1234" }, notes: "" });
+  await run("vault.item.remove", { vaultId, itemId: old.id });
+  await run("vault.lock", { vaultId });
+  return folder.id;
+`;
 const only = arg("--only")?.split(",");
 const screens = SCREENS.filter((s) => !only || only.includes(s.id));
 
@@ -123,6 +209,8 @@ async function setUp() {
   await sleep(1500);
   const made = await evaluate(dir, FIXTURE);
   await sleep(1500);
+  await evaluate(dir, VAULT_FIXTURE);
+  await sleep(1500);
   await quit();
   writeFileSync(join(dir, "fixture.json"), JSON.stringify({ notes: made, at: new Date().toISOString() }));
 }
@@ -157,6 +245,8 @@ async function shoot(kind) {
       // A window behind others doesn't run CSS animations (a note's sheet would stay at its first, invisible
       // frame): the end state at once, in both frames alike.
       await evaluate(dir, STILL).catch(() => undefined);
+      // A screen that needs a step first (the Vault unlocked, a section opened): its script runs in the page.
+      if (s.prepare) await evaluate(dir, s.prepare(kind)).catch((e) => console.warn(`${s.id}: ${e.message}`));
       await sleep(s.settle ?? 400);
       // The window as the screen shows it (macOS's own capture, no window shadow): the same path for both frames.
       const number = ensure(await command(dir, { cmd: "windows" }))[0].number;

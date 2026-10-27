@@ -1048,6 +1048,7 @@ export const FIXTURES: Record<string, Fixture> = {
     }),
   }),
   "view.reviews.empty": view({ name: "reviews", description: "Nothing to review and no cards yet.", args: {}, value: reviewsValue({ cards: [], counts: { due: 0, new: 0, later: 0 }, total: 0, hasCards: false, documentTitle: null, newPerDay: 20 }) }),
+  "view.recent.viewed": view({ name: "recent.viewed", description: "The notes opened last, for ⌘K's Recent.", args: {}, value: { rows: [{ id: "doc_00001", title: "Kyoto in November", icon: null, updatedAt: 1792828800000 }] } }),
   "command.review.rate": command({ name: "review.rate", description: "A card known well.", args: { blockId: "blk_card1", rating: "good", lastReview: null }, result: { ok: true } }),
   "command.review.setNewPerDay": command({ name: "review.setNewPerDay", description: "Ten new cards a day.", args: { value: 10 }, result: { ok: true } }),
   "command.support.send": command({ name: "support.send", description: "Send a support request from the app.", args: { topic: "sync", message: "My notes didn't sync after I came back online." }, result: { number: 1042 } }),

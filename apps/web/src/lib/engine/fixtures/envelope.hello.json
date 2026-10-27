@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "49025267"
+        "schemaHash": "7685247c"
       }
     }
   ],
@@ -24,7 +24,7 @@
         "protocol": 1,
         "revision": 13,
         "build": "dev",
-        "schemaHash": "49025267",
+        "schemaHash": "7685247c",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -83,7 +83,8 @@
           "sharedFolder.open",
           "notes.moveCheck",
           "graph",
-          "reviews"
+          "reviews",
+          "recent.viewed"
         ],
         "listViews": [
           "notes.list"

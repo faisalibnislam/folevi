@@ -3,7 +3,9 @@
   "screens": {
     "help": "folevi-dev://help",
     "graph": "folevi-dev://graph",
-    "review": "folevi-dev://review"
+    "review": "folevi-dev://review",
+    "palette": "folevi-dev://documents",
+    "newfolder": "folevi-dev://documents"
   },
   "styles": {
     "more.help.title": {
@@ -174,6 +176,122 @@
     "more.review.select.chevron": {
       "screen": "review",
       "selector": "button[aria-label='New cards a day'] > svg"
+    },
+    "more.palette": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands']"
+    },
+    "more.palette.bar": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] > div > div:first-child"
+    },
+    "more.palette.icon": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] > div > div:first-child svg"
+    },
+    "more.palette.input": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] input[role='combobox']"
+    },
+    "more.palette.esc": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] > div > div:first-child kbd"
+    },
+    "more.palette.filters": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] [role='group'][aria-label='Search filters']"
+    },
+    "more.palette.filter": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] [aria-label='Search filters'] > button"
+    },
+    "more.palette.filter.label": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] [aria-label='Search filters'] > button > span"
+    },
+    "more.palette.filter.chevron": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] [aria-label='Search filters'] > button > svg"
+    },
+    "more.palette.place": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] [aria-label='Search filters'] > span"
+    },
+    "more.palette.list": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] div.overflow-y-auto"
+    },
+    "more.palette.caps": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] div.overflow-y-auto > p.ui-caps"
+    },
+    "more.palette.heading": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] li[role='presentation']"
+    },
+    "more.palette.option.on": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] li[role='option'][aria-selected='true']"
+    },
+    "more.palette.option.on.label": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] li[role='option'][aria-selected='true'] > span.flex-1"
+    },
+    "more.palette.option": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] li[role='option'][aria-selected='false']"
+    },
+    "more.palette.option.icon": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] li[role='option'][aria-selected='false'] > span:first-child"
+    },
+    "more.palette.option.label": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] li[role='option'][aria-selected='false'] > span.flex-1"
+    },
+    "more.palette.option.hint": {
+      "screen": "palette",
+      "selector": "dialog[open][aria-label='Search and commands'] li[role='option'][aria-selected='false'] > span.text-footnote"
+    },
+    "more.dialog.sm": {
+      "screen": "newfolder",
+      "selector": "dialog[open]"
+    },
+    "more.dialog.header": {
+      "screen": "newfolder",
+      "selector": "dialog[open] header"
+    },
+    "more.dialog.title": {
+      "screen": "newfolder",
+      "selector": "dialog[open] header h2"
+    },
+    "more.dialog.close": {
+      "screen": "newfolder",
+      "selector": "dialog[open] header button"
+    },
+    "more.dialog.body": {
+      "screen": "newfolder",
+      "selector": "dialog[open] header + div"
+    },
+    "more.prompt.label": {
+      "screen": "newfolder",
+      "selector": "dialog[open] form label"
+    },
+    "more.prompt.input": {
+      "screen": "newfolder",
+      "selector": "dialog[open] form input"
+    },
+    "more.prompt.actions": {
+      "screen": "newfolder",
+      "selector": "dialog[open] form > div"
+    },
+    "more.prompt.cancel": {
+      "screen": "newfolder",
+      "selector": "dialog[open] form button[type='button']"
+    },
+    "more.prompt.submit": {
+      "screen": "newfolder",
+      "selector": "dialog[open] form button[type='submit']"
     }
   },
   "vars": [
@@ -195,6 +313,12 @@
     "color-ink",
     "glass-hover",
     "glass-active",
-    "color-danger"
-  ]
+    "color-danger",
+    "mac-sheet-shadow",
+    "mac-pop-edge"
+  ],
+  "prepare": {
+    "palette": "document.querySelectorAll('dialog[open]').forEach(d => d.close()); await new Promise(r => setTimeout(r, 300)); document.querySelector(\"nav[aria-label='Folio'] button.ui-well\").click(); return true",
+    "newfolder": "document.querySelectorAll('dialog[open]').forEach(d => d.close()); await new Promise(r => setTimeout(r, 300)); document.querySelector(\"nav[aria-label='Folio'] section > div:first-child > button\").click(); return true"
+  }
 }

@@ -2797,6 +2797,24 @@ export interface ReviewNewPerDayArgs {
   value: number;
 }
 
+/** `recent.viewed { space?, limit? }`: the notes this person opened last (documents.recent), newest first, for ⌘K's Recent. */
+export interface RecentViewedArgs {
+  space?: SpaceRef;
+  /** Default 8, at most 30. */
+  limit?: number;
+}
+
+export interface RecentViewedRow {
+  id: string;
+  title: string;
+  icon: string | null;
+  updatedAt: number;
+}
+
+export interface RecentViewedValue {
+  rows: RecentViewedRow[];
+}
+
 export interface ViewMap {
   session: { args: EmptyArgs; value: SessionValue };
   "places.list": { args: EmptyArgs; value: PlacesValue };
@@ -2847,6 +2865,7 @@ export interface ViewMap {
   "notes.moveCheck": { args: NotesMoveCheckArgs; value: NotesMoveCheckValue };
   graph: { args: GraphArgs; value: GraphValue };
   reviews: { args: ReviewsArgs; value: ReviewsValue };
+  "recent.viewed": { args: RecentViewedArgs; value: RecentViewedValue };
 }
 
 export interface ListViewMap {
@@ -3009,7 +3028,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "graph", "reviews"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "graph", "reviews", "recent.viewed"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",

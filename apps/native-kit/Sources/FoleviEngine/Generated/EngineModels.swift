@@ -5910,3 +5910,45 @@ public struct ReviewNewPerDayArgs: Codable, Hashable, Sendable {
         self.value = value
     }
 }
+
+/// `recent.viewed { space?, limit? }`: the notes this person opened last (documents.recent), newest first, for ⌘K's Recent.
+public struct RecentViewedArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    /// Default 8, at most 30.
+    public var limit: Int?
+
+    public init(space: SpaceRef? = nil, limit: Int? = nil) {
+        self.space = space
+        self.limit = limit
+    }
+}
+
+public struct RecentViewedRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var icon: String?
+    public var updatedAt: Double
+
+    public init(id: String, title: String, icon: String? = nil, updatedAt: Double) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+        self.updatedAt = updatedAt
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.icon, forKey: .icon)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+    }
+}
+
+public struct RecentViewedValue: Codable, Hashable, Sendable {
+    public var rows: [RecentViewedRow]
+
+    public init(rows: [RecentViewedRow]) {
+        self.rows = rows
+    }
+}

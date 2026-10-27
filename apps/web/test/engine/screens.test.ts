@@ -94,3 +94,13 @@ describe("reviews", () => {
     expect(await code({ kind: "command", place: PLACE, name: "review.rate", args: { blockId: "b1", rating: "meh", lastReview: null } })).toBe("invalid_args");
   });
 });
+
+describe("recent.viewed", () => {
+  it("the notes opened last, from documents.recent", async () => {
+    let asked: Record<string, unknown> | null = null;
+    r.client.answer("documents:recent", (a: Record<string, unknown>) => ((asked = a), [{ id: "d1", title: "Kyoto", icon: null, updatedAt: 5, extra: true }]));
+    expect(await query("recent.viewed")).toEqual({ rows: [{ id: "d1", title: "Kyoto", icon: null, updatedAt: 5 }] });
+    expect(asked).toMatchObject({ limit: 8 });
+    expect(await code({ kind: "query", place: PLACE, name: "recent.viewed", args: { limit: 99 } })).toBe("invalid_args");
+  });
+});

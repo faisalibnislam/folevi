@@ -216,10 +216,15 @@ public final class WebSidebarController: NSViewController {
         view = host
     }
 
-    /// ⌘K / Open Quickly / Search All Notes: the search page (the web's palette).
+    /// ⌘K / Open Quickly / Search All Notes: the web's palette, as a sheet at the window's top.
     public func focusSearch() {
-        if model.sidebarCollapsed { model.sidebarCollapsed = false }
-        model.open(.search(""))
+        FrameSheets.attach(model, window: view.window)
+        CommandPalette.show(model)
+    }
+
+    public override func viewDidAppear() {
+        super.viewDidAppear()
+        FrameSheets.attach(model, window: view.window)
     }
 
     private func showNotifications(_ anchor: NSView?) {

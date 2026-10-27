@@ -108,7 +108,7 @@ public struct WebSidebar: View {
         let s = WebStyles.named("frame.sidebar.search")
         let r = s.resolve(scheme)
         let label = style("search.label")
-        return Button { model.open(.search("")) } label: {
+        return Button { CommandPalette.show(model) } label: {
             HStack(spacing: r.gap) {
                 WebIconView(.search, size: 14).foregroundStyle(style("search.icon").color.color)
                 Text("Search or jump to…").webText(label.text).lineLimit(1).foregroundStyle(label.color.color)
@@ -209,7 +209,7 @@ public struct WebSidebar: View {
         let all = model.folders.value?.folders ?? []
         let roots = all.filter { $0.parentId == nil }
         return section("Folders", route: .web("/folders"), open: $foldersOpen, action: AnyView(
-            WebIconButton(.folderPlus, label: "New folder") { model.newFolder() }
+            WebIconButton(.folderPlus, label: "New folder") { FrameDialogs.newFolder(model) }
         )) {
             if roots.isEmpty {
                 Text("No folders yet").webText(.role(.footnote)).foregroundStyle(Folevi.color.inkFaint).padding(.horizontal, 8).padding(.vertical, 4)
@@ -258,7 +258,11 @@ public struct WebSidebar: View {
             WebMenuEntry(.item("Open in new tab", icon: .externalLink)) { model.open(.folder(f.id), .newTab) },
             .separator(),
             WebMenuEntry(.item("New note here", icon: .plus)) { model.newNote(in: f.id) },
-            WebMenuEntry(.item("New subfolder", icon: .folderPlus)) { model.newFolder(parent: f.id) },
+            WebMenuEntry(.item("New folder inside…", icon: .folderPlus)) { FrameDialogs.newFolder(model, parent: f) },
+            .separator(1),
+            WebMenuEntry(.item("Rename…", icon: .pencilLine)) { FrameDialogs.renameFolder(model, f) },
+            WebMenuEntry(.item("Change color…", icon: .palette)) { FrameDialogs.folderColor(model, f) },
+            WebMenuEntry(.item("Move folder…", icon: .folderInput)) { FrameDialogs.moveFolder(model, f) },
         ]
     }
 

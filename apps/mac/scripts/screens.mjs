@@ -34,6 +34,12 @@ const dir = join(MAC, "build", "run", "screens");
 const library = join(MAC, "build", "run", "screens-library");
 const out = join(MAC, "screens-report");
 
+/** A folder's "…" menu in the web frame's sidebar, then one of its items (a dialog's `prepare`). */
+function folderMenu(folder, item) {
+  return `document.querySelector("[aria-label='Folder options for ${folder}']").click(); await new Promise((r) => setTimeout(r, 300)); [...document.querySelectorAll("[role='menuitem']")].find((e) => e.textContent.includes(${JSON.stringify(item)}))?.click(); return true`;
+}
+const CLOSE_DIALOGS = `document.querySelectorAll("dialog[open]").forEach((d) => d.close()); return true`;
+
 /** The screens, by id: the folevi-dev:// link that opens each one. */
 export const SCREENS = [
   { id: "home", link: "folevi-dev://documents" },
@@ -52,6 +58,13 @@ export const SCREENS = [
   { id: "help", link: "folevi-dev://help" },
   { id: "graph", link: "folevi-dev://graph" },
   { id: "review", link: "folevi-dev://review" },
+  // mr/more's dialogs: opened by `prepare` (a script in the web frame's page, a MacEval command in the native one)
+  // over Home, closed again after the capture.
+  { id: "palette", link: "folevi-dev://documents", prepare: { web: `document.querySelector("nav[aria-label='Folio'] button.ui-well").click(); return true`, native: { cmd: "more", do: "palette" } } },
+  { id: "newfolder", link: "folevi-dev://documents", prepare: { web: `document.querySelector("nav[aria-label='Folio'] section > div:first-child > button").click(); return true`, native: { cmd: "more", do: "newFolder" } } },
+  { id: "foldercolor", link: "folevi-dev://documents", prepare: { web: folderMenu("Travel", "Change color"), native: { cmd: "more", do: "color", folder: "Travel" } } },
+  { id: "movefolder", link: "folevi-dev://documents", prepare: { web: folderMenu("Japan", "Move folder"), native: { cmd: "more", do: "moveFolder", folder: "Japan" } } },
+  { id: "renamefolder", link: "folevi-dev://documents", prepare: { web: folderMenu("Work", "Rename"), native: { cmd: "more", do: "rename", folder: "Work" } } },
 ];
 const only = arg("--only")?.split(",");
 const screens = SCREENS.filter((s) => !only || only.includes(s.id));
@@ -160,11 +173,21 @@ async function shoot(kind) {
       await sleep(1600);
       // A window behind others doesn't run CSS animations (a note's sheet would stay at its first, invisible
       // frame): the end state at once, in both frames alike.
+      if (s.prepare) {
+        if (kind === "web") await evaluate(dir, s.prepare.web);
+        else ensure(await command(dir, s.prepare.native));
+        await sleep(700);
+      }
       await evaluate(dir, STILL).catch(() => undefined);
       await sleep(s.settle ?? 400);
       // The window as the screen shows it (macOS's own capture, no window shadow): the same path for both frames.
       const number = ensure(await command(dir, { cmd: "windows" }))[0].number;
       execFileSync("screencapture", ["-x", "-o", "-l", String(number), join(out, kind, `${s.id}-${scheme}.png`)]);
+      if (s.prepare) {
+        if (kind === "web") await evaluate(dir, CLOSE_DIALOGS).catch(() => undefined);
+        else await command(dir, { cmd: "more", do: "close" }).catch(() => undefined);
+        await sleep(300);
+      }
     }
   }
   await quit();

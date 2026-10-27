@@ -1,7 +1,7 @@
 // Revision 13: the Graph and Reviews pages for the Mac's native screens (all native but the editor). `graph` is
 // aiGraph.graph with every node placed by the web's own force layout (lib/graph/layout.ts, deterministic), so the
 // Mac draws exactly the picture the web draws; `reviews` is study.queue for the person's day on this device.
-// Their commands: review.rate and review.setNewPerDay.
+// Their commands: review.rate and review.setNewPerDay. And `recent.viewed`, the notes opened last (⌘K's Recent).
 import { api } from "@/lib/convex/api";
 import { degrees, Simulation, type GraphEdgeData, type GraphNodeData, type Point } from "@/lib/graph/layout";
 import type { CommandDef } from "./commands";
@@ -148,7 +148,34 @@ const reviews: ValueViewDef = {
   },
 };
 
-export const SCREEN_VALUE_VIEWS = { graph, reviews } satisfies Partial<Record<ViewName, ValueViewDef>>;
+// ---- recent.viewed
+
+type RecentData = { id: string; title: string; icon: string | null; updatedAt: number }[];
+
+export function parseRecentViewedArgs(args: Args): Args {
+  only(args, ["space", "limit"]);
+  const space = optionalId(args, "space");
+  return { ...(space !== undefined ? { space } : {}), limit: num(args, "limit", { min: 1, max: 30, fallback: 8 }) };
+}
+
+const recentViewed: ValueViewDef = {
+  kind: "value",
+  parse: parseRecentViewedArgs,
+  create: (ctx, args) => {
+    const space = requireSpace(ctx.deps(), args.space as string | undefined);
+    const src = source<RecentData>(ctx, api.documents.recent, { scope: space.scope, limit: args.limit }, space.scope);
+    return {
+      signals: [src],
+      compute: () => {
+        const s = src.snapshot();
+        if (s.error) return { value: undefined, stale: false, error: s.error };
+        return { value: s.value === undefined ? undefined : { rows: s.value.map((r) => ({ id: r.id, title: r.title ?? "", icon: r.icon ?? null, updatedAt: r.updatedAt })) }, stale: s.stale, error: null };
+      },
+    };
+  },
+};
+
+export const SCREEN_VALUE_VIEWS = { graph, reviews, "recent.viewed": recentViewed } satisfies Partial<Record<ViewName, ValueViewDef>>;
 
 const NEW_PER_DAY = [0, 10, 20, 30, 50, 100];
 

@@ -46,6 +46,7 @@ enum NativeFrame {
         FrameRootViewController.nativeGates = env["FOLEVI_WEB_GATES"] != "1"
         #if DEBUG
         installEval()
+        installMoreEval()
         #endif
     }
 

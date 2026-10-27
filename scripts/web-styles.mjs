@@ -7,6 +7,7 @@
 // components draw from it; the screenshot diffs (pnpm match) check the result.
 //
 //   pnpm styles:gen [--base http://app.localhost:3012]      (needs the web dev server)
+//   pnpm styles:gen --no-samples                             (the component samples from samples-cache.json)
 //   pnpm styles:gen --check                                  (fails when the Swift file is out of date)
 //   pnpm styles:gen --app [--only frame,home]                (also reads the live app's elements listed in
 //                                                            packages/design-tokens/match/app-styles/<area>.json
@@ -227,23 +228,33 @@ for (const f of existsSync(CACHE_DIR) ? readdirSync(CACHE_DIR).filter((f) => f.e
   Object.assign(appCache.dark, c.dark);
 }
 
-const browser = await webkit.launch();
-const themes = {};
-for (const scheme of ["light", "dark"]) {
-  const page = await browser.newPage({ deviceScaleFactor: 2, colorScheme: scheme, viewport: { width: 900, height: 1400 } });
-  const res = await page.goto(`${base}/dev/match/styles`, { waitUntil: "networkidle" });
-  if (!res?.ok()) throw new Error(`${base}/dev/match/styles: HTTP ${res?.status()}`);
-  await page.evaluate((theme) => {
-    const d = document.documentElement.dataset;
-    d.theme = theme;
-    d.desktop = "mac";
-    d.chrome = "neutral";
-  }, scheme);
-  await page.evaluate(() => document.fonts.ready);
-  themes[scheme] = await page.evaluate(extract);
-  await page.close();
+// The component samples (/dev/match/styles), cached in samples-cache.json; --no-samples reuses the cache (no web
+// dev server needed, for work on the app's own screens).
+const SAMPLES_CACHE = join(repo, "packages/design-tokens/match/samples-cache.json");
+let themes;
+if (process.argv.includes("--no-samples") && existsSync(SAMPLES_CACHE)) {
+  themes = JSON.parse(readFileSync(SAMPLES_CACHE, "utf8"));
+} else {
+  const browser = await webkit.launch();
+  themes = {};
+  for (const scheme of ["light", "dark"]) {
+    const page = await browser.newPage({ deviceScaleFactor: 2, colorScheme: scheme, viewport: { width: 900, height: 1400 } });
+    const res = await page.goto(`${base}/dev/match/styles`, { waitUntil: "networkidle" });
+    if (!res?.ok()) throw new Error(`${base}/dev/match/styles: HTTP ${res?.status()}`);
+    await page.evaluate((theme) => {
+      const d = document.documentElement.dataset;
+      d.theme = theme;
+      d.desktop = "mac";
+      d.chrome = "neutral";
+    }, scheme);
+    await page.evaluate(() => document.fonts.ready);
+    themes[scheme] = await page.evaluate(extract);
+    await page.close();
+  }
+  await browser.close();
+
+  writeFileSync(SAMPLES_CACHE, JSON.stringify(themes, null, 1) + "\n");
 }
-await browser.close();
 Object.assign(themes.light, appCache.light);
 Object.assign(themes.dark, appCache.dark);
 

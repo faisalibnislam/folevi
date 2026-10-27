@@ -896,20 +896,25 @@ export const revokeGrant = mutation({
     const id = ctx.db.normalizeId("mcpGrants", args.grantId);
     const grant = id ? await ctx.db.get(id) : null;
     if (!grant || grant.profileId !== profile._id) fail("not_found", "That connection isn't there.");
-    await revokeOAuthClient(ctx, profile.authSubject, grant.clientId);
-    let events = await ctx.db
-      .query("mcpEvents")
-      .withIndex("by_grant", (q) => q.eq("grantId", grant._id))
-      .take(500);
-    while (events.length) {
-      for (const e of events) await ctx.db.delete(e._id);
-      events = await ctx.db
-        .query("mcpEvents")
-        .withIndex("by_grant", (q) => q.eq("grantId", grant._id))
-        .take(500);
-    }
-    await ctx.db.delete(grant._id);
+    await removeGrant(ctx, profile.authSubject, grant);
     return null;
   },
 });
+
+/** Disconnects one app for one person: its tokens and consent, its recent activity, the grant itself. */
+export async function removeGrant(ctx: MutationCtx, authSubject: string, grant: Doc<"mcpGrants">): Promise<void> {
+  await revokeOAuthClient(ctx, authSubject, grant.clientId);
+  let events = await ctx.db
+    .query("mcpEvents")
+    .withIndex("by_grant", (q) => q.eq("grantId", grant._id))
+    .take(500);
+  while (events.length) {
+    for (const e of events) await ctx.db.delete(e._id);
+    events = await ctx.db
+      .query("mcpEvents")
+      .withIndex("by_grant", (q) => q.eq("grantId", grant._id))
+      .take(500);
+  }
+  await ctx.db.delete(grant._id);
+}
 

@@ -194,6 +194,7 @@ import type * as lib_themes from "../lib/themes.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as lib_vault_access from "../lib/vault/access.js";
 import type * as lib_vault_log from "../lib/vault/log.js";
+import type * as lib_vault_notify from "../lib/vault/notify.js";
 import type * as lib_vault_validators from "../lib/vault/validators.js";
 import type * as lib_webhooks from "../lib/webhooks.js";
 import type * as lib_wireframeAi from "../lib/wireframeAi.js";
@@ -434,6 +435,7 @@ declare const fullApi: ApiFromModules<{
   "lib/validators": typeof lib_validators;
   "lib/vault/access": typeof lib_vault_access;
   "lib/vault/log": typeof lib_vault_log;
+  "lib/vault/notify": typeof lib_vault_notify;
   "lib/vault/validators": typeof lib_vault_validators;
   "lib/webhooks": typeof lib_webhooks;
   "lib/wireframeAi": typeof lib_wireframeAi;

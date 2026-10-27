@@ -393,6 +393,10 @@ describe("signing in with Apple", () => {
     const t = setup();
     const userId = await passwordAccount(t, "linker@example.com");
     const token = await sessionToken(t, userId);
+    // Linking needs a sign-in from the last 10 minutes: a stolen older session can't link the attacker's account.
+    const staleLink = await t.fetch("/api/auth/link-social", { method: "POST", headers: authed(await sessionToken(t, userId, 20 * 60_000)), body: JSON.stringify({ provider: "apple", callbackURL: "/settings/security" }) });
+    expect(staleLink.status).toBe(403);
+    expect(((await staleLink.json()) as { code?: string }).code).toBe("SESSION_NOT_FRESH");
     const res = await t.fetch("/api/auth/link-social", { method: "POST", headers: authed(token), body: JSON.stringify({ provider: "apple", callbackURL: "/settings/security", errorCallbackURL: "/settings/security?via=apple" }) });
     expect(res.status).toBe(200);
     const start = { authorize: new URL(((await res.json()) as { url: string }).url), cookie: cookiesFrom(res) };

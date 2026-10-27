@@ -79,7 +79,9 @@ export function SignInMethodsCard() {
     // On success the browser is on its way to the provider.
     if (error) {
       setBusy(null);
-      setProblem(authErrorMessage(error));
+      // Linking needs a recent sign-in (convex/auth.ts), as removing does.
+      if ((error as { code?: string }).code === "SESSION_NOT_FRESH") setSignInAgain(true);
+      else setProblem(authErrorMessage(error));
     }
   }
 

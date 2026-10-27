@@ -10,12 +10,13 @@
 // share extension, Shortcuts and Spotlight can reach Folevi: listed here like any other token ("Folevi for
 // iPhone (iPhone 18 Pro)"), revocable the same way, and revoked by the app when the person signs out.
 import { v } from "convex/values";
-import { internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { assertWritable, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { randomToken, sha256Base64url } from "./lib/crypto";
 import { MCP_SCOPES, type McpScope } from "./lib/mcp/config";
+import { removeGrant } from "./mcp";
 
 export const TOKEN_PREFIX = "fvpat_";
 export const MAX_TOKENS = 20;
@@ -175,6 +176,34 @@ export const revoke = mutation({
     if (!token || token.profileId !== profile._id) fail("not_found", "That token isn't there.");
     await deleteToken(ctx, token);
     return null;
+  },
+});
+
+/**
+ * Ends every way into the account that isn't a session: personal API tokens, the apps' own device tokens and
+ * every connected app (MCP). Run when the password is reset or changed, after sessions are ended, so someone who
+ * got in for a while can't stay in through a token they made (docs/SECURITY_PLAN.md P0.5).
+ */
+export const endAllAccess = internalMutation({
+  args: { authUserId: v.string(), reason: v.union(v.literal("password_reset"), v.literal("password_changed")) },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db
+      .query("profiles")
+      .withIndex("by_auth_subject", (q) => q.eq("authSubject", args.authUserId))
+      .unique();
+    if (!profile) return { tokens: 0, apps: 0 };
+    const tokens = await ctx.db
+      .query("apiTokens")
+      .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+      .take(500);
+    for (const t of tokens) await deleteToken(ctx, t);
+    const grants = await ctx.db
+      .query("mcpGrants")
+      .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
+      .take(100);
+    for (const g of grants) await removeGrant(ctx, profile.authSubject, g);
+    console.info(JSON.stringify({ event: "identity.access_ended", reason: args.reason, tokens: tokens.length, apps: grants.length }));
+    return { tokens: tokens.length, apps: grants.length };
   },
 });
 

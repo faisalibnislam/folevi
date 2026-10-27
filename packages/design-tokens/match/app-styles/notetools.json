@@ -1,0 +1,204 @@
+{
+  "$description": "The note page's own sidebar (components/doc/DocumentSidebar.tsx, Outline.tsx): the note card, the tool tabs and their panels. Every screen opens Home, then the fixture note \"Kyoto in November\", then a tab; the last one (contents) leaves the Contents tab chosen, as a fresh library has it.",
+  "screens": {
+    "tasks": "folevi-dev://documents",
+    "attachments": "folevi-dev://documents",
+    "comments": "folevi-dev://documents",
+    "find": "folevi-dev://documents",
+    "contents": "folevi-dev://documents"
+  },
+  "prepare": {
+    "tasks": "const wait = (ms) => new Promise((r) => setTimeout(r, ms)); const tools = () => document.querySelector(\"[role=tablist][aria-label=\\\"Page tools\\\"]\"); if (!tools()) { for (let i = 0; i < 40 && !document.querySelector(\"a[href^=\\\"/d/\\\"]\"); i++) await wait(250); const a = [...document.querySelectorAll(\"a[href^=\\\"/d/\\\"]\")].find((a) => a.textContent.includes(\"Kyoto in November\")); a?.click(); for (let i = 0; i < 40 && !tools(); i++) await wait(250); await wait(800); } tools().querySelector(\"button[title=\\\"Tasks in this page\\\"]\").click(); await wait(500); ",
+    "attachments": "const wait = (ms) => new Promise((r) => setTimeout(r, ms)); const tools = () => document.querySelector(\"[role=tablist][aria-label=\\\"Page tools\\\"]\"); if (!tools()) { for (let i = 0; i < 40 && !document.querySelector(\"a[href^=\\\"/d/\\\"]\"); i++) await wait(250); const a = [...document.querySelectorAll(\"a[href^=\\\"/d/\\\"]\")].find((a) => a.textContent.includes(\"Kyoto in November\")); a?.click(); for (let i = 0; i < 40 && !tools(); i++) await wait(250); await wait(800); } tools().querySelector(\"button[title=\\\"Attachments and links\\\"]\").click(); await wait(500); ",
+    "comments": "const wait = (ms) => new Promise((r) => setTimeout(r, ms)); const tools = () => document.querySelector(\"[role=tablist][aria-label=\\\"Page tools\\\"]\"); if (!tools()) { for (let i = 0; i < 40 && !document.querySelector(\"a[href^=\\\"/d/\\\"]\"); i++) await wait(250); const a = [...document.querySelectorAll(\"a[href^=\\\"/d/\\\"]\")].find((a) => a.textContent.includes(\"Kyoto in November\")); a?.click(); for (let i = 0; i < 40 && !tools(); i++) await wait(250); await wait(800); } tools().querySelector(\"button[title=\\\"Comments\\\"]\").click(); await wait(500); ",
+    "find": "const wait = (ms) => new Promise((r) => setTimeout(r, ms)); const tools = () => document.querySelector(\"[role=tablist][aria-label=\\\"Page tools\\\"]\"); if (!tools()) { for (let i = 0; i < 40 && !document.querySelector(\"a[href^=\\\"/d/\\\"]\"); i++) await wait(250); const a = [...document.querySelectorAll(\"a[href^=\\\"/d/\\\"]\")].find((a) => a.textContent.includes(\"Kyoto in November\")); a?.click(); for (let i = 0; i < 40 && !tools(); i++) await wait(250); await wait(800); } tools().querySelector(\"button[title=\\\"Find in page\\\"]\").click(); await wait(500); const input = document.querySelector(\"[role=tabpanel] input\"); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, \"value\").set; set.call(input, \"the\"); input.dispatchEvent(new Event(\"input\", { bubbles: true })); await wait(500); input.blur();",
+    "contents": "const wait = (ms) => new Promise((r) => setTimeout(r, ms)); const tools = () => document.querySelector(\"[role=tablist][aria-label=\\\"Page tools\\\"]\"); if (!tools()) { for (let i = 0; i < 40 && !document.querySelector(\"a[href^=\\\"/d/\\\"]\"); i++) await wait(250); const a = [...document.querySelectorAll(\"a[href^=\\\"/d/\\\"]\")].find((a) => a.textContent.includes(\"Kyoto in November\")); a?.click(); for (let i = 0; i < 40 && !tools(); i++) await wait(250); await wait(800); } tools().querySelector(\"button[title=\\\"Table of contents\\\"]\").click(); await wait(500); "
+  },
+  "styles": {
+    "notetools.root": {
+      "screen": "contents",
+      "selector": "div[role='tablist'][aria-label='Page tools']",
+      "parent": 2
+    },
+    "notetools.card.wrap": {
+      "screen": "contents",
+      "selector": "div.rounded-control:has(nav[aria-label='Breadcrumb'])",
+      "parent": 1
+    },
+    "notetools.card": {
+      "screen": "contents",
+      "selector": "div.rounded-control:has(nav[aria-label='Breadcrumb'])"
+    },
+    "notetools.card.title": {
+      "screen": "contents",
+      "selector": "div.rounded-control:has(nav[aria-label='Breadcrumb']) p"
+    },
+    "notetools.crumbs": {
+      "screen": "contents",
+      "selector": "nav[aria-label='Breadcrumb'] ol"
+    },
+    "notetools.crumb.in": {
+      "screen": "contents",
+      "selector": "nav[aria-label='Breadcrumb'] li > span"
+    },
+    "notetools.crumb.link": {
+      "screen": "contents",
+      "selector": "nav[aria-label='Breadcrumb'] li a"
+    },
+    "notetools.crumb.link2": {
+      "screen": "contents",
+      "selector": "nav[aria-label='Breadcrumb'] li a",
+      "nth": 1
+    },
+    "notetools.crumb.chevron": {
+      "screen": "contents",
+      "selector": "nav[aria-label='Breadcrumb'] li svg"
+    },
+    "notetools.tabs.wrap": {
+      "screen": "contents",
+      "selector": "div[role='tablist'][aria-label='Page tools']",
+      "parent": 1
+    },
+    "notetools.tabs": {
+      "screen": "contents",
+      "selector": "div[role='tablist'][aria-label='Page tools']"
+    },
+    "notetools.tab": {
+      "screen": "contents",
+      "selector": "div[role='tablist'][aria-label='Page tools'] > button[aria-selected='false']"
+    },
+    "notetools.tab.active": {
+      "screen": "contents",
+      "selector": "div[role='tablist'][aria-label='Page tools'] > button[aria-selected='true']"
+    },
+    "notetools.tab.icon": {
+      "screen": "contents",
+      "selector": "div[role='tablist'][aria-label='Page tools'] > button[aria-selected='false'] svg"
+    },
+    "notetools.tab.active.icon": {
+      "screen": "contents",
+      "selector": "div[role='tablist'][aria-label='Page tools'] > button[aria-selected='true'] svg"
+    },
+    "notetools.panel": {
+      "screen": "contents",
+      "selector": "[role=tabpanel]"
+    },
+    "notetools.panel.title.row": {
+      "screen": "contents",
+      "selector": "[role=tabpanel] > div:first-child"
+    },
+    "notetools.panel.title": {
+      "screen": "contents",
+      "selector": "[role=tabpanel] h2"
+    },
+    "notetools.contents.top": {
+      "screen": "contents",
+      "selector": "[role=tabpanel] > button"
+    },
+    "notetools.contents.empty": {
+      "screen": "contents",
+      "selector": "[role=tabpanel] > p"
+    },
+    "notetools.tasks.title": {
+      "screen": "tasks",
+      "selector": "[role=tabpanel] h2"
+    },
+    "notetools.tasks.empty": {
+      "screen": "tasks",
+      "selector": "[role=tabpanel] > p"
+    },
+    "notetools.attachments.title": {
+      "screen": "attachments",
+      "selector": "[role=tabpanel] h2"
+    },
+    "notetools.attachments.empty": {
+      "screen": "attachments",
+      "selector": "[role=tabpanel] > p"
+    },
+    "notetools.links.title.row": {
+      "screen": "attachments",
+      "selector": "[role=tabpanel] > div",
+      "nth": 1
+    },
+    "notetools.links.empty": {
+      "screen": "attachments",
+      "selector": "[role=tabpanel] > p",
+      "nth": 1
+    },
+    "notetools.comments.title": {
+      "screen": "comments",
+      "selector": "[role=tabpanel] h2"
+    },
+    "notetools.comments.empty": {
+      "screen": "comments",
+      "selector": "[role=tabpanel] [data-empty-state]"
+    },
+    "notetools.comments.empty.icon": {
+      "screen": "comments",
+      "selector": "[role=tabpanel] [data-empty-state] > span"
+    },
+    "notetools.comments.empty.title": {
+      "screen": "comments",
+      "selector": "[role=tabpanel] [data-empty-state] > p"
+    },
+    "notetools.comments.empty.body": {
+      "screen": "comments",
+      "selector": "[role=tabpanel] [data-empty-state] > p",
+      "nth": 1
+    },
+    "notetools.find.title": {
+      "screen": "find",
+      "selector": "[role=tabpanel] h2"
+    },
+    "notetools.find.field": {
+      "screen": "find",
+      "selector": "[role=tabpanel] input"
+    },
+    "notetools.find.icon": {
+      "screen": "find",
+      "selector": "[role=tabpanel] div.relative > svg"
+    },
+    "notetools.find.clear": {
+      "screen": "find",
+      "selector": "[role=tabpanel] button[aria-label='Clear search']"
+    },
+    "notetools.find.bar": {
+      "screen": "find",
+      "selector": "[role=tabpanel] > div.mt-2"
+    },
+    "notetools.find.count": {
+      "screen": "find",
+      "selector": "[role=tabpanel] p[role=status]"
+    },
+    "notetools.find.step": {
+      "screen": "find",
+      "selector": "[role=tabpanel] button[aria-label='Next match']"
+    },
+    "notetools.find.match": {
+      "screen": "find",
+      "selector": "[role=tabpanel] ul button",
+      "nth": 1
+    },
+    "notetools.find.match.current": {
+      "screen": "find",
+      "selector": "[role=tabpanel] ul button[aria-current='true']"
+    },
+    "notetools.find.mark": {
+      "screen": "find",
+      "selector": "[role=tabpanel] ul mark"
+    }
+  },
+  "vars": [
+    "glass-hover",
+    "glass-active",
+    "glass-border",
+    "glass-edge",
+    "accent-soft",
+    "color-accent-soft",
+    "color-moss",
+    "color-marigold-soft",
+    "color-sunken",
+    "color-coral",
+    "color-surface"
+  ]
+}

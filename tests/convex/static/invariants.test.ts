@@ -120,6 +120,17 @@ describe("backend invariants", () => {
     expect(/setLocalCancel = internalMutation[\s\S]*?requireWorkspaceBilling/.test(s)).toBe(true);
   });
 
+  test("every model request is built in lib/ai/gemini.ts, which adds the safety rules (docs/AI_GUARDRAILS.md)", () => {
+    // geminiFiles.ts only uploads and deletes files (the Files API); it never asks the model anything.
+    const allowed = ["lib/ai/gemini.ts", "lib/ai/geminiFiles.ts"];
+    for (const { p, s } of sources) {
+      if (allowed.some((a) => p.endsWith(a))) continue;
+      expect(/generativelanguage\.googleapis|systemInstruction|:generateContent|streamGenerateContent/.test(s) ? p : "ok").toBe("ok");
+    }
+    const files = sources.find(({ p }) => p.endsWith("lib/ai/geminiFiles.ts"))!.s;
+    expect(/generateContent|systemInstruction/.test(files)).toBe(false);
+  });
+
   test("no module logs note content, tokens or raw emails", () => {
     for (const { p, s } of sources) {
       for (const m of s.matchAll(/console\.(log|warn|error)\(([^;]*)\);/g)) {

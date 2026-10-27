@@ -44,6 +44,7 @@ const columns: Array<{ title: string; links: Array<{ label: string; href: string
     links: [
       { label: "Privacy", href: "/privacy" },
       { label: "Terms", href: "/terms" },
+      { label: "AI policy", href: "/ai-policy" },
     ],
   },
 ];

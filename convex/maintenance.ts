@@ -467,6 +467,9 @@ async function purgeAccount(ctx: MutationCtx, profileId: Id<"profiles">, budget:
     () => ctx.db.query("aiCreditPeriods").withIndex("by_account_period", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiCreditPacks").withIndex("by_account_expires", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiCreditHolds").withIndex("by_account", (q) => q.eq("profileId", profileId)).take(200),
+    // Their Foli AI refusal counts and pause.
+    () => ctx.db.query("aiSafetyCounts").withIndex("by_profile_day", (q) => q.eq("profileId", profileId)).take(200),
+    () => ctx.db.query("aiSafetyState").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     // Their AI conversations in workspaces (the ones in their Personal went with it above), agent runs and research.
     () => ctx.db.query("aiRuns").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),
     () => ctx.db.query("aiResearch").withIndex("by_profile", (q) => q.eq("profileId", profileId)).take(200),

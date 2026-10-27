@@ -31,7 +31,7 @@ export default function TermsPage() {
   return (
     <PageFrame>
       <PageHeader eyebrow="Legal" title="Terms of use" lede="The ground rules for using Folevi, in plain language.">
-        <DraftNotice updated="30 September 2026" />
+        <DraftNotice updated="27 October 2026" />
       </PageHeader>
       <DocShell toc={toc}>
         <h2 id="agreement">The agreement</h2>
@@ -101,7 +101,8 @@ export default function TermsPage() {
           <li>harass, threaten or spam people, including through public links or share invitations;</li>
           <li>probe, overload or interfere with the service, except for good-faith security research as described on our{" "}
             <Link href="/security#disclosure">Security</Link> page;</li>
-          <li>access other people’s accounts or data without permission.</li>
+          <li>access other people’s accounts or data without permission;</li>
+          <li>get Foli AI to help with something its <Link href="/ai-policy">AI policy</Link> rules out.</li>
         </ul>
         <p>If an account is used in these ways, we may restrict or suspend it. Where it’s safe and lawful, we’ll tell you why.</p>
 
@@ -165,6 +166,11 @@ export default function TermsPage() {
           <Link href="/privacy#ai">privacy policy</Link>, and you can turn it off in settings. AI can be wrong: check what it
           produces before relying on it. You’re responsible for how you use its output, and you keep the same rights to it as
           to the rest of your content.
+        </p>
+        <p>
+          Foli AI follows our <Link href="/ai-policy">AI policy</Link>: it won’t help with harmful things such as making drugs or
+          weapons, committing crimes or self-harm, and it isn’t medical, legal or financial advice. A short refusal uses no
+          credits. If an account keeps asking for harmful things, Foli AI is paused for it for 24 hours.
         </p>
 
         <h2 id="ending">Ending</h2>

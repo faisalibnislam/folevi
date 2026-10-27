@@ -414,7 +414,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     nav: "Foli AI and credits",
     description: "How Foli AI, Folevi’s AI assistant, works: Ask Foli AI, editing and writing with ⌘J, titles, Catch me up, flowcharts, flashcards and reviews, AI credits per plan, and turning AI off.",
     published: "2026-09-30",
-    updated: "2026-10-14",
+    updated: "2026-10-27",
     body: () => (
       <>
         <p>
@@ -475,6 +475,14 @@ export const DOC_ARTICLES: DocArticle[] = [
         </ul>
         <p>
           On {TIER_NAMES.pro} and {TIER_NAMES.pro_ai} you can buy a credit pack ({CREDIT_PACKS.credits_500.credits} credits for {formatPrice(CREDIT_PACKS.credits_500.priceCents)} or {CREDIT_PACKS.credits_1000.credits.toLocaleString("en-US")} for {formatPrice(CREDIT_PACKS.credits_1000.priceCents)}). Packs last {PACK_VALID_MONTHS} months and are used after your monthly credits. In a paid workspace, each member has the plan’s credits there; in a free workspace, and as a guest, you use your own personal credits. See <Link href="/pricing">Pricing</Link>.
+        </p>
+        <h2 id="wont">What Foli AI won’t do</h2>
+        <p>
+          Foli AI won’t give real instructions for making drugs or weapons, committing crimes, hacking or stalking people, or
+          self-harm, however the request is put (fiction included). For medical, legal and money questions it gives general
+          information and suggests a professional. If someone writes about being in crisis, it responds with care and points
+          to a crisis line. A short refusal uses no credits; asking for harmful things again and again pauses Foli AI on that
+          account for 24 hours. The full rules are in the <Link href="/ai-policy">AI policy</Link>.
         </p>
         <h2 id="off">Turning it off</h2>
         <p>

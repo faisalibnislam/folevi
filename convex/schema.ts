@@ -751,6 +751,32 @@ export default defineSchema({
     .index("by_workspace_day", ["workspaceId", "day"]),
 
   /**
+   * Foli AI's refusals per person per day, by kind (lib/ai/safety.ts, docs/AI_GUARDRAILS.md). Never the
+   * question, the answer or any note text. Kept 90 days.
+   */
+  aiSafetyCounts: defineTable({
+    profileId: v.id("profiles"),
+    day: v.string(),
+    kind: v.union(v.literal("harmful"), v.literal("crisis"), v.literal("other"), v.literal("filtered")),
+    count: v.number(),
+  })
+    .index("by_profile_day", ["profileId", "day"])
+    .index("by_day", ["day"]),
+
+  /**
+   * Whether Foli AI is paused for a person (lib/ai/safety.ts): the times of their latest harmful refusals
+   * (at most 5, within the last hour), and the pause they led to.
+   */
+  aiSafetyState: defineTable({
+    profileId: v.id("profiles"),
+    recentHarmful: v.array(v.number()),
+    pausedUntil: v.optional(v.number()),
+    pausedAt: v.optional(v.number()),
+  })
+    .index("by_profile", ["profileId"])
+    .index("by_paused_until", ["pausedUntil"]),
+
+  /**
    * AI credits used per credit account per period (lib/credits.ts). An account is a person in Personal
    * (workspaceId unset; also used in free workspaces and by guests) or a member's seat in a paid workspace.
    * A new period is a new row, which is how monthly credits reset.

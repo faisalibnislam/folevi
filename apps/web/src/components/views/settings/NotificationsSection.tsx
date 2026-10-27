@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { Card } from "./Card";
 import { PushCard } from "./PushCard";
 import { useIphoneLook } from "@/lib/iphone";
+import { useCapabilities } from "@/lib/mode";
 import { ChoiceRow, IosRow, IosSection, IosText, Subscreen, SwitchRow } from "@/components/iphone/SettingsKit";
 
 type Prefs = ReturnType<typeof useAppState>["profile"]["notificationPrefs"];
@@ -22,6 +23,8 @@ const ROWS: { topic: Topic; label: string; hint: string }[] = [
   { topic: "access", label: "Access changes", hint: "When your access to a page or workspace changes" },
   { topic: "reminders", label: "Task reminders", hint: "When a reminder you set on a to-do is due. The email shows that to-do line." },
 ];
+
+const VAULT_HINT = "Items added, changed or shared, and people added. They never show what's in the Vault. Custodians always hear about security events.";
 
 const ALL_IN_APP = { comments: true, replies: true, mentions: true, shares: true, access: true, reminders: true };
 
@@ -54,6 +57,12 @@ export function NotificationsSection() {
   const prefs = profile.notificationPrefs;
   const iphone = useIphoneLook();
   const inApp = { ...ALL_IN_APP, ...prefs.inApp };
+  // The Vault's row, where there's a Vault (its flag on). Bell and push only: Vault changes aren't emailed yet.
+  const { scope } = useAppState();
+  const caps = useCapabilities();
+  const hasVault = Boolean(useQuery(api.vault.get, caps.sharing ? { scope } : "skip"));
+  const vaultOn = prefs.inApp?.vault ?? true;
+  const setVault = (on: boolean) => void set({ inApp: { ...inApp, vault: on } });
   const set = (patch: Partial<Prefs>) =>
     update({ notificationPrefs: { ...prefs, ...patch } }).then(
       () => toast.show("Saved"),
@@ -81,6 +90,11 @@ export function NotificationsSection() {
             </IosSection>
           </Subscreen>
         ))}
+        {hasVault ? (
+          <IosSection header="Vault" footer={VAULT_HINT}>
+            <SwitchRow label="Changes in the Vault" checked={vaultOn} onChange={setVault} />
+          </IosSection>
+        ) : null}
         <IosSection header="Email delivery" footer="The daily digest lists what you haven't read yet, by page title only, once a day. Shares, invitations and access changes are always sent as they happen.">
           <ChoiceRow
             screen="digest"
@@ -130,6 +144,22 @@ export function NotificationsSection() {
               </span>
             </div>
           ))}
+          {hasVault ? (
+            <div role="row" className="grid grid-cols-[1fr_72px_72px] items-center gap-2 border-t border-line/70 py-3">
+              <span role="rowheader" className="min-w-0">
+                <span className="block text-subheadline text-ink">Vault</span>
+                <span id="notify-vault-hint" className="block text-footnote text-muted">
+                  {VAULT_HINT}
+                </span>
+              </span>
+              <span role="cell" className="flex justify-center">
+                <Switch checked={vaultOn} label="Vault in the app" describedBy="notify-vault-hint" onChange={setVault} />
+              </span>
+              <span role="cell" className="text-center text-footnote text-faint">
+                Not yet
+              </span>
+            </div>
+          ) : null}
         </div>
       </Card>
       <PushCard />

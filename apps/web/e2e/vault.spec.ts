@@ -134,5 +134,31 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   await share.getByRole("button", { name: "Done" }).click();
   await page.getByRole("tab", { name: "Activity" }).click();
   for (const line of ["Made a one-time link", "Someone opened a one-time link", "A one-time link was used up"]) await expect(log).toContainText(line);
+
+  // A note: written with the editor's blocks, saved sealed, and the same when opened again.
+  await page.getByRole("tab", { name: "Files & Notes" }).click();
+  await page.getByRole("button", { name: "Note", exact: true }).click();
+  await page.getByRole("dialog", { name: "New note" }).getByLabel("Title").fill("Server notes");
+  await page.getByRole("dialog", { name: "New note" }).getByRole("button", { name: "Create" }).click();
+  await page.getByRole("button", { name: /^Server notes/ }).click();
+  const noteDialog = page.getByRole("dialog", { name: "Server notes" });
+  const body = noteDialog.getByRole("textbox", { name: "Note" });
+  await body.click();
+  await page.keyboard.type("## Root access");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("- [ ] rotate the keys");
+  await noteDialog.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+  await shot(page, "9-note");
+  await noteDialog.getByRole("button", { name: "Close" }).first().click();
+  await page.getByRole("button", { name: /^Server notes/ }).click();
+  await expect(noteDialog.locator("h3, h2, h4").filter({ hasText: "Root access" })).toBeVisible({ timeout: 30_000 });
+  await expect(noteDialog.getByRole("checkbox")).toHaveCount(1);
+  await noteDialog.getByRole("button", { name: "Close" }).first().click();
+
+  // Settings > Notifications has the Vault's switch.
+  await page.goto(`${APP}/settings/notifications`);
+  await expect(page.getByRole("switch", { name: "Vault in the app" })).toBeVisible({ timeout: 30_000 });
+  await shot(page, "10-notifications");
   await context.close();
 });

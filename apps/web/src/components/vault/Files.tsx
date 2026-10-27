@@ -17,6 +17,7 @@ import { vaultSessions } from "@/lib/vault/keys";
 import { newItemId } from "@/lib/vault/items";
 import { openFile, openFileSummary, openFolderName, openNote, openNoteSummary, sealFile, sealFolderName, sealNote } from "@/lib/vault/files";
 import { useRecordEvent } from "./useVault";
+import { NoteEditor } from "./NoteEditor";
 
 const keysOf = (vaultId: string) => (version: number) => vaultSessions().keys(vaultId, version);
 const size = (n: number) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
@@ -159,7 +160,7 @@ export function Files({ vaultId }: { vaultId: string }) {
             const version = s.currentVersion(vaultId)!;
             const id = newItemId();
             if (naming === "folder") await createFolder({ vaultId, folderId: id, ...(folderId ? { parentId: folderId } : {}), sealedName: await sealFolderName(vaultId, id, version, s.keys(vaultId), name), keyVersion: version, client: s.info(vaultId) });
-            else await createNote({ vaultId, itemId: id, ...(folderId ? { folderId } : {}), item: await sealNote(vaultId, id, version, s.keys(vaultId), name, { text: "" }, ""), client: s.info(vaultId) });
+            else await createNote({ vaultId, itemId: id, ...(folderId ? { folderId } : {}), item: await sealNote(vaultId, id, version, s.keys(vaultId), name, { type: "doc", content: [{ type: "paragraph" }] }, ""), client: s.info(vaultId) });
           } catch (e) {
             toast.show(errorMessage(e), { tone: "error" });
           }
@@ -174,13 +175,14 @@ function NoteDialog({ vaultId, entry, onClose }: { vaultId: string; entry: Entry
   const open = useMutation(api.vaultItems.open);
   const save = useMutation(api.vaultFiles.saveNote);
   const toast = useToast();
-  const [text, setText] = useState<string | null>(null);
+  const [doc, setDoc] = useState<unknown>(undefined);
+  const [edited, setEdited] = useState<{ doc: unknown; text: string } | null>(null);
   const [revision, setRevision] = useState(entry.row.revision);
   const [canChange, setCanChange] = useState(false);
   useEffect(() => {
     void open({ vaultId, itemId: entry.id, client: vaultSessions().info(vaultId) }).then(async (r) => {
       const c = await openNote(vaultId, { id: r.id, keyVersion: r.keyVersion, wrappedKey: r.wrappedKey, sealed: r.sealed }, keysOf(vaultId));
-      setText(((c.doc as { text?: string }) ?? {}).text ?? "");
+      setDoc(c.doc ?? null);
       setRevision(r.revision);
       setCanChange(r.canChange);
     });
@@ -198,12 +200,14 @@ function NoteDialog({ vaultId, entry, onClose }: { vaultId: string; entry: Entry
           {canChange ? (
             <Button
               variant="primary"
-              disabled={text === null}
+              disabled={!edited}
               onClick={() =>
                 void (async () => {
+                  if (!edited) return;
                   const version = s.currentVersion(vaultId)!;
-                  const r = await save({ vaultId, itemId: entry.id, baseRevision: revision, item: await sealNote(vaultId, entry.id, version, s.keys(vaultId), entry.title, { text }, (text ?? "").slice(0, 160)), client: s.info(vaultId) });
+                  const r = await save({ vaultId, itemId: entry.id, baseRevision: revision, item: await sealNote(vaultId, entry.id, version, s.keys(vaultId), entry.title, edited.doc, edited.text.replace(/\s+/g, " ").trim().slice(0, 160)), client: s.info(vaultId) });
                   setRevision(r.revision);
+                  setEdited(null);
                   toast.show("Saved");
                 })().catch((e) => toast.show(errorMessage(e), { tone: "error" }))
               }
@@ -214,7 +218,7 @@ function NoteDialog({ vaultId, entry, onClose }: { vaultId: string; entry: Entry
         </>
       }
     >
-      {text === null ? <div className="h-40 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" aria-busy /> : <textarea aria-label="Note" value={text} readOnly={!canChange} onChange={(e) => setText(e.target.value)} rows={16} className="w-full ui-input rounded-chip px-3 py-2 text-body" />}
+      {doc === undefined ? <div className="h-40 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" aria-busy /> : <NoteEditor initial={doc} editable={canChange} onChange={(d, text) => setEdited({ doc: d, text })} />}
     </Dialog>
   );
 }

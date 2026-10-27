@@ -46,9 +46,11 @@ export const SCREENS = [
   { id: "templates", link: "folevi-dev://templates" },
   { id: "archive", link: "folevi-dev://archive" },
   { id: "trash", link: "folevi-dev://trash" },
+  // The first fixture note ("Kyoto in November"), by its id from fixture.json.
+  { id: "note", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 2500 },
   { id: "ai", link: "folevi-dev://ai" },
-  // The fixture's Foli AI conversation ({chat}: its id, from fixture.json), and the floating chat open over Home.
-  { id: "ai-chat", link: "folevi-dev://ai/{chat}" },
+  // The fixture's Foli AI conversation (its id from fixture.json), and the floating chat open over Home.
+  { id: "ai-chat", link: (fx) => `folevi-dev://ai/${fx.chat}` },
   { id: "ask-ai", link: "folevi-dev://documents", ask: true },
 ];
 const only = arg("--only")?.split(",");
@@ -84,7 +86,7 @@ const FIXTURE = `
   }
   await run("note.star", { ids: [ids[0], ids[2]], starred: true });
   for (const t of ["Book the ryokan tomorrow", "Call Sam on Friday 3pm", "Renew passport next week", "Buy matcha today"]) await run("task.create", { text: t });
-  return ids.length;
+  return ids;
 `;
 
 /**
@@ -111,6 +113,7 @@ const AI_FIXTURE = `
 `;
 /** The Debug app's stand-in model for Foli AI (never a real request). */
 const FAKE_AI = { FOLEVI_FAKE_AI: "1" };
+const STILL = `if (!document.getElementById("__screensStill")) { const s = document.createElement("style"); s.id = "__screensStill"; s.textContent = "*, *::before, *::after { animation: none !important; transition: none !important; }"; document.documentElement.appendChild(s); } return true;`;
 
 const ensure = (r) => {
   if (r && r.error) throw new Error(r.error);
@@ -183,7 +186,7 @@ async function quit() {
 }
 
 /** Every screen, light and dark, in one frame (native, or the web frame). */
-async function shoot(kind, fixture) {
+async function shoot(kind) {
   await launch({ dir, env: { FOLEVI_TEST_FOLDER: library, ...FAKE_AI, ...(kind === "web" ? { FOLEVI_WEB_FRAME: "1" } : {}) } });
   await waitFor(dir, kind === "web" ? `return document.readyState === "complete" && !!document.querySelector('nav[aria-label="Folio"]')` : `return !!window.__foleviEngine`, 90_000);
   await sleep(2000);
@@ -192,13 +195,19 @@ async function shoot(kind, fixture) {
   for (const scheme of ["light", "dark"]) {
     ensure(await command(dir, { cmd: "appearance", value: scheme }));
     for (const s of screens) {
-      ensure(await command(dir, { cmd: "open", url: s.link.replace("{chat}", fixture.chat ?? "") }));
+      const fixture = JSON.parse(readFileSync(join(dir, "fixture.json"), "utf8"));
+      ensure(await command(dir, { cmd: "open", url: typeof s.link === "function" ? s.link(fixture) : s.link }));
       await sleep(1600);
+      // A window behind others doesn't run CSS animations (a note's sheet would stay at its first, invisible
+      // frame): the end state at once, in both frames alike.
+      await evaluate(dir, STILL).catch(() => undefined);
+      await sleep(s.settle ?? 400);
       // The floating Ask Foli AI chat (⌘J): the menu item in the native frame, the page's shortcut in the web's.
       if (s.ask) {
         if (kind === "native") ensure(await command(dir, { cmd: "frame", do: "menu", item: "go.ask-ai" }));
         else await evaluate(dir, `window.dispatchEvent(new KeyboardEvent("keydown", { key: "j", code: "KeyJ", metaKey: true, bubbles: true })); return true;`);
         await sleep(1200);
+        await evaluate(dir, STILL).catch(() => undefined);
       }
       // The window as the screen shows it (macOS's own capture, no window shadow): the same path for both frames.
       const number = ensure(await command(dir, { cmd: "windows" }))[0].number;
@@ -219,9 +228,9 @@ try {
     rmSync(join(out, d), { recursive: true, force: true });
     mkdirSync(join(out, d), { recursive: true });
   }
-  const fixture = await ensureAiFixture();
-  await shoot("native", fixture);
-  await shoot("web", fixture);
+  await ensureAiFixture();
+  await shoot("native");
+  await shoot("web");
 } catch (e) {
   const text = await evaluate(dir, `return document.body.innerText.slice(0, 400)`).catch(() => "(no page)");
   console.error(`stopped: ${e.message}\npage: ${JSON.stringify(text)}`);

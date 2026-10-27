@@ -136,6 +136,11 @@ public final class FrameSplitViewController: NSViewController {
     public override func loadView() {
         let root = WebFrameView()
         view = root
+        let canvas = NSHostingView(rootView: WebCanvas())
+        canvas.safeAreaRegions = []
+        canvas.frame = root.bounds
+        canvas.autoresizingMask = [.width, .height]
+        root.addSubview(canvas)
         addChild(sidebar)
         addChild(content)
         root.addSubview(sidebar.view)
@@ -176,13 +181,10 @@ public final class FrameSplitViewController: NSViewController {
     public var isSidebarCollapsed: Bool { model.sidebarCollapsed }
 }
 
-/// The window's background behind the sidebar and the card: the system window colour, as the web page in the
-/// shipped app is transparent over it.
+/// The window's root: the web's canvas (WebCanvas) behind the sidebar and the card.
 @MainActor
 final class WebFrameView: NSView {
     override var isFlipped: Bool { false }
-    override var wantsUpdateLayer: Bool { true }
-    override func updateLayer() { layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor }
 }
 
 /// The web-drawn sidebar in the frame, with the popovers its buttons open.
@@ -261,6 +263,9 @@ public final class ContentViewController: NSViewController {
     let pageView: NSView
     public let topBar: NSHostingView<WebTopBar>
     private let body = NSView()
+    /// The card's clipped inside: the Page View fills it (under the glass bar, as the web's main does); native
+    /// screens sit in `body`, below the bar.
+    private let clip = NSView()
     private var screen: NSHostingView<ScreenRoot>?
     private lazy var models = ScreenModels(frame: model)
     private var toasts: NSHostingView<ToastStack>?
@@ -290,7 +295,6 @@ public final class ContentViewController: NSViewController {
         topBar.safeAreaRegions = []
         back.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(back)
-        let clip = NSView()
         clip.wantsLayer = true
         clip.layer?.cornerRadius = card.light.radius
         clip.layer?.masksToBounds = true
@@ -344,21 +348,26 @@ public final class ContentViewController: NSViewController {
         })
     }
 
-    /// The Page View into the body, under the native screen.
+    /// The Page View into the card, under the bar and the native screen. The page leaves the bar's room at its
+    /// top (--native-inset-top), so a note lays out in the same space as on the web.
     func adoptPageView() {
-        guard isViewLoaded, pageView.superview !== body else { return }
+        guard isViewLoaded, pageView.superview !== clip else { return }
         pageView.removeFromSuperview()
-        pageView.frame = body.bounds
+        pageView.frame = clip.bounds
         pageView.autoresizingMask = [.width, .height]
-        body.addSubview(pageView, positioned: .below, relativeTo: screen)
+        clip.addSubview(pageView, positioned: .below, relativeTo: body)
+        model.editor(.insets(top: Double(Self.barHeight), bottom: 0))
         if model.route.isNote { view.window?.makeFirstResponder(pageView) }
     }
 
     private func show(_ route: FrameRoute) {
         if route.isNote {
             screen?.isHidden = true
-            if pageView.superview === body { view.window?.makeFirstResponder(pageView) }
+            body.isHidden = true
+            model.editor(.insets(top: Double(Self.barHeight), bottom: 0))
+            if pageView.superview === clip { view.window?.makeFirstResponder(pageView) }
         } else {
+            body.isHidden = false
             models.prepare(route)
             if let s = screen {
                 if shownRoute != route { s.rootView = ScreenRoot(model: model, models: models, route: route) }
@@ -368,7 +377,7 @@ public final class ContentViewController: NSViewController {
                 s.safeAreaRegions = []
                 s.frame = body.bounds
                 s.autoresizingMask = [.width, .height]
-                body.addSubview(s, positioned: .above, relativeTo: pageView.superview === body ? pageView : nil)
+                body.addSubview(s)
                 screen = s
             }
             // Keys go to the native screen, never to the hidden note.

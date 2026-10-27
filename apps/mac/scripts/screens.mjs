@@ -10,7 +10,6 @@
 // library folder, FOLEVI_TEST_FOLDER): never the installed app's folder, Keychain or library. --fresh starts
 // both again (first launch, library setup and the fixture notes). Needs the Debug build (build.mjs) and the shell
 // export in apps/mac/web (apps/web/scripts/build-shell.mjs).
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
@@ -239,9 +238,9 @@ async function shoot(kind) {
         await sleep(1200);
         await evaluate(dir, STILL).catch(() => undefined);
       }
-      // The window as the screen shows it (macOS's own capture, no window shadow): the same path for both frames.
-      const number = ensure(await command(dir, { cmd: "windows" }))[0].number;
-      execFileSync("screencapture", ["-x", "-o", "-l", String(number), join(out, kind, `${s.id}-${scheme}.png`)]);
+      // The window drawn by the app itself (MacEval windowShot), never a screen capture: capturing windows goes
+      // through WindowServer's privacy checks, and many at once hung WindowServer and restarted the Mac (2026-10-28).
+      ensure(await command(dir, { cmd: "windowShot", out: join(out, kind, `${s.id}-${scheme}.png`) }, 60_000));
       if (s.ask) {
         if (kind === "native") await command(dir, { cmd: "frame", do: "menu", item: "go.ask-ai" });
         else await evaluate(dir, `window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); document.querySelector(".ai-chat [aria-label='Close chat']")?.click(); return true;`);

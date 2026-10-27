@@ -151,7 +151,8 @@ export function MenuButton({
   const pressed = useRef(false);
 
   const show = () => {
-    setHost(buttonRef.current?.closest("dialog") ?? document.body);
+    // In an inverted part of the page (.ui-invert, the Vault) the menu renders there too, so it takes its colours.
+    setHost(buttonRef.current?.closest<HTMLElement>("dialog, .ui-invert") ?? document.body);
     setOpen(true);
   };
   const close = (refocus = true) => {

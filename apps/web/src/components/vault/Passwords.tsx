@@ -4,11 +4,12 @@
 // hidden fields shown only on reveal; copying logged and the clipboard cleared after 30 seconds; live 2FA codes).
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useState } from "react";
-import { Copy, Eye, EyeOff, History, Plus, RefreshCw, Search, Share2, Trash2 } from "lucide-react";
+import { Copy, CopyPlus, Eye, EyeOff, History, KeyRound, Plus, RefreshCw, Search, Share2, Trash2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
+import { ContextMenu } from "@/components/ui/Menu";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
@@ -52,6 +53,10 @@ export function Passwords({ vaultId, initialSelected = null }: { vaultId: string
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<ItemKind | "all">("all");
   const [selected, setSelected] = useState<string | null>(initialSelected);
+  const [menu, setMenu] = useState<{ at: { x: number; y: number }; item: Opened; host?: HTMLElement } | null>(null);
+  // A copy opens straight in Edit, to rename it or change what differs.
+  const [editNew, setEditNew] = useState<string | null>(null);
+  const duplicate = useDuplicate(vaultId, (id) => (setEditNew(id), setSelected(id)));
   const [adding, setAdding] = useState(false);
   const shown = useMemo(() => {
     const needle = q.trim().toLocaleLowerCase();
@@ -60,48 +65,70 @@ export function Passwords({ vaultId, initialSelected = null }: { vaultId: string
   const current = opened?.find((o) => o.row.id === selected) ?? null;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-      <section aria-label="Passwords and credentials">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <label className="relative min-w-0 flex-1">
-            <span className="sr-only">Search the Vault</span>
-            <Search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="h-9 w-full ui-input rounded-chip pl-8 pr-3 text-callout" />
-          </label>
-          <Select aria-label="Kind" value={kind} onChange={(e) => setKind(e.target.value as ItemKind | "all")} className="h-9 ui-input rounded-chip px-3 text-callout">
-            <option value="all">All kinds</option>
-            {Object.entries(ITEM_KINDS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v.label}
-              </option>
-            ))}
-          </Select>
-          <Button variant="primary" onClick={() => setAdding(true)}>
-            <Plus size={14} aria-hidden /> Add
-          </Button>
-        </div>
-        {opened === undefined ? (
-          <div className="h-24 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" aria-busy />
-        ) : !shown.length ? (
-          <EmptyState icon={Search} title={opened.length ? "Nothing matches" : "No passwords yet"} body={opened.length ? undefined : "Add logins, API keys, cards and other credentials. Only people in the Vault can open them."} />
-        ) : (
-          <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
-            {shown.map((o) => (
-              <li key={o.row.id}>
-                <button type="button" onClick={() => setSelected(o.row.id)} aria-current={selected === o.row.id || undefined} className={`flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface ${selected === o.row.id ? "bg-[var(--glass-active)]" : ""}`}>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-ink">{o.summary.title}</span>
-                    <span className="block truncate text-footnote text-muted">{[ITEM_KINDS[o.summary.kind]?.label, o.summary.fields.username || o.summary.fields.service || o.summary.fields.website].filter(Boolean).join(" · ")}</span>
-                  </span>
-                  <span className="text-footnote text-faint">{formatRelative(o.row.updatedAt)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      {current ? <ItemPanel key={current.row.id} vaultId={vaultId} opened={current} onClosed={() => setSelected(null)} /> : <div className="hidden lg:block" />}
+    <div>
+      {/* Search, kind and Add span the page; the list takes it all until an item is open beside it. */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <label className="relative min-w-0 flex-1">
+          <span className="sr-only">Search the Vault</span>
+          <Search size={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="h-9 w-full ui-input rounded-chip pl-8 pr-3 text-callout" />
+        </label>
+        <Select aria-label="Kind" value={kind} onChange={(e) => setKind(e.target.value as ItemKind | "all")} className="h-9 ui-input rounded-chip px-3 text-callout">
+          <option value="all">All kinds</option>
+          {Object.entries(ITEM_KINDS).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v.label}
+            </option>
+          ))}
+        </Select>
+        <Button variant="primary" onClick={() => setAdding(true)}>
+          <Plus size={14} aria-hidden /> Add
+        </Button>
+      </div>
+      <div className={current ? "grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]" : undefined}>
+        <section aria-label="Passwords and credentials">
+          {opened === undefined ? (
+            <div className="h-24 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" aria-busy />
+          ) : !shown.length ? (
+            <EmptyState icon={Search} title={opened.length ? "Nothing matches" : "No passwords yet"} body={opened.length ? undefined : "Add logins, API keys, cards and other credentials. Only people in the Vault can open them."} />
+          ) : (
+            <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
+              {shown.map((o) => (
+                <li key={o.row.id}>
+                  <button
+                      type="button"
+                      onClick={() => setSelected(o.row.id)}
+                      onContextMenu={(ev) => {
+                        ev.preventDefault();
+                        setMenu({ at: { x: ev.clientX, y: ev.clientY }, item: o, host: ev.currentTarget.closest<HTMLElement>(".ui-invert") ?? undefined });
+                      }}
+                      aria-current={selected === o.row.id || undefined} className={`flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface ${selected === o.row.id ? "bg-[var(--glass-active)]" : ""}`}>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-subheadline font-medium text-ink">{o.summary.title}</span>
+                      <span className="block truncate text-footnote text-muted">{[ITEM_KINDS[o.summary.kind]?.label, o.summary.fields.username || o.summary.fields.service || o.summary.fields.website].filter(Boolean).join(" · ")}</span>
+                    </span>
+                    <span className="text-footnote text-faint">{formatRelative(o.row.updatedAt)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        {current ? <ItemPanel key={current.row.id} vaultId={vaultId} opened={current} editOnOpen={editNew === current.row.id} onClosed={() => setSelected(null)} /> : null}
+      </div>
       {adding ? <ItemDialog vaultId={vaultId} onClose={() => setAdding(false)} onSaved={(id) => (setAdding(false), setSelected(id))} /> : null}
+      {menu ? (
+        <ContextMenu
+          at={menu.at}
+          host={menu.host}
+          label={menu.item.summary.title}
+          onClose={() => setMenu(null)}
+          items={[
+            { label: "Open", icon: <KeyRound size={15} aria-hidden />, onSelect: () => setSelected(menu.item.row.id) },
+            { label: "Duplicate", icon: <CopyPlus size={15} aria-hidden />, onSelect: () => void duplicate(menu.item) },
+          ]}
+        />
+      ) : null}
     </div>
   );
 }
@@ -134,7 +161,32 @@ function TotpCode({ secret, onCopy, onShow }: { secret: string; onCopy: (code: s
   );
 }
 
-function ItemPanel({ vaultId, opened, onClosed }: { vaultId: string; opened: Opened; onClosed: () => void }) {
+/**
+ * Duplicating an item: its secrets are opened (logged, as any open is), then sealed again as a new item with its own
+ * key, every field kept and "(copy)" on the title; the log records which item it came from. Shares and history stay
+ * with the original.
+ */
+function useDuplicate(vaultId: string, onMade: (id: string) => void) {
+  const open = useMutation(api.vaultItems.open);
+  const create = useMutation(api.vaultItems.create);
+  const toast = useToast();
+  return async (o: Opened) => {
+    try {
+      const s = vaultSessions();
+      const r = await open({ vaultId, itemId: o.row.id, client: s.info(vaultId) });
+      const secrets = await openSecrets(vaultId, { id: r.id, keyVersion: r.keyVersion, wrappedKey: r.wrappedKey, sealed: r.sealed }, keysOf(vaultId));
+      const id = newItemId();
+      const content: ItemContent = { kind: o.summary.kind, summary: { ...o.summary, title: `${o.summary.title} (copy)` }, secrets };
+      await create({ vaultId, itemId: id, kind: o.summary.kind, item: await sealItem(vaultId, id, s.currentVersion(vaultId)!, s.keys(vaultId), content), duplicateOf: o.row.id, client: s.info(vaultId) });
+      toast.show("Duplicated", { tone: "success" });
+      onMade(id);
+    } catch (e) {
+      toast.show(errorMessage(e), { tone: "error" });
+    }
+  };
+}
+
+function ItemPanel({ vaultId, opened, editOnOpen = false, onClosed }: { vaultId: string; opened: Opened; editOnOpen?: boolean; onClosed: () => void }) {
   const open = useMutation(api.vaultItems.open);
   const remove = useMutation(api.vaultItems.remove);
   const record = useRecordEvent(vaultId);
@@ -142,7 +194,7 @@ function ItemPanel({ vaultId, opened, onClosed }: { vaultId: string; opened: Ope
   const [secrets, setSecrets] = useState<ItemSecrets | null>(null);
   const [full, setFull] = useState<{ canChange: boolean; revision: number; createdBy: string; updatedBy: string } | null>(null);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(editOnOpen);
   const [sharing, setSharing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const rekeyItem = useMutation(api.vaultItems.update);

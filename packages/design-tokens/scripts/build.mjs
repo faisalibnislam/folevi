@@ -93,6 +93,29 @@ ${glassLight}
 ${glassDark}
 }
 
+/* .ui-invert: one part of the page in the other theme, everything else unchanged (the Vault's panel: dark in
+   light mode, light in dark mode). Colours, shadows, the app's neutral chrome and glass, so its contents follow. */
+.ui-invert {
+  color-scheme: dark;
+${dark}
+${chromeDark}
+${glassDark}
+}
+
+:root[data-theme="dark"] .ui-invert {
+  color-scheme: light;
+${light}
+${chromeLight}
+${glassLight}
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ui-invert {
+    color-scheme: light;
+${[light, chromeLight, glassLight].join("\n").replace(/^ {2}/gm, "    ")}
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-fast: 0ms;

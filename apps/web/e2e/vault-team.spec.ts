@@ -1,6 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 import { APP, createWorkspace, newPerson, pick, showFolders, switcher, waitForSaved } from "./helpers";
 
+/** Health, Activity, People, Trash and Settings open from the ⋯ menu beside Lock. */
+async function vaultSection(page: Page, name: string) {
+  await page.getByRole("button", { name: "More in the Vault" }).click();
+  await page.getByRole("menuitemradio", { name }).click();
+}
+
 // A team's Vault (docs/VAULT_PLAN.md) with three accounts on the dev backend (its "vault" flag on): the owner sets it
 // up and adds a member, the owner's device shares the Vault's key with them, the member chooses a passcode and opens
 // it; an item is shared with someone outside the workspace, who opens it from Shared with Me; a regular note moves
@@ -54,6 +60,7 @@ test("a team Vault: a member gets the key from the owner's device; an outsider o
 
   // The owner sets up the team's Vault, adds a login and adds the member.
   await setUpVault(owner.page, "Set up your team's Vault", "482913");
+  await owner.page.getByRole("tab", { name: "Passwords & Credentials" }).click();
   await owner.page.getByRole("button", { name: "Add", exact: true }).click();
   const add = owner.page.getByRole("dialog", { name: "Add to the Vault" });
   await add.getByLabel("Title").fill("Deploy key");
@@ -61,7 +68,7 @@ test("a team Vault: a member gets the key from the owner's device; an outsider o
   await add.getByLabel("Password", { exact: true }).fill("Staging-Deploy-7-Lantern");
   await add.getByRole("button", { name: "Save" }).click();
   await expect(owner.page.getByRole("region", { name: "Deploy key" })).toBeVisible({ timeout: 30_000 });
-  await owner.page.getByRole("tab", { name: "People" }).click();
+  await vaultSection(owner.page, "People");
   await pick(owner.page.getByLabel("Workspace member"), "Vault Team Member");
   await owner.page.getByRole("button", { name: "Add", exact: true }).click();
   await expect(owner.page.getByRole("region", { name: "People" })).toContainText("Vault Team Member", { timeout: 30_000 });
@@ -78,6 +85,7 @@ test("a team Vault: a member gets the key from the owner's device; an outsider o
   await member.page.getByLabel("Choose a passcode").fill("731905");
   await member.page.getByLabel("Type it again").fill("731905");
   await member.page.getByRole("button", { name: "Set passcode and open" }).click();
+  await member.page.getByRole("tab", { name: "Passwords & Credentials" }).click();
   await expect(member.page.getByRole("button", { name: /^Deploy key/ })).toBeVisible({ timeout: 60_000 });
   await member.page.getByRole("button", { name: /^Deploy key/ }).click();
   await member.page.getByRole("button", { name: "Show Password" }).click();
@@ -160,7 +168,7 @@ test("a team Vault: a member gets the key from the owner's device; an outsider o
 
   // The log has all of it.
   await unlock(owner.page, "482913");
-  await owner.page.getByRole("tab", { name: "Activity" }).click();
+  await vaultSection(owner.page, "Activity");
   const log = owner.page.getByRole("region", { name: "Activity" });
   for (const line of ["Shared an item", "Opened a shared item", "Moved a note into the Vault", "Moved a note out of the Vault"]) await expect(log).toContainText(line, { timeout: 30_000 });
   await expect(log).toContainText("Vault Outsider");

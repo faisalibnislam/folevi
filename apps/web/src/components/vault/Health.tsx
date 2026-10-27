@@ -67,8 +67,8 @@ export function Health({ vaultId, onOpenItem }: { vaultId: string; onOpenItem: (
   if (!groups) return <div className="h-24 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" aria-busy />;
   const serious = new Set(groups.filter(([i]) => i !== "unchecked").flatMap(([, items]) => items.map((o) => o.id))).size;
   return (
-    <section aria-label="Health" className="max-w-3xl space-y-5">
-      <p className="text-subheadline text-muted">
+    <section aria-label="Health" className="space-y-5">
+      <p className={`text-subheadline text-muted ${groups.length ? "" : "text-center"}`}>
         {serious ? `${serious} ${serious === 1 ? "item needs" : "items need"} a look.` : "Nothing needs a look."} Checked on this device: only the first 5 characters of a password's SHA-1 ever leave it.
       </p>
       {!groups.length ? <EmptyState icon={HeartPulse} title="All healthy" body="No weak, reused or breached passwords, and nothing about to expire." /> : null}
@@ -83,7 +83,7 @@ export function Health({ vaultId, onOpenItem }: { vaultId: string; onOpenItem: (
               <li key={o.id}>
                 <button type="button" onClick={() => onOpenItem(o.id)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface">
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-ink">{o.summary.title}</span>
+                    <span className="block truncate text-subheadline font-medium text-ink">{o.summary.title}</span>
                     <span className="block truncate text-footnote text-muted">{[ITEM_KINDS[o.summary.kind]?.label, o.summary.fields.username || o.summary.fields.service || o.summary.fields.website, issue === "expired" || issue === "expiring" ? `expires ${o.summary.fields.expires}` : null].filter(Boolean).join(" · ")}</span>
                   </span>
                 </button>

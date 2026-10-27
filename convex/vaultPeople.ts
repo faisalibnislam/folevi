@@ -8,6 +8,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { assertWritable, membership, normalizeMembership, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { activeAccount } from "./lib/e2ee/keyStore";
+import { identityImageUrl } from "./lib/identityImages";
 import { insertScoped, scopeOfRow } from "./lib/scope";
 import { requireVault, vaultMemberRow, vaultRoleOf, type VaultRole } from "./lib/vault/access";
 import { appendLog } from "./lib/vault/log";
@@ -77,6 +78,7 @@ export const list = query({
       people.push({
         profileId: p.profile._id as string,
         name: p.profile.displayName,
+        avatarUrl: await identityImageUrl(ctx, p.profile.avatarFileId),
         email: custodianView ? p.profile.email : null,
         role: p.role,
         isYou: p.profile._id === profile._id,

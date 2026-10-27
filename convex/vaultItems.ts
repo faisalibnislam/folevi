@@ -149,7 +149,15 @@ export const open = mutation({
 
 /** A new password item (anyone in the Vault). The device sealed it under the current vault key. */
 export const create = mutation({
-  args: { vaultId: v.string(), itemId: v.string(), kind: vVaultItemKind, item: vSealedItem, client: v.optional(vVaultClient) },
+  args: {
+    vaultId: v.string(),
+    itemId: v.string(),
+    kind: vVaultItemKind,
+    item: vSealedItem,
+    /** Made by duplicating this item (its id), for the log. */
+    duplicateOf: v.optional(v.string()),
+    client: v.optional(vVaultClient),
+  },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
@@ -180,7 +188,8 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
-    await appendLog(ctx, vault, { event: "item.created", actor: { profile, role }, item: { publicId: args.itemId, kind: args.kind }, client: args.client });
+    const from = args.duplicateOf && /^[0-9A-Z]{26}$/.test(args.duplicateOf) ? { duplicateOf: args.duplicateOf } : undefined;
+    await appendLog(ctx, vault, { event: "item.created", actor: { profile, role }, item: { publicId: args.itemId, kind: args.kind }, ...(from ? { detail: from } : {}), client: args.client });
     await notifyVaultChange(ctx, vault, profile, { what: "password", verb: "added" });
     return null;
   },

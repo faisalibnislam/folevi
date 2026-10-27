@@ -4,7 +4,7 @@
 // version; the rich editor comes later).
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, FilePlus2, FileText, FolderPlus, Upload } from "lucide-react";
+import { ChevronLeft, FilePlus2, FileText, FolderPlus, LayoutGrid, Rows3, Upload } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -13,6 +13,7 @@ import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { PromptDialog } from "@/components/ui/PromptDialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
+import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { vaultSessions } from "@/lib/vault/keys";
 import { newItemId } from "@/lib/vault/items";
 import { openFile, openFileSummary, openFolderName, openNote, openNoteSummary, sealFile, sealFolderName, sealNote } from "@/lib/vault/files";
@@ -45,6 +46,8 @@ export function Files({ vaultId, role }: { vaultId: string; role: string }) {
   const [naming, setNaming] = useState<"folder" | "note" | null>(null);
   const [note, setNote] = useState<Entry | null>(null);
   const [busy, setBusy] = useState(false);
+  // Grid (cards) or Lines (rows), for folders and files alike; remembered on this device.
+  const [layout, setLayout] = useLocalStorage<"grid" | "list">("folevi:vault-files-layout", "grid");
 
   useEffect(() => {
     if (!folders) return;
@@ -110,6 +113,14 @@ export function Files({ vaultId, role }: { vaultId: string; role: string }) {
           </Button>
         ) : null}
         <h3 className="mr-auto truncate text-headline font-semibold text-heading">{folderId ? names[folderId] : "Files & Notes"}</h3>
+        <div className="ui-seg ui-well" role="group" aria-label="Layout">
+          <button type="button" aria-pressed={layout === "grid"} aria-label="Grid" title="Grid" onClick={() => setLayout("grid")}>
+            <LayoutGrid size={15} aria-hidden />
+          </button>
+          <button type="button" aria-pressed={layout === "list"} aria-label="Lines" title="Lines" onClick={() => setLayout("list")}>
+            <Rows3 size={15} aria-hidden />
+          </button>
+        </div>
         <Button variant="secondary" onClick={() => setNaming("folder")}>
           <FolderPlus size={14} aria-hidden /> Folder
         </Button>
@@ -122,21 +133,48 @@ export function Files({ vaultId, role }: { vaultId: string; role: string }) {
         <input ref={input} type="file" hidden onChange={(e) => (e.target.files?.[0] ? void upload(e.target.files[0]) : undefined, (e.target.value = ""))} />
       </div>
       {here.length ? (
-        <ul className="mb-4 grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-2">
-          {here.map((f) => (
-            <li key={f.id}>
-              <button type="button" onClick={() => (setFolderId(f.id), record("folder.open"))} className="flex w-full items-center gap-2 rounded-control ui-card px-3 py-2.5 text-left hover:bg-surface">
-                <FolderGlyph color={null} size={17} />
-                <span className="truncate text-subheadline font-medium text-ink">{names[f.id] ?? "…"}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        layout === "grid" ? (
+          <ul className="mb-4 grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-2">
+            {here.map((f) => (
+              <li key={f.id}>
+                <button type="button" onClick={() => (setFolderId(f.id), record("folder.open"))} className="flex w-full items-center gap-2 rounded-control ui-card px-3 py-2.5 text-left hover:bg-surface">
+                  <FolderGlyph color={null} size={17} />
+                  <span className="truncate text-subheadline font-medium text-ink">{names[f.id] ?? "…"}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <ul className="mb-4 divide-y divide-line overflow-hidden ui-card rounded-control">
+            {here.map((f) => (
+              <li key={f.id}>
+                <button type="button" onClick={() => (setFolderId(f.id), record("folder.open"))} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface">
+                  <FolderGlyph color={null} size={15} />
+                  <span className="min-w-0 flex-1 truncate text-subheadline font-medium text-ink">{names[f.id] ?? "…"}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )
       ) : null}
       {entries === undefined ? (
         <div className="h-24 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" aria-busy />
       ) : !entries.length ? (
         here.length ? null : <EmptyState icon={FileText} title="Nothing here yet" body="Upload files of any kind, or write a note. They're encrypted on this device before they leave it." />
+      ) : layout === "grid" ? (
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-2">
+          {entries.map((e) => (
+            <li key={e.id}>
+              <button type="button" onClick={() => (e.kind === "file" ? void download(e) : setNote(e))} className="flex h-full w-full flex-col gap-2 rounded-control ui-card p-3 text-left hover:bg-surface">
+                {e.kind === "file" ? <Upload size={17} aria-hidden className="text-muted" /> : <FileText size={17} aria-hidden className="text-muted" />}
+                <span className="min-w-0">
+                  <span className="block truncate text-subheadline font-medium text-ink">{e.title}</span>
+                  <span className="block truncate text-footnote text-muted">{[e.detail, formatRelative(e.updatedAt)].filter(Boolean).join(" · ")}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
       ) : (
         <ul className="divide-y divide-line overflow-hidden ui-card rounded-control">
           {entries.map((e) => (
@@ -144,7 +182,7 @@ export function Files({ vaultId, role }: { vaultId: string; role: string }) {
               <button type="button" onClick={() => (e.kind === "file" ? void download(e) : setNote(e))} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-surface">
                 {e.kind === "file" ? <Upload size={15} aria-hidden className="flex-none text-muted" /> : <FileText size={15} aria-hidden className="flex-none text-muted" />}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-ink">{e.title}</span>
+                  <span className="block truncate text-subheadline font-medium text-ink">{e.title}</span>
                   <span className="block truncate text-footnote text-muted">{e.detail}</span>
                 </span>
                 <span className="text-footnote text-faint">{formatRelative(e.updatedAt)}</span>

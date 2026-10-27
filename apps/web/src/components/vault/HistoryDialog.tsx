@@ -52,7 +52,7 @@ export function HistoryDialog({ vaultId, itemId, canChange, onClose }: { vaultId
               <li key={v.revision} className="px-3 py-2">
                 <div className="flex items-center gap-2">
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-ink">{v.summary?.title ?? "Can't open this version"}</span>
+                    <span className="block truncate text-subheadline font-medium text-ink">{v.summary?.title ?? "Can't open this version"}</span>
                     <span className="block text-footnote text-muted">
                       Version {v.revision} · {v.editedBy} · {formatDateTime(v.editedAt)}
                     </span>

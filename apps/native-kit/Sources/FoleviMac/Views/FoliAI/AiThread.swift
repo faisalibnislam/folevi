@@ -87,6 +87,8 @@ struct AiThreadView: View {
             // A new chat reads from its top (the welcome); a conversation from its end.
             .defaultScrollAnchor(.top, for: .alignment)
             .defaultScrollAnchor(model.isEmpty ? .top : .bottom, for: .initialOffset)
+            // While the welcome shows, the box under it settling its height keeps the top where it is.
+            .defaultScrollAnchor(model.isEmpty ? .top : .bottom, for: .sizeChanges)
             .onScrollGeometryChange(for: Bool.self) { g in
                 g.contentSize.height - g.contentOffset.y - g.containerSize.height < 56
             } action: { _, atEnd in

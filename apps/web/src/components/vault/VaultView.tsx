@@ -93,7 +93,7 @@ export function VaultView() {
           <div className="mx-auto mt-10 max-w-md rounded-panel ui-card px-6 py-7">
             <h2 className="text-title-3 font-semibold text-heading">Save your Vault recovery key</h2>
             <p className="mb-4 mt-2 text-subheadline text-muted">If you forget your passcode, this key opens the Vault. Folevi can't. Keep it somewhere safe, away from this device.</p>
-            <RecoveryKeyPanel text={recoveryToSave} email={profile.email} onDone={() => vaultSessions().recoverySaved(vaultId)} />
+            <RecoveryKeyPanel vault text={recoveryToSave} email={profile.email} onDone={() => vaultSessions().recoverySaved(vaultId)} />
           </div>
         ) : !ready ? (
           <VaultGate info={info} onOpen={() => undefined} />

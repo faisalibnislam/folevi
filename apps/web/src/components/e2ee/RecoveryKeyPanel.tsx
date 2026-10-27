@@ -13,7 +13,20 @@ import { printRecoveryKey } from "./PrintRecoveryKey";
  * The recovery key, shown once (§10.4 step 3): nine groups of four in a mono block, Copy, Download and
  * Print, then groups 3 and 7 typed back before it counts.
  */
-export function RecoveryKeyPanel({ text, email, onConfirm, onDone }: { text: string; email: string; /** Checks the two groups (WP6's addRecoveryKey); without it they're compared with `text` here (a key from rotateAccount). */ onConfirm?: (groups: [string, string]) => Promise<boolean>; onDone: () => void }) {
+export function RecoveryKeyPanel({
+  text,
+  email,
+  onConfirm,
+  onDone,
+  vault = false,
+}: {
+  text: string;
+  email: string;
+  /** Checks the two groups (WP6's addRecoveryKey); without it they're compared with `text` here (a key from rotateAccount). */ onConfirm?: (groups: [string, string]) => Promise<boolean>;
+  onDone: () => void;
+  /** A Vault's recovery key (docs/VAULT_PLAN.md §2): the saved file and the intro say what it opens. */
+  vault?: boolean;
+}) {
   const c = copy.wizard.recovery;
   const toast = useToast();
   const uid = useId();
@@ -23,10 +36,10 @@ export function RecoveryKeyPanel({ text, email, onConfirm, onDone }: { text: str
   const [busy, setBusy] = useState(false);
   const groups = text.split("-");
   const date = formatDate(Date.now(), { dateStyle: "long" });
-  const file = `Folevi recovery key\n\n${text}\n\nKeep this somewhere safe, away from your devices. Anyone with it can unlock your encrypted notes.\nAccount: ${email}\nMade on ${date}\n`;
+  const file = `Folevi ${vault ? "Vault " : ""}recovery key\n\n${text}\n\nKeep this somewhere safe, away from your devices. Anyone with it ${vault ? "and your Folevi sign-in can open your Vault" : "can unlock your encrypted notes"}.\nAccount: ${email}\nMade on ${date}\n`;
   return (
     <div className="space-y-5">
-      <p className="text-subheadline text-muted">{c.body}</p>
+      {vault ? null : <p className="text-subheadline text-muted">{c.body}</p>}
       <ol aria-label={copy.wizard.recovery.heading} className="grid grid-cols-3 gap-2 rounded-control bg-sunken p-3 font-mono text-body tracking-[0.06em] text-ink sm:p-4">
         {groups.map((g, i) => (
           <li key={i} className="rounded-chip bg-surface px-2 py-1.5 text-center shadow-[var(--shadow-hairline)]">
@@ -45,7 +58,7 @@ export function RecoveryKeyPanel({ text, email, onConfirm, onDone }: { text: str
             const url = URL.createObjectURL(new Blob([file], { type: "text/plain" }));
             const a = document.createElement("a");
             a.href = url;
-            a.download = c.fileName;
+            a.download = vault ? "Folevi Vault recovery key.txt" : c.fileName;
             a.click();
             URL.revokeObjectURL(url);
           }}

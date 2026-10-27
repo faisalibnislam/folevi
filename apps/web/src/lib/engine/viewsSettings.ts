@@ -23,6 +23,12 @@ import type { CommandDef } from "./commands";
 import { Emitter, signalOf, type Signal } from "./live";
 import { source } from "./views";
 import { BridgeError, oneOf, only } from "./validate";
+import { importFiles } from "@/lib/import/run";
+import { importTakeout } from "@/lib/migrate/takeout";
+import { accountUpload, clientTarget, libraryPutFile } from "@/lib/migrate/target";
+import type { MigrationClient } from "@/lib/migrate/types";
+import { deviceId as loadDeviceId } from "@/lib/sync/db";
+import type { WireScope } from "@folevi/editor-schema";
 import { SETTINGS_QUERY_KEYS, SETTINGS_RUN_KEYS, type CommandName, type SettingsQueryKey, type SettingsRunKey, type ViewName } from "./protocol";
 
 type Args = Record<string, unknown>;
@@ -258,7 +264,7 @@ export function localAiValue(deps: EngineDeps, state: LocalAiState) {
     }),
     model: choices.length
       ? {
-          none: null,
+          missing: null,
           description: `Which model answers. Folevi picks ${here.onDeviceModel} when it's on, and otherwise the first key you added.`,
           providers: [{ value: "auto", label: "Let Folevi pick" }, ...choices.map((p) => ({ value: p, label: PROVIDERS[p].label }))],
           provider: picked?.provider ?? "auto",
@@ -269,7 +275,7 @@ export function localAiValue(deps: EngineDeps, state: LocalAiState) {
           answering: active ? `Answering now: ${active.provider === "on-device" ? `${here.onDeviceModel}, on ${here.here}` : `${modelLabel(active.provider, active.model)} (${PROVIDERS[active.provider].label})`}.` : null,
         }
       : {
-          none: `Foli AI has no model on ${here.here} yet. ${here.ios || shell()?.platform === "mac" ? `Turn on ${here.onDeviceModel}, or add one of your own keys.` : "Add one of your own keys."}`,
+          missing: `Foli AI has no model on ${here.here} yet. ${here.ios || shell()?.platform === "mac" ? `Turn on ${here.onDeviceModel}, or add one of your own keys.` : "Add one of your own keys."}`,
           description: null,
           providers: [],
           provider: "auto",
@@ -322,6 +328,13 @@ export function desktopValue(state: { settings: DesktopSettings; error: string |
 /** Queries by name (as the web's components call them). */
 const QUERIES = {
   "aiMemory.list": api.aiMemory.list,
+  "billing.mine": api.billing.mine,
+  "workspaceBilling.summary": api.workspaceBilling.summary,
+  "mcp.listGrants": api.mcp.listGrants,
+  "apiTokens.list": api.apiTokens.list,
+  "webhooks.list": api.webhooks.list,
+  "workspaces.members": api.workspaces.members,
+  "workspaces.guests": api.workspaces.guests,
 } as const;
 const MUTATIONS = {
   "aiMemory.add": api.aiMemory.add,
@@ -329,9 +342,28 @@ const MUTATIONS = {
   "aiMemory.remove": api.aiMemory.remove,
   "aiMemory.clear": api.aiMemory.clear,
   "users.updateProfile": api.users.updateProfile,
+  "users.requestAccountDeletion": api.users.requestAccountDeletion,
+  "users.cancelAccountDeletion": api.users.cancelAccountDeletion,
+  "mcp.revokeGrant": api.mcp.revokeGrant,
+  "apiTokens.create": api.apiTokens.create,
+  "apiTokens.revoke": api.apiTokens.revoke,
+  "webhooks.create": api.webhooks.create,
+  "webhooks.remove": api.webhooks.remove,
+  "webhooks.setEnabled": api.webhooks.setEnabled,
+  "webhooks.sendTest": api.webhooks.sendTest,
+  "workspaces.rename": api.workspaces.rename,
+  "workspaces.scheduleDeletion": api.workspaces.scheduleDeletion,
+  "workspaces.removeMember": api.workspaces.removeMember,
+  "workspaces.changeRole": api.workspaces.changeRole,
+  "workspaces.invite": api.workspaces.invite,
+  "workspaces.revokeInvite": api.workspaces.revokeInvite,
+  "workspaces.convertGuestToMember": api.workspaces.convertGuestToMember,
+  "workspaces.removeGuest": api.workspaces.removeGuest,
 } as const;
 const ACTIONS = {
   "exports.exportScope": api.exports.exportScope,
+  "billing.portal": api.billing.portal,
+  "workspaceBilling.portal": api.workspaceBilling.portal,
 } as const;
 export const SETTINGS_CONVEX = { queries: Object.keys(QUERIES), mutations: Object.keys(MUTATIONS), actions: Object.keys(ACTIONS) };
 
@@ -407,6 +439,24 @@ async function hostCall<T>(run: () => Promise<T>, fallback: string): Promise<T> 
     throw new BridgeError("failed", h.message || fallback);
   }
 }
+
+/** Files the Mac sends (base64), as the File objects the web's import reads (a folder's files keep their path). */
+function filesOf(a: Args): File[] {
+  const list = Array.isArray(a.files) ? a.files : [];
+  if (!list.length || list.length > 5000) throw new BridgeError("invalid_args", "Choose between 1 and 5,000 files.");
+  return list.map((raw) => {
+    const f = obj(raw);
+    const name = str(f, "name");
+    const bin = atob(str(f, "data"));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const file = new File([bytes], name, { type: typeof f.type === "string" ? f.type : "" });
+    if (typeof f.path === "string" && f.path) Object.defineProperty(file, "webkitRelativePath", { value: f.path });
+    return file;
+  });
+}
+
+const plural = (n: number, one: string) => `${n.toLocaleString()} ${n === 1 ? one : `${one}s`}`;
 
 async function runKey(deps: EngineDeps, key: SettingsRunKey, a: Args): Promise<unknown> {
   const lib = shell()?.library;
@@ -541,6 +591,32 @@ async function runKey(deps: EngineDeps, key: SettingsRunKey, a: Args): Promise<u
     case "desktop.pauseShortcut":
       desktop()?.pauseShortcut(a.paused === true);
       return { ok: true };
+    case "data.import": {
+      const scope: WireScope = typeof a.workspaceId === "string" ? { kind: "workspace", workspaceId: a.workspaceId } : { kind: "personal" };
+      const notes: string[] = [];
+      const results = await importFiles(deps.client as never, scope, filesOf(a), {
+        importText: (x) => deps.client.mutation(api.imports.importText, x) as never,
+        createFolder: (x) => deps.client.mutation(api.organization.createFolder, x),
+        onNote: (m) => notes.push(m),
+      });
+      const ok = results.filter((r) => r.id).length;
+      return { results, notes, ok, message: `Imported ${ok} of ${results.length} ${results.length === 1 ? "page" : "pages"}`, allOk: ok === results.length };
+    }
+    case "takeout.import": {
+      const [file] = filesOf(a);
+      const zip = new Uint8Array(await file!.arrayBuffer());
+      const client = deps.client as unknown as MigrationClient;
+      const local = (deps.client as unknown as { local?: { putFile: Parameters<typeof libraryPutFile>[0]["putFile"] } }).local;
+      const device = (await loadDeviceId(deps.app.accountKey).catch(() => null)) ?? "takeout-import";
+      const target = clientTarget(client, { deviceId: device, putFile: local ? libraryPutFile(local) : accountUpload(client) });
+      try {
+        const { state, folder } = await importTakeout({ zip, target });
+        const missing = state.problems.filter((p) => p.kind === "file").length;
+        return { message: "Takeout imported", status: `${plural(Object.keys(state.notes).length, "note")} came in, in the folder “${folder.name}”.${missing ? ` ${plural(missing, "file")} didn't come along.` : ""}` };
+      } catch (e) {
+        throw new BridgeError("failed", e instanceof Error ? e.message : String(e));
+      }
+    }
     case "convex.mutation": {
       const fn = str(a, "fn");
       if (!(fn in MUTATIONS)) throw new BridgeError("invalid_args", `${fn} isn't a change Settings makes.`);

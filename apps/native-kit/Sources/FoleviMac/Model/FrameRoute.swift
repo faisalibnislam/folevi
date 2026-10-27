@@ -108,7 +108,8 @@ public enum FrameRoute: Hashable, Sendable {
         case .tasks: return "view:tasks"
         case .calendar: return "view:calendar"
         case .search: return "view:search"
-        case .web(let p): return "view:web:\(p)"
+        // Settings is one tab whichever section is open (it follows you between them).
+        case .web(let p): return p.hasPrefix("/settings") ? "view:settings" : "view:web:\(p)"
         }
     }
 
@@ -136,7 +137,7 @@ public enum FrameRoute: Hashable, Sendable {
         case .calendar: return "Calendar"
         case .search(let q): return q.isEmpty ? "Search" : "Search: \(q)"
         case .note: return "Untitled"
-        case .web: return "Folevi"
+        case .web(let p): return p.hasPrefix("/settings") ? "Settings" : "Folevi"
         }
     }
 

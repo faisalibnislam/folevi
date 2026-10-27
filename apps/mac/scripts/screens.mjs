@@ -48,6 +48,12 @@ export const SCREENS = [
   { id: "trash", link: "folevi-dev://trash" },
   // The first fixture note ("Kyoto in November"), by its id from fixture.json.
   { id: "note", link: (fx) => `folevi-dev://d/${fx.notes[0]}`, settle: 2500 },
+  // Settings in local mode (the sections a library has), each opened on its own.
+  { id: "settings-library", link: "folevi-dev://settings/library", settle: 1200 },
+  { id: "settings-ai", link: "folevi-dev://settings/ai", settle: 1200 },
+  { id: "settings-appearance", link: "folevi-dev://settings/appearance", settle: 800 },
+  { id: "settings-data", link: "folevi-dev://settings/data", settle: 800 },
+  { id: "settings-desktop", link: "folevi-dev://settings/desktop", settle: 1000 },
 ];
 const only = arg("--only")?.split(",");
 const screens = SCREENS.filter((s) => !only || only.includes(s.id));

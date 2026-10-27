@@ -42,6 +42,7 @@ final class ScreenModels {
     private var tasks: TasksModel?
     private var calendar: CalendarModel?
     private var search: SearchModel?
+    private var settings: MacSettingsModel?
 
     init(frame: FrameModel) { self.frame = frame }
 
@@ -97,6 +98,13 @@ final class ScreenModels {
         if let search { return search }
         let m = SearchModel(client: frame.client, feedback: feedback)
         search = m
+        return m
+    }
+
+    func settingsModel() -> MacSettingsModel {
+        if let settings { return settings }
+        let m = MacSettingsModel(frame: frame)
+        settings = m
         return m
     }
 
@@ -241,6 +249,7 @@ struct ScreenRoot: View {
             case .search: SearchScreen(model: models.searchModel(), showsCancel: false)
             case .tasks: TasksScreen(model: models.tasksModel(), showsHeader: true)
             case .calendar: CalendarScreen(model: models.calendarModel(), showsHeader: true)
+            case .web(let path) where path.hasPrefix("/settings"): SettingsScreen(model: models.settingsModel(), section: MacSettingsSection(path: path))
             case .web(let path): Placeholder(symbol: "globe", title: "Not here yet", message: "\(path) doesn't have a screen in the Mac app yet.")
             case .note: Color.clear
             }

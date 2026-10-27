@@ -1,0 +1,403 @@
+{
+  "$description": "Settings (apps/web/src/components/views/SettingsView.tsx and views/settings/*) as the Mac's web frame shows /settings/<section> in local mode. Read by scripts/web-styles.mjs --app.",
+  "screens": {
+    "library": "folevi-dev://settings/library",
+    "ai": "folevi-dev://settings/ai",
+    "appearance": "folevi-dev://settings/appearance",
+    "desktop": "folevi-dev://settings/desktop",
+    "data": "folevi-dev://settings/data"
+  },
+  "styles": {
+    "settings.grid": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections']",
+      "parent": 1
+    },
+    "settings.nav": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections']"
+    },
+    "settings.nav.groups": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections'] > div"
+    },
+    "settings.nav.label": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections'] p"
+    },
+    "settings.nav.list": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections'] ul"
+    },
+    "settings.nav.item": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections'] a[href='/settings/ai']"
+    },
+    "settings.nav.item.icon": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections'] a[href='/settings/ai'] > svg"
+    },
+    "settings.nav.item.active": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections'] a[aria-current='page']"
+    },
+    "settings.nav.item.active.icon": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections'] a[aria-current='page'] > svg"
+    },
+    "settings.nav.support.label": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections'] p",
+      "nth": 1
+    },
+    "settings.nav.support.item": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections'] button"
+    },
+    "settings.content": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections'] + div"
+    },
+    "settings.heading": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections'] + div > h2"
+    },
+    "settings.card": {
+      "screen": "library",
+      "selector": "section.ui-card"
+    },
+    "settings.card.title": {
+      "screen": "library",
+      "selector": "section.ui-card > h3"
+    },
+    "settings.card.description": {
+      "screen": "library",
+      "selector": "section.ui-card > p"
+    },
+    "settings.card.body": {
+      "screen": "library",
+      "selector": "section.ui-card > div.mt-4"
+    },
+    "settings.dl": {
+      "screen": "library",
+      "selector": "section.ui-card dl"
+    },
+    "settings.dt": {
+      "screen": "library",
+      "selector": "section.ui-card dt"
+    },
+    "settings.dd": {
+      "screen": "library",
+      "selector": "section.ui-card dd"
+    },
+    "settings.dd.path": {
+      "screen": "library",
+      "selector": "section.ui-card dd",
+      "nth": 1
+    },
+    "settings.buttons": {
+      "screen": "library",
+      "selector": "section.ui-card dl + div"
+    },
+    "settings.button": {
+      "screen": "library",
+      "selector": "section.ui-card button.ui-btn-secondary"
+    },
+    "settings.button.danger": {
+      "screen": "library",
+      "selector": "section.ui-card button.ui-btn-danger"
+    },
+    "settings.device.list": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(2) ul"
+    },
+    "settings.device.row": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(2) li"
+    },
+    "settings.device.icon": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(2) li > span:first-child"
+    },
+    "settings.device.text": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(2) li > span.min-w-0"
+    },
+    "settings.device.name": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(2) li > span.min-w-0 > span:first-child"
+    },
+    "settings.device.here": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(2) li > span.min-w-0 > span:first-child > span"
+    },
+    "settings.device.sub": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(2) li > span.min-w-0 > span:nth-child(2)"
+    },
+    "settings.device.when": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(2) li > span:last-child"
+    },
+    "settings.muted": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(3) div.space-y-4 > p"
+    },
+    "settings.lock.row": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(5) div.grid > div"
+    },
+    "settings.lock.label": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(5) div.grid span.text-subheadline"
+    },
+    "settings.switch.off": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(5) button.relative"
+    },
+    "settings.switch.off.knob": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(5) button.relative > span"
+    },
+    "settings.link.text": {
+      "screen": "library",
+      "selector": "section.ui-card:nth-of-type(6) div.mt-4 > p"
+    },
+    "settings.link": {
+      "screen": "library",
+      "selector": "section.ui-card a.underline"
+    },
+    "settings.footer": {
+      "screen": "library",
+      "selector": "nav[aria-label='Settings sections'] + div > p.pt-4"
+    },
+    "settings.switch.on": {
+      "screen": "ai",
+      "selector": "section.ui-card button.relative"
+    },
+    "settings.switch.on.knob": {
+      "screen": "ai",
+      "selector": "section.ui-card button.relative > span"
+    },
+    "settings.toggle.row": {
+      "screen": "ai",
+      "selector": "section.ui-card div.justify-between.gap-6"
+    },
+    "settings.toggle.text": {
+      "screen": "ai",
+      "selector": "section.ui-card div.justify-between.gap-6 > p"
+    },
+    "settings.ai.badge": {
+      "screen": "ai",
+      "selector": "section.ui-card span.grid.h-8"
+    },
+    "settings.ai.title": {
+      "screen": "ai",
+      "selector": "section.ui-card div.min-w-0 > p.font-medium"
+    },
+    "settings.ai.text": {
+      "screen": "ai",
+      "selector": "section.ui-card div.min-w-0 > p.mt-0\\.5"
+    },
+    "settings.ai.more": {
+      "screen": "ai",
+      "selector": "section.ui-card div.min-w-0 > p.mt-1"
+    },
+    "settings.key.list": {
+      "screen": "ai",
+      "selector": "section.ui-card div.divide-y"
+    },
+    "settings.key.row": {
+      "screen": "ai",
+      "selector": "section.ui-card div.divide-y > div"
+    },
+    "settings.key.row.2": {
+      "screen": "ai",
+      "selector": "section.ui-card div.divide-y > div",
+      "nth": 1
+    },
+    "settings.key.row.3": {
+      "screen": "ai",
+      "selector": "section.ui-card div.divide-y > div",
+      "nth": 2
+    },
+    "settings.key.name": {
+      "screen": "ai",
+      "selector": "section.ui-card div.divide-y p.font-medium"
+    },
+    "settings.key.icon": {
+      "screen": "ai",
+      "selector": "section.ui-card div.divide-y p.font-medium > svg"
+    },
+    "settings.key.status": {
+      "screen": "ai",
+      "selector": "section.ui-card div.divide-y p.mt-0\\.5"
+    },
+    "settings.button.sm": {
+      "screen": "ai",
+      "selector": "section.ui-card div.divide-y button.ui-btn"
+    },
+    "settings.field": {
+      "screen": "ai",
+      "selector": "section.ui-card label.text-subheadline"
+    },
+    "settings.field.label": {
+      "screen": "ai",
+      "selector": "section.ui-card label > span.mb-1"
+    },
+    "settings.select": {
+      "screen": "ai",
+      "selector": "section.ui-card label button.ui-input"
+    },
+    "settings.select.label": {
+      "screen": "ai",
+      "selector": "section.ui-card label button.ui-input > span"
+    },
+    "settings.select.chevron": {
+      "screen": "ai",
+      "selector": "section.ui-card label button.ui-input > svg"
+    },
+    "settings.model.grid": {
+      "screen": "ai",
+      "selector": "section.ui-card div.grid.gap-4"
+    },
+    "settings.model.status": {
+      "screen": "ai",
+      "selector": "section.ui-card div.grid.gap-4 > p"
+    },
+    "settings.memory.form": {
+      "screen": "ai",
+      "selector": "section.ui-card form"
+    },
+    "settings.memory.select": {
+      "screen": "ai",
+      "selector": "section.ui-card form button.ui-input"
+    },
+    "settings.input": {
+      "screen": "ai",
+      "selector": "section.ui-card form input.ui-input"
+    },
+    "settings.memory.add": {
+      "screen": "ai",
+      "selector": "section.ui-card form button.ui-btn"
+    },
+    "settings.empty": {
+      "screen": "ai",
+      "selector": "section.ui-card div.mx-auto.text-center"
+    },
+    "settings.empty.title": {
+      "screen": "ai",
+      "selector": "section.ui-card div.mx-auto.text-center > p"
+    },
+    "settings.empty.text": {
+      "screen": "ai",
+      "selector": "section.ui-card div.mx-auto.text-center > p",
+      "nth": 1
+    },
+    "settings.theme.grid": {
+      "screen": "appearance",
+      "selector": "section.ui-card div.grid.grid-cols-3"
+    },
+    "settings.theme.tile": {
+      "screen": "appearance",
+      "selector": "section.ui-card div.grid.grid-cols-3 > button"
+    },
+    "settings.theme.tile.on": {
+      "screen": "appearance",
+      "selector": "section.ui-card div.grid.grid-cols-3 > button[aria-checked='true']"
+    },
+    "settings.theme.icon": {
+      "screen": "appearance",
+      "selector": "section.ui-card div.grid.grid-cols-3 > button > svg"
+    },
+    "settings.range.label": {
+      "screen": "appearance",
+      "selector": "section.ui-card label.flex"
+    },
+    "settings.range": {
+      "screen": "appearance",
+      "selector": "section.ui-card input[type='range']"
+    },
+    "settings.shortcut.label": {
+      "screen": "desktop",
+      "selector": "section.ui-card div.text-subheadline > span.block"
+    },
+    "settings.shortcut.row": {
+      "screen": "desktop",
+      "selector": "section.ui-card div.text-subheadline > div"
+    },
+    "settings.shortcut": {
+      "screen": "desktop",
+      "selector": "section.ui-card button.ui-input"
+    },
+    "settings.shortcut.hint": {
+      "screen": "desktop",
+      "selector": "section.ui-card div.text-subheadline > p"
+    },
+    "settings.rows": {
+      "screen": "desktop",
+      "selector": "section.ui-card div.max-w-xl.divide-y"
+    },
+    "settings.row": {
+      "screen": "desktop",
+      "selector": "section.ui-card div.max-w-xl.divide-y > div"
+    },
+    "settings.row.2": {
+      "screen": "desktop",
+      "selector": "section.ui-card div.max-w-xl.divide-y > div",
+      "nth": 1
+    },
+    "settings.row.3": {
+      "screen": "desktop",
+      "selector": "section.ui-card div.max-w-xl.divide-y > div",
+      "nth": 2
+    },
+    "settings.row.label": {
+      "screen": "desktop",
+      "selector": "section.ui-card div.max-w-xl.divide-y > div span.text-subheadline"
+    },
+    "settings.row.hint": {
+      "screen": "desktop",
+      "selector": "section.ui-card div.max-w-xl.divide-y > div span.text-footnote"
+    },
+    "settings.row.hint.3": {
+      "screen": "desktop",
+      "selector": "section.ui-card div.max-w-xl.divide-y > div span.text-footnote",
+      "nth": 2
+    },
+    "settings.button.icon": {
+      "screen": "data",
+      "selector": "section.ui-card button.ui-btn-secondary"
+    },
+    "settings.button.icon.svg": {
+      "screen": "data",
+      "selector": "section.ui-card button.ui-btn-secondary > svg"
+    },
+    "settings.button.primary": {
+      "screen": "data",
+      "selector": "section.ui-card button.ui-btn-primary"
+    },
+    "settings.progress": {
+      "screen": "data",
+      "selector": "section.ui-card p.mt-2"
+    }
+  },
+  "vars": [
+    "color-surface",
+    "color-accent",
+    "color-accent-soft",
+    "color-accent-soft-ink",
+    "color-danger",
+    "color-line",
+    "color-heading",
+    "color-ink",
+    "color-ink-muted",
+    "color-ink-faint",
+    "color-canvas",
+    "glass-hover",
+    "glass-active",
+    "glass-border",
+    "glass-edge",
+    "color-focus"
+  ]
+}

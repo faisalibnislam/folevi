@@ -55,6 +55,7 @@ import { sameItems, useEngineSelector, useLocalStorage } from "@/lib/hooks/useEn
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { localDb } from "@/lib/sync/db";
 import { isSealedDocument } from "@/lib/e2ee/router/hooks";
+import { MoveToVaultDialog } from "@/components/vault/MoveToVaultDialog";
 import { Button } from "@/components/ui/Button";
 import { SyncedRedirect } from "@/components/editor/synced/SyncedRedirect";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
@@ -219,6 +220,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [historyVersion, setHistoryVersion] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [vaultMoveOpen, setVaultMoveOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const canCopy = useCanCopyElsewhere();
   const [exportOpen, setExportOpen] = useState(false);
@@ -731,6 +733,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const canNest = Boolean(meta && !readOnly && (meta.access === "write" || meta.access === "manage"));
   // The note's flashcards in the review queue: "Review 12 cards in this note".
   const reviewWindow = useReviewWindow(5 * 60_000);
+  // "Move to the Vault…" for a note of this place that its editor can manage, where there's a Vault (its flag on).
+  const vaultHere = useQuery(api.vault.get, caps.sharing && meta && !meta.inTrash && meta.document.kind !== "template" && inCurrentScope(meta.document, meta.isMember, scopeKey) ? { scope: documentScope(meta.document) } : "skip");
   const studyCards = useQuery(api.study.summary, meta && !meta.inTrash ? { documentId, ...reviewWindow } : "skip");
   const docActions = useDocumentActions({
     documentId,
@@ -755,6 +759,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
     },
     onDelete: () => setDeleteOpen(true),
     onMove: () => setMoveOpen(true),
+    onMoveToVault: vaultHere && (meta?.access === "manage" || meta?.access === "write") ? () => setVaultMoveOpen(true) : undefined,
     // A copy in Personal or a workspace (your own places; a page shared with you can be copied into them too).
     onCopyTo: caps.copyTo && meta && !meta.inTrash && (canCopy || !meta.isMember) ? () => setCopyOpen(true) : undefined,
     onFind: editor ? () => openFind(!readOnly) : undefined,
@@ -1248,6 +1253,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
       ) : null}
       {meta && caps.sharing ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} personal={meta.document.workspaceId === null} /> : null}
       {canEditPage ? <VersionHistory open={historyOpen} onClose={() => (setHistoryOpen(false), setHistoryVersion(null))} initialVersion={historyVersion} documentId={documentId} title={summary?.title ?? ""} style={style} cover={summary?.cover ?? DEFAULT_COVER} /> : null}
+      {vaultMoveOpen ? <MoveToVaultDialog documentId={documentId} title={summary?.title ?? ""} onClose={() => setVaultMoveOpen(false)} /> : null}
       <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={documentId} title={summary?.title ?? ""} />
       {meta ? (
         <MoveNoteDialog
@@ -1898,6 +1904,7 @@ function useDocumentActions({
   onRelated,
   onDelete,
   onMove,
+  onMoveToVault,
   onCopyTo,
   onFind,
   onExport,
@@ -1927,6 +1934,8 @@ function useDocumentActions({
   onRelated?: () => void;
   onDelete: () => void;
   onMove: () => void;
+  /** Opens "Move to the Vault?" (absent where there's no Vault, or for people who can't manage the note). */
+  onMoveToVault?: () => void;
   /** Opens Copy to (absent when there's nowhere else to copy it). */
   onCopyTo?: () => void;
   /** Opens the find & replace bar (absent until the editor is ready). */
@@ -1977,6 +1986,7 @@ function useDocumentActions({
         "separator" as const,
         { label: "Duplicate", icon: <Copy size={14} />, onSelect: () => void duplicate({ documentId }).then((d) => navigate(`/d/${d.id}`), (e) => toast.show(errorMessage(e), { tone: "error" })) },
         ...(onCopyTo ? [{ label: "Copy to…", icon: <CopyPlus size={14} />, onSelect: onCopyTo }] : []),
+        ...(onMoveToVault ? [{ label: "Move to the Vault…", icon: <Lock size={14} />, onSelect: onMoveToVault }] : []),
         ...(elsewhere ? [{ label: "Move to another place…", icon: <ArrowRightLeft size={14} />, onSelect: () => openMovePlaces({ folders: [], notes: [documentId] }) }] : []),
         ...(kind !== "template" ? [{ label: "Save as template", icon: <LayoutTemplate size={14} />, onSelect: () => void act(duplicate({ documentId, asTemplate: true }), "Saved to Templates") }] : []),
         archived

@@ -12,25 +12,29 @@ import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime } from "@/lib/format";
 import { vaultSessions } from "@/lib/vault/keys";
-import { newItemId, sealItem, type ItemContent } from "@/lib/vault/items";
+import { newItemId } from "@/lib/vault/items";
 import { checkedRecipient, makeLink, sealItemTo } from "@/lib/vault/shares";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 type Row = { id: string; keyVersion: number; wrappedKey: ArrayBuffer };
 
-export function ShareDialog({ vaultId, row, revision, content, onClose }: { vaultId: string; row: Row; revision: number; content: ItemContent; onClose: () => void }) {
+/**
+ * `rekey` saves the item again under a new item key (after a share ends). `allowEdit`: a note, which can be shared to
+ * edit.
+ */
+export function ShareDialog({ vaultId, row, title, allowEdit = false, rekey, onClose }: { vaultId: string; row: Row; title: string; allowEdit?: boolean; rekey: () => Promise<void>; onClose: () => void }) {
   const shares = useQuery(api.vaultShares.ofItem, { vaultId, itemId: row.id });
   const findPerson = useMutation(api.vaultShares.findPerson);
   const share = useMutation(api.vaultShares.share);
   const unshare = useMutation(api.vaultShares.unshare);
-  const update = useMutation(api.vaultItems.update);
   const createLink = useMutation(api.vaultShares.createLink);
   const revokeLink = useMutation(api.vaultShares.revokeLink);
   const toast = useToast();
   const uid = useId();
   const [email, setEmail] = useState("");
   const [days, setDays] = useState("30");
+  const [canEdit, setCanEdit] = useState(false);
   const [views, setViews] = useState("1");
   const [lasts, setLasts] = useState(String(DAY));
   const [linkPassword, setLinkPassword] = useState("");
@@ -57,7 +61,7 @@ export function ShareDialog({ vaultId, row, revision, content, onClose }: { vaul
       const to = await checkedRecipient(found);
       if (!to) return void toast.show(`${found.name}'s encryption key couldn't be checked, so nothing was shared.`, { tone: "error" });
       const wrappedKey = await sealItemTo(vaultId, row, s.keys(vaultId, row.keyVersion), to);
-      const r = await share({ vaultId, itemId: row.id, shareId: newItemId(), profileId: to.profileId, canEdit: false, wrappedKey, epoch: to.epoch, ...(found.outside ? { expiresAt: Date.now() + Number(days) * DAY } : {}), client: s.info(vaultId) });
+      const r = await share({ vaultId, itemId: row.id, shareId: newItemId(), profileId: to.profileId, canEdit: allowEdit && canEdit, wrappedKey, epoch: to.epoch, ...(found.outside ? { expiresAt: Date.now() + Number(days) * DAY } : {}), client: s.info(vaultId) });
       setEmail("");
       toast.show(r.expiresAt ? `Shared with ${found.name} until ${formatDateTime(r.expiresAt)}` : `Shared with ${found.name}`, { tone: "success" });
     });
@@ -65,9 +69,10 @@ export function ShareDialog({ vaultId, row, revision, content, onClose }: { vaul
   const stop = (shareId: string, name: string) =>
     run(async () => {
       await unshare({ vaultId, shareId, client: s.info(vaultId) });
-      // A new item key: whatever they kept of the old one opens nothing saved from now on.
-      const version = s.currentVersion(vaultId)!;
-      await update({ vaultId, itemId: row.id, baseRevision: revision, item: await sealItem(vaultId, row.id, version, s.keys(vaultId), content), changed: [], client: s.info(vaultId) });
+      // A new item key, so whatever they kept of the old one opens nothing saved from now on. Only when nobody else
+      // holds the old one (another share, a live link): they'd be cut off too. The server stops serving it to them either way.
+      const others = (shares?.people ?? []).filter((p) => p.id !== shareId && !p.expired).length + (shares?.links ?? []).filter((l) => !l.endedHow).length;
+      if (!others) await rekey();
       toast.show(`Stopped sharing with ${name}`);
     });
 
@@ -83,7 +88,7 @@ export function ShareDialog({ vaultId, row, revision, content, onClose }: { vaul
   const links = (shares?.links ?? []).filter((l) => !l.endedHow);
 
   return (
-    <Dialog open onClose={onClose} title={`Share ${content.summary.title}`} size="md" footer={<Button onClick={onClose}>Done</Button>}>
+    <Dialog open onClose={onClose} title={`Share ${title}`} size="md" footer={<Button onClick={onClose}>Done</Button>}>
       <div className="space-y-6 pb-2 text-subheadline">
         <section aria-label="Share with a person" className="space-y-2">
           <h3 className="font-semibold text-heading">With a person</h3>
@@ -106,6 +111,12 @@ export function ShareDialog({ vaultId, row, revision, content, onClose }: { vaul
                 </option>
               ))}
             </Select>
+            {allowEdit ? (
+              <Select aria-label="They can" value={canEdit ? "edit" : "view"} onChange={(e) => setCanEdit(e.target.value === "edit")} className="h-9 ui-input rounded-chip px-3">
+                <option value="view">Can view</option>
+                <option value="edit">Can edit</option>
+              </Select>
+            ) : null}
             <Button type="submit" variant="primary" disabled={busy || !email.trim()}>
               <UserPlus size={14} aria-hidden /> Share
             </Button>
@@ -116,7 +127,7 @@ export function ShareDialog({ vaultId, row, revision, content, onClose }: { vaul
                 <li key={p.id} className="flex items-center gap-3 px-3 py-2">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-ink">{p.name}</span>
-                    <span className="block truncate text-footnote text-muted">{[p.email, p.expired ? "ended" : p.expiresAt ? `until ${formatDateTime(p.expiresAt)}` : "no end date"].filter(Boolean).join(" · ")}</span>
+                    <span className="block truncate text-footnote text-muted">{[p.email, p.canEdit ? "can edit" : null, p.expired ? "ended" : p.expiresAt ? `until ${formatDateTime(p.expiresAt)}` : "no end date"].filter(Boolean).join(" · ")}</span>
                   </span>
                   <Button size="sm" variant="quiet" className="text-danger" disabled={busy} onClick={() => void stop(p.id, p.name)}>
                     <X size={13} aria-hidden /> Stop

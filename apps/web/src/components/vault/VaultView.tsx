@@ -117,7 +117,7 @@ export function VaultView() {
             </div>
             <div role="tabpanel">
               {tab === "passwords" ? <Passwords key={jumpTo ?? ""} vaultId={info.id} initialSelected={jumpTo} /> : null}
-              {tab === "files" ? <Files vaultId={info.id} /> : null}
+              {tab === "files" ? <Files vaultId={info.id} role={info.role} /> : null}
               {tab === "health" ? <Health vaultId={info.id} onOpenItem={(id) => (setJumpTo(id), setTab("passwords"))} /> : null}
               {tab === "trash" ? <Trash vaultId={info.id} role={info.role} /> : null}
               {tab === "activity" ? <Activity info={info} /> : null}

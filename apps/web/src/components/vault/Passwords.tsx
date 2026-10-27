@@ -4,7 +4,7 @@
 // hidden fields shown only on reveal; copying logged and the clipboard cleared after 30 seconds; live 2FA codes).
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useMemo, useState } from "react";
-import { Copy, Eye, EyeOff, Plus, RefreshCw, Search, Share2, Trash2 } from "lucide-react";
+import { Copy, Eye, EyeOff, History, Plus, RefreshCw, Search, Share2, Trash2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -19,6 +19,7 @@ import { breachStatus } from "@/lib/vault/breach";
 import { parseTotp, totpCode } from "@/lib/vault/totp";
 import { copySecret, useRecordEvent } from "./useVault";
 import { ShareDialog } from "./ShareDialog";
+import { HistoryDialog } from "./HistoryDialog";
 
 type Row = NonNullable<ReturnType<typeof useRowsQuery>>["items"][number];
 type Opened = { row: Row; summary: ItemSummary & { kind: ItemKind } };
@@ -143,6 +144,8 @@ function ItemPanel({ vaultId, opened, onClosed }: { vaultId: string; opened: Ope
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const rekeyItem = useMutation(api.vaultItems.update);
   const item = { id: opened.row.id, kind: opened.row.kind };
 
   useEffect(() => {
@@ -176,6 +179,9 @@ function ItemPanel({ vaultId, opened, onClosed }: { vaultId: string; opened: Ope
           <h3 className="truncate text-title-3 font-semibold text-heading">{opened.summary.title}</h3>
           <p className="text-footnote text-muted">{def?.label}{full ? ` · added by ${full.createdBy}, changed by ${full.updatedBy}` : ""}</p>
         </div>
+        <IconButton label="Earlier versions" onClick={() => setHistoryOpen(true)} disabled={!full}>
+          <History size={14} aria-hidden />
+        </IconButton>
         {full?.canChange ? (
           <>
             <Button size="sm" variant="secondary" onClick={() => setEditing(true)} disabled={!secrets}>
@@ -244,7 +250,20 @@ function ItemPanel({ vaultId, opened, onClosed }: { vaultId: string; opened: Ope
         </dl>
       )}
       {editing && secrets && full ? <ItemDialog vaultId={vaultId} existing={{ row: opened.row, revision: full.revision, content: { kind: opened.summary.kind, summary: opened.summary, secrets } }} onClose={() => setEditing(false)} onSaved={() => setEditing(false)} /> : null}
-      {sharing && secrets && full ? <ShareDialog vaultId={vaultId} row={opened.row} revision={full.revision} content={{ kind: opened.summary.kind, summary: opened.summary, secrets }} onClose={() => setSharing(false)} /> : null}
+      {historyOpen && full ? <HistoryDialog vaultId={vaultId} itemId={opened.row.id} canChange={full.canChange} onClose={() => setHistoryOpen(false)} /> : null}
+      {sharing && secrets && full ? (
+        <ShareDialog
+          vaultId={vaultId}
+          row={opened.row}
+          title={opened.summary.title}
+          rekey={async () => {
+            const s = vaultSessions();
+            const content = { kind: opened.summary.kind, summary: opened.summary, secrets };
+            await rekeyItem({ vaultId, itemId: opened.row.id, baseRevision: full.revision, item: await sealItem(vaultId, opened.row.id, s.currentVersion(vaultId)!, s.keys(vaultId), content), changed: [], client: s.info(vaultId) });
+          }}
+          onClose={() => setSharing(false)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -273,7 +292,8 @@ function ItemDialog({ vaultId, existing, onClose, onSaved }: { vaultId: string; 
       const pw = content.secrets.fields.password;
       if (pw) content.summary.health = { strength: passwordStrength(pw).score, breached: await breachStatus(pw, (prefix) => breachRange({ prefix })), checkedAt: Date.now() };
       if (existing) {
-        const itemSealed = await sealItem(vaultId, existing.row.id, version, s.keys(vaultId), content);
+        // The same item key, so whoever it's shared with still opens it.
+        const itemSealed = await sealItem(vaultId, existing.row.id, version, s.keys(vaultId), content, { keyVersion: existing.row.keyVersion, wrappedKey: existing.row.wrappedKey, keys: s.keys(vaultId, existing.row.keyVersion) });
         await update({ vaultId, itemId: existing.row.id, baseRevision: existing.revision, item: itemSealed, changed: changedFields(existing.content, content), client: s.info(vaultId) });
         toast.show("Saved");
         onSaved(existing.row.id);

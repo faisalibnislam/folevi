@@ -159,12 +159,20 @@ export function mainPassword(c: ItemContent): string | null {
   return c.secrets.fields.password || null;
 }
 
+/** An item's current key, to keep it across an edit: its wrap and the vault key version that wrapped it. */
+export interface KeepKey {
+  keyVersion: number;
+  wrappedKey: ArrayBuffer;
+  keys: VaultKeys;
+}
+
 /**
- * Seals an item's two records under a fresh item key, which VK "vault/wrap" of the current version wraps: a summary
- * (what lists show) and its secrets. Shared by password items, notes and files.
+ * Seals an item's two records under its item key, which VK "vault/wrap" of the current version wraps: a summary (what
+ * lists show) and its secrets. Shared by password items, notes and files. An edit keeps the item's key (`keep`), so
+ * people it's shared with still open it; a new item, or ending a share, gets a fresh one.
  */
-export async function sealParts(vaultId: string, itemId: string, keyVersion: number, keys: VaultKeys, summary: unknown, secrets: unknown, passwordMac?: string) {
-  const raw = randomBytes(32);
+export async function sealParts(vaultId: string, itemId: string, keyVersion: number, keys: VaultKeys, summary: unknown, secrets: unknown, passwordMac?: string, keep?: KeepKey) {
+  const raw = keep ? await rawItemKey(vaultId, itemId, keep.keyVersion, keep.keys, keep.wrappedKey) : randomBytes(32);
   try {
     // A copy: a fallback backend keeps the bytes it's given as the key, and `raw` is zeroed below.
     const itemKey = await importAead(raw.slice());
@@ -181,9 +189,9 @@ export async function sealParts(vaultId: string, itemId: string, keyVersion: num
  * Seals a password item for the server under the Vault's current key, with a blind index of its password so the
  * server can count reuse without reading it.
  */
-export async function sealItem(vaultId: string, itemId: string, keyVersion: number, keys: VaultKeys, c: ItemContent) {
+export async function sealItem(vaultId: string, itemId: string, keyVersion: number, keys: VaultKeys, c: ItemContent, keep?: KeepKey) {
   const password = mainPassword(c);
-  return await sealParts(vaultId, itemId, keyVersion, keys, { kind: c.kind, ...c.summary }, c.secrets, password ? await vaultPasswordMac(keys.mac, password) : undefined);
+  return await sealParts(vaultId, itemId, keyVersion, keys, { kind: c.kind, ...c.summary }, c.secrets, password ? await vaultPasswordMac(keys.mac, password) : undefined, keep);
 }
 
 /** An item key's raw bytes from its wrap (to seal it to someone it's shared with, or to a link). Zero them after. */

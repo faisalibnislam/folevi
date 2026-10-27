@@ -1,12 +1,27 @@
 // The Vault's password items on the device (lib/vault: items, totp, generator, importExport) with real keys.
 import { describe, expect, test } from "vitest";
 import { deriveVaultKeys, newVaultKey } from "@folevi/local-store/e2ee";
-import { changedFields, newItemId, openSecrets, openSummary, sealItem, splitItem } from "@/lib/vault/items";
+import { changedFields, newItemId, openSecrets, openSummary, rawItemKey, sealItem, splitItem } from "@/lib/vault/items";
 import { base32Decode, parseTotp, totpCode } from "@/lib/vault/totp";
 import { passphrase, passwordStrength, randomPassword } from "@/lib/vault/generator";
 import { detectSource, encryptedExport, itemsFromCsv, itemsToCsv, openEncryptedExport, parseCsv } from "@/lib/vault/importExport";
 
 describe("vault items", () => {
+  test("an edit keeps the item's key (a share still opens it), even under a newer vault key version; a new item doesn't", async () => {
+    const v1 = await deriveVaultKeys(newVaultKey());
+    const v2 = await deriveVaultKeys(newVaultKey());
+    const id = newItemId();
+    const first = await sealItem("v1", id, 1, v1, splitItem("login", "Bank", { password: "one" }));
+    const edited = await sealItem("v1", id, 2, v2, splitItem("login", "Bank", { password: "two" }), { keyVersion: 1, wrappedKey: first.wrappedKey, keys: v1 });
+    const before = await rawItemKey("v1", id, 1, v1, first.wrappedKey);
+    const after = await rawItemKey("v1", id, 2, v2, edited.wrappedKey);
+    expect(Buffer.from(after).equals(Buffer.from(before))).toBe(true);
+    expect(edited.keyVersion).toBe(2);
+    expect((await openSecrets("v1", { id, ...edited }, (v) => (v === 2 ? v2 : v1))).fields.password).toBe("two");
+    const fresh = await sealItem("v1", id, 2, v2, splitItem("login", "Bank", { password: "two" }));
+    expect(Buffer.from(await rawItemKey("v1", id, 2, v2, fresh.wrappedKey)).equals(Buffer.from(before))).toBe(false);
+  });
+
   test("an item seals into a summary and secrets that only the vault key opens, each in its own place", async () => {
     const keys = await deriveVaultKeys(newVaultKey());
     const other = await deriveVaultKeys(newVaultKey());

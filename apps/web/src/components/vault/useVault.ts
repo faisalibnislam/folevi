@@ -47,12 +47,18 @@ export function bindNow(convex: unknown, profileId: string) {
   vaultSessions().bind(convex as VaultClient, { profileId, epoch: u.epoch, account: u.account.x25519, deviceId: getKeySession().deviceId() });
 }
 
+let creating: Promise<unknown> | null = null;
+
 /**
  * Makes this account's encryption keys quietly when it has none (the Vault needs them; the person's notes keep their
  * level), and binds the Vault session to them at once.
  */
 export async function ensureEncryptionAccount(convex: unknown, profileId: string) {
-  if (getKeySession().state() === "none") await setup.createAccount();
+  // One at a time: two screens (or a render run twice) must never make two accounts.
+  if (getKeySession().state() === "none") {
+    creating ??= setup.createAccount().finally(() => (creating = null));
+    await creating;
+  }
   bindNow(convex, profileId);
 }
 

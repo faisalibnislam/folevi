@@ -18,13 +18,17 @@ import { newItemId } from "@/lib/vault/items";
 import { openFile, openFileSummary, openFolderName, openNote, openNoteSummary, sealFile, sealFolderName, sealNote } from "@/lib/vault/files";
 import { useRecordEvent } from "./useVault";
 import { NoteEditor } from "./NoteEditor";
+import { blocksFromVaultDoc, writeRegularNote } from "./moveNote";
+import { ShareDialog } from "./ShareDialog";
+import { useAppState } from "@/lib/app/state";
+import { useAppRouter } from "@/lib/app/router";
 
 const keysOf = (vaultId: string) => (version: number) => vaultSessions().keys(vaultId, version);
 const size = (n: number) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 
 type Entry = { id: string; kind: "note" | "file"; title: string; detail: string; updatedAt: number; row: { id: string; keyVersion: number; wrappedKey: ArrayBuffer; sealedSummary: ArrayBuffer; revision: number } };
 
-export function Files({ vaultId }: { vaultId: string }) {
+export function Files({ vaultId, role }: { vaultId: string; role: string }) {
   const [folderId, setFolderId] = useState<string | null>(null);
   const folders = useQuery(api.vaultFiles.folders, { vaultId });
   const items = useQuery(api.vaultItems.list, { vaultId, section: "files", folderId });
@@ -166,23 +170,31 @@ export function Files({ vaultId }: { vaultId: string }) {
           }
         }}
       />
-      {note ? <NoteDialog vaultId={vaultId} entry={note} onClose={() => setNote(null)} /> : null}
+      {note ? <NoteDialog vaultId={vaultId} entry={note} custodian={role !== "member"} onClose={() => setNote(null)} /> : null}
     </section>
   );
 }
 
-function NoteDialog({ vaultId, entry, onClose }: { vaultId: string; entry: Entry; onClose: () => void }) {
+function NoteDialog({ vaultId, entry, custodian, onClose }: { vaultId: string; entry: Entry; custodian: boolean; onClose: () => void }) {
   const open = useMutation(api.vaultItems.open);
   const save = useMutation(api.vaultFiles.saveNote);
+  const moveOut = useMutation(api.vaultFiles.moveOut);
+  const { engine } = useAppState();
+  const { navigate } = useAppRouter();
   const toast = useToast();
+  const [movingOut, setMovingOut] = useState<"ask" | "busy" | null>(null);
+  const [sharing, setSharing] = useState(false);
   const [doc, setDoc] = useState<unknown>(undefined);
   const [edited, setEdited] = useState<{ doc: unknown; text: string } | null>(null);
   const [revision, setRevision] = useState(entry.row.revision);
   const [canChange, setCanChange] = useState(false);
+  // The note's item key as opened, kept across saves so whoever it's shared with still opens it.
+  const [wrap, setWrap] = useState<{ keyVersion: number; wrappedKey: ArrayBuffer } | null>(null);
   useEffect(() => {
     void open({ vaultId, itemId: entry.id, client: vaultSessions().info(vaultId) }).then(async (r) => {
       const c = await openNote(vaultId, { id: r.id, keyVersion: r.keyVersion, wrappedKey: r.wrappedKey, sealed: r.sealed }, keysOf(vaultId));
       setDoc(c.doc ?? null);
+      setWrap({ keyVersion: r.keyVersion, wrappedKey: r.wrappedKey });
       setRevision(r.revision);
       setCanChange(r.canChange);
     });
@@ -196,6 +208,16 @@ function NoteDialog({ vaultId, entry, onClose }: { vaultId: string; entry: Entry
       size="lg"
       footer={
         <>
+          {custodian && engine && doc !== undefined ? (
+            <Button variant="quiet" className="mr-auto" onClick={() => setMovingOut("ask")}>
+              Move out of the Vault…
+            </Button>
+          ) : null}
+          {canChange && doc !== undefined ? (
+            <Button variant="secondary" onClick={() => setSharing(true)}>
+              Share
+            </Button>
+          ) : null}
           <Button onClick={onClose}>Close</Button>
           {canChange ? (
             <Button
@@ -205,7 +227,7 @@ function NoteDialog({ vaultId, entry, onClose }: { vaultId: string; entry: Entry
                 void (async () => {
                   if (!edited) return;
                   const version = s.currentVersion(vaultId)!;
-                  const r = await save({ vaultId, itemId: entry.id, baseRevision: revision, item: await sealNote(vaultId, entry.id, version, s.keys(vaultId), entry.title, edited.doc, edited.text.replace(/\s+/g, " ").trim().slice(0, 160)), client: s.info(vaultId) });
+                  const r = await save({ vaultId, itemId: entry.id, baseRevision: revision, item: await sealNote(vaultId, entry.id, version, s.keys(vaultId), entry.title, edited.doc, edited.text.replace(/\s+/g, " ").trim().slice(0, 160), wrap ? { ...wrap, keys: s.keys(vaultId, wrap.keyVersion) } : undefined), client: s.info(vaultId) });
                   setRevision(r.revision);
                   setEdited(null);
                   toast.show("Saved");
@@ -219,6 +241,61 @@ function NoteDialog({ vaultId, entry, onClose }: { vaultId: string; entry: Entry
       }
     >
       {doc === undefined ? <div className="h-40 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" aria-busy /> : <NoteEditor initial={doc} editable={canChange} onChange={(d, text) => setEdited({ doc: d, text })} />}
+      {sharing ? (
+        <ShareDialog
+          vaultId={vaultId}
+          row={wrap ? { id: entry.id, ...wrap } : entry.row}
+          title={entry.title}
+          allowEdit
+          rekey={async () => {
+            const version = s.currentVersion(vaultId)!;
+            const current = edited ?? { doc, text: entry.detail };
+            const item = await sealNote(vaultId, entry.id, version, s.keys(vaultId), entry.title, current.doc, current.text.slice(0, 160));
+            const r = await save({ vaultId, itemId: entry.id, baseRevision: revision, item, client: s.info(vaultId) });
+            setRevision(r.revision);
+            setWrap({ keyVersion: item.keyVersion, wrappedKey: item.wrappedKey });
+          }}
+          onClose={() => setSharing(false)}
+        />
+      ) : null}
+      {movingOut ? (
+        <Dialog
+          open
+          onClose={() => setMovingOut(null)}
+          title="Move out of the Vault?"
+          size="sm"
+          footer={
+            <>
+              <Button onClick={() => setMovingOut(null)}>Cancel</Button>
+              <Button
+                variant="primary"
+                disabled={movingOut === "busy"}
+                onClick={() =>
+                  void (async () => {
+                    if (!engine) return;
+                    setMovingOut("busy");
+                    try {
+                      // The regular note first, so nothing is lost if the Vault side fails.
+                      const to = await writeRegularNote(engine, entry.title, blocksFromVaultDoc(edited?.doc ?? doc));
+                      await moveOut({ vaultId, itemId: entry.id, toDocumentId: to, client: s.info(vaultId) });
+                      toast.show("Moved out of the Vault");
+                      onClose();
+                      navigate(`/d/${to}`);
+                    } catch (e) {
+                      setMovingOut("ask");
+                      toast.show(errorMessage(e), { tone: "error" });
+                    }
+                  })()
+                }
+              >
+                {movingOut === "busy" ? "Moving…" : "Move out"}
+              </Button>
+            </>
+          }
+        >
+          <p className="pb-2 text-subheadline text-muted">It becomes a regular note here, which anyone who can see this place&apos;s notes may open, and search and Foli AI can read. Its Vault history goes; the Vault&apos;s log keeps that it moved and where.</p>
+        </Dialog>
+      ) : null}
     </Dialog>
   );
 }

@@ -3,7 +3,7 @@
 // the recovery key), waiting for a custodian, choosing a passcode after one shared the key, unlocking by passcode or
 // recovery key, or asking to unlock encryption on this browser first. Nothing of the Vault is drawn before this.
 import { useConvex, useMutation } from "convex/react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { KeyRound, Lock, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -58,6 +58,11 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
   const [mode, setMode] = useState<"passcode" | "recovery">("passcode");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Someone added and waiting: their account's encryption keys must exist for a custodian to share the Vault's key.
+  const waiting = info.exists && info.waitingForKey && encryption !== "locked" && encryption !== "unlocking";
+  useEffect(() => {
+    if (waiting) void ensureEncryptionAccount(convex, profile.id).catch(() => undefined);
+  }, [waiting, convex, profile.id]);
 
   const run = async (fn: () => Promise<UnlockResult | void>) => {
     setBusy(true);

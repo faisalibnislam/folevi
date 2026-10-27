@@ -3,7 +3,7 @@
 // ciphertext reaches the server). The server's half is convex/vaultFiles.ts.
 import { fromBase64Url, importAead, openFileStream, openRecord, randomBytes, sealFileStream, sealRecord, toBase64Url, vaultCtx, type VaultKeys } from "@folevi/local-store/e2ee";
 import { bytes, wire } from "@/lib/e2ee/keys/util";
-import { openSecretsAs, openSummaryAs, sealParts } from "./items";
+import { openSecretsAs, openSummaryAs, sealParts, type KeepKey } from "./items";
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -30,9 +30,9 @@ export interface NoteContent {
 }
 
 /** Seals a note (title and a short excerpt in the summary, the document in the secrets). */
-export async function sealNote(vaultId: string, itemId: string, keyVersion: number, keys: VaultKeys, title: string, doc: unknown, excerpt: string) {
+export async function sealNote(vaultId: string, itemId: string, keyVersion: number, keys: VaultKeys, title: string, doc: unknown, excerpt: string, keep?: KeepKey) {
   const summary: NoteSummary = { kind: "note", title: title.trim() || "Untitled", excerpt: excerpt.slice(0, 200) };
-  return await sealParts(vaultId, itemId, keyVersion, keys, summary, { doc } satisfies NoteContent);
+  return await sealParts(vaultId, itemId, keyVersion, keys, summary, { doc } satisfies NoteContent, undefined, keep);
 }
 
 export const openNoteSummary = (vaultId: string, row: Parameters<typeof openSummaryAs>[1], keysOf: (v: number) => VaultKeys) => openSummaryAs<NoteSummary>(vaultId, row, keysOf);

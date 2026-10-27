@@ -33,17 +33,16 @@ export const POST = withRequestLog("api/vault-link", async (request: Request) =>
     logEvent("error", "vaultLink.open", { requestId, outcome: "not_configured" });
     return NextResponse.json({ status: "error", message: "Links can't be opened right now." }, { status: 503, headers: noStore });
   }
-  let linkId = "";
-  let password: string | undefined;
+  let body: { linkId?: unknown; password?: unknown };
   try {
     const raw = await request.text();
     if (raw.length > MAX_BYTES) throw new Error("too large");
-    const body = JSON.parse(raw) as { linkId?: unknown; password?: unknown };
-    linkId = typeof body.linkId === "string" ? body.linkId : "";
-    password = typeof body.password === "string" && body.password ? body.password.slice(0, 200) : undefined;
+    body = JSON.parse(raw) as typeof body;
   } catch {
     return NextResponse.json({ status: "error", message: "That request couldn't be read." }, { status: 400, headers: noStore });
   }
+  const linkId = typeof body.linkId === "string" ? body.linkId : "";
+  const password = typeof body.password === "string" && body.password ? body.password.slice(0, 200) : undefined;
   if (!LINK_RE.test(linkId)) return NextResponse.json({ status: "gone" }, { headers: noStore });
   try {
     const r = await new ConvexHttpClient(url).mutation(api.vaultShares.openLink, { linkId, password, serverSecret: secret, clientKey: clientKey(request) });

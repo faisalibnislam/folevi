@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
+import { SharedVaultItems, useSharedVaultCount } from "@/components/vault/SharedVaultItems";
 import { api } from "@/lib/convex/api";
 import { AppLink } from "@/lib/app/router";
 import { ViewChrome } from "@/components/app/Shell";
@@ -14,21 +15,28 @@ import { roleLabel, sharedPlace } from "@/lib/app/folderSharing";
 export function SharedView() {
   const docs = useQuery(api.sharing.sharedWithMe, {});
   const folders = useQuery(api.folderSharing.sharedFolders, {});
+  const vaultItems = useSharedVaultCount() ?? 0;
   const loading = docs === undefined || folders === undefined;
   const counts = loading
     ? undefined
-    : [folders.length ? `${folders.length} ${folders.length === 1 ? "folder" : "folders"}` : null, docs.length || !folders.length ? `${docs.length} ${docs.length === 1 ? "page" : "pages"}` : null].filter(Boolean).join(" · ");
+    : [
+        folders.length ? `${folders.length} ${folders.length === 1 ? "folder" : "folders"}` : null,
+        docs.length || (!folders.length && !vaultItems) ? `${docs.length} ${docs.length === 1 ? "page" : "pages"}` : null,
+        vaultItems ? `${vaultItems} from Vaults` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
   return (
     <ViewChrome
       title={<h1 className="text-subheadline font-semibold">Shared with Me</h1>}
       subtitle={counts === undefined ? undefined : `${counts} · from anyone`}
       tabTitle="Shared with Me"
-      iphone={{ title: "Shared with Me", subtitle: !loading && (docs.length || folders.length) ? counts : undefined }}
+      iphone={{ title: "Shared with Me", subtitle: !loading && (docs.length || folders.length || vaultItems) ? counts : undefined }}
     >
       <div className="mx-auto max-w-3xl px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8">
         {loading ? (
           <div className="mt-6 h-24 animate-pulse rounded-chip bg-surface motion-reduce:animate-none" aria-busy />
-        ) : docs.length === 0 && folders.length === 0 ? (
+        ) : docs.length === 0 && folders.length === 0 && !vaultItems ? (
           <EmptyState icon={Share2} title="Nothing has been shared with you yet" body="Folders and pages people share with you, from their Personal or from any workspace, show up here." />
         ) : (
           <>
@@ -79,6 +87,7 @@ export function SharedView() {
             ) : null}
           </>
         )}
+        <SharedVaultItems />
       </div>
     </ViewChrome>
   );

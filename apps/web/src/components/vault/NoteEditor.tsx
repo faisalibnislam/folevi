@@ -10,7 +10,7 @@ import { ALL_MARKS, Bulleted, Code, Divider, Doc, HardBreak, Heading, Numbered, 
 import { BlockIdentity, BlockKeymap, MarkdownShortcuts } from "@/components/editor/plugins";
 import { IconButton } from "@/components/ui/Button";
 
-const EXTENSIONS = [
+export const NOTE_EXTENSIONS = [
   Doc,
   Text,
   HardBreak,
@@ -73,7 +73,7 @@ function Toolbar({ editor }: { editor: Editor }) {
 
 export function NoteEditor({ initial, editable, onChange }: { initial: unknown; editable: boolean; onChange: (doc: JSONContent, text: string) => void }) {
   const editor = useEditor({
-    extensions: EXTENSIONS,
+    extensions: NOTE_EXTENSIONS,
     content: noteDoc(initial),
     editable,
     immediatelyRender: false,

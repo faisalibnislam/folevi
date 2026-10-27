@@ -12,6 +12,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { formatDateTime } from "@/lib/format";
 import { vaultSessions } from "@/lib/vault/keys";
 import { eventLabel } from "./events";
+import { ImportExport } from "./ImportExport";
 
 type Info = { id: string; personal: boolean; role: string; autoLockMinutes: number; custodiansNameCustodians: boolean };
 
@@ -217,6 +218,7 @@ export function VaultSettings({ info }: { info: Info }) {
           <Switch checked={info.custodiansNameCustodians} label="Custodians can name custodians" onChange={(on) => run(update({ vaultId: info.id, custodiansNameCustodians: on, client: vaultSessions().info(info.id) }), "Saved")} />
         </div>
       ) : null}
+      <ImportExport vaultId={info.id} canExport={info.role !== "member"} />
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" onClick={() => void vaultSessions().newRecoveryKey(info.id).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}>
           Make a new recovery key

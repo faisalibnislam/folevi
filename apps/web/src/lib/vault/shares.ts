@@ -1,7 +1,7 @@
 // Sharing vault items on the device (docs/VAULT_PLAN.md §6): an item's key sealed to one person's account key, or
 // wrapped by a one-time link's key that lives only in the link's fragment (#k=…, never sent to a server). The
 // server's half is convex/vaultShares.ts.
-import { linkWrapKey, openRecord, openSealed, openStatement, randomBytes, sealRecord, sealTo, toBase64Url, fromBase64Url, vaultCtx, type VaultKeys, type X25519KeyPair } from "@folevi/local-store/e2ee";
+import { importAead, linkWrapKey, openRecord, openSealed, openStatement, randomBytes, sealRecord, sealTo, toBase64Url, fromBase64Url, vaultCtx, type VaultKeys, type X25519KeyPair } from "@folevi/local-store/e2ee";
 import { bytes, wire } from "@/lib/e2ee/keys/util";
 import { openWithItemKey, rawItemKey } from "./items";
 
@@ -32,6 +32,24 @@ export async function openShared<S, T>(r: { vaultId: string; id: string; wrapped
   const raw = await openSealed(me.account.privateKey, me.account.publicKey, vaultCtx.shareKey(r.vaultId, r.id, me.profileId), bytes(r.wrappedKey));
   try {
     return await openWithItemKey<S, T>(r.vaultId, r.id, raw, r);
+  } finally {
+    raw.fill(0);
+  }
+}
+
+/**
+ * Seals an edit to an item shared with this person to edit (a note): its two records again under the same item key,
+ * for vaultShares.saveShared.
+ */
+export async function sealShared(r: { vaultId: string; id: string; wrappedKey: ArrayBuffer }, me: { profileId: string; account: X25519KeyPair }, summary: unknown, secrets: unknown) {
+  const raw = await openSealed(me.account.privateKey, me.account.publicKey, vaultCtx.shareKey(r.vaultId, r.id, me.profileId), bytes(r.wrappedKey));
+  try {
+    const key = await importAead(raw.slice());
+    const enc = new TextEncoder();
+    return {
+      sealedSummary: wire(await sealRecord(key, 1, vaultCtx.itemSummary(r.vaultId, r.id), enc.encode(JSON.stringify(summary)))),
+      sealed: wire(await sealRecord(key, 1, vaultCtx.item(r.vaultId, r.id), enc.encode(JSON.stringify(secrets)))),
+    };
   } finally {
     raw.fill(0);
   }

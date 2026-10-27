@@ -266,10 +266,20 @@ V11 so far:
   - a note in the editor;
   - the notification switch.
 
+- **With three accounts.** `apps/web/e2e/vault-team.spec.ts` covers:
+  - a team Vault, where the owner's device shares the key with a waiting member, who chooses a passcode and opens it;
+  - an item shared with someone outside the workspace, opened from Shared with Me;
+  - an edit that keeps the item's key, so the share still opens;
+  - an item's history;
+  - a regular note moved into the Vault and back out.
+
+Fixed on the way:
+
+- An edit gave an item a new key, which cut off everyone it was shared with. Edits now keep the item's key. Ending a
+  share changes the key only when nobody else still holds it (another share, or a live link).
+- A member waiting for the key now gets their account's encryption keys made, so a custodian can share with them.
+
 Still to do before release:
 
-- A browser test with two and three accounts: a team Vault, with a custodian sharing the key, a member, and a share
-  to an outsider. The Convex tests cover this on the server; the screens haven't been run that way yet.
-- **An outside security review (§11.7). Required before the flag goes on in production.**
-- Follow-ups: a Vault email template, approximate location from the sign-in IP, history and import or export screens,
-  and moving a note into or out of the Vault from its menu. The server side of each is done.
+- **An outside security review (§11.7). Required before the `vault` flag goes on in production.**
+- Follow-ups: a Vault email template, and approximate location from the sign-in IP.

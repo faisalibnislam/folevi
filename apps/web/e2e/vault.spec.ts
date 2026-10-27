@@ -56,7 +56,7 @@ test("set up a Personal Vault, add a password, lock and unlock it, and see it al
   await expect(page.getByText("Bank")).toHaveCount(0);
   await page.getByLabel("Passcode").fill("not the passcode");
   await page.getByRole("button", { name: "Unlock" }).click();
-  await expect(page.getByRole("alert")).toContainText("That isn't right");
+  await expect(page.getByRole("alert").filter({ hasText: "That isn't right" })).toBeVisible();
   await page.getByLabel("Passcode").fill("a strong vault passcode");
   await page.getByRole("button", { name: "Unlock" }).click();
   await expect(page.getByRole("button", { name: /^Bank/ })).toBeVisible({ timeout: 60_000 });

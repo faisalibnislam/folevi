@@ -312,9 +312,11 @@ function ItemDialog({ vaultId, existing, onClose, onSaved }: { vaultId: string; 
           <input id={`${uid}-title`} autoFocus value={title} onChange={(e) => setTitle(e.target.value)} className="h-9 w-full ui-input rounded-chip px-3" />
         </label>
         {ITEM_KINDS[kind].fields.map((f) => (
-          <label key={f.key} className="block">
-            <span className="mb-1 flex items-center justify-between text-footnote font-medium text-ink">
-              {f.label}
+          <div key={f.key}>
+            <div className="mb-1 flex items-center justify-between">
+              <label htmlFor={`${uid}-${f.key}`} className="text-footnote font-medium text-ink">
+                {f.label}
+              </label>
               {f.key === "password" ? (
                 <span className="flex gap-1">
                   <Button type="button" size="sm" variant="quiet" onClick={() => setValues({ ...values, password: randomPassword() })}>
@@ -325,14 +327,14 @@ function ItemDialog({ vaultId, existing, onClose, onSaved }: { vaultId: string; 
                   </Button>
                 </span>
               ) : null}
-            </span>
+            </div>
             {f.type === "multiline" ? (
-              <textarea value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} rows={4} className="w-full ui-input rounded-chip px-3 py-2 font-mono" />
+              <textarea id={`${uid}-${f.key}`} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} rows={4} className="w-full ui-input rounded-chip px-3 py-2 font-mono" />
             ) : (
-              <input type={f.type === "date" ? "date" : "text"} autoComplete="off" spellCheck={false} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} className={`h-9 w-full ui-input rounded-chip px-3 ${f.type === "secret" || f.type === "totp" ? "font-mono" : ""}`} />
+              <input id={`${uid}-${f.key}`} type={f.type === "date" ? "date" : "text"} autoComplete="off" spellCheck={false} value={values[f.key] ?? ""} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} className={`h-9 w-full ui-input rounded-chip px-3 ${f.type === "secret" || f.type === "totp" ? "font-mono" : ""}`} />
             )}
             {f.key === "password" && strength ? <span className={`mt-1 block text-footnote ${strength.score >= 3 ? "text-success" : strength.score === 2 ? "text-muted" : "text-warning"}`}>{strength.label}</span> : null}
-          </label>
+          </div>
         ))}
         <label className="block">
           <span className="mb-1 block text-footnote font-medium text-ink">Notes</span>

@@ -112,6 +112,12 @@ export async function requireE2eeFlag(ctx: Ctx): Promise<void> {
   if (!(await isFeatureEnabled(ctx, "e2ee"))) failE2ee("e2ee_unavailable", "End-to-end encryption isn't available yet.", { feature: "e2ee" });
 }
 
+/** Setting up a person's encryption keys: allowed for end-to-end encryption, and for the Vault (which needs them). */
+export async function requireAccountSetupFlag(ctx: Ctx): Promise<void> {
+  if ((await isFeatureEnabled(ctx, "e2ee")) || (await isFeatureEnabled(ctx, "vault"))) return;
+  failE2ee("e2ee_unavailable", "End-to-end encryption isn't available yet.", { feature: "e2ee" });
+}
+
 /** The account's AMK wraps of one epoch. */
 export async function wrapsOf(ctx: Ctx, profileId: Id<"profiles">, epoch: number): Promise<Doc<"e2eeAccountWraps">[]> {
   return await ctx.db

@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { entryHash, genesisHash } from "../../convex/lib/vault/log";
-import { join, person, PERSONAL, setup, teamWorkspace, type T } from "./helpers";
+import { enableFlag, join, person, PERSONAL, setup, teamWorkspace, type T } from "./helpers";
 
 type Person = Awaited<ReturnType<typeof person>>;
 
@@ -38,6 +38,7 @@ const logOf = (t: T, vaultPublicId: string) =>
 describe("the Vault", { timeout: 30_000 }, () => {
   test("a Personal Vault: its owner makes it once, nobody else sees it", async () => {
     const t = setup();
+    await enableFlag(t, "vault");
     const a = await person(t, "vault-a@example.com");
     const b = await person(t, "vault-b@example.com");
     expect(await a.as.query(api.vault.get, { scope: PERSONAL })).toEqual({ exists: false, personal: true, role: "owner" });
@@ -51,6 +52,7 @@ describe("the Vault", { timeout: 30_000 }, () => {
 
   test("a team Vault: only its owner makes it; admins and members aren't in until added; leaving the workspace ends it", async () => {
     const t = setup();
+    await enableFlag(t, "vault");
     const owner = await person(t, "vault-owner@example.com");
     const admin = await person(t, "vault-admin@example.com");
     const member = await person(t, "vault-member@example.com");
@@ -92,6 +94,7 @@ describe("the Vault", { timeout: 30_000 }, () => {
 
   test("the log: every entry chains to the one before it, and changing one breaks the chain", async () => {
     const t = setup();
+    await enableFlag(t, "vault");
     const a = await person(t, "vault-log@example.com");
     const { id } = await a.as.mutation(api.vault.create, { scope: PERSONAL, client: { deviceId: "dev-1", deviceLabel: "Safari on macOS", timeZone: "Asia/Dhaka", sessionId: "s1" } });
     await a.as.mutation(api.vault.updateSettings, { vaultId: id, autoLockMinutes: 10 });

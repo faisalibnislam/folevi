@@ -8,6 +8,7 @@ import { ulid } from "@folevi/editor-schema";
 import { assertWritable, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { insertScoped, vScopeArg } from "./lib/scope";
+import { isFeatureEnabled } from "./lib/flags";
 import { AUTO_LOCK_RANGE, isScopeOwner, newVaultFields, requireVault, vaultOfScope, vaultRoleOf, type VaultRole } from "./lib/vault/access";
 import { appendLog, genesisHash } from "./lib/vault/log";
 import { vVaultClient } from "./lib/vault/validators";
@@ -20,6 +21,8 @@ export const get = query({
   args: { scope: vScopeArg },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
+    // Held back until the outside security review (the "vault" flag).
+    if (!(await isFeatureEnabled(ctx, "vault"))) return null;
     const { scope, workspace } = await resolveScope(ctx, profile, args.scope);
     const vault = await vaultOfScope(ctx, scope);
     if (!vault) {
@@ -66,6 +69,7 @@ export const create = mutation({
   handler: async (ctx, args): Promise<{ id: string }> => {
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
+    if (!(await isFeatureEnabled(ctx, "vault"))) fail("forbidden", "The Vault isn't available yet.");
     const { scope } = await resolveScope(ctx, profile, args.scope);
     if (!(await isScopeOwner(ctx, profile._id, scope))) fail("forbidden", "Only the owner can set up this Vault.");
     const existing = await vaultOfScope(ctx, scope);

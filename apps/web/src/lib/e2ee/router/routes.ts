@@ -57,10 +57,14 @@ export const E2EE_ROUTES: Record<string, Route> = {
   // A folder in an encrypted space, or an always fully encrypted one, can't be shared as a folder (the server
   // refuses), so only Standard folders' names and notes come back here.
   "folderSharing:*": pass,
+  // The Vault seals with its own keys on the device (docs/VAULT_PLAN.md §3), never a space key: the router has
+  // nothing to do for it, whatever the space's level.
+  "vault:*": pass,
+  "vaultKeys:*": pass,
   // Content modules are listed function by function, so a new function there has to be classified.
   ...each(pass, "documents", "bulkUpdate emptyTrash hideFromRecent move moveToTrash recordView reorder restoreFromTrash setArchived setStarred showInRecent purgeSnapshots seenMark"),
   ...each(pass, "comments", "deleteThread markThreadRead markThreadUnread mentionable react remove setResolved unreadCount"),
-  ...each(pass, "sharing", "acceptPageInvite createPublicLink grant revoke revokePageInvite revokePublicLink setAccessMode setPublicLinkTheme"),
+  ...each(pass, "sharing", "acceptPageInvite createPublicLink declinePageInvite grant revoke revokePageInvite revokePublicLink setAccessMode setPublicLinkTheme"),
   ...each(pass, "organization", "deleteFolder deleteTag moveFolder setFolderColor"),
   ...each(pass, "notifications", "markRead markUnread noteSubscription remove setNoteSubscription unreadCount"),
   "blocks:rebalance": pass,

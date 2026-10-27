@@ -4,7 +4,7 @@
 import { describe, expect, test } from "vitest";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { e2eeLib, e2eePerson, join, PERSONAL, setup, teamWorkspace, wire, type E2eePerson, type T } from "./helpers";
+import { enableFlag, e2eeLib, e2eePerson, join, PERSONAL, setup, teamWorkspace, wire, type E2eePerson, type T } from "./helpers";
 
 async function codeOf(p: Promise<unknown>): Promise<string | undefined> {
   try {
@@ -73,6 +73,7 @@ const logEvents = (t: T, vaultId: string) =>
 describe("Vault keys", { timeout: 120_000 }, () => {
   test("a Personal Vault: set up, unlock with the passcode or the recovery key, nothing else opens it", async () => {
     const t = setup();
+    await enableFlag(t, "vault");
     const e2ee = await e2eeLib();
     const a = await e2eePerson(t, "vk-a@example.com");
     const { id } = await a.as.mutation(api.vault.create, { scope: PERSONAL });
@@ -105,6 +106,7 @@ describe("Vault keys", { timeout: 120_000 }, () => {
 
   test("wrong passcodes: five in a row lock the person out, and the attempts while locked are logged", async () => {
     const t = setup();
+    await enableFlag(t, "vault");
     const a = await e2eePerson(t, "vk-lock@example.com");
     const { id } = await a.as.mutation(api.vault.create, { scope: PERSONAL });
     await setUpVault(a, id, "the right passcode");
@@ -117,6 +119,7 @@ describe("Vault keys", { timeout: 120_000 }, () => {
 
   test("a team Vault: a custodian's device shares the key, the member adds their passcode; a reset goes through a custodian", async () => {
     const t = setup();
+    await enableFlag(t, "vault");
     const e2ee = await e2eeLib();
     const owner = await e2eePerson(t, "vk-owner@example.com");
     const member = await e2eePerson(t, "vk-member@example.com");

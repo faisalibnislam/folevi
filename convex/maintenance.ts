@@ -25,6 +25,8 @@ import { writeTombstone } from "./lib/e2ee/sealedWrites";
 const BUDGET = 400;
 /** End-to-end encryption's scoped tables (docs/E2EE_DESIGN.md §5.1), purged with their workspace. */
 const E2EE_SCOPED_TABLES = SCOPED_TABLES.filter((t): t is Extract<ScopedTable, `e2ee${string}`> => t.startsWith("e2ee"));
+/** The Vault's scoped tables (its log, vaultLog, isn't one), purged with their workspace. */
+const VAULT_SCOPED_TABLES = SCOPED_TABLES.filter((t): t is Extract<ScopedTable, `vault${string}`> => t.startsWith("vault"));
 const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const TOMBSTONE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const SYNC_OP_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -287,6 +289,11 @@ async function purgePersonal(ctx: MutationCtx, profileId: Id<"profiles">, budget
         if (!(await deletePublishedCopy(ctx, r as unknown as Doc<"e2eePublishedCopies">, budget))) return false;
         continue;
       }
+      // A vault file's encrypted bytes go with its row (the Vault's log stays: it isn't scoped).
+      if (table === "vaultItems") {
+        const storageId = (r as unknown as Doc<"vaultItems">).storageId;
+        if (storageId) await ctx.storage.delete(storageId);
+      }
       await ctx.db.delete(r._id);
       budget.spend();
     }
@@ -337,6 +344,18 @@ async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">, b
       if (table === "e2eePublishedCopies") {
         if (!(await deletePublishedCopy(ctx, r as unknown as Doc<"e2eePublishedCopies">, budget))) return false;
         continue;
+      }
+      await ctx.db.delete(r._id);
+    }
+    if (rows.length) return false;
+  }
+  // Its Vault (docs/VAULT_PLAN.md): every row and every file's encrypted bytes. Its log stays for its 3 years.
+  for (const table of VAULT_SCOPED_TABLES) {
+    const rows = await scopedRows(ctx, table, scope, 200);
+    for (const r of rows) {
+      if (table === "vaultItems") {
+        const storageId = (r as unknown as Doc<"vaultItems">).storageId;
+        if (storageId) await ctx.storage.delete(storageId);
       }
       await ctx.db.delete(r._id);
     }

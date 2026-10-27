@@ -145,4 +145,20 @@ describe("backend invariants", () => {
     if (/\.delete\(/.test(reader)) expect(reader).toMatch(/expiresAt/);
     expect(reader).not.toMatch(/\.patch\(/);
   });
+
+  test("the Vault stays in its own modules: no other door reads it (docs/VAULT_PLAN.md §9, V9)", () => {
+    const vaultModule = (p: string) => /[\\/]vault[A-Z]?\w*\.ts$/.test(p) || p.includes(join("lib", "vault"));
+    // Only the Vault's own modules, the schema, scope's table list and account and workspace deletion name its tables.
+    const allowed = (p: string) => vaultModule(p) || [join("convex", "schema.ts"), join("lib", "scope.ts"), join("convex", "maintenance.ts")].some((a) => p.endsWith(a));
+    for (const { p, s } of sources) {
+      if (p.includes(`${join("convex", "_generated")}`)) continue;
+      if (/"vault[A-Z]\w*"|"vaults"/.test(s) && !allowed(p)) throw new Error(`${p}: names a Vault table; only the Vault's modules read its data`);
+    }
+    // Nothing that serves search, Foli AI, apps (MCP, REST, webhooks), exports, sync or email imports a Vault module.
+    const doors = /[\\/](search|ai\w*|mcp\w*|api\w*|webhooks?|exports?|sync|emailNotes|aiExport|http)\.ts$/;
+    for (const { p, s } of sources) {
+      if (!doors.test(p)) continue;
+      if (/from\s+"\.\/vault|from\s+"\.\/lib\/vault|from\s+"\.\.\/vault/.test(s)) throw new Error(`${p}: imports the Vault; it must never be reachable from here`);
+    }
+  });
 });

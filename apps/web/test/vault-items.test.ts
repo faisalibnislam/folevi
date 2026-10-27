@@ -189,3 +189,14 @@ describe("sharing vault items", () => {
     await expect(openLinkItem({ vaultId: "v1", itemId: id, wrappedKey: link.wrappedKey, sealedSummary: row.sealedSummary, sealed: row.sealed }, link.linkId, randomBytes(32))).rejects.toThrow();
   });
 });
+
+describe("what reaches the server", () => {
+  test("no readable trace of an item's title, fields or notes in what's sent", async () => {
+    const keys = await deriveVaultKeys(newVaultKey());
+    const content = splitItem("login", "VeryUniqueTitle", { username: "veryuniqueuser", password: "VeryUniquePassword!", website: "https://veryunique.example" }, "VeryUniqueNote");
+    const sent = await sealItem("v1", newItemId(), 1, keys, content);
+    const all = new TextDecoder("latin1").decode(new Uint8Array([...new Uint8Array(sent.sealedSummary), ...new Uint8Array(sent.sealed), ...new Uint8Array(sent.wrappedKey)]));
+    for (const secret of ["VeryUniqueTitle", "veryuniqueuser", "VeryUniquePassword", "veryunique.example", "VeryUniqueNote"]) expect(all.toLowerCase()).not.toContain(secret.toLowerCase());
+    expect(sent.passwordMac).not.toContain("VeryUnique");
+  });
+});

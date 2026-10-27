@@ -91,6 +91,7 @@ export async function addTwoMethods(page: Page, w: ReturnType<Page["getByRole"]>
   const list = w.getByRole("list", { name: "Your recovery key" });
   await expect(list.getByRole("listitem")).toHaveCount(9, { timeout: 30_000 });
   const groups = (await list.getByRole("listitem").allTextContents()).map((t) => t.replace(/^Group \d+: /, "").trim());
+  await w.getByRole("button", { name: "I've saved it" }).click();
   await w.getByLabel("Group 3").fill(groups[2]!);
   await w.getByLabel("Group 7").fill(groups[6]!);
   await w.getByRole("button", { name: "Check and continue" }).click();

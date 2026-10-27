@@ -20,6 +20,7 @@ async function setUpVault(page: Page, heading: string, passcode: string) {
   await page.getByRole("button", { name: "Set up the Vault" }).click();
   await expect(page.getByRole("heading", { name: "Save your Vault recovery key" })).toBeVisible({ timeout: 60_000 });
   const groups = (await page.getByRole("list", { name: "Your recovery key" }).locator("li").allInnerTexts()).map((g) => g.replace(/^Group \d+:\s*/, "").trim());
+  await page.getByRole("button", { name: "I've saved it" }).click();
   await page.getByLabel("Group 3").fill(groups[2]!);
   await page.getByLabel("Group 7").fill(groups[6]!);
   await page.getByRole("button", { name: "Check and continue" }).click();

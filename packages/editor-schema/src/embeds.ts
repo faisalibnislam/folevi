@@ -51,7 +51,7 @@ function seconds(t: string | null): number {
 }
 
 function youtube(url: URL): Embed | null {
-  let id: string | null = null;
+  let id: string | null;
   if (hostIs(url, "youtu.be")) id = url.pathname.slice(1).split("/")[0] ?? null;
   else if (hostIs(url, "youtube.com", "m.youtube.com", "music.youtube.com", "youtube-nocookie.com")) {
     if (url.pathname === "/watch") id = url.searchParams.get("v");
@@ -63,7 +63,7 @@ function youtube(url: URL): Embed | null {
 }
 
 function vimeo(url: URL): Embed | null {
-  let m: RegExpExecArray | null = null;
+  let m: RegExpExecArray | null;
   if (hostIs(url, "vimeo.com")) m = /^\/(?:channels\/[^/]+\/|groups\/[^/]+\/videos\/|video\/)?(\d{5,12})(?:\/([0-9a-f]{6,20}))?\/?$/i.exec(url.pathname);
   else if (hostIs(url, "player.vimeo.com")) m = /^\/video\/(\d{5,12})\/?$/.exec(url.pathname);
   else return null;

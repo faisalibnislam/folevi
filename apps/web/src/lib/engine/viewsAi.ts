@@ -8,7 +8,8 @@ import type { ViewContext } from "./context";
 import { QuerySource } from "./live";
 import { requireSpace, type ValueViewDef } from "./views";
 import { id, only, optionalId, text } from "./validate";
-import type { ChatAgentRun, ChatAction, ChatConversationRow, ChatConversationValue, ChatMessage, EngineError, ViewName } from "./protocol";
+import type { EngineDeps } from "./context";
+import type { ChatAgentRun, ChatAction, ChatConversationRow, ChatConversationValue, ChatCredits, ChatMessage, EngineError, ViewName } from "./protocol";
 
 type Args = Record<string, unknown>;
 
@@ -94,7 +95,7 @@ type MessageData = {
   status: string;
   live: boolean;
   phase: string | null;
-  error: { code: string; message: string } | null;
+  error: { code: string; message: string; action?: string; reason?: string } | null;
   credits: number | null;
   attachments: { id: string; name: string; mimeType: string; size: number; kind: string }[];
   actions: ActionData[] | null;
@@ -105,7 +106,10 @@ type MessageData = {
 };
 
 export function chatMessage(m: MessageData): ChatMessage {
-  const error: EngineError | null = m.error ? { code: m.error.code, message: m.error.message } : null;
+  // A refusal keeps what helps (out of credits: "buy" or "upgrade"; not on the plan: "ai_not_included"), as the
+  // web's storedProblem reads it, so native shows the same notice.
+  const extra = m.error ? { ...(m.error.action ? { action: m.error.action } : {}), ...(m.error.reason ? { reason: m.error.reason } : {}) } : {};
+  const error: EngineError | null = m.error ? { code: m.error.code, message: m.error.message, ...(Object.keys(extra).length ? { data: extra } : {}) } : null;
   return {
     id: m.id,
     role: m.role,
@@ -180,22 +184,55 @@ const stream: ValueViewDef = {
 
 type CapabilitiesData = { vision: boolean; searchGrounding: boolean; prefs: { history: boolean; attachments: boolean; webResearch: boolean } };
 
+type CreditsData = { aiIncluded: boolean; available: number; allowance: number; monthlyShareLeft: number; packCredits: number; resetsAt: number | null; trialing: boolean; account: string; canBuy: boolean };
+
+/** Below this many credits the chat says how many are left, whatever the plan (AiCredits.tsx LOW_CREDITS). */
+const LOW_CREDITS = 10;
+
+/** R12.7: billing.credits as the chat shows it (AiCreditsNote's rule for "low"); buying never offered on iOS. */
+export function chatCredits(c: CreditsData, purchases: boolean): ChatCredits {
+  return {
+    included: Boolean(c.aiIncluded),
+    available: c.available,
+    low: c.available <= LOW_CREDITS || (c.allowance > 0 && c.monthlyShareLeft < 0.2 && c.packCredits === 0),
+    resetsAt: typeof c.resetsAt === "number" ? c.resetsAt : null,
+    trialing: Boolean(c.trialing),
+    seat: c.account === "seat",
+    canBuy: purchases && Boolean(c.canBuy),
+  };
+}
+
+/** Why Foli AI can't be used here (ChatCapabilities.unavailable), or null. */
+export function unavailableReason(deps: EngineDeps): string | null {
+  const app = deps.app;
+  if (app.profileData.aiEnabled === false) return "off";
+  if (app.capabilities.ai) return null;
+  if (app.mode === "local") return "setup";
+  return app.space !== "personal" ? "workspacePlan" : "plan";
+}
+
 const capabilities: ValueViewDef = {
   kind: "value",
   parse: (args) => (only(args, []), {}),
   create: (ctx) => {
     if (ctx.deps().app.mode === "local") {
-      return { signals: [ctx.appSignal], compute: () => ({ value: { available: ctx.deps().app.capabilities.ai, vision: false, webResearch: false, attachments: false, history: true, agent: false }, stale: false, error: null }) };
+      // No credits and no prices in local mode: the model is Apple's or the person's own key.
+      return { signals: [ctx.appSignal], compute: () => ({ value: { available: ctx.deps().app.capabilities.ai, vision: false, webResearch: false, attachments: false, history: true, agent: false, unavailable: unavailableReason(ctx.deps()), credits: null }, stale: false, error: null }) };
     }
     const src = chatSource<CapabilitiesData>(ctx, api.aiChat.capabilities, {});
+    const space = requireSpace(ctx.deps(), undefined);
+    const credits = chatSource<CreditsData>(ctx, api.billing.credits, { scope: space.scope });
     return {
-      signals: [src, ctx.appSignal],
+      signals: [src, credits, ctx.appSignal],
       compute: () => {
         const s = src.snapshot();
         if (s.error) return { value: undefined, stale: false, error: s.error };
         if (s.value === undefined) return { value: undefined, stale: true, error: null };
         const c = s.value;
-        return { value: { available: ctx.deps().app.capabilities.ai, vision: c.vision, webResearch: c.searchGrounding && c.prefs.webResearch, attachments: c.prefs.attachments, history: c.prefs.history, agent: true }, stale: false, error: null };
+        const deps = ctx.deps();
+        // The credits are extra: a failure there leaves them out rather than the chat.
+        const k = credits.snapshot().value;
+        return { value: { available: deps.app.capabilities.ai, vision: c.vision, webResearch: c.searchGrounding && c.prefs.webResearch, attachments: c.prefs.attachments, history: c.prefs.history, agent: true, unavailable: unavailableReason(deps), credits: k ? chatCredits(k, deps.app.capabilities.purchases) : null }, stale: false, error: null };
       },
     };
   },

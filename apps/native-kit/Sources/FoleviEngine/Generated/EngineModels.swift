@@ -4259,14 +4259,72 @@ public struct ChatCapabilities: Codable, Hashable, Sendable {
     /// Conversations are kept (Settings > Foli AI > History).
     public var history: Bool
     public var agent: Bool
+    /// Why Foli AI can't be used here (null when it can): "off" (turned off in Settings > AI), "plan" (not on the
+    /// person's plan), "workspacePlan" (not on this workspace's plan), "setup" (local mode: no model on this device
+    /// yet). Open: show the message for an unknown one as "plan".
+    public var unavailable: String?
+    /// R12.7: the AI credits that apply here; null in local mode (no credits) and while unknown. Usage only.
+    public var credits: ChatCredits?
 
-    public init(available: Bool, vision: Bool, webResearch: Bool, attachments: Bool, history: Bool, agent: Bool) {
+    public init(available: Bool, vision: Bool, webResearch: Bool, attachments: Bool, history: Bool, agent: Bool, unavailable: String? = nil, credits: ChatCredits? = nil) {
         self.available = available
         self.vision = vision
         self.webResearch = webResearch
         self.attachments = attachments
         self.history = history
         self.agent = agent
+        self.unavailable = unavailable
+        self.credits = credits
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.available, forKey: .available)
+        try container.encode(self.vision, forKey: .vision)
+        try container.encode(self.webResearch, forKey: .webResearch)
+        try container.encode(self.attachments, forKey: .attachments)
+        try container.encode(self.history, forKey: .history)
+        try container.encode(self.agent, forKey: .agent)
+        try container.encode(self.unavailable, forKey: .unavailable)
+        try container.encode(self.credits, forKey: .credits)
+    }
+}
+
+/// R12.7: the AI credits that apply where the person is working (billing.credits). Never a purchase surface.
+public struct ChatCredits: Codable, Hashable, Sendable {
+    /// Foli AI is on the plan here.
+    public var included: Bool
+    /// Credits left in all (this period's and bought ones).
+    public var available: Int
+    /// Few enough left that the chat says so (the web's AiCreditsNote: under 20% of the month, or a handful).
+    public var low: Bool
+    /// When this period's credits reset (ms), or the trial ends.
+    public var resetsAt: Double?
+    public var trialing: Bool
+    /// A seat in a team workspace (the workspace's credits).
+    public var seat: Bool
+    /// More can be bought here ("Buy more"); false on iOS and in local mode.
+    public var canBuy: Bool
+
+    public init(included: Bool, available: Int, low: Bool, resetsAt: Double? = nil, trialing: Bool, seat: Bool, canBuy: Bool) {
+        self.included = included
+        self.available = available
+        self.low = low
+        self.resetsAt = resetsAt
+        self.trialing = trialing
+        self.seat = seat
+        self.canBuy = canBuy
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.included, forKey: .included)
+        try container.encode(self.available, forKey: .available)
+        try container.encode(self.low, forKey: .low)
+        try container.encode(self.resetsAt, forKey: .resetsAt)
+        try container.encode(self.trialing, forKey: .trialing)
+        try container.encode(self.seat, forKey: .seat)
+        try container.encode(self.canBuy, forKey: .canBuy)
     }
 }
 

@@ -1,0 +1,382 @@
+{
+  "$description": "Foli AI (apps/web/src/components/views/AiView.tsx, components/ai/AskAiPanel.tsx, components/ai/chat/*): the AI page with a new chat, the fixture's conversation (screens.mjs AI_FIXTURE, the Debug app's stand-in model), and the floating Ask Foli AI chat over Home.",
+  "screens": {
+    "page": "folevi-dev://ai",
+    "chat": "folevi-dev://ai",
+    "panel": "folevi-dev://documents"
+  },
+  "prepare": {
+    "chat": "if (!document.getElementById('__aiStill')) { const st = document.createElement('style'); st.id = '__aiStill'; st.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}'; document.documentElement.appendChild(st); } document.querySelector(\"main nav[aria-label='Conversations'] li a\")?.click(); await new Promise((r) => setTimeout(r, 1500)); return true;",
+    "panel": "if (!document.getElementById('__aiStill')) { const st = document.createElement('style'); st.id = '__aiStill'; st.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}'; document.documentElement.appendChild(st); } if (!document.querySelector(\".ai-chat section[role='dialog']:not([hidden])\")) window.dispatchEvent(new KeyboardEvent('keydown', { key: 'j', code: 'KeyJ', metaKey: true, bubbles: true })); await new Promise((r) => setTimeout(r, 1500)); return true;"
+  },
+  "styles": {
+    "ai.aside": {
+      "screen": "page",
+      "selector": "main aside"
+    },
+    "ai.list.top": {
+      "screen": "page",
+      "selector": "main nav[aria-label='Conversations'] > div:first-child"
+    },
+    "ai.list.new": {
+      "screen": "page",
+      "selector": "main nav[aria-label='Conversations'] a.ui-btn"
+    },
+    "ai.list.new.icon": {
+      "screen": "page",
+      "selector": "main nav[aria-label='Conversations'] a.ui-btn svg"
+    },
+    "ai.list.search": {
+      "screen": "page",
+      "selector": "main nav[aria-label='Conversations'] .ui-well"
+    },
+    "ai.list.search.icon": {
+      "screen": "page",
+      "selector": "main nav[aria-label='Conversations'] .ui-well svg"
+    },
+    "ai.list.search.input": {
+      "screen": "page",
+      "selector": "main nav[aria-label='Conversations'] .ui-well input"
+    },
+    "ai.list.scroll": {
+      "screen": "page",
+      "selector": "main nav[aria-label='Conversations'] > div.overflow-y-auto"
+    },
+    "ai.section": {
+      "screen": "page",
+      "selector": "main section.flex-col"
+    },
+    "ai.header": {
+      "screen": "page",
+      "selector": "main section.flex-col h1",
+      "parent": 1
+    },
+    "ai.header.title": {
+      "screen": "page",
+      "selector": "main section.flex-col > div.h-11 h1"
+    },
+    "ai.thread": {
+      "screen": "page",
+      "selector": "main section.flex-col div.overflow-y-auto"
+    },
+    "ai.thread.content": {
+      "screen": "page",
+      "selector": "main section.flex-col div.overflow-y-auto > div"
+    },
+    "ai.intro": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl"
+    },
+    "ai.intro.icon": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl > svg"
+    },
+    "ai.intro.title": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl > h2"
+    },
+    "ai.intro.lead": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl > p:nth-of-type(1)"
+    },
+    "ai.intro.list": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl > ul"
+    },
+    "ai.intro.item": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl > ul > li"
+    },
+    "ai.intro.item2": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl > ul > li",
+      "nth": 1
+    },
+    "ai.intro.item3": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl > ul > li",
+      "nth": 2
+    },
+    "ai.intro.link": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl > ul a"
+    },
+    "ai.intro.try": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl > p.mb-2\\.5"
+    },
+    "ai.intro.try.icon": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl > p.mb-2\\.5 svg"
+    },
+    "ai.intro.suggestions": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl > div.flex-wrap"
+    },
+    "ai.intro.suggestion": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl > div.flex-wrap > button"
+    },
+    "ai.intro.suggestion2": {
+      "screen": "page",
+      "selector": "main section.flex-col div.max-w-2xl > div.flex-wrap > button",
+      "nth": 2
+    },
+    "ai.dock": {
+      "screen": "page",
+      "selector": "main section.flex-col > div.pb-4"
+    },
+    "ai.dock.inner": {
+      "screen": "page",
+      "selector": "main section.flex-col > div.pb-4 > div"
+    },
+    "ai.dock.chips": {
+      "screen": "page",
+      "selector": "main section.flex-col > div.pb-4 div.mb-2.flex-wrap"
+    },
+    "ai.chip": {
+      "screen": "page",
+      "selector": "main section.flex-col > div.pb-4 [aria-label='What Foli AI reads'] > span"
+    },
+    "ai.chip.icon": {
+      "screen": "page",
+      "selector": "main section.flex-col > div.pb-4 [aria-label='What Foli AI reads'] > span svg"
+    },
+    "ai.chip.add": {
+      "screen": "page",
+      "selector": "main section.flex-col > div.pb-4 [aria-label='Add to what Foli AI reads']"
+    },
+    "ai.composer": {
+      "screen": "page",
+      "selector": "main section.flex-col > div.pb-4 div.relative.w-full"
+    },
+    "ai.composer.input": {
+      "screen": "page",
+      "selector": "main section.flex-col > div.pb-4 textarea"
+    },
+    "ai.composer.bar": {
+      "screen": "page",
+      "selector": "main section.flex-col > div.pb-4 div.relative.w-full > div.flex"
+    },
+    "ai.composer.send": {
+      "screen": "page",
+      "selector": "main section.flex-col > div.pb-4 button[aria-label='Ask']"
+    },
+    "ai.footnote": {
+      "screen": "page",
+      "selector": "main section.flex-col > div.pb-4 p.text-footnote"
+    },
+    "ai.footnote.link": {
+      "screen": "page",
+      "selector": "main section.flex-col > div.pb-4 p.text-footnote a"
+    },
+    "ai.row.active": {
+      "screen": "chat",
+      "selector": "main nav[aria-label='Conversations'] a[aria-current='page']"
+    },
+    "ai.row.title": {
+      "screen": "chat",
+      "selector": "main nav[aria-label='Conversations'] a[aria-current='page'] > span:first-child"
+    },
+    "ai.row.age": {
+      "screen": "chat",
+      "selector": "main nav[aria-label='Conversations'] a[aria-current='page'] > span:last-child"
+    },
+    "ai.row.more": {
+      "screen": "chat",
+      "selector": "main nav[aria-label='Conversations'] li button"
+    },
+    "ai.list.section": {
+      "screen": "chat",
+      "selector": "main nav[aria-label='Conversations'] section ul"
+    },
+    "ai.header.more": {
+      "screen": "chat",
+      "selector": "main section.flex-col > div.h-11 button"
+    },
+    "ai.thread.list": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.overflow-y-auto > div.space-y-5"
+    },
+    "ai.user": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.group\\/user"
+    },
+    "ai.user.bubble": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.group\\/user > p"
+    },
+    "ai.user.edit": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.group\\/user > button"
+    },
+    "ai.answer.group": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.space-y-2"
+    },
+    "ai.answer": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.rounded-bl-tiny"
+    },
+    "ai.answer.md": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.fb-ai-answer"
+    },
+    "ai.answer.p": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.fb-ai-answer p"
+    },
+    "ai.answer.p2": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.fb-ai-answer p",
+      "nth": 1
+    },
+    "ai.answer.strong": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.fb-ai-answer strong"
+    },
+    "ai.answer.cite": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.fb-ai-answer a[href^='#cite']"
+    },
+    "ai.sources": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.rounded-bl-tiny > div.border-t"
+    },
+    "ai.sources.title": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.rounded-bl-tiny > div.border-t > p"
+    },
+    "ai.sources.list": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.rounded-bl-tiny > div.border-t > div"
+    },
+    "ai.source": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.rounded-bl-tiny > div.border-t button"
+    },
+    "ai.source.n": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.rounded-bl-tiny > div.border-t button > span:first-child"
+    },
+    "ai.source.icon": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.rounded-bl-tiny > div.border-t button svg"
+    },
+    "ai.answer.actions": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.rounded-bl-tiny > div.-mb-1"
+    },
+    "ai.rowbtn": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.rounded-bl-tiny .ai-row-btn"
+    },
+    "ai.rowbtn.icon": {
+      "screen": "chat",
+      "selector": "main section.flex-col div.rounded-bl-tiny .ai-row-btn svg"
+    },
+    "ai.chat.composer.input": {
+      "screen": "chat",
+      "selector": "main section.flex-col > div.pb-4 textarea"
+    },
+    "ai.panel": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog']"
+    },
+    "ai.panel.header": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] > header"
+    },
+    "ai.panel.mark": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] > header > svg"
+    },
+    "ai.panel.title": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] > header > h2"
+    },
+    "ai.panel.button": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] > header > button"
+    },
+    "ai.panel.thread": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] div.overflow-y-auto"
+    },
+    "ai.panel.intro.title": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] div.overflow-y-auto h3"
+    },
+    "ai.panel.intro.icon": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] div.overflow-y-auto h3 svg"
+    },
+    "ai.panel.intro.lead": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] div.overflow-y-auto h3 + p"
+    },
+    "ai.panel.intro.list": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] div.overflow-y-auto ul"
+    },
+    "ai.panel.intro.item": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] div.overflow-y-auto ul > li"
+    },
+    "ai.panel.try": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] div.overflow-y-auto p.mb-2\\.5"
+    },
+    "ai.panel.suggestions": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] div.overflow-y-auto div.flex-col.items-start"
+    },
+    "ai.panel.suggestion": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] div.overflow-y-auto div.flex-col.items-start > button"
+    },
+    "ai.panel.dock": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] > div.border-t"
+    },
+    "ai.panel.composer": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] > div.border-t div.relative.w-full"
+    },
+    "ai.panel.composer.input": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] > div.border-t textarea"
+    },
+    "ai.panel.footnote": {
+      "screen": "panel",
+      "selector": ".ai-chat section[role='dialog'] > div.border-t p.text-footnote"
+    },
+    "ai.fab": {
+      "screen": "panel",
+      "selector": ".ai-chat button.ui-fab"
+    },
+    "ai.fab.icon": {
+      "screen": "panel",
+      "selector": ".ai-chat button.ui-fab svg"
+    },
+    "ai.fab.label": {
+      "screen": "panel",
+      "selector": ".ai-chat button.ui-fab span"
+    }
+  },
+  "vars": [
+    "glass-hover",
+    "glass-active",
+    "glass-border",
+    "glass-edge",
+    "color-canvas",
+    "color-heading",
+    "color-ink",
+    "color-ink-muted",
+    "color-ink-faint",
+    "color-line",
+    "color-surface-raised",
+    "color-danger",
+    "color-danger-soft"
+  ]
+}

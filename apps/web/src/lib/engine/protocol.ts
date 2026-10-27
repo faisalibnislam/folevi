@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 14;
+export const CONTRACT_REVISION = 16;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2050,6 +2050,31 @@ export interface ChatCapabilities {
   /** Conversations are kept (Settings > Foli AI > History). */
   history: boolean;
   agent: boolean;
+  /**
+   * Revision 16. Why Foli AI can't be used here (null when it can): "off" (turned off in Settings > AI), "plan" (not on the
+   * person's plan), "workspacePlan" (not on this workspace's plan), "setup" (local mode: no model on this device
+   * yet). Open: show the message for an unknown one as "plan".
+   */
+  unavailable: string | null;
+  /** Revision 16 (R12.7): the AI credits that apply here; null in local mode (no credits) and while unknown. Usage only. */
+  credits: ChatCredits | null;
+}
+
+/** R12.7: the AI credits that apply where the person is working (billing.credits). Never a purchase surface. */
+export interface ChatCredits {
+  /** Foli AI is on the plan here. */
+  included: boolean;
+  /** Credits left in all (this period's and bought ones). */
+  available: number;
+  /** Few enough left that the chat says so (the web's AiCreditsNote: under 20% of the month, or a handful). */
+  low: boolean;
+  /** When this period's credits reset (ms), or the trial ends. */
+  resetsAt: number | null;
+  trialing: boolean;
+  /** A seat in a team workspace (the workspace's credits). */
+  seat: boolean;
+  /** More can be bought here ("Buy more"); false on iOS and in local mode. */
+  canBuy: boolean;
 }
 
 export interface ChatContextArgs {

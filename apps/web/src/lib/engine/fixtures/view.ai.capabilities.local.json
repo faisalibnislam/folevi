@@ -1,0 +1,16 @@
+{
+  "kind": "view",
+  "name": "ai.capabilities",
+  "description": "Local mode with no model on this device yet: nothing to ask, no credits.",
+  "args": {},
+  "value": {
+    "available": false,
+    "vision": false,
+    "webResearch": false,
+    "attachments": false,
+    "history": true,
+    "agent": false,
+    "unavailable": "setup",
+    "credits": null
+  }
+}

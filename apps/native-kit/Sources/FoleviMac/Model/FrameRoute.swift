@@ -108,7 +108,8 @@ public enum FrameRoute: Hashable, Sendable {
         case .tasks: return "view:tasks"
         case .calendar: return "view:calendar"
         case .search: return "view:search"
-        case .web(let p): return "view:web:\(p)"
+        // Foli AI is one tab: a new chat keeps its tab when it gets its address (/ai to /ai/<id>), as on the web.
+        case .web(let p): return p == "/ai" || p.hasPrefix("/ai/") ? "view:ai" : "view:web:\(p)"
         }
     }
 

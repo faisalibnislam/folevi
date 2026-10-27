@@ -1,6 +1,8 @@
 "use client";
 
 import { AppLink } from "@/lib/app/router";
+import { useBackendMode } from "@/lib/mode";
+import { deviceWords } from "@/lib/shell/words";
 import { creditCount } from "./AiCredits";
 
 // Meet Foli AI (Foli AI is the AI assistant's name): what it does in this place, that it never changes a note
@@ -28,6 +30,26 @@ export const AI_INTRO: Record<AiIntroPlace, { lead: string }> = {
 /** What Foli AI does in this place, that it shows changes first, where requests go and what they cost. */
 export function AiIntroBody({ place, credits, size = "sm" }: { place: AiIntroPlace; credits?: number | null; size?: "sm" | "md" }) {
   const text = size === "md" ? "text-body" : "text-subheadline";
+  // Local mode: the model the person set up, straight from the device; no credits, no prices.
+  const local = useBackendMode() === "local";
+  if (local) {
+    return (
+      <>
+        <p className={`mt-1.5 ${text} leading-snug text-ink`}>{AI_INTRO[place].lead}</p>
+        <ul className={`mt-2 list-disc space-y-1 pl-4 ${text} leading-snug text-muted`}>
+          <li>Foli AI never changes a note without showing you the change first.</li>
+          <li>What you ask, and the notes it needs, go straight from {deviceWords().here} to the model you chose, never through Folevi. Nothing is sent until you ask.</li>
+          <li>
+            Choose the model in{" "}
+            <AppLink href="/settings/ai" className="text-ink underline underline-offset-2 hover:text-heading">
+              AI settings
+            </AppLink>
+            .
+          </li>
+        </ul>
+      </>
+    );
+  }
   return (
     <>
       <p className={`mt-1.5 ${text} leading-snug text-ink`}>{AI_INTRO[place].lead}</p>

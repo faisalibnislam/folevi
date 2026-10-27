@@ -120,7 +120,13 @@ public struct FoliThreadView: View {
             .onChange(of: contentHeight) { _, _ in
                 // iOS 17: follow the end while pinned, only when the content got taller (a new line, a new
                 // block), never per word. iOS 18 and the Mac anchor the bottom instead (FollowEnd).
+                // On the Mac the anchor alone lets a lazy column's end drift off screen as it grows (it
+                // estimates the rows it hasn't measured): follow there too.
+                #if os(macOS)
+                guard pinned else { return }
+                #else
                 guard pinned, !FollowEnd.anchored else { return }
+                #endif
                 proxy.scrollTo("end", anchor: .bottom)
             }
             .onChange(of: model.shownPending) { _, p in

@@ -61,6 +61,10 @@ export const SCREENS = [
   { id: "folder", link: (fx) => `folevi-dev://folders/${fx.folders?.travel}` },
   { id: "folders", link: "folevi-dev://folders" },
   { id: "tags", link: "folevi-dev://tags" },
+  { id: "ai", link: "folevi-dev://ai" },
+  // The fixture's Foli AI conversation (its id from fixture.json), and the floating chat open over Home.
+  { id: "ai-chat", link: (fx) => `folevi-dev://ai/${fx.chat}` },
+  { id: "ask-ai", link: "folevi-dev://documents", ask: true },
 ];
 
 /** A note screen showing one tab of the note's sidebar: `defaults` for the native frame, `web` run in the web frame. */
@@ -107,6 +111,30 @@ const FIXTURE = `
   return ids;
 `;
 
+/**
+ * Foli AI's fixture conversation: one question, answered by the Debug app's stand-in model (FOLEVI_FAKE_AI=1,
+ * apps/mac/Folevi/Bridge/FakeAI.swift: the same answer every time, offline, nothing sent anywhere).
+ */
+const AI_FIXTURE = `
+  const engine = window.__foleviEngine;
+  const place = window.__foleviNativeChrome && window.__foleviNativeChrome.place;
+  let n = 0;
+  const call = async (kind, name, args) => {
+    const reply = JSON.parse(await engine.handle({ v: 1, id: "ai" + n++, kind, place, name, args }));
+    if (reply.error) throw new Error(name + ": " + JSON.stringify(reply.error));
+    return reply.result ?? reply.value;
+  };
+  const sent = await call("command", "ai.send", { text: "Plan three days in Kyoto" });
+  for (let i = 0; i < 120; i++) {
+    await new Promise((r) => setTimeout(r, 250));
+    const c = await call("query", "ai.conversation", { conversationId: sent.conversationId }).catch(() => null);
+    const last = c && c.messages && c.messages[c.messages.length - 1];
+    if (last && last.role === "assistant" && last.status !== "streaming") return sent.conversationId;
+  }
+  throw new Error("the fixture answer didn't finish");
+`;
+/** The Debug app's stand-in model for Foli AI (never a real request). */
+const FAKE_AI = { FOLEVI_FAKE_AI: "1" };
 const STILL = `if (!document.getElementById("__screensStill")) { const s = document.createElement("style"); s.id = "__screensStill"; s.textContent = "*, *::before, *::after { animation: none !important; transition: none !important; }"; document.documentElement.appendChild(s); } return true;`;
 
 const ensure = (r) => {
@@ -140,14 +168,30 @@ async function setUp() {
   await waitFor(dir, `return document.readyState === "complete" && !!document.querySelector('nav[aria-label="Folio"]')`, 90_000);
   await quit();
   // The fixture notes, through the native frame's engine.
-  await launch({ dir, env: { FOLEVI_TEST_FOLDER: library } });
+  await launch({ dir, env: { FOLEVI_TEST_FOLDER: library, ...FAKE_AI } });
   await waitFor(dir, `return !!window.__foleviEngine && !!window.__foleviNativeChrome`, 90_000);
   await sleep(1500);
   const made = await evaluate(dir, FIXTURE);
   const folders = await evaluate(dir, `return window.__fxFolders`).catch(() => null);
   await sleep(1500);
+  const chat = await evaluate(dir, AI_FIXTURE);
+  await sleep(1000);
   await quit();
-  writeFileSync(join(dir, "fixture.json"), JSON.stringify({ notes: made, folders, at: new Date().toISOString() }));
+  writeFileSync(join(dir, "fixture.json"), JSON.stringify({ notes: made, folders, chat, at: new Date().toISOString() }));
+}
+
+/** A library made before the Foli AI fixture: its conversation is added. */
+async function ensureAiFixture() {
+  const fixture = JSON.parse(readFileSync(join(dir, "fixture.json"), "utf8"));
+  if (fixture.chat) return fixture;
+  await launch({ dir, env: { FOLEVI_TEST_FOLDER: library, ...FAKE_AI } });
+  await waitFor(dir, `return !!window.__foleviEngine && !!window.__foleviNativeChrome`, 90_000);
+  await sleep(1500);
+  fixture.chat = await evaluate(dir, AI_FIXTURE);
+  await sleep(1000);
+  await quit();
+  writeFileSync(join(dir, "fixture.json"), JSON.stringify(fixture));
+  return fixture;
 }
 
 async function quit() {
@@ -166,7 +210,7 @@ async function quit() {
 
 /** Every screen, light and dark, in one frame (native, or the web frame). */
 async function shoot(kind) {
-  await launch({ dir, env: { FOLEVI_TEST_FOLDER: library, ...(kind === "web" ? { FOLEVI_WEB_FRAME: "1" } : {}) } });
+  await launch({ dir, env: { FOLEVI_TEST_FOLDER: library, ...FAKE_AI, ...(kind === "web" ? { FOLEVI_WEB_FRAME: "1" } : {}) } });
   await waitFor(dir, kind === "web" ? `return document.readyState === "complete" && !!document.querySelector('nav[aria-label="Folio"]')` : `return !!window.__foleviEngine`, 90_000);
   await sleep(2000);
   ensure(await command(dir, { cmd: "resize", width, height }));
@@ -188,9 +232,20 @@ async function shoot(kind) {
       // frame): the end state at once, in both frames alike.
       await evaluate(dir, STILL).catch(() => undefined);
       await sleep(s.settle ?? 400);
+      // The floating Ask Foli AI chat (⌘J): the menu item in the native frame, the page's shortcut in the web's.
+      if (s.ask) {
+        if (kind === "native") ensure(await command(dir, { cmd: "frame", do: "menu", item: "go.ask-ai" }));
+        else await evaluate(dir, `window.dispatchEvent(new KeyboardEvent("keydown", { key: "j", code: "KeyJ", metaKey: true, bubbles: true })); return true;`);
+        await sleep(1200);
+        await evaluate(dir, STILL).catch(() => undefined);
+      }
       // The window as the screen shows it (macOS's own capture, no window shadow): the same path for both frames.
       const number = ensure(await command(dir, { cmd: "windows" }))[0].number;
       execFileSync("screencapture", ["-x", "-o", "-l", String(number), join(out, kind, `${s.id}-${scheme}.png`)]);
+      if (s.ask) {
+        if (kind === "native") await command(dir, { cmd: "frame", do: "menu", item: "go.ask-ai" });
+        else await evaluate(dir, `window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); document.querySelector(".ai-chat [aria-label='Close chat']")?.click(); return true;`);
+      }
     }
   }
   await quit();
@@ -203,6 +258,7 @@ try {
     rmSync(join(out, d), { recursive: true, force: true });
     mkdirSync(join(out, d), { recursive: true });
   }
+  await ensureAiFixture();
   await shoot("native");
   await shoot("web");
 } catch (e) {

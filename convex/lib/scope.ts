@@ -83,6 +83,16 @@ export const SCOPED_TABLES = [
   "e2eePublishedCopies",
   "e2eeMigrations",
   "e2eeTombstones",
+  // The Vault (docs/VAULT_PLAN.md): its content goes with its place; its log (vaultLog) is not scoped.
+  "vaults",
+  "vaultMembers",
+  "vaultKeys",
+  "vaultGrants",
+  "vaultPendingGrants",
+  "vaultThrottles",
+  "vaultFolders",
+  "vaultItems",
+  "vaultItemVersions",
 ] as const satisfies readonly TableNames[];
 export type ScopedTable = (typeof SCOPED_TABLES)[number];
 
@@ -181,6 +191,15 @@ const WORKSPACE_INDEX: Record<ScopedTable, string> = {
   e2eePublishedCopies: "by_workspace",
   e2eeMigrations: "by_workspace",
   e2eeTombstones: "by_workspace_seq",
+  vaults: "by_workspace",
+  vaultMembers: "by_workspace",
+  vaultKeys: "by_workspace",
+  vaultGrants: "by_workspace",
+  vaultPendingGrants: "by_workspace",
+  vaultThrottles: "by_workspace",
+  vaultFolders: "by_workspace",
+  vaultItems: "by_workspace",
+  vaultItemVersions: "by_workspace",
 };
 const OWNER_INDEX: Record<ScopedTable, string> = {
   folders: "by_owner",
@@ -233,6 +252,15 @@ const OWNER_INDEX: Record<ScopedTable, string> = {
   e2eePublishedCopies: "by_owner",
   e2eeMigrations: "by_owner",
   e2eeTombstones: "by_owner_seq",
+  vaults: "by_owner",
+  vaultMembers: "by_owner",
+  vaultKeys: "by_owner",
+  vaultGrants: "by_owner",
+  vaultPendingGrants: "by_owner",
+  vaultThrottles: "by_owner",
+  vaultFolders: "by_owner",
+  vaultItems: "by_owner",
+  vaultItemVersions: "by_owner",
 };
 
 export type AnyScopedRow = ScopedRow & { _id: Id<ScopedTable>; _creationTime: number };

@@ -128,4 +128,21 @@ describe("backend invariants", () => {
       }
     }
   });
+
+  test("the Vault's log is append-only: written only by lib/vault/log.ts, deleted only by the 3-year expiry (docs/VAULT_PLAN.md §7.4)", () => {
+    const allowed = [join("convex", "schema.ts"), join("lib", "vault", "log.ts"), join("convex", "vaultLog.ts")];
+    for (const { p, s } of sources) {
+      if (p.includes(`${join("convex", "_generated")}`)) continue;
+      if (!/["']vaultLog["']/.test(s)) continue;
+      if (!allowed.some((a) => p.endsWith(a))) throw new Error(`${p}: touches the Vault's log; only lib/vault/log.ts writes it and vaultLog.ts reads and expires it`);
+    }
+    const writer = sources.find(({ p }) => p.endsWith(join("lib", "vault", "log.ts")))!.s;
+    expect(writer).not.toMatch(/\.delete\(|\.replace\(\s*\w+\.\_id/);
+    expect([...writer.matchAll(/\.insert\(\s*"vaultLog"/g)]).toHaveLength(1);
+    const reader = sources.find(({ p }) => p.endsWith(join("convex", "vaultLog.ts")))?.s ?? "";
+    // One delete, in the expiry (entries past expiresAt); nothing patches an entry.
+    expect([...reader.matchAll(/\.delete\(/g)].length).toBeLessThanOrEqual(1);
+    if (/\.delete\(/.test(reader)) expect(reader).toMatch(/expiresAt/);
+    expect(reader).not.toMatch(/\.patch\(/);
+  });
 });

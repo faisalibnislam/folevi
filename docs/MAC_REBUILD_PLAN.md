@@ -250,3 +250,48 @@ Never push `main`, deploy, notarize or publish without the owner's OK. Never use
 Never print secrets. Never touch `~/Documents/Folevi Library`, `~/Library/Application Support/Folevi` or the
 "Folevi Safe Storage" Keychain item; tests use scratch folders and dev test accounts. No em dashes. The
 assistant is "Foli AI". Commit with `git commit <paths>`.
+
+---
+
+## 9. Where it stands (2026-10-27)
+
+Branch `mac-rebuild` (worktree `../folevi-mac-rebuild`), from `native-app`. Local only, not pushed.
+
+**M0 done** (`995d9015`): `main` at `b2e9ebf2` merged in. `pnpm typecheck`, `pnpm test` (web, Convex, packages),
+the contract tests and `swift test` pass, except `streamingFrameStrip` in the unfinished Foli AI chat, which
+fails the same way on `native-app` (M6). The Mac app builds (`node apps/mac/scripts/build.mjs`). Fixed on the
+way: the Swift token generator on the new type scale, the editor text size typed as Int (it broke the
+Appearance screen tests), a notifications test that predates the folder invitation fixture.
+`RouterTests.testDebugIdentity` passes on a fresh build (it compares the built version with `version.json`).
+
+**M1 started: foundations and the diff harness work.**
+- Tokens to Swift (`pnpm tokens`): the type scale (desktop and iOS), spacing roles, weights, document sizes,
+  every chrome colour by name, `.ui-invert` (`ColorPair.inverted`, `.uiInvert()`).
+- `WebFont` / `WebTextStyle` / `.webText(...)` (`FoleviDesign/Web/WebText.swift`): any CSS weight through the
+  variable fonts' `wght` axis (450, 550, 650), the body's OpenType features (cv11, ss01, ss03), letter spacing
+  as CSS computes it (the body's -0.006em is inherited as -0.096 px), CSS line boxes (a line is exactly its
+  leading, the baseline where CSS puts it), and `WebFont.useWebTextRendering()` (no font smoothing, as the
+  web's `-webkit-font-smoothing: antialiased`), called at launch.
+- The web's icons (`pnpm icons:gen`, `scripts/icons-codegen.mjs`): the 329 lucide icons `apps/web/src`
+  imports, from the same lucide-react version, drawn by `WebIconView` (full SVG path grammar, arcs included).
+- The harness (`pnpm match`, `apps/mac/scripts/match.mjs`): specimens in
+  `packages/design-tokens/match/specimens.json`, drawn by the web at `/dev/match/<id>` (development only) and
+  by `MatchShotTests`, compared in WebKit's canvas (channel tolerance 24, 1 px anti-aliasing radius, 0.5% of
+  pixels at most, same size). Report in `apps/mac/match-report/index.html` (untracked).
+
+| Specimen | Light | Dark |
+| --- | --- | --- |
+| type-roles (11 roles, 6 weights, 4 Spectral titles, caps) | 0.00% | 0.00% |
+| icons (60, at 20, 16 and 15 pt, strokes 2 and 2.6) | 0.01% | 0.01% |
+| colors-chrome (25 chrome colours) | 0.00% | 0.00% |
+
+**Next in M1:** the components one by one against `components/ui/*` (Button and IconButton, Select, Menu,
+Dialog, Popover, Tooltip, input wells, Switch, Checkbox, segmented control, Avatar, Toast, cards, list rows),
+each as a specimen drawn by the real web component; multi-line text (line spacing over several lines);
+the web's own glyphs (AiIcon, FolderGlyph, TemplateIcon); shadows and `color-mix` surfaces; the note
+themes' fonts for card previews. Then the gallery page in a Debug build. The branch's existing snapshot
+references (`__Snapshots__`) were drawn with font smoothing on; each is re-recorded when its component is
+rebuilt against the web, never wholesale.
+
+How to run the diffs: start the `mac-rebuild-web-3012` dev server (`.claude/launch.json` in the main
+checkout), then `pnpm match` (or `--only icons`, `--skip-native`).

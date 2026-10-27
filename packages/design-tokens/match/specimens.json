@@ -1,0 +1,504 @@
+{
+  "$description": "Specimens drawn by the web (apps/web /dev/match/<id>) and by Folevi for Mac (FoleviDesignTests MatchShots) for the screenshot diffs (docs/MAC_REBUILD_PLAN.md section 3.2). Both read this file; scripts: apps/mac/scripts/match.mjs.",
+  "scale": 2,
+  "threshold": {
+    "channel": 24,
+    "radius": 1,
+    "maxRatio": 0.005
+  },
+  "specimens": [
+    {
+      "id": "type-roles",
+      "width": 560,
+      "padding": 16,
+      "gap": 8,
+      "items": [
+        {
+          "text": "Folevi keeps notes 0123 Ag",
+          "style": {
+            "role": "largeTitle"
+          }
+        },
+        {
+          "text": "Folevi keeps notes 0123 Ag",
+          "style": {
+            "role": "title1"
+          }
+        },
+        {
+          "text": "Folevi keeps notes 0123 Ag",
+          "style": {
+            "role": "title2"
+          }
+        },
+        {
+          "text": "Folevi keeps notes 0123 Ag",
+          "style": {
+            "role": "title3"
+          }
+        },
+        {
+          "text": "Folevi keeps notes 0123 Ag",
+          "style": {
+            "role": "headline"
+          }
+        },
+        {
+          "text": "Folevi keeps notes 0123 Ag",
+          "style": {
+            "role": "body"
+          }
+        },
+        {
+          "text": "Folevi keeps notes 0123 Ag",
+          "style": {
+            "role": "callout"
+          }
+        },
+        {
+          "text": "Folevi keeps notes 0123 Ag",
+          "style": {
+            "role": "subheadline"
+          }
+        },
+        {
+          "text": "Folevi keeps notes 0123 Ag",
+          "style": {
+            "role": "footnote"
+          }
+        },
+        {
+          "text": "Folevi keeps notes 0123 Ag",
+          "style": {
+            "role": "caption1"
+          }
+        },
+        {
+          "text": "Folevi keeps notes 0123 Ag",
+          "style": {
+            "role": "caption2"
+          }
+        },
+        {
+          "text": "Body at weight 450: Quick brown fox",
+          "style": {
+            "role": "body",
+            "weight": 450
+          }
+        },
+        {
+          "text": "Body at weight 500: Quick brown fox",
+          "style": {
+            "role": "body",
+            "weight": 500
+          }
+        },
+        {
+          "text": "Body at weight 550: Quick brown fox",
+          "style": {
+            "role": "body",
+            "weight": 550
+          }
+        },
+        {
+          "text": "Body at weight 600: Quick brown fox",
+          "style": {
+            "role": "body",
+            "weight": 600
+          }
+        },
+        {
+          "text": "Body at weight 650: Quick brown fox",
+          "style": {
+            "role": "body",
+            "weight": 650
+          }
+        },
+        {
+          "text": "Body at weight 700: Quick brown fox",
+          "style": {
+            "role": "body",
+            "weight": 700
+          }
+        },
+        {
+          "text": "Spectral display title",
+          "style": {
+            "display": "largeTitle"
+          }
+        },
+        {
+          "text": "Spectral display title",
+          "style": {
+            "display": "title1"
+          }
+        },
+        {
+          "text": "Spectral display title",
+          "style": {
+            "display": "title2"
+          }
+        },
+        {
+          "text": "Spectral display title",
+          "style": {
+            "display": "title3"
+          }
+        },
+        {
+          "text": "SECTION HEADER CAPS",
+          "style": {
+            "caps": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "icons",
+      "width": 560,
+      "padding": 16,
+      "grid": {
+        "cell": 28,
+        "gap": 8
+      },
+      "icons": [
+        {
+          "name": "x",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "chevron-down",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "chevron-right",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "plus",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "search",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "settings",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "trash",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "folder",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "file-text",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "star",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "bell",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "calendar",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "check",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "circle-check",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "lock",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "share-2",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "sparkles",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "archive",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "copy",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "pencil",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "ellipsis",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "arrow-up",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "house",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "list-todo",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "tag",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "users",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "link",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "image",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "paperclip",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "clock",
+          "size": 20,
+          "strokeWidth": 2
+        },
+        {
+          "name": "x",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "chevron-down",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "chevron-right",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "plus",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "search",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "settings",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "trash",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "folder",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "file-text",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "star",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "bell",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "calendar",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "check",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "circle-check",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "lock",
+          "size": 16,
+          "strokeWidth": 2
+        },
+        {
+          "name": "x",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "chevron-down",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "chevron-right",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "plus",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "search",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "settings",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "trash",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "folder",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "file-text",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "star",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "bell",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "calendar",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "check",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "circle-check",
+          "size": 15,
+          "strokeWidth": 2.6
+        },
+        {
+          "name": "lock",
+          "size": 15,
+          "strokeWidth": 2.6
+        }
+      ]
+    },
+    {
+      "id": "colors-chrome",
+      "width": 560,
+      "padding": 16,
+      "grid": {
+        "cell": 32,
+        "gap": 8
+      },
+      "swatches": [
+        "canvas",
+        "sidebar",
+        "surface",
+        "surfaceRaised",
+        "surfaceSunken",
+        "ink",
+        "heading",
+        "inkMuted",
+        "inkFaint",
+        "line",
+        "lineStrong",
+        "accent",
+        "accentStrong",
+        "accentInk",
+        "accentSoft",
+        "accentSoftInk",
+        "focus",
+        "selection",
+        "ember",
+        "moss",
+        "marigold",
+        "coral",
+        "destructive",
+        "success",
+        "warning"
+      ]
+    }
+  ]
+}

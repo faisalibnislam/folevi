@@ -10,7 +10,8 @@
     "./covers.json": "./covers/covers.json",
     "./palette": "./src/palette.ts",
     "./folder-colors.json": "./covers/folder-colors.json",
-    "./folder-colors-legacy.json": "./covers/folder-colors-legacy.json"
+    "./folder-colors-legacy.json": "./covers/folder-colors-legacy.json",
+    "./match/specimens.json": "./match/specimens.json"
   },
   "scripts": {
     "build": "node scripts/build.mjs",

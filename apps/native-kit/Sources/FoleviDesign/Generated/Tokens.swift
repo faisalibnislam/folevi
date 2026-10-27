@@ -105,6 +105,58 @@ public enum FoleviTokens {
         public static let highlightBlue = ColorPair(light: RGBA(220, 231, 251), dark: RGBA(34, 49, 79))
         public static let highlightPink = ColorPair(light: RGBA(251, 221, 224), dark: RGBA(74, 42, 46))
         public static let scrim = ColorPair(light: RGBA(29, 24, 20, 0.28), dark: RGBA(0, 0, 0, 0.55))
+
+        /// Every chrome colour by its token name, as `--color-<name>` is in the web's CSS.
+        public static let named: [String: ColorPair] = [
+            "canvas": canvas,
+            "sidebar": sidebar,
+            "surface": surface,
+            "surfaceRaised": surfaceRaised,
+            "surfaceSunken": surfaceSunken,
+            "ink": ink,
+            "heading": heading,
+            "inkMuted": inkMuted,
+            "inkFaint": inkFaint,
+            "line": line,
+            "lineStrong": lineStrong,
+            "accent": accent,
+            "accentStrong": accentStrong,
+            "accentInk": accentInk,
+            "accentSoft": accentSoft,
+            "accentSoftInk": accentSoftInk,
+            "ember": ember,
+            "emberInk": emberInk,
+            "emberSoft": emberSoft,
+            "glowPeach": glowPeach,
+            "glowRose": glowRose,
+            "focus": focus,
+            "selection": selection,
+            "moss": moss,
+            "mossInk": mossInk,
+            "mossSoft": mossSoft,
+            "marigold": marigold,
+            "marigoldInk": marigoldInk,
+            "marigoldSoft": marigoldSoft,
+            "plum": plum,
+            "plumInk": plumInk,
+            "plumSoft": plumSoft,
+            "coral": coral,
+            "coralInk": coralInk,
+            "coralSoft": coralSoft,
+            "destructive": destructive,
+            "destructiveSoft": destructiveSoft,
+            "success": success,
+            "successSoft": successSoft,
+            "warning": warning,
+            "warningSoft": warningSoft,
+            "codeBg": codeBg,
+            "codeInk": codeInk,
+            "highlightYellow": highlightYellow,
+            "highlightGreen": highlightGreen,
+            "highlightBlue": highlightBlue,
+            "highlightPink": highlightPink,
+            "scrim": scrim,
+        ]
     }
 
     /// Glass: translucent chrome over the canvas.

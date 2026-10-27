@@ -211,6 +211,11 @@ ${pairs(color.light, color.dark)}
     /// Neutral app chrome (docs/DESIGN_SYSTEM.md "Neutral app chrome"): white / near-black, notes carry the colour.
     public enum Chrome {
 ${pairs(chromeLight, chromeDark)}
+
+        /// Every chrome colour by its token name, as \`--color-<name>\` is in the web's CSS.
+        public static let named: [String: ColorPair] = [
+${Object.keys(chromeLight).filter((k) => !k.startsWith("$")).map((k) => `            ${swiftString(k)}: ${swiftName(k)}`).join(",\n")},
+        ]
     }
 
     /// Glass: translucent chrome over the canvas.

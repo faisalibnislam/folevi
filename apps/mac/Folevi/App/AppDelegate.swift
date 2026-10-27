@@ -2,6 +2,7 @@
 // window on the built-in interface. One app bundle is one instance (LaunchServices brings it forward); a Debug
 // build is com.folevi.mac.dev with its own folder, Keychain names and folevi-dev:// links (Paths).
 import AppKit
+import FoleviDesign
 import WebKit
 
 @main
@@ -29,6 +30,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var pendingLinks: [URL] = []
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        // Native text drawn as the web draws it (no font smoothing), before any window shows text
+        // (docs/MAC_REBUILD_PLAN.md section 3; the screenshot diffs check it).
+        WebFont.useWebTextRendering()
+        FoleviFonts.register()
         // folevi:// links, the one that opened the app included (it can come before launch finishes).
         NSAppleEventManager.shared().setEventHandler(self, andSelector: #selector(handleURL(_:reply:)), forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
         // Decision M4: Folevi keeps its own tab strip, so the system's window tabs are off.

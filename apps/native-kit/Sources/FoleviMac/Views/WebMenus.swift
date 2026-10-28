@@ -95,6 +95,8 @@ public final class WebMenuWindow: NSPanel {
             if frame.minY + margin < visible.minY { frame.origin.y = screenPoint.y - margin + 24 }
         }
         menu.setFrame(frame, display: false)
+        // (A child window follows the app, not its parent: the parent's pinned appearance, Settings > Appearance.)
+        menu.appearance = window.appearance
         window.addChildWindow(menu, ordered: .above)
         menu.makeKeyAndOrderFront(nil)
         menu.watch()

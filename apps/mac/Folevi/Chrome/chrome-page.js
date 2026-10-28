@@ -42,12 +42,19 @@
   else hello();
 
   // The page's own theme (Settings > Appearance can differ from the Mac's): the materials behind it follow it.
+  // `system` says the setting is Match System: then nothing is pinned, so the page's prefers-color-scheme keeps
+  // following the Mac (a pinned material froze Quick Add in the old theme when the Mac switched, 2026-10-28).
   var lastTheme = "";
   var tellTheme = function () {
     var t = root() && root().getAttribute("data-theme");
-    if ((t === "dark" || t === "light") && t !== lastTheme) {
-      lastTheme = t;
-      fire("pageTheme", { theme: t });
+    var setting = null;
+    try {
+      setting = localStorage.getItem("folevi:appearance");
+    } catch (e) {}
+    var system = setting !== "light" && setting !== "dark";
+    if ((t === "dark" || t === "light") && t + system !== lastTheme) {
+      lastTheme = t + system;
+      fire("pageTheme", { theme: t, system: system });
     }
   };
   if (!background) {

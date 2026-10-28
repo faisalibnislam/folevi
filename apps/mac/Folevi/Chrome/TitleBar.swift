@@ -121,14 +121,20 @@ enum TitleBar {
         content.addSubview(material, positioned: .below, relativeTo: content.subviews.first)
     }
 
-    /// The page's theme for the materials behind it (never the page's own window: its prefers-color-scheme would
-    /// then stop following the Mac).
-    static func pageTheme(_ theme: String, view: FoleviWebView) {
-        let appearance = NSAppearance(named: theme == "dark" ? .darkAqua : .aqua)
+    /// The page's Settings > Appearance for what's drawn around it: Light or Dark pins the materials behind it, and
+    /// the Settings window and windows without the native frame (their native parts: title bar, sections, sheets);
+    /// Match System (`system`) pins nothing, so the page's prefers-color-scheme keeps following the Mac (a pin
+    /// to the theme it had would hold it there when the Mac switches). A native-frame window follows its place's
+    /// setting itself (FrameController).
+    static func pageTheme(_ theme: String, system: Bool, view: FoleviWebView) {
+        let appearance = system ? nil : NSAppearance(named: theme == "dark" ? .darkAqua : .aqua)
         if view.role == .quickAdd {
             QuickAddPanel.shared.setMaterialAppearance(appearance)
-        } else if let content = view.window?.contentView {
+        } else if let window = view.window, let content = window.contentView {
             for case let m as SidebarMaterial in content.subviews { m.appearance = appearance }
+            if view === SettingsWindow.shared.view || (view.role == .main && !view.nativeFrame), window.appearance?.name != appearance?.name {
+                window.appearance = appearance
+            }
         }
     }
 

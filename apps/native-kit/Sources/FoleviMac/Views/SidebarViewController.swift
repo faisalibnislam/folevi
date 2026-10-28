@@ -350,6 +350,7 @@ public final class SidebarViewController: NSViewController {
         let p = NSPopover()
         p.behavior = .transient
         p.contentViewController = NSHostingController(rootView: content)
+        p.appearance = view.window?.appearance
         p.show(relativeTo: view.bounds, of: view, preferredEdge: .maxY)
         popover = p
     }

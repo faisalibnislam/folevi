@@ -142,6 +142,25 @@ final class FrameController: FrameHost {
         model.host = self
         if let tabs { model.restore(tabs) }
         if let start, start != "/", start != "/native" { model.open(FrameRoute(path: start)) }
+        // The place's Settings > Appearance, as the page itself follows it: Light or Dark pins the window (its
+        // native views, materials and the page's prefers-color-scheme alike); System leaves it to the Mac. Without
+        // this the native frame followed only the Mac, so a Light library on a dark Mac drew the dark bar's glass
+        // over the light page under it (2026-10-28).
+        appearanceWatch = Observer { [weak self] in
+            guard let self else { return }
+            let pinned = Self.appearance(self.model.session.value?.appearance)
+            if self.window?.appearance?.name != pinned?.name { self.window?.appearance = pinned }
+        }
+    }
+
+    private var appearanceWatch: Observer?
+
+    static func appearance(_ setting: SessionValue.Appearance?) -> NSAppearance? {
+        switch setting {
+        case .light?: NSAppearance(named: .aqua)
+        case .dark?: NSAppearance(named: .darkAqua)
+        default: nil
+        }
     }
 
     /// The marker script for a Page View (protocol.ts `NativeChromeMarker`), at document start.

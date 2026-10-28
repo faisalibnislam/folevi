@@ -284,6 +284,7 @@ public final class AccountMenuWindow: NSPanel {
         var frame = menu.frame
         frame.origin = NSPoint(x: screen.x - leading, y: screen.y - margin)
         menu.setFrame(frame, display: false)
+        menu.appearance = window.appearance
         window.addChildWindow(menu, ordered: .above)
         menu.makeKeyAndOrderFront(nil)
         menu.watch()

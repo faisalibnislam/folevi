@@ -154,7 +154,7 @@ final class DesktopRouter {
 
         case "pageTheme":
             guard let view, let theme = options["theme"] as? String, ["dark", "light"].contains(theme) else { return [:] }
-            TitleBar.pageTheme(theme, view: view)
+            TitleBar.pageTheme(theme, system: options["system"] as? Bool ?? false, view: view)
             return [:]
 
         case "closeWindow":

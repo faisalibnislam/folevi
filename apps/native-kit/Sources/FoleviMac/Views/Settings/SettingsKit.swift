@@ -427,6 +427,7 @@ final class SettingsDialogWindow: NSPanel {
         let f = window.frame
         // A little above the middle, as `m-auto` in the window's height puts it.
         panel.setFrame(NSRect(x: f.midX - size.width / 2, y: f.midY - size.height / 2, width: size.width, height: size.height), display: false)
+        panel.appearance = window.appearance
         window.addChildWindow(panel, ordered: .above)
         panel.makeKeyAndOrderFront(nil)
         panel.monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak panel] e in

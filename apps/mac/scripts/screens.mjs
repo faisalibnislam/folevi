@@ -6,6 +6,7 @@
 //
 //   node apps/mac/scripts/screens.mjs [--fresh] [--only home,notes] [--size 1280x820]
 //   node apps/mac/scripts/screens.mjs --gates [--only first-launch]   (the screens before the app, gates.mjs)
+//   node apps/mac/scripts/screens.mjs --switch [--only home]   (the Mac switching light and dark with a screen open)
 //
 // Everything lives in apps/mac/build/run/screens (the app's data) and apps/mac/build/run/screens-library (the
 // library folder, FOLEVI_TEST_FOLDER): never the installed app's folder, Keychain or library. --fresh starts
@@ -42,9 +43,10 @@ const CLOSE_DIALOGS = `document.querySelectorAll("dialog[open]").forEach((d) => 
 
 /** The screens, by id: the folevi-dev:// link that opens each one. */
 export const SCREENS = [
-  { id: "home", link: "folevi-dev://documents" },
+  // `card`: the first starred card is also compared on its own (its star tab is a few pixels of a whole screen).
+  { id: "home", link: "folevi-dev://documents", card: true },
   { id: "notes", link: "folevi-dev://notes" },
-  { id: "starred", link: "folevi-dev://starred" },
+  { id: "starred", link: "folevi-dev://starred", card: true },
   { id: "drafts", link: "folevi-dev://drafts" },
   { id: "tasks-today", link: "folevi-dev://tasks/today" },
   { id: "tasks-upcoming", link: "folevi-dev://tasks/upcoming" },
@@ -249,6 +251,28 @@ const AI_FIXTURE = `
 `;
 /** The Debug app's stand-in model for Foli AI (never a real request). */
 const FAKE_AI = { FOLEVI_FAKE_AI: "1" };
+/** The first starred card whose star corner is in the window (a carousel keeps some out of sight): its cover in
+ *  the web frame, in points, with 6 pt round it, cut to the window (null when none is shown). */
+const STARRED_CARD = `for (const star of document.querySelectorAll('main [aria-label="Starred"]')) { const cover = star.parentElement?.parentElement; if (!cover) continue; const r = cover.getBoundingClientRect(); if (r.left < 0 || r.top < 0 || r.right + 6 > innerWidth || r.top + 60 > innerHeight) continue; const top = r.top - 6, bottom = Math.min(innerHeight, r.bottom + 6); return { x: r.left - 6, y: top, width: r.width + 12, height: bottom - top }; } return null;`;
+
+/** Cuts `rect` (points; the pictures are 2x) out of a picture, into `to`. */
+async function crop(browser, from, rect, to) {
+  if (!existsSync(from)) return;
+  const page = await browser.newPage();
+  const png = await page.evaluate(async ({ url, r }) => {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = Math.round(r.width * 2);
+    c.height = Math.round(r.height * 2);
+    c.getContext("2d").drawImage(img, Math.round(r.x * 2), Math.round(r.y * 2), c.width, c.height, 0, 0, c.width, c.height);
+    return c.toDataURL("image/png").split(",")[1];
+  }, { url: `data:image/png;base64,${readFileSync(from).toString("base64")}`, r: rect });
+  await page.close();
+  writeFileSync(to, Buffer.from(png, "base64"));
+}
+
 const STILL = `if (!document.getElementById("__screensStill")) { const s = document.createElement("style"); s.id = "__screensStill"; s.textContent = "*, *::before, *::after { animation: none !important; transition: none !important; }"; document.documentElement.appendChild(s); } return true;`;
 
 const ensure = (r) => {
@@ -367,6 +391,12 @@ async function shoot(kind) {
       // The window drawn by the app itself (MacEval windowShot), never a screen capture: capturing windows goes
       // through WindowServer's privacy checks, and many at once hung WindowServer and restarted the Mac (2026-10-28).
       ensure(await command(dir, { cmd: "windowShot", out: join(out, kind, `${s.id}-${scheme}.png`) }, 60_000));
+      // Where the web draws the first starred card (its cover, with a few points round it): both frames' pictures
+      // are cropped there after.
+      if (s.card && kind === "web") {
+        const rect = await evaluate(dir, STARRED_CARD).catch(() => null);
+        if (rect) writeFileSync(join(out, `card-${s.id}-${scheme}.json`), JSON.stringify(rect));
+      }
       if (s.ask) {
         if (kind === "native") await command(dir, { cmd: "frame", do: "menu", item: "go.ask-ai" });
         else await evaluate(dir, `window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); document.querySelector(".ai-chat [aria-label='Close chat']")?.click(); return true;`);
@@ -417,6 +447,78 @@ if (process.argv.includes("--gates")) {
   process.exit(results.every((r) => r.pass) ? 0 : 1);
 }
 
+// --switch: the Mac's appearance changed while a screen is open, into apps/mac/screens-report/switch. Each screen
+// opens in one appearance, the Mac switches, and the window is drawn after: light to dark and dark to light with
+// the library on Match System, and the Mac switching under a library set to Light or Dark (the page keeps the
+// library's theme, so must everything native around it: the dark bar's glass over a light page, 2026-10-28).
+// The library's Appearance is set through the native frame's engine (the web frame has none) and put back.
+if (process.argv.includes("--switch")) {
+  const CASES = [
+    { name: "light-to-dark", library: "system", from: "light", to: "dark" },
+    { name: "dark-to-light", library: "system", from: "dark", to: "light" },
+    { name: "library-light-mac-to-dark", library: "light", from: "light", to: "dark" },
+    { name: "library-dark-mac-to-light", library: "dark", from: "dark", to: "light" },
+  ];
+  const SWITCH = ["home", "notes", "note"];
+  const picked = SCREENS.filter((s) => (only ? only.includes(s.id) : SWITCH.includes(s.id)));
+  const sout = join(out, "switch");
+  for (const d of ["web", "native", "diff"]) {
+    rmSync(join(sout, d), { recursive: true, force: true });
+    mkdirSync(join(sout, d), { recursive: true });
+  }
+  const env = { FOLEVI_TEST_FOLDER: library, ...FAKE_AI };
+  const setLibrary = async (value) => {
+    await launch({ dir, env });
+    await waitFor(dir, `return !!window.__foleviEngine && !!window.__foleviNativeChrome`, 90_000);
+    await evaluate(dir, `const r = JSON.parse(await window.__foleviEngine.handle({ v: 1, id: "switch-appearance", kind: "command", place: window.__foleviNativeChrome.place, name: "settings.update", args: { appearance: ${JSON.stringify(value)} } })); if (r.error) throw new Error(JSON.stringify(r.error)); return true;`);
+    await sleep(1500);
+    await quit();
+  };
+  try {
+    stopOwnApp();
+    if (!existsSync(join(dir, "fixture.json"))) await setUp();
+    const fixture = JSON.parse(readFileSync(join(dir, "fixture.json"), "utf8"));
+    for (const lib of [...new Set(CASES.map((c) => c.library))]) {
+      await setLibrary(lib);
+      for (const kind of ["native", "web"]) {
+        await launch({ dir, env: { ...env, ...(kind === "web" ? { FOLEVI_WEB_FRAME: "1" } : {}) } });
+        await waitFor(dir, kind === "web" ? `return document.readyState === "complete" && !!document.querySelector('nav[aria-label="Folio"]')` : `return !!window.__foleviEngine`, 90_000);
+        await sleep(2000);
+        for (const c of CASES.filter((c) => c.library === lib)) {
+          for (const s of picked) {
+            ensure(await command(dir, { cmd: "appearance", value: c.from }));
+            ensure(await command(dir, { cmd: "resize", width, height }));
+            ensure(await command(dir, { cmd: "open", url: typeof s.link === "function" ? s.link(fixture) : s.link }));
+            await sleep(1600 + (s.settle ?? 400));
+            await evaluate(dir, STILL).catch(() => undefined);
+            // The switch, as the Mac makes it (MacEval sets the app's appearance; the page follows a frame later).
+            ensure(await command(dir, { cmd: "appearance", value: c.to }));
+            await sleep(1500);
+            ensure(await command(dir, { cmd: "windowShot", out: join(sout, kind, `${s.id}-${c.name}.png`) }, 60_000));
+          }
+        }
+        await command(dir, { cmd: "appearance", value: "system" }).catch(() => undefined);
+        await quit();
+      }
+    }
+  } catch (e) {
+    console.error(`stopped: ${e.message}`);
+    stopOwnApp();
+    process.exitCode = 2;
+  } finally {
+    // The suite's library is on Match System for every other run.
+    await setLibrary("system").catch((e) => console.error(`the library's Appearance wasn't put back: ${e.message}`));
+  }
+  if (process.exitCode) process.exit(process.exitCode);
+  const threshold = { channel: 24, radius: 1, maxRatio: 0.01 };
+  const browser = await webkit.launch();
+  const results = await diffAll(browser, sout, picked.flatMap((s) => CASES.map((c) => ({ id: s.id, scheme: c.name }))), threshold);
+  await browser.close();
+  writeReport(sout, { title: "Appearance switches: web vs Folevi for Mac", note: `The Mac's appearance switched with each screen open, ${width} x ${height} pt, the web frame vs the native frame.`, threshold, results, imageWidth: 520 });
+  for (const r of results) console.log(`${r.id} ${r.scheme}: ${(r.ratio * 100).toFixed(2)}%${r.pass ? "" : " (over)"}${r.reason ? ` ${r.reason}` : ""}`);
+  process.exit(results.every((r) => r.pass) ? 0 : 1);
+}
+
 try {
   stopOwnApp();
   if (process.argv.includes("--fresh") || !existsSync(join(dir, "fixture.json"))) await setUp();
@@ -424,6 +526,7 @@ try {
     rmSync(join(out, d), { recursive: true, force: true });
     mkdirSync(join(out, d), { recursive: true });
   }
+  for (const s of SCREENS.filter((s) => s.card)) for (const scheme of ["light", "dark"]) rmSync(join(out, `card-${s.id}-${scheme}.json`), { force: true });
   await ensureAiFixture();
   await shoot("native");
   await shoot("web");
@@ -435,7 +538,17 @@ try {
 }
 const threshold = { channel: 24, radius: 1, maxRatio: 0.01 };
 const browser = await webkit.launch();
-const results = await diffAll(browser, out, screens.flatMap((s) => ["light", "dark"].map((scheme) => ({ id: s.id, scheme }))), threshold);
+const cards = [];
+for (const s of screens.filter((s) => s.card)) {
+  for (const scheme of ["light", "dark"]) {
+    const at = join(out, `card-${s.id}-${scheme}.json`);
+    if (!existsSync(at)) continue;
+    const rect = JSON.parse(readFileSync(at, "utf8"));
+    for (const kind of ["web", "native"]) await crop(browser, join(out, kind, `${s.id}-${scheme}.png`), rect, join(out, kind, `${s.id}-card-${scheme}.png`));
+    cards.push({ id: `${s.id}-card`, scheme });
+  }
+}
+const results = await diffAll(browser, out, [...screens.flatMap((s) => ["light", "dark"].map((scheme) => ({ id: s.id, scheme }))), ...cards], threshold);
 await browser.close();
 writeReport(out, { title: "Screens: web vs Folevi for Mac", note: `The Debug app on one scratch library, ${width} x ${height} pt, the web frame (FOLEVI_WEB_FRAME=1) vs the native frame.`, threshold, results, imageWidth: 520 });
 process.exit(results.every((r) => r.pass) ? 0 : 1);

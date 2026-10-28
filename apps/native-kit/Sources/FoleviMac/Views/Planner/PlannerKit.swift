@@ -436,6 +436,7 @@ final class PlannerPanel: NSPanel {
     }
 
     private func present(in window: NSWindow) {
+        appearance = window.appearance
         window.addChildWindow(self, ordered: .above)
         makeKeyAndOrderFront(nil)
         Self.stack.append(self)

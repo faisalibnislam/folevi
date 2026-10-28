@@ -250,6 +250,7 @@ public final class WebSidebarController: NSViewController {
         p.behavior = .transient
         p.contentViewController = NSHostingController(rootView: content)
         let target = anchor ?? view
+        p.appearance = target.window?.appearance
         p.show(relativeTo: target.bounds, of: target, preferredEdge: .maxY)
         popover = p
     }

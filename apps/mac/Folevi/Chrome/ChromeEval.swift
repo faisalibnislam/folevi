@@ -5,7 +5,7 @@
 //               { action: "run", item } runs an item as a click would ("item": "id" is the request's own)
 //               { action: "open", item, x?, y?, seconds? } opens a menu ("file", "status", "dock", ...) at a point
 //               for `seconds` (a screenshot can be taken meanwhile), then closes it
-//   quickAdd    { action: "show" | "hide" | "toggle" | "state" }
+//   quickAdd    { action: "show" | "hide" | "toggle" | "state" | "text" | "insert" | "command" | "pageEditor" }
 //   settings    { action: "show" | "close" | "state", section? }
 //   evalIn      { target: "settings" | "quickAdd", script }   like eval, in that window's page
 //   titleBar    { window? }   the window buttons' frames, the page's spot and drag areas, the window's title
@@ -16,6 +16,7 @@
 #if DEBUG
 import AppKit
 import WebKit
+import FoleviMac
 
 @MainActor
 enum ChromeEval {
@@ -142,6 +143,7 @@ enum ChromeEval {
         case "command":
             // A key's command in the field editor ("insertNewline:", "cancelOperation:"), through the field's delegate.
             (q.panel?.firstResponder as? NSTextView)?.doCommand(by: NSSelectorFromString(req["selector"] as? String ?? ""))
+        case "pageEditor": NotificationCenter.default.post(name: WebQuickAddPanel.debugPageEditor, object: nil)
         default: break
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {

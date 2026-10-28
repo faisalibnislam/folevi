@@ -27,11 +27,35 @@ func qaColor(_ name: String, _ scheme: ColorScheme) -> RGBA {
     }
 }
 
+/// Several places (docs/MULTI_ACCOUNT_PLAN.md §6, DesktopQuickAdd.tsx QuickAddPlace): which place the task goes
+/// to, over the page picker. Picking another opens Quick Add again in that place (the host's `pick`).
+public struct QuickAddPlaces {
+    public struct Option: Hashable {
+        public var id: String
+        public var label: String
+        public init(id: String, label: String) {
+            self.id = id
+            self.label = label
+        }
+    }
+
+    public var options: [Option]
+    public var current: String?
+    public var pick: (String) -> Void
+    public init(options: [Option], current: String?, pick: @escaping (String) -> Void) {
+        self.options = options
+        self.current = current
+        self.pick = pick
+    }
+}
+
 public struct WebQuickAddPanel: View {
     @Bindable var model: QuickAddModel
     let close: () -> Void
     /// Opens a page in the main window (Command-Return, Open), then the host closes the panel.
     let openPage: (String?) -> Void
+    /// The place picker, when there are several places.
+    let places: QuickAddPlaces?
 
     enum Editor { case date, priority, page }
     enum After { case close, again }
@@ -44,11 +68,16 @@ public struct WebQuickAddPanel: View {
     @AppStorage("folevi.quickAddHintSeen") private var hintSeen = false
     @Environment(\.colorScheme) private var scheme
 
-    public init(model: QuickAddModel, close: @escaping () -> Void, openPage: @escaping (String?) -> Void) {
+    public init(model: QuickAddModel, places: QuickAddPlaces? = nil, close: @escaping () -> Void, openPage: @escaping (String?) -> Void) {
         self.model = model
+        self.places = places
         self.close = close
         self.openPage = openPage
     }
+
+    #if DEBUG
+    public static let debugPageEditor = Notification.Name("folevi.quickAdd.debugPageEditor")
+    #endif
 
     /// The web's priority tones (MacQuickAdd.tsx PRIORITIES).
     static let priorities: [(TaskCreateArgs.Priority?, String, RGBA?)] = [
@@ -69,6 +98,10 @@ public struct WebQuickAddPanel: View {
         }
         .frame(width: 640, alignment: .topLeading)
         .background(hiddenKeys)
+        #if DEBUG
+        // Scripts open the page editor as a click on the page chip would (ChromeEval `quickAdd {"action": "pageEditor"}`).
+        .onReceive(NotificationCenter.default.publisher(for: WebQuickAddPanel.debugPageEditor)) { _ in editor = .page }
+        #endif
         .onChange(of: model.added) { _, added in
             guard added != nil else { return }
             hintSeen = true
@@ -303,6 +336,8 @@ public struct WebQuickAddPanel: View {
             if model.effectiveDueDate != nil { QuickAddTimeField(model: model) }
         }
         .padding(.horizontal, 16).padding(.vertical, 10)
+        // (`border-t`: the line takes its point before the editor.)
+        .padding(.top, 1)
         .overlay(alignment: .top) { Rectangle().fill(v("color-line")).frame(height: 1) }
     }
 
@@ -344,10 +379,38 @@ public struct WebQuickAddPanel: View {
     }
 
     private var pageEditor: some View {
-        QuickAddPagePicker(model: model) {
-            editor = nil
-            focusTick += 1
+        VStack(alignment: .leading, spacing: 0) {
+            // `mb-3 flex items-center gap-2 text-subheadline text-muted`, its Select `min-w-0 flex-1` (DesktopQuickAdd.tsx).
+            if let places, places.options.count > 1 {
+                HStack(spacing: 8) {
+                    Text("Add to").webText(.role(.subheadline)).fixedSize()
+                    // The web's Select with no box of its own here: the label, then its chevron at the far end.
+                    GeometryReader { g in
+                        WebMenuButton(width: max(g.size.width, 180), entries: {
+                            places.options.map { o in WebMenuEntry(.item(o.label, checked: o.id == places.current, id: o.id)) { places.pick(o.id) } }
+                        }) {
+                            HStack(spacing: 6) {
+                                Text(places.options.first { $0.id == places.current }?.label ?? "").webText(.role(.subheadline)).lineLimit(1).truncationMode(.tail)
+                                Spacer(minLength: 0)
+                                WebIconView(.chevronDown, size: 14).opacity(0.6)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                    }
+                    .frame(height: WebTextStyle.role(.subheadline).leading)
+                    .accessibilityLabel("Add to")
+                    .accessibilityIdentifier("quick-add-place")
+                }
+                .foregroundStyle(v("color-ink-muted"))
+                // (Its mb-3 collapses with the picker's mt-3: the picker's own top padding is the gap.)
+            }
+            QuickAddPagePicker(model: model) {
+                editor = nil
+                focusTick += 1
+            }
         }
+        // (`border-t`: the line takes its point before the editor.)
+        .padding(.top, 1)
         .padding(.horizontal, 16).padding(.bottom, 12)
         .overlay(alignment: .top) { Rectangle().fill(v("color-line")).frame(height: 1) }
     }
@@ -678,7 +741,7 @@ private struct QuickAddTimeField: View {
     }
 }
 
-/// QuickAddTask.tsx DocumentPicker: "Add to", a search field ("Inbox, or search a page..."), then the Inbox and the
+/// QuickAddTask.tsx DocumentPicker: "Add to", a search field ("Inbox, or search a page…"), then the Inbox and the
 /// pages found.
 private struct QuickAddPagePicker: View {
     @Bindable var model: QuickAddModel
@@ -690,7 +753,9 @@ private struct QuickAddPagePicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Add to").webText(.role(.subheadline)).foregroundStyle(qaColor("color-ink-muted", scheme).color)
-            TextField("", text: $query, prompt: Text("Inbox, or search a page...").foregroundStyle(qaColor("color-ink-faint", scheme).color))
+            // (Its placeholder is Tailwind's own: the text's colour at 50 %, over the field. A prompt draws an
+            // opaque colour as given but not a translucent one, so it gets the two already mixed.)
+            TextField("", text: $query, prompt: Text(model.destination.noteId == nil ? "Inbox, or search a page…" : "Search another page…").foregroundStyle(placeholder.color))
                 .textFieldStyle(.plain)
                 .font(Font(WebFont.ctFont(.sans, size: 13)))
                 .foregroundStyle(qaColor("color-ink", scheme).color)
@@ -712,8 +777,13 @@ private struct QuickAddPagePicker: View {
                 .padding(.top, 4)
             }
         }
+        // (No focus of its own on opening: the web's DocumentPicker waits for a click or Tab.)
         .padding(.top, 12)
-        .onAppear { focused = true }
+    }
+
+    private var placeholder: RGBA {
+        let ink = qaColor("color-ink", scheme), field = qaColor("color-surface", scheme)
+        return RGBA((ink.r + field.r) / 2, (ink.g + field.g) / 2, (ink.b + field.b) / 2)
     }
 
     private func pick(_ hit: SearchHit?) {

@@ -257,7 +257,7 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         }
         client.start()
         let root = AnyView(
-            WebQuickAddPanel(model: model, close: { QuickAddPanel.shared.hide() }, openPage: { QuickAddPanel.shared.openPage($0) })
+            WebQuickAddPanel(model: model, places: Self.nativePlaces(current: place), close: { QuickAddPanel.shared.hide() }, openPage: { QuickAddPanel.shared.openPage($0) })
                 .fixedSize(horizontal: false, vertical: true)
                 .background(GeometryReader { g in
                     Color.clear
@@ -274,6 +274,21 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         nativeModel = model
         nativeTransport = transport
         panel?.makeFirstResponder(host)
+    }
+
+    /// The places Quick Add can add to, as the web's QuickAddPlace lists them (nil with one place).
+    private static func nativePlaces(current: String?) -> QuickAddPlaces? {
+        let s = ShellPlaces.state
+        var options: [QuickAddPlaces.Option] = []
+        if s.library { options.append(.init(id: ShellPlaces.library, label: "On this Mac")) }
+        for a in s.accounts {
+            options.append(.init(id: a.id, label: !a.name.isEmpty ? a.name : !a.email.isEmpty ? a.email : "Folevi account"))
+        }
+        guard options.count > 1 else { return nil }
+        return QuickAddPlaces(options: options, current: current) { id in
+            guard ShellPlaces.has(id) else { return }
+            Places.shared.setQuickAdd(id)
+        }
     }
 
     #if DEBUG

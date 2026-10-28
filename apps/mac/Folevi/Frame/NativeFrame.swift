@@ -138,6 +138,16 @@ final class FrameController: FrameHost {
             client = EngineClient(transport: t, place: place ?? "", app: AppInfo(platform: .macos, version: Paths.version, build: Paths.build, protocol: EngineContract.protocolVersion, schemaHash: EngineContract.schemaHash))
         }
         model = FrameModel(client: client)
+        // Touch ID before this Mac opens its encryption keys: the Vault offers it right after unlocking them there.
+        if demoEngine == nil {
+            model.touchId = TouchIdHook(
+                status: { let k = E2eeKeys.shared.settings(); return (k.touchId, k.available) },
+                turnOn: { try await E2eeKeys.shared.setFaceId(true).touchId }
+            )
+        } else {
+            // The demo's stand-in (screens.mjs --vault-unlock): available and off, so the offer shows.
+            model.touchId = TouchIdHook(status: { (false, true) }, turnOn: { true })
+        }
         root = FrameRootViewController(model: model, pageView: view)
         model.host = self
         if let tabs { model.restore(tabs) }

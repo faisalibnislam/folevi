@@ -54,6 +54,13 @@ public struct WebTopBar: View {
         .frame(height: bar.height)
         .frame(maxWidth: .infinity)
         .webBox(WebStyles.named("frame.topbar"))
+        // Over the Vault (drawn in the other theme), the strip sits on the surface, so its tabs stay readable (the web's
+        // `!bg-surface` on the Vault route).
+        .background {
+            if case .web(let path) = model.route, path.hasPrefix("/vault") {
+                RoundedRectangle(cornerRadius: style("frame.topbar").radius, style: .continuous).fill(WebStyles.vars["color-surface"]?.resolve(scheme).color ?? .clear)
+            }
+        }
         // The bar moves the window, as the web's .ui-drag bars do (its buttons still take their clicks).
         .contentShape(Rectangle())
         .gesture(WindowDragGesture())

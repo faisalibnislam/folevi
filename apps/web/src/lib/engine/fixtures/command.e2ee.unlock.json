@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "e2ee.unlock",
+  "description": "The passphrase unlocks this Mac (and it's trusted).",
+  "args": {
+    "method": "passphrase",
+    "secret": "correct horse battery staple"
+  },
+  "result": {
+    "status": "ok",
+    "message": null
+  }
+}

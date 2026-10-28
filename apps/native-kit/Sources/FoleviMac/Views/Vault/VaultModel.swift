@@ -22,6 +22,10 @@ final class VaultModel {
     /// Passwords: the item open beside the list.
     var selected: String?
     var dialog: VaultDialog?
+    /// This device's encryption (`e2ee.state`), for the Vault's first step on a Mac without the account's keys.
+    @ObservationIgnored lazy var e2ee: ValueStore<E2eeStateValue> = frame.client.watch(.e2eeState)
+    /// This Mac started unlocking encryption on this screen: once it's unlocked, the passcode card offers Touch ID.
+    var encryptionUnlockedHere = false
     @ObservationIgnored private var stores: [String: AnyObject] = [:]
     @ObservationIgnored private var openedFor: String?
 

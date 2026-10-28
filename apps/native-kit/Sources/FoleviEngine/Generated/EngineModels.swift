@@ -6280,6 +6280,95 @@ public struct VaultUnlockResult: Codable, Hashable, Sendable {
     }
 }
 
+/// This device's encryption: `none` (the account has none), `locked`, `unlocking`, `unlocked`.
+public enum E2eeLockState: String, Codable, Hashable, Sendable, CaseIterable {
+    case none
+    case locked
+    case unlocking
+    case unlocked
+}
+
+/// Approving this device from another one: not asked, waiting for the other device, comparing codes, failed.
+public enum E2eeApprovalState: String, Codable, Hashable, Sendable, CaseIterable {
+    case idle
+    case waiting
+    case compare
+    case failed
+}
+
+/// A way to unlock in place: approve from another device, the account's passphrase, its recovery key.
+public enum E2eeUnlockMethod: String, Codable, Hashable, Sendable, CaseIterable {
+    case approve
+    case passphrase
+    case recovery
+}
+
+/// `e2ee.state`: where this device's encryption is, and an approval under way.
+public struct E2eeStateValue: Codable, Hashable, Sendable {
+    public var state: E2eeLockState
+    public var approval: E2eeApprovalState
+    /// The code both devices show while comparing (`compare` only).
+    public var approvalCode: String?
+    /// The ways offered here, in order (the apps have no passkeys: they're approved from the browser instead).
+    public var methods: [E2eeUnlockMethod]
+    /// How the screens name this device: "this Mac", "this iPhone", "this iPad", "this phone".
+    public var device: String
+
+    public init(state: E2eeLockState, approval: E2eeApprovalState, approvalCode: String? = nil, methods: [E2eeUnlockMethod], device: String) {
+        self.state = state
+        self.approval = approval
+        self.approvalCode = approvalCode
+        self.methods = methods
+        self.device = device
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.state, forKey: .state)
+        try container.encode(self.approval, forKey: .approval)
+        try container.encode(self.approvalCode, forKey: .approvalCode)
+        try container.encode(self.methods, forKey: .methods)
+        try container.encode(self.device, forKey: .device)
+    }
+}
+
+public struct E2eeUnlockArgs: Codable, Hashable, Sendable {
+    /// "passphrase" or "recovery".
+    public var method: E2eeUnlockMethod
+    public var secret: String
+
+    public init(method: E2eeUnlockMethod, secret: String) {
+        self.method = method
+        self.secret = secret
+    }
+}
+
+/// `badFormat`: not shaped like a recovery key; `rateLimited`: too many tries for now.
+public enum E2eeUnlockStatus: String, Codable, Hashable, Sendable, CaseIterable {
+    case ok
+    case wrong
+    case badFormat
+    case rateLimited
+}
+
+/// An unlock's outcome; when it isn't `ok`, `message` says what to do next, in the web's words. In the apps an unlocked
+/// device is trusted at once (no "public or shared computer" there: it can be removed in Settings > Devices).
+public struct E2eeUnlockResult: Codable, Hashable, Sendable {
+    public var status: E2eeUnlockStatus
+    public var message: String?
+
+    public init(status: E2eeUnlockStatus, message: String? = nil) {
+        self.status = status
+        self.message = message
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.status, forKey: .status)
+        try container.encode(self.message, forKey: .message)
+    }
+}
+
 public struct VaultRecoveryResult: Codable, Hashable, Sendable {
     public var recoveryKey: String
 

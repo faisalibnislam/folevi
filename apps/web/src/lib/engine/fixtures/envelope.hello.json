@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "84a08a24"
+        "schemaHash": "de07d13e"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 18,
+        "revision": 19,
         "build": "dev",
-        "schemaHash": "84a08a24",
+        "schemaHash": "de07d13e",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -92,7 +92,8 @@
           "vault.health",
           "vault.activity",
           "vault.people",
-          "vault.shares"
+          "vault.shares",
+          "e2ee.state"
         ],
         "listViews": [
           "notes.list"
@@ -226,7 +227,10 @@
           "vault.share.person",
           "vault.share.stop",
           "vault.link.create",
-          "vault.link.revoke"
+          "vault.link.revoke",
+          "e2ee.unlock",
+          "e2ee.approval.start",
+          "e2ee.approval.cancel"
         ],
         "editorCommands": [
           "note.prepare",

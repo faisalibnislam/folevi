@@ -185,7 +185,7 @@ export function UnlockScreen({ onDone, onStart }: { onDone?: () => void; /** The
   );
 }
 
-function SecretForm({ kind, onBack, onUnlocked }: { kind: "passphrase" | "recovery"; onBack: () => void; onUnlocked: () => void }) {
+export function SecretForm({ kind, onBack, onUnlocked }: { kind: "passphrase" | "recovery"; onBack: () => void; onUnlocked: () => void }) {
   const u = copy.unlock;
   const uid = useId();
   const [value, setValue] = useState("");
@@ -255,7 +255,7 @@ function SecretForm({ kind, onBack, onUnlocked }: { kind: "passphrase" | "recove
 }
 
 /** After unlocking: keep this browser trusted, or forget the key when the tab closes (§10.5, §6.10). */
-function TrustChoice({ onContinue }: { onContinue: (mode: "browser" | "public") => Promise<void> }) {
+export function TrustChoice({ onContinue }: { onContinue: (mode: "browser" | "public") => Promise<void> }) {
   const u = copy.unlock;
   const [mode, setMode] = useState<"browser" | "public">("browser");
   const [busy, setBusy] = useState(false);

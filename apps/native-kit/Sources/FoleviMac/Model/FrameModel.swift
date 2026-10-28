@@ -126,6 +126,8 @@ public final class FrameModel {
 
     /// The sidebar is collapsed (⌘\, View > Hide Sidebar).
     public var sidebarCollapsed = false
+    /// This Mac's Touch ID for its encryption keys (the app sets it from E2eeKeys; nil in tests and the demo).
+    public var touchId: TouchIdHook?
     #if DEBUG
     /// Each tab's frame in the window (top-left points), for scripts that click and drag tabs.
     @ObservationIgnored public var debugTabFrames: [String: CGRect] = [:]
@@ -627,5 +629,15 @@ public final class FrameModel {
             _ = try await self.client.command(.notificationMarkAllRead)
             self.loadNotifications()
         }
+    }
+}
+
+/// Touch ID before this Mac opens its encryption keys: whether it's on and can be, and turning it on (Touch ID asks).
+public struct TouchIdHook {
+    public let status: @MainActor () -> (on: Bool, available: Bool)
+    public let turnOn: @MainActor () async throws -> Bool
+    public init(status: @escaping @MainActor () -> (on: Bool, available: Bool), turnOn: @escaping @MainActor () async throws -> Bool) {
+        self.status = status
+        self.turnOn = turnOn
     }
 }

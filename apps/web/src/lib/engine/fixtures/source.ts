@@ -23,6 +23,7 @@ import { folderSharingValue, moveCheckValue, sharedFolderRow, sharedFolderValue 
 import { chatMessage, conversationRow, conversationValue } from "../viewsAi";
 import { researchJob } from "../viewsMac";
 import { VAULT_FIXTURES } from "./vault";
+import { E2EE_FIXTURES } from "./e2ee";
 import { graphValue, layOut, reviewsValue } from "../viewsScreens";
 import {
   CONTRACT_REVISION,
@@ -1561,4 +1562,5 @@ export const FIXTURES: Record<string, Fixture> = {
   "editor.find.clear": editor({ name: "find.clear", description: "Stop finding: the matches lose their highlight.", args: {}, result: { ok: true } }),
   // ---- revision 18: the Vault (fixtures/vault.ts)
   ...VAULT_FIXTURES,
+  ...E2EE_FIXTURES,
 };

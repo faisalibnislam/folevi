@@ -445,8 +445,11 @@ private struct VaultGateView: View {
     var body: some View {
         switch summary.state {
         case .encryptionLocked:
-            GateCard(icon: .lock, title: "Unlock encryption on this browser first") {
-                GateText("The Vault opens with your passcode and your account's encryption keys, which this browser doesn't have yet.")
+            // This Mac unlocks encryption in this same card, then goes straight on to the passcode (VaultGate.tsx).
+            let device = model.e2ee.value?.device ?? "this Mac"
+            GateCard(icon: .lock, title: "Unlock the Vault on \(device)") {
+                GateText("Your Vault is end-to-end encrypted. \(device.prefix(1).uppercased())\(device.dropFirst()) needs your account's encryption keys once, then your Vault passcode.")
+                EncryptionStep(model: model)
             }
         case .setUp:
             GateCard(icon: .shieldCheck, title: summary.personal ? "Set up your Vault" : "Set up your team's Vault") {
@@ -505,6 +508,7 @@ private struct VaultGateView: View {
     private var locked: some View {
         let actions = VS.style("vault.gate.actions", scheme)
         return GateCard(icon: .lock, title: "The Vault is locked") {
+            if model.encryptionUnlockedHere { TouchIdOffer(model: model) }
             VStack(alignment: .leading, spacing: 12) {
                 if mode == "passcode" {
                     PasscodeInput(label: "Passcode", value: $passcode, autoFocus: true) { unlock() }
@@ -594,6 +598,221 @@ private struct VaultGateView: View {
                 if r.status != "ok" && r.status != "oldPasscode" { error = r.message }
             } catch { self.error = VaultModel.message(error) }
             busy = false
+        }
+    }
+}
+
+/// The ways to unlock this Mac's encryption, in the Vault's card (VaultEncryptionStep.tsx): approve from another
+/// device first, the passphrase, the recovery key (no passkeys in the app: they're used from the browser). The Mac
+/// keeps the key once unlocked (it can be removed in Settings > Devices); the Vault then asks for its passcode.
+private struct EncryptionStep: View {
+    @Bindable var model: VaultModel
+    @State private var step = "choose"
+    @State private var secret = ""
+    @State private var busy = false
+    @State private var error: String?
+    @Environment(\.colorScheme) private var scheme
+
+    private var value: E2eeStateValue? { model.e2ee.value }
+
+    var body: some View {
+        Group {
+            switch step {
+            case "passphrase", "recovery": secretForm
+            case "approve": approving
+            default: choices
+            }
+        }
+        #if DEBUG
+        // Scripts drive the step (screens.mjs --vault-unlock, through `frame {do:"post"}`): a way, a secret, Unlock.
+        .onReceive(NotificationCenter.default.publisher(for: .init("folevi.vault.unlock"))) { n in
+            switch n.object as? String {
+            case "approve"?: approve()
+            case "submit"?: unlock()
+            case "choose"?: back()
+            case let way? where way == "passphrase" || way == "recovery": start(way)
+            case let text? where text.hasPrefix("secret:"): secret = String(text.dropFirst(7))
+            default: break
+            }
+        }
+        #endif
+    }
+
+    private var choices: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            WideButton("Approve from another device", icon: .smartphone, primary: true) { approve() }
+            WideButton("Enter passphrase", icon: .lockKeyhole) { start("passphrase") }
+            WideButton("Enter recovery key", icon: .scrollText) { start("recovery") }
+            GateText("To use your passkey, open Folevi in your browser and approve \(value?.device ?? "this Mac") from there.").padding(.top, 4)
+        }
+    }
+
+    private var secretForm: some View {
+        let l = VS.style("vault.gate.label", scheme)
+        let input = VS.style("vault.gate.input", scheme)
+        let recovery = step == "recovery"
+        return VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: l.margin.bottom) {
+                Text(recovery ? "Recovery key" : "Encryption passphrase").webText(l.text).foregroundStyle(l.color.color)
+                Group {
+                    if recovery {
+                        TextField("XXXX-XXXX-XXXX-…", text: $secret).font(.system(size: input.fontSize, design: .monospaced))
+                    } else {
+                        SecureField("", text: $secret).webText(input.text)
+                    }
+                }
+                .textFieldStyle(.plain)
+                .onSubmit { unlock() }
+                .padding(input.padding.edgeInsets)
+                .frame(height: input.height)
+                .foregroundStyle(input.color.color)
+                .webBox(VS.pair("vault.gate.input"))
+                .onChange(of: secret) { error = nil }
+            }
+            if let error { ErrorLine(text: error) }
+            HStack {
+                WebButton("Other ways to unlock", icon: .arrowLeft, iconSize: 14, variant: .quiet) { back() }
+                Spacer(minLength: 8)
+                WebButton(busy ? "Unlocking…" : "Unlock", variant: .primary) { unlock() }
+                    .disabled(busy || secret.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+    }
+
+    private var approving: some View {
+        let t = VS.style("vault.gate.label", scheme)
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Waiting for approval").webText(t.text).foregroundStyle(VS.style("vault.gate.title", scheme).color.color)
+            switch value?.approval {
+            case .failed?: ErrorLine(text: "Approval didn't finish. Try again, or use another way to unlock.")
+            case .compare?:
+                GateText("Check that your other device shows this code:")
+                Text(value?.approvalCode ?? "")
+                    .font(.system(size: 22, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(VS.style("vault.gate.title", scheme).color.color)
+                    .textSelection(.enabled)
+            default: GateText("Open Folevi on a device you've already unlocked. It will ask you to approve this one.")
+            }
+            HStack {
+                WebButton("Other ways to unlock", icon: .arrowLeft, iconSize: 14, variant: .quiet) { back() }
+                Spacer(minLength: 8)
+                if value?.approval == .failed { WebButton("Approve from another device", variant: .primary) { approve() } }
+            }
+        }
+    }
+
+    private func start(_ s: String) {
+        model.encryptionUnlockedHere = true
+        secret = ""
+        error = nil
+        step = s
+    }
+
+    private func approve() {
+        start("approve")
+        model.run { _ = try await model.frame.client.command(.e2eeApprovalStart) }
+    }
+
+    private func back() {
+        if step == "approve" { model.run { _ = try await model.frame.client.command(.e2eeApprovalCancel) } }
+        error = nil
+        step = "choose"
+    }
+
+    private func unlock() {
+        let value = secret.trimmingCharacters(in: .whitespaces)
+        guard !busy, !value.isEmpty else { return }
+        busy = true
+        error = nil
+        let method: E2eeUnlockMethod = step == "recovery" ? .recovery : .passphrase
+        Task { @MainActor in
+            do {
+                let r = try await model.frame.client.command(.e2eeUnlock(method: method, secret: secret))
+                if r.status != .ok { error = r.message ?? "That didn't unlock this Mac. Check it and try again." }
+            } catch { self.error = VaultModel.message(error) }
+            busy = false
+        }
+    }
+}
+
+/// UnlockScreen's full-width choice: 44 tall, the icon before the words, primary or secondary.
+private struct WideButton: View {
+    let title: String
+    let icon: WebIcon
+    var primary = false
+    let action: () -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    init(_ title: String, icon: WebIcon, primary: Bool = false, action: @escaping () -> Void) {
+        self.title = title
+        self.icon = icon
+        self.primary = primary
+        self.action = action
+    }
+
+    var body: some View {
+        let pair = WebStyles.named(primary ? "button.primary.md" : "button.secondary.md")
+        let s = pair.resolve(scheme)
+        Button(action: action) {
+            HStack(spacing: s.gap) {
+                WebIconView(icon, size: 15)
+                Text(title).webText(s.text)
+            }
+            .foregroundStyle(s.color.color)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .webBox(pair)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct ErrorLine: View {
+    let text: String
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        Text(text).webText(VS.style("vault.gate.body", scheme).text).foregroundStyle(VS.color("danger", scheme)).fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Right after this Mac unlocked encryption: Touch ID next time instead of the passphrase (VaultTouchIdOffer).
+private struct TouchIdOffer: View {
+    @Bindable var model: VaultModel
+    /// Answered here: turned on, or "Not now".
+    @State private var answered = false
+    @State private var busy = false
+    @Environment(\.colorScheme) private var scheme
+
+    /// Shown while this Mac has Touch ID and it isn't on yet.
+    private var shown: Bool {
+        guard !answered, let s = model.frame.touchId?.status() else { return false }
+        return s.available && !s.on
+    }
+
+    var body: some View {
+        Group {
+            if shown {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Use Touch ID next time?").webText(VS.style("vault.gate.label", scheme).text).foregroundStyle(VS.style("vault.gate.title", scheme).color.color)
+                    GateText("This Mac asks for Touch ID instead of your passphrase before it opens your encrypted notes and your Vault's keys. You can change this in Settings.")
+                    HStack(spacing: 8) {
+                        WebButton("Use Touch ID", variant: .primary, size: .sm) {
+                            guard let hook = model.frame.touchId, !busy else { return }
+                            busy = true
+                            Task { @MainActor in
+                                if let on = try? await hook.turnOn() { answered = on }
+                                busy = false
+                            }
+                        }
+                        .disabled(busy)
+                        WebButton("Not now", variant: .quiet, size: .sm) { answered = true }
+                    }
+                    .padding(.top, 10)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: VS.style("vault.gate.input", scheme).radius, style: .continuous).fill(VS.color("sunken", scheme)))
+            }
         }
     }
 }

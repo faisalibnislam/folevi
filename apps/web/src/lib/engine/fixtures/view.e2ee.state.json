@@ -1,0 +1,17 @@
+{
+  "kind": "view",
+  "name": "e2ee.state",
+  "description": "This Mac hasn't got the account's encryption keys yet.",
+  "args": {},
+  "value": {
+    "state": "locked",
+    "approval": "idle",
+    "approvalCode": null,
+    "methods": [
+      "approve",
+      "passphrase",
+      "recovery"
+    ],
+    "device": "this Mac"
+  }
+}

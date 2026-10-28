@@ -1,0 +1,9 @@
+{
+  "kind": "command",
+  "name": "e2ee.approval.start",
+  "description": "Ask another device to approve this one.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

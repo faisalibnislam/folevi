@@ -226,6 +226,17 @@ export const copy = {
     waitingTitle: "Almost there",
     switchToPersonal: "Go to Personal",
   },
+  /** The Vault on a device without the account's keys (components/vault/VaultEncryptionStep.tsx, the Mac's Vault):
+   *  one card, the ways to unlock, then the Vault passcode. `device`: "this Mac", "this browser". */
+  vaultUnlock: {
+    title: (device: string) => `Unlock the Vault on ${device}`,
+    body: (device: string) => `Your Vault is end-to-end encrypted. ${device.charAt(0).toUpperCase()}${device.slice(1)} needs your account's encryption keys once, then your Vault passcode.`,
+    touchIdTitle: "Use Touch ID next time?",
+    touchIdBody: "This Mac asks for Touch ID instead of your passphrase before it opens your encrypted notes and your Vault's keys. You can change this in Settings.",
+    touchIdOn: "Use Touch ID",
+    touchIdDone: "Touch ID will be asked for on this Mac",
+    notNow: "Not now",
+  },
   approve: {
     waitingTitle: "Waiting for approval",
     waitingBody: "Open Folevi on a device you've already unlocked. It will ask you to approve this one.",

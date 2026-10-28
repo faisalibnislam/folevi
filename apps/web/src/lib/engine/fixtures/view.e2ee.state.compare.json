@@ -1,0 +1,17 @@
+{
+  "kind": "view",
+  "name": "e2ee.state",
+  "description": "Approving from another device: the code both show.",
+  "args": {},
+  "value": {
+    "state": "locked",
+    "approval": "compare",
+    "approvalCode": "482 913",
+    "methods": [
+      "approve",
+      "passphrase",
+      "recovery"
+    ],
+    "device": "this Mac"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "kind": "command",
+  "name": "e2ee.approval.cancel",
+  "description": "Stop asking.",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

@@ -13,10 +13,13 @@
 //   cmd frame {"do":"resize","w":1280,"h":820}      the window's content size; {"do":"front"} brings it forward;
 //   cmd frameShot {"out":"/path.png","window":0}    the window as drawn (AppKit's own rendering of its views);
 //                                                   {"menu":true} the open account menu instead
+//   cmd frame {"do":"demoVault","vault":"encryptionLocked","e2ee":"locked","approval":"compare","code":"482 913"}
+//                                                   the demo place's Vault and encryption (FOLEVI_FRAME_DEMO=1 only)
 //   cmd frame {"do":"demoPictures","avatar":url,"logo":url,"space":"ws_airly"}   the demo place's picture, logo
 //                                                   and space (FOLEVI_FRAME_DEMO=1 only)
 #if DEBUG
 import AppKit
+import FoleviEngine
 import FoleviMac
 
 extension NativeFrame {
@@ -62,6 +65,16 @@ extension NativeFrame {
                     demo.avatarUrl = req["avatar"] as? String
                     demo.logoUrl = req["logo"] as? String
                     if let space = req["space"] as? String { demo.space = space }
+                    demo.refreshAll()
+                }
+            case "demoVault":
+                // The demo place's Vault and this Mac's encryption (screens.mjs --vault-unlock): a state to start from,
+                // or another device's approval reaching the code to compare.
+                if let demo = frame.demoEngine {
+                    if let v = req["vault"] as? String, let state = VaultState(rawValue: v) { demo.vaultState = state }
+                    if let l = req["e2ee"] as? String, let lock = E2eeLockState(rawValue: l) { demo.e2eeLock = lock }
+                    if let a = req["approval"] as? String, let approval = E2eeApprovalState(rawValue: a) { demo.approval = approval }
+                    if req["code"] != nil { demo.approvalCode = req["code"] as? String }
                     demo.refreshAll()
                 }
             case "front":

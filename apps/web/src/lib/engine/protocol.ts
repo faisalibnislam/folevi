@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 18;
+export const CONTRACT_REVISION = 19;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2949,6 +2949,45 @@ export interface VaultUnlockResult {
   message: string | null;
 }
 
+// ---- Revision 19: unlocking this device's encryption in place (the Vault's first step), no full-page gate ----
+
+/** This device's encryption: `none` (the account has none), `locked`, `unlocking`, `unlocked`. */
+export type E2eeLockState = "none" | "locked" | "unlocking" | "unlocked";
+
+/** Approving this device from another one: not asked, waiting for the other device, comparing codes, failed. */
+export type E2eeApprovalState = "idle" | "waiting" | "compare" | "failed";
+
+/** A way to unlock in place: approve from another device, the account's passphrase, its recovery key. */
+export type E2eeUnlockMethod = "approve" | "passphrase" | "recovery";
+
+/** `e2ee.state`: where this device's encryption is, and an approval under way. */
+export interface E2eeStateValue {
+  state: E2eeLockState;
+  approval: E2eeApprovalState;
+  /** The code both devices show while comparing (`compare` only). */
+  approvalCode: string | null;
+  /** The ways offered here, in order (the apps have no passkeys: they're approved from the browser instead). */
+  methods: E2eeUnlockMethod[];
+  /** How the screens name this device: "this Mac", "this iPhone", "this iPad", "this phone". */
+  device: string;
+}
+
+export interface E2eeUnlockArgs {
+  /** "passphrase" or "recovery". */
+  method: E2eeUnlockMethod;
+  secret: string;
+}
+
+/** `badFormat`: not shaped like a recovery key; `rateLimited`: too many tries for now. */
+export type E2eeUnlockStatus = "ok" | "wrong" | "badFormat" | "rateLimited";
+
+/** An unlock's outcome; when it isn't `ok`, `message` says what to do next, in the web's words. In the apps an unlocked
+ *  device is trusted at once (no "public or shared computer" there: it can be removed in Settings > Devices). */
+export interface E2eeUnlockResult {
+  status: E2eeUnlockStatus;
+  message: string | null;
+}
+
 export interface VaultRecoveryResult {
   recoveryKey: string;
 }
@@ -3530,6 +3569,7 @@ export interface ViewMap {
   "vault.activity": { args: VaultActivityArgs; value: VaultActivityValue };
   "vault.people": { args: VaultIdArgs; value: VaultPeopleValue };
   "vault.shares": { args: VaultItemIdArgs; value: VaultSharesValue };
+  "e2ee.state": { args: EmptyArgs; value: E2eeStateValue };
 }
 
 export interface ListViewMap {
@@ -3666,6 +3706,9 @@ export interface CommandMap {
   "vault.share.stop": { args: VaultShareStopArgs; result: OkResult };
   "vault.link.create": { args: VaultLinkArgs; result: VaultLinkResult };
   "vault.link.revoke": { args: VaultLinkRevokeArgs; result: OkResult };
+  "e2ee.unlock": { args: E2eeUnlockArgs; result: E2eeUnlockResult };
+  "e2ee.approval.start": { args: EmptyArgs; result: OkResult };
+  "e2ee.approval.cancel": { args: EmptyArgs; result: OkResult };
 }
 
 export interface EditorCommandMap {
@@ -3735,7 +3778,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "settings.query", "graph", "reviews", "recent.viewed", "vault.summary", "vault.items", "vault.folders", "vault.health", "vault.activity", "vault.people", "vault.shares"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "settings.query", "graph", "reviews", "recent.viewed", "vault.summary", "vault.items", "vault.folders", "vault.health", "vault.activity", "vault.people", "vault.shares", "e2ee.state"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -3867,6 +3910,9 @@ const commandNames = [
   "vault.share.stop",
   "vault.link.create",
   "vault.link.revoke",
+  "e2ee.unlock",
+  "e2ee.approval.start",
+  "e2ee.approval.cancel",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

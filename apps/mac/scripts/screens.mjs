@@ -8,6 +8,7 @@
 //   node apps/mac/scripts/screens.mjs --gates [--only first-launch]   (the screens before the app, gates.mjs)
 //   node apps/mac/scripts/screens.mjs --switch [--only home]   (the Mac switching light and dark with a screen open)
 //   node apps/mac/scripts/screens.mjs --strip   (the tab strip: 2, 8 and 12 tabs, wide and narrow, ends and middle)
+//   node apps/mac/scripts/screens.mjs --vault-unlock   (the Vault unlocking encryption in place, on the demo engine)
 //   node apps/mac/scripts/screens.mjs --avatars   (the account's picture on the demo engine: initial, photo, new photo, logo)
 //
 // Everything lives in apps/mac/build/run/screens (the app's data) and apps/mac/build/run/screens-library (the
@@ -665,6 +666,88 @@ if (process.argv.includes("--strip")) {
     console.log(`${good ? "in view" : "OUT OF VIEW"}  ${name} ${scheme}: scroll web ${w?.scroll} native ${n?.scroll}`);
   }
   process.exit(ok ? 0 : 1);
+}
+
+// --vault-unlock: the Vault on a Mac without the account's encryption keys, into apps/mac/screens-report/vault-unlock.
+// That needs an account with keys, which a scratch library hasn't got, so it runs the native frame on its demo engine
+// (FOLEVI_FRAME_DEMO=1: a made-up passphrase and recovery key, a stand-in Touch ID): the one card with the ways to
+// unlock, a wrong passphrase, a recovery key of the wrong shape, waiting for another device, the code to compare,
+// then the passcode card with the Touch ID offer, light and dark. Each step must change the card as it should. The
+// web's same card is covered by apps/web/e2e/vault-unlock.spec.ts (VAULT_SHOTS=<folder> saves its pictures).
+if (process.argv.includes("--vault-unlock")) {
+  const vdir = join(MAC, "build", "run", "vault-unlock");
+  const vout = join(out, "vault-unlock");
+  rmSync(vout, { recursive: true, force: true });
+  mkdirSync(vout, { recursive: true });
+  const PASSPHRASE = "lantern orchard velvet compass";
+  // The content beside the sidebar, where the card sits.
+  const CARD = { x: 256, y: 56, width: width - 256 - 8, height: 600 };
+  const post = (value) => command(vdir, { cmd: "frame", do: "post", name: "folevi.vault.unlock", value });
+  const browser = await webkit.launch();
+  const differ = async (a, b) => {
+    const page = await browser.newPage();
+    const r = await page.evaluate(async ({ a, b }) => {
+      const load = async (u) => {
+        const img = new Image();
+        img.src = u;
+        await img.decode();
+        const c = document.createElement("canvas");
+        c.width = img.width;
+        c.height = img.height;
+        const ctx = c.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        return ctx.getImageData(0, 0, c.width, c.height).data;
+      };
+      const [x, y] = [await load(a), await load(b)];
+      let n = 0;
+      for (let i = 0; i < x.length; i += 4) if (Math.abs(x[i] - y[i]) > 24 || Math.abs(x[i + 1] - y[i + 1]) > 24 || Math.abs(x[i + 2] - y[i + 2]) > 24) n++;
+      return n / (x.length / 4);
+    }, { a: `data:image/png;base64,${readFileSync(a).toString("base64")}`, b: `data:image/png;base64,${readFileSync(b).toString("base64")}` });
+    await page.close();
+    return r;
+  };
+  const STEPS = [
+    { name: "1-choose", run: async () => {
+      ensure(await command(vdir, { cmd: "frame", do: "demoVault", vault: "encryptionLocked", e2ee: "locked", approval: "idle", code: null }));
+      ensure(await command(vdir, { cmd: "open", url: "folevi-dev://vault" }));
+    } },
+    { name: "2-wrong-passphrase", run: async () => { await post("passphrase"); await post("secret:not the passphrase"); await post("submit"); } },
+    { name: "3-recovery-bad-format", run: async () => { await post("choose"); await post("recovery"); await post("secret:ABCD"); await post("submit"); } },
+    { name: "4-approval-waiting", run: async () => { await post("choose"); await post("approve"); } },
+    { name: "5-approval-code", run: async () => { ensure(await command(vdir, { cmd: "frame", do: "demoVault", approval: "compare", code: "482 913" })); } },
+    { name: "6-passcode-touch-id", run: async () => { await post("choose"); await post("passphrase"); await post(`secret:${PASSPHRASE}`); await post("submit"); } },
+  ];
+  const checks = [];
+  try {
+    await launch({ dir: vdir, env: { FOLEVI_FRAME_DEMO: "1" } });
+    await waitFor(vdir, `return true`, 30_000).catch(() => undefined);
+    await sleep(2500);
+    ensure(await command(vdir, { cmd: "resize", width, height }));
+    for (const scheme of ["light", "dark"]) {
+      ensure(await command(vdir, { cmd: "appearance", value: scheme }));
+      for (const step of STEPS) {
+        await step.run();
+        await sleep(1500);
+        const shot = join(vout, `window-${step.name}-${scheme}.png`);
+        ensure(await command(vdir, { cmd: "windowShot", out: shot }, 60_000));
+        await crop(browser, shot, CARD, join(vout, `card-${step.name}-${scheme}.png`));
+      }
+      const card = (n) => join(vout, `card-${n}-${scheme}.png`);
+      for (let i = 1; i < STEPS.length; i++) {
+        const ratio = await differ(card(STEPS[i - 1].name), card(STEPS[i].name));
+        checks.push({ scheme, what: `${STEPS[i - 1].name} -> ${STEPS[i].name}`, ratio, pass: ratio > 0.003 });
+      }
+    }
+  } catch (e) {
+    console.error(`stopped: ${e.message}`);
+    process.exitCode = 2;
+  } finally {
+    await command(vdir, { cmd: "quit" }).catch(() => undefined);
+    await browser.close();
+  }
+  for (const c of checks) console.log(`${c.pass ? "pass" : "FAIL"}  ${c.scheme} ${c.what}: ${(c.ratio * 100).toFixed(2)}% of the card changed`);
+  console.log(`pictures: ${vout}`);
+  process.exit(process.exitCode || (checks.length && checks.every((c) => c.pass) ? 0 : 1));
 }
 
 // --avatars: the account's picture, into apps/mac/screens-report/avatars. A picture needs a signed-in account,

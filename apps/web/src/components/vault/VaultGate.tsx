@@ -1,7 +1,8 @@
 "use client";
 // What the Vault page shows until it's open on this device (docs/VAULT_PLAN.md §9): first-time set-up (passcode, then
 // the recovery key), waiting for a custodian, choosing a passcode after one shared the key, unlocking by passcode or
-// recovery key, or asking to unlock encryption on this browser first. Nothing of the Vault is drawn before this.
+// recovery key, or unlocking encryption on this device first (in place, then straight on to the passcode). Nothing
+// of the Vault is drawn before this.
 import { useConvex, useMutation } from "convex/react";
 import { useEffect, useState } from "react";
 import { KeyRound, Lock, ShieldCheck } from "lucide-react";
@@ -9,7 +10,8 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { Button } from "@/components/ui/Button";
 import { useToast, errorMessage } from "@/components/ui/Toast";
-import { UnlockScreen } from "@/components/e2ee/UnlockScreen";
+import { copy } from "@/lib/e2ee/copy";
+import { vaultDevice, VaultEncryptionStep, VaultTouchIdOffer } from "./VaultEncryptionStep";
 import { vaultSessions, type UnlockResult } from "@/lib/vault/keys";
 import { ensureEncryptionAccount, useVaultBinding, useVaultInfo } from "./useVault";
 import { NewPasscode, NOT_A_LOGIN, PasscodeField } from "./PasscodeFields";
@@ -58,6 +60,8 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
   const [mode, setMode] = useState<"passcode" | "recovery">("passcode");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Unlocking encryption here: started (the step stays up through the trust choice), then done (Touch ID is offered).
+  const [encryptionStep, setEncryptionStep] = useState<"idle" | "started" | "done">("idle");
   // Someone added and waiting: their account's encryption keys must exist for a custodian to share the Vault's key.
   const waiting = info.exists && info.waitingForKey && encryption !== "locked" && encryption !== "unlocking";
   useEffect(() => {
@@ -79,12 +83,13 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
     }
   };
 
-  // Encryption on this browser comes first: the Vault's keys are sealed to the account's.
-  if (encryption === "locked" || encryption === "unlocking") {
+  // Encryption on this device comes first (the Vault's keys are sealed to the account's), in this same card.
+  if (encryption === "locked" || encryption === "unlocking" || encryptionStep === "started") {
+    const device = vaultDevice();
     return (
-      <Card icon={<Lock size={20} />} title="Unlock encryption on this browser first">
-        <p>The Vault opens with your passcode and your account's encryption keys, which this browser doesn't have yet.</p>
-        <UnlockScreen />
+      <Card icon={<Lock size={20} />} title={copy.vaultUnlock.title(device)}>
+        <p>{copy.vaultUnlock.body(device)}</p>
+        <VaultEncryptionStep onStart={() => setEncryptionStep("started")} onDone={() => setEncryptionStep("done")} />
       </Card>
     );
   }
@@ -182,6 +187,7 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
 
   return (
     <Card icon={<Lock size={20} />} title="The Vault is locked">
+      {encryptionStep === "done" ? <VaultTouchIdOffer /> : null}
       <form
         className="space-y-3"
         onSubmit={(e) => {

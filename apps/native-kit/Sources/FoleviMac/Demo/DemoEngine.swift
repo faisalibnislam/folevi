@@ -22,6 +22,15 @@ public final class DemoEngine {
     public var avatarUrl: String?
     public var logoUrl: String?
     public var syncState: SyncState = .saved
+    /// The Vault and this Mac's encryption (screens.mjs --vault-unlock): the Vault's state, this Mac's keys, and an
+    /// approval from another device under way. No Vault until a script sets one.
+    public var vaultState: VaultState = .none
+    public var e2eeLock: E2eeLockState = .unlocked
+    public var approval: E2eeApprovalState = .idle
+    public var approvalCode: String?
+    /// The demo account's passphrase and recovery key: made up, nobody's.
+    public static let passphrase = "lantern orchard velvet compass"
+    public static let recoveryKey = "ABCD-EFGH-JKLM-NPQR-STUV-WXYZ-2345-6789-ABCD"
     public var pending = 0
     public var online = true
     public var ready = true
@@ -128,6 +137,10 @@ public final class DemoEngine {
     func view(_ name: String, args: JSONValue, window: ListWindow?) throws -> JSONValue {
         switch name {
         case "session": return try .from(session)
+        case "vault.summary":
+            return try .from(VaultSummaryValue(state: vaultState, vaultId: vaultState == .none ? nil : "01JVAULT000000000000000001", personal: true, local: false, role: "owner", autoLockMinutes: 5, recoveryOutdated: false, accessReviewDue: false, custodiansNameCustodians: false, moreSections: [.health, .activity, .trash, .settings], passcodeLengths: [6, 8, 12]))
+        case "e2ee.state":
+            return try .from(E2eeStateValue(state: e2eeLock, approval: approval, approvalCode: approvalCode, methods: [.approve, .passphrase, .recovery], device: "this Mac"))
         case "places.list": return try .from(placesValue)
         case "home": return try .from(homeValue)
         case "folders.tree": return try .from(FoldersTreeValue(space: space, folders: folders, tags: tags))
@@ -362,6 +375,28 @@ public final class DemoEngine {
             return .object(["id": .string("task_\(nextId)"), "noteId": .string("inbox"), "where": .string("Inbox")])
         case "places.move":
             return .object(["status": .string("done"), "notes": .number(Double(notes.count)), "problems": .number(0)])
+        case "e2ee.unlock":
+            // The web engine's answers (lib/engine/commandsE2ee.ts, in copy.ts's words).
+            let secret = args["secret"]?.string ?? ""
+            let recovery = args["method"]?.string == "recovery"
+            let right = recovery ? secret.uppercased() == Self.recoveryKey : secret == Self.passphrase
+            if right {
+                e2eeLock = .unlocked
+                if vaultState == .encryptionLocked { vaultState = .locked }
+                return try .from(E2eeUnlockResult(status: .ok, message: nil))
+            }
+            if recovery && secret.filter({ $0.isLetter || $0.isNumber }).count != 36 {
+                return try .from(E2eeUnlockResult(status: .badFormat, message: "A recovery key has 36 letters and numbers in 9 groups of 4. Check it and try again."))
+            }
+            return try .from(E2eeUnlockResult(status: .wrong, message: recovery ? "That recovery key didn't unlock your notes. Check it and try again." : "That passphrase didn't unlock your notes. Check it and try again."))
+        case "e2ee.approval.start":
+            approval = .waiting
+            approvalCode = nil
+            return .object(["ok": .bool(true)])
+        case "e2ee.approval.cancel":
+            approval = .idle
+            approvalCode = nil
+            return .object(["ok": .bool(true)])
         case "engine.refresh", "catchUp.run", "catchUp.clear", "toast.action", "notification.act", "settings.update":
             return .object(["ok": .bool(true)])
         case _ where name.hasPrefix("task."):

@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "e2ee.unlock",
+  "description": "Not shaped like a recovery key.",
+  "args": {
+    "method": "recovery",
+    "secret": "ABCD"
+  },
+  "result": {
+    "status": "badFormat",
+    "message": "A recovery key has 36 letters and numbers in 9 groups of 4. Check it and try again."
+  }
+}

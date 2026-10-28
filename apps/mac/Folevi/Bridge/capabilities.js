@@ -83,11 +83,19 @@
       if (providers.length > 8) providers.shift();
       fire("dragNotes", { notes: list, token: token });
     };
+    // Notes dragged from the app's native lists ask with the token "native": the page's own source answers.
+    var nativeFileOf = null;
+    desktop.noteFileSource = function (fileOf) {
+      nativeFileOf = typeof fileOf === "function" ? fileOf : null;
+    };
     listen("FoleviDesktop", "noteFile", function (r) {
       var request = str(r && r.request, 64);
-      var entry = providers.filter(function (p) {
-        return p.token === (r && r.token);
-      })[0];
+      var entry =
+        r && r.token === "native" && nativeFileOf
+          ? { fileOf: nativeFileOf }
+          : providers.filter(function (p) {
+              return p.token === (r && r.token);
+            })[0];
       var reply = function (o) {
         o.request = request;
         fire("dragNoteReply", o);

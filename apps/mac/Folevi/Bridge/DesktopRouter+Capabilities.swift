@@ -9,6 +9,8 @@
 // the app's own page (MessageRouter), and the sender view is the one the call came from.
 import AppKit
 import WebKit
+import UniformTypeIdentifiers
+import FoleviScreens
 
 @MainActor
 enum Capabilities {
@@ -248,6 +250,55 @@ enum Capabilities {
             post(.leftMouseDown, start)
             for i in 1...8 { post(.leftMouseDragged, NSPoint(x: start.x + CGFloat(i * 5), y: start.y - CGFloat(i * 2))) }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { done(["log": DragOut.shared.log]) }
+        }
+        // The same on the native frame (window points from the top left, a row of a native list), then the drag
+        // pasteboard as Finder would see it and the first note's file written to `out` (a scratch folder).
+        MacEval.commands["nativeDragProbe"] = { req, done in
+            guard let window = WindowManager.shared.frontMain?.window, let content = window.contentView,
+                  let x = Capabilities.number(req["x"]), let y = Capabilities.number(req["y"]), let out = req["out"] as? String else { return done(["error": "no window"]) }
+            let start = NSPoint(x: x, y: content.bounds.height - y)
+            let post = { (type: NSEvent.EventType, p: NSPoint) in
+                if let e = NSEvent.mouseEvent(with: type, location: p, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1) {
+                    NSApp.postEvent(e, atStart: false)
+                }
+            }
+            DragOut.shared.nativeIgnoresButton = true
+            if req["note"] == nil { post(.leftMouseDown, start) }
+            // `note` {id, title}: the drag pasteboard as SwiftUI writes it for that note (a test window is hidden, so
+            // no real drag starts there); else a real press and move at (x, y).
+            if let n = req["note"] as? [String: Any], let id = n["id"] as? String {
+                // (A hidden window's posted press doesn't reach the app's event monitor.)
+                DragOut.shared.watchNative()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    let board = NSPasteboard(name: .drag)
+                    board.clearContents()
+                    let item = NSPasteboardItem()
+                    if let data = try? JSONEncoder().encode(NoteDragItem(id: id, title: n["title"] as? String ?? "", folderId: nil)) { item.setData(data, forType: .init(UTType.foleviNoteRef.identifier)) }
+                    item.setString(FoleviLinks.note(id), forType: .URL)
+                    board.writeObjects([item])
+                }
+            } else {
+                for i in 1...8 { post(.leftMouseDragged, NSPoint(x: start.x + CGFloat(i * 5), y: start.y - CGFloat(i * 2))) }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                let board = NSPasteboard(name: .drag)
+                let inside = board.types?.map(\.rawValue) ?? []
+                DragOut.shared.place(on: board, outside: true)
+                let outside = board.types?.map(\.rawValue) ?? []
+                DragOut.shared.place(on: board, outside: false)
+                DragOut.shared.nativeIgnoresButton = false
+                guard DragOut.shared.nativeDrag, let first = DragOut.shared.promises.first, let delegate = first.delegate else {
+                    return done(["log": DragOut.shared.log, "inside": inside, "outside": outside, "promises": DragOut.shared.promises.count, "error": "no native drag"])
+                }
+                let name = delegate.filePromiseProvider(first, fileNameForType: DragOut.markdownType.identifier)
+                let url = URL(fileURLWithPath: out).appendingPathComponent(name)
+                delegate.filePromiseProvider(first, writePromiseTo: url) { error in
+                    DispatchQueue.main.async {
+                        let text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+                        done(["log": DragOut.shared.log, "inside": inside, "outside": outside, "file": url.path, "chars": text.count, "head": String(text.prefix(200)), "error": error.map { "\($0)" } ?? NSNull()])
+                    }
+                }
+            }
         }
         MacEval.commands["downloadTo"] = { req, done in
             guard let out = req["out"] as? String else { return done(["error": "out?"]) }

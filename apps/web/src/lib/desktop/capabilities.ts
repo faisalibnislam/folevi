@@ -45,6 +45,8 @@ export interface MacCapabilities {
    * `fileOf` asked for its contents then (`folder` is the folder beside it its attachments go in).
    */
   dragNotes?(notes: { id: string; title: string }[], fileOf: (id: string, folder: string) => Promise<DraggedNoteFile | null>): void;
+  /** Where notes dragged from the app's native lists get their Markdown when dropped outside Folevi. */
+  noteFileSource?(fileOf: ((id: string, folder: string) => Promise<DraggedNoteFile | null>) | null): void;
   /** The page as it is, in the print panel. */
   print?(): void;
   /** The Share picker for a link, text, or a note's Markdown sent as a file named `fileName`; true once shared. */
@@ -106,6 +108,7 @@ let noteFileSource: NoteFileSource | null = null;
 /** Where a dragged-out note's Markdown comes from (DesktopCapabilities sets it while the app is up). */
 export function setNoteFileSource(source: NoteFileSource | null) {
   noteFileSource = source;
+  macDesktop()?.noteFileSource?.(source ? noteFileOf : null);
 }
 
 /** A dragged-out note's file, asked for when it's dropped outside Folevi. */

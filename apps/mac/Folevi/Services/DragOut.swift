@@ -10,7 +10,12 @@
 //   item it drags becomes a file promise that also carries everything WebKit put on the pasteboard, so drops
 //   inside Folevi work as before and a drop in Finder makes the files. The Markdown is asked of the page when the
 //   drop happens (fileOf), so nothing is prepared for a drag that stays inside the app.
+// - A note row or card of the native lists (SwiftUI's draggable NoteDragItem): while the mouse is down, the drag
+//   pasteboard is watched; once it holds a Folevi note, it becomes the notes' file promises while the pointer is
+//   outside Folevi's windows (with SwiftUI's own data too), and SwiftUI's data alone inside them. The page answers
+//   for their Markdown as for its own drags (the token "native").
 import AppKit
+import FoleviScreens
 import UniformTypeIdentifiers
 import WebKit
 
@@ -97,8 +102,12 @@ final class DragOut: NSObject, NSFilePromiseProviderDelegate {
     /// The same, from where AppKit says the drag is (it asks the source what it allows whenever the drag reaches
     /// another destination: inside the app or outside it).
     func place(_ session: NSDraggingSession, outside: Bool) {
-        guard session === notesSession, let first = promises.first, outside != promisesOn else { return }
-        let board = session.draggingPasteboard
+        guard session === notesSession else { return }
+        place(on: session.draggingPasteboard, outside: outside)
+    }
+
+    func place(on board: NSPasteboard, outside: Bool) {
+        guard let first = promises.first, outside != promisesOn else { return }
         board.clearContents()
         if outside {
             board.writeObjects(promises)
@@ -124,9 +133,66 @@ final class DragOut: NSObject, NSFilePromiseProviderDelegate {
         guard monitor == nil else { return }
         Self.installDragImage()
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseDragged]) { event in
-            MainActor.assumeIsolated { DragOut.shared.lastMouse = event }
+            MainActor.assumeIsolated {
+                DragOut.shared.lastMouse = event
+                if event.type == .leftMouseDown { DragOut.shared.watchNative() }
+            }
             return event
         }
+    }
+
+    // MARK: notes dragged from the native lists
+
+    /// The watch on the drag pasteboard while the mouse is down.
+    private var nativeTimer: Timer?
+    /// The drag pasteboard's change count at the mouse down, and after our own writes.
+    private var nativeCount = 0
+    /// Whether the promises on the drag pasteboard now are a native drag's.
+    private(set) var nativeDrag = false
+    #if DEBUG
+    /// MacEval's synthetic drags hold no real mouse button down.
+    var nativeIgnoresButton = false
+    #endif
+
+    func watchNative() {
+        nativeTimer?.invalidate()
+        nativeDrag = false
+        nativeCount = NSPasteboard(name: .drag).changeCount
+        note("watch")
+        let timer = Timer(timeInterval: 1.0 / 30, repeats: true) { _ in
+            MainActor.assumeIsolated { DragOut.shared.nativeTick() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        nativeTimer = timer
+    }
+
+    private func nativeTick() {
+        var released = NSEvent.pressedMouseButtons & 1 == 0
+        #if DEBUG
+        if nativeIgnoresButton { released = false }
+        #endif
+        if released {
+            // The drop is over (a Finder drop still reads the promises kept in `promises`).
+            nativeTimer?.invalidate()
+            nativeTimer = nil
+            return
+        }
+        let board = NSPasteboard(name: .drag)
+        if !nativeDrag {
+            let type = NSPasteboard.PasteboardType(UTType.foleviNoteRef.identifier)
+            guard notesSession == nil, board.changeCount != nativeCount, board.types?.contains(type) == true,
+                  let data = board.data(forType: type), let drag = try? JSONDecoder().decode(NoteDragItem.self, from: data),
+                  let view = WindowManager.shared.frontMain?.view else { return }
+            let notes = drag.notes.prefix(50).map { NoteRef(id: $0.id, title: $0.title) }
+            makePromises(for: Array(notes), token: "native", view: view, carrying: Self.contents(of: board))
+            nativeDrag = true
+            promisesOn = false
+            nativeCount = board.changeCount
+            note("native drag \(notes.count)")
+        }
+        let point = NSEvent.mouseLocation
+        let number = NSWindow.windowNumber(at: point, belowWindowWithWindowNumber: 0)
+        place(on: board, outside: NSApp.window(withWindowNumber: number) == nil)
     }
 
     /// A Finder-safe file name for a note (Electron's dragFileName): the title without the characters Finder
@@ -169,14 +235,20 @@ final class DragOut: NSObject, NSFilePromiseProviderDelegate {
         return (e.notes, e.token)
     }
 
-    /// File promises for `notes` that also carry what WebKit wrote for its drag, laid out like WebKit's item.
-    func items(for notes: [NoteRef], token: String, view: FoleviWebView, carrying extra: [(NSPasteboard.PasteboardType, Data)], frame: NSRect, image: Any?, looks: NSDraggingItem? = nil) -> [NSDraggingItem] {
-        promises = []
-        return notes.enumerated().map { i, note in
+    /// The file promises for `notes`, the first also carrying `extra` (the drag's own data).
+    func makePromises(for notes: [NoteRef], token: String, view: FoleviWebView, carrying extra: [(NSPasteboard.PasteboardType, Data)]) {
+        promises = notes.enumerated().map { i, note in
             let provider = Promise(fileType: Self.markdownType.identifier, delegate: self)
             provider.userInfo = Payload.note(note, token: token, view: Weak(view))
-            promises.append(provider)
             if i == 0 { provider.extra = extra }
+            return provider
+        }
+    }
+
+    /// File promises for `notes` that also carry what WebKit wrote for its drag, laid out like WebKit's item.
+    func items(for notes: [NoteRef], token: String, view: FoleviWebView, carrying extra: [(NSPasteboard.PasteboardType, Data)], frame: NSRect, image: Any?, looks: NSDraggingItem? = nil) -> [NSDraggingItem] {
+        makePromises(for: notes, token: token, view: view, carrying: extra)
+        return promises.enumerated().map { i, provider in
             let item = NSDraggingItem(pasteboardWriter: provider)
             item.setDraggingFrame(frame.offsetBy(dx: CGFloat(i) * 4, dy: CGFloat(i) * -4), contents: i == 0 ? image : nil)
             // The picture WebKit made for the drag (the page's setDragImage), as WebKit would have shown it.

@@ -8,15 +8,17 @@
 // while after it closes (`releaseAfter`, docs/MAC_WEBKIT_PLAN.md "Memory": 60 MB otherwise kept all day), unless
 // something is still in its field or it has no connection (an offline task waits in its page's queue).
 //
-// With the native frame (NativeFrame.enabled, plan 5.12) the field is native: FoleviScreens' QuickAddView (the one
-// growing field, natural-language chips, the place it goes, Return / Shift-Return / Command-Return) over the same
-// material, talking to the Quick Add place's engine in this panel's page (a Page View in native chrome mode, kept
-// hidden). What can't reach an engine waits in QuickAddQueue on this Mac and goes when the page is ready.
+// With the native frame (NativeFrame.enabled, plan 5.12) the field is native: FoleviMac's WebQuickAddPanel, drawn as
+// the web's MacQuickAdd.tsx (the one growing field, its chips and editors, "!high" and "#page", "Added to" with
+// Open, Return / Shift-Return / Command-Return) over the same material, talking to the Quick Add place's engine in
+// this panel's page (a Page View in native chrome mode, kept hidden). What can't reach an engine waits in
+// QuickAddQueue on this Mac and goes when the page is ready.
 import AppKit
 import SwiftUI
 import WebKit
 import FoleviEngine
 import FoleviScreens
+import FoleviMac
 
 final class QuickAddWindow: NSPanel {
     override var canBecomeKey: Bool { true }
@@ -92,6 +94,9 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         position(panel)
         panel.alphaValue = 1
         panel.makeKeyAndOrderFront(nil)
+        // Shown again: a fresh field, as the web's panel starts each time; keys typed meanwhile wait for it.
+        if let model = nativeModel, model.added == nil { model.startOver() }
+        replayWhenNativeFieldReady()
         if let first = nativeHost ?? view { panel.makeFirstResponder(first) }
         if let view { Chrome.whenLoaded(view) { Events.command(["type": "quick-add-shown"], to: $0) } }
     }
@@ -243,13 +248,16 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         let transport = MacEngineTransport(view: page)
         let client = EngineClient(transport: transport, place: place ?? "", app: AppInfo(platform: .macos, version: Paths.version, build: Paths.build, protocol: EngineContract.protocolVersion, schemaHash: EngineContract.schemaHash))
         let model = QuickAddModel(client: client, queue: Self.nativeQueue)
-        model.onSaved = { _, open in
-            QuickAddPanel.shared.hide()
-            if open { WindowManager.shared.showMain() }
+        // Return shows "Added to" for a moment and then closes (the panel's view); Command-Return opens the page the
+        // task went to in the main window at once.
+        model.onSaved = { [weak model] _, open in
+            guard open else { return }
+            QuickAddPanel.shared.openPage(model?.added?.noteId)
+            model?.clearAdded()
         }
         client.start()
         let root = AnyView(
-            QuickAddView(model: model, style: .panel, close: { QuickAddPanel.shared.hide() })
+            WebQuickAddPanel(model: model, close: { QuickAddPanel.shared.hide() }, openPage: { QuickAddPanel.shared.openPage($0) })
                 .fixedSize(horizontal: false, vertical: true)
                 .background(GeometryReader { g in
                     Color.clear
@@ -266,6 +274,22 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         nativeModel = model
         nativeTransport = transport
         panel?.makeFirstResponder(host)
+    }
+
+    #if DEBUG
+    /// Scripts: the native field's words, as if typed (ChromeEval `quickAdd {"action": "text"}`).
+    func debugSetText(_ text: String) -> Bool {
+        guard let nativeModel else { return false }
+        nativeModel.text = text
+        return true
+    }
+    #endif
+
+    /// Opens the page a task went to in the main window (the Inbox when it has none) and closes the panel.
+    func openPage(_ noteId: String?) {
+        hide()
+        WindowManager.shared.showMain(path: noteId.map { "/d/\($0)" } ?? "/tasks/inbox")
+        NSApp.activate()
     }
 
     /// Its hidden Page View started loading again or its content process ended (Navigation.swift): the native
@@ -310,9 +334,27 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
 
     /// Keeps a key the page isn't ready for (true: kept). Escape goes through (it closes the panel).
     func hold(_ event: NSEvent) -> Bool {
-        guard !ready, view != nil, event.type == .keyDown || event.type == .keyUp, event.keyCode != 53 else { return false }
+        guard event.type == .keyDown || event.type == .keyUp, event.keyCode != 53 else { return false }
+        // The native field takes the keyboard a moment after the panel shows: keys until then wait for it.
+        let waiting = !ready && view != nil || nativeModel != nil && !nativeFieldHasKeys
+        guard waiting else { return false }
         held.append(event)
         return true
+    }
+
+    /// The native field is editing (its field editor has the keyboard).
+    private var nativeFieldHasKeys: Bool { panel?.firstResponder is NSTextView }
+
+    /// Types the keys held while the native field wasn't ready, once it is (up to a second after showing).
+    private func replayWhenNativeFieldReady(_ tries: Int = 50) {
+        guard nativeModel != nil, !held.isEmpty || tries == 50 else { return }
+        if nativeFieldHasKeys || tries == 0 {
+            let keys = held
+            held = []
+            for e in keys { panel?.sendEvent(e) }
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { MainActor.assumeIsolated { QuickAddPanel.shared.replayWhenNativeFieldReady(tries - 1) } }
     }
 
     /// On the screen with the pointer, centred, its top 28 % down the screen.

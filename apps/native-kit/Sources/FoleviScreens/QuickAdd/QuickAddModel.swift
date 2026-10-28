@@ -45,7 +45,25 @@ public final class QuickAddModel {
         didSet { if mode != oldValue { parsed = nil; scheduleParse() } }
     }
     public var text = "" {
-        didSet { if text != oldValue { error = nil; scheduleParse() } }
+        didSet { if text != oldValue { error = nil; scheduleParse(); followPageToken() } }
+    }
+    /// The Mac panel reads "!high" and "#page" out of the words (QuickAddTokens, web MacQuickAdd.tsx); the iPhone
+    /// and iPad sheet doesn't.
+    public var readsTokens = false
+    /// Tokens the person kept as words (a chip's ×).
+    public var keptTokens: Set<String> = [] {
+        didSet { if keptTokens != oldValue { scheduleParse(); followPageToken() } }
+    }
+    /// The page in `destination` came from a "#page" token (it goes when the token does).
+    @ObservationIgnored private var pageFromToken = false
+    /// A "#page" token names no page found ("No page “Atlas”").
+    public private(set) var pageTokenMissing = false
+    /// The last task saved: where it went and the page it's on (the Mac panel's "Added to Inbox" with Open).
+    public private(set) var added: Added?
+
+    public struct Added: Equatable, Sendable {
+        public var label: String
+        public var noteId: String?
     }
     /// What `task.parse` read in the text (nil while there's nothing to read).
     public private(set) var parsed: TaskParseValue?
@@ -102,7 +120,19 @@ public final class QuickAddModel {
     // MARK: What it shows
 
     public var trimmed: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
-    public var canSave: Bool { !trimmed.isEmpty && !busy && canEditTarget }
+    public var canSave: Bool { !taskText.isEmpty && !busy && canEditTarget }
+
+    /// The tokens in the text (none unless `readsTokens`).
+    public var tokens: QuickAddTokens {
+        guard readsTokens, mode == .task else { return QuickAddTokens(rest: text) }
+        return QuickAddTokens.read(text, kept: keptTokens)
+    }
+
+    /// What the task is called: the words without the tokens.
+    public var taskText: String { tokens.rest.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    /// The priority in effect: picked, else a "!high" token.
+    public var effectivePriority: TaskCreateArgs.Priority? { priority ?? tokens.priority.flatMap { TaskCreateArgs.Priority(rawValue: $0.level.rawValue) } }
 
     /// The spaces Quick Add can add to (the ones this person may edit).
     public var spaces: [SpaceInfo] { (session.value?.spaces ?? []).filter { $0.canEdit && !$0.locked } }
@@ -176,18 +206,18 @@ public final class QuickAddModel {
 
     private func scheduleParse() {
         parseTask?.cancel()
-        guard mode == .task, !trimmed.isEmpty else {
+        guard mode == .task, !taskText.isEmpty else {
             parsed = nil
             keepText = false
             return
         }
-        let text = self.text
+        let text = self.taskText
         let delay = parseDelay
         parseTask = Task { [weak self] in
             try? await Task.sleep(for: delay)
             guard !Task.isCancelled, let self else { return }
             let value = try? await self.client.query(.taskParse(text: text))
-            guard !Task.isCancelled, self.text == text else { return }
+            guard !Task.isCancelled, self.taskText == text else { return }
             // Removing the chip keeps those words; new date words bring the chip back.
             if self.keepText, value?.dateText != self.parsed?.dateText { self.keepText = false }
             self.parsed = value
@@ -198,6 +228,57 @@ public final class QuickAddModel {
     public func keepDateAsText() {
         keepText = true
         feedback.haptic(.selection)
+    }
+
+    /// A "#page" token picks the page it names (the first search hit by title); without one, a page it picked goes.
+    private func followPageToken() {
+        guard readsTokens else { return }
+        guard let query = tokens.page?.query else {
+            pageTokenMissing = false
+            if pageFromToken {
+                pageFromToken = false
+                destination.noteId = nil
+                destination.noteTitle = nil
+            }
+            return
+        }
+        searchTask?.cancel()
+        let space = destination.space
+        searchTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled, let self else { return }
+            let value = try? await self.client.query(.search(text: query, scope: space == nil ? .everywhere : .place, space: space, limit: 6))
+            guard !Task.isCancelled, self.tokens.page?.query == query else { return }
+            let hits = (value?.hits ?? []).filter { !$0.archived && $0.kind != "template" }
+            if let hit = QuickAddTokens.page(for: query, in: hits, title: \.title) {
+                self.choose(page: hit)
+                self.pageFromToken = true
+                self.pageTokenMissing = false
+            } else {
+                if self.pageFromToken {
+                    self.destination.noteId = nil
+                    self.destination.noteTitle = nil
+                }
+                self.pageFromToken = false
+                self.pageTokenMissing = true
+            }
+        }
+    }
+
+    /// Keeps a token's words in the task (a chip's ×).
+    public func keep(_ token: String) {
+        keptTokens.insert(token)
+    }
+
+    /// A page picked by hand (or none, the Inbox): a "#page" token in the words stays as text.
+    public func pick(page: SearchHit?) {
+        if let t = tokens.page?.text { keptTokens.insert(t) }
+        pageFromToken = false
+        pageTokenMissing = false
+        if let page { choose(page: page) } else {
+            destination.noteId = nil
+            destination.noteTitle = nil
+        }
     }
 
     // MARK: Where it goes
@@ -262,8 +343,9 @@ public final class QuickAddModel {
         defer { busy = false }
         let item = makeItem()
         do {
-            let (id, where_) = try await send(item)
+            let (id, where_, noteId) = try await send(item)
             feedback.haptic(.success)
+            if item.kind == .task { added = Added(label: where_, noteId: noteId) }
             confirm(mode == .task ? "Added to \(where_)" : "Note added to \(where_)")
             reset()
             if !keepOpen { onSaved?(id, open) }
@@ -295,29 +377,32 @@ public final class QuickAddModel {
         QuickAddQueue.Item(
             id: UUID().uuidString,
             kind: mode,
-            text: trimmed,
+            text: mode == .task ? taskText : trimmed,
             space: destination.space,
             noteId: mode == .task ? destination.noteId : nil,
             folderId: mode == .note ? destination.folderId : nil,
             dueDate: mode == .task ? dueDate : nil,
             dueTime: mode == .task ? dueTime : nil,
-            priority: mode == .task ? priority?.rawValue : nil,
+            priority: mode == .task ? effectivePriority?.rawValue : nil,
             keepText: mode == .task && keepText ? true : nil,
             createdAt: Date().timeIntervalSince1970
         )
     }
 
-    /// Sends one item: the new task's or note's id and where it went.
-    func send(_ item: QuickAddQueue.Item) async throws -> (String?, String) {
+    /// Sends one item: the new task's or note's id, where it went and the page a task is on.
+    func send(_ item: QuickAddQueue.Item) async throws -> (String?, String, String?) {
         switch item.kind {
         case .task:
             let r = try await client.command(.taskCreate(text: item.text, space: item.space, noteId: item.noteId, dueDate: item.dueDate, dueTime: item.dueTime, priority: item.priority.flatMap(TaskCreateArgs.Priority.init(rawValue:)), keepText: item.keepText))
-            return (r.id, r.where)
+            return (r.id, r.where, r.noteId)
         case .note:
             let r = try await client.command(.noteCreate(space: item.space, folderId: item.folderId, text: item.text))
-            return (r.id, destination.folderName ?? "Drafts")
+            return (r.id, destination.folderName ?? "Drafts", nil)
         }
     }
+
+    /// The "Added to" line has gone (the Mac panel shows it for a moment).
+    public func clearAdded() { added = nil }
 
     /// Sends what waited, oldest first; stops at the first that still can't go.
     public func flushQueue() async {
@@ -350,7 +435,26 @@ public final class QuickAddModel {
         dueDate = nil
         dueTime = nil
         priority = nil
+        keptTokens = []
+        if readsTokens {
+            // The Mac panel starts again from the Inbox (web MacQuickAdd's reset).
+            pageFromToken = false
+            pageTokenMissing = false
+            destination.noteId = nil
+            destination.noteTitle = nil
+        }
     }
+
+    /// A fresh field (the Mac panel shown again): what was typed and picked goes.
+    public func startOver() {
+        reset()
+        error = nil
+        added = nil
+        round &+= 1
+    }
+
+    /// How many times the Mac panel started over (its field takes the keyboard each time).
+    public private(set) var round = 0
 }
 
 /// Quick Add items saved on the device while no engine could take them (JSON in Application Support). Never holds

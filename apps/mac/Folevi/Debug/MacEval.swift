@@ -67,7 +67,7 @@ enum MacEval {
     /// through WindowServer's privacy checks, and many captures at once hung WindowServer, docs/MAC_SCREEN_PLAYBOOK.md).
     /// AppKit draws the native views; the page, a GPU layer cacheDisplay can't read, is its own snapshot drawn where
     /// it sits; then whatever lies above the page (the glass bar over a note) is drawn again over it, in view order.
-    private static func windowShot(content: NSView, page: FoleviWebView, path: String, done: @escaping ([String: Any]) -> Void) {
+    static func windowShot(content: NSView, page: FoleviWebView, path: String, done: @escaping ([String: Any]) -> Void) {
         let size = content.bounds.size
         guard let rep = bitmap(size) else { return done(["error": "no bitmap"]) }
         content.cacheDisplay(in: content.bounds, to: rep)

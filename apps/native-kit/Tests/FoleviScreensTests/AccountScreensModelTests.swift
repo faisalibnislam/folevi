@@ -609,6 +609,66 @@ struct QuickAddModelTests {
         #expect(model.text.isEmpty && model.priority == nil)
     }
 
+    /// The Mac panel's tokens (web quickAddTokens.test.ts' cases): "!high" and "#page" leave the words.
+    @Test func readsPriorityAndPageTokens() {
+        let t = QuickAddTokens.read("Call Sam !high #Atlas tomorrow")
+        #expect(t.rest == "Call Sam tomorrow")
+        #expect(t.priority?.level == .high && t.priority?.text == "!high")
+        #expect(t.page?.query == "Atlas" && t.page?.text == "#Atlas")
+        #expect(QuickAddTokens.read("Fix it !!").priority?.level == .medium)
+        #expect(QuickAddTokens.read("Fix it !!!").priority?.level == .high)
+        #expect(QuickAddTokens.read("Fix it !").priority?.level == .low)
+        #expect(QuickAddTokens.read("Fix it !med").priority?.level == .medium)
+        #expect(QuickAddTokens.read("Read #\"Two words\" now").page?.query == "Two words")
+        #expect(QuickAddTokens.read("Read #\"Two words\" now").rest == "Read now")
+        // Not tokens: inside a word, a lone #, an exclamation in a sentence.
+        #expect(QuickAddTokens.read("Wow!high").priority == nil)
+        #expect(QuickAddTokens.read("Issue # 4").page == nil)
+        #expect(QuickAddTokens.read("Hello!").rest == "Hello!")
+        // Kept as text: stays in the words.
+        let kept = QuickAddTokens.read("Call Sam !high", kept: ["!high"])
+        #expect(kept.priority == nil && kept.rest == "Call Sam !high")
+        #expect(QuickAddTokens.page(for: "kyoto", in: ["Rail passes", "Kyoto in November"], title: { $0 }) == "Kyoto in November")
+        #expect(QuickAddTokens.page(for: "pass", in: ["Rail passes", "Passports"], title: { $0 }) == "Passports")
+    }
+
+    @Test func thePanelSendsTheWordsWithoutTokens() async {
+        let engine = AccountEngine()
+        engine.queries["search"] = Fixtures.value("view.search.json")
+        engine.fake.onCommand = { _, _ in .object(["id": .string("blk_t9"), "noteId": .string("doc_00001"), "where": .string("Kyoto in November")]) }
+        let model = make(engine)
+        model.readsTokens = true
+        model.text = "Book the ryokan !high #kyoto"
+        #expect(model.taskText == "Book the ryokan")
+        #expect(model.effectivePriority == .high)
+        await eventually("page picked") { model.destination.noteId == "doc_00001" }
+        #expect(model.destinationLabel == "Kyoto in November")
+        await model.save(keepOpen: true)
+        let sent = engine.fake.commands(named: "task.create").last
+        #expect(sent?["text"]?.string == "Book the ryokan")
+        #expect(sent?["priority"]?.string == "high")
+        #expect(sent?["noteId"]?.string == "doc_00001")
+        #expect(model.added == QuickAddModel.Added(label: "Kyoto in November", noteId: "doc_00001"))
+        // A fresh field starts from the Inbox again.
+        #expect(model.destination.noteId == nil && model.keptTokens.isEmpty)
+        // A token kept as text goes with the words; a page picked by hand keeps "#..." as text.
+        model.text = "Ask about trains !low"
+        model.keep("!low")
+        #expect(model.taskText == "Ask about trains !low" && model.effectivePriority == nil)
+        model.text = "Pack #nowhere"
+        await eventually("no page") { model.pageTokenMissing }
+        model.pick(page: nil)
+        #expect(model.taskText == "Pack #nowhere" && !model.pageTokenMissing)
+    }
+
+    @Test func theSheetKeepsTokensAsWords() async {
+        let engine = AccountEngine()
+        let model = make(engine)
+        model.text = "Call Sam !high"
+        #expect(model.taskText == "Call Sam !high")
+        #expect(model.effectivePriority == nil)
+    }
+
     @Test func keepingTheDateAsText() async {
         let engine = AccountEngine()
         engine.fake.onCommand = { _, _ in .object(["id": .string("blk_t9"), "noteId": .string("doc_inbox"), "where": .string("Inbox")]) }

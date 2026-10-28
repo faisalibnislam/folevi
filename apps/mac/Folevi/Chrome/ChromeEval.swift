@@ -22,6 +22,13 @@ enum ChromeEval {
     static func install() {
         MacEval.commands["menu"] = menu
         MacEval.commands["quickAdd"] = quickAdd
+        // The Quick Add panel as drawn (`cmd quickAddShot {"out"}`): its content at 2x, the web page's own snapshot
+        // in the web frame; the screens diff compares the two frames' panels.
+        MacEval.commands["quickAddShot"] = { req, done in
+            let q = QuickAddPanel.shared
+            guard let content = q.panel?.contentView, let view = q.view, let path = req["out"] as? String else { return done(["error": "no panel or no out"]) }
+            MacEval.windowShot(content: content, page: view, path: path, done: done)
+        }
         MacEval.commands["settings"] = settings
         MacEval.commands["evalIn"] = evalIn
         MacEval.commands["titleBar"] = titleBar
@@ -128,6 +135,13 @@ enum ChromeEval {
         case "show": q.show()
         case "hide": q.hide()
         case "toggle": q.toggle()
+        case "text": _ = q.debugSetText(req["text"] as? String ?? "")
+        case "insert":
+            // Typing as the field editor takes it (the native field's own change path).
+            (q.panel?.firstResponder as? NSTextView)?.insertText(req["text"] as? String ?? "", replacementRange: NSRange(location: NSNotFound, length: 0))
+        case "command":
+            // A key's command in the field editor ("insertNewline:", "cancelOperation:"), through the field's delegate.
+            (q.panel?.firstResponder as? NSTextView)?.doCommand(by: NSSelectorFromString(req["selector"] as? String ?? ""))
         default: break
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -136,6 +150,7 @@ enum ChromeEval {
                 "appActive": NSApp.isActive, "frontApp": NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "",
                 "place": q.view?.place ?? NSNull(), "url": q.view?.url?.absoluteString ?? "", "loaded": q.view?.loaded ?? false,
                 "windowNumber": q.panel?.windowNumber ?? 0, "onActiveSpace": q.panel?.isOnActiveSpace ?? false,
+                "firstResponder": q.panel?.firstResponder.map { String(describing: type(of: $0)) } ?? "",
             ] as [String: Any]])
         }
     }

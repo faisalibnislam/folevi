@@ -11,7 +11,10 @@
 //   cmd frame {"do":"menu","item":"go.next-tab"}    a menu bar item as if chosen
 //   cmd frame {"do":"post","name":"n","value":"v"}  posts a notification (a screen's own test hook)
 //   cmd frame {"do":"resize","w":1280,"h":820}      the window's content size; {"do":"front"} brings it forward;
-//   cmd frameShot {"out":"/path.png","window":0}    the window as drawn (AppKit's own rendering of its views)
+//   cmd frameShot {"out":"/path.png","window":0}    the window as drawn (AppKit's own rendering of its views);
+//                                                   {"menu":true} the open account menu instead
+//   cmd frame {"do":"demoPictures","avatar":url,"logo":url,"space":"ws_airly"}   the demo place's picture, logo
+//                                                   and space (FOLEVI_FRAME_DEMO=1 only)
 #if DEBUG
 import AppKit
 import FoleviMac
@@ -52,6 +55,15 @@ extension NativeFrame {
                     w.setContentSize(size)
                     w.center()
                 }
+            case "demoPictures":
+                // The demo place's picture, logo and space (screens.mjs --avatars): a new photo arrives as the
+                // engine's next session and places, as a real one does.
+                if let demo = frame.demoEngine {
+                    demo.avatarUrl = req["avatar"] as? String
+                    demo.logoUrl = req["logo"] as? String
+                    if let space = req["space"] as? String { demo.space = space }
+                    demo.refreshAll()
+                }
             case "front":
                 mains[i].window?.makeKeyAndOrderFront(nil)
                 NSApp.activate()
@@ -63,7 +75,8 @@ extension NativeFrame {
         MacEval.commands["frameShot"] = { req, done in
             let mains = WindowManager.shared.mains
             let i = req["window"] as? Int ?? 0
-            guard mains.indices.contains(i), let window = mains[i].window, let path = req["out"] as? String else { return done(["error": "no window or no out"]) }
+            guard mains.indices.contains(i), let path = req["out"] as? String,
+                  let window = req["menu"] as? Bool == true ? AccountMenuWindow.shown : mains[i].window else { return done(["error": "no window (or no account menu open) or no out"]) }
             guard let view = window.contentView?.superview ?? window.contentView, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return done(["error": "no image"]) }
             view.cacheDisplay(in: view.bounds, to: rep)
             guard let png = rep.representation(using: .png, properties: [:]) else { return done(["error": "no png"]) }

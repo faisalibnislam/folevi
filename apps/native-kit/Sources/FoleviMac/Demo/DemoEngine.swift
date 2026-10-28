@@ -18,6 +18,9 @@ public final class DemoEngine {
     public var folders: [FolderNode] = []
     public var tags: [TagRow] = []
     public var space = "personal"
+    /// The profile's picture and the workspace's logo (signed https links in a real place).
+    public var avatarUrl: String?
+    public var logoUrl: String?
     public var syncState: SyncState = .saved
     public var pending = 0
     public var online = true
@@ -187,7 +190,7 @@ public final class DemoEngine {
     public var session: SessionValue {
         SessionValue(
             place: place, mode: .account,
-            profile: ProfileInfo(id: "u_demo", name: "Faisal Islam", email: "demo@folevi.test", avatarUrl: nil),
+            profile: ProfileInfo(id: "u_demo", name: "Faisal Islam", email: "demo@folevi.test", avatarUrl: avatarUrl),
             spaces: [
                 SpaceInfo(id: "personal", kind: .personal, name: "Personal", role: "owner", canEdit: true, canManage: false, encrypted: false, locked: false),
                 SpaceInfo(id: "ws_airly", kind: .workspace, name: "Airly Studio", role: "admin", canEdit: true, canManage: true, encrypted: false, locked: false),
@@ -199,7 +202,7 @@ public final class DemoEngine {
 
     public var placesValue: PlacesValue {
         PlacesValue(current: place, places: [
-            PlaceRow(id: place, kind: .account, name: "Faisal Islam", email: "demo@folevi.test", avatarUrl: nil, syncs: nil, workspaces: [PlaceWorkspaceInfo(id: "ws_airly", name: "Airly Studio", logoUrl: nil)], unread: 3, reminders: 0, waiting: 0),
+            PlaceRow(id: place, kind: .account, name: "Faisal Islam", email: "demo@folevi.test", avatarUrl: avatarUrl, syncs: nil, workspaces: [PlaceWorkspaceInfo(id: "ws_airly", name: "Airly Studio", logoUrl: logoUrl)], unread: 3, reminders: 0, waiting: 0),
             PlaceRow(id: "acct:work", kind: .account, name: "Faisal at Airly", email: "faisal@airly.test", avatarUrl: nil, syncs: nil, workspaces: [], unread: 1, reminders: 0, waiting: 0),
             PlaceRow(id: "library", kind: .library, name: "On this device", email: nil, avatarUrl: nil, syncs: "Syncs with iCloud Drive", workspaces: [], unread: 0, reminders: 0, waiting: 0),
         ])

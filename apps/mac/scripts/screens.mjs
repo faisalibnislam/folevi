@@ -7,6 +7,7 @@
 //   node apps/mac/scripts/screens.mjs [--fresh] [--only home,notes] [--size 1280x820]
 //   node apps/mac/scripts/screens.mjs --gates [--only first-launch]   (the screens before the app, gates.mjs)
 //   node apps/mac/scripts/screens.mjs --switch [--only home]   (the Mac switching light and dark with a screen open)
+//   node apps/mac/scripts/screens.mjs --avatars   (the account's picture on the demo engine: initial, photo, new photo, logo)
 //
 // Everything lives in apps/mac/build/run/screens (the app's data) and apps/mac/build/run/screens-library (the
 // library folder, FOLEVI_TEST_FOLDER): never the installed app's folder, Keychain or library. --fresh starts
@@ -517,6 +518,97 @@ if (process.argv.includes("--switch")) {
   writeReport(sout, { title: "Appearance switches: web vs Folevi for Mac", note: `The Mac's appearance switched with each screen open, ${width} x ${height} pt, the web frame vs the native frame.`, threshold, results, imageWidth: 520 });
   for (const r of results) console.log(`${r.id} ${r.scheme}: ${(r.ratio * 100).toFixed(2)}%${r.pass ? "" : " (over)"}${r.reason ? ` ${r.reason}` : ""}`);
   process.exit(results.every((r) => r.pass) ? 0 : 1);
+}
+
+// --avatars: the account's picture, into apps/mac/screens-report/avatars. A picture needs a signed-in account,
+// which a scratch run doesn't have, so this runs the native frame on its demo engine (FOLEVI_FRAME_DEMO=1) with
+// real https pictures from folevi.com: the sidebar's account button and the account menu with no picture (the
+// initial), with a photo, after the photo changes (the engine's next session, as an upload brings), and in a team
+// workspace with and without a logo, light and dark. Each step must change the button's pixels as it should
+// (the photo replaces the initial, a new photo replaces the old, a logo replaces the workspace's initial).
+if (process.argv.includes("--avatars")) {
+  const adir = join(MAC, "build", "run", "avatars");
+  const aout = join(out, "avatars");
+  rmSync(aout, { recursive: true, force: true });
+  mkdirSync(aout, { recursive: true });
+  const PHOTO = "https://folevi.com/marketing/people/alex@2x.webp";
+  const NEW_PHOTO = "https://folevi.com/marketing/people/ines@2x.webp";
+  const STEPS = [
+    { name: "initial", space: "personal", avatar: null, logo: null },
+    { name: "photo", space: "personal", avatar: PHOTO, logo: null },
+    { name: "photo-changed", space: "personal", avatar: NEW_PHOTO, logo: null },
+    { name: "workspace", space: "ws_airly", avatar: NEW_PHOTO, logo: null },
+    { name: "workspace-logo", space: "ws_airly", avatar: NEW_PHOTO, logo: PHOTO },
+  ];
+  // The account button: the sidebar's foot (its 28 pt mark and the two lines beside it).
+  const FOOT = { x: 0, y: height - 64, width: 256, height: 64 };
+  const browser = await webkit.launch();
+  /** The share of pixels that differ between two pictures of the same size (any channel over 24). */
+  const differ = async (a, b) => {
+    const page = await browser.newPage();
+    const r = await page.evaluate(async ({ a, b }) => {
+      const load = async (u) => {
+        const img = new Image();
+        img.src = u;
+        await img.decode();
+        const c = document.createElement("canvas");
+        c.width = img.width;
+        c.height = img.height;
+        const ctx = c.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        return ctx.getImageData(0, 0, c.width, c.height).data;
+      };
+      const [x, y] = [await load(a), await load(b)];
+      let n = 0;
+      for (let i = 0; i < x.length; i += 4) if (Math.abs(x[i] - y[i]) > 24 || Math.abs(x[i + 1] - y[i + 1]) > 24 || Math.abs(x[i + 2] - y[i + 2]) > 24) n++;
+      return n / (x.length / 4);
+    }, { a: `data:image/png;base64,${readFileSync(a).toString("base64")}`, b: `data:image/png;base64,${readFileSync(b).toString("base64")}` });
+    await page.close();
+    return r;
+  };
+  const checks = [];
+  try {
+    await launch({ dir: adir, env: { FOLEVI_FRAME_DEMO: "1" } });
+    await waitFor(adir, `return true`, 30_000).catch(() => undefined);
+    await sleep(2500);
+    ensure(await command(adir, { cmd: "resize", width, height }));
+    for (const scheme of ["light", "dark"]) {
+      ensure(await command(adir, { cmd: "appearance", value: scheme }));
+      for (const step of STEPS) {
+        ensure(await command(adir, { cmd: "frame", do: "demoPictures", avatar: step.avatar, logo: step.logo, space: step.space }));
+        // The picture's download.
+        await sleep(step.avatar || step.logo ? 3500 : 1200);
+        const shot = join(aout, `window-${step.name}-${scheme}.png`);
+        ensure(await command(adir, { cmd: "windowShot", out: shot }, 60_000));
+        await crop(browser, shot, FOOT, join(aout, `foot-${step.name}-${scheme}.png`));
+        ensure(await command(adir, { cmd: "frame", do: "popover", which: "account" }));
+        await sleep(step.avatar || step.logo ? 3000 : 800);
+        ensure(await command(adir, { cmd: "frameShot", menu: true, out: join(aout, `menu-${step.name}-${scheme}.png`) }, 60_000));
+        await command(adir, { cmd: "frame", do: "popover", which: "account" }).catch(() => undefined);
+        await sleep(400);
+      }
+      const foot = (n) => join(aout, `foot-${n}-${scheme}.png`);
+      for (const [a, b, what] of [
+        ["initial", "photo", "the photo replaces the initial"],
+        ["photo", "photo-changed", "a new photo replaces the old"],
+        ["workspace", "workspace-logo", "the logo replaces the workspace's initial"],
+      ]) {
+        const ratio = await differ(foot(a), foot(b));
+        // The 28 pt mark is about 5% of the foot; the photo changes most of it.
+        checks.push({ scheme, what, ratio, pass: ratio > 0.02 });
+      }
+    }
+  } catch (e) {
+    console.error(`stopped: ${e.message}`);
+    process.exitCode = 2;
+  } finally {
+    await command(adir, { cmd: "quit" }).catch(() => undefined);
+    await browser.close();
+  }
+  writeFileSync(join(aout, "report.json"), JSON.stringify({ steps: STEPS, checks }, null, 2));
+  for (const c of checks) console.log(`${c.pass ? "pass" : "FAIL"}  ${c.scheme}  ${c.what}  ${(c.ratio * 100).toFixed(2)}% of the button changed`);
+  console.log(`pictures: ${aout}`);
+  process.exit(process.exitCode || (checks.length && checks.every((c) => c.pass) ? 0 : 1));
 }
 
 try {

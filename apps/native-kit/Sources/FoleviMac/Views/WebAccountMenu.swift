@@ -241,6 +241,35 @@ struct WebAvatar: View {
     }
 }
 
+/// A person's picture or initial (ui/Avatar.tsx): the signed picture when there is one, else the initial on the
+/// sunken fill with an 8% ink ring, both on the chip radius. Shown while the picture loads and when it fails.
+struct WebPersonAvatar: View {
+    let name: String
+    let url: String?
+    let size: CGFloat
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular)
+        let sunken = WebStyles.vars["color-surface-sunken"]?.resolve(scheme) ?? RGBA(0, 0, 0, 0.05)
+        let heading = WebStyles.vars["color-heading"]?.resolve(scheme) ?? RGBA(11, 11, 12)
+        let ink = WebStyles.vars["color-ink"]?.resolve(scheme) ?? RGBA(24, 24, 27)
+        let letter = name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "?"
+        let initial = Text(letter).font(Font(WebFont.ctFont(.sans, size: max(9, (size * 0.42).rounded()), weight: 600))).foregroundStyle(heading.color)
+            .frame(width: size, height: size)
+            .background(shape.fill(sunken.color))
+            .overlay(shape.strokeBorder(ink.opacity(0.08).color, lineWidth: 1))
+        if let url, let u = URL(string: url), u.scheme == "https" {
+            AsyncImage(url: u) { phase in
+                if let image = phase.image { image.resizable().scaledToFill().frame(width: size, height: size).clipShape(shape) } else { initial }
+            }
+            .frame(width: size, height: size)
+        } else {
+            initial
+        }
+    }
+}
+
 /// A borderless panel holding the account menu, above its window.
 @MainActor
 public final class AccountMenuWindow: NSPanel {

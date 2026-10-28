@@ -369,16 +369,13 @@ public struct WebSidebar: View {
         let bottom = style("bottom")
         let a = style("account")
         let name = model.accountName.isEmpty ? "You" : model.accountName
+        let foot = accountFoot(name)
         return Button { actions.account(NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation(in: NSApp.keyWindow))) } label: {
             HStack(spacing: a.gap) {
-                Text(String(name.prefix(1)).uppercased())
-                    .font(WebFont.font(.sans, size: (28 * 0.46).rounded(), weight: 600))
-                    .foregroundStyle(Folevi.color.canvas)
-                    .frame(width: 28, height: 28)
-                    .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(Folevi.color.heading))
+                WebAvatar(name: foot.markName, url: foot.markUrl, size: 28)
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(name).webText(WebTextStyle.role(.body, weight: 600).leading(17.5)).lineLimit(1).foregroundStyle(Folevi.color.heading)
-                    Text(model.session.value?.mode == .local ? "On your devices" : model.spaceName).webText(WebTextStyle.role(.footnote).leading(15)).lineLimit(1).foregroundStyle(Folevi.color.inkMuted)
+                    Text(foot.title).webText(WebTextStyle.role(.body, weight: 600).leading(17.5)).lineLimit(1).foregroundStyle(Folevi.color.heading)
+                    Text(foot.detail).webText(WebTextStyle.role(.footnote).leading(15)).lineLimit(1).foregroundStyle(Folevi.color.inkMuted)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 WebIconView(.chevronsUpDown, size: 14).foregroundStyle(Folevi.color.inkFaint)
@@ -389,6 +386,20 @@ public struct WebSidebar: View {
         }
         .buttonStyle(WebHoverRowStyle(radius: a.radius, hover: WebStyles.vars["mac-hover"], press: WebStyles.vars["mac-press"], selected: false))
         .padding(bottom.padding.edgeInsets)
+    }
+
+    /// What the account button shows (WorkspaceMenu.tsx): in a team workspace its logo (or initial), its name and
+    /// you under it; in Personal your picture (or initial), you and "Personal"; in the library your picture and "On
+    /// your devices". The picture is the profile's signed avatarUrl, so a new photo comes with the next session.
+    private func accountFoot(_ name: String) -> (markName: String, markUrl: String?, title: String, detail: String) {
+        guard let s = model.session.value else { return (name, nil, name, "") }
+        if s.mode == .local { return (name, s.profile.avatarUrl, name, "On your devices") }
+        if let space = s.spaces.first(where: { $0.id == s.space }), space.kind == .workspace {
+            let places = model.places.value
+            let logo = places?.places.first { $0.id == places?.current }?.workspaces.first { $0.id == space.id }?.logoUrl
+            return (space.name, logo, space.name, name)
+        }
+        return (name, s.profile.avatarUrl, name, "Personal")
     }
 }
 

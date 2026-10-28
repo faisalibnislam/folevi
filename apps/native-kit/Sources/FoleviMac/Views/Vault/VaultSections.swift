@@ -63,6 +63,8 @@ private struct VaultDividedLayout: _VariadicView_MultiViewRoot {
 struct VaultRow<Trailing: View>: View {
     let title: String
     let detail: String
+    /// A person's picture or initial first (People, as the web's 32 pt Avatar).
+    var person: (name: String, url: String?)? = nil
     var selected = false
     var action: (() -> Void)?
     @ViewBuilder var trailing: Trailing
@@ -74,6 +76,7 @@ struct VaultRow<Trailing: View>: View {
         let t = VS.style("vault.row.title", scheme)
         let d = VS.style("vault.row.detail", scheme)
         let content = HStack(spacing: row.gap) {
+            if let person { WebPersonAvatar(name: person.name, url: person.url, size: 32) }
             VStack(alignment: .leading, spacing: 0) {
                 Text(title).webText(t.text).lineLimit(1).foregroundStyle(t.color.color)
                 Text(detail.isEmpty ? " " : detail).webText(d.text).lineLimit(1).foregroundStyle(d.color.color)
@@ -830,7 +833,7 @@ struct VaultPeopleView: View {
                 }
                 VaultList {
                     ForEach(p.people, id: \.profileId) { person in
-                        VaultRow(title: person.name + (person.isYou ? " (you)" : ""), detail: [person.email, person.status].compactMap { $0 }.joined(separator: " · ")) {
+                        VaultRow(title: person.name + (person.isYou ? " (you)" : ""), detail: [person.email, person.status].compactMap { $0 }.joined(separator: " · "), person: (person.name, person.avatarUrl)) {
                             if person.role == "owner" {
                                 Text("Owner").webText(VS.style("vault.row.detail", scheme).text).foregroundStyle(VS.style("vault.row.detail", scheme).color.color)
                             } else if p.canNameCustodians {

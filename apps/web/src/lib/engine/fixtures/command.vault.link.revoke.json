@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "vault.link.revoke",
+  "description": "End a link.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "linkId": "link_1"
+  },
+  "result": {
+    "ok": true
+  }
+}

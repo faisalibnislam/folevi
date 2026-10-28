@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "vault.setUp",
+  "description": "Set up the Vault with a 6 digit PIN; the recovery key comes back once.",
+  "args": {
+    "passcode": "246813"
+  },
+  "result": {
+    "recoveryKey": "6PQY-C1ZS-MRVM-GR5F-XKDQ-TP1S-K12E-P020-F4YE"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "vault.requestReset",
+  "description": "Ask a custodian for the key again (team Vault).",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001"
+  },
+  "result": {
+    "ok": true
+  }
+}

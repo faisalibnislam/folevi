@@ -4259,14 +4259,72 @@ public struct ChatCapabilities: Codable, Hashable, Sendable {
     /// Conversations are kept (Settings > Foli AI > History).
     public var history: Bool
     public var agent: Bool
+    /// Revision 16. Why Foli AI can't be used here (null when it can): "off" (turned off in Settings > AI), "plan" (not on the
+    /// person's plan), "workspacePlan" (not on this workspace's plan), "setup" (local mode: no model on this device
+    /// yet). Open: show the message for an unknown one as "plan".
+    public var unavailable: String?
+    /// Revision 16 (R12.7): the AI credits that apply here; null in local mode (no credits) and while unknown. Usage only.
+    public var credits: ChatCredits?
 
-    public init(available: Bool, vision: Bool, webResearch: Bool, attachments: Bool, history: Bool, agent: Bool) {
+    public init(available: Bool, vision: Bool, webResearch: Bool, attachments: Bool, history: Bool, agent: Bool, unavailable: String? = nil, credits: ChatCredits? = nil) {
         self.available = available
         self.vision = vision
         self.webResearch = webResearch
         self.attachments = attachments
         self.history = history
         self.agent = agent
+        self.unavailable = unavailable
+        self.credits = credits
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.available, forKey: .available)
+        try container.encode(self.vision, forKey: .vision)
+        try container.encode(self.webResearch, forKey: .webResearch)
+        try container.encode(self.attachments, forKey: .attachments)
+        try container.encode(self.history, forKey: .history)
+        try container.encode(self.agent, forKey: .agent)
+        try container.encode(self.unavailable, forKey: .unavailable)
+        try container.encode(self.credits, forKey: .credits)
+    }
+}
+
+/// R12.7: the AI credits that apply where the person is working (billing.credits). Never a purchase surface.
+public struct ChatCredits: Codable, Hashable, Sendable {
+    /// Foli AI is on the plan here.
+    public var included: Bool
+    /// Credits left in all (this period's and bought ones).
+    public var available: Int
+    /// Few enough left that the chat says so (the web's AiCreditsNote: under 20% of the month, or a handful).
+    public var low: Bool
+    /// When this period's credits reset (ms), or the trial ends.
+    public var resetsAt: Double?
+    public var trialing: Bool
+    /// A seat in a team workspace (the workspace's credits).
+    public var seat: Bool
+    /// More can be bought here ("Buy more"); false on iOS and in local mode.
+    public var canBuy: Bool
+
+    public init(included: Bool, available: Int, low: Bool, resetsAt: Double? = nil, trialing: Bool, seat: Bool, canBuy: Bool) {
+        self.included = included
+        self.available = available
+        self.low = low
+        self.resetsAt = resetsAt
+        self.trialing = trialing
+        self.seat = seat
+        self.canBuy = canBuy
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.included, forKey: .included)
+        try container.encode(self.available, forKey: .available)
+        try container.encode(self.low, forKey: .low)
+        try container.encode(self.resetsAt, forKey: .resetsAt)
+        try container.encode(self.trialing, forKey: .trialing)
+        try container.encode(self.seat, forKey: .seat)
+        try container.encode(self.canBuy, forKey: .canBuy)
     }
 }
 
@@ -5693,5 +5751,1658 @@ public struct NotesMoveCheckValue: Codable, Hashable, Sendable {
         try container.encode(self.loses, forKey: .loses)
         try container.encode(self.title, forKey: .title)
         try container.encode(self.message, forKey: .message)
+    }
+}
+
+/// Where the Vault page is: `none` (no Vault for this person here: the sidebar has no row), `setUp` (its owner can
+/// set it up), `encryptionLocked` (this device must unlock encryption first), `waitingForKey`, `needsPasscode` (a
+/// custodian shared the key), `locked`, `open`.
+public enum VaultState: String, Codable, Hashable, Sendable, CaseIterable {
+    case none
+    case setUp
+    case encryptionLocked
+    case waitingForKey
+    case needsPasscode
+    case locked
+    case `open`
+}
+
+/// The Vault's sections: the two tabs and the ones in the ⋯ menu beside Lock.
+public enum VaultSection: String, Codable, Hashable, Sendable, CaseIterable {
+    case files
+    case passwords
+    case health
+    case activity
+    case people
+    case trash
+    case settings
+}
+
+public struct VaultSummaryValue: Codable, Hashable, Sendable {
+    public var state: VaultState
+    /// Null until it exists.
+    public var vaultId: String?
+    public var personal: Bool
+    /// A library's Vault on this device (no account): no People, sharing or Activity.
+    public var local: Bool
+    /// "owner", "custodian" or "member".
+    public var role: String
+    public var autoLockMinutes: Int
+    /// When it locks itself if nothing happens (open only).
+    public var locksAt: Double?
+    /// The recovery key to show once after set-up or "Make a new recovery key", until `vault.recoverySaved`.
+    public var recoveryToSave: String?
+    public var recoveryOutdated: Bool
+    public var accessReviewDue: Bool
+    public var custodiansNameCustodians: Bool
+    /// The ⋯ menu's sections, in order (Health, Activity, People, Trash, Settings as this Vault has them).
+    public var moreSections: [VaultSection]
+    /// The passcode lengths offered (6, 8, 12).
+    public var passcodeLengths: [Int]
+
+    public init(state: VaultState, vaultId: String? = nil, personal: Bool, local: Bool, role: String, autoLockMinutes: Int, locksAt: Double? = nil, recoveryToSave: String? = nil, recoveryOutdated: Bool, accessReviewDue: Bool, custodiansNameCustodians: Bool, moreSections: [VaultSection], passcodeLengths: [Int]) {
+        self.state = state
+        self.vaultId = vaultId
+        self.personal = personal
+        self.local = local
+        self.role = role
+        self.autoLockMinutes = autoLockMinutes
+        self.locksAt = locksAt
+        self.recoveryToSave = recoveryToSave
+        self.recoveryOutdated = recoveryOutdated
+        self.accessReviewDue = accessReviewDue
+        self.custodiansNameCustodians = custodiansNameCustodians
+        self.moreSections = moreSections
+        self.passcodeLengths = passcodeLengths
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.state, forKey: .state)
+        try container.encode(self.vaultId, forKey: .vaultId)
+        try container.encode(self.personal, forKey: .personal)
+        try container.encode(self.local, forKey: .local)
+        try container.encode(self.role, forKey: .role)
+        try container.encode(self.autoLockMinutes, forKey: .autoLockMinutes)
+        try container.encode(self.locksAt, forKey: .locksAt)
+        try container.encode(self.recoveryToSave, forKey: .recoveryToSave)
+        try container.encode(self.recoveryOutdated, forKey: .recoveryOutdated)
+        try container.encode(self.accessReviewDue, forKey: .accessReviewDue)
+        try container.encode(self.custodiansNameCustodians, forKey: .custodiansNameCustodians)
+        try container.encode(self.moreSections, forKey: .moreSections)
+        try container.encode(self.passcodeLengths, forKey: .passcodeLengths)
+    }
+}
+
+/// A field of an item kind (lib/vault/items.ts ITEM_KINDS). `type`: text, secret, url, date, multiline, totp.
+public struct VaultFieldDef: Codable, Hashable, Sendable {
+    public var key: String
+    public var label: String
+    public var type: String
+
+    public init(key: String, label: String, type: String) {
+        self.key = key
+        self.label = label
+        self.type = type
+    }
+}
+
+public struct VaultKindDef: Codable, Hashable, Sendable {
+    public var kind: String
+    public var label: String
+    public var fields: [VaultFieldDef]
+
+    public init(kind: String, label: String, fields: [VaultFieldDef]) {
+        self.kind = kind
+        self.label = label
+        self.fields = fields
+    }
+}
+
+public struct VaultItemHealth: Codable, Hashable, Sendable {
+    public var strength: Int
+    /// "breached", "ok" or "unknown".
+    public var breached: String
+    public var checkedAt: Double
+
+    public init(strength: Int, breached: String, checkedAt: Double) {
+        self.strength = strength
+        self.breached = breached
+        self.checkedAt = checkedAt
+    }
+}
+
+/// A row of a list: what its sealed summary holds, opened by the engine.
+public struct VaultItemRow: Codable, Hashable, Sendable {
+    public var id: String
+    /// A password kind (login, apiKey, …), "note" or "file".
+    public var kind: String
+    public var kindLabel: String
+    public var title: String
+    /// The web's second line: kind and username for passwords, the excerpt for a note, the size for a file.
+    public var detail: String
+    public var folderId: String?
+    public var revision: Int
+    public var updatedAt: Double
+    public var deletedAt: Double?
+    /// A file's type and size in bytes.
+    public var mime: String?
+    public var size: Int?
+
+    public init(id: String, kind: String, kindLabel: String, title: String, detail: String, folderId: String? = nil, revision: Int, updatedAt: Double, deletedAt: Double? = nil, mime: String? = nil, size: Int? = nil) {
+        self.id = id
+        self.kind = kind
+        self.kindLabel = kindLabel
+        self.title = title
+        self.detail = detail
+        self.folderId = folderId
+        self.revision = revision
+        self.updatedAt = updatedAt
+        self.deletedAt = deletedAt
+        self.mime = mime
+        self.size = size
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.kindLabel, forKey: .kindLabel)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.detail, forKey: .detail)
+        try container.encode(self.folderId, forKey: .folderId)
+        try container.encode(self.revision, forKey: .revision)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+        try container.encode(self.deletedAt, forKey: .deletedAt)
+        try container.encode(self.mime, forKey: .mime)
+        try container.encode(self.size, forKey: .size)
+    }
+}
+
+public struct VaultItemsArgs: Codable, Hashable, Sendable {
+    public enum Section: String, Codable, Hashable, Sendable, CaseIterable {
+        case passwords
+        case files
+        case trash
+    }
+
+    public var vaultId: String
+    public var section: Section
+    public var folderId: Patch<String>
+
+    enum CodingKeys: String, CodingKey {
+        case vaultId
+        case section
+        case folderId
+    }
+
+    public init(vaultId: String, section: Section, folderId: String? = nil) {
+        self.vaultId = vaultId
+        self.section = section
+        self.folderId = Patch(folderId)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.vaultId, forKey: .vaultId)
+        try container.encode(self.section, forKey: .section)
+        try container.encodePatch(self.folderId, forKey: .folderId)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.vaultId = try container.decode(String.self, forKey: .vaultId)
+        self.section = try container.decode(Section.self, forKey: .section)
+        self.folderId = try container.decodePatch(String.self, forKey: .folderId)
+    }
+}
+
+public struct VaultItemsValue: Codable, Hashable, Sendable {
+    public var items: [VaultItemRow]
+    /// The item kinds (for the filter and Add).
+    public var kinds: [VaultKindDef]
+
+    public init(items: [VaultItemRow], kinds: [VaultKindDef]) {
+        self.items = items
+        self.kinds = kinds
+    }
+}
+
+public struct VaultIdArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+
+    public init(vaultId: String) {
+        self.vaultId = vaultId
+    }
+}
+
+public struct VaultFolderRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var parentId: String?
+    public var name: String
+    public var updatedAt: Double
+
+    public init(id: String, parentId: String? = nil, name: String, updatedAt: Double) {
+        self.id = id
+        self.parentId = parentId
+        self.name = name
+        self.updatedAt = updatedAt
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.parentId, forKey: .parentId)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+    }
+}
+
+public struct VaultFoldersValue: Codable, Hashable, Sendable {
+    public var folders: [VaultFolderRow]
+
+    public init(folders: [VaultFolderRow]) {
+        self.folders = folders
+    }
+}
+
+public struct VaultHealthGroup: Codable, Hashable, Sendable {
+    /// breached, expired, reused, weak, expiring, unchecked.
+    public var issue: String
+    public var title: String
+    public var body: String
+    /// danger, warning or muted.
+    public var tone: String
+    public var items: [VaultItemRow]
+
+    public init(issue: String, title: String, body: String, tone: String, items: [VaultItemRow]) {
+        self.issue = issue
+        self.title = title
+        self.body = body
+        self.tone = tone
+        self.items = items
+    }
+}
+
+public struct VaultHealthValue: Codable, Hashable, Sendable {
+    /// Items with something other than "not checked yet".
+    public var needsLook: Int
+    public var groups: [VaultHealthGroup]
+
+    public init(needsLook: Int, groups: [VaultHealthGroup]) {
+        self.needsLook = needsLook
+        self.groups = groups
+    }
+}
+
+public struct VaultActivityArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    /// An event prefix ("vault.", "item.", …) or left out for everything.
+    public var event: String?
+    public var failedOnly: Bool?
+    public var personId: String?
+
+    public init(vaultId: String, event: String? = nil, failedOnly: Bool? = nil, personId: String? = nil) {
+        self.vaultId = vaultId
+        self.event = event
+        self.failedOnly = failedOnly
+        self.personId = personId
+    }
+}
+
+public struct VaultLogEntry: Codable, Hashable, Sendable {
+    public var seq: Int
+    public var actorName: String
+    public var label: String
+    public var failed: Bool
+    public var reason: String?
+    public var at: Double
+    /// Role, kind, device, IP and "reported by the device", joined as the web shows them.
+    public var detail: String
+
+    public init(seq: Int, actorName: String, label: String, failed: Bool, reason: String? = nil, at: Double, detail: String) {
+        self.seq = seq
+        self.actorName = actorName
+        self.label = label
+        self.failed = failed
+        self.reason = reason
+        self.at = at
+        self.detail = detail
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.seq, forKey: .seq)
+        try container.encode(self.actorName, forKey: .actorName)
+        try container.encode(self.label, forKey: .label)
+        try container.encode(self.failed, forKey: .failed)
+        try container.encode(self.reason, forKey: .reason)
+        try container.encode(self.at, forKey: .at)
+        try container.encode(self.detail, forKey: .detail)
+    }
+}
+
+public struct VaultActivityValue: Codable, Hashable, Sendable {
+    /// The owner and custodians see everyone's; a member their own.
+    public var everything: Bool
+    public var entries: [VaultLogEntry]
+
+    public init(everything: Bool, entries: [VaultLogEntry]) {
+        self.everything = everything
+        self.entries = entries
+    }
+}
+
+public struct VaultPerson: Codable, Hashable, Sendable {
+    public var profileId: String
+    public var name: String
+    public var email: String?
+    public var avatarUrl: String?
+    public var role: String
+    public var isYou: Bool
+    /// "Can open it", "Waiting for the key" or "Hasn't set a passcode yet".
+    public var status: String
+
+    public init(profileId: String, name: String, email: String? = nil, avatarUrl: String? = nil, role: String, isYou: Bool, status: String) {
+        self.profileId = profileId
+        self.name = name
+        self.email = email
+        self.avatarUrl = avatarUrl
+        self.role = role
+        self.isYou = isYou
+        self.status = status
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.profileId, forKey: .profileId)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.email, forKey: .email)
+        try container.encode(self.avatarUrl, forKey: .avatarUrl)
+        try container.encode(self.role, forKey: .role)
+        try container.encode(self.isYou, forKey: .isYou)
+        try container.encode(self.status, forKey: .status)
+    }
+}
+
+public struct VaultCandidate: Codable, Hashable, Sendable {
+    public var profileId: String
+    public var name: String
+
+    public init(profileId: String, name: String) {
+        self.profileId = profileId
+        self.name = name
+    }
+}
+
+public struct VaultPeopleValue: Codable, Hashable, Sendable {
+    public var people: [VaultPerson]
+    public var canAdd: Bool
+    public var canNameCustodians: Bool
+    public var onlyOneCustodian: Bool
+    /// Workspace members not in the Vault (who can be added).
+    public var candidates: [VaultCandidate]
+
+    public init(people: [VaultPerson], canAdd: Bool, canNameCustodians: Bool, onlyOneCustodian: Bool, candidates: [VaultCandidate]) {
+        self.people = people
+        self.canAdd = canAdd
+        self.canNameCustodians = canNameCustodians
+        self.onlyOneCustodian = onlyOneCustodian
+        self.candidates = candidates
+    }
+}
+
+public struct VaultItemIdArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var itemId: String
+
+    public init(vaultId: String, itemId: String) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+    }
+}
+
+public struct VaultSharePerson: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    public var email: String?
+    public var canEdit: Bool
+    public var expired: Bool
+    public var expiresAt: Double?
+
+    public init(id: String, name: String, email: String? = nil, canEdit: Bool, expired: Bool, expiresAt: Double? = nil) {
+        self.id = id
+        self.name = name
+        self.email = email
+        self.canEdit = canEdit
+        self.expired = expired
+        self.expiresAt = expiresAt
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.email, forKey: .email)
+        try container.encode(self.canEdit, forKey: .canEdit)
+        try container.encode(self.expired, forKey: .expired)
+        try container.encode(self.expiresAt, forKey: .expiresAt)
+    }
+}
+
+public struct VaultShareLink: Codable, Hashable, Sendable {
+    public var id: String
+    public var views: Int
+    public var maxViews: Int
+    public var expiresAt: Double
+    public var hasPassword: Bool
+
+    public init(id: String, views: Int, maxViews: Int, expiresAt: Double, hasPassword: Bool) {
+        self.id = id
+        self.views = views
+        self.maxViews = maxViews
+        self.expiresAt = expiresAt
+        self.hasPassword = hasPassword
+    }
+}
+
+public struct VaultSharesValue: Codable, Hashable, Sendable {
+    public var people: [VaultSharePerson]
+    public var links: [VaultShareLink]
+
+    public init(people: [VaultSharePerson], links: [VaultShareLink]) {
+        self.people = people
+        self.links = links
+    }
+}
+
+public struct VaultSetUpArgs: Codable, Hashable, Sendable {
+    public var passcode: String
+    public var space: SpaceRef?
+
+    public init(passcode: String, space: SpaceRef? = nil) {
+        self.passcode = passcode
+        self.space = space
+    }
+}
+
+public struct VaultPasscodeArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var passcode: String
+
+    public init(vaultId: String, passcode: String) {
+        self.vaultId = vaultId
+        self.passcode = passcode
+    }
+}
+
+public struct VaultResetArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var recoveryKey: String
+    public var passcode: String
+
+    public init(vaultId: String, recoveryKey: String, passcode: String) {
+        self.vaultId = vaultId
+        self.recoveryKey = recoveryKey
+        self.passcode = passcode
+    }
+}
+
+public struct VaultChangePasscodeArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var current: String
+    public var next: String
+
+    public init(vaultId: String, current: String, next: String) {
+        self.vaultId = vaultId
+        self.current = current
+        self.next = next
+    }
+}
+
+/// How an unlock went: `ok`, `wrong`, `locked` (until `until`), `notSetUp`, `needsPasscode`, or `oldPasscode` (a passcode from before PINs: choose a PIN with `vault.changePasscode`). `message` is the web's words.
+public struct VaultUnlockResult: Codable, Hashable, Sendable {
+    public var status: String
+    public var until: Int?
+    public var message: String?
+
+    public init(status: String, until: Int? = nil, message: String? = nil) {
+        self.status = status
+        self.until = until
+        self.message = message
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.status, forKey: .status)
+        try container.encode(self.until, forKey: .until)
+        try container.encode(self.message, forKey: .message)
+    }
+}
+
+public struct VaultRecoveryResult: Codable, Hashable, Sendable {
+    public var recoveryKey: String
+
+    public init(recoveryKey: String) {
+        self.recoveryKey = recoveryKey
+    }
+}
+
+/// One field of an opened item, in the kind's order (custom fields after), with its value.
+public struct VaultFieldValue: Codable, Hashable, Sendable {
+    public var key: String
+    public var label: String
+    public var type: String
+    public var value: String
+
+    public init(key: String, label: String, type: String, value: String) {
+        self.key = key
+        self.label = label
+        self.type = type
+        self.value = value
+    }
+}
+
+public struct VaultItemValue: Codable, Hashable, Sendable {
+    public var id: String
+    public var kind: String
+    public var kindLabel: String
+    public var title: String
+    public var fields: [VaultFieldValue]
+    public var notes: String
+    public var canChange: Bool
+    public var revision: Int
+    public var createdBy: String
+    public var updatedBy: String
+    public var updatedAt: Double
+
+    public init(id: String, kind: String, kindLabel: String, title: String, fields: [VaultFieldValue], notes: String, canChange: Bool, revision: Int, createdBy: String, updatedBy: String, updatedAt: Double) {
+        self.id = id
+        self.kind = kind
+        self.kindLabel = kindLabel
+        self.title = title
+        self.fields = fields
+        self.notes = notes
+        self.canChange = canChange
+        self.revision = revision
+        self.createdBy = createdBy
+        self.updatedBy = updatedBy
+        self.updatedAt = updatedAt
+    }
+}
+
+public struct VaultItemSaveArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    /// Left out for a new item.
+    public var itemId: String?
+    public var kind: String
+    public var title: String
+    public var values: [String: String]
+    public var notes: String
+
+    public init(vaultId: String, itemId: String? = nil, kind: String, title: String, values: [String: String], notes: String) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.kind = kind
+        self.title = title
+        self.values = values
+        self.notes = notes
+    }
+}
+
+public struct VaultIdResult: Codable, Hashable, Sendable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+}
+
+public struct VaultVersion: Codable, Hashable, Sendable {
+    public var revision: Int
+    public var title: String
+    public var editedBy: String
+    public var editedAt: Double
+    public var fields: [VaultFieldValue]
+
+    public init(revision: Int, title: String, editedBy: String, editedAt: Double, fields: [VaultFieldValue]) {
+        self.revision = revision
+        self.title = title
+        self.editedBy = editedBy
+        self.editedAt = editedAt
+        self.fields = fields
+    }
+}
+
+public struct VaultHistoryResult: Codable, Hashable, Sendable {
+    public var versions: [VaultVersion]
+
+    public init(versions: [VaultVersion]) {
+        self.versions = versions
+    }
+}
+
+public struct VaultRevisionArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var itemId: String
+    public var revision: Int
+
+    public init(vaultId: String, itemId: String, revision: Int) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.revision = revision
+    }
+}
+
+/// What only the device sees, for the log: item.reveal, item.copy, totp.show, totp.copy, file.preview, section.open, folder.open, history.view.
+public struct VaultRecordArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var event: String
+    public var itemId: String?
+    /// The field revealed or copied, or the section opened.
+    public var field: String?
+
+    public init(vaultId: String, event: String, itemId: String? = nil, field: String? = nil) {
+        self.vaultId = vaultId
+        self.event = event
+        self.itemId = itemId
+        self.field = field
+    }
+}
+
+public struct VaultTotpArgs: Codable, Hashable, Sendable {
+    public var secret: String
+
+    public init(secret: String) {
+        self.secret = secret
+    }
+}
+
+/// The 6-digit code now and the seconds it has left; null when the secret isn't one Folevi reads.
+public struct VaultTotpResult: Codable, Hashable, Sendable {
+    public var code: String?
+    public var secondsLeft: Int
+
+    public init(code: String? = nil, secondsLeft: Int) {
+        self.code = code
+        self.secondsLeft = secondsLeft
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.code, forKey: .code)
+        try container.encode(self.secondsLeft, forKey: .secondsLeft)
+    }
+}
+
+public struct VaultGenerateArgs: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case password
+        case passphrase
+    }
+
+    public var kind: Kind
+
+    public init(kind: Kind) {
+        self.kind = kind
+    }
+}
+
+public struct VaultGenerateResult: Codable, Hashable, Sendable {
+    public var value: String
+
+    public init(value: String) {
+        self.value = value
+    }
+}
+
+public struct VaultStrengthArgs: Codable, Hashable, Sendable {
+    public var password: String
+
+    public init(password: String) {
+        self.password = password
+    }
+}
+
+/// 0 to 4, and the web's words ("Strong", …).
+public struct VaultStrengthResult: Codable, Hashable, Sendable {
+    public var score: Int
+    public var label: String
+
+    public init(score: Int, label: String) {
+        self.score = score
+        self.label = label
+    }
+}
+
+public struct VaultFolderCreateArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var parentId: Patch<String>
+    public var name: String
+
+    enum CodingKeys: String, CodingKey {
+        case vaultId
+        case parentId
+        case name
+    }
+
+    public init(vaultId: String, parentId: String? = nil, name: String) {
+        self.vaultId = vaultId
+        self.parentId = Patch(parentId)
+        self.name = name
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.vaultId, forKey: .vaultId)
+        try container.encodePatch(self.parentId, forKey: .parentId)
+        try container.encode(self.name, forKey: .name)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.vaultId = try container.decode(String.self, forKey: .vaultId)
+        self.parentId = try container.decodePatch(String.self, forKey: .parentId)
+        self.name = try container.decode(String.self, forKey: .name)
+    }
+}
+
+public struct VaultNoteCreateArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var folderId: Patch<String>
+    public var title: String
+
+    enum CodingKeys: String, CodingKey {
+        case vaultId
+        case folderId
+        case title
+    }
+
+    public init(vaultId: String, folderId: String? = nil, title: String) {
+        self.vaultId = vaultId
+        self.folderId = Patch(folderId)
+        self.title = title
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.vaultId, forKey: .vaultId)
+        try container.encodePatch(self.folderId, forKey: .folderId)
+        try container.encode(self.title, forKey: .title)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.vaultId = try container.decode(String.self, forKey: .vaultId)
+        self.folderId = try container.decodePatch(String.self, forKey: .folderId)
+        self.title = try container.decode(String.self, forKey: .title)
+    }
+}
+
+/// A note's content as plain paragraphs (the editor's document, read on the Mac as text).
+public struct VaultNoteValue: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var text: String
+    public var canChange: Bool
+    public var revision: Int
+
+    public init(id: String, title: String, text: String, canChange: Bool, revision: Int) {
+        self.id = id
+        self.title = title
+        self.text = text
+        self.canChange = canChange
+        self.revision = revision
+    }
+}
+
+public struct VaultNoteSaveArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var itemId: String
+    public var revision: Int
+    public var text: String
+
+    public init(vaultId: String, itemId: String, revision: Int, text: String) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.revision = revision
+        self.text = text
+    }
+}
+
+public struct VaultRevisionResult: Codable, Hashable, Sendable {
+    public var revision: Int
+
+    public init(revision: Int) {
+        self.revision = revision
+    }
+}
+
+public struct VaultUploadArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var folderId: Patch<String>
+    public var name: String
+    public var mime: String
+    /// The file's bytes, base64. Sealed by the engine before they go anywhere.
+    public var data: String
+
+    enum CodingKeys: String, CodingKey {
+        case vaultId
+        case folderId
+        case name
+        case mime
+        case data
+    }
+
+    public init(vaultId: String, folderId: String? = nil, name: String, mime: String, data: String) {
+        self.vaultId = vaultId
+        self.folderId = Patch(folderId)
+        self.name = name
+        self.mime = mime
+        self.data = data
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.vaultId, forKey: .vaultId)
+        try container.encodePatch(self.folderId, forKey: .folderId)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.mime, forKey: .mime)
+        try container.encode(self.data, forKey: .data)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.vaultId = try container.decode(String.self, forKey: .vaultId)
+        self.folderId = try container.decodePatch(String.self, forKey: .folderId)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.mime = try container.decode(String.self, forKey: .mime)
+        self.data = try container.decode(String.self, forKey: .data)
+    }
+}
+
+public struct VaultFileOpenArgs: Codable, Hashable, Sendable {
+    public enum Purpose: String, Codable, Hashable, Sendable, CaseIterable {
+        case preview
+        case download
+    }
+
+    public var vaultId: String
+    public var itemId: String
+    public var purpose: Purpose
+
+    public init(vaultId: String, itemId: String, purpose: Purpose) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.purpose = purpose
+    }
+}
+
+/// A file decrypted in memory: its name, type, how to show it (image, pdf, text, csv, audio, video, other) and bytes.
+public struct VaultFileValue: Codable, Hashable, Sendable {
+    public var name: String
+    public var mime: String
+    public var kind: String
+    /// base64.
+    public var data: String
+
+    public init(name: String, mime: String, kind: String, data: String) {
+        self.name = name
+        self.mime = mime
+        self.kind = kind
+        self.data = data
+    }
+}
+
+public struct VaultRemovedResult: Codable, Hashable, Sendable {
+    public var removed: Int
+
+    public init(removed: Int) {
+        self.removed = removed
+    }
+}
+
+public struct VaultSettingsArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var autoLockMinutes: Int?
+    public var custodiansNameCustodians: Bool?
+
+    public init(vaultId: String, autoLockMinutes: Int? = nil, custodiansNameCustodians: Bool? = nil) {
+        self.vaultId = vaultId
+        self.autoLockMinutes = autoLockMinutes
+        self.custodiansNameCustodians = custodiansNameCustodians
+    }
+}
+
+public struct VaultPersonArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var profileId: String
+
+    public init(vaultId: String, profileId: String) {
+        self.vaultId = vaultId
+        self.profileId = profileId
+    }
+}
+
+public struct VaultRoleArgs: Codable, Hashable, Sendable {
+    public enum Role: String, Codable, Hashable, Sendable, CaseIterable {
+        case custodian
+        case member
+    }
+
+    public var vaultId: String
+    public var profileId: String
+    public var role: Role
+
+    public init(vaultId: String, profileId: String, role: Role) {
+        self.vaultId = vaultId
+        self.profileId = profileId
+        self.role = role
+    }
+}
+
+public struct VaultShareArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var itemId: String
+    public var email: String
+    /// For someone outside the workspace: how long they have it.
+    public var days: Int
+    public var canEdit: Bool
+
+    public init(vaultId: String, itemId: String, email: String, days: Int, canEdit: Bool) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.email = email
+        self.days = days
+        self.canEdit = canEdit
+    }
+}
+
+/// What happened: `shared`, `notFound`, `inVault`, `unchecked`; `message` says it in the web's words.
+public struct VaultShareResult: Codable, Hashable, Sendable {
+    public var status: String
+    public var message: String
+
+    public init(status: String, message: String) {
+        self.status = status
+        self.message = message
+    }
+}
+
+public struct VaultShareStopArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var itemId: String
+    public var shareId: String
+
+    public init(vaultId: String, itemId: String, shareId: String) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.shareId = shareId
+    }
+}
+
+public struct VaultLinkArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var itemId: String
+    public var maxViews: Int
+    /// How long it works, in milliseconds (1 hour to 30 days).
+    public var lastsMs: Int
+    public var password: String?
+
+    public init(vaultId: String, itemId: String, maxViews: Int, lastsMs: Int, password: String? = nil) {
+        self.vaultId = vaultId
+        self.itemId = itemId
+        self.maxViews = maxViews
+        self.lastsMs = lastsMs
+        self.password = password
+    }
+}
+
+/// The link, shown only now.
+public struct VaultLinkResult: Codable, Hashable, Sendable {
+    public var url: String
+
+    public init(url: String) {
+        self.url = url
+    }
+}
+
+public struct VaultLinkRevokeArgs: Codable, Hashable, Sendable {
+    public var vaultId: String
+    public var linkId: String
+
+    public init(vaultId: String, linkId: String) {
+        self.vaultId = vaultId
+        self.linkId = linkId
+    }
+}
+
+/// `graph { space?, kinds? }`: the space's notes and links (aiGraph.graph); `kinds` limits the entities shown.
+public struct GraphArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    /// "person", "project", "organization", "topic", "decision"; left out: all of them.
+    public var kinds: [String]?
+
+    public init(space: SpaceRef? = nil, kinds: [String]? = nil) {
+        self.space = space
+        self.kinds = kinds
+    }
+}
+
+/// A node, placed by the web's own force layout (lib/graph/layout.ts Simulation, deterministic) in world units.
+public struct GraphNode: Codable, Hashable, Sendable {
+    public var id: String
+    /// "note", or an entity's kind (open).
+    public var kind: String
+    public var label: String
+    public var x: Double
+    public var y: Double
+    /// How many edges it has.
+    public var degree: Int
+
+    public init(id: String, kind: String, label: String, x: Double, y: Double, degree: Int) {
+        self.id = id
+        self.kind = kind
+        self.label = label
+        self.x = x
+        self.y = y
+        self.degree = degree
+    }
+}
+
+public struct GraphEdge: Codable, Hashable, Sendable {
+    public var source: String
+    public var target: String
+    /// "link", "mention", "similar", "related", "references", "contradicts", "supersedes" (open).
+    public var kind: String
+    public var inferred: Bool
+
+    public init(source: String, target: String, kind: String, inferred: Bool) {
+        self.source = source
+        self.target = target
+        self.kind = kind
+        self.inferred = inferred
+    }
+}
+
+public struct GraphValue: Codable, Hashable, Sendable {
+    /// Entities (people, projects...) are in the plan, so their filters show.
+    public var full: Bool
+    /// Why some of the graph isn't there (the plan, Foli AI off), or null.
+    public var note: String?
+    /// The plan is why: point at plans.
+    public var upgrade: Bool
+    /// Only the most recently edited notes are shown.
+    public var truncated: Bool
+    public var nodes: [GraphNode]
+    public var edges: [GraphEdge]
+
+    public init(full: Bool, note: String? = nil, upgrade: Bool, truncated: Bool, nodes: [GraphNode], edges: [GraphEdge]) {
+        self.full = full
+        self.note = note
+        self.upgrade = upgrade
+        self.truncated = truncated
+        self.nodes = nodes
+        self.edges = edges
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.full, forKey: .full)
+        try container.encode(self.note, forKey: .note)
+        try container.encode(self.upgrade, forKey: .upgrade)
+        try container.encode(self.truncated, forKey: .truncated)
+        try container.encode(self.nodes, forKey: .nodes)
+        try container.encode(self.edges, forKey: .edges)
+    }
+}
+
+/// `reviews { noteId?, space? }`: the cards due now. Neither: everywhere; `space`: one space; `noteId`: one note.
+public struct ReviewsArgs: Codable, Hashable, Sendable {
+    public var noteId: String?
+    public var space: SpaceRef?
+
+    public init(noteId: String? = nil, space: SpaceRef? = nil) {
+        self.noteId = noteId
+        self.space = space
+    }
+}
+
+/// How long until a card comes back after each rating (ms).
+public struct ReviewIntervals: Codable, Hashable, Sendable {
+    public var again: Int
+    public var hard: Int
+    public var good: Int
+    public var easy: Int
+
+    public init(again: Int, hard: Int, good: Int, easy: Int) {
+        self.again = again
+        self.hard = hard
+        self.good = good
+        self.easy = easy
+    }
+}
+
+public struct ReviewCard: Codable, Hashable, Sendable {
+    public var blockId: String
+    /// "flashcard", "quiz" (open).
+    public var kind: String
+    public var noteId: String
+    public var noteTitle: String
+    public var front: String
+    public var back: String
+    public var isNew: Bool
+    public var lastReview: Int?
+    public var intervals: ReviewIntervals
+
+    public init(blockId: String, kind: String, noteId: String, noteTitle: String, front: String, back: String, isNew: Bool, lastReview: Int? = nil, intervals: ReviewIntervals) {
+        self.blockId = blockId
+        self.kind = kind
+        self.noteId = noteId
+        self.noteTitle = noteTitle
+        self.front = front
+        self.back = back
+        self.isNew = isNew
+        self.lastReview = lastReview
+        self.intervals = intervals
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.blockId, forKey: .blockId)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.noteTitle, forKey: .noteTitle)
+        try container.encode(self.front, forKey: .front)
+        try container.encode(self.back, forKey: .back)
+        try container.encode(self.isNew, forKey: .isNew)
+        try container.encode(self.lastReview, forKey: .lastReview)
+        try container.encode(self.intervals, forKey: .intervals)
+    }
+}
+
+public struct ReviewsValue: Codable, Hashable, Sendable {
+    /// False when the note asked for can't be opened any more.
+    public var found: Bool
+    /// In order, at most 20 (study.queue).
+    public var cards: [ReviewCard]
+    public var due: Int
+    public var new: Int
+    /// Due later today.
+    public var later: Int
+    public var total: Int
+    public var hasCards: Bool
+    /// The note's title when one note is reviewed, else null.
+    public var noteTitle: String?
+    /// New cards a day (0, 10, 20, 30, 50, 100).
+    public var newPerDay: Int
+
+    public init(found: Bool, cards: [ReviewCard], due: Int, new: Int, later: Int, total: Int, hasCards: Bool, noteTitle: String? = nil, newPerDay: Int) {
+        self.found = found
+        self.cards = cards
+        self.due = due
+        self.new = new
+        self.later = later
+        self.total = total
+        self.hasCards = hasCards
+        self.noteTitle = noteTitle
+        self.newPerDay = newPerDay
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.found, forKey: .found)
+        try container.encode(self.cards, forKey: .cards)
+        try container.encode(self.due, forKey: .due)
+        try container.encode(self.new, forKey: .new)
+        try container.encode(self.later, forKey: .later)
+        try container.encode(self.total, forKey: .total)
+        try container.encode(self.hasCards, forKey: .hasCards)
+        try container.encode(self.noteTitle, forKey: .noteTitle)
+        try container.encode(self.newPerDay, forKey: .newPerDay)
+    }
+}
+
+/// `review.rate`: how well a card was known ("again", "hard", "good", "easy").
+public struct ReviewRateArgs: Codable, Hashable, Sendable {
+    public var blockId: String
+    public var rating: String
+    public var lastReview: Int?
+
+    public init(blockId: String, rating: String, lastReview: Int? = nil) {
+        self.blockId = blockId
+        self.rating = rating
+        self.lastReview = lastReview
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.blockId, forKey: .blockId)
+        try container.encode(self.rating, forKey: .rating)
+        try container.encode(self.lastReview, forKey: .lastReview)
+    }
+}
+
+/// `review.setNewPerDay`: one of 0, 10, 20, 30, 50, 100.
+public struct ReviewNewPerDayArgs: Codable, Hashable, Sendable {
+    public var value: Int
+
+    public init(value: Int) {
+        self.value = value
+    }
+}
+
+/// `recent.viewed { space?, limit? }`: the notes this person opened last (documents.recent), newest first, for ⌘K's Recent.
+public struct RecentViewedArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    /// Default 8, at most 30.
+    public var limit: Int?
+
+    public init(space: SpaceRef? = nil, limit: Int? = nil) {
+        self.space = space
+        self.limit = limit
+    }
+}
+
+public struct RecentViewedRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var icon: String?
+    public var updatedAt: Double
+
+    public init(id: String, title: String, icon: String? = nil, updatedAt: Double) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+        self.updatedAt = updatedAt
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.icon, forKey: .icon)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+    }
+}
+
+public struct RecentViewedValue: Codable, Hashable, Sendable {
+    public var rows: [RecentViewedRow]
+
+    public init(rows: [RecentViewedRow]) {
+        self.rows = rows
+    }
+}
+
+/// Settings on the Mac, native (docs/MAC_REBUILD_PLAN.md section 0): `settings.query` reads one of these, worded as
+/// the web's Settings words it (viewsSettings.ts); "convex" is one of the Convex queries Settings reads
+/// (args { fn, args }, an allowlist).
+public enum SettingsQueryKey: String, Codable, Hashable, Sendable, CaseIterable {
+    case library
+    case localAi
+    case desktop
+    case convex
+}
+
+/// What `settings.run` does: the library's controls, Foli AI's keys on the device, the Mac app's settings, and the Convex changes Settings makes (args { fn, args }, an allowlist).
+public enum SettingsRunKey: String, Codable, Hashable, Sendable, CaseIterable {
+    case librarySyncNow = "library.syncNow"
+    case libraryMove = "library.move"
+    case libraryCloudConnect = "library.cloudConnect"
+    case libraryCloudCancel = "library.cloudCancel"
+    case libraryCloudSignOut = "library.cloudSignOut"
+    case librarySetPassphrase = "library.setPassphrase"
+    case libraryChangePassphrase = "library.changePassphrase"
+    case libraryRemovePassphrase = "library.removePassphrase"
+    case libraryLock = "library.lock"
+    case libraryForget = "library.forget"
+    case localAiSetKey = "localAi.setKey"
+    case localAiRemoveKey = "localAi.removeKey"
+    case localAiTestKey = "localAi.testKey"
+    case localAiSetChoice = "localAi.setChoice"
+    case desktopSet = "desktop.set"
+    case desktopPauseShortcut = "desktop.pauseShortcut"
+    case textLines = "text.lines"
+    case dataImport = "data.import"
+    case takeoutImport = "takeout.import"
+    case convexMutation = "convex.mutation"
+    case convexAction = "convex.action"
+}
+
+public struct SettingsQueryArgs: Codable, Hashable, Sendable {
+    public var key: SettingsQueryKey
+    public var args: [String: JSONValue]?
+
+    public init(key: SettingsQueryKey, args: [String: JSONValue]? = nil) {
+        self.key = key
+        self.args = args
+    }
+}
+
+/// The section's data as the web's section would show it (each key's shape is in viewsSettings.ts).
+public struct SettingsQueryValue: Codable, Hashable, Sendable {
+    public var data: JSONValue
+
+    public init(data: JSONValue) {
+        self.data = data
+    }
+}
+
+public struct SettingsRunArgs: Codable, Hashable, Sendable {
+    public var key: SettingsRunKey
+    public var args: [String: JSONValue]?
+
+    public init(key: SettingsRunKey, args: [String: JSONValue]? = nil) {
+        self.key = key
+        self.args = args
+    }
+}
+
+public struct SettingsRunResult: Codable, Hashable, Sendable {
+    public var data: JSONValue
+
+    public init(data: JSONValue) {
+        self.data = data
+    }
+}
+
+/// One step of where the note lives ("In Travel > Japan"): a folder or a parent page, outermost first.
+public struct NoteToolsCrumb: Codable, Hashable, Sendable {
+    /// The app path it opens ("/folders/<id>", "/d/<id>", "/documents").
+    public var href: String
+    public var label: String
+
+    public init(href: String, label: String) {
+        self.href = href
+        self.label = label
+    }
+}
+
+/// A row of the Table of contents: a heading (level 1 to 3) or a nested page.
+public struct NoteOutlineItem: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case heading
+        case page
+    }
+
+    public var kind: Kind
+    /// The block's id (what `block.jump` takes).
+    public var id: String
+    /// The heading's text ("" when empty) or the nested page's title.
+    public var text: String
+    /// Headings: 1, 2 or 3; pages: 0.
+    public var level: Int
+    /// Pages: the nested page's note id; headings: null.
+    public var documentId: String?
+
+    public init(kind: Kind, id: String, text: String, level: Int, documentId: String? = nil) {
+        self.kind = kind
+        self.id = id
+        self.text = text
+        self.level = level
+        self.documentId = documentId
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.text, forKey: .text)
+        try container.encode(self.level, forKey: .level)
+        try container.encode(self.documentId, forKey: .documentId)
+    }
+}
+
+/// A to-do in the note.
+public struct NoteToolsTask: Codable, Hashable, Sendable {
+    public var id: String
+    public var text: String
+    public var checked: Bool
+
+    public init(id: String, text: String, checked: Bool) {
+        self.id = id
+        self.text = text
+        self.checked = checked
+    }
+}
+
+/// An image, file or recording in the note.
+public struct NoteToolsAttachment: Codable, Hashable, Sendable {
+    public var id: String
+    /// "image", "file" or "audio".
+    public var kind: String
+    public var name: String
+    /// A file still on its way up.
+    public var uploading: Bool
+
+    public init(id: String, kind: String, name: String, uploading: Bool) {
+        self.id = id
+        self.kind = kind
+        self.name = name
+        self.uploading = uploading
+    }
+}
+
+/// A link in the note: a web address (embed, bookmark, linked text) or a page link.
+public struct NoteToolsLink: Codable, Hashable, Sendable {
+    public var key: String
+    public var blockId: String
+    public var label: String
+    public var href: String
+    /// A page link ("/d/<id>"), opened in the app; otherwise a web address.
+    public var `internal`: Bool
+
+    public init(key: String, blockId: String, label: String, href: String, internal: Bool) {
+        self.key = key
+        self.blockId = blockId
+        self.label = label
+        self.href = href
+        self.internal = `internal`
+    }
+}
+
+/// A comment thread, as the Comments tab lists it.
+public struct NoteToolsThread: Codable, Hashable, Sendable {
+    public enum Status: String, Codable, Hashable, Sendable, CaseIterable {
+        case `open`
+        case resolved
+    }
+
+    public var id: String
+    /// The block it's on (null: on the whole note).
+    public var blockId: String?
+    /// What it's on ("On “Temples to see”", "On the whole note").
+    public var anchor: String
+    public var author: String
+    public var avatarUrl: String?
+    /// The first comment's text (plain).
+    public var text: String
+    public var deleted: Bool
+    public var replies: Int
+    public var status: Status
+    public var resolvedBy: String?
+    public var unread: Bool
+    public var lastActivityAt: Double
+    /// "waiting" or "failed" while it's not on the server yet, else null.
+    public var waiting: String?
+
+    public init(id: String, blockId: String? = nil, anchor: String, author: String, avatarUrl: String? = nil, text: String, deleted: Bool, replies: Int, status: Status, resolvedBy: String? = nil, unread: Bool, lastActivityAt: Double, waiting: String? = nil) {
+        self.id = id
+        self.blockId = blockId
+        self.anchor = anchor
+        self.author = author
+        self.avatarUrl = avatarUrl
+        self.text = text
+        self.deleted = deleted
+        self.replies = replies
+        self.status = status
+        self.resolvedBy = resolvedBy
+        self.unread = unread
+        self.lastActivityAt = lastActivityAt
+        self.waiting = waiting
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.blockId, forKey: .blockId)
+        try container.encode(self.anchor, forKey: .anchor)
+        try container.encode(self.author, forKey: .author)
+        try container.encode(self.avatarUrl, forKey: .avatarUrl)
+        try container.encode(self.text, forKey: .text)
+        try container.encode(self.deleted, forKey: .deleted)
+        try container.encode(self.replies, forKey: .replies)
+        try container.encode(self.status, forKey: .status)
+        try container.encode(self.resolvedBy, forKey: .resolvedBy)
+        try container.encode(self.unread, forKey: .unread)
+        try container.encode(self.lastActivityAt, forKey: .lastActivityAt)
+        try container.encode(self.waiting, forKey: .waiting)
+    }
+}
+
+public struct NoteToolsComments: Codable, Hashable, Sendable {
+    /// False in local mode (no comments: the tab says what they need).
+    public var available: Bool
+    /// The threads have loaded.
+    public var loaded: Bool
+    public var canComment: Bool
+    public var threads: [NoteToolsThread]
+
+    public init(available: Bool, loaded: Bool, canComment: Bool, threads: [NoteToolsThread]) {
+        self.available = available
+        self.loaded = loaded
+        self.canComment = canComment
+        self.threads = threads
+    }
+}
+
+/// A page of the note's page tree (the note, its parent and nested pages), for a note with nested pages.
+public struct NoteToolsPage: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var depth: Int
+
+    public init(id: String, title: String, depth: Int) {
+        self.id = id
+        self.title = title
+        self.depth = depth
+    }
+}
+
+/// `note.tools`: what the open note's sidebar shows, sent when the note opens and whenever it changes.
+public struct NoteToolsEvent: Codable, Hashable, Sendable {
+    public var noteId: String
+    public var title: String
+    public var trail: [NoteToolsCrumb]
+    public var outline: [NoteOutlineItem]
+    /// The heading in view now (the outline marks it), or null.
+    public var current: String?
+    public var tasks: [NoteToolsTask]
+    public var attachments: [NoteToolsAttachment]
+    public var links: [NoteToolsLink]
+    public var comments: NoteToolsComments
+    /// Empty unless the note has nested pages (two or more pages).
+    public var pages: [NoteToolsPage]
+    public var pagesTruncated: Bool
+    public var readOnly: Bool
+
+    public init(noteId: String, title: String, trail: [NoteToolsCrumb], outline: [NoteOutlineItem], current: String? = nil, tasks: [NoteToolsTask], attachments: [NoteToolsAttachment], links: [NoteToolsLink], comments: NoteToolsComments, pages: [NoteToolsPage], pagesTruncated: Bool, readOnly: Bool) {
+        self.noteId = noteId
+        self.title = title
+        self.trail = trail
+        self.outline = outline
+        self.current = current
+        self.tasks = tasks
+        self.attachments = attachments
+        self.links = links
+        self.comments = comments
+        self.pages = pages
+        self.pagesTruncated = pagesTruncated
+        self.readOnly = readOnly
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.trail, forKey: .trail)
+        try container.encode(self.outline, forKey: .outline)
+        try container.encode(self.current, forKey: .current)
+        try container.encode(self.tasks, forKey: .tasks)
+        try container.encode(self.attachments, forKey: .attachments)
+        try container.encode(self.links, forKey: .links)
+        try container.encode(self.comments, forKey: .comments)
+        try container.encode(self.pages, forKey: .pages)
+        try container.encode(self.pagesTruncated, forKey: .pagesTruncated)
+        try container.encode(self.readOnly, forKey: .readOnly)
+    }
+}
+
+public struct BlockJumpArgs: Codable, Hashable, Sendable {
+    public var blockId: String
+
+    public init(blockId: String) {
+        self.blockId = blockId
+    }
+}
+
+public struct TaskToggleArgs: Codable, Hashable, Sendable {
+    public var blockId: String
+
+    public init(blockId: String) {
+        self.blockId = blockId
+    }
+}
+
+public struct ThreadOpenArgs: Codable, Hashable, Sendable {
+    public var threadId: String
+
+    public init(threadId: String) {
+        self.threadId = threadId
+    }
+}
+
+public struct FindArgs: Codable, Hashable, Sendable {
+    /// The text to find (case-insensitive); "" clears.
+    public var query: String
+    /// Which match to show (wraps around; negative counts from the end); left out: the first, not scrolled to.
+    public var index: Int?
+
+    public init(query: String, index: Int? = nil) {
+        self.query = query
+        self.index = index
+    }
+}
+
+/// A match with some text on each side (word boundaries, "…" where cut).
+public struct FindMatch: Codable, Hashable, Sendable {
+    public var before: String
+    public var hit: String
+    public var after: String
+
+    public init(before: String, hit: String, after: String) {
+        self.before = before
+        self.hit = hit
+        self.after = after
+    }
+}
+
+public struct FindResult: Codable, Hashable, Sendable {
+    public var query: String
+    /// Matches found (at most 500).
+    public var count: Int
+    /// The shown match (0-based), or -1 with none.
+    public var current: Int
+    /// More than 500 matches.
+    public var truncated: Bool
+    /// The first 100 matches.
+    public var matches: [FindMatch]
+
+    public init(query: String, count: Int, current: Int, truncated: Bool, matches: [FindMatch]) {
+        self.query = query
+        self.count = count
+        self.current = current
+        self.truncated = truncated
+        self.matches = matches
     }
 }

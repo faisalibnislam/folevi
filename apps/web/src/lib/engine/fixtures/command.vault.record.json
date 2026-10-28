@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "name": "vault.record",
+  "description": "A password revealed, for the log.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "event": "item.reveal",
+    "itemId": "01JITEM0000000000000000001",
+    "field": "password"
+  },
+  "result": {
+    "ok": true
+  }
+}

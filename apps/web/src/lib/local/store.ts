@@ -328,6 +328,14 @@ export interface LocalCalendar {
   truncated: boolean;
 }
 
+/**
+ * A library's Vault (docs/MAC_REBUILD_PLAN.md §5.6, lib/local/functions/vault.ts): the same sealed rows as an
+ * account's Vault (convex/vaultItems.ts), bytes as base64url. Partitions: "meta" (the Vault itself, id "vault"),
+ * "folders", "items", "versions" (an item's earlier versions, id `<item id>:<revision>`). File bytes are in the
+ * library folder's vault/files/.
+ */
+export type LocalVaultRow = { id: string } & Record<string, unknown>;
+
 export interface LocalTables {
   documents: LocalDocument;
   blocks: LocalBlock;
@@ -350,6 +358,8 @@ export interface LocalTables {
   fileTexts: LocalFileText;
   /** "Changed on another device" notices, under each note (`partition` = note id). */
   notices: LocalNotice;
+  /** The library's Vault, by partition (see LocalVaultRow). */
+  vault: LocalVaultRow;
 }
 export type LocalTable = keyof LocalTables;
 
@@ -461,6 +471,8 @@ export function readKey(table: LocalTable, id?: string, partition?: string): str
       return partition === undefined ? "fileTexts" : `fileText:${partition}`;
     case "notices":
       return partition === undefined ? "notices" : `notices:${partition}`;
+    case "vault":
+      return partition === undefined ? "vault" : `vault:${partition}`;
   }
 }
 
@@ -491,6 +503,8 @@ export function writeKeys(w: Pick<StoreWrite, "table" | "id" | "partition">): st
       return [`fileText:${w.partition ?? ""}`, "fileTexts"];
     case "notices":
       return [`notices:${w.partition ?? ""}`, "notices"];
+    case "vault":
+      return [`vault:${w.partition ?? ""}`, "vault"];
   }
 }
 

@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "vault.people.reviewed",
+  "description": "Everyone here should have access.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001"
+  },
+  "result": {
+    "ok": true
+  }
+}

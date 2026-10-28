@@ -23,7 +23,7 @@ enum Links {
     /// The product's pages (apps/web/src/lib/app/routes.ts APP_ROUTE_HEADS): a link to one of these on the website
     /// opens in the app; any other website page (sign-in, share links, pricing) opens in the browser.
     static let appRouteHeads: Set<String> = [
-        "documents", "notes", "d", "ai", "graph", "tasks", "inbox", "calendar", "review", "changes", "daily", "shared", "templates",
+        "documents", "notes", "d", "ai", "graph", "tasks", "inbox", "calendar", "review", "changes", "daily", "shared", "vault", "templates",
         "starred", "archive", "trash", "drafts", "unsorted", "folders", "tags", "settings", "help", "onboarding", "quick-add",
     ]
 
@@ -63,7 +63,7 @@ enum Links {
 
     private static let noteId = #"^[0-9A-Z]{26}$"#
     private static let inboxId = #"^inbox-[0-9a-z]{1,40}$"#
-    private static let pages: Set<String> = ["documents", "tasks", "calendar", "inbox", "settings", "foli-ai", "trash", "templates", "help"]
+    private static let pages: Set<String> = ["documents", "ai", "tasks", "calendar", "inbox", "settings", "foli-ai", "trash", "templates", "help", "notes", "starred", "drafts", "archive", "folders", "tags", "graph", "review", "shared", "changes", "vault"]
 
     private static func matches(_ s: String, _ pattern: String) -> Bool { s.range(of: pattern, options: .regularExpression) != nil }
 

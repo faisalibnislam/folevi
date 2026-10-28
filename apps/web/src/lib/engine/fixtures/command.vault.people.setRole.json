@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "vault.people.setRole",
+  "description": "Make someone a custodian.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "profileId": "prof_2",
+    "role": "custodian"
+  },
+  "result": {
+    "ok": true
+  }
+}

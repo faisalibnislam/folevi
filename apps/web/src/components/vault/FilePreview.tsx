@@ -12,7 +12,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { errorMessage } from "@/components/ui/Toast";
 import { formatRelative } from "@/lib/format";
 import { vaultSessions } from "@/lib/vault/keys";
-import { openFile } from "@/lib/vault/files";
+import { fetchCiphertext, openFile } from "@/lib/vault/files";
 import { pdfjs } from "@/lib/fileText/pdf";
 
 export type PreviewFile = { id: string; title: string; detail: string; updatedAt: number };
@@ -194,7 +194,7 @@ export function FilePreview({ vaultId, files, startId, onClose, onDownload }: { 
       try {
         const s = vaultSessions();
         const r = await fileUrl({ vaultId, itemId: current.id, purpose: "preview", client: s.info(vaultId) });
-        const bytes = new Uint8Array(await (await fetch(r.url)).arrayBuffer());
+        const bytes = await fetchCiphertext(r.url);
         const f = await openFile(vaultId, { id: current.id, keyVersion: r.keyVersion, wrappedKey: r.wrappedKey, sealed: r.sealed }, bytes, (v) => s.keys(vaultId, v));
         if (gone) return;
         const kind = kindOf(f.name, f.mime);

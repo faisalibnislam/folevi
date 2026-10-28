@@ -1,0 +1,34 @@
+{
+  "kind": "view",
+  "name": "vault.health",
+  "description": "Health: a weak password.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001"
+  },
+  "value": {
+    "needsLook": 1,
+    "groups": [
+      {
+        "issue": "weak",
+        "title": "Weak",
+        "body": "Short or easy to guess. Generate a new one.",
+        "tone": "warning",
+        "items": [
+          {
+            "id": "01JITEM0000000000000000003",
+            "kind": "wifi",
+            "kindLabel": "Wi-Fi",
+            "title": "Studio Wi-Fi",
+            "detail": "Wi-Fi",
+            "folderId": null,
+            "revision": 1,
+            "updatedAt": 1792661400000,
+            "deletedAt": null,
+            "mime": null,
+            "size": null
+          }
+        ]
+      }
+    ]
+  }
+}

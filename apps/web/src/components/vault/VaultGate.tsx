@@ -13,6 +13,7 @@ import { UnlockScreen } from "@/components/e2ee/UnlockScreen";
 import { vaultSessions, type UnlockResult } from "@/lib/vault/keys";
 import { ensureEncryptionAccount, useVaultBinding, useVaultInfo } from "./useVault";
 import { NewPasscode, NOT_A_LOGIN, PasscodeField } from "./PasscodeFields";
+import { useBackendMode } from "@/lib/mode";
 
 type Info = NonNullable<ReturnType<typeof useVaultInfo>>;
 
@@ -41,6 +42,8 @@ function resultMessage(r: UnlockResult): string | null {
 /** The Vault's front door. Calls `onOpen` once it's open on this device. */
 export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) {
   const encryption = useVaultBinding();
+  // A library on this device: no account, so no encryption keys to make, and nobody else to ask (docs/MAC_REBUILD_PLAN.md §5.6).
+  const local = useBackendMode() === "local";
   const convex = useConvex();
   const { profile, scope } = useAppState();
   const create = useMutation(api.vault.create);
@@ -89,14 +92,14 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
   if (!info.exists || info.keyVersion === 0) {
     return (
       <Card icon={<ShieldCheck size={20} />} title={info.personal ? "Set up your Vault" : "Set up your team's Vault"}>
-        <p>A place for passwords, API keys and sensitive files. It's always end-to-end encrypted, opens with your own passcode, and keeps a record of everything done in it.</p>
+        <p>{local ? "A place for passwords, API keys and sensitive files. It's encrypted on this device with your own passcode, and opens only with it." : "A place for passwords, API keys and sensitive files. It's always end-to-end encrypted, opens with your own passcode, and keeps a record of everything done in it."}</p>
         <form
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
             if (!next) return;
             void run(async () => {
-              await ensureEncryptionAccount(convex, profile.id);
+              if (!local) await ensureEncryptionAccount(convex, profile.id);
               const id = info.exists ? info.id : (await create({ scope, client: vaultSessions().info() })).id;
               await vaultSessions().setUp(id, next);
             });

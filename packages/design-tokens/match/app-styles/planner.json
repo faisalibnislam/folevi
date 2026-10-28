@@ -1,0 +1,648 @@
+{
+  "$description": "Tasks and Calendar (views/TasksView.tsx, CalendarView.tsx, CalendarWeek.tsx, CalendarSubscriptions.tsx, app/QuickAddTask.tsx, ui/DateField.tsx), read from the Debug Mac app's web frame.",
+  "screens": {
+    "today": "folevi-dev://tasks/today",
+    "upcoming": "folevi-dev://tasks/upcoming",
+    "completed": "folevi-dev://tasks/completed",
+    "edit": "folevi-dev://tasks/today",
+    "date": "folevi-dev://tasks/today",
+    "quick": "folevi-dev://tasks/today",
+    "week": "folevi-dev://calendar",
+    "agenda": "folevi-dev://calendar",
+    "cals": "folevi-dev://calendar",
+    "month": "folevi-dev://calendar",
+    "empty": "folevi-dev://tasks/today"
+  },
+  "prepare": {
+    "edit": "const i=document.querySelector('main#main label input'); if (i && i.value) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,''); i.dispatchEvent(new Event('input',{bubbles:true})); await new Promise(r=>setTimeout(r,600)); } document.querySelector(\"button[title='Edit task']\").click();",
+    "date": "const i=document.querySelector('main#main label input'); if (i && i.value) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,''); i.dispatchEvent(new Event('input',{bubbles:true})); await new Promise(r=>setTimeout(r,600)); } document.querySelector(\"button[title='Edit task']\").click(); await new Promise(r=>setTimeout(r,500)); document.querySelector(\"button[aria-label^='Due date']\").click();",
+    "quick": "const i=document.querySelector('main#main label input'); if (i && i.value) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,''); i.dispatchEvent(new Event('input',{bubbles:true})); await new Promise(r=>setTimeout(r,600)); } [...document.querySelectorAll('main button')].find(b=>b.textContent.trim()==='Add task').click();",
+    "week": "[...document.querySelectorAll('[role=radio]')].find(b=>b.textContent.trim()==='week').click(); await new Promise(r=>setTimeout(r,800));",
+    "agenda": "[...document.querySelectorAll('[role=radio]')].find(b=>b.textContent.trim()==='agenda').click(); await new Promise(r=>setTimeout(r,800));",
+    "cals": "[...document.querySelectorAll('[role=radio]')].find(b=>b.textContent.trim()==='month').click(); await new Promise(r=>setTimeout(r,800)); [...document.querySelectorAll('main button')].find(b=>b.textContent.trim()==='Calendars').click();",
+    "month": "[...document.querySelectorAll('[role=radio]')].find(b=>b.textContent.trim()==='month').click(); await new Promise(r=>setTimeout(r,800));",
+    "empty": "const i=document.querySelector('main#main label input'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'zzzz'); i.dispatchEvent(new Event('input',{bubbles:true})); await new Promise(r=>setTimeout(r,600));",
+    "today": "const i=document.querySelector('main#main label input'); if (i && i.value) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,''); i.dispatchEvent(new Event('input',{bubbles:true})); await new Promise(r=>setTimeout(r,600)); } "
+  },
+  "styles": {
+    "planner.header": {
+      "screen": "today",
+      "selector": "main#main > header"
+    },
+    "planner.header.subtitle": {
+      "screen": "today",
+      "selector": "main#main > header span.text-muted"
+    },
+    "planner.header.calendar": {
+      "screen": "today",
+      "selector": "main#main > header a.ui-btn"
+    },
+    "planner.header.calendar.label": {
+      "screen": "today",
+      "selector": "main#main > header a.ui-btn > span"
+    },
+    "planner.header.add": {
+      "screen": "today",
+      "selector": "main#main > header button.ui-btn-primary"
+    },
+    "planner.tasks.content": {
+      "screen": "today",
+      "selector": "main#main > div.mx-auto"
+    },
+    "planner.tasks.seg": {
+      "screen": "today",
+      "selector": "main#main nav.ui-seg"
+    },
+    "planner.tasks.seg.item": {
+      "screen": "today",
+      "selector": "main#main nav.ui-seg > a:not([aria-current])"
+    },
+    "planner.tasks.seg.item.active": {
+      "screen": "today",
+      "selector": "main#main nav.ui-seg > a[aria-current='page']"
+    },
+    "planner.tasks.seg.count": {
+      "screen": "today",
+      "selector": "main#main nav.ui-seg > a:not([aria-current]) > span"
+    },
+    "planner.tasks.seg.count.active": {
+      "screen": "today",
+      "selector": "main#main nav.ui-seg > a[aria-current='page'] > span"
+    },
+    "planner.tasks.filter": {
+      "screen": "today",
+      "selector": "main#main label input"
+    },
+    "planner.tasks.section": {
+      "screen": "today",
+      "selector": "main#main section"
+    },
+    "planner.tasks.card": {
+      "screen": "today",
+      "selector": "main#main section ul.ui-card"
+    },
+    "planner.tasks.row": {
+      "screen": "today",
+      "selector": "main#main section ul.ui-card > li"
+    },
+    "planner.tasks.row.second": {
+      "screen": "today",
+      "selector": "main#main section ul.ui-card > li",
+      "nth": 1
+    },
+    "planner.tasks.check": {
+      "screen": "today",
+      "selector": "main#main li button[role=checkbox]"
+    },
+    "planner.tasks.title": {
+      "screen": "today",
+      "selector": "main#main li p.text-body"
+    },
+    "planner.tasks.meta": {
+      "screen": "today",
+      "selector": "main#main li p.text-footnote"
+    },
+    "planner.tasks.meta.link": {
+      "screen": "today",
+      "selector": "main#main li p.text-footnote > a"
+    },
+    "planner.tasks.meta.link.icon": {
+      "screen": "today",
+      "selector": "main#main li p.text-footnote > a > svg"
+    },
+    "planner.tasks.due": {
+      "screen": "today",
+      "selector": "main#main li > span.whitespace-nowrap"
+    },
+    "planner.tasks.edit": {
+      "screen": "today",
+      "selector": "main#main li > button[title='Edit task']"
+    },
+    "planner.tasks.group.title": {
+      "screen": "upcoming",
+      "selector": "main#main section > h3"
+    },
+    "planner.tasks.group": {
+      "screen": "upcoming",
+      "selector": "main#main section"
+    },
+    "planner.tasks.group.second": {
+      "screen": "upcoming",
+      "selector": "main#main section",
+      "nth": 1
+    },
+    "planner.tasks.check.done": {
+      "screen": "completed",
+      "selector": "main#main li button[role=checkbox][aria-checked=true]"
+    },
+    "planner.tasks.title.done": {
+      "screen": "completed",
+      "selector": "main#main li p.text-body"
+    },
+    "planner.tasks.row.completed": {
+      "screen": "completed",
+      "selector": "main#main section ul.ui-card > li"
+    },
+    "planner.empty": {
+      "screen": "empty",
+      "selector": "main#main [data-empty-state]"
+    },
+    "planner.empty.icon": {
+      "screen": "empty",
+      "selector": "main#main [data-empty-state] > span"
+    },
+    "planner.empty.title": {
+      "screen": "empty",
+      "selector": "main#main [data-empty-state] > h2"
+    },
+    "planner.empty.body": {
+      "screen": "empty",
+      "selector": "main#main [data-empty-state] > p"
+    },
+    "planner.dialog": {
+      "screen": "edit",
+      "selector": "dialog[open]"
+    },
+    "planner.dialog.header": {
+      "screen": "edit",
+      "selector": "dialog[open] header"
+    },
+    "planner.dialog.title": {
+      "screen": "edit",
+      "selector": "dialog[open] header h2"
+    },
+    "planner.dialog.close": {
+      "screen": "edit",
+      "selector": "dialog[open] header button"
+    },
+    "planner.dialog.body": {
+      "screen": "edit",
+      "selector": "dialog[open] header + div"
+    },
+    "planner.edit.task": {
+      "screen": "edit",
+      "selector": "dialog[open] p.ui-task-title"
+    },
+    "planner.edit.form": {
+      "screen": "edit",
+      "selector": "dialog[open] form"
+    },
+    "planner.edit.legend": {
+      "screen": "edit",
+      "selector": "dialog[open] legend"
+    },
+    "planner.edit.seg": {
+      "screen": "edit",
+      "selector": "dialog[open] fieldset .ui-seg"
+    },
+    "planner.edit.seg.item": {
+      "screen": "edit",
+      "selector": "dialog[open] fieldset .ui-seg > button:not([aria-pressed=true])"
+    },
+    "planner.edit.seg.item.active": {
+      "screen": "edit",
+      "selector": "dialog[open] fieldset .ui-seg > button[aria-pressed=true]"
+    },
+    "planner.edit.dates": {
+      "screen": "edit",
+      "selector": "dialog[open] form > div.flex",
+      "nth": 0
+    },
+    "planner.edit.label": {
+      "screen": "edit",
+      "selector": "dialog[open] form span.block.text-muted"
+    },
+    "planner.edit.datefield": {
+      "screen": "edit",
+      "selector": "dialog[open] button[aria-label^='Due date']"
+    },
+    "planner.edit.datefield.icon": {
+      "screen": "edit",
+      "selector": "dialog[open] button[aria-label^='Due date'] > svg"
+    },
+    "planner.edit.datefield.text": {
+      "screen": "edit",
+      "selector": "dialog[open] button[aria-label^='Due date'] > span"
+    },
+    "planner.edit.select": {
+      "screen": "edit",
+      "selector": "dialog[open] form label button"
+    },
+    "planner.edit.select.chevron": {
+      "screen": "edit",
+      "selector": "dialog[open] form label button > svg"
+    },
+    "planner.edit.clear": {
+      "screen": "edit",
+      "selector": "dialog[open] form button.ui-btn-quiet"
+    },
+    "planner.edit.footer": {
+      "screen": "edit",
+      "selector": "dialog[open] form > div.justify-end"
+    },
+    "planner.edit.open": {
+      "screen": "edit",
+      "selector": "dialog[open] form > div.justify-end > a"
+    },
+    "planner.edit.cancel": {
+      "screen": "edit",
+      "selector": "dialog[open] form > div.justify-end > button.ui-btn-secondary"
+    },
+    "planner.edit.save": {
+      "screen": "edit",
+      "selector": "dialog[open] form > div.justify-end > button.ui-btn-primary"
+    },
+    "planner.date.pop": {
+      "screen": "date",
+      "selector": "[role=dialog][aria-label^='Choose']"
+    },
+    "planner.date.month": {
+      "screen": "date",
+      "selector": "[role=dialog][aria-label^='Choose'] span.font-semibold"
+    },
+    "planner.date.nav": {
+      "screen": "date",
+      "selector": "[role=dialog][aria-label^='Choose'] span.flex > button"
+    },
+    "planner.date.weekday": {
+      "screen": "date",
+      "selector": "[role=dialog][aria-label^='Choose'] [role=columnheader]"
+    },
+    "planner.date.grid": {
+      "screen": "date",
+      "selector": "[role=dialog][aria-label^='Choose'] [role=grid]"
+    },
+    "planner.date.day": {
+      "screen": "date",
+      "selector": "[role=dialog][aria-label^='Choose'] [role=gridcell]:not([aria-selected=true]):not([aria-current])",
+      "nth": 10
+    },
+    "planner.date.day.outside": {
+      "screen": "date",
+      "selector": "[role=dialog][aria-label^='Choose'] [role=gridcell]",
+      "nth": 0
+    },
+    "planner.date.day.selected": {
+      "screen": "date",
+      "selector": "[role=dialog][aria-label^='Choose'] [role=gridcell][aria-selected=true]"
+    },
+    "planner.quick.dialog": {
+      "screen": "quick",
+      "selector": "dialog[open]"
+    },
+    "planner.quick.description": {
+      "screen": "quick",
+      "selector": "dialog[open] header h2 + div"
+    },
+    "planner.quick.input": {
+      "screen": "quick",
+      "selector": "dialog[open] input#qa-title"
+    },
+    "planner.quick.fields": {
+      "screen": "quick",
+      "selector": "dialog[open] form > div.mt-3"
+    },
+    "planner.quick.datefield": {
+      "screen": "quick",
+      "selector": "dialog[open] button[aria-label^='Due date']"
+    },
+    "planner.quick.picker": {
+      "screen": "quick",
+      "selector": "dialog[open] form > div.mt-3.text-subheadline"
+    },
+    "planner.quick.picker.input": {
+      "screen": "quick",
+      "selector": "dialog[open] input[role=combobox]"
+    },
+    "planner.quick.footer": {
+      "screen": "quick",
+      "selector": "dialog[open] form > div.mt-5"
+    },
+    "planner.quick.add": {
+      "screen": "quick",
+      "selector": "dialog[open] form > div.mt-5 > button.ui-btn-primary"
+    },
+    "planner.cal.content": {
+      "screen": "month",
+      "selector": "main#main > div.mx-auto"
+    },
+    "planner.cal.toolbar": {
+      "screen": "month",
+      "selector": "main#main > div.mx-auto > div.mb-4"
+    },
+    "planner.cal.heading": {
+      "screen": "month",
+      "selector": "main#main h2.ui-display"
+    },
+    "planner.cal.prev": {
+      "screen": "month",
+      "selector": "main#main div.mb-4 > div.flex.items-center.gap-1 > button",
+      "nth": 0
+    },
+    "planner.cal.today": {
+      "screen": "month",
+      "selector": "main#main div.mb-4 > div.flex.items-center.gap-1 > button",
+      "nth": 1
+    },
+    "planner.cal.calendars": {
+      "screen": "month",
+      "selector": "main#main div.ml-auto > button"
+    },
+    "planner.cal.layout": {
+      "screen": "month",
+      "selector": "main#main div.ml-auto > [role=radiogroup]"
+    },
+    "planner.cal.layout.item": {
+      "screen": "month",
+      "selector": "main#main [role=radiogroup] > [aria-checked=false]"
+    },
+    "planner.cal.layout.item.active": {
+      "screen": "month",
+      "selector": "main#main [role=radiogroup] > [aria-checked=true]"
+    },
+    "planner.cal.split": {
+      "screen": "month",
+      "selector": "main#main div.grid.gap-6"
+    },
+    "planner.cal.grid": {
+      "screen": "month",
+      "selector": "main#main [role=grid]"
+    },
+    "planner.cal.weekdays": {
+      "screen": "month",
+      "selector": "main#main [role=grid] > div:first-child"
+    },
+    "planner.cal.weekday": {
+      "screen": "month",
+      "selector": "main#main [role=columnheader]"
+    },
+    "planner.cal.cell": {
+      "screen": "month",
+      "selector": "main#main [role=gridcell]:not([aria-selected=true])",
+      "nth": 10
+    },
+    "planner.cal.cell.selected": {
+      "screen": "month",
+      "selector": "main#main [role=gridcell][aria-selected=true]"
+    },
+    "planner.cal.cell.outside": {
+      "screen": "month",
+      "selector": "main#main [role=gridcell]",
+      "nth": 0
+    },
+    "planner.cal.cell.number": {
+      "screen": "month",
+      "selector": "main#main [role=gridcell] span.tabular-nums",
+      "nth": 10
+    },
+    "planner.cal.cell.number.outside": {
+      "screen": "month",
+      "selector": "main#main [role=gridcell] span.tabular-nums",
+      "nth": 0
+    },
+    "planner.cal.cell.number.today": {
+      "screen": "month",
+      "selector": "main#main [role=gridcell] span.bg-heading"
+    },
+    "planner.cal.cell.list": {
+      "screen": "month",
+      "selector": "main#main [role=gridcell][aria-selected=true] ul"
+    },
+    "planner.cal.chip": {
+      "screen": "month",
+      "selector": "main#main [role=gridcell] li.cursor-grab"
+    },
+    "planner.cal.aside": {
+      "screen": "month",
+      "selector": "main#main aside"
+    },
+    "planner.cal.aside.title": {
+      "screen": "month",
+      "selector": "main#main aside > h3"
+    },
+    "planner.cal.aside.card": {
+      "screen": "month",
+      "selector": "main#main aside > ul"
+    },
+    "planner.cal.aside.hint": {
+      "screen": "month",
+      "selector": "main#main aside > p"
+    },
+    "planner.cal.unscheduled": {
+      "screen": "month",
+      "selector": "main#main aside section[aria-label='Unscheduled tasks']"
+    },
+    "planner.cal.unscheduled.title": {
+      "screen": "month",
+      "selector": "main#main aside section[aria-label='Unscheduled tasks'] > h3"
+    },
+    "planner.cal.schedule": {
+      "screen": "month",
+      "selector": "main#main aside section button.ui-btn-ghost"
+    },
+    "planner.cal.schedule.wrap": {
+      "screen": "month",
+      "selector": "main#main aside section div.mt-1\\.5"
+    },
+    "planner.week.card": {
+      "screen": "week",
+      "selector": "main#main div.ui-card"
+    },
+    "planner.week.head": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [role=row]",
+      "nth": 0
+    },
+    "planner.week.head.day": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [role=columnheader]",
+      "nth": 1
+    },
+    "planner.week.head.number": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [role=columnheader] span.tabular-nums",
+      "nth": 0
+    },
+    "planner.week.head.number.today": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [role=columnheader] span.bg-heading"
+    },
+    "planner.week.allday": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [role=row]",
+      "nth": 1
+    },
+    "planner.week.allday.label": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [role=rowheader]"
+    },
+    "planner.week.allday.cell": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [role=row]:nth-child(2) [role=gridcell]:not([aria-selected=true])"
+    },
+    "planner.week.allday.cell.selected": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [role=row]:nth-child(2) [role=gridcell][aria-selected=true]"
+    },
+    "planner.week.allday.chip": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [role=gridcell] li > button"
+    },
+    "planner.week.scroll": {
+      "screen": "week",
+      "selector": "main#main div.ui-card > div.overflow-y-auto"
+    },
+    "planner.week.hour.label": {
+      "screen": "week",
+      "selector": "main#main div.ui-card div.relative > span.absolute",
+      "nth": 5
+    },
+    "planner.week.column": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [data-day-column]"
+    },
+    "planner.week.hour": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [data-day-column] > [data-hour]"
+    },
+    "planner.week.now": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [data-day-column] > div.border-accent"
+    },
+    "planner.week.timed": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [data-day-column] > button"
+    },
+    "planner.week.timed.time": {
+      "screen": "week",
+      "selector": "main#main div.ui-card [data-day-column] > button > span"
+    },
+    "planner.week.hint": {
+      "screen": "week",
+      "selector": "main#main > div.mx-auto > p"
+    },
+    "planner.week.unscheduled": {
+      "screen": "week",
+      "selector": "main#main > div.mx-auto > section"
+    },
+    "planner.agenda.list": {
+      "screen": "agenda",
+      "selector": "main#main div.space-y-6"
+    },
+    "planner.agenda.section": {
+      "screen": "agenda",
+      "selector": "main#main div.space-y-6 > section",
+      "nth": 0
+    },
+    "planner.agenda.section.title": {
+      "screen": "agenda",
+      "selector": "main#main div.space-y-6 > section > h3",
+      "nth": 0
+    },
+    "planner.agenda.section.second": {
+      "screen": "agenda",
+      "selector": "main#main div.space-y-6 > section",
+      "nth": 1
+    },
+    "planner.agenda.nothing": {
+      "screen": "agenda",
+      "selector": "main#main div.space-y-6 li.px-4"
+    },
+    "planner.cals.pop": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars']"
+    },
+    "planner.cals.head": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars'] > div:first-child, [role=dialog][aria-label='Calendars'] div.border-b",
+      "nth": 0
+    },
+    "planner.cals.head.title": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars'] h2"
+    },
+    "planner.cals.head.text": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars'] h2 + p"
+    },
+    "planner.cals.add": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars'] form[aria-label='Add calendar']"
+    },
+    "planner.cals.add.title": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars'] form h3"
+    },
+    "planner.cals.add.label": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars'] form label"
+    },
+    "planner.cals.add.input": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars'] form input",
+      "nth": 0
+    },
+    "planner.cals.color.legend": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars'] form legend"
+    },
+    "planner.cals.color": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars'] form fieldset label",
+      "nth": 1
+    },
+    "planner.cals.color.checked": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars'] form fieldset label:has(:checked)"
+    },
+    "planner.cals.color.dot": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars'] form fieldset label span"
+    },
+    "planner.cals.add.note": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars'] form > div:last-child > p"
+    },
+    "planner.cals.add.button": {
+      "screen": "cals",
+      "selector": "[role=dialog][aria-label='Calendars'] form > div:last-child > button"
+    },
+    "planner.empty.inline": {
+      "screen": "month",
+      "selector": "main#main aside [data-empty-state]"
+    },
+    "planner.empty.inline.title": {
+      "screen": "month",
+      "selector": "main#main aside [data-empty-state] > p"
+    },
+    "planner.empty.inline.icon": {
+      "screen": "month",
+      "selector": "main#main aside [data-empty-state] > span"
+    }
+  },
+  "vars": [
+    "color-surface",
+    "color-surface-sunken",
+    "color-line",
+    "color-line-strong",
+    "color-accent",
+    "color-accent-soft",
+    "color-accent-soft-ink",
+    "color-moss",
+    "color-coral-soft",
+    "color-coral-ink",
+    "color-marigold-soft",
+    "color-marigold-ink",
+    "color-plum",
+    "color-coral",
+    "color-marigold",
+    "color-danger",
+    "color-heading",
+    "color-ink",
+    "color-ink-muted",
+    "color-ink-faint",
+    "color-canvas",
+    "glass-hover",
+    "color-focus"
+  ]
+}

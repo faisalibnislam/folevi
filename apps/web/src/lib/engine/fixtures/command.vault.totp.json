@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "vault.totp",
+  "description": "A 2FA code and its seconds left.",
+  "args": {
+    "secret": "JBSWY3DPEHPK3PXP"
+  },
+  "result": {
+    "code": "123456",
+    "secondsLeft": 17
+  }
+}

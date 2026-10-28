@@ -1,0 +1,16 @@
+{
+  "kind": "command",
+  "name": "settings.run",
+  "description": "Settings > Library: ask for Touch ID again after 5 minutes.",
+  "args": {
+    "key": "library.lock",
+    "args": {
+      "lockAfter": 300
+    }
+  },
+  "result": {
+    "data": {
+      "ok": true
+    }
+  }
+}

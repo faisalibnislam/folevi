@@ -30,6 +30,8 @@ public struct WebSidebar: View {
     @AppStorage("folevi.sidebar.starredOpen") private var starredOpen = true
     @AppStorage("folevi.sidebar.section.folders") private var foldersOpen = true
     @AppStorage("folevi.sidebar.section.tags") private var tagsOpen = false
+    /// On a note: the note's own tools ("document", the web's default) or the folders (`folevi:doc-sidebar-mode`).
+    @AppStorage("folevi.sidebar.docMode") private var docMode = "document"
     @State private var openFolders: Set<String> = []
 
     /// The first few starred notes, folders and tags; the rest are a click away on their own pages.
@@ -50,7 +52,22 @@ public struct WebSidebar: View {
             search
                 .padding(.horizontal, list.padding.left)
                 .padding(.top, style("search").y - style("topbar").y - style("topbar").height)
-            ScrollView(.vertical) {
+            if let noteId = model.route.noteId, docMode == "document" {
+                // The note's own sidebar (DocumentSidebar.tsx), between the search and the account.
+                WebNoteSidebar(model: model, noteId: noteId)
+                    .padding(.top, WebStyles.named("notetools.card.wrap").resolve(scheme).y - style("search").y - style("search").height)
+            } else {
+                appList
+            }
+            account
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    /// The app's places, folders and tags (Sidebar.tsx's list).
+    private var appList: some View {
+        let list = style("list")
+        return ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     destinations.padding(.top, style("item.active").y - style("list").y)
                     foldersSection
@@ -65,9 +82,6 @@ public struct WebSidebar: View {
                 .padding(.bottom, list.padding.bottom)
             }
             .scrollIndicators(.never)
-            account
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     // MARK: the top bar
@@ -99,7 +113,11 @@ public struct WebSidebar: View {
     private var sidebarMenu: [WebMenuEntry] {
         [
             WebMenuEntry(.item(model.sidebarCollapsed ? "Show sidebar" : "Hide sidebar", icon: .panelLeft, shortcut: "⌘\\")) { model.sidebarCollapsed.toggle() },
-        ]
+        ] + (model.route.isNote ? [
+            .separator(),
+            WebMenuEntry(.item("Show folders", checked: docMode == "folders")) { docMode = "folders" },
+            WebMenuEntry(.item("Show document", checked: docMode == "document")) { docMode = "document" },
+        ] : [])
     }
 
     // MARK: search
@@ -108,7 +126,7 @@ public struct WebSidebar: View {
         let s = WebStyles.named("frame.sidebar.search")
         let r = s.resolve(scheme)
         let label = style("search.label")
-        return Button { model.open(.search("")) } label: {
+        return Button { CommandPalette.show(model) } label: {
             HStack(spacing: r.gap) {
                 WebIconView(.search, size: 14).foregroundStyle(style("search.icon").color.color)
                 Text("Search or jump to…").webText(label.text).lineLimit(1).foregroundStyle(label.color.color)
@@ -132,7 +150,7 @@ public struct WebSidebar: View {
         let starred = home?.starred.rows ?? []
         return VStack(alignment: .leading, spacing: 2) {
             item(.home, icon: .house, title: "Home")
-            if caps?.ai ?? false { item(.web("/ai"), icon: .sparkles, title: "Work with Foli AI") }
+            if caps?.ai ?? false { item(.web("/ai"), icon: .sparkles, title: "Work with Foli AI", glyph: AnyView(AiMarkGlyph(size: 16))) }
             ZStack(alignment: .trailing) {
                 item(.notes(.starred), icon: .star, title: "Starred")
                 if !starred.isEmpty {
@@ -161,6 +179,8 @@ public struct WebSidebar: View {
             item(.calendar(nil), icon: .calendar, title: "Calendar")
             if let n = count(.reviews), n > 0 { item(.web("/review"), icon: .layers, title: "Reviews", count: n) }
             if caps?.sharing ?? false { item(.shared, icon: .share2, title: "Shared with Me") }
+            // The Vault where there's one for this person (vault.summary; a library's own Vault too, plan 5.6).
+            VaultSidebarRow(model: model) { item(.web("/vault"), icon: .lock, title: "Vault") }
             if caps?.changes ?? false { item(.changes, icon: .fileDiff, title: "Changes", count: count(.changes)) }
             item(.notes(.templates), icon: .layoutTemplate, title: "Templates")
         }
@@ -168,7 +188,7 @@ public struct WebSidebar: View {
 
     /// One row (the web's NavItem): icon, label, an optional count; the page's own row is selected.
     private func item(_ route: FrameRoute, icon: WebIcon, iconSize: CGFloat = 18, title: String, count: Int? = nil, newTab: Bool = false, glyph: AnyView? = nil) -> some View {
-        let selected = model.route == route
+        let selected = model.route == route || (route.tabKey == "view:ai" && model.route.tabKey == "view:ai")
         let base = WebStyles.named(selected ? "frame.sidebar.item.active" : "frame.sidebar.item")
         let s = base.resolve(scheme)
         let selectedFill = (WebStyles.vars[active == .inactive ? "mac-selected-inactive" : "mac-selected"] ?? FoleviTokens.Chrome.surfaceSunken).resolve(scheme)
@@ -209,7 +229,7 @@ public struct WebSidebar: View {
         let all = model.folders.value?.folders ?? []
         let roots = all.filter { $0.parentId == nil }
         return section("Folders", route: .web("/folders"), open: $foldersOpen, action: AnyView(
-            WebIconButton(.folderPlus, label: "New folder") { model.newFolder() }
+            WebIconButton(.folderPlus, label: "New folder") { FrameDialogs.newFolder(model) }
         )) {
             if roots.isEmpty {
                 Text("No folders yet").webText(.role(.footnote)).foregroundStyle(Folevi.color.inkFaint).padding(.horizontal, 8).padding(.vertical, 4)
@@ -258,8 +278,15 @@ public struct WebSidebar: View {
             WebMenuEntry(.item("Open in new tab", icon: .externalLink)) { model.open(.folder(f.id), .newTab) },
             .separator(),
             WebMenuEntry(.item("New note here", icon: .plus)) { model.newNote(in: f.id) },
-            WebMenuEntry(.item("New subfolder", icon: .folderPlus)) { model.newFolder(parent: f.id) },
-        ]
+            WebMenuEntry(.item("New folder inside…", icon: .folderPlus)) { FrameDialogs.newFolder(model, parent: f) },
+            .separator(1),
+            WebMenuEntry(.item("Rename…", icon: .pencilLine)) { FrameDialogs.renameFolder(model, f) },
+            WebMenuEntry(.item("Change color…", icon: .palette)) { FrameDialogs.folderColor(model, f) },
+            WebMenuEntry(.item("Move folder…", icon: .folderInput)) { FrameDialogs.moveFolder(model, f) },
+        ] + (model.session.value?.capabilities.sharing ?? false ? [
+            .separator(2),
+            WebMenuEntry(.item("Share…", icon: .share2)) { FrameDialogs.folderShare(model, folderId: f.id, name: f.name) },
+        ] : [])
     }
 
     // MARK: tags

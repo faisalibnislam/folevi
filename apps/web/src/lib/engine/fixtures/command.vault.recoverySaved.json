@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "vault.recoverySaved",
+  "description": "The recovery key was saved.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001"
+  },
+  "result": {
+    "ok": true
+  }
+}

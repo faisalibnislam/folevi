@@ -1,0 +1,286 @@
+{
+  "$description": "The Vault (components/vault/*) in the scratch library's Vault (apps/mac/scripts/screens.mjs VAULT_FIXTURE, PIN 246813): locked, Files & Notes, Passwords & Credentials, Health, Trash and Settings. Every value here is read inside .ui-invert, so it is the other theme's: the native Vault draws them with its scheme flipped back (VaultStyle).",
+  "screens": {
+    "locked": "folevi-dev://vault",
+    "files": "folevi-dev://vault",
+    "passwords": "folevi-dev://vault",
+    "health": "folevi-dev://vault",
+    "trash": "folevi-dev://vault",
+    "settings": "folevi-dev://vault"
+  },
+  "prepare": {
+    "files": "const wait = async (fn) => { for (let t = 0; t < 20000; t += 100) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 100)); } }; const byText = (s, x) => [...document.querySelectorAll(s)].find((e) => e.textContent.trim() === x); const f = [...document.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('Passcode'))?.querySelector('input'); if (f) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(f, '246813'); f.dispatchEvent(new Event('input', { bubbles: true })); await new Promise((r) => setTimeout(r, 100)); byText('button', 'Unlock').click(); await wait(() => document.querySelector(\"[role='tablist']\")); } await new Promise((r) => setTimeout(r, 800)); byText(\"[role='tab']\", 'Files & Notes').click(); await new Promise((r) => setTimeout(r, 800)); return true;",
+    "passwords": "const wait = async (fn) => { for (let t = 0; t < 20000; t += 100) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 100)); } }; const byText = (s, x) => [...document.querySelectorAll(s)].find((e) => e.textContent.trim() === x); const f = [...document.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('Passcode'))?.querySelector('input'); if (f) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(f, '246813'); f.dispatchEvent(new Event('input', { bubbles: true })); await new Promise((r) => setTimeout(r, 100)); byText('button', 'Unlock').click(); await wait(() => document.querySelector(\"[role='tablist']\")); } await new Promise((r) => setTimeout(r, 800)); byText(\"[role='tab']\", 'Passwords & Credentials').click(); await new Promise((r) => setTimeout(r, 800)); return true;",
+    "health": "const wait = async (fn) => { for (let t = 0; t < 20000; t += 100) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 100)); } }; const byText = (s, x) => [...document.querySelectorAll(s)].find((e) => e.textContent.trim() === x); const f = [...document.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('Passcode'))?.querySelector('input'); if (f) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(f, '246813'); f.dispatchEvent(new Event('input', { bubbles: true })); await new Promise((r) => setTimeout(r, 100)); byText('button', 'Unlock').click(); await wait(() => document.querySelector(\"[role='tablist']\")); } await new Promise((r) => setTimeout(r, 800)); document.querySelector(\"button[aria-label='More in the Vault']\").click(); (await wait(() => byText(\"[role='menuitemradio']\", 'Health'))).click(); await new Promise((r) => setTimeout(r, 800)); return true;",
+    "trash": "const wait = async (fn) => { for (let t = 0; t < 20000; t += 100) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 100)); } }; const byText = (s, x) => [...document.querySelectorAll(s)].find((e) => e.textContent.trim() === x); const f = [...document.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('Passcode'))?.querySelector('input'); if (f) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(f, '246813'); f.dispatchEvent(new Event('input', { bubbles: true })); await new Promise((r) => setTimeout(r, 100)); byText('button', 'Unlock').click(); await wait(() => document.querySelector(\"[role='tablist']\")); } await new Promise((r) => setTimeout(r, 800)); document.querySelector(\"button[aria-label='More in the Vault']\").click(); (await wait(() => byText(\"[role='menuitemradio']\", 'Trash'))).click(); await new Promise((r) => setTimeout(r, 800)); return true;",
+    "settings": "const wait = async (fn) => { for (let t = 0; t < 20000; t += 100) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 100)); } }; const byText = (s, x) => [...document.querySelectorAll(s)].find((e) => e.textContent.trim() === x); const f = [...document.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith('Passcode'))?.querySelector('input'); if (f) { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(f, '246813'); f.dispatchEvent(new Event('input', { bubbles: true })); await new Promise((r) => setTimeout(r, 100)); byText('button', 'Unlock').click(); await wait(() => document.querySelector(\"[role='tablist']\")); } await new Promise((r) => setTimeout(r, 800)); document.querySelector(\"button[aria-label='More in the Vault']\").click(); (await wait(() => byText(\"[role='menuitemradio']\", 'Settings'))).click(); await new Promise((r) => setTimeout(r, 800)); return true;",
+    "locked": "const lockBtn = [...document.querySelectorAll('.ui-invert main > header button')].find((b) => b.textContent.trim() === 'Lock'); if (lockBtn) { lockBtn.click(); for (let t = 0; t < 5000 && !document.querySelector('.ui-invert .rounded-panel.ui-card'); t += 100) await new Promise((r) => setTimeout(r, 100)); } return true;"
+  },
+  "styles": {
+    "vault.view": {
+      "screen": "locked",
+      "selector": ".ui-invert"
+    },
+    "vault.header": {
+      "screen": "locked",
+      "selector": ".ui-invert main > header"
+    },
+    "vault.header.subtitle": {
+      "screen": "locked",
+      "selector": ".ui-invert main > header [role='status']"
+    },
+    "vault.content": {
+      "screen": "locked",
+      "selector": ".ui-invert main > div.mx-auto"
+    },
+    "vault.gate.card": {
+      "screen": "locked",
+      "selector": ".ui-invert .rounded-panel.ui-card"
+    },
+    "vault.gate.icon": {
+      "screen": "locked",
+      "selector": ".ui-invert .rounded-panel.ui-card > div:first-child"
+    },
+    "vault.gate.title": {
+      "screen": "locked",
+      "selector": ".ui-invert .rounded-panel.ui-card > h2"
+    },
+    "vault.gate.body": {
+      "screen": "locked",
+      "selector": ".ui-invert .rounded-panel.ui-card > div.mt-2"
+    },
+    "vault.gate.form": {
+      "screen": "locked",
+      "selector": ".ui-invert .rounded-panel.ui-card form"
+    },
+    "vault.gate.label": {
+      "screen": "locked",
+      "selector": ".ui-invert .rounded-panel.ui-card label > span"
+    },
+    "vault.gate.input": {
+      "screen": "locked",
+      "selector": ".ui-invert .rounded-panel.ui-card input"
+    },
+    "vault.gate.actions": {
+      "screen": "locked",
+      "selector": ".ui-invert .rounded-panel.ui-card form > div.flex"
+    },
+    "vault.gate.unlock": {
+      "screen": "locked",
+      "selector": ".ui-invert .rounded-panel.ui-card button[type='submit']"
+    },
+    "vault.gate.forgot": {
+      "screen": "locked",
+      "selector": ".ui-invert .rounded-panel.ui-card button[type='button']"
+    },
+    "vault.header.actions": {
+      "screen": "files",
+      "selector": ".ui-invert main > header > div.flex-none > div"
+    },
+    "vault.header.lock": {
+      "screen": "files",
+      "selector": ".ui-invert main > header button.ui-btn-primary"
+    },
+    "vault.header.more": {
+      "screen": "files",
+      "selector": ".ui-invert button[aria-label='More in the Vault']"
+    },
+    "vault.tabs": {
+      "screen": "files",
+      "selector": ".ui-invert [role='tablist']"
+    },
+    "vault.tab.active": {
+      "screen": "files",
+      "selector": ".ui-invert [role='tab'][aria-selected='true']"
+    },
+    "vault.tab": {
+      "screen": "files",
+      "selector": ".ui-invert [role='tab'][aria-selected='false']"
+    },
+    "vault.tab.icon": {
+      "screen": "files",
+      "selector": ".ui-invert [role='tab'][aria-selected='false'] > svg"
+    },
+    "vault.files.bar": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] > div:first-child"
+    },
+    "vault.files.title": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] h3"
+    },
+    "vault.files.seg": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] .ui-seg"
+    },
+    "vault.files.seg.on": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] .ui-seg button[aria-pressed='true']"
+    },
+    "vault.files.seg.off": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] .ui-seg button[aria-pressed='false']"
+    },
+    "vault.files.folders": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] > ul.mb-4"
+    },
+    "vault.files.folder": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] > ul.mb-4 button"
+    },
+    "vault.files.folder.name": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] > ul.mb-4 button > span"
+    },
+    "vault.files.folder.glyph": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] > ul.mb-4 button > svg"
+    },
+    "vault.files.cards": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] > ul:not(.mb-4)"
+    },
+    "vault.files.card": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] > ul:not(.mb-4) button"
+    },
+    "vault.files.card.icon": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] > ul:not(.mb-4) button > svg"
+    },
+    "vault.files.card.title": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] > ul:not(.mb-4) button span.block"
+    },
+    "vault.files.card.detail": {
+      "screen": "files",
+      "selector": ".ui-invert section[aria-label='Files and notes'] > ul:not(.mb-4) button span.block",
+      "nth": 1
+    },
+    "vault.pw.bar": {
+      "screen": "passwords",
+      "selector": ".ui-invert [role='tabpanel'] > div > div:first-child"
+    },
+    "vault.pw.search": {
+      "screen": "passwords",
+      "selector": ".ui-invert [role='tabpanel'] input[placeholder='Search']"
+    },
+    "vault.pw.search.icon": {
+      "screen": "passwords",
+      "selector": ".ui-invert [role='tabpanel'] label > svg"
+    },
+    "vault.pw.kind": {
+      "screen": "passwords",
+      "selector": ".ui-invert [role='tabpanel'] button[role='combobox']"
+    },
+    "vault.list": {
+      "screen": "passwords",
+      "selector": ".ui-invert section[aria-label='Passwords and credentials'] ul"
+    },
+    "vault.row": {
+      "screen": "passwords",
+      "selector": ".ui-invert section[aria-label='Passwords and credentials'] li button"
+    },
+    "vault.row.divider": {
+      "screen": "passwords",
+      "selector": ".ui-invert section[aria-label='Passwords and credentials'] li",
+      "nth": 1
+    },
+    "vault.row.title": {
+      "screen": "passwords",
+      "selector": ".ui-invert section[aria-label='Passwords and credentials'] li button span.block"
+    },
+    "vault.row.detail": {
+      "screen": "passwords",
+      "selector": ".ui-invert section[aria-label='Passwords and credentials'] li button span.block",
+      "nth": 1
+    },
+    "vault.row.time": {
+      "screen": "passwords",
+      "selector": ".ui-invert section[aria-label='Passwords and credentials'] li button > span.text-faint"
+    },
+    "vault.tab.menu": {
+      "screen": "health",
+      "selector": ".ui-invert [role='tablist'] > span"
+    },
+    "vault.tab.menu.close": {
+      "screen": "health",
+      "selector": ".ui-invert [role='tablist'] > span > button"
+    },
+    "vault.health.section": {
+      "screen": "health",
+      "selector": ".ui-invert section[aria-label='Health']"
+    },
+    "vault.health.lead": {
+      "screen": "health",
+      "selector": ".ui-invert section[aria-label='Health'] > p"
+    },
+    "vault.health.heading.warning": {
+      "screen": "health",
+      "selector": ".ui-invert section[aria-label='Health'] h3.text-warning"
+    },
+    "vault.health.heading.muted": {
+      "screen": "health",
+      "selector": ".ui-invert section[aria-label='Health'] h3.text-muted"
+    },
+    "vault.health.count": {
+      "screen": "health",
+      "selector": ".ui-invert section[aria-label='Health'] h3 > span"
+    },
+    "vault.health.body": {
+      "screen": "health",
+      "selector": ".ui-invert section[aria-label='Health'] h3 + p"
+    },
+    "vault.trash.bar": {
+      "screen": "trash",
+      "selector": ".ui-invert section[aria-label='Trash'] > div"
+    },
+    "vault.trash.lead": {
+      "screen": "trash",
+      "selector": ".ui-invert section[aria-label='Trash'] p"
+    },
+    "vault.trash.empty": {
+      "screen": "trash",
+      "selector": ".ui-invert section[aria-label='Trash'] button.text-danger"
+    },
+    "vault.trash.row": {
+      "screen": "trash",
+      "selector": ".ui-invert section[aria-label='Trash'] li"
+    },
+    "vault.trash.restore": {
+      "screen": "trash",
+      "selector": ".ui-invert section[aria-label='Trash'] li button"
+    },
+    "vault.settings.section": {
+      "screen": "settings",
+      "selector": ".ui-invert section[aria-label='Vault settings']"
+    },
+    "vault.settings.label": {
+      "screen": "settings",
+      "selector": ".ui-invert section[aria-label='Vault settings'] > label span.block"
+    },
+    "vault.settings.hint": {
+      "screen": "settings",
+      "selector": ".ui-invert section[aria-label='Vault settings'] > label span.block",
+      "nth": 1
+    },
+    "vault.settings.select": {
+      "screen": "settings",
+      "selector": ".ui-invert section[aria-label='Vault settings'] button[role='combobox']"
+    },
+    "vault.settings.import": {
+      "screen": "settings",
+      "selector": ".ui-invert section[aria-label='Vault settings'] > div.space-y-2"
+    }
+  },
+  "vars": [
+    "color-danger",
+    "color-warning",
+    "color-success",
+    "color-line",
+    "color-surface",
+    "glass-active",
+    "glass-hover"
+  ]
+}

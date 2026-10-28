@@ -217,21 +217,22 @@ public final class WebSidebarController: NSViewController {
         view = host
     }
 
-    /// ⌘K / Open Quickly / Search All Notes: the search page (the web's palette).
+    /// ⌘K / Open Quickly / Search All Notes: the web's palette, as a sheet at the window's top.
     public func focusSearch() {
-        if model.sidebarCollapsed { model.sidebarCollapsed = false }
-        model.open(.search(""))
+        FrameSheets.attach(model, window: view.window)
+        CommandPalette.show(model)
     }
 
+    public override func viewDidAppear() {
+        super.viewDidAppear()
+        FrameSheets.attach(model, window: view.window)
+    }
+
+    /// The bell: the web's notifications panel, in glass under the sidebar's top bar.
     private func showNotifications(_ anchor: NSView?) {
-        let close: @MainActor () -> Void = { [weak self] in self?.popover?.close() }
-        let content = NotificationsContent(model: notifications, phone: false)
-            .frame(width: 384, height: 480)
-            .environment(\.screenIntents, FrameNavigation.intents(model, close: close))
-            .environment(\.screenNavigator, FrameNavigation.navigator(model))
-            .environment(\.screenFeedback, ScreenModels(frame: model).feedback)
-            .accessibilityIdentifier("popover.notifications")
-        show(AnyView(content), from: anchor)
+        FrameSheets.attach(model, window: view.window)
+        if FrameSheets.isShowing(model) { return FrameSheets.dismiss(model) }
+        FrameDialogs.notifications(model, model: notifications)
     }
 
     private func showSync(_ anchor: NSView?) { show(AnyView(SyncPopover(model: model)), from: anchor) }
@@ -272,6 +273,10 @@ public final class ContentViewController: NSViewController {
     private var screen: NSHostingView<ScreenRoot>?
     private lazy var models = ScreenModels(frame: model)
     private var toasts: NSHostingView<ToastStack>?
+    private var toastCentre: NSLayoutConstraint?
+    /// Ask Foli AI's floating button and chat (FoliAI/AiAskPanel.swift), over everything but a note.
+    private lazy var askAi = AiAskState(frame: model, feedback: models.feedback)
+    private var askAiView: NSHostingView<AiAskOverlay>?
     private var observers: [Observer] = []
     private var shownRoute: FrameRoute?
     /// Where the content starts under the glass bar (the web's main: padding-top 56).
@@ -310,6 +315,12 @@ public final class ContentViewController: NSViewController {
         let toastView = NSHostingView(rootView: ToastStack(model: model))
         toastView.safeAreaRegions = []
         toastView.translatesAutoresizingMaskIntoConstraints = false
+        let ask = NSHostingView(rootView: AiAskOverlay(frame: model, state: askAi))
+        ask.safeAreaRegions = []
+        ask.sizingOptions = [.intrinsicContentSize]
+        ask.translatesAutoresizingMaskIntoConstraints = false
+        clip.addSubview(ask)
+        askAiView = ask
         clip.addSubview(toastView)
         toasts = toastView
         let bar = WebStyles.named("frame.topbar").light
@@ -331,10 +342,30 @@ public final class ContentViewController: NSViewController {
             body.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
             body.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
             body.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
-            toastView.centerXAnchor.constraint(equalTo: clip.centerXAnchor),
+            ask.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
+            ask.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
             toastView.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
             toastView.widthAnchor.constraint(lessThanOrEqualTo: clip.widthAnchor, constant: -40),
         ])
+        toastCentre = toastView.centerXAnchor.constraint(equalTo: clip.centerXAnchor)
+        toastCentre?.isActive = true
+    }
+
+    /// Toasts sit at the bottom centre of the window, as the web's fixed toast region (not of the content card).
+    public override func viewDidAppear() {
+        super.viewDidAppear()
+        guard let toasts, let cv = view.window?.contentView, toasts.isDescendant(of: cv) else { return }
+        toastCentre?.isActive = false
+        toastCentre = toasts.centerXAnchor.constraint(equalTo: cv.centerXAnchor)
+        toastCentre?.priority = .defaultHigh
+        toastCentre?.isActive = true
+    }
+
+    public override func viewDidLayout() {
+        super.viewDidLayout()
+        // The floating chat is at most the window's height less 136 pt (the web's min(640px, 100dvh - 136px)).
+        let h = (view.window?.contentView?.bounds.height ?? view.bounds.height) - 136
+        if abs(askAi.maxHeight - h) > 0.5 { askAi.maxHeight = h }
     }
 
     public override func viewDidLoad() {

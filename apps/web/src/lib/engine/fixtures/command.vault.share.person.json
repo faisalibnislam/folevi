@@ -1,0 +1,16 @@
+{
+  "kind": "command",
+  "name": "vault.share.person",
+  "description": "Share an item with someone outside the workspace for 30 days.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "itemId": "01JITEM0000000000000000001",
+    "email": "ana@example.com",
+    "days": 30,
+    "canEdit": false
+  },
+  "result": {
+    "status": "shared",
+    "message": "Shared with Ana until 26/11/2026, 09:30:00"
+  }
+}

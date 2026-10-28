@@ -803,7 +803,7 @@ struct GateCardChildren: View {
             let actions = model.visibleActions.filter { !$0.id.hasPrefix("signOut:") }
             if !actions.isEmpty {
                 // The web's FullPageMessage children: the buttons as the page lays them out (a row that wraps).
-                FlowRow(spacing: 8) {
+                GateFlowRow(spacing: 8) {
                     ForEach(actions, id: \.id) { a in
                         WebButton(a.label, variant: Self.variant(a.style)) { Task { await model.act(a.id) } }
                             .disabled(!model.isEnabled(a))
@@ -836,7 +836,7 @@ struct GateCardChildren: View {
 }
 
 /// Children in a row, wrapping onto the next line when they don't fit.
-struct FlowRow: Layout {
+struct GateFlowRow: Layout {
     var spacing: CGFloat = 8
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width ?? .infinity

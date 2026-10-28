@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "vault.people.remove",
+  "description": "Remove someone.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "profileId": "prof_2"
+  },
+  "result": {
+    "ok": true
+  }
+}

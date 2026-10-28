@@ -7,9 +7,9 @@ public enum EngineContract {
     /// The envelope's major version (`v` on every message to the engine).
     public static let protocolVersion = 1
     /// Bumps with every added view, command, editor command, event or field.
-    public static let revision = 12
+    public static let revision = 18
     /// FNV-1a of the names and revision; the engine's `hello` reply carries the same when this file is current.
-    public static let schemaHash = "8850707c"
+    public static let schemaHash = "84a08a24"
     /// The `WKScriptMessageHandler` name the engine posts to.
     public static let messageHandler = "foleviEngine"
     /// The global the host calls (`__foleviEngine.handle(json)`).
@@ -75,6 +75,17 @@ public enum ViewName: String, Codable, Hashable, Sendable, CaseIterable {
     case sharedFolders = "shared.folders"
     case sharedFolderOpen = "sharedFolder.open"
     case notesMoveCheck = "notes.moveCheck"
+    case settingsQuery = "settings.query"
+    case graph
+    case reviews
+    case recentViewed = "recent.viewed"
+    case vaultSummary = "vault.summary"
+    case vaultItems = "vault.items"
+    case vaultFolders = "vault.folders"
+    case vaultHealth = "vault.health"
+    case vaultActivity = "vault.activity"
+    case vaultPeople = "vault.people"
+    case vaultShares = "vault.shares"
 }
 
 /// Windowed list views.
@@ -174,6 +185,45 @@ public enum CommandName: String, Codable, Hashable, Sendable, CaseIterable {
     case folderSharingRevoke = "folderSharing.revoke"
     case folderSharingCancelInvite = "folderSharing.cancelInvite"
     case folderInviteAccept = "folderInvite.accept"
+    case reviewRate = "review.rate"
+    case reviewSetNewPerDay = "review.setNewPerDay"
+    case settingsRun = "settings.run"
+    case vaultSetUp = "vault.setUp"
+    case vaultUnlock = "vault.unlock"
+    case vaultReset = "vault.reset"
+    case vaultFinishPasscode = "vault.finishPasscode"
+    case vaultChangePasscode = "vault.changePasscode"
+    case vaultLock = "vault.lock"
+    case vaultRecoverySaved = "vault.recoverySaved"
+    case vaultNewRecoveryKey = "vault.newRecoveryKey"
+    case vaultRequestReset = "vault.requestReset"
+    case vaultRecord = "vault.record"
+    case vaultItemOpen = "vault.item.open"
+    case vaultItemSave = "vault.item.save"
+    case vaultItemDuplicate = "vault.item.duplicate"
+    case vaultItemRemove = "vault.item.remove"
+    case vaultItemRestore = "vault.item.restore"
+    case vaultItemHistory = "vault.item.history"
+    case vaultItemRestoreVersion = "vault.item.restoreVersion"
+    case vaultTotp = "vault.totp"
+    case vaultGenerate = "vault.generate"
+    case vaultStrength = "vault.strength"
+    case vaultFolderCreate = "vault.folder.create"
+    case vaultNoteCreate = "vault.note.create"
+    case vaultNoteOpen = "vault.note.open"
+    case vaultNoteSave = "vault.note.save"
+    case vaultFileUpload = "vault.file.upload"
+    case vaultFileOpen = "vault.file.open"
+    case vaultTrashEmpty = "vault.trash.empty"
+    case vaultSettingsUpdate = "vault.settings.update"
+    case vaultPeopleAdd = "vault.people.add"
+    case vaultPeopleRemove = "vault.people.remove"
+    case vaultPeopleSetRole = "vault.people.setRole"
+    case vaultPeopleReviewed = "vault.people.reviewed"
+    case vaultSharePerson = "vault.share.person"
+    case vaultShareStop = "vault.share.stop"
+    case vaultLinkCreate = "vault.link.create"
+    case vaultLinkRevoke = "vault.link.revoke"
 }
 
 /// Editor commands (the note page).
@@ -202,6 +252,11 @@ public enum EditorCommandName: String, Codable, Hashable, Sendable, CaseIterable
     case blockDuplicate = "block.duplicate"
     case focusToggle = "focus.toggle"
     case noteLock = "note.lock"
+    case blockJump = "block.jump"
+    case taskToggle = "task.toggle"
+    case threadOpen = "thread.open"
+    case find
+    case findClear = "find.clear"
 }
 
 /// Events from the engine.
@@ -217,6 +272,7 @@ public enum EventName: String, Codable, Hashable, Sendable, CaseIterable {
     case editorState = "editor.state"
     case editorPanel = "editor.panel"
     case memoryRelieved = "memory.relieved"
+    case noteTools = "note.tools"
 }
 
 /// Value views: `client.watch(.home())`, `client.query(.noteMeta(id: id))`.
@@ -550,6 +606,83 @@ public enum Views {
         public var args: Args
         public init(_ args: Args) { self.args = args }
     }
+    public struct Graph: EngineViewSpec {
+        public static let name = "graph"
+        public typealias Args = FoleviEngine.GraphArgs
+        public typealias Value = FoleviEngine.GraphValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct Reviews: EngineViewSpec {
+        public static let name = "reviews"
+        public typealias Args = FoleviEngine.ReviewsArgs
+        public typealias Value = FoleviEngine.ReviewsValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct RecentViewed: EngineViewSpec {
+        public static let name = "recent.viewed"
+        public typealias Args = FoleviEngine.RecentViewedArgs
+        public typealias Value = FoleviEngine.RecentViewedValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct SettingsQuery: EngineViewSpec {
+        public static let name = "settings.query"
+        public typealias Args = FoleviEngine.SettingsQueryArgs
+        public typealias Value = FoleviEngine.SettingsQueryValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultSummary: EngineViewSpec {
+        public static let name = "vault.summary"
+        public typealias Args = FoleviEngine.SpaceArgs
+        public typealias Value = FoleviEngine.VaultSummaryValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultItems: EngineViewSpec {
+        public static let name = "vault.items"
+        public typealias Args = FoleviEngine.VaultItemsArgs
+        public typealias Value = FoleviEngine.VaultItemsValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultFolders: EngineViewSpec {
+        public static let name = "vault.folders"
+        public typealias Args = FoleviEngine.VaultIdArgs
+        public typealias Value = FoleviEngine.VaultFoldersValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultHealth: EngineViewSpec {
+        public static let name = "vault.health"
+        public typealias Args = FoleviEngine.VaultIdArgs
+        public typealias Value = FoleviEngine.VaultHealthValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultActivity: EngineViewSpec {
+        public static let name = "vault.activity"
+        public typealias Args = FoleviEngine.VaultActivityArgs
+        public typealias Value = FoleviEngine.VaultActivityValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultPeople: EngineViewSpec {
+        public static let name = "vault.people"
+        public typealias Args = FoleviEngine.VaultIdArgs
+        public typealias Value = FoleviEngine.VaultPeopleValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultShares: EngineViewSpec {
+        public static let name = "vault.shares"
+        public typealias Args = FoleviEngine.VaultItemIdArgs
+        public typealias Value = FoleviEngine.VaultSharesValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
 }
 
 public extension EngineViewSpec where Self == Views.Session {
@@ -738,6 +871,50 @@ public extension EngineViewSpec where Self == Views.SharedFolderOpen {
 
 public extension EngineViewSpec where Self == Views.NotesMoveCheck {
     static func notesMoveCheck(ids: [String], folderId: String? = nil) -> Self { Self(FoleviEngine.NotesMoveCheckArgs(ids: ids, folderId: folderId)) }
+}
+
+public extension EngineViewSpec where Self == Views.Graph {
+    static func graph(space: SpaceRef? = nil, kinds: [String]? = nil) -> Self { Self(FoleviEngine.GraphArgs(space: space, kinds: kinds)) }
+}
+
+public extension EngineViewSpec where Self == Views.Reviews {
+    static func reviews(noteId: String? = nil, space: SpaceRef? = nil) -> Self { Self(FoleviEngine.ReviewsArgs(noteId: noteId, space: space)) }
+}
+
+public extension EngineViewSpec where Self == Views.RecentViewed {
+    static func recentViewed(space: SpaceRef? = nil, limit: Int? = nil) -> Self { Self(FoleviEngine.RecentViewedArgs(space: space, limit: limit)) }
+}
+
+public extension EngineViewSpec where Self == Views.SettingsQuery {
+    static func settingsQuery(key: SettingsQueryKey, args: [String: JSONValue]? = nil) -> Self { Self(FoleviEngine.SettingsQueryArgs(key: key, args: args)) }
+}
+
+public extension EngineViewSpec where Self == Views.VaultSummary {
+    static func vaultSummary(space: SpaceRef? = nil) -> Self { Self(FoleviEngine.SpaceArgs(space: space)) }
+}
+
+public extension EngineViewSpec where Self == Views.VaultItems {
+    static func vaultItems(vaultId: String, section: FoleviEngine.VaultItemsArgs.Section, folderId: String? = nil) -> Self { Self(FoleviEngine.VaultItemsArgs(vaultId: vaultId, section: section, folderId: folderId)) }
+}
+
+public extension EngineViewSpec where Self == Views.VaultFolders {
+    static func vaultFolders(vaultId: String) -> Self { Self(FoleviEngine.VaultIdArgs(vaultId: vaultId)) }
+}
+
+public extension EngineViewSpec where Self == Views.VaultHealth {
+    static func vaultHealth(vaultId: String) -> Self { Self(FoleviEngine.VaultIdArgs(vaultId: vaultId)) }
+}
+
+public extension EngineViewSpec where Self == Views.VaultActivity {
+    static func vaultActivity(vaultId: String, event: String? = nil, failedOnly: Bool? = nil, personId: String? = nil) -> Self { Self(FoleviEngine.VaultActivityArgs(vaultId: vaultId, event: event, failedOnly: failedOnly, personId: personId)) }
+}
+
+public extension EngineViewSpec where Self == Views.VaultPeople {
+    static func vaultPeople(vaultId: String) -> Self { Self(FoleviEngine.VaultIdArgs(vaultId: vaultId)) }
+}
+
+public extension EngineViewSpec where Self == Views.VaultShares {
+    static func vaultShares(vaultId: String, itemId: String) -> Self { Self(FoleviEngine.VaultItemIdArgs(vaultId: vaultId, itemId: itemId)) }
 }
 
 /// List views: `client.watchList(.notesList(view: .folder, folderId: id))`.
@@ -1387,6 +1564,279 @@ public enum Commands {
         public var args: Args
         public init(_ args: Args) { self.args = args }
     }
+    public struct ReviewRate: EngineCommandSpec {
+        public static let name = "review.rate"
+        public typealias Args = FoleviEngine.ReviewRateArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct ReviewSetNewPerDay: EngineCommandSpec {
+        public static let name = "review.setNewPerDay"
+        public typealias Args = FoleviEngine.ReviewNewPerDayArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct SettingsRun: EngineCommandSpec {
+        public static let name = "settings.run"
+        public typealias Args = FoleviEngine.SettingsRunArgs
+        public typealias Result = FoleviEngine.SettingsRunResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultSetUp: EngineCommandSpec {
+        public static let name = "vault.setUp"
+        public typealias Args = FoleviEngine.VaultSetUpArgs
+        public typealias Result = FoleviEngine.VaultRecoveryResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultUnlock: EngineCommandSpec {
+        public static let name = "vault.unlock"
+        public typealias Args = FoleviEngine.VaultPasscodeArgs
+        public typealias Result = FoleviEngine.VaultUnlockResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultReset: EngineCommandSpec {
+        public static let name = "vault.reset"
+        public typealias Args = FoleviEngine.VaultResetArgs
+        public typealias Result = FoleviEngine.VaultUnlockResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultFinishPasscode: EngineCommandSpec {
+        public static let name = "vault.finishPasscode"
+        public typealias Args = FoleviEngine.VaultPasscodeArgs
+        public typealias Result = FoleviEngine.VaultUnlockResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultChangePasscode: EngineCommandSpec {
+        public static let name = "vault.changePasscode"
+        public typealias Args = FoleviEngine.VaultChangePasscodeArgs
+        public typealias Result = FoleviEngine.VaultUnlockResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultLock: EngineCommandSpec {
+        public static let name = "vault.lock"
+        public typealias Args = FoleviEngine.VaultIdArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultRecoverySaved: EngineCommandSpec {
+        public static let name = "vault.recoverySaved"
+        public typealias Args = FoleviEngine.VaultIdArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultNewRecoveryKey: EngineCommandSpec {
+        public static let name = "vault.newRecoveryKey"
+        public typealias Args = FoleviEngine.VaultIdArgs
+        public typealias Result = FoleviEngine.VaultRecoveryResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultRequestReset: EngineCommandSpec {
+        public static let name = "vault.requestReset"
+        public typealias Args = FoleviEngine.VaultIdArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultRecord: EngineCommandSpec {
+        public static let name = "vault.record"
+        public typealias Args = FoleviEngine.VaultRecordArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultItemOpen: EngineCommandSpec {
+        public static let name = "vault.item.open"
+        public typealias Args = FoleviEngine.VaultItemIdArgs
+        public typealias Result = FoleviEngine.VaultItemValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultItemSave: EngineCommandSpec {
+        public static let name = "vault.item.save"
+        public typealias Args = FoleviEngine.VaultItemSaveArgs
+        public typealias Result = FoleviEngine.VaultIdResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultItemDuplicate: EngineCommandSpec {
+        public static let name = "vault.item.duplicate"
+        public typealias Args = FoleviEngine.VaultItemIdArgs
+        public typealias Result = FoleviEngine.VaultIdResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultItemRemove: EngineCommandSpec {
+        public static let name = "vault.item.remove"
+        public typealias Args = FoleviEngine.VaultItemIdArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultItemRestore: EngineCommandSpec {
+        public static let name = "vault.item.restore"
+        public typealias Args = FoleviEngine.VaultItemIdArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultItemHistory: EngineCommandSpec {
+        public static let name = "vault.item.history"
+        public typealias Args = FoleviEngine.VaultItemIdArgs
+        public typealias Result = FoleviEngine.VaultHistoryResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultItemRestoreVersion: EngineCommandSpec {
+        public static let name = "vault.item.restoreVersion"
+        public typealias Args = FoleviEngine.VaultRevisionArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultTotp: EngineCommandSpec {
+        public static let name = "vault.totp"
+        public typealias Args = FoleviEngine.VaultTotpArgs
+        public typealias Result = FoleviEngine.VaultTotpResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultGenerate: EngineCommandSpec {
+        public static let name = "vault.generate"
+        public typealias Args = FoleviEngine.VaultGenerateArgs
+        public typealias Result = FoleviEngine.VaultGenerateResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultStrength: EngineCommandSpec {
+        public static let name = "vault.strength"
+        public typealias Args = FoleviEngine.VaultStrengthArgs
+        public typealias Result = FoleviEngine.VaultStrengthResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultFolderCreate: EngineCommandSpec {
+        public static let name = "vault.folder.create"
+        public typealias Args = FoleviEngine.VaultFolderCreateArgs
+        public typealias Result = FoleviEngine.VaultIdResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultNoteCreate: EngineCommandSpec {
+        public static let name = "vault.note.create"
+        public typealias Args = FoleviEngine.VaultNoteCreateArgs
+        public typealias Result = FoleviEngine.VaultIdResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultNoteOpen: EngineCommandSpec {
+        public static let name = "vault.note.open"
+        public typealias Args = FoleviEngine.VaultItemIdArgs
+        public typealias Result = FoleviEngine.VaultNoteValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultNoteSave: EngineCommandSpec {
+        public static let name = "vault.note.save"
+        public typealias Args = FoleviEngine.VaultNoteSaveArgs
+        public typealias Result = FoleviEngine.VaultRevisionResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultFileUpload: EngineCommandSpec {
+        public static let name = "vault.file.upload"
+        public typealias Args = FoleviEngine.VaultUploadArgs
+        public typealias Result = FoleviEngine.VaultIdResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultFileOpen: EngineCommandSpec {
+        public static let name = "vault.file.open"
+        public typealias Args = FoleviEngine.VaultFileOpenArgs
+        public typealias Result = FoleviEngine.VaultFileValue
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultTrashEmpty: EngineCommandSpec {
+        public static let name = "vault.trash.empty"
+        public typealias Args = FoleviEngine.VaultIdArgs
+        public typealias Result = FoleviEngine.VaultRemovedResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultSettingsUpdate: EngineCommandSpec {
+        public static let name = "vault.settings.update"
+        public typealias Args = FoleviEngine.VaultSettingsArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultPeopleAdd: EngineCommandSpec {
+        public static let name = "vault.people.add"
+        public typealias Args = FoleviEngine.VaultPersonArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultPeopleRemove: EngineCommandSpec {
+        public static let name = "vault.people.remove"
+        public typealias Args = FoleviEngine.VaultPersonArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultPeopleSetRole: EngineCommandSpec {
+        public static let name = "vault.people.setRole"
+        public typealias Args = FoleviEngine.VaultRoleArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultPeopleReviewed: EngineCommandSpec {
+        public static let name = "vault.people.reviewed"
+        public typealias Args = FoleviEngine.VaultIdArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultSharePerson: EngineCommandSpec {
+        public static let name = "vault.share.person"
+        public typealias Args = FoleviEngine.VaultShareArgs
+        public typealias Result = FoleviEngine.VaultShareResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultShareStop: EngineCommandSpec {
+        public static let name = "vault.share.stop"
+        public typealias Args = FoleviEngine.VaultShareStopArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultLinkCreate: EngineCommandSpec {
+        public static let name = "vault.link.create"
+        public typealias Args = FoleviEngine.VaultLinkArgs
+        public typealias Result = FoleviEngine.VaultLinkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct VaultLinkRevoke: EngineCommandSpec {
+        public static let name = "vault.link.revoke"
+        public typealias Args = FoleviEngine.VaultLinkRevokeArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
 }
 
 public extension EngineCommandSpec where Self == Commands.SpaceSwitch {
@@ -1749,6 +2199,162 @@ public extension EngineCommandSpec where Self == Commands.FolderInviteAccept {
     static func folderInviteAccept(inviteId: String) -> Self { Self(FoleviEngine.FolderInviteIdArgs(inviteId: inviteId)) }
 }
 
+public extension EngineCommandSpec where Self == Commands.ReviewRate {
+    static func reviewRate(blockId: String, rating: String, lastReview: Int? = nil) -> Self { Self(FoleviEngine.ReviewRateArgs(blockId: blockId, rating: rating, lastReview: lastReview)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.ReviewSetNewPerDay {
+    static func reviewSetNewPerDay(value: Int) -> Self { Self(FoleviEngine.ReviewNewPerDayArgs(value: value)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.SettingsRun {
+    static func settingsRun(key: SettingsRunKey, args: [String: JSONValue]? = nil) -> Self { Self(FoleviEngine.SettingsRunArgs(key: key, args: args)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultSetUp {
+    static func vaultSetUp(passcode: String, space: SpaceRef? = nil) -> Self { Self(FoleviEngine.VaultSetUpArgs(passcode: passcode, space: space)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultUnlock {
+    static func vaultUnlock(vaultId: String, passcode: String) -> Self { Self(FoleviEngine.VaultPasscodeArgs(vaultId: vaultId, passcode: passcode)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultReset {
+    static func vaultReset(vaultId: String, recoveryKey: String, passcode: String) -> Self { Self(FoleviEngine.VaultResetArgs(vaultId: vaultId, recoveryKey: recoveryKey, passcode: passcode)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultFinishPasscode {
+    static func vaultFinishPasscode(vaultId: String, passcode: String) -> Self { Self(FoleviEngine.VaultPasscodeArgs(vaultId: vaultId, passcode: passcode)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultChangePasscode {
+    static func vaultChangePasscode(vaultId: String, current: String, next: String) -> Self { Self(FoleviEngine.VaultChangePasscodeArgs(vaultId: vaultId, current: current, next: next)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultLock {
+    static func vaultLock(vaultId: String) -> Self { Self(FoleviEngine.VaultIdArgs(vaultId: vaultId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultRecoverySaved {
+    static func vaultRecoverySaved(vaultId: String) -> Self { Self(FoleviEngine.VaultIdArgs(vaultId: vaultId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultNewRecoveryKey {
+    static func vaultNewRecoveryKey(vaultId: String) -> Self { Self(FoleviEngine.VaultIdArgs(vaultId: vaultId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultRequestReset {
+    static func vaultRequestReset(vaultId: String) -> Self { Self(FoleviEngine.VaultIdArgs(vaultId: vaultId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultRecord {
+    static func vaultRecord(vaultId: String, event: String, itemId: String? = nil, field: String? = nil) -> Self { Self(FoleviEngine.VaultRecordArgs(vaultId: vaultId, event: event, itemId: itemId, field: field)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultItemOpen {
+    static func vaultItemOpen(vaultId: String, itemId: String) -> Self { Self(FoleviEngine.VaultItemIdArgs(vaultId: vaultId, itemId: itemId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultItemSave {
+    static func vaultItemSave(vaultId: String, itemId: String? = nil, kind: String, title: String, values: [String: String], notes: String) -> Self { Self(FoleviEngine.VaultItemSaveArgs(vaultId: vaultId, itemId: itemId, kind: kind, title: title, values: values, notes: notes)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultItemDuplicate {
+    static func vaultItemDuplicate(vaultId: String, itemId: String) -> Self { Self(FoleviEngine.VaultItemIdArgs(vaultId: vaultId, itemId: itemId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultItemRemove {
+    static func vaultItemRemove(vaultId: String, itemId: String) -> Self { Self(FoleviEngine.VaultItemIdArgs(vaultId: vaultId, itemId: itemId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultItemRestore {
+    static func vaultItemRestore(vaultId: String, itemId: String) -> Self { Self(FoleviEngine.VaultItemIdArgs(vaultId: vaultId, itemId: itemId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultItemHistory {
+    static func vaultItemHistory(vaultId: String, itemId: String) -> Self { Self(FoleviEngine.VaultItemIdArgs(vaultId: vaultId, itemId: itemId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultItemRestoreVersion {
+    static func vaultItemRestoreVersion(vaultId: String, itemId: String, revision: Int) -> Self { Self(FoleviEngine.VaultRevisionArgs(vaultId: vaultId, itemId: itemId, revision: revision)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultTotp {
+    static func vaultTotp(secret: String) -> Self { Self(FoleviEngine.VaultTotpArgs(secret: secret)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultGenerate {
+    static func vaultGenerate(kind: FoleviEngine.VaultGenerateArgs.Kind) -> Self { Self(FoleviEngine.VaultGenerateArgs(kind: kind)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultStrength {
+    static func vaultStrength(password: String) -> Self { Self(FoleviEngine.VaultStrengthArgs(password: password)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultFolderCreate {
+    static func vaultFolderCreate(vaultId: String, parentId: String? = nil, name: String) -> Self { Self(FoleviEngine.VaultFolderCreateArgs(vaultId: vaultId, parentId: parentId, name: name)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultNoteCreate {
+    static func vaultNoteCreate(vaultId: String, folderId: String? = nil, title: String) -> Self { Self(FoleviEngine.VaultNoteCreateArgs(vaultId: vaultId, folderId: folderId, title: title)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultNoteOpen {
+    static func vaultNoteOpen(vaultId: String, itemId: String) -> Self { Self(FoleviEngine.VaultItemIdArgs(vaultId: vaultId, itemId: itemId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultNoteSave {
+    static func vaultNoteSave(vaultId: String, itemId: String, revision: Int, text: String) -> Self { Self(FoleviEngine.VaultNoteSaveArgs(vaultId: vaultId, itemId: itemId, revision: revision, text: text)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultFileUpload {
+    static func vaultFileUpload(vaultId: String, folderId: String? = nil, name: String, mime: String, data: String) -> Self { Self(FoleviEngine.VaultUploadArgs(vaultId: vaultId, folderId: folderId, name: name, mime: mime, data: data)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultFileOpen {
+    static func vaultFileOpen(vaultId: String, itemId: String, purpose: FoleviEngine.VaultFileOpenArgs.Purpose) -> Self { Self(FoleviEngine.VaultFileOpenArgs(vaultId: vaultId, itemId: itemId, purpose: purpose)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultTrashEmpty {
+    static func vaultTrashEmpty(vaultId: String) -> Self { Self(FoleviEngine.VaultIdArgs(vaultId: vaultId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultSettingsUpdate {
+    static func vaultSettingsUpdate(vaultId: String, autoLockMinutes: Int? = nil, custodiansNameCustodians: Bool? = nil) -> Self { Self(FoleviEngine.VaultSettingsArgs(vaultId: vaultId, autoLockMinutes: autoLockMinutes, custodiansNameCustodians: custodiansNameCustodians)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultPeopleAdd {
+    static func vaultPeopleAdd(vaultId: String, profileId: String) -> Self { Self(FoleviEngine.VaultPersonArgs(vaultId: vaultId, profileId: profileId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultPeopleRemove {
+    static func vaultPeopleRemove(vaultId: String, profileId: String) -> Self { Self(FoleviEngine.VaultPersonArgs(vaultId: vaultId, profileId: profileId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultPeopleSetRole {
+    static func vaultPeopleSetRole(vaultId: String, profileId: String, role: FoleviEngine.VaultRoleArgs.Role) -> Self { Self(FoleviEngine.VaultRoleArgs(vaultId: vaultId, profileId: profileId, role: role)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultPeopleReviewed {
+    static func vaultPeopleReviewed(vaultId: String) -> Self { Self(FoleviEngine.VaultIdArgs(vaultId: vaultId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultSharePerson {
+    static func vaultSharePerson(vaultId: String, itemId: String, email: String, days: Int, canEdit: Bool) -> Self { Self(FoleviEngine.VaultShareArgs(vaultId: vaultId, itemId: itemId, email: email, days: days, canEdit: canEdit)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultShareStop {
+    static func vaultShareStop(vaultId: String, itemId: String, shareId: String) -> Self { Self(FoleviEngine.VaultShareStopArgs(vaultId: vaultId, itemId: itemId, shareId: shareId)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultLinkCreate {
+    static func vaultLinkCreate(vaultId: String, itemId: String, maxViews: Int, lastsMs: Int, password: String? = nil) -> Self { Self(FoleviEngine.VaultLinkArgs(vaultId: vaultId, itemId: itemId, maxViews: maxViews, lastsMs: lastsMs, password: password)) }
+}
+
+public extension EngineCommandSpec where Self == Commands.VaultLinkRevoke {
+    static func vaultLinkRevoke(vaultId: String, linkId: String) -> Self { Self(FoleviEngine.VaultLinkRevokeArgs(vaultId: vaultId, linkId: linkId)) }
+}
+
 /// Editor commands: `try await client.editor(.notePrepare(id: id))`.
 public enum EditorCommands {
     public struct NotePrepare: EngineEditorSpec {
@@ -1919,6 +2525,41 @@ public enum EditorCommands {
         public var args: Args
         public init(_ args: Args = .init()) { self.args = args }
     }
+    public struct BlockJump: EngineEditorSpec {
+        public static let name = "block.jump"
+        public typealias Args = FoleviEngine.BlockJumpArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct TaskToggle: EngineEditorSpec {
+        public static let name = "task.toggle"
+        public typealias Args = FoleviEngine.TaskToggleArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct ThreadOpen: EngineEditorSpec {
+        public static let name = "thread.open"
+        public typealias Args = FoleviEngine.ThreadOpenArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct Find: EngineEditorSpec {
+        public static let name = "find"
+        public typealias Args = FoleviEngine.FindArgs
+        public typealias Result = FoleviEngine.FindResult
+        public var args: Args
+        public init(_ args: Args) { self.args = args }
+    }
+    public struct FindClear: EngineEditorSpec {
+        public static let name = "find.clear"
+        public typealias Args = FoleviEngine.EmptyArgs
+        public typealias Result = FoleviEngine.OkResult
+        public var args: Args
+        public init(_ args: Args = .init()) { self.args = args }
+    }
 }
 
 public extension EngineEditorSpec where Self == EditorCommands.NotePrepare {
@@ -2017,18 +2658,38 @@ public extension EngineEditorSpec where Self == EditorCommands.NoteLock {
     static var noteLock: Self { Self() }
 }
 
+public extension EngineEditorSpec where Self == EditorCommands.BlockJump {
+    static func blockJump(blockId: String) -> Self { Self(FoleviEngine.BlockJumpArgs(blockId: blockId)) }
+}
+
+public extension EngineEditorSpec where Self == EditorCommands.TaskToggle {
+    static func taskToggle(blockId: String) -> Self { Self(FoleviEngine.TaskToggleArgs(blockId: blockId)) }
+}
+
+public extension EngineEditorSpec where Self == EditorCommands.ThreadOpen {
+    static func threadOpen(threadId: String) -> Self { Self(FoleviEngine.ThreadOpenArgs(threadId: threadId)) }
+}
+
+public extension EngineEditorSpec where Self == EditorCommands.Find {
+    static func find(query: String, index: Int? = nil) -> Self { Self(FoleviEngine.FindArgs(query: query, index: index)) }
+}
+
+public extension EngineEditorSpec where Self == EditorCommands.FindClear {
+    static var findClear: Self { Self() }
+}
+
 /// Every name with its Swift types, for tools that work by name (the contract tests, the debug console).
 public enum EngineCatalog {
     public typealias Model = any (Codable & Sendable).Type
-    public static let viewArgs: [String: Model] = ["session": FoleviEngine.EmptyArgs.self, "places.list": FoleviEngine.EmptyArgs.self, "home": FoleviEngine.SpaceArgs.self, "folders.tree": FoleviEngine.SpaceArgs.self, "sync.status": FoleviEngine.EmptyArgs.self, "note.meta": FoleviEngine.NoteIdArgs.self, "trash.summary": FoleviEngine.SpaceArgs.self, "templates.builtIn": FoleviEngine.EmptyArgs.self, "folders.cards": FoleviEngine.FolderCardsArgs.self, "shared.list": FoleviEngine.EmptyArgs.self, "changes": FoleviEngine.EmptyArgs.self, "notifications.list": FoleviEngine.EmptyArgs.self, "search": FoleviEngine.SearchArgs.self, "tasks.list": FoleviEngine.TasksListArgs.self, "tasks.counts": FoleviEngine.SpaceArgs.self, "tasks.range": FoleviEngine.TasksRangeArgs.self, "calendars.events": FoleviEngine.CalendarEventsArgs.self, "calendars.list": FoleviEngine.EmptyArgs.self, "members": FoleviEngine.SpaceArgs.self, "task.parse": FoleviEngine.TaskParseArgs.self, "account.details": FoleviEngine.EmptyArgs.self, "settings.account": FoleviEngine.EmptyArgs.self, "settings.general": FoleviEngine.EmptyArgs.self, "settings.appearance": FoleviEngine.EmptyArgs.self, "settings.notifications": FoleviEngine.EmptyArgs.self, "settings.ai": FoleviEngine.EmptyArgs.self, "settings.security": FoleviEngine.EmptyArgs.self, "sharing.get": FoleviEngine.NoteIdArgs.self, "invite.preview": FoleviEngine.InviteTokenArgs.self, "ai.conversations": FoleviEngine.ChatConversationsArgs.self, "ai.conversation": FoleviEngine.ChatConversationArgs.self, "ai.stream": FoleviEngine.ChatStreamArgs.self, "ai.capabilities": FoleviEngine.EmptyArgs.self, "places.move.preview": FoleviEngine.PlaceMovePreviewArgs.self, "notes.meta": FoleviEngine.NotesMetaArgs.self, "ai.research": FoleviEngine.ResearchArgs.self, "calendar.feed": FoleviEngine.EmptyArgs.self, "tasks.unscheduled": FoleviEngine.SpaceArgs.self, "files.urls": FoleviEngine.FileUrlsArgs.self, "recent": FoleviEngine.RecentArgs.self, "device.storage": FoleviEngine.EmptyArgs.self, "support.topics": FoleviEngine.EmptyArgs.self, "changes.diff": FoleviEngine.ChangeDiffArgs.self, "folderSharing.get": FoleviEngine.NoteIdArgs.self, "shared.folders": FoleviEngine.EmptyArgs.self, "sharedFolder.open": FoleviEngine.NoteIdArgs.self, "notes.moveCheck": FoleviEngine.NotesMoveCheckArgs.self]
-    public static let viewValues: [String: Model] = ["session": FoleviEngine.SessionValue.self, "places.list": FoleviEngine.PlacesValue.self, "home": FoleviEngine.HomeValue.self, "folders.tree": FoleviEngine.FoldersTreeValue.self, "sync.status": FoleviEngine.SyncStatusValue.self, "note.meta": FoleviEngine.NoteMeta.self, "trash.summary": FoleviEngine.TrashSummaryValue.self, "templates.builtIn": FoleviEngine.BuiltInTemplatesValue.self, "folders.cards": FoleviEngine.FolderCardsValue.self, "shared.list": FoleviEngine.SharedValue.self, "changes": FoleviEngine.ChangesValue.self, "notifications.list": FoleviEngine.NotificationsValue.self, "search": FoleviEngine.SearchValue.self, "tasks.list": FoleviEngine.TasksValue.self, "tasks.counts": FoleviEngine.TaskCounts.self, "tasks.range": FoleviEngine.TasksRangeValue.self, "calendars.events": FoleviEngine.CalendarEventsValue.self, "calendars.list": FoleviEngine.CalendarsValue.self, "members": FoleviEngine.MembersValue.self, "task.parse": FoleviEngine.TaskParseValue.self, "account.details": FoleviEngine.AccountDetails.self, "settings.account": FoleviEngine.AccountSettings.self, "settings.general": FoleviEngine.GeneralSettings.self, "settings.appearance": FoleviEngine.AppearanceSettings.self, "settings.notifications": FoleviEngine.NotificationSettings.self, "settings.ai": FoleviEngine.AiSettings.self, "settings.security": FoleviEngine.SecuritySettings.self, "sharing.get": FoleviEngine.SharingValue.self, "invite.preview": FoleviEngine.InvitePreview.self, "ai.conversations": FoleviEngine.ChatConversationsValue.self, "ai.conversation": FoleviEngine.ChatConversationValue.self, "ai.stream": FoleviEngine.ChatStreamValue.self, "ai.capabilities": FoleviEngine.ChatCapabilities.self, "places.move.preview": FoleviEngine.PlaceMovePreview.self, "notes.meta": FoleviEngine.NotesMetaValue.self, "ai.research": FoleviEngine.ResearchValue.self, "calendar.feed": FoleviEngine.CalendarFeedValue.self, "tasks.unscheduled": FoleviEngine.TasksRangeValue.self, "files.urls": FoleviEngine.FileUrlsValue.self, "recent": FoleviEngine.RecentValue.self, "device.storage": FoleviEngine.DeviceStorageValue.self, "support.topics": FoleviEngine.SupportTopicsValue.self, "changes.diff": FoleviEngine.ChangeDiffValue.self, "folderSharing.get": FoleviEngine.FolderSharingValue.self, "shared.folders": FoleviEngine.SharedFoldersValue.self, "sharedFolder.open": FoleviEngine.SharedFolderValue.self, "notes.moveCheck": FoleviEngine.NotesMoveCheckValue.self]
+    public static let viewArgs: [String: Model] = ["session": FoleviEngine.EmptyArgs.self, "places.list": FoleviEngine.EmptyArgs.self, "home": FoleviEngine.SpaceArgs.self, "folders.tree": FoleviEngine.SpaceArgs.self, "sync.status": FoleviEngine.EmptyArgs.self, "note.meta": FoleviEngine.NoteIdArgs.self, "trash.summary": FoleviEngine.SpaceArgs.self, "templates.builtIn": FoleviEngine.EmptyArgs.self, "folders.cards": FoleviEngine.FolderCardsArgs.self, "shared.list": FoleviEngine.EmptyArgs.self, "changes": FoleviEngine.EmptyArgs.self, "notifications.list": FoleviEngine.EmptyArgs.self, "search": FoleviEngine.SearchArgs.self, "tasks.list": FoleviEngine.TasksListArgs.self, "tasks.counts": FoleviEngine.SpaceArgs.self, "tasks.range": FoleviEngine.TasksRangeArgs.self, "calendars.events": FoleviEngine.CalendarEventsArgs.self, "calendars.list": FoleviEngine.EmptyArgs.self, "members": FoleviEngine.SpaceArgs.self, "task.parse": FoleviEngine.TaskParseArgs.self, "account.details": FoleviEngine.EmptyArgs.self, "settings.account": FoleviEngine.EmptyArgs.self, "settings.general": FoleviEngine.EmptyArgs.self, "settings.appearance": FoleviEngine.EmptyArgs.self, "settings.notifications": FoleviEngine.EmptyArgs.self, "settings.ai": FoleviEngine.EmptyArgs.self, "settings.security": FoleviEngine.EmptyArgs.self, "sharing.get": FoleviEngine.NoteIdArgs.self, "invite.preview": FoleviEngine.InviteTokenArgs.self, "ai.conversations": FoleviEngine.ChatConversationsArgs.self, "ai.conversation": FoleviEngine.ChatConversationArgs.self, "ai.stream": FoleviEngine.ChatStreamArgs.self, "ai.capabilities": FoleviEngine.EmptyArgs.self, "places.move.preview": FoleviEngine.PlaceMovePreviewArgs.self, "notes.meta": FoleviEngine.NotesMetaArgs.self, "ai.research": FoleviEngine.ResearchArgs.self, "calendar.feed": FoleviEngine.EmptyArgs.self, "tasks.unscheduled": FoleviEngine.SpaceArgs.self, "files.urls": FoleviEngine.FileUrlsArgs.self, "recent": FoleviEngine.RecentArgs.self, "device.storage": FoleviEngine.EmptyArgs.self, "support.topics": FoleviEngine.EmptyArgs.self, "changes.diff": FoleviEngine.ChangeDiffArgs.self, "folderSharing.get": FoleviEngine.NoteIdArgs.self, "shared.folders": FoleviEngine.EmptyArgs.self, "sharedFolder.open": FoleviEngine.NoteIdArgs.self, "notes.moveCheck": FoleviEngine.NotesMoveCheckArgs.self, "graph": FoleviEngine.GraphArgs.self, "reviews": FoleviEngine.ReviewsArgs.self, "recent.viewed": FoleviEngine.RecentViewedArgs.self, "settings.query": FoleviEngine.SettingsQueryArgs.self, "vault.summary": FoleviEngine.SpaceArgs.self, "vault.items": FoleviEngine.VaultItemsArgs.self, "vault.folders": FoleviEngine.VaultIdArgs.self, "vault.health": FoleviEngine.VaultIdArgs.self, "vault.activity": FoleviEngine.VaultActivityArgs.self, "vault.people": FoleviEngine.VaultIdArgs.self, "vault.shares": FoleviEngine.VaultItemIdArgs.self]
+    public static let viewValues: [String: Model] = ["session": FoleviEngine.SessionValue.self, "places.list": FoleviEngine.PlacesValue.self, "home": FoleviEngine.HomeValue.self, "folders.tree": FoleviEngine.FoldersTreeValue.self, "sync.status": FoleviEngine.SyncStatusValue.self, "note.meta": FoleviEngine.NoteMeta.self, "trash.summary": FoleviEngine.TrashSummaryValue.self, "templates.builtIn": FoleviEngine.BuiltInTemplatesValue.self, "folders.cards": FoleviEngine.FolderCardsValue.self, "shared.list": FoleviEngine.SharedValue.self, "changes": FoleviEngine.ChangesValue.self, "notifications.list": FoleviEngine.NotificationsValue.self, "search": FoleviEngine.SearchValue.self, "tasks.list": FoleviEngine.TasksValue.self, "tasks.counts": FoleviEngine.TaskCounts.self, "tasks.range": FoleviEngine.TasksRangeValue.self, "calendars.events": FoleviEngine.CalendarEventsValue.self, "calendars.list": FoleviEngine.CalendarsValue.self, "members": FoleviEngine.MembersValue.self, "task.parse": FoleviEngine.TaskParseValue.self, "account.details": FoleviEngine.AccountDetails.self, "settings.account": FoleviEngine.AccountSettings.self, "settings.general": FoleviEngine.GeneralSettings.self, "settings.appearance": FoleviEngine.AppearanceSettings.self, "settings.notifications": FoleviEngine.NotificationSettings.self, "settings.ai": FoleviEngine.AiSettings.self, "settings.security": FoleviEngine.SecuritySettings.self, "sharing.get": FoleviEngine.SharingValue.self, "invite.preview": FoleviEngine.InvitePreview.self, "ai.conversations": FoleviEngine.ChatConversationsValue.self, "ai.conversation": FoleviEngine.ChatConversationValue.self, "ai.stream": FoleviEngine.ChatStreamValue.self, "ai.capabilities": FoleviEngine.ChatCapabilities.self, "places.move.preview": FoleviEngine.PlaceMovePreview.self, "notes.meta": FoleviEngine.NotesMetaValue.self, "ai.research": FoleviEngine.ResearchValue.self, "calendar.feed": FoleviEngine.CalendarFeedValue.self, "tasks.unscheduled": FoleviEngine.TasksRangeValue.self, "files.urls": FoleviEngine.FileUrlsValue.self, "recent": FoleviEngine.RecentValue.self, "device.storage": FoleviEngine.DeviceStorageValue.self, "support.topics": FoleviEngine.SupportTopicsValue.self, "changes.diff": FoleviEngine.ChangeDiffValue.self, "folderSharing.get": FoleviEngine.FolderSharingValue.self, "shared.folders": FoleviEngine.SharedFoldersValue.self, "sharedFolder.open": FoleviEngine.SharedFolderValue.self, "notes.moveCheck": FoleviEngine.NotesMoveCheckValue.self, "graph": FoleviEngine.GraphValue.self, "reviews": FoleviEngine.ReviewsValue.self, "recent.viewed": FoleviEngine.RecentViewedValue.self, "settings.query": FoleviEngine.SettingsQueryValue.self, "vault.summary": FoleviEngine.VaultSummaryValue.self, "vault.items": FoleviEngine.VaultItemsValue.self, "vault.folders": FoleviEngine.VaultFoldersValue.self, "vault.health": FoleviEngine.VaultHealthValue.self, "vault.activity": FoleviEngine.VaultActivityValue.self, "vault.people": FoleviEngine.VaultPeopleValue.self, "vault.shares": FoleviEngine.VaultSharesValue.self]
     public static let listArgs: [String: Model] = ["notes.list": FoleviEngine.NotesListArgs.self]
     public static let listRows: [String: any EngineRow.Type] = ["notes.list": FoleviEngine.NoteRow.self]
-    public static let commandArgs: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchArgs.self, "note.create": FoleviEngine.NoteCreateArgs.self, "note.star": FoleviEngine.NoteStarArgs.self, "note.move": FoleviEngine.NoteMoveArgs.self, "note.archive": FoleviEngine.NoteArchiveArgs.self, "note.trash": FoleviEngine.NoteIdsArgs.self, "note.restore": FoleviEngine.NoteIdsArgs.self, "note.hideFromRecent": FoleviEngine.NoteIdsArgs.self, "folder.create": FoleviEngine.FolderCreateArgs.self, "catchUp.run": FoleviEngine.SpaceArgs.self, "catchUp.clear": FoleviEngine.SpaceArgs.self, "engine.refresh": FoleviEngine.EmptyArgs.self, "toast.action": FoleviEngine.ToastActionArgs.self, "gate.act": FoleviEngine.GateActArgs.self, "note.deleteForever": FoleviEngine.NoteIdsArgs.self, "note.duplicate": FoleviEngine.NoteIdArgs.self, "note.copyTo": FoleviEngine.NoteCopyToArgs.self, "note.reorder": FoleviEngine.NoteReorderArgs.self, "note.showInRecent": FoleviEngine.NoteIdsArgs.self, "template.create": FoleviEngine.TemplateCreateArgs.self, "trash.empty": FoleviEngine.SpaceArgs.self, "folder.rename": FoleviEngine.FolderRenameArgs.self, "folder.setColor": FoleviEngine.FolderSetColorArgs.self, "folder.move": FoleviEngine.FolderMoveArgs.self, "folder.delete": FoleviEngine.FolderIdArgs.self, "changes.markSeen": FoleviEngine.NoteIdsArgs.self, "proposal.accept": FoleviEngine.ProposalIdArgs.self, "proposal.reject": FoleviEngine.ProposalIdArgs.self, "notification.markRead": FoleviEngine.NotificationMarkArgs.self, "notification.markAllRead": FoleviEngine.EmptyArgs.self, "notification.remove": FoleviEngine.NotificationIdsArgs.self, "invite.accept": FoleviEngine.InviteAcceptArgs.self, "pageInvite.accept": FoleviEngine.InviteAcceptArgs.self, "task.create": FoleviEngine.TaskCreateArgs.self, "task.update": FoleviEngine.TaskUpdateArgs.self, "task.moveToNote": FoleviEngine.TaskMoveArgs.self, "calendar.add": FoleviEngine.CalendarAddArgs.self, "calendar.update": FoleviEngine.CalendarUpdateArgs.self, "calendar.remove": FoleviEngine.CalendarIdArgs.self, "calendar.refresh": FoleviEngine.CalendarIdArgs.self, "settings.update": FoleviEngine.SettingsUpdateArgs.self, "settings.setAiPref": FoleviEngine.AiPrefArgs.self, "settings.setNotificationTopic": FoleviEngine.NotificationTopicArgs.self, "settings.setNotificationEmails": FoleviEngine.NotificationEmailsArgs.self, "settings.removeAvatar": FoleviEngine.EmptyArgs.self, "session.revoke": FoleviEngine.SessionIdArgs.self, "sharing.invite": FoleviEngine.ShareInviteArgs.self, "sharing.revoke": FoleviEngine.ShareRevokeArgs.self, "sharing.cancelInvite": FoleviEngine.ShareInviteIdArgs.self, "sharing.setAccessMode": FoleviEngine.AccessModeArgs.self, "publicLink.create": FoleviEngine.PublicLinkCreateArgs.self, "publicLink.setTheme": FoleviEngine.PublicLinkThemeArgs.self, "publicLink.revoke": FoleviEngine.PublicLinkIdArgs.self, "invite.acceptLink": FoleviEngine.InviteTokenArgs.self, "ai.send": FoleviEngine.ChatSendArgs.self, "ai.stop": FoleviEngine.ChatMessageArgs.self, "ai.regenerate": FoleviEngine.ChatConversationArgs.self, "ai.edit": FoleviEngine.ChatEditArgs.self, "ai.rename": FoleviEngine.ChatRenameArgs.self, "ai.pin": FoleviEngine.ChatPinArgs.self, "ai.remove": FoleviEngine.ChatConversationArgs.self, "ai.saveAsNote": FoleviEngine.ChatSaveArgs.self, "ai.actions": FoleviEngine.ChatActionsArgs.self, "ai.memory": FoleviEngine.ChatMemoryArgs.self, "notification.act": FoleviEngine.NotificationActArgs.self, "places.move": FoleviEngine.PlaceMoveArgs.self, "ai.researchCancel": FoleviEngine.ResearchIdArgs.self, "ai.researchSave": FoleviEngine.ResearchSaveArgs.self, "ai.agentApprove": FoleviEngine.AgentApproveArgs.self, "ai.agentDiscard": FoleviEngine.AgentRunArgs.self, "ai.agentUndo": FoleviEngine.AgentUndoArgs.self, "settings.setAvatar": FoleviEngine.AvatarArgs.self, "calendar.feedCreate": FoleviEngine.CalendarFeedCreateArgs.self, "calendar.feedRevoke": FoleviEngine.EmptyArgs.self, "calendar.feedWorkspaces": FoleviEngine.CalendarFeedWorkspacesArgs.self, "device.keepAll": FoleviEngine.DeviceKeepAllArgs.self, "device.download": FoleviEngine.EmptyArgs.self, "device.removeCopy": FoleviEngine.DeviceRemoveCopyArgs.self, "device.removeFiles": FoleviEngine.EmptyArgs.self, "sharing.setRole": FoleviEngine.ShareRoleArgs.self, "invite.decline": FoleviEngine.InviteDeclineArgs.self, "support.send": FoleviEngine.SupportSendArgs.self, "folder.lock": FoleviEngine.FolderLockArgs.self, "ai.generate": FoleviEngine.AiGenerateArgs.self, "ai.saveDraft": FoleviEngine.AiSaveDraftArgs.self, "folderSharing.invite": FoleviEngine.FolderShareInviteArgs.self, "folderSharing.setRole": FoleviEngine.FolderShareRoleArgs.self, "folderSharing.revoke": FoleviEngine.FolderShareRevokeArgs.self, "folderSharing.cancelInvite": FoleviEngine.FolderInviteIdArgs.self, "folderInvite.accept": FoleviEngine.FolderInviteIdArgs.self]
-    public static let commandResults: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchResult.self, "note.create": FoleviEngine.NoteCreateResult.self, "note.star": FoleviEngine.BulkResult.self, "note.move": FoleviEngine.BulkResult.self, "note.archive": FoleviEngine.BulkResult.self, "note.trash": FoleviEngine.BulkResult.self, "note.restore": FoleviEngine.BulkResult.self, "note.hideFromRecent": FoleviEngine.HiddenResult.self, "folder.create": FoleviEngine.FolderCreateResult.self, "catchUp.run": FoleviEngine.CatchUpCard.self, "catchUp.clear": FoleviEngine.OkResult.self, "engine.refresh": FoleviEngine.OkResult.self, "toast.action": FoleviEngine.OkResult.self, "gate.act": FoleviEngine.OkResult.self, "note.deleteForever": FoleviEngine.BulkResult.self, "note.duplicate": FoleviEngine.NoteCreateResult.self, "note.copyTo": FoleviEngine.BulkResult.self, "note.reorder": FoleviEngine.OkResult.self, "note.showInRecent": FoleviEngine.HiddenResult.self, "template.create": FoleviEngine.NoteCreateResult.self, "trash.empty": FoleviEngine.TrashEmptyResult.self, "folder.rename": FoleviEngine.OkResult.self, "folder.setColor": FoleviEngine.OkResult.self, "folder.move": FoleviEngine.OkResult.self, "folder.delete": FoleviEngine.OkResult.self, "changes.markSeen": FoleviEngine.OkResult.self, "proposal.accept": FoleviEngine.OkResult.self, "proposal.reject": FoleviEngine.OkResult.self, "notification.markRead": FoleviEngine.OkResult.self, "notification.markAllRead": FoleviEngine.OkResult.self, "notification.remove": FoleviEngine.OkResult.self, "invite.accept": FoleviEngine.OkResult.self, "pageInvite.accept": FoleviEngine.PageInviteAcceptResult.self, "task.create": FoleviEngine.TaskCreateResult.self, "task.update": FoleviEngine.OkResult.self, "task.moveToNote": FoleviEngine.OkResult.self, "calendar.add": FoleviEngine.CalendarAddResult.self, "calendar.update": FoleviEngine.OkResult.self, "calendar.remove": FoleviEngine.OkResult.self, "calendar.refresh": FoleviEngine.OkResult.self, "settings.update": FoleviEngine.OkResult.self, "settings.setAiPref": FoleviEngine.OkResult.self, "settings.setNotificationTopic": FoleviEngine.OkResult.self, "settings.setNotificationEmails": FoleviEngine.OkResult.self, "settings.removeAvatar": FoleviEngine.OkResult.self, "session.revoke": FoleviEngine.OkResult.self, "sharing.invite": FoleviEngine.ShareInviteResult.self, "sharing.revoke": FoleviEngine.OkResult.self, "sharing.cancelInvite": FoleviEngine.OkResult.self, "sharing.setAccessMode": FoleviEngine.OkResult.self, "publicLink.create": FoleviEngine.PublicLinkCreateResult.self, "publicLink.setTheme": FoleviEngine.OkResult.self, "publicLink.revoke": FoleviEngine.OkResult.self, "invite.acceptLink": FoleviEngine.InviteTokenAcceptResult.self, "ai.send": FoleviEngine.ChatSendResult.self, "ai.stop": FoleviEngine.OkResult.self, "ai.regenerate": FoleviEngine.ChatSendResult.self, "ai.edit": FoleviEngine.ChatSendResult.self, "ai.rename": FoleviEngine.OkResult.self, "ai.pin": FoleviEngine.OkResult.self, "ai.remove": FoleviEngine.OkResult.self, "ai.saveAsNote": FoleviEngine.NoteCreateResult.self, "ai.actions": FoleviEngine.OkResult.self, "ai.memory": FoleviEngine.OkResult.self, "notification.act": FoleviEngine.OkResult.self, "places.move": FoleviEngine.PlaceMoveResult.self, "ai.researchCancel": FoleviEngine.OkResult.self, "ai.researchSave": FoleviEngine.NoteCreateResult.self, "ai.agentApprove": FoleviEngine.OkResult.self, "ai.agentDiscard": FoleviEngine.OkResult.self, "ai.agentUndo": FoleviEngine.AgentUndoResult.self, "settings.setAvatar": FoleviEngine.OkResult.self, "calendar.feedCreate": FoleviEngine.CalendarFeedCreateResult.self, "calendar.feedRevoke": FoleviEngine.OkResult.self, "calendar.feedWorkspaces": FoleviEngine.OkResult.self, "device.keepAll": FoleviEngine.OkResult.self, "device.download": FoleviEngine.OkResult.self, "device.removeCopy": FoleviEngine.DeviceRemoveCopyResult.self, "device.removeFiles": FoleviEngine.OkResult.self, "sharing.setRole": FoleviEngine.OkResult.self, "invite.decline": FoleviEngine.OkResult.self, "support.send": FoleviEngine.SupportSendResult.self, "folder.lock": FoleviEngine.OkResult.self, "ai.generate": FoleviEngine.AiGenerateResult.self, "ai.saveDraft": FoleviEngine.NoteCreateResult.self, "folderSharing.invite": FoleviEngine.ShareInviteResult.self, "folderSharing.setRole": FoleviEngine.OkResult.self, "folderSharing.revoke": FoleviEngine.OkResult.self, "folderSharing.cancelInvite": FoleviEngine.OkResult.self, "folderInvite.accept": FoleviEngine.FolderInviteAcceptResult.self]
-    public static let editorArgs: [String: Model] = ["note.prepare": FoleviEngine.NotePrepareArgs.self, "note.show": FoleviEngine.NoteShowArgs.self, "note.close": FoleviEngine.EmptyArgs.self, "format": FoleviEngine.FormatArgs.self, "insert": FoleviEngine.InsertArgs.self, "link": FoleviEngine.LinkArgs.self, "undo": FoleviEngine.EmptyArgs.self, "redo": FoleviEngine.EmptyArgs.self, "indent": FoleviEngine.EmptyArgs.self, "outdent": FoleviEngine.EmptyArgs.self, "focus": FoleviEngine.EmptyArgs.self, "dismissKeyboard": FoleviEngine.EmptyArgs.self, "panel.open": FoleviEngine.PanelOpenArgs.self, "panel.close": FoleviEngine.EmptyArgs.self, "ai": FoleviEngine.AiArgs.self, "note.menu": FoleviEngine.NoteMenuArgs.self, "scrollToTop": FoleviEngine.EmptyArgs.self, "insets": FoleviEngine.InsetsArgs.self, "state": FoleviEngine.EmptyArgs.self, "web.show": FoleviEngine.WebShowArgs.self, "block.move": FoleviEngine.BlockMoveArgs.self, "block.duplicate": FoleviEngine.EmptyArgs.self, "focus.toggle": FoleviEngine.EmptyArgs.self, "note.lock": FoleviEngine.EmptyArgs.self]
-    public static let editorResults: [String: Model] = ["note.prepare": FoleviEngine.NoteShownResult.self, "note.show": FoleviEngine.NoteShownResult.self, "note.close": FoleviEngine.OkResult.self, "format": FoleviEngine.OkResult.self, "insert": FoleviEngine.OkResult.self, "link": FoleviEngine.OkResult.self, "undo": FoleviEngine.OkResult.self, "redo": FoleviEngine.OkResult.self, "indent": FoleviEngine.OkResult.self, "outdent": FoleviEngine.OkResult.self, "focus": FoleviEngine.OkResult.self, "dismissKeyboard": FoleviEngine.OkResult.self, "panel.open": FoleviEngine.OkResult.self, "panel.close": FoleviEngine.OkResult.self, "ai": FoleviEngine.OkResult.self, "note.menu": FoleviEngine.OkResult.self, "scrollToTop": FoleviEngine.OkResult.self, "insets": FoleviEngine.OkResult.self, "state": FoleviEngine.EditorStateEvent.self, "web.show": FoleviEngine.NoteShownResult.self, "block.move": FoleviEngine.OkResult.self, "block.duplicate": FoleviEngine.OkResult.self, "focus.toggle": FoleviEngine.OkResult.self, "note.lock": FoleviEngine.OkResult.self]
-    public static let events: [String: Model] = ["engine.ready": FoleviEngine.EngineReadyEvent.self, "gate.changed": FoleviEngine.GateChangedEvent.self, "sync.status": FoleviEngine.SyncStatusValue.self, "place.changed": FoleviEngine.PlaceChangedEvent.self, "toast": FoleviEngine.ToastEvent.self, "navigate.request": FoleviEngine.NavigateRequestEvent.self, "note.ready": FoleviEngine.NoteReadyEvent.self, "note.meta": FoleviEngine.NoteMeta.self, "editor.state": FoleviEngine.EditorStateEvent.self, "editor.panel": FoleviEngine.EditorPanelEvent.self, "memory.relieved": FoleviEngine.MemoryRelievedEvent.self]
+    public static let commandArgs: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchArgs.self, "note.create": FoleviEngine.NoteCreateArgs.self, "note.star": FoleviEngine.NoteStarArgs.self, "note.move": FoleviEngine.NoteMoveArgs.self, "note.archive": FoleviEngine.NoteArchiveArgs.self, "note.trash": FoleviEngine.NoteIdsArgs.self, "note.restore": FoleviEngine.NoteIdsArgs.self, "note.hideFromRecent": FoleviEngine.NoteIdsArgs.self, "folder.create": FoleviEngine.FolderCreateArgs.self, "catchUp.run": FoleviEngine.SpaceArgs.self, "catchUp.clear": FoleviEngine.SpaceArgs.self, "engine.refresh": FoleviEngine.EmptyArgs.self, "toast.action": FoleviEngine.ToastActionArgs.self, "gate.act": FoleviEngine.GateActArgs.self, "note.deleteForever": FoleviEngine.NoteIdsArgs.self, "note.duplicate": FoleviEngine.NoteIdArgs.self, "note.copyTo": FoleviEngine.NoteCopyToArgs.self, "note.reorder": FoleviEngine.NoteReorderArgs.self, "note.showInRecent": FoleviEngine.NoteIdsArgs.self, "template.create": FoleviEngine.TemplateCreateArgs.self, "trash.empty": FoleviEngine.SpaceArgs.self, "folder.rename": FoleviEngine.FolderRenameArgs.self, "folder.setColor": FoleviEngine.FolderSetColorArgs.self, "folder.move": FoleviEngine.FolderMoveArgs.self, "folder.delete": FoleviEngine.FolderIdArgs.self, "changes.markSeen": FoleviEngine.NoteIdsArgs.self, "proposal.accept": FoleviEngine.ProposalIdArgs.self, "proposal.reject": FoleviEngine.ProposalIdArgs.self, "notification.markRead": FoleviEngine.NotificationMarkArgs.self, "notification.markAllRead": FoleviEngine.EmptyArgs.self, "notification.remove": FoleviEngine.NotificationIdsArgs.self, "invite.accept": FoleviEngine.InviteAcceptArgs.self, "pageInvite.accept": FoleviEngine.InviteAcceptArgs.self, "task.create": FoleviEngine.TaskCreateArgs.self, "task.update": FoleviEngine.TaskUpdateArgs.self, "task.moveToNote": FoleviEngine.TaskMoveArgs.self, "calendar.add": FoleviEngine.CalendarAddArgs.self, "calendar.update": FoleviEngine.CalendarUpdateArgs.self, "calendar.remove": FoleviEngine.CalendarIdArgs.self, "calendar.refresh": FoleviEngine.CalendarIdArgs.self, "settings.update": FoleviEngine.SettingsUpdateArgs.self, "settings.setAiPref": FoleviEngine.AiPrefArgs.self, "settings.setNotificationTopic": FoleviEngine.NotificationTopicArgs.self, "settings.setNotificationEmails": FoleviEngine.NotificationEmailsArgs.self, "settings.removeAvatar": FoleviEngine.EmptyArgs.self, "session.revoke": FoleviEngine.SessionIdArgs.self, "sharing.invite": FoleviEngine.ShareInviteArgs.self, "sharing.revoke": FoleviEngine.ShareRevokeArgs.self, "sharing.cancelInvite": FoleviEngine.ShareInviteIdArgs.self, "sharing.setAccessMode": FoleviEngine.AccessModeArgs.self, "publicLink.create": FoleviEngine.PublicLinkCreateArgs.self, "publicLink.setTheme": FoleviEngine.PublicLinkThemeArgs.self, "publicLink.revoke": FoleviEngine.PublicLinkIdArgs.self, "invite.acceptLink": FoleviEngine.InviteTokenArgs.self, "ai.send": FoleviEngine.ChatSendArgs.self, "ai.stop": FoleviEngine.ChatMessageArgs.self, "ai.regenerate": FoleviEngine.ChatConversationArgs.self, "ai.edit": FoleviEngine.ChatEditArgs.self, "ai.rename": FoleviEngine.ChatRenameArgs.self, "ai.pin": FoleviEngine.ChatPinArgs.self, "ai.remove": FoleviEngine.ChatConversationArgs.self, "ai.saveAsNote": FoleviEngine.ChatSaveArgs.self, "ai.actions": FoleviEngine.ChatActionsArgs.self, "ai.memory": FoleviEngine.ChatMemoryArgs.self, "notification.act": FoleviEngine.NotificationActArgs.self, "places.move": FoleviEngine.PlaceMoveArgs.self, "ai.researchCancel": FoleviEngine.ResearchIdArgs.self, "ai.researchSave": FoleviEngine.ResearchSaveArgs.self, "ai.agentApprove": FoleviEngine.AgentApproveArgs.self, "ai.agentDiscard": FoleviEngine.AgentRunArgs.self, "ai.agentUndo": FoleviEngine.AgentUndoArgs.self, "settings.setAvatar": FoleviEngine.AvatarArgs.self, "calendar.feedCreate": FoleviEngine.CalendarFeedCreateArgs.self, "calendar.feedRevoke": FoleviEngine.EmptyArgs.self, "calendar.feedWorkspaces": FoleviEngine.CalendarFeedWorkspacesArgs.self, "device.keepAll": FoleviEngine.DeviceKeepAllArgs.self, "device.download": FoleviEngine.EmptyArgs.self, "device.removeCopy": FoleviEngine.DeviceRemoveCopyArgs.self, "device.removeFiles": FoleviEngine.EmptyArgs.self, "sharing.setRole": FoleviEngine.ShareRoleArgs.self, "invite.decline": FoleviEngine.InviteDeclineArgs.self, "support.send": FoleviEngine.SupportSendArgs.self, "folder.lock": FoleviEngine.FolderLockArgs.self, "ai.generate": FoleviEngine.AiGenerateArgs.self, "ai.saveDraft": FoleviEngine.AiSaveDraftArgs.self, "folderSharing.invite": FoleviEngine.FolderShareInviteArgs.self, "folderSharing.setRole": FoleviEngine.FolderShareRoleArgs.self, "folderSharing.revoke": FoleviEngine.FolderShareRevokeArgs.self, "folderSharing.cancelInvite": FoleviEngine.FolderInviteIdArgs.self, "folderInvite.accept": FoleviEngine.FolderInviteIdArgs.self, "review.rate": FoleviEngine.ReviewRateArgs.self, "review.setNewPerDay": FoleviEngine.ReviewNewPerDayArgs.self, "settings.run": FoleviEngine.SettingsRunArgs.self, "vault.setUp": FoleviEngine.VaultSetUpArgs.self, "vault.unlock": FoleviEngine.VaultPasscodeArgs.self, "vault.reset": FoleviEngine.VaultResetArgs.self, "vault.finishPasscode": FoleviEngine.VaultPasscodeArgs.self, "vault.changePasscode": FoleviEngine.VaultChangePasscodeArgs.self, "vault.lock": FoleviEngine.VaultIdArgs.self, "vault.recoverySaved": FoleviEngine.VaultIdArgs.self, "vault.newRecoveryKey": FoleviEngine.VaultIdArgs.self, "vault.requestReset": FoleviEngine.VaultIdArgs.self, "vault.record": FoleviEngine.VaultRecordArgs.self, "vault.item.open": FoleviEngine.VaultItemIdArgs.self, "vault.item.save": FoleviEngine.VaultItemSaveArgs.self, "vault.item.duplicate": FoleviEngine.VaultItemIdArgs.self, "vault.item.remove": FoleviEngine.VaultItemIdArgs.self, "vault.item.restore": FoleviEngine.VaultItemIdArgs.self, "vault.item.history": FoleviEngine.VaultItemIdArgs.self, "vault.item.restoreVersion": FoleviEngine.VaultRevisionArgs.self, "vault.totp": FoleviEngine.VaultTotpArgs.self, "vault.generate": FoleviEngine.VaultGenerateArgs.self, "vault.strength": FoleviEngine.VaultStrengthArgs.self, "vault.folder.create": FoleviEngine.VaultFolderCreateArgs.self, "vault.note.create": FoleviEngine.VaultNoteCreateArgs.self, "vault.note.open": FoleviEngine.VaultItemIdArgs.self, "vault.note.save": FoleviEngine.VaultNoteSaveArgs.self, "vault.file.upload": FoleviEngine.VaultUploadArgs.self, "vault.file.open": FoleviEngine.VaultFileOpenArgs.self, "vault.trash.empty": FoleviEngine.VaultIdArgs.self, "vault.settings.update": FoleviEngine.VaultSettingsArgs.self, "vault.people.add": FoleviEngine.VaultPersonArgs.self, "vault.people.remove": FoleviEngine.VaultPersonArgs.self, "vault.people.setRole": FoleviEngine.VaultRoleArgs.self, "vault.people.reviewed": FoleviEngine.VaultIdArgs.self, "vault.share.person": FoleviEngine.VaultShareArgs.self, "vault.share.stop": FoleviEngine.VaultShareStopArgs.self, "vault.link.create": FoleviEngine.VaultLinkArgs.self, "vault.link.revoke": FoleviEngine.VaultLinkRevokeArgs.self]
+    public static let commandResults: [String: Model] = ["space.switch": FoleviEngine.SpaceSwitchResult.self, "note.create": FoleviEngine.NoteCreateResult.self, "note.star": FoleviEngine.BulkResult.self, "note.move": FoleviEngine.BulkResult.self, "note.archive": FoleviEngine.BulkResult.self, "note.trash": FoleviEngine.BulkResult.self, "note.restore": FoleviEngine.BulkResult.self, "note.hideFromRecent": FoleviEngine.HiddenResult.self, "folder.create": FoleviEngine.FolderCreateResult.self, "catchUp.run": FoleviEngine.CatchUpCard.self, "catchUp.clear": FoleviEngine.OkResult.self, "engine.refresh": FoleviEngine.OkResult.self, "toast.action": FoleviEngine.OkResult.self, "gate.act": FoleviEngine.OkResult.self, "note.deleteForever": FoleviEngine.BulkResult.self, "note.duplicate": FoleviEngine.NoteCreateResult.self, "note.copyTo": FoleviEngine.BulkResult.self, "note.reorder": FoleviEngine.OkResult.self, "note.showInRecent": FoleviEngine.HiddenResult.self, "template.create": FoleviEngine.NoteCreateResult.self, "trash.empty": FoleviEngine.TrashEmptyResult.self, "folder.rename": FoleviEngine.OkResult.self, "folder.setColor": FoleviEngine.OkResult.self, "folder.move": FoleviEngine.OkResult.self, "folder.delete": FoleviEngine.OkResult.self, "changes.markSeen": FoleviEngine.OkResult.self, "proposal.accept": FoleviEngine.OkResult.self, "proposal.reject": FoleviEngine.OkResult.self, "notification.markRead": FoleviEngine.OkResult.self, "notification.markAllRead": FoleviEngine.OkResult.self, "notification.remove": FoleviEngine.OkResult.self, "invite.accept": FoleviEngine.OkResult.self, "pageInvite.accept": FoleviEngine.PageInviteAcceptResult.self, "task.create": FoleviEngine.TaskCreateResult.self, "task.update": FoleviEngine.OkResult.self, "task.moveToNote": FoleviEngine.OkResult.self, "calendar.add": FoleviEngine.CalendarAddResult.self, "calendar.update": FoleviEngine.OkResult.self, "calendar.remove": FoleviEngine.OkResult.self, "calendar.refresh": FoleviEngine.OkResult.self, "settings.update": FoleviEngine.OkResult.self, "settings.setAiPref": FoleviEngine.OkResult.self, "settings.setNotificationTopic": FoleviEngine.OkResult.self, "settings.setNotificationEmails": FoleviEngine.OkResult.self, "settings.removeAvatar": FoleviEngine.OkResult.self, "session.revoke": FoleviEngine.OkResult.self, "sharing.invite": FoleviEngine.ShareInviteResult.self, "sharing.revoke": FoleviEngine.OkResult.self, "sharing.cancelInvite": FoleviEngine.OkResult.self, "sharing.setAccessMode": FoleviEngine.OkResult.self, "publicLink.create": FoleviEngine.PublicLinkCreateResult.self, "publicLink.setTheme": FoleviEngine.OkResult.self, "publicLink.revoke": FoleviEngine.OkResult.self, "invite.acceptLink": FoleviEngine.InviteTokenAcceptResult.self, "ai.send": FoleviEngine.ChatSendResult.self, "ai.stop": FoleviEngine.OkResult.self, "ai.regenerate": FoleviEngine.ChatSendResult.self, "ai.edit": FoleviEngine.ChatSendResult.self, "ai.rename": FoleviEngine.OkResult.self, "ai.pin": FoleviEngine.OkResult.self, "ai.remove": FoleviEngine.OkResult.self, "ai.saveAsNote": FoleviEngine.NoteCreateResult.self, "ai.actions": FoleviEngine.OkResult.self, "ai.memory": FoleviEngine.OkResult.self, "notification.act": FoleviEngine.OkResult.self, "places.move": FoleviEngine.PlaceMoveResult.self, "ai.researchCancel": FoleviEngine.OkResult.self, "ai.researchSave": FoleviEngine.NoteCreateResult.self, "ai.agentApprove": FoleviEngine.OkResult.self, "ai.agentDiscard": FoleviEngine.OkResult.self, "ai.agentUndo": FoleviEngine.AgentUndoResult.self, "settings.setAvatar": FoleviEngine.OkResult.self, "calendar.feedCreate": FoleviEngine.CalendarFeedCreateResult.self, "calendar.feedRevoke": FoleviEngine.OkResult.self, "calendar.feedWorkspaces": FoleviEngine.OkResult.self, "device.keepAll": FoleviEngine.OkResult.self, "device.download": FoleviEngine.OkResult.self, "device.removeCopy": FoleviEngine.DeviceRemoveCopyResult.self, "device.removeFiles": FoleviEngine.OkResult.self, "sharing.setRole": FoleviEngine.OkResult.self, "invite.decline": FoleviEngine.OkResult.self, "support.send": FoleviEngine.SupportSendResult.self, "folder.lock": FoleviEngine.OkResult.self, "ai.generate": FoleviEngine.AiGenerateResult.self, "ai.saveDraft": FoleviEngine.NoteCreateResult.self, "folderSharing.invite": FoleviEngine.ShareInviteResult.self, "folderSharing.setRole": FoleviEngine.OkResult.self, "folderSharing.revoke": FoleviEngine.OkResult.self, "folderSharing.cancelInvite": FoleviEngine.OkResult.self, "folderInvite.accept": FoleviEngine.FolderInviteAcceptResult.self, "review.rate": FoleviEngine.OkResult.self, "review.setNewPerDay": FoleviEngine.OkResult.self, "settings.run": FoleviEngine.SettingsRunResult.self, "vault.setUp": FoleviEngine.VaultRecoveryResult.self, "vault.unlock": FoleviEngine.VaultUnlockResult.self, "vault.reset": FoleviEngine.VaultUnlockResult.self, "vault.finishPasscode": FoleviEngine.VaultUnlockResult.self, "vault.changePasscode": FoleviEngine.VaultUnlockResult.self, "vault.lock": FoleviEngine.OkResult.self, "vault.recoverySaved": FoleviEngine.OkResult.self, "vault.newRecoveryKey": FoleviEngine.VaultRecoveryResult.self, "vault.requestReset": FoleviEngine.OkResult.self, "vault.record": FoleviEngine.OkResult.self, "vault.item.open": FoleviEngine.VaultItemValue.self, "vault.item.save": FoleviEngine.VaultIdResult.self, "vault.item.duplicate": FoleviEngine.VaultIdResult.self, "vault.item.remove": FoleviEngine.OkResult.self, "vault.item.restore": FoleviEngine.OkResult.self, "vault.item.history": FoleviEngine.VaultHistoryResult.self, "vault.item.restoreVersion": FoleviEngine.OkResult.self, "vault.totp": FoleviEngine.VaultTotpResult.self, "vault.generate": FoleviEngine.VaultGenerateResult.self, "vault.strength": FoleviEngine.VaultStrengthResult.self, "vault.folder.create": FoleviEngine.VaultIdResult.self, "vault.note.create": FoleviEngine.VaultIdResult.self, "vault.note.open": FoleviEngine.VaultNoteValue.self, "vault.note.save": FoleviEngine.VaultRevisionResult.self, "vault.file.upload": FoleviEngine.VaultIdResult.self, "vault.file.open": FoleviEngine.VaultFileValue.self, "vault.trash.empty": FoleviEngine.VaultRemovedResult.self, "vault.settings.update": FoleviEngine.OkResult.self, "vault.people.add": FoleviEngine.OkResult.self, "vault.people.remove": FoleviEngine.OkResult.self, "vault.people.setRole": FoleviEngine.OkResult.self, "vault.people.reviewed": FoleviEngine.OkResult.self, "vault.share.person": FoleviEngine.VaultShareResult.self, "vault.share.stop": FoleviEngine.OkResult.self, "vault.link.create": FoleviEngine.VaultLinkResult.self, "vault.link.revoke": FoleviEngine.OkResult.self]
+    public static let editorArgs: [String: Model] = ["note.prepare": FoleviEngine.NotePrepareArgs.self, "note.show": FoleviEngine.NoteShowArgs.self, "note.close": FoleviEngine.EmptyArgs.self, "format": FoleviEngine.FormatArgs.self, "insert": FoleviEngine.InsertArgs.self, "link": FoleviEngine.LinkArgs.self, "undo": FoleviEngine.EmptyArgs.self, "redo": FoleviEngine.EmptyArgs.self, "indent": FoleviEngine.EmptyArgs.self, "outdent": FoleviEngine.EmptyArgs.self, "focus": FoleviEngine.EmptyArgs.self, "dismissKeyboard": FoleviEngine.EmptyArgs.self, "panel.open": FoleviEngine.PanelOpenArgs.self, "panel.close": FoleviEngine.EmptyArgs.self, "ai": FoleviEngine.AiArgs.self, "note.menu": FoleviEngine.NoteMenuArgs.self, "scrollToTop": FoleviEngine.EmptyArgs.self, "insets": FoleviEngine.InsetsArgs.self, "state": FoleviEngine.EmptyArgs.self, "web.show": FoleviEngine.WebShowArgs.self, "block.move": FoleviEngine.BlockMoveArgs.self, "block.duplicate": FoleviEngine.EmptyArgs.self, "focus.toggle": FoleviEngine.EmptyArgs.self, "note.lock": FoleviEngine.EmptyArgs.self, "block.jump": FoleviEngine.BlockJumpArgs.self, "task.toggle": FoleviEngine.TaskToggleArgs.self, "thread.open": FoleviEngine.ThreadOpenArgs.self, "find": FoleviEngine.FindArgs.self, "find.clear": FoleviEngine.EmptyArgs.self]
+    public static let editorResults: [String: Model] = ["note.prepare": FoleviEngine.NoteShownResult.self, "note.show": FoleviEngine.NoteShownResult.self, "note.close": FoleviEngine.OkResult.self, "format": FoleviEngine.OkResult.self, "insert": FoleviEngine.OkResult.self, "link": FoleviEngine.OkResult.self, "undo": FoleviEngine.OkResult.self, "redo": FoleviEngine.OkResult.self, "indent": FoleviEngine.OkResult.self, "outdent": FoleviEngine.OkResult.self, "focus": FoleviEngine.OkResult.self, "dismissKeyboard": FoleviEngine.OkResult.self, "panel.open": FoleviEngine.OkResult.self, "panel.close": FoleviEngine.OkResult.self, "ai": FoleviEngine.OkResult.self, "note.menu": FoleviEngine.OkResult.self, "scrollToTop": FoleviEngine.OkResult.self, "insets": FoleviEngine.OkResult.self, "state": FoleviEngine.EditorStateEvent.self, "web.show": FoleviEngine.NoteShownResult.self, "block.move": FoleviEngine.OkResult.self, "block.duplicate": FoleviEngine.OkResult.self, "focus.toggle": FoleviEngine.OkResult.self, "note.lock": FoleviEngine.OkResult.self, "block.jump": FoleviEngine.OkResult.self, "task.toggle": FoleviEngine.OkResult.self, "thread.open": FoleviEngine.OkResult.self, "find": FoleviEngine.FindResult.self, "find.clear": FoleviEngine.OkResult.self]
+    public static let events: [String: Model] = ["engine.ready": FoleviEngine.EngineReadyEvent.self, "gate.changed": FoleviEngine.GateChangedEvent.self, "sync.status": FoleviEngine.SyncStatusValue.self, "place.changed": FoleviEngine.PlaceChangedEvent.self, "toast": FoleviEngine.ToastEvent.self, "navigate.request": FoleviEngine.NavigateRequestEvent.self, "note.ready": FoleviEngine.NoteReadyEvent.self, "note.meta": FoleviEngine.NoteMeta.self, "editor.state": FoleviEngine.EditorStateEvent.self, "editor.panel": FoleviEngine.EditorPanelEvent.self, "memory.relieved": FoleviEngine.MemoryRelievedEvent.self, "note.tools": FoleviEngine.NoteToolsEvent.self]
 }
 
 /// An event from the engine with its typed data. Unknown names (a newer engine) arrive as `.unknown`.
@@ -2044,6 +2705,7 @@ public enum EngineEvent: Sendable {
     case editorState(EditorStateEvent)
     case editorPanel(EditorPanelEvent)
     case memoryRelieved(MemoryRelievedEvent)
+    case noteTools(NoteToolsEvent)
     case unknown(name: String, data: JSONValue)
 
     public var name: String {
@@ -2059,6 +2721,7 @@ public enum EngineEvent: Sendable {
         case .editorState: "editor.state"
         case .editorPanel: "editor.panel"
         case .memoryRelieved: "memory.relieved"
+        case .noteTools: "note.tools"
         case .unknown(let name, _): name
         }
     }
@@ -2077,6 +2740,7 @@ public enum EngineEvent: Sendable {
         case "editor.state": .editorState(try c.decode(FoleviEngine.EditorStateEvent.self, forKey: key))
         case "editor.panel": .editorPanel(try c.decode(FoleviEngine.EditorPanelEvent.self, forKey: key))
         case "memory.relieved": .memoryRelieved(try c.decode(FoleviEngine.MemoryRelievedEvent.self, forKey: key))
+        case "note.tools": .noteTools(try c.decode(FoleviEngine.NoteToolsEvent.self, forKey: key))
         default: .unknown(name: name, data: try c.decodeIfPresent(JSONValue.self, forKey: key) ?? .null)
         }
     }

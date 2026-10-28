@@ -22,5 +22,7 @@ import "./imports";
 import "./exports";
 import "./migration";
 import "./notices";
+// A library's Vault (docs/MAC_REBUILD_PLAN.md §5.6).
+import "./vault";
 // Foli AI on the device or with the person's own key (WP11, lib/local/ai).
 import "../ai/functions";

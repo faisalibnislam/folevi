@@ -12,6 +12,8 @@ import SwiftUI
 import WebKit
 import FoleviEngine
 import FoleviScreens
+import FoleviMac
+import FoleviDesign
 
 final class SettingsNSWindow: NSWindow {
     override func cancelOperation(_ sender: Any?) {
@@ -181,8 +183,33 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
         return WindowManager.shared.mains.first { $0.place == place && $0.frame != nil }?.frame?.model.client
     }
 
-    /// Shows the native section over the page, or the page.
+    /// The front main window's frame (its engine, toasts and routes), when it has the native frame.
+    private func nativeFrame() -> FrameModel? {
+        guard NativeFrame.enabled else { return nil }
+        let place = WindowManager.shared.currentPlace()
+        return WindowManager.shared.mains.first { $0.place == place && $0.frame != nil }?.frame?.model
+    }
+    private var macModel: MacSettingsModel?
+
+    /// Shows the native section over the page, or the page. With the native frame every section is native and
+    /// drawn as the web's (FoleviMac SettingsScreen, the section alone as at /settings/<section>?window=1).
     private func updateNative() {
+        if let content = window?.contentView, let frame = nativeFrame(), let section = MacSettingsSection(rawValue: current) {
+            if macModel?.frame !== frame { macModel = MacSettingsModel(frame: frame) }
+            let root = AnyView(SettingsScreen(model: macModel!, section: section, windowed: true).frame(maxWidth: .infinity, maxHeight: .infinity))
+            if let native {
+                native.rootView = root
+            } else {
+                let host = NSHostingView(rootView: root)
+                host.frame = content.bounds
+                host.autoresizingMask = [.width, .height]
+                content.addSubview(host)
+                native = host
+            }
+            native?.isHidden = false
+            view?.isHidden = true
+            return
+        }
         guard let content = window?.contentView, Self.nativeSections.contains(current), let section = SettingsSection(macId: current), let client = nativeClient() else {
             native?.isHidden = true
             view?.isHidden = false
@@ -255,5 +282,6 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
         native?.removeFromSuperview()
         native = nil
         nativeModel = nil
+        macModel = nil
     }
 }

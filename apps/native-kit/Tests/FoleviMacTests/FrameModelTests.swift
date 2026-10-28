@@ -30,7 +30,7 @@ struct RouteTests {
         #expect(FrameRoute(path: "/documents") == .home)
         #expect(FrameRoute(path: "/unsorted") == .notes(.unsorted))
         #expect(FrameRoute(path: "/d/abc?x=1") == .note("abc"))
-        #expect(FrameRoute(path: "/folders") == .home)
+        #expect(FrameRoute(path: "/folders") == .web("/folders"))
         #expect(FrameRoute(path: "/graph") == .web("/graph"))
         #expect(FrameRoute(path: "/inbox") == .tasks(.inbox))
         #expect(FrameRoute(path: "/tasks/nope") == .tasks(.today))
@@ -432,9 +432,11 @@ struct FrameModelTests {
         #expect(!model.isEngineReady)
         #expect(FrameRootViewController.drawsNatively(.deviceLimit))
         #expect(FrameRootViewController.drawsNatively(.modeChoice))
-        #expect(!FrameRootViewController.drawsNatively(.signedOut), "sign-in stays the page's until the Mac hands the screens an AuthService")
-        #expect(!FrameRootViewController.drawsNatively(.librarySetup))
-        #expect(!FrameRootViewController.drawsNatively(.loading))
+        // Every screen before the app is native now (WebGateScreen); only a gate the frame doesn't know stays the page's.
+        #expect(FrameRootViewController.drawsNatively(.signedOut))
+        #expect(FrameRootViewController.drawsNatively(.librarySetup))
+        #expect(FrameRootViewController.drawsNatively(.loading))
+        #expect(!FrameRootViewController.drawsNatively(.other("someNewGate")))
         demo.emit("gate.changed", DemoEngine.gate(nil))
         await eventually("cleared") { model.isEngineReady && model.gateEvent?.gate == nil }
     }

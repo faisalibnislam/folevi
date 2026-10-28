@@ -1,0 +1,16 @@
+{
+  "kind": "command",
+  "name": "vault.note.open",
+  "description": "A note's text (logged).",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "itemId": "01JITEM0000000000000000004"
+  },
+  "result": {
+    "id": "01JITEM0000000000000000004",
+    "title": "Safe deposit box",
+    "text": "Box 4711 at the High Street branch",
+    "canChange": true,
+    "revision": 2
+  }
+}

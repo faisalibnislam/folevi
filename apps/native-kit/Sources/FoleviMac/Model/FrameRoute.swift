@@ -71,7 +71,7 @@ public enum FrameRoute: Hashable, Sendable {
         case "archive": self = .notes(.archive)
         case "trash": self = .notes(.trash)
         case "templates": self = .notes(.templates)
-        case "shared": self = .shared
+        case "shared": self = a.map { .web("/shared/\(Self.escape($0))") } ?? .shared
         case "changes": self = .changes
         case "inbox": self = .tasks(.inbox)
         case "tasks": self = .tasks(a.flatMap(TaskViewName.init(rawValue:)) ?? .today)
@@ -79,8 +79,8 @@ public enum FrameRoute: Hashable, Sendable {
             let date = comps?.queryItems?.first { $0.name == "date" }?.value ?? a
             self = .calendar(date.flatMap { $0.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil ? $0 : nil })
         case "search": self = .search(comps?.queryItems?.first { $0.name == "q" }?.value ?? "")
-        case "folders": self = a.map { .folder($0) } ?? .home
-        case "tags": self = a.map { .tag($0) } ?? .home
+        case "folders": self = a.map { .folder($0) } ?? .web("/folders")
+        case "tags": self = a.map { .tag($0) } ?? .web("/tags")
         case "d": self = a.map { .note($0) } ?? .home
         default: self = .web(comps?.path ?? trimmed)
         }
@@ -108,7 +108,11 @@ public enum FrameRoute: Hashable, Sendable {
         case .tasks: return "view:tasks"
         case .calendar: return "view:calendar"
         case .search: return "view:search"
-        case .web(let p): return "view:web:\(p)"
+        // The Vault is one tab whichever section a link opened (as the web's route "vault").
+        case .web(let p) where p == "/vault" || p.hasPrefix("/vault/"): return "view:vault"
+        // Foli AI is one tab: a new chat keeps its tab when it gets its address (/ai to /ai/<id>), as on the web.
+        // Settings is one tab whichever section is open (it follows you between them).
+        case .web(let p): return p == "/ai" || p.hasPrefix("/ai/") ? "view:ai" : p.hasPrefix("/settings") ? "view:settings" : "view:web:\(p)"
         }
     }
 
@@ -136,7 +140,16 @@ public enum FrameRoute: Hashable, Sendable {
         case .calendar: return "Calendar"
         case .search(let q): return q.isEmpty ? "Search" : "Search: \(q)"
         case .note: return "Untitled"
-        case .web: return "Folevi"
+        case .web(let p) where p == "/vault" || p.hasPrefix("/vault/"): return "Vault"
+        case .web("/folders"): return "Folders"
+        case .web("/tags"): return "Tags"
+        case .web(let p):
+            if p.hasPrefix("/settings") { return "Settings" }
+            if p.hasPrefix("/help") { return "Help" }
+            if p.hasPrefix("/graph") { return "Graph" }
+            if p.hasPrefix("/review") { return "Reviews" }
+            if p.hasPrefix("/shared/") { return "Shared folder" }
+            return "Folevi"
         }
     }
 

@@ -97,6 +97,7 @@ import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
 import { NoteBars } from "@/components/iphone/NoteBars";
 import { nativeChrome } from "@/lib/nativeApp";
 import { useNativeNote } from "@/lib/engine/editorCommands";
+import { useNativeNoteTools } from "@/lib/engine/noteTools";
 import { requestNavigation } from "@/lib/engine/navigation";
 import { nativeToast } from "@/lib/engine/toasts";
 import { NotePlaceChip, NoteSyncTrailing, NoteTrailing, ToolSheet } from "@/components/iphone/NoteChrome";
@@ -782,6 +783,14 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // End-to-end encryption: "Always fully encrypted" for a note of yours (docs/E2EE_DESIGN.md §10.8; nothing for Standard accounts).
   const lockItem = useLockMenuItem(meta?.isMember && inCurrentScope(meta.document, meta.isMember, scopeKey) ? { kind: "document", id: documentId, name: summary?.title ?? "", locked: (meta.document as { locked?: boolean }).locked } : null);
   const actions: (MenuItem | "separator")[] = [...(noteNotify.length ? [...docActions, "separator" as const, ...noteNotify] : docActions), ...(lockItem ? ["separator" as const, lockItem] : [])];
+  // Someone else's page (shared with them, on its own or through a folder) isn't in their folders or Drafts:
+  // it's under Shared with Me.
+  const guestHere = meta !== undefined && meta !== null && !meta.isMember;
+  const trail: Crumb[] = [
+    ...(guestHere ? [] : folderAbove.map((f) => ({ href: `/folders/${f.id}`, label: f.name }))),
+    guestHere ? { href: "/shared", label: "Shared with Me" } : folder ? { href: `/folders/${folder.id}`, label: folder.name } : { href: "/drafts", label: "Drafts" },
+    ...(meta?.breadcrumbs ?? []).map((b) => ({ href: `/d/${b.id}`, label: b.title || "Untitled", icon: null })),
+  ];
   // Native chrome mode (the native apps): the note takes the native toolbar's and menus' commands (lib/engine).
   const duplicateNote = useMutation(api.documents.duplicate);
   useNativeNote({
@@ -813,7 +822,25 @@ export function DocumentView({ documentId }: { documentId: string }) {
     scrollEl,
     locked: Boolean((meta?.document as { locked?: boolean } | undefined)?.locked),
     lock: lockItem?.onSelect ? () => lockItem.onSelect?.() : undefined,
+    // The native sidebar (revision 14): what the page sidebar's clicks do.
+    jump: (id) => editorRef.current?.focusBlock(id),
+    openThread: (threadId) => {
+      const t = threads?.threads.find((x) => x.id === threadId);
+      if (!t) return false;
+      if (t.blockId && t.blockExists !== false) {
+        editorRef.current?.focusBlock(t.blockId);
+        setOpenThread({ blockId: t.blockId, threadId: t.id });
+      } else {
+        // On the whole note or a deleted block: the Comments panel opens on it.
+        setFocusThreadId(t.id);
+        setInspectorTab("comments");
+        setInspectorOpen(true);
+      }
+      return true;
+    },
   });
+  // ...and what the native sidebar shows.
+  useNativeNoteTools({ documentId, title: summary?.title || localTitle || "", trail: trail.map((c) => ({ href: c.href, label: c.label })), readOnly });
 
   if (meta === null && !pendingCreate && !waitingRow && (server === null || server === undefined) && (online || cacheLoaded)) {
     if (meta === null && server === null) {
@@ -849,14 +876,6 @@ export function DocumentView({ documentId }: { documentId: string }) {
   if (readyNow) everReady.current = true;
   const ready = everReady.current;
 
-  // Someone else's page (shared with them, on its own or through a folder) isn't in their folders or Drafts:
-  // it's under Shared with Me.
-  const guestHere = meta !== undefined && meta !== null && !meta.isMember;
-  const trail: Crumb[] = [
-    ...(guestHere ? [] : folderAbove.map((f) => ({ href: `/folders/${f.id}`, label: f.name }))),
-    guestHere ? { href: "/shared", label: "Shared with Me" } : folder ? { href: `/folders/${folder.id}`, label: folder.name } : { href: "/drafts", label: "Drafts" },
-    ...(meta?.breadcrumbs ?? []).map((b) => ({ href: `/d/${b.id}`, label: b.title || "Untitled", icon: null })),
-  ];
   const pageTitle = summary?.title || localTitle || "Untitled";
   // Shared once anyone else can open it: a public link, people (or a pending invitation), the whole workspace, or
   // it's someone else's page you were given.

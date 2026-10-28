@@ -1,0 +1,30 @@
+{
+  "kind": "view",
+  "name": "vault.shares",
+  "description": "Who an item is shared with, and its live links.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "itemId": "01JITEM0000000000000000001"
+  },
+  "value": {
+    "people": [
+      {
+        "id": "01JSHARE000000000000000001",
+        "name": "Ana",
+        "email": "ana@example.com",
+        "canEdit": false,
+        "expired": false,
+        "expiresAt": 1795685400000
+      }
+    ],
+    "links": [
+      {
+        "id": "link_1",
+        "views": 0,
+        "maxViews": 1,
+        "expiresAt": 1793179800000,
+        "hasPassword": false
+      }
+    ]
+  }
+}

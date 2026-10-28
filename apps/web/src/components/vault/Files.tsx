@@ -16,7 +16,7 @@ import { formatRelative } from "@/lib/format";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { vaultSessions } from "@/lib/vault/keys";
 import { newItemId } from "@/lib/vault/items";
-import { openFile, openFileSummary, openFolderName, openNote, openNoteSummary, sealFile, sealFolderName, sealNote } from "@/lib/vault/files";
+import { fetchCiphertext, openFile, openFileSummary, openFolderName, openNote, openNoteSummary, sealFile, sealFolderName, sealNote, sendCiphertext } from "@/lib/vault/files";
 import { useRecordEvent } from "./useVault";
 import { NoteEditor } from "./NoteEditor";
 import { blocksFromVaultDoc, writeRegularNote } from "./moveNote";
@@ -78,9 +78,7 @@ export function Files({ vaultId, role }: { vaultId: string; role: string }) {
     try {
       const id = newItemId();
       const { ciphertext, item } = await sealFile(vaultId, id, s.currentVersion(vaultId)!, s.keys(vaultId), { name: file.name, type: file.type, bytes: new Uint8Array(await file.arrayBuffer()) });
-      const res = await fetch(await uploadUrl({ vaultId }), { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: new Blob([ciphertext.slice()]) });
-      if (!res.ok) throw new Error("The upload didn't go through. Try again.");
-      const { storageId } = (await res.json()) as { storageId: string };
+      const storageId = await sendCiphertext(await uploadUrl({ vaultId }), ciphertext);
       await saveFile({ vaultId, itemId: id, ...(folderId ? { folderId } : {}), storageId: storageId as never, size: ciphertext.length, item, client: s.info(vaultId) });
       toast.show(`${file.name} added to the Vault`, { tone: "success" });
     } catch (e) {
@@ -93,7 +91,7 @@ export function Files({ vaultId, role }: { vaultId: string; role: string }) {
   const download = async (e: Entry) => {
     try {
       const r = await fileUrl({ vaultId, itemId: e.id, purpose: "download", client: s.info(vaultId) });
-      const bytes = new Uint8Array(await (await fetch(r.url)).arrayBuffer());
+      const bytes = await fetchCiphertext(r.url);
       const f = await openFile(vaultId, { id: e.id, keyVersion: r.keyVersion, wrappedKey: r.wrappedKey, sealed: r.sealed }, bytes, keysOf(vaultId));
       const url = URL.createObjectURL(new Blob([f.bytes.slice()], { type: f.mime }));
       const a = document.createElement("a");

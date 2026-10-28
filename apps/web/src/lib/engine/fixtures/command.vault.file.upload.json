@@ -1,0 +1,15 @@
+{
+  "kind": "command",
+  "name": "vault.file.upload",
+  "description": "A file, sealed by the engine before it goes anywhere.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "folderId": null,
+    "name": "notes.txt",
+    "mime": "text/plain",
+    "data": "SGVsbG8="
+  },
+  "result": {
+    "id": "01JITEM0000000000000000011"
+  }
+}

@@ -171,3 +171,34 @@ export async function openVaultGrant(
 export async function innerOfGrant(wrapped: Uint8Array, outer: { kind: "passcode" | "recovery"; key: AeadKey }, g: VaultGrantFor): Promise<Uint8Array> {
   return await openRecord(outer.key, outer.kind === "passcode" ? vaultCtx.passcode(g.vaultId, g.keyVersion, g.profileId) : vaultCtx.recovery(g.vaultId, g.keyVersion, g.profileId), wrapped);
 }
+
+// ---- A library's Vault (no account: docs/MAC_REBUILD_PLAN.md §5.6) ----
+//
+// A library on this device has no account key, so its Vault's grants have no account layer: the passcode and recovery
+// layers are sealed straight around the vault key, for the person "library". Everything under the vault key (item
+// keys, summaries, secrets, folder names, file bytes) is sealed exactly as in an account's Vault.
+
+/** The person a library's Vault grants are for (in place of a profile id). */
+export const LIBRARY_VAULT_PERSON = "library";
+
+/** A library Vault's passcode or recovery layer around the vault key. */
+export async function wrapLibraryVaultKey(vk: Uint8Array, outer: { kind: "passcode" | "recovery"; key: AeadKey }, vaultId: string, keyVersion: number): Promise<Uint8Array> {
+  need32(vk, "A vault key");
+  const g = { vaultId, keyVersion, profileId: LIBRARY_VAULT_PERSON };
+  return outer.kind === "passcode" ? await wrapWithPasscode(vk, outer.key, g) : await wrapWithRecovery(vk, outer.key, g);
+}
+
+/** Opens a library Vault's grant to its vault key (a wrong passcode or recovery key throws) and checks it. */
+export async function openLibraryVaultKey(wrapped: Uint8Array, outer: { kind: "passcode" | "recovery"; key: AeadKey }, vaultId: string, keyVersion: number, check: Uint8Array): Promise<Uint8Array> {
+  const vk = await innerOfGrant(wrapped, outer, { vaultId, keyVersion, profileId: LIBRARY_VAULT_PERSON });
+  if (vk.length !== 32) {
+    vk.fill(0);
+    throw new E2eeError("This isn't a library Vault's key.");
+  }
+  const keys = await deriveVaultKeys(vk);
+  if (!constantTimeEqual(keys.check, check)) {
+    vk.fill(0);
+    throw new E2eeError("This vault key doesn't match the Vault.");
+  }
+  return vk;
+}

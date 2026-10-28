@@ -47,7 +47,7 @@ public final class FoliAnswer {
 
     init(messageId: String) { self.messageId = messageId }
 
-    var revealing: Bool { reveal != nil }
+    public var revealing: Bool { reveal != nil }
 
     func show(_ text: Substring) {
         guard text != shownText[...] else { return }
@@ -96,6 +96,8 @@ public final class FoliChatModel {
     public private(set) var sending = false
     /// A refusal or failure to show in the thread (out of credits, offline).
     public private(set) var problem: String?
+    /// The same refusal as the engine said it (its code and what helps: out of credits, not on the plan).
+    public private(set) var problemError: EngineError?
     /// Row actions on their way (Apply, Approve, Save): by message or run id.
     public private(set) var busy: Set<String> = []
     /// Shown in the history list.
@@ -266,6 +268,7 @@ public final class FoliChatModel {
 
     private func run(pendingText: String?, after: Int, _ work: @escaping @MainActor () async throws -> ChatSendResult) {
         problem = nil
+        problemError = nil
         sending = true
         if let pendingText { pending = FoliPendingQuestion(text: pendingText, after: after) }
         feedback.haptic(.impactLight)
@@ -276,6 +279,7 @@ public final class FoliChatModel {
                 if conversationId != r.conversationId { show(conversationId: r.conversationId) }
             } catch {
                 problem = Self.message(error)
+                if case .engine(let e)? = error as? EngineFailure { problemError = e } else { problemError = nil }
                 pending = nil
             }
             sending = false
@@ -425,6 +429,14 @@ public final class FoliChatModel {
         guard let id = conversationId else { return }
         act(messageId ?? id) {
             let r = try await self.client.command(.aiSaveAsNote(conversationId: id, messageId: messageId))
+            self.feedback.toast(ScreenToast("Saved as a note.", tone: .success, actionTitle: "Open") { [open = self.onOpen] in open(.note(id: r.id)) })
+        }
+    }
+
+    /// Saves any of your conversations as a note (the history's menu).
+    public func saveAsNote(conversationId id: String) {
+        act(id) {
+            let r = try await self.client.command(.aiSaveAsNote(conversationId: id, messageId: nil))
             self.feedback.toast(ScreenToast("Saved as a note.", tone: .success, actionTitle: "Open") { [open = self.onOpen] in open(.note(id: r.id)) })
         }
     }

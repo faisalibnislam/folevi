@@ -1,0 +1,27 @@
+{
+  "kind": "command",
+  "name": "vault.item.history",
+  "description": "Earlier versions (logged).",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "itemId": "01JITEM0000000000000000001"
+  },
+  "result": {
+    "versions": [
+      {
+        "revision": 1,
+        "title": "Bank of Kyoto",
+        "editedBy": "Sam",
+        "editedAt": 1792834200000,
+        "fields": [
+          {
+            "key": "username",
+            "label": "Username",
+            "type": "text",
+            "value": "sam@example.com"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -63,19 +63,27 @@ enum MacEval {
         return WindowManager.shared.frontMain?.view
     }
 
-    /// The window's content at 2x in sRGB: AppKit draws the native views; the page, a GPU layer cacheDisplay can't
-    /// read, is its own snapshot drawn where it sits (when it is showing).
+    /// The window's content at 2x in sRGB, drawn by the app itself (no screen capture: capturing other windows goes
+    /// through WindowServer's privacy checks, and many captures at once hung WindowServer, docs/MAC_SCREEN_PLAYBOOK.md).
+    /// AppKit draws the native views; the page, a GPU layer cacheDisplay can't read, is its own snapshot drawn where
+    /// it sits; then whatever lies above the page (the glass bar over a note) is drawn again over it, in view order.
     private static func windowShot(content: NSView, page: FoleviWebView, path: String, done: @escaping ([String: Any]) -> Void) {
         let size = content.bounds.size
-        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width * 2), pixelsHigh: Int(size.height * 2), bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
-                                         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)?.retagging(with: .sRGB) else { return done(["error": "no bitmap"]) }
-        rep.size = size
+        guard let rep = bitmap(size) else { return done(["error": "no bitmap"]) }
         content.cacheDisplay(in: content.bounds, to: rep)
         let write = { (image: NSImage?, frame: CGRect) in
             if let image, let ctx = NSGraphicsContext(bitmapImageRep: rep) {
                 NSGraphicsContext.saveGraphicsState()
                 NSGraphicsContext.current = ctx
                 image.draw(in: frame)
+                // What sits above the page and overlaps it, again on top.
+                for view in Self.above(page, in: content) where !view.isHidden && view.alphaValue > 0.01 {
+                    let r = view.convert(view.bounds, to: content)
+                    guard r.intersects(frame), let over = bitmap(view.bounds.size) else { continue }
+                    view.cacheDisplay(in: view.bounds, to: over)
+                    let drawn = content.isFlipped ? CGRect(x: r.minX, y: size.height - r.maxY, width: r.width, height: r.height) : r
+                    over.draw(in: drawn, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: false, hints: nil)
+                }
                 NSGraphicsContext.restoreGraphicsState()
             }
             guard let png = rep.representation(using: .png, properties: [:]) else { return done(["error": "no png"]) }
@@ -92,6 +100,25 @@ enum MacEval {
         let frame = page.convert(page.bounds, to: content)
         let drawn = content.isFlipped ? CGRect(x: frame.minX, y: size.height - frame.maxY, width: frame.width, height: frame.height) : frame
         page.takeSnapshot(with: nil) { image, _ in write(image, drawn) }
+    }
+
+    private static func bitmap(_ size: CGSize) -> NSBitmapImageRep? {
+        guard size.width >= 1, size.height >= 1, let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(size.width * 2), pixelsHigh: Int(size.height * 2), bitsPerSample: 8, samplesPerPixel: 4,
+                                                                                 hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)?.retagging(with: .sRGB) else { return nil }
+        rep.size = size
+        return rep
+    }
+
+    /// The views drawn after `view` (above it) along its ancestors up to `root`: later siblings at each level.
+    private static func above(_ view: NSView, in root: NSView) -> [NSView] {
+        var out: [NSView] = []
+        var child = view
+        while let parent = child.superview, child !== root {
+            if let i = parent.subviews.firstIndex(of: child) { out.append(contentsOf: parent.subviews[(i + 1)...]) }
+            if parent === root { break }
+            child = parent
+        }
+        return out
     }
 
     /// Whether the page shows (no opaque native screen covers it): every ancestor visible.
@@ -167,6 +194,11 @@ enum MacEval {
                         "place": m.view.place ?? NSNull(), "key": m.window?.isKeyWindow ?? false, "visible": m.window?.isVisible ?? false, "loaded": m.view.loaded]
             }
             done(["value": list])
+        case "setDefault":
+            // A native screen's remembered choice (a tab, a filter) before a capture (screens.mjs `defaults`).
+            guard let key = req["key"] as? String else { return done(["error": "no key"]) }
+            if let value = req["value"] as? String { Paths.defaults.set(value, forKey: key) } else { Paths.defaults.removeObject(forKey: key) }
+            done(["value": true])
         case "newWindow":
             WindowManager.shared.openMain(path: req["path"] as? String ?? "/")
             done(["value": WindowManager.shared.mains.count])

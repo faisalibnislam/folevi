@@ -28,8 +28,11 @@
         "live": false,
         "phase": null,
         "error": {
-          "code": "ai_credits_exhausted",
-          "message": "You've used this month's AI credits. They reset on November 1."
+          "code": "out_of_credits",
+          "message": "You've used this month's AI credits. They reset on November 1.",
+          "data": {
+            "action": "buy"
+          }
         },
         "citations": [],
         "webCitations": [],

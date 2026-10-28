@@ -31,7 +31,7 @@ import { FloatingDropRefusal } from "./FolderDropLayer";
 import { flattenFolders, folderAncestors } from "@folevi/editor-schema";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiEnabled } from "@/components/ai/useAi";
-import { useCanCall, useCapabilities } from "@/lib/mode";
+import { useBackendMode, useCanCall, useCapabilities } from "@/lib/mode";
 import { useReviewWindow } from "@/components/study/review";
 
 function isActive(route: Route, href: string): boolean {
@@ -427,9 +427,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const caps = useCapabilities();
   // The graph comes to local mode later (lib/local/registry.ts LOCAL_PLANNED).
   const graph = useCanCall(api.aiGraph.graph);
+  const mode = useBackendMode();
+  const canVault = useCanCall(api.vault.get);
   const changes = useQuery(api.changes.list, !caps.changes ? "skip" : route.name === "doc" ? { exclude: route.id } : {});
   // The Vault shows for whoever can see one here (null: none for them; held back while its flag is off).
-  const vault = useQuery(api.vault.get, caps.sharing ? { scope } : "skip");
+  // A library on this device has its own Vault (docs/MAC_REBUILD_PLAN.md §5.6), when local mode has it.
+  const vaultHere = caps.sharing || (mode === "local" && canVault);
+  const vault = useQuery(api.vault.get, vaultHere ? { scope } : "skip");
   // Changes apps proposed count too: they wait there for an answer.
   const minute = useMinute();
   const proposed = useQuery(api.proposals.count, caps.changes ? { now: minute } : "skip");
@@ -549,7 +553,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <NavItem href="/calendar" icon={<Calendar size={16} />} label="Calendar" onNavigate={onNavigate} />
           {reviews?.hasCards || route.name === "review" ? <NavItem href="/review" icon={<Layers size={16} />} label="Reviews" count={reviews ? reviews.due + reviews.new : undefined} onNavigate={onNavigate} /> : null}
           {caps.sharing ? <NavItem href="/shared" icon={<Share2 size={16} />} label="Shared with Me" onNavigate={onNavigate} /> : null}
-          {caps.sharing && vault !== null && vault !== undefined ? <NavItem href="/vault" icon={<Lock size={16} />} label="Vault" onNavigate={onNavigate} /> : null}
+          {vaultHere && vault !== null && vault !== undefined ? <NavItem href="/vault" icon={<Lock size={16} />} label="Vault" onNavigate={onNavigate} /> : null}
           {caps.changes ? <NavItem href="/changes" icon={<FileDiff size={16} />} label="Changes" count={(changes?.notes.length ?? 0) + (proposed ?? 0) || undefined} onNavigate={onNavigate} /> : null}
           <NavItem href="/templates" icon={<LayoutTemplate size={16} />} label="Templates" onNavigate={onNavigate} />
         </div>

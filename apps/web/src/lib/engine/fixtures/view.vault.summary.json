@@ -1,0 +1,29 @@
+{
+  "kind": "view",
+  "name": "vault.summary",
+  "description": "A library's Vault, open on this device.",
+  "args": {},
+  "value": {
+    "state": "open",
+    "vaultId": "01JVAULT000000000000000001",
+    "personal": true,
+    "local": true,
+    "role": "owner",
+    "autoLockMinutes": 5,
+    "locksAt": 1793093700000,
+    "recoveryToSave": null,
+    "recoveryOutdated": false,
+    "accessReviewDue": false,
+    "custodiansNameCustodians": false,
+    "moreSections": [
+      "health",
+      "trash",
+      "settings"
+    ],
+    "passcodeLengths": [
+      6,
+      8,
+      12
+    ]
+  }
+}

@@ -163,6 +163,7 @@ public struct WebTopBar: View {
             if path.hasPrefix("/review") { return .layers }
             if path.hasPrefix("/settings") { return .settings }
             if path.hasPrefix("/vault") { return .lock }
+            if path.hasPrefix("/help") { return .circleQuestionMark }
             return .layoutList
         }
     }

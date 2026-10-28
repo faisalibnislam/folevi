@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "vault.lock",
+  "description": "Lock now.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001"
+  },
+  "result": {
+    "ok": true
+  }
+}

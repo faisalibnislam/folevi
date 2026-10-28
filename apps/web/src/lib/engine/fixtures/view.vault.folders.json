@@ -1,0 +1,18 @@
+{
+  "kind": "view",
+  "name": "vault.folders",
+  "description": "Folder names, opened on the device.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001"
+  },
+  "value": {
+    "folders": [
+      {
+        "id": "01JFOLDER00000000000000001",
+        "parentId": null,
+        "name": "Contracts",
+        "updatedAt": 1793007000000
+      }
+    ]
+  }
+}

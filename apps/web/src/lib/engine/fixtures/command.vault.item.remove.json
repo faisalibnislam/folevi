@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "vault.item.remove",
+  "description": "To the Vault's Trash.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "itemId": "01JITEM0000000000000000002"
+  },
+  "result": {
+    "ok": true
+  }
+}

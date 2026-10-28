@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "vault.share.stop",
+  "description": "Stop sharing.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "itemId": "01JITEM0000000000000000001",
+    "shareId": "01JSHARE000000000000000001"
+  },
+  "result": {
+    "ok": true
+  }
+}

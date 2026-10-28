@@ -46,6 +46,7 @@ enum NativeFrame {
         FrameRootViewController.nativeGates = env["FOLEVI_WEB_GATES"] != "1"
         #if DEBUG
         installEval()
+        installMoreEval()
         #endif
     }
 
@@ -249,7 +250,7 @@ final class FrameController: FrameHost {
     }
 
     func frameOpenHelp() {
-        if let url = URL(string: "https://folevi.com/help") { NSWorkspace.shared.open(url) }
+        model.open(.web("/help"))
     }
 
     func frameOpenExternal(_ url: URL) {
@@ -342,7 +343,7 @@ enum FrameCommands {
         case "go.inbox": m.open(.tasks(.inbox))
         case "go.calendar": m.open(.calendar(nil))
         case "go.ask-ai":
-            if noteOpen { m.toggleNoteAI() } else { m.toast("The Foli AI chat comes to the Mac with the next update.") }
+            m.askAI()
         case "go.next-tab": m.nextTab(1)
         case "go.previous-tab": m.nextTab(-1)
         case "help.help": frame.frameOpenHelp()

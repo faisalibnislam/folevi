@@ -1,0 +1,33 @@
+{
+  "kind": "view",
+  "name": "vault.summary",
+  "description": "A team Vault, locked.",
+  "args": {
+    "space": "ws1"
+  },
+  "value": {
+    "state": "locked",
+    "vaultId": "01JVAULT000000000000000001",
+    "personal": false,
+    "local": false,
+    "role": "custodian",
+    "autoLockMinutes": 10,
+    "locksAt": null,
+    "recoveryToSave": null,
+    "recoveryOutdated": false,
+    "accessReviewDue": true,
+    "custodiansNameCustodians": true,
+    "moreSections": [
+      "health",
+      "activity",
+      "people",
+      "trash",
+      "settings"
+    ],
+    "passcodeLengths": [
+      6,
+      8,
+      12
+    ]
+  }
+}

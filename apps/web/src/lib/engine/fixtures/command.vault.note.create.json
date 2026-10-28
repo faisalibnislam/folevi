@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "vault.note.create",
+  "description": "A note in a folder.",
+  "args": {
+    "vaultId": "01JVAULT000000000000000001",
+    "folderId": "01JFOLDER00000000000000001",
+    "title": "Safe deposit box"
+  },
+  "result": {
+    "id": "01JITEM0000000000000000004"
+  }
+}

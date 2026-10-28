@@ -1,0 +1,34 @@
+{
+  "kind": "view",
+  "name": "reviews",
+  "description": "One new flashcard due now, everywhere.",
+  "args": {},
+  "value": {
+    "found": true,
+    "cards": [
+      {
+        "blockId": "blk_card1",
+        "kind": "flashcard",
+        "noteId": "doc_00001",
+        "noteTitle": "Kyoto in November",
+        "front": "Where is the moss garden?",
+        "back": "Saiho-ji",
+        "isNew": true,
+        "lastReview": null,
+        "intervals": {
+          "again": 60000,
+          "hard": 360000,
+          "good": 600000,
+          "easy": 345600000
+        }
+      }
+    ],
+    "due": 0,
+    "new": 1,
+    "later": 0,
+    "total": 1,
+    "hasCards": true,
+    "noteTitle": null,
+    "newPerDay": 20
+  }
+}

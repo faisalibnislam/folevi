@@ -12,8 +12,9 @@ import { requestSpecialInsert, type SpecialInsert } from "@/components/editor/Ed
 import { AI_FOCUS_EVENT, askNoteAi } from "@/components/ai/chat/events";
 import { nativeChrome } from "@/lib/nativeApp";
 import { bridgeListening, emitNoteEvent, focusMode, markNoteReady, onNoteHost, registerNote, setFocusMode, type NoteHandle } from "./noteHost";
-import { BridgeError, num, oneOf, only, text } from "./validate";
-import { EDITOR_BLOCKS, EDITOR_MARKS, EDITOR_PANELS, NOTE_MENU_ACTIONS, type EditorBlock, type EditorCommandName, type EditorMark, type EditorPanel, type EditorStateEvent, type NoteMenuAction } from "./protocol";
+import { clearMatches, findMatches, MAX_MATCHES, paintMatches, revealMatch } from "@/components/doc/findInNote";
+import { BridgeError, id, num, oneOf, only, text } from "./validate";
+import { EDITOR_BLOCKS, EDITOR_MARKS, EDITOR_PANELS, NOTE_MENU_ACTIONS, type EditorBlock, type EditorCommandName, type EditorMark, type EditorPanel, type EditorStateEvent, type FindResult, type NoteMenuAction } from "./protocol";
 
 const SPECIAL: readonly SpecialInsert[] = ["image", "unsplash", "file", "record", "scan", "scanPhotos", "page", "card", "bookmark", "embed", "collection", "gallery", "board", "calendarView", "date", "pickDate", "columns2", "columns3", "columns4", "tabs"];
 
@@ -35,6 +36,40 @@ export interface NativeNoteOptions {
   locked?: boolean;
   /** "Lock" is offered here: opens the Lock dialog over the note. */
   lock?: () => void;
+  /** Revision 14: scrolls the note to a block and puts the caret there (the sidebar's outline, tasks, attachments). */
+  jump?: (blockId: string) => void;
+  /** Revision 14: opens a comment thread in the note (under its block); false when there's no such thread. */
+  openThread?: (threadId: string) => boolean;
+}
+
+/** Checks or unchecks a to-do, as the page sidebar's Tasks tab does; false when there's no such to-do. */
+export function toggleTask(editor: Editor, blockId: string): boolean {
+  let found = false;
+  editor.state.doc.descendants((n, pos) => {
+    if (found) return false;
+    if (n.attrs.id !== blockId) return true;
+    found = "checked" in n.attrs;
+    if (found) {
+      const checked = !n.attrs.checked;
+      editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...n.attrs, checked, completedAt: checked ? Date.now() : null }));
+    }
+    return false;
+  });
+  return found;
+}
+
+/** `find`: every match of `query`, painted, and the one at `index` shown (left out: none scrolled to). */
+export function findInNote(editor: Editor, query: string, index?: number): FindResult {
+  const q = query.trim();
+  const matches = findMatches(editor, q);
+  if (!matches.length) {
+    clearMatches();
+    return { query: q, count: 0, current: -1, truncated: false, matches: [] };
+  }
+  const current = index === undefined ? 0 : ((Math.trunc(index) % matches.length) + matches.length) % matches.length;
+  paintMatches(editor, matches, current);
+  if (index !== undefined) revealMatch(editor, matches[current]!);
+  return { query: q, count: matches.length, current, truncated: matches.length >= MAX_MATCHES, matches: matches.slice(0, 100).map((m) => m.snippet) };
 }
 
 /** The block the caret is in, as the protocol names it ("heading2", "todo", "image", ...). */
@@ -231,6 +266,37 @@ export function runEditorCommand(o: NativeNoteOptions, name: EditorCommandName, 
       only(args, []);
       if (!o.lock) throw new BridgeError("unavailable", "Lock isn't offered for this note.");
       o.lock();
+      return ok;
+    case "block.jump": {
+      only(args, ["blockId"]);
+      const blockId = id(args, "blockId");
+      if (!editor || editor.isDestroyed || !o.jump) throw new BridgeError("no_note", "The note is still opening.");
+      o.jump(blockId);
+      return ok;
+    }
+    case "task.toggle": {
+      only(args, ["blockId"]);
+      const blockId = id(args, "blockId");
+      if (!toggleTask(editing(), blockId)) throw new BridgeError("invalid_args", "There's no such to-do in this note.");
+      return ok;
+    }
+    case "thread.open": {
+      only(args, ["threadId"]);
+      const threadId = id(args, "threadId");
+      if (!o.openThread) throw new BridgeError("unavailable", "Comments aren't available for this note.");
+      if (!o.openThread(threadId)) throw new BridgeError("invalid_args", "That comment thread isn't in this note.");
+      return ok;
+    }
+    case "find": {
+      only(args, ["query", "index"]);
+      const query = text(args, "query", { max: 500, allowEmpty: true }) as string;
+      const index = args.index === undefined ? undefined : num(args, "index", { min: -100_000, max: 100_000 });
+      if (!editor || editor.isDestroyed) throw new BridgeError("no_note", "The note is still opening.");
+      return findInNote(editor, query, index);
+    }
+    case "find.clear":
+      only(args, []);
+      clearMatches();
       return ok;
     default:
       // note.prepare, note.show and note.close are the host's.

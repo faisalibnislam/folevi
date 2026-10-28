@@ -22,6 +22,8 @@ import { notificationSettings, sharingValue } from "../viewsAccount";
 import { folderSharingValue, moveCheckValue, sharedFolderRow, sharedFolderValue } from "../viewsFolders";
 import { chatMessage, conversationRow, conversationValue } from "../viewsAi";
 import { researchJob } from "../viewsMac";
+import { VAULT_FIXTURES } from "./vault";
+import { graphValue, layOut, reviewsValue } from "../viewsScreens";
 import {
   CONTRACT_REVISION,
   PROTOCOL_VERSION,
@@ -890,6 +892,13 @@ export const FIXTURES: Record<string, Fixture> = {
   }),
   "view.invite.preview": view({ name: "invite.preview", description: "A workspace invitation link opened in the app.", args: { kind: "workspace", token: "tok_ws" }, value: { valid: true, kind: "workspace", inviterName: "Sam", name: "Airly Studio", roleLabel: "Member", emailMatches: true } }),
   "view.invite.preview.invalid": view({ name: "invite.preview", description: "An invitation that expired or was used.", args: { kind: "page", token: "tok_old" }, value: { valid: false, kind: "page", inviterName: null, name: null, roleLabel: null, emailMatches: false } }),
+  "view.settings.query.desktop": view({
+    name: "settings.query",
+    description: "Settings > Desktop app on the Mac: the Mac app's own settings, worded as the web shows them.",
+    args: { key: "desktop" },
+    value: { data: { bridge: true, loaded: true, settings: { quickAddShortcut: "Alt+Space", shortcutLabel: "⌥Space", defaultShortcut: "Alt+Space", defaultLabel: "⌥Space", error: null, openAtLogin: true, menuBarIcon: true, notifications: false } } },
+  }),
+  "command.settings.run.lock": command({ name: "settings.run", description: "Settings > Library: ask for Touch ID again after 5 minutes.", args: { key: "library.lock", args: { lockAfter: 300 } }, result: { data: { ok: true } } }),
   "command.settings.update": command({ name: "settings.update", description: "Change the name and appearance.", args: { name: "Faisal Islam", appearance: "light" }, result: { ok: true } }),
   "command.settings.setAiPref": command({ name: "settings.setAiPref", description: "Turn Foli AI's memory off.", args: { key: "memory", on: false }, result: { ok: true } }),
   "command.settings.setNotificationTopic": command({ name: "settings.setNotificationTopic", description: "Mentions: email off, the bell on.", args: { topic: "mentions", inApp: true, email: false }, result: { ok: true } }),
@@ -996,6 +1005,60 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.folderSharing.revoke": command({ name: "folderSharing.revoke", description: "Remove someone from a folder (their own id: leave it).", args: { folderId: "fld_garden", profileId: "prof_9" }, result: { ok: true } }),
   "command.folderSharing.cancelInvite": command({ name: "folderSharing.cancelInvite", description: "Cancel a folder invitation.", args: { inviteId: "finv_2" }, result: { ok: true } }),
   "command.folderInvite.accept": command({ name: "folderInvite.accept", description: "Accept a folder invitation from the bell and open the folder.", args: { inviteId: "finv_1" }, result: { folderId: "fld_recipes" } }),
+  "view.graph": view({
+    name: "graph",
+    description: "Three notes, two of them linked, and a person one mentions, laid out by the web's force layout.",
+    args: {},
+    value: graphValue(
+      {
+        full: true,
+        note: null,
+        upgrade: false,
+        truncated: false,
+        nodes: [
+          { id: "doc_00001", kind: "note", label: "Kyoto in November" },
+          { id: "doc_00002", kind: "note", label: "Packing list" },
+          { id: "doc_00003", kind: "note", label: "Reading list" },
+          { id: "ent_sam", kind: "person", label: "Sam" },
+        ],
+        edges: [
+          { source: "doc_00001", target: "doc_00002", kind: "link", inferred: false },
+          { source: "doc_00001", target: "ent_sam", kind: "mention", inferred: true },
+        ],
+      },
+      layOut(
+        [
+          { id: "doc_00001", kind: "note", label: "Kyoto in November" },
+          { id: "doc_00002", kind: "note", label: "Packing list" },
+          { id: "doc_00003", kind: "note", label: "Reading list" },
+          { id: "ent_sam", kind: "person", label: "Sam" },
+        ],
+        [
+          { source: "doc_00001", target: "doc_00002", kind: "link", inferred: false },
+          { source: "doc_00001", target: "ent_sam", kind: "mention", inferred: true },
+        ],
+      ),
+    ),
+  }),
+  "view.reviews": view({
+    name: "reviews",
+    description: "One new flashcard due now, everywhere.",
+    args: {},
+    value: reviewsValue({
+      cards: [
+        { blockId: "blk_card1", kind: "flashcard", documentId: "doc_00001", documentTitle: "Kyoto in November", front: "Where is the moss garden?", back: "Saiho-ji", isNew: true, lastReview: null, intervals: { again: 60_000, hard: 360_000, good: 600_000, easy: 345_600_000 } },
+      ],
+      counts: { due: 0, new: 1, later: 0 },
+      total: 1,
+      hasCards: true,
+      documentTitle: null,
+      newPerDay: 20,
+    }),
+  }),
+  "view.reviews.empty": view({ name: "reviews", description: "Nothing to review and no cards yet.", args: {}, value: reviewsValue({ cards: [], counts: { due: 0, new: 0, later: 0 }, total: 0, hasCards: false, documentTitle: null, newPerDay: 20 }) }),
+  "view.recent.viewed": view({ name: "recent.viewed", description: "The notes opened last, for ⌘K's Recent.", args: {}, value: { rows: [{ id: "doc_00001", title: "Kyoto in November", icon: null, updatedAt: 1792828800000 }] } }),
+  "command.review.rate": command({ name: "review.rate", description: "A card known well.", args: { blockId: "blk_card1", rating: "good", lastReview: null }, result: { ok: true } }),
+  "command.review.setNewPerDay": command({ name: "review.setNewPerDay", description: "Ten new cards a day.", args: { value: 10 }, result: { ok: true } }),
   "command.support.send": command({ name: "support.send", description: "Send a support request from the app.", args: { topic: "sync", message: "My notes didn't sync after I came back online." }, result: { number: 1042 } }),
   "command.folder.lock": command({ name: "folder.lock", description: "Make a folder always fully encrypted.", args: { id: "fld_work", locked: true }, result: { ok: true } }),
   "command.ai.generate": command({ name: "ai.generate", description: "A template written by Foli AI.", args: { kind: "template", instruction: "A weekly review with wins, problems and next steps" }, result: { title: "Weekly review", text: "## Wins\n\n- \n\n## Problems\n\n- \n\n## Next steps\n\n- [ ] " } }),
@@ -1087,13 +1150,24 @@ export const FIXTURES: Record<string, Fixture> = {
       found: true,
       conversation: { id: "conv_2", title: "Summarize Q4 planning", pinned: false, ephemeral: false, space: "personal", context: "note", shared: false, canShare: false, createdAt: NOW - DAY, lastMessageAt: NOW },
       messages: [
-        chatMessage({ id: "msg_9", role: "assistant", text: "", citations: [], webCitations: [], suggestions: [], status: "error", live: false, phase: null, error: { code: "ai_credits_exhausted", message: "You've used this month's AI credits. They reset on November 1." }, credits: null, attachments: [], actions: null, actionsOutcome: null, agent: null, memory: null, createdAt: NOW }),
+        chatMessage({ id: "msg_9", role: "assistant", text: "", citations: [], webCitations: [], suggestions: [], status: "error", live: false, phase: null, error: { code: "out_of_credits", message: "You've used this month's AI credits. They reset on November 1.", action: "buy" }, credits: null, attachments: [], actions: null, actionsOutcome: null, agent: null, memory: null, createdAt: NOW }),
       ],
     },
   }),
   "view.ai.stream": view({ name: "ai.stream", description: "The answer's text so far.", args: { messageId: "msg_4" }, value: { messageId: "msg_4", text: "November in Kyoto is mild, 10 to 18" } }),
   "view.ai.stream.done": view({ name: "ai.stream", description: "Finished: read the message itself.", args: { messageId: "msg_2" }, value: { messageId: "msg_2", text: null } }),
-  "view.ai.capabilities": view({ name: "ai.capabilities", description: "What Foli AI can do here.", args: {}, value: { available: true, vision: true, webResearch: true, attachments: true, history: true, agent: true } }),
+  "view.ai.capabilities": view({
+    name: "ai.capabilities",
+    description: "What Foli AI can do here, with the credits that apply (R12.7, running low: the chat says how many are left).",
+    args: {},
+    value: { available: true, vision: true, webResearch: true, attachments: true, history: true, agent: true, unavailable: null, credits: { included: true, available: 8, low: true, resetsAt: 1793491200000, trialing: false, seat: false, canBuy: true } },
+  }),
+  "view.ai.capabilities.local": view({
+    name: "ai.capabilities",
+    description: "Local mode with no model on this device yet: nothing to ask, no credits.",
+    args: {},
+    value: { available: false, vision: false, webResearch: false, attachments: false, history: true, agent: false, unavailable: "setup", credits: null },
+  }),
   "command.ai.send": command({ name: "ai.send", description: "A new conversation about a folder (the answer arrives through ai.conversation).", args: { text: "What's left to book?", context: { kind: "folder", ids: ["fld_trips"] } }, result: { conversationId: "01JB7ZC4N5P6Q7R8S9T0V1W2X3", messageId: null } }),
   "command.ai.send.web": command({ name: "ai.send", description: "A question in an existing conversation, searching the web.", args: { conversationId: "conv_1", text: "And the weather?", web: true, mode: "ask" }, result: { conversationId: "conv_1", messageId: null } }),
   "command.ai.stop": command({ name: "ai.stop", description: "Stop the answer being written.", args: { messageId: "msg_4" }, result: { ok: true } }),
@@ -1417,4 +1491,74 @@ export const FIXTURES: Record<string, Fixture> = {
   "event.editor.panel": event({ name: "editor.panel", description: "The Format panel opened.", data: { panel: "format" } }),
   "event.editor.panel.closed": event({ name: "editor.panel", description: "The panel closed.", data: { panel: null } }),
   "event.memory.relieved": event({ name: "memory.relieved", description: "Memory was short: the editor and caches were dropped.", data: { dropped: ["editor", "caches"] } }),
+
+  // ---- revision 14: the note page's own sidebar
+  "event.note.tools": event({
+    name: "note.tools",
+    description: "What the note's sidebar shows: where it lives, its outline (the second heading in view), tasks, attachments, links and comments.",
+    data: {
+      noteId: "doc_00001",
+      title: "Kyoto in November",
+      trail: [
+        { href: "/folders/fld_travel", label: "Travel" },
+        { href: "/folders/fld_japan", label: "Japan" },
+      ],
+      outline: [
+        { kind: "heading", id: "blk_h1", text: "Temples", level: 1, documentId: null },
+        { kind: "heading", id: "blk_h2", text: "Saiho-ji", level: 2, documentId: null },
+        { kind: "page", id: "blk_p1", text: "Where to eat", level: 0, documentId: "doc_00002" },
+      ],
+      current: "blk_h2",
+      tasks: [
+        { id: "blk_t1", text: "Book the moss garden", checked: false },
+        { id: "blk_t2", text: "Buy a rail pass", checked: true },
+      ],
+      attachments: [{ id: "blk_i1", kind: "image", name: "Saiho-ji in autumn", uploading: false }],
+      links: [
+        { key: "blk_b1-bm", blockId: "blk_b1", label: "Nishiki Market", href: "https://www.kyoto-nishiki.or.jp/", internal: false },
+        { key: "blk_x1-0", blockId: "blk_x1", label: "Where to eat", href: "/d/doc_00002", internal: true },
+      ],
+      comments: {
+        available: true,
+        loaded: true,
+        canComment: true,
+        threads: [
+          { id: "thr_1", blockId: "blk_h2", anchor: "“Saiho-ji”", author: "Mira", avatarUrl: null, text: "Reservations open two months ahead.", deleted: false, replies: 1, status: "open", resolvedBy: null, unread: true, lastActivityAt: 1761600000000, waiting: null },
+        ],
+      },
+      pages: [
+        { id: "doc_00001", title: "Kyoto in November", depth: 0 },
+        { id: "doc_00002", title: "Where to eat", depth: 1 },
+      ],
+      pagesTruncated: false,
+      readOnly: false,
+    },
+  }),
+  "event.note.tools.local": event({
+    name: "note.tools",
+    description: "A note in local mode with nothing in it yet: no comments (they need an account), Drafts as its place.",
+    data: { noteId: "doc_00003", title: "Untitled", trail: [{ href: "/drafts", label: "Drafts" }], outline: [], current: null, tasks: [], attachments: [], links: [], comments: { available: false, loaded: true, canComment: false, threads: [] }, pages: [], pagesTruncated: false, readOnly: false },
+  }),
+  "editor.block.jump": editor({ name: "block.jump", description: "Scroll the note to a heading (the outline's click).", args: { blockId: "blk_h2" }, result: { ok: true } }),
+  "editor.task.toggle": editor({ name: "task.toggle", description: "Check a to-do from the Tasks tab.", args: { blockId: "blk_t1" }, result: { ok: true } }),
+  "editor.thread.open": editor({ name: "thread.open", description: "Open a comment thread in the note.", args: { threadId: "thr_1" }, result: { ok: true } }),
+  "editor.find": editor({
+    name: "find",
+    description: "Find text and show the second match.",
+    args: { query: "the", index: 1 },
+    result: {
+      query: "the",
+      count: 2,
+      current: 1,
+      truncated: false,
+      matches: [
+        { before: "Temples to see, ", hit: "the", after: " moss garden at Saiho-ji, and where to eat near…" },
+        { before: "…and where to eat near ", hit: "the", after: " market." },
+      ],
+    },
+  }),
+  "editor.find.none": editor({ name: "find", description: "Find text that isn't in the note.", args: { query: "zebra" }, result: { query: "zebra", count: 0, current: -1, truncated: false, matches: [] } }),
+  "editor.find.clear": editor({ name: "find.clear", description: "Stop finding: the matches lose their highlight.", args: {}, result: { ok: true } }),
+  // ---- revision 18: the Vault (fixtures/vault.ts)
+  ...VAULT_FIXTURES,
 };

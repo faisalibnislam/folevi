@@ -14,6 +14,19 @@ import { formatDateTime } from "@/lib/format";
 import { vaultSessions } from "@/lib/vault/keys";
 import { newItemId } from "@/lib/vault/items";
 import { checkedRecipient, makeLink, sealItemTo } from "@/lib/vault/shares";
+import { useBackendMode } from "@/lib/mode";
+import { SignInToCollaborate } from "@/components/app/SignInToCollaborate";
+
+/** Sharing needs an account: a library's Vault (no account) shows the one "Sign in to share" note instead. */
+export function ShareDialog(props: Parameters<typeof AccountShareDialog>[0]) {
+  const local = useBackendMode() === "local";
+  if (!local) return <AccountShareDialog {...props} />;
+  return (
+    <Dialog open onClose={props.onClose} title={`Share ${props.title}`} size="md" footer={<Button onClick={props.onClose}>Done</Button>}>
+      <SignInToCollaborate variant="panel" className="pb-2" />
+    </Dialog>
+  );
+}
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -23,7 +36,7 @@ type Row = { id: string; keyVersion: number; wrappedKey: ArrayBuffer };
  * `rekey` saves the item again under a new item key (after a share ends). `allowEdit`: a note, which can be shared to
  * edit.
  */
-export function ShareDialog({ vaultId, row, title, allowEdit = false, rekey, onClose }: { vaultId: string; row: Row; title: string; allowEdit?: boolean; rekey: () => Promise<void>; onClose: () => void }) {
+function AccountShareDialog({ vaultId, row, title, allowEdit = false, rekey, onClose }: { vaultId: string; row: Row; title: string; allowEdit?: boolean; rekey: () => Promise<void>; onClose: () => void }) {
   const shares = useQuery(api.vaultShares.ofItem, { vaultId, itemId: row.id });
   const findPerson = useMutation(api.vaultShares.findPerson);
   const share = useMutation(api.vaultShares.share);

@@ -302,6 +302,9 @@ public final class ContentViewController: NSViewController {
         // (The frame draws under the title bar, as the web page does: no safe area anywhere in it.)
         back.safeAreaRegions = []
         topBar.safeAreaRegions = []
+        // Its size comes from the constraints below. Without this the hosting view also lays the bar out at its ideal
+        // width to measure itself, and the tab strip (sized to what's left it) would take that pass for real.
+        topBar.sizingOptions = []
         back.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(back)
         clip.wantsLayer = true

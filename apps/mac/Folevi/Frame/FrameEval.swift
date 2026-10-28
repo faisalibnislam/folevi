@@ -103,6 +103,7 @@ extension NativeFrame {
                 if let f = m.debugTabFrames[t.id] { d["frame"] = [f.minX, f.minY, f.width, f.height] }
                 return d
             },
+            "strip": m.debugStrip.mapValues { Double($0) },
             "sidebar": rows(m.sidebar),
             "sidebarCollapsed": m.sidebarCollapsed,
             "gate": frame.root.showsGate,

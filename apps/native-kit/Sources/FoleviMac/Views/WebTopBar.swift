@@ -18,6 +18,8 @@ public struct WebTopBar: View {
     @State private var tabFrames: [String: CGRect] = [:]
     /// The tab being dragged: how far it's moved from its own place, and where the pointer took hold of it.
     @State private var dragging: (id: String, dx: CGFloat, grab: CGFloat)?
+    /// The list of tabs' scroll and measures, in one object the layout's reports and the timers change directly.
+    @State private var scroller = TabScroller()
 
     public init(model: FrameModel) { self.model = model }
 
@@ -31,14 +33,22 @@ public struct WebTopBar: View {
                 SyncDot(model: model)
                 divider
             }
-            historyButton(.chevronLeft, "Back", enabled: model.history.canGoBack, style: "frame.topbar.back") { model.goBack() }
+            historyButton(.arrowLeft, "Back", enabled: model.history.canGoBack, style: "frame.topbar.back") { model.goBack() }
                 .padding(.trailing, -bar.gap)
-            historyButton(.chevronRight, "Forward", enabled: model.history.canGoForward, style: "frame.topbar.forward") { model.goForward() }
+            historyButton(.arrowRight, "Forward", enabled: model.history.canGoForward, style: "frame.topbar.forward") { model.goForward() }
             divider
-            tabs
+            // The arrows only while the tabs overflow, each dimmed with nothing more on its side (TabStrip.tsx).
+            if overflow.start || overflow.end {
+                scrollArrow(.chevronLeft, "Scroll tabs left", enabled: overflow.start) { scrollTabs(-1) }
+                scrollArrow(.chevronRight, "Scroll tabs right", enabled: overflow.end) { scrollTabs(1) }
+            }
+            // Only the tabs scroll: they take the room the rest leaves them, no more than they need.
+            tabs.layoutPriority(1)
             Spacer(minLength: 0)
-            WebButton(model.route.isNote ? "New note" : "New note", icon: .plus, variant: .primary, size: .sm) { model.newNote() }
+            // The web's <Button size="sm"> with <Plus size={14} />, as the top bar measures it (its icon at 70%).
+            WebButton("New note", icon: .plus, iconSize: 14, iconOpacity: style("frame.topbar.new.icon").opacity, styleName: "frame.topbar.new", variant: .primary, size: .sm) { model.newNote() }
                 .help("New note (⌘⌥N)")
+                .fixedSize()
         }
         .padding(bar.padding.edgeInsets)
         .frame(height: bar.height)
@@ -57,7 +67,7 @@ public struct WebTopBar: View {
     private func historyButton(_ icon: WebIcon, _ label: String, enabled: Bool, style id: String, action: @escaping () -> Void) -> some View {
         let s = style("frame.topbar.back")
         return Button(action: action) {
-            WebIconView(icon, size: 16)
+            WebIconView(icon, size: 15)
                 .frame(width: s.width, height: s.height)
                 .foregroundStyle(s.color.color)
                 .contentShape(Rectangle())
@@ -70,28 +80,118 @@ public struct WebTopBar: View {
 
     // MARK: tabs
 
+    private var overflow: (start: Bool, end: Bool) {
+        TabStripMath.overflow(scroll: scroller.scroll, visible: scroller.metrics.visible, content: scroller.metrics.content)
+    }
+
+    /// The web's ARROW: 24 by 36, the muted chevron, the accent's soft fill under the pointer.
+    private func scrollArrow(_ icon: WebIcon, _ label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            WebIconView(icon, size: 15)
+                .frame(width: 24, height: 36)
+                .foregroundStyle(style("frame.topbar.back").color.color)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(WebHoverRowStyle(radius: style("frame.topbar.back").radius, hover: WebStyles.vars["color-accent-soft"], press: WebStyles.vars["mac-press"], selected: false))
+        .opacity(enabled ? 1 : 0.3)
+        .disabled(!enabled)
+        .accessibilityLabel(label)
+    }
+
     private var tabs: some View {
         let strip = style("frame.tabs")
-        return ScrollView(.horizontal) {
-            HStack(spacing: strip.gap) {
-                ForEach(model.tabs.tabs) { t in
-                    tab(t)
-                }
+        let edge = TabStripMath.fade / max(1, scroller.metrics.visible)
+        return TabRow(gap: strip.gap, padding: strip.padding.edgeInsets, offset: scroller.scroll, report: { measured($0) }) {
+            ForEach(model.tabs.tabs) { t in
+                tab(t)
+                    .layoutValue(key: TabRoleKey.self, value: t.isHome ? .home : (t.id == model.tabs.activeID ? .open : .other))
+                    .layoutValue(key: TabActiveKey.self, value: t.id == model.tabs.activeID)
             }
-            .padding(strip.padding.edgeInsets)
-            .coordinateSpace(name: Self.strip)
-            .onPreferenceChange(TabFrames.self) { tabFrames = $0 }
-            #if DEBUG
-            .background(GeometryReader { g in
-                Color.clear.onChange(of: tabFrames, initial: true) { _, frames in
-                    let origin = g.frame(in: .global).origin
-                    model.debugTabFrames = frames.mapValues { $0.offsetBy(dx: origin.x, dy: origin.y) }
-                }
-            })
-            #endif
         }
-        .scrollIndicators(.never)
-        .fixedSize(horizontal: true, vertical: false)
+        .coordinateSpace(name: Self.strip)
+        .onPreferenceChange(TabFrames.self) { tabFrames = $0 }
+        #if DEBUG
+        .background(GeometryReader { g in
+            Color.clear.onChange(of: tabFrames, initial: true) { _, frames in
+                let origin = g.frame(in: .global).origin
+                model.debugTabFrames = frames.mapValues { $0.offsetBy(dx: origin.x, dy: origin.y) }
+            }
+        })
+        #endif
+        .clipped()
+        // The soft edges, on a side with more tabs only (the web's mask).
+        .mask(LinearGradient(stops: [
+            .init(color: overflow.start ? .clear : .black, location: 0),
+            .init(color: .black, location: min(0.5, edge)),
+            .init(color: .black, location: max(0.5, 1 - edge)),
+            .init(color: overflow.end ? .clear : .black, location: 1),
+        ], startPoint: .leading, endPoint: .trailing))
+        .overlay(SidewaysScroll { dx in scrollTo(scroller.scroll + dx, animated: false) })
+        .onAppear { scroller.pendingReveal = false }
+        .onChange(of: dragging?.id) { _, id in scroller.dragging = id != nil }
+        .onChange(of: model.tabs.activeID) { revealSoon() }
+        .onChange(of: model.tabs.tabs.map(\.id)) { revealSoon() }
+    }
+
+    /// What the list measured: the scroll kept in range (tabs closing shorten it), and the open tab brought back into
+    /// view, at once, when the list's width or the open tab's width changed (the window, the sidebar, the arrows
+    /// coming or going, a title typed or loaded), or as asked after a change of tab.
+    private func measured(_ m: TabRowMetrics) {
+        defer { debugStrip() }
+        guard m != scroller.metrics else { return }
+        let resized = m.visible != scroller.metrics.visible || m.openWidth != scroller.metrics.openWidth
+        scroller.metrics = m
+        let kept = TabStripMath.clamp(scroller.scroll, visible: m.visible, content: m.content)
+        if kept != scroller.scroll { scrollTo(kept, animated: false) }
+        if let animated = scroller.pendingReveal {
+            scroller.pendingReveal = nil
+            reveal(animated: animated)
+        } else if resized {
+            reveal(animated: false)
+        }
+    }
+
+    /// After a change of tab (a click, the keyboard, Back or Forward, a link, a new note, tabs opening or closing):
+    /// without motion the first time, smoothly after, once the list has measured the change.
+    private func revealSoon() {
+        scroller.pendingReveal = scroller.shownOnce
+        scroller.shownOnce = true
+        // The list's next measure brings it (with the new tab's place); this only for a change that moves nothing.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            guard let animated = scroller.pendingReveal else { return }
+            scroller.pendingReveal = nil
+            reveal(animated: animated)
+        }
+    }
+
+    private func reveal(animated: Bool) {
+        guard !scroller.dragging, scroller.metrics.visible > 0,
+              let to = TabStripMath.reveal(left: scroller.metrics.openLeft, width: scroller.metrics.openWidth, scroll: scroller.scroll, visible: scroller.metrics.visible, content: scroller.metrics.content) else { return }
+        scrollTo(to, animated: animated)
+    }
+
+    /// What scripts read of the strip (Debug only).
+    private func debugStrip() {
+        #if DEBUG
+        model.debugStrip = ["scroll": scroller.scroll, "visible": scroller.metrics.visible, "content": scroller.metrics.content, "openLeft": scroller.metrics.openLeft, "openWidth": scroller.metrics.openWidth]
+        #endif
+    }
+
+    private func scrollTabs(_ dir: CGFloat) {
+        scrollTo(scroller.scroll + dir * TabStripMath.step(visible: scroller.metrics.visible), animated: true)
+    }
+
+    private func scrollTo(_ x: CGFloat, animated: Bool) {
+        defer { debugStrip() }
+        let to = TabStripMath.clamp(x, visible: scroller.metrics.visible, content: scroller.metrics.content)
+        guard to != scroller.scroll else { return }
+        if animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            withAnimation(.easeInOut(duration: 0.3)) { scroller.scroll = to }
+        } else {
+            var t = Transaction()
+            t.disablesAnimations = true
+            withTransaction(t) { scroller.scroll = to }
+        }
     }
 
     private func tab(_ t: FrameTab) -> some View {
@@ -114,8 +214,9 @@ public struct WebTopBar: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // The title takes the tab's room up to its × (no spacer: it would get the gap on both sides).
+            .frame(maxWidth: t.isHome ? nil : .infinity, alignment: .leading)
             if !t.isHome {
-                Spacer(minLength: 0)
                 Button { model.closeTab(t.id) } label: {
                     WebIconView(.x, size: 12)
                         .frame(width: close.width, height: close.height)
@@ -129,7 +230,6 @@ public struct WebTopBar: View {
         }
         .foregroundStyle(s.color.color)
         .padding(inset.edgeInsets)
-        .frame(minWidth: t.isHome ? nil : style("frame.tab").width, maxWidth: t.isHome ? nil : 284)
         .frame(height: s.height)
         .webBox(active ? on : off)
         // The whole tab opens it, as the web's link that fills the tab up to its × (the × keeps its own click); the
@@ -280,3 +380,4 @@ private struct MiddleClick: NSViewRepresentable {
     func updateNSView(_ v: View, context: Context) { v.action = action }
 }
 #endif
+

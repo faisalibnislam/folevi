@@ -18,23 +18,29 @@ public struct WebButton: View {
     let variant: WebButtonVariant
     let size: WebButtonSize
     let iconSize: CGFloat
+    let iconOpacity: CGFloat
+    let styleName: String?
     let action: () -> Void
     @Environment(\.isEnabled) private var enabled
 
     /// `iconSize`: the icon's size where the web gives it one (`<Upload size={14} />`); 15 otherwise.
-    public init(_ title: String, icon: WebIcon? = nil, iconSize: CGFloat = 15, variant: WebButtonVariant = .secondary, size: WebButtonSize = .md, action: @escaping () -> Void = {}) {
+    /// `styleName`: the button's own measured style where it has one (the top bar's New note), and `iconOpacity`
+    /// its icon's.
+    public init(_ title: String, icon: WebIcon? = nil, iconSize: CGFloat = 15, iconOpacity: CGFloat = 1, styleName: String? = nil, variant: WebButtonVariant = .secondary, size: WebButtonSize = .md, action: @escaping () -> Void = {}) {
         self.title = title
         self.icon = icon
         self.iconSize = iconSize
+        self.iconOpacity = iconOpacity
+        self.styleName = styleName
         self.variant = variant
         self.size = size
         self.action = action
     }
 
     public var body: some View {
-        let style = WebStyles.named("button.\(variant.rawValue).\(size == .sm && icon != nil ? "sm" : size.rawValue)")
+        let style = WebStyles.named(styleName ?? "button.\(variant.rawValue).\(size == .sm && icon != nil ? "sm" : size.rawValue)")
         Button(action: action) {
-            WebButtonLabel(title: title, icon: icon, style: style, iconSize: iconSize)
+            WebButtonLabel(title: title, icon: icon, style: style, iconSize: iconSize, iconOpacity: iconOpacity)
         }
         .buttonStyle(WebPressStyle())
         .opacity(enabled ? 1 : 0.4)
@@ -46,13 +52,14 @@ struct WebButtonLabel: View {
     let icon: WebIcon?
     let style: WebStylePair
     var iconSize: CGFloat = 15
+    var iconOpacity: CGFloat = 1
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let s = style.resolve(scheme)
         HStack(spacing: s.gap) {
             if let icon {
-                WebIconView(icon, size: iconSize)
+                WebIconView(icon, size: iconSize).opacity(iconOpacity)
             }
             Text(title).webText(s.text).lineLimit(1).fixedSize()
         }

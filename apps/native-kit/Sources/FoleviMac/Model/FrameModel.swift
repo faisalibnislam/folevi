@@ -129,6 +129,8 @@ public final class FrameModel {
     #if DEBUG
     /// Each tab's frame in the window (top-left points), for scripts that click and drag tabs.
     @ObservationIgnored public var debugTabFrames: [String: CGRect] = [:]
+    /// The tab strip's scroll and sizes (Debug: screens.mjs --strip reads them).
+    @ObservationIgnored public var debugStrip: [String: CGFloat] = [:]
     #endif
 
     /// Titles of the note tabs (`notes.meta`, revision 8), so restored tabs and notes renamed elsewhere stay current.

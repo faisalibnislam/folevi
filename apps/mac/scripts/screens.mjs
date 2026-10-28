@@ -7,6 +7,7 @@
 //   node apps/mac/scripts/screens.mjs [--fresh] [--only home,notes] [--size 1280x820]
 //   node apps/mac/scripts/screens.mjs --gates [--only first-launch]   (the screens before the app, gates.mjs)
 //   node apps/mac/scripts/screens.mjs --switch [--only home]   (the Mac switching light and dark with a screen open)
+//   node apps/mac/scripts/screens.mjs --strip   (the tab strip: 2, 8 and 12 tabs, wide and narrow, ends and middle)
 //   node apps/mac/scripts/screens.mjs --avatars   (the account's picture on the demo engine: initial, photo, new photo, logo)
 //
 // Everything lives in apps/mac/build/run/screens (the app's data) and apps/mac/build/run/screens-library (the
@@ -518,6 +519,152 @@ if (process.argv.includes("--switch")) {
   writeReport(sout, { title: "Appearance switches: web vs Folevi for Mac", note: `The Mac's appearance switched with each screen open, ${width} x ${height} pt, the web frame vs the native frame.`, threshold, results, imageWidth: 520 });
   for (const r of results) console.log(`${r.id} ${r.scheme}: ${(r.ratio * 100).toFixed(2)}%${r.pass ? "" : " (over)"}${r.reason ? ` ${r.reason}` : ""}`);
   process.exit(results.every((r) => r.pass) ? 0 : 1);
+}
+
+// --strip: the tab strip, web vs native, into apps/mac/screens-report/strip (TabStrip.tsx): 2, 8 and 12 tabs (the
+// most either app keeps), in a wide window and a narrow one, the open tab at the start, in the middle and at the end,
+// then Back and Forward across tabs out of sight. Each shot is cut at the strip's left end (Back, Forward, the
+// arrows against its edge), its middle and its right end (New note 4 pt clear of the edge), light and dark, and in
+// both frames the open tab must be wholly in view.
+if (process.argv.includes("--strip")) {
+  // Pages that open a tab each (from Home, so none replaces another): notes and views alike.
+  const pages = (fx) => [
+    ...fx.notes.map((id) => `folevi-dev://d/${id}`),
+    "folevi-dev://notes",
+    "folevi-dev://starred",
+    "folevi-dev://drafts",
+    "folevi-dev://calendar",
+    "folevi-dev://templates",
+    `folevi-dev://folders/${fx.folders.travel}`,
+  ];
+  // `tabs` counts Home; `open` is the open tab's index (0 is Home); `history` steps Back then Forward after.
+  const CASES = [
+    { name: "2-wide-end", width: 1280, height: 820, tabs: 2, open: 1 },
+    { name: "8-wide-start", width: 1280, height: 820, tabs: 8, open: 1 },
+    { name: "8-wide-middle", width: 1280, height: 820, tabs: 8, open: 4 },
+    { name: "8-wide-end", width: 1280, height: 820, tabs: 8, open: 7 },
+    { name: "12-narrow-start", width: 820, height: 640, tabs: 12, open: 1 },
+    { name: "12-narrow-middle", width: 820, height: 640, tabs: 12, open: 6 },
+    { name: "12-narrow-end", width: 820, height: 640, tabs: 12, open: 11, history: true },
+  ];
+  // The web frame's strip (TabStrip.tsx: absolute inset-x-1 top-1 h-11) and the open tab against its list, in points.
+  const WEB_STATE = `const r = document.querySelector(".ui-drag.ui-glass.h-11").getBoundingClientRect(); const nav = document.querySelector('nav[aria-label="Open pages"]'); const n = nav.getBoundingClientRect(); const cur = nav.querySelector('[aria-current="page"]'); const t = (cur?.closest("[data-tab]") ?? cur).getBoundingClientRect(); return { strip: { x: r.left, y: r.top, width: r.width, height: r.height }, tabs: nav.children.length, scroll: nav.scrollLeft, inView: t.left >= n.left - 1 && t.right <= n.right + 1 };`;
+  const WEB_CLOSE = `for (const b of document.querySelectorAll('nav[aria-label="Open pages"] [aria-label^="Close "]')) b.click(); return true;`;
+  const webSelect = (i) => `const el = document.querySelector('nav[aria-label="Open pages"]').children[${i}]; (el.matches("a") ? el : el.querySelector("a")).click(); return true;`;
+  const nativeState = async () => {
+    const st = ensure(await command(dir, { cmd: "frame" }));
+    const s = st.strip ?? {};
+    return { tabs: st.tabs, scroll: s.scroll ?? 0, inView: s.openLeft - (s.scroll ?? 0) >= -1 && s.openLeft + s.openWidth - (s.scroll ?? 0) <= s.visible + 1 };
+  };
+  const cases = CASES.filter((c) => !only || only.includes(c.name));
+  const sout = join(out, "strip");
+  for (const d of ["web", "native", "diff"]) {
+    rmSync(join(sout, d), { recursive: true, force: true });
+    mkdirSync(join(sout, d), { recursive: true });
+  }
+  const rects = {};
+  const checks = [];
+  const shots = [];
+  try {
+    stopOwnApp();
+    if (!existsSync(join(dir, "fixture.json"))) await setUp();
+    const fixture = JSON.parse(readFileSync(join(dir, "fixture.json"), "utf8"));
+    const links = pages(fixture);
+    for (const kind of ["native", "web"]) {
+      await launch({ dir, env: { FOLEVI_TEST_FOLDER: library, ...FAKE_AI, ...(kind === "web" ? { FOLEVI_WEB_FRAME: "1" } : {}) } });
+      await waitFor(dir, kind === "web" ? `return document.readyState === "complete" && !!document.querySelector('nav[aria-label="Folio"]')` : `return !!window.__foleviEngine`, 90_000);
+      await sleep(2000);
+      const state = async () => (kind === "web" ? await evaluate(dir, WEB_STATE) : await nativeState());
+      // A window in the background isn't laid out until it's drawn: the native frame is drawn once after a change
+      // (as a window on screen would be), so the strip measures the new tab and scrolls to it before the next step.
+      const settle = async () => {
+        if (kind === "native") ensure(await command(dir, { cmd: "windowShot", out: join(sout, "settle.png") }, 60_000));
+        await sleep(900);
+      };
+      const select = async (i) => {
+        if (kind === "web") await evaluate(dir, webSelect(i));
+        else ensure(await command(dir, { cmd: "frame", do: "select", tab: (await nativeState()).tabs[i].id }));
+        await settle();
+        await settle();
+      };
+      const shoot = async (name, scheme) => {
+        await evaluate(dir, STILL).catch(() => undefined);
+        ensure(await command(dir, { cmd: "windowShot", out: join(sout, kind, `${name}-${scheme}.png`) }, 60_000));
+        const st = await state();
+        if (kind === "web") rects[`${name}-${scheme}`] = st.strip;
+        checks.push({ kind, name, scheme, inView: st.inView, scroll: Math.round(st.scroll) });
+      };
+      for (const c of cases) {
+        // The same tabs in both frames: all but Home closed, then the case's pages opened, each from Home.
+        ensure(await command(dir, { cmd: "resize", width: c.width, height: c.height }));
+        ensure(await command(dir, { cmd: "open", url: "folevi-dev://documents" }));
+        await sleep(800);
+        if (kind === "web") await evaluate(dir, WEB_CLOSE);
+        else for (const t of (await nativeState()).tabs.slice(1)) await command(dir, { cmd: "frame", do: "close", tab: t.id });
+        for (const link of links.slice(0, c.tabs - 1)) {
+          ensure(await command(dir, { cmd: "open", url: "folevi-dev://documents" }));
+          await sleep(500);
+          ensure(await command(dir, { cmd: "open", url: link }));
+          await sleep(900);
+        }
+        // From the far end, so the strip has to come to the open tab.
+        await select(c.open === c.tabs - 1 ? 0 : c.tabs - 1);
+        await select(c.open);
+        for (const scheme of ["light", "dark"]) {
+          ensure(await command(dir, { cmd: "appearance", value: scheme }));
+          await settle();
+          await shoot(c.name, scheme);
+          shots.push({ name: c.name, scheme });
+        }
+        if (c.history) {
+          // Back to the tab at the start (out of sight), then Forward to the end again.
+          await select(1);
+          await select(c.open);
+          for (const step of ["back", "forward"]) {
+            if (kind === "web") await evaluate(dir, `document.querySelector('[aria-label="${step === "back" ? "Back" : "Forward"}"]').click(); return true;`);
+            else ensure(await command(dir, { cmd: "frame", do: step }));
+            await settle();
+            await settle();
+            await shoot(`${c.name}-${step}`, "dark");
+            shots.push({ name: `${c.name}-${step}`, scheme: "dark" });
+          }
+        }
+      }
+      await command(dir, { cmd: "appearance", value: "system" }).catch(() => undefined);
+      await quit();
+    }
+  } catch (e) {
+    console.error(`stopped: ${e.message}`);
+    stopOwnApp();
+    process.exit(2);
+  }
+  // Each part of the strip, from the web's strip: its two ends (150 pt) and its middle (240 pt), 4 pt round them.
+  const browser = await webkit.launch();
+  const parts = [];
+  for (const { name, scheme } of shots) {
+    const r = rects[`${name}-${scheme}`];
+    const y = r.y - 4, height = r.height + 8;
+    const box = { left: { x: r.x - 4, y, width: 150, height }, middle: { x: r.x + r.width / 2 - 120, y, width: 240, height }, right: { x: r.x + r.width - 146, y, width: 150, height } };
+    for (const part of ["left", "middle", "right"]) {
+      for (const kind of ["web", "native"]) await crop(browser, join(sout, kind, `${name}-${scheme}.png`), box[part], join(sout, kind, `${name}-${part}-${scheme}.png`));
+      parts.push({ id: `${name}-${part}`, scheme });
+    }
+  }
+  rmSync(join(sout, "settle.png"), { force: true });
+  const threshold = { channel: 24, radius: 1, maxRatio: 0.01 };
+  const results = await diffAll(browser, sout, parts, threshold);
+  await browser.close();
+  writeReport(sout, { title: "Tab strip: web vs Folevi for Mac", note: "The strip's two ends and its middle with 2, 8 and 12 tabs, wide (1280 pt) and narrow (820 pt), the open tab at the start, middle and end, then Back and Forward: the web frame vs the native frame.", threshold, results, imageWidth: 300 });
+  for (const r of results) console.log(`${r.id} ${r.scheme}: ${(r.ratio * 100).toFixed(2)}%${r.pass ? "" : " (over)"}${r.reason ? ` ${r.reason}` : ""}`);
+  let ok = results.every((r) => r.pass);
+  for (const { name, scheme } of shots) {
+    const w = checks.find((c) => c.kind === "web" && c.name === name && c.scheme === scheme);
+    const n = checks.find((c) => c.kind === "native" && c.name === name && c.scheme === scheme);
+    const good = w?.inView && n?.inView;
+    if (!good) ok = false;
+    console.log(`${good ? "in view" : "OUT OF VIEW"}  ${name} ${scheme}: scroll web ${w?.scroll} native ${n?.scroll}`);
+  }
+  process.exit(ok ? 0 : 1);
 }
 
 // --avatars: the account's picture, into apps/mac/screens-report/avatars. A picture needs a signed-in account,

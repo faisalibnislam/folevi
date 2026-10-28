@@ -68,12 +68,12 @@ export const SCREENS = [
   { id: "folders", link: "folevi-dev://folders" },
   { id: "tags", link: "folevi-dev://tags" },
   // The library's Vault (docs/MAC_REBUILD_PLAN.md §5.6), locked first, then opened with the fixture's PIN.
-  { id: "vault-locked", link: "folevi-dev://vault", prepare: (kind) => vaultLock(kind), settle: 800 },
-  { id: "vault-files", link: "folevi-dev://vault", prepare: (kind) => vaultOpen(kind, ["tab", "Files & Notes"]), settle: 800 },
-  { id: "vault-passwords", link: "folevi-dev://vault/passwords", prepare: (kind) => vaultOpen(kind, ["tab", "Passwords & Credentials"]), settle: 800 },
-  { id: "vault-health", link: "folevi-dev://vault/health", prepare: (kind) => vaultOpen(kind, ["more", "Health"]), settle: 800 },
-  { id: "vault-trash", link: "folevi-dev://vault/trash", prepare: (kind) => vaultOpen(kind, ["more", "Trash"]), settle: 800 },
-  { id: "vault-settings", link: "folevi-dev://vault/settings", prepare: (kind) => vaultOpen(kind, ["more", "Settings"]), settle: 800 },
+  { id: "vault-locked", link: "folevi-dev://vault", step: (kind) => vaultLock(kind), settle: 800 },
+  { id: "vault-files", link: "folevi-dev://vault", step: (kind) => vaultOpen(kind, ["tab", "Files & Notes"]), settle: 800 },
+  { id: "vault-passwords", link: "folevi-dev://vault/passwords", step: (kind) => vaultOpen(kind, ["tab", "Passwords & Credentials"]), settle: 800 },
+  { id: "vault-health", link: "folevi-dev://vault/health", step: (kind) => vaultOpen(kind, ["more", "Health"]), settle: 800 },
+  { id: "vault-trash", link: "folevi-dev://vault/trash", step: (kind) => vaultOpen(kind, ["more", "Trash"]), settle: 800 },
+  { id: "vault-settings", link: "folevi-dev://vault/settings", step: (kind) => vaultOpen(kind, ["more", "Settings"]), settle: 800 },
   { id: "ai", link: "folevi-dev://ai" },
   // The fixture's Foli AI conversation (its id from fixture.json), and the floating chat open over Home.
   { id: "ai-chat", link: (fx) => `folevi-dev://ai/${fx.chat}` },
@@ -336,6 +336,8 @@ async function shoot(kind) {
     for (const s of screens) {
       const fixture = JSON.parse(readFileSync(join(dir, "fixture.json"), "utf8"));
       if (kind === "native") for (const [key, value] of Object.entries(s.defaults ?? {})) ensure(await command(dir, { cmd: "setDefault", key, value }));
+      // The size again for every screen: the window was once made screen-sized mid-run (2026-10-28), spoiling the rest.
+      ensure(await command(dir, { cmd: "resize", width, height }));
       ensure(await command(dir, { cmd: "open", url: typeof s.link === "function" ? s.link(fixture) : s.link }));
       await sleep(1600);
       if (kind === "web" && s.web) await evaluate(dir, s.web).catch(() => undefined);
@@ -353,7 +355,7 @@ async function shoot(kind) {
       }
       await evaluate(dir, STILL).catch(() => undefined);
       // A screen that needs a step first (the Vault unlocked, a section opened): its script runs in the page.
-      if (s.prepare) await evaluate(dir, s.prepare(kind)).catch((e) => console.warn(`${s.id}: ${e.message}`));
+      if (s.step) await evaluate(dir, s.step(kind)).catch((e) => console.warn(`${s.id}: ${e.message}`));
       await sleep(s.settle ?? 400);
       // The floating Ask Foli AI chat (⌘J): the menu item in the native frame, the page's shortcut in the web's.
       if (s.ask) {

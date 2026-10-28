@@ -61,6 +61,23 @@ const SET_APPEARANCE = (value) => `
   if (reply.error) throw new Error(JSON.stringify(reply.error));
   return true;`;
 
+/** The scratch library's Appearance now; with `value`, set back to it (the screens suite needs System). */
+async function libraryAppearance(value) {
+  const ud = (await launch({ dir, env: { FOLEVI_TEST_FOLDER: library } })).userData;
+  try {
+    await sleep(2000);
+    if (value) return await evaluate(ud, SET_APPEARANCE(value));
+    const read = `
+      for (let i = 0; i < 100 && !window.__foleviEngine; i++) await new Promise((r) => setTimeout(r, 100));
+      const reply = JSON.parse(await window.__foleviEngine.handle({ v: 1, id: "qa-read", kind: "query", place: window.__foleviNativeChrome.place, name: "settings.appearance", args: {} }));
+      return reply.value?.appearance ?? "system";`;
+    return await evaluate(ud, read);
+  } finally {
+    await command(ud, { cmd: "quit" }).catch(() => undefined);
+    await sleep(4000);
+  }
+}
+
 /**
  * One frame's three states in one scheme. Both panels follow the library's Appearance, not the app's, so the native
  * pass sets it to `scheme` first (it stays for the web pass after it).
@@ -163,10 +180,14 @@ if (PLACES) {
   await shootPlaces("web");
   await shootPlaces("native");
 } else {
-  // Dark first, so the scratch library ends on its own Appearance (light).
-  for (const scheme of [...SCHEMES].reverse()) {
-    await shoot("native", scheme);
-    await shoot("web", scheme);
+  const original = await libraryAppearance();
+  try {
+    for (const scheme of SCHEMES) {
+      await shoot("native", scheme);
+      await shoot("web", scheme);
+    }
+  } finally {
+    await libraryAppearance(original);
   }
 }
 const threshold = { channel: 24, radius: 1, maxRatio: 0.01 };

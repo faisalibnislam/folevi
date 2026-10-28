@@ -38,6 +38,21 @@ export const GATES = [
     ],
     ready: "Your library is ready",
   },
+  // The library open (its welcome notes), the account menu at the foot of the sidebar open: the web's by a click
+  // on its button, the native frame's by the frame's own command (the same button's action).
+  {
+    id: "account-menu",
+    steps: [
+      ["Keep notes on my devices", "Where should your library live?"],
+      ["place-device", "Your library is ready"],
+      ["Open Folevi", "@app", 8000],
+    ],
+    ready: "@app",
+    open: {
+      web: `[...document.querySelectorAll("button[aria-haspopup]")].find((x) => /settings and help|Personal, workspaces/.test(x.getAttribute("aria-label") || "")).click(); return true;`,
+      native: { cmd: "frame", do: "popover", which: "account" },
+    },
+  },
   // Needs the website the shell build signs in through (shell/build.json siteUrl) to answer "no session".
   // (The window reloads into account mode and shows the choice again: its "go straight on" note in
   // sessionStorage doesn't survive the Mac's reload into the other mode, so Sign in is pressed twice.)
@@ -77,11 +92,27 @@ export async function enterGate(gate, { web }) {
     await sleep(600);
     await evaluate(dir, click(button));
     await sleep(settle ?? 1500);
-    await waitFor(dir, until(next), 90_000);
+    if (next === "@app") await appUp(dir, web);
+    else await waitFor(dir, until(next), 90_000);
   }
   await sleep(1200);
-  await command(dir, { cmd: "float" });
+  if (gate.open) {
+    if (web) await evaluate(dir, gate.open.web);
+    else await command(dir, gate.open.native);
+    await sleep(800);
+  }
   return dir;
+}
+
+/** The app itself is up: the web frame's sidebar, or the native frame with no gate and its engine attached. */
+async function appUp(dir, web) {
+  if (web) return waitFor(dir, `return !!document.querySelector('nav[aria-label="Folio"]')`, 90_000);
+  for (let i = 0; i < 360; i++) {
+    const f = await command(dir, { cmd: "frame" }).catch(() => null);
+    if (f?.value && f.value.gateKind === null && !f.value.nativeGate && !f.value.gate) return true;
+    await sleep(250);
+  }
+  throw new Error("the native frame didn't open the app");
 }
 
 export async function quitGate(dir) {

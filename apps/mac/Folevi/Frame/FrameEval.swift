@@ -38,6 +38,7 @@ extension NativeFrame {
             case "popover":
                 switch req["which"] as? String {
                 case "sync": frame.sidebar.openSyncPopover()
+                case "account": frame.sidebar.openAccountMenu()
                 case "notifications": frame.sidebar.openNotificationsPopover()
                 default: frame.sidebar.shownPopover?.close()
                 }

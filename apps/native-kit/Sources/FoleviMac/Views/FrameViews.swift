@@ -237,9 +237,10 @@ public final class WebSidebarController: NSViewController {
     private func showSync(_ anchor: NSView?) { show(AnyView(SyncPopover(model: model)), from: anchor) }
 
     private func showAccount(_ anchor: NSView?) {
-        let menu = AccountMenu.build(model: model)
-        let at = anchor.map { view.convert($0.bounds.origin, from: $0) } ?? NSPoint(x: 10, y: 60)
-        menu.popUp(positioning: nil, at: at, in: view)
+        // Folevi's own menu (WebAccountMenu.swift), opening up from the account button as the web's does.
+        guard let window = view.window else { return }
+        if AccountMenuWindow.shown != nil { AccountMenuWindow.shown?.close(); return }
+        AccountMenuWindow.show(model: model, in: window)
     }
 
     private func show(_ content: AnyView, from anchor: NSView?) {
@@ -255,6 +256,7 @@ public final class WebSidebarController: NSViewController {
     /// The popover on screen (tests, the eval hook).
     public var shownPopover: NSPopover? { popover?.isShown == true ? popover : nil }
     public func openSyncPopover() { showSync(nil) }
+    public func openAccountMenu() { showAccount(nil) }
     public func openNotificationsPopover() { showNotifications(nil) }
 }
 

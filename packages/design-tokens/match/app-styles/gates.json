@@ -6,7 +6,8 @@
     "library-setup": "",
     "library-ready": "",
     "offline": "",
-    "sign-in": ""
+    "sign-in": "",
+    "account-menu": ""
   },
   "vars": [
     "glass-hover",
@@ -285,6 +286,72 @@
       "screen": "sign-in",
       "selector": "[data-testid='shell-sign-in'] > button",
       "nth": 3
+    },
+    "acct.menu": {
+      "screen": "account-menu",
+      "selector": "[role='menu']"
+    },
+    "acct.caps": {
+      "screen": "account-menu",
+      "selector": "[role='menu'] > div.ui-caps"
+    },
+    "acct.place": {
+      "screen": "account-menu",
+      "selector": "[role='menu'] > button[role='menuitemradio']"
+    },
+    "acct.place.check": {
+      "screen": "account-menu",
+      "selector": "[role='menu'] > button[role='menuitemradio'] > span.order-last"
+    },
+    "acct.place.tile": {
+      "screen": "account-menu",
+      "selector": "[role='menu'] > button[role='menuitemradio'] > span.text-muted > span"
+    },
+    "acct.place.text": {
+      "screen": "account-menu",
+      "selector": "[role='menu'] > button[role='menuitemradio'] > span.flex-1"
+    },
+    "acct.place.name": {
+      "screen": "account-menu",
+      "selector": "[role='menu'] > button[role='menuitemradio'] > span.flex-1 > span:first-child"
+    },
+    "acct.place.detail": {
+      "screen": "account-menu",
+      "selector": "[role='menu'] > button[role='menuitemradio'] > span.flex-1 > span:last-child"
+    },
+    "acct.sep": {
+      "screen": "account-menu",
+      "selector": "[role='menu'] > div[role='separator']"
+    },
+    "acct.item": {
+      "screen": "account-menu",
+      "selector": "[role='menu'] > button[role='menuitem']",
+      "nth": 0
+    },
+    "acct.item.icon": {
+      "screen": "account-menu",
+      "selector": "[role='menu'] > button[role='menuitem'] > span.text-muted",
+      "nth": 0
+    },
+    "acct.item.label": {
+      "screen": "account-menu",
+      "selector": "[role='menu'] > button[role='menuitem'] > span.flex-1",
+      "nth": 0
+    },
+    "acct.item.shortcut": {
+      "screen": "account-menu",
+      "selector": "[role='menu'] > button[role='menuitem'] > span.text-footnote",
+      "nth": 0
+    },
+    "acct.item.last": {
+      "screen": "account-menu",
+      "selector": "[role='menu'] > button[role='menuitem']",
+      "nth": 2
+    },
+    "acct.trigger": {
+      "screen": "account-menu",
+      "selector": "button[aria-haspopup][aria-label$='settings and help']"
     }
-  }
+  },
+  "prepare": {}
 }

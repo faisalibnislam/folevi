@@ -212,8 +212,10 @@ public struct WebNoteCard: View {
             }
             .frame(width: sheetW, height: sheetH)
             .background((pal?.paper ?? sheetStyle.background).color)
-            .clipShape(shape)
-            .overlay(WebShapeBox(shape: shape, fill: nil, shadows: s("edge").visibleShadows))
+            // The star's tab (DocumentCard.tsx: absolute right-0 top-0, 12cqw square, rounded-bl-chip): flush with
+            // the cover's top and right, only its bottom-left corner rounded; the cover's own rounded corner clips
+            // its top-right, as the web card's overflow-hidden does (it was clipped to a card shape of its own
+            // size before, so it sat in the corner as a rounded blob, 2026-10-28).
             .overlay(alignment: .topTrailing) {
                 if model.starred {
                     ZStack {
@@ -224,10 +226,11 @@ public struct WebNoteCard: View {
                             .frame(width: 5.6 * cq, height: 5.6 * cq)
                     }
                     .frame(width: 12 * cq, height: 12 * cq)
-                    .clipShape(shape)
                     .accessibilityLabel("Starred")
                 }
             }
+            .clipShape(shape)
+            .overlay(WebShapeBox(shape: shape, fill: nil, shadows: s("edge").visibleShadows))
         }
         .frame(width: w, height: h, alignment: .topLeading)
     }

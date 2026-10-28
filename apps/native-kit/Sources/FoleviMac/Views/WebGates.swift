@@ -612,6 +612,39 @@ struct LockedLibraryGate: View {
     }
 }
 
+/// The Mac's Touch ID lock over a window (apps/mac MacAppLock.swift): no web page of its own, so it stands as the
+/// web's locked library stands (LockedLibrary.tsx): the logo, the lock in its tile, the title and its line, and
+/// one full-width button, in the same measured styles.
+public struct WebLockCover: View {
+    let unlock: () -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    public init(unlock: @escaping () -> Void) { self.unlock = unlock }
+
+    public var body: some View {
+        ZStack {
+            gs("gates.page", scheme).background.color.ignoresSafeArea()
+            GateColumn(width: 384, gap: 24) {
+                VStack(spacing: 20) {
+                    WebFoleviLogo(height: 26, color: gs("gates.logo", scheme).color.color)
+                    WebIconView(.lock, size: 22)
+                        .frame(width: 48, height: 48)
+                        .foregroundStyle(gs("gates.title", scheme).color.color)
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(gs("gates.choice.tile", scheme).background.color))
+                    WebParagraph("Folevi is locked", style: gs("gates.title", scheme).text, width: 384, alignment: .center, wrap: .balance)
+                        .foregroundStyle(gs("gates.title", scheme).color.color)
+                        .accessibilityAddTraits(.isHeader)
+                    GateParagraph("Your notes stay covered until Touch ID says it's you.", id: "gates.lib.message", width: 384)
+                }
+                GateFullButton(title: "Unlock with Touch ID", id: "gates.ready.open", action: unlock)
+                    .accessibilityIdentifier("lock-cover-unlock")
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityIdentifier("lock-cover")
+    }
+}
+
 // MARK: FullPageMessage
 
 /// lib/app/state.tsx FullPageMessage: a card in the middle of the window with the title, the text and what the

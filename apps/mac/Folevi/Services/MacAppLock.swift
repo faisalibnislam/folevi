@@ -13,6 +13,8 @@
 import AppKit
 import Foundation
 import LocalAuthentication
+import SwiftUI
+import FoleviMac
 
 enum AppLock {
     private static var lastYes: Date?
@@ -262,38 +264,23 @@ final class MacAppLock {
     #endif
 }
 
-/// What shows instead of the notes while Folevi is locked: the lock, a line, and Unlock with Touch ID (Electron's
-/// cover page, in AppKit). The whole cover moves the window; it takes the keyboard so nothing reaches the page.
+/// What shows instead of the notes while Folevi is locked: the lock, a line, and Unlock with Touch ID, drawn as the
+/// web draws its locked library (FoleviMac's WebLockCover). The whole cover moves the window; it takes the keyboard
+/// so nothing reaches the page.
 final class LockCoverView: NSView {
     private let onUnlock: () -> Void
 
     init(frame: NSRect, onUnlock: @escaping () -> Void) {
         self.onUnlock = onUnlock
         super.init(frame: frame)
-        wantsLayer = true
-        let icon = NSImageView(image: NSImage(systemSymbolName: "lock", accessibilityDescription: nil) ?? NSImage())
-        icon.symbolConfiguration = .init(pointSize: 30, weight: .light)
-        icon.contentTintColor = .labelColor
-        let title = NSTextField(labelWithString: "Folevi is locked")
-        title.font = .systemFont(ofSize: 22, weight: .semibold)
-        title.textColor = .labelColor
-        let line = NSTextField(wrappingLabelWithString: "Your notes stay covered until Touch ID says it's you.")
-        line.font = .systemFont(ofSize: 15)
-        line.textColor = .secondaryLabelColor
-        line.alignment = .center
-        line.preferredMaxLayoutWidth = 320
-        let button = UnlockButton(title: "Unlock with Touch ID") { [weak self] in self?.onUnlock() }
-        let stack = NSStackView(views: [icon, title, line, button])
-        stack.orientation = .vertical
-        stack.alignment = .centerX
-        stack.spacing = 14
-        stack.setCustomSpacing(20, after: line)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(stack)
+        let host = NSHostingView(rootView: WebLockCover(unlock: onUnlock))
+        host.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(host)
         NSLayoutConstraint.activate([
-            stack.centerXAnchor.constraint(equalTo: centerXAnchor),
-            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
-            line.widthAnchor.constraint(lessThanOrEqualToConstant: 320),
+            host.leadingAnchor.constraint(equalTo: leadingAnchor),
+            host.trailingAnchor.constraint(equalTo: trailingAnchor),
+            host.topAnchor.constraint(equalTo: topAnchor),
+            host.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         setAccessibilityElement(true)
         setAccessibilityRole(.group)
@@ -307,14 +294,6 @@ final class LockCoverView: NSView {
     override var mouseDownCanMoveWindow: Bool { true }
     override var acceptsFirstResponder: Bool { true }
 
-    override func updateLayer() {
-        // Electron's cover colours: white, or #141515 in dark mode.
-        let dark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        layer?.backgroundColor = (dark ? NSColor(red: 0x14 / 255, green: 0x15 / 255, blue: 0x15 / 255, alpha: 1) : .white).cgColor
-    }
-
-    override var wantsUpdateLayer: Bool { true }
-
     // Nothing behind the cover gets the pointer or the keyboard.
     override func hitTest(_ point: NSPoint) -> NSView? { super.hitTest(point) ?? self }
     override func keyDown(with event: NSEvent) {
@@ -325,45 +304,5 @@ final class LockCoverView: NSView {
         let keys: Set<String> = ["q", "w", "m", "h"]
         if event.modifierFlags.contains(.command), let c = event.charactersIgnoringModifiers?.lowercased(), keys.contains(c) { return false }
         return true
-    }
-}
-
-/// The cover's button: ink on the page's colour, 10 pt corners (Electron's cover link).
-private final class UnlockButton: NSButton {
-    private let action_: () -> Void
-
-    init(title: String, action: @escaping () -> Void) {
-        action_ = action
-        super.init(frame: .zero)
-        self.title = title
-        isBordered = false
-        wantsLayer = true
-        layer?.cornerRadius = 10
-        font = .systemFont(ofSize: 15, weight: .semibold)
-        target = self
-        self.action = #selector(fire)
-        translatesAutoresizingMaskIntoConstraints = false
-        heightAnchor.constraint(equalToConstant: 38).isActive = true
-        setAccessibilityLabel(title)
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("not from a nib") }
-
-    @objc private func fire() { action_() }
-
-    override var intrinsicContentSize: NSSize {
-        let s = super.intrinsicContentSize
-        return NSSize(width: s.width + 36, height: 38)
-    }
-
-    override var wantsUpdateLayer: Bool { true }
-
-    override func updateLayer() {
-        let dark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        let ink = dark ? NSColor(red: 0xec / 255, green: 0xed / 255, blue: 0xec / 255, alpha: 1) : NSColor(red: 0x1d / 255, green: 0x1f / 255, blue: 0x1e / 255, alpha: 1)
-        let bg = dark ? NSColor(red: 0x14 / 255, green: 0x15 / 255, blue: 0x15 / 255, alpha: 1) : NSColor.white
-        layer?.backgroundColor = ink.cgColor
-        attributedTitle = NSAttributedString(string: title, attributes: [.foregroundColor: bg, .font: font ?? NSFont.systemFont(ofSize: 15, weight: .semibold)])
     }
 }

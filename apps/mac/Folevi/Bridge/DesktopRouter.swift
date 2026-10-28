@@ -40,6 +40,8 @@ final class DesktopRouter {
 
         case "notify":
             guard DesktopSettings.current.notifications else { return [:] }
+            // The native frame's page has no focus of its own to tell: while Folevi is in front, the bell shows it.
+            if NSApp.isActive, NativeFrame.controller(for: view) != nil { return [:] }
             let title = Self.text(options["title"], 200)
             guard !title.isEmpty else { return [:] }
             Notifications.shared.post(Notifications.Note(

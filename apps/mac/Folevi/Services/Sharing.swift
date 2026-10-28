@@ -102,7 +102,7 @@ enum Sharing {
 
     /// File > Share's items for a view: the services that take a note (a Markdown file, and its link).
     static func menuItems(for view: FoleviWebView) -> [NSMenuItem] {
-        guard let target = targets[ObjectIdentifier(view)] else { return [] }
+        guard NativeFrame.showsNote(view), let target = targets[ObjectIdentifier(view)] else { return [] }
         let sample = FileManager.default.temporaryDirectory.appendingPathComponent("Folevi share sample.md")
         if !FileManager.default.fileExists(atPath: sample.path) { try? Data("Folevi".utf8).write(to: sample) }
         let services = NSSharingService.sharingServices(forItems: [sample] + (target.url.map { [$0] } ?? []))
@@ -149,7 +149,7 @@ enum Sharing {
 
     /// The note the page shows, from the page: { title, text (Markdown), url? }. Nil when it has none.
     static func note(from view: FoleviWebView) async -> Item? {
-        guard let answer = await Capabilities.ask(["type": "share"], to: view, timeout: 20), answer["ok"] as? Bool != false, let text = answer["text"] as? String else { return nil }
+        guard NativeFrame.showsNote(view), let answer = await Capabilities.ask(["type": "share"], to: view, timeout: 20), answer["ok"] as? Bool != false, let text = answer["text"] as? String else { return nil }
         let title = answer["title"] as? String ?? ""
         return Item(
             title: title,
@@ -177,10 +177,13 @@ enum Sharing {
     }
 
     /// File > Print: the page prints its open note in the note's print layout (the PDF export's clean page);
-    /// a page that has no note open, or doesn't answer, prints as it is.
+    /// a page that has no note open, or doesn't answer, prints as it is. With the native frame only a note on
+    /// screen prints (the page behind a native screen isn't what the window shows).
     static func printNote(_ view: FoleviWebView) async {
+        let framed = NativeFrame.controller(for: view) != nil
+        guard NativeFrame.showsNote(view) else { return NSSound.beep() }
         let answer = await Capabilities.ask(["type": "print"], to: view, timeout: 20)
-        if answer?["handled"] as? Bool != true { Printing.printPage(view) }
+        if answer?["handled"] as? Bool != true, !framed { Printing.printPage(view) }
     }
 
     /// Before WM2's menu bar (the starter menu has no File menu): Share… and Print… in a File menu of their own.

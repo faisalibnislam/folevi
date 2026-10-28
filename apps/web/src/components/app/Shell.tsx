@@ -23,7 +23,7 @@ import { useAiAccess } from "@/components/ai/useAi";
 import { OutboxRefusals, SyncStatus } from "./SyncStatus";
 import { useCreateDocument } from "./useCreateDocument";
 import { captureTemplateFromUrl, clearPendingTemplate, pendingTemplate } from "@/lib/pendingTemplate";
-import { DesktopBridge } from "./DesktopBridge";
+import { DesktopBridge, DesktopFeeds } from "./DesktopBridge";
 import { DesktopCapabilities } from "./DesktopCapabilities";
 import { PlaceRunners } from "@/components/places/PlaceRunners";
 import { MovePlacesHost } from "@/components/places/MovePlaces";
@@ -198,6 +198,9 @@ const noop = () => undefined;
  * while native shows one, a note, Reviews or Graph, with no sidebar, tab strip, iPhone frame, palette, floating
  * Foli AI or dialogs (the native app has its own). Anything else is the idle state: nothing drawn.
  */
+// Fixed for the page's life, as the marker is.
+const macFrame = typeof window !== "undefined" && nativeChrome()?.platform === "macos";
+
 function NativeContentShell() {
   const { route } = useAppRouter();
   const { profile, context } = useAppState();
@@ -268,6 +271,14 @@ function NativeContentShell() {
         {/* The app is up: no gate screen for native to show. */}
         <NativeGate gate={null} />
         <NativeBridge />
+        {/* The Mac's native frame: the Dock badge, notifications, the menu bar's recent notes and save state,
+            Spotlight, Share, Print and notes dragged out (the iPhone's are NativeBridge's). */}
+        {macFrame ? (
+          <>
+            <DesktopFeeds />
+            <DesktopCapabilities />
+          </>
+        ) : null}
         <PlaceRunners />
         {/* Every note of the place kept on this device (Settings > This device, device.storage). */}
         <DeviceCopyRunner />

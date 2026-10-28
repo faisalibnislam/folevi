@@ -3,6 +3,10 @@
 // notifications as Mac notifications (while Folevi isn't in front), recent notes and the save state in the
 // menu bar menu; and the menus' commands back into the page (New Note, open a page). In a browser: nothing.
 //
+// With the Mac's native frame (native chrome mode, docs/MAC_REBUILD_PLAN.md M9) the page draws no frame, so only
+// these feeds run there (DesktopFeeds, from Shell's NativeContentShell): the frame does menus, navigation and the
+// window buttons itself.
+//
 // The native Mac app (apps/mac) also has a complete menu bar: its items arrive as { type: "menu", id } and run
 // here (a handler registered with registerMenuCommand first, then the shell's own, then the key the page already
 // answers, sent to what has focus), and the page tells the menu bar what it can do now (setMenuState). A
@@ -65,11 +69,20 @@ export function DesktopBridge() {
   return desktop() ? <Bridge /> : null;
 }
 
-function Bridge() {
+/** The feeds alone (the Mac's native frame): the Dock badge, Mac notifications, recent notes and the save state. */
+export function DesktopFeeds() {
+  return desktop() ? <Feeds /> : null;
+}
+
+function Feeds() {
+  useFeeds();
+  return null;
+}
+
+/** What the Mac shows outside its window, fed from this page. */
+function useFeeds() {
   const bridge = desktop()!;
   const { scope, engine } = useAppState();
-  const { navigate } = useAppRouter();
-  const createDocument = useCreateDocument();
   // Local mode has no notifications from Folevi (reminders are scheduled with the system there).
   const { notifications } = useCapabilities();
   const unread = useQuery(api.notifications.unreadCount, notifications ? {} : "skip");
@@ -111,6 +124,13 @@ function Bridge() {
   useEffect(() => {
     bridge.setStatus(STATUS[status] ?? "");
   }, [bridge, status]);
+}
+
+function Bridge() {
+  const bridge = desktop()!;
+  const { navigate } = useAppRouter();
+  const createDocument = useCreateDocument();
+  useFeeds();
 
   // The window buttons sit in the space the top bar keeps for them, wherever that is (sidebar shown or hidden).
   useEffect(() => {

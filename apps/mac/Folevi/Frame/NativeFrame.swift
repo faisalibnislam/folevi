@@ -56,6 +56,14 @@ enum NativeFrame {
         return WindowManager.shared.mains.first { $0.view === view }?.frame
     }
 
+    /// Whether a note is what the window shows. With the native frame the page keeps a note mounted for a while
+    /// after a native screen comes in front, so File > Share and Print ask the frame, not the page. True for a
+    /// window without the frame (the page knows).
+    static func showsNote(_ view: FoleviWebView) -> Bool {
+        guard let frame = controller(for: view) else { return true }
+        return frame.model.route.isNote
+    }
+
     /// The page started loading again or its process ended: the client resubscribes once it's back.
     static func pageEvent(_ view: FoleviWebView, _ event: PageLifecycle) {
         controller(for: view)?.transport?.pageEvent(event)

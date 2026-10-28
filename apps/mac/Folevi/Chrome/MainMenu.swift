@@ -281,7 +281,7 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
             case "app.check-for-updates":
                 if let t = Chrome.updateTitle?() { item.title = t }
                 return Chrome.checkForUpdates != nil
-            case "file.print": return Chrome.keyMainView != nil
+            case "file.print": return Chrome.keyMainView.map(NativeFrame.showsNote) ?? false
             case "view.actual-size": return Zoom.level != 1
             case "view.zoom-in": return Zoom.level < Zoom.levels.last!
             case "view.zoom-out": return Zoom.level > Zoom.levels.first!

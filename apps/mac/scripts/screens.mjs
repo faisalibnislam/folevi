@@ -10,7 +10,6 @@
 // library folder, FOLEVI_TEST_FOLDER): never the installed app's folder, Keychain or library. --fresh starts
 // both again (first launch, library setup and the fixture notes). Needs the Debug build (build.mjs) and the shell
 // export in apps/mac/web (apps/web/scripts/build-shell.mjs).
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
@@ -33,6 +32,12 @@ const [width, height] = (arg("--size") ?? "1280x820").split("x").map(Number);
 const dir = join(MAC, "build", "run", "screens");
 const library = join(MAC, "build", "run", "screens-library");
 const out = join(MAC, "screens-report");
+
+/** A folder's "…" menu in the web frame's sidebar, then one of its items (a dialog's `prepare`). */
+function folderMenu(folder, item) {
+  return `document.querySelector("[aria-label='Folder options for ${folder}']").click(); await new Promise((r) => setTimeout(r, 300)); [...document.querySelectorAll("[role='menuitem']")].find((e) => e.textContent.includes(${JSON.stringify(item)}))?.click(); return true`;
+}
+const CLOSE_DIALOGS = `document.querySelectorAll("dialog[open]").forEach((d) => d.close()); return true`;
 
 /** The screens, by id: the folevi-dev:// link that opens each one. */
 export const SCREENS = [
@@ -72,6 +77,28 @@ export const SCREENS = [
   // The fixture's Foli AI conversation (its id from fixture.json), and the floating chat open over Home.
   { id: "ai-chat", link: (fx) => `folevi-dev://ai/${fx.chat}` },
   { id: "ask-ai", link: "folevi-dev://documents", ask: true },
+  // Settings in local mode (the sections a library has), each opened on its own.
+  { id: "settings-library", link: "folevi-dev://settings/library", settle: 1200 },
+  { id: "settings-ai", link: "folevi-dev://settings/ai", settle: 1200 },
+  { id: "settings-appearance", link: "folevi-dev://settings/appearance", settle: 800 },
+  { id: "settings-data", link: "folevi-dev://settings/data", settle: 800 },
+  { id: "settings-desktop", link: "folevi-dev://settings/desktop", settle: 1000 },
+  // mr/more: Help, Graph, Reviews.
+  { id: "help", link: "folevi-dev://help" },
+  { id: "graph", link: "folevi-dev://graph" },
+  { id: "review", link: "folevi-dev://review" },
+  // Account-only pages: in local mode, "Sign in to Folevi to share and collaborate".
+  { id: "shared", link: "folevi-dev://shared" },
+  { id: "changes", link: "folevi-dev://changes" },
+  // mr/more's dialogs: opened by `prepare` (a script in the web frame's page, a MacEval command in the native one)
+  // over Home, closed again after the capture.
+  { id: "palette", link: "folevi-dev://documents", prepare: { web: `document.querySelector("nav[aria-label='Folio'] button.ui-well").click(); return true`, native: { cmd: "more", do: "palette" } } },
+  { id: "newfolder", link: "folevi-dev://documents", prepare: { web: `document.querySelector("nav[aria-label='Folio'] section > div:first-child > button").click(); return true`, native: { cmd: "more", do: "newFolder" } } },
+  { id: "foldercolor", link: "folevi-dev://documents", prepare: { web: folderMenu("Travel", "Change color"), native: { cmd: "more", do: "color", folder: "Travel" } } },
+  { id: "movefolder", link: "folevi-dev://documents", prepare: { web: folderMenu("Japan", "Move folder"), native: { cmd: "more", do: "moveFolder", folder: "Japan" } } },
+  { id: "renamefolder", link: "folevi-dev://documents", prepare: { web: folderMenu("Work", "Rename"), native: { cmd: "more", do: "rename", folder: "Work" } } },
+  // Last: the web's toast stays up for 8 seconds.
+  { id: "toast", link: "folevi-dev://documents", prepare: { web: `window.dispatchEvent(new CustomEvent("folevi:error", { detail: "Something went wrong. Please try again." })); return true`, native: { cmd: "more", do: "toast", tone: "error", message: "Something went wrong. Please try again." } } },
 ];
 
 /** The fixture Vault's PIN (made up for the scratch library). */
@@ -318,6 +345,11 @@ async function shoot(kind) {
       }
       // A window behind others doesn't run CSS animations (a note's sheet would stay at its first, invisible
       // frame): the end state at once, in both frames alike.
+      if (s.prepare) {
+        if (kind === "web") await evaluate(dir, s.prepare.web);
+        else ensure(await command(dir, s.prepare.native));
+        await sleep(700);
+      }
       await evaluate(dir, STILL).catch(() => undefined);
       // A screen that needs a step first (the Vault unlocked, a section opened): its script runs in the page.
       if (s.prepare) await evaluate(dir, s.prepare(kind)).catch((e) => console.warn(`${s.id}: ${e.message}`));
@@ -329,12 +361,17 @@ async function shoot(kind) {
         await sleep(1200);
         await evaluate(dir, STILL).catch(() => undefined);
       }
-      // The window as the screen shows it (macOS's own capture, no window shadow): the same path for both frames.
-      const number = ensure(await command(dir, { cmd: "windows" }))[0].number;
-      execFileSync("screencapture", ["-x", "-o", "-l", String(number), join(out, kind, `${s.id}-${scheme}.png`)]);
+      // The window drawn by the app itself (MacEval windowShot), never a screen capture: capturing windows goes
+      // through WindowServer's privacy checks, and many at once hung WindowServer and restarted the Mac (2026-10-28).
+      ensure(await command(dir, { cmd: "windowShot", out: join(out, kind, `${s.id}-${scheme}.png`) }, 60_000));
       if (s.ask) {
         if (kind === "native") await command(dir, { cmd: "frame", do: "menu", item: "go.ask-ai" });
         else await evaluate(dir, `window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); document.querySelector(".ai-chat [aria-label='Close chat']")?.click(); return true;`);
+      }
+      if (s.prepare) {
+        if (kind === "web") await evaluate(dir, CLOSE_DIALOGS).catch(() => undefined);
+        else await command(dir, { cmd: "more", do: "close" }).catch(() => undefined);
+        await sleep(300);
       }
     }
   }

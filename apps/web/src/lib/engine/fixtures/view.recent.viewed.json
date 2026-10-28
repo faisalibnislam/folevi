@@ -1,0 +1,16 @@
+{
+  "kind": "view",
+  "name": "recent.viewed",
+  "description": "The notes opened last, for ⌘K's Recent.",
+  "args": {},
+  "value": {
+    "rows": [
+      {
+        "id": "doc_00001",
+        "title": "Kyoto in November",
+        "icon": null,
+        "updatedAt": 1792828800000
+      }
+    ]
+  }
+}

@@ -55,7 +55,7 @@ const SKIP = new Set([
 ]);
 const MAPS = { views: "ViewMap", lists: "ListViewMap", commands: "CommandMap", editor: "EditorCommandMap", events: "EventMap" };
 /** Property names whose numbers are Double rather than Int. */
-const NUMBER_OVERRIDES = [/At$/, /^at$/, /^top$/, /^bottom$/, /^editorZooms?$/];
+const NUMBER_OVERRIDES = [/At$/, /^at$/, /^top$/, /^bottom$/, /^editorZooms?$/, /^[xy]$/];
 const SWIFT_KEYWORDS = new Set(
   "associatedtype class deinit enum extension fileprivate func import init inout internal let open operator private precedencegroup protocol public rethrows static struct subscript typealias var break case catch continue default defer do else fallthrough for guard if in repeat return throw switch where while as false is nil self Self super throws true try Any Type".split(" "),
 );

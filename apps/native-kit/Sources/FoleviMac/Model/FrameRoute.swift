@@ -71,7 +71,7 @@ public enum FrameRoute: Hashable, Sendable {
         case "archive": self = .notes(.archive)
         case "trash": self = .notes(.trash)
         case "templates": self = .notes(.templates)
-        case "shared": self = .shared
+        case "shared": self = a.map { .web("/shared/\(Self.escape($0))") } ?? .shared
         case "changes": self = .changes
         case "inbox": self = .tasks(.inbox)
         case "tasks": self = .tasks(a.flatMap(TaskViewName.init(rawValue:)) ?? .today)
@@ -111,7 +111,8 @@ public enum FrameRoute: Hashable, Sendable {
         // The Vault is one tab whichever section a link opened (as the web's route "vault").
         case .web(let p) where p == "/vault" || p.hasPrefix("/vault/"): return "view:vault"
         // Foli AI is one tab: a new chat keeps its tab when it gets its address (/ai to /ai/<id>), as on the web.
-        case .web(let p): return p == "/ai" || p.hasPrefix("/ai/") ? "view:ai" : "view:web:\(p)"
+        // Settings is one tab whichever section is open (it follows you between them).
+        case .web(let p): return p == "/ai" || p.hasPrefix("/ai/") ? "view:ai" : p.hasPrefix("/settings") ? "view:settings" : "view:web:\(p)"
         }
     }
 
@@ -142,7 +143,13 @@ public enum FrameRoute: Hashable, Sendable {
         case .web(let p) where p == "/vault" || p.hasPrefix("/vault/"): return "Vault"
         case .web("/folders"): return "Folders"
         case .web("/tags"): return "Tags"
-        case .web: return "Folevi"
+        case .web(let p):
+            if p.hasPrefix("/settings") { return "Settings" }
+            if p.hasPrefix("/help") { return "Help" }
+            if p.hasPrefix("/graph") { return "Graph" }
+            if p.hasPrefix("/review") { return "Reviews" }
+            if p.hasPrefix("/shared/") { return "Shared folder" }
+            return "Folevi"
         }
     }
 

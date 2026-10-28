@@ -36,7 +36,7 @@ struct VaultList<Content: View>: View {
 
     var body: some View {
         let list = VS.style("vault.list", scheme)
-        let rows = _VariadicView.Tree(DividedLayout(line: VS.color("line", scheme))) { content }
+        let rows = _VariadicView.Tree(VaultDividedLayout(line: VS.color("line", scheme))) { content }
         if card {
             rows
                 .clipShape(RoundedRectangle(cornerRadius: list.radius, style: .circular))
@@ -47,7 +47,7 @@ struct VaultList<Content: View>: View {
     }
 }
 
-private struct DividedLayout: _VariadicView_MultiViewRoot {
+private struct VaultDividedLayout: _VariadicView_MultiViewRoot {
     let line: Color
     func body(children: _VariadicView.Children) -> some View {
         VStack(spacing: 0) {

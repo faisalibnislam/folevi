@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "review.rate",
+  "description": "A card known well.",
+  "args": {
+    "blockId": "blk_card1",
+    "rating": "good",
+    "lastReview": null
+  },
+  "result": {
+    "ok": true
+  }
+}

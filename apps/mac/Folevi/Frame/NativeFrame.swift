@@ -46,6 +46,7 @@ enum NativeFrame {
         FrameRootViewController.nativeGates = env["FOLEVI_WEB_GATES"] != "1"
         #if DEBUG
         installEval()
+        installMoreEval()
         #endif
     }
 
@@ -249,7 +250,7 @@ final class FrameController: FrameHost {
     }
 
     func frameOpenHelp() {
-        if let url = URL(string: "https://folevi.com/help") { NSWorkspace.shared.open(url) }
+        model.open(.web("/help"))
     }
 
     func frameOpenExternal(_ url: URL) {

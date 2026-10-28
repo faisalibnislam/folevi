@@ -1,4 +1,4 @@
-// The Vault's bridge fixtures (revision 15, apps/web/src/lib/engine/fixtures/vault.ts) as the Mac's Vault screen
+// The Vault's bridge fixtures (revision 18, apps/web/src/lib/engine/fixtures/vault.ts) as the Mac's Vault screen
 // reads them: the summary's states and sections, rows, an opened item's fields, a file's bytes.
 import Foundation
 import Testing

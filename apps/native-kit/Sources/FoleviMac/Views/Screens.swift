@@ -42,9 +42,12 @@ final class ScreenModels {
     private var tasks: TasksModel?
     private var calendar: CalendarModel?
     private var search: SearchModel?
+    /// Help, Graph, Reviews and shared folders (Views/More).
+    lazy var more = MoreModels(frame: frame, feedback: feedback)
     /// Every folder as a card (Home's Recent folders, the Folders page).
     private var allFolders: ValueStore<FolderCardsValue>?
     private var aiPage: FoliChatModel?
+    private var settings: MacSettingsModel?
 
     init(frame: FrameModel) { self.frame = frame }
 
@@ -112,6 +115,13 @@ final class ScreenModels {
             frame.open(r)
         }
         aiPage = m
+        return m
+    }
+
+    func settingsModel() -> MacSettingsModel {
+        if let settings { return settings }
+        let m = MacSettingsModel(frame: frame)
+        settings = m
         return m
     }
 
@@ -260,8 +270,8 @@ struct ScreenRoot: View {
             case .tag(let id): WebNoteBrowser(frame: model, model: models.list(.tag(id)))
             case .web("/folders"): WebFoldersIndex(frame: model, home: models.homeModel(), allFolders: models.allFolderCards())
             case .web("/tags"): WebTagsIndex(frame: model)
-            case .shared: SharedListScreen(model: models.sharedModel())
-            case .changes: ChangesScreen(model: models.changesModel())
+            case .shared: SharedWithMeScreen(model: models.more.sharedModel(), frame: model)
+            case .changes: ChangesWebScreen(model: models.more.changesModel(), frame: model)
             case .catchUp: CatchUpScreen(model: model)
             case .search: SearchScreen(model: models.searchModel(), showsCancel: false)
             case .tasks: WebTasksScreen(model: models.tasksModel(), frame: model)
@@ -270,13 +280,15 @@ struct ScreenRoot: View {
             case .web(let path) where path == "/vault" || path.hasPrefix("/vault/"): VaultScreen(frame: model, path: path)
             case .web(let path) where route.tabKey == "view:ai":
                 AiPageScreen(frame: model, model: models.aiPageModel(), conversationId: path.hasPrefix("/ai/") ? String(path.dropFirst(4)).removingPercentEncoding : nil)
-            case .web(let path): Placeholder(symbol: "globe", title: "Not here yet", message: "\(path) doesn't have a screen in the Mac app yet.")
+            case .web(let path) where path.hasPrefix("/settings"): SettingsScreen(model: models.settingsModel(), section: MacSettingsSection(path: path))
+            case .web(let path): MoreScreen(model: model, more: models.more, path: path)
             case .note: Color.clear
             }
         }
         .id(route.tabKey)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Folevi.color.canvas)
+        // Help, Graph, Reviews and shared folders show the content card through (the web's main is clear).
+        .background(MoreScreen.clear(route) ? Color.clear : Folevi.color.canvas)
         // Another place or space: the screen crossfades instead of cutting.
         .placeCrossfade("\(model.session.value?.place ?? "")|\(model.session.value?.space ?? "")")
         .environment(\.screenNavigator, FrameNavigation.navigator(model))

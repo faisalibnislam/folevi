@@ -11,7 +11,6 @@
 //   cmd frame {"do":"menu","item":"go.next-tab"}    a menu bar item as if chosen
 //   cmd frame {"do":"post","name":"n","value":"v"}  posts a notification (a screen's own test hook)
 //   cmd frame {"do":"resize","w":1280,"h":820}      the window's content size; {"do":"front"} brings it forward;
-//                                                  {"do":"float","on":true} keeps it over other apps' windows
 //   cmd frameShot {"out":"/path.png","window":0}    the window as drawn (AppKit's own rendering of its views)
 #if DEBUG
 import AppKit
@@ -55,10 +54,6 @@ extension NativeFrame {
             case "front":
                 mains[i].window?.makeKeyAndOrderFront(nil)
                 NSApp.activate()
-            case "float":
-                // Over every app's windows (a script's screenshots when Folevi can't become the active app).
-                mains[i].window?.level = (req["on"] as? Bool ?? true) ? .floating : .normal
-                mains[i].window?.orderFrontRegardless()
             default: break
             }
             // Answer after the frame has drawn the change.

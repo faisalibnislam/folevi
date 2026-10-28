@@ -1,4 +1,4 @@
-// The Vault over the bridge (revision 15; docs/VAULT_PLAN.md, docs/MAC_REBUILD_PLAN.md §5.6): the same calls and the
+// The Vault over the bridge (revision 18; docs/VAULT_PLAN.md, docs/MAC_REBUILD_PLAN.md §5.6): the same calls and the
 // same cryptography as the web's Vault screens (components/vault/*, lib/vault/*), with the opened values handed to
 // native screens. Keys stay here, in memory (lib/vault/keys.ts); nothing of the Vault goes into the kept answers.
 // One implementation for both places: in a library the page's client answers the vault functions on the device

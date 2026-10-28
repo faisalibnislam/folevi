@@ -1,5 +1,5 @@
 // The Vault screen's state (docs/VAULT_PLAN.md §9, docs/MAC_REBUILD_PLAN.md §5.6): the engine's vault.summary and the
-// open section's views (bridge revision 15), and the commands the screens send. Nothing is decrypted here: the
+// open section's views (bridge revision 18), and the commands the screens send. Nothing is decrypted here: the
 // engine opens what's shown and logs it; values the screens show live in memory only, and go when the Vault locks.
 #if os(macOS)
 import AppKit

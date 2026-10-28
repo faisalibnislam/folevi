@@ -23,6 +23,7 @@ import { folderSharingValue, moveCheckValue, sharedFolderRow, sharedFolderValue 
 import { chatMessage, conversationRow, conversationValue } from "../viewsAi";
 import { researchJob } from "../viewsMac";
 import { VAULT_FIXTURES } from "./vault";
+import { graphValue, layOut, reviewsValue } from "../viewsScreens";
 import {
   CONTRACT_REVISION,
   PROTOCOL_VERSION,
@@ -891,6 +892,13 @@ export const FIXTURES: Record<string, Fixture> = {
   }),
   "view.invite.preview": view({ name: "invite.preview", description: "A workspace invitation link opened in the app.", args: { kind: "workspace", token: "tok_ws" }, value: { valid: true, kind: "workspace", inviterName: "Sam", name: "Airly Studio", roleLabel: "Member", emailMatches: true } }),
   "view.invite.preview.invalid": view({ name: "invite.preview", description: "An invitation that expired or was used.", args: { kind: "page", token: "tok_old" }, value: { valid: false, kind: "page", inviterName: null, name: null, roleLabel: null, emailMatches: false } }),
+  "view.settings.query.desktop": view({
+    name: "settings.query",
+    description: "Settings > Desktop app on the Mac: the Mac app's own settings, worded as the web shows them.",
+    args: { key: "desktop" },
+    value: { data: { bridge: true, loaded: true, settings: { quickAddShortcut: "Alt+Space", shortcutLabel: "⌥Space", defaultShortcut: "Alt+Space", defaultLabel: "⌥Space", error: null, openAtLogin: true, menuBarIcon: true, notifications: false } } },
+  }),
+  "command.settings.run.lock": command({ name: "settings.run", description: "Settings > Library: ask for Touch ID again after 5 minutes.", args: { key: "library.lock", args: { lockAfter: 300 } }, result: { data: { ok: true } } }),
   "command.settings.update": command({ name: "settings.update", description: "Change the name and appearance.", args: { name: "Faisal Islam", appearance: "light" }, result: { ok: true } }),
   "command.settings.setAiPref": command({ name: "settings.setAiPref", description: "Turn Foli AI's memory off.", args: { key: "memory", on: false }, result: { ok: true } }),
   "command.settings.setNotificationTopic": command({ name: "settings.setNotificationTopic", description: "Mentions: email off, the bell on.", args: { topic: "mentions", inApp: true, email: false }, result: { ok: true } }),
@@ -997,6 +1005,60 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.folderSharing.revoke": command({ name: "folderSharing.revoke", description: "Remove someone from a folder (their own id: leave it).", args: { folderId: "fld_garden", profileId: "prof_9" }, result: { ok: true } }),
   "command.folderSharing.cancelInvite": command({ name: "folderSharing.cancelInvite", description: "Cancel a folder invitation.", args: { inviteId: "finv_2" }, result: { ok: true } }),
   "command.folderInvite.accept": command({ name: "folderInvite.accept", description: "Accept a folder invitation from the bell and open the folder.", args: { inviteId: "finv_1" }, result: { folderId: "fld_recipes" } }),
+  "view.graph": view({
+    name: "graph",
+    description: "Three notes, two of them linked, and a person one mentions, laid out by the web's force layout.",
+    args: {},
+    value: graphValue(
+      {
+        full: true,
+        note: null,
+        upgrade: false,
+        truncated: false,
+        nodes: [
+          { id: "doc_00001", kind: "note", label: "Kyoto in November" },
+          { id: "doc_00002", kind: "note", label: "Packing list" },
+          { id: "doc_00003", kind: "note", label: "Reading list" },
+          { id: "ent_sam", kind: "person", label: "Sam" },
+        ],
+        edges: [
+          { source: "doc_00001", target: "doc_00002", kind: "link", inferred: false },
+          { source: "doc_00001", target: "ent_sam", kind: "mention", inferred: true },
+        ],
+      },
+      layOut(
+        [
+          { id: "doc_00001", kind: "note", label: "Kyoto in November" },
+          { id: "doc_00002", kind: "note", label: "Packing list" },
+          { id: "doc_00003", kind: "note", label: "Reading list" },
+          { id: "ent_sam", kind: "person", label: "Sam" },
+        ],
+        [
+          { source: "doc_00001", target: "doc_00002", kind: "link", inferred: false },
+          { source: "doc_00001", target: "ent_sam", kind: "mention", inferred: true },
+        ],
+      ),
+    ),
+  }),
+  "view.reviews": view({
+    name: "reviews",
+    description: "One new flashcard due now, everywhere.",
+    args: {},
+    value: reviewsValue({
+      cards: [
+        { blockId: "blk_card1", kind: "flashcard", documentId: "doc_00001", documentTitle: "Kyoto in November", front: "Where is the moss garden?", back: "Saiho-ji", isNew: true, lastReview: null, intervals: { again: 60_000, hard: 360_000, good: 600_000, easy: 345_600_000 } },
+      ],
+      counts: { due: 0, new: 1, later: 0 },
+      total: 1,
+      hasCards: true,
+      documentTitle: null,
+      newPerDay: 20,
+    }),
+  }),
+  "view.reviews.empty": view({ name: "reviews", description: "Nothing to review and no cards yet.", args: {}, value: reviewsValue({ cards: [], counts: { due: 0, new: 0, later: 0 }, total: 0, hasCards: false, documentTitle: null, newPerDay: 20 }) }),
+  "view.recent.viewed": view({ name: "recent.viewed", description: "The notes opened last, for ⌘K's Recent.", args: {}, value: { rows: [{ id: "doc_00001", title: "Kyoto in November", icon: null, updatedAt: 1792828800000 }] } }),
+  "command.review.rate": command({ name: "review.rate", description: "A card known well.", args: { blockId: "blk_card1", rating: "good", lastReview: null }, result: { ok: true } }),
+  "command.review.setNewPerDay": command({ name: "review.setNewPerDay", description: "Ten new cards a day.", args: { value: 10 }, result: { ok: true } }),
   "command.support.send": command({ name: "support.send", description: "Send a support request from the app.", args: { topic: "sync", message: "My notes didn't sync after I came back online." }, result: { number: 1042 } }),
   "command.folder.lock": command({ name: "folder.lock", description: "Make a folder always fully encrypted.", args: { id: "fld_work", locked: true }, result: { ok: true } }),
   "command.ai.generate": command({ name: "ai.generate", description: "A template written by Foli AI.", args: { kind: "template", instruction: "A weekly review with wins, problems and next steps" }, result: { title: "Weekly review", text: "## Wins\n\n- \n\n## Problems\n\n- \n\n## Next steps\n\n- [ ] " } }),
@@ -1497,6 +1559,6 @@ export const FIXTURES: Record<string, Fixture> = {
   }),
   "editor.find.none": editor({ name: "find", description: "Find text that isn't in the note.", args: { query: "zebra" }, result: { query: "zebra", count: 0, current: -1, truncated: false, matches: [] } }),
   "editor.find.clear": editor({ name: "find.clear", description: "Stop finding: the matches lose their highlight.", args: {}, result: { ok: true } }),
-  // ---- revision 15: the Vault (fixtures/vault.ts)
+  // ---- revision 18: the Vault (fixtures/vault.ts)
   ...VAULT_FIXTURES,
 };

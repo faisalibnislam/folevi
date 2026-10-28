@@ -1,0 +1,24 @@
+{
+  "kind": "view",
+  "name": "settings.query",
+  "description": "Settings > Desktop app on the Mac: the Mac app's own settings, worded as the web shows them.",
+  "args": {
+    "key": "desktop"
+  },
+  "value": {
+    "data": {
+      "bridge": true,
+      "loaded": true,
+      "settings": {
+        "quickAddShortcut": "Alt+Space",
+        "shortcutLabel": "⌥Space",
+        "defaultShortcut": "Alt+Space",
+        "defaultLabel": "⌥Space",
+        "error": null,
+        "openAtLogin": true,
+        "menuBarIcon": true,
+        "notifications": false
+      }
+    }
+  }
+}

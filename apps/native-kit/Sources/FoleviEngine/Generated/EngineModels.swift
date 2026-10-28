@@ -6777,6 +6777,335 @@ public struct VaultLinkRevokeArgs: Codable, Hashable, Sendable {
     }
 }
 
+/// `graph { space?, kinds? }`: the space's notes and links (aiGraph.graph); `kinds` limits the entities shown.
+public struct GraphArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    /// "person", "project", "organization", "topic", "decision"; left out: all of them.
+    public var kinds: [String]?
+
+    public init(space: SpaceRef? = nil, kinds: [String]? = nil) {
+        self.space = space
+        self.kinds = kinds
+    }
+}
+
+/// A node, placed by the web's own force layout (lib/graph/layout.ts Simulation, deterministic) in world units.
+public struct GraphNode: Codable, Hashable, Sendable {
+    public var id: String
+    /// "note", or an entity's kind (open).
+    public var kind: String
+    public var label: String
+    public var x: Double
+    public var y: Double
+    /// How many edges it has.
+    public var degree: Int
+
+    public init(id: String, kind: String, label: String, x: Double, y: Double, degree: Int) {
+        self.id = id
+        self.kind = kind
+        self.label = label
+        self.x = x
+        self.y = y
+        self.degree = degree
+    }
+}
+
+public struct GraphEdge: Codable, Hashable, Sendable {
+    public var source: String
+    public var target: String
+    /// "link", "mention", "similar", "related", "references", "contradicts", "supersedes" (open).
+    public var kind: String
+    public var inferred: Bool
+
+    public init(source: String, target: String, kind: String, inferred: Bool) {
+        self.source = source
+        self.target = target
+        self.kind = kind
+        self.inferred = inferred
+    }
+}
+
+public struct GraphValue: Codable, Hashable, Sendable {
+    /// Entities (people, projects...) are in the plan, so their filters show.
+    public var full: Bool
+    /// Why some of the graph isn't there (the plan, Foli AI off), or null.
+    public var note: String?
+    /// The plan is why: point at plans.
+    public var upgrade: Bool
+    /// Only the most recently edited notes are shown.
+    public var truncated: Bool
+    public var nodes: [GraphNode]
+    public var edges: [GraphEdge]
+
+    public init(full: Bool, note: String? = nil, upgrade: Bool, truncated: Bool, nodes: [GraphNode], edges: [GraphEdge]) {
+        self.full = full
+        self.note = note
+        self.upgrade = upgrade
+        self.truncated = truncated
+        self.nodes = nodes
+        self.edges = edges
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.full, forKey: .full)
+        try container.encode(self.note, forKey: .note)
+        try container.encode(self.upgrade, forKey: .upgrade)
+        try container.encode(self.truncated, forKey: .truncated)
+        try container.encode(self.nodes, forKey: .nodes)
+        try container.encode(self.edges, forKey: .edges)
+    }
+}
+
+/// `reviews { noteId?, space? }`: the cards due now. Neither: everywhere; `space`: one space; `noteId`: one note.
+public struct ReviewsArgs: Codable, Hashable, Sendable {
+    public var noteId: String?
+    public var space: SpaceRef?
+
+    public init(noteId: String? = nil, space: SpaceRef? = nil) {
+        self.noteId = noteId
+        self.space = space
+    }
+}
+
+/// How long until a card comes back after each rating (ms).
+public struct ReviewIntervals: Codable, Hashable, Sendable {
+    public var again: Int
+    public var hard: Int
+    public var good: Int
+    public var easy: Int
+
+    public init(again: Int, hard: Int, good: Int, easy: Int) {
+        self.again = again
+        self.hard = hard
+        self.good = good
+        self.easy = easy
+    }
+}
+
+public struct ReviewCard: Codable, Hashable, Sendable {
+    public var blockId: String
+    /// "flashcard", "quiz" (open).
+    public var kind: String
+    public var noteId: String
+    public var noteTitle: String
+    public var front: String
+    public var back: String
+    public var isNew: Bool
+    public var lastReview: Int?
+    public var intervals: ReviewIntervals
+
+    public init(blockId: String, kind: String, noteId: String, noteTitle: String, front: String, back: String, isNew: Bool, lastReview: Int? = nil, intervals: ReviewIntervals) {
+        self.blockId = blockId
+        self.kind = kind
+        self.noteId = noteId
+        self.noteTitle = noteTitle
+        self.front = front
+        self.back = back
+        self.isNew = isNew
+        self.lastReview = lastReview
+        self.intervals = intervals
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.blockId, forKey: .blockId)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.noteTitle, forKey: .noteTitle)
+        try container.encode(self.front, forKey: .front)
+        try container.encode(self.back, forKey: .back)
+        try container.encode(self.isNew, forKey: .isNew)
+        try container.encode(self.lastReview, forKey: .lastReview)
+        try container.encode(self.intervals, forKey: .intervals)
+    }
+}
+
+public struct ReviewsValue: Codable, Hashable, Sendable {
+    /// False when the note asked for can't be opened any more.
+    public var found: Bool
+    /// In order, at most 20 (study.queue).
+    public var cards: [ReviewCard]
+    public var due: Int
+    public var new: Int
+    /// Due later today.
+    public var later: Int
+    public var total: Int
+    public var hasCards: Bool
+    /// The note's title when one note is reviewed, else null.
+    public var noteTitle: String?
+    /// New cards a day (0, 10, 20, 30, 50, 100).
+    public var newPerDay: Int
+
+    public init(found: Bool, cards: [ReviewCard], due: Int, new: Int, later: Int, total: Int, hasCards: Bool, noteTitle: String? = nil, newPerDay: Int) {
+        self.found = found
+        self.cards = cards
+        self.due = due
+        self.new = new
+        self.later = later
+        self.total = total
+        self.hasCards = hasCards
+        self.noteTitle = noteTitle
+        self.newPerDay = newPerDay
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.found, forKey: .found)
+        try container.encode(self.cards, forKey: .cards)
+        try container.encode(self.due, forKey: .due)
+        try container.encode(self.new, forKey: .new)
+        try container.encode(self.later, forKey: .later)
+        try container.encode(self.total, forKey: .total)
+        try container.encode(self.hasCards, forKey: .hasCards)
+        try container.encode(self.noteTitle, forKey: .noteTitle)
+        try container.encode(self.newPerDay, forKey: .newPerDay)
+    }
+}
+
+/// `review.rate`: how well a card was known ("again", "hard", "good", "easy").
+public struct ReviewRateArgs: Codable, Hashable, Sendable {
+    public var blockId: String
+    public var rating: String
+    public var lastReview: Int?
+
+    public init(blockId: String, rating: String, lastReview: Int? = nil) {
+        self.blockId = blockId
+        self.rating = rating
+        self.lastReview = lastReview
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.blockId, forKey: .blockId)
+        try container.encode(self.rating, forKey: .rating)
+        try container.encode(self.lastReview, forKey: .lastReview)
+    }
+}
+
+/// `review.setNewPerDay`: one of 0, 10, 20, 30, 50, 100.
+public struct ReviewNewPerDayArgs: Codable, Hashable, Sendable {
+    public var value: Int
+
+    public init(value: Int) {
+        self.value = value
+    }
+}
+
+/// `recent.viewed { space?, limit? }`: the notes this person opened last (documents.recent), newest first, for ⌘K's Recent.
+public struct RecentViewedArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    /// Default 8, at most 30.
+    public var limit: Int?
+
+    public init(space: SpaceRef? = nil, limit: Int? = nil) {
+        self.space = space
+        self.limit = limit
+    }
+}
+
+public struct RecentViewedRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var icon: String?
+    public var updatedAt: Double
+
+    public init(id: String, title: String, icon: String? = nil, updatedAt: Double) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+        self.updatedAt = updatedAt
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.icon, forKey: .icon)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+    }
+}
+
+public struct RecentViewedValue: Codable, Hashable, Sendable {
+    public var rows: [RecentViewedRow]
+
+    public init(rows: [RecentViewedRow]) {
+        self.rows = rows
+    }
+}
+
+/// Settings on the Mac, native (docs/MAC_REBUILD_PLAN.md section 0): `settings.query` reads one of these, worded as
+/// the web's Settings words it (viewsSettings.ts); "convex" is one of the Convex queries Settings reads
+/// (args { fn, args }, an allowlist).
+public enum SettingsQueryKey: String, Codable, Hashable, Sendable, CaseIterable {
+    case library
+    case localAi
+    case desktop
+    case convex
+}
+
+/// What `settings.run` does: the library's controls, Foli AI's keys on the device, the Mac app's settings, and the Convex changes Settings makes (args { fn, args }, an allowlist).
+public enum SettingsRunKey: String, Codable, Hashable, Sendable, CaseIterable {
+    case librarySyncNow = "library.syncNow"
+    case libraryMove = "library.move"
+    case libraryCloudConnect = "library.cloudConnect"
+    case libraryCloudCancel = "library.cloudCancel"
+    case libraryCloudSignOut = "library.cloudSignOut"
+    case librarySetPassphrase = "library.setPassphrase"
+    case libraryChangePassphrase = "library.changePassphrase"
+    case libraryRemovePassphrase = "library.removePassphrase"
+    case libraryLock = "library.lock"
+    case libraryForget = "library.forget"
+    case localAiSetKey = "localAi.setKey"
+    case localAiRemoveKey = "localAi.removeKey"
+    case localAiTestKey = "localAi.testKey"
+    case localAiSetChoice = "localAi.setChoice"
+    case desktopSet = "desktop.set"
+    case desktopPauseShortcut = "desktop.pauseShortcut"
+    case textLines = "text.lines"
+    case dataImport = "data.import"
+    case takeoutImport = "takeout.import"
+    case convexMutation = "convex.mutation"
+    case convexAction = "convex.action"
+}
+
+public struct SettingsQueryArgs: Codable, Hashable, Sendable {
+    public var key: SettingsQueryKey
+    public var args: [String: JSONValue]?
+
+    public init(key: SettingsQueryKey, args: [String: JSONValue]? = nil) {
+        self.key = key
+        self.args = args
+    }
+}
+
+/// The section's data as the web's section would show it (each key's shape is in viewsSettings.ts).
+public struct SettingsQueryValue: Codable, Hashable, Sendable {
+    public var data: JSONValue
+
+    public init(data: JSONValue) {
+        self.data = data
+    }
+}
+
+public struct SettingsRunArgs: Codable, Hashable, Sendable {
+    public var key: SettingsRunKey
+    public var args: [String: JSONValue]?
+
+    public init(key: SettingsRunKey, args: [String: JSONValue]? = nil) {
+        self.key = key
+        self.args = args
+    }
+}
+
+public struct SettingsRunResult: Codable, Hashable, Sendable {
+    public var data: JSONValue
+
+    public init(data: JSONValue) {
+        self.data = data
+    }
+}
+
 /// One step of where the note lives ("In Travel > Japan"): a folder or a parent page, outermost first.
 public struct NoteToolsCrumb: Codable, Hashable, Sendable {
     /// The app path it opens ("/folders/<id>", "/d/<id>", "/documents").

@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 16;
+export const CONTRACT_REVISION = 18;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2723,7 +2723,7 @@ export interface NotesMoveCheckValue {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// The Vault (revision 15; docs/VAULT_PLAN.md, docs/MAC_REBUILD_PLAN.md §5.6). Everything decrypted here is decrypted
+// The Vault (revision 18; docs/VAULT_PLAN.md, docs/MAC_REBUILD_PLAN.md §5.6). Everything decrypted here is decrypted
 // by the engine (lib/vault/*), in memory only; keys never cross the bridge and nothing of the Vault is kept on the
 // device by the engine's kept answers. Every open the web logs is logged the same way (the server's log in an
 // account; a library's Vault has none). In a library (local mode) People, sharing and Activity are absent.
@@ -3162,6 +3162,170 @@ export interface VaultLinkRevokeArgs {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Revision 13: the Graph and Reviews pages, native on the Mac (docs/MAC_REBUILD_PLAN.md: all native but the editor)
+// ---------------------------------------------------------------------------------------------------------------
+
+/** `graph { space?, kinds? }`: the space's notes and links (aiGraph.graph); `kinds` limits the entities shown. */
+export interface GraphArgs {
+  space?: SpaceRef;
+  /** "person", "project", "organization", "topic", "decision"; left out: all of them. */
+  kinds?: string[];
+}
+
+/** A node, placed by the web's own force layout (lib/graph/layout.ts Simulation, deterministic) in world units. */
+export interface GraphNode {
+  id: string;
+  /** "note", or an entity's kind (open). */
+  kind: string;
+  label: string;
+  x: number;
+  y: number;
+  /** How many edges it has. */
+  degree: number;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  /** "link", "mention", "similar", "related", "references", "contradicts", "supersedes" (open). */
+  kind: string;
+  inferred: boolean;
+}
+
+export interface GraphValue {
+  /** Entities (people, projects...) are in the plan, so their filters show. */
+  full: boolean;
+  /** Why some of the graph isn't there (the plan, Foli AI off), or null. */
+  note: string | null;
+  /** The plan is why: point at plans. */
+  upgrade: boolean;
+  /** Only the most recently edited notes are shown. */
+  truncated: boolean;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+/** `reviews { noteId?, space? }`: the cards due now. Neither: everywhere; `space`: one space; `noteId`: one note. */
+export interface ReviewsArgs {
+  noteId?: string;
+  space?: SpaceRef;
+}
+
+/** How long until a card comes back after each rating (ms). */
+export interface ReviewIntervals {
+  again: number;
+  hard: number;
+  good: number;
+  easy: number;
+}
+
+export interface ReviewCard {
+  blockId: string;
+  /** "flashcard", "quiz" (open). */
+  kind: string;
+  noteId: string;
+  noteTitle: string;
+  front: string;
+  back: string;
+  isNew: boolean;
+  lastReview: number | null;
+  intervals: ReviewIntervals;
+}
+
+export interface ReviewsValue {
+  /** False when the note asked for can't be opened any more. */
+  found: boolean;
+  /** In order, at most 20 (study.queue). */
+  cards: ReviewCard[];
+  due: number;
+  new: number;
+  /** Due later today. */
+  later: number;
+  total: number;
+  hasCards: boolean;
+  /** The note's title when one note is reviewed, else null. */
+  noteTitle: string | null;
+  /** New cards a day (0, 10, 20, 30, 50, 100). */
+  newPerDay: number;
+}
+
+/** `review.rate`: how well a card was known ("again", "hard", "good", "easy"). */
+export interface ReviewRateArgs {
+  blockId: string;
+  rating: string;
+  lastReview: number | null;
+}
+
+/** `review.setNewPerDay`: one of 0, 10, 20, 30, 50, 100. */
+export interface ReviewNewPerDayArgs {
+  value: number;
+}
+
+/** `recent.viewed { space?, limit? }`: the notes this person opened last (documents.recent), newest first, for ⌘K's Recent. */
+export interface RecentViewedArgs {
+  space?: SpaceRef;
+  /** Default 8, at most 30. */
+  limit?: number;
+}
+
+export interface RecentViewedRow {
+  id: string;
+  title: string;
+  icon: string | null;
+  updatedAt: number;
+}
+
+export interface RecentViewedValue {
+  rows: RecentViewedRow[];
+}
+
+/**
+ * Settings on the Mac, native (docs/MAC_REBUILD_PLAN.md section 0): `settings.query` reads one of these, worded as
+ * the web's Settings words it (viewsSettings.ts); "convex" is one of the Convex queries Settings reads
+ * (args { fn, args }, an allowlist).
+ */
+export type SettingsQueryKey = "library" | "localAi" | "desktop" | "convex";
+/** What `settings.run` does: the library's controls, Foli AI's keys on the device, the Mac app's settings, and the Convex changes Settings makes (args { fn, args }, an allowlist). */
+export type SettingsRunKey =
+  | "library.syncNow"
+  | "library.move"
+  | "library.cloudConnect"
+  | "library.cloudCancel"
+  | "library.cloudSignOut"
+  | "library.setPassphrase"
+  | "library.changePassphrase"
+  | "library.removePassphrase"
+  | "library.lock"
+  | "library.forget"
+  | "localAi.setKey"
+  | "localAi.removeKey"
+  | "localAi.testKey"
+  | "localAi.setChoice"
+  | "desktop.set"
+  | "desktop.pauseShortcut"
+  | "text.lines"
+  | "data.import"
+  | "takeout.import"
+  | "convex.mutation"
+  | "convex.action";
+
+export interface SettingsQueryArgs {
+  key: SettingsQueryKey;
+  args?: Record<string, unknown>;
+}
+/** The section's data as the web's section would show it (each key's shape is in viewsSettings.ts). */
+export interface SettingsQueryValue {
+  data: unknown;
+}
+export interface SettingsRunArgs {
+  key: SettingsRunKey;
+  args?: Record<string, unknown>;
+}
+export interface SettingsRunResult {
+  data: unknown;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 // Revision 14: the note page's own sidebar (components/doc/DocumentSidebar.tsx) drawn natively. The note page
 // sends what the sidebar shows (`note.tools`) and takes its clicks (`block.jump`, `task.toggle`, `thread.open`,
 // `find`, `find.clear`). (Revision 13 is the "more" area's.)
@@ -3355,6 +3519,10 @@ export interface ViewMap {
   "shared.folders": { args: EmptyArgs; value: SharedFoldersValue };
   "sharedFolder.open": { args: NoteIdArgs; value: SharedFolderValue };
   "notes.moveCheck": { args: NotesMoveCheckArgs; value: NotesMoveCheckValue };
+  graph: { args: GraphArgs; value: GraphValue };
+  reviews: { args: ReviewsArgs; value: ReviewsValue };
+  "recent.viewed": { args: RecentViewedArgs; value: RecentViewedValue };
+  "settings.query": { args: SettingsQueryArgs; value: SettingsQueryValue };
   "vault.summary": { args: SpaceArgs; value: VaultSummaryValue };
   "vault.items": { args: VaultItemsArgs; value: VaultItemsValue };
   "vault.folders": { args: VaultIdArgs; value: VaultFoldersValue };
@@ -3459,6 +3627,9 @@ export interface CommandMap {
   "folderSharing.revoke": { args: FolderShareRevokeArgs; result: OkResult };
   "folderSharing.cancelInvite": { args: FolderInviteIdArgs; result: OkResult };
   "folderInvite.accept": { args: FolderInviteIdArgs; result: FolderInviteAcceptResult };
+  "review.rate": { args: ReviewRateArgs; result: OkResult };
+  "review.setNewPerDay": { args: ReviewNewPerDayArgs; result: OkResult };
+  "settings.run": { args: SettingsRunArgs; result: SettingsRunResult };
   "vault.setUp": { args: VaultSetUpArgs; result: VaultRecoveryResult };
   "vault.unlock": { args: VaultPasscodeArgs; result: VaultUnlockResult };
   "vault.reset": { args: VaultResetArgs; result: VaultUnlockResult };
@@ -3564,7 +3735,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "vault.summary", "vault.items", "vault.folders", "vault.health", "vault.activity", "vault.people", "vault.shares"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "settings.query", "graph", "reviews", "recent.viewed", "vault.summary", "vault.items", "vault.folders", "vault.health", "vault.activity", "vault.people", "vault.shares"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -3657,6 +3828,9 @@ const commandNames = [
   "folderSharing.revoke",
   "folderSharing.cancelInvite",
   "folderInvite.accept",
+  "review.rate",
+  "review.setNewPerDay",
+  "settings.run",
   "vault.setUp",
   "vault.unlock",
   "vault.reset",
@@ -3741,6 +3915,8 @@ export const NOTES_LIST_VIEWS: readonly NotesListView[] = ["all", "starred", "ar
 export const NOTES_SORTS: readonly NotesSort[] = ["updated", "created", "title", "manual"];
 export const WEB_PAGES: readonly WebPage[] = ["settings.connectedApps", "settings.workspaceData", "settings.data", "settings.aiExport", "reviews", "graph", "settings.security", "settings.privacy", "settings.workspace", "settings.deleteAccount"];
 export const AI_PREF_KEYS: readonly AiPrefKey[] = ["history", "memory", "suggestions", "attachments", "webResearch", "digests", "readImages", "deviceText"];
+export const SETTINGS_QUERY_KEYS: readonly SettingsQueryKey[] = ["library", "localAi", "desktop", "convex"];
+export const SETTINGS_RUN_KEYS: readonly SettingsRunKey[] = ["library.syncNow", "library.move", "library.cloudConnect", "library.cloudCancel", "library.cloudSignOut", "library.setPassphrase", "library.changePassphrase", "library.removePassphrase", "library.lock", "library.forget", "localAi.setKey", "localAi.removeKey", "localAi.testKey", "localAi.setChoice", "desktop.set", "desktop.pauseShortcut", "text.lines", "data.import", "takeout.import", "convex.mutation", "convex.action"];
 export const TASK_VIEWS: readonly TaskViewName[] = ["inbox", "today", "upcoming", "all", "completed", "mine"];
 
 /** Features the hello reply lists (for native to check before using something newer than the protocol). */

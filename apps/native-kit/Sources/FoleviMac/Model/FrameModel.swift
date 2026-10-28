@@ -126,6 +126,10 @@ public final class FrameModel {
 
     /// The sidebar is collapsed (⌘\, View > Hide Sidebar).
     public var sidebarCollapsed = false
+    #if DEBUG
+    /// Each tab's frame in the window (top-left points), for scripts that click and drag tabs.
+    @ObservationIgnored public var debugTabFrames: [String: CGRect] = [:]
+    #endif
 
     /// Titles of the note tabs (`notes.meta`, revision 8), so restored tabs and notes renamed elsewhere stay current.
     @ObservationIgnored private var tabMeta: ValueStore<NotesMetaValue>?

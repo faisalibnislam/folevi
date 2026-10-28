@@ -34,6 +34,7 @@ enum ChromeEval {
         MacEval.commands["evalIn"] = evalIn
         MacEval.commands["titleBar"] = titleBar
         MacEval.commands["hitTest"] = hitTest
+        MacEval.commands["click"] = click
         MacEval.commands["chrome"] = { _, done in
             let front = WindowManager.shared.frontMain?.view
             let s = front.flatMap { Chrome.states[ObjectIdentifier($0)] }
@@ -213,6 +214,33 @@ enum ChromeEval {
         ] as [String: Any]])
     }
 
+    /// Real mouse events through the app's queue at (x, y) from the window's top left: a click ("left" or
+    /// "middle"), or with `toX` a left press dragged there in steps (a tab's drag). What a person's mouse would do.
+    private static func click(_ req: [String: Any], _ done: @escaping ([String: Any]) -> Void) {
+        guard let c = window(req), let w = c.window, let x = req["x"] as? Double, let y = req["y"] as? Double else { return done(["error": "no window or point"]) }
+        let middle = req["button"] as? String == "middle"
+        let at = { (px: Double) in NSPoint(x: px, y: w.frame.height - y) }
+        var events: [(NSEvent.EventType, NSPoint)] = []
+        if let toX = req["toX"] as? Double {
+            events.append((.leftMouseDown, at(x)))
+            for i in 1...12 { events.append((.leftMouseDragged, at(x + (toX - x) * Double(i) / 12))) }
+            events.append((.leftMouseUp, at(toX)))
+        } else {
+            events = [(middle ? .otherMouseDown : .leftMouseDown, at(x)), (middle ? .otherMouseUp : .leftMouseUp, at(x))]
+        }
+        var delay = 0.0
+        for (type, p) in events {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                if let e = NSEvent.mouseEvent(with: type, location: p, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: w.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: type == .leftMouseUp || type == .otherMouseUp ? 0 : 1),
+                   let sent = middle ? NSEvent.otherMouse(e) : e {
+                    NSApp.postEvent(sent, atStart: false)
+                }
+            }
+            delay += 0.03
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay + 0.5) { done(["value": true]) }
+    }
+
     private static func hitTest(_ req: [String: Any], _ done: @escaping ([String: Any]) -> Void) {
         guard let c = window(req), let w = c.window, let x = req["x"] as? Double, let y = req["y"] as? Double, let frame = w.contentView?.superview else { return done(["error": "no window or point"]) }
         let p = NSPoint(x: x, y: w.frame.height - y)
@@ -231,6 +259,15 @@ enum ChromeEval {
             "hit": chain, "reachesWebView": hit?.isDescendant(of: c.view) == true || hit === c.view,
             "drag": r.map { TitleBar.isDrag(css, drag: $0.drag, noDrag: $0.noDrag) } ?? false,
         ] as [String: Any]])
+    }
+}
+
+extension NSEvent {
+    /// The same press or release as the middle button (button number 2): `mouseEvent(with:)` makes button 0.
+    static func otherMouse(_ e: NSEvent) -> NSEvent? {
+        guard let cg = e.cgEvent?.copy() else { return nil }
+        cg.setIntegerValueField(.mouseEventButtonNumber, value: 2)
+        return NSEvent(cgEvent: cg)
     }
 }
 #endif

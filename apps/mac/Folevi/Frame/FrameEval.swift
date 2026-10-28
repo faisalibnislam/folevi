@@ -85,7 +85,11 @@ extension NativeFrame {
         }
         return [
             "route": m.route.path,
-            "tabs": m.tabs.tabs.map { ["id": $0.id, "title": $0.title, "active": $0.id == m.tabs.activeID] as [String: Any] },
+            "tabs": m.tabs.tabs.map { t in
+                var d: [String: Any] = ["id": t.id, "title": t.title, "active": t.id == m.tabs.activeID]
+                if let f = m.debugTabFrames[t.id] { d["frame"] = [f.minX, f.minY, f.width, f.height] }
+                return d
+            },
             "sidebar": rows(m.sidebar),
             "sidebarCollapsed": m.sidebarCollapsed,
             "gate": frame.root.showsGate,

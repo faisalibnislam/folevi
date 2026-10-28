@@ -79,8 +79,20 @@ public enum WebFont {
                 [kCTFontOpenTypeFeatureTag: tag, kCTFontOpenTypeFeatureValue: 1] as CFDictionary
             } as CFArray
         }
+        // A character the face lacks (⌘, ⌥, arrows) comes from the system font, as WebKit falls back, not from Core
+        // Text's own list (Lucida Grande first, a point wider: it moved the rest of a line).
+        attributes[kCTFontCascadeListAttribute] = [systemFallback(size: size, weight: weight)] as CFArray
         let descriptor = CTFontDescriptorCreateWithAttributes(attributes as CFDictionary)
         return CTFontCreateWithFontDescriptor(descriptor, size, nil)
+    }
+
+    /// The system UI font at about the CSS weight, for the cascade list.
+    private static func systemFallback(size: CGFloat, weight: CGFloat) -> CTFontDescriptor {
+        let system = CTFontCopyFontDescriptor(CTFontCreateUIFontForLanguage(.system, size, nil) ?? CTFontCreateWithName("Helvetica" as CFString, size, nil))
+        // CSS 400, 500, 600, 700 as Core Text weight traits (regular, medium, semibold, bold).
+        let trait: CGFloat = weight < 450 ? 0 : weight < 550 ? 0.23 : weight < 650 ? 0.3 : 0.4
+        guard trait != 0 else { return system }
+        return CTFontDescriptorCreateCopyWithAttributes(system, [kCTFontTraitsAttribute: [kCTFontWeightTrait: trait] as CFDictionary] as CFDictionary)
     }
 
     public static func font(_ family: WebFontFamily, size: CGFloat, weight: CGFloat = 400, italic: Bool = false) -> Font {

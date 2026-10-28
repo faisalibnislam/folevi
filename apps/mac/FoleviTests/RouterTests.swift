@@ -131,6 +131,8 @@ final class RouterTests: XCTestCase {
         XCTAssertEqual(Links.parseDeepLink("folevi-dev:///d/01JABCDEFGHJKMNPQRSTVWXYZ0#bad!hash", scheme: s), .open(path: "/d/01JABCDEFGHJKMNPQRSTVWXYZ0"))
         XCTAssertEqual(Links.parseDeepLink("folevi-dev://d/inbox-abc123", scheme: s), .open(path: "/d/inbox-abc123"))
         XCTAssertEqual(Links.parseDeepLink("folevi-dev://tasks/today", scheme: s), .open(path: "/tasks/today"))
+        XCTAssertEqual(Links.parseDeepLink("folevi-dev://folders/01JABCDEFGHJKMNPQRSTVWXYZ0", scheme: s), .open(path: "/folders/01JABCDEFGHJKMNPQRSTVWXYZ0"))
+        XCTAssertEqual(Links.parseDeepLink("folevi-dev://starred", scheme: s), .open(path: "/starred"))
         XCTAssertEqual(Links.parseDeepLink("folevi-dev://new", scheme: s), .newNote)
         XCTAssertEqual(Links.parseDeepLink("folevi-dev://quick-add", scheme: s), .quickAdd)
         XCTAssertEqual(Links.parseDeepLink("folevi-dev://", scheme: s), .open(path: "/documents"))

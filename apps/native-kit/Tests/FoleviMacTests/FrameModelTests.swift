@@ -30,7 +30,7 @@ struct RouteTests {
         #expect(FrameRoute(path: "/documents") == .home)
         #expect(FrameRoute(path: "/unsorted") == .notes(.unsorted))
         #expect(FrameRoute(path: "/d/abc?x=1") == .note("abc"))
-        #expect(FrameRoute(path: "/folders") == .home)
+        #expect(FrameRoute(path: "/folders") == .web("/folders"))
         #expect(FrameRoute(path: "/graph") == .web("/graph"))
         #expect(FrameRoute(path: "/inbox") == .tasks(.inbox))
         #expect(FrameRoute(path: "/tasks/nope") == .tasks(.today))

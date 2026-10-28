@@ -336,6 +336,9 @@ final class ShellRouter {
 
         // ---- Foli AI on this Mac (ShellAI: Apple's on-device model, or the person's own keys)
         case "aiCapabilities":
+            #if DEBUG
+            if FakeAI.on { return FakeAI.capabilities }
+            #endif
             return ShellAI.capabilities()
         case "aiGenerate":
             guard let id = s(o, "id"), id.count <= 64, let raw = o["req"] as? [String: Any] else { throw BridgeError.invalid("Not a request Foli AI can send.") }
@@ -346,6 +349,13 @@ final class ShellRouter {
                 let events = self.events
                 return await withCheckedContinuation { (cont: CheckedContinuation<[String: Any], Never>) in
                     let task = Task {
+                        #if DEBUG
+                        if FakeAI.on {
+                            let result = await FakeAI.generate(req) { text in events.emit("FoleviShell", "aiChunk", ["id": id, "text": text]) }
+                            await MainActor.run { self.aiTasks[id] = nil }
+                            return cont.resume(returning: result.json)
+                        }
+                        #endif
                         let result = await ShellAI.generate(req) { text in events.emit("FoleviShell", "aiChunk", ["id": id, "text": text]) }
                         await MainActor.run { self.aiTasks[id] = nil }
                         cont.resume(returning: result.json)

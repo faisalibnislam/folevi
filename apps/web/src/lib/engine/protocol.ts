@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 13;
+export const CONTRACT_REVISION = 17;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2050,6 +2050,31 @@ export interface ChatCapabilities {
   /** Conversations are kept (Settings > Foli AI > History). */
   history: boolean;
   agent: boolean;
+  /**
+   * Revision 16. Why Foli AI can't be used here (null when it can): "off" (turned off in Settings > AI), "plan" (not on the
+   * person's plan), "workspacePlan" (not on this workspace's plan), "setup" (local mode: no model on this device
+   * yet). Open: show the message for an unknown one as "plan".
+   */
+  unavailable: string | null;
+  /** Revision 16 (R12.7): the AI credits that apply here; null in local mode (no credits) and while unknown. Usage only. */
+  credits: ChatCredits | null;
+}
+
+/** R12.7: the AI credits that apply where the person is working (billing.credits). Never a purchase surface. */
+export interface ChatCredits {
+  /** Foli AI is on the plan here. */
+  included: boolean;
+  /** Credits left in all (this period's and bought ones). */
+  available: number;
+  /** Few enough left that the chat says so (the web's AiCreditsNote: under 20% of the month, or a handful). */
+  low: boolean;
+  /** When this period's credits reset (ms), or the trial ends. */
+  resetsAt: number | null;
+  trialing: boolean;
+  /** A seat in a team workspace (the workspace's credits). */
+  seat: boolean;
+  /** More can be bought here ("Buy more"); false on iOS and in local mode. */
+  canBuy: boolean;
 }
 
 export interface ChatContextArgs {
@@ -2815,6 +2840,198 @@ export interface RecentViewedValue {
   rows: RecentViewedRow[];
 }
 
+/**
+ * Settings on the Mac, native (docs/MAC_REBUILD_PLAN.md section 0): `settings.query` reads one of these, worded as
+ * the web's Settings words it (viewsSettings.ts); "convex" is one of the Convex queries Settings reads
+ * (args { fn, args }, an allowlist).
+ */
+export type SettingsQueryKey = "library" | "localAi" | "desktop" | "convex";
+/** What `settings.run` does: the library's controls, Foli AI's keys on the device, the Mac app's settings, and the Convex changes Settings makes (args { fn, args }, an allowlist). */
+export type SettingsRunKey =
+  | "library.syncNow"
+  | "library.move"
+  | "library.cloudConnect"
+  | "library.cloudCancel"
+  | "library.cloudSignOut"
+  | "library.setPassphrase"
+  | "library.changePassphrase"
+  | "library.removePassphrase"
+  | "library.lock"
+  | "library.forget"
+  | "localAi.setKey"
+  | "localAi.removeKey"
+  | "localAi.testKey"
+  | "localAi.setChoice"
+  | "desktop.set"
+  | "desktop.pauseShortcut"
+  | "text.lines"
+  | "data.import"
+  | "takeout.import"
+  | "convex.mutation"
+  | "convex.action";
+
+export interface SettingsQueryArgs {
+  key: SettingsQueryKey;
+  args?: Record<string, unknown>;
+}
+/** The section's data as the web's section would show it (each key's shape is in viewsSettings.ts). */
+export interface SettingsQueryValue {
+  data: unknown;
+}
+export interface SettingsRunArgs {
+  key: SettingsRunKey;
+  args?: Record<string, unknown>;
+}
+export interface SettingsRunResult {
+  data: unknown;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Revision 14: the note page's own sidebar (components/doc/DocumentSidebar.tsx) drawn natively. The note page
+// sends what the sidebar shows (`note.tools`) and takes its clicks (`block.jump`, `task.toggle`, `thread.open`,
+// `find`, `find.clear`). (Revision 13 is the "more" area's.)
+// ---------------------------------------------------------------------------------------------------------------
+
+/** One step of where the note lives ("In Travel > Japan"): a folder or a parent page, outermost first. */
+export interface NoteToolsCrumb {
+  /** The app path it opens ("/folders/<id>", "/d/<id>", "/documents"). */
+  href: string;
+  label: string;
+}
+
+/** A row of the Table of contents: a heading (level 1 to 3) or a nested page. */
+export interface NoteOutlineItem {
+  kind: "heading" | "page";
+  /** The block's id (what `block.jump` takes). */
+  id: string;
+  /** The heading's text ("" when empty) or the nested page's title. */
+  text: string;
+  /** Headings: 1, 2 or 3; pages: 0. */
+  level: number;
+  /** Pages: the nested page's note id; headings: null. */
+  documentId: string | null;
+}
+
+/** A to-do in the note. */
+export interface NoteToolsTask {
+  id: string;
+  text: string;
+  checked: boolean;
+}
+
+/** An image, file or recording in the note. */
+export interface NoteToolsAttachment {
+  id: string;
+  /** "image", "file" or "audio". */
+  kind: string;
+  name: string;
+  /** A file still on its way up. */
+  uploading: boolean;
+}
+
+/** A link in the note: a web address (embed, bookmark, linked text) or a page link. */
+export interface NoteToolsLink {
+  key: string;
+  blockId: string;
+  label: string;
+  href: string;
+  /** A page link ("/d/<id>"), opened in the app; otherwise a web address. */
+  internal: boolean;
+}
+
+/** A comment thread, as the Comments tab lists it. */
+export interface NoteToolsThread {
+  id: string;
+  /** The block it's on (null: on the whole note). */
+  blockId: string | null;
+  /** What it's on ("On “Temples to see”", "On the whole note"). */
+  anchor: string;
+  author: string;
+  avatarUrl: string | null;
+  /** The first comment's text (plain). */
+  text: string;
+  deleted: boolean;
+  replies: number;
+  status: "open" | "resolved";
+  resolvedBy: string | null;
+  unread: boolean;
+  lastActivityAt: number;
+  /** "waiting" or "failed" while it's not on the server yet, else null. */
+  waiting: string | null;
+}
+
+export interface NoteToolsComments {
+  /** False in local mode (no comments: the tab says what they need). */
+  available: boolean;
+  /** The threads have loaded. */
+  loaded: boolean;
+  canComment: boolean;
+  threads: NoteToolsThread[];
+}
+
+/** A page of the note's page tree (the note, its parent and nested pages), for a note with nested pages. */
+export interface NoteToolsPage {
+  id: string;
+  title: string;
+  depth: number;
+}
+
+/** `note.tools`: what the open note's sidebar shows, sent when the note opens and whenever it changes. */
+export interface NoteToolsEvent {
+  noteId: string;
+  title: string;
+  trail: NoteToolsCrumb[];
+  outline: NoteOutlineItem[];
+  /** The heading in view now (the outline marks it), or null. */
+  current: string | null;
+  tasks: NoteToolsTask[];
+  attachments: NoteToolsAttachment[];
+  links: NoteToolsLink[];
+  comments: NoteToolsComments;
+  /** Empty unless the note has nested pages (two or more pages). */
+  pages: NoteToolsPage[];
+  pagesTruncated: boolean;
+  readOnly: boolean;
+}
+
+export interface BlockJumpArgs {
+  blockId: string;
+}
+
+export interface TaskToggleArgs {
+  blockId: string;
+}
+
+export interface ThreadOpenArgs {
+  threadId: string;
+}
+
+export interface FindArgs {
+  /** The text to find (case-insensitive); "" clears. */
+  query: string;
+  /** Which match to show (wraps around; negative counts from the end); left out: the first, not scrolled to. */
+  index?: number;
+}
+
+/** A match with some text on each side (word boundaries, "…" where cut). */
+export interface FindMatch {
+  before: string;
+  hit: string;
+  after: string;
+}
+
+export interface FindResult {
+  query: string;
+  /** Matches found (at most 500). */
+  count: number;
+  /** The shown match (0-based), or -1 with none. */
+  current: number;
+  /** More than 500 matches. */
+  truncated: boolean;
+  /** The first 100 matches. */
+  matches: FindMatch[];
+}
+
 export interface ViewMap {
   session: { args: EmptyArgs; value: SessionValue };
   "places.list": { args: EmptyArgs; value: PlacesValue };
@@ -2866,6 +3083,7 @@ export interface ViewMap {
   graph: { args: GraphArgs; value: GraphValue };
   reviews: { args: ReviewsArgs; value: ReviewsValue };
   "recent.viewed": { args: RecentViewedArgs; value: RecentViewedValue };
+  "settings.query": { args: SettingsQueryArgs; value: SettingsQueryValue };
 }
 
 export interface ListViewMap {
@@ -2965,6 +3183,7 @@ export interface CommandMap {
   "folderInvite.accept": { args: FolderInviteIdArgs; result: FolderInviteAcceptResult };
   "review.rate": { args: ReviewRateArgs; result: OkResult };
   "review.setNewPerDay": { args: ReviewNewPerDayArgs; result: OkResult };
+  "settings.run": { args: SettingsRunArgs; result: SettingsRunResult };
 }
 
 export interface EditorCommandMap {
@@ -2992,6 +3211,11 @@ export interface EditorCommandMap {
   "block.duplicate": { args: EmptyArgs; result: OkResult };
   "focus.toggle": { args: EmptyArgs; result: OkResult };
   "note.lock": { args: EmptyArgs; result: OkResult };
+  "block.jump": { args: BlockJumpArgs; result: OkResult };
+  "task.toggle": { args: TaskToggleArgs; result: OkResult };
+  "thread.open": { args: ThreadOpenArgs; result: OkResult };
+  find: { args: FindArgs; result: FindResult };
+  "find.clear": { args: EmptyArgs; result: OkResult };
 }
 
 export interface EventMap {
@@ -3006,6 +3230,7 @@ export interface EventMap {
   "editor.state": EditorStateEvent;
   "editor.panel": EditorPanelEvent;
   "memory.relieved": MemoryRelievedEvent;
+  "note.tools": NoteToolsEvent;
 }
 
 export type ViewName = keyof ViewMap;
@@ -3028,7 +3253,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "graph", "reviews", "recent.viewed"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "settings.query", "graph", "reviews", "recent.viewed"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -3123,6 +3348,7 @@ const commandNames = [
   "folderInvite.accept",
   "review.rate",
   "review.setNewPerDay",
+  "settings.run",
 ] as const;
 const editorCommandNames = [
   "note.prepare",
@@ -3149,8 +3375,13 @@ const editorCommandNames = [
   "block.duplicate",
   "focus.toggle",
   "note.lock",
+  "block.jump",
+  "task.toggle",
+  "thread.open",
+  "find",
+  "find.clear",
 ] as const;
-const eventNames = ["engine.ready", "gate.changed", "sync.status", "place.changed", "toast", "navigate.request", "note.ready", "note.meta", "editor.state", "editor.panel", "memory.relieved"] as const;
+const eventNames = ["engine.ready", "gate.changed", "sync.status", "place.changed", "toast", "navigate.request", "note.ready", "note.meta", "editor.state", "editor.panel", "memory.relieved", "note.tools"] as const;
 
 export const VIEW_NAMES: Exhaustive<ViewName, typeof viewNames> = viewNames;
 export const LIST_VIEW_NAMES: Exhaustive<ListViewName, typeof listViewNames> = listViewNames;
@@ -3166,6 +3397,8 @@ export const NOTES_LIST_VIEWS: readonly NotesListView[] = ["all", "starred", "ar
 export const NOTES_SORTS: readonly NotesSort[] = ["updated", "created", "title", "manual"];
 export const WEB_PAGES: readonly WebPage[] = ["settings.connectedApps", "settings.workspaceData", "settings.data", "settings.aiExport", "reviews", "graph", "settings.security", "settings.privacy", "settings.workspace", "settings.deleteAccount"];
 export const AI_PREF_KEYS: readonly AiPrefKey[] = ["history", "memory", "suggestions", "attachments", "webResearch", "digests", "readImages", "deviceText"];
+export const SETTINGS_QUERY_KEYS: readonly SettingsQueryKey[] = ["library", "localAi", "desktop", "convex"];
+export const SETTINGS_RUN_KEYS: readonly SettingsRunKey[] = ["library.syncNow", "library.move", "library.cloudConnect", "library.cloudCancel", "library.cloudSignOut", "library.setPassphrase", "library.changePassphrase", "library.removePassphrase", "library.lock", "library.forget", "localAi.setKey", "localAi.removeKey", "localAi.testKey", "localAi.setChoice", "desktop.set", "desktop.pauseShortcut", "text.lines", "data.import", "takeout.import", "convex.mutation", "convex.action"];
 export const TASK_VIEWS: readonly TaskViewName[] = ["inbox", "today", "upcoming", "all", "completed", "mine"];
 
 /** Features the hello reply lists (for native to check before using something newer than the protocol). */

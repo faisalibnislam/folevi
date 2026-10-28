@@ -15,7 +15,7 @@ import FoleviScreens
 struct SignInToCollaboratePage: View {
     var body: some View {
         VStack(spacing: 0) {
-            WebEmptyState(icon: .users, title: "Sign in to Folevi to share and collaborate", message: "Your notes are kept on your devices. Sharing, comments and workspaces need a Folevi account.")
+            MoreEmptyState(icon: .users, title: "Sign in to Folevi to share and collaborate", message: "Your notes are kept on your devices. Sharing, comments and workspaces need a Folevi account.")
             Spacer(minLength: 0)
         }
         .accessibilityIdentifier("screen.signInToCollaborate")
@@ -134,7 +134,7 @@ struct SharedWithMeScreen: View {
         if model.loading {
             RoundedRectangle(cornerRadius: 6, style: .circular).fill(moreVar("color-surface", scheme)).frame(height: 96).padding(.top, 24)
         } else if folders.isEmpty, pages.isEmpty {
-            WebEmptyState(icon: .share2, title: "Nothing has been shared with you yet", message: "Folders and pages people share with you, from their Personal or from any workspace, show up here.")
+            MoreEmptyState(icon: .share2, title: "Nothing has been shared with you yet", message: "Folders and pages people share with you, from their Personal or from any workspace, show up here.")
         } else {
             if !folders.isEmpty {
                 sectionTitle("Folders").padding(.top, 24)
@@ -213,7 +213,7 @@ struct SharedFolderScreen: View {
         let muted = moreVar("color-ink-muted", scheme), heading = moreVar("color-heading", scheme)
         if let d {
             if !d.found {
-                WebEmptyState(icon: .folderX, title: "You can’t open this folder", message: "It may have been unshared, moved or deleted. Folders shared with you are in Shared with Me.")
+                MoreEmptyState(icon: .folderX, title: "You can’t open this folder", message: "It may have been unshared, moved or deleted. Folders shared with you are in Shared with Me.")
             } else {
                 HStack(spacing: 4) {
                     Button { frame.open(.shared) } label: { Text(verbatim: "Shared with Me") }.buttonStyle(.plain)
@@ -250,7 +250,7 @@ struct SharedFolderScreen: View {
                     .padding(.bottom, 24)
                 }
                 if d.notes.isEmpty {
-                    if d.subfolders.isEmpty { WebEmptyState(icon: .fileText, title: "No notes here yet", message: "Notes added to this folder show up here.") }
+                    if d.subfolders.isEmpty { MoreEmptyState(icon: .fileText, title: "No notes here yet", message: "Notes added to this folder show up here.") }
                 } else {
                     WebListCard(items: d.notes, id: \.id) { n in
                         WebHoverRow(action: { frame.open(.note(n.id)) }) {
@@ -354,7 +354,7 @@ struct ChangesWebScreen: View {
             if v.notes.isEmpty, !v.proposals.isEmpty {
                 Text(verbatim: "Nothing else changed since you last looked.").webText(.role(.subheadline)).foregroundStyle(muted).padding(.top, 16)
             } else if v.notes.isEmpty {
-                WebEmptyState(icon: .fileDiff, title: "You’re all caught up", message: "When someone else changes a note you’ve opened, it shows up here until you look.")
+                MoreEmptyState(icon: .fileDiff, title: "You’re all caught up", message: "When someone else changes a note you’ve opened, it shows up here until you look.")
             } else {
                 VStack(spacing: 16) { ForEach(v.notes, id: \.id) { changed($0) } }.padding(.top, 24)
             }

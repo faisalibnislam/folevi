@@ -130,7 +130,7 @@ struct GraphScreen: View {
         Group {
             if !model.available {
                 VStack(spacing: 0) {
-                    WebEmptyState(icon: .waypoints, title: "The graph isn’t available here yet", message: "It isn’t part of a library on your devices yet. Links between notes still work everywhere.")
+                    MoreEmptyState(icon: .waypoints, title: "The graph isn’t available here yet", message: "It isn’t part of a library on your devices yet. Links between notes still work everywhere.")
                     Spacer(minLength: 0)
                 }
             } else {
@@ -174,7 +174,7 @@ struct GraphScreen: View {
             if v == nil {
                 Text(verbatim: "Loading the graph…").webText(.role(.subheadline)).foregroundStyle(muted).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if nodes.isEmpty {
-                WebEmptyState(icon: .waypoints, title: "No notes here yet", message: "Notes and the links between them show up here.").frame(maxHeight: .infinity)
+                MoreEmptyState(icon: .waypoints, title: "No notes here yet", message: "Notes and the links between them show up here.").frame(maxHeight: .infinity)
             } else if model.list {
                 GraphListView(nodes: nodes, edges: v?.edges ?? [], query: model.query, open: { frame.open(.note($0)) })
             } else {
@@ -538,7 +538,7 @@ struct GraphListView: View {
         let all = entries
         let notes = all.filter { $0.node.kind == "note" }, others = all.filter { $0.node.kind != "note" }
         if all.isEmpty {
-            WebEmptyState(icon: nil, title: "Nothing matches").frame(maxHeight: .infinity)
+            MoreEmptyState(icon: nil, title: "Nothing matches").frame(maxHeight: .infinity)
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {

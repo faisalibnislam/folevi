@@ -590,10 +590,14 @@ needs adding before release. Request:
 `ai.share { conversationId, shared }`. Plan 5.9 also lists `ai.consent` (asking before Foli AI reads encrypted
 notes); it isn't in the contract, so the native chat can't ask and relies on the engine to refuse with a message.
 
-### R12.7 Credits left (usage only) **open**
+### R12.7 Credits left (usage only) **done**
 
-The web composer shows a credits note (`AiCreditsNote`: "12 AI credits left this month"). Request
-`ChatCapabilities.credits: { available: number; included: boolean } | null` (never a purchase surface on iOS).
+The web composer shows a credits note (`AiCreditsNote`: "12 AI credits left this month"). Done in
+`ai.capabilities`: `credits: ChatCredits | null` (`included`, `available`, `low` by the web's rule, `resetsAt`,
+`trialing`, `seat`, `canBuy`, false on iOS and in local mode), null in local mode. Also there: `unavailable`
+("off", "plan", "workspacePlan", "setup") so native says why Foli AI can't be used, as AiUnavailable.tsx does,
+and a refused answer's `error.data` keeps `action` ("buy", "upgrade") and `reason` ("ai_not_included") for the
+web's notice. Fixtures: `view.ai.capabilities`, `view.ai.capabilities.local`.
 
 ### R8.10 `note.show { blockId }` (open, small)
 

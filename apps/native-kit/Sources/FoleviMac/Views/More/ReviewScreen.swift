@@ -121,13 +121,13 @@ struct ReviewScreen: View {
     private func content(_ v: ReviewsValue?) -> some View {
         if let v {
             if !v.found {
-                WebEmptyState(icon: .layers, title: "This note isn't available", message: "It may have been moved to Trash, or you no longer have access to it.")
+                MoreEmptyState(icon: .layers, title: "This note isn't available", message: "It may have been moved to Trash, or you no longer have access to it.")
             } else if let card = model.card {
                 cardView(card)
             } else if model.reviewed > 0 {
-                WebEmptyState(icon: .layers, title: "Done for now", message: "You reviewed \(ReviewModel.cardCount(model.reviewed)).\(v.later > 0 ? " \(ReviewModel.cardCount(v.later)) more later today." : "")")
+                MoreEmptyState(icon: .layers, title: "Done for now", message: "You reviewed \(ReviewModel.cardCount(model.reviewed)).\(v.later > 0 ? " \(ReviewModel.cardCount(v.later)) more later today." : "")")
             } else {
-                WebEmptyState(icon: .layers, title: "Nothing to review", message: "Cards from your notes come back here when they're due.\(v.later > 0 ? " \(ReviewModel.cardCount(v.later)) later today." : "")",
+                MoreEmptyState(icon: .layers, title: "Nothing to review", message: "Cards from your notes come back here when they're due.\(v.later > 0 ? " \(ReviewModel.cardCount(v.later)) later today." : "")",
                               hint: v.hasCards ? nil : "To make cards, ask Foli AI for flashcards on a note, or turn a toggle into a flashcard from its block menu.")
             }
         } else {

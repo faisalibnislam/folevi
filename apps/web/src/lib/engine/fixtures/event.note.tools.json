@@ -1,0 +1,115 @@
+{
+  "kind": "event",
+  "name": "note.tools",
+  "description": "What the note's sidebar shows: where it lives, its outline (the second heading in view), tasks, attachments, links and comments.",
+  "data": {
+    "noteId": "doc_00001",
+    "title": "Kyoto in November",
+    "trail": [
+      {
+        "href": "/folders/fld_travel",
+        "label": "Travel"
+      },
+      {
+        "href": "/folders/fld_japan",
+        "label": "Japan"
+      }
+    ],
+    "outline": [
+      {
+        "kind": "heading",
+        "id": "blk_h1",
+        "text": "Temples",
+        "level": 1,
+        "documentId": null
+      },
+      {
+        "kind": "heading",
+        "id": "blk_h2",
+        "text": "Saiho-ji",
+        "level": 2,
+        "documentId": null
+      },
+      {
+        "kind": "page",
+        "id": "blk_p1",
+        "text": "Where to eat",
+        "level": 0,
+        "documentId": "doc_00002"
+      }
+    ],
+    "current": "blk_h2",
+    "tasks": [
+      {
+        "id": "blk_t1",
+        "text": "Book the moss garden",
+        "checked": false
+      },
+      {
+        "id": "blk_t2",
+        "text": "Buy a rail pass",
+        "checked": true
+      }
+    ],
+    "attachments": [
+      {
+        "id": "blk_i1",
+        "kind": "image",
+        "name": "Saiho-ji in autumn",
+        "uploading": false
+      }
+    ],
+    "links": [
+      {
+        "key": "blk_b1-bm",
+        "blockId": "blk_b1",
+        "label": "Nishiki Market",
+        "href": "https://www.kyoto-nishiki.or.jp/",
+        "internal": false
+      },
+      {
+        "key": "blk_x1-0",
+        "blockId": "blk_x1",
+        "label": "Where to eat",
+        "href": "/d/doc_00002",
+        "internal": true
+      }
+    ],
+    "comments": {
+      "available": true,
+      "loaded": true,
+      "canComment": true,
+      "threads": [
+        {
+          "id": "thr_1",
+          "blockId": "blk_h2",
+          "anchor": "“Saiho-ji”",
+          "author": "Mira",
+          "avatarUrl": null,
+          "text": "Reservations open two months ahead.",
+          "deleted": false,
+          "replies": 1,
+          "status": "open",
+          "resolvedBy": null,
+          "unread": true,
+          "lastActivityAt": 1761600000000,
+          "waiting": null
+        }
+      ]
+    },
+    "pages": [
+      {
+        "id": "doc_00001",
+        "title": "Kyoto in November",
+        "depth": 0
+      },
+      {
+        "id": "doc_00002",
+        "title": "Where to eat",
+        "depth": 1
+      }
+    ],
+    "pagesTruncated": false,
+    "readOnly": false
+  }
+}

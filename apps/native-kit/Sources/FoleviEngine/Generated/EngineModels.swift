@@ -4259,14 +4259,72 @@ public struct ChatCapabilities: Codable, Hashable, Sendable {
     /// Conversations are kept (Settings > Foli AI > History).
     public var history: Bool
     public var agent: Bool
+    /// Revision 16. Why Foli AI can't be used here (null when it can): "off" (turned off in Settings > AI), "plan" (not on the
+    /// person's plan), "workspacePlan" (not on this workspace's plan), "setup" (local mode: no model on this device
+    /// yet). Open: show the message for an unknown one as "plan".
+    public var unavailable: String?
+    /// Revision 16 (R12.7): the AI credits that apply here; null in local mode (no credits) and while unknown. Usage only.
+    public var credits: ChatCredits?
 
-    public init(available: Bool, vision: Bool, webResearch: Bool, attachments: Bool, history: Bool, agent: Bool) {
+    public init(available: Bool, vision: Bool, webResearch: Bool, attachments: Bool, history: Bool, agent: Bool, unavailable: String? = nil, credits: ChatCredits? = nil) {
         self.available = available
         self.vision = vision
         self.webResearch = webResearch
         self.attachments = attachments
         self.history = history
         self.agent = agent
+        self.unavailable = unavailable
+        self.credits = credits
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.available, forKey: .available)
+        try container.encode(self.vision, forKey: .vision)
+        try container.encode(self.webResearch, forKey: .webResearch)
+        try container.encode(self.attachments, forKey: .attachments)
+        try container.encode(self.history, forKey: .history)
+        try container.encode(self.agent, forKey: .agent)
+        try container.encode(self.unavailable, forKey: .unavailable)
+        try container.encode(self.credits, forKey: .credits)
+    }
+}
+
+/// R12.7: the AI credits that apply where the person is working (billing.credits). Never a purchase surface.
+public struct ChatCredits: Codable, Hashable, Sendable {
+    /// Foli AI is on the plan here.
+    public var included: Bool
+    /// Credits left in all (this period's and bought ones).
+    public var available: Int
+    /// Few enough left that the chat says so (the web's AiCreditsNote: under 20% of the month, or a handful).
+    public var low: Bool
+    /// When this period's credits reset (ms), or the trial ends.
+    public var resetsAt: Double?
+    public var trialing: Bool
+    /// A seat in a team workspace (the workspace's credits).
+    public var seat: Bool
+    /// More can be bought here ("Buy more"); false on iOS and in local mode.
+    public var canBuy: Bool
+
+    public init(included: Bool, available: Int, low: Bool, resetsAt: Double? = nil, trialing: Bool, seat: Bool, canBuy: Bool) {
+        self.included = included
+        self.available = available
+        self.low = low
+        self.resetsAt = resetsAt
+        self.trialing = trialing
+        self.seat = seat
+        self.canBuy = canBuy
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.included, forKey: .included)
+        try container.encode(self.available, forKey: .available)
+        try container.encode(self.low, forKey: .low)
+        try container.encode(self.resetsAt, forKey: .resetsAt)
+        try container.encode(self.trialing, forKey: .trialing)
+        try container.encode(self.seat, forKey: .seat)
+        try container.encode(self.canBuy, forKey: .canBuy)
     }
 }
 
@@ -5714,12 +5772,12 @@ public struct GraphNode: Codable, Hashable, Sendable {
     /// "note", or an entity's kind (open).
     public var kind: String
     public var label: String
-    public var x: Int
-    public var y: Int
+    public var x: Double
+    public var y: Double
     /// How many edges it has.
     public var degree: Int
 
-    public init(id: String, kind: String, label: String, x: Int, y: Int, degree: Int) {
+    public init(id: String, kind: String, label: String, x: Double, y: Double, degree: Int) {
         self.id = id
         self.kind = kind
         self.label = label
@@ -5950,5 +6008,378 @@ public struct RecentViewedValue: Codable, Hashable, Sendable {
 
     public init(rows: [RecentViewedRow]) {
         self.rows = rows
+    }
+}
+
+/// Settings on the Mac, native (docs/MAC_REBUILD_PLAN.md section 0): `settings.query` reads one of these, worded as
+/// the web's Settings words it (viewsSettings.ts); "convex" is one of the Convex queries Settings reads
+/// (args { fn, args }, an allowlist).
+public enum SettingsQueryKey: String, Codable, Hashable, Sendable, CaseIterable {
+    case library
+    case localAi
+    case desktop
+    case convex
+}
+
+/// What `settings.run` does: the library's controls, Foli AI's keys on the device, the Mac app's settings, and the Convex changes Settings makes (args { fn, args }, an allowlist).
+public enum SettingsRunKey: String, Codable, Hashable, Sendable, CaseIterable {
+    case librarySyncNow = "library.syncNow"
+    case libraryMove = "library.move"
+    case libraryCloudConnect = "library.cloudConnect"
+    case libraryCloudCancel = "library.cloudCancel"
+    case libraryCloudSignOut = "library.cloudSignOut"
+    case librarySetPassphrase = "library.setPassphrase"
+    case libraryChangePassphrase = "library.changePassphrase"
+    case libraryRemovePassphrase = "library.removePassphrase"
+    case libraryLock = "library.lock"
+    case libraryForget = "library.forget"
+    case localAiSetKey = "localAi.setKey"
+    case localAiRemoveKey = "localAi.removeKey"
+    case localAiTestKey = "localAi.testKey"
+    case localAiSetChoice = "localAi.setChoice"
+    case desktopSet = "desktop.set"
+    case desktopPauseShortcut = "desktop.pauseShortcut"
+    case textLines = "text.lines"
+    case dataImport = "data.import"
+    case takeoutImport = "takeout.import"
+    case convexMutation = "convex.mutation"
+    case convexAction = "convex.action"
+}
+
+public struct SettingsQueryArgs: Codable, Hashable, Sendable {
+    public var key: SettingsQueryKey
+    public var args: [String: JSONValue]?
+
+    public init(key: SettingsQueryKey, args: [String: JSONValue]? = nil) {
+        self.key = key
+        self.args = args
+    }
+}
+
+/// The section's data as the web's section would show it (each key's shape is in viewsSettings.ts).
+public struct SettingsQueryValue: Codable, Hashable, Sendable {
+    public var data: JSONValue
+
+    public init(data: JSONValue) {
+        self.data = data
+    }
+}
+
+public struct SettingsRunArgs: Codable, Hashable, Sendable {
+    public var key: SettingsRunKey
+    public var args: [String: JSONValue]?
+
+    public init(key: SettingsRunKey, args: [String: JSONValue]? = nil) {
+        self.key = key
+        self.args = args
+    }
+}
+
+public struct SettingsRunResult: Codable, Hashable, Sendable {
+    public var data: JSONValue
+
+    public init(data: JSONValue) {
+        self.data = data
+    }
+}
+
+/// One step of where the note lives ("In Travel > Japan"): a folder or a parent page, outermost first.
+public struct NoteToolsCrumb: Codable, Hashable, Sendable {
+    /// The app path it opens ("/folders/<id>", "/d/<id>", "/documents").
+    public var href: String
+    public var label: String
+
+    public init(href: String, label: String) {
+        self.href = href
+        self.label = label
+    }
+}
+
+/// A row of the Table of contents: a heading (level 1 to 3) or a nested page.
+public struct NoteOutlineItem: Codable, Hashable, Sendable {
+    public enum Kind: String, Codable, Hashable, Sendable, CaseIterable {
+        case heading
+        case page
+    }
+
+    public var kind: Kind
+    /// The block's id (what `block.jump` takes).
+    public var id: String
+    /// The heading's text ("" when empty) or the nested page's title.
+    public var text: String
+    /// Headings: 1, 2 or 3; pages: 0.
+    public var level: Int
+    /// Pages: the nested page's note id; headings: null.
+    public var documentId: String?
+
+    public init(kind: Kind, id: String, text: String, level: Int, documentId: String? = nil) {
+        self.kind = kind
+        self.id = id
+        self.text = text
+        self.level = level
+        self.documentId = documentId
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.text, forKey: .text)
+        try container.encode(self.level, forKey: .level)
+        try container.encode(self.documentId, forKey: .documentId)
+    }
+}
+
+/// A to-do in the note.
+public struct NoteToolsTask: Codable, Hashable, Sendable {
+    public var id: String
+    public var text: String
+    public var checked: Bool
+
+    public init(id: String, text: String, checked: Bool) {
+        self.id = id
+        self.text = text
+        self.checked = checked
+    }
+}
+
+/// An image, file or recording in the note.
+public struct NoteToolsAttachment: Codable, Hashable, Sendable {
+    public var id: String
+    /// "image", "file" or "audio".
+    public var kind: String
+    public var name: String
+    /// A file still on its way up.
+    public var uploading: Bool
+
+    public init(id: String, kind: String, name: String, uploading: Bool) {
+        self.id = id
+        self.kind = kind
+        self.name = name
+        self.uploading = uploading
+    }
+}
+
+/// A link in the note: a web address (embed, bookmark, linked text) or a page link.
+public struct NoteToolsLink: Codable, Hashable, Sendable {
+    public var key: String
+    public var blockId: String
+    public var label: String
+    public var href: String
+    /// A page link ("/d/<id>"), opened in the app; otherwise a web address.
+    public var `internal`: Bool
+
+    public init(key: String, blockId: String, label: String, href: String, internal: Bool) {
+        self.key = key
+        self.blockId = blockId
+        self.label = label
+        self.href = href
+        self.internal = `internal`
+    }
+}
+
+/// A comment thread, as the Comments tab lists it.
+public struct NoteToolsThread: Codable, Hashable, Sendable {
+    public enum Status: String, Codable, Hashable, Sendable, CaseIterable {
+        case `open`
+        case resolved
+    }
+
+    public var id: String
+    /// The block it's on (null: on the whole note).
+    public var blockId: String?
+    /// What it's on ("On “Temples to see”", "On the whole note").
+    public var anchor: String
+    public var author: String
+    public var avatarUrl: String?
+    /// The first comment's text (plain).
+    public var text: String
+    public var deleted: Bool
+    public var replies: Int
+    public var status: Status
+    public var resolvedBy: String?
+    public var unread: Bool
+    public var lastActivityAt: Double
+    /// "waiting" or "failed" while it's not on the server yet, else null.
+    public var waiting: String?
+
+    public init(id: String, blockId: String? = nil, anchor: String, author: String, avatarUrl: String? = nil, text: String, deleted: Bool, replies: Int, status: Status, resolvedBy: String? = nil, unread: Bool, lastActivityAt: Double, waiting: String? = nil) {
+        self.id = id
+        self.blockId = blockId
+        self.anchor = anchor
+        self.author = author
+        self.avatarUrl = avatarUrl
+        self.text = text
+        self.deleted = deleted
+        self.replies = replies
+        self.status = status
+        self.resolvedBy = resolvedBy
+        self.unread = unread
+        self.lastActivityAt = lastActivityAt
+        self.waiting = waiting
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.blockId, forKey: .blockId)
+        try container.encode(self.anchor, forKey: .anchor)
+        try container.encode(self.author, forKey: .author)
+        try container.encode(self.avatarUrl, forKey: .avatarUrl)
+        try container.encode(self.text, forKey: .text)
+        try container.encode(self.deleted, forKey: .deleted)
+        try container.encode(self.replies, forKey: .replies)
+        try container.encode(self.status, forKey: .status)
+        try container.encode(self.resolvedBy, forKey: .resolvedBy)
+        try container.encode(self.unread, forKey: .unread)
+        try container.encode(self.lastActivityAt, forKey: .lastActivityAt)
+        try container.encode(self.waiting, forKey: .waiting)
+    }
+}
+
+public struct NoteToolsComments: Codable, Hashable, Sendable {
+    /// False in local mode (no comments: the tab says what they need).
+    public var available: Bool
+    /// The threads have loaded.
+    public var loaded: Bool
+    public var canComment: Bool
+    public var threads: [NoteToolsThread]
+
+    public init(available: Bool, loaded: Bool, canComment: Bool, threads: [NoteToolsThread]) {
+        self.available = available
+        self.loaded = loaded
+        self.canComment = canComment
+        self.threads = threads
+    }
+}
+
+/// A page of the note's page tree (the note, its parent and nested pages), for a note with nested pages.
+public struct NoteToolsPage: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+    public var depth: Int
+
+    public init(id: String, title: String, depth: Int) {
+        self.id = id
+        self.title = title
+        self.depth = depth
+    }
+}
+
+/// `note.tools`: what the open note's sidebar shows, sent when the note opens and whenever it changes.
+public struct NoteToolsEvent: Codable, Hashable, Sendable {
+    public var noteId: String
+    public var title: String
+    public var trail: [NoteToolsCrumb]
+    public var outline: [NoteOutlineItem]
+    /// The heading in view now (the outline marks it), or null.
+    public var current: String?
+    public var tasks: [NoteToolsTask]
+    public var attachments: [NoteToolsAttachment]
+    public var links: [NoteToolsLink]
+    public var comments: NoteToolsComments
+    /// Empty unless the note has nested pages (two or more pages).
+    public var pages: [NoteToolsPage]
+    public var pagesTruncated: Bool
+    public var readOnly: Bool
+
+    public init(noteId: String, title: String, trail: [NoteToolsCrumb], outline: [NoteOutlineItem], current: String? = nil, tasks: [NoteToolsTask], attachments: [NoteToolsAttachment], links: [NoteToolsLink], comments: NoteToolsComments, pages: [NoteToolsPage], pagesTruncated: Bool, readOnly: Bool) {
+        self.noteId = noteId
+        self.title = title
+        self.trail = trail
+        self.outline = outline
+        self.current = current
+        self.tasks = tasks
+        self.attachments = attachments
+        self.links = links
+        self.comments = comments
+        self.pages = pages
+        self.pagesTruncated = pagesTruncated
+        self.readOnly = readOnly
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.noteId, forKey: .noteId)
+        try container.encode(self.title, forKey: .title)
+        try container.encode(self.trail, forKey: .trail)
+        try container.encode(self.outline, forKey: .outline)
+        try container.encode(self.current, forKey: .current)
+        try container.encode(self.tasks, forKey: .tasks)
+        try container.encode(self.attachments, forKey: .attachments)
+        try container.encode(self.links, forKey: .links)
+        try container.encode(self.comments, forKey: .comments)
+        try container.encode(self.pages, forKey: .pages)
+        try container.encode(self.pagesTruncated, forKey: .pagesTruncated)
+        try container.encode(self.readOnly, forKey: .readOnly)
+    }
+}
+
+public struct BlockJumpArgs: Codable, Hashable, Sendable {
+    public var blockId: String
+
+    public init(blockId: String) {
+        self.blockId = blockId
+    }
+}
+
+public struct TaskToggleArgs: Codable, Hashable, Sendable {
+    public var blockId: String
+
+    public init(blockId: String) {
+        self.blockId = blockId
+    }
+}
+
+public struct ThreadOpenArgs: Codable, Hashable, Sendable {
+    public var threadId: String
+
+    public init(threadId: String) {
+        self.threadId = threadId
+    }
+}
+
+public struct FindArgs: Codable, Hashable, Sendable {
+    /// The text to find (case-insensitive); "" clears.
+    public var query: String
+    /// Which match to show (wraps around; negative counts from the end); left out: the first, not scrolled to.
+    public var index: Int?
+
+    public init(query: String, index: Int? = nil) {
+        self.query = query
+        self.index = index
+    }
+}
+
+/// A match with some text on each side (word boundaries, "…" where cut).
+public struct FindMatch: Codable, Hashable, Sendable {
+    public var before: String
+    public var hit: String
+    public var after: String
+
+    public init(before: String, hit: String, after: String) {
+        self.before = before
+        self.hit = hit
+        self.after = after
+    }
+}
+
+public struct FindResult: Codable, Hashable, Sendable {
+    public var query: String
+    /// Matches found (at most 500).
+    public var count: Int
+    /// The shown match (0-based), or -1 with none.
+    public var current: Int
+    /// More than 500 matches.
+    public var truncated: Bool
+    /// The first 100 matches.
+    public var matches: [FindMatch]
+
+    public init(query: String, count: Int, current: Int, truncated: Bool, matches: [FindMatch]) {
+        self.query = query
+        self.count = count
+        self.current = current
+        self.truncated = truncated
+        self.matches = matches
     }
 }

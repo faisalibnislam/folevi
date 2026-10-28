@@ -17,6 +17,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 import { appPath } from "./build.mjs";
@@ -59,8 +60,58 @@ const alive = (pid) => {
   }
 };
 
+// One test app at a time on this Mac, across every checkout and script (screens.mjs, web-styles.mjs --app,
+// gates.mjs, e2e): several Debug apps drawing and being captured at once hung WindowServer and restarted the Mac
+// (2026-10-28). A lock folder in the system's temporary folder holds the owning process; a dead owner's lock is taken.
+const LOCK = join(tmpdir(), "folevi-mac-ui.lock");
+let lockHeld = false;
+
+/** Waits for, then holds, the one-app-at-a-time lock until this process exits. */
+export async function holdUiLock({ timeoutMs = 60 * 60_000, label = process.argv[1] ?? "script" } = {}) {
+  if (lockHeld) return;
+  const until = Date.now() + timeoutMs;
+  let told = false;
+  for (;;) {
+    try {
+      mkdirSync(LOCK);
+      writeFileSync(join(LOCK, "owner.json"), JSON.stringify({ pid: process.pid, label, at: new Date().toISOString() }));
+      lockHeld = true;
+      const release = () => {
+        try {
+          const owner = JSON.parse(readFileSync(join(LOCK, "owner.json"), "utf8"));
+          if (owner.pid === process.pid) rmSync(LOCK, { recursive: true, force: true });
+        } catch {
+          // Already gone.
+        }
+      };
+      process.on("exit", release);
+      for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => { release(); process.exit(130); });
+      return;
+    } catch (e) {
+      if (e.code !== "EEXIST") throw e;
+      let owner = null;
+      try {
+        owner = JSON.parse(readFileSync(join(LOCK, "owner.json"), "utf8"));
+      } catch {
+        // Being written: wait a moment.
+      }
+      if (owner && !alive(owner.pid)) {
+        rmSync(LOCK, { recursive: true, force: true });
+        continue;
+      }
+      if (Date.now() > until) throw new Error(`Another test app run holds ${LOCK}: ${JSON.stringify(owner)}`);
+      if (!told) {
+        console.error(`waiting for the other test app run to finish (${owner?.label ?? "?"}, pid ${owner?.pid ?? "?"})`);
+        told = true;
+      }
+      await sleep(3000);
+    }
+  }
+}
+
 /** Starts the app on its own data folder; resolves with { pid, userData } once its eval hook is up. */
 export async function launch({ dir, offline = false, appearance = null, env = {}, app = appPath(false), timeoutMs = 60000 } = {}) {
+  await holdUiLock();
   const ud = userData(dir);
   const running = appInfo(ud);
   if (running && alive(running.pid)) return { pid: running.pid, userData: ud, reused: true };

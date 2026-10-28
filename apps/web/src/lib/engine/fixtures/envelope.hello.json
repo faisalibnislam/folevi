@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "7685247c"
+        "schemaHash": "f4481565"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 13,
+        "revision": 17,
         "build": "dev",
-        "schemaHash": "7685247c",
+        "schemaHash": "f4481565",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -82,6 +82,7 @@
           "shared.folders",
           "sharedFolder.open",
           "notes.moveCheck",
+          "settings.query",
           "graph",
           "reviews",
           "recent.viewed"
@@ -181,7 +182,8 @@
           "folderSharing.cancelInvite",
           "folderInvite.accept",
           "review.rate",
-          "review.setNewPerDay"
+          "review.setNewPerDay",
+          "settings.run"
         ],
         "editorCommands": [
           "note.prepare",
@@ -207,7 +209,12 @@
           "block.move",
           "block.duplicate",
           "focus.toggle",
-          "note.lock"
+          "note.lock",
+          "block.jump",
+          "task.toggle",
+          "thread.open",
+          "find",
+          "find.clear"
         ],
         "events": [
           "engine.ready",
@@ -220,7 +227,8 @@
           "note.meta",
           "editor.state",
           "editor.panel",
-          "memory.relieved"
+          "memory.relieved",
+          "note.tools"
         ],
         "gate": {
           "gate": null,

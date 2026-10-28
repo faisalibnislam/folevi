@@ -17,12 +17,15 @@ public struct WebButton: View {
     let icon: WebIcon?
     let variant: WebButtonVariant
     let size: WebButtonSize
+    let iconSize: CGFloat
     let action: () -> Void
     @Environment(\.isEnabled) private var enabled
 
-    public init(_ title: String, icon: WebIcon? = nil, variant: WebButtonVariant = .secondary, size: WebButtonSize = .md, action: @escaping () -> Void = {}) {
+    /// `iconSize`: the icon's size where the web gives it one (`<Upload size={14} />`); 15 otherwise.
+    public init(_ title: String, icon: WebIcon? = nil, iconSize: CGFloat = 15, variant: WebButtonVariant = .secondary, size: WebButtonSize = .md, action: @escaping () -> Void = {}) {
         self.title = title
         self.icon = icon
+        self.iconSize = iconSize
         self.variant = variant
         self.size = size
         self.action = action
@@ -31,7 +34,7 @@ public struct WebButton: View {
     public var body: some View {
         let style = WebStyles.named("button.\(variant.rawValue).\(size == .sm && icon != nil ? "sm" : size.rawValue)")
         Button(action: action) {
-            WebButtonLabel(title: title, icon: icon, style: style)
+            WebButtonLabel(title: title, icon: icon, style: style, iconSize: iconSize)
         }
         .buttonStyle(WebPressStyle())
         .opacity(enabled ? 1 : 0.4)
@@ -42,13 +45,14 @@ struct WebButtonLabel: View {
     let title: String
     let icon: WebIcon?
     let style: WebStylePair
+    var iconSize: CGFloat = 15
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let s = style.resolve(scheme)
         HStack(spacing: s.gap) {
             if let icon {
-                WebIconView(icon, size: 15)
+                WebIconView(icon, size: iconSize)
             }
             Text(title).webText(s.text).lineLimit(1).fixedSize()
         }

@@ -44,6 +44,10 @@ final class ScreenModels {
     private var search: SearchModel?
     /// Help, Graph, Reviews and shared folders (Views/More).
     lazy var more = MoreModels(frame: frame, feedback: feedback)
+    /// Every folder as a card (Home's Recent folders, the Folders page).
+    private var allFolders: ValueStore<FolderCardsValue>?
+    private var aiPage: FoliChatModel?
+    private var settings: MacSettingsModel?
 
     init(frame: FrameModel) { self.frame = frame }
 
@@ -102,6 +106,25 @@ final class ScreenModels {
         return m
     }
 
+    /// The Foli AI page's chat (one per window, kept while its tab is open).
+    func aiPageModel() -> FoliChatModel {
+        if let aiPage { return aiPage }
+        let m = FoliChatModel(client: frame.client, feedback: feedback)
+        m.onOpen = { [weak frame] route in
+            guard let frame, let r = FrameNavigation.route(route) else { return }
+            frame.open(r)
+        }
+        aiPage = m
+        return m
+    }
+
+    func settingsModel() -> MacSettingsModel {
+        if let settings { return settings }
+        let m = MacSettingsModel(frame: frame)
+        settings = m
+        return m
+    }
+
     /// Brings a kept screen to what the route asks before it shows (a Tasks view, a calendar day, the words).
     func prepare(_ route: FrameRoute) {
         switch route {
@@ -113,6 +136,13 @@ final class ScreenModels {
     }
 
     /// The note list on screen for a route, when it has been shown.
+    func allFolderCards() -> ValueStore<FolderCardsValue> {
+        if let allFolders { return allFolders }
+        let v = frame.client.watch(.foldersCards(all: true))
+        allFolders = v
+        return v
+    }
+
     func listModel(for route: FrameRoute) -> NotesListModel? {
         switch route {
         case .notes(let v): return lists[NotesListKind(v)]
@@ -136,6 +166,7 @@ final class ScreenModels {
         if !routes.contains(where: { if case .tasks = $0 { return true } else { return false } }) { tasks = nil }
         if !routes.contains(where: { if case .calendar = $0 { return true } else { return false } }) { calendar = nil }
         if !routes.contains(where: { if case .search = $0 { return true } else { return false } }) { search = nil }
+        if !routes.contains(where: { $0.tabKey == "view:ai" }) { aiPage?.closed(); aiPage = nil }
     }
 }
 
@@ -216,7 +247,7 @@ enum FrameNavigation {
             case .movePlaces: frame.host?.frameMoveOrCopy()
             case .invite: frame.host?.frameOpenSettings(section: "members")
             case .places, .notifications: frame.toast("They're at the bottom of the sidebar: the account button and the bell.")
-            case .foliAI: frame.toast("The Foli AI chat comes to the Mac with the next update.")
+            case .foliAI: frame.askAI()
             default: break
             }
         }, prepareNote: { [weak frame] id in
@@ -233,16 +264,21 @@ struct ScreenRoot: View {
     var body: some View {
         Group {
             switch route {
-            case .home: HomeScreen(model: models.homeModel(), showsHeader: true)
-            case .notes(let v): NotesListScreen(model: models.list(NotesListKind(v)))
-            case .folder(let id): NotesListScreen(model: models.list(.folder(id)))
-            case .tag(let id): NotesListScreen(model: models.list(.tag(id)))
+            case .home: WebHomeScreen(frame: model, home: models.homeModel(), list: models.list(NotesListKind(.all)), allFolders: models.allFolderCards())
+            case .notes(let v): WebNoteBrowser(frame: model, model: models.list(NotesListKind(v)))
+            case .folder(let id): WebNoteBrowser(frame: model, model: models.list(.folder(id)))
+            case .tag(let id): WebNoteBrowser(frame: model, model: models.list(.tag(id)))
+            case .web("/folders"): WebFoldersIndex(frame: model, home: models.homeModel(), allFolders: models.allFolderCards())
+            case .web("/tags"): WebTagsIndex(frame: model)
             case .shared: SharedWithMeScreen(model: models.more.sharedModel(), frame: model)
             case .changes: ChangesWebScreen(model: models.more.changesModel(), frame: model)
             case .catchUp: CatchUpScreen(model: model)
             case .search: SearchScreen(model: models.searchModel(), showsCancel: false)
-            case .tasks: TasksScreen(model: models.tasksModel(), showsHeader: true)
-            case .calendar: CalendarScreen(model: models.calendarModel(), showsHeader: true)
+            case .tasks: WebTasksScreen(model: models.tasksModel(), frame: model)
+            case .calendar: WebCalendarScreen(model: models.calendarModel(), frame: model)
+            case .web(let path) where route.tabKey == "view:ai":
+                AiPageScreen(frame: model, model: models.aiPageModel(), conversationId: path.hasPrefix("/ai/") ? String(path.dropFirst(4)).removingPercentEncoding : nil)
+            case .web(let path) where path.hasPrefix("/settings"): SettingsScreen(model: models.settingsModel(), section: MacSettingsSection(path: path))
             case .web(let path): MoreScreen(model: model, more: models.more, path: path)
             case .note: Color.clear
             }

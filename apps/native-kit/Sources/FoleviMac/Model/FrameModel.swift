@@ -109,6 +109,8 @@ public final class FrameModel {
     public private(set) var noteMeta: [String: NoteMeta] = [:]
     public private(set) var editorState: EditorStateEvent?
     public private(set) var editorPanel: EditorPanel?
+    /// What each note's own sidebar shows (`note.tools`, revision 14), by note id.
+    public private(set) var noteTools: [String: NoteToolsEvent] = [:]
     /// The note the Page View shows now (after note.show answered).
     public private(set) var shownNote: String?
     /// Which full-screen web gate the page shows (sign in, onboarding, lock), as `gate.changed` says.
@@ -372,6 +374,8 @@ public final class FrameModel {
             editorState = e
         case .editorPanel(let e):
             editorPanel = e.panel
+        case .noteTools(let e):
+            if noteTools[e.noteId] != e { noteTools[e.noteId] = e }
         case .navigateRequest(let e):
             if e.external, let url = URL(string: e.route) {
                 host?.frameOpenExternal(url)
@@ -572,6 +576,19 @@ public final class FrameModel {
     public var focusMode: Bool { editorState?.focus ?? false }
     public var noteLocked: Bool { editorState?.locked ?? false }
     public var canLockNote: Bool { editorState?.canLock ?? false }
+
+    /// The floating Ask Foli AI chat (⌘J off a note and off the AI page; FoliAI/AiAskPanel.swift).
+    public var askAiOpen = false
+
+    /// ⌘J: on a note its own Foli AI panel (in the note page), on the AI page its box, elsewhere the floating chat.
+    public func askAI() {
+        if route.isNote { return toggleNoteAI() }
+        if route.tabKey == "view:ai" { return NotificationCenter.default.post(name: Self.focusAiComposer, object: nil) }
+        askAiOpen.toggle()
+    }
+
+    /// Asks the AI page's box to take the keys.
+    public static let focusAiComposer = Notification.Name("FoleviAiFocusComposer")
 
     /// The Foli AI toggle on a note: its web panel opens or closes.
     public func toggleNoteAI() {

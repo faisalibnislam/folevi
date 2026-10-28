@@ -7,7 +7,7 @@ import SwiftUI
 import FoleviDesign
 
 /// `<EmptyState>` at page size: an icon in a soft tile, a Spectral title, a muted line and a fainter hint.
-struct WebEmptyState: View {
+struct MoreEmptyState: View {
     let icon: WebIcon?
     let title: String
     var message: String? = nil

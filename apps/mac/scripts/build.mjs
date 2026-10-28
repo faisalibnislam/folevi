@@ -14,6 +14,7 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MAC, generateProject } from "./project.mjs";
+import { guardMemory } from "./memguard.mjs";
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
@@ -28,10 +29,16 @@ export const appPath = (release = false) => join(DERIVED, "Build", "Products", c
 
 export function build({ release = false, test = false, only = null, quiet = false } = {}) {
   const project = generateProject({ quiet: true });
-  const xcodeArgs = ["-project", project, "-scheme", "Folevi", "-configuration", configuration(release), "-destination", "platform=macOS,arch=arm64", "-derivedDataPath", DERIVED];
+  const xcodeArgs = ["-project", project, "-scheme", "Folevi", "-configuration", configuration(release), "-destination", "platform=macOS,arch=arm64", "-derivedDataPath", DERIVED, "-jobs", "4"];
   if (only) xcodeArgs.push(`-only-testing:${only}`);
   xcodeArgs.push(test ? "test" : "build");
-  execFileSync("xcodebuild", xcodeArgs, { cwd: MAC, stdio: quiet ? "pipe" : "inherit", maxBuffer: 256 * 1024 * 1024 });
+  // At most 4 compile jobs and a memory watchdog (memguard.mjs): a runaway compile froze the Mac (2026-10-28).
+  const stopGuard = guardMemory();
+  try {
+    execFileSync("xcodebuild", xcodeArgs, { cwd: MAC, stdio: quiet ? "pipe" : "inherit", maxBuffer: 256 * 1024 * 1024 });
+  } finally {
+    stopGuard();
+  }
   return appPath(release);
 }
 

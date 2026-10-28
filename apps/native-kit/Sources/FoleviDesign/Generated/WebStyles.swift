@@ -3,1808 +3,1884 @@
 import CoreGraphics
 
 public enum WebStyles {
-    public static let all: [String: WebStylePair] = [
-        "ai.answer": WebStylePair(
+    // Built one assignment at a time in small functions, never one big literal: the Swift type checker takes a
+    // dictionary literal as one expression, and at this size it ran out of memory and froze the Mac (2026-10-28).
+    public static let all: [String: WebStylePair] = {
+        var d = [String: WebStylePair](minimumCapacity: 450)
+        add0(&d)
+        add1(&d)
+        add2(&d)
+        add3(&d)
+        add4(&d)
+        add5(&d)
+        add6(&d)
+        add7(&d)
+        add8(&d)
+        add9(&d)
+        add10(&d)
+        add11(&d)
+        add12(&d)
+        add13(&d)
+        add14(&d)
+        add15(&d)
+        add16(&d)
+        add17(&d)
+        return d
+    }()
+
+    private static func add0(_ d: inout [String: WebStylePair]) {
+        d["ai.answer"] = WebStylePair(
             light: WebComputedStyle(x: 560, y: 218, width: 680, height: 235.75, padding: WebInsets(12, 16, 12, 16), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(255, 255, 255, 0.85), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 560, y: 218, width: 680, height: 235.75, padding: WebInsets(12, 16, 12, 16), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(255, 255, 255, 0.12), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.answer.actions": WebStylePair(
+        )
+        d["ai.answer.actions"] = WebStylePair(
             light: WebComputedStyle(x: 576, y: 417.75, width: 648, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(8, 0, -4, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0),
             dark: WebComputedStyle(x: 576, y: 417.75, width: 648, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(8, 0, -4, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0)
-        ),
-        "ai.answer.cite": WebStylePair(
+        )
+        d["ai.answer.cite"] = WebStylePair(
             light: WebComputedStyle(x: 918.78, y: 237.14, width: 12.84, height: 12.84, padding: WebInsets(0, 2.856, 0, 2.856), margin: WebInsets(0, 1, 0, 1), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 9.52, fontWeight: 600, lineHeight: 9.52, letterSpacing: 0, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 918.78, y: 237.14, width: 12.84, height: 12.84, padding: WebInsets(0, 2.856, 0, 2.856), margin: WebInsets(0, 1, 0, 1), radius: 6, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 9.52, fontWeight: 600, lineHeight: 9.52, letterSpacing: 0, gap: 0, backdropBlur: 0)
-        ),
-        "ai.answer.group": WebStylePair(
+        )
+        d["ai.answer.group"] = WebStylePair(
             light: WebComputedStyle(x: 560, y: 218, width: 680, height: 235.75, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 20, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 560, y: 218, width: 680, height: 235.75, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 20, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.answer.md": WebStylePair(
+        )
+        d["ai.answer.md"] = WebStylePair(
             light: WebComputedStyle(x: 576, y: 230, width: 648, height: 110.75, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 22.4, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 576, y: 230, width: 648, height: 110.75, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 22.4, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.answer.p": WebStylePair(
+        )
+        d["ai.answer.p"] = WebStylePair(
             light: WebComputedStyle(x: 576, y: 230, width: 648, height: 27.69, padding: WebInsets(3, 2, 3, 2), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 21.7, letterSpacing: 0, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 576, y: 230, width: 648, height: 27.69, padding: WebInsets(3, 2, 3, 2), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 21.7, letterSpacing: 0, gap: 0, backdropBlur: 0)
-        ),
-        "ai.answer.p2": WebStylePair(
+        )
+        d["ai.answer.p2"] = WebStylePair(
             light: WebComputedStyle(x: 576, y: 257.69, width: 648, height: 27.69, padding: WebInsets(3, 2, 3, 2), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 21.7, letterSpacing: 0, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 576, y: 257.69, width: 648, height: 27.69, padding: WebInsets(3, 2, 3, 2), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 21.7, letterSpacing: 0, gap: 0, backdropBlur: 0)
-        ),
-        "ai.answer.strong": WebStylePair(
+        )
+        d["ai.answer.strong"] = WebStylePair(
             light: WebComputedStyle(x: 578, y: 262.99, width: 37.38, height: 17.08, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 700, lineHeight: 21.7, letterSpacing: 0, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 578, y: 262.99, width: 37.38, height: 17.08, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 700, lineHeight: 21.7, letterSpacing: 0, gap: 0, backdropBlur: 0)
-        ),
-        "ai.aside": WebStylePair(
+        )
+        d["ai.aside"] = WebStylePair(
             light: WebComputedStyle(x: 264, y: 64, width: 264, height: 748, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230, 0.7), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 264, y: 64, width: 264, height: 748, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47, 0.7), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.chat.composer.input": WebStylePair(
+        )
+        d["ai.chat.composer.input"] = WebStylePair(
             light: WebComputedStyle(x: 560, y: 672, width: 680, height: 60, padding: WebInsets(12, 14, 6, 14), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 21, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 560, y: 672, width: 680, height: 60, padding: WebInsets(12, 14, 6, 14), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 21, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.chip": WebStylePair(
+        )
+        d["ai.chip"] = WebStylePair(
             light: WebComputedStyle(x: 562, y: 636, width: 89, height: 28, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0),
             dark: WebComputedStyle(x: 562, y: 636, width: 89, height: 28, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0)
-        ),
-        "ai.chip.add": WebStylePair(
+        )
+        d["ai.chip.add"] = WebStylePair(
             light: WebComputedStyle(x: 657, y: 636, width: 57.61, height: 28, padding: WebInsets(0, 8, 0, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 4, backdropBlur: 0),
             dark: WebComputedStyle(x: 657, y: 636, width: 57.61, height: 28, padding: WebInsets(0, 8, 0, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 4, backdropBlur: 0)
-        ),
-        "ai.chip.icon": WebStylePair(
+        )
+        d["ai.chip.icon"] = WebStylePair(
             light: WebComputedStyle(x: 572, y: 644, width: 12, height: 12, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 572, y: 644, width: 12, height: 12, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.composer": WebStylePair(
+        )
+        d["ai.composer"] = WebStylePair(
             light: WebComputedStyle(x: 560, y: 672, width: 680, height: 100, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1.5, color: RGBA(11, 11, 12, 0.22), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 560, y: 672, width: 680, height: 100, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1.5, color: RGBA(250, 250, 250, 0.22), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.composer.bar": WebStylePair(
+        )
+        d["ai.composer.bar"] = WebStylePair(
             light: WebComputedStyle(x: 560, y: 732, width: 680, height: 40, padding: WebInsets(0, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 560, y: 732, width: 680, height: 40, padding: WebInsets(0, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "ai.composer.input": WebStylePair(
+        )
+        d["ai.composer.input"] = WebStylePair(
             light: WebComputedStyle(x: 560, y: 672, width: 680, height: 60, padding: WebInsets(12, 14, 6, 14), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 21, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 560, y: 672, width: 680, height: 60, padding: WebInsets(12, 14, 6, 14), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 21, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.composer.send": WebStylePair(
+        )
+        d["ai.composer.send"] = WebStylePair(
             light: WebComputedStyle(x: 1200, y: 732, width: 36, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(11, 11, 12), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 0.3, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1200, y: 732, width: 36, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(250, 250, 250), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 0.3, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.dock": WebStylePair(
+        )
+        d["ai.dock"] = WebStylePair(
             light: WebComputedStyle(x: 528, y: 628, width: 744, height: 184, padding: WebInsets(8, 32, 16, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 528, y: 628, width: 744, height: 184, padding: WebInsets(8, 32, 16, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.dock.chips": WebStylePair(
+        )
+        d["ai.dock.chips"] = WebStylePair(
             light: WebComputedStyle(x: 560, y: 636, width: 680, height: 28, padding: WebInsets(0, 2, 0, 2), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 560, y: 636, width: 680, height: 28, padding: WebInsets(0, 2, 0, 2), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "ai.dock.inner": WebStylePair(
+        )
+        d["ai.dock.inner"] = WebStylePair(
             light: WebComputedStyle(x: 560, y: 636, width: 680, height: 160, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 560, y: 636, width: 680, height: 160, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.fab": WebStylePair(
+        )
+        d["ai.fab"] = WebStylePair(
             light: WebComputedStyle(x: 1114.13, y: 736, width: 129.88, height: 48, padding: WebInsets(0, 20, 0, 16), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(0, 0, 0), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 8, blur: 24, spread: 0, color: RGBA(0, 0, 0, 0.1)), ShadowLayer(x: 0, y: 2, blur: 6, spread: 0, color: RGBA(0, 0, 0, 0.1)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.12), inset: true)], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 14, fontWeight: 500, lineHeight: 20, letterSpacing: -0.096, gap: 10, backdropBlur: 0),
             dark: WebComputedStyle(x: 1114.13, y: 736, width: 129.88, height: 48, padding: WebInsets(0, 20, 0, 16), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(0, 0, 0), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 8, blur: 24, spread: 0, color: RGBA(0, 0, 0, 0.1)), ShadowLayer(x: 0, y: 2, blur: 6, spread: 0, color: RGBA(0, 0, 0, 0.1)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.12), inset: true)], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 14, fontWeight: 500, lineHeight: 20, letterSpacing: -0.096, gap: 10, backdropBlur: 0)
-        ),
-        "ai.fab.icon": WebStylePair(
+        )
+        d["ai.fab.icon"] = WebStylePair(
             light: WebComputedStyle(x: 1130.13, y: 751, width: 18, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 14, fontWeight: 500, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1130.13, y: 751, width: 18, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 14, fontWeight: 500, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.fab.label": WebStylePair(
+        )
+        d["ai.fab.label"] = WebStylePair(
             light: WebComputedStyle(x: 1158.13, y: 750, width: 65.88, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 14, fontWeight: 500, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1158.13, y: 750, width: 65.88, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 14, fontWeight: 500, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.footnote": WebStylePair(
+        )
+        d["ai.footnote"] = WebStylePair(
             light: WebComputedStyle(x: 560, y: 780, width: 680, height: 16, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 560, y: 780, width: 680, height: 16, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.footnote.link": WebStylePair(
+        )
+        d["ai.footnote.link"] = WebStylePair(
             light: WebComputedStyle(x: 706.78, y: 780.68, width: 45.84, height: 14.64, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 706.78, y: 780.68, width: 45.84, height: 14.64, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.header": WebStylePair(
+        )
+    }
+
+    private static func add1(_ d: inout [String: WebStylePair]) {
+        d["ai.header"] = WebStylePair(
             light: WebComputedStyle(x: 528, y: 64, width: 744, height: 44, padding: WebInsets(0, 32, 0, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 528, y: 64, width: 744, height: 44, padding: WebInsets(0, 32, 0, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "ai.header.more": WebStylePair(
+        )
+        d["ai.header.more"] = WebStylePair(
             light: WebComputedStyle(x: 1208, y: 70, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1208, y: 70, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.header.title": WebStylePair(
+        )
+        d["ai.header.title"] = WebStylePair(
             light: WebComputedStyle(x: 560, y: 76, width: 680, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 560, y: 76, width: 680, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.intro": WebStylePair(
+        )
+        d["ai.intro"] = WebStylePair(
             light: WebComputedStyle(x: 564, y: 132, width: 672, height: 401.73, padding: WebInsets(65.6, 0, 0, 0), margin: WebInsets(0, 4, 20, 4), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 564, y: 132, width: 672, height: 401.73, padding: WebInsets(65.6, 0, 0, 0), margin: WebInsets(0, 4, 20, 4), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.intro.icon": WebStylePair(
+        )
+        d["ai.intro.icon"] = WebStylePair(
             light: WebComputedStyle(x: 564, y: 197.59, width: 28, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 564, y: 197.59, width: 28, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.intro.item": WebStylePair(
+        )
+        d["ai.intro.item"] = WebStylePair(
             light: WebComputedStyle(x: 580, y: 322.17, width: 656, height: 18.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 4, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 580, y: 322.17, width: 656, height: 18.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 4, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.intro.item2": WebStylePair(
+        )
+        d["ai.intro.item2"] = WebStylePair(
             light: WebComputedStyle(x: 580, y: 345.06, width: 656, height: 37.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 4, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 580, y: 345.06, width: 656, height: 37.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 4, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.intro.item3": WebStylePair(
+        )
+        d["ai.intro.item3"] = WebStylePair(
             light: WebComputedStyle(x: 580, y: 386.84, width: 656, height: 18.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 580, y: 386.84, width: 656, height: 18.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.intro.lead": WebStylePair(
+        )
+        d["ai.intro.lead"] = WebStylePair(
             light: WebComputedStyle(x: 564, y: 276.39, width: 672, height: 37.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(6, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 564, y: 276.39, width: 672, height: 37.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(6, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.intro.link": WebStylePair(
+        )
+        d["ai.intro.link"] = WebStylePair(
             light: WebComputedStyle(x: 713.29, y: 387.75, width: 67.84, height: 17.08, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 713.29, y: 387.75, width: 67.84, height: 17.08, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.intro.list": WebStylePair(
+        )
+        d["ai.intro.list"] = WebStylePair(
             light: WebComputedStyle(x: 564, y: 322.17, width: 672, height: 83.56, padding: WebInsets(0, 0, 0, 16), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 564, y: 322.17, width: 672, height: 83.56, padding: WebInsets(0, 0, 0, 16), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.intro.suggestion": WebStylePair(
+        )
+        d["ai.intro.suggestion"] = WebStylePair(
             light: WebComputedStyle(x: 564, y: 457.73, width: 220.22, height: 34, padding: WebInsets(8, 14, 8, 14), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 564, y: 457.73, width: 220.22, height: 34, padding: WebInsets(8, 14, 8, 14), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.intro.suggestion2": WebStylePair(
+        )
+        d["ai.intro.suggestion2"] = WebStylePair(
             light: WebComputedStyle(x: 564, y: 499.73, width: 274, height: 34, padding: WebInsets(8, 14, 8, 14), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 564, y: 499.73, width: 274, height: 34, padding: WebInsets(8, 14, 8, 14), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.intro.suggestions": WebStylePair(
+        )
+        d["ai.intro.suggestions"] = WebStylePair(
             light: WebComputedStyle(x: 564, y: 457.73, width: 672, height: 76, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 564, y: 457.73, width: 672, height: 76, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "ai.intro.title": WebStylePair(
+        )
+        d["ai.intro.title"] = WebStylePair(
             light: WebComputedStyle(x: 564, y: 241.59, width: 672, height: 28.8, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(16, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 24, fontWeight: 600, lineHeight: 28.8, letterSpacing: -0.288, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 564, y: 241.59, width: 672, height: 28.8, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(16, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 24, fontWeight: 600, lineHeight: 28.8, letterSpacing: -0.288, gap: 0, backdropBlur: 0)
-        ),
-        "ai.intro.try": WebStylePair(
+        )
+        d["ai.intro.try"] = WebStylePair(
             light: WebComputedStyle(x: 564, y: 429.73, width: 672, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 10, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 564, y: 429.73, width: 672, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 10, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "ai.intro.try.icon": WebStylePair(
+        )
+        d["ai.intro.try.icon"] = WebStylePair(
             light: WebComputedStyle(x: 564, y: 432.23, width: 13, height: 13, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 564, y: 432.23, width: 13, height: 13, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.list.new": WebStylePair(
+        )
+        d["ai.list.new"] = WebStylePair(
             light: WebComputedStyle(x: 274, y: 76, width: 243, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 8, 0), radius: 8, background: RGBA(255, 255, 255, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20, letterSpacing: -0.065, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 274, y: 76, width: 243, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 8, 0), radius: 8, background: RGBA(41, 41, 44, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20, letterSpacing: -0.065, gap: 8, backdropBlur: 0)
-        ),
-        "ai.list.new.icon": WebStylePair(
+        )
+        d["ai.list.new.icon"] = WebStylePair(
             light: WebComputedStyle(x: 356, y: 82.5, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20, letterSpacing: -0.065, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 356, y: 82.5, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20, letterSpacing: -0.065, gap: 0, backdropBlur: 0)
-        ),
-        "ai.list.scroll": WebStylePair(
+        )
+        d["ai.list.scroll"] = WebStylePair(
             light: WebComputedStyle(x: 264, y: 156, width: 263, height: 656, padding: WebInsets(0, 10, 16, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 264, y: 156, width: 263, height: 656, padding: WebInsets(0, 10, 16, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.list.search": WebStylePair(
+        )
+        d["ai.list.search"] = WebStylePair(
             light: WebComputedStyle(x: 274, y: 112, width: 243, height: 36, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 274, y: 112, width: 243, height: 36, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "ai.list.search.icon": WebStylePair(
+        )
+        d["ai.list.search.icon"] = WebStylePair(
             light: WebComputedStyle(x: 284, y: 123, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 284, y: 123, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.list.search.input": WebStylePair(
+        )
+        d["ai.list.search.input"] = WebStylePair(
             light: WebComputedStyle(x: 306, y: 121, width: 201, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 306, y: 121, width: 201, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.list.section": WebStylePair(
+        )
+        d["ai.list.section"] = WebStylePair(
             light: WebComputedStyle(x: 274, y: 156, width: 243, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 274, y: 156, width: 243, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.list.top": WebStylePair(
+        )
+        d["ai.list.top"] = WebStylePair(
             light: WebComputedStyle(x: 264, y: 64, width: 263, height: 92, padding: WebInsets(12, 10, 8, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 264, y: 64, width: 263, height: 92, padding: WebInsets(12, 10, 8, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel": WebStylePair(
+        )
+    }
+
+    private static func add2(_ d: inout [String: WebStylePair]) {
+        d["ai.panel"] = WebStylePair(
             light: WebComputedStyle(x: 824, y: 76, width: 420, height: 640, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 18, background: RGBA(255, 255, 255, 0.82), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.12), inset: true), ShadowLayer(x: 0, y: 10, blur: 30, spread: 0, color: RGBA(0, 0, 0, 0.16)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24),
             dark: WebComputedStyle(x: 824, y: 76, width: 420, height: 640, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 18, background: RGBA(40, 40, 44, 0.86), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(255, 255, 255, 0.1), inset: true), ShadowLayer(x: 0, y: 10, blur: 30, spread: 0, color: RGBA(0, 0, 0, 0.5)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.6))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24)
-        ),
-        "ai.panel.button": WebStylePair(
+        )
+        d["ai.panel.button"] = WebStylePair(
             light: WebComputedStyle(x: 1128, y: 88, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1128, y: 88, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel.composer": WebStylePair(
+        )
+        d["ai.panel.composer"] = WebStylePair(
             light: WebComputedStyle(x: 836, y: 580, width: 396, height: 100, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1.5, color: RGBA(11, 11, 12, 0.22), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 836, y: 580, width: 396, height: 100, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1.5, color: RGBA(250, 250, 250, 0.22), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel.composer.input": WebStylePair(
+        )
+        d["ai.panel.composer.input"] = WebStylePair(
             light: WebComputedStyle(x: 836, y: 580, width: 396, height: 60, padding: WebInsets(12, 14, 6, 14), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 21, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 836, y: 580, width: 396, height: 60, padding: WebInsets(12, 14, 6, 14), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 21, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel.dock": WebStylePair(
+        )
+        d["ai.panel.dock"] = WebStylePair(
             light: WebComputedStyle(x: 824, y: 533, width: 420, height: 183, padding: WebInsets(10, 12, 12, 12), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 1, borderColor: RGBA(226, 226, 230, 0.7), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 824, y: 533, width: 420, height: 183, padding: WebInsets(10, 12, 12, 12), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 1, borderColor: RGBA(44, 44, 47, 0.7), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel.footnote": WebStylePair(
+        )
+        d["ai.panel.footnote"] = WebStylePair(
             light: WebComputedStyle(x: 836, y: 688, width: 396, height: 16, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 836, y: 688, width: 396, height: 16, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel.header": WebStylePair(
+        )
+        d["ai.panel.header"] = WebStylePair(
             light: WebComputedStyle(x: 824, y: 76, width: 420, height: 57, padding: WebInsets(12, 12, 12, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230, 0.7), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 4, backdropBlur: 0),
             dark: WebComputedStyle(x: 824, y: 76, width: 420, height: 57, padding: WebInsets(12, 12, 12, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47, 0.7), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 4, backdropBlur: 0)
-        ),
-        "ai.panel.intro.icon": WebStylePair(
+        )
+        d["ai.panel.intro.icon"] = WebStylePair(
             light: WebComputedStyle(x: 840, y: 151, width: 16, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 840, y: 151, width: 16, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel.intro.item": WebStylePair(
+        )
+        d["ai.panel.intro.item"] = WebStylePair(
             light: WebComputedStyle(x: 856, y: 239.67, width: 372, height: 37.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 4, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 856, y: 239.67, width: 372, height: 37.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 4, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel.intro.lead": WebStylePair(
+        )
+        d["ai.panel.intro.lead"] = WebStylePair(
             light: WebComputedStyle(x: 840, y: 175, width: 388, height: 56.67, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(6, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 840, y: 175, width: 388, height: 56.67, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(6, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel.intro.list": WebStylePair(
+        )
+        d["ai.panel.intro.list"] = WebStylePair(
             light: WebComputedStyle(x: 840, y: 239.67, width: 388, height: 121.34, padding: WebInsets(0, 0, 0, 16), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 840, y: 239.67, width: 388, height: 121.34, padding: WebInsets(0, 0, 0, 16), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel.intro.title": WebStylePair(
+        )
+        d["ai.panel.intro.title"] = WebStylePair(
             light: WebComputedStyle(x: 840, y: 149, width: 388, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 840, y: 149, width: 388, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "ai.panel.mark": WebStylePair(
+        )
+        d["ai.panel.mark"] = WebStylePair(
             light: WebComputedStyle(x: 840, y: 94, width: 20, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 6, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 840, y: 94, width: 20, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 6, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel.suggestion": WebStylePair(
+        )
+        d["ai.panel.suggestion"] = WebStylePair(
             light: WebComputedStyle(x: 840, y: 409.02, width: 216.22, height: 30, padding: WebInsets(6, 12, 6, 12), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 840, y: 409.02, width: 216.22, height: 30, padding: WebInsets(6, 12, 6, 12), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel.suggestions": WebStylePair(
+        )
+        d["ai.panel.suggestions"] = WebStylePair(
             light: WebComputedStyle(x: 840, y: 409.02, width: 388, height: 144, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 840, y: 409.02, width: 388, height: 144, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "ai.panel.thread": WebStylePair(
+        )
+        d["ai.panel.thread"] = WebStylePair(
             light: WebComputedStyle(x: 824, y: 133, width: 420, height: 400, padding: WebInsets(16, 16, 16, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 824, y: 133, width: 420, height: 400, padding: WebInsets(16, 16, 16, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel.title": WebStylePair(
+        )
+        d["ai.panel.title"] = WebStylePair(
             light: WebComputedStyle(x: 870, y: 94, width: 254, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 870, y: 94, width: 254, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.panel.try": WebStylePair(
+        )
+        d["ai.panel.try"] = WebStylePair(
             light: WebComputedStyle(x: 840, y: 381.02, width: 388, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(20, 0, 10, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 840, y: 381.02, width: 388, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(20, 0, 10, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "ai.row.active": WebStylePair(
+        )
+        d["ai.row.active"] = WebStylePair(
             light: WebComputedStyle(x: 274, y: 156, width: 243, height: 36, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.85), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 274, y: 156, width: 243, height: 36, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.12), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4))], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "ai.row.age": WebStylePair(
+        )
+        d["ai.row.age"] = WebStylePair(
             light: WebComputedStyle(x: 452.02, y: 166, width: 54.98, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 452.02, y: 166, width: 54.98, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.row.more": WebStylePair(
+        )
+        d["ai.row.more"] = WebStylePair(
             light: WebComputedStyle(x: 485, y: 160, width: 28, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 485, y: 160, width: 28, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.row.title": WebStylePair(
+        )
+        d["ai.row.title"] = WebStylePair(
             light: WebComputedStyle(x: 284, y: 164, width: 160.02, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 284, y: 164, width: 160.02, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.rowbtn": WebStylePair(
+        )
+        d["ai.rowbtn"] = WebStylePair(
             light: WebComputedStyle(x: 576, y: 417.75, width: 56.86, height: 28, padding: WebInsets(0, 6, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 4, backdropBlur: 0),
             dark: WebComputedStyle(x: 576, y: 417.75, width: 56.86, height: 28, padding: WebInsets(0, 6, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 4, backdropBlur: 0)
-        ),
-        "ai.rowbtn.icon": WebStylePair(
+        )
+        d["ai.rowbtn.icon"] = WebStylePair(
             light: WebComputedStyle(x: 582, y: 425.75, width: 12, height: 12, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 582, y: 425.75, width: 12, height: 12, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.section": WebStylePair(
+        )
+        d["ai.section"] = WebStylePair(
             light: WebComputedStyle(x: 528, y: 64, width: 744, height: 748, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 528, y: 64, width: 744, height: 748, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.source": WebStylePair(
+        )
+    }
+
+    private static func add3(_ d: inout [String: WebStylePair]) {
+        d["ai.source"] = WebStylePair(
             light: WebComputedStyle(x: 576, y: 383.75, width: 160.92, height: 26, padding: WebInsets(4, 10, 4, 10), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0),
             dark: WebComputedStyle(x: 576, y: 383.75, width: 160.92, height: 26, padding: WebInsets(4, 10, 4, 10), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0)
-        ),
-        "ai.source.icon": WebStylePair(
+        )
+        d["ai.source.icon"] = WebStylePair(
             light: WebComputedStyle(x: 596.94, y: 390.75, width: 12, height: 12, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 596.94, y: 390.75, width: 12, height: 12, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.source.n": WebStylePair(
+        )
+        d["ai.source.n"] = WebStylePair(
             light: WebComputedStyle(x: 586, y: 387.75, width: 4.94, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 586, y: 387.75, width: 4.94, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.sources": WebStylePair(
+        )
+        d["ai.sources"] = WebStylePair(
             light: WebComputedStyle(x: 576, y: 352.75, width: 648, height: 57, padding: WebInsets(10, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 1, borderColor: RGBA(226, 226, 230, 0.7), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 576, y: 352.75, width: 648, height: 57, padding: WebInsets(10, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 1, borderColor: RGBA(44, 44, 47, 0.7), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.sources.list": WebStylePair(
+        )
+        d["ai.sources.list"] = WebStylePair(
             light: WebComputedStyle(x: 576, y: 383.75, width: 648, height: 26, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 6, backdropBlur: 0),
             dark: WebComputedStyle(x: 576, y: 383.75, width: 648, height: 26, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 6, backdropBlur: 0)
-        ),
-        "ai.sources.title": WebStylePair(
+        )
+        d["ai.sources.title"] = WebStylePair(
             light: WebComputedStyle(x: 576, y: 363.75, width: 648, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 6, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 11, fontWeight: 600, lineHeight: 14, letterSpacing: 0.66, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 576, y: 363.75, width: 648, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 6, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 11, fontWeight: 600, lineHeight: 14, letterSpacing: 0.66, gap: 0, backdropBlur: 0)
-        ),
-        "ai.thread": WebStylePair(
+        )
+        d["ai.thread"] = WebStylePair(
             light: WebComputedStyle(x: 528, y: 108, width: 744, height: 520, padding: WebInsets(24, 32, 24, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 528, y: 108, width: 744, height: 520, padding: WebInsets(24, 32, 24, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.thread.content": WebStylePair(
+        )
+        d["ai.thread.content"] = WebStylePair(
             light: WebComputedStyle(x: 560, y: 132, width: 680, height: 401.73, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 560, y: 132, width: 680, height: 401.73, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.thread.list": WebStylePair(
+        )
+        d["ai.thread.list"] = WebStylePair(
             light: WebComputedStyle(x: 560, y: 132, width: 680, height: 321.75, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 560, y: 132, width: 680, height: 321.75, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.user": WebStylePair(
+        )
+        d["ai.user"] = WebStylePair(
             light: WebComputedStyle(x: 560, y: 132, width: 680, height: 66, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 20, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0),
             dark: WebComputedStyle(x: 560, y: 132, width: 680, height: 66, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 20, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0)
-        ),
-        "ai.user.bubble": WebStylePair(
+        )
+        d["ai.user.bubble"] = WebStylePair(
             light: WebComputedStyle(x: 1061.97, y: 132, width: 178.03, height: 36, padding: WebInsets(8, 14, 8, 14), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(11, 11, 12), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1061.97, y: 132, width: 178.03, height: 36, padding: WebInsets(8, 14, 8, 14), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(250, 250, 250), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "ai.user.edit": WebStylePair(
+        )
+        d["ai.user.edit"] = WebStylePair(
             light: WebComputedStyle(x: 1190.58, y: 170, width: 49.42, height: 28, padding: WebInsets(0, 6, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 0, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 4, backdropBlur: 0),
             dark: WebComputedStyle(x: 1190.58, y: 170, width: 49.42, height: 28, padding: WebInsets(0, 6, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 0, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 4, backdropBlur: 0)
-        ),
-        "button.danger.md": WebStylePair(
+        )
+        d["button.danger.md"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 368, width: 106.72, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: WebGradient(angle: 180, stops: [RGBA(183, 62, 53), RGBA(179, 52, 44)]), shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.067), inset: true), ShadowLayer(x: 0, y: -1, blur: 0, spread: 0, color: RGBA(29, 24, 20, 0.075), inset: true), ShadowLayer(x: 0, y: 0, blur: 1, spread: 0, color: RGBA(29, 24, 20, 0.055)), ShadowLayer(x: 0, y: 3, blur: 7, spread: -3, color: RGBA(74, 47, 44, 0.165))], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 368, width: 106.72, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: WebGradient(angle: 180, stops: [RGBA(255, 143, 133), RGBA(255, 138, 128)]), shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.133), inset: true), ShadowLayer(x: 0, y: -1, blur: 0, spread: 0, color: RGBA(42, 23, 20, 0.075), inset: true), ShadowLayer(x: 0, y: 3, blur: 7, spread: -3, color: RGBA(0, 0, 0, 0.21))], borderWidth: 0, borderColor: RGBA(42, 23, 20), color: RGBA(42, 23, 20), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "button.danger.sm": WebStylePair(
+        )
+        d["button.danger.sm"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 412, width: 103.11, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: WebGradient(angle: 180, stops: [RGBA(183, 62, 53), RGBA(179, 52, 44)]), shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.067), inset: true), ShadowLayer(x: 0, y: -1, blur: 0, spread: 0, color: RGBA(29, 24, 20, 0.075), inset: true), ShadowLayer(x: 0, y: 0, blur: 1, spread: 0, color: RGBA(29, 24, 20, 0.055)), ShadowLayer(x: 0, y: 3, blur: 7, spread: -3, color: RGBA(74, 47, 44, 0.165))], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 412, width: 103.11, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: WebGradient(angle: 180, stops: [RGBA(255, 143, 133), RGBA(255, 138, 128)]), shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.133), inset: true), ShadowLayer(x: 0, y: -1, blur: 0, spread: 0, color: RGBA(42, 23, 20, 0.075), inset: true), ShadowLayer(x: 0, y: 3, blur: 7, spread: -3, color: RGBA(0, 0, 0, 0.21))], borderWidth: 0, borderColor: RGBA(42, 23, 20), color: RGBA(42, 23, 20), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "button.danger.sm.icon": WebStylePair(
+        )
+        d["button.danger.sm.icon"] = WebStylePair(
             light: WebComputedStyle(x: 28, y: 418.5, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 28, y: 418.5, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(42, 23, 20), color: RGBA(42, 23, 20), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0)
-        ),
-        "button.ghost.md": WebStylePair(
+        )
+        d["button.ghost.md"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 192, width: 106.72, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 192, width: 106.72, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "button.ghost.sm": WebStylePair(
+        )
+        d["button.ghost.sm"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 236, width: 103.11, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 236, width: 103.11, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "button.ghost.sm.icon": WebStylePair(
+        )
+        d["button.ghost.sm.icon"] = WebStylePair(
             light: WebComputedStyle(x: 28, y: 242.5, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 28, y: 242.5, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0)
-        ),
-        "button.primary.md": WebStylePair(
+        )
+        d["button.primary.md"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 16, width: 106.72, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(31, 31, 34), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 16, width: 106.72, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(242, 242, 243), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "button.primary.sm": WebStylePair(
+        )
+        d["button.primary.sm"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 60, width: 103.11, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(31, 31, 34), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 60, width: 103.11, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(242, 242, 243), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "button.primary.sm.icon": WebStylePair(
+        )
+        d["button.primary.sm.icon"] = WebStylePair(
             light: WebComputedStyle(x: 28, y: 66.5, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 28, y: 66.5, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0)
-        ),
-        "button.quiet.icon": WebStylePair(
+        )
+        d["button.quiet.icon"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 456, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 456, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "button.quiet.icon.pressed": WebStylePair(
+        )
+        d["button.quiet.icon.pressed"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 504, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 504, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.07), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "button.quiet.md": WebStylePair(
+        )
+        d["button.quiet.md"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 280, width: 106.72, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 280, width: 106.72, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "button.quiet.sm": WebStylePair(
+        )
+        d["button.quiet.sm"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 324, width: 103.11, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 324, width: 103.11, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "button.quiet.sm.icon": WebStylePair(
+        )
+    }
+
+    private static func add4(_ d: inout [String: WebStylePair]) {
+        d["button.quiet.sm.icon"] = WebStylePair(
             light: WebComputedStyle(x: 28, y: 330.5, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 28, y: 330.5, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0)
-        ),
-        "button.secondary.md": WebStylePair(
+        )
+        d["button.secondary.md"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 104, width: 106.72, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 104, width: 106.72, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(41, 41, 44, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "button.secondary.sm": WebStylePair(
+        )
+        d["button.secondary.sm"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 148, width: 103.11, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 148, width: 103.11, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(41, 41, 44, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "button.secondary.sm.icon": WebStylePair(
+        )
+        d["button.secondary.sm.icon"] = WebStylePair(
             light: WebComputedStyle(x: 28, y: 154.5, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 28, y: 154.5, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0)
-        ),
-        "card": WebStylePair(
+        )
+        d["card"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 1000, width: 256, height: 76, padding: WebInsets(16, 16, 16, 16), margin: WebInsets(0, 0, 0, 0), radius: 18, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.9), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.05)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.18))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 1000, width: 256, height: 76, padding: WebInsets(16, 16, 16, 16), margin: WebInsets(0, 0, 0, 0), radius: 18, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.05), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.07)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.7))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "card.subtitle": WebStylePair(
+        )
+        d["card.subtitle"] = WebStylePair(
             light: WebComputedStyle(x: 32, y: 1042, width: 224, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 32, y: 1042, width: 224, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "card.title": WebStylePair(
+        )
+        d["card.title"] = WebStylePair(
             light: WebComputedStyle(x: 32, y: 1016, width: 224, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 17, fontWeight: 600, lineHeight: 22, letterSpacing: -0.204, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 32, y: 1016, width: 224, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 17, fontWeight: 600, lineHeight: 22, letterSpacing: -0.204, gap: 0, backdropBlur: 0)
-        ),
-        "chip": WebStylePair(
+        )
+        d["chip"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 1092, width: 56.42, height: 25.59, padding: WebInsets(0, 10.4, 0, 10.4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 4.8, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 1092, width: 56.42, height: 25.59, padding: WebInsets(0, 10.4, 0, 10.4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.07), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 4.8, backdropBlur: 0)
-        ),
-        "dialog.body": WebStylePair(
+        )
+        d["dialog.body"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 864, width: 440, height: 64, padding: WebInsets(16, 24, 16, 24), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 864, width: 440, height: 64, padding: WebInsets(16, 24, 16, 24), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "dialog.description": WebStylePair(
+        )
+        d["dialog.description"] = WebStylePair(
             light: WebComputedStyle(x: 40, y: 838, width: 392, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 40, y: 838, width: 392, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "dialog.footer": WebStylePair(
+        )
+        d["dialog.footer"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 928, width: 440, height: 56, padding: WebInsets(14, 24, 14, 24), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0.031), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(226, 226, 230), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 928, width: 440, height: 56, padding: WebInsets(14, 24, 14, 24), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(255, 255, 255, 0.042), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(44, 44, 47), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "dialog.header": WebStylePair(
+        )
+        d["dialog.header"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 787, width: 440, height: 77, padding: WebInsets(20, 24, 8, 24), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 787, width: 440, height: 77, padding: WebInsets(20, 24, 8, 24), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
-        ),
-        "dialog.panel": WebStylePair(
+        )
+        d["dialog.panel"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 787, width: 440, height: 197, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(255, 255, 255, 0.82), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.12), inset: true), ShadowLayer(x: 0, y: 10, blur: 30, spread: 0, color: RGBA(0, 0, 0, 0.16)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24),
             dark: WebComputedStyle(x: 16, y: 787, width: 440, height: 197, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(40, 40, 44, 0.86), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(255, 255, 255, 0.1), inset: true), ShadowLayer(x: 0, y: 10, blur: 30, spread: 0, color: RGBA(0, 0, 0, 0.5)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.6))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24)
-        ),
-        "dialog.title": WebStylePair(
+        )
+        d["dialog.title"] = WebStylePair(
             light: WebComputedStyle(x: 40, y: 807, width: 392, height: 27, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 20, fontWeight: 600, lineHeight: 27, letterSpacing: -0.24, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 40, y: 807, width: 392, height: 27, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 20, fontWeight: 600, lineHeight: 27, letterSpacing: -0.24, gap: 0, backdropBlur: 0)
-        ),
-        "frame.canvas": WebStylePair(
+        )
+        d["frame.canvas"] = WebStylePair(
             light: WebComputedStyle(x: 0, y: 0, width: 1280, height: 820, padding: WebInsets(8, 8, 8, 8), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 0, y: 0, width: 1280, height: 820, padding: WebInsets(8, 8, 8, 8), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "frame.content": WebStylePair(
+        )
+        d["frame.content"] = WebStylePair(
             light: WebComputedStyle(x: 264, y: 8, width: 1008, height: 804, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 18, background: RGBA(255, 255, 255, 0.9), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.04)), ShadowLayer(x: 0, y: 12, blur: 32, spread: -12, color: RGBA(20, 20, 40, 0.14))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 30),
             dark: WebComputedStyle(x: 264, y: 8, width: 1008, height: 804, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 18, background: RGBA(24, 24, 27, 0.88), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.3)), ShadowLayer(x: 0, y: 16, blur: 40, spread: -14, color: RGBA(0, 0, 0, 0.6))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 30)
-        ),
-        "frame.html": WebStylePair(
+        )
+        d["frame.html"] = WebStylePair(
             light: WebComputedStyle(x: 0, y: 0, width: 1280, height: 820, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24, letterSpacing: 0, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 0, y: 0, width: 1280, height: 820, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24, letterSpacing: 0, gap: 0, backdropBlur: 0)
-        ),
-        "frame.main": WebStylePair(
+        )
+        d["frame.main"] = WebStylePair(
             light: WebComputedStyle(x: 264, y: 8, width: 1008, height: 804, padding: WebInsets(56, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 264, y: 8, width: 1008, height: 804, padding: WebInsets(56, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar": WebStylePair(
+        )
+        d["frame.sidebar"] = WebStylePair(
             light: WebComputedStyle(x: 8, y: 8, width: 248, height: 804, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 8, y: 8, width: 248, height: 804, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.account": WebStylePair(
+        )
+        d["frame.sidebar.account"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 756, width: 228, height: 48, padding: WebInsets(0, 8, 0, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 10, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 756, width: 228, height: 48, padding: WebInsets(0, 8, 0, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 10, backdropBlur: 0)
-        ),
-        "frame.sidebar.bottom": WebStylePair(
+        )
+        d["frame.sidebar.bottom"] = WebStylePair(
             light: WebComputedStyle(x: 8, y: 756, width: 248, height: 56, padding: WebInsets(0, 10, 8, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 8, y: 756, width: 248, height: 56, padding: WebInsets(0, 10, 8, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.column": WebStylePair(
+        )
+        d["frame.sidebar.column"] = WebStylePair(
             light: WebComputedStyle(x: 8, y: 8, width: 248, height: 804, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 8, y: 8, width: 248, height: 804, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.folder.item": WebStylePair(
+        )
+        d["frame.sidebar.folder.item"] = WebStylePair(
             light: WebComputedStyle(x: 38, y: 498, width: 176, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27, 0.9), color: RGBA(24, 24, 27, 0.9), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 10, backdropBlur: 0),
             dark: WebComputedStyle(x: 38, y: 498, width: 176, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243, 0.9), color: RGBA(242, 242, 243, 0.9), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 10, backdropBlur: 0)
-        ),
-        "frame.sidebar.folder.row": WebStylePair(
+        )
+        d["frame.sidebar.folder.row"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 498, width: 228, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 498, width: 228, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.folder.toggle": WebStylePair(
+        )
+        d["frame.sidebar.folder.toggle"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 566, width: 20, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 566, width: 20, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.item": WebStylePair(
+        )
+    }
+
+    private static func add5(_ d: inout [String: WebStylePair]) {
+        d["frame.sidebar.item"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 312, width: 228, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 2, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27, 0.9), color: RGBA(24, 24, 27, 0.9), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 10, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 312, width: 228, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 2, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243, 0.9), color: RGBA(242, 242, 243, 0.9), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 10, backdropBlur: 0)
-        ),
-        "frame.sidebar.item.active": WebStylePair(
+        )
+        d["frame.sidebar.item.active"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 108, width: 228, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 2, 0), radius: 6, background: RGBA(0, 0, 0, 0.043), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 10, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 108, width: 228, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 2, 0), radius: 6, background: RGBA(255, 255, 255, 0.055), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 10, backdropBlur: 0)
-        ),
-        "frame.sidebar.item.active.icon": WebStylePair(
+        )
+        d["frame.sidebar.item.active.icon"] = WebStylePair(
             light: WebComputedStyle(x: 28, y: 115, width: 18, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 28, y: 115, width: 18, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.item.count": WebStylePair(
+        )
+        d["frame.sidebar.item.count"] = WebStylePair(
             light: WebComputedStyle(x: 216, y: 284, width: 20, height: 20, padding: WebInsets(0, 6, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 11, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 216, y: 284, width: 20, height: 20, padding: WebInsets(0, 6, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 11, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.item.icon": WebStylePair(
+        )
+        d["frame.sidebar.item.icon"] = WebStylePair(
             light: WebComputedStyle(x: 28, y: 319, width: 18, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 28, y: 319, width: 18, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.item.label": WebStylePair(
+        )
+        d["frame.sidebar.item.label"] = WebStylePair(
             light: WebComputedStyle(x: 56, y: 318, width: 180, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27, 0.9), color: RGBA(24, 24, 27, 0.9), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 56, y: 318, width: 180, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243, 0.9), color: RGBA(242, 242, 243, 0.9), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.list": WebStylePair(
+        )
+        d["frame.sidebar.list"] = WebStylePair(
             light: WebComputedStyle(x: 8, y: 96, width: 248, height: 660, padding: WebInsets(0, 10, 16, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 8, y: 96, width: 248, height: 660, padding: WebInsets(0, 10, 16, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.search": WebStylePair(
+        )
+        d["frame.sidebar.search"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 64, width: 228, height: 32, padding: WebInsets(0, 6, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 64, width: 228, height: 32, padding: WebInsets(0, 6, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "frame.sidebar.search.icon": WebStylePair(
+        )
+        d["frame.sidebar.search.icon"] = WebStylePair(
             light: WebComputedStyle(x: 30, y: 73, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 30, y: 73, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.search.kbd": WebStylePair(
+        )
+        d["frame.sidebar.search.kbd"] = WebStylePair(
             light: WebComputedStyle(x: 210.97, y: 70, width: 29.03, height: 20, padding: WebInsets(0, 4.8, 0, 4.8), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(207, 207, 213))], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 550, lineHeight: 12, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 210.97, y: 70, width: 29.03, height: 20, padding: WebInsets(0, 4.8, 0, 4.8), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(41, 41, 44), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(62, 62, 67))], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 550, lineHeight: 12, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.search.label": WebStylePair(
+        )
+        d["frame.sidebar.search.label"] = WebStylePair(
             light: WebComputedStyle(x: 52, y: 71, width: 150.97, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 52, y: 71, width: 150.97, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.section": WebStylePair(
+        )
+        d["frame.sidebar.section"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 466, width: 228, height: 198, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(20, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 466, width: 228, height: 198, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(20, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.section.action": WebStylePair(
+        )
+        d["frame.sidebar.section.action"] = WebStylePair(
             light: WebComputedStyle(x: 204, y: 464, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 204, y: 464, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "frame.sidebar.section.body": WebStylePair(
+        )
+        d["frame.sidebar.section.body"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 498, width: 228, height: 166, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 498, width: 228, height: 166, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.section.chevron": WebStylePair(
+        )
+        d["frame.sidebar.section.chevron"] = WebStylePair(
             light: WebComputedStyle(x: 24, y: 466, width: 24, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: 0.72, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 24, y: 466, width: 24, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: 0.72, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.section.header": WebStylePair(
+        )
+        d["frame.sidebar.section.header"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 466, width: 228, height: 28, padding: WebInsets(0, 10, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 4, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 466, width: 228, height: 28, padding: WebInsets(0, 10, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 4, backdropBlur: 0)
-        ),
-        "frame.sidebar.section.title": WebStylePair(
+        )
+        d["frame.sidebar.section.title"] = WebStylePair(
             light: WebComputedStyle(x: 50, y: 466, width: 150, height: 28, padding: WebInsets(0, 8, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: 0.72, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 50, y: 466, width: 150, height: 28, padding: WebInsets(0, 8, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: 0.72, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.starred.item": WebStylePair(
+        )
+        d["frame.sidebar.starred.item"] = WebStylePair(
             light: WebComputedStyle(x: 38, y: 210, width: 208, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 2, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27, 0.9), color: RGBA(24, 24, 27, 0.9), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 10, backdropBlur: 0),
             dark: WebComputedStyle(x: 38, y: 210, width: 208, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 2, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243, 0.9), color: RGBA(242, 242, 243, 0.9), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 10, backdropBlur: 0)
-        ),
-        "frame.sidebar.starred.toggle": WebStylePair(
+        )
+        d["frame.sidebar.starred.toggle"] = WebStylePair(
             light: WebComputedStyle(x: 218, y: 180, width: 24, height: 24, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 218, y: 180, width: 24, height: 24, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.sidebar.topbar": WebStylePair(
+        )
+        d["frame.sidebar.topbar"] = WebStylePair(
             light: WebComputedStyle(x: 8, y: 8, width: 248, height: 52, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 4, backdropBlur: 0),
             dark: WebComputedStyle(x: 8, y: 8, width: 248, height: 52, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 4, backdropBlur: 0)
-        ),
-        "frame.tab": WebStylePair(
+        )
+        d["frame.tab"] = WebStylePair(
             light: WebComputedStyle(x: 445.47, y: 18, width: 172, height: 32, padding: WebInsets(0, 4, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 445.47, y: 18, width: 172, height: 32, padding: WebInsets(0, 4, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "frame.tab.close": WebStylePair(
+        )
+        d["frame.tab.close"] = WebStylePair(
             light: WebComputedStyle(x: 597.47, y: 26, width: 16, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 0, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 597.47, y: 26, width: 16, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 0, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.tab.home": WebStylePair(
+        )
+        d["frame.tab.home"] = WebStylePair(
             light: WebComputedStyle(x: 361, y: 18, width: 78.47, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(207, 207, 213), inset: true)], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 361, y: 18, width: 78.47, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(41, 41, 44), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(62, 62, 67), inset: true)], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "frame.tab.home.icon": WebStylePair(
+        )
+        d["frame.tab.home.icon"] = WebStylePair(
             light: WebComputedStyle(x: 371, y: 27, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 0.7, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 371, y: 27, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 0.7, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.tab.home.off": WebStylePair(
+        )
+        d["frame.tab.home.off"] = WebStylePair(
             light: WebComputedStyle(x: 361, y: 18, width: 78.47, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(207, 207, 213), inset: true)], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 361, y: 18, width: 78.47, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(41, 41, 44), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(62, 62, 67), inset: true)], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "frame.tab.icon": WebStylePair(
+        )
+    }
+
+    private static func add6(_ d: inout [String: WebStylePair]) {
+        d["frame.tab.icon"] = WebStylePair(
             light: WebComputedStyle(x: 455.47, y: 27, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 0.7, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 455.47, y: 27, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 0.7, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.tab.label": WebStylePair(
+        )
+        d["frame.tab.label"] = WebStylePair(
             light: WebComputedStyle(x: 477.47, y: 25, width: 59, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 477.47, y: 25, width: 59, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.tab.link": WebStylePair(
+        )
+        d["frame.tab.link"] = WebStylePair(
             light: WebComputedStyle(x: 455.47, y: 25, width: 134, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 455.47, y: 25, width: 134, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "frame.tab.off": WebStylePair(
+        )
+        d["frame.tab.off"] = WebStylePair(
             light: WebComputedStyle(x: 445.47, y: 18, width: 172, height: 32, padding: WebInsets(0, 4, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 445.47, y: 18, width: 172, height: 32, padding: WebInsets(0, 4, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "frame.tabs": WebStylePair(
+        )
+        d["frame.tabs"] = WebStylePair(
             light: WebComputedStyle(x: 357, y: 14, width: 264.47, height: 40, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 6, backdropBlur: 0),
             dark: WebComputedStyle(x: 357, y: 14, width: 264.47, height: 40, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 6, backdropBlur: 0)
-        ),
-        "frame.topbar": WebStylePair(
+        )
+        d["frame.topbar"] = WebStylePair(
             light: WebComputedStyle(x: 268, y: 12, width: 1000, height: 44, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(255, 255, 255, 0.36), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.04)), ShadowLayer(x: 0, y: 12, blur: 32, spread: -12, color: RGBA(20, 20, 40, 0.14))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 6, backdropBlur: 30),
             dark: WebComputedStyle(x: 268, y: 12, width: 1000, height: 44, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(28, 28, 31, 0.34), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.3)), ShadowLayer(x: 0, y: 16, blur: 40, spread: -14, color: RGBA(0, 0, 0, 0.6))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 6, backdropBlur: 30)
-        ),
-        "frame.topbar.back": WebStylePair(
+        )
+        d["frame.topbar.back"] = WebStylePair(
             light: WebComputedStyle(x: 272, y: 16, width: 36, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 272, y: 16, width: 36, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.topbar.divider": WebStylePair(
+        )
+        d["frame.topbar.divider"] = WebStylePair(
             light: WebComputedStyle(x: 350, y: 24, width: 1, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0.1), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 350, y: 24, width: 1, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0.1), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.topbar.forward": WebStylePair(
+        )
+        d["frame.topbar.forward"] = WebStylePair(
             light: WebComputedStyle(x: 308, y: 16, width: 36, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 0.3, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 308, y: 16, width: 36, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 0.3, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "frame.topbar.new": WebStylePair(
+        )
+        d["frame.topbar.new"] = WebStylePair(
             light: WebComputedStyle(x: 1161.89, y: 20, width: 102.11, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(31, 31, 34), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 1161.89, y: 20, width: 102.11, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(242, 242, 243), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "frame.topbar.new.icon": WebStylePair(
+        )
+        d["frame.topbar.new.icon"] = WebStylePair(
             light: WebComputedStyle(x: 1173.89, y: 27, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 0.7, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1173.89, y: 27, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 0.7, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0)
-        ),
-        "frame.window": WebStylePair(
+        )
+        d["frame.window"] = WebStylePair(
             light: WebComputedStyle(x: 0, y: 0, width: 1280, height: 820, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 0, y: 0, width: 1280, height: 820, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "input": WebStylePair(
+        )
+        d["input"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 600, width: 240, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 600, width: 240, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "kbd": WebStylePair(
+        )
+        d["kbd"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 1133.59, width: 29.03, height: 20, padding: WebInsets(0, 4.8, 0, 4.8), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(207, 207, 213))], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 550, lineHeight: 12, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 1133.59, width: 29.03, height: 20, padding: WebInsets(0, 4.8, 0, 4.8), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(41, 41, 44), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(62, 62, 67))], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 550, lineHeight: 12, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "menu.heading": WebStylePair(
+        )
+        d["menu.heading"] = WebStylePair(
             light: WebComputedStyle(x: 21, y: 653, width: 214, height: 24, padding: WebInsets(6, 8, 2, 8), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: 0.72, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 21, y: 653, width: 214, height: 24, padding: WebInsets(6, 8, 2, 8), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: 0.72, gap: 0, backdropBlur: 0)
-        ),
-        "menu.item": WebStylePair(
+        )
+        d["menu.item"] = WebStylePair(
             light: WebComputedStyle(x: 21, y: 677, width: 214, height: 26, padding: WebInsets(3, 8, 3, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 21, y: 677, width: 214, height: 26, padding: WebInsets(3, 8, 3, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "menu.item.danger": WebStylePair(
+        )
+        d["menu.item.danger"] = WebStylePair(
             light: WebComputedStyle(x: 21, y: 740, width: 214, height: 26, padding: WebInsets(3, 8, 3, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(179, 52, 44), color: RGBA(179, 52, 44), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 21, y: 740, width: 214, height: 26, padding: WebInsets(3, 8, 3, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 138, 128), color: RGBA(255, 138, 128), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "menu.item.highlighted": WebStylePair(
+        )
+        d["menu.item.highlighted"] = WebStylePair(
             light: WebComputedStyle(x: 21, y: 703, width: 214, height: 26, padding: WebInsets(3, 8, 3, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(24, 24, 27, 0.09), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 21, y: 703, width: 214, height: 26, padding: WebInsets(3, 8, 3, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.12), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "menu.item.icon": WebStylePair(
+        )
+        d["menu.item.icon"] = WebStylePair(
             light: WebComputedStyle(x: 29, y: 682, width: 16, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 29, y: 682, width: 16, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "menu.item.label": WebStylePair(
+        )
+        d["menu.item.label"] = WebStylePair(
             light: WebComputedStyle(x: 53, y: 681, width: 127.83, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 53, y: 681, width: 127.83, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "menu.item.shortcut": WebStylePair(
+        )
+        d["menu.item.shortcut"] = WebStylePair(
             light: WebComputedStyle(x: 188.83, y: 681, width: 38.17, height: 18, padding: WebInsets(0, 0, 0, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: 0.26, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 188.83, y: 681, width: 38.17, height: 18, padding: WebInsets(0, 0, 0, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: 0.26, gap: 0, backdropBlur: 0)
-        ),
-        "menu.panel": WebStylePair(
+        )
+        d["menu.panel"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 648, width: 224, height: 123, padding: WebInsets(5, 5, 5, 5), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.82), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.12), inset: true), ShadowLayer(x: 0, y: 10, blur: 30, spread: 0, color: RGBA(0, 0, 0, 0.16)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24),
             dark: WebComputedStyle(x: 16, y: 648, width: 224, height: 123, padding: WebInsets(5, 5, 5, 5), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(40, 40, 44, 0.86), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(255, 255, 255, 0.1), inset: true), ShadowLayer(x: 0, y: 10, blur: 30, spread: 0, color: RGBA(0, 0, 0, 0.5)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.6))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24)
-        ),
-        "menu.separator": WebStylePair(
+        )
+        d["menu.separator"] = WebStylePair(
             light: WebComputedStyle(x: 31, y: 734, width: 194, height: 1, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(5, 10, 5, 10), radius: 0, background: RGBA(226, 226, 230), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 31, y: 734, width: 194, height: 1, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(5, 10, 5, 10), radius: 0, background: RGBA(44, 44, 47), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.ask": WebStylePair(
+        )
+        d["notes.ask"] = WebStylePair(
             light: WebComputedStyle(x: 1115.13, y: 736, width: 128.88, height: 48, padding: WebInsets(0, 20, 0, 16), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(0, 0, 0), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 8, blur: 24, spread: 0, color: RGBA(0, 0, 0, 0.1)), ShadowLayer(x: 0, y: 2, blur: 6, spread: 0, color: RGBA(0, 0, 0, 0.1)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.12), inset: true)], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 14, fontWeight: 500, lineHeight: 20, letterSpacing: -0.096, gap: 10, backdropBlur: 0),
             dark: WebComputedStyle(x: 1115.13, y: 736, width: 128.88, height: 48, padding: WebInsets(0, 20, 0, 16), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(0, 0, 0), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 8, blur: 24, spread: 0, color: RGBA(0, 0, 0, 0.1)), ShadowLayer(x: 0, y: 2, blur: 6, spread: 0, color: RGBA(0, 0, 0, 0.1)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.12), inset: true)], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 14, fontWeight: 500, lineHeight: 20, letterSpacing: -0.096, gap: 10, backdropBlur: 0)
-        ),
-        "notes.ask.label": WebStylePair(
+        )
+        d["notes.ask.label"] = WebStylePair(
             light: WebComputedStyle(x: 1158.13, y: 750, width: 65.88, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 14, fontWeight: 500, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1158.13, y: 750, width: 65.88, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 14, fontWeight: 500, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.browser.content": WebStylePair(
+        )
+    }
+
+    private static func add7(_ d: inout [String: WebStylePair]) {
+        d["notes.browser.content"] = WebStylePair(
             light: WebComputedStyle(x: 264, y: 64, width: 1008, height: 1555.13, padding: WebInsets(12, 32, 100, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 264, y: 64, width: 1008, height: 1555.13, padding: WebInsets(12, 32, 100, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.card.body": WebStylePair(
+        )
+        d["notes.card.body"] = WebStylePair(
             light: WebComputedStyle(x: 328.34, y: 296.75, width: 200.16, height: 50, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 9, fontWeight: 400, lineHeight: 12.5, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 328.34, y: 296.75, width: 200.16, height: 50, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 9, fontWeight: 400, lineHeight: 12.5, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.card.chip": WebStylePair(
+        )
+        d["notes.card.chip"] = WebStylePair(
             light: WebComputedStyle(x: 476.77, y: 459, width: 51.73, height: 21.5, padding: WebInsets(0, 7.5, 0, 7.5), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(226, 226, 230, 0.75), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 9.5, fontWeight: 600, lineHeight: 14.725, letterSpacing: -0.096, gap: 4.5, backdropBlur: 0),
             dark: WebComputedStyle(x: 476.77, y: 459, width: 51.73, height: 21.5, padding: WebInsets(0, 7.5, 0, 7.5), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(44, 44, 47, 0.75), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 9.5, fontWeight: 600, lineHeight: 14.725, letterSpacing: -0.096, gap: 4.5, backdropBlur: 0)
-        ),
-        "notes.card.created": WebStylePair(
+        )
+        d["notes.card.created"] = WebStylePair(
             light: WebComputedStyle(x: 328.34, y: 270.63, width: 200.16, height: 14.63, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2.5, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 11.25, fontWeight: 400, lineHeight: 14.625, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 328.34, y: 270.63, width: 200.16, height: 14.63, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2.5, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 11.25, fontWeight: 400, lineHeight: 14.625, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.card.edge": WebStylePair(
+        )
+        d["notes.card.edge"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 228, width: 247.5, height: 267.5, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.05), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 228, width: 247.5, height: 267.5, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.05), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.card.face": WebStylePair(
+        )
+        d["notes.card.face"] = WebStylePair(
             light: WebComputedStyle(x: 310.84, y: 228, width: 232.66, height: 267.5, padding: WebInsets(20, 15, 15, 17.5), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 310.84, y: 228, width: 232.66, height: 267.5, padding: WebInsets(20, 15, 15, 17.5), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.card.footer": WebStylePair(
+        )
+        d["notes.card.footer"] = WebStylePair(
             light: WebComputedStyle(x: 328.34, y: 459, width: 200.16, height: 21.5, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(8.75, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 9.5, fontWeight: 400, lineHeight: 14.725, letterSpacing: -0.096, gap: 5, backdropBlur: 0),
             dark: WebComputedStyle(x: 328.34, y: 459, width: 200.16, height: 21.5, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(8.75, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 9.5, fontWeight: 400, lineHeight: 14.725, letterSpacing: -0.096, gap: 5, backdropBlur: 0)
-        ),
-        "notes.card.link": WebStylePair(
+        )
+        d["notes.card.link"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 228, width: 250, height: 270, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: -3, y: 10, blur: 14, spread: -8, color: RGBA(20, 20, 30, 0.16)), ShadowLayer(x: -4, y: 18, blur: 30, spread: -18, color: RGBA(20, 20, 30, 0.14)), ShadowLayer(x: 0, y: 2, blur: 5, spread: 0, color: RGBA(20, 20, 30, 0.03))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 228, width: 250, height: 270, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: -3, y: 10, blur: 14, spread: -8, color: RGBA(20, 20, 30, 0.16)), ShadowLayer(x: -4, y: 18, blur: 30, spread: -18, color: RGBA(20, 20, 30, 0.14)), ShadowLayer(x: 0, y: 2, blur: 5, spread: 0, color: RGBA(20, 20, 30, 0.03))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.card.menu": WebStylePair(
+        )
+        d["notes.card.menu"] = WebStylePair(
             light: WebComputedStyle(x: 506, y: 236, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.3), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.08)), ShadowLayer(x: 0, y: 1, blur: 3, spread: -1, color: RGBA(0, 0, 0, 0.05))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 506, y: 236, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(41, 41, 44), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.03), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08)), ShadowLayer(x: 0, y: 1, blur: 3, spread: -1, color: RGBA(0, 0, 0, 0.3))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.card.menu.button": WebStylePair(
+        )
+        d["notes.card.menu.button"] = WebStylePair(
             light: WebComputedStyle(x: 506, y: 236, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 506, y: 236, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.card.page": WebStylePair(
+        )
+        d["notes.card.page"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 231.77, width: 250, height: 266.23, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(218, 218, 219), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 231.77, width: 250, height: 266.23, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(40, 40, 41), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.card.sheet": WebStylePair(
+        )
+        d["notes.card.sheet"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 228, width: 247.5, height: 267.5, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(255, 255, 255), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 228, width: 247.5, height: 267.5, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(28, 28, 30), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.card.spine": WebStylePair(
+        )
+        d["notes.card.spine"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 228, width: 14.84, height: 267.5, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(235, 235, 235), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: -1, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0.06), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 228, width: 14.84, height: 267.5, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(29, 29, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: -1, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0.06), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.card.star": WebStylePair(
+        )
+        d["notes.card.star"] = WebStylePair(
             light: WebComputedStyle(x: 1641.5, y: 228, width: 30, height: 30, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(226, 226, 230, 0.75), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1641.5, y: 228, width: 30, height: 30, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(44, 44, 47, 0.75), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.card.time": WebStylePair(
+        )
+        d["notes.card.time"] = WebStylePair(
             light: WebComputedStyle(x: 328.34, y: 462.39, width: 143.42, height: 14.72, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 9.5, fontWeight: 400, lineHeight: 14.725, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 328.34, y: 462.39, width: 143.42, height: 14.72, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 9.5, fontWeight: 400, lineHeight: 14.725, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.card.title": WebStylePair(
+        )
+        d["notes.card.title"] = WebStylePair(
             light: WebComputedStyle(x: 328.34, y: 248, width: 200.16, height: 20.13, padding: WebInsets(0, 17.5, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 16.5, fontWeight: 500, lineHeight: 20.13, letterSpacing: 0.083, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 328.34, y: 248, width: 200.16, height: 20.13, padding: WebInsets(0, 17.5, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 16.5, fontWeight: 500, lineHeight: 20.13, letterSpacing: 0.083, gap: 0, backdropBlur: 0)
-        ),
-        "notes.carousel": WebStylePair(
+        )
+        d["notes.carousel"] = WebStylePair(
             light: WebComputedStyle(x: 272, y: 220, width: 992, height: 326, padding: WebInsets(8, 24, 48, 24), margin: WebInsets(0, -24, -20, -24), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 32, backdropBlur: 0),
             dark: WebComputedStyle(x: 272, y: 220, width: 992, height: 326, padding: WebInsets(8, 24, 48, 24), margin: WebInsets(0, -24, -20, -24), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 32, backdropBlur: 0)
-        ),
-        "notes.carousel.arrow": WebStylePair(
+        )
+        d["notes.carousel.arrow"] = WebStylePair(
             light: WebComputedStyle(x: 1212, y: 359, width: 28, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 2, blur: 10, spread: 0, color: RGBA(0, 0, 0, 0.16)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.05))], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 0, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1212, y: 359, width: 28, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 2, blur: 10, spread: 0, color: RGBA(0, 0, 0, 0.16)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.05))], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 0, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.catchup.button": WebStylePair(
+        )
+        d["notes.catchup.button"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 96, width: 137.05, height: 40, padding: WebInsets(0, 16, 0, 16), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.85), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 96, width: 137.05, height: 40, padding: WebInsets(0, 16, 0, 16), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.12), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "notes.catchup.hint": WebStylePair(
+        )
+        d["notes.catchup.hint"] = WebStylePair(
             light: WebComputedStyle(x: 445.05, y: 107, width: 295.8, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 445.05, y: 107, width: 295.8, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.compact.card": WebStylePair(
+        )
+        d["notes.compact.card"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 132, width: 163.19, height: 112, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 132, width: 163.19, height: 112, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(28, 28, 30), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.compact.edge": WebStylePair(
+        )
+        d["notes.compact.edge"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 132, width: 163.19, height: 112, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.05), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 132, width: 163.19, height: 112, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.05), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.compact.footer": WebStylePair(
+        )
+        d["notes.compact.footer"] = WebStylePair(
             light: WebComputedStyle(x: 312, y: 210, width: 131.19, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 312, y: 210, width: 131.19, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "notes.compact.grid": WebStylePair(
+        )
+        d["notes.compact.grid"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 132, width: 944, height: 416, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 32, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 132, width: 944, height: 416, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 32, backdropBlur: 0)
-        ),
-        "notes.compact.link": WebStylePair(
+        )
+        d["notes.compact.link"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 132, width: 163.19, height: 112, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.9), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.05)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.18))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 132, width: 163.19, height: 112, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.05), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.07)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.7))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.compact.title": WebStylePair(
+        )
+    }
+
+    private static func add8(_ d: inout [String: WebStylePair]) {
+        d["notes.compact.title"] = WebStylePair(
             light: WebComputedStyle(x: 310, y: 146, width: 135.19, height: 20.25, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 15, fontWeight: 600, lineHeight: 20.25, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 310, y: 146, width: 135.19, height: 20.25, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 15, fontWeight: 600, lineHeight: 20.25, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.docmenu": WebStylePair(
+        )
+        d["notes.docmenu"] = WebStylePair(
             light: WebComputedStyle(x: 381.33, y: 180, width: 200, height: 229, padding: WebInsets(5, 5, 5, 5), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.82), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.12), inset: true), ShadowLayer(x: 0, y: 10, blur: 30, spread: 0, color: RGBA(0, 0, 0, 0.16)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24),
             dark: WebComputedStyle(x: 381.33, y: 180, width: 200, height: 229, padding: WebInsets(5, 5, 5, 5), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(40, 40, 44, 0.86), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(255, 255, 255, 0.1), inset: true), ShadowLayer(x: 0, y: 10, blur: 30, spread: 0, color: RGBA(0, 0, 0, 0.5)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.6))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24)
-        ),
-        "notes.empty": WebStylePair(
+        )
+        d["notes.empty"] = WebStylePair(
             light: WebComputedStyle(x: 544, y: 132, width: 448, height: 248.75, padding: WebInsets(64, 24, 64, 24), margin: WebInsets(0, 248, 0, 248), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 544, y: 132, width: 448, height: 248.75, padding: WebInsets(64, 24, 64, 24), margin: WebInsets(0, 248, 0, 248), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.empty.body": WebStylePair(
+        )
+        d["notes.empty.body"] = WebStylePair(
             light: WebComputedStyle(x: 594.41, y: 294, width: 347.17, height: 22.75, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 22.75, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 594.41, y: 294, width: 347.17, height: 22.75, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 22.75, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.empty.icon": WebStylePair(
+        )
+        d["notes.empty.icon"] = WebStylePair(
             light: WebComputedStyle(x: 746, y: 196, width: 44, height: 44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 16, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 746, y: 196, width: 44, height: 44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 16, 0), radius: 6, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.empty.title": WebStylePair(
+        )
+        d["notes.empty.title"] = WebStylePair(
             light: WebComputedStyle(x: 678.88, y: 256, width: 178.25, height: 30, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 24, fontWeight: 600, lineHeight: 30, letterSpacing: -0.288, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 678.88, y: 256, width: 178.25, height: 30, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 24, fontWeight: 600, lineHeight: 30, letterSpacing: -0.288, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folder.age": WebStylePair(
+        )
+        d["notes.folder.age"] = WebStylePair(
             light: WebComputedStyle(x: 448.31, y: 1131.89, width: 44.86, height: 15.39, padding: WebInsets(0, 0, 1.187, 0), margin: WebInsets(-1.766, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(92, 83, 110), color: RGBA(92, 83, 110), opacity: 1, family: .display, fontSize: 11.872, fontWeight: 400, lineHeight: 14.246, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 442.86, y: 1131.89, width: 50.31, height: 15.39, padding: WebInsets(0, 0, 1.187, 0), margin: WebInsets(-1.766, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(92, 83, 110), color: RGBA(92, 83, 110), opacity: 1, family: .display, fontSize: 11.872, fontWeight: 400, lineHeight: 14.246, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folder.back": WebStylePair(
+        )
+        d["notes.folder.back"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 1023.78, width: 212, height: 224, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(184, 137, 200), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.08), inset: true), ShadowLayer(x: 0, y: 8, blur: 14, spread: 0, color: RGBA(20, 20, 30, 0.1)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(20, 20, 30, 0.06))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 1023.78, width: 212, height: 224, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(184, 137, 200), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.08), inset: true), ShadowLayer(x: 0, y: 8, blur: 14, spread: 0, color: RGBA(20, 20, 30, 0.1)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(20, 20, 30, 0.06))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folder.count": WebStylePair(
+        )
+        d["notes.folder.count"] = WebStylePair(
             light: WebComputedStyle(x: 310.83, y: 1132.23, width: 15.66, height: 17.5, padding: WebInsets(2.756, 4.664, 2.756, 4.664), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(172, 141, 188), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(17, 17, 20), color: RGBA(17, 17, 20), opacity: 1, family: .display, fontSize: 12, fontWeight: 600, lineHeight: 12, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 310.83, y: 1132.23, width: 15.66, height: 17.5, padding: WebInsets(2.756, 4.664, 2.756, 4.664), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(172, 141, 188), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(17, 17, 20), color: RGBA(17, 17, 20), opacity: 1, family: .display, fontSize: 12, fontWeight: 600, lineHeight: 12, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folder.front": WebStylePair(
+        )
+        d["notes.folder.front"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 1120.45, width: 212, height: 127.33, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(0, 0, 0, 0), gradient: WebGradient(angle: 180, stops: [RGBA(194, 133, 209, 0.62), RGBA(194, 133, 209, 0.86)]), shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.75), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.08), inset: true), ShadowLayer(x: 0, y: -6, blur: 16, spread: -10, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 9),
             dark: WebComputedStyle(x: 296, y: 1120.45, width: 212, height: 127.33, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(0, 0, 0, 0), gradient: WebGradient(angle: 180, stops: [RGBA(194, 133, 209, 0.62), RGBA(194, 133, 209, 0.86)]), shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.75), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.08), inset: true), ShadowLayer(x: 0, y: -6, blur: 16, spread: -10, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 9)
-        ),
-        "notes.folder.menu": WebStylePair(
+        )
+        d["notes.folder.menu"] = WebStylePair(
             light: WebComputedStyle(x: 386, y: 1161.05, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.9), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.18))], borderWidth: 0, borderColor: RGBA(23, 23, 26), color: RGBA(23, 23, 26), opacity: 0, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 386, y: 1161.05, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.9), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.18))], borderWidth: 0, borderColor: RGBA(23, 23, 26), color: RGBA(23, 23, 26), opacity: 0, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folder.menu.button": WebStylePair(
+        )
+        d["notes.folder.menu.button"] = WebStylePair(
             light: WebComputedStyle(x: 386, y: 1161.05, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(23, 23, 27, 0.749), color: RGBA(23, 23, 27, 0.749), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 386, y: 1161.05, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(23, 23, 27, 0.749), color: RGBA(23, 23, 27, 0.749), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folder.name": WebStylePair(
+        )
+        d["notes.folder.name"] = WebStylePair(
             light: WebComputedStyle(x: 310.83, y: 1210.86, width: 182.34, height: 22.31, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(13, 13, 16), color: RGBA(13, 13, 16), opacity: 1, family: .display, fontSize: 19.928, fontWeight: 400, lineHeight: 22.319, letterSpacing: -0.199, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 310.83, y: 1210.86, width: 182.34, height: 22.31, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(13, 13, 16), color: RGBA(13, 13, 16), opacity: 1, family: .display, fontSize: 19.928, fontWeight: 400, lineHeight: 22.319, letterSpacing: -0.199, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folder.note": WebStylePair(
+        )
+        d["notes.folder.note"] = WebStylePair(
             light: WebComputedStyle(x: 321.47, y: 1031.36, width: 173.77, height: 173.47, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 6, blur: 14, spread: -6, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 321.47, y: 1031.36, width: 173.77, height: 173.47, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 6, blur: 14, spread: -6, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folder.note.excerpt": WebStylePair(
+        )
+        d["notes.folder.note.excerpt"] = WebStylePair(
             light: WebComputedStyle(x: 348.99, y: 1061.94, width: 133.16, height: 26.55, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4.234, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(62, 62, 65), color: RGBA(62, 62, 65), opacity: 1, family: .sans, fontSize: 6.784, fontWeight: 400, lineHeight: 9.837, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 348.99, y: 1061.94, width: 133.16, height: 26.55, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4.234, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(62, 62, 65), color: RGBA(62, 62, 65), opacity: 1, family: .sans, fontSize: 6.784, fontWeight: 400, lineHeight: 9.837, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folder.note.title": WebStylePair(
+        )
+        d["notes.folder.note.title"] = WebStylePair(
             light: WebComputedStyle(x: 350.24, y: 1044.02, width: 132.85, height: 20.62, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(28, 28, 31), color: RGBA(28, 28, 31), opacity: 1, family: .display, fontSize: 11.448, fontWeight: 500, lineHeight: 13.738, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 350.24, y: 1044.02, width: 132.85, height: 20.62, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(28, 28, 31), color: RGBA(28, 28, 31), opacity: 1, family: .display, fontSize: 11.448, fontWeight: 500, lineHeight: 13.738, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folder.tab": WebStylePair(
+        )
+        d["notes.folder.tab"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 1012, width: 93.27, height: 21.22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(184, 137, 200), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.08), inset: true), ShadowLayer(x: 0, y: 8, blur: 14, spread: 0, color: RGBA(20, 20, 30, 0.1)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(20, 20, 30, 0.06))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 1012, width: 93.27, height: 21.22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(184, 137, 200), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.08), inset: true), ShadowLayer(x: 0, y: 8, blur: 14, spread: 0, color: RGBA(20, 20, 30, 0.1)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(20, 20, 30, 0.06))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folderpage.age": WebStylePair(
+        )
+        d["notes.folderpage.age"] = WebStylePair(
             light: WebComputedStyle(x: 381.75, y: 217.25, width: 55.63, height: 17, padding: WebInsets(0, 0, 1.31, 0), margin: WebInsets(-1.953, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(88, 101, 94), color: RGBA(88, 101, 94), opacity: 1, family: .display, fontSize: 13.104, fontWeight: 400, lineHeight: 15.725, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 381.75, y: 217.25, width: 55.63, height: 17, padding: WebInsets(0, 0, 1.31, 0), margin: WebInsets(-1.953, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(88, 101, 94), color: RGBA(88, 101, 94), opacity: 1, family: .display, fontSize: 13.104, fontWeight: 400, lineHeight: 15.725, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folderpage.count": WebStylePair(
+        )
+        d["notes.folderpage.count"] = WebStylePair(
             light: WebComputedStyle(x: 306.63, y: 218.2, width: 16.97, height: 18.67, padding: WebInsets(3.042, 5.148, 3.042, 5.148), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(164, 185, 147), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(17, 17, 20), color: RGBA(17, 17, 20), opacity: 1, family: .display, fontSize: 12.636, fontWeight: 600, lineHeight: 12.636, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 306.63, y: 218.2, width: 16.97, height: 18.67, padding: WebInsets(3.042, 5.148, 3.042, 5.148), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(164, 185, 147), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(17, 17, 20), color: RGBA(17, 17, 20), opacity: 1, family: .display, fontSize: 12.636, fontWeight: 600, lineHeight: 12.636, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folderpage.name": WebStylePair(
+        )
+        d["notes.folderpage.name"] = WebStylePair(
             light: WebComputedStyle(x: 306.63, y: 265.97, width: 130.75, height: 24.61, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(13, 13, 16), color: RGBA(13, 13, 16), opacity: 1, family: .display, fontSize: 21.996, fontWeight: 400, lineHeight: 24.636, letterSpacing: -0.22, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 306.63, y: 265.97, width: 130.75, height: 24.61, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(13, 13, 16), color: RGBA(13, 13, 16), opacity: 1, family: .display, fontSize: 21.996, fontWeight: 400, lineHeight: 24.636, letterSpacing: -0.22, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folderpage.note.excerpt": WebStylePair(
+        )
+        d["notes.folderpage.note.excerpt"] = WebStylePair(
             light: WebComputedStyle(x: 322.53, y: 163.21, width: 96.08, height: 27.66, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(3.031, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(62, 62, 65), color: RGBA(62, 62, 65), opacity: 1, family: .sans, fontSize: 4.864, fontWeight: 400, lineHeight: 7.053, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 322.53, y: 163.21, width: 96.08, height: 27.66, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(3.031, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(62, 62, 65), color: RGBA(62, 62, 65), opacity: 1, family: .sans, fontSize: 4.864, fontWeight: 400, lineHeight: 7.053, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folderpage.note.title": WebStylePair(
+        )
+        d["notes.folderpage.note.title"] = WebStylePair(
             light: WebComputedStyle(x: 321.63, y: 150.36, width: 95.3, height: 16.44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(28, 28, 31), color: RGBA(28, 28, 31), opacity: 1, family: .display, fontSize: 8.208, fontWeight: 500, lineHeight: 9.85, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 321.63, y: 150.36, width: 95.3, height: 16.44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(28, 28, 31), color: RGBA(28, 28, 31), opacity: 1, family: .display, fontSize: 8.208, fontWeight: 500, lineHeight: 9.85, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folderpage.subfolders": WebStylePair(
+        )
+        d["notes.folderpage.subfolders"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 132, width: 944, height: 169.05, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 40, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 24, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 132, width: 944, height: 169.05, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 40, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 24, backdropBlur: 0)
-        ),
-        "notes.folderpage.tint": WebStylePair(
+        )
+        d["notes.folderpage.tint"] = WebStylePair(
             light: WebComputedStyle(x: 264, y: 8, width: 1008, height: 804, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(125, 131, 217, 0.1), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 264, y: 8, width: 1008, height: 804, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(125, 131, 217, 0.16), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.folders.grid": WebStylePair(
+        )
+        d["notes.folders.grid"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 1012, width: 944, height: 511.56, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 32, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 1012, width: 944, height: 511.56, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 32, backdropBlur: 0)
-        ),
-        "notes.grid": WebStylePair(
+        )
+    }
+
+    private static func add9(_ d: inout [String: WebStylePair]) {
+        d["notes.grid"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 132, width: 944, height: 1387.13, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 32, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 132, width: 944, height: 1387.13, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 32, backdropBlur: 0)
-        ),
-        "notes.grid.card": WebStylePair(
+        )
+        d["notes.grid.card"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 132, width: 293.33, height: 316.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 132, width: 293.33, height: 316.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.grid.star": WebStylePair(
+        )
+        d["notes.grid.star"] = WebStylePair(
             light: WebComputedStyle(x: 876.55, y: 488.78, width: 35.19, height: 35.19, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(226, 226, 230, 0.75), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 876.55, y: 488.78, width: 35.19, height: 35.19, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(44, 44, 47, 0.75), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.grid.title": WebStylePair(
+        )
+        d["notes.grid.title"] = WebStylePair(
             light: WebComputedStyle(x: 333.95, y: 155.45, width: 234.86, height: 23.61, padding: WebInsets(0, 20.533, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 19.36, fontWeight: 500, lineHeight: 23.619, letterSpacing: 0.097, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 333.95, y: 155.45, width: 234.86, height: 23.61, padding: WebInsets(0, 20.533, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 19.36, fontWeight: 500, lineHeight: 23.619, letterSpacing: 0.097, gap: 0, backdropBlur: 0)
-        ),
-        "notes.home.content": WebStylePair(
+        )
+        d["notes.home.content"] = WebStylePair(
             light: WebComputedStyle(x: 264, y: 64, width: 1008, height: 1559.56, padding: WebInsets(8, 32, 100, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 264, y: 64, width: 1008, height: 1559.56, padding: WebInsets(8, 32, 100, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.index.card": WebStylePair(
+        )
+        d["notes.index.card"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 180, width: 212, height: 235.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 180, width: 212, height: 235.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.index.content": WebStylePair(
+        )
+        d["notes.index.content"] = WebStylePair(
             light: WebComputedStyle(x: 264, y: 108, width: 1008, height: 683.56, padding: WebInsets(12, 32, 100, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 264, y: 108, width: 1008, height: 683.56, padding: WebInsets(12, 32, 100, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.index.grid": WebStylePair(
+        )
+        d["notes.index.grid"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 180, width: 944, height: 511.56, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 32, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 180, width: 944, height: 511.56, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 32, backdropBlur: 0)
-        ),
-        "notes.index.newFolder": WebStylePair(
+        )
+        d["notes.index.newFolder"] = WebStylePair(
             light: WebComputedStyle(x: 1129.97, y: 72, width: 110.03, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(31, 31, 34), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 1129.97, y: 72, width: 110.03, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(242, 242, 243), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "notes.index.search": WebStylePair(
+        )
+        d["notes.index.search"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 120, width: 327.44, height: 36, padding: WebInsets(0, 32, 0, 32), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 120, width: 327.44, height: 36, padding: WebInsets(0, 32, 0, 32), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.index.search.icon": WebStylePair(
+        )
+        d["notes.index.search.icon"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 120, width: 327.44, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 120, width: 327.44, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.index.seg": WebStylePair(
+        )
+        d["notes.index.seg"] = WebStylePair(
             light: WebComputedStyle(x: 1161.64, y: 120, width: 78.38, height: 36, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0),
             dark: WebComputedStyle(x: 1161.64, y: 120, width: 78.38, height: 36, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0)
-        ),
-        "notes.index.seg.off": WebStylePair(
+        )
+        d["notes.index.seg.off"] = WebStylePair(
             light: WebComputedStyle(x: 1201.83, y: 124, width: 34.19, height: 28, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0),
             dark: WebComputedStyle(x: 1201.83, y: 124, width: 34.19, height: 28, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0)
-        ),
-        "notes.index.seg.on": WebStylePair(
+        )
+        d["notes.index.seg.on"] = WebStylePair(
             light: WebComputedStyle(x: 1165.64, y: 124, width: 34.19, height: 28, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.85), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0),
             dark: WebComputedStyle(x: 1165.64, y: 124, width: 34.19, height: 28, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.12), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0)
-        ),
-        "notes.index.sort": WebStylePair(
+        )
+        d["notes.index.sort"] = WebStylePair(
             light: WebComputedStyle(x: 295, y: 119, width: 1, height: 1, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(-1, -1, -1, -1), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 295, y: 119, width: 1, height: 1, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(-1, -1, -1, -1), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.index.status": WebStylePair(
+        )
+        d["notes.index.status"] = WebStylePair(
             light: WebComputedStyle(x: 635.44, y: 129, width: 50.3, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 635.44, y: 129, width: 50.3, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.list": WebStylePair(
+        )
+        d["notes.list"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 132, width: 944, height: 635, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.9), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.05)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.18))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 132, width: 944, height: 635, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.05), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.07)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.7))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.list.badge": WebStylePair(
+        )
+        d["notes.list.badge"] = WebStylePair(
             light: WebComputedStyle(x: 984.56, y: 148, width: 59.44, height: 20, padding: WebInsets(2, 8, 2, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 4, backdropBlur: 0),
             dark: WebComputedStyle(x: 984.56, y: 148, width: 59.44, height: 20, padding: WebInsets(2, 8, 2, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.07), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 4, backdropBlur: 0)
-        ),
-        "notes.list.badge.folder": WebStylePair(
+        )
+        d["notes.list.badge.folder"] = WebStylePair(
             light: WebComputedStyle(x: 972.08, y: 361, width: 71.92, height: 18, padding: WebInsets(2, 8, 2, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(226, 244, 232), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(35, 104, 63), color: RGBA(35, 104, 63), opacity: 1, family: .sans, fontSize: 11, fontWeight: 500, lineHeight: 14, letterSpacing: -0.096, gap: 4, backdropBlur: 0),
             dark: WebComputedStyle(x: 972.08, y: 361, width: 71.92, height: 18, padding: WebInsets(2, 8, 2, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(27, 46, 34), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(159, 224, 184), color: RGBA(159, 224, 184), opacity: 1, family: .sans, fontSize: 11, fontWeight: 500, lineHeight: 14, letterSpacing: -0.096, gap: 4, backdropBlur: 0)
-        ),
-        "notes.list.handle": WebStylePair(
+        )
+        d["notes.list.handle"] = WebStylePair(
             light: WebComputedStyle(x: 312, y: 145.59, width: 12.95, height: 24.8, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 0, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 312, y: 145.59, width: 12.95, height: 24.8, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 0, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.list.icon": WebStylePair(
+        )
+        d["notes.list.icon"] = WebStylePair(
             light: WebComputedStyle(x: 336.95, y: 150, width: 16, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 336.95, y: 150, width: 16, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.list.row": WebStylePair(
+        )
+        d["notes.list.row"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 132, width: 944, height: 53, padding: WebInsets(10, 16, 10, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 132, width: 944, height: 53, padding: WebInsets(10, 16, 10, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
-        ),
-        "notes.list.row.second": WebStylePair(
+        )
+        d["notes.list.row.second"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 185, width: 944, height: 53, padding: WebInsets(10, 16, 10, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 185, width: 944, height: 53, padding: WebInsets(10, 16, 10, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
-        ),
-        "notes.list.tags": WebStylePair(
+        )
+        d["notes.list.tags"] = WebStylePair(
             light: WebComputedStyle(x: 1056, y: 158, width: 0, height: 0, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1056, y: 158, width: 0, height: 0, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.list.time": WebStylePair(
+        )
+        d["notes.list.time"] = WebStylePair(
             light: WebComputedStyle(x: 1068, y: 150, width: 112, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1068, y: 150, width: 112, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.list.title": WebStylePair(
+        )
+    }
+
+    private static func add10(_ d: inout [String: WebStylePair]) {
+        d["notes.list.title"] = WebStylePair(
             light: WebComputedStyle(x: 364.95, y: 145.59, width: 607.61, height: 24.8, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 500, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 364.95, y: 145.59, width: 607.61, height: 24.8, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 500, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.section": WebStylePair(
+        )
+        d["notes.section"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 172, width: 944, height: 374, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(36, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 172, width: 944, height: 374, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(36, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.section.count": WebStylePair(
+        )
+        d["notes.section.count"] = WebStylePair(
             light: WebComputedStyle(x: 482.91, y: 971, width: 6.27, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 8), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .display, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.24, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 482.91, y: 971, width: 6.27, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 8), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .display, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.24, gap: 0, backdropBlur: 0)
-        ),
-        "notes.section.header": WebStylePair(
+        )
+        d["notes.section.header"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 172, width: 944, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 16, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 172, width: 944, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 16, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
-        ),
-        "notes.section.icon": WebStylePair(
+        )
+        d["notes.section.icon"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 172, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 20, fontWeight: 600, lineHeight: 26, letterSpacing: -0.24, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 172, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 20, fontWeight: 600, lineHeight: 26, letterSpacing: -0.24, gap: 0, backdropBlur: 0)
-        ),
-        "notes.section.seeAll": WebStylePair(
+        )
+        d["notes.section.seeAll"] = WebStylePair(
             light: WebComputedStyle(x: 1164.66, y: 175, width: 75.34, height: 26, padding: WebInsets(4, 10, 4, 10), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 4, backdropBlur: 0),
             dark: WebComputedStyle(x: 1164.66, y: 175, width: 75.34, height: 26, padding: WebInsets(4, 10, 4, 10), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 4, backdropBlur: 0)
-        ),
-        "notes.section.title": WebStylePair(
+        )
+        d["notes.section.title"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 172, width: 155.75, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 20, fontWeight: 600, lineHeight: 26, letterSpacing: -0.24, gap: 10, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 172, width: 155.75, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 20, fontWeight: 600, lineHeight: 26, letterSpacing: -0.24, gap: 10, backdropBlur: 0)
-        ),
-        "notes.tags.content": WebStylePair(
+        )
+        d["notes.tags.content"] = WebStylePair(
             light: WebComputedStyle(x: 264, y: 64, width: 1008, height: 208, padding: WebInsets(12, 32, 100, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 264, y: 64, width: 1008, height: 208, padding: WebInsets(12, 32, 100, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.tags.status": WebStylePair(
+        )
+        d["notes.tags.status"] = WebStylePair(
             light: WebComputedStyle(x: 688.28, y: 85, width: 34.97, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 688.28, y: 85, width: 34.97, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.toolbar": WebStylePair(
+        )
+        d["notes.toolbar"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 76, width: 944, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 20, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 76, width: 944, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 20, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
-        ),
-        "notes.toolbar.seg": WebStylePair(
+        )
+        d["notes.toolbar.seg"] = WebStylePair(
             light: WebComputedStyle(x: 1125.44, y: 76, width: 114.56, height: 36, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0),
             dark: WebComputedStyle(x: 1125.44, y: 76, width: 114.56, height: 36, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0)
-        ),
-        "notes.toolbar.seg.off": WebStylePair(
+        )
+        d["notes.toolbar.seg.off"] = WebStylePair(
             light: WebComputedStyle(x: 1165.63, y: 80, width: 34.19, height: 28, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0),
             dark: WebComputedStyle(x: 1165.63, y: 80, width: 34.19, height: 28, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0)
-        ),
-        "notes.toolbar.seg.on": WebStylePair(
+        )
+        d["notes.toolbar.seg.on"] = WebStylePair(
             light: WebComputedStyle(x: 1129.44, y: 80, width: 34.19, height: 28, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.85), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0),
             dark: WebComputedStyle(x: 1129.44, y: 80, width: 34.19, height: 28, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.12), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0)
-        ),
-        "notes.toolbar.select": WebStylePair(
+        )
+        d["notes.toolbar.select"] = WebStylePair(
             light: WebComputedStyle(x: 1004.34, y: 76, width: 109.09, height: 36, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0),
             dark: WebComputedStyle(x: 1004.34, y: 76, width: 109.09, height: 36, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0)
-        ),
-        "notes.toolbar.select.label": WebStylePair(
+        )
+        d["notes.toolbar.select.label"] = WebStylePair(
             light: WebComputedStyle(x: 1016.34, y: 85, width: 65.09, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1016.34, y: 85, width: 65.09, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.toolbar.sort": WebStylePair(
+        )
+        d["notes.toolbar.sort"] = WebStylePair(
             light: WebComputedStyle(x: 971.31, y: 76, width: 142.13, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 971.31, y: 76, width: 142.13, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "notes.toolbar.sort.label": WebStylePair(
+        )
+        d["notes.toolbar.sort.label"] = WebStylePair(
             light: WebComputedStyle(x: 971.31, y: 85, width: 25.03, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 971.31, y: 85, width: 25.03, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notes.toolbar.status": WebStylePair(
+        )
+        d["notes.toolbar.status"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 85, width: 47.56, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 615.75, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 85, width: 47.56, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 615.75, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.attachments.empty": WebStylePair(
+        )
+        d["notetools.attachments.empty"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 258.8, width: 228, height: 36, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 20, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 258.8, width: 228, height: 36, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 20, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.attachments.title": WebStylePair(
+        )
+        d["notetools.attachments.title"] = WebStylePair(
             light: WebComputedStyle(x: 22, y: 232.8, width: 79.59, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 22, y: 232.8, width: 79.59, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.card": WebStylePair(
+        )
+        d["notetools.card"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 104, width: 228, height: 60.8, padding: WebInsets(10, 12, 10, 12), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 104, width: 228, height: 60.8, padding: WebInsets(10, 12, 10, 12), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.card.title": WebStylePair(
+        )
+        d["notetools.card.title"] = WebStylePair(
             light: WebComputedStyle(x: 30, y: 114, width: 204, height: 16.8, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 16.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 30, y: 114, width: 204, height: 16.8, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 16.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.card.wrap": WebStylePair(
+        )
+        d["notetools.card.wrap"] = WebStylePair(
             light: WebComputedStyle(x: 8, y: 104, width: 248, height: 72.8, padding: WebInsets(0, 10, 12, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 8, y: 104, width: 248, height: 72.8, padding: WebInsets(0, 10, 12, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.comments.empty": WebStylePair(
+        )
+        d["notetools.comments.empty"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 258.8, width: 228, height: 226.19, padding: WebInsets(32, 16, 32, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 258.8, width: 228, height: 226.19, padding: WebInsets(32, 16, 32, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.comments.empty.body": WebStylePair(
+        )
+        d["notetools.comments.empty.body"] = WebStylePair(
             light: WebComputedStyle(x: 34, y: 382.8, width: 196, height: 70.19, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 17.55, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 34, y: 382.8, width: 196, height: 70.19, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 17.55, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.comments.empty.icon": WebStylePair(
+        )
+    }
+
+    private static func add11(_ d: inout [String: WebStylePair]) {
+        d["notetools.comments.empty.icon"] = WebStylePair(
             light: WebComputedStyle(x: 114, y: 290.8, width: 36, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 12, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 114, y: 290.8, width: 36, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 12, 0), radius: 6, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.comments.empty.title": WebStylePair(
+        )
+        d["notetools.comments.empty.title"] = WebStylePair(
             light: WebComputedStyle(x: 34, y: 338.8, width: 196, height: 40, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 34, y: 338.8, width: 196, height: 40, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 14, fontWeight: 600, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.comments.title": WebStylePair(
+        )
+        d["notetools.comments.title"] = WebStylePair(
             light: WebComputedStyle(x: 22, y: 232.8, width: 67.91, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 22, y: 232.8, width: 67.91, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.contents.empty": WebStylePair(
+        )
+        d["notetools.contents.empty"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 290.8, width: 228, height: 84, padding: WebInsets(24, 4, 24, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 290.8, width: 228, height: 84, padding: WebInsets(24, 4, 24, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.contents.top": WebStylePair(
+        )
+        d["notetools.contents.top"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 258.8, width: 228, height: 30, padding: WebInsets(6, 12, 6, 12), margin: WebInsets(0, 0, 2, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 258.8, width: 228, height: 30, padding: WebInsets(6, 12, 6, 12), margin: WebInsets(0, 0, 2, 0), radius: 6, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.crumb.chevron": WebStylePair(
+        )
+        d["notetools.crumb.chevron"] = WebStylePair(
             light: WebComputedStyle(x: 84.11, y: 139.3, width: 11, height: 11, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 84.11, y: 139.3, width: 11, height: 11, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.crumb.in": WebStylePair(
+        )
+        d["notetools.crumb.in"] = WebStylePair(
             light: WebComputedStyle(x: 30, y: 134.8, width: 10.05, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 30, y: 134.8, width: 10.05, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.crumb.link": WebStylePair(
+        )
+        d["notetools.crumb.link"] = WebStylePair(
             light: WebComputedStyle(x: 42.05, y: 134.8, width: 40.06, height: 20, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 42.05, y: 134.8, width: 40.06, height: 20, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.crumb.link2": WebStylePair(
+        )
+        d["notetools.crumb.link2"] = WebStylePair(
             light: WebComputedStyle(x: 97.11, y: 134.8, width: 40.16, height: 20, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 97.11, y: 134.8, width: 40.16, height: 20, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.crumbs": WebStylePair(
+        )
+        d["notetools.crumbs"] = WebStylePair(
             light: WebComputedStyle(x: 30, y: 134.8, width: 204, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 2, backdropBlur: 0),
             dark: WebComputedStyle(x: 30, y: 134.8, width: 204, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 2, backdropBlur: 0)
-        ),
-        "notetools.find.bar": WebStylePair(
+        )
+        d["notetools.find.bar"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 302.8, width: 228, height: 28, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 4, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 302.8, width: 228, height: 28, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 4, backdropBlur: 0)
-        ),
-        "notetools.find.clear": WebStylePair(
+        )
+        d["notetools.find.clear"] = WebStylePair(
             light: WebComputedStyle(x: 214, y: 264.8, width: 24, height: 24, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 214, y: 264.8, width: 24, height: 24, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.find.count": WebStylePair(
+        )
+        d["notetools.find.count"] = WebStylePair(
             light: WebComputedStyle(x: 22, y: 308.8, width: 156, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 22, y: 308.8, width: 156, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.find.field": WebStylePair(
+        )
+        d["notetools.find.field"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 258.8, width: 228, height: 36, padding: WebInsets(0, 32, 0, 32), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 258.8, width: 228, height: 36, padding: WebInsets(0, 32, 0, 32), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.find.icon": WebStylePair(
+        )
+        d["notetools.find.icon"] = WebStylePair(
             light: WebComputedStyle(x: 30, y: 269.8, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 30, y: 269.8, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.find.mark": WebStylePair(
+        )
+        d["notetools.find.mark"] = WebStylePair(
             light: WebComputedStyle(x: 119.22, y: 345.64, width: 23.73, height: 15.86, padding: WebInsets(0, 2, 0, 2), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(254, 235, 211), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 17.55, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 119.22, y: 345.64, width: 23.73, height: 15.86, padding: WebInsets(0, 2, 0, 2), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(51, 36, 15), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 17.55, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.find.match.current": WebStylePair(
+        )
+        d["notetools.find.match.current"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 338.8, width: 228, height: 47.09, padding: WebInsets(6, 8, 6, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 17.55, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 338.8, width: 228, height: 47.09, padding: WebInsets(6, 8, 6, 8), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.07), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 17.55, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.find.step": WebStylePair(
+        )
+        d["notetools.find.step"] = WebStylePair(
             light: WebComputedStyle(x: 214, y: 302.8, width: 28, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 214, y: 302.8, width: 28, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "notetools.find.title": WebStylePair(
+        )
+        d["notetools.find.title"] = WebStylePair(
             light: WebComputedStyle(x: 22, y: 232.8, width: 26.61, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 22, y: 232.8, width: 26.61, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.links.empty": WebStylePair(
+        )
+        d["notetools.links.empty"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 340.8, width: 228, height: 36, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 340.8, width: 228, height: 36, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.links.title.row": WebStylePair(
+        )
+        d["notetools.links.title.row"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 314.8, width: 228, height: 18, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 314.8, width: 228, height: 18, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.panel": WebStylePair(
+        )
+        d["notetools.panel"] = WebStylePair(
             light: WebComputedStyle(x: 8, y: 216.8, width: 248, height: 539.2, padding: WebInsets(16, 10, 24, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 8, y: 216.8, width: 248, height: 539.2, padding: WebInsets(16, 10, 24, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.panel.title": WebStylePair(
+        )
+        d["notetools.panel.title"] = WebStylePair(
             light: WebComputedStyle(x: 22, y: 232.8, width: 103.55, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 22, y: 232.8, width: 103.55, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.panel.title.row": WebStylePair(
+        )
+        d["notetools.panel.title.row"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 232.8, width: 228, height: 18, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 232.8, width: 228, height: 18, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.root": WebStylePair(
+        )
+        d["notetools.root"] = WebStylePair(
             light: WebComputedStyle(x: 8, y: 8, width: 248, height: 804, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 8, y: 8, width: 248, height: 804, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.tab": WebStylePair(
+        )
+    }
+
+    private static func add12(_ d: inout [String: WebStylePair]) {
+        d["notetools.tab"] = WebStylePair(
             light: WebComputedStyle(x: 66.41, y: 180.8, width: 42.41, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0),
             dark: WebComputedStyle(x: 66.41, y: 180.8, width: 42.41, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0)
-        ),
-        "notetools.tab.active": WebStylePair(
+        )
+        d["notetools.tab.active"] = WebStylePair(
             light: WebComputedStyle(x: 22, y: 180.8, width: 42.41, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.85), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0),
             dark: WebComputedStyle(x: 22, y: 180.8, width: 42.41, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.12), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0)
-        ),
-        "notetools.tab.active.icon": WebStylePair(
+        )
+        d["notetools.tab.active.icon"] = WebStylePair(
             light: WebComputedStyle(x: 35.7, y: 189.3, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 35.7, y: 189.3, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.tab.icon": WebStylePair(
+        )
+        d["notetools.tab.icon"] = WebStylePair(
             light: WebComputedStyle(x: 80.11, y: 189.3, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 80.11, y: 189.3, width: 15, height: 15, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.tabs": WebStylePair(
+        )
+        d["notetools.tabs"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 176.8, width: 228, height: 40, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 176.8, width: 228, height: 40, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0)
-        ),
-        "notetools.tabs.wrap": WebStylePair(
+        )
+        d["notetools.tabs.wrap"] = WebStylePair(
             light: WebComputedStyle(x: 8, y: 176.8, width: 248, height: 40, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 8, y: 176.8, width: 248, height: 40, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.tasks.empty": WebStylePair(
+        )
+        d["notetools.tasks.empty"] = WebStylePair(
             light: WebComputedStyle(x: 18, y: 258.8, width: 228, height: 63.38, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 21.125, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 18, y: 258.8, width: 228, height: 63.38, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 21.125, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "notetools.tasks.title": WebStylePair(
+        )
+        d["notetools.tasks.title"] = WebStylePair(
             light: WebComputedStyle(x: 22, y: 232.8, width: 33.55, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 22, y: 232.8, width: 33.55, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.agenda.list": WebStylePair(
+        )
+        d["planner.agenda.list"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 124, width: 944, height: 1547.25, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 124, width: 944, height: 1547.25, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.agenda.nothing": WebStylePair(
+        )
+        d["planner.agenda.nothing"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 150, width: 944, height: 57.89, padding: WebInsets(10, 16, 10, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 150, width: 944, height: 57.89, padding: WebInsets(10, 16, 10, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
-        ),
-        "planner.agenda.section": WebStylePair(
+        )
+        d["planner.agenda.section"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 124, width: 944, height: 140.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 24, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 124, width: 944, height: 140.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 24, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.agenda.section.second": WebStylePair(
+        )
+        d["planner.agenda.section.second"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 288.78, width: 944, height: 82.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 24, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 288.78, width: 944, height: 82.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 24, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.agenda.section.title": WebStylePair(
+        )
+        d["planner.agenda.section.title"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 124, width: 944, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(179, 52, 44), color: RGBA(179, 52, 44), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 124, width: 944, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 138, 128), color: RGBA(255, 138, 128), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.aside": WebStylePair(
+        )
+        d["planner.cal.aside"] = WebStylePair(
             light: WebComputedStyle(x: 940, y: 124, width: 300, height: 829.59, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 940, y: 124, width: 300, height: 829.59, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.aside.card": WebStylePair(
+        )
+        d["planner.cal.aside.card"] = WebStylePair(
             light: WebComputedStyle(x: 940, y: 160.8, width: 300, height: 56.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.9), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.05)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.18))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 940, y: 160.8, width: 300, height: 56.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 10, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.05), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.07)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.7))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.aside.hint": WebStylePair(
+        )
+        d["planner.cal.aside.hint"] = WebStylePair(
             light: WebComputedStyle(x: 940, y: 229.69, width: 300, height: 48, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 940, y: 229.69, width: 300, height: 48, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.aside.title": WebStylePair(
+        )
+        d["planner.cal.aside.title"] = WebStylePair(
             light: WebComputedStyle(x: 940, y: 124, width: 300, height: 24.8, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 600, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 940, y: 124, width: 300, height: 24.8, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 600, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.calendars": WebStylePair(
+        )
+        d["planner.cal.calendars"] = WebStylePair(
             light: WebComputedStyle(x: 936.17, y: 78, width: 106.31, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 936.17, y: 78, width: 106.31, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(41, 41, 44, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "planner.cal.cell": WebStylePair(
+        )
+        d["planner.cal.cell"] = WebStylePair(
             light: WebComputedStyle(x: 561.7, y: 261, width: 88.58, height: 104, padding: WebInsets(6, 6, 6, 6), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 561.7, y: 261, width: 88.58, height: 104, padding: WebInsets(6, 6, 6, 6), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.cell.list": WebStylePair(
+        )
+        d["planner.cal.cell.list"] = WebStylePair(
             light: WebComputedStyle(x: 479.14, y: 607, width: 75.56, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 479.14, y: 607, width: 75.56, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.cell.number": WebStylePair(
+        )
+        d["planner.cal.cell.number"] = WebStylePair(
             light: WebComputedStyle(x: 567.7, y: 267, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 567.7, y: 267, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.cell.number.outside": WebStylePair(
+        )
+        d["planner.cal.cell.number.outside"] = WebStylePair(
             light: WebComputedStyle(x: 302, y: 163, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 302, y: 163, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.cell.number.today": WebStylePair(
+        )
+        d["planner.cal.cell.number.today"] = WebStylePair(
             light: WebComputedStyle(x: 479.14, y: 579, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(11, 11, 12), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.25), inset: true)], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 479.14, y: 579, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(250, 250, 250), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.25), inset: true)], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.cell.outside": WebStylePair(
+        )
+        d["planner.cal.cell.outside"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 157, width: 88.56, height: 104, padding: WebInsets(6, 6, 6, 6), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(255, 255, 255, 0.6), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 157, width: 88.56, height: 104, padding: WebInsets(6, 6, 6, 6), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(28, 28, 30, 0.6), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.cell.selected": WebStylePair(
+        )
+        d["planner.cal.cell.selected"] = WebStylePair(
             light: WebComputedStyle(x: 473.14, y: 573, width: 88.56, height: 104, padding: WebInsets(6, 6, 6, 6), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0.02), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 473.14, y: 573, width: 88.56, height: 104, padding: WebInsets(6, 6, 6, 6), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(255, 255, 255, 0.028), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.chip": WebStylePair(
+        )
+    }
+
+    private static func add13(_ d: inout [String: WebStylePair]) {
+        d["planner.cal.chip"] = WebStylePair(
             light: WebComputedStyle(x: 390.56, y: 607, width: 75.58, height: 20, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 2, 0), radius: 4, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(31, 31, 34), color: RGBA(31, 31, 34), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 390.56, y: 607, width: 75.58, height: 20, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 2, 0), radius: 4, background: RGBA(255, 255, 255, 0.07), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.content": WebStylePair(
+        )
+        d["planner.cal.content"] = WebStylePair(
             light: WebComputedStyle(x: 264, y: 64, width: 1008, height: 989.59, padding: WebInsets(12, 32, 100, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 264, y: 64, width: 1008, height: 989.59, padding: WebInsets(12, 32, 100, 32), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.grid": WebStylePair(
+        )
+        d["planner.cal.grid"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 124, width: 620, height: 829.59, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.9), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.05)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.18))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 124, width: 620, height: 829.59, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.05), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.07)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.7))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.heading": WebStylePair(
+        )
+        d["planner.cal.heading"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 76, width: 118.59, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 20, fontWeight: 600, lineHeight: 32, letterSpacing: -0.24, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 76, width: 118.59, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 20, fontWeight: 600, lineHeight: 32, letterSpacing: -0.24, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.layout": WebStylePair(
+        )
+        d["planner.cal.layout"] = WebStylePair(
             light: WebComputedStyle(x: 1048.48, y: 76, width: 191.52, height: 32, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0),
             dark: WebComputedStyle(x: 1048.48, y: 76, width: 191.52, height: 32, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0)
-        ),
-        "planner.cal.layout.item": WebStylePair(
+        )
+        d["planner.cal.layout.item"] = WebStylePair(
             light: WebComputedStyle(x: 1113.41, y: 80, width: 54.19, height: 24, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0),
             dark: WebComputedStyle(x: 1113.41, y: 80, width: 54.19, height: 24, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0)
-        ),
-        "planner.cal.layout.item.active": WebStylePair(
+        )
+        d["planner.cal.layout.item.active"] = WebStylePair(
             light: WebComputedStyle(x: 1052.48, y: 80, width: 58.92, height: 24, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.85), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0),
             dark: WebComputedStyle(x: 1052.48, y: 80, width: 58.92, height: 24, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.12), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 20.15, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0)
-        ),
-        "planner.cal.prev": WebStylePair(
+        )
+        d["planner.cal.prev"] = WebStylePair(
             light: WebComputedStyle(x: 426.59, y: 76, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 426.59, y: 76, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "planner.cal.schedule": WebStylePair(
+        )
+        d["planner.cal.schedule"] = WebStylePair(
             light: WebComputedStyle(x: 976, y: 418.36, width: 141.17, height: 28, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, -10), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 12, fontWeight: 550, lineHeight: 16, letterSpacing: -0.06, gap: 4, backdropBlur: 0),
             dark: WebComputedStyle(x: 976, y: 418.36, width: 141.17, height: 28, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, -10), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 12, fontWeight: 550, lineHeight: 16, letterSpacing: -0.06, gap: 4, backdropBlur: 0)
-        ),
-        "planner.cal.schedule.wrap": WebStylePair(
+        )
+        d["planner.cal.schedule.wrap"] = WebStylePair(
             light: WebComputedStyle(x: 986, y: 418.36, width: 198, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(6, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 986, y: 418.36, width: 198, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(6, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.split": WebStylePair(
+        )
+        d["planner.cal.split"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 124, width: 944, height: 829.59, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 24, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 124, width: 944, height: 829.59, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 24, backdropBlur: 0)
-        ),
-        "planner.cal.today": WebStylePair(
+        )
+        d["planner.cal.today"] = WebStylePair(
             light: WebComputedStyle(x: 462.59, y: 78, width: 60.38, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 462.59, y: 78, width: 60.38, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(41, 41, 44, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "planner.cal.toolbar": WebStylePair(
+        )
+        d["planner.cal.toolbar"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 76, width: 944, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 16, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 76, width: 944, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 16, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
-        ),
-        "planner.cal.unscheduled": WebStylePair(
+        )
+        d["planner.cal.unscheduled"] = WebStylePair(
             light: WebComputedStyle(x: 940, y: 301.69, width: 300, height: 651.91, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 940, y: 301.69, width: 300, height: 651.91, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.unscheduled.title": WebStylePair(
+        )
+        d["planner.cal.unscheduled.title"] = WebStylePair(
             light: WebComputedStyle(x: 940, y: 301.69, width: 300, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 940, y: 301.69, width: 300, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.weekday": WebStylePair(
+        )
+        d["planner.cal.weekday"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 124, width: 88.56, height: 32, padding: WebInsets(8, 0, 8, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 124, width: 88.56, height: 32, padding: WebInsets(8, 0, 8, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cal.weekdays": WebStylePair(
+        )
+        d["planner.cal.weekdays"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 124, width: 620, height: 33, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(255, 255, 255), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 124, width: 620, height: 33, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(28, 28, 30), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cals.add": WebStylePair(
+        )
+        d["planner.cals.add"] = WebStylePair(
             light: WebComputedStyle(x: 682.48, y: 189, width: 360, height: 278.38, padding: WebInsets(12, 16, 12, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 682.48, y: 189, width: 360, height: 278.38, padding: WebInsets(12, 16, 12, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cals.add.button": WebStylePair(
+        )
+        d["planner.cals.add.button"] = WebStylePair(
             light: WebComputedStyle(x: 977.45, y: 425.19, width: 49.03, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(31, 31, 34), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 0.4, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 977.45, y: 425.19, width: 49.03, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(242, 242, 243), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 0.4, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "planner.cals.add.input": WebStylePair(
+        )
+        d["planner.cals.add.input"] = WebStylePair(
             light: WebComputedStyle(x: 698.48, y: 247, width: 328, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(4, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 698.48, y: 247, width: 328, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(4, 0, 0, 0), radius: 6, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cals.add.label": WebStylePair(
+        )
+        d["planner.cals.add.label"] = WebStylePair(
             light: WebComputedStyle(x: 698.48, y: 227, width: 328, height: 52, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 698.48, y: 227, width: 328, height: 52, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cals.add.note": WebStylePair(
+        )
+        d["planner.cals.add.note"] = WebStylePair(
             light: WebComputedStyle(x: 698.48, y: 423, width: 270.97, height: 32.38, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16.2, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 698.48, y: 423, width: 270.97, height: 32.38, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16.2, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cals.add.title": WebStylePair(
+        )
+        d["planner.cals.add.title"] = WebStylePair(
             light: WebComputedStyle(x: 698.48, y: 201, width: 328, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 698.48, y: 201, width: 328, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cals.color": WebStylePair(
+        )
+        d["planner.cals.color"] = WebStylePair(
             light: WebComputedStyle(x: 767.66, y: 367, width: 58.97, height: 20, padding: WebInsets(2, 6, 2, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 6, backdropBlur: 0),
             dark: WebComputedStyle(x: 767.66, y: 367, width: 58.97, height: 20, padding: WebInsets(2, 6, 2, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 6, backdropBlur: 0)
-        ),
-        "planner.cals.color.checked": WebStylePair(
+        )
+        d["planner.cals.color.checked"] = WebStylePair(
             light: WebComputedStyle(x: 698.48, y: 367, width: 65.17, height: 20, padding: WebInsets(2, 6, 2, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 6, backdropBlur: 0),
             dark: WebComputedStyle(x: 698.48, y: 367, width: 65.17, height: 20, padding: WebInsets(2, 6, 2, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.07), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 6, backdropBlur: 0)
-        ),
-        "planner.cals.color.dot": WebStylePair(
+        )
+    }
+
+    private static func add14(_ d: inout [String: WebStylePair]) {
+        d["planner.cals.color.dot"] = WebStylePair(
             light: WebComputedStyle(x: 704.48, y: 371, width: 12, height: 12, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(31, 31, 34), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 704.48, y: 371, width: 12, height: 12, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(242, 242, 243), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cals.color.legend": WebStylePair(
+        )
+        d["planner.cals.color.legend"] = WebStylePair(
             light: WebComputedStyle(x: 698.48, y: 347, width: 30.19, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 698.48, y: 347, width: 30.19, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cals.head": WebStylePair(
+        )
+        d["planner.cals.head"] = WebStylePair(
             light: WebComputedStyle(x: 682.48, y: 112, width: 360, height: 77, padding: WebInsets(12, 16, 12, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 682.48, y: 112, width: 360, height: 77, padding: WebInsets(12, 16, 12, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cals.head.text": WebStylePair(
+        )
+        d["planner.cals.head.text"] = WebStylePair(
             light: WebComputedStyle(x: 698.48, y: 144, width: 328, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 698.48, y: 144, width: 328, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cals.head.title": WebStylePair(
+        )
+        d["planner.cals.head.title"] = WebStylePair(
             light: WebComputedStyle(x: 698.48, y: 124, width: 328, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 698.48, y: 124, width: 328, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.cals.pop": WebStylePair(
+        )
+        d["planner.cals.pop"] = WebStylePair(
             light: WebComputedStyle(x: 682.48, y: 112, width: 360, height: 355.38, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(255, 255, 255, 0.82), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.12), inset: true), ShadowLayer(x: 0, y: 10, blur: 30, spread: 0, color: RGBA(0, 0, 0, 0.16)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24),
             dark: WebComputedStyle(x: 682.48, y: 112, width: 360, height: 355.38, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(40, 40, 44, 0.86), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(255, 255, 255, 0.1), inset: true), ShadowLayer(x: 0, y: 10, blur: 30, spread: 0, color: RGBA(0, 0, 0, 0.5)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.6))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24)
-        ),
-        "planner.date.day": WebStylePair(
+        )
+        d["planner.date.day"] = WebStylePair(
             light: WebComputedStyle(x: 587.42, y: 404, width: 33.14, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 587.42, y: 404, width: 33.14, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.date.day.outside": WebStylePair(
+        )
+        d["planner.date.day.outside"] = WebStylePair(
             light: WebComputedStyle(x: 482, y: 370, width: 33.14, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 482, y: 370, width: 33.14, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.date.day.selected": WebStylePair(
+        )
+        d["planner.date.day.selected"] = WebStylePair(
             light: WebComputedStyle(x: 552.28, y: 506, width: 33.14, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(11, 11, 12), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 552.28, y: 506, width: 33.14, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(250, 250, 250), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(28, 28, 30), color: RGBA(28, 28, 30), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.date.grid": WebStylePair(
+        )
+        d["planner.date.grid"] = WebStylePair(
             light: WebComputedStyle(x: 482, y: 340, width: 244, height: 232, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0),
             dark: WebComputedStyle(x: 482, y: 340, width: 244, height: 232, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0)
-        ),
-        "planner.date.month": WebStylePair(
+        )
+        d["planner.date.month"] = WebStylePair(
             light: WebComputedStyle(x: 484, y: 311, width: 83.53, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 484, y: 311, width: 83.53, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.date.nav": WebStylePair(
+        )
+        d["planner.date.nav"] = WebStylePair(
             light: WebComputedStyle(x: 666, y: 306, width: 28, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 666, y: 306, width: 28, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.date.pop": WebStylePair(
+        )
+        d["planner.date.pop"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 296, width: 264, height: 286, padding: WebInsets(10, 10, 10, 10), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(255, 255, 255, 0.82), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.12), inset: true), ShadowLayer(x: 0, y: 10, blur: 30, spread: 0, color: RGBA(0, 0, 0, 0.16)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24),
             dark: WebComputedStyle(x: 472, y: 296, width: 264, height: 286, padding: WebInsets(10, 10, 10, 10), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(40, 40, 44, 0.86), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(255, 255, 255, 0.1), inset: true), ShadowLayer(x: 0, y: 10, blur: 30, spread: 0, color: RGBA(0, 0, 0, 0.5)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.6))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24)
-        ),
-        "planner.date.weekday": WebStylePair(
+        )
+        d["planner.date.weekday"] = WebStylePair(
             light: WebComputedStyle(x: 482, y: 340, width: 33.14, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 482, y: 340, width: 33.14, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.dialog": WebStylePair(
+        )
+        d["planner.dialog"] = WebStylePair(
             light: WebComputedStyle(x: 448, y: 56, width: 384, height: 400, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(56, 448, 364, 448), radius: 14, background: RGBA(255, 255, 255, 0.82), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.12), inset: true), ShadowLayer(x: 0, y: 18, blur: 50, spread: 0, color: RGBA(0, 0, 0, 0.2)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.1))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24),
             dark: WebComputedStyle(x: 448, y: 56, width: 384, height: 400, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(56, 448, 364, 448), radius: 14, background: RGBA(40, 40, 44, 0.86), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(255, 255, 255, 0.1), inset: true), ShadowLayer(x: 0, y: 18, blur: 50, spread: 0, color: RGBA(0, 0, 0, 0.55)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.7))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24)
-        ),
-        "planner.dialog.body": WebStylePair(
+        )
+        d["planner.dialog.body"] = WebStylePair(
             light: WebComputedStyle(x: 448, y: 116, width: 384, height: 340, padding: WebInsets(16, 24, 16, 24), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 448, y: 116, width: 384, height: 340, padding: WebInsets(16, 24, 16, 24), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.dialog.close": WebStylePair(
+        )
+        d["planner.dialog.close"] = WebStylePair(
             light: WebComputedStyle(x: 776, y: 76, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 776, y: 76, width: 32, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "planner.dialog.header": WebStylePair(
+        )
+        d["planner.dialog.header"] = WebStylePair(
             light: WebComputedStyle(x: 448, y: 56, width: 384, height: 60, padding: WebInsets(20, 24, 8, 24), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 448, y: 56, width: 384, height: 60, padding: WebInsets(20, 24, 8, 24), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
-        ),
-        "planner.dialog.title": WebStylePair(
+        )
+        d["planner.dialog.title"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 76, width: 292, height: 22.94, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 17, fontWeight: 600, lineHeight: 22.95, letterSpacing: -0.204, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 76, width: 292, height: 22.94, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 17, fontWeight: 600, lineHeight: 22.95, letterSpacing: -0.204, gap: 0, backdropBlur: 0)
-        ),
-        "planner.edit.cancel": WebStylePair(
+        )
+        d["planner.edit.cancel"] = WebStylePair(
             light: WebComputedStyle(x: 681.14, y: 412, width: 65.97, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 681.14, y: 412, width: 65.97, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(41, 41, 44, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "planner.edit.clear": WebStylePair(
+        )
+        d["planner.edit.clear"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 302, width: 85.69, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 302, width: 85.69, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "planner.edit.datefield": WebStylePair(
+        )
+        d["planner.edit.datefield"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 262, width: 176, height: 28, padding: WebInsets(0, 32, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 262, width: 176, height: 28, padding: WebInsets(0, 32, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "planner.edit.datefield.icon": WebStylePair(
+        )
+        d["planner.edit.datefield.icon"] = WebStylePair(
             light: WebComputedStyle(x: 482, y: 269, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 482, y: 269, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.edit.datefield.text": WebStylePair(
+        )
+        d["planner.edit.datefield.text"] = WebStylePair(
             light: WebComputedStyle(x: 504, y: 267, width: 65.02, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 504, y: 267, width: 65.02, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.edit.dates": WebStylePair(
+        )
+        d["planner.edit.dates"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 240, width: 336, height: 90, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 240, width: 336, height: 90, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
-        ),
-        "planner.edit.footer": WebStylePair(
+        )
+    }
+
+    private static func add15(_ d: inout [String: WebStylePair]) {
+        d["planner.edit.footer"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 412, width: 336, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 412, width: 336, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "planner.edit.form": WebStylePair(
+        )
+        d["planner.edit.form"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 158, width: 336, height: 282, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 16, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 158, width: 336, height: 282, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 16, backdropBlur: 0)
-        ),
-        "planner.edit.label": WebStylePair(
+        )
+        d["planner.edit.label"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 240, width: 176, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 240, width: 176, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.edit.legend": WebStylePair(
+        )
+        d["planner.edit.legend"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 158, width: 38.36, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 158, width: 38.36, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.edit.open": WebStylePair(
+        )
+        d["planner.edit.open"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 417, width: 81.33, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 119.813, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(31, 31, 34), color: RGBA(31, 31, 34), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 417, width: 81.33, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 119.813, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.edit.save": WebStylePair(
+        )
+        d["planner.edit.save"] = WebStylePair(
             light: WebComputedStyle(x: 755.11, y: 412, width: 52.89, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(31, 31, 34), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 755.11, y: 412, width: 52.89, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(242, 242, 243), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "planner.edit.seg": WebStylePair(
+        )
+        d["planner.edit.seg"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 184, width: 192.36, height: 40, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(8, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 184, width: 192.36, height: 40, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(8, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0)
-        ),
-        "planner.edit.seg.item": WebStylePair(
+        )
+        d["planner.edit.seg.item"] = WebStylePair(
             light: WebComputedStyle(x: 530.5, y: 188, width: 51.61, height: 32, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0),
             dark: WebComputedStyle(x: 530.5, y: 188, width: 51.61, height: 32, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0)
-        ),
-        "planner.edit.seg.item.active": WebStylePair(
+        )
+        d["planner.edit.seg.item.active"] = WebStylePair(
             light: WebComputedStyle(x: 476, y: 188, width: 52.5, height: 32, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.85), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0),
             dark: WebComputedStyle(x: 476, y: 188, width: 52.5, height: 32, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.12), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0)
-        ),
-        "planner.edit.select": WebStylePair(
+        )
+        d["planner.edit.select"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 368, width: 75.91, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(4, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 368, width: 75.91, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(4, 0, 0, 0), radius: 8, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0)
-        ),
-        "planner.edit.select.chevron": WebStylePair(
+        )
+        d["planner.edit.select.chevron"] = WebStylePair(
             light: WebComputedStyle(x: 521.91, y: 375, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 0.6, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 521.91, y: 375, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 0.6, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.edit.task": WebStylePair(
+        )
+        d["planner.edit.task"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 124, width: 336, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(-8, 0, 16, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 124, width: 336, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(-8, 0, 16, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.empty": WebStylePair(
+        )
+        d["planner.empty"] = WebStylePair(
             light: WebComputedStyle(x: 544, y: 212, width: 448, height: 218, padding: WebInsets(64, 24, 64, 24), margin: WebInsets(0, 128, 0, 128), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 544, y: 212, width: 448, height: 218, padding: WebInsets(64, 24, 64, 24), margin: WebInsets(0, 128, 0, 128), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.empty.icon": WebStylePair(
+        )
+        d["planner.empty.icon"] = WebStylePair(
             light: WebComputedStyle(x: 746, y: 276, width: 44, height: 44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 16, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 746, y: 276, width: 44, height: 44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 16, 0), radius: 6, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.empty.title": WebStylePair(
+        )
+        d["planner.empty.title"] = WebStylePair(
             light: WebComputedStyle(x: 632.31, y: 336, width: 271.38, height: 30, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 24, fontWeight: 600, lineHeight: 30, letterSpacing: -0.288, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 632.31, y: 336, width: 271.38, height: 30, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 24, fontWeight: 600, lineHeight: 30, letterSpacing: -0.288, gap: 0, backdropBlur: 0)
-        ),
-        "planner.header": WebStylePair(
+        )
+        d["planner.header"] = WebStylePair(
             light: WebComputedStyle(x: 276, y: 64, width: 984, height: 44, padding: WebInsets(0, 20, 0, 20), margin: WebInsets(0, 12, 0, 12), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 276, y: 64, width: 984, height: 44, padding: WebInsets(0, 20, 0, 20), margin: WebInsets(0, 12, 0, 12), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "planner.header.add": WebStylePair(
+        )
+        d["planner.header.add"] = WebStylePair(
             light: WebComputedStyle(x: 1141.86, y: 72, width: 98.14, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(31, 31, 34), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 1141.86, y: 72, width: 98.14, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(242, 242, 243), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "planner.header.calendar": WebStylePair(
+        )
+        d["planner.header.calendar"] = WebStylePair(
             light: WebComputedStyle(x: 1036.88, y: 72, width: 98.98, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 6, backdropBlur: 0),
             dark: WebComputedStyle(x: 1036.88, y: 72, width: 98.98, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(41, 41, 44, 0.72), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 6, backdropBlur: 0)
-        ),
-        "planner.header.calendar.label": WebStylePair(
+        )
+        d["planner.header.calendar.label"] = WebStylePair(
             light: WebComputedStyle(x: 1068.88, y: 77, width: 54.98, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1068.88, y: 77, width: 54.98, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 0, backdropBlur: 0)
-        ),
-        "planner.header.subtitle": WebStylePair(
+        )
+        d["planner.header.subtitle"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 77, width: 81.81, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 77, width: 81.81, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.quick.add": WebStylePair(
+        )
+        d["planner.quick.add"] = WebStylePair(
             light: WebComputedStyle(x: 731.05, y: 350.94, width: 76.95, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(31, 31, 34), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0),
             dark: WebComputedStyle(x: 731.05, y: 350.94, width: 76.95, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(242, 242, 243), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.12)), ShadowLayer(x: 0, y: 4, blur: 12, spread: -4, color: RGBA(0, 0, 0, 0.25))], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.065, gap: 7.2, backdropBlur: 0)
-        ),
-        "planner.quick.datefield": WebStylePair(
+        )
+        d["planner.quick.datefield"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 262, width: 176, height: 28, padding: WebInsets(0, 32, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1.5, color: RGBA(11, 11, 12, 0.165))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 262, width: 176, height: 28, padding: WebInsets(0, 32, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1.5, color: RGBA(250, 250, 250, 0.165))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "planner.quick.description": WebStylePair(
+        )
+        d["planner.quick.description"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 102.94, width: 292, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 102.94, width: 292, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.quick.dialog": WebStylePair(
+        )
+        d["planner.quick.dialog"] = WebStylePair(
             light: WebComputedStyle(x: 448, y: 56, width: 384, height: 400, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(56, 448, 364, 448), radius: 14, background: RGBA(255, 255, 255, 0.82), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.12), inset: true), ShadowLayer(x: 0, y: 18, blur: 50, spread: 0, color: RGBA(0, 0, 0, 0.2)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.1))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24),
             dark: WebComputedStyle(x: 448, y: 56, width: 384, height: 400, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(56, 448, 364, 448), radius: 14, background: RGBA(40, 40, 44, 0.86), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(255, 255, 255, 0.1), inset: true), ShadowLayer(x: 0, y: 18, blur: 50, spread: 0, color: RGBA(0, 0, 0, 0.55)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.7))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24)
-        ),
-        "planner.quick.fields": WebStylePair(
+        )
+        d["planner.quick.fields"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 218.94, width: 336, height: 50, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 218.94, width: 336, height: 50, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
-        ),
-        "planner.quick.footer": WebStylePair(
+        )
+    }
+
+    private static func add16(_ d: inout [String: WebStylePair]) {
+        d["planner.quick.footer"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 350.94, width: 336, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(20, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 350.94, width: 336, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(20, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "planner.quick.input": WebStylePair(
+        )
+        d["planner.quick.input"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 162.94, width: 336, height: 44, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 162.94, width: 336, height: 44, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.quick.picker": WebStylePair(
+        )
+        d["planner.quick.picker"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 280.94, width: 336, height: 50, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 280.94, width: 336, height: 50, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.quick.picker.input": WebStylePair(
+        )
+        d["planner.quick.picker.input"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 302.94, width: 336, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 302.94, width: 336, height: 28, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.card": WebStylePair(
+        )
+        d["planner.tasks.card"] = WebStylePair(
             light: WebComputedStyle(x: 416, y: 236, width: 704, height: 172.67, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.9), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.05)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.18))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 416, y: 236, width: 704, height: 172.67, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.05), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.07)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.7))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.check": WebStylePair(
+        )
+        d["planner.tasks.check"] = WebStylePair(
             light: WebComputedStyle(x: 432, y: 248, width: 18, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255), gradient: nil, shadows: [], borderWidth: 1.5, borderColor: RGBA(207, 207, 213), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 432, y: 248, width: 18, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 6, background: RGBA(28, 28, 30), gradient: nil, shadows: [], borderWidth: 1.5, borderColor: RGBA(62, 62, 67), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.check.done": WebStylePair(
+        )
+        d["planner.tasks.check.done"] = WebStylePair(
             light: WebComputedStyle(x: 432, y: 248, width: 18, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: WebGradient(angle: 180, stops: [RGBA(105, 189, 135), RGBA(63, 174, 110)]), shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.35), inset: true)], borderWidth: 1.5, borderColor: RGBA(0, 0, 0, 0), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 432, y: 248, width: 18, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: WebGradient(angle: 180, stops: [RGBA(127, 213, 159), RGBA(92, 203, 138)]), shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.35), inset: true)], borderWidth: 1.5, borderColor: RGBA(0, 0, 0, 0), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.content": WebStylePair(
+        )
+        d["planner.tasks.content"] = WebStylePair(
             light: WebComputedStyle(x: 384, y: 108, width: 768, height: 400.67, padding: WebInsets(12, 32, 100, 32), margin: WebInsets(0, 120, 0, 120), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 384, y: 108, width: 768, height: 400.67, padding: WebInsets(12, 32, 100, 32), margin: WebInsets(0, 120, 0, 120), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.due": WebStylePair(
+        )
+        d["planner.tasks.due"] = WebStylePair(
             light: WebComputedStyle(x: 956.09, y: 248, width: 107.91, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(179, 52, 44), color: RGBA(179, 52, 44), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 956.09, y: 248, width: 107.91, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 138, 128), color: RGBA(255, 138, 128), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.edit": WebStylePair(
+        )
+        d["planner.tasks.edit"] = WebStylePair(
             light: WebComputedStyle(x: 1076, y: 244, width: 28, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(-2, 0, -2, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 0, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 1076, y: 244, width: 28, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(-2, 0, -2, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 0, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.filter": WebStylePair(
+        )
+        d["planner.tasks.filter"] = WebStylePair(
             light: WebComputedStyle(x: 416, y: 176, width: 704, height: 36, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 416, y: 176, width: 704, height: 36, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.group": WebStylePair(
+        )
+        d["planner.tasks.group"] = WebStylePair(
             light: WebComputedStyle(x: 416, y: 236, width: 704, height: 80.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 416, y: 236, width: 704, height: 80.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.group.second": WebStylePair(
+        )
+        d["planner.tasks.group.second"] = WebStylePair(
             light: WebComputedStyle(x: 416, y: 340.89, width: 704, height: 138.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 416, y: 340.89, width: 704, height: 138.78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.group.title": WebStylePair(
+        )
+        d["planner.tasks.group.title"] = WebStylePair(
             light: WebComputedStyle(x: 416, y: 236, width: 704, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: 0.72, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 416, y: 236, width: 704, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: 0.72, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.meta": WebStylePair(
+        )
+        d["planner.tasks.meta"] = WebStylePair(
             light: WebComputedStyle(x: 462, y: 266.89, width: 482.09, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 462, y: 266.89, width: 482.09, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
-        ),
-        "planner.tasks.meta.link": WebStylePair(
+        )
+        d["planner.tasks.meta.link"] = WebStylePair(
             light: WebComputedStyle(x: 462, y: 266.89, width: 46.22, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 4, backdropBlur: 0),
             dark: WebComputedStyle(x: 462, y: 266.89, width: 46.22, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 4, backdropBlur: 0)
-        ),
-        "planner.tasks.meta.link.icon": WebStylePair(
+        )
+        d["planner.tasks.meta.link.icon"] = WebStylePair(
             light: WebComputedStyle(x: 462, y: 268.89, width: 12, height: 12, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 462, y: 268.89, width: 12, height: 12, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.row": WebStylePair(
+        )
+        d["planner.tasks.row"] = WebStylePair(
             light: WebComputedStyle(x: 416, y: 236, width: 704, height: 57.89, padding: WebInsets(10, 16, 10, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 416, y: 236, width: 704, height: 57.89, padding: WebInsets(10, 16, 10, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
-        ),
-        "planner.tasks.row.completed": WebStylePair(
+        )
+        d["planner.tasks.row.completed"] = WebStylePair(
             light: WebComputedStyle(x: 416, y: 236, width: 704, height: 57.89, padding: WebInsets(10, 16, 10, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 416, y: 236, width: 704, height: 57.89, padding: WebInsets(10, 16, 10, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
-        ),
-        "planner.tasks.row.second": WebStylePair(
+        )
+        d["planner.tasks.row.second"] = WebStylePair(
             light: WebComputedStyle(x: 416, y: 293.89, width: 704, height: 57.89, padding: WebInsets(10, 16, 10, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 416, y: 293.89, width: 704, height: 57.89, padding: WebInsets(10, 16, 10, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
-        ),
-        "planner.tasks.section": WebStylePair(
+        )
+        d["planner.tasks.section"] = WebStylePair(
             light: WebComputedStyle(x: 416, y: 236, width: 704, height: 172.67, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 416, y: 236, width: 704, height: 172.67, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.seg": WebStylePair(
+        )
+        d["planner.tasks.seg"] = WebStylePair(
             light: WebComputedStyle(x: 416, y: 120, width: 704, height: 40, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0),
             dark: WebComputedStyle(x: 416, y: 120, width: 704, height: 40, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0)
-        ),
-        "planner.tasks.seg.count": WebStylePair(
+        )
+        d["planner.tasks.seg.count"] = WebStylePair(
             light: WebComputedStyle(x: 487.47, y: 131, width: 18.52, height: 18, padding: WebInsets(0, 6, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 11, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 487.47, y: 131, width: 18.52, height: 18, padding: WebInsets(0, 6, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 11, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.seg.count.active": WebStylePair(
+        )
+        d["planner.tasks.seg.count.active"] = WebStylePair(
             light: WebComputedStyle(x: 605.14, y: 131, width: 18.52, height: 18, padding: WebInsets(0, 6, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(11, 11, 12), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 11, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 605.14, y: 131, width: 18.52, height: 18, padding: WebInsets(0, 6, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(250, 250, 250), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 11, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.seg.item": WebStylePair(
+        )
+        d["planner.tasks.seg.item"] = WebStylePair(
             light: WebComputedStyle(x: 420, y: 124, width: 114.33, height: 32, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0),
             dark: WebComputedStyle(x: 420, y: 124, width: 114.33, height: 32, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0)
-        ),
-        "planner.tasks.seg.item.active": WebStylePair(
+        )
+    }
+
+    private static func add17(_ d: inout [String: WebStylePair]) {
+        d["planner.tasks.seg.item.active"] = WebStylePair(
             light: WebComputedStyle(x: 536.33, y: 124, width: 114.33, height: 32, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.85), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0),
             dark: WebComputedStyle(x: 536.33, y: 124, width: 114.33, height: 32, padding: WebInsets(0, 9.6, 0, 9.6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(255, 255, 255, 0.12), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4)), ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 550, lineHeight: 18, letterSpacing: -0.096, gap: 5.6, backdropBlur: 0)
-        ),
-        "planner.tasks.title": WebStylePair(
+        )
+        d["planner.tasks.title"] = WebStylePair(
             light: WebComputedStyle(x: 462, y: 246, width: 482.09, height: 18.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 462, y: 246, width: 482.09, height: 18.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.tasks.title.done": WebStylePair(
+        )
+        d["planner.tasks.title.done"] = WebStylePair(
             light: WebComputedStyle(x: 462, y: 246, width: 602, height: 18.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 462, y: 246, width: 602, height: 18.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 14, fontWeight: 400, lineHeight: 18.9, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.allday": WebStylePair(
+        )
+        d["planner.week.allday"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 165, width: 944, height: 51, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 165, width: 944, height: 51, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.allday.cell": WebStylePair(
+        )
+        d["planner.week.allday.cell"] = WebStylePair(
             light: WebComputedStyle(x: 352, y: 165, width: 126.84, height: 50, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 352, y: 165, width: 126.84, height: 50, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.allday.cell.selected": WebStylePair(
+        )
+        d["planner.week.allday.cell.selected"] = WebStylePair(
             light: WebComputedStyle(x: 605.7, y: 165, width: 126.86, height: 50, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0.02), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 605.7, y: 165, width: 126.86, height: 50, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(255, 255, 255, 0.028), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.allday.chip": WebStylePair(
+        )
+        d["planner.week.allday.chip"] = WebStylePair(
             light: WebComputedStyle(x: 483.84, y: 169, width: 117.86, height: 20, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(31, 31, 34), color: RGBA(31, 31, 34), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 483.84, y: 169, width: 117.86, height: 20, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(255, 255, 255, 0.07), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.allday.label": WebStylePair(
+        )
+        d["planner.week.allday.label"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 165, width: 56, height: 50, padding: WebInsets(8, 8, 8, 8), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 165, width: 56, height: 50, padding: WebInsets(8, 8, 8, 8), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.card": WebStylePair(
+        )
+        d["planner.week.card"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 124, width: 944, height: 649.59, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.9), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.05)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.18))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 124, width: 944, height: 649.59, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.05), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.07)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.7))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.column": WebStylePair(
+        )
+        d["planner.week.column"] = WebStylePair(
             light: WebComputedStyle(x: 352, y: -38, width: 126.84, height: 1056, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 352, y: -38, width: 126.84, height: 1056, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.head": WebStylePair(
+        )
+        d["planner.week.head"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 124, width: 944, height: 41, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(255, 255, 255), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 124, width: 944, height: 41, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(28, 28, 30), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.head.day": WebStylePair(
+        )
+        d["planner.week.head.day"] = WebStylePair(
             light: WebComputedStyle(x: 352, y: 124, width: 126.84, height: 40, padding: WebInsets(8, 0, 8, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 6, backdropBlur: 0),
             dark: WebComputedStyle(x: 352, y: 124, width: 126.84, height: 40, padding: WebInsets(8, 0, 8, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 6, backdropBlur: 0)
-        ),
-        "planner.week.head.number": WebStylePair(
+        )
+        d["planner.week.head.number"] = WebStylePair(
             light: WebComputedStyle(x: 418.88, y: 132, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 418.88, y: 132, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.head.number.today": WebStylePair(
+        )
+        d["planner.week.head.number.today"] = WebStylePair(
             light: WebComputedStyle(x: 673.25, y: 132, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(11, 11, 12), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 673.25, y: 132, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(250, 250, 250), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.hint": WebStylePair(
+        )
+        d["planner.week.hint"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 785.59, width: 944, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 785.59, width: 944, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.hour": WebStylePair(
+        )
+        d["planner.week.hour"] = WebStylePair(
             light: WebComputedStyle(x: 353, y: -38, width: 125.84, height: 44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230, 0.6), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 353, y: -38, width: 125.84, height: 44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47, 0.6), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.hour.label": WebStylePair(
+        )
+        d["planner.week.hour.label"] = WebStylePair(
             light: WebComputedStyle(x: 315.27, y: 219, width: 28.73, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 11, fontWeight: 400, lineHeight: 14, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 315.27, y: 219, width: 28.73, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 11, fontWeight: 400, lineHeight: 14, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.now": WebStylePair(
+        )
+        d["planner.week.now"] = WebStylePair(
             light: WebComputedStyle(x: 606.7, y: -30.67, width: 125.86, height: 2, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 2, borderColor: RGBA(31, 31, 34), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 606.7, y: -29.94, width: 125.86, height: 2, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 2, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.scroll": WebStylePair(
+        )
+        d["planner.week.scroll"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 216, width: 944, height: 557.59, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 216, width: 944, height: 557.59, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.timed": WebStylePair(
+        )
+        d["planner.week.timed"] = WebStylePair(
             light: WebComputedStyle(x: 862.42, y: 623, width: 121.86, height: 20, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255))], borderWidth: 0, borderColor: RGBA(31, 31, 34), color: RGBA(31, 31, 34), opacity: 1, family: .sans, fontSize: 11, fontWeight: 400, lineHeight: 14, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 862.42, y: 623, width: 121.86, height: 20, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(255, 255, 255, 0.07), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(16, 16, 17))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 11, fontWeight: 400, lineHeight: 14, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.timed.time": WebStylePair(
+        )
+        d["planner.week.timed.time"] = WebStylePair(
             light: WebComputedStyle(x: 866.42, y: 626.29, width: 28.72, height: 13.42, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 4, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(31, 31, 34), color: RGBA(31, 31, 34), opacity: 0.8, family: .sans, fontSize: 11, fontWeight: 400, lineHeight: 14, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 866.42, y: 626.29, width: 28.72, height: 13.42, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 4, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 0.8, family: .sans, fontSize: 11, fontWeight: 400, lineHeight: 14, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "planner.week.unscheduled": WebStylePair(
+        )
+        d["planner.week.unscheduled"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 825.59, width: 944, height: 576.34, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 825.59, width: 944, height: 576.34, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "select.trigger": WebStylePair(
+        )
+        d["select.trigger"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 552, width: 160, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 552, width: 160, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0)
-        ),
-        "select.trigger.chevron": WebStylePair(
+        )
+        d["select.trigger.chevron"] = WebStylePair(
             light: WebComputedStyle(x: 152, y: 561, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 0.6, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 152, y: 561, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 0.6, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-        "select.trigger.label": WebStylePair(
+        )
+        d["select.trigger.label"] = WebStylePair(
             light: WebComputedStyle(x: 26, y: 559, width: 69.84, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 26, y: 559, width: 69.84, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
-        ),
-    ]
+        )
+    }
 
     /// The Mac's CSS colour variables (`--mac-selected`, `--glass-hover`), light and dark.
     public static let vars: [String: ColorPair] = [

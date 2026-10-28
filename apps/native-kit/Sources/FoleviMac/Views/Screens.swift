@@ -45,6 +45,7 @@ final class ScreenModels {
     /// Every folder as a card (Home's Recent folders, the Folders page).
     private var allFolders: ValueStore<FolderCardsValue>?
     private var aiPage: FoliChatModel?
+    private var settings: MacSettingsModel?
 
     init(frame: FrameModel) { self.frame = frame }
 
@@ -112,6 +113,13 @@ final class ScreenModels {
             frame.open(r)
         }
         aiPage = m
+        return m
+    }
+
+    func settingsModel() -> MacSettingsModel {
+        if let settings { return settings }
+        let m = MacSettingsModel(frame: frame)
+        settings = m
         return m
     }
 
@@ -268,6 +276,7 @@ struct ScreenRoot: View {
             case .calendar: WebCalendarScreen(model: models.calendarModel(), frame: model)
             case .web(let path) where route.tabKey == "view:ai":
                 AiPageScreen(frame: model, model: models.aiPageModel(), conversationId: path.hasPrefix("/ai/") ? String(path.dropFirst(4)).removingPercentEncoding : nil)
+            case .web(let path) where path.hasPrefix("/settings"): SettingsScreen(model: models.settingsModel(), section: MacSettingsSection(path: path))
             case .web(let path): Placeholder(symbol: "globe", title: "Not here yet", message: "\(path) doesn't have a screen in the Mac app yet.")
             case .note: Color.clear
             }

@@ -5754,6 +5754,78 @@ public struct NotesMoveCheckValue: Codable, Hashable, Sendable {
     }
 }
 
+/// Settings on the Mac, native (docs/MAC_REBUILD_PLAN.md section 0): `settings.query` reads one of these, worded as
+/// the web's Settings words it (viewsSettings.ts); "convex" is one of the Convex queries Settings reads
+/// (args { fn, args }, an allowlist).
+public enum SettingsQueryKey: String, Codable, Hashable, Sendable, CaseIterable {
+    case library
+    case localAi
+    case desktop
+    case convex
+}
+
+/// What `settings.run` does: the library's controls, Foli AI's keys on the device, the Mac app's settings, and the Convex changes Settings makes (args { fn, args }, an allowlist).
+public enum SettingsRunKey: String, Codable, Hashable, Sendable, CaseIterable {
+    case librarySyncNow = "library.syncNow"
+    case libraryMove = "library.move"
+    case libraryCloudConnect = "library.cloudConnect"
+    case libraryCloudCancel = "library.cloudCancel"
+    case libraryCloudSignOut = "library.cloudSignOut"
+    case librarySetPassphrase = "library.setPassphrase"
+    case libraryChangePassphrase = "library.changePassphrase"
+    case libraryRemovePassphrase = "library.removePassphrase"
+    case libraryLock = "library.lock"
+    case libraryForget = "library.forget"
+    case localAiSetKey = "localAi.setKey"
+    case localAiRemoveKey = "localAi.removeKey"
+    case localAiTestKey = "localAi.testKey"
+    case localAiSetChoice = "localAi.setChoice"
+    case desktopSet = "desktop.set"
+    case desktopPauseShortcut = "desktop.pauseShortcut"
+    case textLines = "text.lines"
+    case dataImport = "data.import"
+    case takeoutImport = "takeout.import"
+    case convexMutation = "convex.mutation"
+    case convexAction = "convex.action"
+}
+
+public struct SettingsQueryArgs: Codable, Hashable, Sendable {
+    public var key: SettingsQueryKey
+    public var args: [String: JSONValue]?
+
+    public init(key: SettingsQueryKey, args: [String: JSONValue]? = nil) {
+        self.key = key
+        self.args = args
+    }
+}
+
+/// The section's data as the web's section would show it (each key's shape is in viewsSettings.ts).
+public struct SettingsQueryValue: Codable, Hashable, Sendable {
+    public var data: JSONValue
+
+    public init(data: JSONValue) {
+        self.data = data
+    }
+}
+
+public struct SettingsRunArgs: Codable, Hashable, Sendable {
+    public var key: SettingsRunKey
+    public var args: [String: JSONValue]?
+
+    public init(key: SettingsRunKey, args: [String: JSONValue]? = nil) {
+        self.key = key
+        self.args = args
+    }
+}
+
+public struct SettingsRunResult: Codable, Hashable, Sendable {
+    public var data: JSONValue
+
+    public init(data: JSONValue) {
+        self.data = data
+    }
+}
+
 /// One step of where the note lives ("In Travel > Japan"): a folder or a parent page, outermost first.
 public struct NoteToolsCrumb: Codable, Hashable, Sendable {
     /// The app path it opens ("/folders/<id>", "/d/<id>", "/documents").

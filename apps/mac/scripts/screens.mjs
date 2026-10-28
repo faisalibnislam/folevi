@@ -64,6 +64,12 @@ export const SCREENS = [
   // The fixture's Foli AI conversation (its id from fixture.json), and the floating chat open over Home.
   { id: "ai-chat", link: (fx) => `folevi-dev://ai/${fx.chat}` },
   { id: "ask-ai", link: "folevi-dev://documents", ask: true },
+  // Settings in local mode (the sections a library has), each opened on its own.
+  { id: "settings-library", link: "folevi-dev://settings/library", settle: 1200 },
+  { id: "settings-ai", link: "folevi-dev://settings/ai", settle: 1200 },
+  { id: "settings-appearance", link: "folevi-dev://settings/appearance", settle: 800 },
+  { id: "settings-data", link: "folevi-dev://settings/data", settle: 800 },
+  { id: "settings-desktop", link: "folevi-dev://settings/desktop", settle: 1000 },
 ];
 
 /** A note screen showing one tab of the note's sidebar: `defaults` for the native frame, `web` run in the web frame. */

@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 16;
+export const CONTRACT_REVISION = 17;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2722,6 +2722,52 @@ export interface NotesMoveCheckValue {
   message: string | null;
 }
 
+/**
+ * Settings on the Mac, native (docs/MAC_REBUILD_PLAN.md section 0): `settings.query` reads one of these, worded as
+ * the web's Settings words it (viewsSettings.ts); "convex" is one of the Convex queries Settings reads
+ * (args { fn, args }, an allowlist).
+ */
+export type SettingsQueryKey = "library" | "localAi" | "desktop" | "convex";
+/** What `settings.run` does: the library's controls, Foli AI's keys on the device, the Mac app's settings, and the Convex changes Settings makes (args { fn, args }, an allowlist). */
+export type SettingsRunKey =
+  | "library.syncNow"
+  | "library.move"
+  | "library.cloudConnect"
+  | "library.cloudCancel"
+  | "library.cloudSignOut"
+  | "library.setPassphrase"
+  | "library.changePassphrase"
+  | "library.removePassphrase"
+  | "library.lock"
+  | "library.forget"
+  | "localAi.setKey"
+  | "localAi.removeKey"
+  | "localAi.testKey"
+  | "localAi.setChoice"
+  | "desktop.set"
+  | "desktop.pauseShortcut"
+  | "text.lines"
+  | "data.import"
+  | "takeout.import"
+  | "convex.mutation"
+  | "convex.action";
+
+export interface SettingsQueryArgs {
+  key: SettingsQueryKey;
+  args?: Record<string, unknown>;
+}
+/** The section's data as the web's section would show it (each key's shape is in viewsSettings.ts). */
+export interface SettingsQueryValue {
+  data: unknown;
+}
+export interface SettingsRunArgs {
+  key: SettingsRunKey;
+  args?: Record<string, unknown>;
+}
+export interface SettingsRunResult {
+  data: unknown;
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Revision 14: the note page's own sidebar (components/doc/DocumentSidebar.tsx) drawn natively. The note page
 // sends what the sidebar shows (`note.tools`) and takes its clicks (`block.jump`, `task.toggle`, `thread.open`,
@@ -2916,6 +2962,7 @@ export interface ViewMap {
   "shared.folders": { args: EmptyArgs; value: SharedFoldersValue };
   "sharedFolder.open": { args: NoteIdArgs; value: SharedFolderValue };
   "notes.moveCheck": { args: NotesMoveCheckArgs; value: NotesMoveCheckValue };
+  "settings.query": { args: SettingsQueryArgs; value: SettingsQueryValue };
 }
 
 export interface ListViewMap {
@@ -3013,6 +3060,7 @@ export interface CommandMap {
   "folderSharing.revoke": { args: FolderShareRevokeArgs; result: OkResult };
   "folderSharing.cancelInvite": { args: FolderInviteIdArgs; result: OkResult };
   "folderInvite.accept": { args: FolderInviteIdArgs; result: FolderInviteAcceptResult };
+  "settings.run": { args: SettingsRunArgs; result: SettingsRunResult };
 }
 
 export interface EditorCommandMap {
@@ -3082,7 +3130,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "settings.query"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -3175,6 +3223,7 @@ const commandNames = [
   "folderSharing.revoke",
   "folderSharing.cancelInvite",
   "folderInvite.accept",
+  "settings.run",
 ] as const;
 const editorCommandNames = [
   "note.prepare",
@@ -3223,6 +3272,8 @@ export const NOTES_LIST_VIEWS: readonly NotesListView[] = ["all", "starred", "ar
 export const NOTES_SORTS: readonly NotesSort[] = ["updated", "created", "title", "manual"];
 export const WEB_PAGES: readonly WebPage[] = ["settings.connectedApps", "settings.workspaceData", "settings.data", "settings.aiExport", "reviews", "graph", "settings.security", "settings.privacy", "settings.workspace", "settings.deleteAccount"];
 export const AI_PREF_KEYS: readonly AiPrefKey[] = ["history", "memory", "suggestions", "attachments", "webResearch", "digests", "readImages", "deviceText"];
+export const SETTINGS_QUERY_KEYS: readonly SettingsQueryKey[] = ["library", "localAi", "desktop", "convex"];
+export const SETTINGS_RUN_KEYS: readonly SettingsRunKey[] = ["library.syncNow", "library.move", "library.cloudConnect", "library.cloudCancel", "library.cloudSignOut", "library.setPassphrase", "library.changePassphrase", "library.removePassphrase", "library.lock", "library.forget", "localAi.setKey", "localAi.removeKey", "localAi.testKey", "localAi.setChoice", "desktop.set", "desktop.pauseShortcut", "text.lines", "data.import", "takeout.import", "convex.mutation", "convex.action"];
 export const TASK_VIEWS: readonly TaskViewName[] = ["inbox", "today", "upcoming", "all", "completed", "mine"];
 
 /** Features the hello reply lists (for native to check before using something newer than the protocol). */

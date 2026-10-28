@@ -890,6 +890,13 @@ export const FIXTURES: Record<string, Fixture> = {
   }),
   "view.invite.preview": view({ name: "invite.preview", description: "A workspace invitation link opened in the app.", args: { kind: "workspace", token: "tok_ws" }, value: { valid: true, kind: "workspace", inviterName: "Sam", name: "Airly Studio", roleLabel: "Member", emailMatches: true } }),
   "view.invite.preview.invalid": view({ name: "invite.preview", description: "An invitation that expired or was used.", args: { kind: "page", token: "tok_old" }, value: { valid: false, kind: "page", inviterName: null, name: null, roleLabel: null, emailMatches: false } }),
+  "view.settings.query.desktop": view({
+    name: "settings.query",
+    description: "Settings > Desktop app on the Mac: the Mac app's own settings, worded as the web shows them.",
+    args: { key: "desktop" },
+    value: { data: { bridge: true, loaded: true, settings: { quickAddShortcut: "Alt+Space", shortcutLabel: "⌥Space", defaultShortcut: "Alt+Space", defaultLabel: "⌥Space", error: null, openAtLogin: true, menuBarIcon: true, notifications: false } } },
+  }),
+  "command.settings.run.lock": command({ name: "settings.run", description: "Settings > Library: ask for Touch ID again after 5 minutes.", args: { key: "library.lock", args: { lockAfter: 300 } }, result: { data: { ok: true } } }),
   "command.settings.update": command({ name: "settings.update", description: "Change the name and appearance.", args: { name: "Faisal Islam", appearance: "light" }, result: { ok: true } }),
   "command.settings.setAiPref": command({ name: "settings.setAiPref", description: "Turn Foli AI's memory off.", args: { key: "memory", on: false }, result: { ok: true } }),
   "command.settings.setNotificationTopic": command({ name: "settings.setNotificationTopic", description: "Mentions: email off, the bell on.", args: { topic: "mentions", inApp: true, email: false }, result: { ok: true } }),

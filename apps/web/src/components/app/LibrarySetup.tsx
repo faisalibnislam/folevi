@@ -48,26 +48,39 @@ interface Place {
   icon: React.ReactNode;
 }
 
-function places(available: CloudProvider[] | null): Place[] {
+/** The places a library can be kept, as words (Settings > Library's Move library on the Mac draws them natively). */
+export function placeOptions(available: CloudProvider[] | null): { kind: LibraryKind; title: string; detail: string }[] {
   const device = thisDevice();
   // Android: Dropbox, Google Drive or this phone only (docs/ANDROID_PLAN.md: no iCloud, no folder picker), and
   // the provider's sign-in opens over the app rather than in a separate browser.
   if (shell()?.platform === "android") {
-    const out: Place[] = [];
-    if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: "Sign in to Dropbox. Folevi only uses its own folder, Apps › Folevi.", icon: <DropboxGlyph /> });
-    if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: "Sign in to Google. Folevi only sees the files it makes.", icon: <DriveGlyph /> });
-    out.push({ kind: "device", title: `${deviceWords().Here} only`, detail: `Your notes stay on ${deviceWords().here}. You can turn on sync later in Settings.`, icon: <HardDrive size={20} aria-hidden /> });
+    const out: { kind: LibraryKind; title: string; detail: string }[] = [];
+    if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: "Sign in to Dropbox. Folevi only uses its own folder, Apps › Folevi." });
+    if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: "Sign in to Google. Folevi only sees the files it makes." });
+    out.push({ kind: "device", title: `${deviceWords().Here} only`, detail: `Your notes stay on ${deviceWords().here}. You can turn on sync later in Settings.` });
     return out;
   }
   const icloud = shell()?.platform === "ios" ? "The Folevi folder in iCloud Drive, on every iPhone, iPad and Mac signed in to your iCloud account." : "A Folevi folder in iCloud Drive, on every Mac signed in to your iCloud account.";
-  const out: Place[] = [{ kind: "icloud", title: "Sync with iCloud", detail: icloud, icon: <Cloud size={20} aria-hidden /> }];
-  if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: `Sign in to Dropbox in ${deviceWords().signInPlace}. Folevi only uses its own folder, Apps › Folevi.`, icon: <DropboxGlyph /> });
-  if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: `Sign in to Google in ${deviceWords().signInPlace}. Folevi only sees the files it makes.`, icon: <DriveGlyph /> });
+  const out: { kind: LibraryKind; title: string; detail: string }[] = [{ kind: "icloud", title: "Sync with iCloud", detail: icloud }];
+  if (available?.includes("dropbox")) out.push({ kind: "dropbox", title: "Sync with Dropbox", detail: `Sign in to Dropbox in ${deviceWords().signInPlace}. Folevi only uses its own folder, Apps › Folevi.` });
+  if (available?.includes("googleDrive")) out.push({ kind: "gdrive", title: "Sync with Google Drive", detail: `Sign in to Google in ${deviceWords().signInPlace}. Folevi only sees the files it makes.` });
   out.push(
-    { kind: "folder", title: "Choose a folder", detail: shell()?.platform === "ios" ? "Any folder the Files app offers, such as one in Dropbox, Google Drive or OneDrive." : `Any folder on ${device}, such as one OneDrive or another app keeps in sync.`, icon: <Folder size={20} aria-hidden /> },
-    { kind: "device", title: "This device only", detail: `Your notes stay on ${device}. You can turn on sync later in Settings.`, icon: <HardDrive size={20} aria-hidden /> },
+    { kind: "folder", title: "Choose a folder", detail: shell()?.platform === "ios" ? "Any folder the Files app offers, such as one in Dropbox, Google Drive or OneDrive." : `Any folder on ${device}, such as one OneDrive or another app keeps in sync.` },
+    { kind: "device", title: "This device only", detail: `Your notes stay on ${device}. You can turn on sync later in Settings.` },
   );
   return out;
+}
+
+const PLACE_ICONS: Record<LibraryKind, () => React.ReactNode> = {
+  icloud: () => <Cloud size={20} aria-hidden />,
+  dropbox: () => <DropboxGlyph />,
+  gdrive: () => <DriveGlyph />,
+  folder: () => <Folder size={20} aria-hidden />,
+  device: () => <HardDrive size={20} aria-hidden />,
+};
+
+function places(available: CloudProvider[] | null): Place[] {
+  return placeOptions(available).map((p) => ({ ...p, icon: PLACE_ICONS[p.kind]() }));
 }
 
 /** Simple outline marks, not the providers' logos (neutral chrome, no brand art). */

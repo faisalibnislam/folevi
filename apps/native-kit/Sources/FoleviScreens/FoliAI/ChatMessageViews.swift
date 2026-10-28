@@ -97,7 +97,7 @@ struct AnswerHeadView: View {
                 FlowChips(items: steps)
                     .accessibilityLabel(message.status == "streaming" ? "What Foli AI is doing: \(steps.joined(separator: ", "))" : "What Foli AI did: \(steps.joined(separator: ", "))")
             }
-            if message.status == "streaming", (model.answer(message.id)?.shownText ?? "").isEmpty, model.job(for: message.id) == nil {
+            if message.status == "streaming", model.answer(message.id)?.hasText != true, model.job(for: message.id) == nil {
                 // The words appear here; until then, a quiet placeholder (the status line says what's happening).
                 HStack(spacing: 6) {
                     ForEach(0..<3) { _ in Circle().fill(Folevi.color.inkFaint).frame(width: 6, height: 6) }

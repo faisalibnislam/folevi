@@ -198,7 +198,7 @@ public struct IncrementalMarkdown: Sendable {
 
     public mutating func update(_ text: String) {
         // UTF-8 offsets: O(1) to step to in a native string, so a long answer costs only its tail per update.
-        if settledText.utf8.count > text.utf8.count || !text.utf8.starts(with: settledText.utf8) {
+        if !UTF8Prefix.has(text, settledText) {
             settledText = ""
             settledBlocks = []
         }

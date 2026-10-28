@@ -212,10 +212,11 @@ public struct FoliThreadView: View {
 /// line); scrolled up, the anchor is the top, so what you're reading stays put.
 struct FollowEnd: ViewModifier {
     let pinned: Bool
-    static var anchored: Bool {
+    /// Read once: the thread asks on every update while an answer streams.
+    static let anchored: Bool = {
         if #available(iOS 18, macOS 15, *) { return ProcessInfo.processInfo.environment["FOLEVI_FOLLOW_BY_SCROLL"] == nil }
         return false
-    }
+    }()
     func body(content: Content) -> some View {
         if #available(iOS 18, macOS 15, *), Self.anchored {
             content.defaultScrollAnchor(pinned ? .bottom : .top, for: .sizeChanges)

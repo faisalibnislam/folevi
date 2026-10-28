@@ -20,7 +20,7 @@ public struct StreamReveal: Equatable, Sendable {
 
     /// New text from the stream. A different start (a regenerated answer) starts over.
     public mutating func receive(_ text: String) {
-        if !text.utf8.starts(with: target.utf8.prefix(shownBytes)) { shownBytes = 0 }
+        if !UTF8Prefix.has(text, target, count: shownBytes) { shownBytes = 0 }
         target = text
         shownBytes = min(shownBytes, target.utf8.count)
     }
@@ -52,4 +52,17 @@ public struct StreamReveal: Equatable, Sendable {
     public mutating func showAll() { shownBytes = target.utf8.count }
 
     static func isSpace(_ b: UInt8) -> Bool { b == 0x20 || b == 0x0A || b == 0x09 || b == 0x0D }
+}
+
+/// Whether a string starts with the first `count` UTF-8 bytes of another, compared as raw memory (a streaming
+/// answer checks its whole shown part on every update; the generic `starts(with:)` walks it byte by byte).
+enum UTF8Prefix {
+    static func has(_ text: String, _ prefix: String, count: Int? = nil) -> Bool {
+        let n = count ?? prefix.utf8.count
+        guard n > 0 else { return true }
+        guard text.utf8.count >= n, prefix.utf8.count >= n else { return false }
+        var text = text
+        var prefix = prefix
+        return text.withUTF8 { a in prefix.withUTF8 { b in memcmp(a.baseAddress!, b.baseAddress!, n) == 0 } }
+    }
 }

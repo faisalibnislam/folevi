@@ -42,6 +42,9 @@ public final class FoliAnswer {
     public private(set) var blocks: [MDBlock] = []
     /// The text on screen now (what the reveal has shown, or the whole answer).
     public private(set) var shownText = ""
+    /// Whether any of it is on screen yet: what the status line and the placeholder follow (it changes once,
+    /// not on every reveal tick, so they don't redraw the chat with each word).
+    public private(set) var hasText = false
     @ObservationIgnored var reveal: StreamReveal?
     @ObservationIgnored var markdown = IncrementalMarkdown()
 
@@ -50,8 +53,11 @@ public final class FoliAnswer {
     public var revealing: Bool { reveal != nil }
 
     func show(_ text: Substring) {
-        guard text != shownText[...] else { return }
-        shownText = String(text)
+        // Same bytes, nothing to do (compared as memory, not character by character).
+        let next = String(text)
+        guard next.utf8.count != shownText.utf8.count || !UTF8Prefix.has(next, shownText) else { return }
+        shownText = next
+        if hasText == next.isEmpty { hasText = !next.isEmpty }
         markdown.update(shownText)
         if markdown.blocks != blocks { blocks = markdown.blocks }
     }
@@ -201,8 +207,7 @@ public final class FoliChatModel {
             if let job = job(for: m.id), job.status == "running" {
                 return (job.steps.last { $0.status == "running" }?.label).map { "\($0)..." } ?? "Researching..."
             }
-            let shown = answer(m.id)?.shownText ?? ""
-            return shown.isEmpty ? Self.phaseLabel(m.phase) : "Writing..."
+            return answer(m.id)?.hasText == true ? "Writing..." : Self.phaseLabel(m.phase)
         }
         return "Thinking..."
     }

@@ -256,7 +256,9 @@ public struct WebNoteCard: View {
                 .padding(.top, cq)
                 .frame(maxWidth: .infinity, alignment: .leading)
             GeometryReader { geo in
-                let lines = max(1, Int(((geo.size.height + 1) / bodyStyle.leading).rounded(.down)))
+                // (A card not laid out yet has no width, so no line height: one line until it has.)
+                let fit = bodyStyle.leading > 0 ? ((geo.size.height + 1) / bodyStyle.leading).rounded(.down) : 1
+                let lines = fit.isFinite ? max(1, Int(min(fit, 1000))) : 1
                 Group {
                     if text.isEmpty {
                         Text("Empty page").italic().webText(bodyStyle)

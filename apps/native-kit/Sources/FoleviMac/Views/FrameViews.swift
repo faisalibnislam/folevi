@@ -227,15 +227,11 @@ public final class WebSidebarController: NSViewController {
         FrameSheets.attach(model, window: view.window)
     }
 
+    /// The bell: the web's notifications panel, in glass under the sidebar's top bar.
     private func showNotifications(_ anchor: NSView?) {
-        let close: @MainActor () -> Void = { [weak self] in self?.popover?.close() }
-        let content = NotificationsContent(model: notifications, phone: false)
-            .frame(width: 384, height: 480)
-            .environment(\.screenIntents, FrameNavigation.intents(model, close: close))
-            .environment(\.screenNavigator, FrameNavigation.navigator(model))
-            .environment(\.screenFeedback, ScreenModels(frame: model).feedback)
-            .accessibilityIdentifier("popover.notifications")
-        show(AnyView(content), from: anchor)
+        FrameSheets.attach(model, window: view.window)
+        if FrameSheets.isShowing(model) { return FrameSheets.dismiss(model) }
+        FrameDialogs.notifications(model, model: notifications)
     }
 
     private func showSync(_ anchor: NSView?) { show(AnyView(SyncPopover(model: model)), from: anchor) }

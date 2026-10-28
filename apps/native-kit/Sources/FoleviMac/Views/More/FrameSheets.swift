@@ -38,12 +38,12 @@ public enum FrameSheets {
     public static func isShowing(_ model: FrameModel) -> Bool { shown[ObjectIdentifier(model)] != nil }
 
     /// Shows `content` as the frame's dialog (replacing one already shown). `top` is where it attaches.
-    static func present<Content: View>(_ model: FrameModel, top: CGFloat = 56, onClose: (() -> Void)? = nil, @ViewBuilder content: (_ close: @escaping @MainActor () -> Void) -> Content) {
+    static func present<Content: View>(_ model: FrameModel, top: CGFloat = 56, leading: CGFloat? = nil, onClose: (() -> Void)? = nil, @ViewBuilder content: (_ close: @escaping @MainActor () -> Void) -> Content) {
         dismiss(model, notify: false)
         guard let window = window(for: model), let root = window.contentView else { return }
         let key = ObjectIdentifier(model)
         let close: @MainActor () -> Void = { [weak model] in if let model { FrameSheets.dismiss(model) } }
-        let layer = SheetLayer(top: top, close: close, content: content(close))
+        let layer = SheetLayer(top: top, leading: leading, close: close, content: content(close))
             .environment(\.sheetBackdrop, SheetBackdropImage(image: blurredSnapshot(of: root)))
         let host = SheetHostingView(rootView: AnyView(layer))
         host.safeAreaRegions = []
@@ -109,17 +109,19 @@ final class SheetHostingView: NSHostingView<AnyView> {
 
 private struct SheetLayer<Content: View>: View {
     let top: CGFloat
+    /// A popover's left edge (nil: centred, as a dialog).
+    let leading: CGFloat?
     let close: @MainActor () -> Void
     let content: Content
 
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: leading == nil ? .top : .topLeading) {
             Color.black.opacity(0.0001)
                 .contentShape(Rectangle())
                 .onTapGesture { close() }
-            content.padding(.top, top)
+            content.padding(.top, top).padding(.leading, leading ?? 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: leading == nil ? .top : .topLeading)
     }
 }
 

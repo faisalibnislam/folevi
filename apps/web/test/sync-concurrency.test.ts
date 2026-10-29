@@ -1,6 +1,6 @@
 // The editor and the sync engine when changes cross: remote changes the editor hasn't shown yet, a batch
 // that may have landed without an answer, toggles opened and closed, and undo after "Edited elsewhere".
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import type { ConvexReactClient } from "convex/react";
 import { Editor } from "@tiptap/core";
 import { UndoRedo } from "@tiptap/extensions";
@@ -25,7 +25,17 @@ const para = (id: string, text: string, i = 0, extra: Partial<WireBlock> = {}): 
   ...extra,
 });
 const toggle = (id: string, text: string, collapsed: boolean, i = 0): WireBlock => ({ ...para(id, text, i), type: "toggle", props: { collapsed } });
-const make = (blocks: readonly WireBlock[]) => new Editor({ extensions: [...ALL_NODES, ...ALL_MARKS, UndoRedo, BlockIdentity, BlockKeymap], content: blocksToDoc(blocks) });
+// Each test's editors are destroyed after it: an editor left open can fire its DOM observer's timer after the test
+// environment is gone ("document is not defined", an unhandled error that fails the run).
+const editors: Editor[] = [];
+afterEach(() => {
+  for (const e of editors.splice(0)) e.destroy();
+});
+const make = (blocks: readonly WireBlock[]) => {
+  const e = new Editor({ extensions: [...ALL_NODES, ...ALL_MARKS, UndoRedo, BlockIdentity, BlockKeymap], content: blocksToDoc(blocks) });
+  editors.push(e);
+  return e;
+};
 const lines = (e: Editor) => {
   const out: string[] = [];
   e.state.doc.forEach((n) => out.push(n.textContent));

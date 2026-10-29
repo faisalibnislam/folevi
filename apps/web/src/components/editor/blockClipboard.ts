@@ -160,7 +160,8 @@ function shownImages(view: EditorView, nodes: readonly PMNode[]): Map<string, st
     const id = el.getAttribute("data-block-id");
     if (!id || !ids.has(id)) continue;
     const src = el.querySelector("img")?.currentSrc || el.querySelector("img")?.src;
-    if (src && /^https:\/\//.test(src)) out.set(id, src);
+    // A file's address (https, or http from a local backend), never a blob: or data: URL other apps can't open.
+    if (src && /^https?:\/\//.test(src)) out.set(id, src);
   }
   return out;
 }

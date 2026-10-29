@@ -58,10 +58,15 @@ jobs:
         run: pnpm --filter @folevi/web build
 
   e2e:
-    name: End-to-end (local Convex + Next.js + Playwright)
+    name: End-to-end (local Convex + Next.js + Playwright) ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
     needs: checks
     timeout-minutes: 45
+    # Over 450 tests no longer fit in one job's 45 minutes: four runners, each with its own backend and a quarter.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -76,6 +81,10 @@ jobs:
           (CONVEX_AGENT_MODE=anonymous npx convex dev --typecheck=disable > convex.log 2>&1 &)
           sleep 10
           node scripts/setup-local.mjs
+          # Encryption and the Vault are off by default until launch; their specs need them on.
+          for flag in e2ee vault; do
+            CONVEX_AGENT_MODE=anonymous npx convex run testSupport:setFeatureFlag "{\"key\":\"$flag\",\"enabled\":true}"
+          done
       - run: pnpm --filter @folevi/web exec playwright install --with-deps chromium
       - name: Build and start the web app
         # A production build, not `next dev`: compiling each page on first visit starved the runner's CPU,
@@ -86,13 +95,15 @@ jobs:
           (cd apps/web && npx next start --port 3000 > ../../web.log 2>&1 &)
           npx --yes wait-on@9.5.1 http://localhost:3000 --timeout 120000
       - name: Playwright
-        run: pnpm --filter @folevi/web exec playwright test
+        # Account mode only: the local, Mac and iPhone projects need the shell build's dev server (FOLEVI_BUILD=shell,
+        # E2E_LOCAL_BASE_URL), which this job doesn't start; against this build local mode reaches Convex and fails.
+        run: pnpm --filter @folevi/web exec playwright test --project account --shard ${{ matrix.shard }}/4
         env:
           E2E_NO_SERVER: "1"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             apps/web/playwright-report
             apps/web/test-results

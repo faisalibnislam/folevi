@@ -173,18 +173,46 @@ load (server time, and other people's views that read this profile).
   live views, commands, the note page, the first-launch gate) and local-mode (6 tests, with axe) pass. New unit test
   test/migration-gate.test.tsx covers the move-between-modes gate.
 
+## Follow-up (same day, after the Mac 1.2.04 release landed on main)
+
+- **Foli AI chat**: the messages are a memoised list whose actions go through a ref, so typing in the box draws
+  the box only (before: every message per letter; `test/chat-thread-typing.test.tsx`).
+- **Tab strip**: each tab is a memoised row of plain values (the tabs are parsed afresh from storage on every
+  change, so the objects are always new); its actions go through a ref.
+- **Joined notes**: each note's context comes from a memoised `PaneBody` in `NotePanes`, so a resize or a pane
+  dragged past it doesn't draw it again. Dragging the divider over 8 pointer moves: 1,184 components drawn before,
+  24 after.
+- **Tabs context**: `useDocTab` and `useViewTab` read a context of stable actions and the shell's warm notes their
+  own, so a tab change no longer draws every open note and view again; the provider re-applies each page's
+  `place()` when the tabs change, as the page's effect did (`test/tabs.test.tsx`). `NativeTabsProvider` provides
+  the actions too; `useTabs()` is unchanged.
+
+Measured as before (medians of three, 4x CPU, the old and new builds run alternately), components drawn:
+
+| Interaction | Before | After |
+| --- | --- | --- |
+| All notes | 1,327 | 946 (−29 %) |
+| Switch tab (four notes) | 932 to 1,506 | 843 to 1,131 (−2 to −26 %) |
+| Tab preview (hover) | 59 | 23 |
+| Tasks, Calendar, Graph, Home | 515, 679, 1,307, 2,234 | 428, 490, 686, 1,384 |
+
+Timings moved within the runs' noise (the slow run followed run order, not the build), except All notes (204 to
+170 ms to first frame) and opening notes from it (up to 29 ms sooner).
+
+Looked at and left: the answer stream re-reads the whole answer at each step of the reveal, but that is 0.27 ms
+for an 8 KB answer (about 1 ms at 4x) and only the one answer draws; the stream's rewrite of the whole text is
+about 90 KB over a long answer. The Convex reads below need new indexes (built on production data when deployed),
+so they wait for the owner.
+
 ## Still to do
 
-- **The root 404 page's code and styles in every page** (marketing shell, art and `marketing.css`, about 80 KB):
-  Next 16's `global-not-found.js` renders the 404 outside the root layout; worth trying with the owner's eye on
-  both 404 pages.
-- **Re-renders through the tabs context** (`lib/app/tabs.tsx`): one context holds the tabs and every action, and a
-  title edit rewrites it, so the tab strip, the panes and the note view draw again. Split state from actions, and
-  give the tab strip a memoised row. Left alone here: the M10 Mac session is changing these files.
-- **`NotePanes`** builds new context values and a new note element every render; a memoised pane would stop pane
-  resizes and tab changes from drawing whole notes again (also M10's files).
-- **Foli AI chat**: typing in the chat box re-renders every message (the draft lives in `ChatThread`); the answer
-  stream rewrites the whole text every 90 ms (`convex/ai.ts`), so a long answer moves its length squared in bytes.
+- **The root 404 page's code and styles in every page** (marketing shell, art and `marketing.css`, about 80 KB).
+  `global-not-found.js` alone doesn't help: `(app)/[...path]` matches every address and calls `notFound()` for an
+  unknown one, so nearly every 404 (both hosts) goes through the root `not-found.tsx`, never "no route matched".
+  Taking the marketing shell out of it needs either explicit product routes (a folder per `APP_ROUTE_HEADS` entry,
+  about 30, instead of the catch-all, so unknown addresses reach `global-not-found`) or the proxy sending the
+  marketing host's unknown addresses to a marketing page that calls `notFound()`. Both change routing; the
+  owner's call.
 - **Convex reads**: All notes and Home's recent notes walk `by_*_trash` and filter (no index for listed notes by
   last edit); Starred loads every starred note to show 8; Graph reads about 9,600 rows per run; the sidebar's
   Changes list re-subscribes with each note opened. None showed in this library's timings; they grow with

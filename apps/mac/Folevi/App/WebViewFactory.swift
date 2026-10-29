@@ -3,6 +3,7 @@
 // bound to this view, content rules (FOLEVI_OFFLINE; WM1 adds local mode's), the user agent, and the preferences
 // the owner chose (Writing Tools off in notes, decision M5).
 import AppKit
+import FoleviDesign
 import WebKit
 
 /// What a view is for: a main window's page, a place's hidden runner (WM1), Quick Add's panel (WM2).
@@ -104,6 +105,10 @@ enum WebViewFactory {
         let ucc = WKUserContentController()
         if let source = bridgeScript(bootstrap) {
             ucc.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
+        // The Mac's scroll bars (thin, hidden at rest) in every frame, as the native ones (FoleviDesign MacScrollers).
+        if !AppDelegate.systemScrollers {
+            ucc.addUserScript(WKUserScript(source: MacScrollers.webStyle, injectionTime: .atDocumentStart, forMainFrameOnly: false))
         }
         for list in rules + (rulesFor?(place, role) ?? []) { ucc.add(list) }
         config.userContentController = ucc

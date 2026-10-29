@@ -9,10 +9,30 @@ import WebKit
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     static func main() {
+        // Thin scroll bars over the content, hidden at rest, whatever the system setting (FoleviDesign MacScrollers).
+        if !systemScrollers { MacScrollers.useOverlay() }
+        #if DEBUG
+        // The "before" pictures as System Settings > Show scroll bars: Always gives them (screens.mjs --scrollers).
+        if systemScrollers {
+            let args = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain).merging(["AppleShowScrollBars": "Always"]) { $1 }
+            UserDefaults.standard.removeVolatileDomain(forName: UserDefaults.argumentDomain)
+            UserDefaults.standard.setVolatileDomain(args, forName: UserDefaults.argumentDomain)
+        }
+        #endif
         let app = NSApplication.shared
         let delegate = AppDelegate()
         app.delegate = delegate
         app.run()
+    }
+
+    /// The wide, always-shown scroll bars instead, as "Show scroll bars: Always" gives (screens.mjs --scrollers'
+    /// "before" pictures; Debug only).
+    static var systemScrollers: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["FOLEVI_SYSTEM_SCROLLERS"] == "1"
+        #else
+        false
+        #endif
     }
 
     /// The menu bar (WM2's MainMenu.swift sets this before launch finishes; until then a starter menu).

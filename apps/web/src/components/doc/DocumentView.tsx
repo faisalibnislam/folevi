@@ -1032,7 +1032,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
       {/* The note floats on its backdrop in a rounded panel; the chrome (sidebars, inspector) sits flat behind.
           Inset like the tab strip above it (inset-x-1), so the page lines up with it. */}
       <div className={`relative flex h-full min-h-0 ${iphone ? "" : "sm:px-1 sm:pb-1"}`}>
-        <div ref={noteRef} className={`relative min-w-0 flex-1 ${iphone ? "" : "px-1.5 pb-2 sm:px-0 sm:pb-0"}`}>
+        <div ref={noteRef} data-note-panel="" className={`relative min-w-0 flex-1 ${iphone ? "" : "px-1.5 pb-2 sm:px-0 sm:pb-0"}`}>
         {findBar && editor ? <FindBar editor={editor} withReplace={findBar.replace} focusKey={findBar.key} readOnly={readOnly} onClose={() => setFindBar(null)} /> : null}
 
         {/* Blur background: the backdrop sits blurred behind the scrolling page, which is then see-through. */}

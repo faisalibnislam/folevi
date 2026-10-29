@@ -160,6 +160,43 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
 
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
   const canJoin = Boolean(tab) && n < MAX_PANES;
+  // Join sits on the last note's own right edge: with its tools panel open (Style, Format…), beside the note,
+  // not over the panel.
+  const [joinInset, setJoinInset] = useState(0);
+  const lastPane = panes[n - 1]!;
+  useEffect(() => {
+    const el = box.current;
+    if (!el || !canJoin) return;
+    const pane = el.querySelector<HTMLElement>(`[data-pane="${CSS.escape(lastPane)}"]`);
+    if (!pane) return;
+    const measure = () => {
+      const note = pane.querySelector<HTMLElement>("[data-note-panel]");
+      if (!note) return setJoinInset(0);
+      const inset = Math.max(0, Math.round(pane.getBoundingClientRect().right - note.getBoundingClientRect().right));
+      setJoinInset((cur) => (cur === inset ? cur : inset));
+    };
+    measure();
+    // The note narrows when its panel opens: follow its size, and the page arriving (it loads after the pane).
+    const ro = new ResizeObserver(measure);
+    ro.observe(pane);
+    // (Once a frame at most: typing changes the page's nodes too.)
+    let frame = 0;
+    const mo = new MutationObserver(() => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const note = pane.querySelector<HTMLElement>("[data-note-panel]");
+        if (note) ro.observe(note);
+        measure();
+      });
+    });
+    mo.observe(pane, { childList: true, subtree: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [canJoin, lastPane]);
 
   return (
     <div ref={box} className={`relative flex min-h-0 flex-1 ${n > 1 ? "overflow-x-auto overflow-y-hidden" : ""}`}>
@@ -231,7 +268,7 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
       })}
       {/* Join: on the right edge, where the pointer finds it. */}
       {canJoin ? (
-        <div className="group/join pointer-events-none absolute inset-y-0 right-0 z-20 flex w-10 items-center justify-center" style={{ paddingTop: 56 }}>
+        <div className="group/join pointer-events-none absolute inset-y-0 z-20 flex w-10 items-center justify-center" style={{ paddingTop: 56, right: joinInset > 24 ? joinInset - 20 : 0 }}>
           <span aria-hidden className="pointer-events-auto absolute inset-y-[56px] right-0 w-10" />
           <button
             type="button"

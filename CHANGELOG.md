@@ -4,6 +4,30 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.04: Big update
+
+Released 2026-10-29 10:21:13+06:00 (build 15, tag v1.2.04)
+
+Tabs that do more, on the web and the Mac: pin tabs, see a tab's page before you open it, see every tab at once, and work on up to three notes side by side.
+
+### Added
+
+- Pinned tabs: pin a tab from its pin or its menu; it stays at the start of the strip, half as wide, and closing other tabs keeps it.
+- Tab previews: rest on a tab to see a picture of its page, then move along the strip to see the others at once.
+- Tab Overview: every open tab as a picture, with search, close and a new note (the grid button, or Shift-Command-\).
+- Joined notes: up to three notes side by side in one tab, resized with snapping, rearranged by their bars, folded into slim spines on narrow windows.
+- Mac: editor text in five sizes, from Smaller to Larger.
+
+### Improved
+
+- Home is a single house icon at the start of the tabs.
+- Tabs keep the same width whether they're open or not.
+- Mac: the tab strip is glass over the page, with thin scroll bars that show only while scrolling.
+- Mac: Settings is redesigned, with Folevi's own icons, each pane as tall as it needs and the version shown once.
+- Mac: Vault passwords show the list and the open item side by side on wide windows.
+- Tooltips are Folevi's own everywhere and never repeat what a button already says.
+- Mac: Focus Mode is now Option-Command-\ (Shift-Command-\ shows all tabs).
+
 ## Version 1.1.04: Small update
 
 Released 2026-10-29 06:18:23+06:00 (build 14, tag mac-v1.1.04, commit f6fd7767)

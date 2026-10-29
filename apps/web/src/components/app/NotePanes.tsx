@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "convex/react";
 import { FileText, GripVertical, Search } from "lucide-react";
@@ -11,7 +11,7 @@ import { useAppRouter } from "@/lib/app/router";
 import { MAX_PANES, tabHolds, tabPage, useTabs, type DocTab } from "@/lib/app/tabs";
 import { PaneContext } from "@/lib/app/panes";
 import { useLocalSearch } from "@/lib/hooks/useLocalNotes";
-import { ShellContext, useShell } from "./Shell";
+import { ShellContext, useShell, type ShellValue } from "./Shell";
 
 /** The narrowest a pane is dragged to. */
 const MIN_PANE = 360;
@@ -295,6 +295,16 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
     };
   }, [canJoin, lastPane]);
 
+  // What the notes act with, always the latest: a note draws again only when what it is given changes (not
+  // for each step of a resize or a pane being dragged past it).
+  const paneAct = useRef<PaneActs>(null!);
+  paneAct.current = {
+    move: (i, to) => tab && movePane(tab.id, i, to),
+    remove: (id) => tab && detachPane(tab.id, id),
+    dragStart: (e, i) => startPaneDrag(e, i),
+    focus: focusPane,
+  };
+
   return (
     // (Not clipped: the notes always fit, folding into spines when they wouldn't, and each note's shadow shows whole.)
     <div ref={box} className="relative flex min-h-0 flex-1">
@@ -302,46 +312,7 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
         const primary = id === documentId;
         const isFolded = folded.has(id);
         const style: CSSProperties = n < 2 ? { flex: "1 1 0%" } : isFolded ? { flex: `0 0 ${SPINE}px` } : { flex: `0 0 ${widths[i]}px` };
-        const content = (
-          <PaneContext.Provider
-            value={{
-              primary,
-              joined:
-                n > 1 && tab
-                  ? {
-                      index: i,
-                      count: n,
-                      move: (to: number) => movePane(tab.id, i, to),
-                      remove: () => detachPane(tab.id, id),
-                      dragStart: (e: ReactPointerEvent<HTMLElement>) => startPaneDrag(e, i),
-                      dragging: paneDrag?.from === i,
-                    }
-                  : undefined,
-            }}
-          >
-            {/* Always the same wrapper, only its value changes: switching focus must not rebuild the notes (that
-                re-ran each page's entrance, a flicker). A note without focus opens its tools panel by taking focus
-                first (one click does both). */}
-            <ShellContext.Provider
-              value={
-                primary
-                  ? shell
-                  : {
-                      ...shell,
-                      sidebarSlot: null,
-                      setNoteAi: noop,
-                      inspectorOpen: false,
-                      setInspectorOpen: (open: boolean) => {
-                        focusPane(id);
-                        shell.setInspectorOpen(open);
-                      },
-                    }
-              }
-            >
-              {render(id)}
-            </ShellContext.Provider>
-          </PaneContext.Provider>
-        );
+        const content = <PaneBody id={id} primary={primary} index={n > 1 && tab ? i : -1} count={n} dragging={paneDrag?.from === i} shell={shell} render={render} act={paneAct} />;
         return (
           <div key={id} className="contents">
             {i > 0 ? (
@@ -655,3 +626,62 @@ function JoinPicker({ at, exclude, onClose, onPick }: { at: { x: number; y: numb
 
 /** Whether a doc tab is joined (two or more notes side by side). */
 export const isJoined = (t: DocTab | null | undefined) => Boolean(t?.panes && t.panes.length > 1);
+
+interface PaneActs {
+  move: (index: number, to: number) => void;
+  remove: (id: string) => void;
+  dragStart: (e: ReactPointerEvent<HTMLElement>, index: number) => void;
+  focus: (id: string) => void;
+}
+
+/**
+ * One note in the panes, with what it's told about where it sits (PaneContext) and the shell it sees. Drawn again
+ * only when those change: `render` gives a note by its id alone, so a new `render` for the same id isn't a change.
+ * `index` is -1 for a note on its own.
+ */
+const PaneBody = memo(
+  function PaneBody({ id, primary, index, count, dragging, shell, render, act }: { id: string; primary: boolean; index: number; count: number; dragging: boolean; shell: ShellValue; render: (id: string) => ReactNode; act: RefObject<PaneActs> }) {
+    const pane = useMemo(
+      () => ({
+        primary,
+        joined:
+          index >= 0
+            ? {
+                index,
+                count,
+                move: (to: number) => act.current.move(index, to),
+                remove: () => act.current.remove(id),
+                dragStart: (e: ReactPointerEvent<HTMLElement>) => act.current.dragStart(e, index),
+                dragging,
+              }
+            : undefined,
+      }),
+      [primary, index, count, dragging, id, act],
+    );
+    const seen = useMemo(
+      () =>
+        primary
+          ? shell
+          : {
+              ...shell,
+              sidebarSlot: null,
+              setNoteAi: noop,
+              inspectorOpen: false,
+              setInspectorOpen: (open: boolean) => {
+                act.current.focus(id);
+                shell.setInspectorOpen(open);
+              },
+            },
+      [primary, shell, id, act],
+    );
+    return (
+      // Always the same wrapper, only its value changes: switching focus must not rebuild the notes (that re-ran
+      // each page's entrance, a flicker). A note without focus opens its tools panel by taking focus first (one
+      // click does both).
+      <PaneContext.Provider value={pane}>
+        <ShellContext.Provider value={seen}>{render(id)}</ShellContext.Provider>
+      </PaneContext.Provider>
+    );
+  },
+  (a, b) => a.id === b.id && a.primary === b.primary && a.index === b.index && a.count === b.count && a.dragging === b.dragging && a.shell === b.shell && a.act === b.act,
+);

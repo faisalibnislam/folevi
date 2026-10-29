@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, Calendar, CheckSquare, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutGrid, LayoutList, LayoutTemplate, Lock, Pin, PinOff, Plus, SquareSplitHorizontal, Share2, Star, Trash2, Waypoints, X, XCircle } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -357,19 +357,33 @@ export function TabStrip() {
     ...tabs.map((t) => ({ tab: t, key: t.id, label: labelOf(t), icon: iconOf(t), active: isActive(t), href: tabHref(t) })),
   ];
 
+  // What the tabs act with, always the latest: a tab draws again only when what it shows changes (not when
+  // another tab opens, the pointer hovers or the strip itself draws again).
+  const rowAct = useRef<RowActs>(null!);
+  rowAct.current = {
+    pointerDown: (e, id) => {
+      hidePreview();
+      dragStart(e, id);
+    },
+    dragMove,
+    dragEnd,
+    enter: (e, id) => {
+      const t = tabs.find((x) => x.id === id);
+      if (t) showPreview(e, t);
+    },
+    leaveTab,
+    justDragged: () => justDragged.current,
+    close,
+    setPinned,
+    moveBy: (id, by) => move(id, tabs.findIndex((x) => x.id === id) + by),
+    menu: (id, at) => {
+      hidePreview();
+      setTabMenu({ id, at });
+    },
+  };
+
   const mask = `linear-gradient(to right, ${overflow.start ? "transparent" : "#000"} 0, #000 ${FADE}px, #000 calc(100% - ${FADE}px), ${overflow.end ? "transparent" : "#000"} 100%)`;
-  const tabBase = ipad
-    ? "group relative flex h-10 items-center gap-2 rounded-container px-3.5 text-body outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus focus-visible:ring-2 has-[:focus-visible]:ring-2"
-    : "group relative flex h-9 items-center gap-2 rounded-control px-2.5 text-subheadline outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus ring-offset-1 ring-offset-canvas focus-visible:ring-2 has-[:focus-visible]:ring-2";
-  // Every tab is an outlined rounded rectangle. Closed tabs sit back (a light grey fill, quiet text); the
-  // open one comes forward: white, a firm dark outline, a soft shadow and bold text. On the iPad: no outline,
-  // the open tab a raised capsule, the others plain text that tints under the finger.
-  const tabOn = ipad
-    ? "bg-[var(--iphone-row)] font-semibold text-heading shadow-[0_1px_4px_rgb(0_0_0/0.08),0_0_0_0.5px_var(--iphone-separator)]"
-    : "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
-  const tabOff = ipad
-    ? "text-muted active:bg-[var(--liquid-press)] [@media(hover:hover)]:hover:bg-[var(--liquid-active)] [@media(hover:hover)]:hover:text-heading"
-    : "bg-[var(--glass-hover)] text-muted hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
+  const { tabBase, tabOn, tabOff } = tabLook(ipad);
 
   return (
     <div
@@ -428,142 +442,26 @@ export function TabStrip() {
           {ipad ? <span>Home</span> : null}
         </AppLink>
         {tabs.map((t) => {
-          const active = isActive(t);
           const label = labelOf(t);
-          const pinned = Boolean(t.pinned);
           const joined = Boolean(t.panes && t.panes.length > 1);
-          // Showing a nested page: "Note › Page" (the page's name keeps more room than the note's).
-          const note = t.view ? label : live?.[t.id]?.title || t.title || "Untitled";
-          const nested = !t.view && !t.panes && t.at && t.at !== t.id ? live?.[t.at]?.title || t.atTitle || null : null;
-          // Pinned tabs are half a tab wide (joined ones a little wider, for their notes' icons) and can't be
-          // closed until unpinned; joined tabs are as wide as two.
-          // Every tab the same width, open or not (the owner, 2026-10-29): they shrink evenly to their minimum
-          // together, so opening one changes only its look and nothing beside it moves.
-          const width = ipad
-            ? "min-w-[150px] flex-[0_1_260px] pr-1.5"
-            : pinned
-              ? `${joined ? "w-[112px]" : "w-[86px]"} flex-none pr-1`
-              : joined
-                ? "min-w-[240px] flex-[0_1_460px] pr-1"
-                : "min-w-[172px] flex-[0_1_284px] pr-1";
-          const pinButton = ipad ? null : (
-            <button
-              type="button"
-              aria-label={pinned ? `Unpin ${label}` : `Pin ${label}`}
-              title={pinned ? "Unpin tab" : "Pin tab"}
-              onClick={() => setPinned(t.id, !pinned)}
-              className={`grid h-5 w-5 flex-none place-items-center rounded-chip transition-opacity hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:outline-none ${pinned ? "text-muted" : "text-faint opacity-0 group-hover:opacity-100"}`}
-            >
-              {pinned ? (
-                <>
-                  <Pin size={11} aria-hidden className="fill-current group-hover:hidden" />
-                  <PinOff size={11} aria-hidden className="hidden group-hover:block" />
-                </>
-              ) : (
-                <Pin size={11} aria-hidden />
-              )}
-            </button>
-          );
           return (
-            <div
+            <TabRow
               key={t.id}
-              data-tab={t.id}
-              data-pinned={pinned ? "" : undefined}
-              data-ipad-tab={ipad ? "" : undefined}
-              className={`${tabBase} ${width} ${pinned ? "!gap-1 !px-2" : ""} ${active ? tabOn : tabOff} ${dragging === t.id ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
-              onPointerDown={(e) => {
-                hidePreview();
-                dragStart(e, t.id);
-              }}
-              onPointerMove={dragMove}
-              onPointerUp={dragEnd}
-              onPointerCancel={dragEnd}
-              onPointerEnter={(e) => showPreview(e, t)}
-              onPointerLeave={leaveTab}
-              onDragStart={(e) => e.preventDefault()}
-              onClickCapture={(e) => {
-                if (justDragged.current) e.preventDefault();
-              }}
-              onAuxClick={(e) => {
-                if (e.button === 1 && !pinned) {
-                  e.preventDefault();
-                  close(t.id);
-                }
-              }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                hidePreview();
-                setTabMenu({ id: t.id, at: { x: e.clientX, y: e.clientY } });
-              }}
-              // From the keyboard too (the Menu key or Shift+F10 on the tab).
-              onKeyDown={(e) => {
-                // ⌥⇧← / ⌥⇧→ moves the tab (the keyboard's way to drag it).
-                if (e.altKey && e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
-                  e.preventDefault();
-                  const i = tabs.findIndex((x) => x.id === t.id);
-                  move(t.id, i + (e.key === "ArrowLeft" ? -1 : 1));
-                  return;
-                }
-                if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
-                e.preventDefault();
-                const r = e.currentTarget.getBoundingClientRect();
-                setTabMenu({ id: t.id, at: { x: r.left + 8, y: r.bottom + 4 } });
-              }}
-            >
-              {joined ? (
-                // Joined notes: one tab, a section per note (each opens the group with that note in focus).
-                <span className="flex min-w-0 flex-1 items-center">
-                  {t.panes!.map((id, i) => {
-                    const here = id === docId;
-                    const name = paneTitle(id);
-                    return (
-                      <span key={id} className={`flex items-center ${pinned ? "flex-none" : "min-w-0 flex-1"}`}>
-                        {i > 0 ? <span aria-hidden className="mx-1 h-4 w-px flex-none bg-[color-mix(in_oklab,var(--color-heading)_18%,transparent)]" /> : null}
-                        <AppLink
-                          href={`/d/${id}`}
-                          aria-current={here ? "page" : undefined}
-                          aria-label={`${name} (joined)`}
-                          className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-chip outline-none ${pinned ? "px-0.5" : "px-0.5"} ${here ? "font-semibold text-heading" : active ? "font-normal text-muted" : ""}`}
-                        >
-                          <FileText size={13} aria-hidden className="flex-none opacity-70" />
-                          {pinned ? null : <span className="truncate">{name}</span>}
-                        </AppLink>
-                      </span>
-                    );
-                  })}
-                </span>
-              ) : (
-                <AppLink href={tabHref(t)} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-1 items-center gap-2 outline-none" aria-label={label}>
-                  {t.view ? <ViewIcon kind={t.view.kind} /> : <FileText size={14} aria-hidden className="flex-none opacity-70" />}
-                  {nested !== null ? (
-                    <span className="flex min-w-0 items-center gap-1">
-                      <span className="min-w-[2.5rem] max-w-[45%] shrink truncate font-normal text-muted">{note}</span>
-                      <ChevronRight size={12} aria-hidden className="flex-none text-faint" />
-                      <span className="min-w-0 truncate">{nested || "Untitled"}</span>
-                    </span>
-                  ) : (
-                    <span className="truncate">{label}</span>
-                  )}
-                </AppLink>
-              )}
-              {pinButton}
-              {pinned ? null : (
-                <button
-                  type="button"
-                  aria-label={`Close ${label}`}
-                  onClick={() => close(t.id)}
-                  data-ipad-tab-close={ipad ? "" : undefined}
-                  className={
-                    ipad
-                      ? // A finger closes only the open tab (a closed one's × would be too easy to hit); a pointer sees them all on hover.
-                        `relative grid h-7 w-7 flex-none place-items-center rounded-container text-muted outline-none transition-opacity before:absolute before:-inset-2 before:content-[''] active:bg-[var(--liquid-press)] focus-visible:opacity-100 ${active ? "opacity-100" : "pointer-events-none opacity-0 [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"}`
-                      : `grid h-5 w-5 flex-none place-items-center rounded-chip text-faint transition-opacity hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:outline-none ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`
-                  }
-                >
-                  <X size={ipad ? 15 : 12} strokeWidth={ipad ? 2.4 : 2} aria-hidden />
-                </button>
-              )}
-            </div>
+              id={t.id}
+              href={tabHref(t)}
+              viewKind={t.view?.kind ?? null}
+              label={label}
+              note={t.view ? label : live?.[t.id]?.title || t.title || "Untitled"}
+              nested={!t.view && !t.panes && t.at && t.at !== t.id ? live?.[t.at]?.title || t.atTitle || null : null}
+              pinned={Boolean(t.pinned)}
+              panes={joined ? t.panes!.join("\u0000") : ""}
+              paneNames={joined ? t.panes!.map(paneTitle).join("\u0000") : ""}
+              here={joined ? docId : null}
+              active={isActive(t)}
+              dragging={dragging === t.id}
+              ipad={ipad}
+              act={rowAct}
+            />
           );
         })}
       </nav>
@@ -666,3 +564,196 @@ export function TabStrip() {
     </div>
   );
 }
+
+/** How a tab looks: its shape, and open or closed. */
+function tabLook(ipad: boolean) {
+  const tabBase = ipad
+    ? "group relative flex h-10 items-center gap-2 rounded-container px-3.5 text-body outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus focus-visible:ring-2 has-[:focus-visible]:ring-2"
+    : "group relative flex h-9 items-center gap-2 rounded-control px-2.5 text-subheadline outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus ring-offset-1 ring-offset-canvas focus-visible:ring-2 has-[:focus-visible]:ring-2";
+  // Every tab is an outlined rounded rectangle. Closed tabs sit back (a light grey fill, quiet text); the
+  // open one comes forward: white, a firm dark outline, a soft shadow and bold text. On the iPad: no outline,
+  // the open tab a raised capsule, the others plain text that tints under the finger.
+  const tabOn = ipad
+    ? "bg-[var(--iphone-row)] font-semibold text-heading shadow-[0_1px_4px_rgb(0_0_0/0.08),0_0_0_0.5px_var(--iphone-separator)]"
+    : "bg-[var(--color-surface-raised)] font-semibold text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]";
+  const tabOff = ipad
+    ? "text-muted active:bg-[var(--liquid-press)] [@media(hover:hover)]:hover:bg-[var(--liquid-active)] [@media(hover:hover)]:hover:text-heading"
+    : "bg-[var(--glass-hover)] text-muted hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading";
+  return { tabBase, tabOn, tabOff };
+}
+
+interface RowActs {
+  pointerDown: (e: PointerEvent<HTMLDivElement>, id: string) => void;
+  dragMove: (e: PointerEvent<HTMLDivElement>) => void;
+  dragEnd: () => void;
+  enter: (e: PointerEvent<HTMLDivElement>, id: string) => void;
+  leaveTab: () => void;
+  justDragged: () => boolean;
+  close: (id: string) => void;
+  setPinned: (id: string, pinned: boolean) => void;
+  moveBy: (id: string, by: number) => void;
+  menu: (id: string, at: { x: number; y: number }) => void;
+}
+
+/**
+ * One tab in the strip, drawn from plain values so it draws again only when what it shows changes. Joined
+ * notes come as their ids and names, each joined by a NUL; `here` is the note open in them.
+ */
+const TabRow = memo(function TabRow({
+  id,
+  href,
+  viewKind,
+  label,
+  note,
+  nested,
+  pinned,
+  panes,
+  paneNames,
+  here,
+  active,
+  dragging,
+  ipad,
+  act,
+}: {
+  id: string;
+  href: string;
+  viewKind: string | null;
+  label: string;
+  note: string;
+  nested: string | null;
+  pinned: boolean;
+  panes: string;
+  paneNames: string;
+  here: string | null;
+  active: boolean;
+  dragging: boolean;
+  ipad: boolean;
+  act: RefObject<RowActs>;
+}) {
+  const { tabBase, tabOn, tabOff } = tabLook(ipad);
+  const joined = panes !== "";
+  const names = paneNames.split("\u0000");
+  // Pinned tabs are half a tab wide (joined ones a little wider, for their notes' icons) and can't be
+  // closed until unpinned; joined tabs are as wide as two.
+  // Every tab the same width, open or not (the owner, 2026-10-29): they shrink evenly to their minimum
+  // together, so opening one changes only its look and nothing beside it moves.
+  const width = ipad
+    ? "min-w-[150px] flex-[0_1_260px] pr-1.5"
+    : pinned
+      ? `${joined ? "w-[112px]" : "w-[86px]"} flex-none pr-1`
+      : joined
+        ? "min-w-[240px] flex-[0_1_460px] pr-1"
+        : "min-w-[172px] flex-[0_1_284px] pr-1";
+  const pinButton = ipad ? null : (
+    <button
+      type="button"
+      aria-label={pinned ? `Unpin ${label}` : `Pin ${label}`}
+      title={pinned ? "Unpin tab" : "Pin tab"}
+      onClick={() => act.current.setPinned(id, !pinned)}
+      className={`grid h-5 w-5 flex-none place-items-center rounded-chip transition-opacity hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:outline-none ${pinned ? "text-muted" : "text-faint opacity-0 group-hover:opacity-100"}`}
+    >
+      {pinned ? (
+        <>
+          <Pin size={11} aria-hidden className="fill-current group-hover:hidden" />
+          <PinOff size={11} aria-hidden className="hidden group-hover:block" />
+        </>
+      ) : (
+        <Pin size={11} aria-hidden />
+      )}
+    </button>
+  );
+  return (
+    <div
+      data-tab={id}
+      data-pinned={pinned ? "" : undefined}
+      data-ipad-tab={ipad ? "" : undefined}
+      className={`${tabBase} ${width} ${pinned ? "!gap-1 !px-2" : ""} ${active ? tabOn : tabOff} ${dragging ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
+      onPointerDown={(e) => act.current.pointerDown(e, id)}
+      onPointerMove={(e) => act.current.dragMove(e)}
+      onPointerUp={() => act.current.dragEnd()}
+      onPointerCancel={() => act.current.dragEnd()}
+      onPointerEnter={(e) => act.current.enter(e, id)}
+      onPointerLeave={() => act.current.leaveTab()}
+      onDragStart={(e) => e.preventDefault()}
+      onClickCapture={(e) => {
+        if (act.current.justDragged()) e.preventDefault();
+      }}
+      onAuxClick={(e) => {
+        if (e.button === 1 && !pinned) {
+          e.preventDefault();
+          act.current.close(id);
+        }
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        act.current.menu(id, { x: e.clientX, y: e.clientY });
+      }}
+      // From the keyboard too (the Menu key or Shift+F10 on the tab).
+      onKeyDown={(e) => {
+        // ⌥⇧← / ⌥⇧→ moves the tab (the keyboard's way to drag it).
+        if (e.altKey && e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+          e.preventDefault();
+          act.current.moveBy(id, e.key === "ArrowLeft" ? -1 : 1);
+          return;
+        }
+        if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
+        e.preventDefault();
+        const r = e.currentTarget.getBoundingClientRect();
+        act.current.menu(id, { x: r.left + 8, y: r.bottom + 4 });
+      }}
+    >
+      {joined ? (
+        // Joined notes: one tab, a section per note (each opens the group with that note in focus).
+        <span className="flex min-w-0 flex-1 items-center">
+          {panes.split("\u0000").map((id, i) => {
+            const name = names[i]!;
+            return (
+              <span key={id} className={`flex items-center ${pinned ? "flex-none" : "min-w-0 flex-1"}`}>
+                {i > 0 ? <span aria-hidden className="mx-1 h-4 w-px flex-none bg-[color-mix(in_oklab,var(--color-heading)_18%,transparent)]" /> : null}
+                <AppLink
+                  href={`/d/${id}`}
+                  aria-current={id === here ? "page" : undefined}
+                  aria-label={`${name} (joined)`}
+                  className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-chip outline-none ${pinned ? "px-0.5" : "px-0.5"} ${id === here ? "font-semibold text-heading" : active ? "font-normal text-muted" : ""}`}
+                >
+                  <FileText size={13} aria-hidden className="flex-none opacity-70" />
+                  {pinned ? null : <span className="truncate">{name}</span>}
+                </AppLink>
+              </span>
+            );
+          })}
+        </span>
+      ) : (
+        <AppLink href={href} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-1 items-center gap-2 outline-none" aria-label={label}>
+          {viewKind ? <ViewIcon kind={viewKind} /> : <FileText size={14} aria-hidden className="flex-none opacity-70" />}
+          {nested !== null ? (
+            <span className="flex min-w-0 items-center gap-1">
+              <span className="min-w-[2.5rem] max-w-[45%] shrink truncate font-normal text-muted">{note}</span>
+              <ChevronRight size={12} aria-hidden className="flex-none text-faint" />
+              <span className="min-w-0 truncate">{nested || "Untitled"}</span>
+            </span>
+          ) : (
+            <span className="truncate">{label}</span>
+          )}
+        </AppLink>
+      )}
+      {pinButton}
+      {pinned ? null : (
+        <button
+          type="button"
+          aria-label={`Close ${label}`}
+          onClick={() => act.current.close(id)}
+          data-ipad-tab-close={ipad ? "" : undefined}
+          className={
+            ipad
+              ? // A finger closes only the open tab (a closed one's × would be too easy to hit); a pointer sees them all on hover.
+                `relative grid h-7 w-7 flex-none place-items-center rounded-container text-muted outline-none transition-opacity before:absolute before:-inset-2 before:content-[''] active:bg-[var(--liquid-press)] focus-visible:opacity-100 ${active ? "opacity-100" : "pointer-events-none opacity-0 [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"}`
+              : `grid h-5 w-5 flex-none place-items-center rounded-chip text-faint transition-opacity hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:outline-none ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`
+          }
+        >
+          <X size={ipad ? 15 : 12} strokeWidth={ipad ? 2.4 : 2} aria-hidden />
+        </button>
+      )}
+    </div>
+  );
+});

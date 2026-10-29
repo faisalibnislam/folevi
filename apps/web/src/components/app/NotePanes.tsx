@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "convex/react";
-import { FileText, Search } from "lucide-react";
+import { FileText, GripVertical, Search } from "lucide-react";
 import { MiniPage } from "./TabPreview";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -20,8 +20,8 @@ const MIN_PANE = 360;
  * first, their page tools down to icons below 600, globals.css).
  */
 const COMFORT = MIN_PANE;
-/** A folded note: a spine with its icon and title, standing in its place. */
-const SPINE = 44;
+/** A folded note: a spine with its icon and title, standing in its place (44 wide, with 8 of room on its right). */
+const SPINE = 52;
 /** The gap between panes (it holds the Unjoin button and is where they're resized). */
 const GAP = 16;
 /** How close (px) the gap must come to a snap point to land on it. */
@@ -504,8 +504,10 @@ function Spine({ id, title, shift, lifted, onDragStart, onOpen }: { id: string; 
           if (timer.current) clearTimeout(timer.current);
           setPeek(null);
         }}
-        className={`mb-1 flex min-h-0 flex-1 flex-col items-center gap-2 rounded-panel bg-[var(--glass-hover)] px-0 py-3 text-muted outline-none ${lifted ? "cursor-grabbing" : "cursor-pointer"} transition-colors hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus`}
+        className={`mb-1 mr-2 flex min-h-0 flex-1 flex-col items-center gap-2 rounded-panel bg-[var(--glass-hover)] px-0 py-2.5 text-muted outline-none ${lifted ? "cursor-grabbing" : "cursor-pointer"} transition-colors hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus`}
       >
+        {/* Its handle, like a bar's: the spine drags from anywhere, this says so. */}
+        <GripVertical size={14} aria-hidden className="flex-none text-faint" />
         <FileText size={14} aria-hidden className="flex-none opacity-70" />
         <span className="min-h-0 truncate text-subheadline font-medium [writing-mode:vertical-rl]">{title}</span>
       </button>

@@ -47,8 +47,8 @@ const run = (cmd, args, o = {}) => execFileSync(cmd, args, { stdio: "inherit", m
 const ok = (cmd, args) => spawnSync(cmd, args, { stdio: "ignore" }).status === 0;
 
 if (argv.includes("--plan")) {
-  console.log(`Would publish Folevi ${version} (build ${build}, what Sparkle compares), a ${RELEASE_TYPES[notes.type]} of ${notes.date}, from ${out}:
-  release notes: ${notes.changes.join("; ")}
+  console.log(`Would publish Folevi ${version} (build ${build}, what Sparkle compares), a ${RELEASE_TYPES[notes.type]} released ${notes.released}, from ${out}:
+  release notes: ${notes.summary}
   notarize with the keychain profile ${notary}, staple, ZIP + DMG,
   sign the appcast with the Sparkle key (login Keychain, account ${SPARKLE_ACCOUNT}), deltas from ${archiveDir},
   the current feed from ${bucketUrl}/mac/appcast.xml,
@@ -68,7 +68,7 @@ try {
 }
 const live = appcastReleases(feed);
 const newer = live.versions.filter((v) => compareVersions(v, version) >= 0);
-if (newer.length) fail(`The feed has ${newer.join(", ")} already: release the next version first (node scripts/version.mjs release patch|update|major).`);
+if (newer.length) fail(`The feed has ${newer.join(", ")} already: release the next version first (node scripts/version.mjs release patch|update).`);
 if (live.builds.some((b) => b >= build)) fail(`The feed has build ${Math.max(...live.builds)} already, and Sparkle needs a higher one than ${build}.`);
 identity();
 if (!ok("xcrun", ["notarytool", "history", "--keychain-profile", notary])) fail(`No notarization profile "${notary}": run \`xcrun notarytool store-credentials ${notary} --apple-id <Apple ID> --team-id 7K32QQ2FX8\` once.`);

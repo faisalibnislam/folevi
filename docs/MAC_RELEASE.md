@@ -111,19 +111,23 @@ synced stays in Chromium's storage, which the migration keeps for 30 days, and o
 
 ## 5. Versions
 
-One version for every platform (the owner's rule, 2026-10-23, made exact 2026-10-29): MAJOR.UPDATE.PATCH shown as
-`#.#.##`, UPDATE one digit and PATCH always two, shown as "Folevi 1.0.00" (the About panel says "Version 1.0.00",
-with no build number). Three kinds of release, chosen by hand, the next version worked out by `scripts/version.mjs`:
-a Major release (`major`, 1.5.20 to 2.0.00), a Big update (`update`, 1.0.25 to 1.1.00, 1.9.x to 2.0.00) and a Small
-update (`patch`, 1.0.09 to 1.0.10, 1.1.99 to 1.2.00, 1.9.99 to 2.0.00). `version.json` at the repo root holds the
-version and the build, a whole number that goes up by one with every new version and is never shown;
-`CHANGELOG.json` holds every release (version, build, date, type, changes) and `CHANGELOG.md` is written from it.
-`node scripts/version.mjs release patch|update|major --change "..."` (`--plan` to see it first; `next` lists the
-three) is the only way the version changes: it refuses a version that exists already or is older, records the
-release in the changelog and writes the version and build into `apps/mac/project.yml` (`MARKETING_VERSION`,
-`CURRENT_PROJECT_VERSION`), the iOS project and Android's `build.gradle.kts`. `check` (and the web tests in CI) fail
-when any of them, or the changelog, says something else. `publish.mjs` refuses a version or build the live feed has
-already, or an older one, and gives Sparkle the release's changes as its release notes. Sparkle compares
+One version for every platform (the owner's rule, 2026-10-23, revised 2026-10-29): MAJOR.UPDATE.PATCH with no
+limit on any number and PATCH at least two digits (1.0.00, 1.0.09, 1.0.10, 1.10.100, 1.100.1000), shown as
+"Folevi 1.0.00" (the About panel says "Version 1.0.00", with no build number). Three kinds of release, no rollover:
+a Small update (`patch`, PATCH+1: 1.0.99 to 1.0.100), a Big update (`update`, UPDATE+1 and PATCH kept: 1.0.05 to
+1.1.05, 1.9.99 to 1.10.99) and a Major release (`major`, 1.5.25 to 2.0.00), which happens only when the owner asks
+for one and needs `--authorize-major <version>`. `version.json` at the repo root holds the version and the build, a
+whole number that goes up by one with every new version and is never shown; `CHANGELOG.json` holds every release
+(version, build, release time, type, summary, added, improved, fixed, breaking changes, tag, commit) and
+`CHANGELOG.md` is written from it. `node scripts/version.mjs release patch|update --summary "..." --fixed "..."`
+(`--plan` first; `prepare` lists the commits since the last release and the next versions) is the only way the
+version changes: it refuses a version that exists already or is older, and writes the version and build into
+`apps/mac/project.yml` (`MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`), the iOS project, Android's
+`build.gradle.kts` and the changelog, all or none. `check` (and the web tests in CI) fail when any of them says
+something else; `tag` tags the release commit `v<version>`, once. Apple takes the version as it is (three
+period-separated integers; 1.1.04 reads as 1, 1, 4, which orders the same way, and no maximum is documented for
+the Developer ID builds Sparkle installs). `publish.mjs` refuses a version or build the live feed has already, or an
+older one, and gives Sparkle the release's notes. Sparkle compares
 the build (`sparkle:version`, CFBundleVersion); 1.0.00 is its `sparkle:shortVersionString`. `release.mjs --install`
 never changes the version: it refuses one that already has a `mac-v<version>` tag.
 

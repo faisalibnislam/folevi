@@ -121,7 +121,7 @@ final class RouterTests: XCTestCase {
         let versionFile = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../../version.json")
         let version = (try? JSONSerialization.jsonObject(with: Data(contentsOf: versionFile))) as? [String: Any]
         XCTAssertEqual(Paths.version, version?["version"] as? String)
-        XCTAssertEqual(Paths.version.split(separator: ".").last?.count, 2, "two digits last")
+        XCTAssertGreaterThanOrEqual(Paths.version.split(separator: ".").last?.count ?? 0, 2, "PATCH at least two digits")
     }
 
     func testDeepLinks() {

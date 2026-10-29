@@ -13,4 +13,7 @@ metadata:
 Same day: release the native Mac app now as 1.0.00 (not 2.0.0, not after two weeks of Electron 1.22), install on this Mac and publish the download; check nothing is unsynced before switching; then remove Electron completely: the app from this Mac (Trash), its data folder (~/Library/Application Support/Folevi, Trash, after migration is confirmed; never the library in Documents), the apps/desktop code, and point the old Electron update feed at the native app. iOS TestFlight, Android and the website all show 1.0.00.
 
 **Why:** one simple, consistent version across Folevi.
+Revised 2026-10-29: the numbering and release rules are now in [[version-releases]] (no limits, no rollover, a
+Big update keeps PATCH, Major only on the owner's word).
+
 **How to apply:** bump every platform together; supersedes the "bump the number after 1." rule in [[mac-is-electron]] and the 2.0.0 plan in [[mac-webkit-shell]].

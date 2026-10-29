@@ -239,7 +239,7 @@ async function main() {
   mkdirSync(out, { recursive: true });
   console.log("== the version");
   const { version, build } = currentVersion();
-  if (install && released(version)) throw new Error(`Folevi ${version} was released already: give the next one a version first (node scripts/version.mjs release patch|update|major --change ...).`);
+  if (install && released(version)) throw new Error(`Folevi ${version} was released already: give the next one a version first (node scripts/version.mjs release patch|update --summary ... --fixed ...).`);
   console.log(`Folevi ${version} (build ${build}, never shown)`);
 
   // --web <dir>: an export already made by build-shell.mjs --production --app-version <version> (dry runs only).

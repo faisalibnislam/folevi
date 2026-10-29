@@ -3,3 +3,5 @@ convex/_generated
 **/.next
 **/dist
 **/generated
+# Written by scripts/version.mjs
+CHANGELOG.json

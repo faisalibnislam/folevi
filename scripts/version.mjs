@@ -1,44 +1,53 @@
 #!/usr/bin/env node
 // Folevi's one version, for every platform (the website, Folevi for Mac, iPhone and iPad, Android). The owner's
-// rule: MAJOR.UPDATE.PATCH shown as #.#.##, as 1.0.00. UPDATE is one digit (0 to 9), PATCH always two (00 to 99),
-// so never 1.0.1, 1.0.001 or 1.10.00. It's shown as "Folevi 1.0.00" everywhere, never with a build number.
+// rule (2026-10-29): MAJOR.UPDATE.PATCH, no limit on any of them, PATCH at least two digits (1.0.00, 1.0.09, 1.0.10,
+// 1.10.100, 1.100.1000), no other leading zeros (never 1.0.1, 1.0.001 or 1.01.00). Shown as "Folevi 1.0.00"
+// everywhere, never with a build number. The numbers are BigInts, so they never overflow.
 //
-// Three kinds of release, chosen by hand, the next version worked out here (no other rule, nothing guessed):
-//   major    Major release   MAJOR+1, then .0.00                      1.5.20 -> 2.0.00
-//   update   Big update      UPDATE+1, PATCH 00; 9 rolls into MAJOR+1  1.0.25 -> 1.1.00, 1.9.20 -> 2.0.00
-//   patch    Small update    PATCH+1; 99 rolls into UPDATE+1 (and on)  1.0.09 -> 1.0.10, 1.1.99 -> 1.2.00, 1.9.99 -> 2.0.00
+// Three kinds of release. The version changes only through one of them, never because work was committed:
+//   major    Major release   MAJOR+1, UPDATE 0, PATCH 00  1.5.25 -> 2.0.00   only when the owner asks for one:
+//                                                                            --authorize-major <the next version>
+//   update   Big update      UPDATE+1, PATCH kept         1.0.05 -> 1.1.05, 1.9.99 -> 1.10.99 (no rollover)
+//   patch    Small update    PATCH+1                      1.0.09 -> 1.0.10, 1.0.99 -> 1.0.100 (no rollover)
+// The kind is chosen when a release is asked for (the owner names it, or the developer tools suggest Big or Small
+// from the changes, never Major); everything here is plain arithmetic and never guesses.
 //
 // version.json at the repo root is the source of truth: the version, and the build, one whole number that goes up
 // by one with every new version and is never shown (CFBundleVersion on the Mac, which Sparkle compares;
-// CURRENT_PROJECT_VERSION on iOS; versionCode on Android). CHANGELOG.json holds every release, newest first
-// (version, build, date, type, changes), and CHANGELOG.md is written from it. Its newest release is always
-// version.json's: the version only changes through `release` below, never by editing a file, and `check` (and the
-// web tests in CI) fail otherwise. This script writes the version and build into each app's project:
+// CURRENT_PROJECT_VERSION on iOS; versionCode on Android). Apple and Android take the version as it is: Apple wants
+// three period-separated integers (1.1.04 is read as 1, 1, 4, which orders the same way). CHANGELOG.json holds
+// every release, newest first, and CHANGELOG.md is written from it. Its newest release is always version.json's,
+// and `check` (and the web tests in CI) fail otherwise. This script writes the version and build into each project:
 //   apps/mac/project.yml                          MARKETING_VERSION, CURRENT_PROJECT_VERSION
 //   apps/ios/ios/App/App.xcodeproj/project.pbxproj MARKETING_VERSION, CURRENT_PROJECT_VERSION (app and extensions)
 //   apps/android/android/app/build.gradle.kts     versionName, versionCode
 // The website reads version.json itself (apps/web/src/lib/version.ts), and so does the built-in interface's
 // shell/build.json (apps/web/scripts/build-shell.mjs). The Mac's About panel and Settings read Info.plist, which
-// says $(MARKETING_VERSION). The workspaces' package.json "version" fields are npm package versions, not Folevi's:
-// npm needs semver there, and 1.0.00 isn't (the Web Clipper keeps its own store version for the same reason).
+// says $(MARKETING_VERSION); Sparkle's update dialog reads the appcast, which publish.mjs fills from here. The
+// workspaces' package.json "version" fields are npm package versions, not Folevi's: npm needs semver there, and
+// 1.0.00 isn't (the Web Clipper keeps its own store version for the same reason).
 //
 //   node scripts/version.mjs                      prints the version and build
-//   node scripts/version.mjs next                 the next version for each kind of release
-//   node scripts/version.mjs release patch --change "What changed" [--change ...] [--date 2026-10-29] [--plan]
-//   node scripts/version.mjs release update|major --changes-file notes.md   (one change per line, "- " optional)
-//   node scripts/version.mjs set 1.1.05 --change ...  the same, naming the version (it must be one of `next`'s)
+//   node scripts/version.mjs history              every release, newest first
+//   node scripts/version.mjs prepare              what changed since the last release and the next versions
+//   node scripts/version.mjs release patch|update --summary "..." [--added ...] [--improved ...] [--fixed ...]
+//        [--breaking ...] [--notes-file notes.md] [--date <ISO date and time>] [--plan]
+//   node scripts/version.mjs release major --authorize-major 2.0.00 --summary "..." ...
 //   node scripts/version.mjs build                the build only goes up by one (the same version uploaded again)
-//   node scripts/version.mjs sync                 writes version.json's values into the projects and CHANGELOG.md again
-//   node scripts/version.mjs check                fails when a project, CHANGELOG.json or CHANGELOG.md says something else
-// "bump" is another name for "release", and the old names still work: minor (patch), big (update), biggest (major).
-import { readFileSync, writeFileSync } from "node:fs";
+//   node scripts/version.mjs tag                  tags this commit v<version> (once; never moves a tag)
+//   node scripts/version.mjs sync                 writes version.json's values into the projects and CHANGELOG.md
+//   node scripts/version.mjs check                fails when a project, CHANGELOG.json or CHANGELOG.md disagrees
+// A notes file has "## Summary", "## Added", "## Improved", "## Fixed" and "## Breaking changes" sections, each a
+// paragraph or "- " items. "small" and "minor" also mean patch, "big" also means update.
+import { execFileSync } from "node:child_process";
+import { readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-const FORMAT = /^(0|[1-9]\d{0,2})\.(\d)\.(\d{2})$/;
-export const MAX_MAJOR = 999;
+// MAJOR and UPDATE: no leading zero. PATCH: two digits below 10 (00 to 09), else no leading zero.
+const FORMAT = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0\d|[1-9]\d+)$/;
 
 /** The kinds of release and what the owner calls them. */
 export const RELEASE_TYPES = {
@@ -48,12 +57,18 @@ export const RELEASE_TYPES = {
 };
 const ALIASES = {
   major: "major",
-  biggest: "major",
   update: "update",
   big: "update",
   patch: "patch",
   small: "patch",
   minor: "patch",
+};
+/** The sections of a release's notes, in order, and their headings. */
+export const NOTE_SECTIONS = {
+  added: "Added",
+  improved: "Improved",
+  fixed: "Fixed",
+  breaking: "Breaking changes",
 };
 
 /** "major", "update" or "patch" for any of their names; throws for anything else. */
@@ -66,32 +81,55 @@ export function releaseType(name) {
   return type;
 }
 
-/** Whether `v` is a version in the owner's format ("1.0.00"). */
-export function isVersion(v) {
-  return typeof v === "string" && FORMAT.test(v);
-}
+/** Whether `v` is a version written exactly as the format says ("1.0.00", "1.10.100"). */
+export const validateVersion = (v) => typeof v === "string" && FORMAT.test(v);
+/** Kept for the old name. */
+export const isVersion = validateVersion;
 
+/** { major, update, patch } as BigInts; throws for anything not in the format. */
 export function parseVersion(v) {
-  const m = FORMAT.exec(String(v));
+  const m = FORMAT.exec(typeof v === "string" ? v : "");
   if (!m)
     throw new Error(
-      `"${v}" isn't a Folevi version: MAJOR.UPDATE.PATCH as #.#.##, one digit for UPDATE and two for PATCH, as 1.0.00.`,
+      `"${v}" isn't a Folevi version: MAJOR.UPDATE.PATCH with PATCH at least two digits and no other leading zeros, as 1.0.00 or 1.10.100.`,
     );
-  return { major: Number(m[1]), update: Number(m[2]), patch: Number(m[3]) };
+  return { major: BigInt(m[1]), update: BigInt(m[2]), patch: BigInt(m[3]) };
 }
 
-export function formatVersion({ major, update, patch }) {
-  const whole = (n, max) => Number.isInteger(n) && n >= 0 && n <= max;
-  if (!whole(major, MAX_MAJOR) || !whole(update, 9) || !whole(patch, 99))
-    throw new Error(`${major}.${update}.${patch} can't be written as #.#.##.`);
-  return `${major}.${update}.${String(patch).padStart(2, "0")}`;
+const whole = (n, name) => {
+  const text =
+    typeof n === "bigint"
+      ? String(n)
+      : typeof n === "number" && Number.isSafeInteger(n)
+        ? String(n)
+        : typeof n === "string"
+          ? n
+          : "";
+  if (!/^\d+$/.test(text)) throw new Error(`${name} is a whole number from 0, not ${String(n)}.`);
+  return BigInt(text);
+};
+
+/**
+ * The version written in the format, from its three numbers (whole numbers from 0: numbers, BigInts or digits),
+ * or from one string of three such numbers: formatVersion(1, 0, 9) and formatVersion("1.0.9") are "1.0.09".
+ */
+export function formatVersion(major, update, patch) {
+  if (typeof major === "object" && major !== null) ({ major, update, patch } = major);
+  else if (update === undefined && patch === undefined) {
+    const parts = String(major).split(".");
+    if (parts.length !== 3) throw new Error(`"${major}" isn't three numbers separated by periods.`);
+    [major, update, patch] = parts;
+  }
+  const [a, b, c] = [whole(major, "MAJOR"), whole(update, "UPDATE"), whole(patch, "PATCH")];
+  return `${a}.${b}.${String(c).padStart(2, "0")}`;
 }
 
-/** Negative when a is older than b, 0 when the same, positive when newer (as numbers, never as text). */
+/** Negative when a is older than b, 0 when the same, positive when newer: as numbers, never as text. */
 export function compareVersions(a, b) {
   const x = parseVersion(a);
   const y = parseVersion(b);
-  return x.major - y.major || x.update - y.update || x.patch - y.patch;
+  const cmp = (p, q) => (p < q ? -1 : p > q ? 1 : 0);
+  return cmp(x.major, y.major) || cmp(x.update, y.update) || cmp(x.patch, y.patch);
 }
 
 /** Oldest first; newest first with `{ newest: true }`. */
@@ -99,22 +137,33 @@ export function sortVersions(versions, { newest = false } = {}) {
   return [...versions].sort((a, b) => (newest ? compareVersions(b, a) : compareVersions(a, b)));
 }
 
-/** The next version for a kind of release (see the top of this file), rolling over 9 and 99. */
-export function nextVersion(v, kind) {
-  const type = releaseType(kind);
-  let { major, update, patch } = parseVersion(v);
-  if (type === "major") [major, update, patch] = [major + 1, 0, 0];
-  if (type === "update") [update, patch] = [update + 1, 0];
-  if (type === "patch") patch += 1;
-  if (patch > 99) [update, patch] = [update + 1, 0];
-  if (update > 9) [major, update] = [major + 1, 0];
-  if (major > MAX_MAJOR) throw new Error(`${v} is the last version the format can hold.`);
-  return formatVersion({ major, update, patch });
+/** A Small update: PATCH+1, MAJOR and UPDATE kept, no rollover. */
+export function incrementPatch(v) {
+  const p = parseVersion(v);
+  return formatVersion(p.major, p.update, p.patch + 1n);
 }
 
-/** Which kind of release takes `from` to `to`, or null when none of the three does. */
-export function releaseTypeOf(from, to) {
-  return Object.keys(RELEASE_TYPES).find((type) => nextVersion(from, type) === to) ?? null;
+/** A Big update: UPDATE+1, MAJOR and PATCH kept, no rollover. */
+export function incrementUpdate(v) {
+  const p = parseVersion(v);
+  return formatVersion(p.major, p.update + 1n, p.patch);
+}
+
+/** A Major release: MAJOR+1, UPDATE 0, PATCH 00. Only for a release the owner asked for: `{ authorized: true }`. */
+export function incrementMajor(v, { authorized = false } = {}) {
+  if (authorized !== true)
+    throw new Error(
+      "A Major release needs the owner's explicit instruction: release major --authorize-major <version>.",
+    );
+  return formatVersion(parseVersion(v).major + 1n, 0, 0);
+}
+
+/** The next version for a kind of release; "major" needs `{ authorized: true }`. */
+export function nextVersion(v, kind, { authorized = false } = {}) {
+  const type = releaseType(kind);
+  if (type === "patch") return incrementPatch(v);
+  if (type === "update") return incrementUpdate(v);
+  return incrementMajor(v, { authorized });
 }
 
 /** Where each app keeps its version and build, and how to write them. */
@@ -157,7 +206,8 @@ function replaceAll(text, re, to, name) {
   return text.replace(re, to);
 }
 
-const isBuild = (b) => Number.isInteger(b) && b >= 1;
+// Android's versionCode is the build, and it stops at 2,100,000,000.
+const isBuild = (b) => Number.isInteger(b) && b >= 1 && b <= 2_100_000_000;
 
 /** version.json: { version, build }. */
 export function readVersion(root = REPO) {
@@ -167,103 +217,154 @@ export function readVersion(root = REPO) {
   return { version: info.version, build: info.build };
 }
 
-/** The projects that don't say version.json's version and build (relative paths). */
-export function outOfSync(root = REPO, info = readVersion(root)) {
-  return TARGETS.filter((t) => {
-    const text = readFileSync(join(root, t.file), "utf8");
-    return t.write(text, info) !== text;
-  }).map((t) => t.file);
-}
+/** The version every app shows. */
+export const getCurrentVersion = (root = REPO) => readVersion(root).version;
 
-/** Writes `text` when it differs; true when it did. */
-function put(root, file, text) {
-  let before = "";
-  try {
-    before = readFileSync(join(root, file), "utf8");
-  } catch {
-    /* A first write. */
-  }
-  if (before === text) return false;
-  writeFileSync(join(root, file), text);
-  return true;
-}
-
-/** Writes `info` into version.json and every project; returns the files that changed. */
-export function writeVersion(root, info) {
+/** The files that say the version and build, as they'd be written for `info`. */
+function versionFiles(root, info) {
   parseVersion(info.version);
   if (!isBuild(info.build)) throw new Error("The build is a whole number from 1.");
-  const changed = [];
-  if (
-    put(
-      root,
-      "version.json",
-      `${JSON.stringify({ version: info.version, build: info.build }, null, 2)}\n`,
-    )
-  )
-    changed.push("version.json");
-  for (const t of TARGETS) {
-    const text = readFileSync(join(root, t.file), "utf8");
-    if (put(root, t.file, t.write(text, info))) changed.push(t.file);
+  const files = new Map([
+    ["version.json", `${JSON.stringify({ version: info.version, build: info.build }, null, 2)}\n`],
+  ]);
+  for (const t of TARGETS)
+    files.set(t.file, t.write(readFileSync(join(root, t.file), "utf8"), info));
+  return files;
+}
+
+const readOr = (path, fallback) => {
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    return fallback;
+  }
+};
+
+/**
+ * Writes every file or none: each goes to a temporary file first, then all are moved into place; if a move fails,
+ * the ones already moved get their old text back. Returns the files that changed.
+ */
+export function writeFiles(root, files) {
+  const changed = [...files]
+    .filter(([file, text]) => readOr(join(root, file), null) !== text)
+    .map(([file]) => file);
+  const tmp = (file) => join(root, `${file}.version-tmp`);
+  const before = new Map(changed.map((file) => [file, readOr(join(root, file), null)]));
+  const moved = [];
+  try {
+    for (const file of changed) writeFileSync(tmp(file), files.get(file));
+    for (const file of changed) {
+      renameSync(tmp(file), join(root, file));
+      moved.push(file);
+    }
+  } catch (e) {
+    for (const file of moved) {
+      const old = before.get(file);
+      if (old === null) rmSync(join(root, file), { force: true });
+      else writeFileSync(join(root, file), old);
+    }
+    throw e;
+  } finally {
+    for (const file of changed) rmSync(tmp(file), { force: true });
   }
   return changed;
 }
 
+/** The projects that don't say version.json's version and build (relative paths). */
+export function outOfSync(root = REPO, info = readVersion(root)) {
+  return [...versionFiles(root, info)]
+    .filter(([file, text]) => file !== "version.json" && readOr(join(root, file), "") !== text)
+    .map(([file]) => file);
+}
+
+/** Writes `info` into version.json and every project; returns the files that changed. */
+export const writeVersion = (root, info) => writeFiles(root, versionFiles(root, info));
+
 // The changelog.
 
-/** CHANGELOG.json's releases, newest first: { version, build, date, type, changes }. */
+/** CHANGELOG.json's releases, newest first. */
 export function readChangelog(root = REPO) {
   const log = JSON.parse(readFileSync(join(root, "CHANGELOG.json"), "utf8"));
   if (!Array.isArray(log.releases)) throw new Error("CHANGELOG.json has no releases list.");
   return log.releases;
 }
 
+/** Every release, newest first: { version, build, released, type, summary, added, improved, fixed, breaking, tag?, commit? }. */
+export const getReleaseHistory = (root = REPO) => readChangelog(root);
+
 /** The release of `version` in the changelog, or undefined. */
 export function findRelease(version, root = REPO) {
   return readChangelog(root).find((r) => r.version === version);
 }
 
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?([+-]\d{2}:\d{2}|Z)$/;
+const isText = (s) => typeof s === "string" && s.trim() !== "";
+const isList = (l) => Array.isArray(l) && l.every(isText);
 
-/** What's wrong with a changelog (empty when nothing): every field, newest first, no version or build twice. */
+/** How `r` follows `older` for its kind ("" when it does): nothing skipped, MAJOR never moved by a smaller kind. */
+function sequenceProblem(older, r) {
+  const a = parseVersion(older.version);
+  const b = parseVersion(r.version);
+  const name = RELEASE_TYPES[r.type];
+  if (r.type === "major")
+    return b.major === a.major + 1n && b.update === 0n && b.patch === 0n
+      ? ""
+      : `a ${name} after ${older.version} is ${formatVersion(a.major + 1n, 0, 0)}, not ${r.version}`;
+  if (b.major !== a.major)
+    return `a ${name} never changes MAJOR (${older.version} to ${r.version})`;
+  // A Big update keeps PATCH; the releases before 2026-10-29 set it to 00 (1.0.05 to 1.1.00), which stays valid.
+  if (r.type === "update")
+    return b.update === a.update + 1n && (b.patch === a.patch || b.patch === 0n)
+      ? ""
+      : `a ${name} after ${older.version} is ${incrementUpdate(older.version)}, not ${r.version}`;
+  return b.update === a.update && b.patch === a.patch + 1n
+    ? ""
+    : `a ${name} after ${older.version} is ${incrementPatch(older.version)}, not ${r.version}`;
+}
+
+/** What's wrong with a changelog (empty when nothing): every field, newest first, nothing twice or skipped. */
 export function changelogProblems(releases, info) {
   const problems = [];
   const seen = new Set();
   releases.forEach((r, i) => {
     const at = `release ${i + 1} (${r?.version})`;
-    if (!isVersion(r?.version)) return problems.push(`${at}: not a version in the format`);
+    if (!validateVersion(r?.version)) return problems.push(`${at}: not a version in the format`);
     if (seen.has(r.version)) problems.push(`${r.version} is there twice`);
     seen.add(r.version);
     if (!isBuild(r.build)) problems.push(`${at}: the build is a whole number from 1`);
-    if (!DATE.test(String(r.date)) || Number.isNaN(Date.parse(r.date)))
-      problems.push(`${at}: the date is YYYY-MM-DD`);
+    if (!DATETIME.test(String(r.released)) || Number.isNaN(Date.parse(r.released)))
+      problems.push(
+        `${at}: released is a date and time with its zone, as 2026-10-29T06:18:23+06:00`,
+      );
     if (!Object.hasOwn(RELEASE_TYPES, r.type))
       problems.push(`${at}: the type is major, update or patch`);
-    if (
-      !Array.isArray(r.changes) ||
-      !r.changes.length ||
-      r.changes.some((c) => typeof c !== "string" || !c.trim())
-    )
-      problems.push(`${at}: no changes listed`);
+    if (!isText(r.summary)) problems.push(`${at}: no summary`);
+    for (const key of Object.keys(NOTE_SECTIONS))
+      if (!isList(r[key] ?? [])) problems.push(`${at}: ${key} is a list of text`);
+    if (!Object.keys(NOTE_SECTIONS).some((key) => r[key]?.length))
+      problems.push(`${at}: nothing added, improved, fixed or broken`);
+    for (const key of ["tag", "commit"])
+      if (r[key] !== undefined && !isText(r[key])) problems.push(`${at}: ${key} is text`);
     const older = releases[i + 1];
-    if (older && isVersion(older.version)) {
+    if (older && validateVersion(older.version)) {
       if (compareVersions(r.version, older.version) <= 0)
         problems.push(`${r.version} comes before ${older.version} but isn't newer`);
+      else if (Object.hasOwn(RELEASE_TYPES, r.type)) {
+        const wrong = sequenceProblem(older, r);
+        if (wrong) problems.push(wrong);
+      }
       if (!(r.build > older.build))
         problems.push(
           `${r.version}'s build ${r.build} isn't above ${older.version}'s ${older.build}`,
         );
-      // Each release is exactly what its kind gives after the one before: nothing skipped.
-      if (Object.hasOwn(RELEASE_TYPES, r.type) && nextVersion(older.version, r.type) !== r.version)
-        problems.push(
-          `a ${RELEASE_TYPES[r.type]} after ${older.version} is ${nextVersion(older.version, r.type)}, not ${r.version}`,
-        );
-      if (older.date > r.date) problems.push(`${r.version} is dated before ${older.version}`);
+      if (Date.parse(older.released) > Date.parse(r.released))
+        problems.push(`${r.version} is dated before ${older.version}`);
     }
   });
   const newest = releases[0];
   if (info && (!newest || newest.version !== info.version || newest.build !== info.build)) {
     problems.push(
-      `version.json says ${info.version} (build ${info.build}) but the newest release in CHANGELOG.json is ${newest ? `${newest.version} (build ${newest.build})` : "none"}: release with node scripts/version.mjs release`,
+      `version.json says ${info.version} (build ${info.build}) but the newest release in CHANGELOG.json is ${newest ? `${newest.version} (build ${newest.build})` : "none"}: versions change only through node scripts/version.mjs release`,
     );
   }
   return problems;
@@ -274,19 +375,27 @@ export function renderChangelog(releases) {
   const lines = [
     "# Changelog",
     "",
-    "Every Folevi release, newest first. Written by `node scripts/version.mjs` from `CHANGELOG.json`: edit that file, then run `node scripts/version.mjs sync`.",
+    "Every Folevi release, newest first, written by `node scripts/version.mjs` from `CHANGELOG.json`.",
     "",
-    "Versions are MAJOR.UPDATE.PATCH, shown as `#.#.##`: a Major release, a Big update or a Small update.",
+    "Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).",
   ];
   for (const r of releases) {
+    const where = [`build ${r.build}`, r.tag && `tag ${r.tag}`, r.commit && `commit ${r.commit}`]
+      .filter(Boolean)
+      .join(", ");
     lines.push(
       "",
-      `## ${r.version} (${r.date})`,
+      `## Version ${r.version}: ${RELEASE_TYPES[r.type] ?? r.type}`,
       "",
-      `${RELEASE_TYPES[r.type] ?? r.type}, build ${r.build}`,
+      `Released ${String(r.released).replace("T", " ")} (${where})`,
       "",
+      r.summary,
     );
-    for (const c of r.changes) lines.push(`- ${c}`);
+    for (const [key, heading] of Object.entries(NOTE_SECTIONS)) {
+      if (!r[key]?.length) continue;
+      lines.push("", `### ${heading}`, "");
+      for (const item of r[key]) lines.push(`- ${item}`);
+    }
   }
   return `${lines.join("\n")}\n`;
 }
@@ -294,8 +403,25 @@ export function renderChangelog(releases) {
 /** The release notes Sparkle shows for an update: an HTML fragment (no body), which generate_appcast embeds. */
 export function releaseNotesHtml(release) {
   const esc = (s) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  return `<h2>Folevi ${esc(release.version)}</h2>\n<p>${esc(RELEASE_TYPES[release.type] ?? release.type)}, ${esc(release.date)}</p>\n<ul>\n${release.changes.map((c) => `  <li>${esc(c)}</li>`).join("\n")}\n</ul>\n`;
+    String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  const out = [
+    `<h2>Folevi ${esc(release.version)}</h2>`,
+    `<p>${esc(RELEASE_TYPES[release.type] ?? release.type)}. ${esc(release.summary)}</p>`,
+  ];
+  for (const [key, heading] of Object.entries(NOTE_SECTIONS)) {
+    if (!release[key]?.length) continue;
+    out.push(
+      `<h3>${heading}</h3>`,
+      "<ul>",
+      ...release[key].map((c) => `  <li>${esc(c)}</li>`),
+      "</ul>",
+    );
+  }
+  return `${out.join("\n")}\n`;
 }
 
 /** The versions and builds a Sparkle feed (appcast.xml) lists already: shortVersionString and version. */
@@ -305,91 +431,122 @@ export function appcastReleases(xml) {
       m[1].trim(),
     );
   return {
-    versions: all("shortVersionString").filter(isVersion),
+    versions: all("shortVersionString").filter(validateVersion),
     builds: all("version")
       .filter((b) => /^\d+$/.test(b))
       .map(Number),
   };
 }
 
+const changelogFiles = (releases) =>
+  new Map([
+    ["CHANGELOG.json", `${JSON.stringify({ releases }, null, 2)}\n`],
+    ["CHANGELOG.md", renderChangelog(releases)],
+  ]);
+
 /** Writes CHANGELOG.json and CHANGELOG.md; returns the files that changed. */
-export function writeChangelog(root, releases) {
-  const changed = [];
-  if (put(root, "CHANGELOG.json", `${JSON.stringify({ releases }, null, 2)}\n`))
-    changed.push("CHANGELOG.json");
-  if (put(root, "CHANGELOG.md", renderChangelog(releases))) changed.push("CHANGELOG.md");
-  return changed;
+export const writeChangelog = (root, releases) => writeFiles(root, changelogFiles(releases));
+
+/** Now in the local time zone, as 2026-10-29T06:18:23+06:00. */
+export function now(date = new Date()) {
+  const two = (n) => String(n).padStart(2, "0");
+  const offset = -date.getTimezoneOffset();
+  const zone = `${offset >= 0 ? "+" : "-"}${two(Math.floor(Math.abs(offset) / 60))}:${two(Math.abs(offset) % 60)}`;
+  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}T${two(date.getHours())}:${two(date.getMinutes())}:${two(date.getSeconds())}${zone}`;
 }
 
-/** Today in the local time zone, YYYY-MM-DD. */
-export function today(now = new Date()) {
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+/** The notes of a release from options: summary, and the lists, each trimmed. */
+function notesFrom({ summary = "", added = [], improved = [], fixed = [], breaking = [] }) {
+  const clean = (l) => l.map((s) => String(s).trim()).filter(Boolean);
+  return {
+    summary: String(summary).trim(),
+    added: clean(added),
+    improved: clean(improved),
+    fixed: clean(fixed),
+    breaking: clean(breaking),
+  };
 }
 
-/** Everything `release` would write, without writing it. */
-export function planRelease(kind, { root = REPO, changes = [], date = today() } = {}) {
+/**
+ * Everything `release` would write, without writing it. `kind` is the kind the owner asked for (or the kind chosen
+ * for a release they asked for); a Major release also needs `authorizeMajor`, the version it gives.
+ */
+export function planRelease(
+  kind,
+  { root = REPO, authorizeMajor, released = now(), ...notes } = {},
+) {
   const type = releaseType(kind);
   const current = readVersion(root);
   const releases = readChangelog(root);
   const before = changelogProblems(releases, current);
   if (before.length) throw new Error(`Fix the changelog first:\n  ${before.join("\n  ")}`);
-  const version = nextVersion(current.version, type);
+  if (type === "major") {
+    const expected = incrementMajor(current.version, { authorized: true });
+    if (authorizeMajor !== expected)
+      throw new Error(
+        `A Major release happens only when the owner asks for one: pass --authorize-major ${expected} to confirm they did.`,
+      );
+  } else if (authorizeMajor !== undefined)
+    throw new Error("--authorize-major is only for a Major release.");
+  const version = nextVersion(current.version, type, { authorized: type === "major" });
   // Never a version that exists already, and never an older one.
   if (compareVersions(version, current.version) <= 0)
     throw new Error(`${version} isn't newer than ${current.version}.`);
   if (releases.some((r) => r.version === version))
     throw new Error(`${version} was released already.`);
-  const list = changes.map((c) => String(c).trim()).filter(Boolean);
-  if (!list.length)
+  const n = notesFrom(notes);
+  if (!n.summary)
     throw new Error(
-      'Say what changed: --change "..." (as many as needed) or --changes-file <file>.',
+      'Give the release a summary: --summary "..." (or a "## Summary" section in --notes-file).',
     );
-  if (!DATE.test(date) || date < releases[0].date)
-    throw new Error(`The date ${date} isn't YYYY-MM-DD on or after ${releases[0].date}.`);
-  const release = { version, build: current.build + 1, date, type, changes: list };
+  if (!Object.keys(NOTE_SECTIONS).some((key) => n[key].length))
+    throw new Error(
+      "Say what changed: --added, --improved, --fixed or --breaking (as many as needed), or --notes-file.",
+    );
+  if (
+    !DATETIME.test(released) ||
+    Number.isNaN(Date.parse(released)) ||
+    Date.parse(released) < Date.parse(releases[0].released)
+  ) {
+    throw new Error(
+      `The release time ${released} isn't a date and time with its zone, on or after ${releases[0].released}.`,
+    );
+  }
+  const release = { version, build: current.build + 1, released, type, summary: n.summary };
+  for (const key of Object.keys(NOTE_SECTIONS)) if (n[key].length) release[key] = n[key];
+  release.tag = `v${version}`;
   return { release, releases: [release, ...releases] };
 }
 
-/** A new release: the next version for its kind, the build up by one, its changelog entry, every project. */
-export function release(kind, { root = REPO, changes = [], date = today() } = {}) {
-  const plan = planRelease(kind, { root, changes, date });
+/** A new release: the next version for its kind, the build up by one, its changelog entry, every project, all or nothing. */
+export function release(kind, options = {}) {
+  const root = options.root ?? REPO;
+  const plan = planRelease(kind, options);
   const { version, build } = plan.release;
-  const changed = [
-    ...writeVersion(root, { version, build }),
-    ...writeChangelog(root, plan.releases),
-  ];
-  return { ...plan.release, changed };
+  const files = new Map([
+    ...versionFiles(root, { version, build }),
+    ...changelogFiles(plan.releases),
+  ]);
+  return { ...plan.release, changed: writeFiles(root, files) };
 }
-
-/** A release naming its version, which must be what one of the three kinds gives (so none is skipped). */
-export function setVersion(version, { root = REPO, changes = [], date = today() } = {}) {
-  parseVersion(version);
-  const current = readVersion(root);
-  if (compareVersions(version, current.version) <= 0)
-    throw new Error(
-      `${version} isn't newer than ${current.version}: a version is never released twice or gone back to.`,
-    );
-  const type = releaseTypeOf(current.version, version);
-  if (!type)
-    throw new Error(
-      `${version} isn't the next version after ${current.version} (${describeNext(current.version)}).`,
-    );
-  return release(type, { root, changes, date });
-}
-
-/** Kept for the old name: a release of that kind. */
-export const bumpVersion = (kind, options) => release(kind, options);
 
 /** The same version built again (a store needs a new build number for each upload); its changelog entry follows. */
-export function bumpBuild({ root = REPO } = {}) {
+export const bumpBuild = ({ root = REPO } = {}) => setBuild(readVersion(root).build + 1, { root });
+
+/** The same version with a higher build (never a lower one); its changelog entry follows. */
+export function setBuild(build, { root = REPO } = {}) {
   const current = readVersion(root);
-  const info = { version: current.version, build: current.build + 1 };
+  if (!isBuild(build) || build <= current.build)
+    throw new Error(`The build ${build} isn't a whole number above ${current.build}.`);
+  const info = { version: current.version, build };
   const releases = readChangelog(root);
-  const newest =
-    releases[0]?.version === current.version
-      ? [{ ...releases[0], build: info.build }, ...releases.slice(1)]
-      : releases;
-  return { ...info, changed: [...writeVersion(root, info), ...writeChangelog(root, newest)] };
+  if (releases[0]?.version !== current.version)
+    throw new Error(`Fix the changelog first: its newest release isn't ${current.version}.`);
+  const next = [{ ...releases[0], build: info.build }, ...releases.slice(1)];
+  return {
+    ...info,
+    changed: writeFiles(root, new Map([...versionFiles(root, info), ...changelogFiles(next)])),
+  };
 }
 
 /** Everything that doesn't say version.json's version: projects, CHANGELOG.json, CHANGELOG.md. */
@@ -401,13 +558,7 @@ export function problems(root = REPO) {
   );
   const releases = readChangelog(root);
   out.push(...changelogProblems(releases, info));
-  let md = "";
-  try {
-    md = readFileSync(join(root, "CHANGELOG.md"), "utf8");
-  } catch {
-    /* Missing, reported below. */
-  }
-  if (md !== renderChangelog(releases))
+  if (readOr(join(root, "CHANGELOG.md"), "") !== renderChangelog(releases))
     out.push("CHANGELOG.md isn't CHANGELOG.json's: run node scripts/version.mjs sync");
   return out;
 }
@@ -415,15 +566,77 @@ export function problems(root = REPO) {
 /** What every app shows: "Folevi 1.0.00". */
 export const label = (version) => `Folevi ${version}`;
 
+const git = (args, root = REPO) =>
+  execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
+
+/** The commits since the last release (the last commit that changed version.json), oldest first. */
+export function changesSinceRelease(root = REPO) {
+  const last = git(["log", "-n1", "--format=%H", "--", "version.json"], root);
+  const log = git(["log", "--first-parent", "--reverse", "--format=%h %s", `${last}..HEAD`], root);
+  return { since: last.slice(0, 8), commits: log ? log.split("\n") : [] };
+}
+
+/** Tags HEAD v<version> (annotated); refuses when the tag exists or HEAD isn't that release. */
+export function tagRelease(root = REPO) {
+  if (problems(root).length) throw new Error("Run node scripts/version.mjs check first.");
+  const { version } = readVersion(root);
+  const head = JSON.parse(git(["show", "HEAD:version.json"], root));
+  if (head.version !== version)
+    throw new Error(`The commit says ${head.version}: commit the release of ${version} first.`);
+  const tag = findRelease(version, root)?.tag ?? `v${version}`;
+  if (git(["tag", "--list", tag], root))
+    throw new Error(`${tag} exists already: a tag is never moved or made twice.`);
+  git(["tag", "-a", tag, "-m", label(version)], root);
+  return tag;
+}
+
+/** "## Summary" / "## Added" / ... sections of a notes file, each a paragraph or "- " items. */
+export function parseNotes(text) {
+  const notes = { summary: [], added: [], improved: [], fixed: [], breaking: [] };
+  const keys = {
+    summary: "summary",
+    added: "added",
+    improved: "improved",
+    fixed: "fixed",
+    "breaking changes": "breaking",
+    breaking: "breaking",
+  };
+  let at = null;
+  for (const line of String(text).split("\n")) {
+    const heading = /^#+\s*(.+?)\s*$/.exec(line);
+    if (heading) {
+      at = keys[heading[1].toLowerCase()] ?? null;
+      if (!at)
+        throw new Error(
+          `Unknown section "${heading[1]}": Summary, Added, Improved, Fixed or Breaking changes.`,
+        );
+      continue;
+    }
+    const item = line.replace(/^\s*[-*]\s+/, "").trim();
+    if (!item) continue;
+    if (!at) throw new Error(`"${item}" isn't under a section heading.`);
+    notes[at].push(item);
+  }
+  return { ...notes, summary: notes.summary.join(" ") };
+}
+
 const describeNext = (v) =>
-  Object.keys(RELEASE_TYPES)
-    .map((t) => `${RELEASE_TYPES[t]} ${nextVersion(v, t)}`)
-    .join(", ");
+  `Small update ${incrementPatch(v)}, Big update ${incrementUpdate(v)}; a Major release (${incrementMajor(v, { authorized: true })}) only when the owner asks for one`;
 
 /** --name value pairs (repeatable) and the words around them. */
 function parseArgs(argv) {
   const words = [];
   const flags = {};
+  const valued = [
+    "summary",
+    "added",
+    "improved",
+    "fixed",
+    "breaking",
+    "notes-file",
+    "date",
+    "authorize-major",
+  ];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (!a.startsWith("--")) {
@@ -431,7 +644,7 @@ function parseArgs(argv) {
       continue;
     }
     const [name, inline] = a.slice(2).split(/=(.*)/s);
-    const takes = ["change", "changes-file", "date"].includes(name);
+    const takes = valued.includes(name);
     const value = takes ? (inline ?? argv[++i]) : true;
     if (takes && value === undefined) throw new Error(`--${name} needs a value.`);
     (flags[name] ??= []).push(value);
@@ -439,17 +652,25 @@ function parseArgs(argv) {
   return { words, flags };
 }
 
-function changesFrom(flags) {
-  const list = [...(flags.change ?? [])];
-  for (const file of flags["changes-file"] ?? []) {
-    list.push(
-      ...readFileSync(resolve(file), "utf8")
-        .split("\n")
-        .map((l) => l.replace(/^\s*[-*]\s+/, "").trim())
-        .filter(Boolean),
-    );
+function optionsFrom(flags) {
+  const notes = {
+    summary: [...(flags.summary ?? [])],
+    added: [...(flags.added ?? [])],
+    improved: [...(flags.improved ?? [])],
+    fixed: [...(flags.fixed ?? [])],
+    breaking: [...(flags.breaking ?? [])],
+  };
+  for (const file of flags["notes-file"] ?? []) {
+    const n = parseNotes(readFileSync(resolve(file), "utf8"));
+    if (n.summary) notes.summary.push(n.summary);
+    for (const key of Object.keys(NOTE_SECTIONS)) notes[key].push(...n[key]);
   }
-  return list;
+  return {
+    ...notes,
+    summary: notes.summary.join(" "),
+    ...(flags.date ? { released: flags.date.at(-1) } : {}),
+    ...(flags["authorize-major"] ? { authorizeMajor: flags["authorize-major"].at(-1) } : {}),
+  };
 }
 
 function main(argv) {
@@ -457,25 +678,34 @@ function main(argv) {
   const [cmd = "print", arg] = words;
   const say = (r) =>
     console.log(
-      `${label(r.version)} (build ${r.build}, never shown)${r.type ? `, ${RELEASE_TYPES[r.type]} on ${r.date}` : ""}${r.changed?.length ? `\n  ${r.changed.join("\n  ")}` : ""}`,
+      `${label(r.version)} (build ${r.build}, never shown)${r.type ? `, a ${RELEASE_TYPES[r.type]} at ${r.released}` : ""}${r.changed?.length ? `\n  ${r.changed.join("\n  ")}` : ""}`,
     );
-  const options = {
-    changes: changesFrom(flags),
-    ...(flags.date ? { date: flags.date.at(-1) } : {}),
-  };
   if (cmd === "print") return say(readVersion());
-  if (cmd === "next") return console.log(describeNext(readVersion().version));
+  if (cmd === "history")
+    return console.log(
+      getReleaseHistory()
+        .map((r) => `${r.version}  ${RELEASE_TYPES[r.type]}  ${r.released}  ${r.summary}`)
+        .join("\n"),
+    );
+  if (cmd === "next") return console.log(describeNext(getCurrentVersion()));
+  if (cmd === "prepare") {
+    const { since, commits } = changesSinceRelease();
+    return console.log(
+      `${label(getCurrentVersion())}, released at ${since}. ${commits.length} commits since:\n  ${commits.join("\n  ") || "(none)"}\nNext: ${describeNext(getCurrentVersion())}.`,
+    );
+  }
   if (cmd === "release" || cmd === "bump") {
+    const options = optionsFrom(flags);
     if (flags.plan) {
       const { release: r } = planRelease(arg, options);
       return console.log(
-        `Would release ${label(r.version)} (build ${r.build}), a ${RELEASE_TYPES[r.type]} on ${r.date}:\n  ${r.changes.join("\n  ")}`,
+        `Would release ${label(r.version)} (build ${r.build}), a ${RELEASE_TYPES[r.type]}, tag ${r.tag}:\n${renderChangelog([r]).split("\n").slice(6).join("\n")}`,
       );
     }
     return say(release(arg, options));
   }
-  if (cmd === "set") return say(setVersion(arg, options));
   if (cmd === "build") return say(bumpBuild());
+  if (cmd === "tag") return console.log(`Tagged ${tagRelease()} (not pushed).`);
   if (cmd === "sync") {
     const info = readVersion();
     return say({
@@ -490,7 +720,7 @@ function main(argv) {
     return say(readVersion());
   }
   throw new Error(
-    `Unknown command "${cmd}": print, next, release major|update|patch, set <version>, build, sync or check.`,
+    `Unknown command "${cmd}": print, history, next, prepare, release patch|update|major, build, tag, sync or check.`,
   );
 }
 

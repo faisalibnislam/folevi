@@ -24,7 +24,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { REPO, outOfSync, readVersion, writeVersion } from "../../../scripts/version.mjs";
+import { outOfSync, readVersion, setBuild } from "../../../scripts/version.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ios = resolve(here, "..");
@@ -102,7 +102,7 @@ if (build) {
   if (!/^\d+$/.test(build)) throw new Error("--build is a whole number.");
   const current = readVersion();
   if (Number(build) <= current.build) throw new Error(`--build ${build} isn't newer than version.json's ${current.build}.`);
-  writeVersion(REPO, { version: current.version, build: Number(build) });
+  setBuild(Number(build));
 }
 if (outOfSync().length) throw new Error(`The projects don't say version.json's version (${outOfSync().join(", ")}): run node scripts/version.mjs sync.`);
 const { version, build: buildNumber } = readVersion();

@@ -141,10 +141,12 @@ causes (section 3 item 4).
 
 ## 6. How to release (each release needs the owner's explicit OK)
 
-- Version: `#.#.##` on every platform (MAJOR.UPDATE.PATCH, see `CHANGELOG.md`). Release with
-  `node scripts/version.mjs release patch|update|major --change "..."` (Small update, Big update, Major release;
-  `--plan` first, `next` lists the three), then `check`. It records the release in `CHANGELOG.json` and writes
-  every project. Never edit `version.json` by hand, and never show a build number in the UI.
+- Version: MAJOR.UPDATE.PATCH on every platform, PATCH at least two digits, no limits, no rollover (see
+  `CHANGELOG.md` and `docs/claude-context/memory/version-releases.md`). Only when a release is asked for:
+  `node scripts/version.mjs prepare`, then `release patch|update --summary ... --added/--improved/--fixed ...`
+  (`--plan` first); a Major release only on the owner's explicit word (`release major --authorize-major <v>`).
+  It records the release in `CHANGELOG.json` and writes every project. Never edit `version.json` by hand, and
+  never show a build number in the UI.
 - Release from a clean git worktree of the commit being shipped (so others' WIP never ships). Push to
   `main` deploys web and Convex (Vercel runs `npx convex deploy`). Poll the Vercel status:
   `gh api repos/faisalibnislam/folevi/commits/<sha>/statuses` (gh account `faisalibnislam`).

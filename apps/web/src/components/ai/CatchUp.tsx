@@ -1,15 +1,20 @@
 "use client";
 
 import { useAction } from "convex/react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { FileText, RotateCcw, X } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
-import { AiMarkdown, StreamingText } from "./AiMarkdown";
 import { useAiStream } from "./useAiStream";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
+
+// The brief's drawing (Markdown as read-only blocks) is most of this card's code: it loads when a brief is asked
+// for or one was kept this session, so the card itself can be on Home from its first frame.
+const loadMarkdown = () => import("./AiMarkdown");
+const AiMarkdown = lazy(() => loadMarkdown().then((m) => ({ default: m.AiMarkdown })));
+const StreamingText = lazy(() => loadMarkdown().then((m) => ({ default: m.StreamingText })));
 
 interface Brief {
   answer: string;
@@ -34,6 +39,7 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(key(scopeKey));
+      if (saved) void loadMarkdown();
       setData(saved ? (JSON.parse(saved) as Brief) : null);
     } catch {
       setData(null);
@@ -41,6 +47,7 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
   }, [scopeKey]);
 
   const run = async () => {
+    void loadMarkdown();
     setBusy(true);
     setError(null);
     try {
@@ -122,7 +129,9 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
       </div>
       {busy && stream.text ? (
         <div aria-busy="true">
-          <StreamingText text={stream.text} />
+          <Suspense fallback={null}>
+            <StreamingText text={stream.text} />
+          </Suspense>
         </div>
       ) : busy ? (
         <div className="space-y-2.5 py-1" aria-live="polite">
@@ -133,7 +142,9 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
         </div>
       ) : data ? (
         <>
-          <AiMarkdown markdown={data.answer} />
+          <Suspense fallback={null}>
+            <AiMarkdown markdown={data.answer} />
+          </Suspense>
           {data.sources.length ? (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {data.sources.map((s, i) => (

@@ -1,8 +1,9 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useAiEnabled } from "@/components/ai/useAi";
+import { CatchUp } from "@/components/ai/CatchUp";
 import { ArrowRight, ChevronLeft, ChevronRight, Clock3, Folder, Layers, Star } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { api } from "@/lib/convex/api";
@@ -18,9 +19,6 @@ import { useOfflineQuery } from "@/lib/sync/queryCache";
 import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
 import { WaitingToSync, waitingOf } from "@/components/sync/WaitingToSync";
 import { cardCount, useReviewWindow } from "@/components/study/review";
-
-// Foli AI's catch-up card (its answers drawn with every kind of block) loads after Home's first frame.
-const CatchUp = lazy(() => import("@/components/ai/CatchUp").then((m) => ({ default: m.CatchUp })));
 
 const CARD_WIDTH = 250;
 const FOLDER_MIN = 210;
@@ -235,11 +233,8 @@ export function HomeDashboard() {
       tabTitle="Home"
     >
       <div className="mx-auto max-w-[1400px] px-4 pb-[max(2rem,var(--fab-clearance))] pt-2 sm:px-8">
-        {aiOn ? (
-          <Suspense fallback={null}>
-            <CatchUp />
-          </Suspense>
-        ) : null}
+        {/* With Home from its first frame (it used to arrive a moment later and push everything below down). */}
+        {aiOn ? <CatchUp /> : null}
         <TodaysReviews />
         <Section shelf title="Recent notes" icon={<Clock3 size={17} strokeWidth={1.9} />} href="/notes" empty={recent && !recent.length ? <EmptyState size="inline" title="No notes yet" body="Press New to write your first one." /> : undefined}>
           <NoteCarousel docs={recent} label="Recent notes" recent />

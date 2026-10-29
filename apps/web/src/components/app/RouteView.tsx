@@ -1,5 +1,6 @@
 "use client";
 
+import { NotePanes } from "./NotePanes";
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { useMutation } from "convex/react";
 import { useAppRouter } from "@/lib/app/router";
@@ -121,10 +122,20 @@ function Routes() {
     case "tags":
       return <TagsIndex />;
     case "doc":
-      return (
+      // A note, or notes joined side by side (each pane its own page; the one with focus is in the address).
+      return iphone ? (
         <Suspense fallback={<NoteLoading />}>
           <DocumentView key={route.id} documentId={route.id} />
         </Suspense>
+      ) : (
+        <NotePanes
+          documentId={route.id}
+          render={(id) => (
+            <Suspense fallback={<NoteLoading />}>
+              <DocumentView key={id} documentId={id} />
+            </Suspense>
+          )}
+        />
       );
     case "ai":
       return (

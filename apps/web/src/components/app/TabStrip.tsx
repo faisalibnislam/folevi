@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
-import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, Calendar, CheckSquare, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutList, LayoutTemplate, Lock, Plus, Share2, Star, Trash2, Waypoints, X, XCircle } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, Calendar, CheckSquare, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutGrid, LayoutList, LayoutTemplate, Lock, Pin, PinOff, Plus, SquareSplitHorizontal, Share2, Star, Trash2, Waypoints, X, XCircle } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
-import { tabHref, tabPage, useTabs } from "@/lib/app/tabs";
+import { tabHolds, tabHref, useTabs, type DocTab } from "@/lib/app/tabs";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { Button } from "@/components/ui/Button";
 import { ContextMenu } from "@/components/ui/Menu";
@@ -17,6 +18,8 @@ import { BackForward } from "./BackForward";
 import { useIpadLayout } from "@/lib/iphone";
 import { PillButton } from "@/components/iphone/Glass";
 import { useAiAccess } from "@/components/ai/useAi";
+import { TabPicture } from "./TabPreview";
+import { TabOverview, type OverviewEntry } from "./TabOverview";
 
 /** How wide the strip's soft edges are when it scrolls (the open tab is kept clear of them). */
 const FADE = 28;
@@ -114,12 +117,14 @@ export function TabStrip() {
   const ipad = useIpadLayout();
   const ai = useAiAccess();
   const { route, pathname } = useAppRouter();
-  const { tabs, close, closeMany, move } = useTabs();
+  const { tabs, close, closeMany, move, setPinned, unjoin } = useTabs();
+  const { navigate } = useAppRouter();
   // Each tab's title as it is now (a tab only learns its title while its page is open, so one left before
   // its title arrived, or renamed elsewhere, would keep the old one).
   // Each tab's note, and the nested page it shows (titles change elsewhere too).
   const noteTabs = tabs.filter((t) => !t.view);
-  const live = useQuery(api.documents.titles, noteTabs.length ? { documentIds: [...new Set(noteTabs.flatMap((t) => (t.at && t.at !== t.id ? [t.id, t.at] : [t.id])))] } : "skip");
+  const live = useQuery(api.documents.titles, noteTabs.length ? { documentIds: [...new Set(noteTabs.flatMap((t) => t.panes ?? (t.at && t.at !== t.id ? [t.id, t.at] : [t.id])))] } : "skip");
+  const paneTitle = (id: string) => live?.[id]?.title || "Untitled";
   // The tab menu (right-click): close this tab, those to its right or left, or all of them.
   const [tabMenu, setTabMenu] = useState<{ id: string; at: { x: number; y: number } } | null>(null);
   const createDocument = useCreateDocument();
@@ -135,7 +140,8 @@ export function TabStrip() {
   const [dragging, setDragging] = useState<string | null>(null);
   // The tab on screen: Home, a view's tab (by its path) or a note's tab. Keyed on this (not on the route) so the
   // strip follows once the tab itself exists: a new note's tab arrives a render after the address changes.
-  const activeKey = onHome ? "home" : (tabs.find((t) => (t.view ? t.view.path === pathname : tabPage(t) === docId))?.id ?? null);
+  const isActive = (t: DocTab) => (t.view ? t.view.path === pathname : Boolean(docId) && tabHolds(t, docId!));
+  const activeKey = onHome ? "home" : (tabs.find(isActive)?.id ?? null);
   const order = tabs.map((t) => t.id).join("|");
 
   // Keep the open tab in view when there are more tabs than fit: fully inside the strip and clear of the
@@ -272,6 +278,67 @@ export function TabStrip() {
     justDragged.current = true;
     window.setTimeout(() => (justDragged.current = false), 0);
   };
+  /** A tab's name: a view's, a note's ("Note › Page" inside a nested page), or joined notes' ("A + B"). */
+  const labelOf = (t: DocTab) => {
+    if (t.view) return t.title || VIEW_NAMES[t.view.kind] || "Page";
+    if (t.panes) return t.panes.map(paneTitle).join(" + ");
+    const note = live?.[t.id]?.title || t.title || "Untitled";
+    const nested = t.at && t.at !== t.id ? live?.[t.at]?.title || t.atTitle || null : null;
+    return nested !== null ? `${note} › ${nested || "Untitled"}` : note;
+  };
+  const iconOf = (t: DocTab | null) =>
+    !t ? <House size={14} aria-hidden className="flex-none" /> : t.view ? <ViewIcon kind={t.view.kind} /> : t.panes ? <SquareSplitHorizontal size={14} aria-hidden className="flex-none opacity-70" /> : <FileText size={14} aria-hidden className="flex-none opacity-70" />;
+
+  // Hovering a tab (with a pointer) shows a picture of its page under it, as Safari does: after a pause, then at
+  // once while moving along the strip; gone when the pointer leaves, a tab is pressed or one is dragged.
+  const [preview, setPreview] = useState<{ id: string; left: number; top: number } | null>(null);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewWarm = useRef(0);
+  const showPreview = (e: PointerEvent<HTMLElement>, t: DocTab) => {
+    if (e.pointerType !== "mouse" || ipad || drag.current) return;
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+    if (isActive(t)) {
+      setPreview(null);
+      return;
+    }
+    const el = e.currentTarget;
+    const place = () => {
+      const r = el.getBoundingClientRect();
+      setPreview({ id: t.id, left: Math.min(Math.max(8, r.left + r.width / 2 - 150), window.innerWidth - 308), top: r.bottom + 8 });
+    };
+    if (Date.now() - previewWarm.current < 400) place();
+    else previewTimer.current = setTimeout(place, 550);
+  };
+  const hidePreview = () => {
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+    if (preview) previewWarm.current = Date.now();
+    setPreview(null);
+  };
+  useEffect(() => () => {
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+  }, []);
+  useEffect(() => setPreview(null), [activeKey, dragging]);
+
+  // The Tab Overview: every tab as a picture (⌘⇧\ or the button by Back and Forward).
+  const [overview, setOverview] = useState(false);
+  useEffect(() => {
+    if (ipad) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === "Backslash") {
+        e.preventDefault();
+        setOverview((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [ipad]);
+  const titleMap: Record<string, string> = {};
+  for (const t of noteTabs) for (const id of t.panes ?? [t.at ?? t.id]) titleMap[id] = live?.[id]?.title || "";
+  const overviewEntries: OverviewEntry[] = [
+    { tab: null, key: "home", label: "Home", icon: iconOf(null), active: onHome, href: "/documents" },
+    ...tabs.map((t) => ({ tab: t, key: t.id, label: labelOf(t), icon: iconOf(t), active: isActive(t), href: tabHref(t) })),
+  ];
+
   const mask = `linear-gradient(to right, ${overflow.start ? "transparent" : "#000"} 0, #000 ${FADE}px, #000 calc(100% - ${FADE}px), ${overflow.end ? "transparent" : "#000"} 100%)`;
   const tabBase = ipad
     ? "group relative flex h-10 items-center gap-2 rounded-container px-3.5 text-body outline-none transition-[background-color,color,box-shadow] duration-150 ring-focus focus-visible:ring-2 has-[:focus-visible]:ring-2"
@@ -304,6 +371,11 @@ export function TabStrip() {
 
       {/* Back and Forward, like a browser's, then a divider before the tab arrows and tabs. */}
       <BackForward ipad={ipad} />
+      {ipad ? null : (
+        <button type="button" aria-label="Show all tabs" title="Show all tabs (⌘⇧\)" aria-haspopup="dialog" aria-expanded={overview} onClick={() => setOverview(true)} className="grid h-9 w-8 flex-none place-items-center rounded-control text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          <LayoutGrid size={15} aria-hidden />
+        </button>
+      )}
       {ipad ? null : <span aria-hidden className="h-5 w-px flex-none bg-black/10" />}
 
       {/* (A finger scrolls the strip on the iPad: no arrows.) */}
@@ -334,39 +406,71 @@ export function TabStrip() {
           <span>Home</span>
         </AppLink>
         {tabs.map((t) => {
-          const active = t.view ? t.view.path === pathname : tabPage(t) === docId;
-          const note = t.view ? t.title || VIEW_NAMES[t.view.kind] || "Page" : live?.[t.id]?.title || t.title || "Untitled";
+          const active = isActive(t);
+          const label = labelOf(t);
+          const pinned = Boolean(t.pinned);
+          const joined = Boolean(t.panes && t.panes.length > 1);
           // Showing a nested page: "Note › Page" (the page's name keeps more room than the note's).
-          const nested = !t.view && t.at && t.at !== t.id ? live?.[t.at]?.title || t.atTitle || null : null;
-          const label = nested !== null ? `${note} › ${nested || "Untitled"}` : note;
+          const note = t.view ? label : live?.[t.id]?.title || t.title || "Untitled";
+          const nested = !t.view && !t.panes && t.at && t.at !== t.id ? live?.[t.at]?.title || t.atTitle || null : null;
+          // Pinned tabs are half a tab wide (joined ones a little wider, for their notes' icons) and can't be
+          // closed until unpinned; joined tabs are as wide as two.
+          const width = ipad
+            ? `min-w-[150px] pr-1.5 ${active ? "max-w-[260px] flex-none" : "flex-[0_1_260px]"}`
+            : pinned
+              ? `${joined ? "w-[112px]" : "w-[86px]"} flex-none pr-1`
+              : joined
+                ? `min-w-[240px] pr-1 ${active ? "max-w-[460px] flex-none" : "flex-[0_1_460px]"}`
+                : // The others shrink evenly to their minimum; the open one keeps room for its whole title (up to the
+                  // widest a tab gets), so it stays readable however many tabs are open.
+                  `min-w-[172px] pr-1 ${active ? "max-w-[284px] flex-none" : "flex-[0_1_284px]"}`;
+          const pinButton = ipad ? null : (
+            <button
+              type="button"
+              aria-label={pinned ? `Unpin ${label}` : `Pin ${label}`}
+              title={pinned ? "Unpin tab" : "Pin tab"}
+              onClick={() => setPinned(t.id, !pinned)}
+              className={`grid h-5 w-5 flex-none place-items-center rounded-chip transition-opacity hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:outline-none ${pinned ? "text-muted" : "text-faint opacity-0 group-hover:opacity-100"}`}
+            >
+              {pinned ? (
+                <>
+                  <Pin size={11} aria-hidden className="fill-current group-hover:hidden" />
+                  <PinOff size={11} aria-hidden className="hidden group-hover:block" />
+                </>
+              ) : (
+                <Pin size={11} aria-hidden />
+              )}
+            </button>
+          );
           return (
             <div
               key={t.id}
               data-tab={t.id}
+              data-pinned={pinned ? "" : undefined}
               data-ipad-tab={ipad ? "" : undefined}
-              className={`${tabBase} ${
-                // The others shrink evenly to their minimum; the open one keeps room for its whole title (up to the
-                // widest a tab gets), so it stays readable however many tabs are open.
-                ipad
-                  ? `min-w-[150px] pr-1.5 ${active ? "max-w-[260px] flex-none" : "flex-[0_1_260px]"}`
-                  : `min-w-[172px] pr-1 ${active ? "max-w-[284px] flex-none" : "flex-[0_1_284px]"}`
-              } ${active ? tabOn : tabOff} ${dragging === t.id ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
-              onPointerDown={(e) => dragStart(e, t.id)}
+              className={`${tabBase} ${width} ${pinned ? "!gap-1 !px-2" : ""} ${active ? tabOn : tabOff} ${dragging === t.id ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
+              onPointerDown={(e) => {
+                hidePreview();
+                dragStart(e, t.id);
+              }}
               onPointerMove={dragMove}
               onPointerUp={dragEnd}
               onPointerCancel={dragEnd}
+              onPointerEnter={(e) => showPreview(e, t)}
+              onPointerLeave={hidePreview}
               onDragStart={(e) => e.preventDefault()}
               onClickCapture={(e) => {
                 if (justDragged.current) e.preventDefault();
               }}
               onAuxClick={(e) => {
-                if (e.button === 1) {
+                if (e.button === 1 && !pinned) {
                   e.preventDefault();
                   close(t.id);
                 }
               }}
               onContextMenu={(e) => {
                 e.preventDefault();
+                hidePreview();
                 setTabMenu({ id: t.id, at: { x: e.clientX, y: e.clientY } });
               }}
               // From the keyboard too (the Menu key or Shift+F10 on the tab).
@@ -384,32 +488,60 @@ export function TabStrip() {
                 setTabMenu({ id: t.id, at: { x: r.left + 8, y: r.bottom + 4 } });
               }}
             >
-              <AppLink href={tabHref(t)} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-1 items-center gap-2 outline-none" title={label} aria-label={label}>
-                {t.view ? <ViewIcon kind={t.view.kind} /> : <FileText size={14} aria-hidden className="flex-none opacity-70" />}
-                {nested !== null ? (
-                  <span className="flex min-w-0 items-center gap-1">
-                    <span className="min-w-[2.5rem] max-w-[45%] shrink truncate font-normal text-muted">{note}</span>
-                    <ChevronRight size={12} aria-hidden className="flex-none text-faint" />
-                    <span className="min-w-0 truncate">{nested || "Untitled"}</span>
-                  </span>
-                ) : (
-                  <span className="truncate">{label}</span>
-                )}
-              </AppLink>
-              <button
-                type="button"
-                aria-label={`Close ${label}`}
-                onClick={() => close(t.id)}
-                data-ipad-tab-close={ipad ? "" : undefined}
-                className={
-                  ipad
-                    ? // A finger closes only the open tab (a closed one's × would be too easy to hit); a pointer sees them all on hover.
-                      `relative grid h-7 w-7 flex-none place-items-center rounded-container text-muted outline-none transition-opacity before:absolute before:-inset-2 before:content-[''] active:bg-[var(--liquid-press)] focus-visible:opacity-100 ${active ? "opacity-100" : "pointer-events-none opacity-0 [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"}`
-                    : `grid h-5 w-5 flex-none place-items-center rounded-chip text-faint transition-opacity hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:outline-none ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`
-                }
-              >
-                <X size={ipad ? 15 : 12} strokeWidth={ipad ? 2.4 : 2} aria-hidden />
-              </button>
+              {joined ? (
+                // Joined notes: one tab, a section per note (each opens the group with that note in focus).
+                <span className="flex min-w-0 flex-1 items-center">
+                  {t.panes!.map((id, i) => {
+                    const here = id === docId;
+                    const name = paneTitle(id);
+                    return (
+                      <span key={id} className={`flex items-center ${pinned ? "flex-none" : "min-w-0 flex-1"}`}>
+                        {i > 0 ? <span aria-hidden className="mx-1 h-4 w-px flex-none bg-[color-mix(in_oklab,var(--color-heading)_18%,transparent)]" /> : null}
+                        <AppLink
+                          href={`/d/${id}`}
+                          aria-current={here ? "page" : undefined}
+                          title={name}
+                          aria-label={`${name} (joined)`}
+                          className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-chip outline-none ${pinned ? "px-0.5" : "px-0.5"} ${here ? "font-semibold text-heading" : active ? "font-normal text-muted" : ""}`}
+                        >
+                          <FileText size={13} aria-hidden className="flex-none opacity-70" />
+                          {pinned ? null : <span className="truncate">{name}</span>}
+                        </AppLink>
+                      </span>
+                    );
+                  })}
+                </span>
+              ) : (
+                <AppLink href={tabHref(t)} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-1 items-center gap-2 outline-none" title={label} aria-label={label}>
+                  {t.view ? <ViewIcon kind={t.view.kind} /> : <FileText size={14} aria-hidden className="flex-none opacity-70" />}
+                  {nested !== null ? (
+                    <span className="flex min-w-0 items-center gap-1">
+                      <span className="min-w-[2.5rem] max-w-[45%] shrink truncate font-normal text-muted">{note}</span>
+                      <ChevronRight size={12} aria-hidden className="flex-none text-faint" />
+                      <span className="min-w-0 truncate">{nested || "Untitled"}</span>
+                    </span>
+                  ) : (
+                    <span className="truncate">{label}</span>
+                  )}
+                </AppLink>
+              )}
+              {pinButton}
+              {pinned ? null : (
+                <button
+                  type="button"
+                  aria-label={`Close ${label}`}
+                  onClick={() => close(t.id)}
+                  data-ipad-tab-close={ipad ? "" : undefined}
+                  className={
+                    ipad
+                      ? // A finger closes only the open tab (a closed one's × would be too easy to hit); a pointer sees them all on hover.
+                        `relative grid h-7 w-7 flex-none place-items-center rounded-container text-muted outline-none transition-opacity before:absolute before:-inset-2 before:content-[''] active:bg-[var(--liquid-press)] focus-visible:opacity-100 ${active ? "opacity-100" : "pointer-events-none opacity-0 [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"}`
+                      : `grid h-5 w-5 flex-none place-items-center rounded-chip text-faint transition-opacity hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:outline-none ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`
+                  }
+                >
+                  <X size={ipad ? 15 : 12} strokeWidth={ipad ? 2.4 : 2} aria-hidden />
+                </button>
+              )}
             </div>
           );
         })}
@@ -417,23 +549,73 @@ export function TabStrip() {
       {tabMenu ? (() => {
         const i = tabs.findIndex((t) => t.id === tabMenu.id);
         if (i < 0) return null;
-        const left = tabs.slice(0, i).map((t) => t.id);
-        const right = tabs.slice(i + 1).map((t) => t.id);
+        const t = tabs[i]!;
+        // Pinned tabs stay through "close others" (unpin one to close it).
+        const left = tabs.slice(0, i).filter((x) => !x.pinned).map((x) => x.id);
+        const right = tabs.slice(i + 1).filter((x) => !x.pinned).map((x) => x.id);
+        const joinedPanes = t.panes && t.panes.length > 1 ? t.panes.length : 0;
         return (
           <ContextMenu
             at={tabMenu.at}
             label="Tab options"
             onClose={() => setTabMenu(null)}
             items={[
-              { label: "Close tab", icon: <X size={14} />, onSelect: () => close(tabMenu.id) },
+              t.pinned
+                ? { label: "Unpin tab", icon: <PinOff size={14} />, onSelect: () => setPinned(tabMenu.id, false) }
+                : { label: "Pin tab", icon: <Pin size={14} />, onSelect: () => setPinned(tabMenu.id, true) },
+              ...(joinedPanes
+                ? [{ label: joinedPanes > 2 ? "Unjoin all notes" : "Unjoin notes", icon: <SquareSplitHorizontal size={14} />, onSelect: () => {
+                    // Split from the right so each gap's index stays valid.
+                    for (let g = joinedPanes - 2; g >= 0; g--) unjoin(tabMenu.id, g);
+                  } }]
+                : []),
+              "separator",
+              { label: "Close tab", icon: <X size={14} />, disabled: Boolean(t.pinned), onSelect: () => close(tabMenu.id) },
               { label: "Close tabs to the right", icon: <ArrowRightToLine size={14} />, disabled: !right.length, onSelect: () => closeMany(right, tabMenu.id) },
               { label: "Close tabs to the left", icon: <ArrowLeftToLine size={14} />, disabled: !left.length, onSelect: () => closeMany(left, tabMenu.id) },
               "separator",
-              { label: "Close all tabs", icon: <XCircle size={14} />, danger: true, onSelect: () => closeMany(tabs.map((t) => t.id)) },
+              { label: "Close all tabs", icon: <XCircle size={14} />, danger: true, onSelect: () => closeMany(tabs.filter((x) => !x.pinned).map((x) => x.id)) },
             ]}
           />
         );
       })() : null}
+      {preview
+        ? (() => {
+            const t = tabs.find((x) => x.id === preview.id);
+            if (!t) return null;
+            const label = labelOf(t);
+            return createPortal(
+              <div
+                aria-hidden
+                className="pointer-events-none fixed z-[60] w-[300px] overflow-hidden rounded-container border border-line bg-[var(--color-surface-raised)] shadow-[0_12px_36px_rgb(0_0_0/0.18)]"
+                style={{ left: preview.left, top: preview.top }}
+              >
+                <TabPicture tab={t} titles={titleMap} viewIcon={iconOf(t)} viewName={label} className="aspect-[16/10] w-full" />
+                <div className="border-t border-line px-3 py-2">
+                  <div className="truncate text-subheadline font-semibold text-heading">{label}</div>
+                  <div className="truncate text-footnote text-muted">{t.view ? VIEW_NAMES[t.view.kind] ?? "View" : t.panes && t.panes.length > 1 ? `${t.panes.length} notes side by side` : "Note"}{t.pinned ? " · Pinned" : ""}</div>
+                </div>
+              </div>,
+              document.body,
+            );
+          })()
+        : null}
+      {overview ? (
+        <TabOverview
+          entries={overviewEntries}
+          titles={titleMap}
+          onOpen={(href) => {
+            setOverview(false);
+            navigate(href);
+          }}
+          onCloseTab={(id) => close(id)}
+          onNewNote={() => {
+            setOverview(false);
+            void createDocument({});
+          }}
+          onDismiss={() => setOverview(false)}
+        />
+      ) : null}
       <div className="flex-1" />
       {ipad ? (
         // Foli AI (the Mac's floating pill has no place on an iPad) and New note, as round glass buttons.

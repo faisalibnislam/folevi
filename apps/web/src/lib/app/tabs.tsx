@@ -21,10 +21,23 @@ export interface DocTab {
    * shows now. Its id is `view:` and the view's key (one per view; one per folder or tag).
    */
   view?: { kind: string; path: string };
+  /** Kept at the strip's start, half as wide, with no close button (unpin it first). */
+  pinned?: boolean;
+  /**
+   * Notes joined side by side (two or three), left to right. `at` is the one with focus. Its id is `join:` and a
+   * random key; a note sits in at most one tab, so a joined note has no tab of its own.
+   */
+  panes?: string[];
+  /** Each pane's share of the width (they add up to 1); missing means equal. */
+  sizes?: number[];
 }
 
-/** The page a tab is showing (a note's id; a view's path). */
-export const tabPage = (t: DocTab) => t.view?.path ?? t.at ?? t.id;
+/** The page a tab is showing (a note's id; a view's path; a joined tab's pane with focus). */
+export const tabPage = (t: DocTab) => t.view?.path ?? t.at ?? t.panes?.[0] ?? t.id;
+/** Whether a tab holds a page: the page it shows, or one of its joined panes. */
+export const tabHolds = (t: DocTab, page: string) => t.id === page || tabPage(t) === page || Boolean(t.panes?.includes(page));
+/** The most notes joined side by side. */
+export const MAX_PANES = 3;
 /** Where a tab goes. */
 export const tabHref = (t: DocTab) => (t.view ? t.view.path : `/d/${tabPage(t)}`);
 
@@ -50,8 +63,16 @@ interface TabsValue {
    * `then` is shown instead (a tab that stays), else Home.
    */
   closeMany: (ids: string[], then?: string) => void;
-  /** Moves a tab to another place in the strip (dragging it, or ⌥⇧← / ⌥⇧→ on it). */
+  /** Moves a tab to another place in the strip (dragging it, or ⌥⇧← / ⌥⇧→ on it). Pinned tabs stay among pinned ones. */
   move: (id: string, to: number) => void;
+  /** Pins a tab (to the end of the pinned ones) or unpins it (to the start of the others). */
+  setPinned: (id: string, pinned: boolean) => void;
+  /** Joins a note to a tab, as a new pane on its right (a note's own tab merges in), and shows it. */
+  join: (id: string, documentId: string) => void;
+  /** Splits a joined tab at the gap after pane `gap`: each side becomes its own tab (a single note's, or still joined). */
+  unjoin: (id: string, gap: number) => void;
+  /** A joined tab's pane widths (shares adding up to 1). */
+  setSizes: (id: string, sizes: number[] | undefined) => void;
   /** Files the open page under its top-level page's tab (nested pages never get a tab of their own). */
   place: (documentId: string, root: { id: string; title: string }, pageTitle?: string) => void;
   /**
@@ -134,23 +155,25 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
     const newTab = moved && (nextInNewTab || cameFromHistory());
     if (moved) nextInNewTab = false;
     if (docId) {
-      const open = tabs.findIndex((t) => t.id === docId || tabPage(t) === docId);
+      const open = tabs.findIndex((t) => tabHolds(t, docId));
       if (open !== -1) {
         if (tabPage(tabs[open]!) !== docId) setTabs((cur) => cur.map((t) => (t.id === tabs[open]!.id ? { ...t, at: docId, atTitle: undefined } : t)));
         return;
       }
       const at = from ? tabs.findIndex((t) => tabPage(t) === from) : -1;
       if (at !== -1 && !newTab) {
-        // Moving within a note: the current tab follows it (place() then files it under its top page).
-        const replaced = tabs[at]!.id;
-        setTabs((cur) => cur.map((t) => (t.id === replaced ? { id: docId, at: docId, title: "" } : t)));
+        // Moving within a note: the current tab follows it (place() then files it under its top page). In a
+        // joined tab, the pane with focus follows it.
+        const replaced = tabs[at]!;
+        if (replaced.panes) setTabs((cur) => cur.map((t) => (t.id === replaced.id ? { ...t, panes: t.panes!.map((p) => (p === from ? docId : p)), at: docId } : t)));
+        else setTabs((cur) => cur.map((t) => (t.id === replaced.id ? { id: docId, at: docId, title: "", ...(t.pinned ? { pinned: true } : {}) } : t)));
         return;
       }
       setTabs((cur) => {
-        if (cur.some((t) => t.id === docId || tabPage(t) === docId)) return cur;
+        if (cur.some((t) => tabHolds(t, docId))) return cur;
         let next: DocTab[] = [...cur, { id: docId, at: docId, title: "" }];
-        // Keep the strip bounded: drop the oldest tabs other than this one.
-        while (next.length > MAX_TABS) next = next.filter((t, i) => i !== next.findIndex((x) => x.id !== docId));
+        // Keep the strip bounded: drop the oldest tabs other than this one (never a pinned one).
+        while (next.length > MAX_TABS && next.some((x) => x.id !== docId && !x.pinned)) next = next.filter((t, i) => i !== next.findIndex((x) => x.id !== docId && !x.pinned));
         return next;
       });
     } else if (!["settings", "onboarding", "invite", "share-invite", "folder-invite", "not_found", "help"].includes(route.name)) {
@@ -164,7 +187,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
           const i = cur.findIndex((t) => t.id === key);
           if (i !== -1) return cur[i]!.view?.path === pathname ? cur : cur.map((t) => (t.id === key ? { ...t, view: { kind, path: pathname } } : t));
           let next: DocTab[] = [...cur, { id: key, title: "", view: { kind, path: pathname } }];
-          while (next.length > MAX_TABS) next = next.filter((t, j) => j !== next.findIndex((x) => x.id !== key));
+          while (next.length > MAX_TABS && next.some((x) => x.id !== key && !x.pinned)) next = next.filter((t, j) => j !== next.findIndex((x) => x.id !== key && !x.pinned));
           return next;
         });
       }
@@ -172,7 +195,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   }, [docId, route.name, pathname, query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Whether a tab is the one on screen (a note's page, or a view at its path).
-  const isShown = useCallback((t: DocTab) => (t.view ? t.view.path === pathname : tabPage(t) === docId), [pathname, docId]);
+  const isShown = useCallback((t: DocTab) => (t.view ? t.view.path === pathname : Boolean(docId) && tabHolds(t, docId!)), [pathname, docId]);
 
   const close = useCallback(
     (id: string) => {
@@ -206,10 +229,68 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
       setTabs((cur) => {
         const from = cur.findIndex((t) => t.id === id);
         if (from === -1 || to < 0 || to >= cur.length || from === to) return cur;
+        // Pinned tabs stay together at the start: a tab moves only among its own kind.
+        if (Boolean(cur[to]!.pinned) !== Boolean(cur[from]!.pinned)) return cur;
         const next = [...cur];
         next.splice(to, 0, ...next.splice(from, 1));
         return next;
       });
+    },
+    [setTabs],
+  );
+
+  const setPinned = useCallback(
+    (id: string, pinned: boolean) => {
+      setTabs((cur) => {
+        const t = cur.find((x) => x.id === id);
+        if (!t || Boolean(t.pinned) === pinned) return cur;
+        const rest = cur.filter((x) => x.id !== id);
+        const edge = rest.filter((x) => x.pinned).length;
+        const moved: DocTab = { ...t, pinned: pinned || undefined };
+        return [...rest.slice(0, edge), moved, ...rest.slice(edge)];
+      });
+    },
+    [setTabs],
+  );
+
+  const join = useCallback(
+    (id: string, documentId: string) => {
+      const t = tabs.find((x) => x.id === id);
+      if (!t || t.view) return;
+      const panes = t.panes ?? [tabPage(t)];
+      if (panes.length >= MAX_PANES || panes.includes(documentId)) return;
+      const joinedId = t.panes ? t.id : `join:${Math.random().toString(36).slice(2, 10)}`;
+      setTabs((cur) =>
+        cur
+          // The note's own tab (if open) merges into this one.
+          .filter((x) => x.id === id || !(x.id === documentId || (!x.panes && tabPage(x) === documentId)))
+          .map((x) => (x.id === id ? { id: joinedId, title: "", panes: [...panes, documentId], at: documentId, ...(x.pinned ? { pinned: true } : {}) } : x)),
+      );
+      navigate(`/d/${documentId}`);
+    },
+    [tabs, setTabs, navigate],
+  );
+
+  const unjoin = useCallback(
+    (id: string, gap: number) => {
+      const t = tabs.find((x) => x.id === id);
+      if (!t?.panes || gap < 0 || gap >= t.panes.length - 1) return;
+      const side = (panes: string[], sizes: number[] | undefined, keepId: boolean): DocTab => {
+        const focus = t.at && panes.includes(t.at) ? t.at : panes[0]!;
+        if (panes.length === 1) return { id: panes[0]!, at: panes[0]!, title: "", ...(t.pinned ? { pinned: true } : {}) };
+        const total = sizes ? sizes.reduce((a, b) => a + b, 0) : 0;
+        return { id: keepId ? t.id : `join:${Math.random().toString(36).slice(2, 10)}`, title: "", panes, at: focus, ...(sizes && total > 0 ? { sizes: sizes.map((s) => s / total) } : {}), ...(t.pinned ? { pinned: true } : {}) };
+      };
+      const left = side(t.panes.slice(0, gap + 1), t.sizes?.slice(0, gap + 1), true);
+      const right = side(t.panes.slice(gap + 1), t.sizes?.slice(gap + 1), false);
+      setTabs((cur) => cur.flatMap((x) => (x.id === id ? [left, right] : [x])));
+    },
+    [tabs, setTabs],
+  );
+
+  const setSizes = useCallback(
+    (id: string, sizes: number[] | undefined) => {
+      setTabs((cur) => cur.map((x) => (x.id === id ? { ...x, sizes } : x)));
     },
     [setTabs],
   );
@@ -219,6 +300,8 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
       const i = tabs.findIndex((t) => tabPage(t) === documentId);
       if (i === -1) return;
       const t = tabs[i]!;
+      // A joined tab names itself from its panes' titles.
+      if (t.panes) return;
       const atTitle = documentId === root.id ? undefined : pageTitle || undefined;
       if (t.id === root.id) {
         if (t.title !== root.title || t.atTitle !== atTitle) setTabs((cur) => cur.map((x) => (x.id === t.id ? { ...x, title: root.title, atTitle } : x)));
@@ -249,15 +332,18 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   // on this device (the note catches up with the server once it's showing).
   const warmKey = (() => {
     const notes = tabs.filter((t) => !t.view);
-    const open = new Set(notes.map(tabPage));
+    const open = new Set(notes.flatMap((t) => t.panes ?? [tabPage(t)]));
     const fresh = (id: string) => now - (lastShown[id] ?? startedAt) < WARM_FOR;
-    return [...recent, ...notes.map(tabPage)]
+    return [...recent, ...notes.flatMap((t) => t.panes ?? [tabPage(t)])]
       .filter((id, i, all) => id !== docId && open.has(id) && all.indexOf(id) === i && fresh(id))
       .slice(0, WARM_TABS)
       .join(",");
   })();
   const warm = useMemo(() => (warmKey ? warmKey.split(",") : []), [warmKey]);
-  const value = useMemo(() => ({ tabs, view, setView, homeHref, close, closeMany, move, place, warm }), [tabs, view, setView, homeHref, close, closeMany, move, place, warm]);
+  const value = useMemo(
+    () => ({ tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, place, warm }),
+    [tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, place, warm],
+  );
   return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>;
 }
 

@@ -121,6 +121,7 @@ import { useFileText } from "./useFileText";
 import { useMacNoteCommands } from "@/components/app/MacCommands";
 import { useNoteViewState } from "@/lib/app/noteViewState";
 import { useLockMenuItem } from "@/components/e2ee/LockDialog";
+import { usePrimaryPane } from "@/lib/app/panes";
 
 // Only a collection's row pages have properties; the collection code loads for those alone.
 // Presenting the note as slides (⌘⌥P, "Present" in its … menu): loaded the first time it's used.
@@ -184,6 +185,10 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [reconciled, setReconciled] = useState(false);
   const { inspectorOpen, setInspectorOpen, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode, docSidebarMode, setDocSidebarMode, setNoteAi } = useShell();
+  // Joined notes: only the pane with focus answers the keyboard shortcuts and Foli AI's requests.
+  const primary = usePrimaryPane();
+  const primaryRef = useRef(primary);
+  primaryRef.current = primary;
   // The iPhone app: the note fills the screen under a glass bar, its tools in floating bars and sheets.
   const iphone = useIphoneApp();
   const sidebarOpenRef = useRef(sidebarOpen);
@@ -650,10 +655,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
   useEffect(() => {
     if (!aiOn) return;
     const onRun = (e: Event) => {
+      if (!primaryRef.current) return;
       setAiRun({ ...(e as CustomEvent<AiRunDetail>).detail, id: Date.now() });
       openAi();
     };
-    const onOpen = () => openAi();
+    const onOpen = () => {
+      if (primaryRef.current) openAi();
+    };
     window.addEventListener(AI_RUN_EVENT, onRun);
     window.addEventListener(AI_OPEN_EVENT, onOpen);
     return () => {
@@ -668,7 +676,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const openFind = useCallback((replace: boolean) => setFindBar((f) => ({ replace, key: (f?.key ?? 0) + 1 })), []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.code !== "KeyF" || !editor) return;
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.code !== "KeyF" || !editor || !primaryRef.current) return;
       const active = document.activeElement;
       if (active && active !== document.body && !noteRef.current?.contains(active) && !sidebarSlot?.contains(active)) return;
       e.preventDefault();
@@ -711,7 +719,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const mayComment = caps.comments && (threads ? threads.canComment : !readOnly);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || !e.altKey || e.shiftKey || e.code !== "KeyM") return;
+      if (!(e.metaKey || e.ctrlKey) || !e.altKey || e.shiftKey || e.code !== "KeyM" || !primaryRef.current) return;
       e.preventDefault();
       const $from = editor?.state.selection.$from;
       const inEditor = Boolean(editor && editor.view.dom.contains(document.activeElement));
@@ -729,7 +737,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   }, [engine, documentId]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || !e.altKey || e.shiftKey || e.code !== "KeyP" || e.repeat) return;
+      if (!(e.metaKey || e.ctrlKey) || !e.altKey || e.shiftKey || e.code !== "KeyP" || e.repeat || !primaryRef.current) return;
       e.preventDefault();
       present();
     };

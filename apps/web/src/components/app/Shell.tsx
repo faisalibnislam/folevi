@@ -46,7 +46,7 @@ import { IphoneScreen, type IphoneScreenOptions } from "@/components/iphone/Scre
 // read) loads the first time it's opened, then stays (docs/IOS_PERFORMANCE.md, "Startup").
 const QuickAddTask = lazy(() => import("./QuickAddTask").then((m) => ({ default: m.QuickAddTask })));
 
-interface ShellValue {
+export interface ShellValue {
   sidebarOpen: boolean;
   toggleSidebar: () => void;
   inspectorOpen: boolean;
@@ -79,7 +79,7 @@ interface ShellValue {
   setNoteAi: (open: ((request: { view: "note" | "all"; question?: string }) => void) | null) => void;
 }
 
-const ShellContext = createContext<ShellValue | null>(null);
+export const ShellContext = createContext<ShellValue | null>(null);
 
 /** Id of the narrow-screen navigation drawer (referenced by the toggle's aria-controls). */
 export const DRAWER_ID = "folevi-nav-drawer";

@@ -344,7 +344,11 @@ public struct WebTopBar: View {
     /// The web's pin: 20 square, shown on hover (filled while pinned, the crossed pin under the pointer to unpin).
     private func pinButton(_ t: FrameTab, label: String, hovered: Bool) -> some View {
         Button { model.setTabPinned(t.id, !t.pinned) } label: {
-            WebIconView(t.pinned && hovered ? .pinOff : .pin, size: 11, fill: t.pinned && !hovered)
+            // A pinned tab's pin is filled (lucide's fill-current), the crossed pin under the pointer to unpin.
+            ZStack {
+                if t.pinned && !hovered { WebIconShape(icon: .pin).fill().frame(width: 11, height: 11) }
+                WebIconView(t.pinned && hovered ? .pinOff : .pin, size: 11)
+            }
                 .frame(width: 20, height: 20)
                 .foregroundStyle((t.pinned ? WebStyles.vars["color-ink-muted"] : WebStyles.vars["color-ink-faint"])?.resolve(scheme).color ?? .gray)
                 .contentShape(Rectangle())

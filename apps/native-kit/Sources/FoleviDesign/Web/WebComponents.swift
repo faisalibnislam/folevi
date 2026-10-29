@@ -92,7 +92,7 @@ public struct WebIconButton: View {
                 .webBox(style)
         }
         .buttonStyle(WebPressStyle())
-        .help(label)
+        .foleviTooltip(label)
         .accessibilityLabel(label)
     }
 }

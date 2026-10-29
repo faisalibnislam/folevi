@@ -185,7 +185,7 @@ private struct VaultHeader: View {
             if model.isOpen {
                 HStack(spacing: VS.style("vault.header.actions", scheme).gap) {
                     WebButton("Lock", icon: .lock, variant: .primary, size: .sm) { model.lock() }
-                        .help("Lock the Vault")
+                        .foleviTooltip("Lock the Vault")
                     WebMenuButton(width: 200, entries: { menu }) {
                         let more = VS.style("vault.header.more", scheme)
                         WebIconView(.ellipsis, size: 15)
@@ -193,7 +193,7 @@ private struct VaultHeader: View {
                             .webBox(VS.pair("vault.header.more"))
                             .contentShape(Rectangle())
                     }
-                    .help("More in the Vault")
+                    .foleviTooltip("More in the Vault")
                     .accessibilityLabel("More in the Vault")
                 }
             }
@@ -276,7 +276,7 @@ private struct VaultTabs: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(WebHoverRowStyle(radius: close.radius, hover: WebStyles.vars["glass-hover"], press: nil, selected: false))
-            .help("Close")
+            .foleviTooltip("Close")
             .accessibilityLabel("Close \(s.label)")
         }
         .foregroundStyle(st.color.color)

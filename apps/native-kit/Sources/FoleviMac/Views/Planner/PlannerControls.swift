@@ -243,7 +243,7 @@ struct MonthPicker: View {
         return HoverTile(radius: n.radius, hover: PV("color-accent-soft")) {
             WebIconView(icon, size: 15).frame(width: n.width, height: n.height).foregroundStyle(n.color.color)
         } action: { action() }
-        .help(label)
+        .foleviTooltip(label)
         .accessibilityLabel(label)
     }
 

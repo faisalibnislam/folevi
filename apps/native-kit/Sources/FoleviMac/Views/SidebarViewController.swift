@@ -78,7 +78,7 @@ public final class SidebarViewController: NSViewController {
         toggle.image = NSImage(systemSymbolName: "sidebar.left", accessibilityDescription: "Hide Sidebar")
         toggle.symbolConfiguration = .init(pointSize: 15, weight: .regular)
         toggle.contentTintColor = .secondaryLabelColor
-        toggle.toolTip = "Hide Sidebar ⌘\\"
+        toggle.foleviTooltip = "Hide Sidebar (⌘\\)"
         toggle.target = self
         toggle.action = #selector(toggleSidebar)
         toggle.setAccessibilityIdentifier("sidebar.toggle")
@@ -286,7 +286,7 @@ public final class SidebarViewController: NSViewController {
                              detail: session?.mode == .local ? (current?.syncs ?? "On this Mac") : (session?.profile.email ?? ""),
                              others: (place?.places ?? []).filter { $0.id != place?.current }.reduce(0) { $0 + $1.unread })
         bell.count = notifications.isLoading ? model.unreadCount : notifications.unread
-        syncButton.toolTip = model.sync.value?.headline ?? "Connecting…"
+        syncButton.foleviTooltip = model.sync.value?.headline ?? "Connecting…"
         syncButton.setAccessibilityLabel("Sync: \(model.sync.value?.headline ?? "connecting")")
         toggle.isHidden = model.sidebarCollapsed
     }
@@ -648,7 +648,7 @@ final class SidebarHeaderCell: NSTableCellView {
         add.image = NSImage(systemSymbolName: "plus", accessibilityDescription: "New Folder")
         add.symbolConfiguration = .init(pointSize: 11, weight: .semibold)
         add.contentTintColor = .tertiaryLabelColor
-        add.toolTip = "New Folder ⌃⌘N"
+        add.foleviTooltip = "New Folder (⌃⌘N)"
         add.target = self
         add.action = #selector(addTapped)
         for v in [title, add] as [NSView] {
@@ -758,7 +758,7 @@ final class AccountButton: NSButton {
         avatar.stringValue = String(n.first.map(String.init) ?? "F").uppercased()
         dot.isHidden = others == 0
         setAccessibilityLabel("\(n), \(d). Places, settings and account")
-        toolTip = d.isEmpty ? n : "\(n) (\(d))"
+        foleviTooltip = d.isEmpty ? n : "\(n) (\(d))"
     }
 
     override func updateTrackingAreas() {
@@ -794,7 +794,7 @@ final class BellButton: NSButton {
         image = NSImage(systemSymbolName: "bell", accessibilityDescription: "Notifications")
         symbolConfiguration = .init(pointSize: 14, weight: .regular)
         contentTintColor = .secondaryLabelColor
-        toolTip = "Notifications"
+        foleviTooltip = "Notifications"
         badge.font = FoleviFonts.nsFont(.ui, size: 9.5, weight: .semibold)
         badge.textColor = .white
         badge.alignment = .center

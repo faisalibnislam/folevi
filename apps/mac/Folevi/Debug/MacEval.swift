@@ -20,6 +20,7 @@
 #if DEBUG
 import AppKit
 import CoreImage
+import FoleviDesign
 import FoleviMac
 import WebKit
 
@@ -114,6 +115,21 @@ enum MacEval {
                     let drawn = content.isFlipped ? CGRect(x: r.minX, y: size.height - r.maxY, width: r.width, height: r.height) : r
                     over.draw(in: drawn, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: false, hints: nil)
                 }
+                ctx.flushGraphics()
+                NSGraphicsContext.restoreGraphicsState()
+                rep = out
+            }
+            // Folevi's tooltip is a panel of its own over the window: drawn in where it shows.
+            if let tip = FoleviTooltipCenter.shared.shownWindow, tip.parent === content.window, let view = tip.contentView, let over = bitmap(view.bounds.size),
+               let window = content.window, let out = bitmap(content.bounds.size), let ctx = NSGraphicsContext(bitmapImageRep: out), let whole = rep.cgImage {
+                view.cacheDisplay(in: view.bounds, to: over)
+                let r = content.convert(window.convertFromScreen(tip.frame), from: nil)
+                let size = content.bounds.size
+                let drawn = content.isFlipped ? CGRect(x: r.minX, y: size.height - r.maxY, width: r.width, height: r.height) : r
+                NSGraphicsContext.saveGraphicsState()
+                NSGraphicsContext.current = ctx
+                ctx.cgContext.draw(whole, in: CGRect(origin: .zero, size: size))
+                over.draw(in: drawn, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: false, hints: nil)
                 ctx.flushGraphics()
                 NSGraphicsContext.restoreGraphicsState()
                 rep = out
@@ -259,6 +275,15 @@ enum MacEval {
             guard let key = req["key"] as? String else { return done(["error": "no key"]) }
             if let value = req["value"] as? String { Paths.defaults.set(value, forKey: key) } else { Paths.defaults.removeObject(forKey: key) }
             done(["value": true])
+        case "tooltip":
+            // Folevi's tooltip on the front window's control whose tooltip says `text`, at once (screens.mjs).
+            guard let content = WindowManager.shared.frontMain?.window?.contentView, let text = req["text"] as? String,
+                  let anchor = descendants(content).compactMap({ $0 as? FoleviTooltipAnchor }).first(where: { $0.text == text && $0.window != nil }) else { return done(["error": "no control with that tooltip"]) }
+            FoleviTooltipCenter.shared.showNow(for: anchor)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                let f = FoleviTooltipCenter.shared.shownWindow?.frame ?? .zero
+                done(["value": ["shown": FoleviTooltipCenter.shared.showing ?? "", "frame": [f.minX, f.minY, f.width, f.height]]])
+            }
         case "settingsShot":
             // The Settings window (⌘,) at a section, drawn with its title bar and toolbar, and its size.
             guard let path = req["out"] as? String else { return done(["error": "no out"]) }

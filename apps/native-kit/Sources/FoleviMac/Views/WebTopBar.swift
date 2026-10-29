@@ -43,7 +43,7 @@ public struct WebTopBar: View {
             Spacer(minLength: 0)
             // The web's <Button size="sm"> with <Plus size={14} />, as the top bar measures it (its icon at 70%).
             WebButton("New note", icon: .plus, iconSize: 14, iconOpacity: style("frame.topbar.new.icon").opacity, styleName: "frame.topbar.new", variant: .primary, size: .sm) { model.newNote() }
-                .help("New note (⌘⌥N)")
+                .foleviTooltip("New note (⌘⌥N)")
                 .fixedSize()
                 .padding(.trailing, newNoteInset - bar.padding.right)
         }
@@ -119,7 +119,7 @@ public struct WebTopBar: View {
         .buttonStyle(WebHoverRowStyle(radius: s.radius, hover: WebStyles.vars["glass-hover"], press: WebStyles.vars["mac-press"], selected: false))
         .opacity(enabled ? 1 : style("frame.topbar.forward").opacity)
         .disabled(!enabled)
-        .help("\(label) (⌘\(label == "Back" ? "[" : "]"))")
+        .foleviTooltip("\(label) (⌘\(label == "Back" ? "[" : "]"))")
     }
 
     // MARK: tabs
@@ -273,7 +273,7 @@ public struct WebTopBar: View {
                 }
                 .buttonStyle(WebHoverRowStyle(radius: close.radius, hover: WebStyles.vars["glass-hover"], press: WebStyles.vars["mac-press"], selected: false))
                 .opacity(active || hoveredTab == t.id ? 1 : 0)
-                .help("Close \(title)")
+                .foleviTooltip("Close \(title)")
             }
         }
         .foregroundStyle(s.color.color)

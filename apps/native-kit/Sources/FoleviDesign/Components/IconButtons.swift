@@ -27,7 +27,7 @@ public struct IconButton: View {
         }
         .buttonStyle(IconButtonStyle())
         .accessibilityLabel(badge.map { $0 > 0 ? "\(label), \($0) unread" : label } ?? label)
-        .help(label)
+        .foleviTooltip(label)
     }
 }
 

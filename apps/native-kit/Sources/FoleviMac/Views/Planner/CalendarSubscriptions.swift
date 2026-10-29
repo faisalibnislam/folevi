@@ -142,7 +142,7 @@ struct SubscriptionRow: View {
                 Circle().fill(calendarColor(cal.color).c(scheme)).frame(width: 10, height: 10).padding(.top, 6)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(cal.name).webText(.role(.subheadline, weight: 500)).lineLimit(1).foregroundStyle(cal.visible ? PV("color-ink").c(scheme) : PV("color-ink-muted").c(scheme))
-                    Text(status.isEmpty ? host : "\(host) · \(status)").webText(.role(.footnote)).lineLimit(1).foregroundStyle(PV("color-ink-faint").c(scheme)).help(host)
+                    Text(status.isEmpty ? host : "\(host) · \(status)").webText(.role(.footnote)).lineLimit(1).foregroundStyle(PV("color-ink-faint").c(scheme)).foleviTooltip(host)
                 }
                 Spacer(minLength: 0)
                 Toggle("Show \(cal.name)", isOn: Binding(get: { cal.visible }, set: { v in run(.calendarUpdate(id: cal.id, visible: v)) }))

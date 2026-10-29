@@ -101,7 +101,7 @@ public struct WebSidebar: View {
                     .foregroundStyle(Folevi.color.inkMuted)
                     .contentShape(Rectangle())
             }
-            .help("Sidebar")
+            .foleviTooltip("Sidebar")
         }
         .padding(.horizontal, bar.padding.left)
         .frame(height: bar.height)
@@ -457,7 +457,7 @@ struct SyncDot: View {
             Circle().fill(Folevi.color.success).frame(width: 6, height: 6).offset(x: 1, y: 1)
         }
         .frame(width: 28, height: 28)
-        .help("Saved")
+        .foleviTooltip("Saved")
     }
 }
 

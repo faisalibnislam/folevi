@@ -207,7 +207,7 @@ struct WebSheetDialog<Body: View, Footer: View>: View {
                     WebIconView(.x, size: 16).foregroundStyle(xs.color.color).frame(width: xs.width, height: xs.height).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help("Close")
+                .foleviTooltip("Close")
                 .accessibilityLabel("Close")
             }
             .padding(header.padding.edgeInsets)

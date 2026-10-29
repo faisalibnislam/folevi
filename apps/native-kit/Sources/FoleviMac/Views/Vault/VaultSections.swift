@@ -231,7 +231,7 @@ struct VaultFiles: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(label)
+        .foleviTooltip(label)
         .accessibilityLabel(label)
         .accessibilityAddTraits(on ? .isSelected : [])
     }

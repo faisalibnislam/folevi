@@ -279,7 +279,6 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
         let item = NSToolbarItem(itemIdentifier: id)
         item.label = s.title
         item.paletteLabel = s.title
-        item.toolTip = s.title
         item.image = Self.image(s.icon, label: s.title)
         item.target = self
         item.action = #selector(pick(_:))

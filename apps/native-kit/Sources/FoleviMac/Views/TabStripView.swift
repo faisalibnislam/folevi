@@ -270,7 +270,7 @@ final class TabItemView: NSView {
         }
         setAccessibilityLabel(tab.isHome ? "Home" : tab.title)
         setAccessibilityValue(isActive ? "selected" : nil)
-        toolTip = tab.isHome ? "Home" : tab.title
+        foleviTooltip = tab.isHome ? "Home" : tab.title
         needsLayout = true
     }
 

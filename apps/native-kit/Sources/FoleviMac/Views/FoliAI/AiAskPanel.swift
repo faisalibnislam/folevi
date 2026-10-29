@@ -121,7 +121,7 @@ struct AiLauncher: View {
         .buttonStyle(.plain)
         .onHover { over = $0 }
         .animation(.easeOut(duration: 0.2), value: over)
-        .help(open ? "Close Foli AI" : "Ask Foli AI (⌘J)")
+        .foleviTooltip(open ? "Close Foli AI" : "Ask Foli AI (⌘J)")
         .accessibilityLabel(open ? "Close Foli AI" : "Ask Foli AI")
         .accessibilityValue(open ? "Open" : "Closed")
     }
@@ -191,7 +191,7 @@ struct AiAskPanelView: View {
     private func headerButton(_ icon: WebIcon, _ label: String, look: AiLook, action: @escaping () -> Void) -> some View {
         Button(action: action) { headerIcon(icon, look: look) }
             .buttonStyle(AiHoverStyle(radius: look.s("ai.panel.button").radius))
-            .help(label)
+            .foleviTooltip(label)
             .accessibilityLabel(label)
     }
 }

@@ -433,15 +433,15 @@ export function TabStrip() {
           const nested = !t.view && !t.panes && t.at && t.at !== t.id ? live?.[t.at]?.title || t.atTitle || null : null;
           // Pinned tabs are half a tab wide (joined ones a little wider, for their notes' icons) and can't be
           // closed until unpinned; joined tabs are as wide as two.
+          // Every tab the same width, open or not (the owner, 2026-10-29): they shrink evenly to their minimum
+          // together, so opening one changes only its look and nothing beside it moves.
           const width = ipad
-            ? `min-w-[150px] pr-1.5 ${active ? "max-w-[260px] flex-none" : "flex-[0_1_260px]"}`
+            ? "min-w-[150px] flex-[0_1_260px] pr-1.5"
             : pinned
               ? `${joined ? "w-[112px]" : "w-[86px]"} flex-none pr-1`
               : joined
-                ? `min-w-[240px] pr-1 ${active ? "max-w-[460px] flex-none" : "flex-[0_1_460px]"}`
-                : // The others shrink evenly to their minimum; the open one keeps room for its whole title (up to the
-                  // widest a tab gets), so it stays readable however many tabs are open.
-                  `min-w-[172px] pr-1 ${active ? "max-w-[284px] flex-none" : "flex-[0_1_284px]"}`;
+                ? "min-w-[240px] flex-[0_1_460px] pr-1"
+                : "min-w-[172px] flex-[0_1_284px] pr-1";
           const pinButton = ipad ? null : (
             <button
               type="button"

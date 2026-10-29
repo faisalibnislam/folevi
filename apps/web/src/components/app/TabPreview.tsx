@@ -53,9 +53,9 @@ export function MiniPage({ documentId, title, className = "" }: { documentId: st
         <PageFrame title={title} html={html} scale={scale} />
       ) : (
         <div className="space-y-2 p-4">
-          <div className="h-4 w-2/3 animate-pulse rounded bg-[var(--glass-hover)]" />
-          <div className="h-2.5 w-full animate-pulse rounded bg-[var(--glass-hover)]" />
-          <div className="h-2.5 w-5/6 animate-pulse rounded bg-[var(--glass-hover)]" />
+          <div className="h-4 w-2/3 animate-pulse rounded-tiny bg-[var(--glass-hover)]" />
+          <div className="h-2.5 w-full animate-pulse rounded-tiny bg-[var(--glass-hover)]" />
+          <div className="h-2.5 w-5/6 animate-pulse rounded-tiny bg-[var(--glass-hover)]" />
         </div>
       )}
     </div>

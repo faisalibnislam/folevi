@@ -678,7 +678,7 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
       title="Drag to rearrange"
       className={`mx-1 mb-2 flex h-10 flex-none select-none items-center gap-1 rounded-panel px-1 transition-[background-color,box-shadow,color] duration-150 ${joined.dragging ? "cursor-grabbing" : "cursor-grab"} ${
         pane.primary
-          ? "bg-[var(--color-surface-raised)] text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]"
+          ? "bg-[var(--color-surface-raised)] text-heading shadow-[0_1px_3px_rgb(0_0_0/0.03),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_5%,transparent)]"
           : "bg-[var(--glass-hover)] text-muted"
       }`}
     >

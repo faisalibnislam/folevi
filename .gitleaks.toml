@@ -1,0 +1,12 @@
+# Gitleaks (CI's secret scan, full history) with its default rules. Test vectors and engine fixtures are made-up
+# keys by design, so their folders are skipped; any other false positive goes in .gitleaksignore by fingerprint.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Encryption test vectors and engine fixtures: generated test keys, never real secrets"
+paths = [
+  '''^packages/local-store/fixtures/''',
+  '''^apps/web/src/lib/engine/fixtures/''',
+  '''^apps/mac/fixtures/''',
+]

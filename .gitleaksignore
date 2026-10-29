@@ -1,3 +1,40 @@
 # Known false positives (test fixtures, not secrets), one gitleaks fingerprint per line.
 # A made-up share-link token in apps/web/test/share-grant.test.ts (now marked gitleaks:allow).
 7c57c1445e6485264854b1d733b8bf3e23911525:apps/web/test/share-grant.test.ts:generic-api-key:8
+# Test (old Electron app): a placeholder Dropbox app key.
+e484dde3d5ce3da79dfd40fea1192c34f5f21230:apps/desktop/test/cloud/connection.test.ts:generic-api-key:258
+# Test: made-up tokens for test users Ana and Ben.
+6b028ea01f26b994d63e411a8467ebd4689cccb9:apps/ios/ios/App/Tests/LocalExtrasTests.swift:generic-api-key:133
+6b028ea01f26b994d63e411a8467ebd4689cccb9:apps/ios/ios/App/Tests/LocalExtrasTests.swift:generic-api-key:134
+6b028ea01f26b994d63e411a8467ebd4689cccb9:apps/ios/ios/App/Tests/LocalExtrasTests.swift:generic-api-key:135
+6b028ea01f26b994d63e411a8467ebd4689cccb9:apps/ios/ios/App/Tests/LocalExtrasTests.swift:generic-api-key:140
+# Test: a placeholder Dropbox app key.
+33b5f376d98379ff64967098f21266364962331c:apps/ios/ios/App/Tests/ShellTests.swift:generic-api-key:293
+# Mac screenshot script: made-up Vault demo items.
+1f8a8207c159ecfc47589988692ffd262842e3a9:apps/mac/scripts/screens.mjs:generic-api-key:128
+# Test: made-up note ids.
+5c5107deb5ebcbd5277562e684ccc29ec9072644:apps/macos/FoleviTests/KeychainAndAuthTests.swift:generic-api-key:96
+# Mac demo engine: the demo recovery key.
+b5988f8a526ddd2d8e84d6b13ff90ba75a4e0fea:apps/native-kit/Sources/FoleviMac/Demo/DemoEngine.swift:generic-api-key:33
+# Test: expects the demo recovery key.
+84f4836a74febc208876cfdcf94d941a56135fcf:apps/native-kit/Tests/FoleviScreensTests/AccountScreensModelTests.swift:generic-api-key:163
+978ff5bec12dc5cf848d440ce6c7065b903abd48:apps/native-kit/Tests/FoleviScreensTests/AccountScreensModelTests.swift:generic-api-key:163
+# API docs: curl examples with the YOUR_TOKEN placeholder.
+568425004545a8fa9ddecfcff09e809cc4cabee3:apps/web/src/components/marketing/content/docs.tsx:curl-auth-header:577
+568425004545a8fa9ddecfcff09e809cc4cabee3:apps/web/src/components/marketing/content/docs.tsx:curl-auth-header:582
+568425004545a8fa9ddecfcff09e809cc4cabee3:apps/web/src/components/marketing/content/docs.tsx:curl-auth-header:587
+568425004545a8fa9ddecfcff09e809cc4cabee3:apps/web/src/components/marketing/content/docs.tsx:curl-auth-header:592
+568425004545a8fa9ddecfcff09e809cc4cabee3:apps/web/src/components/marketing/content/docs.tsx:curl-auth-header:598
+568425004545a8fa9ddecfcff09e809cc4cabee3:apps/web/src/components/marketing/content/docs.tsx:curl-auth-header:605
+568425004545a8fa9ddecfcff09e809cc4cabee3:apps/web/src/components/marketing/content/docs.tsx:curl-auth-header:610
+568425004545a8fa9ddecfcff09e809cc4cabee3:apps/web/src/components/marketing/content/docs.tsx:curl-auth-header:613
+# APNs: builds a PEM header around a key read from the environment.
+09a8bf967dba0eacea51cd5c955012b8d60e57cc:convex/lib/apns.ts:private-key:45
+# The alphabet used to make email-in tokens.
+333df03b4898de2b536d3eb2263728816119736b:convex/lib/emailNotes.ts:generic-api-key:13
+# A byte-length limit, not a key.
+dff5d6dbada66f3227479016a31992f9b900e316:convex/lib/syncEngine.ts:generic-api-key:1001
+# Deployment notes: the text "-----BEGIN PRIVATE KEY-----", no key.
+d30d0351a16ecce8d5690a391fe76e5564030656:docs/DEPLOYMENT.md:private-key:138
+# Apple sign-in test: a key generated at runtime.
+d30d0351a16ecce8d5690a391fe76e5564030656:tests/convex/apple-signin.test.ts:private-key:42

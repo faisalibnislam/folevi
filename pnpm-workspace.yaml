@@ -16,3 +16,15 @@ overrides:
   source-map-js: ">=1.2.2"
   vite: "8.3.5"
   katex: ">=0.18.2"
+# Advisories reviewed and not reachable in Folevi (2026-10-29). The fixes are in better-auth 1.7.7, which
+# @convex-dev/better-auth (0.12.6, better-auth <1.7.0) doesn't support yet: upgrade both when it does, and drop these.
+auditConfig:
+  ignoreGhsas:
+    # Critical, Magic Link sign-in through OAuth state: Folevi has no magicLink plugin.
+    - GHSA-965c-763c-88jm
+    # High, OAuth Proxy sign-in as another user: Folevi has no oAuthProxy plugin.
+    - GHSA-r4xp-prcw-77qf
+    # High, device login approval: Folevi has no deviceAuthorization plugin.
+    - GHSA-q84f-53jg-9ppm
+    # Moderate, OAuth provider audiences: Folevi sets one audience (the MCP resource), so no token for another.
+    - GHSA-p2fr-6hmx-4528

@@ -296,7 +296,8 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
   }, [canJoin, lastPane]);
 
   return (
-    <div ref={box} className={`relative flex min-h-0 flex-1 ${n > 1 ? "overflow-hidden" : ""}`}>
+    // (Not clipped: the notes always fit, folding into spines when they wouldn't, and each note's shadow shows whole.)
+    <div ref={box} className="relative flex min-h-0 flex-1">
       {panes.map((id, i) => {
         const primary = id === documentId;
         const isFolded = folded.has(id);

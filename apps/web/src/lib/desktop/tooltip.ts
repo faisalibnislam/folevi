@@ -7,7 +7,7 @@
 
 const REST_MS = 700;
 const WARM_MS = 1000;
-const SHORTCUT = /^(.*?)\s*\(((?:[⌘⌃⌥⇧]+)[^\s()]+|[⌘⌃⌥⇧]*(?:Tab|Space|Return|Esc|F\d+))\)$/;
+const SHORTCUT = /^(.*?)\s*\(((?:[⌘⌃⌥⇧]+)[^\s()]+|[⌘⌃⌥⇧]*(?:Tab|Space|Return|Enter|Esc|F\d+))\)$/;
 
 /** "New note (⌘⌥N)" as its words and its shortcut. */
 export function splitTooltip(text: string): { text: string; shortcut: string | null } {

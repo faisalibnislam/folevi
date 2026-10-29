@@ -687,7 +687,8 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
       </button>
       <GripVertical size={14} aria-hidden className="flex-none text-faint" />
       <div className={`flex min-w-0 flex-1 items-baseline gap-2 truncate text-subheadline ${pane.primary ? "" : "opacity-80"}`}>
-        <div className="min-w-0 truncate">{title}</div>
+        {/* The page's breadcrumb when it has one; with the sidebar open it has none, so the note's name. */}
+        <div className="min-w-0 truncate">{title ?? <span className="px-1 font-semibold">{tabTitle}</span>}</div>
       </div>
       <div className="flex flex-none items-center gap-1.5">
         {sync}

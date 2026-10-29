@@ -1076,6 +1076,10 @@
 /* An item with a second line (a workspace and its plan) and an item under another keep their room. */
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item[aria-description] { padding-block: 5px; }
 /* §2.4 Tooltips (lib/desktop/tooltip.ts): 12 / 16 text, 6 corners, the shortcut in a keycap. */
+/* Joined notes (components/app/NotePanes.tsx): only the note you're in shows its page tools; the others' would
+   overlap it on a narrow window. */
+[data-pane-rest] [role="toolbar"][aria-label="Page tools"] { display: none; }
+
 /* Folevi's one tooltip, on every page (the app, the website, the Mac app): never the browser's own. */
 [data-mac-tooltip] {
   position: fixed; inset: auto; margin: 0; z-index: 2147483646; max-width: 320px; padding: 3px 8px; border: 0; border-radius: var(--radius-chip);

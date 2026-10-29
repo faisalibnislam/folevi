@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerE
 import { createPortal } from "react-dom";
 import { useQuery } from "convex/react";
 import { FileText, Search } from "lucide-react";
+import { MiniPage } from "./TabPreview";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
@@ -12,8 +13,12 @@ import { PaneContext } from "@/lib/app/panes";
 import { useLocalSearch } from "@/lib/hooks/useLocalNotes";
 import { ShellContext, useShell } from "./Shell";
 
-/** The narrowest a pane gets; below that the panes scroll sideways. */
+/** The narrowest a pane is dragged to. */
 const MIN_PANE = 360;
+/** The width a joined note needs to read comfortably, and for its page tools to fit: below it, the notes you're not in fold into spines. */
+const COMFORT = 600;
+/** A folded note: a spine with its icon and title, standing in its place. */
+const SPINE = 44;
 /** The gap between panes (it holds the Unjoin button and is where they're resized). */
 const GAP = 16;
 /** How close (px) the gap must come to a snap point to land on it. */
@@ -81,7 +86,8 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
   const { tabs, setSizes, join, unjoin, movePane, detachPane } = useTabs();
   const { navigate } = useAppRouter();
   const tab = tabs.find((t) => !t.view && tabHolds(t, documentId)) ?? null;
-  const panes = tab?.panes ?? [documentId];
+  const tabPanes = tab?.panes;
+  const panes = useMemo(() => tabPanes ?? [documentId], [tabPanes, documentId]);
   const n = panes.length;
   const stored = tab?.sizes && tab.sizes.length === n ? tab.sizes : null;
   const [dragSizes, setDragSizes] = useState<number[] | null>(null);
@@ -96,14 +102,31 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
     setWidth(el.clientWidth);
     return () => ro.disconnect();
   }, []);
-  // The width the panes share (at least each one's minimum: below that the row scrolls sideways).
-  const room = Math.max(width - GAP * (n - 1), MIN_PANE * n);
+  // Too narrow for every note at a comfortable width: the note you're in stays open, then the ones you were in
+  // most recently while they fit; the rest fold into spines in their places (open again by a click, or by
+  // themselves as the window widens).
+  const [recent, setRecent] = useState<string[]>([documentId]);
+  useEffect(() => setRecent((cur) => (cur[0] === documentId ? cur : [documentId, ...cur.filter((x) => x !== documentId)])), [documentId]);
+  const folded = useMemo(() => {
+    if (n < 2 || !width) return new Set<string>();
+    const byRecent = [documentId, ...recent.filter((x) => x !== documentId && panes.includes(x)), ...panes.filter((x) => x !== documentId && !recent.includes(x))];
+    for (let open = n; open >= 1; open--) {
+      if (open * COMFORT + (n - open) * SPINE + GAP * (n - 1) <= width || open === 1) return new Set(byRecent.slice(open));
+    }
+    return new Set<string>();
+  }, [n, width, documentId, recent, panes]);
+  const allOpen = folded.size === 0;
+  // The width the open notes share, split by their sizes (a folded note's share goes to the others meanwhile).
+  const room = Math.max(0, width - GAP * (n - 1) - folded.size * SPINE);
+  const openShare = panes.reduce((sum, id, i) => (folded.has(id) ? sum : sum + sizes[i]!), 0) || 1;
+  const titles = useQuery(api.documents.titles, n > 1 ? { documentIds: panes } : "skip");
 
   const [guide, setGuide] = useState<Snap | null>(null);
   const drag = useRef<{ gap: number; startX: number; start: number[]; pointer: number } | null>(null);
   const lastSizes = useRef<number[] | null>(null);
   const onGapDown = (e: ReactPointerEvent<HTMLDivElement>, gap: number) => {
-    if (e.button !== 0 || (e.target as Element).closest("button")) return;
+    // (Sizes are set while every note is open: a gap beside a spine has nothing to resize.)
+    if (e.button !== 0 || !allOpen || (e.target as Element).closest("button")) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     drag.current = { gap, startX: e.clientX, start: [...sizes], pointer: e.pointerId };
@@ -252,10 +275,11 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
   }, [canJoin, lastPane]);
 
   return (
-    <div ref={box} className={`relative flex min-h-0 flex-1 ${n > 1 ? "overflow-x-auto overflow-y-hidden" : ""}`}>
+    <div ref={box} className={`relative flex min-h-0 flex-1 ${n > 1 ? "overflow-hidden" : ""}`}>
       {panes.map((id, i) => {
         const primary = id === documentId;
-        const style: CSSProperties = n > 1 ? { flex: `0 0 ${Math.round(sizes[i]! * room)}px`, minWidth: MIN_PANE } : { flex: "1 1 0%" };
+        const isFolded = folded.has(id);
+        const style: CSSProperties = n < 2 ? { flex: "1 1 0%" } : isFolded ? { flex: `0 0 ${SPINE}px` } : { flex: `0 0 ${Math.round((sizes[i]! / openShare) * room)}px` };
         const content = (
           <PaneContext.Provider
             value={{
@@ -319,7 +343,7 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
                   e.preventDefault();
                 }}
                 title="Drag to resize · double-click to make equal · ⌥ to drag freely"
-                className="group/gap relative z-10 flex flex-none cursor-col-resize items-center justify-center outline-none"
+                className={`group/gap relative z-10 flex flex-none items-center justify-center outline-none ${allOpen ? "cursor-col-resize" : ""}`}
                 style={{ width: GAP, paddingTop: 56 }}
               >
                 <span aria-hidden className="absolute inset-y-[64px] left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover/gap:bg-[var(--color-line)] group-focus-visible/gap:bg-[var(--color-focus)]" />
@@ -339,9 +363,14 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
                 </button>
               </div>
             ) : null}
+            {isFolded ? (
+              <Spine key={id} id={id} title={titles?.[id]?.title || "Untitled"} onOpen={() => navigate(`/d/${id}`, { replace: true })} />
+            ) : (
             <div
               data-pane={id}
               data-pane-focus={n > 1 && primary ? "" : undefined}
+              // Only the note you're in shows its page tools (Foli AI, Insert, Format…): globals.css hides the others'.
+              data-pane-rest={n > 1 && !primary ? "" : undefined}
               className={`relative flex min-h-0 min-w-0 flex-col ${paneDrag ? (paneDrag.from === i ? "z-30 opacity-95 [filter:drop-shadow(0_12px_28px_rgb(0_0_0/0.18))]" : "transition-transform duration-200 ease-out") : ""}`}
               style={{ ...style, transform: paneDrag ? `translateX(${dragShift(i)}px)` : undefined }}
               onPointerDownCapture={() => focusPane(id)}
@@ -352,6 +381,7 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
             >
               {content}
             </div>
+            )}
           </div>
         );
       })}
@@ -402,6 +432,50 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
           }}
         />
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * A joined note folded for room: its icon and title upright, in its place. A click opens it (it becomes the note
+ * you're in); resting on it shows a picture of its page beside it, as a tab does.
+ */
+function Spine({ id, title, onOpen }: { id: string; title: string; onOpen: () => void }) {
+  const [peek, setPeek] = useState<{ left: number; top: number; side: "left" | "right" } | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+  return (
+    <div data-pane={id} data-pane-spine="" className="relative flex min-h-0 flex-none flex-col" style={{ flex: `0 0 ${SPINE}px`, paddingTop: 56 }}>
+      <button
+        type="button"
+        aria-label={`Open ${title}`}
+        onClick={onOpen}
+        onPointerEnter={(e) => {
+          if (e.pointerType !== "mouse") return;
+          const r = e.currentTarget.getBoundingClientRect();
+          const side = r.left > window.innerWidth / 2 ? "left" : "right";
+          timer.current = setTimeout(() => setPeek({ left: side === "left" ? r.left - 308 : r.right + 8, top: Math.max(8, r.top + 40), side }), 300);
+        }}
+        onPointerLeave={() => {
+          if (timer.current) clearTimeout(timer.current);
+          setPeek(null);
+        }}
+        className="mb-1 flex min-h-0 flex-1 flex-col items-center gap-2 rounded-panel bg-[var(--glass-hover)] px-0 py-3 text-muted outline-none transition-colors hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus"
+      >
+        <FileText size={14} aria-hidden className="flex-none opacity-70" />
+        <span className="min-h-0 truncate text-subheadline font-medium [writing-mode:vertical-rl]">{title}</span>
+      </button>
+      {peek
+        ? createPortal(
+            <div aria-hidden className="pointer-events-none fixed z-[60] w-[300px] overflow-hidden rounded-container border border-line bg-[var(--color-surface-raised)] shadow-[0_12px_36px_rgb(0_0_0/0.18)]" style={{ left: peek.left, top: peek.top }}>
+              <MiniPage documentId={id} title={title} className="aspect-[16/10] w-full" />
+              <div className="truncate border-t border-line px-3 py-2 text-subheadline font-semibold text-heading">{title}</div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

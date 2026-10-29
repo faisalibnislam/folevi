@@ -2,7 +2,7 @@
 // a handle while it shows a note in native chrome mode (lib/engine/editorCommands.ts builds it, inside the note
 // page's own code chunk, so the editor never loads with the first screen), and the host sends it the editor
 // commands of the keyboard toolbar, the bars and the menus. This module is light: it holds the handle only.
-import type { EditorCommandName, EditorPanel, EditorStateEvent, EventMap, EventName } from "./protocol";
+import type { EditorCommandName, EditorPanel, EditorStateEvent, EventMap, EventName, PaneTab } from "./protocol";
 
 export interface NoteHandle {
   noteId: string;
@@ -75,6 +75,37 @@ export function onNoteHost(cb: () => void): () => void {
   };
 }
 
+/** The note's tab as native sent it with note.show (revision 20): its joined panes, their sizes, the other tabs. */
+export interface NativePanes {
+  /** The joined notes, left to right; null for a note on its own. */
+  panes: string[] | null;
+  sizes: number[] | null;
+  tabs: PaneTab[];
+}
+
+const NO_PANES: NativePanes = { panes: null, sizes: null, tabs: [] };
+let panes: NativePanes = NO_PANES;
+const paneListeners = new Set<() => void>();
+
+/** The host: what note.show said about the note's tab. */
+export function setNativePanes(next: NativePanes): void {
+  const same = JSON.stringify(next) === JSON.stringify(panes);
+  if (same) return;
+  panes = next;
+  for (const l of [...paneListeners]) l();
+}
+
+export function nativePanes(): NativePanes {
+  return panes;
+}
+
+export function onNativePanes(cb: () => void): () => void {
+  paneListeners.add(cb);
+  return () => {
+    paneListeners.delete(cb);
+  };
+}
+
 let focus = false;
 
 /** Focus Mode (R8.9): the native app hides its bars around the note; the page closes its panel. */
@@ -91,6 +122,7 @@ export function setFocusMode(on: boolean): void {
 /** For tests. */
 export function resetNoteHost(): void {
   focus = false;
+  panes = NO_PANES;
   active = null;
   ready.clear();
   listeners.clear();

@@ -121,9 +121,9 @@ struct WebNoteSidebar: View {
         let title = style("card.title")
         let name = (tools?.title).flatMap { $0.isEmpty ? nil : $0 } ?? model.activeNote.map { $0.title.isEmpty ? "Untitled" : $0.title } ?? "Untitled"
         return VStack(alignment: .leading, spacing: 0) {
-            Text(name).webText(title.text).lineLimit(1).truncationMode(.tail).foregroundStyle(title.color.color)
+            // The whole name in a tooltip only when it's cut off.
+            TruncatingLabel(text: name, style: title.text).foregroundStyle(title.color.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .foleviTooltip(name)
             crumbs.padding(.top, style("crumbs").y - title.y - title.height)
         }
         .padding(c.resolve(scheme).padding.edgeInsets)

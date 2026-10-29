@@ -82,8 +82,14 @@ enum MacEval {
             return (bar, over)
         }
         bars.forEach { $0.alphaValue = 0 }
+        // The Tab Overview covers the page: the shot leaves the page out under it (caching the views can't draw the
+        // overview over the page's snapshot), then draws the tabs' pictures (web views of their own) where they show.
+        let overview = Self.descendants(content).first { String(describing: type(of: $0)).contains("TabOverviewHost") && !$0.isHidden && $0.window != nil && $0.subviews.count + 1 > 0 && $0.fittingSize.height > 1 }
+        if overview != nil { page.isHidden = true }
+        let pictures = Self.descendants(content).compactMap { $0 as? WKWebView }.filter { $0 !== page && $0.window != nil && !$0.bounds.isEmpty && Self.showing($0, in: content) }
         compose(content: content, page: page) { rep in
             bars.forEach { $0.alphaValue = 1 }
+            if overview != nil { page.isHidden = false }
             guard var rep else { return done(["error": "no bitmap"]) }
             let size = content.bounds.size
             // A new picture: the shot, what's under each bar blurred, then the bars.
@@ -134,6 +140,7 @@ enum MacEval {
                 NSGraphicsContext.restoreGraphicsState()
                 rep = out
             }
+            Self.drawPictures(pictures, into: rep, content: content) { rep in
             guard let png = rep.representation(using: .png, properties: [:]) else { return done(["error": "no png"]) }
             do {
                 try png.write(to: URL(fileURLWithPath: path))
@@ -141,6 +148,31 @@ enum MacEval {
             } catch {
                 done(["error": error.localizedDescription])
             }
+            }
+        }
+    }
+
+    /// Each web view's snapshot drawn in where it shows (one after another; then `done`).
+    private static func drawPictures(_ views: [WKWebView], into rep: NSBitmapImageRep, content: NSView, done: @escaping (NSBitmapImageRep) -> Void) {
+        guard let v = views.first else { return done(rep) }
+        v.takeSnapshot(with: nil) { image, _ in
+            if let image, let ctx = NSGraphicsContext(bitmapImageRep: rep) {
+                let size = content.bounds.size
+                // Only the part inside its clipping ancestors (a picture is cut to its card).
+                var r = v.convert(v.bounds, to: content)
+                var a = v.superview
+                while let s = a, s !== content { r = r.intersection(s.convert(s.bounds, to: content)); a = s.superview }
+                let full = v.convert(v.bounds, to: content)
+                if !r.isEmpty {
+                    NSGraphicsContext.saveGraphicsState()
+                    NSGraphicsContext.current = ctx
+                    let flip = { (x: CGRect) in content.isFlipped ? CGRect(x: x.minX, y: size.height - x.maxY, width: x.width, height: x.height) : x }
+                    NSBezierPath(rect: flip(r)).addClip()
+                    image.draw(in: flip(full))
+                    NSGraphicsContext.restoreGraphicsState()
+                }
+            }
+            drawPictures(Array(views.dropFirst()), into: rep, content: content, done: done)
         }
     }
 

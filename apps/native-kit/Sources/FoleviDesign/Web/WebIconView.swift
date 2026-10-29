@@ -80,19 +80,25 @@ public struct WebIconView: View {
     public var strokeWidth: CGFloat
     /// lucide's `absoluteStrokeWidth`: the stroke stays `strokeWidth` points whatever the size.
     public var absoluteStrokeWidth: Bool
+    /// lucide's `fill-current`: the shape filled as well as stroked (a pinned tab's pin).
+    public var fill: Bool
 
-    public init(_ icon: WebIcon, size: CGFloat = 24, strokeWidth: CGFloat = 2, absoluteStrokeWidth: Bool = false) {
+    public init(_ icon: WebIcon, size: CGFloat = 24, strokeWidth: CGFloat = 2, absoluteStrokeWidth: Bool = false, fill: Bool = false) {
         self.icon = icon
         self.size = size
         self.strokeWidth = strokeWidth
         self.absoluteStrokeWidth = absoluteStrokeWidth
+        self.fill = fill
     }
 
     public var body: some View {
-        WebIconShape(icon: icon)
-            .stroke(style: StrokeStyle(lineWidth: absoluteStrokeWidth ? strokeWidth : strokeWidth * size / 24, lineCap: .round, lineJoin: .round))
-            .frame(width: size, height: size)
-            .accessibilityHidden(true)
+        let stroke = StrokeStyle(lineWidth: absoluteStrokeWidth ? strokeWidth : strokeWidth * size / 24, lineCap: .round, lineJoin: .round)
+        ZStack {
+            if fill { WebIconShape(icon: icon).fill() }
+            WebIconShape(icon: icon).stroke(style: stroke)
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
     }
 }
 

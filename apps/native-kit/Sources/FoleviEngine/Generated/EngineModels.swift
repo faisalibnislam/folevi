@@ -279,6 +279,32 @@ public struct NoteIdArgs: Codable, Hashable, Sendable {
     }
 }
 
+public struct NotePictureArgs: Codable, Hashable, Sendable {
+    public var id: String
+    /// The note's title as the tab shows it (the picture's heading).
+    public var title: String
+
+    public init(id: String, title: String) {
+        self.id = id
+        self.title = title
+    }
+}
+
+/// A note drawn small for a tab's picture (the web's TabPreview): a page of HTML with nothing that runs.
+public struct NotePictureResult: Codable, Hashable, Sendable {
+    /// Null while the note's blocks aren't on this device and the server hasn't answered.
+    public var html: String?
+
+    public init(html: String? = nil) {
+        self.html = html
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.html, forKey: .html)
+    }
+}
+
 /// Whether a row's changes have reached Folevi (section 3.9).
 public enum SyncMark: String, Codable, Hashable, Sendable, CaseIterable {
     case saved
@@ -1430,10 +1456,31 @@ public struct NoteShowArgs: Codable, Hashable, Sendable {
     public var id: String
     /// Focus the editor (a new note opens ready to type in): an untitled, empty note in its title (revision 11, R5.4).
     public var focus: Bool?
+    /// Revision 20: the notes joined side by side in the note's tab, left to right (`id` among them, the one with
+    /// focus); missing for a note on its own. The page draws them as the web does (NotePanes).
+    public var panes: [String]?
+    /// Each pane's share of the width (adding up to 1); missing is equal.
+    public var sizes: [Double]?
+    /// The other notes open in tabs, for the Join picker (open tabs first, then search).
+    public var tabs: [PaneTab]?
 
-    public init(id: String, focus: Bool? = nil) {
+    public init(id: String, focus: Bool? = nil, panes: [String]? = nil, sizes: [Double]? = nil, tabs: [PaneTab]? = nil) {
         self.id = id
         self.focus = focus
+        self.panes = panes
+        self.sizes = sizes
+        self.tabs = tabs
+    }
+}
+
+/// A note open in a tab of its own (the Join picker lists them first).
+public struct PaneTab: Codable, Hashable, Sendable {
+    public var id: String
+    public var title: String
+
+    public init(id: String, title: String) {
+        self.id = id
+        self.title = title
     }
 }
 
@@ -1920,6 +1967,65 @@ public struct NavigateRequestEvent: Codable, Hashable, Sendable {
         try container.encode(self.noteId, forKey: .noteId)
         try container.encode(self.external, forKey: .external)
         try container.encode(self.newTab, forKey: .newTab)
+    }
+}
+
+/// Revision 20: joined notes changed on the page (the Join picker, the Unjoin button, a pane's bar, a resize). Native
+/// owns the tabs: it changes its tab and shows the note again with the new panes.
+public struct PanesChangeEvent: Codable, Hashable, Sendable {
+    public enum Action: String, Codable, Hashable, Sendable, CaseIterable {
+        case join
+        case unjoin
+        case move
+        case detach
+        case sizes
+    }
+
+    /// "join": `note` joins on the right; "unjoin": split at the gap after pane `gap`; "move": pane `from` to `to`;
+    /// "detach": `note` out into its own tab; "sizes": the panes' shares (null: equal).
+    public var action: Action
+    public var note: String?
+    public var gap: Int?
+    public var from: Int?
+    public var to: Int?
+    public var sizes: Patch<[Double]>
+
+    enum CodingKeys: String, CodingKey {
+        case action
+        case note
+        case gap
+        case from
+        case to
+        case sizes
+    }
+
+    public init(action: Action, note: String? = nil, gap: Int? = nil, from: Int? = nil, to: Int? = nil, sizes: [Double]? = nil) {
+        self.action = action
+        self.note = note
+        self.gap = gap
+        self.from = from
+        self.to = to
+        self.sizes = Patch(sizes)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.action, forKey: .action)
+        try container.encodeIfPresent(self.note, forKey: .note)
+        try container.encodeIfPresent(self.gap, forKey: .gap)
+        try container.encodeIfPresent(self.from, forKey: .from)
+        try container.encodeIfPresent(self.to, forKey: .to)
+        try container.encodePatch(self.sizes, forKey: .sizes)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.action = try container.decode(Action.self, forKey: .action)
+        self.note = try container.decodeIfPresent(String.self, forKey: .note)
+        self.gap = try container.decodeIfPresent(Int.self, forKey: .gap)
+        self.from = try container.decodeIfPresent(Int.self, forKey: .from)
+        self.to = try container.decodeIfPresent(Int.self, forKey: .to)
+        self.sizes = try container.decodePatch([Double].self, forKey: .sizes)
     }
 }
 

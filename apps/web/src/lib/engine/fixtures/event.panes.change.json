@@ -1,0 +1,9 @@
+{
+  "kind": "event",
+  "name": "panes.change",
+  "description": "Joined notes changed on the page (revision 20): a note joins on the right.",
+  "data": {
+    "action": "join",
+    "note": "doc_00002"
+  }
+}

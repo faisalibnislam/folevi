@@ -758,7 +758,8 @@ final class AccountButton: NSButton {
         avatar.stringValue = String(n.first.map(String.init) ?? "F").uppercased()
         dot.isHidden = others == 0
         setAccessibilityLabel("\(n), \(d). Places, settings and account")
-        foleviTooltip = d.isEmpty ? n : "\(n) (\(d))"
+        // The name and detail show on the button: no tooltip to repeat them.
+        foleviTooltip = nil
     }
 
     override func updateTrackingAreas() {

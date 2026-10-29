@@ -96,7 +96,7 @@ export function threadOf(t: CommentThread): NoteToolsThread {
 }
 
 /** DocumentView in native chrome mode: keeps native told what the note's sidebar shows. */
-export function useNativeNoteTools(o: { documentId: string; title: string; trail: NoteToolsCrumb[]; readOnly: boolean }): void {
+export function useNativeNoteTools(o: { documentId: string; title: string; trail: NoteToolsCrumb[]; readOnly: boolean; /** Joined notes: only the one with focus sends its tools. */ primary?: boolean }): void {
   const on = typeof window !== "undefined" && nativeChrome() !== null;
   const { engine } = useAppState();
   const raw = useDocumentBlocks(engine, o.documentId);
@@ -135,8 +135,8 @@ export function useNativeNoteTools(o: { documentId: string; title: string; trail
 
   // Sent at most once a frame, only when it changed.
   useEffect(() => {
-    if (!on || !bridgeListening()) return;
+    if (!on || o.primary === false || !bridgeListening()) return;
     const frame = requestAnimationFrame(() => emitNoteEvent("note.tools", event));
     return () => cancelAnimationFrame(frame);
-  }, [on, event]);
+  }, [on, o.primary, event]);
 }

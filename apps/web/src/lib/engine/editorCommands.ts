@@ -20,6 +20,8 @@ const SPECIAL: readonly SpecialInsert[] = ["image", "unsplash", "file", "record"
 
 export interface NativeNoteOptions {
   documentId: string;
+  /** Joined notes: whether this is the one with focus (missing: a note on its own). */
+  primary?: boolean;
   editor: Editor | null;
   readOnly: boolean;
   title: string;
@@ -310,10 +312,12 @@ export function useNativeNote(o: NativeNoteOptions): void {
   latest.current = o;
   const on = typeof window !== "undefined" && nativeChrome() !== null;
   const { documentId, editor, ready, panel, readOnly } = o;
+  // Joined notes: only the one with focus takes the bars' commands and says it's ready (again, each time it gets focus).
+  const primary = o.primary ?? true;
 
   // The handle: commands always see the latest editor, panel and menu.
   useEffect(() => {
-    if (!on || !bridgeListening()) return;
+    if (!on || !primary || !bridgeListening()) return;
     const handle: NoteHandle = {
       noteId: documentId,
       run: (name, args) => runEditorCommand(latest.current, name, args),
@@ -321,14 +325,14 @@ export function useNativeNote(o: NativeNoteOptions): void {
       panel: () => latest.current.panel,
     };
     return registerNote(handle);
-  }, [on, documentId]);
+  }, [on, documentId, primary]);
 
   // note.ready: a frame after the note's first blocks are on screen.
   useEffect(() => {
-    if (!on || !ready) return;
+    if (!on || !ready || !primary) return;
     const frame = requestAnimationFrame(() => markNoteReady(documentId, latest.current.title));
     return () => cancelAnimationFrame(frame);
-  }, [on, ready, documentId]);
+  }, [on, ready, documentId, primary]);
 
   // editor.panel when a tool opens or closes.
   useEffect(() => {

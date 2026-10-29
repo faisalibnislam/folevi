@@ -282,6 +282,7 @@ public final class ContentViewController: NSViewController {
     private lazy var askAi = AiAskState(frame: model, feedback: models.feedback)
     private var askAiView: NSHostingView<AiAskOverlay>?
     private var observers: [Observer] = []
+    private var overviewView: NSView?
     private var shownRoute: FrameRoute?
     /// Where the content starts under the glass bar (the web's main: padding-top 56).
     static var barHeight: CGFloat { WebStyles.named("frame.main").light.padding.top }
@@ -333,6 +334,24 @@ public final class ContentViewController: NSViewController {
         askAiView = ask
         clip.addSubview(toastView)
         toasts = toastView
+        // A tab's picture under the pointer, and the Tab Overview, over everything in the card.
+        let card0 = WebStyles.named("frame.content").light
+        let previewLayer = PassThroughHostingView(rootView: TabPreviewLayer(model: model, barOrigin: CGPoint(x: WebStyles.named("frame.topbar").light.x - card0.x, y: WebStyles.named("frame.topbar").light.y - card0.y)))
+        previewLayer.safeAreaRegions = []
+        previewLayer.translatesAutoresizingMaskIntoConstraints = false
+        clip.addSubview(previewLayer)
+        let overview = NSHostingView(rootView: TabOverviewHost(model: model))
+        overview.safeAreaRegions = []
+        overview.translatesAutoresizingMaskIntoConstraints = false
+        overview.isHidden = true
+        clip.addSubview(overview)
+        overviewView = overview
+        for v in [previewLayer, overview] as [NSView] {
+            NSLayoutConstraint.activate([
+                v.topAnchor.constraint(equalTo: clip.topAnchor), v.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
+                v.leadingAnchor.constraint(equalTo: clip.leadingAnchor), v.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
+            ])
+        }
         let bar = WebStyles.named("frame.topbar").light
         let inset = bar.y - card.light.y
         NSLayoutConstraint.activate([
@@ -393,6 +412,12 @@ public final class ContentViewController: NSViewController {
             guard let self else { return }
             _ = self.model.folders.value
             self.model.refreshTitles()
+        })
+        observers.append(Observer { [weak self] in
+            guard let self else { return }
+            let shown = self.model.overviewShown
+            self.overviewView?.isHidden = !shown
+            if !shown, self.model.route.isNote { self.view.window?.makeFirstResponder(self.pageView) }
         })
     }
 
@@ -526,5 +551,20 @@ final class HoverButton: NSButton {
 
 extension String {
     var nonEmpty: String? { isEmpty ? nil : self }
+}
+#endif
+
+#if os(macOS)
+/// A hosting view that takes no clicks (the tab preview: the pointer stays with the strip under it).
+final class PassThroughHostingView<Content: View>: NSHostingView<Content> {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+/// The Tab Overview while it shows (drawn fresh each time, so it opens on the tab on screen with an empty search).
+struct TabOverviewHost: View {
+    let model: FrameModel
+    var body: some View {
+        if model.overviewShown { TabOverviewLayer(model: model) }
+    }
 }
 #endif

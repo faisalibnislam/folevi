@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useAppRouter } from "./router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { cameFromHistory } from "./historyNav";
+import { emitNoteEvent, nativePanes, onNativePanes, setNativePanes } from "@/lib/engine/noteHost";
 
 /**
  * An open note in the tab strip. A tab is a top-level page (`id`); its nested pages open inside it, and
@@ -382,6 +383,61 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   const value = useMemo(
     () => ({ tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm }),
     [tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm],
+  );
+  return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>;
+}
+
+const noop = () => undefined;
+/** The joined tab's id on a native app's page (native has its own; the page only needs one to address). */
+const NATIVE_JOIN = "join:native";
+
+/**
+ * The tabs as a native app's page sees them (native chrome mode): native draws and owns the tab strip, and tells the
+ * page with each note.show the note's joined panes and the other notes open in tabs. NotePanes draws them as on the
+ * web; what it changes (join, unjoin, a pane moved or taken out, the sizes) goes to native as `panes.change`, which
+ * changes its tab and shows the note again. Sizes and moves show at once meanwhile.
+ */
+export function NativeTabsProvider({ children }: { accountKey?: string; workspaceId?: string | null; children: ReactNode }) {
+  const { route } = useAppRouter();
+  const state = useSyncExternalStore(onNativePanes, nativePanes, nativePanes);
+  const docId = route.name === "doc" ? route.id : null;
+  const tabs = useMemo<DocTab[]>(() => {
+    const own: DocTab[] = !docId ? [] : state.panes ? [{ id: NATIVE_JOIN, title: "", panes: state.panes, at: docId, ...(state.sizes ? { sizes: state.sizes } : {}) }] : [{ id: docId, at: docId, title: "" }];
+    return [...own, ...state.tabs.filter((t) => t.id !== docId && !state.panes?.includes(t.id)).map((t) => ({ id: t.id, at: t.id, title: t.title }))];
+  }, [docId, state]);
+  const value = useMemo<TabsValue>(
+    () => ({
+      tabs,
+      view: null,
+      setView: noop,
+      homeHref: "/documents",
+      close: noop,
+      closeMany: noop,
+      move: noop,
+      setPinned: noop,
+      join: (_id, documentId) => emitNoteEvent("panes.change", { action: "join", note: documentId }),
+      unjoin: (_id, gap) => emitNoteEvent("panes.change", { action: "unjoin", gap }),
+      setSizes: (_id, sizes) => {
+        const cur = nativePanes();
+        setNativePanes({ ...cur, sizes: sizes ?? null });
+        emitNoteEvent("panes.change", { action: "sizes", sizes: sizes ?? null });
+      },
+      movePane: (_id, from, to) => {
+        const cur = nativePanes();
+        if (cur.panes && from !== to && cur.panes[from] && cur.panes[to]) {
+          const panes = [...cur.panes];
+          panes.splice(to, 0, ...panes.splice(from, 1));
+          const sizes = cur.sizes ? [...cur.sizes] : null;
+          if (sizes) sizes.splice(to, 0, ...sizes.splice(from, 1));
+          setNativePanes({ ...cur, panes, sizes });
+        }
+        emitNoteEvent("panes.change", { action: "move", from, to });
+      },
+      detachPane: (_id, page) => emitNoteEvent("panes.change", { action: "detach", note: page }),
+      place: noop,
+      warm: [],
+    }),
+    [tabs],
   );
   return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>;
 }

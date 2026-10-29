@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "de07d13e"
+        "schemaHash": "7346f387"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 19,
+        "revision": 20,
         "build": "dev",
-        "schemaHash": "de07d13e",
+        "schemaHash": "7346f387",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -115,6 +115,7 @@
           "gate.act",
           "note.deleteForever",
           "note.duplicate",
+          "note.picture",
           "note.copyTo",
           "note.reorder",
           "note.showInRecent",
@@ -275,7 +276,8 @@
           "editor.state",
           "editor.panel",
           "memory.relieved",
-          "note.tools"
+          "note.tools",
+          "panes.change"
         ],
         "gate": {
           "gate": null,

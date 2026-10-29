@@ -126,7 +126,7 @@ struct WebTasksScreen: View {
             HStack(spacing: 6) {
                 PlannerButton("Calendar", icon: .calendarDays, style: "header.calendar") { frame.open(.calendar(nil)) }
                 PlannerButton("Add task", icon: .plus, style: "header.add", hover: nil) { frame.showQuickAdd(in: tasks.window) }
-                    .foleviTooltip("Add task (⌘N)")
+                    .foleviTooltip("(⌘N)")
             }
         }
         .padding(h.padding.edgeInsets)

@@ -136,6 +136,7 @@ enum MenuModel {
                 page("file.close-tab", "Close Tab", k("w")),
                 sys("file.close-window", "Close Window", "performClose:", k("w", [.cmd, .shift])),
                 page("file.reopen-closed-tab", "Reopen Closed Tab", k("t", [.cmd, .shift])),
+                page("file.tab-overview", "Show All Tabs", k("\\", [.cmd, .shift]), window: true),
                 .separator,
                 page("file.import", "Import…"),
                 page("file.export", "Export…", k("e", [.cmd, .shift]), window: true),
@@ -231,7 +232,8 @@ enum MenuModel {
                 page("view.sidebar", "Hide Sidebar", k("\\"), window: true),
                 alt("view.sidebar", k("s", [.cmd, .ctrl]), .page("view.sidebar"), window: true),
                 page("view.inspector", "Show Inspector", k("i", [.cmd, .opt]), window: true),
-                page("view.focus", "Focus Mode", k("\\", [.cmd, .shift]), window: true),
+                // ⇧⌘\ is Show All Tabs (the web's and Safari's), so Focus Mode is ⌥⌘\.
+                page("view.focus", "Focus Mode", k("\\", [.cmd, .opt]), window: true),
                 .separator,
                 // ⌘1 and ⌘2 are the tabs'; in a note list the page takes them for the view first.
                 page("view.cards", "As Cards", window: true),

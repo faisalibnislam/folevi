@@ -113,6 +113,14 @@ public final class FrameModel {
     public private(set) var noteTools: [String: NoteToolsEvent] = [:]
     /// The note the Page View shows now (after note.show answered).
     public private(set) var shownNote: String?
+    /// What the page was last told of the shown note's tab.
+    private var shownPanes: ShownNote?
+    private struct ShownNote: Equatable {
+        var id: String
+        var panes: [String]?
+        var sizes: [Double]?
+        var tabs: [PaneTab]
+    }
     /// Which full-screen web gate the page shows (sign in, onboarding, lock), as `gate.changed` says.
     /// Nil while the engine is up; "loading" while it isn't attached (signed out, switching places, a lock).
     public private(set) var gate: String?
@@ -160,6 +168,9 @@ public final class FrameModel {
                 self.handle(event)
             }
         }
+        #if os(macOS)
+        pictures.frame = self
+        #endif
     }
 
     /// Ends the model's work (the window closed).
@@ -262,6 +273,60 @@ public final class FrameModel {
         routeChanged()
     }
 
+    public func closeTabsToTheLeft(of id: String) {
+        if let r = tabs.closeToTheLeft(of: id) { history.push(r) }
+        routeChanged()
+    }
+
+    public func closeAllTabs() {
+        if let r = tabs.closeAll() { history.push(r) }
+        routeChanged()
+    }
+
+    public func setTabPinned(_ id: String, _ pinned: Bool) {
+        tabs.setPinned(id, pinned)
+        host?.frameStateChanged()
+    }
+
+    /// Whether the Tab Overview (every tab as a picture) is showing.
+    public var overviewShown = false {
+        didSet { if overviewShown { preview.hide() } }
+    }
+    /// The tab picture under the pointer in the strip, and the notes' pictures.
+    #if os(macOS)
+    public let preview = TabPreviewState()
+    public let pictures = TabPictureStore()
+    #endif
+
+    // MARK: joined notes
+
+    /// Joins `note` to the tab `id`, on its right, and shows it there.
+    public func joinNote(_ note: String, to id: String) {
+        guard let r = tabs.join(id, note: note) else { return }
+        history.push(r)
+        routeChanged()
+    }
+
+    public func unjoinTab(_ id: String, gap: Int? = nil) {
+        if let gap { tabs.unjoin(id, gap: gap) } else { tabs.unjoinAll(id) }
+        routeChanged()
+    }
+
+    public func movePane(in id: String, from: Int, to: Int) {
+        tabs.movePane(id, from: from, to: to)
+        routeChanged()
+    }
+
+    public func detachPane(_ note: String, from id: String) {
+        if let r = tabs.detachPane(id, note: note) { history.push(r) }
+        routeChanged()
+    }
+
+    public func setPaneSizes(_ sizes: [Double]?, in id: String) {
+        tabs.setSizes(id, sizes)
+        host?.frameStateChanged()
+    }
+
     public func reopenClosedTab() {
         guard let r = tabs.reopenClosed() else { return }
         history.push(r)
@@ -287,12 +352,19 @@ public final class FrameModel {
         if let id = route.noteId {
             closeNoteTask?.cancel()
             closeNoteTask = nil
-            guard shownNote != id else { return }
+            // The note's tab as the page draws it: its joined notes and their sizes, and the other notes open in tabs
+            // (the Join picker's list). Sent again whenever any of it changes.
+            let tab = tabs.active
+            let others = tabs.tabs.filter { !$0.isHome && !$0.isJoined && $0.route.noteId != nil && $0.id != tab.id }
+                .prefix(50).map { PaneTab(id: $0.route.noteId!, title: tabs.label($0)) }
+            let shown = ShownNote(id: id, panes: tab.isJoined ? tab.panes : nil, sizes: tab.isJoined ? tab.sizes : nil, tabs: Array(others))
+            guard shownNote != id || shownPanes != shown else { return }
             shownNote = id
+            shownPanes = shown
             Task { [weak self] in
                 guard let self else { return }
                 do {
-                    _ = try await self.client.editor(.noteShow(id: id))
+                    _ = try await self.client.editor(.noteShow(id: id, panes: shown.panes, sizes: shown.sizes, tabs: shown.tabs.isEmpty ? nil : shown.tabs))
                     if let meta = try? await self.client.query(.noteMeta(id: id)) { self.took(meta) }
                 } catch let f as EngineFailure {
                     if self.shownNote == id { self.shownNote = nil }
@@ -327,7 +399,7 @@ public final class FrameModel {
 
     /// Keeps a `notes.meta` view on the note tabs (one subscription for all of them, up to 200).
     private func watchTabTitles() {
-        let ids = Array(tabs.tabs.compactMap { $0.route.noteId }.prefix(200))
+        let ids = Array(tabs.tabs.flatMap { $0.panes ?? [$0.route.noteId].compactMap { $0 } }.prefix(200))
         guard ids != tabMetaIds else { return }
         tabMetaIds = ids
         tabMeta?.cancel()
@@ -384,6 +456,8 @@ public final class FrameModel {
             editorPanel = e.panel
         case .noteTools(let e):
             if noteTools[e.noteId] != e { noteTools[e.noteId] = e }
+        case .panesChange(let e):
+            panesChanged(e)
         case .navigateRequest(let e):
             if e.external, let url = URL(string: e.route) {
                 host?.frameOpenExternal(url)
@@ -563,6 +637,21 @@ public final class FrameModel {
 
     public func runCatchUp() {
         perform { _ = try await self.client.command(.catchUpRun()) }
+    }
+
+    /// Joined notes changed on the page (NotePanes: the Join picker, Unjoin, a pane's bar, a resize).
+    private func panesChanged(_ e: PanesChangeEvent) {
+        let id = tabs.activeID
+        switch e.action {
+        case .join: if let n = e.note { joinNote(n, to: id) }
+        case .unjoin: if let g = e.gap { unjoinTab(id, gap: g) }
+        case .move: if let f = e.from, let t = e.to { movePane(in: id, from: f, to: t) }
+        case .detach: if let n = e.note { detachPane(n, from: id) }
+        case .sizes:
+            if case .set(let v) = e.sizes { setPaneSizes(v, in: id) } else { setPaneSizes(nil, in: id) }
+            // (The page shows them already; this keeps what it was told in step, so nothing is sent back.)
+            shownPanes?.sizes = tabs.active.isJoined ? tabs.active.sizes : nil
+        }
     }
 
     // MARK: the note on screen

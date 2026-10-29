@@ -7,7 +7,8 @@ import { usePane } from "@/lib/app/panes";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
-import { TabsProvider, useTabs, useViewTab } from "@/lib/app/tabs";
+import { NativeTabsProvider, TabsProvider, useTabs, useViewTab } from "@/lib/app/tabs";
+import { NotePanes } from "./NotePanes";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { useDocumentTitle } from "@/lib/hooks/useTitle";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
@@ -257,7 +258,12 @@ function NativeContentShell() {
   );
   const content =
     route.name === "doc" ? (
-      <NativeDocumentView key={route.id} documentId={route.id} />
+      // The Mac: a note, or notes joined side by side, as on the web (the iPhone shows one note).
+      macFrame ? (
+        <NotePanes documentId={route.id} render={(id) => <NativeDocumentView key={id} documentId={id} />} />
+      ) : (
+        <NativeDocumentView key={route.id} documentId={route.id} />
+      )
     ) : route.name === "review" ? (
       <NativeReviewView />
     ) : route.name === "graph" ? (
@@ -265,8 +271,9 @@ function NativeContentShell() {
     ) : route.name === "settings" && WEB_SETTINGS_SECTIONS.has(route.section) ? (
       <NativeSettingsView section={route.section} />
     ) : null;
+  const Tabs = macFrame ? NativeTabsProvider : TabsProvider;
   return (
-    <TabsProvider accountKey={profile.id} workspaceId={context.kind === "workspace" ? context.workspaceId : null}>
+    <Tabs accountKey={profile.id} workspaceId={context.kind === "workspace" ? context.workspaceId : null}>
       <ShellContext.Provider value={value}>
         <div data-native-content="" className="ui-canvas flex h-dvh min-h-0 flex-col overflow-hidden text-ink">
           <Suspense fallback={null}>{content}</Suspense>
@@ -288,7 +295,7 @@ function NativeContentShell() {
         <DeviceCopyRunner />
         <OutboxRefusals />
       </ShellContext.Provider>
-    </TabsProvider>
+    </Tabs>
   );
 }
 
@@ -632,8 +639,11 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   const pane = usePane();
   if (nativeChrome()) {
     // Native chrome mode: the native app draws the bars; the view keeps clear of them by the insets it was given.
+    // Joined notes keep their own bars (the Mac app: each note's, to tell which has focus and to rearrange them).
+    const nativeJoined = route.name === "doc" ? pane.joined : undefined;
     return (
       <div className="relative flex min-h-0 flex-1 flex-col pb-[var(--native-inset-bottom,0px)] pt-[var(--native-inset-top,0px)]">
+        {nativeJoined ? <JoinedBar joined={nativeJoined} primary={pane.primary} title={title} tabTitle={tabTitle} sync={null} actions={actions} /> : null}
         <main id="main" tabIndex={-1} className={`min-h-0 flex-1 outline-none ${route.name === "doc" ? "overflow-hidden" : "overflow-y-auto"}`}>
           {children}
         </main>
@@ -671,39 +681,10 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   const showTitle = route.name === "doc";
   const drawerToggle = !sidebarOpen && drawerMode;
   const visible = Boolean(subtitle || leading || actions || sync || drawerToggle || (showTitle && title));
-  // Joined notes: each note's top row is a bar to tell which has focus (raised, like the open tab) and to
-  // rearrange them. It lines up with the note's panel under it (inset 4, like the panel) with 8 below: drag it, or ‹ › to move one place; × takes the note out into its own tab.
+  // Joined notes: each note's top row is its JoinedBar.
   const joined = showTitle ? pane.joined : undefined;
-  const PANE_BTN = "grid h-7 w-7 flex-none place-items-center rounded-control text-faint outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus disabled:pointer-events-none disabled:opacity-30";
   const bar = joined ? (
-    <header
-      onPointerDown={joined.dragStart}
-      title="Drag to rearrange"
-      className={`mx-1 mb-2 flex h-10 flex-none select-none items-center gap-1 rounded-panel px-1 transition-[background-color,box-shadow,color] duration-150 ${joined.dragging ? "cursor-grabbing" : "cursor-grab"} ${
-        pane.primary
-          ? "bg-[var(--color-surface-raised)] text-heading shadow-[0_1px_3px_rgb(0_0_0/0.03),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_5%,transparent)]"
-          : "bg-[var(--glass-hover)] text-muted"
-      }`}
-    >
-      <button type="button" aria-label="Move this note left" title="Move left" disabled={joined.index === 0} onClick={() => joined.move(joined.index - 1)} className={PANE_BTN}>
-        <ChevronLeft size={14} aria-hidden />
-      </button>
-      <GripVertical size={14} aria-hidden className="flex-none text-faint" />
-      <div className={`flex min-w-0 flex-1 items-baseline gap-2 truncate text-subheadline ${pane.primary ? "" : "opacity-80"}`}>
-        {/* The page's breadcrumb when it has one; with the sidebar open it has none, so the note's name. */}
-        <div className="min-w-0 truncate">{title ?? <span className="px-1 font-semibold">{tabTitle}</span>}</div>
-      </div>
-      <div className="flex flex-none items-center gap-1.5">
-        {sync}
-        {actions}
-      </div>
-      <button type="button" aria-label="Move this note right" title="Move right" disabled={joined.index === joined.count - 1} onClick={() => joined.move(joined.index + 1)} className={PANE_BTN}>
-        <ChevronRight size={14} aria-hidden />
-      </button>
-      <button type="button" aria-label="Take this note out into its own tab" title="Take out into its own tab" onClick={joined.remove} className={PANE_BTN}>
-        <X size={13} aria-hidden />
-      </button>
-    </header>
+    <JoinedBar joined={joined} primary={pane.primary} title={title} tabTitle={tabTitle} sync={sync} actions={actions} />
   ) : !visible ? (
     title ? <div className="sr-only">{title}</div> : null
   ) : (
@@ -744,6 +725,45 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
       </main>
       {overlay}
     </div>
+  );
+}
+
+/**
+ * Joined notes: each note's top row is a bar to tell which has focus (raised, like the open tab) and to rearrange
+ * them. It lines up with the note's panel under it (inset 4, like the panel) with 8 below: drag it, or ‹ › to move one
+ * place; × takes the note out into its own tab.
+ */
+function JoinedBar({ joined, primary, title, tabTitle, sync, actions }: { joined: NonNullable<ReturnType<typeof usePane>["joined"]>; primary: boolean; title: ReactNode; tabTitle?: string; sync: ReactNode; actions?: ReactNode }) {
+  const PANE_BTN = "grid h-7 w-7 flex-none place-items-center rounded-control text-faint outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus disabled:pointer-events-none disabled:opacity-30";
+  return (
+    <header
+      onPointerDown={joined.dragStart}
+      title="Drag to rearrange"
+      className={`mx-1 mb-2 flex h-10 flex-none select-none items-center gap-1 rounded-panel px-1 transition-[background-color,box-shadow,color] duration-150 ${joined.dragging ? "cursor-grabbing" : "cursor-grab"} ${
+        primary
+          ? "bg-[var(--color-surface-raised)] text-heading shadow-[0_1px_3px_rgb(0_0_0/0.03),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_5%,transparent)]"
+          : "bg-[var(--glass-hover)] text-muted"
+      }`}
+    >
+      <button type="button" aria-label="Move this note left" title="Move left" disabled={joined.index === 0} onClick={() => joined.move(joined.index - 1)} className={PANE_BTN}>
+        <ChevronLeft size={14} aria-hidden />
+      </button>
+      <GripVertical size={14} aria-hidden className="flex-none text-faint" />
+      <div className={`flex min-w-0 flex-1 items-baseline gap-2 truncate text-subheadline ${primary ? "" : "opacity-80"}`}>
+        {/* The page's breadcrumb when it has one; with the sidebar open it has none, so the note's name. */}
+        <div className="min-w-0 truncate">{title ?? <span className="px-1 font-semibold">{tabTitle}</span>}</div>
+      </div>
+      <div className="flex flex-none items-center gap-1.5">
+        {sync}
+        {actions}
+      </div>
+      <button type="button" aria-label="Move this note right" title="Move right" disabled={joined.index === joined.count - 1} onClick={() => joined.move(joined.index + 1)} className={PANE_BTN}>
+        <ChevronRight size={14} aria-hidden />
+      </button>
+      <button type="button" aria-label="Take this note out into its own tab" title="Take out into its own tab" onClick={joined.remove} className={PANE_BTN}>
+        <X size={13} aria-hidden />
+      </button>
+    </header>
   );
 }
 

@@ -121,7 +121,8 @@ struct AiLauncher: View {
         .buttonStyle(.plain)
         .onHover { over = $0 }
         .animation(.easeOut(duration: 0.2), value: over)
-        .foleviTooltip(open ? "Close Foli AI" : "Ask Foli AI (⌘J)")
+        // It says "Ask Foli AI": the tooltip is its shortcut alone (or what a click does while it is open).
+        .foleviTooltip(open ? "Close Foli AI" : "(⌘J)")
         .accessibilityLabel(open ? "Close Foli AI" : "Ask Foli AI")
         .accessibilityValue(open ? "Open" : "Closed")
     }

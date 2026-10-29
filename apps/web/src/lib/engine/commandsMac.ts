@@ -14,7 +14,9 @@ import type { CommandDef } from "./commands";
 import { gateEvent, pushGate } from "./gates";
 import { moveDestinations, pickArgs } from "./viewsMac";
 import { BridgeError, bool, id, ids, oneOf, only, optionalId, text } from "./validate";
-import type { CommandName, PlaceMoveResult } from "./protocol";
+import type { CommandName, NotePictureResult, PlaceMoveResult } from "./protocol";
+import type { WireBlock } from "@folevi/editor-schema";
+import { notePictureHtml } from "@/lib/app/notePicture";
 
 type NotificationData = { id: string; kind: string; documentId: string | null; threadId: string | null; blockId: string | null }[];
 
@@ -42,6 +44,23 @@ function bytesOf(base64: string): Uint8Array {
 }
 
 export const MAC_COMMANDS = {
+  // A tab's picture (the strip's preview, the Tab Overview): this device's copy of the note at once, else the
+  // server's (given up after 3 s: the picture shows its placeholder meanwhile).
+  "note.picture": {
+    async run(deps, args): Promise<NotePictureResult> {
+      only(args, ["id", "title"]);
+      const noteId = id(args, "id");
+      const title = text(args, "title", { max: 500 }) as string;
+      let blocks: WireBlock[] = deps.app.engine?.documentBlocks(noteId) ?? [];
+      if (!blocks.length) {
+        const got = (await Promise.race([deps.client.query(api.blocks.list, { documentId: noteId }) as Promise<{ blocks: WireBlock[] } | null>, new Promise<null>((r) => setTimeout(() => r(null), 3000))]).catch(() => null)) as { blocks: WireBlock[] } | null;
+        if (!got) return { html: null };
+        blocks = got.blocks;
+      }
+      return { html: notePictureHtml(blocks, title) };
+    },
+  },
+
   "notification.act": {
     async run(deps, args) {
       only(args, ["id", "action", "text", "thread"]);

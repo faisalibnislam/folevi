@@ -803,6 +803,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const duplicateNote = useMutation(api.documents.duplicate);
   useNativeNote({
     documentId,
+    primary,
     editor,
     readOnly,
     title: summary?.title || localTitle || "",
@@ -848,7 +849,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
     },
   });
   // ...and what the native sidebar shows.
-  useNativeNoteTools({ documentId, title: summary?.title || localTitle || "", trail: trail.map((c) => ({ href: c.href, label: c.label })), readOnly });
+  useNativeNoteTools({ documentId, title: summary?.title || localTitle || "", trail: trail.map((c) => ({ href: c.href, label: c.label })), readOnly, primary });
 
   if (meta === null && !pendingCreate && !waitingRow && (server === null || server === undefined) && (online || cacheLoaded)) {
     if (meta === null && server === null) {

@@ -2,18 +2,11 @@
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "convex/react";
-import { blocksToHtml, type WireBlock } from "@folevi/editor-schema";
+import type { WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import type { DocTab } from "@/lib/app/tabs";
-
-/** How wide the page is laid out before it's scaled down (a note's reading width plus margins). */
-const PAGE_W = 600;
-/** At most this many blocks are drawn: a preview shows a page's top, not all of it. */
-const PREVIEW_BLOCKS = 80;
-
-/** The page laid out small: no scroll bars, no pointer, tighter margins than an export. */
-const MINI_CSS = `html,body{overflow:hidden!important;pointer-events:none;background:transparent!important}main{max-width:none!important;margin:22px 30px!important;padding:0!important}h1{margin-top:0;font-size:1.9rem}`;
+import { notePictureHtml, PICTURE_PAGE_W as PAGE_W } from "@/lib/app/notePicture";
 
 /** A note's blocks: this device's copy at once, else the server's. */
 function useNoteBlocksForPreview(documentId: string): WireBlock[] | null {
@@ -33,8 +26,7 @@ export function MiniPage({ documentId, title, className = "" }: { documentId: st
   const blocks = useNoteBlocksForPreview(documentId);
   const html = useMemo(() => {
     if (!blocks) return null;
-    const top = blocks.length > PREVIEW_BLOCKS ? blocks.slice(0, PREVIEW_BLOCKS) : blocks;
-    return blocksToHtml(top, { title: title || "Untitled" }).replace("</style>", `${MINI_CSS}</style>`);
+    return notePictureHtml(blocks, title);
   }, [blocks, title]);
   // Scaled to the box's width (measured before it's painted, so it never shows unscaled or empty first).
   const box = useRef<HTMLDivElement>(null);

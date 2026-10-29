@@ -55,7 +55,7 @@ const SKIP = new Set([
 ]);
 const MAPS = { views: "ViewMap", lists: "ListViewMap", commands: "CommandMap", editor: "EditorCommandMap", events: "EventMap" };
 /** Property names whose numbers are Double rather than Int. */
-const NUMBER_OVERRIDES = [/At$/, /^at$/, /^top$/, /^bottom$/, /^editorZooms?$/, /^[xy]$/];
+const NUMBER_OVERRIDES = [/At$/, /^at$/, /^top$/, /^bottom$/, /^editorZooms?$/, /^[xy]$/, /^sizes$/];
 const SWIFT_KEYWORDS = new Set(
   "associatedtype class deinit enum extension fileprivate func import init inout internal let open operator private precedencegroup protocol public rethrows static struct subscript typealias var break case catch continue default defer do else fallthrough for guard if in repeat return throw switch where while as false is nil self Self super throws true try Any Type".split(" "),
 );
@@ -155,7 +155,7 @@ function mapType(node, ctx) {
     case ts.SyntaxKind.BooleanKeyword:
       return { type: "Bool" };
     case ts.SyntaxKind.NumberKeyword:
-      return { type: NUMBER_OVERRIDES.some((r) => r.test(ctx.prop ?? "")) ? "Double" : "Int" };
+      return { type: ctx.double || NUMBER_OVERRIDES.some((r) => r.test(ctx.prop ?? "")) ? "Double" : "Int" };
     case ts.SyntaxKind.UnknownKeyword:
     case ts.SyntaxKind.AnyKeyword:
       return { type: "JSONValue" };
@@ -168,7 +168,8 @@ function mapType(node, ctx) {
     if (ts.isNumericLiteral(n.literal)) return { type: "Int" };
   }
   if (ts.isArrayTypeNode(n)) {
-    const inner = mapType(n.elementType, { ...ctx, prop: singular(ctx.prop) });
+    // (A list named by an override, like `sizes`, holds Doubles whatever its singular is called.)
+    const inner = mapType(n.elementType, { ...ctx, prop: singular(ctx.prop), double: NUMBER_OVERRIDES.some((r) => r.test(ctx.prop ?? "")) });
     return { type: `[${inner.type}${inner.optional ? "?" : ""}]`, nestedName: inner.nestedName };
   }
   if (ts.isTypeOperatorNode(n) && n.operator === ts.SyntaxKind.ReadonlyKeyword) return mapType(n.type, ctx);

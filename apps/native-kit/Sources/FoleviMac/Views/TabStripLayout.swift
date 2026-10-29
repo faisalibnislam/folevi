@@ -21,16 +21,68 @@ public enum TabStripMath {
         public var content: CGFloat
     }
 
-    /// `fixed[i]` is a tab's own width (Home, the open tab) or nil for one that shrinks; `available` is the room
+    /// A tab that shares the room: it starts at `basis` and gives way, in proportion to its basis (CSS's flex-shrink
+    /// 1), down to `min`.
+    public struct Flex: Equatable, Sendable {
+        public var basis: CGFloat
+        public var min: CGFloat
+        public init(basis: CGFloat, min: CGFloat) {
+            self.basis = basis
+            self.min = min
+        }
+        /// A note's or a view's tab: `min-w-[172px] flex-[0_1_284px]`.
+        public static let tab = Flex(basis: maxTab, min: minTab)
+        /// Joined notes' tab, as wide as two: `min-w-[240px] flex-[0_1_460px]`.
+        public static let joined = Flex(basis: 460, min: 240)
+    }
+
+    /// `fixed[i]` is a tab's own width (Home, a pinned tab) or nil for one that shrinks; `available` is the room
     /// the bar leaves the list (nil: as much as it wants).
     public static func sizes(fixed: [CGFloat?], gap: CGFloat, padding: CGFloat, available: CGFloat?) -> Sizes {
-        let flex = fixed.filter { $0 == nil }.count
-        let gaps = gap * CGFloat(max(0, fixed.count - 1))
-        let own = fixed.compactMap { $0 }.reduce(0, +)
-        let natural = padding + own + CGFloat(flex) * maxTab + gaps
+        sizes(items: fixed.map { $0.map { .fixed($0) } ?? .flex(.tab) }, gap: gap, padding: padding, available: available)
+    }
+
+    public enum Item: Equatable, Sendable {
+        case fixed(CGFloat)
+        case flex(Flex)
+    }
+
+    public static func sizes(items: [Item], gap: CGFloat, padding: CGFloat, available: CGFloat?) -> Sizes {
+        let gaps = gap * CGFloat(max(0, items.count - 1))
+        var widths: [CGFloat] = items.map {
+            switch $0 {
+            case .fixed(let w): return w
+            case .flex(let f): return f.basis
+            }
+        }
+        let natural = padding + widths.reduce(0, +) + gaps
         let visible = min(natural, max(0, available ?? natural))
-        let each = flex == 0 ? 0 : min(maxTab, max(minTab, maxTab - (natural - visible) / CGFloat(flex)))
-        let widths = fixed.map { $0 ?? each }
+        // Shrink as CSS does: the shortfall shared by basis among the tabs not yet at their minimum, again until
+        // none is left or every tab is at its minimum.
+        var frozen = Set(items.indices.filter { if case .fixed = items[$0] { return true } else { return false } })
+        var short = natural - visible
+        while short > 0.01 {
+            let open = items.indices.filter { !frozen.contains($0) }
+            let basis = open.reduce(CGFloat(0)) { sum, i in if case .flex(let f) = items[i] { return sum + f.basis }; return sum }
+            guard basis > 0 else { break }
+            var taken: CGFloat = 0
+            var hit = false
+            for i in open {
+                guard case .flex(let f) = items[i] else { continue }
+                let want = widths[i] - short * f.basis / basis
+                if want <= f.min {
+                    taken += widths[i] - f.min
+                    widths[i] = f.min
+                    frozen.insert(i)
+                    hit = true
+                }
+            }
+            if !hit {
+                for i in open { if case .flex(let f) = items[i] { widths[i] -= short * f.basis / basis } }
+                taken = short
+            }
+            short -= taken
+        }
         return Sizes(widths: widths, visible: visible, content: padding + widths.reduce(0, +) + gaps)
     }
 
@@ -60,8 +112,9 @@ public enum TabStripMath {
 }
 
 /// A tab's part in the layout.
-/// `own`: the tab's own width (Home); `other`: the tabs that share the room, 172 to 284 each.
-enum TabRole { case own, other }
+/// `own`: the tab's own width (Home, a pinned tab); `other`: the tabs that share the room, 172 to 284 each;
+/// `joined`: joined notes' tab, 240 to 460.
+enum TabRole { case own, other, joined }
 struct TabRoleKey: LayoutValueKey { static let defaultValue = TabRole.other }
 /// The tab on screen, which the strip keeps in view (none while a pinned Home, outside the list, is open).
 struct TabActiveKey: LayoutValueKey { static let defaultValue = false }
@@ -101,13 +154,14 @@ struct TabRow: Layout {
     }
 
     private func sizes(_ subviews: Subviews, _ available: CGFloat?) -> TabStripMath.Sizes {
-        let fixed: [CGFloat?] = subviews.map { s in
+        let items: [TabStripMath.Item] = subviews.map { s in
             switch s[TabRoleKey.self] {
-            case .own: return s.sizeThatFits(.unspecified).width
-            case .other: return nil
+            case .own: return .fixed(s.sizeThatFits(.unspecified).width)
+            case .other: return .flex(.tab)
+            case .joined: return .flex(.joined)
             }
         }
-        return TabStripMath.sizes(fixed: fixed, gap: gap, padding: padding.leading + padding.trailing, available: available)
+        return TabStripMath.sizes(items: items, gap: gap, padding: padding.leading + padding.trailing, available: available)
     }
 
     private func height(_ subviews: Subviews) -> CGFloat {

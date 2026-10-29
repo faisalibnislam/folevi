@@ -8,11 +8,11 @@ import { Emitter, toEngineError } from "./live";
 import { clampWindow, windowDiff, type ListState } from "./diff";
 import { followsSpace, parseViewArgs, type ListViewDef, type LiveList, type LiveValue, type ValueViewDef } from "./views";
 import { COMMANDS, LIST_VIEWS, VALUE_VIEWS } from "./registry";
-import { activeNote, isNoteReady, onNoteHost, resetNoteReady, setNoteEmitter } from "./noteHost";
+import { activeNote, isNoteReady, onNoteHost, resetNoteReady, setNativePanes, setNoteEmitter, type NativePanes } from "./noteHost";
 import { setToastSink } from "./toasts";
 import { actOnGate, currentGate, onGate } from "./gates";
 import { routeWindowOpen } from "./navigation";
-import { BridgeError, argsOf, bool, id as idArg, oneOf, only } from "./validate";
+import { BridgeError, argsOf, bool, id as idArg, ids as idsArg, invalid, oneOf, only } from "./validate";
 import {
   BIG_PAYLOAD_BYTES,
   COMMAND_NAMES,
@@ -558,12 +558,14 @@ export class BridgeHost {
     switch (msg.name) {
       case "note.prepare":
       case "note.show": {
-        only(args, msg.name === "note.show" ? ["id", "focus"] : ["id"]);
+        only(args, msg.name === "note.show" ? ["id", "focus", "panes", "sizes", "tabs"] : ["id"]);
         const noteId = idArg(args, "id");
         const focus = msg.name === "note.show" ? bool(args, "focus", false) : false;
+        if (msg.name === "note.show") setNativePanes(paneArgs(args, noteId));
         const deps = this.ctx.deps();
         const note = activeNote();
         if (note?.noteId !== noteId) {
+          // (A joined note already on the page says it's ready again once it has focus.)
           resetNoteReady(noteId);
           deps.navigate(`/d/${encodeURIComponent(noteId)}${focus ? "?new=1" : ""}`);
         } else if (focus) {
@@ -654,4 +656,27 @@ export function uninstallBridgeHost(): void {
   installed?.dispose();
   installed = null;
   delete (globalThis as unknown as { __foleviEngine?: unknown }).__foleviEngine;
+}
+
+/** note.show's joined panes (revision 20), checked: 2 or 3 different notes, the shown one among them. */
+export function paneArgs(args: Record<string, unknown>, noteId: string): NativePanes {
+  const panes = args.panes === undefined ? null : idsArg(args, "panes", 3);
+  if (panes && (panes.length < 2 || new Set(panes).size !== panes.length || !panes.includes(noteId))) throw invalid("panes must be 2 or 3 different notes, the shown one among them.");
+  let sizes: number[] | null = null;
+  if (args.sizes !== undefined) {
+    const v = args.sizes;
+    if (!panes || !Array.isArray(v) || v.length !== panes.length || !v.every((x) => typeof x === "number" && x > 0 && x < 1)) throw invalid("sizes must be a share for each pane.");
+    sizes = v as number[];
+  }
+  const tabs: NativePanes["tabs"] = [];
+  if (args.tabs !== undefined) {
+    const v = args.tabs;
+    if (!Array.isArray(v) || v.length > 50) throw invalid("tabs must be a list of at most 50.");
+    for (const t of v) {
+      if (!t || typeof t !== "object" || typeof (t as { id?: unknown }).id !== "string" || typeof (t as { title?: unknown }).title !== "string") throw invalid("tabs must be ids and titles.");
+      const { id, title } = t as { id: string; title: string };
+      tabs.push({ id: idArg({ id }, "id"), title: title.slice(0, 500) });
+    }
+  }
+  return { panes, sizes, tabs };
 }

@@ -74,7 +74,7 @@ final class NativeFrameTests: XCTestCase {
 
     func testEveryFrameCommandIsOnTheMenuBar() {
         let page = Set(MenuModel.pageCommands(debug: true))
-        let handled = ["file.new-note", "file.new-folder", "file.new-tab", "file.open-quickly", "file.close-tab", "file.reopen-closed-tab", "file.export", "note.star", "note.archive", "note.move", "note.duplicate", "note.history", "note.trash", "note.copy-link", "format.bold", "format.italic", "format.heading-1", "format.checklist", "format.style", "edit.find", "view.sidebar", "view.inspector", "go.back", "go.forward", "go.home", "go.today", "go.calendar", "go.ask-ai", "go.next-tab", "go.previous-tab", "go.tab-9", "help.help"]
+        let handled = ["file.new-note", "file.new-folder", "file.new-tab", "file.open-quickly", "file.close-tab", "file.reopen-closed-tab", "file.tab-overview", "file.export", "note.star", "note.archive", "note.move", "note.duplicate", "note.history", "note.trash", "note.copy-link", "format.bold", "format.italic", "format.heading-1", "format.checklist", "format.style", "edit.find", "view.sidebar", "view.inspector", "go.back", "go.forward", "go.home", "go.today", "go.calendar", "go.ask-ai", "go.next-tab", "go.previous-tab", "go.tab-9", "help.help"]
         for id in handled { XCTAssertTrue(page.contains(id), id) }
     }
 

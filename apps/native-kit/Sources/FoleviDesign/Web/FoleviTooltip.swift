@@ -50,9 +50,12 @@ public struct FoleviTooltipChip: View {
         let tint = scheme == .dark ? RGBA(40, 40, 44, 0.86) : RGBA(255, 255, 255, 0.82)
         let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
         HStack(spacing: 4) {
-            Text(text).webText(WebTextStyle(size: 12, leading: 16)).foregroundStyle(ink)
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
+            // A labelled button's tooltip is its shortcut alone ("(⌘⌥N)"): the words are on the button already.
+            if !text.isEmpty {
+                Text(text).webText(WebTextStyle(size: 12, leading: 16)).foregroundStyle(ink)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if let shortcut { Keycap(shortcut) }
         }
         .padding(.vertical, 3)

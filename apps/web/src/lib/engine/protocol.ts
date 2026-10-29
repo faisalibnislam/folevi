@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 19;
+export const CONTRACT_REVISION = 20;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -315,6 +315,18 @@ export type EmptyArgs = Record<string, never>;
 
 export interface NoteIdArgs {
   id: string;
+}
+
+export interface NotePictureArgs {
+  id: string;
+  /** The note's title as the tab shows it (the picture's heading). */
+  title: string;
+}
+
+/** A note drawn small for a tab's picture (the web's TabPreview): a page of HTML with nothing that runs. */
+export interface NotePictureResult {
+  /** Null while the note's blocks aren't on this device and the server hasn't answered. */
+  html: string | null;
 }
 
 /** Whether a row's changes have reached Folevi (section 3.9). */
@@ -830,6 +842,21 @@ export interface NoteShowArgs {
   id: string;
   /** Focus the editor (a new note opens ready to type in): an untitled, empty note in its title (revision 11, R5.4). */
   focus?: boolean;
+  /**
+   * Revision 20: the notes joined side by side in the note's tab, left to right (`id` among them, the one with
+   * focus); missing for a note on its own. The page draws them as the web does (NotePanes).
+   */
+  panes?: string[];
+  /** Each pane's share of the width (adding up to 1); missing is equal. */
+  sizes?: number[];
+  /** The other notes open in tabs, for the Join picker (open tabs first, then search). */
+  tabs?: PaneTab[];
+}
+
+/** A note open in a tab of its own (the Join picker lists them first). */
+export interface PaneTab {
+  id: string;
+  title: string;
 }
 
 export interface FormatArgs {
@@ -1051,6 +1078,21 @@ export interface NavigateRequestEvent {
   external: boolean;
   /** Revision 3: asked to open in a new tab or window (a modifier click, "Open in new tab"). */
   newTab: boolean;
+}
+
+/**
+ * Revision 20: joined notes changed on the page (the Join picker, the Unjoin button, a pane's bar, a resize). Native
+ * owns the tabs: it changes its tab and shows the note again with the new panes.
+ */
+export interface PanesChangeEvent {
+  /** "join": `note` joins on the right; "unjoin": split at the gap after pane `gap`; "move": pane `from` to `to`;
+   * "detach": `note` out into its own tab; "sizes": the panes' shares (null: equal). */
+  action: "join" | "unjoin" | "move" | "detach" | "sizes";
+  note?: string;
+  gap?: number;
+  from?: number;
+  to?: number;
+  sizes?: number[] | null;
 }
 
 export interface NoteReadyEvent {
@@ -3593,6 +3635,7 @@ export interface CommandMap {
   "gate.act": { args: GateActArgs; result: OkResult };
   "note.deleteForever": { args: NoteIdsArgs; result: BulkResult };
   "note.duplicate": { args: NoteIdArgs; result: NoteCreateResult };
+  "note.picture": { args: NotePictureArgs; result: NotePictureResult };
   "note.copyTo": { args: NoteCopyToArgs; result: BulkResult };
   "note.reorder": { args: NoteReorderArgs; result: OkResult };
   "note.showInRecent": { args: NoteIdsArgs; result: HiddenResult };
@@ -3750,6 +3793,7 @@ export interface EventMap {
   "place.changed": PlaceChangedEvent;
   toast: ToastEvent;
   "navigate.request": NavigateRequestEvent;
+  "panes.change": PanesChangeEvent;
   "note.ready": NoteReadyEvent;
   "note.meta": NoteMeta;
   "editor.state": EditorStateEvent;
@@ -3797,6 +3841,7 @@ const commandNames = [
   "gate.act",
   "note.deleteForever",
   "note.duplicate",
+  "note.picture",
   "note.copyTo",
   "note.reorder",
   "note.showInRecent",
@@ -3945,7 +3990,7 @@ const editorCommandNames = [
   "find",
   "find.clear",
 ] as const;
-const eventNames = ["engine.ready", "gate.changed", "sync.status", "place.changed", "toast", "navigate.request", "note.ready", "note.meta", "editor.state", "editor.panel", "memory.relieved", "note.tools"] as const;
+const eventNames = ["engine.ready", "gate.changed", "sync.status", "place.changed", "toast", "navigate.request", "note.ready", "note.meta", "editor.state", "editor.panel", "memory.relieved", "note.tools", "panes.change"] as const;
 
 export const VIEW_NAMES: Exhaustive<ViewName, typeof viewNames> = viewNames;
 export const LIST_VIEW_NAMES: Exhaustive<ListViewName, typeof listViewNames> = listViewNames;

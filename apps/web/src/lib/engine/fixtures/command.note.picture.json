@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "note.picture",
+  "description": "A note drawn small for a tab's picture (revision 20): its top as a page of HTML.",
+  "args": {
+    "id": "doc_00001",
+    "title": "Weekly plan"
+  },
+  "result": {
+    "html": "<!doctype html><html><head><style></style></head><body><main><h1>Weekly plan</h1></main></body></html>"
+  }
+}

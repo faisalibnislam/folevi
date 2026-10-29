@@ -1,0 +1,12 @@
+{
+  "kind": "event",
+  "name": "panes.change",
+  "description": "Joined notes resized on the page (revision 20): the panes' shares.",
+  "data": {
+    "action": "sizes",
+    "sizes": [
+      0.4,
+      0.6
+    ]
+  }
+}

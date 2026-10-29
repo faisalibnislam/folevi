@@ -328,6 +328,7 @@ enum FrameCommands {
         case "file.close-tab":
             if m.tabs.activeID == FrameTab.homeID { frame.window?.performClose(nil) } else { m.closeTab() }
         case "file.reopen-closed-tab": m.reopenClosedTab()
+        case "file.tab-overview": m.overviewShown.toggle()
         case "file.export": if noteOpen { m.noteMenu(.export) }
         case "note.star": if let id = m.route.noteId { m.star([id], !(m.noteMeta[id]?.starred ?? false)) }
         case "note.archive": if let id = m.route.noteId { m.archive([id], !(m.noteMeta[id]?.archived ?? false)) }

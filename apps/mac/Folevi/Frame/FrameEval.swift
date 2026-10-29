@@ -31,6 +31,8 @@ extension NativeFrame {
         "(() => { const els = [...document.querySelectorAll('*')].filter((e) => e.scrollHeight > e.clientHeight + 20 && /auto|scroll/.test(getComputedStyle(e).overflowY)); const el = els.sort((a, b) => b.clientWidth * b.clientHeight - a.clientWidth * a.clientHeight)[0] ?? document.scrollingElement; el.scrollTop = \(y); return el.scrollTop; })()"
     }
 
+    static func allViews(_ view: NSView) -> [NSView] { view.subviews + view.subviews.flatMap { allViews($0) } }
+
     static func scrollViews(in view: NSView) -> [NSScrollView] {
         ((view as? NSScrollView).map { [$0] } ?? []) + view.subviews.flatMap { scrollViews(in: $0) }
     }
@@ -103,6 +105,21 @@ extension NativeFrame {
                         Self.scrollViews(in: frame.root.split.sidebar.view).forEach { $0.flashScrollers() }
                     }
                 }
+            // Pinned tabs, joined notes, the Tab Overview and a tab's picture (screens of the tab features).
+            case "pin": if let t = req["tab"] as? String { m.setTabPinned(t, req["on"] as? Bool ?? true) }
+            case "join": if let t = req["tab"] as? String, let n = req["note"] as? String { m.joinNote(n, to: t) }
+            case "unjoin": if let t = req["tab"] as? String { m.unjoinTab(t, gap: req["gap"] as? Int) }
+            case "overview": m.overviewShown = req["on"] as? Bool ?? !m.overviewShown
+            case "preview":
+                // (Shown after the 300 ms rest: the answer comes 350 ms after.) The strip's frames are the window's
+                // (top-left points); the hover reports them in the bar's own space.
+                if let t = req["tab"] as? String, let f = m.debugTabFrames[t], let cv = frame.root.split.content.topBar.window?.contentView {
+                    let bar = frame.root.split.content.topBar
+                    let r = bar.convert(bar.bounds, to: cv)
+                    let top = cv.isFlipped ? r.minY : cv.bounds.height - r.maxY
+                    m.preview.hide()
+                    m.preview.enter(t, frame: f.offsetBy(dx: -r.minX, dy: -top), active: false)
+                }
             case "front":
                 mains[i].window?.makeKeyAndOrderFront(nil)
                 NSApp.activate()
@@ -110,6 +127,41 @@ extension NativeFrame {
             }
             // Answer after the frame has drawn the change.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { done(["value": state(frame, window: mains[i].window)]) }
+        }
+        MacEval.commands["ax"] = { req, done in
+            // The window's accessibility elements with a label (what a screen shows, as VoiceOver reads it), with their
+            // frames: checks overlays the window shot can't draw.
+            guard let w = WindowManager.shared.mains.first?.window, let root = w.contentView else { return done(["error": "no window"]) }
+            var out: [[String: Any]] = []
+            func walk(_ e: Any, _ depth: Int) {
+                guard depth < 60, out.count < 600 else { return }
+                var label: String?, f = CGRect.zero, kids: [Any] = []
+                if let v = e as? NSView {
+                    label = v.accessibilityLabel(); f = v.accessibilityFrame(); kids = v.accessibilityChildren() ?? []
+                    if kids.isEmpty { kids = v.subviews }
+                } else if let a = e as? NSAccessibilityElement {
+                    label = a.accessibilityLabel(); f = a.accessibilityFrame(); kids = a.accessibilityChildren() ?? []
+                } else if let o = e as? NSObject {
+                    if o.responds(to: #selector(NSAccessibilityElement.accessibilityLabel)) { label = o.perform(#selector(NSAccessibilityElement.accessibilityLabel))?.takeUnretainedValue() as? String }
+                    if o.responds(to: #selector(NSAccessibilityElement.accessibilityChildren)) { kids = (o.perform(#selector(NSAccessibilityElement.accessibilityChildren))?.takeUnretainedValue() as? [Any]) ?? [] }
+                }
+                let filter = req["match"] as? String ?? ""
+                if let label, !label.isEmpty, filter.isEmpty || label.localizedCaseInsensitiveContains(filter) {
+                    out.append(["label": label, "frame": [f.minX, f.minY, f.width, f.height]])
+                }
+                for k in kids { walk(k, depth + 1) }
+            }
+            walk(root, 0)
+            done(["value": out])
+        }
+        MacEval.commands["viewShot"] = { req, done in
+            // One view, by its type's name, drawn as AppKit caches it (overlays the window shot can't place).
+            guard let content = WindowManager.shared.mains.first?.window?.contentView, let name = req["view"] as? String, let path = req["out"] as? String,
+                  let v = Self.allViews(content).first(where: { String(describing: type(of: $0)).contains(name) }),
+                  let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds) else { return done(["error": "no view"]) }
+            v.cacheDisplay(in: v.bounds, to: rep)
+            try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+            done(["value": ["hidden": v.isHidden, "frame": [v.frame.minX, v.frame.minY, v.frame.width, v.frame.height], "subviews": v.subviews.count, "type": String(describing: type(of: v))]])
         }
         MacEval.commands["scrollers"] = { _, done in
             // Every scroll view's style in the frame (screens.mjs --scrollers): 0 legacy (wide, takes room), 1 overlay.

@@ -259,6 +259,20 @@ enum MacEval {
             guard let key = req["key"] as? String else { return done(["error": "no key"]) }
             if let value = req["value"] as? String { Paths.defaults.set(value, forKey: key) } else { Paths.defaults.removeObject(forKey: key) }
             done(["value": true])
+        case "settingsShot":
+            // The Settings window (⌘,) at a section, drawn with its title bar and toolbar, and its size.
+            guard let path = req["out"] as? String else { return done(["error": "no out"]) }
+            SettingsWindow.shared.show(section: req["section"] as? String)
+            DispatchQueue.main.asyncAfter(deadline: .now() + (req["settle"] as? Double ?? 1.5)) {
+                guard let window = SettingsWindow.shared.window, let frameView = window.contentView?.superview, let rep = bitmap(frameView.bounds.size) else { return done(["error": "no settings window"]) }
+                frameView.cacheDisplay(in: frameView.bounds, to: rep)
+                do {
+                    try rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+                    done(["value": ["path": path, "width": window.frame.width, "height": window.frame.height, "content": window.contentView?.frame.height ?? 0]])
+                } catch {
+                    done(["error": error.localizedDescription])
+                }
+            }
         case "newWindow":
             WindowManager.shared.openMain(path: req["path"] as? String ?? "/")
             done(["value": WindowManager.shared.mains.count])

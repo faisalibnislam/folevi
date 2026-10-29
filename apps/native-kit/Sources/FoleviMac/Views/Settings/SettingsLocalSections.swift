@@ -658,7 +658,7 @@ struct MemoryCard: View {
                         }
                     }
                 }
-                .frame(maxWidth: 576, alignment: .leading)
+                .settingsRowWidth(576)
             } else {
                 SMuted("Loading…")
             }
@@ -706,6 +706,7 @@ struct AppearanceSettingsView: View {
     let model: MacSettingsModel
     @State private var zoom: Double?
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.settingsWindowed) private var windowed
 
     var body: some View {
         let a = model.appearance.value
@@ -717,24 +718,52 @@ struct AppearanceSettingsView: View {
                     tile("dark", "Dark", .moon, current)
                     tile("system", "System", .monitor, current)
                 }
-                .frame(width: SettingsStyle.pair("theme.grid").light.width)
+                .frame(maxWidth: windowed ? .infinity : SettingsStyle.pair("theme.grid").light.width)
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel("Theme")
             }
             SettingsCard("Editor text size") {
-                HStack(spacing: SettingsStyle.pair("range.label").light.gap) {
-                    SText("Smaller", "range.label")
-                    Slider(value: Binding(get: { zoom ?? a?.editorZoom ?? 1 }, set: { zoom = $0 }), in: 0.85...1.35, step: 0.05) { editing in
-                        if !editing, let z = zoom { Task { await model.perform(.settingsUpdate(editorZoom: z)) } }
-                    }
-                    .controlSize(.small)
-                    .tint(SettingsColor.v("color-accent", scheme))
-                    .accessibilityLabel("Editor text size")
-                    SText("Larger", "range.label")
+                let picked = Self.nearest(zoom ?? a?.editorZoom ?? 1)
+                HStack(spacing: SettingsStyle.pair("theme.grid").light.gap) {
+                    ForEach(Self.sizes, id: \.zoom) { size in sizeTile(size, on: size.zoom == picked) }
                 }
-                .frame(width: SettingsStyle.pair("range.label").light.width)
+                .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Editor text size")
             }
         }
+    }
+
+    /// The Mac's five editor text sizes, each one of the engine's steps (AppearanceSettings.editorZooms, 0.85 to 1.35).
+    static let sizes: [(name: String, zoom: Double)] = [("Smaller", 0.85), ("Small", 0.9), ("Default", 1), ("Large", 1.15), ("Larger", 1.3)]
+
+    /// The size a stored zoom shows as (the web's slider keeps any step, so 1.05 reads as Default).
+    static func nearest(_ z: Double) -> Double {
+        sizes.map(\.zoom).min { abs($0 - z) < abs($1 - z) } ?? 1
+    }
+
+    private func sizeTile(_ size: (name: String, zoom: Double), on: Bool) -> some View {
+        let pair = SettingsStyle.pair(on ? "theme.tile.on" : "theme.tile")
+        let s = pair.resolve(scheme)
+        return Button {
+            zoom = size.zoom
+            Task { await model.perform(.settingsUpdate(editorZoom: size.zoom)) }
+        } label: {
+            VStack(spacing: s.gap) {
+                // A sample at the size it gives, on one baseline across the row.
+                Text("Aa").font(.system(size: 15 * size.zoom)).frame(height: 20, alignment: .bottom)
+                Text(size.name).webText(s.text).lineLimit(1)
+            }
+            .foregroundStyle(s.color.color)
+            .padding(s.padding.edgeInsets)
+            .frame(maxWidth: .infinity)
+            .frame(height: s.height)
+            .webBox(pair)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(size.name)
+        .accessibilityAddTraits(on ? [.isSelected] : [])
     }
 
     private func tile(_ value: String, _ label: String, _ icon: WebIcon, _ current: String) -> some View {
@@ -784,7 +813,7 @@ struct DesktopSettingsView: View {
                     SettingsDivided(rows(s), gap: 12, line: "row") { r in
                         SettingsSwitchRow(label: r.label, hint: r.hint, isOn: r.on) { on in set(r.id, .bool(on)) }
                     }
-                    .frame(maxWidth: SettingsStyle.pair("rows").light.width, alignment: .leading)
+                    .settingsRowWidth(SettingsStyle.pair("rows").light.width)
                 }
             }
         } else {

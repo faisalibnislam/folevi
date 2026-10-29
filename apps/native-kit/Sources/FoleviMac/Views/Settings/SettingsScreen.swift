@@ -206,11 +206,14 @@ public struct SettingsScreen: View {
     let section: MacSettingsSection?
     /// The Settings window: no list of sections, no large title (its toolbar has them).
     var windowed = false
+    /// The page's height as laid out (the Settings window fits itself to it).
+    var onHeight: ((CGFloat) -> Void)?
 
-    public init(model: MacSettingsModel, section: MacSettingsSection?, windowed: Bool = false) {
+    public init(model: MacSettingsModel, section: MacSettingsSection?, windowed: Bool = false, onHeight: ((CGFloat) -> Void)? = nil) {
         self.model = model
         self.section = section
         self.windowed = windowed
+        self.onHeight = onHeight
     }
     @Environment(\.colorScheme) private var scheme
 
@@ -228,8 +231,10 @@ public struct SettingsScreen: View {
                         SettingsContent(model: model, section: shown, windowed: windowed)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
-                    .padding(EdgeInsets(top: grid.padding.top, leading: left + grid.padding.left, bottom: grid.padding.bottom, trailing: left + grid.padding.right))
+                    // The window ends as it starts, with no room left for a page that scrolls under a bar.
+                    .padding(EdgeInsets(top: grid.padding.top, leading: left + grid.padding.left, bottom: windowed ? grid.padding.top + 8 : grid.padding.bottom, trailing: left + grid.padding.right))
                     .frame(width: geo.size.width, alignment: .topLeading)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { onHeight?($0) }
                 }
                 .scrollIndicators(.automatic)
                 if !windowed {
@@ -243,6 +248,7 @@ public struct SettingsScreen: View {
         // The Settings window's page is the surface colour (Shell.tsx .ui-settings-window).
         .background(windowed ? SettingsColor.v("color-surface", scheme) : Color.clear)
         .environment(\.settingsLineBreaks, model.lineBreaks)
+        .environment(\.settingsWindowed, windowed)
         .accessibilityIdentifier("screen.settings")
     }
 }
@@ -303,6 +309,18 @@ struct SettingsNav: View {
     }
 }
 
+private struct WindowedKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// In the Settings window (⌘,): its panes use the window's whole width.
+    var settingsWindowed: Bool {
+        get { self[WindowedKey.self] }
+        set { self[WindowedKey.self] = newValue }
+    }
+}
+
 private struct NavRowLabel: View {
     let title: String
     let icon: WebIcon
@@ -341,7 +359,10 @@ struct SettingsContent: View {
                     .accessibilityAddTraits(.isHeader)
             }
             sectionBody
-            SText(model.version, "footer").padding(.top, SettingsStyle.pair("footer").light.padding.top)
+            // The window shows the version once, at the end of General (the Mac's own settings), not under every pane.
+            if !windowed || section == .desktop {
+                SText(model.version, "footer").padding(.top, SettingsStyle.pair("footer").light.padding.top)
+            }
         }
     }
 

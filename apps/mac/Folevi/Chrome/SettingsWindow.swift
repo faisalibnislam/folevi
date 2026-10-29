@@ -1,7 +1,8 @@
 // Settings in a window of its own for ⌘, (decision M2, docs/MAC_POLISH_PLAN.md §3.10): the system's preferences
-// toolbar, one item per section (SF Symbols: native chrome), and the section's page below, from the open place
-// (/settings/<section>?window=1; the page draws the section alone there, WM4). 720 wide, as tall as needed,
-// remembers its last section and its place on screen; Escape or ⌘W closes it.
+// toolbar, one item per section (Folevi's own icons, the web's Settings list's), and the section's page below, from the open place
+// (/settings/<section>?window=1; the page draws the section alone there, WM4). 720 wide and as tall as the
+// section (native panes fit the window to their page, up to the screen; a longer one scrolls), remembers its last
+// section and its place on screen; Escape or ⌘W closes it.
 //
 // With the native frame (NativeFrame.enabled) the common sections are native (N13, FoleviScreens'
 // SettingsSectionScreen on the front main window's engine client): Account, Appearance, Notifications, Foli AI,
@@ -28,31 +29,31 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
     struct Section: Equatable {
         var id: String
         var title: String
-        var symbol: String
+        var icon: WebIcon
     }
 
     /// The sections for a mode (and Foli AI on or off). Pure (ChromeTests).
     nonisolated static func sections(mode: String, ai: Bool) -> [Section] {
-        let general = Section(id: "desktop", title: "General", symbol: "gearshape")
-        let appearance = Section(id: "appearance", title: "Appearance", symbol: "paintpalette")
-        let foli = Section(id: "ai", title: "Foli AI", symbol: "sparkles")
-        let data = Section(id: "data", title: "Import & Export", symbol: "arrow.up.arrow.down")
+        let general = Section(id: "desktop", title: "General", icon: .settings)
+        let appearance = Section(id: "appearance", title: "Appearance", icon: .palette)
+        let foli = Section(id: "ai", title: "Foli AI", icon: .sparkles)
+        let data = Section(id: "data", title: "Import & Export", icon: .arrowDownUp)
         var out: [Section]
         if mode == "account" {
             out = [
                 general,
-                Section(id: "account", title: "Account", symbol: "person.crop.circle"),
+                Section(id: "account", title: "Account", icon: .userRound),
                 appearance,
-                Section(id: "notifications", title: "Notifications", symbol: "bell"),
+                Section(id: "notifications", title: "Notifications", icon: .bell),
                 foli,
-                Section(id: "security", title: "Security", symbol: "lock.shield"),
-                Section(id: "privacy", title: "Privacy", symbol: "hand.raised"),
-                Section(id: "devices", title: "Devices", symbol: "laptopcomputer.and.iphone"),
-                Section(id: "sync", title: "Offline & Sync", symbol: "arrow.triangle.2.circlepath"),
+                Section(id: "security", title: "Security", icon: .shieldCheck),
+                Section(id: "privacy", title: "Privacy", icon: .lockKeyhole),
+                Section(id: "devices", title: "Devices", icon: .monitorSmartphone),
+                Section(id: "sync", title: "Offline & Sync", icon: .refreshCw),
                 data,
             ]
         } else {
-            out = [general, appearance, Section(id: "library", title: "Library", symbol: "books.vertical"), foli, data]
+            out = [general, appearance, Section(id: "library", title: "Library", icon: .libraryBig), foli, data]
         }
         if !ai { out.removeAll { $0.id == "ai" } }
         return out
@@ -92,10 +93,10 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
     }
 
     private func make() -> SettingsNSWindow {
-        let window = SettingsNSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 600), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        let window = SettingsNSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 600), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.tabbingMode = .disallowed
-        window.minSize = NSSize(width: 720, height: 480)
+        window.minSize = NSSize(width: 720, height: 240)
         window.maxSize = NSSize(width: 720, height: 1400)
         window.toolbarStyle = .preference
         window.collectionBehavior.insert(.fullScreenNone)
@@ -196,7 +197,9 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
     private func updateNative() {
         if let content = window?.contentView, let frame = nativeFrame(), let section = MacSettingsSection(rawValue: current) {
             if macModel?.frame !== frame { macModel = MacSettingsModel(frame: frame) }
-            let root = AnyView(SettingsScreen(model: macModel!, section: section, windowed: true).frame(maxWidth: .infinity, maxHeight: .infinity))
+            // (After the layout pass that measured it: resizing inside it would lay the page out again mid-pass.)
+            let root = AnyView(SettingsScreen(model: macModel!, section: section, windowed: true) { h in DispatchQueue.main.async { SettingsWindow.shared.fit(contentHeight: h) } }
+                .frame(maxWidth: .infinity, maxHeight: .infinity))
             if let native {
                 native.rootView = root
             } else {
@@ -242,6 +245,23 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
         view?.isHidden = true
     }
 
+    /// The window as tall as the pane's page (its top edge stays put), never taller than the screen has room for:
+    /// no empty space under a short pane, and a long one scrolls.
+    private func fit(contentHeight: CGFloat) {
+        guard let window, contentHeight > 0 else { return }
+        let room = (window.screen ?? NSScreen.main)?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let height = min(max(contentHeight.rounded(.up), window.minSize.height), room.height - 40)
+        // The title bar and the toolbar on top of the content.
+        let chrome = window.frame.height - (window.contentView?.frame.height ?? window.frame.height)
+        var frame = window.frame
+        frame.size.height = height + chrome
+        guard abs(frame.height - window.frame.height) > 0.5 else { return }
+        frame.origin.y = window.frame.maxY - frame.height
+        // Kept on screen when it grows past the bottom.
+        if frame.minY < room.minY { frame.origin.y = room.minY }
+        window.setFrame(frame, display: true, animate: window.isVisible)
+    }
+
     /// A profile picture from disk: JPEG, PNG, WebP or GIF.
     static func pickImage() async -> (data: Data, mimeType: String)? {
         let panel = NSOpenPanel()
@@ -260,10 +280,34 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
         item.label = s.title
         item.paletteLabel = s.title
         item.toolTip = s.title
-        item.image = NSImage(systemSymbolName: s.symbol, accessibilityDescription: s.title)
+        item.image = Self.image(s.icon, label: s.title)
         item.target = self
         item.action = #selector(pick(_:))
         return item
+    }
+
+    /// A Folevi icon as a toolbar image: stroked as lucide draws it, a template so the toolbar tints it (the
+    /// selected item's accent, the others' grey) as it does a symbol.
+    nonisolated static func image(_ icon: WebIcon, label: String) -> NSImage {
+        // The toolbar draws its images at 32 pt: the icon at 22 pt in the middle, its stroke 1.5 pt, as heavy as a
+        // symbol beside the labels.
+        let canvas: CGFloat = 32, glyph: CGFloat = 22
+        let image = NSImage(size: NSSize(width: canvas, height: canvas), flipped: true) { rect in
+            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+            let scale = glyph / 24 * rect.width / canvas
+            ctx.translateBy(x: (rect.width - glyph * rect.width / canvas) / 2, y: (rect.height - glyph * rect.height / canvas) / 2)
+            ctx.scaleBy(x: scale, y: scale)
+            ctx.addPath(icon.cgPath)
+            ctx.setLineWidth(1.5 / scale)
+            ctx.setLineCap(.round)
+            ctx.setLineJoin(.round)
+            ctx.setStrokeColor(NSColor.black.cgColor)
+            ctx.strokePath()
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = label
+        return image
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { sections.map { NSToolbarItem.Identifier($0.id) } }

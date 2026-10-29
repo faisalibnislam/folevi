@@ -217,7 +217,7 @@ struct NotificationSettingsView: View {
                     }
                     .padding(.top, 12)
                 }
-                .frame(maxWidth: 576)
+                .settingsRowWidth(576, alignment: .center)
             }
             SettingsCard("Notifications on this Mac", description: "Reminders and mentions show up here even when Folevi isn’t open, following the In app choices above. A reminder shows its to-do line; a mention says only who and where.") {
                 WebButton("Open Desktop app settings") { model.frame.open(.web("/settings/desktop")) }
@@ -233,7 +233,7 @@ struct NotificationSettingsView: View {
                         Task { await model.perform(.settingsSetNotificationEmails(digest: NotificationEmailsArgs.Digest(rawValue: v)), done: "Saved") }
                     }
                 }
-                .frame(maxWidth: 576)
+                .settingsRowWidth(576, alignment: .center)
             }
         }
     }
@@ -357,7 +357,7 @@ struct SyncSettingsView: View {
                     SettingsSwitchRow(label: "Keep all notes on this Mac", hint: "Every note and its attachments stay on this Mac, so all of them open offline.", isOn: s?.keepAll ?? false, disabled: s?.available == false) { on in
                         Task { await model.perform(.deviceKeepAll(on: on), done: "Saved") }
                     }
-                    .frame(maxWidth: 576)
+                    .settingsRowWidth(576, alignment: .center)
                     SettingsButtons {
                         WebButton("Download everything now") { Task { await model.perform(.deviceDownload) } }
                         WebButton("Remove this Mac's copy…", variant: .danger) {

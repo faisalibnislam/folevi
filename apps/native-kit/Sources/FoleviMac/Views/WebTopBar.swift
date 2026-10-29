@@ -1,7 +1,8 @@
 // The content's top bar drawn as the web app's (apps/web/src/components/app/TabStrip.tsx and BackForward.tsx,
 // as Folevi for Mac shows them), from the live app's computed styles ("frame.topbar.*", "frame.tab*"): a glass
 // bar inside the content's card with Back and Forward, a divider, the tabs (Home first, then one per open page,
-// the open one raised), and New note at the end. While the sidebar is hidden, the window buttons' room and the
+// the open one raised), and New note at the end. Home is pinned: the Mac has no logo to go home by, so it stays
+// put after Back and Forward and only the tabs after it scroll. While the sidebar is hidden, the window buttons' room and the
 // sync state come first, as on the web.
 #if os(macOS)
 import AppKit
@@ -37,18 +38,13 @@ public struct WebTopBar: View {
                 .padding(.trailing, -bar.gap)
             historyButton(.arrowRight, "Forward", enabled: model.history.canGoForward, style: "frame.topbar.forward") { model.goForward() }
             divider
-            // The arrows only while the tabs overflow, each dimmed with nothing more on its side (TabStrip.tsx).
-            if overflow.start || overflow.end {
-                scrollArrow(.chevronLeft, "Scroll tabs left", enabled: overflow.start) { scrollTabs(-1) }
-                scrollArrow(.chevronRight, "Scroll tabs right", enabled: overflow.end) { scrollTabs(1) }
-            }
-            // Only the tabs scroll: they take the room the rest leaves them, no more than they need.
-            tabs.layoutPriority(1)
+            strip.layoutPriority(1)
             Spacer(minLength: 0)
             // The web's <Button size="sm"> with <Plus size={14} />, as the top bar measures it (its icon at 70%).
             WebButton("New note", icon: .plus, iconSize: 14, iconOpacity: style("frame.topbar.new.icon").opacity, styleName: "frame.topbar.new", variant: .primary, size: .sm) { model.newNote() }
                 .help("New note (⌘⌥N)")
                 .fixedSize()
+                .padding(.trailing, newNoteInset - bar.padding.right)
         }
         .padding(bar.padding.edgeInsets)
         .frame(height: bar.height)
@@ -64,6 +60,47 @@ public struct WebTopBar: View {
         // The bar moves the window, as the web's .ui-drag bars do (its buttons still take their clicks).
         .contentShape(Rectangle())
         .gesture(WindowDragGesture())
+    }
+
+    /// New note sits as far from the bar's right edge as the Back arrow's ink from its left edge, so both ends match:
+    /// the bar's padding, then half the button's room around the 15 pt icon, then Lucide's arrow-left, drawn from
+    /// x 5 of its 24 (less half its 2 pt stroke).
+    private var newNoteInset: CGFloat {
+        let back = style("frame.topbar.back")
+        return (style("frame.topbar").padding.left + (back.width - 15) / 2 + 15 * (5 - 1) / 24).rounded()
+    }
+
+    /// Home, pinned; the arrows while the other tabs overflow; then those tabs, the only part that scrolls.
+    private var strip: some View {
+        let list = style("frame.tabs")
+        return HStack(spacing: 0) {
+            if let home = model.tabs.tabs.first(where: \.isHome) {
+                tab(home)
+                    .fixedSize()
+                    .padding(.leading, list.padding.left)
+                    .padding(.trailing, list.gap)
+            }
+            // The arrows only while the tabs overflow, each dimmed with nothing more on its side (TabStrip.tsx).
+            if overflow.start || overflow.end {
+                HStack(spacing: style("frame.topbar").gap) {
+                    scrollArrow(.chevronLeft, "Scroll tabs left", enabled: overflow.start) { scrollTabs(-1) }
+                    scrollArrow(.chevronRight, "Scroll tabs right", enabled: overflow.end) { scrollTabs(1) }
+                }
+                .padding(.trailing, list.gap)
+            }
+            // They take the room the rest leaves them, no more than they need.
+            tabs.layoutPriority(1)
+        }
+        .coordinateSpace(name: Self.strip)
+        .onPreferenceChange(TabFrames.self) { tabFrames = $0 }
+        #if DEBUG
+        .background(GeometryReader { g in
+            Color.clear.onChange(of: tabFrames, initial: true) { _, frames in
+                let origin = g.frame(in: .global).origin
+                model.debugTabFrames = frames.mapValues { $0.offsetBy(dx: origin.x, dy: origin.y) }
+            }
+        })
+        #endif
     }
 
     private var divider: some View {
@@ -106,25 +143,18 @@ public struct WebTopBar: View {
     }
 
     private var tabs: some View {
-        let strip = style("frame.tabs")
+        let list = style("frame.tabs")
         let edge = TabStripMath.fade / max(1, scroller.metrics.visible)
-        return TabRow(gap: strip.gap, padding: strip.padding.edgeInsets, offset: scroller.scroll, report: { measured($0) }) {
-            ForEach(model.tabs.tabs) { t in
+        // Home's side has its own room (it's pinned before the list).
+        var inset = list.padding.edgeInsets
+        inset.leading = 0
+        return TabRow(gap: list.gap, padding: inset, offset: scroller.scroll, report: { measured($0) }) {
+            ForEach(model.tabs.tabs.filter { !$0.isHome }) { t in
                 tab(t)
-                    .layoutValue(key: TabRoleKey.self, value: t.isHome ? .home : (t.id == model.tabs.activeID ? .open : .other))
+                    .layoutValue(key: TabRoleKey.self, value: t.id == model.tabs.activeID ? .open : .other)
                     .layoutValue(key: TabActiveKey.self, value: t.id == model.tabs.activeID)
             }
         }
-        .coordinateSpace(name: Self.strip)
-        .onPreferenceChange(TabFrames.self) { tabFrames = $0 }
-        #if DEBUG
-        .background(GeometryReader { g in
-            Color.clear.onChange(of: tabFrames, initial: true) { _, frames in
-                let origin = g.frame(in: .global).origin
-                model.debugTabFrames = frames.mapValues { $0.offsetBy(dx: origin.x, dy: origin.y) }
-            }
-        })
-        #endif
         .clipped()
         // The soft edges, on a side with more tabs only (the web's mask).
         .mask(LinearGradient(stops: [
@@ -172,7 +202,8 @@ public struct WebTopBar: View {
     }
 
     private func reveal(animated: Bool) {
-        guard !scroller.dragging, scroller.metrics.visible > 0,
+        // On Home (pinned, always in view) the list stays where it is.
+        guard !scroller.dragging, scroller.metrics.visible > 0, scroller.metrics.openWidth > 0,
               let to = TabStripMath.reveal(left: scroller.metrics.openLeft, width: scroller.metrics.openWidth, scroll: scroller.scroll, visible: scroller.metrics.visible, content: scroller.metrics.content) else { return }
         scrollTo(to, animated: animated)
     }
@@ -257,26 +288,27 @@ public struct WebTopBar: View {
     /// Moves the dragged tab with the pointer, kept inside the strip, and swaps it with a neighbour once it passes
     /// that tab's middle, as the web does. Home stays first and doesn't move.
     private func drag(_ id: String, _ value: DragGesture.Value) {
-        let tabs = model.tabs.tabs
-        guard let i = tabs.firstIndex(where: { $0.id == id }), i > 0, let home = tabFrames[tabs[0].id] else { return }
+        // The tabs after Home (pinned, first in the model's order: a tab's place there is one more than here).
+        let tabs = model.tabs.tabs.filter { !$0.isHome }
+        guard let i = tabs.firstIndex(where: { $0.id == id }), let first = tabFrames[tabs[0].id] else { return }
         // Where each tab sits in the order as it is now, from the widths (the frames lag a layout behind a swap).
         let gap = style("frame.tabs").gap
         let widths = tabs.map { tabFrames[$0.id]?.width ?? 0 }
         var lefts: [CGFloat] = []
-        var x = home.minX
+        var x = first.minX
         for w in widths {
             lefts.append(x)
             x += w + gap
         }
         let width = widths[i]
         var d = dragging?.id == id ? dragging! : (id: id, dx: 0, grab: value.startLocation.x - lefts[i])
-        let left = min(max(value.location.x - d.grab, lefts[1]), x - gap - width)
+        let left = min(max(value.location.x - d.grab, lefts[0]), x - gap - width)
         d.dx = left - lefts[i]
         if i + 1 < tabs.count, left + width > lefts[i + 1] + widths[i + 1] / 2 {
-            model.moveTab(id, to: i + 1)
+            model.moveTab(id, to: i + 2)
             d.dx -= widths[i + 1] + gap
-        } else if i - 1 >= 1, left < lefts[i - 1] + widths[i - 1] / 2 {
-            model.moveTab(id, to: i - 1)
+        } else if i - 1 >= 0, left < lefts[i - 1] + widths[i - 1] / 2 {
+            model.moveTab(id, to: i)
             d.dx += widths[i - 1] + gap
         }
         dragging = d

@@ -1,7 +1,8 @@
 // The tab strip's sizing and scrolling, as the web's (apps/web/src/components/app/TabStrip.tsx): the list of tabs is
 // `flex min-w-0 flex-initial overflow-x-auto px-1 py-1 gap-1.5`, Home and the open tab keep their own width
 // (the open one 172 to 284), the others are `flex-[0_1_284px] min-w-[172px]` and shrink evenly before the list
-// scrolls. Only the list scrolls; Back, Forward, the arrows and New note stay put.
+// scrolls. Only the list scrolls; Back, Forward, Home (pinned on the Mac, before the list), the arrows and New
+// note stay put.
 #if os(macOS)
 import SwiftUI
 
@@ -60,9 +61,9 @@ public enum TabStripMath {
 }
 
 /// A tab's part in the layout.
-enum TabRole { case home, open, other }
+enum TabRole { case open, other }
 struct TabRoleKey: LayoutValueKey { static let defaultValue = TabRole.other }
-/// The tab on screen (Home or another), which the strip keeps in view.
+/// The tab on screen, which the strip keeps in view (none while Home, pinned outside the list, is open).
 struct TabActiveKey: LayoutValueKey { static let defaultValue = false }
 
 /// What the list measured, for the strip to scroll by.
@@ -102,7 +103,6 @@ struct TabRow: Layout {
     private func sizes(_ subviews: Subviews, _ available: CGFloat?) -> TabStripMath.Sizes {
         let fixed: [CGFloat?] = subviews.map { s in
             switch s[TabRoleKey.self] {
-            case .home: return s.sizeThatFits(.unspecified).width
             case .open: return min(TabStripMath.maxTab, max(TabStripMath.minTab, s.sizeThatFits(.unspecified).width))
             case .other: return nil
             }

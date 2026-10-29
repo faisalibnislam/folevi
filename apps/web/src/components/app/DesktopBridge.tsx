@@ -249,6 +249,9 @@ function useMenuCommands(): (id: string) => void {
             openNextInNewTab();
             navigate(tabHref(t));
           };
+        case "file.tab-overview":
+          // The Tab Overview is the strip's own (TabStrip.tsx): the menu presses its shortcut, ⇧⌘\.
+          return () => window.dispatchEvent(new KeyboardEvent("keydown", { code: "Backslash", key: "\\", metaKey: true, shiftKey: true }));
         case "file.import":
           return () => navigate("/settings/data");
         case "view.sidebar":

@@ -23,7 +23,7 @@ export type DesktopCommand =
  * this list against the menus). Each reaches the key window's page as { type: "menu", id }.
  */
 export const MAC_MENU_COMMANDS = [
-  "file.new-note", "file.new-from-template", "file.new-folder", "file.quick-add-task", "file.new-tab", "file.open-quickly", "file.close-tab", "file.reopen-closed-tab", "file.import", "file.export",
+  "file.new-note", "file.new-from-template", "file.new-folder", "file.quick-add-task", "file.new-tab", "file.open-quickly", "file.close-tab", "file.reopen-closed-tab", "file.tab-overview", "file.import", "file.export",
   "edit.find", "edit.find-next", "edit.find-previous", "edit.find-selection", "edit.search-all",
   "format.bold", "format.italic", "format.underline", "format.strikethrough", "format.code", "format.highlight", "format.link", "format.heading-1", "format.heading-2", "format.heading-3", "format.body",
   "format.bulleted-list", "format.numbered-list", "format.checklist", "format.indent", "format.outdent", "format.move-up", "format.move-down", "format.duplicate", "format.style",

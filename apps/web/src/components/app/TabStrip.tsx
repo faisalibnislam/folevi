@@ -415,10 +415,13 @@ export function TabStrip() {
           aria-current={onHome ? "page" : undefined}
           data-tab-home=""
           data-ipad-tab={ipad ? "" : undefined}
-          className={`${tabBase} flex-none ${onHome ? tabOn : tabOff}`}
+          // Just the house: Home is the first tab and always there (its name in the tooltip).
+          aria-label="Home"
+          title={ipad ? undefined : "Home"}
+          className={`${tabBase} flex-none ${ipad ? "" : "w-9 justify-center !px-0"} ${onHome ? tabOn : tabOff}`}
         >
-          <House size={ipad ? 17 : 14} aria-hidden className="flex-none" />
-          <span>Home</span>
+          <House size={ipad ? 17 : 15} aria-hidden className="flex-none" />
+          {ipad ? <span>Home</span> : null}
         </AppLink>
         {tabs.map((t) => {
           const active = isActive(t);

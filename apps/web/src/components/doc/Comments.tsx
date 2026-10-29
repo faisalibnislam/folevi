@@ -10,7 +10,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type Reac
 import { ArrowUp, Bell, BellMinus, BellOff, BellPlus, Check, ChevronLeft, ChevronRight, CornerDownRight, Link2, MoreHorizontal, RotateCcw, SmilePlus, Trash2, Unlink, X, Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
-import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
+import { useOfflineQuery, useOutboxEntriesOf } from "@/lib/sync/queryCache";
 import { overlayThreads, type OverlayComment, type OverlayThread, type OverlayThreads } from "@/lib/sync/overlays";
 import { Button, IconButton } from "@/components/ui/Button";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
@@ -97,7 +97,8 @@ export function useCommentThreads(documentId: string, skip = false): CommentsDat
   const comments = useCapabilities().comments;
   const off = skip || !comments;
   const data = useOfflineQuery(api.comments.threads, off ? "skip" : { documentId });
-  const entries = useOutboxEntries(outbox);
+  // (Only comment changes count: overlayThreads reads nothing else.)
+  const entries = useOutboxEntriesOf(outbox, "comments.");
   const me = useMemo(() => ({ id: profile.id, name: profile.displayName, avatarUrl: profile.avatarUrl ?? null }), [profile.id, profile.displayName, profile.avatarUrl]);
   return useMemo(() => (data ? overlayThreads(data, entries, documentId, me) : undefined), [data, entries, documentId, me]);
 }

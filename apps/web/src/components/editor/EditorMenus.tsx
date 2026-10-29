@@ -3,6 +3,7 @@
 import type { Editor } from "@tiptap/react";
 import { NodeSelection, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { beginPointerDrag, isDragging } from "./blockDrag";
+import { useOpenedOnce } from "@/lib/hooks/useOpenedOnce";
 import { HOLD_MOVE_EVENT, type HoldMoveDetail } from "@/lib/touchContextMenu";
 import { useMutation, useQuery } from "convex/react";
 import { aiFeatureHere, useCapabilities } from "@/lib/mode";
@@ -458,6 +459,10 @@ export function EditorMenus({
   const [bookmarkPrompt, setBookmarkPrompt] = useState(false);
   const [embedPrompt, setEmbedPrompt] = useState(false);
   const [unsplashOpen, setUnsplashOpen] = useState(false);
+  // The prompts are drawn once each first opens (useOpenedOnce), not with every update of the note.
+  const bookmarkPromptDrawn = useOpenedOnce(bookmarkPrompt);
+  const embedPromptDrawn = useOpenedOnce(embedPrompt);
+  const unsplashDrawn = useOpenedOnce(unsplashOpen);
   const [datePicker, setDatePicker] = useState<{ mode: "insert" } | { mode: "edit"; pos: number } | null>(null);
   const dropPlaceholder = useRef<string | null>(null);
   const [datePickerAnchor, setDatePickerAnchor] = useState<Anchor | null>(null);
@@ -1139,59 +1144,65 @@ export function EditorMenus({
           else dropLeftover();
         }}
       />
-      <UnsplashDialog
-        open={unsplashOpen}
-        onClose={() => {
-          setUnsplashOpen(false);
-          dropLeftover();
-          editor.view.focus();
-        }}
-        onPick={(photo) => {
-          setUnsplashOpen(false);
-          insertBlockAfterCurrent(editor, "image", {
-            url: photo.url,
-            alt: photo.alt || unsplashCredit(photo),
-            caption: unsplashCredit(photo),
-            naturalWidth: photo.width || null,
-            naturalHeight: photo.height || null,
-          });
-        }}
-      />
-      <BookmarkPrompt
-        open={bookmarkPrompt}
-        onClose={() => {
-          setBookmarkPrompt(false);
-          dropLeftover();
-          editor.view.focus();
-        }}
-        onSubmit={(url) => {
-          let host = url;
-          try {
-            host = new URL(url).host;
-          } catch {
-            /* keep */
-          }
-          setBookmarkPrompt(false);
-          insertBlockAfterCurrent(editor, "bookmark", { url, title: host });
-        }}
-      />
-      <LinkPrompt
-        open={embedPrompt}
-        title="Embed a video, design or map"
-        action="Embed"
-        hint="A YouTube, Vimeo, Loom, Figma or Google Maps link."
-        check={(value) => (embedFor(value) ? { href: value.trim() } : { error: embedProblem(value) ?? "That address can't be embedded." })}
-        onClose={() => {
-          setEmbedPrompt(false);
-          dropLeftover();
-          editor.view.focus();
-        }}
-        onSubmit={(url) => {
-          const embed = embedFor(url);
-          setEmbedPrompt(false);
-          if (embed) insertBlockAfterCurrent(editor, "embed", { url, provider: embed.provider });
-        }}
-      />
+      {unsplashDrawn ? (
+        <UnsplashDialog
+          open={unsplashOpen}
+          onClose={() => {
+            setUnsplashOpen(false);
+            dropLeftover();
+            editor.view.focus();
+          }}
+          onPick={(photo) => {
+            setUnsplashOpen(false);
+            insertBlockAfterCurrent(editor, "image", {
+              url: photo.url,
+              alt: photo.alt || unsplashCredit(photo),
+              caption: unsplashCredit(photo),
+              naturalWidth: photo.width || null,
+              naturalHeight: photo.height || null,
+            });
+          }}
+        />
+      ) : null}
+      {bookmarkPromptDrawn ? (
+        <BookmarkPrompt
+          open={bookmarkPrompt}
+          onClose={() => {
+            setBookmarkPrompt(false);
+            dropLeftover();
+            editor.view.focus();
+          }}
+          onSubmit={(url) => {
+            let host = url;
+            try {
+              host = new URL(url).host;
+            } catch {
+              /* keep */
+            }
+            setBookmarkPrompt(false);
+            insertBlockAfterCurrent(editor, "bookmark", { url, title: host });
+          }}
+        />
+      ) : null}
+      {embedPromptDrawn ? (
+        <LinkPrompt
+          open={embedPrompt}
+          title="Embed a video, design or map"
+          action="Embed"
+          hint="A YouTube, Vimeo, Loom, Figma or Google Maps link."
+          check={(value) => (embedFor(value) ? { href: value.trim() } : { error: embedProblem(value) ?? "That address can't be embedded." })}
+          onClose={() => {
+            setEmbedPrompt(false);
+            dropLeftover();
+            editor.view.focus();
+          }}
+          onSubmit={(url) => {
+            const embed = embedFor(url);
+            setEmbedPrompt(false);
+            if (embed) insertBlockAfterCurrent(editor, "embed", { url, provider: embed.provider });
+          }}
+        />
+      ) : null}
       {recorderAnchor ? (
         <Popover anchor={recorderAnchor} label="Audio recording" width={320} scroll={false}>
           <Suspense fallback={<div className="h-40" aria-busy aria-label="Loading recorder" />}>
@@ -1932,7 +1943,9 @@ function BlockHandle({
       const idx = blockIndexAt(children, e.clientY, e.clientX);
       if (idx < 0) return;
       const line = handleLine(children[idx]!);
-      setHover({ index: idx, top: line.top, left: blockIndentLeft(children[idx]!), height: line.height, gripOnly: columnsGripOnly(dom, idx) });
+      const next = { index: idx, top: line.top, left: blockIndentLeft(children[idx]!), height: line.height, gripOnly: columnsGripOnly(dom, idx) };
+      // Still on the same line: keep the handle as it is (no render for every move of the pointer).
+      setHover((had) => (had && had.index === next.index && had.top === next.top && had.left === next.left && had.height === next.height && had.gripOnly === next.gripOnly ? had : next));
     };
     const parent = dom.parentElement?.parentElement ?? dom;
     parent.addEventListener("mousemove", onMove);

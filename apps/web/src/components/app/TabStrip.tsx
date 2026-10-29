@@ -324,6 +324,9 @@ export function TabStrip() {
     if (previewTimer.current) clearTimeout(previewTimer.current);
     previewing.current = false;
     setPreview(null);
+    // The hidden pictures go with the shown one (the portal closes); forgetting them means the next hover draws
+    // only its own page, not up to six frames in the same moment.
+    setPictured([]);
   };
   useEffect(() => () => {
     if (previewTimer.current) clearTimeout(previewTimer.current);
@@ -331,6 +334,7 @@ export function TabStrip() {
   useEffect(() => {
     previewing.current = false;
     setPreview(null);
+    setPictured([]);
   }, [activeKey, dragging]);
 
   // The Tab Overview: every tab as a picture (⌘⇧\ or the button by Back and Forward).

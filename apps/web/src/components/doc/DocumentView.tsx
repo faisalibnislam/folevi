@@ -42,7 +42,7 @@ import { api } from "@/lib/convex/api";
 import { placesAvailable, usePlaces } from "@/lib/places";
 import { openMovePlaces } from "@/components/places/MovePlaces";
 import { useFolderTree } from "@/lib/app/folders";
-import { useOutboxEntries } from "@/lib/sync/queryCache";
+import { useOutboxSelect } from "@/lib/sync/queryCache";
 import { pendingNoteFolders, waitingRowPage } from "@/lib/sync/overlays";
 import { formatRelative } from "@/lib/format";
 import { Avatar } from "@/components/ui/Avatar";
@@ -53,6 +53,8 @@ import { cardCount, useReviewWindow } from "@/components/study/review";
 import { NoteSuggestions } from "./NoteSuggestions";
 import { sameItems, useEngineSelector, useLocalStorage } from "@/lib/hooks/useEngine";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
+import { useOpenedOnce } from "@/lib/hooks/useOpenedOnce";
+import { useIdleSnapshot } from "@/lib/hooks/useIdleSnapshot";
 import { localDb } from "@/lib/sync/db";
 import { isSealedDocument } from "@/lib/e2ee/router/hooks";
 import { MoveToVaultDialog } from "@/components/vault/MoveToVaultDialog";
@@ -127,8 +129,6 @@ import { usePrimaryPane } from "@/lib/app/panes";
 // Presenting the note as slides (⌘⌥P, "Present" in its … menu): loaded the first time it's used.
 const NotePresentation = lazy(() => import("@/components/present/NotePresentation"));
 const CollectionRowProperties = lazy(() => import("@/components/editor/CollectionEmbed").then((m) => ({ default: m.CollectionRowProperties })));
-
-const IDLE_SNAPSHOT_MS = 2 * 60_000;
 
 type NoteBlocks = NonNullable<FunctionReturnType<typeof api.blocks.list>>;
 /** Changes held on top of the loaded copy before it's folded in and the subscription restarts from there. */
@@ -240,6 +240,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [copyOpen, setCopyOpen] = useState(false);
   const canCopy = useCanCopyElsewhere();
   const [exportOpen, setExportOpen] = useState(false);
+  // Its dialogs are drawn once each first opens (useOpenedOnce): not mounted closed with every note, nor drawn
+  // again with each save.
+  const shareDrawn = useOpenedOnce(shareOpen);
+  const deleteDrawn = useOpenedOnce(deleteOpen);
+  const moveDrawn = useOpenedOnce(moveOpen);
+  const exportDrawn = useOpenedOnce(exportOpen);
   // The note shown as slides: its blocks when presenting started (null when not presenting).
   const [presenting, setPresenting] = useState<WireBlock[] | null>(null);
   // The find & replace bar: open with or without the replace row; `key` bumps on every ⌘F to refocus it.
@@ -386,19 +392,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   }, [engine, documentId, company]);
 
   // Idle and close snapshots: meaningful versions, never one per keystroke.
-  const pendingForDoc = useEngineSelector(engine, (s) => s.pending.some((op) => "documentId" in op && op.documentId === documentId) || s.inflight.length > 0);
   const lastEditAt = useRef<number | null>(null);
-  useEffect(() => {
-    if (pendingForDoc) lastEditAt.current = Date.now();
-  }, [pendingForDoc]);
-  useEffect(() => {
-    if (pendingForDoc || !lastEditAt.current || !meta || meta.access === "read" || meta.access === "comment") return;
-    const t = setTimeout(() => {
-      void createSnapshot({ documentId, reason: "idle" }).catch(() => undefined);
-      lastEditAt.current = null;
-    }, IDLE_SNAPSHOT_MS);
-    return () => clearTimeout(t);
-  }, [pendingForDoc, meta, createSnapshot, documentId]);
+  useIdleSnapshot(engine, documentId, Boolean(meta && meta.access !== "read" && meta.access !== "comment"), meta, createSnapshot, lastEditAt);
   useEffect(() => {
     const onHide = () => {
       if (lastEditAt.current && document.visibilityState === "hidden") void createSnapshot({ documentId, reason: "close" }).catch(() => undefined);
@@ -520,11 +515,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // A folder inside other folders shows the folders above it in the breadcrumb too (the nearest two, after
   // "…" when there are more). Read from the note's own scope (it may be open from another context).
   // A move still waiting to be sent (offline) shows where the note is going, and folder names as they'll be.
-  const waitingChanges = useOutboxEntries(outbox);
-  const movedTo = useMemo(() => pendingNoteFolders(waitingChanges).get(documentId), [waitingChanges, documentId]);
+  // (Each read on its own from the outbox: the note's saves come and go there, and needn't draw the page again.)
+  const movedTo = useOutboxSelect(outbox, useCallback((entries) => pendingNoteFolders(entries).get(documentId), [documentId]));
   // A collection row added on this device and not sent yet: its page opens here (empty, like a new note), and
   // what's typed in it waits for the row to reach the server (the engine holds it; see Outbox.holds).
-  const waitingRow = useMemo(() => (meta ? undefined : waitingRowPage(waitingChanges, documentId)), [meta, waitingChanges, documentId]);
+  const noMeta = !meta;
+  const waitingRow = useOutboxSelect(outbox, useCallback((entries) => (noMeta ? waitingRowPage(entries, documentId) : undefined), [noMeta, documentId]), sameJson);
   const org = useFolderTree((meta?.folder || movedTo) && meta?.isMember ? documentScope(meta.document) : "skip");
   const folderId = movedTo !== undefined ? movedTo : (meta?.folder?.id ?? null);
   const folder = folderId ? { id: folderId, name: org?.folders.find((f) => f.id === folderId)?.name ?? (meta?.folder?.id === folderId ? meta.folder.name : "Folder") } : null;
@@ -1325,11 +1321,11 @@ export function DocumentView({ documentId }: { documentId: string }) {
           <SignInToCollaborate variant="panel" />
         </Popover>
       ) : null}
-      {meta && caps.sharing ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} personal={meta.document.workspaceId === null} /> : null}
+      {meta && caps.sharing && shareDrawn ? <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} documentId={documentId} title={summary?.title ?? ""} personal={meta.document.workspaceId === null} /> : null}
       {canEditPage ? <VersionHistory open={historyOpen} onClose={() => (setHistoryOpen(false), setHistoryVersion(null))} initialVersion={historyVersion} documentId={documentId} title={summary?.title ?? ""} style={style} cover={summary?.cover ?? DEFAULT_COVER} /> : null}
       {vaultMoveOpen ? <MoveToVaultDialog documentId={documentId} title={summary?.title ?? ""} onClose={() => setVaultMoveOpen(false)} /> : null}
-      <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={documentId} title={summary?.title ?? ""} />
-      {meta ? (
+      {deleteDrawn ? <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={documentId} title={summary?.title ?? ""} /> : null}
+      {meta && moveDrawn ? (
         <MoveNoteDialog
           open={moveOpen}
           onClose={() => setMoveOpen(false)}
@@ -1349,11 +1345,14 @@ export function DocumentView({ documentId }: { documentId: string }) {
           <NotePresentation title={look?.title ?? localTitle ?? ""} blocks={presenting} style={style} cover={look?.cover ?? DEFAULT_COVER} coverPalette={coverPalette} onClose={() => setPresenting(null)} />
         </Suspense>
       ) : null}
-      <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} title={summary?.title ?? ""} blocks={() => engine?.documentBlocks(documentId) ?? []} />
+      {exportDrawn ? <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} title={summary?.title ?? ""} blocks={() => engine?.documentBlocks(documentId) ?? []} /> : null}
     </ViewChrome>
     </NotePaletteProvider>
   );
 }
+
+/** The same plain data (a waiting row's page: ids, a title, how it waits). */
+const sameJson = <T,>(a: T, b: T) => a === b || JSON.stringify(a) === JSON.stringify(b);
 
 const PANEL_MIN = 280;
 const PANEL_MAX = 520;

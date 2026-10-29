@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useQuery } from "convex/react";
 import { getFunctionName, type FunctionArgs, type FunctionReference, type FunctionReturnType } from "convex/server";
 import { canonicalJson } from "@folevi/editor-schema";
@@ -132,6 +132,40 @@ export function useOutboxEntries(outbox: Outbox | null): readonly OutboxEntry[] 
     () => outbox?.entries ?? NO_ENTRIES,
     () => NO_ENTRIES,
   );
+}
+
+/**
+ * One fact read from the outbox's entries (`select`), re-rendering only when that fact changes (`same`), not with
+ * every change queued or sent: a note's page asks whether a move waits for it, and its own saves don't count.
+ * `select` must be stable (useCallback).
+ */
+export function useOutboxSelect<T>(outbox: Outbox | null, select: (entries: readonly OutboxEntry[]) => T, same: (a: T, b: T) => boolean = Object.is): T {
+  const subscribe = useCallback((cb: () => void) => (outbox ? outbox.subscribe(cb) : () => undefined), [outbox]);
+  const snapshot = useMemo(() => {
+    let seen: readonly OutboxEntry[] | null = null;
+    let value: T;
+    return () => {
+      const entries = outbox?.entries ?? NO_ENTRIES;
+      if (entries !== seen) {
+        const next = select(entries);
+        if (seen === null || !same(value, next)) value = next;
+        seen = entries;
+      }
+      return value;
+    };
+  }, [outbox, select, same]);
+  return useSyncExternalStore(subscribe, snapshot, snapshot);
+}
+
+const sameEntries = (a: readonly OutboxEntry[], b: readonly OutboxEntry[]) => a.length === b.length && a.every((e, i) => e === b[i]);
+
+/**
+ * The waiting changes of one kind (calls whose name starts with `prefix`, "comments." or "organization."), in
+ * order: re-renders when those change, not with every save of a note's lines.
+ */
+export function useOutboxEntriesOf(outbox: Outbox | null, prefix: string): readonly OutboxEntry[] {
+  const select = useCallback((entries: readonly OutboxEntry[]) => entries.filter((e) => e.name.startsWith(prefix)), [prefix]);
+  return useOutboxSelect(outbox, select, sameEntries);
 }
 
 /** Forgets what this visit kept in memory (signing out). */

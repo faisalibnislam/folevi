@@ -4,7 +4,7 @@ import { useCallback, useMemo, type DragEvent } from "react";
 import { MAX_FOLDER_DEPTH, folderMoveProblem, ulid, type FolderLink, type FolderMoveProblem, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
-import { useCachedQuery, useOutboxEntries } from "@/lib/sync/queryCache";
+import { useCachedQuery, useOutboxEntriesOf } from "@/lib/sync/queryCache";
 import { overlaySidebar, type SidebarData } from "@/lib/sync/overlays";
 import type { Outbox } from "@/lib/sync/outbox";
 import { useAppState } from "./state";
@@ -80,7 +80,8 @@ export function useFolderTree(scope: WireScope | "skip"): SidebarData | undefine
 export function useFolderTreeState(scope: WireScope | "skip"): { data: SidebarData | undefined; fromCache: boolean } {
   const { outbox } = useAppState();
   const { data, fromCache } = useCachedQuery(api.organization.sidebar, scope === "skip" ? "skip" : { scope });
-  const entries = useOutboxEntries(outbox);
+  // (Only folder changes count: overlaySidebar reads nothing else.)
+  const entries = useOutboxEntriesOf(outbox, "organization.");
   const tree = useMemo(() => (data && scope !== "skip" ? overlaySidebar(data, entries, scope) : data), [data, entries, scope]);
   return { data: tree, fromCache };
 }

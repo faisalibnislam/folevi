@@ -5,6 +5,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } 
 import { createPortal } from "react-dom";
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Star, StarOff, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
+import { useOpenedOnce } from "@/lib/hooks/useOpenedOnce";
 import { api } from "@/lib/convex/api";
 import { useFolderTree, useFolderTreeState } from "@/lib/app/folders";
 import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
@@ -897,11 +898,14 @@ function useDocMenu({ doc, view, arrange, select, recent }: DocMenuProps): { ite
           { label: "Move to Trash", icon: <Trash2 size={14} />, danger: true, onSelect: () => void notes.trash(ids) },
         ];
 
+  // Every card and row has these: each is drawn once it first opens (useOpenedOnce), not closed on every row.
+  const moveDrawn = useOpenedOnce(moveOpen);
+  const deleteDrawn = useOpenedOnce(deleteOpen);
   const dialogs = (
     <>
-      <MoveToFolderDialog open={moveOpen} onClose={() => setMoveOpen(false)} noteTitle={doc.title} currentFolderId={doc.folderId} onPick={(folder) => void notes.moveTo(ids, folder)} />
+      {moveDrawn ? <MoveToFolderDialog open={moveOpen} onClose={() => setMoveOpen(false)} noteTitle={doc.title} currentFolderId={doc.folderId} onPick={(folder) => void notes.moveTo(ids, folder)} /> : null}
       {copyOpen ? <CopyToDialog open onClose={() => setCopyOpen(false)} documentIds={ids} noteTitle={doc.title} /> : null}
-      <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={doc.id} title={doc.title} />
+      {deleteDrawn ? <PermanentDeleteDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} documentId={doc.id} title={doc.title} /> : null}
     </>
   );
   return { items, dialogs, dialogOpen: moveOpen || copyOpen || deleteOpen };

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { ArrowRightLeft, FilePlus2, FolderInput, FolderPlus, Link2, MoreHorizontal, Palette, PencilLine, Share2, Trash2, Undo2, UserPlus } from "lucide-react";
 import { useCapabilities } from "@/lib/mode";
+import { useOpenedOnce } from "@/lib/hooks/useOpenedOnce";
 import { FolderShareDialog } from "./FolderShareDialog";
 import { placesAvailable, usePlaces } from "@/lib/places";
 import { openMovePlaces } from "@/components/places/MovePlaces";
@@ -114,26 +115,31 @@ export function FolderMenu({
 
   // The dialogs render at the end of <body>: the menu's wrapper is often hidden until hover and styled for
   // the card it sits on, and neither should reach into a dialog.
+  const renameDrawn = useOpenedOnce(renaming);
+  const addDrawn = useOpenedOnce(addingInside);
+  const deleteDrawn = useOpenedOnce(deleting);
   const dialogs = (
     <>
       {coloring ? <FolderColorDialog open onClose={() => setColoring(false)} folder={folder} /> : null}
-      <PromptDialog open={renaming} title="Rename folder" label="Folder name" initial={folder.name} onClose={() => setRenaming(false)} onSubmit={(name) => act(Promise.resolve().then(() => folderActions.rename(folder.id, name)), "Renamed")} />
-      <PromptDialog
-        open={addingInside}
-        title={`New folder in “${folder.name}”`}
-        label="Folder name"
-        confirmLabel="Create folder"
-        onClose={() => setAddingInside(false)}
-        onSubmit={async (name) => {
-          try {
-            folderActions.create(name, folder.id);
-            // Open the folder in the sidebar so the new one shows.
-            setFolderOpen(folder.id, true);
-          } catch (e) {
-            toast.show(errorMessage(e), { tone: "error" });
-          }
-        }}
-      />
+      {renameDrawn ? <PromptDialog open={renaming} title="Rename folder" label="Folder name" initial={folder.name} onClose={() => setRenaming(false)} onSubmit={(name) => act(Promise.resolve().then(() => folderActions.rename(folder.id, name)), "Renamed")} /> : null}
+      {addDrawn ? (
+        <PromptDialog
+          open={addingInside}
+          title={`New folder in “${folder.name}”`}
+          label="Folder name"
+          confirmLabel="Create folder"
+          onClose={() => setAddingInside(false)}
+          onSubmit={async (name) => {
+            try {
+              folderActions.create(name, folder.id);
+              // Open the folder in the sidebar so the new one shows.
+              setFolderOpen(folder.id, true);
+            } catch (e) {
+              toast.show(errorMessage(e), { tone: "error" });
+            }
+          }}
+        />
+      ) : null}
       {moving ? (
         <MoveFolderDialog
           open
@@ -147,33 +153,35 @@ export function FolderMenu({
       ) : null}
       {inviting && workspace ? <InviteDialog workspace={workspace} open onClose={() => setInviting(false)} /> : null}
       {sharing ? <FolderShareDialog open onClose={() => setSharing(false)} folderId={folder.id} name={folder.name} /> : null}
-      <Dialog
-        open={deleting}
-        onClose={() => setDeleting(false)}
-        title={`Delete “${folder.name}”?`}
-        description={
-          subfolders
-            ? `The folder is removed. Its documents are kept and move to Drafts. Its ${subfolders === 1 ? "subfolder moves" : "subfolders move"} up a level, with everything inside.`
-            : "The folder is removed. Its documents are kept and move to Drafts."
-        }
-        size="sm"
-        // In the apps: the system's alert.
-        confirm={{ label: "Delete folder", destructive: true, onConfirm: () => void act(Promise.resolve().then(() => folderActions.remove(folder.id, folder.name)), "Folder deleted") }}
-        footer={
-          <>
-            <Button onClick={() => setDeleting(false)}>Cancel</Button>
-            <Button
-              variant="danger"
-              onClick={() => {
-                setDeleting(false);
-                void act(Promise.resolve().then(() => folderActions.remove(folder.id, folder.name)), "Folder deleted");
-              }}
-            >
-              Delete folder
-            </Button>
-          </>
-        }
-      />
+      {deleteDrawn ? (
+        <Dialog
+          open={deleting}
+          onClose={() => setDeleting(false)}
+          title={`Delete “${folder.name}”?`}
+          description={
+            subfolders
+              ? `The folder is removed. Its documents are kept and move to Drafts. Its ${subfolders === 1 ? "subfolder moves" : "subfolders move"} up a level, with everything inside.`
+              : "The folder is removed. Its documents are kept and move to Drafts."
+          }
+          size="sm"
+          // In the apps: the system's alert.
+          confirm={{ label: "Delete folder", destructive: true, onConfirm: () => void act(Promise.resolve().then(() => folderActions.remove(folder.id, folder.name)), "Folder deleted") }}
+          footer={
+            <>
+              <Button onClick={() => setDeleting(false)}>Cancel</Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  setDeleting(false);
+                  void act(Promise.resolve().then(() => folderActions.remove(folder.id, folder.name)), "Folder deleted");
+                }}
+              >
+                Delete folder
+              </Button>
+            </>
+          }
+        />
+      ) : null}
     </>
   );
 

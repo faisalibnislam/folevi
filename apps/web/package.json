@@ -23,7 +23,7 @@
     "@folevi/editor-schema": "workspace:*",
     "@folevi/local-store": "workspace:*",
     "@tiptap/core": "3.31.3",
-    "@tiptap/extensions": "3.31.3",
+    "@tiptap/extensions": "3.32.0",
     "@tiptap/pm": "3.31.3",
     "@tiptap/react": "3.31.3",
     "better-auth": "1.6.33",

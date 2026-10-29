@@ -111,10 +111,16 @@ struct WebShapeBox: View {
         .allowsHitTesting(false)
     }
 
-    /// The frame grown by `reach`, minus the shape: where an outer shadow shows.
+    /// The frame grown by `reach`, minus the shape: where an outer shadow shows. `reach` animates with the frame it
+    /// cuts, so the hole stays the shape while a shadow changes (a card's hover): fixed, it jumped to the new reach
+    /// while the frame was still on its way, and left a pale band between a card and its shadow.
     struct OutsideOf: Shape {
         let shape: WebCornersShape
-        let reach: CGFloat
+        var reach: CGFloat
+        var animatableData: CGFloat {
+            get { reach }
+            set { reach = newValue }
+        }
         func path(in rect: CGRect) -> Path {
             var p = Path(rect)
             p.addPath(shape.path(in: rect.insetBy(dx: reach, dy: reach)))

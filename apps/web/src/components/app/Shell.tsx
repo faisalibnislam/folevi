@@ -35,6 +35,7 @@ import { EngineHost } from "@/lib/engine/EngineHost";
 import { NativeGate } from "@/lib/engine/NativeGate";
 import { WEB_SETTINGS_SECTIONS } from "@/lib/engine/host";
 import { useEditorZoom } from "@/lib/editorZoom";
+import { useScrollActivity } from "@/lib/scrollActivity";
 import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
 import { IphoneShell } from "@/components/iphone/IphoneShell";
 import { installInputModality } from "@/components/iphone/chrome";
@@ -174,6 +175,8 @@ export function useShell(): ShellValue {
 export function Shell() {
   // The editor's text size on this device, on every page (it used to apply only while Settings > Appearance was open).
   useEditorZoom();
+  // Thin scroll bars, the knob shown while an area scrolls (globals.css).
+  useScrollActivity();
   // The native apps draw the frame themselves (docs/NATIVE_APP_PLAN.md section 8): only the note page and the
   // engine. (Fixed for the page's life: the host marks it before the first paint.)
   if (nativeChrome()) return <NativeContentShell />;

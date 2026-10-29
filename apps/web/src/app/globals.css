@@ -106,6 +106,21 @@
 }
 
 @layer base {
+  /* Scroll bars everywhere (the owner, 2026-10-29): thin, with no track, the knob only while the area scrolls
+     (lib/scrollActivity.ts marks it; the pointer is nearly always over some area, so hover would keep it shown),
+     whatever the system's "Show scroll bars" says. The knob is the ink at 32%, so it follows light, dark and
+     .ui-invert (the Vault's panel). */
+  :root, .ui-invert { --scrollbar-thumb: color-mix(in oklab, var(--color-ink) 32%, transparent); }
+  * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  [data-scrolling] { scrollbar-color: var(--scrollbar-thumb) transparent; }
+  /* Browsers without scrollbar-color (older Safari) draw the same with WebKit's own scroll bar parts. */
+  @supports not (scrollbar-color: red red) {
+    * { scrollbar-width: auto; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
+    ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+    ::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: var(--radius-capsule); background: transparent; background-clip: padding-box; }
+    [data-scrolling]::-webkit-scrollbar-thumb, ::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb); }
+  }
   html {
     background: var(--color-canvas);
     color: var(--color-ink);

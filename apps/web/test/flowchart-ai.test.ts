@@ -10,7 +10,7 @@ import { api } from "@/lib/convex/api";
 import { LocalBackend, LocalClient, MemoryStore } from "@/lib/local";
 import { configureLocalAiHost, localAiState, refreshLocalAi, setLocalAiChoice } from "@/lib/local/ai/state";
 import { featuresFor } from "@/lib/local/ai/features";
-import { OFF_HERE, textBudget } from "@/lib/local/ai/provider";
+import { OFF_HERE, textBudget, withSafety } from "@/lib/local/ai/provider";
 import { resetStreams } from "@/lib/local/ai/streams";
 import { applyLabels, arrangeChart, draftChart, placeExtension, tidyChart, tweenCharts } from "@/components/editor/flowchart/aiOps";
 import { fakeHost, type FakeHost } from "./local-ai-fake";
@@ -211,13 +211,13 @@ describe("flowchart Foli AI in local mode", () => {
     const room = textBudget(localAiState().active, { serverChars: 1_000_000, overheadChars: EXPLAIN_SYSTEM.length + 600, answerTokens: 1024 });
     const current = flowchartForPrompt(big, { maxChars: Math.max(400, room) })!;
     expect(current.length).toBeLessThan(big.length);
-    expect(sent(host.requests[0]!).system).toBe(EXPLAIN_SYSTEM);
+    expect(sent(host.requests[0]!).system).toBe(withSafety({ system: EXPLAIN_SYSTEM, prompt: "", json: true }).system);
     expect(sent(host.requests[0]!).prompt.startsWith(`<flowchart>\n${current}\n</flowchart>`)).toBe(true);
 
     const small = serializeFlowchart(chart());
     host.answer(() => JSON.stringify({ shapes: [{ id: "a", text: "Ship the release" }], connectors: [] }));
     expect(await client.action(api.flowchartAi.labels, { scope: SCOPE, data: small })).toEqual({ shapes: [{ id: "a", text: "Ship the release", before: "Ship it", why: "" }], connectors: [] });
-    expect(sent(host.requests[1]!)).toEqual({ system: labelsRequest({ current: flowchartForPrompt(small, { ids: true })! }).system, prompt: labelsRequest({ current: flowchartForPrompt(small, { ids: true })! }).prompt });
+    expect(sent(host.requests[1]!)).toEqual({ system: withSafety(labelsRequest({ current: flowchartForPrompt(small, { ids: true })! })).system, prompt: labelsRequest({ current: flowchartForPrompt(small, { ids: true })! }).prompt });
 
     const count = host.requests.length;
     expect(await errorOf(client.action(api.flowchartAi.extend, { scope: SCOPE, data: small, nodeIds: ["a"], kind: "next" }))).toMatchObject({ code: "forbidden", message: OFF_HERE });

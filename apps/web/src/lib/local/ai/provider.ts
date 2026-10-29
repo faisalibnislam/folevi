@@ -3,12 +3,15 @@
 // device, or the person's own key, through the host (shell().ai, which calls the provider straight from the
 // device). It plays the part of the server's provider layer (convex/lib/ai/provider.ts): the fast model for
 // plumbing calls, the person's saved preferences added to the system prompt (memory.ts), streaming with Stop,
-// and failures turned into the person-readable errors the app shows. There are no credits in local mode.
+// the safety rules at the end of every system prompt and the refusal marker kept out of the reply (as
+// convex/lib/ai/gemini.ts does), and failures turned into the person-readable errors the app shows. There are
+// no credits in local mode.
 //
 // The on-device model is small: every request is fitted to its context (the answer's room first), and one
 // that can't fit is refused with a plain message rather than cut mid-instruction. Note text is cut to fit
 // before the request is built (`textBudget`), so the instructions always arrive whole.
 import type { PromptRequest } from "@folevi/ai-prompts";
+import { DECLINE_RULE, readDecline, SAFETY_RULE, visibleSoFar } from "@folevi/ai-prompts/safety";
 import type { AiRequest, AiResult, ShellAi } from "@/lib/shell/types";
 import { fail } from "../errors";
 import { PROVIDERS } from "./catalog";
@@ -24,6 +27,8 @@ export const estimateTokens = (text: string) => Math.ceil(text.length / CHARS_PE
 const FRAMING_TOKENS = 200;
 /** The least room an answer gets before a request is called too long. */
 const MIN_ANSWER_TOKENS = 256;
+/** What `withSafety` adds to every system prompt (at most), counted in each request's room for note text. */
+const SAFETY_CHARS = SAFETY_RULE.length + DECLINE_RULE.length + 3;
 
 // (Read once the page loads, when the host is known: Gemini Nano and "this phone" in the Android app.)
 const WORDS = deviceWords();
@@ -63,6 +68,14 @@ export function withMemory(req: PromptRequest, memory: string | null | undefined
   return { ...req, system: `${req.system}\n\n${memory}` };
 }
 
+/**
+ * Every system prompt ends with the safety rules (docs/AI_GUARDRAILS.md), as on the server; a text reply is also
+ * asked to mark a refusal, which `generate` takes out before anyone sees it.
+ */
+export function withSafety(req: PromptRequest): PromptRequest {
+  return { ...req, system: `${req.system}\n\n${SAFETY_RULE}${req.json ? "" : ` ${DECLINE_RULE}`}` };
+}
+
 /** The request as the host takes it, fitted to the model (null when it can't fit). */
 export function toHostRequest(req: PromptRequest, active: ActiveModel, history: GenerateOptions["history"] = []): AiRequest | null {
   const asked = Math.max(1, Math.min(req.maxOutputTokens ?? 2048, active.maxOutputTokens));
@@ -86,13 +99,13 @@ export function toHostRequest(req: PromptRequest, active: ActiveModel, history: 
 
 /**
  * How much note text (in characters) a request can carry on the active model, besides `overheadChars` of
- * instructions and with `answerTokens` left for the answer: the server's own cap (`serverChars`) for a key,
+ * instructions (and the safety rules) and with `answerTokens` left for the answer: the server's own cap (`serverChars`) for a key,
  * less on the device.
  */
 export function textBudget(active: ActiveModel | null, o: { serverChars: number; overheadChars: number; answerTokens: number }): number {
   if (!active || active.provider !== "on-device") return o.serverChars;
   const answer = Math.min(o.answerTokens, active.maxOutputTokens, Math.floor(active.contextTokens / 2));
-  const tokens = active.contextTokens - FRAMING_TOKENS - answer - estimateTokens(" ".repeat(o.overheadChars));
+  const tokens = active.contextTokens - FRAMING_TOKENS - answer - estimateTokens(" ".repeat(o.overheadChars + SAFETY_CHARS));
   return Math.max(0, Math.min(o.serverChars, tokens * CHARS_PER_TOKEN));
 }
 
@@ -142,7 +155,7 @@ export class LocalAiProvider {
     const active = await this.active();
     const host = hostOverride ?? localAiHost().ai;
     if (!host) fail("forbidden", NOT_SET_UP, { reason: "ai_not_included" });
-    const request = toHostRequest(withMemory(req, opts.memory), active, opts.history);
+    const request = toHostRequest(withSafety(withMemory(req, opts.memory)), active, opts.history);
     if (!request) fail("limit_exceeded", TOO_LONG_ON_DEVICE);
     if (opts.signal?.aborted) return { text: "", stopped: true, truncated: false, provider: active.provider, model: request.model ?? active.model };
     let soFar = "";
@@ -150,7 +163,7 @@ export class LocalAiProvider {
     const call = host.generate(request, (chunk) => {
       if (stopped || typeof chunk !== "string") return;
       soFar += chunk;
-      if (opts.onDelta && opts.onDelta(soFar) === false) {
+      if (opts.onDelta && opts.onDelta(visibleSoFar(soFar)) === false) {
         stopped = true;
         call.cancel();
       }
@@ -169,9 +182,9 @@ export class LocalAiProvider {
     } finally {
       opts.signal?.removeEventListener("abort", onAbort);
     }
-    if (stopped || result.stopReason === "cancelled") return { text: (result.text || soFar).trim(), stopped: true, truncated: false, provider: active.provider, model: request.model ?? active.model };
+    if (stopped || result.stopReason === "cancelled") return { text: readDecline(result.text || soFar).text.trim(), stopped: true, truncated: false, provider: active.provider, model: request.model ?? active.model };
     if (result.stopReason === "error") failFor(result, active);
-    return { text: (result.text ?? soFar).trim(), stopped: false, truncated: result.stopReason === "length", provider: active.provider, model: request.model ?? active.model };
+    return { text: readDecline(result.text ?? soFar).text.trim(), stopped: false, truncated: result.stopReason === "length", provider: active.provider, model: request.model ?? active.model };
   }
 }
 

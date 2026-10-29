@@ -16,7 +16,7 @@ import { api } from "@/lib/convex/api";
 import { LocalBackend, LocalClient, MemoryStore } from "@/lib/local";
 import { configureLocalAiHost, localAiState, refreshLocalAi, resolveActive, setLocalAiChoice } from "@/lib/local/ai/state";
 import { featuresFor } from "@/lib/local/ai/features";
-import { NOT_SET_UP, OFF_HERE, TOO_LONG_ON_DEVICE, toHostRequest, withMemory } from "@/lib/local/ai/provider";
+import { NOT_SET_UP, OFF_HERE, TOO_LONG_ON_DEVICE, toHostRequest, withMemory, withSafety } from "@/lib/local/ai/provider";
 import { resetStreams } from "@/lib/local/ai/streams";
 import { fakeHost, type FakeHost } from "./local-ai-fake";
 
@@ -101,7 +101,7 @@ describe("which model, and what it can do", () => {
     const wf = await client.action(api.wireframeAi.draw, { scope: SCOPE, instruction: "A sign-in screen" });
     expect(wf.screens).toHaveLength(1);
     expect(host.requests[0]).toMatchObject({ provider: "openai", model: "gpt-6-astra", json: true });
-    expect(asSent(host.requests[0]!)).toEqual({ system: drawRequest("A sign-in screen", "phone").system, prompt: drawRequest("A sign-in screen", "phone").prompt });
+    expect(asSent(host.requests[0]!)).toEqual({ system: withSafety(drawRequest("A sign-in screen", "phone")).system, prompt: drawRequest("A sign-in screen", "phone").prompt });
   });
 
   test("capabilities re-run when a key is added (ai:state)", async () => {
@@ -169,7 +169,7 @@ describe("ai.*", () => {
     expect(out.text).toBe("Launch plan for May");
     const sent = host.requests[0]!;
     const expected = writingRequest({ task: "title", note: { title: "Launch plan", text: "# Launch plan\n\nWe launch in May with a small beta." }, text: "", instruction: "" }, true);
-    expect(sent.system).toBe(expected.system);
+    expect(sent.system).toBe(withSafety(expected).system);
     expect(sent.messages.at(-1)!.content).toContain("We launch in May with a small beta.");
     expect(sent).toMatchObject({ model: "claude-haiku-5-5", temperature: expected.temperature });
     host.answer(() => JSON.stringify({ cards: [{ q: "When is the launch?", a: "May." }] }));
@@ -219,10 +219,10 @@ describe("ai.*", () => {
     const out = await client.action(api.ai.ask, { scope: SCOPE, question: "How do I get to the castle in Lisbon?" });
     expect(out).toEqual({ answer: "Take tram 28 [1].", sources: [{ id: lisbon, title: "Lisbon trip" }] });
     const [terms, answer] = host.requests;
-    expect(asSent(terms!)).toEqual({ system: searchTermsRequest({ question: "", history: [] }).system, prompt: searchTermsRequest({ question: "How do I get to the castle in Lisbon?", history: [] }).prompt });
+    expect(asSent(terms!)).toEqual({ system: withSafety(searchTermsRequest({ question: "", history: [] })).system, prompt: searchTermsRequest({ question: "How do I get to the castle in Lisbon?", history: [] }).prompt });
     expect(terms).toMatchObject({ model: "gemini-3.5-flash-lite", json: true });
     const expected = answerRequest({ notes: [{ id: lisbon, title: "Lisbon trip", text: "Lisbon trip\nTake tram 28 to the castle in Lisbon." }], question: "How do I get to the castle in Lisbon?", history: [], notesOnly: false, focused: false });
-    expect(answer!.system).toBe(expected.system);
+    expect(answer!.system).toBe(withSafety(expected).system);
     expect(answer!.messages.at(-1)!.content).toContain("[1] Lisbon trip");
     expect(answer!.messages.at(-1)!.content).toContain("tram 28");
     // Only the note asked about: no search call.
@@ -275,7 +275,7 @@ describe("ai.*", () => {
     const out = await client.action(api.ai.brief, { scope: SCOPE, today: "2026-10-20" });
     expect(out.sources).toEqual([{ id, title: "Launch" }]);
     const expected = briefRequest({ today: "2026-10-20", notes: [], tasks: [] });
-    expect(host.requests[0]!.system).toBe(expected.system);
+    expect(host.requests[0]!.system).toBe(withSafety(expected).system);
     expect(host.requests[0]!.messages.at(-1)!.content).toContain('- Send the deck (due 2026-10-21), in "Launch"');
   });
 
@@ -286,7 +286,7 @@ describe("ai.*", () => {
     host.answer(() => reply);
     const out = await client.action(api.ai.flowchart, { scope: SCOPE, mode: "create", instruction: "How we ship" });
     expect(out).toEqual(parseFlowchartDraft(reply));
-    expect(asSent(host.requests[0]!)).toEqual({ system: flowchartRequest({ mode: "create", instruction: "How we ship", current: null }).system, prompt: flowchartRequest({ mode: "create", instruction: "How we ship", current: null }).prompt });
+    expect(asSent(host.requests[0]!)).toEqual({ system: withSafety(flowchartRequest({ mode: "create", instruction: "How we ship", current: null })).system, prompt: flowchartRequest({ mode: "create", instruction: "How we ship", current: null }).prompt });
     expect(await errorOf(client.action(api.ai.flowchart, { scope: SCOPE, mode: "update", instruction: "Add a step" }))).toMatchObject({ message: "There's no flowchart to update yet." });
   });
 });
@@ -298,7 +298,7 @@ describe("aiChat.* (conversations on this device)", () => {
     const lisbon = await note("Lisbon trip", [para("l1", "Take tram 28 to the castle."), para("l2", "Eat pastel de nata in Belem.", "W")]);
     host.answer((req) => {
       if (req.system?.includes("full-text search queries")) return JSON.stringify({ queries: ["castle tram"], act: false });
-      if (req.system === chatTitleRequest({ question: "", answer: "" }).system) return "Getting to the castle";
+      if (req.system === withSafety(chatTitleRequest({ question: "", answer: "" })).system) return "Getting to the castle";
       return 'Take tram 28 to the castle [1].\n[[remember]] {"kind": "tone", "text": "Keep answers short"}\n[[follow-ups]] ["What about food?", "Where to stay?"]';
     });
     const conversationId = ulid();
@@ -311,7 +311,7 @@ describe("aiChat.* (conversations on this device)", () => {
     expect(answer.citations).toEqual([{ n: 1, noteId: lisbon, title: "Lisbon trip", blockId: "l1", quote: "Take tram 28 to the castle." }]);
     // The answer request is the shared chat one (follow-ups and the memory rule asked for).
     const chat = host.requests.find((r) => r.system?.includes("[[follow-ups]]"))!;
-    expect(chat.system).toBe(answerRequest({ notes: [], question: "", history: [], notesOnly: false, focused: false, chat: true, remember: true }).system);
+    expect(chat.system).toBe(withSafety(answerRequest({ notes: [], question: "", history: [], notesOnly: false, focused: false, chat: true, remember: true })).system);
     // The list, pinned, rename, search.
     expect((await client.query(api.aiChat.list, { scope: SCOPE, paginationOpts: { numItems: 10, cursor: null } })).page.map((c) => c.id)).toEqual([conversationId]);
     await client.mutation(api.aiChat.setPinned, { conversationId, pinned: true });
@@ -395,7 +395,7 @@ describe("blocks", () => {
     const outline = (data: string) => (JSON.parse(data) as { nodes: { text: string; parent: string | null }[] }).nodes.map((n) => n.text);
     expect(outline(made.data)).toEqual(outline(parseMapReply(reply, { layout: "right" })!));
     expect(JSON.parse(made.data).layout).toBe("right");
-    expect(asSent(host.requests[0]!)).toEqual({ system: mapPromptRequest({ source: "prompt", instruction: "Plan my garden" }).system, prompt: mapPromptRequest({ source: "prompt", instruction: "Plan my garden" }).prompt });
+    expect(asSent(host.requests[0]!)).toEqual({ system: withSafety(mapPromptRequest({ source: "prompt", instruction: "Plan my garden" })).system, prompt: mapPromptRequest({ source: "prompt", instruction: "Plan my garden" }).prompt });
     const id = await note("Garden", [para("g", "Tomatoes and roses.")]);
     await client.action(api.mindmapAi.generate, { scope: SCOPE, source: "note", documentId: id });
     expect(host.requests.at(-1)!.messages.at(-1)!.content).toContain("untrusted_note");
@@ -422,7 +422,7 @@ describe("blocks", () => {
     host.answer(() => JSON.stringify({ rows: [["Item", "Price"], ["Apples", "1.5"]], summary: "Removed a column." }));
     const edited = await client.action(api.tableAi.edit, { scope: SCOPE, table, instruction: "Drop Qty" });
     expect(edited).toEqual(parseTableReply(JSON.stringify({ rows: [["Item", "Price"], ["Apples", "1.5"]], summary: "Removed a column." })));
-    expect(asSent(host.requests[0]!)).toEqual({ system: tableEditRequest(tableOf(table)!, "Drop Qty").system, prompt: tableEditRequest(tableOf(table)!, "Drop Qty").prompt });
+    expect(asSent(host.requests[0]!)).toEqual({ system: withSafety(tableEditRequest(tableOf(table)!, "Drop Qty")).system, prompt: tableEditRequest(tableOf(table)!, "Drop Qty").prompt });
     host.answer(() => JSON.stringify({ rows: [["Item", "Price"], ["Apples", "1.50"]], summary: "Fixed a format." }));
     expect((await client.action(api.tableAi.clean, { scope: SCOPE, table })).summary).toBe("Fixed a format.");
     host.answer(() => JSON.stringify({ formula: "=Price * Qty", explanation: "Price times quantity." }));

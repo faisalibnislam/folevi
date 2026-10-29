@@ -76,8 +76,11 @@ export const SCREENS = [
   { id: "tags", link: "folevi-dev://tags" },
   // The library's Vault (docs/MAC_REBUILD_PLAN.md §5.6), locked first, then opened with the fixture's PIN.
   { id: "vault-locked", link: "folevi-dev://vault", step: (kind) => vaultLock(kind), settle: 800 },
-  { id: "vault-files", link: "folevi-dev://vault", step: (kind) => vaultOpen(kind, ["tab", "Files & Notes"]), settle: 800 },
-  { id: "vault-passwords", link: "folevi-dev://vault/passwords", step: (kind) => vaultOpen(kind, ["tab", "Passwords & Credentials"]), settle: 800 },
+  { id: "vault-files", link: "folevi-dev://vault", step: (kind) => vaultOpen(kind, ["tab", "Files & Notes"]), settle: 800, prepare: { web: "return true", native: { cmd: "frame", do: "post", name: "folevi.vault.passwords", value: "none" } } },
+  { id: "vault-passwords", link: "folevi-dev://vault/passwords", step: (kind) => vaultOpen(kind, ["tab", "Passwords & Credentials"]), settle: 800, prepare: { web: "return true", native: { cmd: "frame", do: "post", name: "folevi.vault.passwords", value: "none" } } },
+  // An item open beside the list (the owner's squeezed list, 2026-10-29), then the Add dialog (its scroll bars).
+  { id: "vault-password-open", link: "folevi-dev://vault/passwords", step: (kind) => vaultOpen(kind, ["tab", "Passwords & Credentials"]), settle: 800, prepare: { web: `document.querySelector('section[aria-label="Passwords and credentials"] li button').click(); return true`, native: { cmd: "frame", do: "post", name: "folevi.vault.passwords", value: "first" } } },
+  { id: "vault-add", link: "folevi-dev://vault/passwords", step: (kind) => vaultOpen(kind, ["tab", "Passwords & Credentials"]), settle: 800, prepare: { web: `[...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Add").click(); return true`, native: { cmd: "frame", do: "post", name: "folevi.vault.passwords", value: "add" } } },
   { id: "vault-health", link: "folevi-dev://vault/health", step: (kind) => vaultOpen(kind, ["more", "Health"]), settle: 800 },
   { id: "vault-trash", link: "folevi-dev://vault/trash", step: (kind) => vaultOpen(kind, ["more", "Trash"]), settle: 800 },
   { id: "vault-settings", link: "folevi-dev://vault/settings", step: (kind) => vaultOpen(kind, ["more", "Settings"]), settle: 800 },
@@ -549,7 +552,16 @@ if (process.argv.includes("--strip")) {
     { name: "12-narrow-start", width: 820, height: 640, tabs: 12, open: 1 },
     { name: "12-narrow-middle", width: 820, height: 640, tabs: 12, open: 6 },
     { name: "12-narrow-end", width: 820, height: 640, tabs: 12, open: 11, history: true },
+    // The sidebar hidden: on the Mac, Home pinned after Back and Forward (the web keeps it in the list).
+    { name: "8-wide-middle-nosidebar", width: 1280, height: 820, tabs: 8, open: 4, noSidebar: true },
+    { name: "8-wide-home-nosidebar", width: 1280, height: 820, tabs: 8, open: 0, noSidebar: true },
   ];
+  const SIDEBAR_KEY = `for (const t of [window, document]) t.dispatchEvent(new KeyboardEvent("keydown", { key: "\\\\", code: "Backslash", metaKey: true, bubbles: true })); return true;`;
+  const toggleSidebar = async (kind) => {
+    if (kind === "web") await evaluate(dir, SIDEBAR_KEY);
+    else ensure(await command(dir, { cmd: "frame", do: "sidebar" }));
+    await sleep(900);
+  };
   // The web frame's strip (TabStrip.tsx: absolute inset-x-1 top-1 h-11) and the open tab against its list, in points.
   const WEB_STATE = `const r = document.querySelector(".ui-drag.ui-glass.h-11").getBoundingClientRect(); const nav = document.querySelector('nav[aria-label="Open pages"]'); const n = nav.getBoundingClientRect(); const cur = nav.querySelector('[aria-current="page"]'); const t = (cur?.closest("[data-tab]") ?? cur).getBoundingClientRect(); return { strip: { x: r.left, y: r.top, width: r.width, height: r.height }, tabs: nav.children.length, scroll: nav.scrollLeft, inView: t.left >= n.left - 1 && t.right <= n.right + 1 };`;
   const WEB_CLOSE = `for (const b of document.querySelectorAll('nav[aria-label="Open pages"] [aria-label^="Close "]')) b.click(); return true;`;
@@ -557,7 +569,8 @@ if (process.argv.includes("--strip")) {
   const nativeState = async () => {
     const st = ensure(await command(dir, { cmd: "frame" }));
     const s = st.strip ?? {};
-    return { tabs: st.tabs, scroll: s.scroll ?? 0, inView: s.openLeft - (s.scroll ?? 0) >= -1 && s.openLeft + s.openWidth - (s.scroll ?? 0) <= s.visible + 1 };
+    // Home pinned before the list (the sidebar hidden) is always in view: the list reports no open tab then.
+    return { tabs: st.tabs, scroll: s.scroll ?? 0, inView: !s.openWidth || (s.openLeft - (s.scroll ?? 0) >= -1 && s.openLeft + s.openWidth - (s.scroll ?? 0) <= s.visible + 1) };
   };
   const cases = CASES.filter((c) => !only || only.includes(c.name));
   const sout = join(out, "strip");
@@ -610,6 +623,7 @@ if (process.argv.includes("--strip")) {
           ensure(await command(dir, { cmd: "open", url: link }));
           await sleep(900);
         }
+        if (c.noSidebar) await toggleSidebar(kind);
         // From the far end, so the strip has to come to the open tab.
         await select(c.open === c.tabs - 1 ? 0 : c.tabs - 1);
         await select(c.open);
@@ -619,6 +633,7 @@ if (process.argv.includes("--strip")) {
           await shoot(c.name, scheme);
           shots.push({ name: c.name, scheme });
         }
+        if (c.noSidebar) await toggleSidebar(kind);
         if (c.history) {
           // Back to the tab at the start (out of sight), then Forward to the end again.
           await select(1);

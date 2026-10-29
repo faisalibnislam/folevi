@@ -106,6 +106,18 @@ struct VaultScreen: View {
             .onChange(of: model.summary.value) { _, _ in model.summaryChanged() }
             // A link to /vault/<section> on the open tab: that section (the Vault stays one tab).
             .onChange(of: path) { _, p in model.section = VaultSection(path: p) ?? .files }
+            #if DEBUG
+            // screens.mjs: the first password opened, the Add dialog, or neither.
+            .onReceive(NotificationCenter.default.publisher(for: .init("folevi.vault.passwords"))) { n in
+                model.dialog = nil
+                switch n.object as? String {
+                case "first":
+                    model.selected = model.vaultId.flatMap { id in (model.store("passwords") { .vaultItems(vaultId: id, section: .passwords) }).value?.items.first?.id }
+                case "add": model.dialog = .addItem
+                default: model.selected = nil
+                }
+            }
+            #endif
             .accessibilityIdentifier("screen.vault")
     }
 }

@@ -49,7 +49,7 @@ export function documentXmlToText(xml: string): string {
     if (close) {
       if (name === "w:t") inText = false;
       else if (name === "w:p" && para) {
-        const line = para.join("").replace(/[  ]+$/g, "");
+        const line = para.join("").replace(/[ \u00a0]+$/g, "");
         if (cell) {
           if (line.trim()) cell.push(line.trim());
         } else lines.push(line.trim() ? `${prefix}${line}` : "");

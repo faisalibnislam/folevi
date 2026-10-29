@@ -490,7 +490,10 @@ defineLocal(api.vaultFiles.removeFolder, "mutation", async (ctx, args) => {
   const gone = new Set([f.id]);
   for (let grew = true; grew; ) {
     grew = false;
-    for (const c of all) if (c.deletedAt === null && c.parentId && gone.has(c.parentId) && !gone.has(c.id)) (gone.add(c.id), (grew = true));
+    for (const c of all) if (c.deletedAt === null && c.parentId && gone.has(c.parentId) && !gone.has(c.id)) {
+      gone.add(c.id);
+      grew = true;
+    }
   }
   for (const c of all) if (gone.has(c.id)) put(ctx, "folders", { ...c, deletedAt: now });
   for (const i of await items(ctx.db)) if (i.folderId && gone.has(i.folderId) && i.deletedAt === null) put(ctx, "items", { ...i, deletedAt: now });

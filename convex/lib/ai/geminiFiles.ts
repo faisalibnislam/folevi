@@ -98,7 +98,7 @@ export async function uploadFile(blob: Blob, o: { mimeType: string; displayName:
   );
   if (!start.ok) refused("start", start.status);
   const uploadUrl = start.headers.get("x-goog-upload-url") ?? "";
-  let target: URL | null = null;
+  let target: URL | null;
   try {
     target = new URL(uploadUrl);
   } catch {

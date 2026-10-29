@@ -12,7 +12,7 @@ import { identityImageUrl } from "./lib/identityImages";
 import { insertScoped, scopeOfRow } from "./lib/scope";
 import { requireVault, vaultMemberRow, vaultRoleOf, type VaultRole } from "./lib/vault/access";
 import { appendLog } from "./lib/vault/log";
-import { notifyVaultChange, notifyVaultSecurity } from "./lib/vault/notify";
+import { notifyVaultChange } from "./lib/vault/notify";
 import { vVaultClient } from "./lib/vault/validators";
 import { liveVersions } from "./vaultKeys";
 

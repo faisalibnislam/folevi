@@ -13,7 +13,7 @@ import { insertScoped, scopeOfRow } from "./lib/scope";
 import { adjustStorageUsed, assertStorageFor } from "./lib/entitlements";
 import { requireVault, vaultRoleAtLeast } from "./lib/vault/access";
 import { appendLog } from "./lib/vault/log";
-import { notifyVaultChange, notifyVaultSecurity } from "./lib/vault/notify";
+import { notifyVaultChange } from "./lib/vault/notify";
 import { vVaultClient } from "./lib/vault/validators";
 import { checkKeyVersion, checkSealed, itemOf, keepVersion, requireCanChange, vSealedItem } from "./vaultItems";
 

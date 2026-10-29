@@ -9,13 +9,11 @@ import { BridgeError } from "./validate";
 import type { EngineDeps, ViewContext } from "./context";
 import { spaceOf } from "./context";
 import type { LiveValue } from "./views";
-import { api } from "@/lib/convex/api";
 import { VAULT_PASSCODE_LENGTHS } from "@folevi/local-store/e2ee";
 import { getKeySession, sessionImpl } from "@/lib/e2ee/keys/session";
 import { libraryVaultActor, vaultSessions, type UnlockResult, type VaultClient } from "@/lib/vault/keys";
 import { ITEM_KINDS, openSummary, openSummaryAs, type ItemKind, type ItemSummary } from "@/lib/vault/items";
 import { openFolderName, type FileSummary, type NoteSummary } from "@/lib/vault/files";
-import { eventLabel } from "@/components/vault/events";
 import type { VaultFieldDef, VaultHealthGroup, VaultItemRow, VaultKindDef, VaultSection, VaultSummaryValue, VaultUnlockResult } from "./protocol";
 
 export type Row = { id: string; kind: string; folderId: string | null; keyVersion: number; wrappedKey: ArrayBuffer; sealedSummary: ArrayBuffer; revision: number; updatedAt: number; deletedAt: number | null; size: number | null; passwordMac: string | null; createdBy: { name: string }; updatedBy: { name: string } };

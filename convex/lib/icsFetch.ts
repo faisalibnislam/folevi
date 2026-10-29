@@ -81,7 +81,7 @@ export async function downloadCalendar(url: string, previous: { etag?: string; l
       }
       const bytes = await readCapped(res, MAX_CALENDAR_BYTES + 1);
       if (bytes.length > MAX_CALENDAR_BYTES) return failed("it's larger than 5 MB.");
-      const text = new TextDecoder("utf-8").decode(bytes).replace(/^﻿/, "");
+      const text = new TextDecoder("utf-8").decode(bytes).replace(/^\uFEFF/, "");
       if (!/BEGIN:VCALENDAR/i.test(text.slice(0, 4096))) return failed("the address didn't return a calendar.");
       console.log(JSON.stringify({ event: "calendar.fetched", status: res.status, bytes: bytes.length, redirects: hop }));
       return { kind: "ok", text, etag: res.headers.get("etag"), lastModified: res.headers.get("last-modified") };

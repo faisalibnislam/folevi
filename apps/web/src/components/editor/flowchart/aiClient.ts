@@ -6,12 +6,13 @@
 //
 // Development builds also honour `window.__foleviTestFlowchartAi`, the e2e suite's scripted model
 // (e2e/flowchart-ai.spec.ts): it answers instead of the server, so the previews, Apply and undo can be
-// tested without Gemini. Production builds never read it.
+// tested without Gemini. The builds people get never read it (lib/testHooks.ts).
 import { useMemo } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import type { AiArrangement, AiDraft, AiExplanation, AiExtension, AiLabelSuggestions } from "./aiOps";
+import { TEST_HOOKS } from "@/lib/testHooks";
 
 export type FlowAiTask = "draw" | "fromText" | "extend" | "explain" | "labels" | "arrange";
 type TestModel = (task: FlowAiTask, args: Record<string, unknown>) => unknown;
@@ -22,7 +23,7 @@ declare global {
 }
 
 function testModel(): TestModel | null {
-  if (process.env.NODE_ENV === "production" || typeof window === "undefined") return null;
+  if (!TEST_HOOKS || typeof window === "undefined") return null;
   return typeof window.__foleviTestFlowchartAi === "function" ? window.__foleviTestFlowchartAi : null;
 }
 

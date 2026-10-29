@@ -90,8 +90,10 @@ jobs:
         # A production build, not `next dev`: compiling each page on first visit starved the runner's CPU,
         # and the local Convex backend's 1-second query limit then tripped for every open query at once.
         # `next build` reads apps/web/.env.local written by setup-local, so the build talks to the local backend.
+        # NEXT_PUBLIC_FOLEVI_TEST_HOOKS lets the suite's stand-ins answer (a scripted model, an image recogniser),
+        # as in development; only this build sets it (apps/web/src/lib/testHooks.ts).
         run: |
-          pnpm --filter @folevi/web build
+          NEXT_PUBLIC_FOLEVI_TEST_HOOKS=1 pnpm --filter @folevi/web build
           (cd apps/web && npx next start --port 3000 > ../../web.log 2>&1 &)
           npx --yes wait-on@9.5.1 http://localhost:3000 --timeout 120000
       - name: Playwright

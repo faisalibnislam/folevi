@@ -20,7 +20,7 @@
 import type { ReactNodeViewProps } from "@tiptap/react";
 import { useQuery } from "convex/react";
 import { useCapabilities } from "@/lib/mode";
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { ListPlus, Redo2, SquareDashed, StickyNote, StickyNotes, Undo2 } from "lucide-react";
 import {
   LIMITS,
@@ -166,6 +166,9 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
   const [spaceDown, setSpaceDown] = useState(false);
   const [panning, setPanning] = useState(false);
   const drag = useRef<Drag | null>(null);
+  // The selection bar hides while a press is in progress (drag.current); its end draws the board again so the bar
+  // comes back even when nothing else changed (a tap on the iPhone selected a note and showed no bar).
+  const [, pressEnded] = useReducer((n: number) => n + 1, 0);
   const pointers = useRef(new Map<number, { x: number; y: number; type: string }>());
   const frame = useRef<number | null>(null);
   const lastMove = useRef<PointerEvent | null>(null);
@@ -650,6 +653,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
       if (e.type !== "pointercancel") process(e.nativeEvent);
     }
     drag.current = null;
+    pressEnded();
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     setPanning(false);
     setMarquee(null);

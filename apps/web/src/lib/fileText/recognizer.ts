@@ -5,6 +5,7 @@
 // (fileText.readImage). Nothing here sends anything anywhere.
 import { nativeApp } from "@/lib/nativeApp";
 import { desktop } from "@/lib/desktop";
+import { TEST_HOOKS } from "@/lib/testHooks";
 
 export type RecognizeKind = "image" | "handwriting";
 
@@ -35,7 +36,7 @@ const base64 = async (blob: Blob) => {
 /** The recogniser on this device, or null in a browser (and in apps built before they had one). */
 export function deviceRecognizer(): DeviceRecognizer | null {
   if (typeof window === "undefined") return null;
-  if (process.env.NODE_ENV !== "production" && typeof window.__foleviTestRecognizer === "function") {
+  if (TEST_HOOKS && typeof window.__foleviTestRecognizer === "function") {
     const test = window.__foleviTestRecognizer;
     return { where: "test", recognize: async (image, kind) => String((await test({ kind, type: image.type, size: image.size })) ?? "") };
   }

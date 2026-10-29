@@ -163,6 +163,9 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
     return () => clearInterval(t);
   }, []);
   const previousDoc = useRef<string | null>(null);
+  // The name the view on screen gave itself. Its page's effect runs before this provider's, so the name can
+  // come before the view's tab exists; the new tab takes it then (a folder's tab said "Folder").
+  const viewTitle = useRef<{ path: string; title: string } | null>(null);
   useEffect(() => {
     const from = previousDoc.current;
     previousDoc.current = docId;
@@ -204,7 +207,8 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
         setTabs((cur) => {
           const i = cur.findIndex((t) => t.id === key);
           if (i !== -1) return cur[i]!.view?.path === pathname ? cur : cur.map((t) => (t.id === key ? { ...t, view: { kind, path: pathname } } : t));
-          let next: DocTab[] = [...cur, { id: key, title: "", view: { kind, path: pathname } }];
+          const title = viewTitle.current?.path === pathname ? viewTitle.current.title : "";
+          let next: DocTab[] = [...cur, { id: key, title, view: { kind, path: pathname } }];
           while (next.length > MAX_TABS && next.some((x) => x.id !== key && !x.pinned)) next = next.filter((t, j) => j !== next.findIndex((x) => x.id !== key && !x.pinned));
           return next;
         });
@@ -374,6 +378,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   const [view, setViewState] = useState<{ path: string; title: string } | null>(null);
   const setView = useCallback(
     (next: { path: string; title: string }) => {
+      viewTitle.current = next;
       setViewState((prev) => (prev && prev.path === next.path && prev.title === next.title ? prev : next));
       // The view's tab takes its name.
       setTabs((cur) => (cur.some((t) => t.view?.path === next.path && t.title !== next.title) ? cur.map((t) => (t.view?.path === next.path ? { ...t, title: next.title } : t)) : cur));

@@ -270,7 +270,7 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
           <span className="truncate">{tokens.page && !tokenPage ? `No page “${tokens.page.query}”` : where}</span>
         </button>
         {tokens.page ? (
-          <button type="button" aria-label={`Keep “${tokens.page.text}” as text`} onClick={() => keep(tokens.page!.text)} className={`${removeBtn} -ml-2`}>
+          <button type="button" aria-label={`Keep “${tokens.page.text}” as text`} title="Keep as text" onClick={() => keep(tokens.page!.text)} className={`${removeBtn} -ml-2`}>
             <X size={12} aria-hidden />
           </button>
         ) : null}
@@ -290,7 +290,7 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
           <span className={`${chip} bg-[var(--mac-hover)] text-heading`}>
             <Repeat size={13} aria-hidden />
             <span className="truncate">{describeRepeat(q.repeat.rule)}</span>
-            <button type="button" aria-label={`Keep “${q.repeat.text.trim()}” as text`} onClick={() => q.setRepeatKept(q.repeat!.text)} className={removeBtn}>
+            <button type="button" aria-label={`Keep “${q.repeat.text.trim()}” as text`} title="Keep as text" onClick={() => q.setRepeatKept(q.repeat!.text)} className={removeBtn}>
               <X size={12} aria-hidden />
             </button>
           </span>
@@ -301,11 +301,11 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
             <span className="truncate">{dateLabel ? `Due ${dateLabel}` : "Date"}</span>
           </button>
           {q.parsed && !q.due ? (
-            <button type="button" aria-label={`Keep “${q.parsed.text.trim()}” as text`} onClick={() => q.setKeptAsText(q.parsed!.text)} className={`${removeBtn} mr-1`}>
+            <button type="button" aria-label={`Keep “${q.parsed.text.trim()}” as text`} title="Keep as text" onClick={() => q.setKeptAsText(q.parsed!.text)} className={`${removeBtn} mr-1`}>
               <X size={12} aria-hidden />
             </button>
           ) : q.due ? (
-            <button type="button" aria-label="Remove the date" onClick={() => (q.setDue(""), q.setTime(""))} className={`${removeBtn} mr-1`}>
+            <button type="button" aria-label="Remove the date" title="Remove the date" onClick={() => (q.setDue(""), q.setTime(""))} className={`${removeBtn} mr-1`}>
               <X size={12} aria-hidden />
             </button>
           ) : null}
@@ -319,6 +319,7 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
             <button
               type="button"
               aria-label={tokens.priority ? `Keep “${tokens.priority.text}” as text` : "Remove the priority"}
+              title={tokens.priority ? "Keep as text" : "Remove the priority"}
               onClick={() => {
                 if (tokens.priority) keep(tokens.priority.text);
                 q.setPriority("none");

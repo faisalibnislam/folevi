@@ -245,7 +245,7 @@ export function AskAiPanel({ open, onOpen, onClose, initial, folder, hideLaunche
           >
             <Maximize2 size={15} aria-hidden />
           </button>
-          <button type="button" aria-label="Close chat" onClick={close} className={HEADER_BUTTON}>
+          <button type="button" aria-label="Close chat" title="Close (Esc)" onClick={close} className={HEADER_BUTTON}>
             <X size={16} aria-hidden />
           </button>
         </header>

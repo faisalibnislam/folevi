@@ -129,10 +129,10 @@ export function Calendar({
           {title}
         </span>
         <span className="flex gap-0.5">
-          <button type="button" className={nav} aria-label="Previous month" onClick={() => setFocus(shiftMonth(focus, -1))}>
+          <button type="button" className={nav} aria-label="Previous month" title="Previous month" onClick={() => setFocus(shiftMonth(focus, -1))}>
             <ChevronLeft size={fill ? 20 : 15} aria-hidden />
           </button>
-          <button type="button" className={nav} aria-label="Next month" onClick={() => setFocus(shiftMonth(focus, 1))}>
+          <button type="button" className={nav} aria-label="Next month" title="Next month" onClick={() => setFocus(shiftMonth(focus, 1))}>
             <ChevronRight size={fill ? 20 : 15} aria-hidden />
           </button>
         </span>
@@ -270,6 +270,7 @@ export function DateField({
         <button
           type="button"
           aria-label={`Clear ${ariaLabel ?? "date"}`}
+          title="Clear date"
           onClick={() => {
             onChange("");
             button.current?.focus();

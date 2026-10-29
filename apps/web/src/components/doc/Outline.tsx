@@ -31,7 +31,7 @@ export function Outline({ documentId, onJump }: { documentId: string; onJump: (b
           if (b.type === "page") {
             return (
               <li key={b.id}>
-                <AppLink href={`/d/${p.documentId}`} className="block truncate rounded-chip px-2.5 py-1.5 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+                <AppLink href={`/d/${p.documentId}`} title={p.titleCache || "Nested page"} className="block truncate rounded-chip px-2.5 py-1.5 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
                   ↳ {p.titleCache || "Nested page"}
                 </AppLink>
               </li>
@@ -45,6 +45,7 @@ export function Outline({ documentId, onJump }: { documentId: string; onJump: (b
               <button
                 type="button"
                 onClick={() => onJump(b.id)}
+                title={plainText(b.text) || "Untitled heading"}
                 aria-current={on ? "location" : undefined}
                 className={`block w-full truncate rounded-chip py-1.5 pr-2 text-left transition-colors hover:bg-accent-soft hover:text-heading ${
                   level === 1 ? "pl-3 font-semibold" : level === 2 ? "pl-6" : "pl-9"

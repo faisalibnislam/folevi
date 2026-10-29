@@ -264,7 +264,7 @@ export function DocumentPicker({ scope, value, onChange, label = "Add to", exclu
             <span className="truncate">
               {value.title || "Untitled"}
             </span>
-            <button type="button" aria-label="Add to Inbox instead" onClick={() => onChange(null)} className="-mr-1 grid h-5 w-5 place-items-center rounded-chip hover:bg-[var(--glass-hover)]">
+            <button type="button" aria-label="Add to Inbox instead" title="Add to Inbox instead" onClick={() => onChange(null)} className="-mr-1 grid h-5 w-5 place-items-center rounded-chip hover:bg-[var(--glass-hover)]">
               <X size={12} aria-hidden />
             </button>
           </span>

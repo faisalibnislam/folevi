@@ -64,7 +64,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   {t.action.label}
                 </button>
               ) : null}
-              <button type="button" aria-label="Dismiss" className="opacity-70 hover:opacity-100" onClick={() => dismiss(t.id)}>
+              <button type="button" aria-label="Dismiss" title="Dismiss" className="opacity-70 hover:opacity-100" onClick={() => dismiss(t.id)}>
                 <X size={14} aria-hidden />
               </button>
             </div>

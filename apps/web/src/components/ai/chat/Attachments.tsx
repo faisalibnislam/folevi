@@ -162,7 +162,7 @@ export function AttachmentChips({ files, onRemove, disabled, className }: { file
             <span className="min-w-0 max-w-[12rem] truncate">{f.name}</span>
             {uploading ? <span className="sr-only">Uploading</span> : null}
             {onRemove ? (
-              <button type="button" disabled={disabled} aria-label={`Remove ${f.name}`} onClick={() => onRemove(key)} className="mr-0.5 grid h-6 w-6 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-50">
+              <button type="button" disabled={disabled} aria-label={`Remove ${f.name}`} title="Remove attachment" onClick={() => onRemove(key)} className="mr-0.5 grid h-6 w-6 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-50">
                 <X size={12} aria-hidden />
               </button>
             ) : null}
@@ -183,7 +183,7 @@ export function AttachmentProblems({ problems, onDismiss }: { problems: { name: 
           <li key={`${p.name}-${i}`}>{p.reason}</li>
         ))}
       </ul>
-      <button type="button" aria-label="Dismiss" onClick={onDismiss} className="grid h-5 w-5 flex-none place-items-center rounded-chip hover:bg-[var(--glass-active)]">
+      <button type="button" aria-label="Dismiss" title="Dismiss" onClick={onDismiss} className="grid h-5 w-5 flex-none place-items-center rounded-chip hover:bg-[var(--glass-active)]">
         <X size={12} aria-hidden />
       </button>
     </div>

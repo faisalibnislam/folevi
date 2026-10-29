@@ -1736,6 +1736,7 @@ function SelectionBubble({ editor, onComment, inCell = false }: { editor: Editor
               key={c}
               type="button"
               aria-label={`Text color: ${colorName(palette, c)}`}
+              title={`${colorName(palette, c)} text`}
               aria-pressed={editor.isActive("textColor", { value: c })}
               onClick={() => {
                 setTextColor(editor, c);
@@ -1754,6 +1755,7 @@ function SelectionBubble({ editor, onComment, inCell = false }: { editor: Editor
               key={h}
               type="button"
               aria-label={`Highlight: ${colorName(palette, h)}`}
+              title={`${colorName(palette, h)} highlight`}
               aria-pressed={editor.isActive("highlight", { value: h })}
               onClick={() => {
                 setHighlight(editor, h);
@@ -2253,6 +2255,7 @@ function BlockHandle({
             type="button"
             hidden={hover.left - 58 < 4 || coarse || hover.gripOnly}
             aria-label="Insert block below"
+            title="Insert block below"
             className="grid h-6 w-6 place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading"
             onClick={() => {
               if (hover.index >= editor.state.doc.childCount) return;
@@ -2268,6 +2271,7 @@ function BlockHandle({
           <button
             type="button"
             aria-label="Drag to move, click for block options, Shift-click to select several blocks"
+            title="Drag to move · click for options (⌘.)"
             // A 44px target for a finger, reaching left of the grip so it never covers the text.
             className="relative grid h-6 w-6 cursor-grab touch-none place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading active:cursor-grabbing pointer-coarse:after:absolute pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:-left-4 pointer-coarse:after:right-0 pointer-coarse:after:content-['']"
             style={coarse ? { width: 18 } : undefined}

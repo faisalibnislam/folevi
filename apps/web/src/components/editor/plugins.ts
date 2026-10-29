@@ -275,6 +275,8 @@ function commentLine(blockId: string, depth: number, list: boolean, s: CommentSu
   const time = commentTime(s.lastActivityAt);
   btn.setAttribute("aria-label", `${count}, latest ${time}${s.unread ? ", unread" : ""}. Open comments`);
   btn.setAttribute("aria-haspopup", "dialog");
+  // The summary only knows whether any are unread, not how many.
+  btn.title = `${count}${s.unread ? ", unread" : ""}`;
   const faces = document.createElement("span");
   faces.className = "fb-comment-faces";
   faces.setAttribute("aria-hidden", "true");

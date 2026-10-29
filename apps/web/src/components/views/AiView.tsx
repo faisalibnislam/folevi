@@ -39,7 +39,7 @@ function ListDrawer({ activeId, onClose }: { activeId: string | null; onClose: (
       }}
     >
       <div ref={ref} className="ui-pop relative h-full w-[min(86vw,320px)] animate-[folio-settle_200ms_var(--ease-folio)] rounded-none motion-reduce:animate-none">
-        <button type="button" aria-label="Close conversations" onClick={onClose} className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+        <button type="button" aria-label="Close conversations" title="Close conversations (Esc)" onClick={onClose} className="absolute right-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
           <X size={16} aria-hidden />
         </button>
         <div className="flex h-full flex-col pt-8">
@@ -49,7 +49,7 @@ function ListDrawer({ activeId, onClose }: { activeId: string | null; onClose: (
           <ResearchList activeId={activeId} onNavigate={onClose} />
         </div>
       </div>
-      <button type="button" aria-label="Close conversations" tabIndex={-1} className="flex-1 bg-[var(--color-scrim)] backdrop-blur-[2px]" onClick={onClose} />
+      <button type="button" aria-label="Close conversations" title="Close conversations (Esc)" tabIndex={-1} className="flex-1 bg-[var(--color-scrim)] backdrop-blur-[2px]" onClick={onClose} />
     </div>
   );
 }

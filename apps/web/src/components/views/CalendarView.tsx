@@ -230,7 +230,7 @@ export function CalendarView({ month }: { month: string | null }) {
           <div className="ml-auto flex items-center gap-1.5">
             <CalendarsButton />
             {iphone || !feeds ? null : (
-              <Button size="sm" onClick={() => setFeedOpen(true)}>
+              <Button size="sm" title="Subscribe to a calendar feed" onClick={() => setFeedOpen(true)}>
                 <Rss size={14} aria-hidden /> <span className="max-md:sr-only">Subscribe</span>
               </Button>
             )}

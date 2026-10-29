@@ -56,6 +56,7 @@ export function PasswordField(props: Omit<FieldProps, "type">) {
         type="button"
         onClick={() => setShown((s) => !s)}
         aria-label={shown ? "Hide password" : "Show password"}
+        title={shown ? "Hide password" : "Show password"}
         aria-pressed={shown}
         className={`absolute grid place-items-center rounded-chip text-muted transition-colors hover:bg-accent-soft hover:text-heading ${props.compact ? "right-1 top-[calc(1.25rem+8px)] h-7 w-7" : "right-1.5 top-[calc(1.5rem+6px)] h-8 w-8"}`}
       >

@@ -642,7 +642,7 @@ export function ChatThread({
                 {iphone ? (
                   <SendButton label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="-m-[5px]" />
                 ) : (
-                  <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="grid h-9 w-9 flex-none place-items-center rounded-control bg-heading text-canvas transition-opacity disabled:opacity-30">
+                  <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} title={mode === "research" ? "Start research (Enter)" : "Ask (Enter)"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="grid h-9 w-9 flex-none place-items-center rounded-control bg-heading text-canvas transition-opacity disabled:opacity-30">
                     <ArrowUp size={16} aria-hidden />
                   </button>
                 )}

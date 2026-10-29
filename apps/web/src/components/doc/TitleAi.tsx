@@ -173,7 +173,7 @@ export function TitleAi({
           className="min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-faint"
         />
         {instruction.trim() ? (
-          <button type="submit" aria-label="Send" disabled={Boolean(busy)} className="grid h-7 w-7 flex-none place-items-center rounded-chip bg-heading text-canvas">
+          <button type="submit" aria-label="Send" title="Send (Enter)" disabled={Boolean(busy)} className="grid h-7 w-7 flex-none place-items-center rounded-chip bg-heading text-canvas">
             <ArrowUp size={15} aria-hidden />
           </button>
         ) : null}

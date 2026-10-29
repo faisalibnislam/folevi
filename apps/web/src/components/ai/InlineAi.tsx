@@ -522,7 +522,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
       {phase.kind !== "busy" ? (
         <div className="flex items-center gap-2 px-3 py-2.5">
           {inSubmenu ? (
-            <button type="button" aria-label="Back" onClick={back} className="grid h-7 w-7 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+            <button type="button" aria-label="Back" title="Back" onClick={back} className="grid h-7 w-7 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
               <ChevronLeft size={16} aria-hidden />
             </button>
           ) : (
@@ -545,6 +545,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
             <button
               type="button"
               aria-label="Send"
+              title="Send (Enter)"
               onClick={() => (phase.kind === "result" ? refine(input) : choose(options[0]))}
               className="grid h-7 w-7 flex-none place-items-center rounded-chip bg-heading text-canvas"
             >

@@ -334,6 +334,7 @@ export function AiPanel({
             <button
               type="button"
               aria-label="Write"
+              title="Write (Enter)"
               disabled={!prompt.trim() || Boolean(busy) || (mode === "write" && readOnly)}
               onClick={submit}
               className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-chip bg-heading text-canvas transition-opacity disabled:opacity-30"

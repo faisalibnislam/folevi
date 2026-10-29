@@ -110,7 +110,7 @@ export function DocumentSidebar({
                 {trail.map((c, i) => (
                   <li key={`${c.href}-${i}`} className="flex min-w-0 items-center gap-0.5">
                     {i > 0 ? <ChevronRight size={11} className="flex-none text-faint" aria-hidden /> : <span className="flex-none">In</span>}
-                    <AppLink href={c.href} onClick={onNavigate} className="max-w-[9.5rem] truncate rounded-chip px-1 transition-colors hover:bg-accent-soft hover:text-heading">
+                    <AppLink href={c.href} onClick={onNavigate} title={c.label} className="max-w-[9.5rem] truncate rounded-chip px-1 transition-colors hover:bg-accent-soft hover:text-heading">
                                             {c.label}
                     </AppLink>
                   </li>
@@ -238,6 +238,7 @@ function TasksPanel({ documentId, editor, readOnly, onJump }: { documentId: stri
                   role="checkbox"
                   aria-checked={checked}
                   aria-label={`${checked ? "Mark as not done" : "Mark as done"}: ${text}`}
+                  title={checked ? "Mark as not done" : "Mark as done"}
                   disabled={readOnly || !editor}
                   onClick={() => toggle(b.id)}
                   className={`mt-[3px] grid h-4 w-4 flex-none place-items-center rounded-chip border transition-colors ${checked ? "border-moss bg-moss text-white" : "border-line-strong bg-surface hover:border-moss"} disabled:cursor-default`}
@@ -426,7 +427,7 @@ function FindPanel({ editor }: { editor: Editor | null }) {
           aria-describedby={`${inputId}-count`}
         />
         {query ? (
-          <button type="button" aria-label="Clear search" onClick={() => setQuery("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint hover:text-ink">
+          <button type="button" aria-label="Clear search" title="Clear search (Esc)" onClick={() => setQuery("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint hover:text-ink">
             <X size={13} aria-hidden />
           </button>
         ) : null}
@@ -435,10 +436,10 @@ function FindPanel({ editor }: { editor: Editor | null }) {
         <p id={`${inputId}-count`} role="status" className="flex-1 text-footnote text-muted">
           {!query.trim() ? "Type to search this page" : matches.length ? `${current + 1} of ${matches.length}${matches.length >= MAX_MATCHES ? "+" : ""}` : "No results in this page"}
         </p>
-        <IconButton label="Previous match" onClick={() => reveal(current - 1)} disabled={!matches.length} className="!h-7 !w-7">
+        <IconButton label="Previous match" shortcut="⇧Enter" onClick={() => reveal(current - 1)} disabled={!matches.length} className="!h-7 !w-7">
           <ChevronUp size={15} aria-hidden />
         </IconButton>
-        <IconButton label="Next match" onClick={() => reveal(current + 1)} disabled={!matches.length} className="!h-7 !w-7">
+        <IconButton label="Next match" shortcut="Enter" onClick={() => reveal(current + 1)} disabled={!matches.length} className="!h-7 !w-7">
           <ChevronDown size={15} aria-hidden />
         </IconButton>
       </div>
@@ -483,6 +484,7 @@ function PageTree({ documentId, onNavigate }: { documentId: string; onNavigate?:
                 href={`/d/${p.id}`}
                 onClick={onNavigate}
                 aria-current={here ? "page" : undefined}
+                title={p.title || "Untitled"}
                 className={`flex h-7 min-w-0 items-center gap-1.5 rounded-chip pr-2 text-subheadline outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-10 ${here ? "bg-[var(--glass-active)] font-semibold text-heading shadow-[var(--glass-edge)]" : "text-ink/90 hover:bg-[var(--glass-hover)] hover:text-heading"}`}
                 style={{ paddingLeft: `${0.5 + p.depth * 0.85}rem` }}
               >

@@ -46,7 +46,7 @@ export function ContextChips({ context, names, onChange, disabled }: { context: 
   }
 
   const remove = (id: string, name: string) => (
-    <button type="button" disabled={disabled} aria-label={`Remove ${name}`} onClick={() => onChange(without(context, id))} className="mr-0.5 grid h-6 w-6 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-50">
+    <button type="button" disabled={disabled} aria-label={`Remove ${name}`} title="Remove from context" onClick={() => onChange(without(context, id))} className="mr-0.5 grid h-6 w-6 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-active)] hover:text-heading disabled:opacity-50">
       <X size={12} aria-hidden />
     </button>
   );

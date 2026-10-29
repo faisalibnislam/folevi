@@ -381,7 +381,7 @@ function NotificationRow({ n, onOpen }: { n: Item; onOpen: () => void }) {
             {n.read ? null : <span className="sr-only">, unread</span>}
           </span>
         </span>
-        {n.read ? null : <span aria-hidden className={`absolute h-2 w-2 rounded-tiny bg-coral transition-opacity ${phone ? "right-4 top-5" : "right-3.5 top-4 group-hover:opacity-0 group-focus-within:opacity-0"}`} />}
+        {n.read ? null : <span aria-hidden title="Unread" className={`absolute h-2 w-2 rounded-tiny bg-coral transition-opacity ${phone ? "right-4 top-5" : "right-3.5 top-4 group-hover:opacity-0 group-focus-within:opacity-0"}`} />}
       </button>
       {n.fileId || (n.kind === "invite" && n.inviteId) || n.pageInviteId || n.folderInviteId ? (
         <div className={`-mt-1 flex gap-1.5 pb-2.5 ${phone ? "pl-[68px]" : "pl-[50px]"}`}>

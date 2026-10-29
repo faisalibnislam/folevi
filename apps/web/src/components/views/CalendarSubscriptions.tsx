@@ -296,7 +296,7 @@ export function CalendarsButton() {
   const failing = (cals ?? []).some((c) => c.lastError);
   return (
     <>
-      <Button ref={anchor} size="sm" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((o) => !o)}>
+      <Button ref={anchor} size="sm" title="Calendars" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((o) => !o)}>
         <CalendarRange size={14} aria-hidden /> <span className="max-md:sr-only">Calendars</span>
         {failing ? (
           <>

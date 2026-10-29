@@ -282,7 +282,7 @@ export function SealedChatThread({
             className="block min-h-[3rem] w-full resize-none bg-transparent px-3.5 pb-1.5 pt-3 text-body leading-[1.5] text-ink outline-none placeholder:text-faint"
           />
           <div className="flex justify-end px-1 pb-1">
-            <button type="button" aria-label="Ask" disabled={!draft.trim() || working} onClick={() => void send(draft)} className="grid h-9 w-9 place-items-center rounded-control bg-heading text-canvas transition-opacity disabled:opacity-30">
+            <button type="button" aria-label="Ask" title="Ask (Enter)" disabled={!draft.trim() || working} onClick={() => void send(draft)} className="grid h-9 w-9 place-items-center rounded-control bg-heading text-canvas transition-opacity disabled:opacity-30">
               <ArrowUp size={16} aria-hidden />
             </button>
           </div>

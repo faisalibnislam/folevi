@@ -147,7 +147,7 @@ function SharedItemDialog({ row, onClose }: { row: Row; onClose: () => void }) {
                       Show
                     </Button>
                   ) : null}
-                  <Button size="sm" variant="quiet" aria-label={`Copy ${f.label}`} onClick={() => void copySecret(v).then(() => toast.show(`${f.label} copied. The clipboard clears in 30 seconds.`))}>
+                  <Button size="sm" variant="quiet" aria-label={`Copy ${f.label}`} title="Copy" onClick={() => void copySecret(v).then(() => toast.show(`${f.label} copied. The clipboard clears in 30 seconds.`))}>
                     <Copy size={13} aria-hidden />
                   </Button>
                 </div>

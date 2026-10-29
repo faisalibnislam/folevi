@@ -602,13 +602,13 @@ export function GraphCanvas({ nodes, edges, matches, searching, onOpen }: { node
         </section>
       ) : null}
       <div role="group" aria-label="Zoom" className="ui-pop absolute right-3 top-3 z-10 flex flex-col gap-0.5 rounded-panel p-1">
-        <IconButton label="Zoom in" onClick={() => zoomBy(1.25)}>
+        <IconButton label="Zoom in" shortcut="+" onClick={() => zoomBy(1.25)}>
           <ZoomIn size={15} aria-hidden />
         </IconButton>
-        <IconButton label="Zoom out" onClick={() => zoomBy(0.8)}>
+        <IconButton label="Zoom out" shortcut="-" onClick={() => zoomBy(0.8)}>
           <ZoomOut size={15} aria-hidden />
         </IconButton>
-        <IconButton label="Fit to screen" onClick={refit}>
+        <IconButton label="Fit to screen" shortcut="0" onClick={refit}>
           <Maximize size={15} aria-hidden />
         </IconButton>
       </div>

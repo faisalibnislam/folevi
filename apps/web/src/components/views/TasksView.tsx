@@ -118,6 +118,7 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
         role="checkbox"
         aria-checked={task.status === "done"}
         aria-label={task.status === "done" ? `Mark “${task.title}” as not done` : task.status === "canceled" ? `Reopen canceled task “${task.title}”` : `Mark “${task.title}” as done`}
+        title={task.status === "done" ? "Mark as not done" : task.status === "canceled" ? "Reopen" : "Mark as done"}
         onClick={() => onToggle(task)}
         className={`mt-0.5 grid h-[18px] w-[18px] flex-none place-items-center rounded-chip border-[1.5px] transition-colors ${
           task.status === "done"
@@ -376,10 +377,10 @@ export function TasksView({ view }: { view: View }) {
       tabTitle={`Tasks · ${meta.label}`}
       actions={
         <>
-          <AppLink href="/calendar" className="ui-btn ui-btn-secondary h-8 gap-1.5 px-3 text-callout pointer-coarse:h-11">
+          <AppLink href="/calendar" title="Calendar" className="ui-btn ui-btn-secondary h-8 gap-1.5 px-3 text-callout pointer-coarse:h-11">
             <CalendarDays size={14} aria-hidden /> <span className="max-md:sr-only">Calendar</span>
           </AppLink>
-          <Button size="sm" variant="primary" onClick={() => openQuickAdd()}>
+          <Button size="sm" variant="primary" title="Add task (⌘⇧A)" onClick={() => openQuickAdd()}>
             <Plus size={14} aria-hidden /> Add task
           </Button>
         </>

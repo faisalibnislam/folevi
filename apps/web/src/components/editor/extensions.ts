@@ -160,6 +160,7 @@ export const Todo = Node.create({
           box.removeAttribute("aria-labelledby");
           box.setAttribute("aria-label", "To-do");
         }
+        box.title = current.attrs.checked ? "Mark as not done" : "Mark as done";
         const parts: string[] = [];
         if (current.attrs.dueDate) parts.push(`${current.attrs.dueDate}${current.attrs.dueTime ? ` ${current.attrs.dueTime}` : ""}`);
         if (current.attrs.priority && current.attrs.priority !== "none") parts.push(`${current.attrs.priority} priority`);
@@ -188,6 +189,15 @@ export const Todo = Node.create({
             chip.insertAdjacentHTML("afterbegin", REPEAT_SVG);
           }
           chip.setAttribute("aria-label", `Task details: ${parts.join(", ")}`);
+          // The tooltip reads the same details in words: "Task details: due Oct 30, high priority, repeats every week".
+          const said: string[] = [];
+          if (current.attrs.dueDate) said.push(`due ${formatChip(current.attrs.dueDate, current.attrs.dueTime, null).replace(" · ", " at ")}`);
+          if (current.attrs.priority && current.attrs.priority !== "none") said.push(`${current.attrs.priority} priority`);
+          if (rule) {
+            const every = describeRepeat(rule);
+            said.push(`repeats ${every.charAt(0).toLowerCase()}${every.slice(1)}`);
+          }
+          chip.title = `Task details: ${said.join(", ")}`;
           meta.append(chip);
         }
       };
@@ -278,6 +288,7 @@ export const Toggle = Node.create({
         applyBlockFormat(dom, current.attrs);
         btn.setAttribute("aria-expanded", current.attrs.collapsed ? "false" : "true");
         btn.setAttribute("aria-label", current.attrs.collapsed ? "Expand" : "Collapse");
+        btn.title = current.attrs.collapsed ? "Expand" : "Collapse";
       };
       render();
       btn.addEventListener("mousedown", (e) => e.preventDefault());

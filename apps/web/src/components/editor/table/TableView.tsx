@@ -531,6 +531,7 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
                           onClick={() => tool((d) => model.addColumn(d))}
                           disabled={width >= LIMITS.maxTableColumns}
                           aria-label="Add a column"
+                          title="Add a column"
                           className="fb-table-add grid h-full min-h-11 w-11 place-items-center"
                         >
                           <Plus size={20} strokeWidth={2.2} aria-hidden />
@@ -563,7 +564,7 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
               <tfoot>
                 <tr>
                   <td colSpan={width} className="border-0 p-0 pt-1.5">
-                    <button type="button" tabIndex={-1} onClick={() => addRowAndOpen(0)} disabled={t.rows.length >= LIMITS.maxTableRows} aria-label="Add a row" className="fb-table-add grid h-11 w-full place-items-center">
+                    <button type="button" tabIndex={-1} onClick={() => addRowAndOpen(0)} disabled={t.rows.length >= LIMITS.maxTableRows} aria-label="Add a row" title="Add a row" className="fb-table-add grid h-11 w-full place-items-center">
                       <Plus size={20} strokeWidth={2.2} aria-hidden />
                     </button>
                   </td>

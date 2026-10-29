@@ -966,14 +966,14 @@ export function DocumentView({ documentId }: { documentId: string }) {
           ) : null}
           {shownAbove.map((f) => (
             <Fragment key={f.id}>
-              <AppLink href={`/folders/${f.id}`} className="flex min-w-0 max-w-[10rem] items-center gap-1.5 truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+              <AppLink href={`/folders/${f.id}`} title={f.name} className="flex min-w-0 max-w-[10rem] items-center gap-1.5 truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
                 <Folder size={14} className="flex-none" aria-hidden />
                 <span className="truncate">{f.name}</span>
               </AppLink>
               <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
             </Fragment>
           ))}
-          <AppLink href={folder ? `/folders/${folder.id}` : "/documents"} className="flex min-w-0 max-w-[12rem] items-center gap-1.5 truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+          <AppLink href={folder ? `/folders/${folder.id}` : "/documents"} title={folder ? folder.name : "Home"} className="flex min-w-0 max-w-[12rem] items-center gap-1.5 truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
             {folder ? (
               <>
                 <Folder size={14} className="flex-none" aria-hidden />
@@ -989,13 +989,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
           <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
           {meta?.breadcrumbs.map((b) => (
             <span key={b.id} className="flex min-w-0 items-center gap-0.5">
-              <AppLink href={`/d/${b.id}`} className="max-w-[12rem] truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+              <AppLink href={`/d/${b.id}`} title={b.title || "Untitled"} className="max-w-[12rem] truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
                 {b.title || "Untitled"}
               </AppLink>
               <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
             </span>
           ))}
-          <span className="truncate rounded-chip px-2 py-1 font-semibold text-heading" aria-current="page">
+          <span className="truncate rounded-chip px-2 py-1 font-semibold text-heading" aria-current="page" title={look?.title || localTitle || "Untitled"}>
             {look?.title || localTitle || "Untitled"}
           </span>
           {readOnly ? <span className="ui-chip ml-1 h-6 flex-none bg-sunken text-footnote text-muted">{meta?.inTrash ? "In Trash" : "View only"}</span> : null}
@@ -1484,13 +1484,13 @@ function NestedPath({ crumbs, title }: { crumbs: { id: string; title: string }[]
         </li>
         {crumbs.map((c) => (
           <li key={c.id} className="flex min-w-0 items-center gap-0.5">
-            <AppLink href={`/d/${c.id}`} className="max-w-[14rem] truncate rounded-chip px-1.5 py-0.5 text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
+            <AppLink href={`/d/${c.id}`} title={c.title || "Untitled"} className="max-w-[14rem] truncate rounded-chip px-1.5 py-0.5 text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading">
               {c.title || "Untitled"}
             </AppLink>
             <ChevronRight size={12} aria-hidden className="flex-none text-faint" />
           </li>
         ))}
-        <li aria-current="page" className="min-w-0 truncate px-1.5 py-0.5 font-semibold text-heading">
+        <li aria-current="page" title={title} className="min-w-0 truncate px-1.5 py-0.5 font-semibold text-heading">
           {title}
         </li>
       </ol>

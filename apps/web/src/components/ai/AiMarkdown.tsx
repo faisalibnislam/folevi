@@ -44,6 +44,7 @@ function CodeBlock({ block }: { block: WireBlock }) {
       <button
         type="button"
         aria-label={copied ? "Copied" : "Copy code"}
+        title="Copy code"
         onClick={() => {
           void navigator.clipboard?.writeText(code).then(() => {
             setCopied(true);

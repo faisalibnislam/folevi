@@ -130,7 +130,7 @@ export function Inspector({
               {tab === "ai" ? <AiIcon size={18} aria-hidden /> : null}
               {TITLES[tab]}
             </h2>
-            <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
+            <IconButton label="Close panel" shortcut="⌘⌥I" onClick={onClose} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
               <X size={15} aria-hidden />
             </IconButton>
           </div>
@@ -142,7 +142,7 @@ export function Inspector({
             <h2 id={`${baseId}-tab-comments`} className="flex-1 text-center text-body font-semibold text-heading">
               Comments
             </h2>
-            <IconButton label="Close panel" onClick={onClose} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
+            <IconButton label="Close panel" shortcut="⌘⌥I" onClick={onClose} className="!h-7 !w-7 pointer-coarse:!h-11 pointer-coarse:!w-11">
               <X size={15} aria-hidden />
             </IconButton>
           </div>
@@ -177,7 +177,7 @@ export function Inspector({
               </button>
             ))}
           </div>
-          <IconButton label="Close panel" onClick={onClose} className="!h-8 !w-8 flex-none pointer-coarse:!h-11 pointer-coarse:!w-11">
+          <IconButton label="Close panel" shortcut="⌘⌥I" onClick={onClose} className="!h-8 !w-8 flex-none pointer-coarse:!h-11 pointer-coarse:!w-11">
             <X size={15} aria-hidden />
           </IconButton>
         </div>
@@ -766,6 +766,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
                 <button
                   type="button"
                   aria-label={`Remove tag ${t.name}`}
+                  title="Remove tag"
                   onClick={() => void setTags({ documentId, tagIds: tags.filter((x) => x.id !== t.id).map((x) => x.id) }).catch((err) => toast.show(errorMessage(err), { tone: "error" }))}
                   className="text-faint hover:text-ink"
                 >

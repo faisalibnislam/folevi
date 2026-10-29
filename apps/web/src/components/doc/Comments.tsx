@@ -860,7 +860,7 @@ function CommentsList({ documentId, onOpenThread, focusThreadId = null }: { docu
                     <span className="min-w-0 flex-1 truncate text-subheadline">
                       <span className="font-semibold text-heading">{first.authorName}</span> <span className="text-faint">· {t.waiting === "failed" ? "Not sent" : isPending(t) ? "Waiting to send" : formatRelative(t.lastActivityAt)}</span>
                     </span>
-                    {t.unread ? <span className="h-2 w-2 flex-none rounded-tiny bg-coral" aria-label="Unread" role="img" /> : null}
+                    {t.unread ? <span className="h-2 w-2 flex-none rounded-tiny bg-coral" aria-label="Unread" title="Unread" role="img" /> : null}
                   </span>
                   <span className={`mt-1 line-clamp-2 block whitespace-pre-wrap text-subheadline leading-snug ${first.deleted ? "italic text-faint" : "text-ink"}`}>
                     {first.deleted ? "Comment deleted" : <CommentBody body={first.body} links={false} />}

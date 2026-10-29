@@ -348,12 +348,18 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
   return <AccountConvex phase={phase} useAuth={useAuth}>{children}</AccountConvex>;
 }
 
+const noSubscribe = () => () => {};
+
 function AccountConvex({ phase, useAuth, children }: { phase: AuthPhase; useAuth: Parameters<typeof ConvexProviderWithAuth>[0]["useAuth"]; children: ReactNode }) {
   const { client, ready } = useAccountClient(getConvexClient());
+  // The E2EE hint lives in this browser's storage, so the server can't know `ready`: the server and the
+  // hydrating render both show nothing, and the app starts right after (an account with the hint set no
+  // longer renders differently from the server's HTML, React error #418).
+  const hydrated = useSyncExternalStore(noSubscribe, () => true, () => false);
   return (
     <AuthPhaseContext.Provider value={phase}>
       <ConvexProviderWithAuth client={client} useAuth={useAuth}>
-        <BackendAuthed>{ready ? children : null}</BackendAuthed>
+        <BackendAuthed>{hydrated && ready ? children : null}</BackendAuthed>
       </ConvexProviderWithAuth>
     </AuthPhaseContext.Provider>
   );

@@ -141,8 +141,10 @@ causes (section 3 item 4).
 
 ## 6. How to release (each release needs the owner's explicit OK)
 
-- Version: `#.#.##` on every platform (next: 1.0.05, build 9). `node scripts/version.mjs set 1.0.05`, then
-  `sync` and `check`. Never show a build number in the UI.
+- Version: `#.#.##` on every platform (MAJOR.UPDATE.PATCH, see `CHANGELOG.md`). Release with
+  `node scripts/version.mjs release patch|update|major --change "..."` (Small update, Big update, Major release;
+  `--plan` first, `next` lists the three), then `check`. It records the release in `CHANGELOG.json` and writes
+  every project. Never edit `version.json` by hand, and never show a build number in the UI.
 - Release from a clean git worktree of the commit being shipped (so others' WIP never ships). Push to
   `main` deploys web and Convex (Vercel runs `npx convex deploy`). Poll the Vercel status:
   `gh api repos/faisalibnislam/folevi/commits/<sha>/statuses` (gh account `faisalibnislam`).

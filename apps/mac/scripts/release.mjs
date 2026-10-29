@@ -7,8 +7,9 @@
 //   node apps/mac/scripts/release.mjs [--out DIR] [--universal] [--launch-check] [--web DIR]   dry run (builders)
 //   node apps/mac/scripts/release.mjs --install [--universal]                       the owner's release
 //
-//   1. the version: version.json's (scripts/version.mjs at the repo root sets it, never this script); --install
-//      refuses a version that was released already (its mac-v<version> tag), since Sparkle needs a newer build
+//   1. the version: version.json's (`node scripts/version.mjs release major|update|patch` at the repo root sets it,
+//      never this script), with its CHANGELOG.json entry; --install refuses a version that was released already (its
+//      mac-v<version> tag), since Sparkle needs a newer build
 //   2. the built-in interface, production build (apps/web build-shell.mjs --production, this app's version)
 //   3. XcodeGen, then `xcodebuild archive` (Release; arm64, or arm64 + x86_64 with --universal)
 //   4. Resources/web goes into the archived app, which is signed again (the outer bundle only, with the archive's
@@ -28,7 +29,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { outOfSync, readVersion } from "../../../scripts/version.mjs";
+import { outOfSync, problems as versionProblems, readVersion } from "../../../scripts/version.mjs";
 import { MAC, generateProject } from "./project.mjs";
 
 export const TEAM = "7K32QQ2FX8";
@@ -50,9 +51,11 @@ const read = (cmd, args) => {
   return { ok: r.status === 0, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
 };
 
-/** Folevi's version and hidden build (version.json), once apps/mac/project.yml says the same. */
+/** Folevi's version and hidden build (version.json), once apps/mac/project.yml and the changelog say the same. */
 export function currentVersion() {
   if (outOfSync().includes("apps/mac/project.yml")) throw new Error("apps/mac/project.yml doesn't say version.json's version and build: run node scripts/version.mjs sync.");
+  const found = versionProblems();
+  if (found.length) throw new Error(`Folevi's version isn't consistent (node scripts/version.mjs check):\n  ${found.join("\n  ")}`);
   return readVersion();
 }
 
@@ -236,7 +239,7 @@ async function main() {
   mkdirSync(out, { recursive: true });
   console.log("== the version");
   const { version, build } = currentVersion();
-  if (install && released(version)) throw new Error(`Folevi ${version} was released already: give the next one a version first (node scripts/version.mjs bump minor).`);
+  if (install && released(version)) throw new Error(`Folevi ${version} was released already: give the next one a version first (node scripts/version.mjs release patch|update|major --change ...).`);
   console.log(`Folevi ${version} (build ${build}, never shown)`);
 
   // --web <dir>: an export already made by build-shell.mjs --production --app-version <version> (dry runs only).

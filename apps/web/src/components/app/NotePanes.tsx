@@ -319,25 +319,27 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
                   : undefined,
             }}
           >
-            {primary ? (
-              render(id)
-            ) : (
-              // A note without focus opens its tools panel by taking focus first (one click does both).
-              <ShellContext.Provider
-                value={{
-                  ...shell,
-                  sidebarSlot: null,
-                  setNoteAi: noop,
-                  inspectorOpen: false,
-                  setInspectorOpen: (open: boolean) => {
-                    focusPane(id);
-                    shell.setInspectorOpen(open);
-                  },
-                }}
-              >
-                {render(id)}
-              </ShellContext.Provider>
-            )}
+            {/* Always the same wrapper, only its value changes: switching focus must not rebuild the notes (that
+                re-ran each page's entrance, a flicker). A note without focus opens its tools panel by taking focus
+                first (one click does both). */}
+            <ShellContext.Provider
+              value={
+                primary
+                  ? shell
+                  : {
+                      ...shell,
+                      sidebarSlot: null,
+                      setNoteAi: noop,
+                      inspectorOpen: false,
+                      setInspectorOpen: (open: boolean) => {
+                        focusPane(id);
+                        shell.setInspectorOpen(open);
+                      },
+                    }
+              }
+            >
+              {render(id)}
+            </ShellContext.Provider>
           </PaneContext.Provider>
         );
         return (

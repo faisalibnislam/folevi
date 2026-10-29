@@ -1088,6 +1088,8 @@
   box-shadow: inset 0 0 0 0.5px var(--mac-pop-edge, var(--color-line)), 0 4px 14px rgb(0 0 0 / 0.14);
   pointer-events: none; animation: mac-fade-in 100ms ease-out;
 }
+[data-mac-tooltip][data-shortcut-only] { padding: 3px 4px; }
+[data-mac-tooltip][data-shortcut-only] .ui-kbd { margin-left: 0; }
 [data-mac-tooltip] .ui-kbd { height: 16px; min-width: 0; margin-left: 4px; padding: 0 4px; font-size: var(--type-caption-2); vertical-align: 1px; }
 
 /* §2.6 Popovers fade in and rise 4 points over 120 ms; §3.14 dialogs are sheets: attached under the top bar,

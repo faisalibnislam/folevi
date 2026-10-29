@@ -15,6 +15,20 @@ export function splitTooltip(text: string): { text: string; shortcut: string | n
   return m ? { text: m[1]!, shortcut: m[2]! } : { text: text.trim(), shortcut: null };
 }
 
+const plain = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
+
+/** Whether the control already shows the tooltip's words (its visible text holds them). */
+function alreadyShown(el: HTMLElement, words: string): boolean {
+  const seen = plain(el.innerText || "");
+  const said = plain(words);
+  return Boolean(seen && said && seen.includes(said));
+}
+
+/** Whether the control's text is cut off (it, or a part of it, is narrower than its text). */
+function cutOff(el: HTMLElement): boolean {
+  return [el, ...el.querySelectorAll<HTMLElement>("*")].some((x) => x.scrollWidth > x.clientWidth + 1 && (x.innerText || "").trim() !== "");
+}
+
 let installs = 0;
 let uninstall: (() => void) | null = null;
 
@@ -62,7 +76,17 @@ function install(): () => void {
     if (!owner || !owner.isConnected || pressed || document.querySelector('[role="menu"]:popover-open, dialog[open] [role="menu"]')) return;
     const words = owner.getAttribute("data-mac-title") ?? "";
     if (!words.trim()) return;
-    const { text, shortcut } = splitTooltip(words);
+    const split = splitTooltip(words);
+    const { shortcut } = split;
+    let text = split.text;
+    // No tooltip that repeats what the control already shows (the owner's call): a name that fits shows nothing,
+    // a cut-off one shows in full, and a labelled button with a shortcut shows the shortcut alone.
+    if (alreadyShown(owner, text)) {
+      if (cutOff(owner)) {
+        /* the full name */
+      } else if (shortcut) text = "";
+      else return;
+    }
     const el = document.createElement("div");
     el.setAttribute("role", "tooltip");
     el.setAttribute("data-mac-tooltip", "");
@@ -72,7 +96,9 @@ function install(): () => void {
       const kbd = document.createElement("kbd");
       kbd.className = "ui-kbd";
       kbd.textContent = shortcut;
-      el.append(" ", kbd);
+      if (text) el.append(" ");
+      else el.setAttribute("data-shortcut-only", "");
+      el.append(kbd);
     }
     document.body.appendChild(el);
     try {

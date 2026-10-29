@@ -32,9 +32,10 @@ function JoinGlyph({ kind }: { kind: "join" | "unjoin" }) {
   );
 }
 
-/** A slim upright pill (the Join and Unjoin buttons). */
+/** A slim upright pill (the Join and Unjoin buttons), drawn like the tab strip's controls: the raised surface, a
+ * fine outline and a soft shadow, the glyph quiet until it's pointed at. */
 const PILL =
-  "pointer-events-auto grid h-16 w-[18px] place-items-center rounded-full shadow-[0_1px_4px_rgb(0_0_0/0.12)] outline-none transition-[opacity,transform,background-color] duration-150 focus-visible:ring-2 focus-visible:ring-focus";
+  "pointer-events-auto grid h-16 w-[18px] place-items-center rounded-full bg-[var(--color-surface-raised)] text-muted shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1px_color-mix(in_oklab,var(--color-heading)_14%,transparent)] outline-none backdrop-blur transition-[opacity,color,box-shadow] duration-150 hover:text-heading hover:shadow-[0_2px_8px_rgb(0_0_0/0.14),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_28%,transparent)] focus-visible:ring-2 focus-visible:ring-focus";
 
 interface Snap {
   /** Where the gap lands, as a share of the width from the left edge. */
@@ -201,7 +202,7 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
                   aria-label="Unjoin these notes"
                   title="Unjoin"
                   onClick={() => tab && unjoin(tab.id, i - 1)}
-                  className={`${PILL} relative bg-[color-mix(in_oklab,var(--color-danger)_82%,white)] text-[var(--color-danger-ink,#3b0a0a)] opacity-0 hover:scale-105 group-hover/gap:opacity-100 group-focus-within/gap:opacity-100 focus-visible:opacity-100`}
+                  className={`${PILL} relative opacity-0 group-hover/gap:opacity-100 group-focus-within/gap:opacity-100 focus-visible:opacity-100`}
                 >
                   <JoinGlyph kind="unjoin" />
                 </button>
@@ -239,7 +240,7 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
               const r = e.currentTarget.getBoundingClientRect();
               setPicker({ x: r.left - 8, y: r.top + r.height / 2 });
             }}
-            className={`${PILL} relative bg-[color-mix(in_oklab,var(--color-success)_75%,white)] text-[var(--color-success-ink,#05290f)] hover:scale-105 group-hover/join:opacity-100 focus-visible:opacity-100 ${picker ? "opacity-100" : "opacity-0"}`}
+            className={`${PILL} relative group-hover/join:opacity-100 focus-visible:opacity-100 ${picker ? "opacity-100" : "opacity-0"}`}
           >
             <JoinGlyph kind="join" />
           </button>

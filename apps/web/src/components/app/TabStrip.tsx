@@ -307,7 +307,7 @@ export function TabStrip() {
       setPreview({ id: t.id, left: Math.min(Math.max(8, r.left + r.width / 2 - 150), window.innerWidth - 308), top: r.bottom + 8 });
     };
     if (Date.now() - previewWarm.current < 400) place();
-    else previewTimer.current = setTimeout(place, 550);
+    else previewTimer.current = setTimeout(place, 220);
   };
   const hidePreview = () => {
     if (previewTimer.current) clearTimeout(previewTimer.current);
@@ -500,7 +500,6 @@ export function TabStrip() {
                         <AppLink
                           href={`/d/${id}`}
                           aria-current={here ? "page" : undefined}
-                          title={name}
                           aria-label={`${name} (joined)`}
                           className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-chip outline-none ${pinned ? "px-0.5" : "px-0.5"} ${here ? "font-semibold text-heading" : active ? "font-normal text-muted" : ""}`}
                         >
@@ -512,7 +511,7 @@ export function TabStrip() {
                   })}
                 </span>
               ) : (
-                <AppLink href={tabHref(t)} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-1 items-center gap-2 outline-none" title={label} aria-label={label}>
+                <AppLink href={tabHref(t)} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-1 items-center gap-2 outline-none" aria-label={label}>
                   {t.view ? <ViewIcon kind={t.view.kind} /> : <FileText size={14} aria-hidden className="flex-none opacity-70" />}
                   {nested !== null ? (
                     <span className="flex min-w-0 items-center gap-1">

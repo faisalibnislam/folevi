@@ -1,4 +1,5 @@
-// One tooltip everywhere in Folevi for Mac (docs/MAC_POLISH_PLAN.md §2.4, §3.7): what a control's `title` says,
+// One tooltip everywhere in Folevi, the website and the app in a browser as well as Folevi for Mac (docs/MAC_POLISH_PLAN.md
+// §2.4, §3.7; never the browser's own, the owner's rule): what a control's `title` says,
 // drawn by the page in Folevi's type after 700 ms of the pointer resting on it, at once while another has just
 // shown (until a second passes with none), with a shortcut written in it ("New note (⌘⌥N)") in a keycap. The
 // browser's own tooltip is held back while the page's shows (the title comes back as the pointer leaves), so
@@ -14,7 +15,26 @@ export function splitTooltip(text: string): { text: string; shortcut: string | n
   return m ? { text: m[1]!, shortcut: m[2]! } : { text: text.trim(), shortcut: null };
 }
 
+let installs = 0;
+let uninstall: (() => void) | null = null;
+
+/** Turns Folevi's tooltip on for the page (several callers may: it's installed once, and removed with the last). */
 export function installMacTooltips(): () => void {
+  installs += 1;
+  if (installs === 1) uninstall = install();
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    installs -= 1;
+    if (installs === 0) {
+      uninstall?.();
+      uninstall = null;
+    }
+  };
+}
+
+function install(): () => void {
   let tip: HTMLDivElement | null = null;
   let owner: HTMLElement | null = null;
   let timer = 0;
@@ -76,8 +96,9 @@ export function installMacTooltips(): () => void {
     const target = e.target instanceof Element ? e.target.closest<HTMLElement>("[title], [data-mac-title]") : null;
     if (target === owner) return;
     hide();
-    // Note text, fields and the frames of embeds keep what they have (a link's address, a field's hint).
-    if (!target || target.closest("[contenteditable='true'], .ProseMirror, input, textarea, iframe, svg title")) return;
+    // Every title shows as Folevi's tooltip (a link's address in a note, a field's hint too): never the browser's.
+    // Only the frames of embeds keep their own.
+    if (!target || target.closest("iframe")) return;
     owner = target;
     const words = target.getAttribute("title");
     if (words === null) return;

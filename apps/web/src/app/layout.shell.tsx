@@ -1,5 +1,6 @@
 // The root layout of the bundled app shell (FOLEVI_BUILD=shell, docs/LOCAL_MODE_PLAN.md §1). Only the shell
 // build reads *.shell.tsx files (pageExtensions in next.config.ts); the website never sees this file.
+import { Tooltips } from "@/components/ui/Tooltips";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/bootScript";
@@ -33,7 +34,10 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
         <meta httpEquiv="Content-Security-Policy" content={csp} />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Tooltips />
+      </body>
     </html>
   );
 }

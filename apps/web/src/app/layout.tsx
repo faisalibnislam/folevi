@@ -1,3 +1,4 @@
+import { Tooltips } from "@/components/ui/Tooltips";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/bootScript";
@@ -45,7 +46,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* folevi.com/ opens your notes when this browser is signed in, even without the hint cookie. */}
         <script dangerouslySetInnerHTML={{ __html: SIGNED_IN_CHECK_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Tooltips />
+      </body>
     </html>
   );
 }

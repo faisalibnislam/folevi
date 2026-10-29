@@ -40,18 +40,6 @@ function JoinGlyph({ kind }: { kind: "join" | "unjoin" }) {
 const PILL =
   "pointer-events-auto grid h-16 w-[18px] place-items-center rounded-full bg-[var(--color-surface-raised)] text-muted shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1px_color-mix(in_oklab,var(--color-heading)_14%,transparent)] outline-none backdrop-blur transition-[opacity,color,box-shadow] duration-150 hover:text-heading hover:shadow-[0_2px_8px_rgb(0_0_0/0.14),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_28%,transparent)] focus-visible:ring-2 focus-visible:ring-focus";
 
-/** A quick label beside a pill while it's pointed at or focused (the browser's own tooltip takes a while). */
-function PillTip({ children, side }: { children: ReactNode; side: "left" | "right" }) {
-  return (
-    <span
-      aria-hidden
-      className={`pointer-events-none absolute top-1/2 z-40 -translate-y-1/2 whitespace-nowrap rounded-control bg-[var(--color-heading)] px-2 py-1 text-footnote font-semibold text-[var(--color-canvas)] opacity-0 shadow transition-opacity delay-150 duration-150 group-hover/pill:opacity-100 group-focus-visible/pill:opacity-100 ${side === "left" ? "right-full mr-2" : "left-full ml-2"}`}
-    >
-      {children}
-    </span>
-  );
-}
-
 interface Snap {
   /** Where the gap lands, as a share of the width from the left edge. */
   at: number;
@@ -338,16 +326,16 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
                 <button
                   type="button"
                   aria-label="Unjoin these notes"
+                  title="Unjoin notes"
                   aria-haspopup="dialog"
                   aria-expanded={confirm?.gap === i - 1}
                   onClick={(e) => {
                     const r = e.currentTarget.getBoundingClientRect();
                     setConfirm({ gap: i - 1, x: r.left + r.width / 2, y: r.bottom + 8 });
                   }}
-                  className={`${PILL} group/pill relative ${confirm?.gap === i - 1 ? "opacity-100" : "opacity-0"} group-hover/gap:opacity-100 group-focus-within/gap:opacity-100 focus-visible:opacity-100`}
+                  className={`${PILL} relative ${confirm?.gap === i - 1 ? "opacity-100" : "opacity-0"} group-hover/gap:opacity-100 group-focus-within/gap:opacity-100 focus-visible:opacity-100`}
                 >
                   <JoinGlyph kind="unjoin" />
-                  <PillTip side="right">Unjoin notes</PillTip>
                 </button>
               </div>
             ) : null}
@@ -374,16 +362,16 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
           <button
             type="button"
             aria-label="Join a note beside this one"
+            title="Join a note"
             aria-haspopup="dialog"
             aria-expanded={Boolean(picker)}
             onClick={(e) => {
               const r = e.currentTarget.getBoundingClientRect();
               setPicker({ x: r.left - 8, y: r.top + r.height / 2 });
             }}
-            className={`${PILL} group/pill relative group-hover/join:opacity-100 focus-visible:opacity-100 ${picker ? "opacity-100" : "opacity-0"}`}
+            className={`${PILL} relative group-hover/join:opacity-100 focus-visible:opacity-100 ${picker ? "opacity-100" : "opacity-0"}`}
           >
             <JoinGlyph kind="join" />
-            <PillTip side="left">Join a note</PillTip>
           </button>
         </div>
       ) : null}

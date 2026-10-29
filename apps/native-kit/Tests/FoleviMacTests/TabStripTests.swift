@@ -9,12 +9,12 @@ import Testing
 
 @Suite("Tab strip")
 struct TabStripTests {
-    /// The web's measures: Home 78.47 wide, an open tab 200 wide (its title), 6 between tabs, 4 either side.
-    static let home: CGFloat = 78.47, open: CGFloat = 200, gap: CGFloat = 6, padding: CGFloat = 8
+    /// The web's measures: Home 78.47 wide, 6 between tabs, 4 either side. Every other tab shares the room, open or not.
+    static let home: CGFloat = 78.47, gap: CGFloat = 6, padding: CGFloat = 8
 
     /// `count` tabs with Home first and tab `active` open (0 is Home), in a list given `available`.
     static func strip(_ count: Int, active: Int, available: CGFloat?) -> (sizes: TabStripMath.Sizes, lefts: [CGFloat]) {
-        let fixed: [CGFloat?] = (0..<count).map { $0 == 0 ? home : ($0 == active ? open : nil) }
+        let fixed: [CGFloat?] = (0..<count).map { $0 == 0 ? home : nil }
         let s = TabStripMath.sizes(fixed: fixed, gap: gap, padding: padding, available: available)
         var x = padding / 2
         var lefts: [CGFloat] = []
@@ -46,22 +46,24 @@ struct TabStripTests {
         #expect(s.widths == [Self.home, 284])
         #expect(s.visible == s.content)
         #expect(s.content == Self.padding + Self.home + 284 + Self.gap)
-        // The open tab keeps its own width (172 to 284).
-        #expect(Self.strip(2, active: 1, available: 900).sizes.widths == [Self.home, Self.open])
+        // The open tab is as wide as it would be closed (the owner: tabs never change size when opened).
+        #expect(Self.strip(2, active: 1, available: 900).sizes.widths == [Self.home, 284])
         #expect(TabStripMath.overflow(scroll: 0, visible: s.visible, content: s.content) == (false, false))
     }
 
     @Test func tabsShrinkEvenlyBeforeTheListScrolls() {
-        // Four tabs in 700: the two others share the shortfall evenly and the list just fits.
+        // Four tabs in 700: the three after Home, the open one too, share the shortfall evenly and the list just fits.
         let (s, _) = Self.strip(4, active: 1, available: 700)
-        let natural = Self.padding + Self.home + Self.open + 2 * 284 + 3 * Self.gap
-        let each = 284 - (natural - 700) / 2
-        #expect(s.widths == [Self.home, Self.open, each, each])
+        let natural = Self.padding + Self.home + 3 * 284 + 3 * Self.gap
+        let each = 284 - (natural - 700) / 3
+        #expect(s.widths == [Self.home, each, each, each])
+        // Opening another tab changes no width.
+        #expect(Self.strip(4, active: 3, available: 700).sizes.widths == s.widths)
         #expect(s.visible == 700)
         #expect(abs(s.content - 700) < 0.01)
         // Never below 172: then it scrolls.
         let (many, _) = Self.strip(8, active: 1, available: 900)
-        #expect(many.widths.dropFirst(2).allSatisfy { $0 == TabStripMath.minTab })
+        #expect(many.widths.dropFirst().allSatisfy { $0 == TabStripMath.minTab })
         #expect(many.visible == 900)
         #expect(many.content > 900)
         #expect(TabStripMath.overflow(scroll: 0, visible: many.visible, content: many.content) == (false, true))

@@ -345,11 +345,9 @@ export function TabStrip() {
               data-tab={t.id}
               data-ipad-tab={ipad ? "" : undefined}
               className={`${tabBase} ${
-                // The others shrink evenly to their minimum; the open one keeps room for its whole title (up to the
-                // widest a tab gets), so it stays readable however many tabs are open.
-                ipad
-                  ? `min-w-[150px] pr-1.5 ${active ? "max-w-[260px] flex-none" : "flex-[0_1_260px]"}`
-                  : `min-w-[172px] pr-1 ${active ? "max-w-[284px] flex-none" : "flex-[0_1_284px]"}`
+                // Every tab the same width, open or not (the owner, 2026-10-29): they shrink evenly to their minimum
+                // together, so opening one changes only its look and nothing beside it moves.
+                ipad ? "min-w-[150px] flex-[0_1_260px] pr-1.5" : "min-w-[172px] flex-[0_1_284px] pr-1"
               } ${active ? tabOn : tabOff} ${dragging === t.id ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
               onPointerDown={(e) => dragStart(e, t.id)}
               onPointerMove={dragMove}

@@ -1,7 +1,7 @@
 "use client";
 
 import { AI_FOCUS_EVENT } from "./events";
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ArrowDown, ArrowUp, Loader2, Sparkles } from "lucide-react";
 import { useIphoneApp } from "@/lib/iphone";
@@ -18,14 +18,15 @@ import { AiIntroBody, type AiIntroPlace } from "../AiIntro";
 import { AiCreditsNote, AiProblemNotice, aiProblem, useAiCredits, type AiProblem } from "../AiCredits";
 import { useAiAccess } from "../useAi";
 import { useAiFeatures } from "@/lib/mode";
-import { AssistantMessage, UserMessage, type Citation } from "./ChatMessage";
+import { AssistantMessage, UserMessage, type ChatMessageData, type Citation } from "./ChatMessage";
 import { ContextChips } from "./ContextChips";
 import { citationHref, WHOLE_SCOPE, type ChatContext } from "./chatText";
 import type { ActionsOutcome, AiAction } from "./ActionsCard";
 import type { RunActivity } from "./AgentRunCard";
+import type { RunHandlers } from "./ChatMessage";
 import { WebToggle } from "./WebToggle";
 import { AttachControl, AttachmentChips, AttachmentProblems, useChatAttachments, type PendingFile } from "./Attachments";
-import type { ResearchHandlers } from "./ResearchCard";
+import type { ResearchHandlers, ResearchJob } from "./ResearchCard";
 import { useChatMode } from "./mode";
 import { asksToChange, asksToContinue, CONTINUE_AGENT, FIX_IN_NOTE, wantsAgent } from "../editIntent";
 import { AiAnnouncer, useDoneAnnouncement } from "../announce";
@@ -46,6 +47,7 @@ const RESEARCH_SUGGESTIONS = ["Compare the best note-taking methods", "What chan
  */
 export type ChatMode = "ask" | "agent" | "research";
 const IDLE: RunActivity = { busy: null, error: null };
+const NO_MESSAGES: ChatMessageData[] = [];
 
 /** Focus the chat's box (⌘J on the AI page). */
 export { AI_FOCUS_EVENT };
@@ -163,7 +165,7 @@ export function ChatThread({
     return () => window.removeEventListener(AI_FOCUS_EVENT, focus);
   }, []);
 
-  const messages = data?.messages ?? [];
+  const messages = data?.messages ?? NO_MESSAGES;
   const conversation = data?.conversation ?? null;
   // The question just sent, until the server has it.
   const showPending = pending && messages.length <= pending.after ? pending.text : null;
@@ -182,7 +184,6 @@ export function ChatThread({
   }, [working, lastDone, onWorking]);
   const context: ChatContext = conversation ? { kind: conversation.context.kind, ids: conversation.context.items.map((i) => i.id) } : newContext;
   const names: Record<string, string> = { ...initialNames, ...Object.fromEntries((conversation?.context.items ?? []).map((i) => [i.id, i.name])) };
-  const lastUser = messages.map((m) => m.role).lastIndexOf("user");
   // The answer has started (its text streams separately, aiChat.streamText, so `live` says so first).
   const answering = Boolean(messages[messages.length - 1]?.text || messages[messages.length - 1]?.live);
   // Files for the next message (the Attach control): only when Settings > AI allows reading them, not for Research.
@@ -424,6 +425,33 @@ export function ChatThread({
     onUndo: (changed?: "all" | "rest") => void onRun(runId, "undoing", () => undoRun({ runId, ...(changed ? { changed } : {}) })),
   });
 
+  // What the messages act with, always the latest: the list itself draws again only when what it shows changes
+  // (not for every letter typed in the box below it).
+  const act = useRef<ThreadActs>(null!);
+  act.current = {
+    run,
+    send,
+    cite,
+    open,
+    fixInNote,
+    continueAgent,
+    apply,
+    runHandlers,
+    researchHandlers,
+    stop: (messageId) => void stop({ messageId }),
+    dismiss: (messageId) => void setOutcome({ messageId, outcome: { kind: "dismissed" } }),
+    edit: (messageId, text) => {
+      if (!conversationId) return;
+      void run(() => (features.agent && wantsAgent(text) ? agentEdit({ conversationId, messageId, text }) : editAction({ conversationId, messageId, text, ...(webOn ? { web: true } : {}) })));
+    },
+    regenerate: (m) => {
+      if (!conversationId) return;
+      if (jobFor(m.id)) void run(() => researchRegenerate({ conversationId }));
+      else if (m.agent) void run(() => agentRegenerate({ conversationId }));
+      else void run(() => regenerateAction({ conversationId, ...(webOn || m.webCitations.length ? { web: true } : {}) }));
+    },
+  };
+
   const empty = !messages.length && !showPending;
   const aboutNotes = context.kind === "note" || context.kind === "notes";
   const suggestions = mode === "research" ? RESEARCH_SUGGESTIONS : context.kind === "folder" ? FOLDER_SUGGESTIONS : aboutNotes ? NOTE_SUGGESTIONS : SUGGESTIONS;
@@ -514,42 +542,21 @@ export function ChatThread({
           ) : null}
           {conversationId && data === null ? <p className="px-1 text-body text-muted">This conversation isn&apos;t here anymore. Ask something to start a new one.</p> : null}
           {intro}
-          {messages.map((m, i) =>
-            m.role === "user" ? (
-              <UserMessage key={m.id} text={m.text} attachments={m.attachments} disabled={working} onEdit={i === lastUser && conversationId ? (text) => void run(() => (features.agent && wantsAgent(text) ? agentEdit({ conversationId, messageId: m.id, text }) : editAction({ conversationId, messageId: m.id, text, ...(webOn ? { web: true } : {}) }))) : undefined} />
-            ) : m.role === "assistant" ? (
-              <AssistantMessage
-                key={m.id}
-                message={m}
-                last={i === messages.length - 1}
-                busy={working}
-                outcome={applying[m.id] ?? (m.actionsOutcome?.kind === "applied" ? m.actionsOutcome : m.actionsOutcome?.kind === "dismissed" ? "dismissed" : undefined)}
-                onCite={cite}
-                onStop={() => void stop({ messageId: m.id })}
-                onRegenerate={() => {
-                  if (!conversationId) return;
-                  if (jobFor(m.id)) void run(() => researchRegenerate({ conversationId }));
-                  else if (m.agent) void run(() => agentRegenerate({ conversationId }));
-                  else void run(() => regenerateAction({ conversationId, ...(webOn || m.webCitations.length ? { web: true } : {}) }));
-                }}
-                onSuggestion={(text) => send(text)}
-                onInsert={onInsert}
-                onFix={
-                  features.agent && i === messages.length - 1 && !m.agent && !jobFor(m.id) && m.status === "done" && contextNotes.length && asksToChange(messages[i - 1]?.role === "user" ? messages[i - 1]!.text : "") ? fixInNote : undefined
-                }
-                onContinue={features.agent && i === messages.length - 1 && m.agent?.more && m.status === "done" ? continueAgent : undefined}
-                onApply={() => void apply(m.id, (m.actions ?? []) as AiAction[])}
-                onDismiss={() => void setOutcome({ messageId: m.id, outcome: { kind: "dismissed" } })}
-                onOpen={open}
-                run={m.agent?.run ? runHandlers(m.agent.run.id) : undefined}
-                conversation={conversation ? { id: conversation.id, title: conversation.title } : undefined}
-                research={(() => {
-                  const job = jobFor(m.id);
-                  return job ? researchHandlers(job) : undefined;
-                })()}
-              />
-            ) : null,
-          )}
+          <ThreadMessages
+            messages={messages}
+            working={working}
+            conversationId={conversationId}
+            conversation={conversation}
+            applying={applying}
+            jobs={jobs}
+            runs={runs}
+            saving={saving}
+            webOn={webOn}
+            agentOn={features.agent}
+            aboutNotes={contextNotes.length > 0}
+            onInsert={onInsert}
+            act={act}
+          />
           {showPending ? (
             <>
               <UserMessage text={showPending} attachments={pending?.files} />
@@ -661,3 +668,82 @@ export function ChatThread({
     </>
   );
 }
+
+interface ThreadActs {
+  run: (work: () => Promise<unknown>) => Promise<void>;
+  send: (text: string) => void;
+  cite: (c: Citation) => void;
+  open: (href: string) => void;
+  fixInNote: () => void;
+  continueAgent: () => void;
+  apply: (messageId: Id<"aiMessages">, actions: AiAction[]) => Promise<void>;
+  runHandlers: (runId: string) => RunHandlers;
+  researchHandlers: (job: ResearchJob) => ResearchHandlers;
+  stop: (messageId: Id<"aiMessages">) => void;
+  dismiss: (messageId: Id<"aiMessages">) => void;
+  edit: (messageId: Id<"aiMessages">, text: string) => void;
+  regenerate: (m: ChatMessageData) => void;
+}
+
+/** The conversation's messages: drawn again when they or what they show change, not when the box is typed in. */
+const ThreadMessages = memo(function ThreadMessages({
+  messages,
+  working,
+  conversationId,
+  conversation,
+  applying,
+  jobs,
+  agentOn,
+  aboutNotes,
+  onInsert,
+  act,
+}: {
+  messages: ChatMessageData[];
+  working: boolean;
+  conversationId: string | null;
+  conversation: { id: string; title: string } | null;
+  applying: Record<string, ActionsOutcome>;
+  jobs: ResearchJob[] | undefined;
+  /** Read through `act`'s handlers; given here so the list draws again when they change. */
+  runs: Record<string, RunActivity>;
+  saving: Record<string, ResearchHandlers["saving"]>;
+  webOn: boolean;
+  agentOn: boolean;
+  aboutNotes: boolean;
+  onInsert?: (markdown: string) => void;
+  act: RefObject<ThreadActs>;
+}) {
+  const lastUser = messages.map((m) => m.role).lastIndexOf("user");
+  const jobFor = (messageId: string) => jobs?.find((j) => j.messageId === messageId);
+  return messages.map((m, i) =>
+    m.role === "user" ? (
+      <UserMessage key={m.id} text={m.text} attachments={m.attachments} disabled={working} onEdit={i === lastUser && conversationId ? (text) => act.current.edit(m.id, text) : undefined} />
+    ) : m.role === "assistant" ? (
+      <AssistantMessage
+        key={m.id}
+        message={m}
+        last={i === messages.length - 1}
+        busy={working}
+        outcome={applying[m.id] ?? (m.actionsOutcome?.kind === "applied" ? m.actionsOutcome : m.actionsOutcome?.kind === "dismissed" ? "dismissed" : undefined)}
+        onCite={(c) => act.current.cite(c)}
+        onStop={() => act.current.stop(m.id)}
+        onRegenerate={() => act.current.regenerate(m)}
+        onSuggestion={(text) => act.current.send(text)}
+        onInsert={onInsert}
+        onFix={
+          agentOn && i === messages.length - 1 && !m.agent && !jobFor(m.id) && m.status === "done" && aboutNotes && asksToChange(messages[i - 1]?.role === "user" ? messages[i - 1]!.text : "") ? () => act.current.fixInNote() : undefined
+        }
+        onContinue={agentOn && i === messages.length - 1 && m.agent?.more && m.status === "done" ? () => act.current.continueAgent() : undefined}
+        onApply={() => void act.current.apply(m.id, (m.actions ?? []) as AiAction[])}
+        onDismiss={() => act.current.dismiss(m.id)}
+        onOpen={(href) => act.current.open(href)}
+        run={m.agent?.run ? act.current.runHandlers(m.agent.run.id) : undefined}
+        conversation={conversation ? { id: conversation.id, title: conversation.title } : undefined}
+        research={(() => {
+          const job = jobFor(m.id);
+          return job ? act.current.researchHandlers(job) : undefined;
+        })()}
+      />
+    ) : null,
+  );
+});

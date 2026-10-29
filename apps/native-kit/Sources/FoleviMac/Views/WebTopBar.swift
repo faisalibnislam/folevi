@@ -62,12 +62,10 @@ public struct WebTopBar: View {
         .gesture(WindowDragGesture())
     }
 
-    /// New note sits as far from the bar's right edge as the Back arrow's ink from its left edge, so both ends match:
-    /// the bar's padding, then half the button's room around the 15 pt icon, then Lucide's arrow-left, drawn from
-    /// x 5 of its 24 (less half its 2 pt stroke).
+    /// New note sits as far from the bar's right edge as from its top and bottom edges (the owner's ask, 1.1.04): the
+    /// room the bar leaves round the button's height.
     private var newNoteInset: CGFloat {
-        let back = style("frame.topbar.back")
-        return (style("frame.topbar").padding.left + (back.width - 15) / 2 + 15 * (5 - 1) / 24).rounded()
+        (style("frame.topbar").height - style("frame.topbar.new").height) / 2
     }
 
     /// Home, pinned; the arrows while the other tabs overflow; then those tabs, the only part that scrolls.

@@ -2,7 +2,8 @@
 
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
-import { PanelLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, PanelLeft, X } from "lucide-react";
+import { usePane } from "@/lib/app/panes";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
@@ -625,6 +626,7 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   useViewTab(tabTitle ?? (typeof title === "string" ? title : undefined));
   const inIphone = useIphoneApp();
   const ipad = useIpadLayout();
+  const pane = usePane();
   if (nativeChrome()) {
     // Native chrome mode: the native app draws the bars; the view keeps clear of them by the insets it was given.
     return (
@@ -666,7 +668,39 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   const showTitle = route.name === "doc";
   const drawerToggle = !sidebarOpen && drawerMode;
   const visible = Boolean(subtitle || leading || actions || sync || drawerToggle || (showTitle && title));
-  const bar = !visible ? (
+  // Joined notes: each note's top row is a bar to tell which has focus (raised, like the open tab) and to
+  // rearrange them: drag it, or ‹ › to move one place; × takes the note out into its own tab.
+  const joined = showTitle ? pane.joined : undefined;
+  const PANE_BTN = "grid h-7 w-7 flex-none place-items-center rounded-control text-faint outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus disabled:pointer-events-none disabled:opacity-30";
+  const bar = joined ? (
+    <header
+      onPointerDown={joined.dragStart}
+      title="Drag to rearrange"
+      className={`mx-2 flex h-10 flex-none select-none items-center gap-1 rounded-panel px-1 transition-[background-color,box-shadow,color] duration-150 sm:mx-3 ${joined.dragging ? "cursor-grabbing" : "cursor-grab"} ${
+        pane.primary
+          ? "bg-[var(--color-surface-raised)] text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]"
+          : "bg-[var(--glass-hover)] text-muted"
+      }`}
+    >
+      <button type="button" aria-label="Move this note left" title="Move left" disabled={joined.index === 0} onClick={() => joined.move(joined.index - 1)} className={PANE_BTN}>
+        <ChevronLeft size={14} aria-hidden />
+      </button>
+      <GripVertical size={14} aria-hidden className="flex-none text-faint" />
+      <div className={`flex min-w-0 flex-1 items-baseline gap-2 truncate text-subheadline ${pane.primary ? "" : "opacity-80"}`}>
+        <div className="min-w-0 truncate">{title}</div>
+      </div>
+      <div className="flex flex-none items-center gap-1.5">
+        {sync}
+        {actions}
+      </div>
+      <button type="button" aria-label="Move this note right" title="Move right" disabled={joined.index === joined.count - 1} onClick={() => joined.move(joined.index + 1)} className={PANE_BTN}>
+        <ChevronRight size={14} aria-hidden />
+      </button>
+      <button type="button" aria-label="Take this note out into its own tab" title="Take out into its own tab" onClick={joined.remove} className={PANE_BTN}>
+        <X size={13} aria-hidden />
+      </button>
+    </header>
+  ) : !visible ? (
     title ? <div className="sr-only">{title}</div> : null
   ) : (
       <header className={`mx-2 ${drawerMode ? "mt-2" : ""} flex min-h-11 flex-none items-center gap-2 px-2 sm:mx-3 sm:px-5`}>

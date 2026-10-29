@@ -73,6 +73,10 @@ interface TabsValue {
   unjoin: (id: string, gap: number) => void;
   /** A joined tab's pane widths (shares adding up to 1). */
   setSizes: (id: string, sizes: number[] | undefined) => void;
+  /** Moves a joined tab's pane to another place among its panes (its width goes with it). */
+  movePane: (id: string, from: number, to: number) => void;
+  /** Takes one note out of a joined tab into its own tab, just after (the rest stay joined, or become one note's tab). */
+  detachPane: (id: string, page: string) => void;
   /** Files the open page under its top-level page's tab (nested pages never get a tab of their own). */
   place: (documentId: string, root: { id: string; title: string }, pageTitle?: string) => void;
   /**
@@ -295,6 +299,41 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
     [setTabs],
   );
 
+  const movePane = useCallback(
+    (id: string, from: number, to: number) => {
+      setTabs((cur) =>
+        cur.map((x) => {
+          if (x.id !== id || !x.panes || from === to || to < 0 || to >= x.panes.length || from < 0 || from >= x.panes.length) return x;
+          const panes = [...x.panes];
+          panes.splice(to, 0, ...panes.splice(from, 1));
+          const sizes = x.sizes ? [...x.sizes] : undefined;
+          if (sizes) sizes.splice(to, 0, ...sizes.splice(from, 1));
+          return { ...x, panes, ...(sizes ? { sizes } : {}) };
+        }),
+      );
+    },
+    [setTabs],
+  );
+
+  const detachPane = useCallback(
+    (id: string, page: string) => {
+      setTabs((cur) =>
+        cur.flatMap((x) => {
+          if (x.id !== id || !x.panes?.includes(page)) return [x];
+          const i = x.panes.indexOf(page);
+          const panes = x.panes.filter((p) => p !== page);
+          const own: DocTab = { id: page, at: page, title: "" };
+          if (panes.length === 1) return [{ id: panes[0]!, at: panes[0]!, title: "", ...(x.pinned ? { pinned: true } : {}) }, own];
+          const kept = x.sizes?.filter((_, j) => j !== i);
+          const total = kept?.reduce((a, b) => a + b, 0) ?? 0;
+          const at = x.at === page ? panes[0]! : x.at;
+          return [{ ...x, panes, at, sizes: kept && total > 0 ? kept.map((v) => v / total) : undefined }, own];
+        }),
+      );
+    },
+    [setTabs],
+  );
+
   const place = useCallback(
     (documentId: string, root: { id: string; title: string }, pageTitle?: string) => {
       const i = tabs.findIndex((t) => tabPage(t) === documentId);
@@ -341,8 +380,8 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   })();
   const warm = useMemo(() => (warmKey ? warmKey.split(",") : []), [warmKey]);
   const value = useMemo(
-    () => ({ tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, place, warm }),
-    [tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, place, warm],
+    () => ({ tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm }),
+    [tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm],
   );
   return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>;
 }

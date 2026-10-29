@@ -137,4 +137,18 @@ describe("joined tabs", () => {
     expect(seen).toEqual(["join:x", C]);
     expect(api.tabs[0]!.at).toBe(A);
   });
+
+  test("a joined note moves among the others with its width, or comes out into its own tab", () => {
+    localStorage.setItem("folevi:tabs:acct", JSON.stringify([{ id: "join:x", title: "", panes: [A, B, C], at: A, sizes: [0.5, 0.3, 0.2] }]));
+    render(`/d/${A}`, null);
+    act(() => api.movePane("join:x", 0, 2));
+    expect(api.tabs[0]).toMatchObject({ panes: [B, C, A], sizes: [0.3, 0.2, 0.5] });
+    act(() => api.detachPane("join:x", C));
+    expect(api.tabs.map((t) => t.id)).toEqual(["join:x", C]);
+    expect(api.tabs[0]!.panes).toEqual([B, A]);
+    expect(api.tabs[0]!.sizes![0]).toBeCloseTo(0.375);
+    // Down to one note: the joined tab becomes that note's own tab.
+    act(() => api.detachPane("join:x", B));
+    expect(api.tabs.map((t) => t.id)).toEqual([A, B, C]);
+  });
 });

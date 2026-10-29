@@ -22,12 +22,12 @@ const SNAP = 14;
 const noop = () => undefined;
 
 /**
- * The join glyph: two brackets facing each other, with + (join) or × (unjoin) between them. Its line is the same
- * weight on screen as the app's 14 px icons (Lucide's 2 on a 24 grid: about 1.17 px).
+ * The join glyph: two brackets facing each other, with + (join) or × (unjoin) between them, drawn at 85% of its
+ * grid. Its line is the same weight on screen as the app's 14 px icons (Lucide's 2 on a 24 grid: about 1.17 px).
  */
 function JoinGlyph({ kind }: { kind: "join" | "unjoin" }) {
   return (
-    <svg width="12" height="30" viewBox="0 0 12 30" fill="none" stroke="currentColor" strokeWidth="1.17" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="10.2" height="25.5" viewBox="0 0 12 30" fill="none" stroke="currentColor" strokeWidth="1.17" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M2 1.5v5.5h8V1.5" />
       {kind === "join" ? <path d="M6 11.5v7M2.5 15h7" /> : <path d="M3.5 12.5l5 5M8.5 12.5l-5 5" />}
       <path d="M2 28.5V23h8v5.5" />
@@ -39,6 +39,18 @@ function JoinGlyph({ kind }: { kind: "join" | "unjoin" }) {
  * fine outline and a soft shadow, the glyph quiet until it's pointed at. */
 const PILL =
   "pointer-events-auto grid h-16 w-[18px] place-items-center rounded-full bg-[var(--color-surface-raised)] text-muted shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1px_color-mix(in_oklab,var(--color-heading)_14%,transparent)] outline-none backdrop-blur transition-[opacity,color,box-shadow] duration-150 hover:text-heading hover:shadow-[0_2px_8px_rgb(0_0_0/0.14),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_28%,transparent)] focus-visible:ring-2 focus-visible:ring-focus";
+
+/** A quick label beside a pill while it's pointed at or focused (the browser's own tooltip takes a while). */
+function PillTip({ children, side }: { children: ReactNode; side: "left" | "right" }) {
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute top-1/2 z-40 -translate-y-1/2 whitespace-nowrap rounded-control bg-[var(--color-heading)] px-2 py-1 text-footnote font-semibold text-[var(--color-canvas)] opacity-0 shadow transition-opacity delay-150 duration-150 group-hover/pill:opacity-100 group-focus-visible/pill:opacity-100 ${side === "left" ? "right-full mr-2" : "left-full ml-2"}`}
+    >
+      {children}
+    </span>
+  );
+}
 
 interface Snap {
   /** Where the gap lands, as a share of the width from the left edge. */
@@ -78,7 +90,7 @@ const equal = (n: number) => Array.from({ length: n }, () => 1 / n);
  */
 export function NotePanes({ documentId, render }: { documentId: string; render: (id: string) => ReactNode }) {
   const shell = useShell();
-  const { tabs, setSizes, join, unjoin } = useTabs();
+  const { tabs, setSizes, join, unjoin, movePane, detachPane } = useTabs();
   const { navigate } = useAppRouter();
   const tab = tabs.find((t) => !t.view && tabHolds(t, documentId)) ?? null;
   const panes = tab?.panes ?? [documentId];
@@ -158,7 +170,60 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
     if (id !== documentId) navigate(`/d/${id}`, { replace: true });
   };
 
+  // Rearranging: a pane dragged by its bar follows the pointer, the others slide aside to show where it lands,
+  // and it drops into that place.
+  const [paneDrag, setPaneDrag] = useState<{ from: number; dx: number; to: number; width: number } | null>(null);
+  const paneDragRef = useRef<{ from: number; startX: number; to: number; mids: number[]; widths: number[]; moved: boolean } | null>(null);
+  const startPaneDrag = (e: ReactPointerEvent<HTMLElement>, from: number) => {
+    if (e.button !== 0 || e.pointerType === "touch" || n < 2 || (e.target as Element).closest("a,button,input,[role=menuitem]")) return;
+    const els = panes.map((id) => box.current?.querySelector<HTMLElement>(`[data-pane="${CSS.escape(id)}"]`));
+    if (els.some((el) => !el)) return;
+    const rects = els.map((el) => el!.getBoundingClientRect());
+    paneDragRef.current = { from, startX: e.clientX, to: from, mids: rects.map((r) => r.left + r.width / 2), widths: rects.map((r) => r.width), moved: false };
+    const move = (ev: PointerEvent) => {
+      const d = paneDragRef.current;
+      if (!d) return;
+      const dx = ev.clientX - d.startX;
+      if (!d.moved && Math.abs(dx) < 5) return;
+      d.moved = true;
+      // The place it lands: once its leading edge passes a neighbour's middle, it takes that neighbour's slot.
+      const half = d.widths[d.from]! / 2;
+      const left = d.mids[d.from]! + dx - half;
+      const right = d.mids[d.from]! + dx + half;
+      let to = d.from;
+      for (let j = 0; j < d.mids.length; j++) {
+        if (j < d.from && left < d.mids[j]!) to = Math.min(to, j);
+        if (j > d.from && right > d.mids[j]!) to = Math.max(to, j);
+      }
+      d.to = to;
+      setPaneDrag({ from: d.from, dx, to, width: d.widths[d.from]! });
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      const d = paneDragRef.current;
+      paneDragRef.current = null;
+      setPaneDrag(null);
+      if (d?.moved && tab && d.to !== d.from) movePane(tab.id, d.from, d.to);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+  /** Where each pane is drawn during a drag: the dragged one under the pointer, the ones it passed slid aside. */
+  const dragShift = (i: number): number => {
+    if (!paneDrag) return 0;
+    if (i === paneDrag.from) return paneDrag.dx;
+    const w = paneDrag.width + GAP;
+    if (paneDrag.to > paneDrag.from && i > paneDrag.from && i <= paneDrag.to) return -w;
+    if (paneDrag.to < paneDrag.from && i < paneDrag.from && i >= paneDrag.to) return w;
+    return 0;
+  };
+
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
+  // Unjoin asks first (a pill in the gap is easy to hit by accident): the gap it's for, and where to show it.
+  const [confirm, setConfirm] = useState<{ gap: number; x: number; y: number } | null>(null);
   const canJoin = Boolean(tab) && n < MAX_PANES;
   // Join sits on the last note's own right edge: with its tools panel open (Style, Format…), beside the note,
   // not over the panel.
@@ -204,8 +269,41 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
         const primary = id === documentId;
         const style: CSSProperties = n > 1 ? { flex: `0 0 ${Math.round(sizes[i]! * room)}px`, minWidth: MIN_PANE } : { flex: "1 1 0%" };
         const content = (
-          <PaneContext.Provider value={{ primary }}>
-            {primary ? render(id) : <ShellContext.Provider value={{ ...shell, sidebarSlot: null, setNoteAi: noop, inspectorOpen: false, setInspectorOpen: noop }}>{render(id)}</ShellContext.Provider>}
+          <PaneContext.Provider
+            value={{
+              primary,
+              joined:
+                n > 1 && tab
+                  ? {
+                      index: i,
+                      count: n,
+                      move: (to: number) => movePane(tab.id, i, to),
+                      remove: () => detachPane(tab.id, id),
+                      dragStart: (e: ReactPointerEvent<HTMLElement>) => startPaneDrag(e, i),
+                      dragging: paneDrag?.from === i,
+                    }
+                  : undefined,
+            }}
+          >
+            {primary ? (
+              render(id)
+            ) : (
+              // A note without focus opens its tools panel by taking focus first (one click does both).
+              <ShellContext.Provider
+                value={{
+                  ...shell,
+                  sidebarSlot: null,
+                  setNoteAi: noop,
+                  inspectorOpen: false,
+                  setInspectorOpen: (open: boolean) => {
+                    focusPane(id);
+                    shell.setInspectorOpen(open);
+                  },
+                }}
+              >
+                {render(id)}
+              </ShellContext.Provider>
+            )}
           </PaneContext.Provider>
         );
         return (
@@ -240,19 +338,24 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
                 <button
                   type="button"
                   aria-label="Unjoin these notes"
-                  title="Unjoin"
-                  onClick={() => tab && unjoin(tab.id, i - 1)}
-                  className={`${PILL} relative opacity-0 group-hover/gap:opacity-100 group-focus-within/gap:opacity-100 focus-visible:opacity-100`}
+                  aria-haspopup="dialog"
+                  aria-expanded={confirm?.gap === i - 1}
+                  onClick={(e) => {
+                    const r = e.currentTarget.getBoundingClientRect();
+                    setConfirm({ gap: i - 1, x: r.left + r.width / 2, y: r.bottom + 8 });
+                  }}
+                  className={`${PILL} group/pill relative ${confirm?.gap === i - 1 ? "opacity-100" : "opacity-0"} group-hover/gap:opacity-100 group-focus-within/gap:opacity-100 focus-visible:opacity-100`}
                 >
                   <JoinGlyph kind="unjoin" />
+                  <PillTip side="right">Unjoin notes</PillTip>
                 </button>
               </div>
             ) : null}
             <div
               data-pane={id}
               data-pane-focus={n > 1 && primary ? "" : undefined}
-              className="relative flex min-h-0 min-w-0 flex-col"
-              style={style}
+              className={`relative flex min-h-0 min-w-0 flex-col ${paneDrag ? (paneDrag.from === i ? "z-30 opacity-95 [filter:drop-shadow(0_12px_28px_rgb(0_0_0/0.18))]" : "transition-transform duration-200 ease-out") : ""}`}
+              style={{ ...style, transform: paneDrag ? `translateX(${dragShift(i)}px)` : undefined }}
               onPointerDownCapture={() => focusPane(id)}
               // Tabbing into a pane counts; focus a page puts back by itself (a closing popover, a restored caret) doesn't.
               onFocusCapture={(e) => {
@@ -260,8 +363,6 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
               }}
             >
               {content}
-              {/* Joined notes: a faint line marks the pane with focus. */}
-              {n > 1 ? <span aria-hidden className={`pointer-events-none absolute inset-x-6 top-[50px] z-20 h-0.5 rounded-full transition-opacity ${primary ? "bg-[var(--color-heading)] opacity-25" : "opacity-0"}`} /> : null}
             </div>
           </div>
         );
@@ -275,14 +376,14 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
             aria-label="Join a note beside this one"
             aria-haspopup="dialog"
             aria-expanded={Boolean(picker)}
-            title="Join a note beside this one"
             onClick={(e) => {
               const r = e.currentTarget.getBoundingClientRect();
               setPicker({ x: r.left - 8, y: r.top + r.height / 2 });
             }}
-            className={`${PILL} relative group-hover/join:opacity-100 focus-visible:opacity-100 ${picker ? "opacity-100" : "opacity-0"}`}
+            className={`${PILL} group/pill relative group-hover/join:opacity-100 focus-visible:opacity-100 ${picker ? "opacity-100" : "opacity-0"}`}
           >
             <JoinGlyph kind="join" />
+            <PillTip side="left">Join a note</PillTip>
           </button>
         </div>
       ) : null}
@@ -291,6 +392,16 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
           <span className="absolute inset-y-0 w-0.5 -translate-x-1/2 rounded-full bg-[var(--color-focus)]" />
           <span className="absolute top-3 -translate-x-1/2 whitespace-nowrap rounded-chip bg-[var(--color-heading)] px-2 py-0.5 text-caption font-semibold text-[var(--color-canvas)] shadow">{guide.label}</span>
         </div>
+      ) : null}
+      {confirm && tab ? (
+        <UnjoinConfirm
+          at={confirm}
+          onCancel={() => setConfirm(null)}
+          onConfirm={() => {
+            setConfirm(null);
+            unjoin(tab.id, confirm.gap);
+          }}
+        />
       ) : null}
       {picker && tab ? (
         <JoinPicker
@@ -304,6 +415,46 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
         />
       ) : null}
     </div>
+  );
+}
+
+/** "Unjoin these notes?" under the Unjoin button: Unjoin or Cancel (Esc, or a click elsewhere, cancels). */
+function UnjoinConfirm({ at, onConfirm, onCancel }: { at: { x: number; y: number }; onConfirm: () => void; onCancel: () => void }) {
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      if (!panel.current?.contains(e.target as Node)) onCancel();
+    };
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, [onCancel]);
+  const W = 232;
+  return createPortal(
+    <div
+      ref={panel}
+      role="alertdialog"
+      aria-label="Unjoin these notes?"
+      className="ui-pop fixed z-[80] p-3"
+      style={{ left: Math.min(Math.max(12, at.x - W / 2), window.innerWidth - W - 12), top: at.y, width: W }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          onCancel();
+        }
+      }}
+    >
+      <p className="text-subheadline font-semibold text-heading">Unjoin these notes?</p>
+      <p className="mt-0.5 text-footnote text-muted">Each side goes back to its own tab. Nothing in the notes changes.</p>
+      <div className="mt-3 flex justify-end gap-2">
+        <button type="button" onClick={onCancel} className="h-8 rounded-control px-3 text-subheadline text-heading hover:bg-[var(--glass-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          No
+        </button>
+        <button type="button" autoFocus onClick={onConfirm} className="h-8 rounded-control bg-[var(--color-heading)] px-3 text-subheadline font-semibold text-[var(--color-canvas)] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          Yes, unjoin
+        </button>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

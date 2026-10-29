@@ -9,7 +9,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { AppRouterProvider } = await import("@/lib/app/router");
-const { TabsProvider, tabsStorageKeys, useTabs } = await import("@/lib/app/tabs");
+const { NativeTabsProvider, TabsProvider, tabsStorageKeys, useDocTab, useTabs, useWarmTabs } = await import("@/lib/app/tabs");
+const { setNativePanes } = await import("@/lib/engine/noteHost");
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -18,6 +19,15 @@ let api: ReturnType<typeof useTabs>;
 function Probe() {
   api = useTabs();
   seen = api.tabs.map((t) => t.id);
+  return null;
+}
+
+/** A note's page naming its tab (as DocumentView does), counting how often it's drawn. */
+let page: { id: string; title: string } | null = null;
+let pageDrawn = 0;
+function Page() {
+  pageDrawn++;
+  useDocTab(page!.id, page!.title, null);
   return null;
 }
 
@@ -32,6 +42,7 @@ function render(path: string, workspaceId: string | null) {
       <AppRouterProvider>
         <TabsProvider accountKey="acct" workspaceId={workspaceId}>
           <Probe />
+          {page ? <Page /> : null}
         </TabsProvider>
       </AppRouterProvider>,
     ),
@@ -45,6 +56,7 @@ beforeEach(() => {
   root = createRoot(host);
 });
 afterEach(() => {
+  page = null;
   act(() => root.unmount());
   host.remove();
 });
@@ -150,5 +162,56 @@ describe("joined tabs", () => {
     // Down to one note: the joined tab becomes that note's own tab.
     act(() => api.detachPane("join:x", B));
     expect(api.tabs.map((t) => t.id)).toEqual([A, B, C]);
+  });
+});
+
+describe("a note's page names its tab", () => {
+  test("the tab made after the page named it takes the name, and a tab changing elsewhere doesn't draw the page again", () => {
+    openThree();
+    // The page is drawn (and names its tab) in the same pass that opens the tab.
+    page = { id: A, title: "Alpha" };
+    render(`/d/${A}`, null);
+    expect(api.tabs.find((t) => t.id === A)?.title).toBe("Alpha");
+    const drawn = pageDrawn;
+    act(() => api.setPinned(B, true));
+    act(() => api.move(A, 2));
+    expect(seen).toEqual([B, C, A]);
+    expect(api.tabs[0]!.pinned).toBe(true);
+    expect(pageDrawn).toBe(drawn);
+    // A tab replaced under the page (moving within the note) takes the name again.
+    act(() => api.close(A));
+    render(`/d/${A}`, null);
+    expect(api.tabs.find((t) => t.id === A)?.title).toBe("Alpha");
+  });
+});
+
+describe("the Mac app's page (native draws the strip)", () => {
+  test("the joined notes come from native, pages naming their tabs and the warm notes need nothing, sizes show at once", () => {
+    setNativePanes({ panes: [A, B], sizes: null, tabs: [{ id: C, title: "Gamma" }] });
+    let warm: string[] = ["x"];
+    function NativeProbe() {
+      api = useTabs();
+      seen = api.tabs.map((t) => t.id);
+      warm = useWarmTabs();
+      useDocTab(A, "Alpha", null);
+      return null;
+    }
+    pathname = `/d/${A}`;
+    window.history.replaceState(null, "", pathname);
+    act(() =>
+      root.render(
+        <AppRouterProvider>
+          <NativeTabsProvider>
+            <NativeProbe />
+          </NativeTabsProvider>
+        </AppRouterProvider>,
+      ),
+    );
+    expect(api.tabs[0]).toMatchObject({ panes: [A, B], at: A });
+    expect(seen).toEqual(["join:native", C]);
+    expect(warm).toEqual([]);
+    act(() => api.setSizes("join:native", [0.6, 0.4]));
+    expect(api.tabs[0]!.sizes).toEqual([0.6, 0.4]);
+    setNativePanes({ panes: null, sizes: null, tabs: [] });
   });
 });

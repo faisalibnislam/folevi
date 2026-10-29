@@ -106,6 +106,19 @@ export function openNextInNewTab() {
 const TabsContext = createContext<TabsValue | null>(null);
 
 /**
+ * What a note's page and a view tell the strip, kept apart from the tabs themselves so a page that only names its
+ * tab doesn't draw again each time a tab changes. Both stay the same for the provider's life.
+ */
+interface TabsActions {
+  setView: TabsValue["setView"];
+  /** `place` now and again whenever the tabs change (until the returned function is called), as useDocTab needs. */
+  keepPlaced: (documentId: string, root: { id: string; title: string }, pageTitle?: string) => () => void;
+}
+const TabsActionsContext = createContext<TabsActions | null>(null);
+/** The notes to keep ready (TabsValue.warm), on their own so the shell's warm notes don't follow every tab change. */
+const WarmTabsContext = createContext<string[]>([]);
+
+/**
  * Where a context's tabs are remembered: Personal keeps the account's original keys (so tabs opened before
  * contexts existed stay in Personal); each workspace has its own.
  */
@@ -384,8 +397,38 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
     () => ({ tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm }),
     [tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm],
   );
-  return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>;
+
+  // The pages placed (useDocTab), placed again with each change to the tabs: a page names its tab before the tab
+  // exists (its effect runs first), and a tab made or replaced later takes the name then.
+  const placed = useRef(new Map<number, Parameters<typeof place>>());
+  const placeRef = useRef(place);
+  useEffect(() => {
+    if (placeRef.current === place) return;
+    placeRef.current = place;
+    for (const args of placed.current.values()) place(...args);
+  }, [place]);
+  const actions = useMemo<TabsActions>(() => {
+    let next = 0;
+    return {
+      setView,
+      keepPlaced: (...args) => {
+        const key = next++;
+        placed.current.set(key, args);
+        placeRef.current(...args);
+        return () => placed.current.delete(key);
+      },
+    };
+  }, [setView]);
+  return (
+    <TabsActionsContext.Provider value={actions}>
+      <WarmTabsContext.Provider value={warm}>
+        <TabsContext.Provider value={value}>{children}</TabsContext.Provider>
+      </WarmTabsContext.Provider>
+    </TabsActionsContext.Provider>
+  );
 }
+
+const NATIVE_ACTIONS: TabsActions = { setView: () => undefined, keepPlaced: () => () => undefined };
 
 const noop = () => undefined;
 /** The joined tab's id on a native app's page (native has its own; the page only needs one to address). */
@@ -439,7 +482,11 @@ export function NativeTabsProvider({ children }: { accountKey?: string; workspac
     }),
     [tabs],
   );
-  return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>;
+  return (
+    <TabsActionsContext.Provider value={NATIVE_ACTIONS}>
+      <TabsContext.Provider value={value}>{children}</TabsContext.Provider>
+    </TabsActionsContext.Provider>
+  );
 }
 
 export function useTabs(): TabsValue {
@@ -448,13 +495,17 @@ export function useTabs(): TabsValue {
   return ctx;
 }
 
+/** The notes to keep ready (see TabsValue.warm), without following the rest of the tabs. */
+export function useWarmTabs(): string[] {
+  return useContext(WarmTabsContext);
+}
+
 /**
  * Names the list view on screen for the tab strip (ViewChrome passes the view's tab title). The strip
  * shows it as the current tab, so a folder page never looks like the last note you had open.
  */
 export function useViewTab(title: string | undefined) {
-  const ctx = useContext(TabsContext);
-  const setView = ctx?.setView;
+  const setView = useContext(TabsActionsContext)?.setView;
   const { route, pathname } = useAppRouter();
   const isDoc = route.name === "doc";
   useEffect(() => {
@@ -468,13 +519,12 @@ export function useViewTab(title: string | undefined) {
  * itself when it isn't nested) and shows that note's title. Pass root = undefined until it's known.
  */
 export function useDocTab(documentId: string, title: string, root: { id: string; title: string } | null | undefined) {
-  const ctx = useContext(TabsContext);
-  const place = ctx?.place;
+  const keepPlaced = useContext(TabsActionsContext)?.keepPlaced;
   const rootId = root === undefined ? undefined : (root?.id ?? documentId);
   const rootTitle = root === undefined ? title : (root?.title ?? title);
   useEffect(() => {
-    if (rootId === undefined || !place) return;
+    if (rootId === undefined || !keepPlaced) return;
     if (rootId === documentId && !rootTitle) return;
-    place(documentId, { id: rootId, title: rootTitle }, title || "Untitled");
-  }, [place, documentId, rootId, rootTitle, title]);
+    return keepPlaced(documentId, { id: rootId, title: rootTitle }, title || "Untitled");
+  }, [keepPlaced, documentId, rootId, rootTitle, title]);
 }

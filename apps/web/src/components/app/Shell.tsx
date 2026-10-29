@@ -7,7 +7,7 @@ import { usePane } from "@/lib/app/panes";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
-import { NativeTabsProvider, TabsProvider, useTabs, useViewTab } from "@/lib/app/tabs";
+import { NativeTabsProvider, TabsProvider, useViewTab, useWarmTabs } from "@/lib/app/tabs";
 import { NotePanes } from "./NotePanes";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { useDocumentTitle } from "@/lib/hooks/useTitle";
@@ -775,7 +775,7 @@ function JoinedBar({ joined, primary, title, tabTitle, sync, actions }: { joined
 
 /** Keeps the recent tabs' note details and page tree loaded, so switching to one needs no round trip. */
 function WarmNotes() {
-  const { warm } = useTabs();
+  const warm = useWarmTabs();
   return (
     <>
       {warm.map((id) => (

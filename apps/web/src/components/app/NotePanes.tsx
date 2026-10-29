@@ -15,8 +15,11 @@ import { ShellContext, useShell } from "./Shell";
 
 /** The narrowest a pane is dragged to. */
 const MIN_PANE = 360;
-/** The width a joined note needs to read comfortably, and for its page tools to fit: below it, the notes you're not in fold into spines. */
-const COMFORT = 600;
+/**
+ * The narrowest a joined note gets before the next one folds into a spine (folding is the last resort: notes shrink
+ * first, their page tools down to icons below 600, globals.css).
+ */
+const COMFORT = MIN_PANE;
 /** A folded note: a spine with its icon and title, standing in its place. */
 const SPINE = 44;
 /** The gap between panes (it holds the Unjoin button and is where they're resized). */
@@ -120,6 +123,15 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
   const room = Math.max(0, width - GAP * (n - 1) - folded.size * SPINE);
   const openShare = panes.reduce((sum, id, i) => (folded.has(id) ? sum : sum + sizes[i]!), 0) || 1;
   const titles = useQuery(api.documents.titles, n > 1 ? { documentIds: panes } : "skip");
+  // Each open note's width from its size, but never under the minimum (what it lacks comes from the wider ones).
+  const widths = useMemo(() => {
+    const open = panes.map((id, i) => (folded.has(id) ? 0 : (sizes[i]! / openShare) * room));
+    const floor = Math.min(MIN_PANE, room / Math.max(1, n - folded.size));
+    let short = 0;
+    for (const w of open) if (w && w < floor) short += floor - w;
+    const spare = open.reduce((sum, w) => (w > floor ? sum + (w - floor) : sum), 0);
+    return open.map((w) => (!w ? 0 : w < floor ? floor : spare ? Math.round(w - ((w - floor) / spare) * short) : Math.round(w)));
+  }, [panes, folded, sizes, openShare, room, n]);
 
   const [guide, setGuide] = useState<Snap | null>(null);
   const drag = useRef<{ gap: number; startX: number; start: number[]; pointer: number } | null>(null);
@@ -184,9 +196,12 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
   // Rearranging: a pane dragged by its bar follows the pointer, the others slide aside to show where it lands,
   // and it drops into that place.
   const [paneDrag, setPaneDrag] = useState<{ from: number; dx: number; to: number; width: number } | null>(null);
+  const justDraggedPane = useRef(false);
   const paneDragRef = useRef<{ from: number; startX: number; to: number; mids: number[]; widths: number[]; moved: boolean } | null>(null);
   const startPaneDrag = (e: ReactPointerEvent<HTMLElement>, from: number) => {
-    if (e.button !== 0 || e.pointerType === "touch" || n < 2 || (e.target as Element).closest("a,button,input,[role=menuitem]")) return;
+    const target = e.target as Element;
+    // (A spine is dragged by itself; a bar, by anywhere but its links and buttons.)
+    if (e.button !== 0 || e.pointerType === "touch" || n < 2 || (!target.closest("[data-pane-spine]") && target.closest("a,button,input,[role=menuitem]"))) return;
     const els = panes.map((id) => box.current?.querySelector<HTMLElement>(`[data-pane="${CSS.escape(id)}"]`));
     if (els.some((el) => !el)) return;
     const rects = els.map((el) => el!.getBoundingClientRect());
@@ -216,6 +231,11 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
       const d = paneDragRef.current;
       paneDragRef.current = null;
       setPaneDrag(null);
+      if (d?.moved) {
+        // The click that ends a drag doesn't open the spine it was.
+        justDraggedPane.current = true;
+        window.setTimeout(() => (justDraggedPane.current = false), 0);
+      }
       if (d?.moved && tab && d.to !== d.from) movePane(tab.id, d.from, d.to);
     };
     window.addEventListener("pointermove", move);
@@ -235,7 +255,8 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
   // Unjoin asks first (a pill in the gap is easy to hit by accident): the gap it's for, and where to show it.
   const [confirm, setConfirm] = useState<{ gap: number; x: number; y: number } | null>(null);
-  const canJoin = Boolean(tab) && n < MAX_PANES;
+  // (Not while notes are folded for room: there's none for another, and it would cover the last spine.)
+  const canJoin = Boolean(tab) && n < MAX_PANES && allOpen;
   // Join sits on the last note's own right edge: with its tools panel open (Style, Format…), beside the note,
   // not over the panel.
   const [joinInset, setJoinInset] = useState(0);
@@ -279,7 +300,7 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
       {panes.map((id, i) => {
         const primary = id === documentId;
         const isFolded = folded.has(id);
-        const style: CSSProperties = n < 2 ? { flex: "1 1 0%" } : isFolded ? { flex: `0 0 ${SPINE}px` } : { flex: `0 0 ${Math.round((sizes[i]! / openShare) * room)}px` };
+        const style: CSSProperties = n < 2 ? { flex: "1 1 0%" } : isFolded ? { flex: `0 0 ${SPINE}px` } : { flex: `0 0 ${widths[i]}px` };
         const content = (
           <PaneContext.Provider
             value={{
@@ -364,7 +385,17 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
               </div>
             ) : null}
             {isFolded ? (
-              <Spine key={id} id={id} title={titles?.[id]?.title || "Untitled"} onOpen={() => navigate(`/d/${id}`, { replace: true })} />
+              <Spine
+                key={id}
+                id={id}
+                title={titles?.[id]?.title || "Untitled"}
+                shift={paneDrag ? dragShift(i) : null}
+                lifted={paneDrag?.from === i}
+                onDragStart={(e) => startPaneDrag(e, i)}
+                onOpen={() => {
+                  if (!justDraggedPane.current) navigate(`/d/${id}`, { replace: true });
+                }}
+              />
             ) : (
             <div
               data-pane={id}
@@ -440,17 +471,27 @@ export function NotePanes({ documentId, render }: { documentId: string; render: 
  * A joined note folded for room: its icon and title upright, in its place. A click opens it (it becomes the note
  * you're in); resting on it shows a picture of its page beside it, as a tab does.
  */
-function Spine({ id, title, onOpen }: { id: string; title: string; onOpen: () => void }) {
+function Spine({ id, title, shift, lifted, onDragStart, onOpen }: { id: string; title: string; /** Where it's drawn while notes are dragged (null: not dragging). */ shift: number | null; lifted: boolean; onDragStart: (e: ReactPointerEvent<HTMLElement>) => void; onOpen: () => void }) {
   const [peek, setPeek] = useState<{ left: number; top: number; side: "left" | "right" } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current);
   }, []);
   return (
-    <div data-pane={id} data-pane-spine="" className="relative flex min-h-0 flex-none flex-col" style={{ flex: `0 0 ${SPINE}px`, paddingTop: 56 }}>
+    <div
+      data-pane={id}
+      data-pane-spine=""
+      className={`relative flex min-h-0 flex-none flex-col ${lifted ? "z-30 [filter:drop-shadow(0_12px_28px_rgb(0_0_0/0.18))]" : shift !== null ? "transition-transform duration-200 ease-out" : ""}`}
+      style={{ flex: `0 0 ${SPINE}px`, paddingTop: 56, transform: shift !== null ? `translateX(${shift}px)` : undefined }}
+    >
       <button
         type="button"
         aria-label={`Open ${title}`}
+        onPointerDown={(e) => {
+          if (timer.current) clearTimeout(timer.current);
+          setPeek(null);
+          onDragStart(e);
+        }}
         onClick={onOpen}
         onPointerEnter={(e) => {
           if (e.pointerType !== "mouse") return;
@@ -462,7 +503,7 @@ function Spine({ id, title, onOpen }: { id: string; title: string; onOpen: () =>
           if (timer.current) clearTimeout(timer.current);
           setPeek(null);
         }}
-        className="mb-1 flex min-h-0 flex-1 flex-col items-center gap-2 rounded-panel bg-[var(--glass-hover)] px-0 py-3 text-muted outline-none transition-colors hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus"
+        className={`mb-1 flex min-h-0 flex-1 flex-col items-center gap-2 rounded-panel bg-[var(--glass-hover)] px-0 py-3 text-muted outline-none ${lifted ? "cursor-grabbing" : "cursor-pointer"} transition-colors hover:bg-[color-mix(in_oklab,var(--glass-active)_70%,transparent)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus`}
       >
         <FileText size={14} aria-hidden className="flex-none opacity-70" />
         <span className="min-h-0 truncate text-subheadline font-medium [writing-mode:vertical-rl]">{title}</span>

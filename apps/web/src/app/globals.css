@@ -1079,6 +1079,13 @@
 /* Joined notes (components/app/NotePanes.tsx): only the note you're in shows its page tools; the others' would
    overlap it on a narrow window. */
 [data-pane-rest] [role="toolbar"][aria-label="Page tools"] { display: none; }
+/* A note narrower than its page tools' words (joined, or a narrow window): icons only, like the phone's bar
+   (each keeps its name as a tooltip). */
+[data-pane] { container-type: inline-size; }
+@container (max-width: 599px) {
+  [role="toolbar"][aria-label="Page tools"] button > span:not([aria-hidden]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  [role="toolbar"][aria-label="Page tools"] button { padding-inline: 10px; }
+}
 
 /* Folevi's one tooltip, on every page (the app, the website, the Mac app): never the browser's own. */
 [data-mac-tooltip] {

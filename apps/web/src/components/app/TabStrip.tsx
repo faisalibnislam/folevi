@@ -289,11 +289,16 @@ export function TabStrip() {
   const iconOf = (t: DocTab | null) =>
     !t ? <House size={14} aria-hidden className="flex-none" /> : t.view ? <ViewIcon kind={t.view.kind} /> : t.panes ? <SquareSplitHorizontal size={14} aria-hidden className="flex-none opacity-70" /> : <FileText size={14} aria-hidden className="flex-none opacity-70" />;
 
-  // Hovering a tab (with a pointer) shows a picture of its page under it, as Safari does: after a pause, then at
-  // once while moving along the strip; gone when the pointer leaves, a tab is pressed or one is dragged.
+  // Hovering a tab (with a pointer) shows a picture of its page under it, as Safari does: 300 ms after the pointer
+  // first rests on a tab, then with no delay at all while it moves along the strip from tab to tab. Nothing hides
+  // in between (the gaps between tabs keep the last picture), so it never flickers: it goes when the pointer
+  // leaves the strip, a tab is pressed or dragged, or it reaches the open tab.
   const [preview, setPreview] = useState<{ id: string; left: number; top: number } | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const previewWarm = useRef(0);
+  // Whether a picture has shown since the pointer came onto the strip (from then on, each tab's shows at once).
+  const previewing = useRef(false);
+  // The tabs pictured lately, kept drawn (hidden) so going back to one shows it already loaded.
+  const [pictured, setPictured] = useState<string[]>([]);
   const showPreview = (e: PointerEvent<HTMLElement>, t: DocTab) => {
     if (e.pointerType !== "mouse" || ipad || drag.current) return;
     if (previewTimer.current) clearTimeout(previewTimer.current);
@@ -304,20 +309,29 @@ export function TabStrip() {
     const el = e.currentTarget;
     const place = () => {
       const r = el.getBoundingClientRect();
+      previewing.current = true;
+      setPictured((cur) => (cur[0] === t.id ? cur : [t.id, ...cur.filter((x) => x !== t.id)].slice(0, 6)));
       setPreview({ id: t.id, left: Math.min(Math.max(8, r.left + r.width / 2 - 150), window.innerWidth - 308), top: r.bottom + 8 });
     };
-    if (Date.now() - previewWarm.current < 400) place();
-    else previewTimer.current = setTimeout(place, 220);
+    if (previewing.current) place();
+    else previewTimer.current = setTimeout(place, 300);
+  };
+  // Leaving one tab only stops a picture that hasn't shown yet; the next tab's replaces this one.
+  const leaveTab = () => {
+    if (previewTimer.current) clearTimeout(previewTimer.current);
   };
   const hidePreview = () => {
     if (previewTimer.current) clearTimeout(previewTimer.current);
-    if (preview) previewWarm.current = Date.now();
+    previewing.current = false;
     setPreview(null);
   };
   useEffect(() => () => {
     if (previewTimer.current) clearTimeout(previewTimer.current);
   }, []);
-  useEffect(() => setPreview(null), [activeKey, dragging]);
+  useEffect(() => {
+    previewing.current = false;
+    setPreview(null);
+  }, [activeKey, dragging]);
 
   // The Tab Overview: every tab as a picture (⌘⇧\ or the button by Back and Forward).
   const [overview, setOverview] = useState(false);
@@ -391,6 +405,7 @@ export function TabStrip() {
       ) : null}
       <nav
         ref={navRef}
+        onPointerLeave={hidePreview}
         aria-label="Open pages"
         style={{ maskImage: mask, WebkitMaskImage: mask }}
         className="flex min-w-0 flex-initial items-center gap-1.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -457,7 +472,7 @@ export function TabStrip() {
               onPointerUp={dragEnd}
               onPointerCancel={dragEnd}
               onPointerEnter={(e) => showPreview(e, t)}
-              onPointerLeave={hidePreview}
+              onPointerLeave={leaveTab}
               onDragStart={(e) => e.preventDefault()}
               onClickCapture={(e) => {
                 if (justDragged.current) e.preventDefault();
@@ -589,7 +604,18 @@ export function TabStrip() {
                 className="pointer-events-none fixed z-[60] w-[300px] overflow-hidden rounded-container border border-line bg-[var(--color-surface-raised)] shadow-[0_12px_36px_rgb(0_0_0/0.18)]"
                 style={{ left: preview.left, top: preview.top }}
               >
-                <TabPicture tab={t} titles={titleMap} viewIcon={iconOf(t)} viewName={label} className="aspect-[16/10] w-full" />
+                {/* The tabs pictured lately stay drawn, one over another: switching shows a page already there. */}
+                <div className="relative aspect-[16/10] w-full">
+                  {pictured.map((id) => {
+                    const pt = tabs.find((x) => x.id === id);
+                    if (!pt) return null;
+                    return (
+                      <div key={id} className="absolute inset-0" style={{ visibility: id === t.id ? "visible" : "hidden" }}>
+                        <TabPicture tab={pt} titles={titleMap} viewIcon={iconOf(pt)} viewName={labelOf(pt)} className="h-full w-full" />
+                      </div>
+                    );
+                  })}
+                </div>
                 <div className="border-t border-line px-3 py-2">
                   <div className="truncate text-subheadline font-semibold text-heading">{label}</div>
                   <div className="truncate text-footnote text-muted">{t.view ? VIEW_NAMES[t.view.kind] ?? "View" : t.panes && t.panes.length > 1 ? `${t.panes.length} notes side by side` : "Note"}{t.pinned ? " · Pinned" : ""}</div>

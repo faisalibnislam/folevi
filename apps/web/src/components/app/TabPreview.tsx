@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "convex/react";
 import { blocksToHtml, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -13,7 +13,7 @@ const PAGE_W = 600;
 const PREVIEW_BLOCKS = 80;
 
 /** The page laid out small: no scroll bars, no pointer, tighter margins than an export. */
-const MINI_CSS = `html,body{overflow:hidden!important;pointer-events:none}main{max-width:none!important;margin:22px 30px!important;padding:0!important}h1{margin-top:0;font-size:1.9rem}`;
+const MINI_CSS = `html,body{overflow:hidden!important;pointer-events:none;background:transparent!important}main{max-width:none!important;margin:22px 30px!important;padding:0!important}h1{margin-top:0;font-size:1.9rem}`;
 
 /** A note's blocks: this device's copy at once, else the server's. */
 function useNoteBlocksForPreview(documentId: string): WireBlock[] | null {
@@ -36,10 +36,11 @@ export function MiniPage({ documentId, title, className = "" }: { documentId: st
     const top = blocks.length > PREVIEW_BLOCKS ? blocks.slice(0, PREVIEW_BLOCKS) : blocks;
     return blocksToHtml(top, { title: title || "Untitled" }).replace("</style>", `${MINI_CSS}</style>`);
   }, [blocks, title]);
-  // Scaled to the box's width (measured: CSS can't divide lengths everywhere yet).
+  // Scaled to the box's width (measured before it's painted, so it never shows unscaled or empty first).
   const box = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0);
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (box.current) setScale(box.current.clientWidth / PAGE_W);
     const el = box.current;
     if (!el) return;
     const ro = new ResizeObserver(() => setScale(el.clientWidth / PAGE_W));
@@ -49,16 +50,7 @@ export function MiniPage({ documentId, title, className = "" }: { documentId: st
   return (
     <div ref={box} className={`relative overflow-hidden bg-[var(--color-surface-raised)] ${className}`}>
       {html && scale ? (
-        <iframe
-          title={`Preview of ${title || "Untitled"}`}
-          srcDoc={html}
-          sandbox=""
-          tabIndex={-1}
-          aria-hidden
-          loading="lazy"
-          className="pointer-events-none absolute left-0 top-0 origin-top-left border-0"
-          style={{ width: PAGE_W, height: PAGE_W * 1.6, transform: `scale(${scale})` }}
-        />
+        <PageFrame title={title} html={html} scale={scale} />
       ) : (
         <div className="space-y-2 p-4">
           <div className="h-4 w-2/3 animate-pulse rounded bg-[var(--glass-hover)]" />
@@ -67,6 +59,26 @@ export function MiniPage({ documentId, title, className = "" }: { documentId: st
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The page in its frame. It shows once the frame has drawn it (no blank frame first), and a frame already showing
+ * keeps its page until the next one is ready.
+ */
+function PageFrame({ title, html, scale }: { title: string; html: string; scale: number }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <iframe
+      title={`Preview of ${title || "Untitled"}`}
+      srcDoc={html}
+      sandbox=""
+      tabIndex={-1}
+      aria-hidden
+      onLoad={() => setLoaded(true)}
+      className="pointer-events-none absolute left-0 top-0 origin-top-left border-0 bg-transparent"
+      style={{ width: PAGE_W, height: PAGE_W * 1.6, transform: `scale(${scale})`, opacity: loaded ? 1 : 0 }}
+    />
   );
 }
 

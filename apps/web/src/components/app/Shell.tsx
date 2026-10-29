@@ -669,14 +669,14 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   const drawerToggle = !sidebarOpen && drawerMode;
   const visible = Boolean(subtitle || leading || actions || sync || drawerToggle || (showTitle && title));
   // Joined notes: each note's top row is a bar to tell which has focus (raised, like the open tab) and to
-  // rearrange them: drag it, or ‹ › to move one place; × takes the note out into its own tab.
+  // rearrange them. It lines up with the note's panel under it (inset 4, like the panel) with 8 below: drag it, or ‹ › to move one place; × takes the note out into its own tab.
   const joined = showTitle ? pane.joined : undefined;
   const PANE_BTN = "grid h-7 w-7 flex-none place-items-center rounded-control text-faint outline-none transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus disabled:pointer-events-none disabled:opacity-30";
   const bar = joined ? (
     <header
       onPointerDown={joined.dragStart}
       title="Drag to rearrange"
-      className={`mx-2 flex h-10 flex-none select-none items-center gap-1 rounded-panel px-1 transition-[background-color,box-shadow,color] duration-150 sm:mx-3 ${joined.dragging ? "cursor-grabbing" : "cursor-grab"} ${
+      className={`mx-1 mb-2 flex h-10 flex-none select-none items-center gap-1 rounded-panel px-1 transition-[background-color,box-shadow,color] duration-150 ${joined.dragging ? "cursor-grabbing" : "cursor-grab"} ${
         pane.primary
           ? "bg-[var(--color-surface-raised)] text-heading shadow-[0_1px_3px_rgb(0_0_0/0.1),inset_0_0_0_1.5px_color-mix(in_oklab,var(--color-heading)_16.5%,transparent)]"
           : "bg-[var(--glass-hover)] text-muted"

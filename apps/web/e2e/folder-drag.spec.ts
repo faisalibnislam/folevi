@@ -132,11 +132,17 @@ test("mouse: notes onto folders from a list, a folder page's chips, Home, search
   // Several selected notes go together (from the list).
   await folderLink(page, "All notes").click();
   const mod = process.platform === "darwin" ? "Meta" : "Control";
-  const links = page.getByRole("main").getByRole("listitem").getByRole("link");
-  await links.nth(0).click({ modifiers: [mod] });
-  await links.nth(1).click({ modifiers: [mod] });
+  // Two notes picked by name, not place: the list is by last edited, and the moves above may still be reordering it.
+  const rows = page.getByRole("main").getByRole("listitem");
+  await expect(rows.nth(1)).toBeVisible();
+  // Each row's own link, its title (a row also links its folder and tags).
+  const title0 = (i: number) => rows.nth(i).getByRole("link").first().innerText();
+  const [first, second] = [(await title0(0)).trim(), (await title0(1)).trim()];
+  const note = (name: string) => rows.filter({ hasText: name }).first();
+  await note(first).getByRole("link").first().click({ modifiers: [mod] });
+  await note(second).getByRole("link").first().click({ modifiers: [mod] });
   await expect(page.getByRole("toolbar", { name: "Selected notes" }).getByRole("status")).toHaveText("2 selected");
-  await drag(page, page.getByRole("main").getByRole("listitem").nth(0), row(page, "Shelf"), 0.5).then((x) => x.drop());
+  await drag(page, note(first), row(page, "Shelf"), 0.5).then((x) => x.drop());
   await expect(toast(page, "Moved 2 notes to Shelf")).toBeVisible();
 
   // From search results (the palette steps aside while the note is dragged).
@@ -146,6 +152,9 @@ test("mouse: notes onto folders from a list, a folder page's chips, Home, search
   await palette.getByRole("combobox", { name: "Search documents or type a command" }).fill(title.slice(0, 6));
   const result = palette.getByRole("option").filter({ hasText: title }).first();
   await expect(result).toBeVisible();
+  // Once the search has answered (the list redraws as the device's and the server's results come in).
+  await expect(palette.getByText("Searching…")).toHaveCount(0);
+  await page.waitForTimeout(500);
   await drag(page, result, drafts(page), 0.5).then((x) => x.drop());
   await expect(toast(page, "Moved to Drafts")).toBeVisible();
   await expect(palette).toBeHidden();

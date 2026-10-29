@@ -8,9 +8,9 @@ test("the owner puts a workspace on Pro (test purchase), sees seats, storage and
   const { page, context } = await newPerson(browser, "Seat Owner");
   await createWorkspace(page, "Seat Studio");
 
-  // The switcher shows your role and the workspace's plan.
+  // The switcher shows the workspace's plan (your role is in Settings since the account menu went short).
   await switcher(page).click();
-  await expect(page.getByRole("menuitemradio", { name: "Seat Studio", exact: true })).toContainText("Owner · Free");
+  await expect(page.getByRole("menuitemradio", { name: "Seat Studio", exact: true })).toContainText("Free");
   await page.keyboard.press("Escape");
 
   await page.goto(`${APP}/settings/workspace-billing`);

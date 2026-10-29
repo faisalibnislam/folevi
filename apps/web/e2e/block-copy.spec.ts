@@ -38,7 +38,11 @@ async function paste(page: Page, clip: Clip) {
 async function newNote(page: Page, title: string) {
   await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
-  await page.getByRole("textbox", { name: "Title" }).fill(title);
+  // The new note's own (empty, focused) title, not the previous note's still on screen.
+  const field = page.getByRole("textbox", { name: "Title" });
+  await expect(field).toBeFocused();
+  await expect(field).toHaveValue("");
+  await field.fill(title);
   await page.keyboard.press("Enter");
   await page.getByRole("textbox", { name: "Document body" }).click();
   return page.url().replace(/\?.*$/, "");
@@ -54,8 +58,15 @@ const blocksOf = (page: Page) =>
   });
 
 async function openBlockMenu(page: Page, block: ReturnType<Page["locator"]>) {
-  await block.hover({ position: { x: 20, y: 12 } });
-  await page.getByRole("button", { name: /^Drag to move/ }).click();
+  // The grip follows the pointer; right after a page opens, its image loading can move the block from under a
+  // resting pointer and the grip goes. Hover again (from elsewhere) until it shows.
+  const grip = page.getByRole("button", { name: /^Drag to move/ });
+  await expect(async () => {
+    await page.mouse.move(0, 0);
+    await block.hover({ position: { x: 20, y: 12 } });
+    await expect(grip).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
+  await grip.click();
   return page.getByRole("menu", { name: /Block options|Options for/ });
 }
 

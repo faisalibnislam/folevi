@@ -19,7 +19,7 @@ test("the tab menu closes a tab, the tabs to its right or left, or all of them",
   for (const t of ["Alpha", "Bravo", "Charlie", "Delta"]) await newPage(page, t);
   const strip = page.getByRole("navigation", { name: "Open pages" });
   const tab = (name: string) => strip.getByRole("link", { name, exact: true });
-  const names = async () => (await strip.getByRole("link").allTextContents()).map((s) => s.trim()).filter((s) => s !== "Home");
+  const names = async () => (await strip.getByRole("link").allTextContents()).map((s) => s.trim()).filter((s) => s && s !== "Home"); // Home is an icon
   await expect.poll(names, { timeout: 20_000 }).toEqual(["Welcome to Folevi", "Alpha", "Bravo", "Charlie", "Delta"]);
   const open = async (name: string) => {
     await tab(name).click({ button: "right" });
@@ -48,7 +48,7 @@ test("tabs reorder by dragging, or ⌥⇧← / ⌥⇧→ from the keyboard, and 
   for (const t of ["Alpha", "Bravo"]) await newPage(page, t);
   const strip = page.getByRole("navigation", { name: "Open pages" });
   const tab = (name: string) => strip.getByRole("link", { name, exact: true });
-  const names = async () => (await strip.getByRole("link").allTextContents()).map((s) => s.trim()).filter((s) => s !== "Home");
+  const names = async () => (await strip.getByRole("link").allTextContents()).map((s) => s.trim()).filter((s) => s && s !== "Home"); // Home is an icon
   await expect.poll(names, { timeout: 20_000 }).toEqual(["Welcome to Folevi", "Alpha", "Bravo"]);
   const url = page.url();
   // Drag Bravo (showing) left past Alpha and Welcome.

@@ -4,7 +4,7 @@ import { createWorkspace, newPerson, pickDate, showFolders, switchTo } from "./h
 test("quick add a task with a due date, see it in Today and the calendar, complete it", async ({ browser }) => {
   const { page } = await newPerson(browser, "Task Tester");
   await showFolders(page);
-  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
+  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
   await page.getByRole("button", { name: "Add task" }).click();
   const dialog = page.getByRole("dialog", { name: "Quick add task" });
   await dialog.getByLabel("Task").fill("Water the tomatoes");
@@ -25,7 +25,7 @@ test("quick add a task with a due date, see it in Today and the calendar, comple
   await page.getByRole("link", { name: "Calendar" }).first().click();
   await expect(page.getByRole("gridcell").filter({ hasText: "Water the tomatoes" })).toBeVisible();
 
-  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
+  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
   await row.getByRole("checkbox").click();
   await expect(page.getByRole("status").filter({ hasText: "Task completed" })).toBeVisible();
   await page.getByRole("link", { name: "Completed" }).click();
@@ -35,7 +35,7 @@ test("quick add a task with a due date, see it in Today and the calendar, comple
 test("tasks follow the current context: a workspace's tasks aren't listed in Personal", async ({ browser }) => {
   const { page } = await newPerson(browser, "Task Switcher");
   await createWorkspace(page, "Task Studio");
-  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
+  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
   await page.getByRole("button", { name: "Add task" }).click();
   const dialog = page.getByRole("dialog", { name: "Quick add task" });
   await dialog.getByLabel("Task").fill("Order studio chairs");
@@ -52,7 +52,7 @@ test("tasks follow the current context: a workspace's tasks aren't listed in Per
 
   // Personal has its own Tasks and Calendar: the workspace's task isn't there.
   await switchTo(page, "Personal");
-  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
+  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
   await expect(page).toHaveURL(/\/tasks/);
   await expect(row).toHaveCount(0);
   await page.getByRole("link", { name: "Calendar" }).first().click();
@@ -61,14 +61,14 @@ test("tasks follow the current context: a workspace's tasks aren't listed in Per
 
   // Back in the workspace, it's there again.
   await switchTo(page, "Task Studio");
-  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
+  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
   await expect(row).toBeVisible();
 });
 
 test("quick add reads a date written in the task", async ({ browser }) => {
   const { page } = await newPerson(browser, "Plain Words");
   await showFolders(page);
-  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
+  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
   await page.getByRole("button", { name: "Add task" }).click();
   const dialog = page.getByRole("dialog", { name: "Quick add task" });
   await dialog.getByLabel("Task").fill("Call the plumber tomorrow 4pm");
@@ -93,7 +93,7 @@ test("quick add reads a date written in the task", async ({ browser }) => {
 test("a task can be moved to another page from its menu", async ({ browser }) => {
   const { page } = await newPerson(browser, "Task Mover");
   await showFolders(page);
-  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
+  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
   await page.getByRole("button", { name: "Add task" }).click();
   const dialog = page.getByRole("dialog", { name: "Quick add task" });
   await dialog.getByLabel("Task").fill("Book the venue");
@@ -116,7 +116,7 @@ test("a task can be moved to another page from its menu", async ({ browser }) =>
 test("a repeating to-do comes back at its next date when checked off", async ({ browser }) => {
   const { page } = await newPerson(browser, "Repeat Person");
   await showFolders(page);
-  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
+  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
   await page.getByRole("button", { name: "Add task" }).click();
   const dialog = page.getByRole("dialog", { name: "Quick add task" });
   await dialog.getByLabel("Task").fill("Water the plants every day");
@@ -136,7 +136,7 @@ test("a repeating to-do comes back at its next date when checked off", async ({ 
 test("calendar week view: a timed task sits at its time and moves by drag", async ({ browser }) => {
   const { page } = await newPerson(browser, "Week Planner");
   await showFolders(page);
-  await page.getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
+  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: /^Tasks( \d+)?$/ }).click();
   await page.getByRole("button", { name: "Add task" }).click();
   const dialog = page.getByRole("dialog", { name: "Quick add task" });
   await dialog.getByLabel("Task").fill("Stretch break today 3pm");

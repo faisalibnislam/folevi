@@ -11,8 +11,10 @@ test("the home page note is editable, and a reload resets it", async ({ page }) 
   await page.setViewportSize({ width: 1440, height: 900 });
   const external: string[] = [];
   page.on("request", (r) => {
-    // Our own backend is allowed (the Style gallery loads the app's theme list from it); nothing else.
-    if (!r.url().startsWith(SITE) && !r.url().startsWith("data:") && !r.url().startsWith(new URL(convexUrl()).origin)) external.push(r.url());
+    // Our own backend is allowed (the Style gallery loads the app's theme list from it), and the app's
+    // signed-in check (the site opens your notes when you are); nothing else.
+    const own = [SITE, "data:", new URL(convexUrl()).origin, `${APP}/api/signed-in`];
+    if (!own.some((o) => r.url().startsWith(o))) external.push(r.url());
   });
   await page.goto(`${SITE}/`);
   const editor = page.getByRole("textbox", { name: "Try the editor" });

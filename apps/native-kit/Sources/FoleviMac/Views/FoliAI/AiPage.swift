@@ -322,7 +322,7 @@ struct AiConversationRowView: View {
                         .lineLimit(1).truncationMode(.tail)
                         .foregroundStyle(active || over ? look.heading : look.ink.opacity(0.9))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    if row.shared { WebIconView(.users, size: 12).foregroundStyle(look.faint).help("Shared with the workspace") }
+                    if row.shared { WebIconView(.users, size: 12).foregroundStyle(look.faint).foleviTooltip("Shared with the workspace") }
                     if !over {
                         Text(AiAge.text(row.lastMessageAt)).webText(look.text("ai.row.age")).lineLimit(1).foregroundStyle(look.faint)
                     }

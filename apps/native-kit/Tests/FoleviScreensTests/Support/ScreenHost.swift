@@ -51,6 +51,10 @@ final class ScreenHost {
 
     init<V: View>(_ content: V, size: DeviceSize, scheme: ColorScheme) {
         FoleviFonts.register()
+        #if os(macOS)
+        // The app's scroll bars (thin, over the content), so the pictures don't depend on this Mac's setting.
+        MacScrollers.useOverlay()
+        #endif
         self.size = size.size
         let root = content
             .environment(\.colorScheme, scheme)

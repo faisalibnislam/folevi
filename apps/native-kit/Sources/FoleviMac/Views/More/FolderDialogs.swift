@@ -172,7 +172,7 @@ struct FolderColorSheet: View {
                             }
                     }
                     .buttonStyle(.plain)
-                    .help(c.name)
+                    .foleviTooltip(c.name)
                     .accessibilityLabel(c.name)
                     .accessibilityAddTraits(on ? .isSelected : [])
                 }

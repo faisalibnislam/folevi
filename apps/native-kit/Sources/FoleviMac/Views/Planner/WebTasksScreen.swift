@@ -126,7 +126,7 @@ struct WebTasksScreen: View {
             HStack(spacing: 6) {
                 PlannerButton("Calendar", icon: .calendarDays, style: "header.calendar") { frame.open(.calendar(nil)) }
                 PlannerButton("Add task", icon: .plus, style: "header.add", hover: nil) { frame.showQuickAdd(in: tasks.window) }
-                    .help("Add task (⌘N)")
+                    .foleviTooltip("Add task (⌘N)")
             }
         }
         .padding(h.padding.edgeInsets)
@@ -143,7 +143,7 @@ struct WebTasksScreen: View {
         ) { id in
             if let v = TaskViewName(rawValue: id) { frame.open(.tasks(v), .replace) }
         }
-        .help("Every task lives in a note. Open its page to see the context it was written in.")
+        .foleviTooltip("Every task lives in a note. Open its page to see the context it was written in.")
     }
 
     private func card(_ items: [TaskRow]) -> some View {

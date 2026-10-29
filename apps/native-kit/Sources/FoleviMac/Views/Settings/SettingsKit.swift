@@ -13,6 +13,22 @@ enum SettingsStyle {
     static func pair(_ id: String) -> WebStylePair { WebStyles.named("settings.\(id)") }
 }
 
+/// The web's row width (a list of switches, the notifications table), or the card's whole width in the Settings
+/// window, so rows end at the card's edge there instead of short of it.
+struct SettingsRowWidth: ViewModifier {
+    let width: CGFloat
+    var alignment: Alignment = .leading
+    @Environment(\.settingsWindowed) private var windowed
+
+    func body(content: Content) -> some View {
+        content.frame(maxWidth: windowed ? .infinity : width, alignment: alignment)
+    }
+}
+
+extension View {
+    func settingsRowWidth(_ width: CGFloat, alignment: Alignment = .leading) -> some View { modifier(SettingsRowWidth(width: width, alignment: alignment)) }
+}
+
 /// The colour variables Settings uses (`--color-danger`, `--color-line`).
 enum SettingsColor {
     static func v(_ name: String, _ scheme: ColorScheme) -> Color { (WebStyles.vars[name]?.resolve(scheme) ?? RGBA(0, 0, 0, 1)).color }

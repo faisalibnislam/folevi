@@ -11,6 +11,9 @@
 //   cmd frame {"do":"menu","item":"go.next-tab"}    a menu bar item as if chosen
 //   cmd frame {"do":"post","name":"n","value":"v"}  posts a notification (a screen's own test hook)
 //   cmd frame {"do":"resize","w":1280,"h":820}      the window's content size; {"do":"front"} brings it forward;
+//   cmd frame {"do":"scroll","y":160}              scrolls the content (the native screen's list, or the page) to y;
+//                                                   "flash":true shows the scroll bars (sidebar's too) as a scroll does
+//   cmd scrollers                                  each scroll view's style (0 legacy, 1 overlay) and the preferred one
 //   cmd frameShot {"out":"/path.png","window":0}    the window as drawn (AppKit's own rendering of its views);
 //                                                   {"menu":true} the open account menu instead
 //   cmd frame {"do":"demoVault","vault":"encryptionLocked","e2ee":"locked","approval":"compare","code":"482 913"}
@@ -23,6 +26,15 @@ import FoleviEngine
 import FoleviMac
 
 extension NativeFrame {
+    /// The page's biggest scrolling area scrolled to `y` (the web frame's main, or a note's).
+    static func scrollPage(_ y: Double) -> String {
+        "(() => { const els = [...document.querySelectorAll('*')].filter((e) => e.scrollHeight > e.clientHeight + 20 && /auto|scroll/.test(getComputedStyle(e).overflowY)); const el = els.sort((a, b) => b.clientWidth * b.clientHeight - a.clientWidth * a.clientHeight)[0] ?? document.scrollingElement; el.scrollTop = \(y); return el.scrollTop; })()"
+    }
+
+    static func scrollViews(in view: NSView) -> [NSScrollView] {
+        ((view as? NSScrollView).map { [$0] } ?? []) + view.subviews.flatMap { scrollViews(in: $0) }
+    }
+
     static func installEval() {
         MacEval.commands["frame"] = { req, done in
             let mains = WindowManager.shared.mains
@@ -77,6 +89,20 @@ extension NativeFrame {
                     if req["code"] != nil { demo.approvalCode = req["code"] as? String }
                     demo.refreshAll()
                 }
+            case "scroll":
+                // The content's own scroller (screens.mjs --glass: cards behind the glass bar).
+                let y = req["y"] as? Double ?? 0
+                if m.route.isNote {
+                    mains[i].view.evaluateJavaScript(Self.scrollPage(y))
+                } else if let scroll = Self.scrollViews(in: frame.root.split.content.view).max(by: { $0.bounds.width * $0.bounds.height < $1.bounds.width * $1.bounds.height }) {
+                    // From the content's top, as the page's scrollTop (the bar's room is the scroller's inset).
+                    scroll.contentView.scroll(to: NSPoint(x: 0, y: y - scroll.contentInsets.top))
+                    scroll.reflectScrolledClipView(scroll.contentView)
+                    if req["flash"] as? Bool == true {
+                        scroll.flashScrollers()
+                        Self.scrollViews(in: frame.root.split.sidebar.view).forEach { $0.flashScrollers() }
+                    }
+                }
             case "front":
                 mains[i].window?.makeKeyAndOrderFront(nil)
                 NSApp.activate()
@@ -84,6 +110,13 @@ extension NativeFrame {
             }
             // Answer after the frame has drawn the change.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { done(["value": state(frame, window: mains[i].window)]) }
+        }
+        MacEval.commands["scrollers"] = { _, done in
+            // Every scroll view's style in the frame (screens.mjs --scrollers): 0 legacy (wide, takes room), 1 overlay.
+            let mains = WindowManager.shared.mains
+            guard let content = mains.first?.window?.contentView else { return done(["error": "no window"]) }
+            let views = Self.scrollViews(in: content)
+            done(["value": ["preferred": NSScroller.preferredScrollerStyle.rawValue, "views": views.map { ["style": $0.scrollerStyle.rawValue, "width": $0.bounds.width, "height": $0.bounds.height, "vertical": $0.hasVerticalScroller] }]])
         }
         MacEval.commands["frameShot"] = { req, done in
             let mains = WindowManager.shared.mains

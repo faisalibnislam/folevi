@@ -293,7 +293,7 @@ struct QuickAddDialog: View {
         HStack(spacing: 6) {
             WebIconView(icon, size: 13)
             Text(text).webText(.role(.footnote, weight: 500)).lineLimit(1)
-            ClearButton(action: keep).padding(.trailing, -4).help("Keep as text")
+            ClearButton(action: keep).padding(.trailing, -4).foleviTooltip("Keep as text")
         }
         .foregroundStyle(PV("color-accent-soft-ink").c(scheme))
         .padding(.leading, 8).padding(.trailing, 6)

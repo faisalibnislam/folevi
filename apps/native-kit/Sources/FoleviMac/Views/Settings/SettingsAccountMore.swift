@@ -304,7 +304,7 @@ private struct MembersSettings: View {
                             SettingsSelect(options: Self.roles, value: role, width: 144) { role = $0 }
                             WebButton("Invite", variant: .primary) { invite(w) }.disabled(!email.contains("@"))
                         }
-                        .frame(maxWidth: 576)
+                        .settingsRowWidth(576, alignment: .center)
                     }
                 }
                 SettingsCard("Members") {

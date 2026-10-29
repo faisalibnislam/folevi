@@ -2,6 +2,7 @@
 // New Note, Search; the recent notes (⌘1 to ⌘8 while it's open); the save state with its dot; the places when
 // there are several (choosing one switches); Open Folevi, Settings, Quit. Settings > General can hide it.
 import AppKit
+import FoleviDesign
 
 @MainActor
 final class StatusItem: NSObject, NSMenuDelegate {
@@ -22,7 +23,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
         image?.isTemplate = true
         image?.accessibilityDescription = "Folevi"
         item.button?.image = image
-        item.button?.toolTip = "Folevi"
+        item.button?.foleviTooltip = "Folevi"
         menu.delegate = self
         menu.autoenablesItems = false
         item.menu = menu
@@ -52,7 +53,7 @@ final class StatusItem: NSObject, NSMenuDelegate {
                 let title = note.title.isEmpty ? "Untitled" : note.title
                 let item = add(menu, title, key: "\(i + 1)") { Chrome.open(path: "/d/\(note.id)", place: note.place); NSApp.activate() }
                 item.image = NSImage(systemSymbolName: "doc.text", accessibilityDescription: nil)
-                if several, let label = Chrome.placeLabel(note.place) { item.toolTip = label }
+                if several, let label = Chrome.placeLabel(note.place) { item.subtitle = label }
             }
             menu.addItem(.separator())
         }

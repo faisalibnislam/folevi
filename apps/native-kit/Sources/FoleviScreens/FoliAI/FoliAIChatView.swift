@@ -163,7 +163,7 @@ struct FoliChatHeader: View {
         }
         .buttonStyle(PressFade())
         .accessibilityLabel(label)
-        .help(label)
+        .foleviTooltip(label)
     }
 }
 

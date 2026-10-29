@@ -231,7 +231,7 @@ struct VaultFiles: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(label)
+        .foleviTooltip(label)
         .accessibilityLabel(label)
         .accessibilityAddTraits(on ? .isSelected : [])
     }
@@ -392,7 +392,7 @@ struct VaultPasswords: View {
             .padding(.bottom, bar.margin.bottom)
             if let all = items.value?.items {
                 let shown = filtered(all)
-                HStack(alignment: .top, spacing: 24) {
+                VaultColumns(gap: 24, twoFrom: VaultColumns.lgWidth(bar)) {
                     Group {
                         if shown.isEmpty {
                             VaultEmpty(icon: .search, title: all.isEmpty ? "No passwords yet" : "Nothing matches", message: all.isEmpty ? "Add logins, API keys, cards and other credentials. Only people in the Vault can open them." : nil)
@@ -410,13 +410,11 @@ struct VaultPasswords: View {
                             }
                         }
                     }
-                    .frame(maxWidth: .infinity)
-                    .layoutPriority(1)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                     if let id = model.selected, all.contains(where: { $0.id == id }) {
                         VaultItemPanel(model: model, vaultId: vaultId, itemId: id, revision: all.first { $0.id == id }?.revision ?? 0)
                             .id(id)
-                            .frame(maxWidth: .infinity)
-                            .layoutPriority(1.2)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                 }
             }
@@ -452,6 +450,48 @@ struct VaultPasswords: View {
             model.selected = r.id
             let item = try await model.frame.client.command(.vaultItemOpen(vaultId: vaultId, itemId: r.id))
             model.dialog = .editItem(item)
+        }
+    }
+}
+
+/// The list and the open item as Passwords.tsx lays them out: `grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]`,
+/// two columns (the item 1.2 times the list) from the web's lg width, one above the other below it; the list alone
+/// takes the whole width. (An HStack with layout priorities gave the item all the room and left the list a sliver.)
+struct VaultColumns: Layout {
+    let gap: CGFloat
+    /// The section's width at the web's `lg` (a 1024 pt window).
+    let twoFrom: CGFloat
+
+    /// The section's width in a 1024 pt window, from where the live web's 1280 pt window put it.
+    static func lgWidth(_ bar: WebComputedStyle) -> CGFloat { 1024 - bar.x - (1280 - bar.x - bar.width) }
+
+    private func columns(_ width: CGFloat, _ count: Int) -> (list: CGFloat, item: CGFloat)? {
+        guard count == 2, width >= twoFrom else { return nil }
+        let list = (width - gap) / 2.2
+        return (list, width - gap - list)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 800
+        if let c = columns(width, subviews.count) {
+            let h = max(subviews[0].sizeThatFits(.init(width: c.list, height: nil)).height, subviews[1].sizeThatFits(.init(width: c.item, height: nil)).height)
+            return CGSize(width: width, height: h)
+        }
+        let heights = subviews.map { $0.sizeThatFits(.init(width: width, height: nil)).height }
+        return CGSize(width: width, height: heights.reduce(0, +) + gap * CGFloat(max(0, subviews.count - 1)))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        if let c = columns(bounds.width, subviews.count) {
+            subviews[0].place(at: bounds.origin, proposal: .init(width: c.list, height: nil))
+            subviews[1].place(at: CGPoint(x: bounds.minX + c.list + gap, y: bounds.minY), proposal: .init(width: c.item, height: nil))
+            return
+        }
+        var y = bounds.minY
+        for s in subviews {
+            let h = s.sizeThatFits(.init(width: bounds.width, height: nil)).height
+            s.place(at: CGPoint(x: bounds.minX, y: y), proposal: .init(width: bounds.width, height: h))
+            y += h + gap
         }
     }
 }

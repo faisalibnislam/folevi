@@ -286,6 +286,9 @@ struct ScreenRoot: View {
             }
         }
         .id(route.tabKey)
+        // The glass bar's room (the web's main: padding-top 56): a screen starts below the bar and its scrolling
+        // content runs on under it.
+        .safeAreaPadding(.top, ContentViewController.barHeight)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         // Help, Graph, Reviews and shared folders show the content card through (the web's main is clear).
         .background(MoreScreen.clear(route) ? Color.clear : Folevi.color.canvas)

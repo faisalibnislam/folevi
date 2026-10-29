@@ -91,7 +91,7 @@ struct WebNoteCell: View {
                 .frame(width: r.width, height: r.height)
                 .webBox(raised)
         }
-        .help("Actions for \(card.title.isEmpty ? "Untitled" : card.title)")
+        .foleviTooltip("Actions for \(card.title.isEmpty ? "Untitled" : card.title)")
     }
 }
 
@@ -130,7 +130,7 @@ struct WebFolderCell: View {
                         .background(RoundedRectangle(cornerRadius: ms.radius, style: .circular).fill(ms.background.color))
                         .shadow(color: .black.opacity(0.18), radius: 1.5, y: 1)
                 }
-                .help("Folder options for \(card.name)")
+                .foleviTooltip("Folder options for \(card.name)")
                 .position(x: geo.size.width / 2, y: geo.size.height * 0.7 + (hovered ? -4 : 0))
                 .opacity(hovered ? 1 : 0)
             }
@@ -282,7 +282,7 @@ struct WebSegmented<T: Hashable>: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help(option.2)
+                .foleviTooltip(option.2)
                 .accessibilityLabel(option.2)
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
@@ -351,7 +351,7 @@ struct WebSelectionBar: View {
             }
             divider
             barButton(nil, icon: .x, muted: true) { model.selection.removeAll() }
-                .help("Clear selection (Esc)")
+                .foleviTooltip("Clear selection (Esc)")
         }
         .padding(6)
         .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).fill(WebStyles.named("menu.panel").resolve(scheme).background.color))
@@ -1071,7 +1071,7 @@ struct WebNoteListRow: View {
                     .frame(width: 32, height: 32)
                     .contentShape(Rectangle())
             }
-            .help("Actions for \(row.title.isEmpty ? "Untitled" : row.title)")
+            .foleviTooltip("Actions for \(row.title.isEmpty ? "Untitled" : row.title)")
         }
         .padding(r.padding.edgeInsets)
         .frame(height: r.height)

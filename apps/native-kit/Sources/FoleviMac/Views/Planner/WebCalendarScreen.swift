@@ -510,7 +510,7 @@ struct MonthChip: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(PlainPress())
-        .help(task.title)
+        .foleviTooltip(task.title)
         .onDrag { NSItemProvider(object: task.id as NSString) }
         .webContextMenu { tasks.menu(task) }
     }
@@ -540,7 +540,7 @@ struct EventChip: View {
         }
         .buttonStyle(PlainPress())
         .onHover { over = $0 }
-        .help(e.title)
+        .foleviTooltip(e.title)
     }
 }
 
@@ -792,7 +792,7 @@ struct HourGrid: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(PlainPress())
-        .help("\(t.dueTime ?? "") \(t.title)")
+        .foleviTooltip("\(t.dueTime ?? "") \(t.title)")
         .onDrag { NSItemProvider(object: t.id as NSString) }
         .webContextMenu { tasks.menu(t) }
         .offset(x: r.minX, y: r.minY)

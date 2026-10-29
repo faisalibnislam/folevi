@@ -277,7 +277,7 @@ struct AiAssistantMessage: View {
                         .foregroundStyle(look.ink)
                     }
                     .buttonStyle(AiHoverStyle(radius: chip.radius, hover: "glass-active", base: look.glassHover))
-                    .help(c.title)
+                    .foleviTooltip(c.title)
                 }
                 ForEach(message.webCitations, id: \.n) { c in
                     Button { if let u = URL(string: c.url) { NSWorkspace.shared.open(u) } } label: {
@@ -291,7 +291,7 @@ struct AiAssistantMessage: View {
                         .foregroundStyle(look.ink)
                     }
                     .buttonStyle(AiHoverStyle(radius: chip.radius, hover: "glass-active", base: look.glassHover))
-                    .help(c.url)
+                    .foleviTooltip(c.url)
                 }
             }
         }

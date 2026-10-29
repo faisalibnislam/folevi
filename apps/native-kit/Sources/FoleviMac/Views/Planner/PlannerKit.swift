@@ -282,7 +282,7 @@ struct PlannerIconButton: View {
         }
         .buttonStyle(PlainPress())
         .onHover { over = $0 }
-        .help(label)
+        .foleviTooltip(label)
         .accessibilityLabel(label)
     }
 }

@@ -1,8 +1,9 @@
 // The content's top bar drawn as the web app's (apps/web/src/components/app/TabStrip.tsx and BackForward.tsx,
 // as Folevi for Mac shows them), from the live app's computed styles ("frame.topbar.*", "frame.tab*"): a glass
 // bar inside the content's card with Back and Forward, a divider, the tabs (Home first, then one per open page,
-// the open one raised), and New note at the end. Home is pinned: the Mac has no logo to go home by, so it stays
-// put after Back and Forward and only the tabs after it scroll. While the sidebar is hidden, the window buttons' room and the
+// the open one raised), and New note at the end. While the sidebar is hidden (its Home row with it) Home is pinned:
+// it stays put after Back and Forward and only the tabs after it scroll; with the sidebar, Home is the list's first
+// tab, as on the web. While the sidebar is hidden, the window buttons' room and the
 // sync state come first, as on the web.
 #if os(macOS)
 import AppKit
@@ -42,7 +43,7 @@ public struct WebTopBar: View {
             Spacer(minLength: 0)
             // The web's <Button size="sm"> with <Plus size={14} />, as the top bar measures it (its icon at 70%).
             WebButton("New note", icon: .plus, iconSize: 14, iconOpacity: style("frame.topbar.new.icon").opacity, styleName: "frame.topbar.new", variant: .primary, size: .sm) { model.newNote() }
-                .help("New note (⌘⌥N)")
+                .foleviTooltip("New note (⌘⌥N)")
                 .fixedSize()
                 .padding(.trailing, newNoteInset - bar.padding.right)
         }
@@ -62,19 +63,18 @@ public struct WebTopBar: View {
         .gesture(WindowDragGesture())
     }
 
-    /// New note sits as far from the bar's right edge as the Back arrow's ink from its left edge, so both ends match:
-    /// the bar's padding, then half the button's room around the 15 pt icon, then Lucide's arrow-left, drawn from
-    /// x 5 of its 24 (less half its 2 pt stroke).
+    /// New note sits as far from the bar's right edge as from its top and bottom edges (the owner's ask, 1.1.04): the
+    /// room the bar leaves round the button's height.
     private var newNoteInset: CGFloat {
-        let back = style("frame.topbar.back")
-        return (style("frame.topbar").padding.left + (back.width - 15) / 2 + 15 * (5 - 1) / 24).rounded()
+        (style("frame.topbar").height - style("frame.topbar.new").height) / 2
     }
 
-    /// Home, pinned; the arrows while the other tabs overflow; then those tabs, the only part that scrolls.
+    /// Home pinned while the sidebar is hidden; the arrows while the tabs overflow; then the tabs, the only part that
+    /// scrolls.
     private var strip: some View {
         let list = style("frame.tabs")
         return HStack(spacing: 0) {
-            if let home = model.tabs.tabs.first(where: \.isHome) {
+            if homePinned, let home = model.tabs.tabs.first(where: \.isHome) {
                 tab(home)
                     .fixedSize()
                     .padding(.leading, list.padding.left)
@@ -119,7 +119,7 @@ public struct WebTopBar: View {
         .buttonStyle(WebHoverRowStyle(radius: s.radius, hover: WebStyles.vars["glass-hover"], press: WebStyles.vars["mac-press"], selected: false))
         .opacity(enabled ? 1 : style("frame.topbar.forward").opacity)
         .disabled(!enabled)
-        .help("\(label) (⌘\(label == "Back" ? "[" : "]"))")
+        .foleviTooltip("\(label) (⌘\(label == "Back" ? "[" : "]"))")
     }
 
     // MARK: tabs
@@ -142,16 +142,20 @@ public struct WebTopBar: View {
         .accessibilityLabel(label)
     }
 
+    /// Home pinned before the list: only while the sidebar (and its Home) is hidden.
+    private var homePinned: Bool { model.sidebarCollapsed }
+
     private var tabs: some View {
         let list = style("frame.tabs")
         let edge = TabStripMath.fade / max(1, scroller.metrics.visible)
-        // Home's side has its own room (it's pinned before the list).
+        // A pinned Home has the list's left padding itself.
         var inset = list.padding.edgeInsets
-        inset.leading = 0
+        if homePinned { inset.leading = 0 }
         return TabRow(gap: list.gap, padding: inset, offset: scroller.scroll, report: { measured($0) }) {
-            ForEach(model.tabs.tabs.filter { !$0.isHome }) { t in
+            ForEach(model.tabs.tabs.filter { !(homePinned && $0.isHome) }) { t in
                 tab(t)
-                    .layoutValue(key: TabRoleKey.self, value: t.id == model.tabs.activeID ? .open : .other)
+                    // Every tab the same width, open or not (the owner, 2026-10-29); Home its own.
+                    .layoutValue(key: TabRoleKey.self, value: t.isHome ? .own : .other)
                     .layoutValue(key: TabActiveKey.self, value: t.id == model.tabs.activeID)
             }
         }
@@ -168,6 +172,12 @@ public struct WebTopBar: View {
         .onChange(of: dragging?.id) { _, id in scroller.dragging = id != nil }
         .onChange(of: model.tabs.activeID) { revealSoon() }
         .onChange(of: model.tabs.tabs.map(\.id)) { revealSoon() }
+        // Home moving into the list (sidebar shown) or out of it (hidden): the tabs after it keep their place on
+        // screen, then the open one is brought into view if the new width hides it.
+        .onChange(of: homePinned) { _, pinned in
+            guard let home = tabFrames[FrameTab.homeID] else { return }
+            scrollTo(scroller.scroll + (pinned ? -1 : 1) * (home.width + list.gap), animated: false)
+        }
     }
 
     /// What the list measured: the scroll kept in range (tabs closing shorten it), and the open tab brought back into
@@ -263,7 +273,7 @@ public struct WebTopBar: View {
                 }
                 .buttonStyle(WebHoverRowStyle(radius: close.radius, hover: WebStyles.vars["glass-hover"], press: WebStyles.vars["mac-press"], selected: false))
                 .opacity(active || hoveredTab == t.id ? 1 : 0)
-                .help("Close \(title)")
+                .foleviTooltip("Close \(title)")
             }
         }
         .foregroundStyle(s.color.color)

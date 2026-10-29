@@ -123,7 +123,7 @@ struct WebNoteSidebar: View {
         return VStack(alignment: .leading, spacing: 0) {
             Text(name).webText(title.text).lineLimit(1).truncationMode(.tail).foregroundStyle(title.color.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .help(name)
+                .foleviTooltip(name)
             crumbs.padding(.top, style("crumbs").y - title.y - title.height)
         }
         .padding(c.resolve(scheme).padding.edgeInsets)
@@ -230,7 +230,7 @@ struct WebNoteSidebar: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(TabHoverStyle(on: on, hover: v("color-heading")))
-                .help(t.label)
+                .foleviTooltip(t.label)
                 .accessibilityLabel(t == .comments && unread ? "Comments (unread)" : t.label)
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
@@ -547,7 +547,7 @@ struct WebNoteSidebar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(WebPressStyleLocal())
-        .help(l.href)
+        .foleviTooltip(l.href)
     }
 
     static func host(_ href: String) -> String {
@@ -588,7 +588,7 @@ struct WebNoteSidebar: View {
                             WebIconView(.x, size: 13).frame(width: 24, height: 24).foregroundStyle(v("color-ink-faint")).contentShape(Rectangle())
                         }
                         .buttonStyle(WebPressStyleLocal())
-                        .help("Clear search")
+                        .foleviTooltip("Clear search")
                         .padding(.trailing, 8)
                     }
                 }
@@ -618,7 +618,7 @@ struct WebNoteSidebar: View {
         .buttonStyle(WebHoverRowStyle(radius: s.radius, hover: rowHover, press: WebStyles.vars["mac-press"], selected: false))
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.45)
-        .help(label)
+        .foleviTooltip(label)
         .accessibilityLabel(label)
     }
 

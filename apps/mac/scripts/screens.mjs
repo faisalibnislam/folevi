@@ -8,6 +8,8 @@
 //   node apps/mac/scripts/screens.mjs --gates [--only first-launch]   (the screens before the app, gates.mjs)
 //   node apps/mac/scripts/screens.mjs --switch [--only home]   (the Mac switching light and dark with a screen open)
 //   node apps/mac/scripts/screens.mjs --strip   (the tab strip: 2, 8 and 12 tabs, wide and narrow, ends and middle)
+//   node apps/mac/scripts/screens.mjs --glass   (the glass tab strip with the page scrolled under it, web vs native)
+//   node apps/mac/scripts/screens.mjs --scrollers   (the native frame's scroll bars, the system's vs the thin ones)
 //   node apps/mac/scripts/screens.mjs --vault-unlock   (the Vault unlocking encryption in place, on the demo engine)
 //   node apps/mac/scripts/screens.mjs --avatars   (the account's picture on the demo engine: initial, photo, new photo, logo)
 //
@@ -74,8 +76,11 @@ export const SCREENS = [
   { id: "tags", link: "folevi-dev://tags" },
   // The library's Vault (docs/MAC_REBUILD_PLAN.md §5.6), locked first, then opened with the fixture's PIN.
   { id: "vault-locked", link: "folevi-dev://vault", step: (kind) => vaultLock(kind), settle: 800 },
-  { id: "vault-files", link: "folevi-dev://vault", step: (kind) => vaultOpen(kind, ["tab", "Files & Notes"]), settle: 800 },
-  { id: "vault-passwords", link: "folevi-dev://vault/passwords", step: (kind) => vaultOpen(kind, ["tab", "Passwords & Credentials"]), settle: 800 },
+  { id: "vault-files", link: "folevi-dev://vault", step: (kind) => vaultOpen(kind, ["tab", "Files & Notes"]), settle: 800, prepare: { web: "return true", native: { cmd: "frame", do: "post", name: "folevi.vault.passwords", value: "none" } } },
+  { id: "vault-passwords", link: "folevi-dev://vault/passwords", step: (kind) => vaultOpen(kind, ["tab", "Passwords & Credentials"]), settle: 800, prepare: { web: "return true", native: { cmd: "frame", do: "post", name: "folevi.vault.passwords", value: "none" } } },
+  // An item open beside the list (the owner's squeezed list, 2026-10-29), then the Add dialog (its scroll bars).
+  { id: "vault-password-open", link: "folevi-dev://vault/passwords", step: (kind) => vaultOpen(kind, ["tab", "Passwords & Credentials"]), settle: 800, prepare: { web: `document.querySelector('section[aria-label="Passwords and credentials"] li button').click(); return true`, native: { cmd: "frame", do: "post", name: "folevi.vault.passwords", value: "first" } } },
+  { id: "vault-add", link: "folevi-dev://vault/passwords", step: (kind) => vaultOpen(kind, ["tab", "Passwords & Credentials"]), settle: 800, prepare: { web: `[...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Add").click(); return true`, native: { cmd: "frame", do: "post", name: "folevi.vault.passwords", value: "add" } } },
   { id: "vault-health", link: "folevi-dev://vault/health", step: (kind) => vaultOpen(kind, ["more", "Health"]), settle: 800 },
   { id: "vault-trash", link: "folevi-dev://vault/trash", step: (kind) => vaultOpen(kind, ["more", "Trash"]), settle: 800 },
   { id: "vault-settings", link: "folevi-dev://vault/settings", step: (kind) => vaultOpen(kind, ["more", "Settings"]), settle: 800 },
@@ -547,7 +552,16 @@ if (process.argv.includes("--strip")) {
     { name: "12-narrow-start", width: 820, height: 640, tabs: 12, open: 1 },
     { name: "12-narrow-middle", width: 820, height: 640, tabs: 12, open: 6 },
     { name: "12-narrow-end", width: 820, height: 640, tabs: 12, open: 11, history: true },
+    // The sidebar hidden: on the Mac, Home pinned after Back and Forward (the web keeps it in the list).
+    { name: "8-wide-middle-nosidebar", width: 1280, height: 820, tabs: 8, open: 4, noSidebar: true },
+    { name: "8-wide-home-nosidebar", width: 1280, height: 820, tabs: 8, open: 0, noSidebar: true },
   ];
+  const SIDEBAR_KEY = `for (const t of [window, document]) t.dispatchEvent(new KeyboardEvent("keydown", { key: "\\\\", code: "Backslash", metaKey: true, bubbles: true })); return true;`;
+  const toggleSidebar = async (kind) => {
+    if (kind === "web") await evaluate(dir, SIDEBAR_KEY);
+    else ensure(await command(dir, { cmd: "frame", do: "sidebar" }));
+    await sleep(900);
+  };
   // The web frame's strip (TabStrip.tsx: absolute inset-x-1 top-1 h-11) and the open tab against its list, in points.
   const WEB_STATE = `const r = document.querySelector(".ui-drag.ui-glass.h-11").getBoundingClientRect(); const nav = document.querySelector('nav[aria-label="Open pages"]'); const n = nav.getBoundingClientRect(); const cur = nav.querySelector('[aria-current="page"]'); const t = (cur?.closest("[data-tab]") ?? cur).getBoundingClientRect(); return { strip: { x: r.left, y: r.top, width: r.width, height: r.height }, tabs: nav.children.length, scroll: nav.scrollLeft, inView: t.left >= n.left - 1 && t.right <= n.right + 1 };`;
   const WEB_CLOSE = `for (const b of document.querySelectorAll('nav[aria-label="Open pages"] [aria-label^="Close "]')) b.click(); return true;`;
@@ -555,7 +569,8 @@ if (process.argv.includes("--strip")) {
   const nativeState = async () => {
     const st = ensure(await command(dir, { cmd: "frame" }));
     const s = st.strip ?? {};
-    return { tabs: st.tabs, scroll: s.scroll ?? 0, inView: s.openLeft - (s.scroll ?? 0) >= -1 && s.openLeft + s.openWidth - (s.scroll ?? 0) <= s.visible + 1 };
+    // Home pinned before the list (the sidebar hidden) is always in view: the list reports no open tab then.
+    return { tabs: st.tabs, scroll: s.scroll ?? 0, inView: !s.openWidth || (s.openLeft - (s.scroll ?? 0) >= -1 && s.openLeft + s.openWidth - (s.scroll ?? 0) <= s.visible + 1) };
   };
   const cases = CASES.filter((c) => !only || only.includes(c.name));
   const sout = join(out, "strip");
@@ -608,6 +623,7 @@ if (process.argv.includes("--strip")) {
           ensure(await command(dir, { cmd: "open", url: link }));
           await sleep(900);
         }
+        if (c.noSidebar) await toggleSidebar(kind);
         // From the far end, so the strip has to come to the open tab.
         await select(c.open === c.tabs - 1 ? 0 : c.tabs - 1);
         await select(c.open);
@@ -617,6 +633,7 @@ if (process.argv.includes("--strip")) {
           await shoot(c.name, scheme);
           shots.push({ name: c.name, scheme });
         }
+        if (c.noSidebar) await toggleSidebar(kind);
         if (c.history) {
           // Back to the tab at the start (out of sight), then Forward to the end again.
           await select(1);
@@ -666,6 +683,101 @@ if (process.argv.includes("--strip")) {
     console.log(`${good ? "in view" : "OUT OF VIEW"}  ${name} ${scheme}: scroll web ${w?.scroll} native ${n?.scroll}`);
   }
   process.exit(ok ? 0 : 1);
+}
+
+// --glass: the glass tab strip with the page scrolled under it, web vs native, into apps/mac/screens-report/glass
+// (TabStrip.tsx's ui-glass ui-glass-sidebar floating over main): Home and All notes scrolled 200 pt, a note at rest,
+// light and dark, cut to the strip and the cards just below it. Then --scrollers: the native frame's scroll bars
+// before (the wide ones, FOLEVI_SYSTEM_SCROLLERS=1) and after (thin, over the content), the sidebar and All notes,
+// with "Show scroll bars: Always" simulated, into apps/mac/screens-report/scrollers (each scroll view's style).
+if (process.argv.includes("--glass") || process.argv.includes("--scrollers")) {
+  const glass = process.argv.includes("--glass");
+  const gout = join(out, glass ? "glass" : "scrollers");
+  const kinds = glass ? ["native", "web"] : ["before", "after"];
+  for (const d of [...kinds, "diff"]) {
+    rmSync(join(gout, d), { recursive: true, force: true });
+    mkdirSync(join(gout, d), { recursive: true });
+  }
+  const SCROLL = (y) => `const els = [...document.querySelectorAll('*')].filter((e) => e.scrollHeight > e.clientHeight + 20 && /auto|scroll/.test(getComputedStyle(e).overflowY)); const el = els.sort((a, b) => b.clientWidth * b.clientHeight - a.clientWidth * a.clientHeight)[0] ?? document.scrollingElement; el.scrollTop = ${y}; return el.scrollTop;`;
+  const STRIP = `const r = document.querySelector(".ui-drag.ui-glass.h-11").getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height };`;
+  const shots = [];
+  const scrollers = [];
+  let rect = null;
+  try {
+    stopOwnApp();
+    if (!existsSync(join(dir, "fixture.json"))) await setUp();
+    const fixture = JSON.parse(readFileSync(join(dir, "fixture.json"), "utf8"));
+    const pages = glass
+      ? [{ name: "home", url: "folevi-dev://documents", y: 200 }, { name: "all-notes", url: "folevi-dev://notes", y: 200 }, { name: "note", url: `folevi-dev://d/${fixture.notes[0]}`, y: 0 }]
+      : [{ name: "all-notes", url: "folevi-dev://notes", y: 200 }];
+    for (const kind of kinds) {
+      const web = kind === "web";
+      await launch({ dir, env: { FOLEVI_TEST_FOLDER: library, ...FAKE_AI, ...(web ? { FOLEVI_WEB_FRAME: "1" } : {}), ...(kind === "before" ? { FOLEVI_SYSTEM_SCROLLERS: "1" } : {}) } });
+      await waitFor(dir, web ? `return document.readyState === "complete" && !!document.querySelector('nav[aria-label="Folio"]')` : `return !!window.__foleviEngine`, 90_000);
+      await sleep(2000);
+      ensure(await command(dir, { cmd: "resize", width, height }));
+      const settle = async () => {
+        if (!web) ensure(await command(dir, { cmd: "windowShot", out: join(gout, "settle.png") }, 60_000));
+        await sleep(900);
+      };
+      for (const scheme of ["light", "dark"]) {
+        ensure(await command(dir, { cmd: "appearance", value: scheme }));
+        for (const p of pages) {
+          ensure(await command(dir, { cmd: "open", url: p.url }));
+          await sleep(1500);
+          await settle();
+          if (web || p.name === "note") await evaluate(dir, SCROLL(p.y));
+          else ensure(await command(dir, { cmd: "frame", do: "scroll", y: p.y }));
+          await settle();
+          await evaluate(dir, STILL).catch(() => undefined);
+          if (glass) {
+            ensure(await command(dir, { cmd: "windowShot", out: join(gout, kind, `${p.name}-${scheme}.png`) }, 60_000));
+            if (web) rect = await evaluate(dir, STRIP);
+            shots.push({ name: p.name, scheme });
+          } else {
+            // AppKit's caching draws no scroll bars, so the check is each scroll view's style (the sidebar's, the
+            // list's): 0 the wide ones that take room, 1 thin over the content. Pictures for the eye still.
+            const st = ensure(await command(dir, { cmd: "scrollers" }));
+            scrollers.push({ kind, page: p.name, scheme, ...st });
+            ensure(await command(dir, { cmd: "windowShot", out: join(gout, kind, `${p.name}-${scheme}.png`) }, 60_000));
+          }
+        }
+      }
+      await command(dir, { cmd: "appearance", value: "system" }).catch(() => undefined);
+      await quit();
+    }
+  } catch (e) {
+    console.error(`stopped: ${e.message}`);
+    stopOwnApp();
+    process.exit(2);
+  }
+  rmSync(join(gout, "settle.png"), { force: true });
+  const browser = await webkit.launch();
+  const parts = [];
+  for (const { name, scheme } of shots.filter((v, i, a) => a.findIndex((w) => w.name === v.name && w.scheme === v.scheme) === i)) {
+    if (glass) {
+      // The strip and 40 pt of page below it, 4 pt round.
+      const box = { x: rect.x - 4, y: rect.y - 4, width: rect.width + 8, height: rect.height + 48 };
+      for (const kind of kinds) await crop(browser, join(gout, kind, `${name}-${scheme}.png`), box, join(gout, kind, `${name}-strip-${scheme}.png`));
+      parts.push({ id: `${name}-strip`, scheme });
+    }
+    parts.push({ id: name, scheme });
+  }
+  const threshold = { channel: 24, radius: 1, maxRatio: 0.01 };
+  // diffAll compares web/ against native/: the scrollers' before and after go in as those.
+  const results = glass ? await diffAll(browser, gout, parts, threshold) : [];
+  await browser.close();
+  if (glass) {
+    writeReport(gout, { title: "Glass tab strip: web vs Folevi for Mac", note: "Home and All notes scrolled 200 pt and a note at rest, the strip with the page under it, light and dark: the web frame vs the native frame.", threshold, results, imageWidth: 640 });
+    for (const r of results) console.log(`${r.id} ${r.scheme}: ${(r.ratio * 100).toFixed(2)}%${r.pass ? "" : " (over)"}${r.reason ? ` ${r.reason}` : ""}`);
+  } else {
+    writeFileSync(join(gout, "scrollers.json"), JSON.stringify(scrollers, null, 2));
+    for (const r of scrollers) console.log(`${r.kind} ${r.page} ${r.scheme}: preferred ${r.preferred}, views ${r.views.map((v) => v.style).join(" ")}`);
+    const ok = scrollers.filter((r) => r.kind === "after").every((r) => r.preferred === 1 && r.views.every((v) => v.style === 1));
+    console.log(ok ? "after: every scroll view thin and over the content" : "after: A WIDE SCROLLER IS LEFT");
+    process.exit(ok ? 0 : 1);
+  }
+  process.exit(0);
 }
 
 // --vault-unlock: the Vault on a Mac without the account's encryption keys, into apps/mac/screens-report/vault-unlock.

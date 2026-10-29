@@ -188,7 +188,7 @@ struct PlannerTaskRow<Action: View>: View {
                     .foregroundStyle(muted)
                     .frame(height: 16)
                     .padding(.top, 2)
-                    .help(r)
+                    .foleviTooltip(r)
                     .topAligned()
             }
             if let d = t.dueDate {
@@ -300,7 +300,7 @@ struct EditTaskButton: View {
         .buttonStyle(PlainPress())
         .opacity(visible || over ? 1 : 0)
         .onHover { over = $0 }
-        .help("Edit task")
+        .foleviTooltip("Edit task")
     }
 }
 

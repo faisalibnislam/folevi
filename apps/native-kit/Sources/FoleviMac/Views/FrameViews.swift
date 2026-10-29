@@ -12,6 +12,7 @@
 // leaves the window (so WebKit keeps its timers running); a native screen covers it while a list is in front.
 #if os(macOS)
 import AppKit
+import CoreImage
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -268,9 +269,11 @@ public final class ContentViewController: NSViewController {
     let pageView: NSView
     public let topBar: NSHostingView<WebTopBar>
     private let body = NSView()
-    /// The card's clipped inside: the Page View fills it (under the glass bar, as the web's main does); native
-    /// screens sit in `body`, below the bar.
+    /// The card's clipped inside: the Page View and the native screens (`body`) fill it, under the glass bar, as the
+    /// web's main does (they leave the bar's room at their top and scroll behind it).
     private let clip = NSView()
+    /// What's under the bar, blurred (the web's ui-glass backdrop-filter), behind the bar's own tint.
+    private let glass = GlassBackdrop()
     private var screen: NSHostingView<ScreenRoot>?
     private lazy var models = ScreenModels(frame: model)
     private var toasts: NSHostingView<ToastStack>?
@@ -315,6 +318,9 @@ public final class ContentViewController: NSViewController {
         topBar.translatesAutoresizingMaskIntoConstraints = false
         body.translatesAutoresizingMaskIntoConstraints = false
         clip.addSubview(body)
+        glass.translatesAutoresizingMaskIntoConstraints = false
+        glass.cornerRadius = WebStyles.named("frame.topbar").light.radius
+        clip.addSubview(glass)
         clip.addSubview(topBar)
         let toastView = NSHostingView(rootView: ToastStack(model: model))
         toastView.safeAreaRegions = []
@@ -342,7 +348,11 @@ public final class ContentViewController: NSViewController {
             topBar.leadingAnchor.constraint(equalTo: clip.leadingAnchor, constant: bar.x - card.light.x),
             topBar.trailingAnchor.constraint(equalTo: clip.trailingAnchor, constant: -(bar.x - card.light.x)),
             topBar.heightAnchor.constraint(equalToConstant: bar.height),
-            body.topAnchor.constraint(equalTo: clip.topAnchor, constant: Self.barHeight),
+            glass.topAnchor.constraint(equalTo: topBar.topAnchor),
+            glass.bottomAnchor.constraint(equalTo: topBar.bottomAnchor),
+            glass.leadingAnchor.constraint(equalTo: topBar.leadingAnchor),
+            glass.trailingAnchor.constraint(equalTo: topBar.trailingAnchor),
+            body.topAnchor.constraint(equalTo: clip.topAnchor),
             body.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
             body.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
             body.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
@@ -439,6 +449,35 @@ public final class ContentViewController: NSViewController {
 
     /// Whether a native screen covers the Page View now (tests).
     public var showsNativeScreen: Bool { screen.map { !$0.isHidden } ?? false }
+}
+
+/// The tab strip's backdrop: whatever scrolls under it, blurred and saturated as the web's ui-glass
+/// (`backdrop-filter: blur(30px) saturate(1.8)`), clipped to the bar's corners. The bar draws its tint and edges on top.
+@MainActor
+public final class GlassBackdrop: NSView {
+    var cornerRadius: CGFloat = 0 { didSet { layer?.cornerRadius = cornerRadius } }
+
+    /// The web's blur(30px) saturate(1.8), in order (screenshots apply the same to what they captured).
+    public static func filters() -> [CIFilter] {
+        let blur = CIFilter(name: "CIGaussianBlur")!
+        blur.setValue(30, forKey: kCIInputRadiusKey)
+        let saturate = CIFilter(name: "CIColorControls")!
+        saturate.setValue(1.8, forKey: kCIInputSaturationKey)
+        return [blur, saturate]
+    }
+
+    init() {
+        super.init(frame: .zero)
+        wantsLayer = true
+        layerUsesCoreImageFilters = true
+        layer?.masksToBounds = true
+        backgroundFilters = Self.filters()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not from a nib") }
+
+    public override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 /// A 28 pt toolbar button with the Mac's quiet hover and press fills (polish 2.4), and an "on" state.

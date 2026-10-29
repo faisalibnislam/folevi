@@ -3,8 +3,8 @@ import { newPerson } from "./helpers";
 
 // The tab strip with more tabs than fit (TabStrip.tsx): the open tab is always in the strip, selected and fully
 // visible (clear of the soft edges), whenever it changes: a new note, a click, ⌃Tab in the Mac app, Back and
-// Forward, closing tabs. Tabs shrink to their minimum width before the strip scrolls. At a desktop size and an
-// iPad size, light and dark.
+// Forward, closing tabs. Every tab is the same width, open or not, and they shrink to their minimum together before
+// the strip scrolls. At a desktop size and an iPad size, light and dark.
 
 const strip = (page: Page) => page.getByRole("navigation", { name: "Open pages" });
 
@@ -78,10 +78,12 @@ test("the open tab is always fully in the strip: new notes, clicks, ⌃Tab, Back
   expect(Math.max(...widths)).toBeLessThan(173);
   await expect(page.getByRole("button", { name: "Scroll tabs left" })).toBeEnabled();
 
-  // The 16th: at the strip's cap, its tab replaces the oldest, and it's still the one shown, its whole title
-  // readable though the others are at their narrowest.
+  // The 16th: at the strip's cap, its tab replaces the oldest, and it's still the one shown, as wide as every other
+  // tab (an open tab never changes size, the owner 2026-10-29).
   await newNote(page, "Company Structure");
-  expect((await current(page))!.truncated).toBe(false);
+  const open = (await current(page))!.width;
+  const others = await strip(page).locator("[data-tab]").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
+  for (const w of others) expect(Math.abs(w - open)).toBeLessThan(0.6);
 
   const sizes = [
     { label: "desktop", width: 1440, height: 900 },

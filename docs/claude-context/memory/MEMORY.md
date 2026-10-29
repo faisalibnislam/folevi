@@ -23,6 +23,7 @@
 - [iOS polish 2026-10-22](ios-polish-2026-10-22.md): iPhone UI "feels amateur"; Folevi look polished, native UIMenu/sheets/haptics, Craft reference, all screens + iPad
 - [Mac WebKit shell](mac-webkit-shell.md): 2026-10-22 replace Electron with AppKit + WKWebView reusing iOS Swift bridge (option A); Electron stays until the switch
 - [Protect the real library](protect-real-library.md): ~/Documents/Folevi Library + Electron support folder + Folevi Safe Storage are the owner's real data; tests use scratch only
+- [Version releases](version-releases.md): 2026-10-29 MAJOR.UPDATE.PATCH, no limits or rollover, Big keeps PATCH, Major only on the owner's word, version changes only in a requested release
 - [Unified version](unified-version.md): since 2026-10-23 all platforms share #.#.## from 1.0.00, no build number shown; native Mac ships now, Electron removed completely
 - [Mac downloads hosting](mac-downloads-hosting.md): R2 folevi-updates via folevi.com/download/... (Vercel proxy to r2.dev); DNS at Namecheap
 - [Cloudflare cost plan](cloudflare-cost-plan.md): 2026-10-23 files to private R2 + signed links, AI Gateway (no logs) + Workers AI embeddings, compressed covers; DNS/email/images stay

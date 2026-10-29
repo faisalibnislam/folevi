@@ -4,14 +4,17 @@
 //
 //   node apps/mac/scripts/publish.mjs [--plan]
 //
-//   1. checks: the Developer ID identity, the notarization profile (`xcrun notarytool store-credentials
-//      folevi-notary`), the Sparkle key in the login Keychain (account "folevi"), wrangler signed in
+//   1. checks: the version (version.json, its CHANGELOG.json entry, every project in step; newer than every version
+//      and build the live feed already has, so nothing is published twice or older), the Developer ID identity, the
+//      notarization profile (`xcrun notarytool store-credentials folevi-notary`), the Sparkle key in the login
+//      Keychain (account "folevi"), wrangler signed in
 //   2. the universal release build (release.mjs's steps, into apps/mac/release-dist/<version>)
 //   3. notarizes the app (notarytool, the keychain profile folevi-notary) and staples it
 //   4. the ZIP Sparkle installs and the DMG (with an Applications link), the DMG signed, notarized, stapled
 //   5. the appcast: generate_appcast signs the new ZIP (EdDSA, the Keychain's key) and makes deltas from the
 //      versions kept in apps/mac/release-archive/ (the ZIPs of earlier releases), with the feed from the bucket as
-//      its starting point (read from the bucket's own address, so no cache stands between)
+//      its starting point (read from the bucket's own address, so no cache stands between), and the version's
+//      CHANGELOG.json entry as its release notes (Folevi-<v>.html beside the ZIP, embedded in the feed)
 //   6. uploads with wrangler to the update bucket (Cloudflare R2 `folevi-updates`), which people reach through
 //      https://folevi.com/download/ (a rewrite in apps/web/next.config.ts): mac/Folevi-<v>.zip, the deltas,
 //      mac/Folevi-<v>.dmg, mac/Folevi.dmg (the stable download link), then mac/appcast.xml last
@@ -21,6 +24,7 @@ import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writ
 import { join } from "node:path";
 import { MAC } from "./project.mjs";
 import { buildRelease, currentVersion, identity, SPARKLE_ACCOUNT, sparkleBin, unregister, verify } from "./release.mjs";
+import { appcastReleases, compareVersions, findRelease, RELEASE_TYPES, releaseNotesHtml } from "../../../scripts/version.mjs";
 
 const argv = process.argv.slice(2);
 const bucket = process.env.FOLEVI_UPDATE_BUCKET ?? "folevi-updates";
@@ -29,6 +33,7 @@ const base = (process.env.FOLEVI_UPDATE_URL ?? "https://folevi.com/download").re
 const bucketUrl = (process.env.FOLEVI_BUCKET_URL ?? "https://pub-e55d5e1b47314fcbbbe3664ed7aed1c2.r2.dev").replace(/\/+$/, "");
 const notary = process.env.FOLEVI_NOTARY_PROFILE ?? "folevi-notary";
 const { version, build } = currentVersion();
+const notes = findRelease(version);
 const out = join(MAC, "release-dist", version);
 const archiveDir = join(MAC, "release-archive");
 const zipName = `Folevi-${version}.zip`;
@@ -42,7 +47,8 @@ const run = (cmd, args, o = {}) => execFileSync(cmd, args, { stdio: "inherit", m
 const ok = (cmd, args) => spawnSync(cmd, args, { stdio: "ignore" }).status === 0;
 
 if (argv.includes("--plan")) {
-  console.log(`Would publish Folevi ${version} (build ${build}, what Sparkle compares) from ${out}:
+  console.log(`Would publish Folevi ${version} (build ${build}, what Sparkle compares), a ${RELEASE_TYPES[notes.type]} released ${notes.released}, from ${out}:
+  release notes: ${notes.summary}
   notarize with the keychain profile ${notary}, staple, ZIP + DMG,
   sign the appcast with the Sparkle key (login Keychain, account ${SPARKLE_ACCOUNT}), deltas from ${archiveDir},
   the current feed from ${bucketUrl}/mac/appcast.xml,
@@ -51,7 +57,19 @@ if (argv.includes("--plan")) {
   process.exit(0);
 }
 
-// 1. What publishing needs.
+// 1. What publishing needs. The live feed first: never a version or build it has already, never an older one.
+let feed = "";
+try {
+  const res = await fetch(`${bucketUrl}/mac/appcast.xml`, { cache: "no-store" });
+  if (res.ok) feed = await res.text();
+  else if (res.status !== 404) fail(`The live feed answered ${res.status}: try again.`);
+} catch (e) {
+  fail(`The live feed couldn't be read (${e instanceof Error ? e.message : e}): try again.`);
+}
+const live = appcastReleases(feed);
+const newer = live.versions.filter((v) => compareVersions(v, version) >= 0);
+if (newer.length) fail(`The feed has ${newer.join(", ")} already: release the next version first (node scripts/version.mjs release patch|update).`);
+if (live.builds.some((b) => b >= build)) fail(`The feed has build ${Math.max(...live.builds)} already, and Sparkle needs a higher one than ${build}.`);
 identity();
 if (!ok("xcrun", ["notarytool", "history", "--keychain-profile", notary])) fail(`No notarization profile "${notary}": run \`xcrun notarytool store-credentials ${notary} --apple-id <Apple ID> --team-id 7K32QQ2FX8\` once.`);
 if (!ok("npx", ["wrangler", "whoami"])) fail("wrangler isn't signed in: run `npx wrangler login` with the Cloudflare account that owns the update bucket.");
@@ -90,13 +108,10 @@ notarize(dmg);
 run("xcrun", ["stapler", "staple", dmg]);
 unregister(app, join(stage, "Folevi.app"));
 
-// 5. The appcast: the bucket's feed as it is, earlier ZIPs for deltas, the new ZIP signed.
-try {
-  const res = await fetch(`${bucketUrl}/mac/appcast.xml`, { cache: "no-store" });
-  if (res.ok) writeFileSync(join(updates, "appcast.xml"), await res.text());
-} catch {
-  /* The first native release. */
-}
+// 5. The appcast: the bucket's feed as it is (read in step 1), earlier ZIPs for deltas, the new ZIP signed, its
+// release notes from CHANGELOG.json (an HTML fragment generate_appcast embeds as the item's description).
+if (feed) writeFileSync(join(updates, "appcast.xml"), feed);
+writeFileSync(join(updates, `Folevi-${version}.html`), releaseNotesHtml(notes));
 mkdirSync(archiveDir, { recursive: true });
 for (const f of readdirSync(archiveDir).filter((f) => /^Folevi-[0-9.]+\.zip$/.test(f) && f !== zipName)) cpSync(join(archiveDir, f), join(updates, f));
 run(join(sparkleBin(), "generate_appcast"), ["--account", SPARKLE_ACCOUNT, "--download-url-prefix", `${base}/mac/`, "--maximum-deltas", "3", updates]);

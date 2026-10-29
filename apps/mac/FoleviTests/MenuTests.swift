@@ -101,9 +101,9 @@ final class MenuTests: XCTestCase {
         let options = AppDelegate.aboutPanelOptions
         XCTAssertEqual(options[.version] as? String, "")
         XCTAssertEqual(options[.applicationVersion] as? String, Paths.version)
-        // The owner's format, biggest.big.minor with two digits last (version.json), which Apple takes as three
-        // whole numbers; the build is a whole number on its own.
-        XCTAssertNotNil(Paths.version.range(of: #"^\d{1,3}\.\d{1,3}\.\d{2}$"#, options: .regularExpression), Paths.version)
+        // The owner's format, MAJOR.UPDATE.PATCH with PATCH at least two digits (version.json, scripts/version.mjs),
+        // which Apple takes as three whole numbers; the build is a whole number on its own.
+        XCTAssertNotNil(Paths.version.range(of: #"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0\d|[1-9]\d+)$"#, options: .regularExpression), Paths.version)
         XCTAssertNotNil(Paths.build.range(of: #"^\d+$"#, options: .regularExpression), Paths.build)
     }
 

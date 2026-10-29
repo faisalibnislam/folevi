@@ -1,0 +1,177 @@
+{
+  "releases": [
+    {
+      "version": "1.1.04",
+      "build": 14,
+      "released": "2026-10-29T06:18:23+06:00",
+      "type": "patch",
+      "summary": "Mac tab strip and note card polish.",
+      "improved": [
+        "Mac tab strip: Home is pinned after Back and Forward, and only the tabs after it scroll",
+        "Mac tab strip: New note sits as far from the right edge as the Back arrow from the left"
+      ],
+      "fixed": [
+        "Note cards: the shadow animates with the card, so no pale band shows under a card as the hover ends"
+      ],
+      "tag": "mac-v1.1.04",
+      "commit": "f6fd7767"
+    },
+    {
+      "version": "1.1.03",
+      "build": 13,
+      "released": "2026-10-28T23:24:46+06:00",
+      "type": "patch",
+      "summary": "The Mac tab strip matches the web's, and the Vault unlocks encryption in place.",
+      "improved": [
+        "Mac tab strip matches the web's: only the tabs scroll, New note 4 pt from the edge",
+        "The Vault unlocks encryption in place: one card, the ways to unlock, then the passcode (web and Mac)"
+      ],
+      "tag": "mac-v1.1.03",
+      "commit": "e60b655f"
+    },
+    {
+      "version": "1.1.02",
+      "build": 12,
+      "released": "2026-10-28T20:40:07+06:00",
+      "type": "patch",
+      "summary": "The Mac window and account button follow the web, and the note card star moves to the cover's corner.",
+      "improved": [
+        "Mac: the window follows the place's Settings > Appearance, as its page does",
+        "Note cards: the star's tab sits in the cover's corner, as on the web",
+        "Mac: the account button shows the profile picture or the workspace's logo, as on the web"
+      ],
+      "tag": "mac-v1.1.02",
+      "commit": "0ebfebf8"
+    },
+    {
+      "version": "1.1.01",
+      "build": 11,
+      "released": "2026-10-28T14:07:22+06:00",
+      "type": "patch",
+      "summary": "Mac tabs open, close and reorder as on the web.",
+      "improved": [
+        "Mac tabs: the whole tab opens it, a middle-click closes it, and tabs drag to reorder, as on the web"
+      ],
+      "tag": "mac-v1.1.01",
+      "commit": "c12e62f4"
+    },
+    {
+      "version": "1.1.00",
+      "build": 10,
+      "released": "2026-10-28T13:11:47+06:00",
+      "type": "update",
+      "summary": "Folevi for Mac rebuilt as a native app that matches the web.",
+      "added": [
+        "Folevi for Mac rebuilt as a native app that matches the web: the window frame, sidebar, top bar, tabs and menus drawn natively from the web's styles",
+        "Native Home, note lists, folders, Tasks, Calendar, Search, Notifications, Settings, sharing, invitations and Quick Add on the Mac",
+        "Every screen before the app (first launch, library setup, sign-in, offline, the Touch ID cover) native on the Mac",
+        "Notes dragged from the Mac's lists to Finder go as Markdown files",
+        "Decline a workspace or page invitation"
+      ],
+      "improved": [
+        "Foli AI chat streams within its frame budget",
+        "Editor text size applies on every page",
+        "iPhone: 120 Hz on ProMotion iPhones and Folevi's own web view host instead of Capacitor"
+      ],
+      "tag": "mac-v1.1.00",
+      "commit": "fd5390b7"
+    },
+    {
+      "version": "1.0.05",
+      "build": 9,
+      "released": "2026-10-27T08:39:35+06:00",
+      "type": "patch",
+      "summary": "The Vault, folder sharing on the web, and security hardening.",
+      "added": [
+        "The Vault: passwords and credentials, Files & Notes, people and roles, sharing items and one-time secret links, Health, notifications, item history, import and export",
+        "Folder sharing on the web: Share in the folder menu and toolbar, shared folder and invitation pages, Shared with Me"
+      ],
+      "improved": [
+        "A folder page shows its subfolders as folder cards",
+        "The Ask Foli AI flower blooms now and then and while Foli AI works",
+        "Security: patched libraries, Foli AI can't be steered into sending data out, a daily encrypted backup, sessions end after a password reset",
+        "iPhone: sheets reach the screen's bottom edge, and a themed note's cover band has rounded corners"
+      ],
+      "commit": "65af5aed"
+    },
+    {
+      "version": "1.0.04",
+      "build": 8,
+      "released": "2026-10-24T10:53:13+06:00",
+      "type": "patch",
+      "summary": "Every note kept on the device.",
+      "added": [
+        "Every note kept on the device: background fill, instant opening, prefetch on intent, attachments, encrypted copies sealed at rest"
+      ],
+      "improved": [
+        "A faster device copy feed from the server"
+      ],
+      "commit": "f5f00a26"
+    },
+    {
+      "version": "1.0.03",
+      "build": 7,
+      "released": "2026-10-24T10:15:13+06:00",
+      "type": "patch",
+      "summary": "Foli AI for long notes, offline notes everywhere, and faster iPhone and iPad apps.",
+      "added": [
+        "Foli AI handles long notes: an outline, paged reading, batched edits and Continue"
+      ],
+      "improved": [
+        "Foli AI's Ask chat fills the note's panel, with the composer at the bottom",
+        "Notes written offline show at once everywhere and reach the server after reconnecting",
+        "iPhone and iPad: faster taps and typing, a note zooms out of its card and back, sheets slide in from below, a sync status for touch",
+        "The apps open the last-known folio at once, and their first screen loads 14 % less code"
+      ],
+      "fixed": [
+        "Big pastes save reliably",
+        "folevi.com opens your notes even without the signed-in hint cookie"
+      ],
+      "commit": "5b64098b"
+    },
+    {
+      "version": "1.0.02",
+      "build": 6,
+      "released": "2026-10-23T13:26:12+06:00",
+      "type": "patch",
+      "summary": "Faster sign-in with Google or Apple in the apps.",
+      "improved": [
+        "Sign-in in the apps: Continue with Google or Apple goes straight to that provider's page"
+      ],
+      "commit": "5b7fc87d"
+    },
+    {
+      "version": "1.0.01",
+      "build": 5,
+      "released": "2026-10-23T10:53:55+06:00",
+      "type": "patch",
+      "summary": "Folevi for Mac is native only, uses less memory, and folders drag and drop.",
+      "added": [
+        "Sidebar folders: drag and drop for notes and folders (web, Mac, iPad)"
+      ],
+      "improved": [
+        "Folevi for Mac is the native app only, downloaded from folevi.com and updated by Sparkle",
+        "Mac memory: background places, Quick Add and hidden windows let go of what they don't need, and memory warnings are answered",
+        "The account menu: places first, the rest in Settings",
+        "First launch: Sign in to Folevi is the suggested choice"
+      ],
+      "fixed": [
+        "Flowchart connectors: Reverse direction turns the arrow, and lines between close shapes stay straight"
+      ],
+      "commit": "f94212bd"
+    },
+    {
+      "version": "1.0.00",
+      "build": 4,
+      "released": "2026-10-23T06:50:15+06:00",
+      "type": "major",
+      "summary": "One version for every platform, and the first native Folevi for Mac.",
+      "added": [
+        "One version for every platform: the web, Folevi for Mac, iPhone and iPad and Android all show Folevi 1.0.00, never a build number",
+        "The first native Folevi for Mac release"
+      ],
+      "tag": "mac-v1.0.00",
+      "commit": "3832da01"
+    }
+  ]
+}

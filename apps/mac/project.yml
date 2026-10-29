@@ -18,8 +18,8 @@ packages:
     path: ../native-kit
 settings:
   base:
-    MARKETING_VERSION: "1.1.04"
-    CURRENT_PROJECT_VERSION: 14
+    MARKETING_VERSION: "1.2.00"
+    CURRENT_PROJECT_VERSION: 15
     MACOSX_DEPLOYMENT_TARGET: "15.0"
     DEVELOPMENT_TEAM: 7K32QQ2FX8
     # The shared iOS Swift is written for the Swift 5 language mode (as the iOS project builds it).

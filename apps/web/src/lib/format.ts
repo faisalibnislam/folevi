@@ -1,5 +1,19 @@
 // Date formatting helpers (English only for now).
 
+// One formatter per set of options: building an Intl.DateTimeFormat (which `toLocaleDateString(_, options)` does
+// on every call) costs far more than formatting with one, and lists format a date per row.
+const formatters = new Map<string, Intl.DateTimeFormat>();
+function formatter(opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = JSON.stringify(opts);
+  let f = formatters.get(key);
+  if (!f) formatters.set(key, (f = new Intl.DateTimeFormat(undefined, opts)));
+  return f;
+}
+/** `date.toLocaleDateString(undefined, opts)`, with a kept formatter (the same text: opts always name a date part). */
+function localeDate(date: Date, opts: Intl.DateTimeFormatOptions): string {
+  return opts.weekday || opts.year || opts.month || opts.day || opts.dateStyle ? formatter(opts).format(date) : date.toLocaleDateString(undefined, opts);
+}
+
 /**
  * The one wording for relative times, used everywhere in the app: "just now", "1 min ago", "5 mins ago",
  * "1 hour ago", "3 days ago", then from a week out a short date ("Sep 10", or "Sep 10, 2025" in another
@@ -21,7 +35,7 @@ export function formatRelative(ts: number, now = Date.now()): string {
   const days = Math.round(hours / 24);
   if (days < 7) return unit(days, "day");
   const sameYear = new Date(ts).getFullYear() === new Date(now).getFullYear();
-  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: sameYear ? undefined : "numeric" });
+  return localeDate(new Date(ts), sameYear ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" });
 }
 
 /**
@@ -36,11 +50,11 @@ export function ageText(ts: number, now = Date.now()): string {
 
 export function formatDate(date: string, opts: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric" }): string {
   const [y, m, d] = date.split("-").map(Number) as [number, number, number];
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, { ...opts, timeZone: "UTC" });
+  return localeDate(new Date(Date.UTC(y, m - 1, d)), { ...opts, timeZone: "UTC" });
 }
 
 export function formatDateTime(ts: number): string {
-  return new Date(ts).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return formatter({ dateStyle: "medium", timeStyle: "short" }).format(new Date(ts));
 }
 
 export function formatBytes(n: number): string {

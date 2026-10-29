@@ -421,7 +421,9 @@ export const registerSession = mutation({
       .query("sessionsMirror")
       .withIndex("by_profile_key", (q) => q.eq("profileId", profile._id).eq("sessionKey", sessionKey))
       .unique();
-    await ctx.db.patch(profile._id, { lastActiveAt: now });
+    // At most once a minute, as `heartbeat` does: nearly every query reads this row (requireProfile), so each
+    // write runs all of this person's subscriptions again.
+    if (now - profile.lastActiveAt > 60_000) await ctx.db.patch(profile._id, { lastActiveAt: now });
     if (existing) {
       if (existing.revokedAt) fail("unauthenticated", "This session was signed out.");
       if (now - existing.lastSeenAt > 5 * 60_000) await ctx.db.patch(existing._id, { lastSeenAt: now });

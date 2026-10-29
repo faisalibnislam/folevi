@@ -309,10 +309,31 @@ export function onThemeChange(cb: () => void, el?: Element | null): () => void {
   };
   const observer = new MutationObserver(check);
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  const styleObserver = el ? new MutationObserver(cb) : null;
+  // The sheet's look: its style attributes and inline style, less the page-break mask (usePageBreakMask moves it
+  // as lines are added above a break; drawing every diagram again for that changed nothing they show).
+  const lookOf = (sheet: Element) => {
+    const style = (sheet as HTMLElement).style;
+    let css = "";
+    for (let i = 0; i < style.length; i++) {
+      const prop = style.item(i);
+      if (!prop.includes("mask")) css += `${prop}:${style.getPropertyValue(prop)};`;
+    }
+    return `${sheet.getAttribute("data-sheet")}|${sheet.getAttribute("data-text")}|${sheet.getAttribute("data-palette")}|${css}`;
+  };
+  let look = "";
+  const styleObserver = el
+    ? new MutationObserver((records) => {
+        const now = lookOf(records[0]!.target as Element);
+        if (now === look) return;
+        look = now;
+        cb();
+      })
+    : null;
   const watchSheet = () => {
     const sheet = el?.closest(".fb-sheet");
-    if (sheet) styleObserver?.observe(sheet, { attributes: true, attributeFilter: ["style", "data-sheet", "data-text", "data-palette"] });
+    if (!sheet) return;
+    look = lookOf(sheet);
+    styleObserver?.observe(sheet, { attributes: true, attributeFilter: ["style", "data-sheet", "data-text", "data-palette"] });
   };
   // A node view's element is attached to the page only after it's created.
   const attachFrame = el && !el.isConnected ? requestAnimationFrame(watchSheet) : (watchSheet(), null);

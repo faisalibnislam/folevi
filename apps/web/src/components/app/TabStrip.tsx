@@ -619,10 +619,7 @@ export function TabStrip() {
                     );
                   })}
                 </div>
-                <div className="border-t border-line px-3 py-2">
-                  <div className="truncate text-subheadline font-semibold text-heading">{label}</div>
-                  <div className="truncate text-footnote text-muted">{t.view ? VIEW_NAMES[t.view.kind] ?? "View" : t.panes && t.panes.length > 1 ? `${t.panes.length} notes side by side` : "Note"}{t.pinned ? " · Pinned" : ""}</div>
-                </div>
+                <div className="truncate border-t border-line px-3 py-2 text-subheadline font-semibold text-heading">{label}</div>
               </div>,
               document.body,
             );

@@ -21,10 +21,13 @@ const SNAP = 14;
 
 const noop = () => undefined;
 
-/** The join glyph: two brackets facing each other, with + (join) or × (unjoin) between them. */
+/**
+ * The join glyph: two brackets facing each other, with + (join) or × (unjoin) between them. Its line is the same
+ * weight on screen as the app's 14 px icons (Lucide's 2 on a 24 grid: about 1.17 px).
+ */
 function JoinGlyph({ kind }: { kind: "join" | "unjoin" }) {
   return (
-    <svg width="12" height="30" viewBox="0 0 12 30" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="12" height="30" viewBox="0 0 12 30" fill="none" stroke="currentColor" strokeWidth="1.17" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M2 1.5v5.5h8V1.5" />
       {kind === "join" ? <path d="M6 11.5v7M2.5 15h7" /> : <path d="M3.5 12.5l5 5M8.5 12.5l-5 5" />}
       <path d="M2 28.5V23h8v5.5" />

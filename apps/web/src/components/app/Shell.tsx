@@ -33,9 +33,8 @@ import { NativeBridge } from "./NativeBridge";
 import { DeviceCopyRunner } from "./DeviceCopyRunner";
 import { displayCornerRadius, useIpadLayout, useIphoneApp } from "@/lib/iphone";
 import { nativeApp, nativeChrome } from "@/lib/nativeApp";
-import { EngineHost } from "@/lib/engine/EngineHost";
 import { NativeGate } from "@/lib/engine/NativeGate";
-import { WEB_SETTINGS_SECTIONS } from "@/lib/engine/host";
+import { WEB_SETTINGS_SECTIONS } from "@/lib/engine/webSettings";
 import { useEditorZoom } from "@/lib/editorZoom";
 import { useScrollActivity } from "@/lib/scrollActivity";
 import { loadDocumentView, loadedDocumentView } from "@/lib/app/noteView";
@@ -195,6 +194,11 @@ const NativeReviewView = lazy(() => import("@/components/views/ReviewView").then
 const NativeGraphView = lazy(() => import("@/components/views/GraphView").then((m) => ({ default: m.GraphView })));
 // The technical Settings sections (Webhooks, API tokens, Connected apps, AI export, Data) stay web pages.
 const NativeSettingsView = lazy(() => import("@/components/views/SettingsView").then((m) => ({ default: m.SettingsView })));
+// The bridge host, with every live view and command native can ask for: only native chrome mode runs it, so
+// the website never loads it; in the apps its code starts loading with this module, before anything renders.
+const loadEngineHost = () => import("@/lib/engine/EngineHost").then((m) => ({ default: m.EngineHost }));
+if (typeof window !== "undefined" && nativeChrome()) void loadEngineHost();
+const EngineHost = lazy(loadEngineHost);
 
 const noop = () => undefined;
 
@@ -278,7 +282,9 @@ function NativeContentShell() {
         <div data-native-content="" className="ui-canvas flex h-dvh min-h-0 flex-col overflow-hidden text-ink">
           <Suspense fallback={null}>{content}</Suspense>
         </div>
-        <EngineHost />
+        <Suspense fallback={null}>
+          <EngineHost />
+        </Suspense>
         {/* The app is up: no gate screen for native to show. */}
         <NativeGate gate={null} />
         <NativeBridge />

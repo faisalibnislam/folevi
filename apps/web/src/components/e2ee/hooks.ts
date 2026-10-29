@@ -10,11 +10,39 @@ import { api } from "@/lib/convex/api";
 import { useKeySession } from "@/lib/e2ee/keys";
 import type { Level, Switches } from "@/lib/e2ee/router/deps";
 
-export { useE2eeSpaceStatus, isSealedDocument } from "@/lib/e2ee/router";
-export { useMigrationProgress, retryFailed, startMigrationRunner, type MigrationProgress } from "@/lib/e2ee/migrate";
-export { startFeatureWorkers, useAiConsent, useRotationProgress, type ConsentRequest } from "@/lib/e2ee/features";
-export { createEncryptedLink, revokeEncryptedLink, publishPlainCopy } from "@/lib/e2ee/links";
+// From the modules themselves, not their indexes: these hooks are on every page, and the indexes bring the
+// router, the migration runner, the feature workers and the links (with the local functions they share),
+// which only spaces with end-to-end encryption run. Those load when first used (docs/E2EE_DESIGN.md §6.4).
+export { useE2eeSpaceStatus, isSealedDocument } from "@/lib/e2ee/router/hooks";
+export { useMigrationProgress, type MigrationProgress } from "@/lib/e2ee/migrate/progress";
+export { useAiConsent, type ConsentRequest } from "@/lib/e2ee/features/consent";
+export { useRotationProgress } from "@/lib/e2ee/features/grants";
 export type { Level, Switches };
+
+/** Starts a runner from a module loaded on demand; the stop returned works before it has loaded too. */
+function startLater(load: () => Promise<() => () => void>): () => void {
+  let stop: (() => void) | null = null;
+  let stopped = false;
+  void load().then((start) => {
+    if (!stopped) stop = start();
+  });
+  return () => {
+    stopped = true;
+    stop?.();
+  };
+}
+
+/** The encrypted spaces' migration runner (WP8), while the device is unlocked. */
+export const startMigrationRunner = (): (() => void) => startLater(() => import("@/lib/e2ee/migrate/runner").then((m) => m.startMigrationRunner));
+/** The feature workers (§7, §8.2 to §8.4), while the device is unlocked. */
+export const startFeatureWorkers = (): (() => void) => startLater(() => import("@/lib/e2ee/features").then((m) => m.startFeatureWorkers));
+/** Tries a failed migration job again (all of them without `jobId`). */
+export function retryFailed(jobId?: string): void {
+  void import("@/lib/e2ee/migrate/runner").then((m) => m.retryFailed(jobId));
+}
+export const createEncryptedLink = async (...a: Parameters<typeof import("@/lib/e2ee/links").createEncryptedLink>) => (await import("@/lib/e2ee/links")).createEncryptedLink(...a);
+export const revokeEncryptedLink = async (...a: Parameters<typeof import("@/lib/e2ee/links").revokeEncryptedLink>) => (await import("@/lib/e2ee/links")).revokeEncryptedLink(...a);
+export const publishPlainCopy = async (...a: Parameters<typeof import("@/lib/e2ee/links").publishPlainCopy>) => (await import("@/lib/e2ee/links")).publishPlainCopy(...a);
 
 /** §7.1: the defaults at "Encrypted, with the features you pick". */
 export const DEFAULT_SWITCHES: Switches = { foliAi: "ask", backgroundAi: false, searchEverywhere: false, apps: false, emailToNote: false, webClipper: false, notificationPreviews: false };

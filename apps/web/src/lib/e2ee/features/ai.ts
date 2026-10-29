@@ -16,7 +16,6 @@
 // The stored chat and research functions don't take `provided` (their results are rows): in encrypted spaces
 // the device uses aiChat.sendSealed / aiResearch.startSealed (`sealedChat` below keeps the chat as an aiChat
 // record), and the old ones are refused here with the reason.
-import { useSyncExternalStore } from "react";
 import { ConvexError } from "convex/values";
 import { getFunctionName, type FunctionReference } from "convex/server";
 import { api } from "@/lib/convex/api";
@@ -27,82 +26,10 @@ import { isEncryptedLevel, type E2eeSpace } from "../router/deps";
 import type { AiRouter, Call, RouterEnv } from "../router/types";
 import { lockIndexFor } from "./locks";
 
-// ---- consent (§10.9) -------------------------------------------------------------------------------------
+// ---- consent (§10.9): ./consent ---------------------------------------------------------------------------
 
-/** §12 WP8 (WP9's ConsentPopover draws it). */
-export interface ConsentRequest {
-  notes: { id: string; title: string; chars: number }[];
-}
-
-interface Asked {
-  request: ConsentRequest;
-  resolve(ok: boolean): void;
-}
-
-const queue: Asked[] = [];
-const consentListeners = new Set<() => void>();
-/** "Don't ask again for this note today": note id → the day it was said (memory only, this tab). */
-const remembered = new Map<string, string>();
-const today = () => new Date().toISOString().slice(0, 10);
-
-function emitConsent() {
-  for (const l of [...consentListeners]) l();
-}
-
-/** Asks the person before notes are sent (resolves false on "Don't send"). Notes allowed today aren't asked again. */
-export function askConsent(request: ConsentRequest): Promise<boolean> {
-  if (request.notes.length && request.notes.every((n) => remembered.get(n.id) === today())) return Promise.resolve(true);
-  return new Promise((resolve) => {
-    queue.push({ request, resolve });
-    emitConsent();
-  });
-}
-
-/** The request waiting for an answer now (outside React). */
-export function pendingConsent(): ConsentRequest | null {
-  return queue[0]?.request ?? null;
-}
-
-/** Answers the request waiting now: "Send" (true) or "Don't send"; `rememberForNote` skips asking again today. */
-export function answerConsent(ok: boolean, rememberForNote?: boolean): void {
-  const head = queue.shift();
-  if (!head) return;
-  if (ok && rememberForNote) for (const n of head.request.notes) remembered.set(n.id, today());
-  head.resolve(ok);
-  emitConsent();
-}
-
-/** §12 WP8: the request waiting for an answer, and the answer. */
-export function useAiConsent(): { pending: ConsentRequest | null; answer(ok: boolean, rememberForNote?: boolean): void } {
-  const pending = useSyncExternalStore(
-    (cb) => {
-      consentListeners.add(cb);
-      return () => {
-        consentListeners.delete(cb);
-      };
-    },
-    pendingConsent,
-    () => null,
-  );
-  return { pending, answer: answerConsent };
-}
-
-/** Whether every note of a request was allowed earlier today ("Don't ask again for these notes today"). */
-export function consentRemembered(request: ConsentRequest): boolean {
-  return request.notes.length > 0 && request.notes.every((n) => remembered.get(n.id) === today());
-}
-
-/** Remembers a request's notes as allowed for today (memory only). */
-export function rememberConsent(request: ConsentRequest): void {
-  for (const n of request.notes) remembered.set(n.id, today());
-}
-
-/** Sign-out: nothing remembered, nothing waiting. */
-export function resetConsent(): void {
-  remembered.clear();
-  for (const q of queue.splice(0)) q.resolve(false);
-  emitConsent();
-}
+export { askConsent, answerConsent, consentRemembered, pendingConsent, rememberConsent, resetConsent, useAiConsent, type ConsentRequest } from "./consent";
+import { askConsent, type ConsentRequest } from "./consent";
 
 // ---- gathering -----------------------------------------------------------------------------------------
 

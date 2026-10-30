@@ -264,6 +264,8 @@ async function frames(page: Page, act: () => Promise<unknown>) {
 
 /** Everything the page does in `ms` while nobody touches it. */
 async function idle(page: Page, cdp: CDPSession | null, label: string, ms = 5000) {
+  // What came before done first (a first launch, a long paste saving): on a busy machine it ran on into the measure.
+  await quiet(page);
   await clearNames(page);
   const a = await snapshot(page, cdp);
   await page.waitForTimeout(ms);
@@ -319,6 +321,19 @@ const results = { cpu: CPU, base: "", startup: {} as Record<string, number>, int
 const shown = (selector: string, text?: string) => `() => [...document.querySelectorAll(${JSON.stringify(selector)})].some((el) => el.getBoundingClientRect().height > 0 && getComputedStyle(el).visibility !== "hidden"${text ? ` && el.textContent.includes(${JSON.stringify(text)})` : ""})`;
 const gone = (selector: string) => `() => ![...document.querySelectorAll(${JSON.stringify(selector)})].some((el) => el.getBoundingClientRect().height > 0)`;
 
+/** Waits until React has committed nothing for 3 s (at most 30 s): a long paste saves in batches seconds apart. */
+async function quiet(page: Page) {
+  const commits = () => page.evaluate(() => (window as unknown as { __perf: { commits: number } }).__perf.commits);
+  let last = await commits();
+  let still = 0;
+  for (let i = 0; i < 60 && still < 6; i++) {
+    await page.waitForTimeout(500);
+    const now = await commits();
+    still = now === last ? still + 1 : 0;
+    last = now;
+  }
+}
+
 async function topNames(page: Page, label: string) {
   const top = await page.evaluate(() => {
     const m = (window as unknown as { __perf: { names: Map<string, number>; roots: Map<string, number> } }).__perf;
@@ -359,6 +374,9 @@ test.describe("the iPhone app's speed", { tag: ["@local", "@iphone-perf"] }, () 
   });
 
   test("tap, type and scroll in the iPhone app under a slow CPU", async ({ browser, browserName }, testInfo) => {
+    // What runs while nothing happens can't be measured with other tests on the machine (and on `next dev`, their
+    // pages compiling): run alone, as the header says.
+    test.skip(testInfo.config.workers > 1, "Measures idle work: run alone (--workers=1).");
     // WebKit (the app's engine) has no CPU slow-down or counters through Playwright: there it's the page's own meters.
     const chromium = browserName === "chromium";
     test.setTimeout(900_000);

@@ -73,7 +73,17 @@ test.describe("Folevi for Mac, the web layer", { tag: ["@local", "@mac"] }, () =
     const home = sidebar(page).getByRole("link", { name: "Home", exact: true });
     const style = (prop: string) => home.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), prop);
     expect(await style("cursor")).toBe("default");
-    expect(await style("user-select")).toBe("none");
+    // The label can't be selected: what takes effect is the nearest setting other than "auto" (the rule is on the
+    // sidebar; Chromium reports it on the link, WebKit reports the link's own "auto").
+    const selectable = await home.evaluate((el) => {
+      for (let e: Element | null = el; e; e = e.parentElement) {
+        const s = getComputedStyle(e);
+        const v = s.getPropertyValue("-webkit-user-select") || s.getPropertyValue("user-select");
+        if (v && v !== "auto") return v;
+      }
+      return "auto";
+    });
+    expect(selectable).toBe("none");
     // A click leaves no ring (the mouse moved focus).
     await sidebar(page).getByRole("link", { name: "Tasks" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-input", "pointer");

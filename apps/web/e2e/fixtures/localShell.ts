@@ -145,10 +145,71 @@ export function installFakeShell(cfg: FakeShellConfig) {
   };
 
   // ---- OPFS ----
-  const opfsRoot = async () => {
-    const root = await navigator.storage.getDirectory();
-    const shellDir = await root.getDirectoryHandle("folevi-fake-shell", { create: true });
-    return shellDir;
+  // Where the browser has no origin private file system, or refuses it (Playwright's WebKit, the Mac app's engine,
+  // in a test context), the same calls on folders kept in this page's memory: a reload starts empty there.
+  type MemEntry = MemDir | MemFile;
+  class MemFile {
+    readonly kind = "file";
+    bytes = new Uint8Array();
+    constructor(readonly name: string) {}
+    async getFile() {
+      return new Blob([this.bytes as Uint8Array<ArrayBuffer>]);
+    }
+    async createWritable() {
+      const chunks: Uint8Array[] = [];
+      return {
+        write: async (data: Uint8Array | ArrayBuffer) => void chunks.push(data instanceof Uint8Array ? data : new Uint8Array(data)),
+        close: async () => {
+          const out = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+          let at = 0;
+          for (const c of chunks) {
+            out.set(c, at);
+            at += c.length;
+          }
+          this.bytes = out;
+        },
+      };
+    }
+  }
+  class MemDir {
+    readonly kind = "directory";
+    readonly children = new Map<string, MemEntry>();
+    constructor(readonly name: string) {}
+    private take(name: string, kind: "file" | "directory", create: boolean | undefined): MemEntry {
+      const had = this.children.get(name);
+      if (had) {
+        if (had.kind !== kind) throw new DOMException(`${name} isn't a ${kind}`, "TypeMismatchError");
+        return had;
+      }
+      if (!create) throw new DOMException(`${name} isn't there`, "NotFoundError");
+      const made = kind === "file" ? new MemFile(name) : new MemDir(name);
+      this.children.set(name, made);
+      return made;
+    }
+    async getDirectoryHandle(name: string, o?: { create?: boolean }) {
+      return this.take(name, "directory", o?.create) as MemDir;
+    }
+    async getFileHandle(name: string, o?: { create?: boolean }) {
+      return this.take(name, "file", o?.create) as MemFile;
+    }
+    async removeEntry(name: string) {
+      if (!this.children.delete(name)) throw new DOMException(`${name} isn't there`, "NotFoundError");
+    }
+    async *entries(): AsyncGenerator<[string, MemEntry]> {
+      for (const e of [...this.children]) yield e;
+    }
+  }
+  let memory: MemDir | null = null;
+  const opfsRoot = async (): Promise<FileSystemDirectoryHandle> => {
+    if (!memory) {
+      try {
+        const root = await navigator.storage.getDirectory();
+        return await root.getDirectoryHandle("folevi-fake-shell", { create: true });
+      } catch {
+        memory = new MemDir("folevi-fake-shell");
+      }
+    }
+    return memory as unknown as FileSystemDirectoryHandle;
   };
   const libraryRoot = async () => (await opfsRoot()).getDirectoryHandle(cfg.libraryName, { create: true });
   const journalRoot = async () => (await opfsRoot()).getDirectoryHandle(`${cfg.libraryName}.journal`, { create: true });

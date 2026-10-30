@@ -232,9 +232,11 @@ test("iPad: a still hold opens the menu; hold then move drags folders and notes"
   // A note card onto a folder in the sidebar. (A tap just after a hold belongs to the hold: wait a moment.)
   await page.waitForTimeout(600);
   await folderLink(page, "All notes").click();
-  const card = page.getByRole("main").locator("[data-card-id]").first();
-  await expect(card).toBeVisible();
-  const titleText = (await card.innerText()).split("\n")[0]!.trim();
+  const top = page.getByRole("main").locator("[data-card-id]").first();
+  await expect(top).toBeVisible();
+  const titleText = (await top.innerText()).split("\n")[0]!.trim();
+  // That card, by its title: the list is by last edited and can still be reordering.
+  const card = page.getByRole("main").locator("[data-card-id]").filter({ hasText: titleText }).first();
   const from = await centre(card);
   await finger(page, from, line(from, await centre(row(page, "Shed"), 0.5), 20));
   await expect(toast(page, "Moved to Shed")).toBeVisible();

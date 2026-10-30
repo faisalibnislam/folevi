@@ -226,7 +226,12 @@ test.describe("Whiteboard", () => {
     await expect(canvas.locator("[data-wb-stroke]")).toHaveCount(2);
 
     // With Select, holding a finger on a stroke opens its menu (with a haptic).
-    await tools.getByRole("button", { name: /^Select/ }).tap();
+    // (A tap just after the drawing finger lifts can belong to it: tap again until Select is on.)
+    const select = tools.getByRole("button", { name: /^Select/ });
+    await expect(async () => {
+      await select.tap();
+      await expect(select).toHaveAttribute("aria-pressed", "true", { timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
     const y = (await canvas.locator("[data-wb-stroke]").first().boundingBox())!;
     const hold = [{ x: y.x + y.width / 2, y: y.y + y.height / 2 }];
     await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: hold });

@@ -104,7 +104,7 @@ export function E2eeGate({ children }: { children: ReactNode }) {
       </GatePage>
     );
   return (
-    <LockedSessionBoundary onRefused={() => setRefused((n) => n + 1)}>
+    <LockedSessionBoundary lockState={state} onRefused={() => setRefused((n) => n + 1)}>
       {children}
       {/* Standard accounts: nothing but the children (the same tree, so setting up never remounts the app). */}
       {state !== "none" || LOCK_MENU_FOR_EVERYONE ? <LockDialogHost /> : null}
@@ -138,22 +138,44 @@ export function E2eeWorkers() {
   return null;
 }
 
-/** Turns the router's `e2ee_locked_session` refusal (thrown by a query while locked) into the unlock screen. */
-class LockedSessionBoundary extends Component<{ children: ReactNode; onRefused: () => void }, { failed: boolean; other: unknown }> {
+/**
+ * Turns the router's `e2ee_locked_session` refusal (thrown by a query while locked) into the unlock screen. After
+ * a refusal it tries the app again when the key session's state changes, or after a second (a key can arrive
+ * without one, a workspace's from an admin's device). Drawn again at once, a refused query was refused again
+ * over and over while the session was still starting (a public computer's reload), and React stopped the page
+ * (error #185).
+ */
+class LockedSessionBoundary extends Component<{ children: ReactNode; lockState: string; onRefused: () => void }, { failed: boolean; other: unknown }> {
   override state = { failed: false, other: null as unknown };
+  private told = false;
+  private retry: ReturnType<typeof setTimeout> | null = null;
   static getDerivedStateFromError(error: unknown) {
     const ours = (error as { data?: { code?: string } })?.data?.code === "e2ee_locked_session";
     return ours ? { failed: true, other: null } : { failed: false, other: error };
   }
-  override componentDidUpdate() {
-    if (this.state.failed) {
-      this.props.onRefused();
-      this.setState({ failed: false });
+  override componentDidUpdate(prev: { lockState: string }) {
+    if (!this.state.failed) {
+      this.told = false;
+      return;
     }
+    if (!this.told) {
+      this.told = true;
+      this.props.onRefused();
+    }
+    if (prev.lockState !== this.props.lockState) this.again();
+    else this.retry ??= setTimeout(() => this.again(), 1000);
+  }
+  override componentWillUnmount() {
+    if (this.retry) clearTimeout(this.retry);
+  }
+  private again() {
+    if (this.retry) clearTimeout(this.retry);
+    this.retry = null;
+    this.setState({ failed: false });
   }
   override render() {
     // Anything else goes on to the boundaries above, as if this one weren't here.
     if (this.state.other) throw this.state.other;
-    return this.state.failed ? null : this.props.children;
+    return this.state.failed ? <FullPageMessage title={copy.unlock.opening} busy /> : this.props.children;
   }
 }

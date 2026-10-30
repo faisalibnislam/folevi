@@ -100,6 +100,8 @@ describe("the sign-in buttons", () => {
     (window as { foleviDesktop?: unknown }).foleviDesktop = { platform: "mac", signInInBrowser };
     const el = await render(createElement(SocialSignIn, { providers: { google: true, apple: true }, returnTo: "/documents" }));
     await act(async () => button(el, "Continue with Apple").click());
+    // The PKCE challenge is worked out first (async), so the browser opens a moment after the click.
+    await vi.waitFor(() => expect(signInInBrowser).toHaveBeenCalled());
     const opened = new URL((signInInBrowser.mock.calls[0] as unknown as [string])[0]);
     expect(opened.pathname).toBe("/app-google");
     expect(opened.searchParams.get("provider")).toBe("apple");

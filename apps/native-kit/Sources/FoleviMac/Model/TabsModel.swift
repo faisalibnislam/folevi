@@ -13,9 +13,10 @@
 // Pure model (no AppKit): FoleviMacTests drives it directly.
 import Foundation
 import Observation
+import FoleviScreens
 
 public struct FrameTab: Hashable, Sendable, Identifiable, Codable {
-    public static let homeID = "home"
+    public static let homeID = FrameRoute.homeTabKey
     /// The route's `tabKey`.
     public var id: String
     public var path: String

@@ -1,5 +1,6 @@
 // Folevi's own tooltip everywhere on the Mac, never the system's (FoleviTooltip.swift): the shortcut in a tooltip's
 // words, and no system tooltip left in the Mac's sources (SwiftUI's help modifier, AppKit's tool tip property).
+#if os(macOS)
 import Foundation
 import Testing
 @testable import FoleviDesign
@@ -36,3 +37,4 @@ struct TooltipTests {
         #expect(found.isEmpty, "Use .foleviTooltip(…) (or view.foleviTooltip) instead of the system's tooltip: \(found.joined(separator: ", "))")
     }
 }
+#endif

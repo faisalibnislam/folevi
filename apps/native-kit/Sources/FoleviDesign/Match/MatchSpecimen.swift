@@ -100,7 +100,7 @@ public struct MatchSpecimenView: View {
     private func line(_ item: MatchSpecimen.Item) -> some View {
         let s = item.style
         if s.caps == true {
-            Text(item.text.uppercased()).webText(.caps).foregroundStyle(Folevi.color.inkFaint).lineLimit(1).fixedSize()
+            Text(item.text.uppercased()).webText(.caps).foregroundStyle(WebTextStyle.capsInk).lineLimit(1).fixedSize()
         } else if let display = s.display.flatMap(WebTypeRole.init(rawValue:)) {
             Text(item.text).webText(.display(display)).foregroundStyle(Folevi.color.heading).lineLimit(1).fixedSize()
         } else {

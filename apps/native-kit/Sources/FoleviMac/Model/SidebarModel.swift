@@ -5,6 +5,7 @@
 // own subfolders, five levels at most), so a drag never offers a move the server would refuse.
 import Foundation
 import FoleviEngine
+import FoleviScreens
 
 public struct SidebarNode: Identifiable, Hashable, Sendable {
     public enum Kind: Hashable, Sendable {

@@ -36,6 +36,34 @@ public enum WebTypeRole: String, CaseIterable, Sendable {
         }
     }
 
+    /// The iPhone and iPad size and line height: Apple's default Dynamic Type sizes, which the web switches to in
+    /// the iOS app (`:root:is([data-iphone], [data-native])` in the tokens' CSS).
+    public var ios: TypeMetrics {
+        typealias I = FoleviTokens.TypeScale.Ios
+        switch self {
+        case .largeTitle: return I.largeTitle
+        case .title1: return I.title1
+        case .title2: return I.title2
+        case .title3: return I.title3
+        case .headline: return I.headline
+        case .body: return I.body
+        case .callout: return I.callout
+        case .subheadline: return I.subheadline
+        case .footnote: return I.footnote
+        case .caption1: return I.caption1
+        case .caption2: return I.caption2
+        }
+    }
+
+    /// The scale this platform's web draws: desktop on the Mac, Dynamic Type sizes on iPhone and iPad.
+    public var metrics: TypeMetrics {
+        #if os(iOS)
+        ios
+        #else
+        desktop
+        #endif
+    }
+
     /// The weight the class itself sets (`text-headline` is semibold); the rest inherit the regular body weight.
     public var defaultWeight: CGFloat { self == .headline ? FoleviTokens.FontWeight.semibold : FoleviTokens.FontWeight.regular }
 }
@@ -150,16 +178,34 @@ public struct WebTextStyle: Hashable, Sendable {
 
     /// A role of the type scale (`text-body`), in Instrument Sans with body tracking.
     public static func role(_ role: WebTypeRole, weight: CGFloat? = nil) -> WebTextStyle {
-        WebTextStyle(size: role.desktop.size, leading: role.desktop.leading, weight: weight ?? role.defaultWeight)
+        WebTextStyle(size: role.metrics.size, leading: role.metrics.leading, weight: weight ?? role.defaultWeight)
     }
 
     /// `.ui-display` at a role's size: Spectral semibold, -0.012em.
     public static func display(_ role: WebTypeRole) -> WebTextStyle {
-        WebTextStyle(family: .display, size: role.desktop.size, leading: role.desktop.leading, weight: FoleviTokens.FontWeight.semibold, letterSpacing: -0.012 * role.desktop.size)
+        WebTextStyle(family: .display, size: role.metrics.size, leading: role.metrics.leading, weight: FoleviTokens.FontWeight.semibold, letterSpacing: -0.012 * role.metrics.size)
     }
 
-    /// `.ui-caps`: Caption 2, semibold, +0.06em, upper case (the caller upper-cases the text, as CSS does).
-    public static let caps = WebTextStyle(size: WebTypeRole.caption2.desktop.size, leading: WebTypeRole.caption2.desktop.leading, weight: FoleviTokens.FontWeight.semibold, letterSpacing: FoleviTokens.Tracking.caps * WebTypeRole.caption2.desktop.size)
+    /// `.ui-caps`: Caption 2, semibold, +0.06em, upper case (the caller upper-cases the text, as CSS does). On
+    /// iPhone and iPad the web draws it at Footnote, +0.04em, in the muted ink (`capsInk`).
+    public static let caps: WebTextStyle = {
+        #if os(iOS)
+        let m = WebTypeRole.footnote.ios
+        return WebTextStyle(size: m.size, leading: m.leading, weight: FoleviTokens.FontWeight.semibold, letterSpacing: 0.04 * m.size)
+        #else
+        let m = WebTypeRole.caption2.desktop
+        return WebTextStyle(size: m.size, leading: m.leading, weight: FoleviTokens.FontWeight.semibold, letterSpacing: FoleviTokens.Tracking.caps * m.size)
+        #endif
+    }()
+
+    /// `.ui-caps`'s colour: the faint ink, the muted one on iPhone and iPad.
+    public static var capsInk: Color {
+        #if os(iOS)
+        Folevi.color.inkMuted
+        #else
+        Folevi.color.inkFaint
+        #endif
+    }
 
     public func weight(_ w: CGFloat) -> WebTextStyle {
         var s = self
@@ -195,19 +241,30 @@ extension WebFontFamily: Hashable {}
 /// Sets text in a web text style with CSS line boxes. CSS centres the glyphs (ascent plus descent) in a line box
 /// `leading` tall, so a line's baseline sits at half the leftover plus the ascent. SwiftUI lays each line out in
 /// the ascent and descent rounded to whole points, baseline at the rounded ascent (measured, ZZ probes of
-/// 2026-10-27). So: line spacing makes the pitch `leading`, and padding moves the first baseline to where CSS
-/// has it and makes the whole block `lines x leading` tall. A single line (`lineLimit(1)`) is framed exactly.
+/// 2026-10-27). On iPhone and iPad SwiftUI rounds them to the pixel grid instead (1/3 pt at 3x; the iOS screenshot
+/// diffs, 2026-10-30). So: line spacing makes the pitch `leading`, and padding moves the first baseline to where
+/// CSS has it and makes the whole block `lines x leading` tall. A single line (`lineLimit(1)`) is framed exactly.
 struct WebTextModifier: ViewModifier {
     let style: WebTextStyle
     @Environment(\.lineLimit) private var lineLimit
+    @Environment(\.displayScale) private var displayScale
+
+    /// A font metric as SwiftUI rounds it when it lays out a line.
+    private func snapped(_ v: CGFloat) -> CGFloat {
+        #if os(iOS)
+        (v * displayScale).rounded() / displayScale
+        #else
+        v.rounded()
+        #endif
+    }
 
     func body(content: Content) -> some View {
         let font = style.ctFont
         let ascent = CTFontGetAscent(font), descent = CTFontGetDescent(font)
         let cssBaseline = (style.leading - ascent - descent) / 2 + ascent
-        let line = ascent.rounded() + descent.rounded()
+        let line = snapped(ascent) + snapped(descent)
         let spacing = max(0, style.leading - line)
-        let top = cssBaseline - ascent.rounded()
+        let top = cssBaseline - snapped(ascent)
         let text = content
             .font(Font(font))
             .tracking(style.letterSpacing)

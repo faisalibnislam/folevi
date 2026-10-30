@@ -74,7 +74,10 @@ export async function diffAll(browser, out, items, threshold) {
     const r = await page.evaluate(compare, { webUrl: dataUrl(webPath), nativeUrl: dataUrl(nativePath), channel: threshold.channel, radius: threshold.radius ?? 0 });
     writeFileSync(join(out, "diff", name), Buffer.from(r.png, "base64"));
     const ratio = r.differing / r.total;
-    const sameSize = r.web[0] === r.native[0] && r.web[1] === r.native[1];
+    // threshold.sizeSlack: pixels a side may differ by (the iOS run's 1: at 3x, CSS's 1/64 pt layout and SwiftUI's
+    // pixel grid can end a column a pixel, 0.33 pt, apart).
+    const slack = threshold.sizeSlack ?? 0;
+    const sameSize = Math.abs(r.web[0] - r.native[0]) <= slack && Math.abs(r.web[1] - r.native[1]) <= slack;
     results.push({ id, scheme, web: r.web, native: r.native, ratio: Number(ratio.toFixed(5)), pass: sameSize && ratio <= threshold.maxRatio, reason: sameSize ? undefined : "different size" });
   }
   await page.close();
@@ -102,7 +105,7 @@ export function writeReport(out, { title, note, threshold, results, imageWidth =
 section{background:#fff;border-radius:10px;padding:16px;margin:0 0 16px}section.fail h2{color:#c0261b}section.pass h2{color:#1d7a3a}
 .row{display:flex;gap:16px;flex-wrap:wrap}figure{margin:0}figcaption{font-size:12px;color:#666;margin-bottom:4px}img{width:${imageWidth}px;border:1px solid #ddd;display:block}p{margin:0 0 8px;color:#666;font-size:12px}</style>
 <h1>${title}: ${results.filter((r) => r.pass).length} of ${results.length} pass</h1>
-<p>Threshold: a pixel differs when no pixel of the other picture within ${threshold.radius ?? 0} px is within ${threshold.channel} on every channel; a picture passes at ${(threshold.maxRatio * 100).toFixed(1)}% or less, same size. ${note ?? ""}</p>
+<p>Threshold: a pixel differs when no pixel of the other picture within ${threshold.radius ?? 0} px is within ${threshold.channel} on every channel; a picture passes at ${(threshold.maxRatio * 100).toFixed(1)}% or less, ${threshold.sizeSlack ? `sizes within ${threshold.sizeSlack} px` : "same size"}. ${note ?? ""}</p>
 ${rows}`,
   );
   for (const r of results) console.log(`${r.pass ? "pass" : "FAIL"}  ${r.id} ${r.scheme}  ${pct(r)}${r.reason ? `  ${r.reason}` : ""}  web ${r.web?.join("x") ?? "?"} native ${r.native?.join("x") ?? "?"}`);

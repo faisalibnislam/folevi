@@ -24,6 +24,7 @@
 import AppKit
 import FoleviEngine
 import FoleviMac
+import FoleviScreens
 
 extension NativeFrame {
     /// The page's biggest scrolling area scrolled to `y` (the web frame's main, or a note's).

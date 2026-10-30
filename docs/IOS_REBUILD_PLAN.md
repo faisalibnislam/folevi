@@ -143,5 +143,24 @@ iPhone); tests use the Simulator and scratch data. No em dashes. The assistant i
 - Today's iOS app builds again: its iPhone screens (`apps/ios/ios/App/Native/Phone`) hadn't been updated for the
   Settings pages and the `panesChange` event the Mac work added.
 
-Next in I0: the cross-platform split out of `FoleviMac`, `FoleviDesign` drawn on iOS (fonts, `WebText`, icons,
-cards) checked at @3x, and iPhone and iPad specimens in the match harness.
+Later on 2026-10-30, I0 continued:
+- **The match harness runs on iOS:** `node apps/mac/scripts/match.mjs --platform ios [--device "iPhone 18 Pro"]`
+  photographs the web as the iOS app shows it (`data-native="ios"`) at 3x and draws the same specimens in the
+  Simulator (`MatchShotTests`, ImageRenderer); report in `apps/ios/match-report/` (untracked). Sizes may differ
+  by 1 px at 3x (CSS's 1/64 pt layout against SwiftUI's pixel grid). **All 14 specimens pass on iOS**, and all 14
+  still pass on the Mac.
+- What it took: type roles use Apple's Dynamic Type sizes on iOS, as the web does there (`WebTypeRole.metrics`);
+  `.ui-caps` at Footnote in the muted ink; `pnpm styles:gen` also reads the samples as the iOS app shows them and
+  writes the 41 that differ (buttons, menus, dialogs, inputs, selects, cards, chips) as `WebStyles.ios`, which
+  `WebStyles.named` prefers on iOS; menus drawn the iOS way (icon after the label, hairlines, headings as written,
+  at least 250 wide); line boxes round font metrics to the pixel grid on iOS (to whole points on the Mac).
+  Text fields are drawn as their text in the diffs only (a UIKit field can't go into an ImageRenderer picture).
+- **Sharing screens:** the web's phone layout reuses the same views as the desktop (Settings, Tasks, Calendar,
+  the note browser, the Foli AI chat) and branches inside each. So screens move from `FoleviMac` to the
+  cross-platform `FoleviScreens` one at a time, as each iPhone screen is built, and branch there the same way; no
+  new target. First moved: `FrameRoute` (the web's routes, which the iPhone's tab stacks use too).
+- Known, not from this work: `streamsIntoTheChat` (the unfinished native Foli AI chat's frame-time test) fails its
+  33 ms p95 budget on a busy Mac, with or without these changes.
+
+Next: I1, the iPhone frame (glass top bar, tab bar and pill, tab stacks, sheets, the note page), with whole-screen
+iPhone and iPad diffs in the harness.

@@ -9,6 +9,7 @@ import AppKit
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
+import FoleviScreens
 
 @MainActor
 public struct WebTopBar: View {

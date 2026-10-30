@@ -7,6 +7,7 @@
 import Foundation
 import Observation
 import FoleviEngine
+import FoleviScreens
 
 /// What the frame asks of the app around it.
 @MainActor

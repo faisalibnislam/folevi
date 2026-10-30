@@ -6,6 +6,7 @@ import Foundation
 import Testing
 import FoleviEngine
 @testable import FoleviMac
+import FoleviScreens
 
 @Suite("Foli AI on the Mac") @MainActor
 struct FoliAIMacTests {

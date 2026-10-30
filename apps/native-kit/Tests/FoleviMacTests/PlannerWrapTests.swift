@@ -1,5 +1,6 @@
 // The Tasks and Calendar screens' paragraphs wrap as the web's `text-wrap: pretty` (line breaks read from the
 // web frame, 2026-10-28).
+#if os(macOS)
 import XCTest
 import FoleviDesign
 @testable import FoleviMac
@@ -30,3 +31,4 @@ final class PlannerWrapTests: XCTestCase {
         XCTAssertEqual(PlannerDates.monthGrid("2026-10").first, "2026-09-28")
     }
 }
+#endif

@@ -14,6 +14,7 @@ import WebKit
 import FoleviEngine
 import FoleviDesign
 import FoleviMac
+import FoleviScreens
 
 @MainActor
 enum NativeFrame {

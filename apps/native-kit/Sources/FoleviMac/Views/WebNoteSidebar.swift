@@ -13,6 +13,7 @@ import AppKit
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
+import FoleviScreens
 
 /// The tool tabs, in the web's order (`folevi:doc-sidebar-tab` there, `folevi.noteSidebar.tab` here).
 enum NoteToolTab: String, CaseIterable, Identifiable {

@@ -53,4 +53,5 @@ backups/
 # The Android e2e scripts' test account on the dev server (apps/android/scripts/e2e).
 apps/android/.e2e-account.json
 apps/mac/match-report/
+apps/ios/match-report/
 apps/mac/screens-report/

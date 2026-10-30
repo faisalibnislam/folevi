@@ -6,6 +6,7 @@ import Foundation
 import Testing
 import FoleviEngine
 @testable import FoleviMac
+import FoleviScreens
 
 @MainActor
 func eventually(_ what: String = "", timeout: Duration = .seconds(3), _ condition: @MainActor () -> Bool) async {

@@ -1,4 +1,5 @@
-// Where a Mac window is (docs/NATIVE_APP_PLAN.md section 4.5): a native screen (Home, a list, a folder, search)
+// Where a window is, on the Mac or in an iPhone or iPad tab (docs/NATIVE_APP_PLAN.md section 4.5; shared since
+// the iOS rebuild, docs/IOS_REBUILD_PLAN.md): a native screen (Home, a list, a folder, search)
 // or a note in the Page View. Routes travel as the web's own paths (`/d/<id>`, `/folders/<id>`, `/drafts`), so
 // window restoration, `navigate.request`, Home's rows (`HomeRow.route`) and folevi:// links all speak one
 // language with the web router (apps/web/src/lib/app/router.tsx `parseRoute`).
@@ -93,11 +94,14 @@ public enum FrameRoute: Hashable, Sendable {
 
     public var isNote: Bool { noteId != nil }
 
+    /// Home's tab, the pinned first one (the Mac's and the iPad's tab strip).
+    public static let homeTabKey = "home"
+
     /// The tab a route lives in (web tabs.tsx `viewKey`): a note's own id; one tab per view kind; one per folder
     /// or tag. Home is the pinned first tab.
     public var tabKey: String {
         switch self {
-        case .home: return FrameTab.homeID
+        case .home: return Self.homeTabKey
         case .note(let id): return id
         case .folder(let id): return "view:folder:\(id)"
         case .tag(let id): return "view:tag:\(id)"

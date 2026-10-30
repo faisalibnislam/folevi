@@ -132,12 +132,19 @@ public struct WebSelectTrigger: View {
     }
 }
 
+extension EnvironmentValues {
+    /// Text fields drawn as their text (a picture made by ImageRenderer can't hold a UIKit text field; the iOS
+    /// screenshot diffs set this).
+    @Entry public var webFieldsAsText = false
+}
+
 /// A one-line text field drawn as `.ui-input`.
 public struct WebTextField: View {
     @Binding var text: String
     let placeholder: String
     let width: CGFloat?
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.webFieldsAsText) private var asText
 
     public init(_ placeholder: String = "", text: Binding<String>, width: CGFloat? = nil) {
         self.placeholder = placeholder
@@ -148,13 +155,20 @@ public struct WebTextField: View {
     public var body: some View {
         let style = WebStyles.named("input")
         let s = style.resolve(scheme)
-        TextField(placeholder, text: $text)
-            .textFieldStyle(.plain)
+        Group {
+            if asText {
+                Text(text.isEmpty ? placeholder : text).frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                TextField(placeholder, text: $text).textFieldStyle(.plain)
+            }
+        }
             .webText(s.text)
             .lineLimit(1)
+            #if os(macOS)
             // AppKit's field editor sets its text 1.125 pt right of and 1 pt above where CSS puts an input's
             // text (measured by the screenshot diffs, components-controls); this puts it back.
-            .offset(x: -1.125, y: 1.035)
+            .offset(x: asText ? 0 : -1.125, y: asText ? 0 : 1.035)
+            #endif
             .padding(s.padding.edgeInsets)
             .frame(width: width, height: s.height)
             .foregroundStyle(s.color.color)
@@ -187,7 +201,9 @@ public struct WebMenuItem: Identifiable, Sendable {
 }
 
 /// A Folevi menu's panel (ui/Menu.tsx on the Mac): headings, rows with icon, label and shortcut, separators.
-/// `highlighted` is the row under the pointer or keyboard.
+/// `highlighted` is the row under the pointer or keyboard. On iPhone and iPad it's drawn as the web draws its menus
+/// there (globals.css, the iOS menu rules): at least 250 wide, the icon after the label, hairlines between rows,
+/// headings as written rather than in capitals.
 public struct WebMenuPanel: View {
     let items: [WebMenuItem]
     let width: CGFloat
@@ -211,8 +227,27 @@ public struct WebMenuPanel: View {
             }
         }
         .padding(p.padding.edgeInsets)
-        .frame(width: width, alignment: .topLeading)
+        .frame(width: Self.ios ? max(width, 250) : width, alignment: .topLeading)
         .webBox(panel)
+    }
+
+    private static var ios: Bool {
+        #if os(iOS)
+        true
+        #else
+        false
+        #endif
+    }
+
+    /// `--iphone-separator`, the hairline between a section's rows on iOS.
+    private var hairline: Color {
+        (scheme == .dark ? RGBA(84, 84, 88, 0.5) : RGBA(60, 60, 67, 0.16)).color
+    }
+
+    /// Whether the row before this one is also an item (the web's `.ui-menu-item + .ui-menu-item`).
+    private func followsItem(_ item: WebMenuItem) -> Bool {
+        guard let i = items.firstIndex(where: { $0.id == item.id }), i > 0 else { return false }
+        return items[i - 1].kind == .item
     }
 
     @ViewBuilder
@@ -220,7 +255,7 @@ public struct WebMenuPanel: View {
         switch item.kind {
         case .heading:
             let h = WebStyles.named("menu.heading").resolve(scheme)
-            Text(item.title.uppercased())
+            Text(Self.ios ? item.title : item.title.uppercased())
                 .webText(h.text)
                 .lineLimit(1)
                 .foregroundStyle(h.color.color)
@@ -239,7 +274,7 @@ public struct WebMenuPanel: View {
             let shortcut = WebStyles.named("menu.item.shortcut").resolve(scheme)
             Button { onSelect(item) } label: {
                 HStack(spacing: s.gap) {
-                    if let i = item.icon {
+                    if let i = item.icon, !Self.ios {
                         WebIconView(i, size: 15)
                             .frame(width: icon.width, height: icon.height)
                             .foregroundStyle(item.danger ? s.color.color : icon.color.color)
@@ -249,11 +284,21 @@ public struct WebMenuPanel: View {
                     if let k = item.shortcut {
                         Text(k).webText(shortcut.text).lineLimit(1).foregroundStyle(shortcut.color.color).padding(.leading, shortcut.padding.left)
                     }
+                    // iOS: the icon last (`order: 5`), 20 pt with a 1.9 stroke in a 22 pt column, in the row's ink.
+                    if let i = item.icon, Self.ios {
+                        WebIconView(i, size: 20, strokeWidth: 1.9)
+                            .frame(width: 22, height: icon.height)
+                    }
                 }
                 .padding(s.padding.edgeInsets)
                 .frame(maxWidth: .infinity, minHeight: s.height, maxHeight: s.height, alignment: .leading)
                 .foregroundStyle(s.color.color)
                 .webBox(style)
+                .overlay(alignment: .top) {
+                    if Self.ios, followsItem(item) {
+                        Rectangle().fill(hairline).frame(height: 0.5)
+                    }
+                }
             }
             .buttonStyle(WebPressStyle())
         }

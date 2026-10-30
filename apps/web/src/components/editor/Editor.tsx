@@ -1,6 +1,7 @@
 "use client";
 
 import { EditorContent, useEditor, type Editor as TiptapEditor } from "@tiptap/react";
+import type { EditorOptions } from "@tiptap/core";
 import { NodeSelection, Selection, TextSelection, type EditorState } from "@tiptap/pm/state";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
@@ -145,12 +146,13 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     [engine, documentId],
   );
 
-  const editor = useEditor({
-    extensions,
-    editable,
-    immediatelyRender: false,
-    content: blocksToDoc(engine.documentBlocks(documentId)),
-    editorProps: {
+  // What the editor opens with, worked out once: Tiptap compares its options after every render, and a new
+  // document (or a new editorProps object) each time made it set them again and update the whole view.
+  const [content] = useState(() => blocksToDoc(engine.documentBlocks(documentId)));
+  // (Pasted and dropped files go through insertFiles, defined below with the editor it needs.)
+  const insertFilesRef = useRef<(files: File[]) => Promise<void>>(async () => undefined);
+  const editorProps = useMemo<EditorOptions["editorProps"]>(
+    () => ({
       attributes: {
         class: "fb-editor",
         role: "textbox",
@@ -174,7 +176,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         const files = [...(event.clipboardData?.files ?? [])];
         if (files.length && editable) {
           event.preventDefault();
-          void insertFiles(files);
+          void insertFilesRef.current(files);
           return true;
         }
         // A plain web address: a link (over the selected text, if any).
@@ -224,10 +226,20 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         event.preventDefault();
         const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
         if (pos) view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(pos.pos))));
-        void insertFiles(files);
+        void insertFilesRef.current(files);
         return true;
       },
-    },
+    }),
+    [label, editable],
+  );
+
+  const editor = useEditor({
+    extensions,
+    editable,
+    // Built in the same render as the page (a client-only screen): its body never paints empty for a frame first.
+    immediatelyRender: typeof window !== "undefined",
+    content,
+    editorProps,
     onCreate: ({ editor: ed }) => {
       if (!hydrated.current) hydrate(ed.state.doc);
       // A note that starts with an image (or any media) opens with nothing selected: ProseMirror would
@@ -397,6 +409,9 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     },
     [accountKey, engine, documentId],
   );
+  useEffect(() => {
+    insertFilesRef.current = insertFiles;
+  }, [insertFiles]);
 
   // A finished "/Audio recording": stored on the device and uploaded like any attachment.
   const insertAudio = useCallback(

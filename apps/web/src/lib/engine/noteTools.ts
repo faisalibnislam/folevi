@@ -5,7 +5,7 @@
 // tree), sent as `note.tools` when the note opens and whenever any of it changes. Native draws the sidebar and
 // sends its clicks back as editor commands (lib/engine/editorCommands.ts: block.jump, task.toggle, thread.open,
 // find). Imported only by the note page.
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "convex/react";
 import { flattenTree, plainText, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
@@ -133,10 +133,26 @@ export function useNativeNoteTools(o: { documentId: string; title: string; trail
     };
   }, [o.documentId, o.title, trailKey, outline, current, blocks, commentsOn, threads, tree, o.readOnly]);
 
-  // Sent at most once a frame, only when it changed.
+  // Sent at most once a frame, only when it changed: the event is rebuilt on every save, and typing in a plain
+  // line changes nothing the sidebar shows (each copy sent was serialized, posted and decoded natively).
+  const sent = useRef("");
   useEffect(() => {
     if (!on || o.primary === false || !bridgeListening()) return;
-    const frame = requestAnimationFrame(() => emitNoteEvent("note.tools", event));
+    const frame = requestAnimationFrame(() => {
+      const key = JSON.stringify(event);
+      if (key === sent.current) return;
+      sent.current = key;
+      emitNoteEvent("note.tools", event);
+    });
     return () => cancelAnimationFrame(frame);
   }, [on, o.primary, event]);
+}
+
+/**
+ * The note tools as a component of their own: they follow every change to the note's blocks, and as a hook of
+ * DocumentView each save drew the whole note page again (and its editor) for them.
+ */
+export function NativeNoteTools(props: Parameters<typeof useNativeNoteTools>[0]): null {
+  useNativeNoteTools(props);
+  return null;
 }

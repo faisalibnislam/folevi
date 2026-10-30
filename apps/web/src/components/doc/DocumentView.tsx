@@ -99,7 +99,7 @@ import { isIphoneApp, useIphoneApp } from "@/lib/iphone";
 import { NoteBars } from "@/components/iphone/NoteBars";
 import { nativeChrome } from "@/lib/nativeApp";
 import { useNativeNote } from "@/lib/engine/editorCommands";
-import { useNativeNoteTools } from "@/lib/engine/noteTools";
+import { NativeNoteTools } from "@/lib/engine/noteTools";
 import { requestNavigation } from "@/lib/engine/navigation";
 import { nativeToast } from "@/lib/engine/toasts";
 import { NotePlaceChip, NoteSyncTrailing, NoteTrailing, ToolSheet } from "@/components/iphone/NoteChrome";
@@ -844,13 +844,16 @@ export function DocumentView({ documentId }: { documentId: string }) {
       return true;
     },
   });
-  // ...and what the native sidebar shows.
-  useNativeNoteTools({ documentId, title: summary?.title || localTitle || "", trail: trail.map((c) => ({ href: c.href, label: c.label })), readOnly, primary });
+  // ...and what the native sidebar shows (a component of its own, so a save doesn't draw this page again).
+  const nativeTools = <NativeNoteTools documentId={documentId} title={summary?.title || localTitle || ""} trail={trail.map((c) => ({ href: c.href, label: c.label }))} readOnly={readOnly} primary={primary} />;
+  // Whether this device holds the note's blocks: a yes or no, so their changes don't draw the page again either.
+  const holdsBlocks = useEngineSelector(engine, () => (engine?.documentBlocks(documentId).length ?? 0) > 0);
 
   if (meta === null && !pendingCreate && !waitingRow && (server === null || server === undefined) && (online || cacheLoaded)) {
     if (meta === null && server === null) {
       return (
         <ViewChrome title="Unavailable">
+          {nativeTools}
           {sidebarSlot
             ? createPortal(
                 <DocumentSidebar documentId={documentId} title="Unavailable page" trail={[{ href: "/documents", label: "Home" }]} editor={null} readOnly onJump={() => undefined} onHide={toggleSidebar} onNavigate={drawerMode ? toggleSidebar : undefined} />,
@@ -874,7 +877,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const freshLocalPage = Boolean(pendingCreate) && pendingCreate?.kind === "document.create" && !pendingCreate.document.templateId;
   // A note this device already holds (opened before, or synced here) shows at once from that copy, and catches
   // up when the server's arrives: switching tabs never waits on the network.
-  const heldHere = Boolean(engine) && !pendingCreate && engine!.documentBlocks(documentId).length > 0;
+  const heldHere = Boolean(engine) && !pendingCreate && holdsBlocks;
   const readyNow = Boolean(engine) && (reconciled || heldHere || (cacheLoaded && server === undefined) || freshLocalPage || Boolean(waitingRow) || (Boolean(pendingCreate) && !online));
   // Once mounted, the editor stays mounted: remounting would drop focus and unflushed keystrokes while
   // the page's queries settle (e.g. metadata arriving before its block list right after creation).
@@ -931,6 +934,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
 
   return (
     <NotePaletteProvider colors={styleColorsOf(look?.cover ?? DEFAULT_COVER, coverPalette)} active={sheetAttrs["data-palette"] !== undefined}>
+    {nativeTools}
     <ViewChrome
       tabTitle={pageTitle}
       iphone={{

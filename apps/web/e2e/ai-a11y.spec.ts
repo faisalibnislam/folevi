@@ -196,6 +196,7 @@ test("keyboard: focus comes back when panels close, the graph moves node to node
   await expect(modes.getByRole("button", { name: "Ask", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: "Summarize this" })).toBeVisible();
   await page.getByRole("button", { name: "Close panel" }).first().click();
-  expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
+  // Focus comes back a moment after the panel goes (a busy machine took longer than one check).
+  await expect.poll(() => page.evaluate(() => document.activeElement !== document.body)).toBe(true);
   await context.close();
 });

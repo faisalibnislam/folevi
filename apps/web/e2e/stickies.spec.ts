@@ -322,9 +322,12 @@ test.describe("Sticky notes", () => {
     await expect.poll(() => tools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
     const more = tools.getByRole("button", { name: "More sticky notes tools" });
     expect((await more.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    await more.tap();
     const row = page.getByRole("menu", { name: "More sticky notes tools" }).getByRole("menuitemcheckbox", { name: "Group area" });
-    await expect(row).toBeVisible();
+    // (A tap right after the dragging finger lifts can belong to the drag: tap again until the menu opens.)
+    await expect(async () => {
+      await more.tap();
+      await expect(row).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
     await settle(page);
     expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     // Taller than the phone, it starts on screen and scrolls inside (its first items were above the screen).

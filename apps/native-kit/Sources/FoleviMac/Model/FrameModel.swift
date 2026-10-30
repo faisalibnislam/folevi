@@ -113,6 +113,9 @@ public final class FrameModel {
     public private(set) var noteTools: [String: NoteToolsEvent] = [:]
     /// The note the Page View shows now (after note.show answered).
     public private(set) var shownNote: String?
+    /// The last note whose first frame the page drew (`note.ready`, or note.show answering `ready`): the content
+    /// keeps what was on screen over the page until then, so a note never shows as a blank page first.
+    public private(set) var drawnNote: String?
     /// What the page was last told of the shown note's tab.
     private var shownPanes: ShownNote?
     private struct ShownNote: Equatable {
@@ -364,7 +367,8 @@ public final class FrameModel {
             Task { [weak self] in
                 guard let self else { return }
                 do {
-                    _ = try await self.client.editor(.noteShow(id: id, panes: shown.panes, sizes: shown.sizes, tabs: shown.tabs.isEmpty ? nil : shown.tabs))
+                    let reply = try await self.client.editor(.noteShow(id: id, panes: shown.panes, sizes: shown.sizes, tabs: shown.tabs.isEmpty ? nil : shown.tabs))
+                    if reply.ready, self.drawnNote != reply.id { self.drawnNote = reply.id }
                     if let meta = try? await self.client.query(.noteMeta(id: id)) { self.took(meta) }
                 } catch let f as EngineFailure {
                     if self.shownNote == id { self.shownNote = nil }
@@ -449,11 +453,12 @@ public final class FrameModel {
         case .noteMeta(let meta):
             took(meta)
         case .noteReady(let e):
+            if drawnNote != e.id { drawnNote = e.id }
             if !e.title.isEmpty { tabs.setTitle(e.title, icon: noteMeta[e.id]?.icon, for: e.id) }
         case .editorState(let e):
-            editorState = e
+            if editorState != e { editorState = e }
         case .editorPanel(let e):
-            editorPanel = e.panel
+            if editorPanel != e.panel { editorPanel = e.panel }
         case .noteTools(let e):
             if noteTools[e.noteId] != e { noteTools[e.noteId] = e }
         case .panesChange(let e):
@@ -488,6 +493,8 @@ public final class FrameModel {
     }
 
     private func took(_ meta: NoteMeta) {
+        // A save sends it again, mostly unchanged: writing the same value still woke everything that reads the map.
+        guard noteMeta[meta.id] != meta else { return }
         noteMeta[meta.id] = meta
         if meta.found { tabs.setTitle(meta.title.isEmpty ? "Untitled" : meta.title, icon: meta.icon, for: meta.id) }
         if meta.inTrash, route.noteId != meta.id { _ = tabs.forget(noteId: meta.id) }

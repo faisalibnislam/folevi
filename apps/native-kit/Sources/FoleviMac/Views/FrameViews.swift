@@ -433,17 +433,36 @@ public final class ContentViewController: NSViewController {
         if model.route.isNote { view.window?.makeFirstResponder(pageView) }
     }
 
+    /// Uncovers the page if the native screen still covers it while a note draws (see `show`).
+    private var uncoverLater: DispatchWorkItem?
+
+    /// Runs again whenever what it reads changes (the route, the note being drawn, tab titles, the note's meta): the
+    /// content itself changes only with the route, the rest is cheap (a save no longer sends the page its insets
+    /// again and refocuses it).
     private func show(_ route: FrameRoute) {
+        let changed = shownRoute != route
         if route.isNote {
-            screen?.isHidden = true
-            body.isHidden = true
-            model.editor(.insets(top: Double(Self.barHeight), bottom: 0))
-            if pageView.superview === clip { view.window?.makeFirstResponder(pageView) }
+            if changed {
+                model.editor(.insets(top: Double(Self.barHeight), bottom: 0))
+                if pageView.superview === clip { view.window?.makeFirstResponder(pageView) }
+            }
+            // What was on screen stays over the page until the note's first frame is drawn (it opened as a blank
+            // page first), at most 0.6 s. From another note there's nothing to cover: the page shows it already.
+            if body.isHidden || model.drawnNote == route.noteId {
+                uncover()
+            } else if changed {
+                uncoverLater?.cancel()
+                let work = DispatchWorkItem { [weak self] in self?.uncover() }
+                uncoverLater = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
+            }
         } else {
+            uncoverLater?.cancel()
+            uncoverLater = nil
             body.isHidden = false
-            models.prepare(route)
+            if changed { models.prepare(route) }
             if let s = screen {
-                if shownRoute != route { s.rootView = ScreenRoot(model: model, models: models, route: route) }
+                if changed { s.rootView = ScreenRoot(model: model, models: models, route: route) }
                 s.isHidden = false
             } else {
                 let s = NSHostingView(rootView: ScreenRoot(model: model, models: models, route: route))
@@ -454,13 +473,25 @@ public final class ContentViewController: NSViewController {
                 screen = s
             }
             // Keys go to the native screen, never to the hidden note.
-            if view.window?.firstResponder === pageView || (view.window?.firstResponder as? NSView)?.isDescendant(of: pageView) == true {
+            if changed, view.window?.firstResponder === pageView || (view.window?.firstResponder as? NSView)?.isDescendant(of: pageView) == true {
                 view.window?.makeFirstResponder(screen)
             }
         }
         shownRoute = route
         models.keep(only: Set(model.tabs.tabs.map(\.route)))
-        view.window?.title = route.isNote ? (model.activeNote?.title.nonEmpty ?? model.tabs.active.title) : model.tabs.active.title
+        let title = route.isNote ? (model.activeNote?.title.nonEmpty ?? model.tabs.active.title) : model.tabs.active.title
+        if view.window?.title != title { view.window?.title = title }
+    }
+
+    /// The note's page shows: the native screen goes, and stops drawing behind the note (its screen is emptied, so
+    /// its views let go of what they watch; coming back draws it again, as a change of tab always did).
+    private func uncover() {
+        uncoverLater?.cancel()
+        uncoverLater = nil
+        guard model.route.isNote, !body.isHidden else { return }
+        body.isHidden = true
+        screen?.isHidden = true
+        screen?.rootView = ScreenRoot(model: model, models: models, route: model.route)
     }
 
     /// View > As Cards / As List for the note list on screen (nil: no list on screen).

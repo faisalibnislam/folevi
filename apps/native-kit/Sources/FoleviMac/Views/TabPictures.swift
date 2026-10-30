@@ -62,9 +62,12 @@ private struct PageFrame: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
+    /// One empty data store for every picture: each with its own had WebKit start a network process for it.
+    private static let store = WKWebsiteDataStore.nonPersistent()
+
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
-        config.websiteDataStore = .nonPersistent()
+        config.websiteDataStore = Self.store
         config.defaultWebpagePreferences.allowsContentJavaScript = false
         config.suppressesIncrementalRendering = true
         let v = PictureWebView(frame: .zero, configuration: config)
@@ -182,6 +185,8 @@ public struct TabPreviewLayer: View {
                         }
                     }
                     .aspectRatio(16 / 10, contentMode: .fit)
+                    // The pictures stay in their box (a joined tab's pages ran on under its name).
+                    .clipped()
                     Rectangle().fill(color("color-line")).frame(height: 1)
                     Text(model.tabs.label(tab)).webText(WebTextStyle(size: 13, leading: 18, weight: 600))
                         .foregroundStyle(color("color-heading"))

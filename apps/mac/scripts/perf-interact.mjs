@@ -97,6 +97,7 @@ for (let i = 0; i < 300; i++) {
   if (s?.value?.engine === "ready") break;
   await sleep(100);
 }
+await command(dir, { cmd: "frame", do: "front" });
 await sleep(3000);
 
 // Two short notes and a long one, made once and kept in the scratch library.
@@ -133,7 +134,8 @@ for (let r = 0; r < ROUNDS; r++) {
   await sleep(400);
 }
 
-// Typing at the end of the long note.
+// Typing at the end of the long note, the window in front (behind others, WebKit holds back its frames).
+await command(dir, { cmd: "frame", do: "front" });
 await timeOpen(`/d/${notes.long}`, "Line 399 of the long note");
 await sleep(1500);
 const pid = appPid();

@@ -1,6 +1,20 @@
 {
   "releases": [
     {
+      "version": "1.2.07",
+      "build": 18,
+      "released": "2026-10-30T22:06:26+06:00",
+      "type": "patch",
+      "summary": "Scrolling on Mac is smooth",
+      "improved": [
+        "Home and Folders scroll smoothly on Mac, without dropped frames"
+      ],
+      "fixed": [
+        "Note cards on Mac have soft shadows like the web"
+      ],
+      "tag": "v1.2.07"
+    },
+    {
       "version": "1.2.06",
       "build": 17,
       "released": "2026-10-30T17:49:25+06:00",

@@ -4,6 +4,20 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.07: Small update
+
+Released 2026-10-30 22:06:26+06:00 (build 18, tag v1.2.07)
+
+Scrolling on Mac is smooth
+
+### Improved
+
+- Home and Folders scroll smoothly on Mac, without dropped frames
+
+### Fixed
+
+- Note cards on Mac have soft shadows like the web
+
 ## Version 1.2.06: Small update
 
 Released 2026-10-30 17:49:25+06:00 (build 17, tag v1.2.06)

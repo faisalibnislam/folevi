@@ -235,7 +235,7 @@ struct AccountSettingsSection: View {
                 .accessibilityIdentifier("settings-name")
             LabeledContent { Text(model.email).foleviFont(.body).foregroundStyle(Folevi.color.inkMuted) } label: { label("Email") }
             Picker(selection: Binding(get: { model.timeZone }, set: { z in Task { await model.setTimeZone(z) } })) {
-                ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { z in Text(z.replacingOccurrences(of: "_", with: " ")).tag(z) }
+                ForEach(SettingsModel.zoneChoices(model.timeZone), id: \.self) { z in Text(z.replacingOccurrences(of: "_", with: " ")).tag(z) }
             } label: { label("Time zone") }
             #if os(iOS)
             .pickerStyle(.navigationLink)

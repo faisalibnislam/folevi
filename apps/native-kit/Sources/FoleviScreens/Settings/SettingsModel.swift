@@ -275,6 +275,13 @@ public final class SettingsModel {
 
     public var timeZone: String { general?.value?.timeZone ?? account?.value?.timeZone ?? session.value?.timeZone ?? TimeZone.current.identifier }
 
+    /// The time zones to choose from, always with the current one: the system's list leaves out aliases such as
+    /// "UTC", and a picker whose choice isn't among its rows shows nothing (the web had the same gap).
+    public nonisolated static func zoneChoices(_ current: String) -> [String] {
+        let zones = TimeZone.knownTimeZoneIdentifiers
+        return zones.contains(current) ? zones : [current] + zones
+    }
+
     // MARK: General
 
     public var reviewAppEdits: Bool { overrides["general.reviewAppEdits"] ?? general?.value?.reviewAppEdits ?? false }

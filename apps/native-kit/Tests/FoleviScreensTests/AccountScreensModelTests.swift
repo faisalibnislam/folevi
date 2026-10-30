@@ -782,3 +782,9 @@ struct InviteModelTests {
         #expect(!model.canAccept)
     }
 }
+
+@Test func timeZoneChoicesKeepTheCurrentZone() {
+    // The system's list leaves out "UTC": a person in UTC still finds their zone, first.
+    #expect(!TimeZone.knownTimeZoneIdentifiers.contains("UTC") ? SettingsModel.zoneChoices("UTC").first == "UTC" : SettingsModel.zoneChoices("UTC").contains("UTC"))
+    #expect(SettingsModel.zoneChoices("Asia/Dhaka") == TimeZone.knownTimeZoneIdentifiers)
+}

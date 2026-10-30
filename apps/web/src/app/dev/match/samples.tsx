@@ -201,18 +201,18 @@ const SAMPLES: Sample[] = [
             aria-hidden
             className="pointer-events-none absolute left-1 top-1 h-14 w-16 rounded-capsule bg-[var(--liquid-lens)] shadow-[inset_0_1px_0_rgb(255_255_255/0.55),inset_0_0_0_0.5px_rgb(255_255_255/0.35)] dark:shadow-[inset_0_1px_0_rgb(255_255_255/0.14),inset_0_0_0_0.5px_rgb(255_255_255/0.08)]"
           />
-          <a href="#" aria-label="Home" className="relative grid h-14 w-16 place-items-center rounded-capsule text-heading">
+          <a href="#" aria-label="Home" title="Home" className="relative grid h-14 w-16 place-items-center rounded-capsule text-heading">
             <House size={24} strokeWidth={2.3} aria-hidden />
           </a>
-          <a href="#" aria-label="Tasks" className="relative grid h-14 w-16 place-items-center rounded-capsule text-muted">
+          <a href="#" aria-label="Tasks" title="Tasks" className="relative grid h-14 w-16 place-items-center rounded-capsule text-muted">
             <SquareCheckBig size={23} strokeWidth={1.9} aria-hidden />
           </a>
-          <a href="#" aria-label="Calendar" className="relative grid h-14 w-16 place-items-center rounded-capsule text-muted">
+          <a href="#" aria-label="Calendar" title="Calendar" className="relative grid h-14 w-16 place-items-center rounded-capsule text-muted">
             <CalendarDays size={23} strokeWidth={1.9} aria-hidden />
           </a>
         </nav>
         <div role="group" aria-label="Create" className="ui-liquid iphone-tab-pill flex h-16 items-center gap-1 rounded-capsule p-1">
-          <button type="button" aria-label="Foli AI" className="grid h-14 w-14 place-items-center rounded-capsule">
+          <button type="button" aria-label="Foli AI" title="Foli AI" className="grid h-14 w-14 place-items-center rounded-capsule">
             <AiIcon size={26} />
           </button>
           <button type="button" aria-label="Create" className="grid h-14 w-14 place-items-center rounded-capsule">

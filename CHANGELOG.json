@@ -1,6 +1,22 @@
 {
   "releases": [
     {
+      "version": "1.2.06",
+      "build": 17,
+      "released": "2026-10-30T17:49:25+06:00",
+      "type": "patch",
+      "summary": "Folevi for Mac feels quicker: notes open without a blank page, typing is smoother, and Home stays at the start of the tabs.",
+      "improved": [
+        "Mac: opening a note keeps what was on screen until the note is drawn, instead of showing a blank page first.",
+        "Typing in long notes is smoother: saving no longer redraws the whole page or the sidebar's outline, tasks and links when nothing they show changed.",
+        "Mac: Home stays at the start of the tab strip; only the tabs after it scroll."
+      ],
+      "fixed": [
+        "Mac: a joined tab's preview no longer runs under its name."
+      ],
+      "tag": "v1.2.06"
+    },
+    {
       "version": "1.2.05",
       "build": 16,
       "released": "2026-10-30T10:05:05+06:00",

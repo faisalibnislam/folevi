@@ -4,6 +4,22 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.06: Small update
+
+Released 2026-10-30 17:49:25+06:00 (build 17, tag v1.2.06)
+
+Folevi for Mac feels quicker: notes open without a blank page, typing is smoother, and Home stays at the start of the tabs.
+
+### Improved
+
+- Mac: opening a note keeps what was on screen until the note is drawn, instead of showing a blank page first.
+- Typing in long notes is smoother: saving no longer redraws the whole page or the sidebar's outline, tasks and links when nothing they show changed.
+- Mac: Home stays at the start of the tab strip; only the tabs after it scroll.
+
+### Fixed
+
+- Mac: a joined tab's preview no longer runs under its name.
+
 ## Version 1.2.05: Small update
 
 Released 2026-10-30 10:05:05+06:00 (build 16, tag v1.2.05)

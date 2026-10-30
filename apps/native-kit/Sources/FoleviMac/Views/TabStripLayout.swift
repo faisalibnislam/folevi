@@ -1,7 +1,7 @@
 // The tab strip's sizing and scrolling, as the web's (apps/web/src/components/app/TabStrip.tsx): the list of tabs is
 // `flex min-w-0 flex-initial overflow-x-auto px-1 py-1 gap-1.5`, Home keeps its own width, every other tab, open or
 // not, is `flex-[0_1_284px] min-w-[172px]` and they shrink evenly before the list scrolls. Only the list scrolls;
-// Back, Forward, Home (pinned before the list while the sidebar is hidden), the arrows and New note stay put.
+// Back, Forward, Home (pinned before the list on the Mac), the arrows and New note stay put.
 #if os(macOS)
 import SwiftUI
 

@@ -1,10 +1,9 @@
 // The content's top bar drawn as the web app's (apps/web/src/components/app/TabStrip.tsx and BackForward.tsx,
 // as Folevi for Mac shows them), from the live app's computed styles ("frame.topbar.*", "frame.tab*"): a glass
 // bar inside the content's card with Back and Forward, a divider, the tabs (Home first, then one per open page,
-// the open one raised), and New note at the end. While the sidebar is hidden (its Home row with it) Home is pinned:
-// it stays put after Back and Forward and only the tabs after it scroll; with the sidebar, Home is the list's first
-// tab, as on the web. While the sidebar is hidden, the window buttons' room and the
-// sync state come first, as on the web.
+// the open one raised), and New note at the end. Home is pinned: it stays put after Back and Forward and only the
+// tabs after it scroll (the owner, 2026-10-30, for the Mac; the web keeps Home in the list). While the sidebar is
+// hidden, the window buttons' room and the sync state come first, as on the web.
 #if os(macOS)
 import AppKit
 import SwiftUI
@@ -71,12 +70,11 @@ public struct WebTopBar: View {
         (style("frame.topbar").height - style("frame.topbar.new").height) / 2
     }
 
-    /// Home pinned while the sidebar is hidden; the arrows while the tabs overflow; then the tabs, the only part that
-    /// scrolls.
+    /// Home, pinned; the arrows while the tabs overflow; then the tabs, the only part that scrolls.
     private var strip: some View {
         let list = style("frame.tabs")
         return HStack(spacing: 0) {
-            if homePinned, let home = model.tabs.tabs.first(where: \.isHome) {
+            if let home = model.tabs.tabs.first(where: \.isHome) {
                 tab(home)
                     .fixedSize()
                     .padding(.leading, list.padding.left)
@@ -158,17 +156,14 @@ public struct WebTopBar: View {
         .accessibilityLabel(label)
     }
 
-    /// Home pinned before the list: only while the sidebar (and its Home) is hidden.
-    private var homePinned: Bool { model.sidebarCollapsed }
-
     private var tabs: some View {
         let list = style("frame.tabs")
         let edge = TabStripMath.fade / max(1, scroller.metrics.visible)
-        // A pinned Home has the list's left padding itself.
+        // Home, pinned before the list, has the list's left padding itself.
         var inset = list.padding.edgeInsets
-        if homePinned { inset.leading = 0 }
+        inset.leading = 0
         return TabRow(gap: list.gap, padding: inset, offset: scroller.scroll, report: { measured($0) }) {
-            ForEach(model.tabs.tabs.filter { !(homePinned && $0.isHome) }) { t in
+            ForEach(model.tabs.tabs.filter { !$0.isHome }) { t in
                 tab(t)
                     // Every tab the same width, open or not (the owner, 2026-10-29); Home and pinned tabs their own,
                     // joined notes as wide as two.
@@ -191,12 +186,6 @@ public struct WebTopBar: View {
         .onChange(of: dragging?.id) { _, id in scroller.dragging = id != nil }
         .onChange(of: model.tabs.activeID) { revealSoon() }
         .onChange(of: model.tabs.tabs.map(\.id)) { revealSoon() }
-        // Home moving into the list (sidebar shown) or out of it (hidden): the tabs after it keep their place on
-        // screen, then the open one is brought into view if the new width hides it.
-        .onChange(of: homePinned) { _, pinned in
-            guard let home = tabFrames[FrameTab.homeID] else { return }
-            scrollTo(scroller.scroll + (pinned ? -1 : 1) * (home.width + list.gap), animated: false)
-        }
     }
 
     /// What the list measured: the scroll kept in range (tabs closing shorten it), and the open tab brought back into

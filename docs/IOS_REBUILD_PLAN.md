@@ -178,6 +178,28 @@ Later on 2026-10-30, I0 continued:
 - The live blur behind glass is the system's lightest blur with its tint cleared; it can't be in the diffs (they
   draw over a plain canvas, where the web's blur changes nothing), so it's checked by eye on a device in I10.
 
-Next in I1: the note page (the Page View from today's app's plumbing, its bars, keyboard toolbar and Done, the
-zoom from a card), sheets with the web's detents and motion, the + menu and the account sheet; scroll and push
-checks in the Simulator.
+I1 continued (2026-10-31):
+- **Sheets** (`FoleviDesign/Phone/PhoneSheet.swift`): the web's Sheet.tsx copies UIKit's sheet, so natively iOS's
+  own sheet does the moving (drag, detents, dim, keyboard) and `.phoneSheet(isPresented:size:snapToBlocks:)` draws
+  what the web draws on it: the `--iphone-solid` surface with the sheet radius, the grabber, the 56 pt header (round
+  Close, sides as wide as each other, title centred) and the web's detents: large under the status bar less 10,
+  medium 56% of the screen or fitted to whole sections (`.phoneSheetBlock()`), fit to content. iOS's height detents
+  leave out the home indicator, the web's run to the screen's foot, so the native ones are the web's less it.
+  On iOS 26 a sheet at a partial detent floats a little in from the screen's edges (the system's look); the web's
+  stays attached. Not yet: the card variant (New folder), which arrives with the sheets that use it.
+- **Inset grouped lists** (`PhoneGrouped.swift`): Grouped.tsx's section, row, row icon and the hairlines that
+  start at a row's text (`.phoneSeparatorInset`).
+- **The account sheet** (`PhoneAccountSheet.swift`): AccountSheet.tsx's places (accounts, workspaces under them,
+  the library), Settings, Sign in to another account, Move or copy notes, Help, Sign out; medium, ending after
+  Places. Filled with sample places in the Debug frame until I2 brings the real ones.
+- **Menus and +** (`PhoneMenu.swift`): the web's iOS menu panel placed as Menu.tsx places it (8 pt off, flips,
+  stays on screen) and grown on the menu spring from its corner; the Create menu over + (New note, From template,
+  New folder, Quick task; on Tasks, + is Quick task). The sheets New folder and Quick task open come with their
+  data (I3, I4).
+- Checked in the Simulator by launch hooks (`FOLEVI_REBUILD_SHEET=account` or `create`), light and dark; 12
+  tests (tab stacks, detents, menu placement); the iOS match suite still passes (16 of 16, iphone-chrome 0.01%).
+  Not yet in the diffs: the sheet and the account rows (no web specimen for them yet).
+
+Next in I1: the note page (the Page View from today's app's plumbing under the new frame, NoteBars.tsx's bars,
+keyboard toolbar and Done, the zoom from a card); scroll, swipe-back and tap checks in the Simulator (needs
+Simulator input allowed in the simulator panel).

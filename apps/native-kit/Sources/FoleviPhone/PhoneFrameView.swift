@@ -6,22 +6,54 @@ import SwiftUI
 import FoleviDesign
 import FoleviScreens
 
+/// What the tab bar's Foli AI and + buttons do (TabBar.tsx): + opens New note, From template, New folder and Quick
+/// task; on Tasks it goes straight to Quick task.
+public struct PhoneFrameActions {
+    public var openAI: @MainActor () -> Void
+    public var newNote: @MainActor () -> Void
+    public var fromTemplate: @MainActor () -> Void
+    public var newFolder: @MainActor () -> Void
+    public var quickTask: @MainActor () -> Void
+
+    public init(openAI: @escaping @MainActor () -> Void = {}, newNote: @escaping @MainActor () -> Void = {}, fromTemplate: @escaping @MainActor () -> Void = {}, newFolder: @escaping @MainActor () -> Void = {}, quickTask: @escaping @MainActor () -> Void = {}) {
+        self.openAI = openAI
+        self.newNote = newNote
+        self.fromTemplate = fromTemplate
+        self.newFolder = newFolder
+        self.quickTask = quickTask
+    }
+}
+
 public struct PhoneFrameView<Screen: View>: View {
     @Bindable var model: PhoneFrameModel
+    let menus: PhoneMenus
     let aiOn: Bool
     /// Whether the tab bar steps out of the way (the keyboard, Select).
     let tabBarHidden: Bool
+    let actions: PhoneFrameActions
     let screen: (FrameRoute) -> Screen
-    let openAI: () -> Void
-    let plus: () -> Void
 
-    public init(model: PhoneFrameModel, aiOn: Bool = true, tabBarHidden: Bool = false, openAI: @escaping () -> Void = {}, plus: @escaping () -> Void = {}, @ViewBuilder screen: @escaping (FrameRoute) -> Screen) {
+    public init(model: PhoneFrameModel, menus: PhoneMenus, aiOn: Bool = true, tabBarHidden: Bool = false, actions: PhoneFrameActions = PhoneFrameActions(), @ViewBuilder screen: @escaping (FrameRoute) -> Screen) {
         self.model = model
+        self.menus = menus
         self.aiOn = aiOn
         self.tabBarHidden = tabBarHidden
-        self.openAI = openAI
-        self.plus = plus
+        self.actions = actions
         self.screen = screen
+    }
+
+    /// + : the Create menu over it (above, its right edge on the button's), or on Tasks a quick task.
+    private func plus(_ from: CGRect) {
+        if model.current == .tasks {
+            actions.quickTask()
+            return
+        }
+        menus.show([
+            PhoneMenuEntry(.item("New note", icon: .filePlusCorner), action: actions.newNote),
+            PhoneMenuEntry(.item("From template", icon: .layoutTemplate), action: actions.fromTemplate),
+            PhoneMenuEntry(.item("New folder", icon: .folderPlus), action: actions.newFolder),
+            PhoneMenuEntry(.item("Quick task", icon: .listPlus), action: actions.quickTask),
+        ], from: from, side: .top, align: .end, minWidth: 248)
     }
 
     public var body: some View {
@@ -36,7 +68,7 @@ public struct PhoneFrameView<Screen: View>: View {
                 // The tab bar floats over the home indicator and steps away for a note (which has its own bars),
                 // the keyboard and Select (TabBar.tsx: 300 ms, cubic-bezier(0.32, 0.72, 0, 1)).
                 let hidden = tabBarHidden || model.top.isNote || model.top == .web("/ai") || isAI(model.top)
-                PhoneTabBar(current: model.current, aiOn: aiOn, pick: { model.pick($0) }, openAI: openAI, plus: plus)
+                PhoneTabBar(current: model.current, aiOn: aiOn, pick: { model.pick($0) }, openAI: actions.openAI, plus: plus)
                     .padding(.leading, geo.safeAreaInsets.leading)
                     .padding(.trailing, geo.safeAreaInsets.trailing)
                     .padding(.bottom, max(10, geo.safeAreaInsets.bottom - 10))
@@ -48,6 +80,7 @@ public struct PhoneFrameView<Screen: View>: View {
             }
             .ignoresSafeArea(edges: .bottom)
         }
+        .overlay { PhoneMenuLayer(menus: menus) }
     }
 
     private func isAI(_ route: FrameRoute) -> Bool {

@@ -150,10 +150,12 @@ public struct PhoneTabBar: View {
     let aiOn: Bool
     let pick: (PhoneTab) -> Void
     let openAI: () -> Void
-    let plus: () -> Void
+    /// + tapped, with where it is on the screen (the Create menu grows out of it).
+    let plus: (CGRect) -> Void
     @Environment(\.colorScheme) private var scheme
+    @State private var plusFrame: CGRect = .zero
 
-    public init(current: PhoneTab?, aiOn: Bool = true, pick: @escaping (PhoneTab) -> Void = { _ in }, openAI: @escaping () -> Void = {}, plus: @escaping () -> Void = {}) {
+    public init(current: PhoneTab?, aiOn: Bool = true, pick: @escaping (PhoneTab) -> Void = { _ in }, openAI: @escaping () -> Void = {}, plus: @escaping (CGRect) -> Void = { _ in }) {
         self.current = current
         self.aiOn = aiOn
         self.pick = pick
@@ -211,10 +213,11 @@ public struct PhoneTabBar: View {
                 .buttonStyle(GlassPressStyle())
                 .accessibilityLabel("Foli AI")
             }
-            Button(action: plus) {
+            Button { plus(plusFrame) } label: {
                 PlusDisc().frame(width: 56, height: 56)
             }
             .buttonStyle(GlassPressStyle())
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { plusFrame = $0 }
             .accessibilityLabel(current == .tasks ? "Quick task" : "Create")
         }
         .padding(4)

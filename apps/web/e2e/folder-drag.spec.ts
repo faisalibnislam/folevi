@@ -238,6 +238,8 @@ test("iPad: a still hold opens the menu; hold then move drags folders and notes"
   const from = await centre(card);
   await finger(page, from, line(from, await centre(row(page, "Shed"), 0.5), 20));
   await expect(toast(page, "Moved to Shed")).toBeVisible();
+  // Saved before the reload (a slow machine was still sending it).
+  await waitForSaved(page);
   await page.reload();
   await folderLink(page, "Shed").click();
   await expect(page.getByRole("main").getByText(titleText).first()).toBeVisible();

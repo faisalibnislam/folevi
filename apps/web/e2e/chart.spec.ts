@@ -139,9 +139,11 @@ test.describe("Chart", () => {
     const table = page.locator(".fb-editor .fb-table").last();
     await expect(table).toBeVisible();
     await caretToEnd(page);
-    // The grip shows beside the block under the pointer.
+    // The grip shows beside the block under the pointer (the table in view first: with Linux's fonts it starts
+    // below the window, and the pointer there finds another block's grip).
     const grip = page.getByRole("button", { name: /Drag to move, click for block options/ });
     await expect(async () => {
+      await table.scrollIntoViewIfNeeded();
       const tb = (await table.boundingBox())!;
       await page.mouse.move(tb.x + 20, tb.y - 30);
       await page.mouse.move(tb.x + 60, tb.y + tb.height / 2, { steps: 5 });

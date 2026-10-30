@@ -1,7 +1,7 @@
 "use client";
 
 import { EditorContent, useEditor, type Editor as TiptapEditor } from "@tiptap/react";
-import { NodeSelection, TextSelection, type EditorState, type Selection } from "@tiptap/pm/state";
+import { NodeSelection, Selection, TextSelection, type EditorState } from "@tiptap/pm/state";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { LIMITS, ulid, type WireBlock } from "@folevi/editor-schema";
@@ -25,6 +25,7 @@ import { insertBlockAfterCurrent, subtreeRange, moveSubtreeTo } from "./commands
 import { applySideDrop } from "./columns/columnsCommands";
 import type { SideDrop } from "./columns/columnsLayout";
 import { closeHistory } from "@tiptap/pm/history";
+import { SYNCED_BODY_ATTR } from "./synced/nested";
 import { useAiEnabled } from "@/components/ai/useAi";
 
 export interface EditorHandle {
@@ -188,6 +189,16 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         return true;
       },
       handleKeyDown: (view, event) => {
+        // Ctrl+Home / Ctrl+End (Windows and Linux) in a synced block's editor: the browser's own move left the
+        // nested editor and put the caret at the start of the note around it. Its own start or end instead.
+        if (event.ctrlKey && !event.metaKey && !event.altKey && (event.key === "Home" || event.key === "End") && view.dom.parentElement?.closest(`[${SYNCED_BODY_ATTR}]`)) {
+          const { doc, selection } = view.state;
+          const to = event.key === "End" ? Selection.atEnd(doc) : Selection.atStart(doc);
+          const next = event.shiftKey ? TextSelection.between(selection.$anchor, to.$head) : to;
+          view.dispatch(view.state.tr.setSelection(next).scrollIntoView());
+          event.preventDefault();
+          return true;
+        }
         if (event.key !== "ArrowUp" || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return false;
         const { selection } = view.state;
         if (!selection.empty || selection.$from.index(0) !== 0 || !view.endOfTextblock("up")) return false;

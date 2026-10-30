@@ -58,15 +58,17 @@ jobs:
         run: pnpm --filter @folevi/web build
 
   e2e:
-    name: End-to-end (local Convex + Next.js + Playwright) ${{ matrix.shard }}/4
+    name: End-to-end (local Convex + Next.js + Playwright) ${{ matrix.shard }}/8
     runs-on: ubuntu-latest
     needs: checks
     timeout-minutes: 45
-    # Over 450 tests no longer fit in one job's 45 minutes: four runners, each with its own backend and a quarter.
+    # Over 400 tests no longer fit in one job's 45 minutes: eight runners, each with its own backend and an eighth,
+    # one browser at a time (with two, the runner's CPU couldn't keep the local backend's queries under its
+    # 1-second limit, and a timed-out query took the page down).
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -99,7 +101,7 @@ jobs:
       - name: Playwright
         # Account mode only: the local, Mac and iPhone projects need the shell build's dev server (FOLEVI_BUILD=shell,
         # E2E_LOCAL_BASE_URL), which this job doesn't start; against this build local mode reaches Convex and fails.
-        run: pnpm --filter @folevi/web exec playwright test --project account --shard ${{ matrix.shard }}/4
+        run: pnpm --filter @folevi/web exec playwright test --project account --workers 1 --shard ${{ matrix.shard }}/8
         env:
           E2E_NO_SERVER: "1"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

@@ -20,6 +20,15 @@ import { useAiAccess } from "@/components/ai/useAi";
 import { AppLink } from "@/lib/app/router";
 import { canPurchaseHere } from "@/lib/nativeApp";
 
+/**
+ * The time zones to choose from, always with the current one: the browser's list leaves out aliases such as "UTC"
+ * (a person in UTC saw an empty Time zone on the iPhone and the list's first zone on the desktop).
+ */
+function zoneChoices(current: string): string[] {
+  const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
+  return zones.includes(current) ? zones : [current, ...zones];
+}
+
 export function AccountSection() {
   const { profile, timeZone } = useAppState();
   const convex = useConvex();
@@ -31,7 +40,7 @@ export function AccountSection() {
   const iphone = useIphoneLook();
   // About 400 zones: built once per change of zone, not on every keystroke in the name field.
   const zoneField = useMemo(() => {
-    const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [timeZone];
+    const zones = zoneChoices(timeZone);
     return (
       <Select value={timeZone} onChange={(e) => void update({ timeZone: e.target.value })} className="h-9 w-full ui-input rounded-chip px-3">
         {zones.map((z) => (
@@ -43,7 +52,7 @@ export function AccountSection() {
     );
   }, [timeZone, update]);
   if (iphone) {
-    const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [timeZone];
+    const zones = zoneChoices(timeZone);
     return (
       <>
         <IdentityImageRows

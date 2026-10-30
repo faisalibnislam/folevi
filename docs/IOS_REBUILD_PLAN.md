@@ -1,0 +1,139 @@
+# Folevi for iPhone and iPad: the native rebuild (plan, 2026-10-30)
+
+The owner, 2026-10-30: "let's start the iOS app, same native rule as mac app." The Mac rule
+(docs/MAC_REBUILD_PLAN.md): native as much as possible, SwiftUI/UIKit, looks match the web 100%, only the note
+editor in a web view, no Capacitor or Electron.
+
+Android stays paused completely. The Mac app keeps shipping (1.2.x) while this is built.
+
+---
+
+## 0. Owner decisions (2026-10-30, from the picker)
+
+| Topic | Decision |
+| --- | --- |
+| iPhone look | Pixel match with the web's phone layout, as the iOS app shows it today (`apps/web/src/components/iphone/*`): the glass top bar, the Home / Tasks / Calendar tab bar, the Foli AI and + pill, Folevi's fonts. iOS behaviour stays iOS: swipe back, native scrolling and rubber banding, haptics, the keyboard, VoiceOver, Dynamic Type where the web scales. |
+| iPad | Together with iPhone, one universal app. The iPad matches the web's iPad layout (sidebar and tab strip, as on the Mac) with touch sizes. |
+| Starting point | The Mac rebuild's code only (`apps/native-kit`: `FoleviEngine`, `FoleviDesign` and its `Web*` components, the screens in `FoleviMac`). The older iPhone work on the `native-app` branch is reference only. |
+| No account | Yes, like the Mac: first launch offers "Keep notes on my iPhone" (free, no limits, library on the device or in iCloud Drive, or a folder from Files) and "Sign in to Folevi". Local Vault and Foli AI (Apple's on-device model or the person's own key) work without an account. |
+| Web parts | Only the note editor and what's drawn inside a note (mind maps, flowcharts, tables, embeds). Everything else native: Vault, Foli AI, every Settings section, Graph, Reviews. |
+| Minimum iOS | iOS 18 (today's app is iOS 17; installs on 17 keep the current app). |
+| Rollout | One build at the end. No TestFlight builds on the way; the upload is asked first, as always. Same bundle id `com.folevi.ios`, data carries over. |
+
+Unchanged from earlier decisions: no buying inside the app (no prices or upgrade links, App Store 3.1.1); every
+iPhone fix also applies to iPad ([[iphone-feedback-applies-to-ipad]]); the iOS extras stay (below).
+
+---
+
+## 1. Where things are
+
+- **Shipped (TestFlight, 1.0.x builds):** `apps/ios` is Folevi's own web view host (`ios/App/Native/Host`, no
+  Capacitor since 2026-10-24) around the whole web app at `capacitor://localhost`, with Swift services: Face ID
+  lock, deep links, haptics, share extension, widgets and the Control Center control, App Intents, Spotlight,
+  the document scanner and text recognition, APNs push, background refresh, Apple sign-in, the local library
+  shell (`ios/App/Native/Shell`).
+- **Mac rebuild (on `main`, shipping as 1.2.x):** `apps/native-kit` holds the pieces to reuse.
+  `FoleviEngine` (bridge client, generated models, about 11,800 lines, no AppKit) and `FoleviDesign` (tokens,
+  fonts, `WebText`, the web's icons, `WebNoteCard`, `WebFolderCard`, `WebComponents`, about 9,700 lines, 7 AppKit
+  files) are mostly cross-platform. `FoleviMac` (about 25,000 lines, 47 AppKit files) holds the Mac frame and
+  the Mac's screens (`WebNoteScreens`, `WebSidebar`, `WebTopBar`, Settings, Vault, Foli AI, Planner).
+- **The web's phone layout** (the target to match): `IphoneShell`, `RootBar`, `TabBar`, `Glass`, `Screen`,
+  `Sheet` and `sheetMotion`, `Rows`, `Grouped`, `NoteList`, `NoteBars`, `NoteChrome`, `IphoneHome`, `Tasks`,
+  `Agenda`, `WeekStrip`, `QuickAddSheet`, `NewFolderSheet`, `AccountSheet`, `SettingsKit`, `Swipe`,
+  `PullToRefresh`, `SearchScopes`, `transitions`, `tabStacks`.
+
+---
+
+## 2. Architecture
+
+The same as the Mac: one `WKWebView` per scene runs the web engine (sync, outbox, E2EE, local library, places)
+and draws the note page in content-only mode; SwiftUI screens read typed live views and send commands over the
+bridge (`apps/web/src/lib/engine/protocol.ts`). No second data layer in Swift.
+
+Package layout in `apps/native-kit`:
+- `FoleviEngine`, `FoleviDesign`: shared as they are; the few AppKit pieces get UIKit twins behind `#if os(...)`.
+- **Shared screens out of `FoleviMac`:** the screen bodies that are plain SwiftUI (cards, lists, Tasks,
+  Calendar, Settings sections, Vault, Foli AI chat) move to a cross-platform target so iPad and Mac draw the
+  same views. AppKit frame code stays in `FoleviMac`.
+- **`FoleviPhone` (new):** the iPhone frame (glass top bar, tab bar and pill, per-tab navigation stacks,
+  sheets with the web's detents and motion, swipe rows, pull to refresh, the note page's bars and keyboard
+  toolbar) and the iPad frame (sidebar, tab strip, split view, popovers instead of sheets).
+- `apps/ios` keeps its targets and services; the app's root switches from the web view host to
+  `FoleviPhone`. The page stays at `capacitor://localhost` so installs keep their data.
+
+---
+
+## 3. Matching the web exactly
+
+- The match harness (`pnpm match`, `apps/mac/scripts/match.mjs`) gains iPhone and iPad specimens: the web in
+  Playwright WebKit at the device's viewport and scale (iPhone 16 Pro 402x874 @3x, iPhone 16 Pro Max 440x956
+  @3x, iPhone SE 375x667 @2x, iPad Air 11" 820x1180 @2x, both orientations on iPad), the native view in the iOS
+  Simulator (XCTest snapshots). Same thresholds as the Mac (channel 24, 0.5% of pixels), light and dark.
+- Fixture data, fixed clock and avatars as on the Mac. Safe areas, the status bar and the home indicator are
+  masked.
+- Behaviour to match too: sheet detents and drag settle, the zoom from cards into a note, swipe actions,
+  long-press menus (web menus styled to the iOS spec, per [[ios-polish-2026-10-22]]), empty states, copy (no em
+  dashes, "Foli AI").
+
+---
+
+## 4. Work packages
+
+**I0. Foundations.** Raise the iOS deployment target to 18 (app and package), split cross-platform code out of
+`FoleviMac`, add `FoleviPhone`, make `FoleviDesign` build and render the same on iOS (fonts, `WebText`, icons,
+cards), iPhone and iPad specimens in the harness.
+
+**I1. iPhone frame and editor glue.** Glass top bar, tab bar and pill, navigation stacks with swipe back, sheets,
+the note page in content-only mode with its bars, keyboard toolbar and Done, the zoom transition, scene restore.
+
+**I2. First launch, local mode, sign-in.** The two choices, the local library (device, iCloud Drive, a folder),
+sign-in (email and password, TOTP, Apple, Google, PKCE), the account and place switcher, migration from the
+shipped app tested with scratch data.
+
+**I3. Lists.** Home, All notes, folders, Starred, Shared, Drafts, search and its scopes, Notifications,
+selection, swipe actions, long-press menus, pull to refresh.
+
+**I4. Tasks, Calendar, Settings.** Tasks and their sheet, the week strip with the pull-down month, Agenda,
+every Settings section.
+
+**I5. Foli AI.** The chat sheet and page, tools, Continue, guardrails; on-device and own-key in local mode.
+
+**I6. Vault.** Account and local Vault, previews (PDFKit, AVKit, Quick Look), Face ID.
+
+**I7. iPad.** Sidebar, tab strip, split view, pointer and keyboard shortcuts, popovers, Stage Manager sizes.
+(Shared screens arrive with I3 to I6; this package is the iPad frame and its own states.)
+
+**I8. The rest.** Sharing and invitations, Templates, Archive, Trash, Graph, Reviews, Quick Add, help.
+
+**I9. iOS extras on the new frame.** Share extension, widgets and the control, App Intents, Spotlight, scanner,
+push with Done and Snooze, background sync, deep links, haptics.
+
+**I10. Performance, tests, release.** Launch, scrolling at 120 Hz (Instruments hitches, as for the Mac), memory,
+energy; the full test suites and the match suite; the upgrade test from the shipped app; one TestFlight / App
+Store upload only with the owner's OK.
+
+---
+
+## 5. Risks
+
+| Risk | Mitigation |
+| --- | --- |
+| Mac changes break iOS (and back) | Shared targets build for both in CI; the match suite runs on both. |
+| Text renders differently in Core Text | The Mac's `WebText` already matches WebKit; checked again on iOS at @3x. |
+| Data loss on upgrade | Same bundle id and page origin; the upgrade test with scratch data is a release gate. |
+| Glass and blur cost on scroll | Measure with Instruments from I1 on; flatten static layers (as on the Mac, 1.2.07). |
+
+---
+
+## 6. Hard rules
+
+Never push `main`, deploy, notarize or upload to TestFlight without the owner's OK. Never use `--prod` with the
+Convex CLI. Never print secrets. Never touch the owner's real library or app data (on the Mac or the owner's
+iPhone); tests use the Simulator and scratch data. No em dashes. The assistant is "Foli AI". Commit with
+`git commit <paths>`.
+
+---
+
+## 7. Where it stands
+
+2026-10-30: plan written, I0 starting.

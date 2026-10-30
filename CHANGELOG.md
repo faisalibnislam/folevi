@@ -4,6 +4,22 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.05: Small update
+
+Released 2026-10-30 10:05:05+06:00 (build 16, tag v1.2.05)
+
+Foli AI on your Mac follows the same safety rules everywhere, notes feel quicker, and two fixes.
+
+### Improved
+
+- Foli AI with Apple Intelligence or your own key follows the same safety rules as Foli AI in your account, and says so plainly when it won't help with something.
+- Notes, tabs and joined notes respond faster: a note isn't redrawn on every save, and the block handle follows the pointer without slowing typing.
+
+### Fixed
+
+- Settings shows your time zone when it's UTC (it was empty).
+- Encrypted notes no longer stop with "This page couldn't load" while they unlock.
+
 ## Version 1.2.04: Big update
 
 Released 2026-10-29 10:21:13+06:00 (build 15, tag v1.2.04)

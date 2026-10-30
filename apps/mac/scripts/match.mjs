@@ -42,7 +42,7 @@ const ios = arg("--platform") === "ios";
 const device = arg("--device") ?? "iPhone 18 Pro";
 
 const file = JSON.parse(readFileSync(join(repo, "packages/design-tokens/match/specimens.json"), "utf8"));
-const specimens = file.specimens.filter((s) => !only || only.includes(s.id));
+const specimens = file.specimens.filter((s) => (!only || only.includes(s.id)) && (!s.platforms || s.platforms.includes(ios ? "ios" : "mac")));
 const scale = Number(arg("--scale") ?? (ios ? 3 : file.scale));
 const out = join(repo, ios ? "apps/ios/match-report" : "apps/mac/match-report");
 for (const d of ["web", "diff"]) {
@@ -61,9 +61,11 @@ for (const scheme of ["light", "dark"]) {
     await page.evaluate(([theme, ios]) => {
       document.documentElement.dataset.theme = theme;
       if (ios) document.documentElement.dataset.native = "ios";
+      // An iPhone (the iPad app has no data-iphone): the phone layout's rules (the tab bar's pills).
+      if (ios === "iphone") document.documentElement.dataset.iphone = "";
       else document.documentElement.dataset.desktop = "mac";
       document.documentElement.dataset.chrome = "neutral";
-    }, [scheme, ios]);
+    }, [scheme, ios && (/ipad/i.test(device) ? "ipad" : "iphone")]);
     await page.evaluate(() => document.fonts.ready);
     await page.locator("#specimen").screenshot({ path: join(out, "web", `${s.id}-${scheme}.png`), animations: "disabled", caret: "hide" });
   }

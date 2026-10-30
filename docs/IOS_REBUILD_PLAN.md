@@ -162,5 +162,22 @@ Later on 2026-10-30, I0 continued:
 - Known, not from this work: `streamsIntoTheChat` (the unfinished native Foli AI chat's frame-time test) fails its
   33 ms p95 budget on a busy Mac, with or without these changes.
 
-Next: I1, the iPhone frame (glass top bar, tab bar and pill, tab stacks, sheets, the note page), with whole-screen
-iPhone and iPad diffs in the harness.
+**I1 started (2026-10-30):**
+- The web's Liquid Glass (`.ui-liquid`, `-strong`: shadows, hairline, blur, fill, edge light, sheen, rim, in the
+  web's order) as `.liquidGlass()`, and the iPhone's floating controls on it (`FoleviDesign/Phone`):
+  `WebGlassCircle`, `WebGlassPill`, `WebPillButton`, `WebGlassTextButton`, `PlusDisc` and `PhoneTabBar` (Home,
+  Tasks, Calendar with the sliding lens; Foli AI and +). The `iphone-chrome` specimen (iOS only) matches the web's
+  real Glass.tsx controls and TabBar.tsx markup at **0.01%**, light and dark.
+- `PhoneScreen`: the web's Screen.tsx (Back or a leading control, the screen's actions, the large title with its
+  eyebrow and subtitle, the bar's solid fade after 4 pt of scroll, the small title fading in over the last 12 pt).
+- `FoleviPhone`: `PhoneFrameModel` (tabStacks.ts's rules, 6 tests) and `PhoneFrameView` (a navigation stack per
+  tab, kept alive, iOS's push and edge swipe, the tab bar stepping away for a note).
+- In the app: Debug builds with `FOLEVI_REBUILD=1` show the new frame with placeholder screens
+  (`apps/ios/ios/App/Native/Rebuild/RebuildFrame.swift`; `FOLEVI_REBUILD_OPEN=/folders/x,...` opens routes at
+  launch). Release, TestFlight and today's frame are untouched.
+- The live blur behind glass is the system's lightest blur with its tint cleared; it can't be in the diffs (they
+  draw over a plain canvas, where the web's blur changes nothing), so it's checked by eye on a device in I10.
+
+Next in I1: the note page (the Page View from today's app's plumbing, its bars, keyboard toolbar and Done, the
+zoom from a card), sheets with the web's detents and motion, the + menu and the account sheet; scroll and push
+checks in the Simulator.

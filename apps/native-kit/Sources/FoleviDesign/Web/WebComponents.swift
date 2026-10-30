@@ -133,9 +133,9 @@ public struct WebSelectTrigger: View {
 }
 
 extension EnvironmentValues {
-    /// Text fields drawn as their text (a picture made by ImageRenderer can't hold a UIKit text field; the iOS
-    /// screenshot diffs set this).
-    @Entry public var webFieldsAsText = false
+    /// Drawn into a picture (ImageRenderer, the iOS screenshot diffs): no UIKit views, which a picture can't hold.
+    /// Text fields are drawn as their text, glass without its live blur.
+    @Entry public var webSnapshot = false
 }
 
 /// A one-line text field drawn as `.ui-input`.
@@ -144,7 +144,7 @@ public struct WebTextField: View {
     let placeholder: String
     let width: CGFloat?
     @Environment(\.colorScheme) private var scheme
-    @Environment(\.webFieldsAsText) private var asText
+    @Environment(\.webSnapshot) private var asText
 
     public init(_ placeholder: String = "", text: Binding<String>, width: CGFloat? = nil) {
         self.placeholder = placeholder

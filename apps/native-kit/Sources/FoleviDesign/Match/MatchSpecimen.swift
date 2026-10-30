@@ -21,6 +21,8 @@ public struct MatchSpecimens: Decodable, Sendable {
 
 public struct MatchSpecimen: Decodable, Sendable, Identifiable {
     public let id: String
+    /// Where it's checked ("ios", "mac"); everywhere when nil.
+    public var platforms: [String]?
     public let width: CGFloat
     public let padding: CGFloat
     public var gap: CGFloat?
@@ -30,6 +32,15 @@ public struct MatchSpecimen: Decodable, Sendable, Identifiable {
     public var swatches: [String]?
     /// Component samples by id (apps/web/src/app/dev/match/samples.tsx), in a column.
     public var samples: [String]?
+
+    /// Whether this platform checks it.
+    public var checkedHere: Bool {
+        #if os(iOS)
+        platforms?.contains("ios") ?? true
+        #else
+        platforms?.contains("mac") ?? true
+        #endif
+    }
 
     public struct Grid: Decodable, Sendable {
         public let cell: CGFloat

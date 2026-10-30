@@ -2,8 +2,10 @@
 
 
 import type { ReactNode } from "react";
-import { Check, ChevronDown, Copy, Plus, Trash, X } from "lucide-react";
+import { Bell, CalendarDays, Check, ChevronDown, ChevronLeft, Copy, House, MoreHorizontal, Plus, SquareCheckBig, Trash, X } from "lucide-react";
 import { Button, IconButton } from "@/components/ui/Button";
+import { AiIcon } from "@/components/ai/AiIcon";
+import { GlassCircle, GlassPill, GlassTextButton, PillButton } from "@/components/iphone/Glass";
 
 /**
  * Development only: the web app's components as samples for Folevi for Mac (docs/MAC_REBUILD_PLAN.md section 3).
@@ -156,6 +158,70 @@ const SAMPLES: Sample[] = [
       <kbd className="ui-kbd" data-style="kbd">
         ⌘K
       </kbd>
+    ),
+  },
+  // The iPhone app's floating controls (components/iphone/Glass.tsx, the real ones), and its tab bar as TabBar.tsx
+  // draws it with Home chosen (its markup and classes, without the router).
+  {
+    id: "iphone.circle",
+    node: (
+      <GlassCircle label="Back">
+        <ChevronLeft size={24} strokeWidth={2.2} aria-hidden />
+      </GlassCircle>
+    ),
+  },
+  {
+    id: "iphone.pill",
+    node: (
+      <GlassPill label="Screen actions">
+        <PillButton label="Notifications">
+          <Bell size={21} strokeWidth={1.9} aria-hidden />
+        </PillButton>
+        <PillButton label="More">
+          <MoreHorizontal size={24} strokeWidth={2.2} aria-hidden />
+        </PillButton>
+      </GlassPill>
+    ),
+  },
+  {
+    id: "iphone.text",
+    node: (
+      <div className="flex gap-3">
+        <GlassTextButton>Select</GlassTextButton>
+        <GlassTextButton strong>Done</GlassTextButton>
+      </div>
+    ),
+  },
+  {
+    id: "iphone.tabbar",
+    node: (
+      <div className="flex w-[393px] items-end justify-between gap-3 px-4">
+        <nav aria-label="Tabs" className="ui-liquid iphone-tab-pill flex h-16 items-center gap-0.5 rounded-capsule p-1">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-1 top-1 h-14 w-16 rounded-capsule bg-[var(--liquid-lens)] shadow-[inset_0_1px_0_rgb(255_255_255/0.55),inset_0_0_0_0.5px_rgb(255_255_255/0.35)] dark:shadow-[inset_0_1px_0_rgb(255_255_255/0.14),inset_0_0_0_0.5px_rgb(255_255_255/0.08)]"
+          />
+          <a href="#" aria-label="Home" className="relative grid h-14 w-16 place-items-center rounded-capsule text-heading">
+            <House size={24} strokeWidth={2.3} aria-hidden />
+          </a>
+          <a href="#" aria-label="Tasks" className="relative grid h-14 w-16 place-items-center rounded-capsule text-muted">
+            <SquareCheckBig size={23} strokeWidth={1.9} aria-hidden />
+          </a>
+          <a href="#" aria-label="Calendar" className="relative grid h-14 w-16 place-items-center rounded-capsule text-muted">
+            <CalendarDays size={23} strokeWidth={1.9} aria-hidden />
+          </a>
+        </nav>
+        <div role="group" aria-label="Create" className="ui-liquid iphone-tab-pill flex h-16 items-center gap-1 rounded-capsule p-1">
+          <button type="button" aria-label="Foli AI" className="grid h-14 w-14 place-items-center rounded-capsule">
+            <AiIcon size={26} />
+          </button>
+          <button type="button" aria-label="Create" className="grid h-14 w-14 place-items-center rounded-capsule">
+            <span className="grid h-10 w-10 place-items-center rounded-capsule bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.18)]">
+              <Plus size={22} strokeWidth={2.6} aria-hidden />
+            </span>
+          </button>
+        </div>
+      </div>
     ),
   },
 ];

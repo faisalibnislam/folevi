@@ -65,8 +65,10 @@ public struct WebCornersShape: Shape {
     public func path(in rect: CGRect) -> Path {
         let r = rect.insetBy(dx: -outset, dy: -outset)
         guard r.width > 0, r.height > 0 else { return Path() }
-        // CSS spread changes each radius by the spread (never below zero).
-        func rad(_ v: CGFloat) -> CGFloat { v == 0 ? 0 : max(0, v + outset) }
+        // CSS spread changes each radius by the spread (never below zero), and no radius passes half the shorter
+        // side (a capsule's 9999px).
+        let most = min(r.width, r.height) / 2
+        func rad(_ v: CGFloat) -> CGFloat { v == 0 ? 0 : min(most, max(0, v + outset)) }
         return Path(roundedRect: r, cornerRadii: RectangleCornerRadii(topLeading: rad(topLeft), bottomLeading: rad(bottomLeft), bottomTrailing: rad(bottomRight), topTrailing: rad(topRight)), style: .circular)
     }
 }

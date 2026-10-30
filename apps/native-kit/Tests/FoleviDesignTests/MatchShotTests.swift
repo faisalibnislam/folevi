@@ -33,7 +33,7 @@ struct MatchShotTests {
         if out != nil { WebFont.useWebTextRendering() }
         if let out { try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true) }
         #expect(!file.specimens.isEmpty)
-        for specimen in file.specimens {
+        for specimen in file.specimens where specimen.checkedHere {
             for scheme in [ColorScheme.light, .dark] {
                 let image = try #require(windowShot(MatchSpecimenView(specimen), scheme: scheme, scale: file.scale), "\(specimen.id) didn't draw")
                 #expect(image.width == Int(specimen.width * file.scale), "\(specimen.id): \(image.width) px wide")
@@ -78,7 +78,7 @@ struct MatchShotTests {
         let scale = env["FOLEVI_MATCH_SCALE"].flatMap(Double.init).map { CGFloat($0) } ?? file.scale
         if let out { try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true) }
         #expect(!file.specimens.isEmpty)
-        for specimen in file.specimens {
+        for specimen in file.specimens where specimen.checkedHere {
             for scheme in [ColorScheme.light, .dark] {
                 let image = try #require(windowShot(MatchSpecimenView(specimen), scheme: scheme, scale: scale), "\(specimen.id) didn't draw")
                 #expect(image.width == Int((specimen.width * scale).rounded()), "\(specimen.id): \(image.width) px wide")
@@ -93,7 +93,7 @@ struct MatchShotTests {
     /// UIWindow in), in sRGB as the browser's screenshots are.
     func windowShot<V: View>(_ view: V, scheme: ColorScheme, scale: CGFloat) -> CGImage? {
         FoleviFonts.register()
-        let renderer = ImageRenderer(content: view.environment(\.colorScheme, scheme).environment(\.webFieldsAsText, true))
+        let renderer = ImageRenderer(content: view.environment(\.colorScheme, scheme).environment(\.webSnapshot, true))
         renderer.scale = scale
         renderer.isOpaque = false
         renderer.colorMode = .nonLinear

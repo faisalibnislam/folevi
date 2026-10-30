@@ -46,6 +46,20 @@ enum MatchSamples {
             WebChip("Travel")
         } else if id == "kbd" {
             WebKbd("⌘K")
+        } else if id == "iphone.circle" {
+            WebGlassCircle("Back") { WebIconView(.chevronLeft, size: 24, strokeWidth: 2.2) }
+        } else if id == "iphone.pill" {
+            WebGlassPill {
+                WebPillButton("Notifications") { WebIconView(.bell, size: 21, strokeWidth: 1.9) }
+                WebPillButton("More") { WebIconView(.ellipsis, size: 24, strokeWidth: 2.2) }
+            }
+        } else if id == "iphone.text" {
+            HStack(spacing: 12) {
+                WebGlassTextButton("Select")
+                WebGlassTextButton("Done", strong: true)
+            }
+        } else if id == "iphone.tabbar" {
+            PhoneTabBar(current: .home).frame(width: 393)
         } else {
             Text("no native sample \(id)").foregroundStyle(.red)
         }

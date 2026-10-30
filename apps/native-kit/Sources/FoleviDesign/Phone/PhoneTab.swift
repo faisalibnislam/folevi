@@ -1,6 +1,5 @@
 // The iPhone's three tabs (the web's components/iphone/TabBar.tsx and tabStacks.ts): Home, Tasks and Calendar,
-// each with its own stack of screens, and the first route each opens. The bar that draws them comes in I1
-// (docs/IOS_REBUILD_PLAN.md).
+// each with its own stack of screens (FoleviPhone), and the first route each opens. PhoneTabBar draws them.
 import CoreGraphics
 
 public enum PhoneTab: String, CaseIterable, Sendable, Identifiable {
@@ -22,6 +21,14 @@ public enum PhoneTab: String, CaseIterable, Sendable, Identifiable {
         case .home: "/documents"
         case .tasks: "/tasks/today"
         case .calendar: "/calendar"
+        }
+    }
+
+    public var icon: WebIcon {
+        switch self {
+        case .home: .house
+        case .tasks: .squareCheckBig
+        case .calendar: .calendarDays
         }
     }
 

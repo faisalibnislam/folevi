@@ -52,12 +52,17 @@ let package = Package(
         // Used by the iOS app only: its UIKit pieces compile to nothing on macOS (#if os(iOS)).
         .target(
             name: "FoleviPhone",
-            dependencies: ["FoleviEngine", "FoleviDesign"],
+            dependencies: ["FoleviEngine", "FoleviDesign", "FoleviScreens"],
             swiftSettings: strict
         ),
         .testTarget(
             name: "FoleviMacTests",
             dependencies: ["FoleviMac", "FoleviEngine"],
+            swiftSettings: strict
+        ),
+        .testTarget(
+            name: "FoleviPhoneTests",
+            dependencies: ["FoleviPhone", "FoleviScreens", "FoleviDesign"],
             swiftSettings: strict
         ),
         .testTarget(

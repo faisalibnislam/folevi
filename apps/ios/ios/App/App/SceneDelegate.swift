@@ -11,7 +11,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         let window = UIWindow(windowScene: windowScene)
-        window.rootViewController = PhoneFrame.enabled ? PhoneFrameController() : FoleviViewController()
+        window.rootViewController = RebuildFrame.enabled ? RebuildFrame.controller() : PhoneFrame.enabled ? PhoneFrameController() : FoleviViewController()
         window.makeKeyAndVisible()
         self.window = window
         AppLock.shared.attach(to: window)

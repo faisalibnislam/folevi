@@ -60,6 +60,12 @@ enum MatchSamples {
             }
         } else if id == "iphone.tabbar" {
             PhoneTabBar(current: .home).frame(width: 393)
+        } else if id == "iphone.place" {
+            PhoneNotePlaceChip(.folder(name: "Travel", colorId: "moss")) {}
+        } else if id == "iphone.notebars" {
+            PhoneNoteToolBars(open: nil, canEdit: true, aiOn: true) { _ in }.frame(width: 393)
+        } else if id == "iphone.keybar" {
+            PhoneKeyboardBar(state: PhoneKeyboardBarState(block: "todo", undo: true, redo: false), aiOn: true) { _ in }.frame(width: 393)
         } else {
             Text("no native sample \(id)").foregroundStyle(.red)
         }

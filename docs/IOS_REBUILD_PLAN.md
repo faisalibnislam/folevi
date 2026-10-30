@@ -200,6 +200,24 @@ I1 continued (2026-10-31):
   tests (tab stacks, detents, menu placement); the iOS match suite still passes (16 of 16, iphone-chrome 0.01%).
   Not yet in the diffs: the sheet and the account rows (no web specimen for them yet).
 
-Next in I1: the note page (the Page View from today's app's plumbing under the new frame, NoteBars.tsx's bars,
-keyboard toolbar and Done, the zoom from a card); scroll, swipe-back and tap checks in the Simulator (needs
-Simulator input allowed in the simulator panel).
+- **The note page** (2026-10-31): the rebuild frame now runs today's app's one web view and engine
+  (`RebuildFrameController`: WebHost, PhoneModel, PageViewHost, the keyboard followed) with the new frame over it;
+  a note (`Rebuild/RebuildNote.swift`) adopts the page and draws the web's bars natively (`PhoneNoteBars.swift`):
+  Back, the place chip, Share and "…" (the web's note actions, in Folevi's menu), Done while writing; Comments,
+  Style, Format, Foli AI and Insert at the bottom; the bar on the keyboard (Insert, Format, Foli AI, To-do, Indent,
+  Outdent, Link with a native prompt, Mention, Image, Undo, Redo, Hide). The note's scroll comes from a small page
+  script (the note scrolls in `#doc-scroll`, not the web view's scroll view) for the bar's fade and small title.
+  A note zooms out of the card it was opened from (iOS's zoom, `.phoneZoomSource(id)` on cards).
+- Web change for it: in native-chrome mode on the iPhone the note's scroller runs under the bars with their room
+  as its own padding (as on the web's phone layout), so the note's colour reaches the screen's edges
+  (`Shell.tsx`, `DocumentView.tsx`). The Mac's native chrome is unchanged. Today's shipped iOS frame gets this too
+  with its next build (its note text then scrolls under its glass bars, as iOS does).
+- The `iphone-note` specimen (place chip, tool bars, keyboard bar) matches the web at 0.12%; the iOS suite is 18 of
+  18. Checked in the Simulator on the built-in interface in local mode (scratch library): a new note, its bars, and
+  the bar's fade and small title when it scrolls. Not checked (needs a tap): the keyboard and the bar on it live,
+  Done, the tool sheets opening, the zoom and swipe back. The page's tool panels are still the page's sheets.
+- Debug hooks: `FOLEVI_REBUILD_NEWNOTE=1` (a new note at launch), `FOLEVI_REBUILD_DEBUG=1` (the engine's state).
+  The Simulator build needs the built-in interface: `pnpm shell && pnpm sync` in apps/ios (bundled mode).
+
+Next in I1: the tool panels as native sheets around the page's content (or decide they stay the page's), scene
+restore; then I2. Tap checks in the Simulator need input allowed in the simulator panel.

@@ -647,8 +647,10 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
     // Native chrome mode: the native app draws the bars; the view keeps clear of them by the insets it was given.
     // Joined notes keep their own bars (the Mac app: each note's, to tell which has focus and to rearrange them).
     const nativeJoined = route.name === "doc" ? pane.joined : undefined;
+    // A note on the iPhone runs under the bars and keeps their room itself (DocumentView's #doc-scroll).
+    const underBars = inIphone && route.name === "doc";
     return (
-      <div className="relative flex min-h-0 flex-1 flex-col pb-[var(--native-inset-bottom,0px)] pt-[var(--native-inset-top,0px)]">
+      <div className={`relative flex min-h-0 flex-1 flex-col ${underBars ? "" : "pb-[var(--native-inset-bottom,0px)] pt-[var(--native-inset-top,0px)]"}`}>
         {nativeJoined ? <JoinedBar joined={nativeJoined} primary={pane.primary} title={title} tabTitle={tabTitle} sync={null} actions={actions} /> : null}
         <main id="main" tabIndex={-1} className={`min-h-0 flex-1 outline-none ${route.name === "doc" ? "overflow-hidden" : "overflow-y-auto"}`}>
           {children}

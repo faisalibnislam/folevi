@@ -1,9 +1,12 @@
 // The iOS rebuild's frame (docs/IOS_REBUILD_PLAN.md, I1), while it's being built: Debug builds only, and only with
 // FOLEVI_REBUILD=1 in the environment (or the `folevi.rebuild` setting). Release builds, TestFlight and today's
-// frame are untouched. Screens are placeholders that name their route until the lists land (I3).
+// frame are untouched. Screens are placeholders that name their route until the lists land (I3); a note is the real
+// note page (RebuildNote.swift) on today's app's one web view and engine.
+import SafariServices
 import SwiftUI
 import UIKit
 import FoleviDesign
+import FoleviEngine
 import FoleviPhone
 import FoleviScreens
 
@@ -30,21 +33,151 @@ enum RebuildFrame {
 
     static func controller() -> UIViewController {
         FoleviFonts.register()
-        let host = UIHostingController(rootView: RebuildRoot(model: model, menus: menus))
-        host.view.backgroundColor = .clear
-        return host
+        return RebuildFrameController(frame: model, menus: menus)
     }
+}
+
+/// The window's root: the Page View parked at the back (the engine runs in it; a note's screen adopts it), the
+/// frame over it, the keyboard followed for the note's bars. Links from the page and the engine arrive here.
+@MainActor
+final class RebuildFrameController: UIViewController, PhoneRouting {
+    let host: WebHost
+    let model: PhoneModel
+    let pageHost: PageViewHost
+    let frame: PhoneFrameModel
+    let menus: PhoneMenus
+    private var observers: [Observer] = []
+    private var tokens: [NSObjectProtocol] = []
+
+    init(frame: PhoneFrameModel, menus: PhoneMenus) {
+        let host = WebHost.take()
+        self.host = host
+        self.frame = frame
+        self.menus = menus
+        let transport = PhoneEngineTransport(host: host)
+        let info = Bundle.main.infoDictionary
+        let platform: AppInfo.Platform = UIDevice.current.userInterfaceIdiom == .pad ? .ipados : .ios
+        let client = EngineClient(transport: transport, place: ShellPlaces.state.current ?? "", app: AppInfo(platform: platform, version: info?["CFBundleShortVersionString"] as? String ?? "0", build: info?["CFBundleVersion"] as? String ?? "0", protocol: EngineContract.protocolVersion, schemaHash: EngineContract.schemaHash))
+        model = PhoneModel(client: client)
+        pageHost = PageViewHost(pageView: host.pageView)
+        super.init(nibName: nil, bundle: nil)
+        host.viewController = self
+        WebHost.current = host
+        host.onPageLifecycle = { [weak transport] event in transport?.pageEvent(event) }
+        model.router = self
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    deinit { tokens.forEach(NotificationCenter.default.removeObserver) }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = Chrome.canvas
+        pageHost.parking = view
+        pageHost.park()
+        let root = UIHostingController(rootView: RebuildRoot(model: frame, menus: menus, phone: model, pageHost: pageHost))
+        root.view.backgroundColor = .clear
+        addChild(root)
+        root.view.frame = view.bounds
+        root.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(root.view)
+        root.didMove(toParent: self)
+        // No note on screen any more: the page view goes back behind the screens and lets the note go.
+        observers.append(Observer { [weak self] in
+            guard let self else { return }
+            if case .note = self.frame.top { return }
+            if self.model.shownNote != nil {
+                self.pageHost.park()
+                self.model.closeNote()
+            }
+        })
+        let center = NotificationCenter.default
+        tokens = [
+            center.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main) { [weak self] note in
+                let end = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue ?? .zero
+                MainActor.assumeIsolated { self?.keyboardMoved(to: end, hiding: false) }
+            },
+            center.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.keyboardMoved(to: .zero, hiding: true) }
+            },
+        ]
+        model.start()
+        // FOLEVI_REBUILD_NEWNOTE=1: a new note at launch (for checking the note page headlessly; scratch data only).
+        if ProcessInfo.processInfo.environment["FOLEVI_REBUILD_NEWNOTE"] == "1" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in self?.model.newNote() }
+        }
+    }
+
+    private func keyboardMoved(to end: CGRect, hiding: Bool) {
+        guard let window = view.window else { return }
+        let overlap = hiding ? 0 : KeyboardBridge.coveredHeight(keyboard: end, bounds: window.bounds)
+        model.keyboardOverlap = overlap
+        let appeared = overlap > 0 && !model.keyboardVisible
+        model.keyboardVisible = overlap > 0
+        if appeared { model.refreshEditorState() }
+    }
+
+    // MARK: PhoneRouting
+
+    func open(_ route: ScreenRoute, source: CardSource?) {
+        switch route {
+        case .home: frame.open(.home)
+        case .folder(let id): frame.open(.folder(id))
+        case .tag(let id): frame.open(.tag(id))
+        case .notes(let v): frame.open(.notes(v))
+        case .shared: frame.open(.shared)
+        case .changes: frame.open(.changes)
+        default: model.toast("That screen comes to the new app soon.")
+        }
+    }
+
+    func openNote(_ id: String, source: CardSource?, focus: Bool) {
+        if case .note(let top) = frame.top, top == id { return }
+        if model.shownNote != id { model.prepare(id) }
+        frame.open(.note(id))
+        if focus { model.show(id, focus: true) }
+    }
+
+    func openExternal(_ url: URL) {
+        guard let scheme = url.scheme?.lowercased() else { return }
+        if scheme == "http" || scheme == "https" {
+            let safari = SFSafariViewController(url: url)
+            safari.preferredControlTintColor = Chrome.heading
+            present(safari, animated: true)
+        } else {
+            UIApplication.shared.open(url)
+        }
+    }
+
+    func share(noteId: String) { model.toast("Sharing comes to this screen soon.") }
 }
 
 private struct RebuildRoot: View {
     let model: PhoneFrameModel
     let menus: PhoneMenus
+    let phone: PhoneModel
+    let pageHost: PageViewHost
     // FOLEVI_REBUILD_SHEET=account opens the account sheet at launch (for checking it headlessly).
     @State private var account = ProcessInfo.processInfo.environment["FOLEVI_REBUILD_SHEET"] == "account"
 
     var body: some View {
-        PhoneFrameView(model: model, menus: menus, actions: PhoneFrameActions(fromTemplate: { model.open(FrameRoute(path: "/templates")) })) { route in
-            PlaceholderScreen(model: model, route: route) { account = true }
+        PhoneFrameView(model: model, menus: menus, aiOn: phone.aiOn, actions: PhoneFrameActions(newNote: { phone.newNote() }, fromTemplate: { model.open(FrameRoute(path: "/templates")) })) { route in
+            if case .note(let id) = route {
+                RebuildNoteScreen(noteId: id, model: phone, pageHost: pageHost, frame: model, menus: menus)
+            } else {
+                PlaceholderScreen(model: model, route: route) { account = true }
+            }
+        }
+        .overlay(alignment: .top) {
+            ToastStack(model: phone)
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["FOLEVI_REBUILD_DEBUG"] == "1" {
+                Text("gate \(phone.gate?.gate ?? "none") known \(phone.gateKnown ? "yes" : "no") state \(String(describing: phone.client.state)) note \(phone.shownNote ?? "-")")
+                    .font(.caption2).padding(4).background(.yellow).padding(.top, 60)
+            }
+            #endif
         }
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { screen in
             // FOLEVI_REBUILD_SHEET=create: the Create menu at launch, over where + sits.
@@ -95,6 +228,7 @@ private struct PlaceholderScreen: View {
                 Text(route.path).webText(.role(.footnote)).foregroundStyle(.secondary)
                 ForEach(["/folders/sample", "/d/sample-note", "/tasks/completed", "/calendar", "/documents"], id: \.self) { path in
                     WebButton("Open \(path)", variant: .secondary) { model.open(FrameRoute(path: path)) }
+                        .phoneZoomSource(String(path.split(separator: "/").last ?? ""))
                 }
                 ForEach(0..<40, id: \.self) { i in
                     Text("Row \(i + 1)").webText(.role(.body)).foregroundStyle(.primary).frame(height: 44)

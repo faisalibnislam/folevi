@@ -565,6 +565,20 @@
         "iphone.text",
         "iphone.tabbar"
       ]
+    },
+    {
+      "id": "iphone-note",
+      "platforms": [
+        "ios"
+      ],
+      "width": 473,
+      "padding": 40,
+      "gap": 24,
+      "samples": [
+        "iphone.place",
+        "iphone.notebars",
+        "iphone.keybar"
+      ]
     }
   ]
 }

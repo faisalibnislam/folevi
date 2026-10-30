@@ -93,19 +93,22 @@ public struct WebPillButton<Label: View>: View {
 public struct WebGlassTextButton: View {
     let title: String
     let strong: Bool
+    /// Glass with the label at 600 (a note's Done, `.iphone-done`).
+    let semibold: Bool
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
 
-    public init(_ title: String, strong: Bool = false, action: @escaping () -> Void = {}) {
+    public init(_ title: String, strong: Bool = false, semibold: Bool = false, action: @escaping () -> Void = {}) {
         self.title = title
         self.strong = strong
+        self.semibold = semibold
         self.action = action
     }
 
     public var body: some View {
         Button(action: action) {
             let text = Text(title)
-                .webText(.role(.headline, weight: strong ? FoleviTokens.FontWeight.semibold : FoleviTokens.FontWeight.medium))
+                .webText(.role(.headline, weight: strong || semibold ? FoleviTokens.FontWeight.semibold : FoleviTokens.FontWeight.medium))
                 .lineLimit(1)
                 .padding(.horizontal, 16)
                 .frame(height: 44)

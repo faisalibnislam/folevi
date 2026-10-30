@@ -24,8 +24,35 @@ public struct PhoneFrameActions {
     }
 }
 
+public extension EnvironmentValues {
+    /// The frame's namespace for the zoom from a note's card or row into the note.
+    @Entry var phoneZoom: Namespace.ID?
+}
+
+public extension View {
+    /// A card or row a note opens from: the note zooms out of it (and back into it on the way back), as iOS's
+    /// zoom transition does (the web's transitions.ts copies it).
+    func phoneZoomSource(_ noteId: String) -> some View {
+        modifier(ZoomSource(id: noteId))
+    }
+}
+
+private struct ZoomSource: ViewModifier {
+    let id: String
+    @Environment(\.phoneZoom) private var zoom
+
+    func body(content: Content) -> some View {
+        if let zoom {
+            content.matchedTransitionSource(id: id, in: zoom)
+        } else {
+            content
+        }
+    }
+}
+
 public struct PhoneFrameView<Screen: View>: View {
     @Bindable var model: PhoneFrameModel
+    @Namespace private var zoom
     let menus: PhoneMenus
     let aiOn: Bool
     /// Whether the tab bar steps out of the way (the keyboard, Select).
@@ -100,8 +127,19 @@ public struct PhoneFrameView<Screen: View>: View {
             screen(first)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: PhoneStackEntry.self) { entry in
-                    screen(entry.route).toolbar(.hidden, for: .navigationBar)
+                    destination(entry.route)
                 }
+        }
+        .environment(\.phoneZoom, zoom)
+    }
+
+    /// A pushed screen; a note zooms out of the card it was opened from.
+    @ViewBuilder
+    private func destination(_ route: FrameRoute) -> some View {
+        if case .note(let id) = route {
+            screen(route).toolbar(.hidden, for: .navigationBar).navigationTransition(.zoom(sourceID: id, in: zoom))
+        } else {
+            screen(route).toolbar(.hidden, for: .navigationBar)
         }
     }
 }

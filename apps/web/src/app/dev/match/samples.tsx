@@ -2,10 +2,11 @@
 
 
 import type { ReactNode } from "react";
-import { Bell, CalendarDays, Check, ChevronDown, ChevronLeft, Copy, House, MoreHorizontal, Plus, SquareCheckBig, Trash, X } from "lucide-react";
+import { AtSign, Bell, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, House, Image as ImageIcon, IndentDecrease, IndentIncrease, Link2, MessageCircle, MoreHorizontal, Paintbrush, Plus, Redo2, SquareCheck, SquareCheckBig, Trash, Type, Undo2, X } from "lucide-react";
 import { Button, IconButton } from "@/components/ui/Button";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { GlassCircle, GlassPill, GlassTextButton, PillButton } from "@/components/iphone/Glass";
+import { FolderGlyph } from "@/components/ui/FolderGlyph";
 
 /**
  * Development only: the web app's components as samples for Folevi for Mac (docs/MAC_REBUILD_PLAN.md section 3).
@@ -219,6 +220,81 @@ const SAMPLES: Sample[] = [
             <span className="grid h-10 w-10 place-items-center rounded-capsule bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.18)]">
               <Plus size={22} strokeWidth={2.6} aria-hidden />
             </span>
+          </button>
+        </div>
+      </div>
+    ),
+  },
+  // A note's bars (components/iphone/NoteChrome.tsx's place chip, NoteBars.tsx's tool bars and the bar on the
+  // keyboard: their markup and classes, without the editor). On the keyboard bar the line is a to-do and there's
+  // nothing to redo.
+  {
+    id: "iphone.place",
+    node: (
+      <a href="#" aria-label="In Travel" title="In Travel" className="ui-liquid flex h-8 max-w-full items-center gap-1.5 rounded-capsule pl-2.5 pr-2 text-footnote font-medium text-heading">
+        <FolderGlyph color="moss" size={15} />
+        <span className="min-w-0 truncate">Travel</span>
+        <ChevronRight size={13} strokeWidth={2.4} aria-hidden className="flex-none text-faint" />
+      </a>
+    ),
+  },
+  {
+    id: "iphone.notebars",
+    node: (
+      <div className="flex w-[393px] items-end justify-between gap-3 px-4">
+        <div role="toolbar" aria-label="Note tools" className="ui-liquid flex h-[60px] items-center gap-0.5 rounded-capsule p-1">
+          <PillButton label="Comments" className="!h-[52px] !min-w-[52px]">
+            <MessageCircle size={23} strokeWidth={2} aria-hidden />
+          </PillButton>
+          <PillButton label="Style" className="!h-[52px] !min-w-[52px]">
+            <Paintbrush size={22} strokeWidth={1.85} aria-hidden />
+          </PillButton>
+          <PillButton label="Format" className="!h-[52px] !min-w-[52px]">
+            <Type size={24} strokeWidth={2} aria-hidden />
+          </PillButton>
+        </div>
+        <div role="toolbar" aria-label="Add to the note" className="ui-liquid flex h-[60px] items-center gap-0.5 rounded-capsule p-1">
+          <PillButton label="Foli AI" className="!h-[52px] !min-w-[52px]">
+            <AiIcon size={26} />
+          </PillButton>
+          <PillButton label="Insert" className="!h-[52px] !min-w-[52px]">
+            <span className="grid h-[38px] w-[38px] place-items-center rounded-capsule bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.18)]">
+              <Plus size={22} strokeWidth={2.4} aria-hidden />
+            </span>
+          </PillButton>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: "iphone.keybar",
+    node: (
+      <div className="w-[393px] px-2 pb-2">
+        <div role="toolbar" aria-label="Writing tools" className="ui-liquid flex h-12 items-center rounded-capsule px-0.5">
+          <div className="flex min-w-0 flex-1 items-center overflow-hidden">
+            {(
+              [
+                ["Insert", <Plus key="i" size={23} strokeWidth={2.2} aria-hidden />],
+                ["Format", <span key="f" className="text-headline font-semibold leading-none tracking-[-0.01em]">Aa</span>],
+                ["Foli AI", <AiIcon key="a" size={22} />],
+                ["To-do", <SquareCheck key="t" size={22} strokeWidth={2} aria-hidden />, "on"],
+                ["Indent", <IndentIncrease key="in" size={22} strokeWidth={2} aria-hidden />],
+                ["Outdent", <IndentDecrease key="out" size={22} strokeWidth={2} aria-hidden />],
+                ["Link", <Link2 key="l" size={22} strokeWidth={2} aria-hidden />],
+                ["Mention a date or page", <AtSign key="m" size={22} strokeWidth={2} aria-hidden />],
+                ["Image", <ImageIcon key="im" size={22} strokeWidth={2} aria-hidden />],
+                ["Undo", <Undo2 key="u" size={22} strokeWidth={2} aria-hidden />],
+                ["Redo", <Redo2 key="r" size={22} strokeWidth={2} aria-hidden />, "off"],
+              ] as [string, ReactNode, string?][]
+            ).map(([label, icon, state]) => (
+              <button key={label} type="button" aria-label={label} title={label} disabled={state === "off"} className={`grid h-11 w-11 flex-none place-items-center rounded-capsule text-heading disabled:opacity-30 ${state === "on" ? "bg-heading !text-canvas" : ""}`}>
+                {icon}
+              </button>
+            ))}
+          </div>
+          <span aria-hidden className="mx-0.5 h-6 w-px flex-none bg-[var(--iphone-separator)]" />
+          <button type="button" aria-label="Hide keyboard" title="Hide keyboard" className="grid h-11 w-11 flex-none place-items-center rounded-capsule text-heading">
+            <ChevronDown size={24} strokeWidth={2.2} aria-hidden />
           </button>
         </div>
       </div>

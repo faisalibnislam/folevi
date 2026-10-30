@@ -1046,9 +1046,10 @@ export function DocumentView({ documentId }: { documentId: string }) {
           className={
             iphone
               ? nativeChromeMode
-                ? // Native chrome mode: the bars' room is the holder's padding (--native-inset-*), so the page
-                  // starts right under the native bar and needs only a little room at the end.
-                  "fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-6"
+                ? // Native chrome mode: the page runs under the native bars, as on the web's own phone layout, and
+                  // keeps their room (--native-inset-*) inside, so the note's colour reaches the screen's edges
+                  // and what scrolls goes under the bars (Shell leaves the holder unpadded for a note).
+                  "fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(var(--native-inset-bottom,0px)+24px)] pt-[var(--native-inset-top,0px)]"
                 : `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "pt-[calc(env(safe-area-inset-top)+60px)]" : ""}`
               : `fb-page relative h-full overflow-y-auto rounded-panel px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`
           }

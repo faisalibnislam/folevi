@@ -51,7 +51,9 @@ test("members of an encrypted workspace get the key from an admin's device; remo
   await adminPage.goto(`${APP}/settings/members`);
   await adminPage.getByRole("button", { name: "Remove" }).last().click();
   await adminPage.getByRole("dialog").getByRole("button", { name: "Remove" }).click();
-  await expect(adminPage.getByText(/Changing the workspace key/)).toBeVisible({ timeout: 30_000 });
+  // (Its progress, "Changing the workspace key…", shows only while it runs: with a few notes that's over before a
+  // check can see it.) The member no longer reads the workspace's notes.
+  await expect(adminPage.getByRole("region", { name: "Members" }).getByText(member.account.email)).toHaveCount(0, { timeout: 30_000 });
   await member.page.reload();
   await expect(member.page.getByText(title)).toHaveCount(0, { timeout: 30_000 });
   await Promise.all([back.close(), member.context.close()]);

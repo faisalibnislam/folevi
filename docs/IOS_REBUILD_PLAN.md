@@ -136,4 +136,12 @@ iPhone); tests use the Simulator and scratch data. No em dashes. The assistant i
 
 ## 7. Where it stands
 
-2026-10-30: plan written, I0 starting.
+2026-10-30: plan written, I0 started.
+- The shared package (`apps/native-kit`) builds for the iOS Simulator again (one Mac-only line in `FrameModel`
+  was outside its `#if os(macOS)`), and needs iOS 18; the app's targets need iOS 18 too.
+- New target `FoleviPhone` (empty frame so far: `PhoneTab`, the three tabs and their first routes).
+- Today's iOS app builds again: its iPhone screens (`apps/ios/ios/App/Native/Phone`) hadn't been updated for the
+  Settings pages and the `panesChange` event the Mac work added.
+
+Next in I0: the cross-platform split out of `FoleviMac`, `FoleviDesign` drawn on iOS (fonts, `WebText`, icons,
+cards) checked at @3x, and iPhone and iPad specimens in the match harness.

@@ -293,7 +293,11 @@ public final class FrameModel {
 
     /// Whether the Tab Overview (every tab as a picture) is showing.
     public var overviewShown = false {
-        didSet { if overviewShown { preview.hide() } }
+        didSet {
+            #if os(macOS)
+            if overviewShown { preview.hide() }
+            #endif
+        }
     }
     /// The tab picture under the pointer in the strip, and the notes' pictures.
     #if os(macOS)

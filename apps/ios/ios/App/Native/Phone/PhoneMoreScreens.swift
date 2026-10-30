@@ -72,6 +72,10 @@ extension PhoneFrameController {
         case .settingsWorkspaceData: "Workspace data"
         case .settingsData: "Import & Export"
         case .settingsAiExport: "Export Foli AI data"
+        case .settingsWorkspace: "Workspace"
+        case .settingsSecurity: "Security"
+        case .settingsPrivacy: "Privacy"
+        case .settingsDeleteAccount: "Delete account"
         case .reviews: "Reviews"
         case .graph: "Graph"
         }

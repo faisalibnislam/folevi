@@ -17,12 +17,13 @@ let strict: [SwiftSetting] = [
 let package = Package(
     name: "FoleviKit",
     defaultLocalization: "en",
-    platforms: [.iOS(.v17), .macOS(.v15)],
+    platforms: [.iOS(.v18), .macOS(.v15)],
     products: [
         .library(name: "FoleviEngine", targets: ["FoleviEngine"]),
         .library(name: "FoleviDesign", targets: ["FoleviDesign"]),
         .library(name: "FoleviScreens", targets: ["FoleviScreens"]),
         .library(name: "FoleviMac", targets: ["FoleviMac"]),
+        .library(name: "FoleviPhone", targets: ["FoleviPhone"]),
     ],
     targets: [
         .target(
@@ -45,6 +46,13 @@ let package = Package(
         .target(
             name: "FoleviMac",
             dependencies: ["FoleviEngine", "FoleviDesign", "FoleviScreens"],
+            swiftSettings: strict
+        ),
+        // The iPhone and iPad frame (docs/IOS_REBUILD_PLAN.md, I0 and I1): the web's phone layout drawn natively.
+        // Used by the iOS app only: its UIKit pieces compile to nothing on macOS (#if os(iOS)).
+        .target(
+            name: "FoleviPhone",
+            dependencies: ["FoleviEngine", "FoleviDesign"],
             swiftSettings: strict
         ),
         .testTarget(

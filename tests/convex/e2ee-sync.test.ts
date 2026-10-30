@@ -255,7 +255,8 @@ describe("sealed notes through sync.push", () => {
     const content = JSON.parse(snaps.s[0]!.content ?? snaps.chunks.map((c) => c.data).join(""));
     expect(content.e2ee).toBe(1);
     expect(content.blocks).toHaveLength(1);
-    expect(JSON.stringify(snaps)).not.toContain("ZQXJ");
+    // With its hyphen: the ids in the rows are random letters and digits and can hold "ZQXJ" by chance.
+    expect(JSON.stringify(snaps)).not.toContain("ZQXJ-");
   });
 
   test("an old client's settle and refresh never derive text for a sealed note", async () => {

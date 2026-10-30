@@ -71,6 +71,7 @@ describe("versions", () => {
     expect(JSON.parse(content!.content!).blocks.map((x: { id: string }) => x.id)).toEqual([b.id, c.id]);
   });
 
+  // 1,100 lines in 11 saves: more than the default 5 seconds on a busy CI runner.
   test("a page of more than 1024 lines: who wrote each line still comes back (as lists, not objects keyed by line)", async () => {
     const t = setup();
     const { owner, workspaceId, documentId } = await page(t, "ver-big");
@@ -84,7 +85,7 @@ describe("versions", () => {
     const v = await owner.as.mutation(api.documents.createSnapshot, { documentId, reason: "manual" });
     const content = await owner.as.query(api.documents.snapshotContent, { snapshotId: v.id! });
     expect(content!.authors!.length).toBe(1102);
-  });
+  }, 30_000);
 
   test("history is for people who can edit the page", async () => {
     const t = setup();

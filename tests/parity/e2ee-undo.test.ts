@@ -75,7 +75,8 @@ describe("Changes in an encrypted workspace", () => {
     expect(theirs.blocks.map((x) => x.text)).toEqual([[{ type: "text", text: "ZQXJ-ORIGINAL line" }]]);
     // Nothing readable on the server.
     const rows = await t.run(async (ctx) => JSON.stringify(await ctx.db.query("blocks").collect()));
-    expect(rows).not.toContain("ZQXJ");
+    // With its hyphen: ids (ULIDs) are random letters and digits and can hold "ZQXJ" by chance.
+    expect(rows).not.toContain("ZQXJ-");
     await a.router.dispose();
     await b.router.dispose();
   }, 60_000);

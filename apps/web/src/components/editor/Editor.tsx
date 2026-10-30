@@ -236,8 +236,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
   const editor = useEditor({
     extensions,
     editable,
-    // Built in the same render as the page (a client-only screen): its body never paints empty for a frame first.
-    immediatelyRender: typeof window !== "undefined",
+    // Not during render: code around the editor reads its view, which only exists once it's mounted.
+    immediatelyRender: false,
     content,
     editorProps,
     onCreate: ({ editor: ed }) => {

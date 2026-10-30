@@ -38,6 +38,15 @@ extension NativeFrame {
     }
 
     static func installEval() {
+        // cmd scrollBench {"distance":3000,"seconds":3}   the native screen scrolled down and back, a step on every
+        // display frame (as a trackpad's momentum does): the frames the main thread missed meanwhile.
+        MacEval.commands["scrollBench"] = { req, done in
+            let mains = WindowManager.shared.mains
+            guard let frame = mains.first?.frame,
+                  let scroll = Self.scrollViews(in: frame.root.split.content.view).max(by: { $0.bounds.width * $0.bounds.height < $1.bounds.width * $1.bounds.height })
+            else { return done(["error": "no native screen scrolling"]) }
+            ScrollBench(scroll: scroll, distance: req["distance"] as? Double ?? 3000, seconds: req["seconds"] as? Double ?? 3, done: done).start()
+        }
         MacEval.commands["frame"] = { req, done in
             let mains = WindowManager.shared.mains
             let i = req["window"] as? Int ?? 0
@@ -222,4 +231,60 @@ extension NativeFrame {
         ]
     }
 }
+/// Scrolls a scroll view along a smooth path in step with the display and counts the frames it missed.
+@MainActor
+final class ScrollBench: NSObject {
+    private let scroll: NSScrollView
+    private let distance: Double
+    private let seconds: Double
+    private let done: ([String: Any]) -> Void
+    private var link: CADisplayLink?
+    private var began: CFTimeInterval = 0
+    private var last: CFTimeInterval = 0
+    private var gaps: [Double] = []
+    private var period: Double = 1.0 / 60
+
+    init(scroll: NSScrollView, distance: Double, seconds: Double, done: @escaping ([String: Any]) -> Void) {
+        self.scroll = scroll
+        self.distance = distance
+        self.seconds = seconds
+        self.done = done
+    }
+
+    func start() {
+        let link = scroll.displayLink(target: self, selector: #selector(step(_:)))
+        link.add(to: .main, forMode: .common)
+        self.link = link
+        objc_setAssociatedObject(scroll, "scrollBench", self, .OBJC_ASSOCIATION_RETAIN)
+    }
+
+    @objc private func step(_ link: CADisplayLink) {
+        let now = link.timestamp
+        period = link.targetTimestamp - link.timestamp > 0 ? link.targetTimestamp - link.timestamp : period
+        if began == 0 { began = now; last = now }
+        else { gaps.append(now - last); last = now }
+        // Down and back up again along a sine: slow at the turns, fastest in between.
+        let p = min(1, (now - began) / seconds)
+        let max = Swift.max(0, (scroll.documentView?.bounds.height ?? 0) - scroll.contentView.bounds.height)
+        let y = min(max, distance) * (1 - cos(2 * .pi * p)) / 2 - scroll.contentInsets.top
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: y))
+        scroll.reflectScrolledClipView(scroll.contentView)
+        guard p >= 1 else { return }
+        link.invalidate()
+        self.link = nil
+        objc_setAssociatedObject(scroll, "scrollBench", nil, .OBJC_ASSOCIATION_RETAIN)
+        let missed = gaps.reduce(0) { $0 + Swift.max(0, Int(($1 / period).rounded()) - 1) }
+        let sorted = gaps.sorted()
+        done(["value": [
+            "refreshHz": (1 / period).rounded(),
+            "frames": gaps.count,
+            "missedFrames": missed,
+            "late": gaps.filter { $0 > period * 1.5 }.count,
+            "worstMs": ((sorted.last ?? 0) * 1000).rounded(),
+            "p95Ms": ((sorted.isEmpty ? 0 : sorted[Swift.min(sorted.count - 1, Int(Double(sorted.count) * 0.95))]) * 1000 * 10).rounded() / 10,
+            "scrolled": Swift.min(max, distance),
+        ]])
+    }
+}
+
 #endif

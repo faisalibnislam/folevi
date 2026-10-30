@@ -71,6 +71,16 @@ public struct WebCornersShape: Shape {
     }
 }
 
+extension View {
+    /// Drawn once into one picture (SwiftUI's drawingGroup), with room round it for its shadows: a card's blurred
+    /// shadows were composited again on every frame while a screen scrolled, and the
+    /// window server missed most frames (Instruments: nearly every frame a hitch). The picture looks the same; it's
+    /// drawn again only when the card changes (its hover too).
+    func flattened(margin: CGFloat = 48) -> some View {
+        padding(margin).drawingGroup().padding(-margin)
+    }
+}
+
 /// A web box on any `WebCornersShape`: its background, then every `box-shadow` layer as CSS paints them (outer
 /// shadows only outside the shape, inset ones only inside).
 struct WebShapeBox: View {
@@ -182,7 +192,7 @@ public struct WebNoteCard: View {
 
     public var body: some View {
         GeometryReader { geo in
-            face(width: geo.size.width, height: geo.size.height)
+            face(width: geo.size.width, height: geo.size.height).flattened()
         }
         .aspectRatio(Self.aspect, contentMode: .fit)
         .accessibilityElement(children: .ignore)
@@ -463,7 +473,10 @@ public struct WebFolderCard: View {
                 .frame(width: w, height: h * 0.95)
                 .offset(y: h * 0.05)
         }
-        let notes = notesLayer(w: w, h: h, cq: cq)
+        // The back and the papers flattened (their shadows are the costly part); the frosted front isn't, since
+        // drawn into one picture its backdrop and inner shading came out differently from the web's.
+        .flattened()
+        let notes = notesLayer(w: w, h: h, cq: cq).flattened()
         return ZStack(alignment: .topLeading) {
             backLayer
             notes

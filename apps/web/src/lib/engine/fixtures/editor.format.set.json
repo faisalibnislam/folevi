@@ -1,0 +1,13 @@
+{
+  "kind": "editor",
+  "name": "format.set",
+  "description": "The line as a Subtitle, centred, its text in moss (revision 21).",
+  "args": {
+    "textStyle": "subtitle",
+    "align": "center",
+    "textColor": "moss"
+  },
+  "result": {
+    "ok": true
+  }
+}

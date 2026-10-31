@@ -1,0 +1,12 @@
+{
+  "kind": "editor",
+  "name": "format.set",
+  "description": "Clear formatting and the highlight (revision 21).",
+  "args": {
+    "clear": true,
+    "highlight": null
+  },
+  "result": {
+    "ok": true
+  }
+}

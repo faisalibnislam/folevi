@@ -151,6 +151,53 @@ const matches = (q: string, text: string) => {
   return q.includes(" ") ? t.includes(q) : t.split(/[^\p{L}\p{N}]+/u).some((w) => w.startsWith(q));
 };
 
+// The iPhone layout: each picture in its block's own colour family (lines and its one detail), so the grid
+// reads at a glance; the tiles are touch-sized and nothing drags out of a sheet there.
+const TILE_HUE: Partial<Record<PreviewKind, string>> = {
+  todo: "moss", table: "moss", gallery: "moss", kanban: "moss", monthGrid: "moss",
+  image: "ember", unsplash: "ember", scan: "ember", audio: "ember", file: "ember",
+  flowchart: "plum", mindmap: "plum", whiteboard: "plum", wireframe: "plum", mermaid: "plum",
+  chart: "marigold", stickies: "marigold", callout: "marigold", date: "marigold",
+  bookmark: "coral", embed: "coral",
+};
+
+/** An item's id for the native apps (`insert { kind }`, revision 21): its accessible name in lower case, hyphenated. */
+const kindOf = (t: { label: string; name?: string }) =>
+  (t.name ?? t.label)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+/**
+ * What the native apps draw as their own Insert sheet (revision 21): the sections, each tile's id, label, picture
+ * and colour family, in the iPhone layout's order (the scanner's tiles are the app's to add where the device has
+ * one). Read by test/native/insert-catalog.test.ts, which writes them for Swift.
+ */
+export const NATIVE_INSERT_SECTIONS = SECTIONS.map((s) => ({
+  title: s.title,
+  tiles: s.tiles.map((t) => ({ kind: kindOf(t), label: t.label, name: t.name ?? null, preview: (t.action as InsertItem).preview ?? null, hue: TILE_HUE[(t.action as InsertItem).preview] ?? null, keywords: t.keywords })),
+}));
+
+/** The scanner's tiles (iOS only), for the native Insert sheet. */
+export const NATIVE_SCAN_TILES = SCAN.map((i) => ({ kind: kindOf(i), label: i.label, name: null, preview: i.preview, hue: TILE_HUE[i.preview] ?? null, keywords: `${i.label} ${i.keywords ?? ""}` }));
+
+/**
+ * Inserts the item with this native id below the current block (or a plain table, "quick-table-<rows>x<cols>");
+ * false when there's no such item.
+ */
+export function insertKind(editor: Editor, kind: string): boolean {
+  const quick = /^quick-table-([1-9])x([1-9])$/.exec(kind);
+  if (quick) {
+    focusInsideBlock(editor, insertBlockAfterCurrent(editor, "table", { headerRow: true, rows: emptyTableRows(Number(quick[1]), Number(quick[2])) }));
+    return true;
+  }
+  const all = [...SECTIONS.flatMap((s) => s.tiles), ...tiles("media", SCAN.map((i) => i.label))];
+  const tile = all.find((t) => kindOf(t) === kind);
+  if (!tile) return false;
+  runInsert(editor, tile.action);
+  return true;
+}
+
 /** Runs an insert below the current block. */
 function runInsert(editor: Editor, a: InsertAction) {
   if (a.run) a.run(editor);
@@ -209,15 +256,6 @@ function useInsertDrag(editor: Editor | null, disabled: boolean, action: InsertA
 const PICTURE = "grid h-14 w-full place-items-center overflow-hidden rounded-chip bg-sunken/80 transition-[background-color,transform] duration-150";
 const PICTURE_LIVE = "group-hover:bg-accent-soft/70 group-active:scale-[0.97]";
 
-// The iPhone layout: each picture in its block's own colour family (lines and its one detail), so the grid
-// reads at a glance; the tiles are touch-sized and nothing drags out of a sheet there.
-const TILE_HUE: Partial<Record<PreviewKind, string>> = {
-  todo: "moss", table: "moss", gallery: "moss", kanban: "moss", monthGrid: "moss",
-  image: "ember", unsplash: "ember", scan: "ember", audio: "ember", file: "ember",
-  flowchart: "plum", mindmap: "plum", whiteboard: "plum", wireframe: "plum", mermaid: "plum",
-  chart: "marigold", stickies: "marigold", callout: "marigold", date: "marigold",
-  bookmark: "coral", embed: "coral",
-};
 
 function PhoneTile({ tile, editor, disabled, onDone }: { tile: Tile; editor: Editor | null; disabled: boolean; onDone?: () => void }) {
   const hue = TILE_HUE[(tile.action as InsertItem).preview];

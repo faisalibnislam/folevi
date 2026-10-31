@@ -165,6 +165,11 @@ enum PhoneSheetSpace {
     static let name = "phone-sheet"
 }
 
+extension EnvironmentValues {
+    /// A fitted sheet hears how tall its panel would be with nothing scrolled away (its detent).
+    @Entry var phoneSheetNaturalHeight: ((CGFloat) -> Void)?
+}
+
 /// What a sheet shows, as Sheet.tsx lays it out: the grabber, the header (when it has a title, buttons or Close),
 /// a line under it, then the content, scrolling, with room at its foot for the home indicator, and the footer.
 public struct PhoneSheetPanel<Leading: View, Trailing: View, Content: View, Footer: View>: View {
@@ -179,6 +184,10 @@ public struct PhoneSheetPanel<Leading: View, Trailing: View, Content: View, Foot
     let scrolls: Bool
     let contentHeight: ((CGFloat) -> Void)?
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.phoneSheetNaturalHeight) private var naturalHeight
+    /// The panel's height, the scroll view's and its content's: the panel with nothing scrolled away is the first
+    /// less the second plus the third.
+    @State private var heights = (panel: CGFloat(0), scroller: CGFloat(0), content: CGFloat(0))
 
     public init(title: String? = nil, description: String? = nil, close: (() -> Void)?, scrolls: Bool = true, contentHeight: ((CGFloat) -> Void)? = nil, @ViewBuilder leading: () -> Leading, @ViewBuilder trailing: () -> Trailing, @ViewBuilder content: () -> Content, @ViewBuilder footer: () -> Footer) {
         self.title = title
@@ -224,17 +233,28 @@ public struct PhoneSheetPanel<Leading: View, Trailing: View, Content: View, Foot
         }
         .frame(maxWidth: .infinity, alignment: .top)
         .coordinateSpace(name: PhoneSheetSpace.name)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights.panel = $0; report() }
+    }
+
+    private func report() {
+        guard let naturalHeight, heights.panel > 0 else { return }
+        naturalHeight(scrolls ? heights.panel - heights.scroller + heights.content : heights.panel)
     }
 
     @ViewBuilder
     private func body(_ content: Content) -> some View {
         let inner = VStack(alignment: .leading, spacing: 0) { content }
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight?($0) }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                contentHeight?($0)
+                heights.content = $0
+                report()
+            }
         if scrolls {
             ScrollView { inner }
                 .scrollBounceBehavior(.basedOnSize)
                 .scrollContentBackground(.hidden)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights.scroller = $0; report() }
         } else {
             inner
         }
@@ -288,8 +308,7 @@ private struct PhoneSheetHost<Body: View>: View {
 
     var body: some View {
         content()
-            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { if size == .fit { fitted = $0 } }
-            .fixedSize(horizontal: false, vertical: size == .fit)
+            .environment(\.phoneSheetNaturalHeight, size == .fit ? { h in if abs(fitted - h) > 0.5 { fitted = h } } : nil)
             .frame(maxHeight: .infinity, alignment: .top)
             .presentationDetents(detents)
             .presentationDragIndicator(.hidden)
@@ -307,7 +326,9 @@ private struct PhoneSheetHost<Body: View>: View {
         let large = PhoneSheetDetents.large(screenHeight: screen.height, top: screen.top)
         switch size {
         case .fit:
-            return [.height(max(1, min(fitted, large - screen.bottom)))]
+            // (Until the panel has said how tall it is, the medium height: it settles on its own a frame later.)
+            let h = fitted > 0 ? fitted : PhoneSheetDetents.medium(screenHeight: screen.height, top: screen.top) - screen.bottom
+            return [.height(max(1, min(h, large - screen.bottom)))]
         case .medium:
             return [.height(PhoneSheetDetents.medium(screenHeight: screen.height, top: screen.top, blocks: snapToBlocks ? blocks : []) - screen.bottom), .large]
         case .large:

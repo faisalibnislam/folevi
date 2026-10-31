@@ -219,5 +219,20 @@ I1 continued (2026-10-31):
 - Debug hooks: `FOLEVI_REBUILD_NEWNOTE=1` (a new note at launch), `FOLEVI_REBUILD_DEBUG=1` (the engine's state).
   The Simulator build needs the built-in interface: `pnpm shell && pnpm sync` in apps/ios (bundled mode).
 
-Next in I1: the tool panels as native sheets around the page's content (or decide they stay the page's), scene
-restore; then I2. Tap checks in the Simulator need input allowed in the simulator panel.
+- **Format and Insert native** (2026-10-31, the owner's call): the note's Format and Insert tools are native sheets
+  (`PhoneFormatSheet.swift`, `PhoneInsertSheet.swift`), matching the web's iPhone panels at 0.08% and 0.00%
+  (`iphone-format`, `iphone-insert`; the iOS suite is 22 of 22). Contract revision 21 for them: `format.set`
+  (text style, colour, highlight, alignment, Page or Card, focus line, block background, callout tone, code
+  language, clear formatting), `editor.state.format` (the line's formatting), `format { block: "code" }`, and
+  `insert { kind }` taking any Insert tile by its id and `quick-table-<r>x<c>`. The Insert sheet's sections, tiles
+  and pictures are generated from the web's own components (`apps/web/test/native-insert-catalog.test.tsx` writes
+  `Generated/InsertCatalog.swift`; it fails when stale). Checked end to end in the Simulator: an insert by id, a
+  quick table and a `format.set` reach the editor (`FOLEVI_REBUILD_EDIT=1`); both sheets open
+  (`FOLEVI_REBUILD_SHEET=format|insert`). Fitted sheets now size from the panel's natural height and scroll past
+  the screen's.
+- Not yet: a note theme's own colour names and palette in Format (the fixed colours show); Style, Comments and
+  Foli AI are still the page's sheets: Style and Comments need the note's look and its comment threads in the
+  contract (views and commands), Foli AI is I5.
+
+Next in I1: Style and Comments natively (contract first), scene restore; then I2. Tap checks in the Simulator
+need input allowed in the simulator panel.

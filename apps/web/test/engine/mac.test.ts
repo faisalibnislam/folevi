@@ -151,7 +151,7 @@ describe("R8.9 editor commands", () => {
     runEditorCommand(o, "focus.toggle", {});
     expect(focusMode()).toBe(true);
     expect(closed).toBe(1);
-    expect(runEditorCommand(o, "state", {})).toMatchObject({ focus: true, locked: true, canLock: true });
+    expect(runEditorCommand(o, "state", {})).toMatchObject({ focus: true, locked: true, canLock: true, format: null });
     runEditorCommand(o, "note.lock", {});
     expect(locked).toBe(1);
     runEditorCommand(o, "focus.toggle", {});
@@ -162,7 +162,7 @@ describe("R8.9 editor commands", () => {
 
   it("the host sends them to the open note", async () => {
     const seen: string[] = [];
-    registerNote({ noteId: "d1", run: (name) => (seen.push(name), { ok: true }), state: () => ({ noteId: "d1", focused: true, canEdit: true, block: "paragraph", marks: [], link: false, undo: false, redo: false, focus: false, locked: false, canLock: false }), panel: () => null });
+    registerNote({ noteId: "d1", run: (name) => (seen.push(name), { ok: true }), state: () => ({ noteId: "d1", focused: true, canEdit: true, block: "paragraph", marks: [], link: false, undo: false, redo: false, focus: false, locked: false, canLock: false, format: null }), panel: () => null });
     for (const name of ["block.move", "block.duplicate", "focus.toggle", "note.lock"]) await ok({ kind: "editor", name, args: name === "block.move" ? { dir: "down" } : {} });
     expect(seen).toEqual(["block.move", "block.duplicate", "focus.toggle", "note.lock"]);
   });

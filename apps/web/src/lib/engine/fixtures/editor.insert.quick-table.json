@@ -1,0 +1,11 @@
+{
+  "kind": "editor",
+  "name": "insert",
+  "description": "A plain 3 by 4 table from the Insert sheet's Quick table (revision 21).",
+  "args": {
+    "kind": "quick-table-3x4"
+  },
+  "result": {
+    "ok": true
+  }
+}

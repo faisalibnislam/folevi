@@ -579,6 +579,30 @@
         "iphone.notebars",
         "iphone.keybar"
       ]
+    },
+    {
+      "id": "iphone-insert",
+      "platforms": [
+        "ios"
+      ],
+      "width": 473,
+      "padding": 40,
+      "gap": 24,
+      "samples": [
+        "iphone.insert"
+      ]
+    },
+    {
+      "id": "iphone-format",
+      "platforms": [
+        "ios"
+      ],
+      "width": 473,
+      "padding": 40,
+      "gap": 24,
+      "samples": [
+        "iphone.format"
+      ]
     }
   ]
 }

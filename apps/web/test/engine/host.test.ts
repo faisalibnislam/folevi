@@ -395,7 +395,7 @@ describe("editor commands and events", () => {
   it("note.show opens the note page and replies whether it's ready; note.ready follows", async () => {
     expect(await ok({ kind: "editor", name: "note.show", args: { id: "doc_1" } })).toEqual({ id: "doc_1", ready: false });
     expect(r.navigations).toEqual(["/d/doc_1"]);
-    registerNote({ noteId: "doc_1", run: () => ({ ok: true }), state: () => ({ noteId: "doc_1", focused: false, canEdit: true, block: "paragraph", marks: [], link: false, undo: false, redo: false, focus: false, locked: false, canLock: false }), panel: () => null });
+    registerNote({ noteId: "doc_1", run: () => ({ ok: true }), state: () => ({ noteId: "doc_1", focused: false, canEdit: true, block: "paragraph", marks: [], link: false, undo: false, redo: false, focus: false, locked: false, canLock: false, format: null }), panel: () => null });
     markNoteReady("doc_1", "Kyoto");
     host.flush();
     expect(posts.events("note.ready")[0]!.data).toEqual({ id: "doc_1", title: "Kyoto" });
@@ -416,7 +416,7 @@ describe("editor commands and events", () => {
   it("editor commands go to the open note, and are refused without one", async () => {
     expect((await errorOf({ kind: "editor", name: "format", args: { mark: "bold" } })).code).toBe("no_note");
     const calls: [string, unknown][] = [];
-    registerNote({ noteId: "doc_1", run: (name, args) => (calls.push([name, args]), { ok: true }), state: () => ({ noteId: "doc_1", focused: true, canEdit: true, block: "todo", marks: [], link: false, undo: true, redo: false, focus: false, locked: false, canLock: false }), panel: () => "format" });
+    registerNote({ noteId: "doc_1", run: (name, args) => (calls.push([name, args]), { ok: true }), state: () => ({ noteId: "doc_1", focused: true, canEdit: true, block: "todo", marks: [], link: false, undo: true, redo: false, focus: false, locked: false, canLock: false, format: null }), panel: () => "format" });
     expect(await ok({ kind: "editor", name: "format", args: { mark: "bold" } })).toEqual({ ok: true });
     expect(calls).toEqual([["format", { mark: "bold" }]]);
     host.flush();

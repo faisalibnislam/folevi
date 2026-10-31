@@ -1,0 +1,11 @@
+{
+  "kind": "editor",
+  "name": "insert",
+  "description": "An Insert panel tile by its id (revision 21): a mind map below the line.",
+  "args": {
+    "kind": "mind-map"
+  },
+  "result": {
+    "ok": true
+  }
+}

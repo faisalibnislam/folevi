@@ -32,7 +32,7 @@ const code = (fn: () => unknown) => {
 };
 
 /** Just enough of a Tiptap editor for the commands' checks. */
-const fakeEditor = { isDestroyed: false, isFocused: false, view: { hasFocus: () => false }, state: { selection: { $from: { depth: 0 } } }, isActive: () => false, can: () => ({ undo: () => true, redo: () => false }), commands: { focus: () => true, blur: () => true } };
+const fakeEditor = { isDestroyed: false, isFocused: false, view: { hasFocus: () => false }, state: { selection: { $from: { depth: 0 }, from: 0, to: 0, empty: true }, doc: { forEach: () => undefined } }, isActive: () => false, getAttributes: () => ({}), can: () => ({ undo: () => true, redo: () => false }), commands: { focus: () => true, blur: () => true } };
 
 describe("editor commands", () => {
   it("formatting waits for the editor and refuses a note that can only be read", () => {
@@ -41,6 +41,16 @@ describe("editor commands", () => {
     expect(code(() => runEditorCommand(options({ editor: fakeEditor as never }), "format", { mark: "blink" }))).toBe("invalid_args");
     expect(code(() => runEditorCommand(options({ editor: fakeEditor as never }), "format", {}))).toBe("invalid_args");
     expect(code(() => runEditorCommand(options({ editor: fakeEditor as never }), "insert", { kind: "spaceship" }))).toBe("invalid_args");
+  });
+
+  it("format.set (revision 21) checks what it's given", () => {
+    expect(code(() => runEditorCommand(options(), "format.set", { align: "center" }))).toBe("no_note");
+    expect(code(() => runEditorCommand(options({ editor: fakeEditor as never, readOnly: true }), "format.set", { align: "center" }))).toBe("read_only");
+    expect(code(() => runEditorCommand(options({ editor: fakeEditor as never }), "format.set", {}))).toBe("invalid_args");
+    expect(code(() => runEditorCommand(options({ editor: fakeEditor as never }), "format.set", { align: "diagonal" }))).toBe("invalid_args");
+    expect(code(() => runEditorCommand(options({ editor: fakeEditor as never }), "format.set", { textColor: "neon" }))).toBe("invalid_args");
+    expect(code(() => runEditorCommand(options({ editor: fakeEditor as never }), "format.set", { sparkle: true }))).toBe("invalid_args");
+    expect(code(() => runEditorCommand(options({ editor: fakeEditor as never }), "insert", { kind: "quick-table-0x4" }))).toBe("invalid_args");
   });
 
   it("panels, the note menu and Foli AI", () => {
@@ -59,8 +69,8 @@ describe("editor commands", () => {
     expect(document.documentElement.style.getPropertyValue("--native-inset-top")).toBe("96px");
     expect(document.documentElement.style.getPropertyValue("--native-inset-bottom")).toBe("44px");
     expect(code(() => runEditorCommand(options(), "insets", { top: -1, bottom: 0 }))).toBe("invalid_args");
-    expect(editorState(null, "doc_1", false)).toEqual({ noteId: "doc_1", focused: false, canEdit: true, block: "paragraph", marks: [], link: false, undo: false, redo: false, focus: false, locked: false, canLock: false });
-    expect(runEditorCommand(options({ editor: fakeEditor as never }), "state", {})).toMatchObject({ noteId: "doc_1", undo: true, redo: false });
+    expect(editorState(null, "doc_1", false)).toEqual({ noteId: "doc_1", focused: false, canEdit: true, block: "paragraph", marks: [], link: false, undo: false, redo: false, focus: false, locked: false, canLock: false, format: null });
+    expect(runEditorCommand(options({ editor: fakeEditor as never }), "state", {})).toMatchObject({ noteId: "doc_1", undo: true, redo: false, format: { textStyle: null, align: "left", group: "page", blockTools: false } });
   });
 
   it("insert slash types / where the caret is (the slash menu)", () => {

@@ -13,6 +13,17 @@
     "redo": true,
     "focus": true,
     "locked": false,
-    "canLock": false
+    "canLock": false,
+    "format": {
+      "textStyle": "subtitle",
+      "textColor": null,
+      "highlight": null,
+      "align": "center",
+      "group": "card",
+      "decoration": null,
+      "calloutTone": null,
+      "codeLanguage": null,
+      "blockTools": true
+    }
   }
 }

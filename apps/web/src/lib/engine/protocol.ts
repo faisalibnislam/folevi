@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 20;
+export const CONTRACT_REVISION = 21;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -815,10 +815,10 @@ export type EditorMark = "bold" | "italic" | "underline" | "strike" | "code" | "
 
 /**
  * Block types `format { block }` turns the current blocks into ("paragraph", "heading1", "heading2", "heading3",
- * "bulleted", "numbered", "todo", "toggle", "quote", "callout"). Turning a block into its own type turns it back
- * into a paragraph, as the toolbar does.
+ * "bulleted", "numbered", "todo", "toggle", "quote", "callout", and since revision 21 "code"). Turning a block into
+ * its own type turns it back into a paragraph, as the toolbar does.
  */
-export type EditorBlock = "paragraph" | "heading1" | "heading2" | "heading3" | "bulleted" | "numbered" | "todo" | "toggle" | "quote" | "callout";
+export type EditorBlock = "paragraph" | "heading1" | "heading2" | "heading3" | "bulleted" | "numbered" | "todo" | "toggle" | "quote" | "callout" | "code";
 
 /** The note's tool panels (web panels drawn in the Page View). */
 export type EditorPanel = "format" | "insert" | "style" | "comments" | "ai" | "info" | "related";
@@ -827,7 +827,8 @@ export type EditorPanel = "format" | "insert" | "style" | "comments" | "ai" | "i
  * What `insert { kind }` adds: a block ("divider", "table", "code", "mention" types `@`, "slash" types `/` and opens
  * the slash menu at the caret (revision 11, R5.1)), or a special insert the
  * editor's menus run ("image", "file", "scan", "page", "bookmark", "embed", "date", "columns2", "tabs", ...; the
- * editor's SpecialInsert list).
+ * editor's SpecialInsert list). Revision 21: any tile of the Insert panel by its id ("heading-1", "mind-map",
+ * "divider-strong", ...: the ids the native Insert sheet is generated with), and "quick-table-<rows>x<cols>".
  */
 export type EditorInsertKind = string;
 
@@ -862,6 +863,51 @@ export interface PaneTab {
 export interface FormatArgs {
   mark?: EditorMark;
   block?: EditorBlock;
+}
+
+/** Revision 21: a line's text style, as the Format panel names them (Title, Subtitle and Heading are headings). */
+export type TextStyleName = "title" | "subtitle" | "heading" | "strong" | "body" | "caption";
+
+/** Revision 21: a block's alignment. */
+export type BlockAlign = "left" | "center" | "right" | "justify";
+
+/** Revision 21: a callout's tone. */
+export type CalloutTone = "note" | "info" | "success" | "warning" | "danger";
+
+/**
+ * Revision 21: the rest of the Format panel, for the native Format sheet (each field given is applied; a null
+ * colour, highlight or decoration clears it). Colours are the editor's names: text "muted", "accent", "moss",
+ * "marigold", "plum", "coral"; highlights "yellow", "green", "blue", "pink".
+ */
+export interface FormatSetArgs {
+  textStyle?: TextStyleName;
+  textColor?: string | null;
+  highlight?: string | null;
+  align?: BlockAlign;
+  /** "card" groups the lines on a card; "page" back on the page. */
+  group?: "page" | "card";
+  /** "focus" (a line beside it) or "block" (a background), or null. */
+  decoration?: string | null;
+  calloutTone?: CalloutTone;
+  /** A code block's language ("plaintext", "swift", ...). */
+  codeLanguage?: string;
+  /** Clears the selection's marks, colours and highlight. */
+  clear?: boolean;
+}
+
+/** Revision 21: the line's formatting at the caret, for the native Format sheet. */
+export interface EditorFormatState {
+  /** Null for a line that isn't text (a code block, an image). */
+  textStyle: TextStyleName | null;
+  textColor: string | null;
+  highlight: string | null;
+  align: BlockAlign;
+  group: "page" | "card";
+  decoration: string | null;
+  calloutTone: CalloutTone | null;
+  codeLanguage: string | null;
+  /** The line takes the block tools (alignment, groups, decorations): a text line. */
+  blockTools: boolean;
 }
 
 export interface InsertArgs {
@@ -1117,6 +1163,8 @@ export interface EditorStateEvent {
   locked: boolean;
   /** Revision 8: "Lock" is offered for this note (an account with encryption, the person's own space). */
   canLock: boolean;
+  /** Revision 21: the line's formatting (null with no note open). */
+  format: EditorFormatState | null;
 }
 
 export interface EditorPanelEvent {
@@ -3759,6 +3807,7 @@ export interface EditorCommandMap {
   "note.show": { args: NoteShowArgs; result: NoteShownResult };
   "note.close": { args: EmptyArgs; result: OkResult };
   format: { args: FormatArgs; result: OkResult };
+  "format.set": { args: FormatSetArgs; result: OkResult };
   insert: { args: InsertArgs; result: OkResult };
   link: { args: LinkArgs; result: OkResult };
   undo: { args: EmptyArgs; result: OkResult };
@@ -3964,6 +4013,7 @@ const editorCommandNames = [
   "note.show",
   "note.close",
   "format",
+  "format.set",
   "insert",
   "link",
   "undo",
@@ -3999,7 +4049,7 @@ export const EDITOR_COMMAND_NAMES: Exhaustive<EditorCommandName, typeof editorCo
 export const EVENT_NAMES: Exhaustive<EventName, typeof eventNames> = eventNames;
 
 export const EDITOR_MARKS: readonly EditorMark[] = ["bold", "italic", "underline", "strike", "code", "highlight"];
-export const EDITOR_BLOCKS: readonly EditorBlock[] = ["paragraph", "heading1", "heading2", "heading3", "bulleted", "numbered", "todo", "toggle", "quote", "callout"];
+export const EDITOR_BLOCKS: readonly EditorBlock[] = ["paragraph", "heading1", "heading2", "heading3", "bulleted", "numbered", "todo", "toggle", "quote", "callout", "code"];
 export const EDITOR_PANELS: readonly EditorPanel[] = ["format", "insert", "style", "comments", "ai", "info", "related"];
 export const NOTE_MENU_ACTIONS: readonly NoteMenuAction[] = ["share", "move", "copyTo", "duplicate", "export", "history", "present", "print", "find", "delete"];
 export const NOTES_LIST_VIEWS: readonly NotesListView[] = ["all", "starred", "archive", "trash", "templates", "unsorted", "folder", "tag"];

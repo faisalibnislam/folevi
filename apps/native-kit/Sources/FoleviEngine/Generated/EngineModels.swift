@@ -1398,8 +1398,8 @@ public enum EditorMark: String, Codable, Hashable, Sendable, CaseIterable {
 }
 
 /// Block types `format { block }` turns the current blocks into ("paragraph", "heading1", "heading2", "heading3",
-/// "bulleted", "numbered", "todo", "toggle", "quote", "callout"). Turning a block into its own type turns it back
-/// into a paragraph, as the toolbar does.
+/// "bulleted", "numbered", "todo", "toggle", "quote", "callout", and since revision 21 "code"). Turning a block into
+/// its own type turns it back into a paragraph, as the toolbar does.
 public enum EditorBlock: String, Codable, Hashable, Sendable, CaseIterable {
     case paragraph
     case heading1
@@ -1411,6 +1411,7 @@ public enum EditorBlock: String, Codable, Hashable, Sendable, CaseIterable {
     case toggle
     case quote
     case callout
+    case code
 }
 
 /// The note's tool panels (web panels drawn in the Page View).
@@ -1427,7 +1428,8 @@ public enum EditorPanel: String, Codable, Hashable, Sendable, CaseIterable {
 /// What `insert { kind }` adds: a block ("divider", "table", "code", "mention" types `@`, "slash" types `/` and opens
 /// the slash menu at the caret (revision 11, R5.1)), or a special insert the
 /// editor's menus run ("image", "file", "scan", "page", "bookmark", "embed", "date", "columns2", "tabs", ...; the
-/// editor's SpecialInsert list).
+/// editor's SpecialInsert list). Revision 21: any tile of the Insert panel by its id ("heading-1", "mind-map",
+/// "divider-strong", ...: the ids the native Insert sheet is generated with), and "quick-table-<rows>x<cols>".
 public typealias EditorInsertKind = String
 
 /// Actions of the note's "..." menu that need the note page (its dialogs and panels).
@@ -1491,6 +1493,152 @@ public struct FormatArgs: Codable, Hashable, Sendable {
     public init(mark: EditorMark? = nil, block: EditorBlock? = nil) {
         self.mark = mark
         self.block = block
+    }
+}
+
+/// Revision 21: a line's text style, as the Format panel names them (Title, Subtitle and Heading are headings).
+public enum TextStyleName: String, Codable, Hashable, Sendable, CaseIterable {
+    case title
+    case subtitle
+    case heading
+    case strong
+    case body
+    case caption
+}
+
+/// Revision 21: a block's alignment.
+public enum BlockAlign: String, Codable, Hashable, Sendable, CaseIterable {
+    case left
+    case center
+    case right
+    case justify
+}
+
+/// Revision 21: a callout's tone.
+public enum CalloutTone: String, Codable, Hashable, Sendable, CaseIterable {
+    case note
+    case info
+    case success
+    case warning
+    case danger
+}
+
+/// Revision 21: the rest of the Format panel, for the native Format sheet (each field given is applied; a null
+/// colour, highlight or decoration clears it). Colours are the editor's names: text "muted", "accent", "moss",
+/// "marigold", "plum", "coral"; highlights "yellow", "green", "blue", "pink".
+public struct FormatSetArgs: Codable, Hashable, Sendable {
+    public enum Group: String, Codable, Hashable, Sendable, CaseIterable {
+        case page
+        case card
+    }
+
+    public var textStyle: TextStyleName?
+    public var textColor: Patch<String>
+    public var highlight: Patch<String>
+    public var align: BlockAlign?
+    /// "card" groups the lines on a card; "page" back on the page.
+    public var group: Group?
+    /// "focus" (a line beside it) or "block" (a background), or null.
+    public var decoration: Patch<String>
+    public var calloutTone: CalloutTone?
+    /// A code block's language ("plaintext", "swift", ...).
+    public var codeLanguage: String?
+    /// Clears the selection's marks, colours and highlight.
+    public var clear: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case textStyle
+        case textColor
+        case highlight
+        case align
+        case group
+        case decoration
+        case calloutTone
+        case codeLanguage
+        case clear
+    }
+
+    public init(textStyle: TextStyleName? = nil, textColor: String? = nil, highlight: String? = nil, align: BlockAlign? = nil, group: Group? = nil, decoration: String? = nil, calloutTone: CalloutTone? = nil, codeLanguage: String? = nil, clear: Bool? = nil) {
+        self.textStyle = textStyle
+        self.textColor = Patch(textColor)
+        self.highlight = Patch(highlight)
+        self.align = align
+        self.group = group
+        self.decoration = Patch(decoration)
+        self.calloutTone = calloutTone
+        self.codeLanguage = codeLanguage
+        self.clear = clear
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(self.textStyle, forKey: .textStyle)
+        try container.encodePatch(self.textColor, forKey: .textColor)
+        try container.encodePatch(self.highlight, forKey: .highlight)
+        try container.encodeIfPresent(self.align, forKey: .align)
+        try container.encodeIfPresent(self.group, forKey: .group)
+        try container.encodePatch(self.decoration, forKey: .decoration)
+        try container.encodeIfPresent(self.calloutTone, forKey: .calloutTone)
+        try container.encodeIfPresent(self.codeLanguage, forKey: .codeLanguage)
+        try container.encodeIfPresent(self.clear, forKey: .clear)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.textStyle = try container.decodeIfPresent(TextStyleName.self, forKey: .textStyle)
+        self.textColor = try container.decodePatch(String.self, forKey: .textColor)
+        self.highlight = try container.decodePatch(String.self, forKey: .highlight)
+        self.align = try container.decodeIfPresent(BlockAlign.self, forKey: .align)
+        self.group = try container.decodeIfPresent(Group.self, forKey: .group)
+        self.decoration = try container.decodePatch(String.self, forKey: .decoration)
+        self.calloutTone = try container.decodeIfPresent(CalloutTone.self, forKey: .calloutTone)
+        self.codeLanguage = try container.decodeIfPresent(String.self, forKey: .codeLanguage)
+        self.clear = try container.decodeIfPresent(Bool.self, forKey: .clear)
+    }
+}
+
+/// Revision 21: the line's formatting at the caret, for the native Format sheet.
+public struct EditorFormatState: Codable, Hashable, Sendable {
+    public enum Group: String, Codable, Hashable, Sendable, CaseIterable {
+        case page
+        case card
+    }
+
+    /// Null for a line that isn't text (a code block, an image).
+    public var textStyle: TextStyleName?
+    public var textColor: String?
+    public var highlight: String?
+    public var align: BlockAlign
+    public var group: Group
+    public var decoration: String?
+    public var calloutTone: CalloutTone?
+    public var codeLanguage: String?
+    /// The line takes the block tools (alignment, groups, decorations): a text line.
+    public var blockTools: Bool
+
+    public init(textStyle: TextStyleName? = nil, textColor: String? = nil, highlight: String? = nil, align: BlockAlign, group: Group, decoration: String? = nil, calloutTone: CalloutTone? = nil, codeLanguage: String? = nil, blockTools: Bool) {
+        self.textStyle = textStyle
+        self.textColor = textColor
+        self.highlight = highlight
+        self.align = align
+        self.group = group
+        self.decoration = decoration
+        self.calloutTone = calloutTone
+        self.codeLanguage = codeLanguage
+        self.blockTools = blockTools
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.textStyle, forKey: .textStyle)
+        try container.encode(self.textColor, forKey: .textColor)
+        try container.encode(self.highlight, forKey: .highlight)
+        try container.encode(self.align, forKey: .align)
+        try container.encode(self.group, forKey: .group)
+        try container.encode(self.decoration, forKey: .decoration)
+        try container.encode(self.calloutTone, forKey: .calloutTone)
+        try container.encode(self.codeLanguage, forKey: .codeLanguage)
+        try container.encode(self.blockTools, forKey: .blockTools)
     }
 }
 
@@ -2056,8 +2204,10 @@ public struct EditorStateEvent: Codable, Hashable, Sendable {
     public var locked: Bool
     /// Revision 8: "Lock" is offered for this note (an account with encryption, the person's own space).
     public var canLock: Bool
+    /// Revision 21: the line's formatting (null with no note open).
+    public var format: EditorFormatState?
 
-    public init(noteId: String? = nil, focused: Bool, canEdit: Bool, block: String, marks: [EditorMark], link: Bool, undo: Bool, redo: Bool, focus: Bool, locked: Bool, canLock: Bool) {
+    public init(noteId: String? = nil, focused: Bool, canEdit: Bool, block: String, marks: [EditorMark], link: Bool, undo: Bool, redo: Bool, focus: Bool, locked: Bool, canLock: Bool, format: EditorFormatState? = nil) {
         self.noteId = noteId
         self.focused = focused
         self.canEdit = canEdit
@@ -2069,6 +2219,7 @@ public struct EditorStateEvent: Codable, Hashable, Sendable {
         self.focus = focus
         self.locked = locked
         self.canLock = canLock
+        self.format = format
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -2084,6 +2235,7 @@ public struct EditorStateEvent: Codable, Hashable, Sendable {
         try container.encode(self.focus, forKey: .focus)
         try container.encode(self.locked, forKey: .locked)
         try container.encode(self.canLock, forKey: .canLock)
+        try container.encode(self.format, forKey: .format)
     }
 }
 

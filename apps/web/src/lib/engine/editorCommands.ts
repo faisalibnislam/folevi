@@ -7,14 +7,15 @@
 // `note.ready`. Imported only by the note page, so it loads with the editor's code, never with the first screen.
 import { useEffect, useRef } from "react";
 import type { Editor } from "@tiptap/core";
-import { applyLink, changeDepth, duplicateBlocks, insertBlockAfterCurrent, moveBlock, removeLink, turnInto } from "@/components/editor/commands";
+import { HIGHLIGHT_COLORS, TEXT_COLORS, applyLink, changeDepth, clearFormatting, duplicateBlocks, insertBlockAfterCurrent, moveBlock, removeLink, selectedBlockFormat, setBlockFormat, setHighlight, setTextColor, turnInto } from "@/components/editor/commands";
+import { insertKind } from "@/components/doc/InsertPanel";
 import { requestSpecialInsert, type SpecialInsert } from "@/components/editor/EditorMenus";
 import { AI_FOCUS_EVENT, askNoteAi } from "@/components/ai/chat/events";
 import { nativeChrome } from "@/lib/nativeApp";
 import { bridgeListening, emitNoteEvent, focusMode, markNoteReady, onNoteHost, registerNote, setFocusMode, type NoteHandle } from "./noteHost";
 import { clearMatches, findMatches, MAX_MATCHES, paintMatches, revealMatch } from "@/components/doc/findInNote";
 import { BridgeError, id, num, oneOf, only, text } from "./validate";
-import { EDITOR_BLOCKS, EDITOR_MARKS, EDITOR_PANELS, NOTE_MENU_ACTIONS, type EditorBlock, type EditorCommandName, type EditorMark, type EditorPanel, type EditorStateEvent, type FindResult, type NoteMenuAction } from "./protocol";
+import { EDITOR_BLOCKS, EDITOR_MARKS, EDITOR_PANELS, NOTE_MENU_ACTIONS, type BlockAlign, type CalloutTone, type EditorBlock, type EditorCommandName, type EditorFormatState, type EditorMark, type EditorPanel, type EditorStateEvent, type FindResult, type NoteMenuAction, type TextStyleName } from "./protocol";
 
 const SPECIAL: readonly SpecialInsert[] = ["image", "unsplash", "file", "record", "scan", "scanPhotos", "page", "card", "bookmark", "embed", "collection", "gallery", "board", "calendarView", "date", "pickDate", "columns2", "columns3", "columns4", "tabs"];
 
@@ -100,11 +101,66 @@ function typingOnPage(): boolean {
   return el.isContentEditable;
 }
 
+const TEXT_STYLES: readonly TextStyleName[] = ["title", "subtitle", "heading", "strong", "body", "caption"];
+const ALIGNS: readonly BlockAlign[] = ["left", "center", "right", "justify"];
+const CALLOUT_TONES: readonly CalloutTone[] = ["note", "info", "success", "warning", "danger"];
+const TEXT_LINES = ["paragraph", "heading", "bulleted", "numbered", "todo", "toggle", "quote"];
+
+/** The line's formatting at the caret, as the Format panel reads it (revision 21). */
+export function formatState(editor: Editor): EditorFormatState {
+  const node = editor.state.selection.$from.depth >= 1 ? editor.state.selection.$from.node(1) : null;
+  const type = node?.type.name;
+  const level = Number(node?.attrs.level) || 0;
+  // (Not in a line at all: no block format to read.)
+  const fmt = node ? selectedBlockFormat(editor) : {};
+  const textStyle: TextStyleName | null =
+    type === "heading" ? (level === 1 ? "title" : level === 2 ? "subtitle" : "heading") : type === "paragraph" ? ((fmt.textStyle as TextStyleName | null) ?? "body") : null;
+  const tone = node?.attrs.tone as CalloutTone | undefined;
+  return {
+    textStyle,
+    textColor: (editor.getAttributes("textColor").value as string | undefined) ?? null,
+    highlight: (editor.getAttributes("highlight").value as string | undefined) ?? null,
+    align: (fmt.align as BlockAlign | null) ?? "left",
+    group: fmt.group === "card" ? "card" : "page",
+    decoration: fmt.decoration ?? null,
+    calloutTone: type === "callout" && tone && CALLOUT_TONES.includes(tone) ? tone : null,
+    codeLanguage: type === "codeBlock" ? String(node?.attrs.language ?? "plaintext") : null,
+    blockTools: TEXT_LINES.includes(type ?? ""),
+  };
+}
+
+/** `format.set`: the Format panel's other tools, as it runs them. */
+function setFormat(editor: Editor, args: Record<string, unknown>) {
+  if (args.textStyle !== undefined) {
+    const style = oneOf(args, "textStyle", TEXT_STYLES);
+    if (style === "title" || style === "subtitle" || style === "heading") turnInto(editor, "heading", { level: style === "title" ? 1 : style === "subtitle" ? 2 : 3 });
+    else turnInto(editor, "paragraph", { textStyle: style === "body" ? null : style });
+  }
+  if (args.textColor !== undefined) setTextColor(editor, args.textColor === null ? null : oneOf(args, "textColor", TEXT_COLORS));
+  if (args.highlight !== undefined) setHighlight(editor, args.highlight === null ? null : oneOf(args, "highlight", HIGHLIGHT_COLORS));
+  if (args.align !== undefined) {
+    const align = oneOf(args, "align", ALIGNS);
+    setBlockFormat(editor, { align: align === "left" ? null : align });
+  }
+  if (args.group !== undefined) setBlockFormat(editor, { group: oneOf(args, "group", ["page", "card"] as const) === "card" ? "card" : null });
+  if (args.decoration !== undefined) setBlockFormat(editor, { decoration: args.decoration === null ? null : oneOf(args, "decoration", ["focus", "block"] as const) });
+  if (args.calloutTone !== undefined) turnInto(editor, "callout", { tone: oneOf(args, "calloutTone", CALLOUT_TONES) });
+  if (args.codeLanguage !== undefined) {
+    const language = text(args, "codeLanguage", { max: 40 }) as string;
+    const $from = editor.state.selection.$from;
+    const node = $from.depth >= 1 ? $from.node(1) : null;
+    if (node?.type.name !== "codeBlock") throw new BridgeError("invalid_args", "The caret isn't in a code block.");
+    editor.view.dispatch(editor.state.tr.setNodeMarkup($from.before(1), undefined, { ...node.attrs, language }));
+  }
+  if (args.clear === true) clearFormatting(editor);
+}
+
 export function editorState(editor: Editor | null, noteId: string, readOnly: boolean, lock: { locked?: boolean; canLock?: boolean } = {}): EditorStateEvent {
   const extra = { focus: focusMode(), locked: Boolean(lock.locked), canLock: Boolean(lock.canLock) };
-  if (!editor || editor.isDestroyed) return { noteId, focused: typingOnPage(), canEdit: !readOnly, block: "paragraph", marks: [], link: false, undo: false, redo: false, ...extra };
+  if (!editor || editor.isDestroyed) return { noteId, focused: typingOnPage(), canEdit: !readOnly, block: "paragraph", marks: [], link: false, undo: false, redo: false, ...extra, format: null };
   return {
     ...extra,
+    format: formatState(editor),
     noteId,
     // Whatever holds the keyboard on the note page (the title too), so native's toolbar and Done follow it.
     focused: editor.isFocused || editor.view.hasFocus() || typingOnPage(),
@@ -133,13 +189,15 @@ function toggleMark(editor: Editor, mark: EditorMark) {
 }
 
 function setBlock(editor: Editor, block: EditorBlock) {
-  const current = blockAtSelection(editor);
+  const at = blockAtSelection(editor);
+  const current = at === "codeBlock" ? "code" : at;
   // The toolbar's rule: a block turned into what it already is goes back to a paragraph.
   if (current === block && block !== "paragraph") {
     turnInto(editor, "paragraph");
     return;
   }
   if (block.startsWith("heading")) turnInto(editor, "heading", { level: Number(block.slice(7)) });
+  else if (block === "code") turnInto(editor, "code", { language: "plaintext" });
   else if (block === "todo") turnInto(editor, "todo", { checked: false });
   else turnInto(editor, block);
 }
@@ -162,6 +220,13 @@ export function runEditorCommand(o: NativeNoteOptions, name: EditorCommandName, 
       if (args.mark === undefined && args.block === undefined) throw new BridgeError("invalid_args", "format needs a mark or a block.");
       return ok;
     }
+    case "format.set": {
+      only(args, ["textStyle", "textColor", "highlight", "align", "group", "decoration", "calloutTone", "codeLanguage", "clear"]);
+      const e = editing();
+      if (!Object.keys(args).length) throw new BridgeError("invalid_args", "format.set needs something to set.");
+      setFormat(e, args);
+      return ok;
+    }
     case "insert": {
       only(args, ["kind"]);
       const e = editing();
@@ -172,6 +237,8 @@ export function runEditorCommand(o: NativeNoteOptions, name: EditorCommandName, 
       else if (kind === "divider") insertBlockAfterCurrent(e, "divider");
       else if (kind === "code") insertBlockAfterCurrent(e, "codeBlock");
       else if ((SPECIAL as readonly string[]).includes(kind)) requestSpecialInsert(e, kind as SpecialInsert);
+      // Revision 21: an Insert panel tile by its id (the native Insert sheet).
+      else if (insertKind(e, kind)) return ok;
       else throw new BridgeError("invalid_args", `There's nothing to insert called “${kind}”.`);
       return ok;
     }

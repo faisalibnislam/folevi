@@ -16,6 +16,17 @@
     "redo": false,
     "focus": false,
     "locked": false,
-    "canLock": true
+    "canLock": true,
+    "format": {
+      "textStyle": null,
+      "textColor": "moss",
+      "highlight": null,
+      "align": "left",
+      "group": "page",
+      "decoration": null,
+      "calloutTone": null,
+      "codeLanguage": null,
+      "blockTools": true
+    }
   }
 }

@@ -64,6 +64,16 @@ enum MatchSamples {
             PhoneNotePlaceChip(.folder(name: "Travel", colorId: "moss")) {}
         } else if id == "iphone.notebars" {
             PhoneNoteToolBars(open: nil, canEdit: true, aiOn: true) { _ in }.frame(width: 393)
+        } else if id == "iphone.insert" {
+            PhoneInsertSheetContent.sample(["Suggested", "Visuals"]).frame(width: 393)
+        } else if id == "iphone.format" {
+            PhoneFormatSheetContent(state: {
+                var f = PhoneFormatState()
+                f.marks = ["bold"]
+                f.textStyle = "body"
+                f.textColor = "moss"
+                return f
+            }()) { _ in }.frame(width: 393)
         } else if id == "iphone.keybar" {
             PhoneKeyboardBar(state: PhoneKeyboardBarState(block: "todo", undo: true, redo: false), aiOn: true) { _ in }.frame(width: 393)
         } else {

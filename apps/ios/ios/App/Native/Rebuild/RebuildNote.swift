@@ -22,6 +22,8 @@ struct RebuildNoteScreen: View {
     @State private var askingLink = false
     @State private var linkText = ""
     @State private var safe = EdgeInsets()
+    /// Format or Insert, drawn natively in a sheet (the other tools are still the page's own).
+    @State private var nativeTool: PhoneNoteTool?
 
     var body: some View {
         let meta = model.noteMeta[noteId]
@@ -51,7 +53,7 @@ struct RebuildNoteScreen: View {
                 PhoneKeyboardBar(state: PhoneKeyboardBarState(block: model.editorState?.block, link: model.editorState?.link ?? false, undo: model.editorState?.undo ?? false, redo: model.editorState?.redo ?? false), aiOn: model.aiOn, run: run)
                     .transition(.opacity)
             } else if !model.keyboardVisible, panel == nil {
-                PhoneNoteToolBars(open: nil, canEdit: canEdit, aiOn: model.aiOn) { toggle($0) }
+                PhoneNoteToolBars(open: nativeTool ?? panel.flatMap { PhoneNoteTool(rawValue: $0.rawValue) }, canEdit: canEdit, aiOn: model.aiOn) { toggle($0) }
                     .padding(.bottom, max(10, safe.bottom - 10))
                     .ignoresSafeArea(.container, edges: .bottom)
                     .transition(.opacity.animation(.easeOut(duration: 0.16).delay(0.05)))
@@ -66,6 +68,38 @@ struct RebuildNoteScreen: View {
             model.show(noteId)
             KeyboardBridge.shared.setInteractiveDismiss(true)
             sendInsets(insets)
+            // FOLEVI_REBUILD_SHEET=format or insert: that tool's sheet once the note is up (headless checks).
+            if let t = ProcessInfo.processInfo.environment["FOLEVI_REBUILD_SHEET"].flatMap(PhoneNoteTool.init(rawValue:)) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { nativeTool = t }
+            }
+            // FOLEVI_REBUILD_EDIT=1: an insert and a format.set through the engine, as the sheets send them.
+            if ProcessInfo.processInfo.environment["FOLEVI_REBUILD_EDIT"] == "1" {
+                Task {
+                    try? await Task.sleep(for: .seconds(3))
+                    var center = FormatSetArgs()
+                    center.align = .center
+                    center.textStyle = .subtitle
+                    _ = try? await model.client.editor(.focus)
+                    _ = try? await model.client.editor(.insert(kind: "quick-table-2x3"))
+                    _ = try? await model.client.editor(.insert(kind: "text"))
+                    _ = try? await model.client.editor(EditorCommands.FormatSet(center))
+                }
+            }
+        }
+        .phoneSheet(isPresented: Binding(get: { nativeTool == .format }, set: { if !$0 { nativeTool = nil } }), size: .fit) {
+            PhoneSheetPanel(title: "Format", close: { nativeTool = nil }) {
+                PhoneFormatSheetContent(state: formatState) { runFormat($0) }
+            }
+        }
+        .phoneSheet(isPresented: Binding(get: { nativeTool == .insert }, set: { if !$0 { nativeTool = nil } }), size: .fit) {
+            PhoneSheetPanel(title: "Insert", close: { nativeTool = nil }) {
+                PhoneInsertSheetContent(scanner: DocumentScanner.cameraAvailable, stockPhotos: model.session.value?.mode != .local) { kind in
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    model.editor(.insert(kind: kind))
+                    // The sheet steps aside to show what was added, as the web's does.
+                    nativeTool = nil
+                }
+            }
         }
         .alert(model.editorState?.link == true ? "Edit link" : "Add link", isPresented: $askingLink) {
             TextField("Paste or type a link", text: $linkText)
@@ -124,6 +158,10 @@ struct RebuildNoteScreen: View {
 
     private func toggle(_ tool: PhoneNoteTool) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        if tool == .format || tool == .insert {
+            nativeTool = nativeTool == tool ? nil : tool
+            return
+        }
         guard let panel = EditorPanel(rawValue: tool.rawValue) else { return }
         if model.editorPanel == panel { model.editor(.panelClose) } else { model.editor(.panelOpen(panel: panel)) }
     }
@@ -131,8 +169,8 @@ struct RebuildNoteScreen: View {
     private func run(_ key: PhoneKeyboardKey) {
         UISelectionFeedbackGenerator().selectionChanged()
         switch key {
-        case .insert: model.editor(.panelOpen(panel: .insert))
-        case .format: model.editor(.panelOpen(panel: .format))
+        case .insert: nativeTool = .insert
+        case .format: nativeTool = .format
         case .ai: model.editor(.panelOpen(panel: .ai))
         case .todo: model.editor(.format(block: .todo))
         case .indent: model.editor(.indent)
@@ -146,6 +184,59 @@ struct RebuildNoteScreen: View {
         case .redo: model.editor(.redo)
         case .hide: done()
         }
+    }
+
+    /// The line at the caret for the Format sheet (`editor.state` with its `format`, revision 21).
+    private var formatState: PhoneFormatState {
+        var f = PhoneFormatState()
+        guard let s = model.editorState else { return f }
+        f.canEdit = s.canEdit
+        f.block = s.block
+        f.marks = Set(s.marks.map(\.rawValue))
+        f.link = s.link
+        if let fmt = s.format {
+            f.textStyle = fmt.textStyle?.rawValue
+            f.textColor = fmt.textColor
+            f.highlight = fmt.highlight
+            f.align = fmt.align.rawValue
+            f.group = fmt.group.rawValue
+            f.decoration = fmt.decoration
+            f.calloutTone = fmt.calloutTone?.rawValue
+            f.codeLanguage = fmt.codeLanguage
+            f.blockTools = fmt.blockTools
+        }
+        return f
+    }
+
+    private func runFormat(_ action: PhoneFormatAction) {
+        UISelectionFeedbackGenerator().selectionChanged()
+        var a = FormatSetArgs()
+        switch action {
+        case .mark(let m):
+            if let mark = EditorMark(rawValue: m) { model.editor(.format(mark: mark)) }
+            return
+        case .block(let b):
+            if let block = EditorBlock(rawValue: b) { model.editor(.format(block: block)) }
+            return
+        case .indent: return model.editor(.indent)
+        case .outdent: return model.editor(.outdent)
+        case .link:
+            linkText = ""
+            nativeTool = nil
+            askingLink = true
+            return
+        case .removeLink: return model.editor(.link(href: nil))
+        case .textStyle(let t): a.textStyle = TextStyleName(rawValue: t)
+        case .group(let g): a.group = FormatSetArgs.Group(rawValue: g)
+        case .align(let al): a.align = BlockAlign(rawValue: al)
+        case .textColor(let c): a.textColor = c.map { .set($0) } ?? .clear
+        case .highlight(let h): a.highlight = h.map { .set($0) } ?? .clear
+        case .decoration(let d): a.decoration = d.map { .set($0) } ?? .clear
+        case .clear: a.clear = true
+        case .calloutTone(let t): a.calloutTone = CalloutTone(rawValue: t)
+        case .codeLanguage(let l): a.codeLanguage = l
+        }
+        model.editor(EditorCommands.FormatSet(a))
     }
 
     /// "…": the note's actions, as the web's menu lists them (DocumentView's noteActions), where the page can run

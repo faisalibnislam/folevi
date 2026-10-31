@@ -400,9 +400,9 @@ account-mode sign-out and place switching want a run with a scratch test account
   since the web places it once on first paint before or after the counts arrive; the month's grabber) and
   `nativeEnv` (the new frame's launch hooks: `FOLEVI_REBUILD_MONTH=1`, `FOLEVI_REBUILD_TASK=<title>`). Run on a
   Simulator of its own: `--device "Folevi I4 iPhone 18 Pro"` (a clone, `xcrun simctl clone`).
-- **Comparisons** (light/dark, whole screen, the seeded scratch library, 2026-10-31): Tasks Today 0.19/0.18%, All
+- **Comparisons** (light/dark, whole screen, the seeded scratch library, 2026-10-31, page and native both on contract revision 25): Tasks Today 0.19/0.18%, All
   0.16/0.15%, Upcoming 0.10/0.10%, Completed 0.32/0.31%, Calendar 0.16/0.15%, the pulled-down month 0.13/0.13%,
-  Settings 0.07/0.07%, Library 0.31/0.30%, AI 0.41/0.42%, Appearance 0.01/0.01%, Theme 0.07/0.07%, Import & export
+  Settings 0.02/0.02%, Library 0.30/0.29%, AI 0.41/0.42%, Appearance 0.01/0.01%, Theme 0.07/0.07%, Import & export
   0.04/0.08%, This device 0.01/0.01%: all under 0.5%. I3's screens after the kit fixes: Home 0.20% light (was
   0.35), 1.19% dark (was 1.35, the glass, as before), All folders 0.26/0.29% (was 0.40/0.47), the rest as before
   (search typed still 0.70%).

@@ -20,7 +20,7 @@ android {
         applicationId = "com.folevi.android"
         minSdk = rootProject.extra["minSdkVersion"] as Int
         targetSdk = rootProject.extra["targetSdkVersion"] as Int
-        versionCode = 19
+        versionCode = 20
         versionName = "1.2.08"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // OAuth client ids are public (they ship in every copy of the app) but come from the build, never the

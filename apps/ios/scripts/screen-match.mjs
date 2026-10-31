@@ -69,7 +69,7 @@ export const SCREENS = [
   // web focuses the box (the sheet goes large) and lets go of the keyboard; asking, it types and presses Ask, the
   // new frame asks at launch; both wait for the answer and read from its end (`toEnd`).
   { id: "ai-sheet", path: "/documents", ready: "All notes", ai: true, js: "OPEN_AI", after: "Suggestions", nativeEnv: { FOLEVI_REBUILD_SHEET: "ai", FOLEVI_REBUILD_SHEET_DETENT: "large" } },
-  { id: "ai-chat", path: "/documents", ready: "All notes", ai: true, js: "ASK_AI", after: "Regenerate", toEnd: true, nativeEnv: { FOLEVI_REBUILD_SHEET: "ai", FOLEVI_REBUILD_SHEET_DETENT: "large", FOLEVI_REBUILD_ASK: "Plan three days in Kyoto" }, settle: 6000 },
+  { id: "ai-chat", path: "/documents", ready: "All notes", ai: true, js: "ASK_AI", after: "Regenerate", toEnd: true, nativeEnv: { FOLEVI_REBUILD_SHEET: "ai", FOLEVI_REBUILD_SHEET_DETENT: "large", FOLEVI_REBUILD_ASK: "Plan three days in Kyoto" }, wait: 6000 },
   { id: "ai-page", path: "/ai", ready: "Meet Foli AI", ai: true },
   // The fixture conversation's page (`conversation`: its id from asking through the engine).
   { id: "ai-page-chat", conversation: true, ready: "Regenerate", ai: true, toEnd: true },
@@ -274,7 +274,8 @@ const open = (screen, base) => {
       if (screen.toEnd) sim.evalJs(TO_END);
     }
   }
-  sim.sleep(screen.settle ?? 2500);
+  // (`wait`: how long the screen takes to come to rest; `settle` is a script, I4's.)
+  sim.sleep(screen.wait ?? 2500);
 };
 
 /** The web's Vault: unlocked by its passcode field, then a tab, a ⋯ section or a row pressed, no field focused. */

@@ -358,3 +358,44 @@ account-mode sign-out and place switching want a run with a scratch test account
   (iOS's own alerts and sheets, where the web draws its dialogs: to match in a later pass). Moving a folder to
   another place and inviting people say they're coming.
 - Not yet in I3: iPad (I6 has its own frame).
+
+**I4 (2026-10-31): Tasks, Calendar and Settings, native** (branch `claude/xenodochial-lamarr-eba91d`, on top of I3):
+- **Tasks** (`FoleviPhone/PhoneTasks.swift`, `Rebuild/RebuildTasks.swift`, from TasksModel): the views as capsules
+  (Today, Inbox, Upcoming, All, Mine, Done, with counts; the chosen one kept 16 pt in sight as Tasks.tsx places it),
+  the filter, the groups by note (a link to it) or by day in Upcoming, folding with their count, task rows (the box
+  that fills and ticks, the words on exact CSS line boxes, the second line: overdue in red, the time, the note, who,
+  priority, the repeat icon; closed tasks struck through), swipes (Done or Reopen; Tomorrow, Date), the empty and
+  loading screens, More (Calendar, Completed tasks). One model per tab: another view replaces the first screen's
+  address and the model follows it.
+- **A task's sheet** (`PhoneTaskSheet.swift`, from TaskSheetHost, so Tasks and Calendar share it): the task and its
+  box, Status as the web's segmented capsule, Date and Time (iOS's own pickers inline, as the web asks the app for
+  them; Remove date, All day), the quick dates, Priority and Assignee as menus, Repeats, In the note. Every change
+  saved as made (TaskEdits, Undo in the toast where the web has it).
+- **Calendar** (`PhoneAgenda.swift`, from CalendarModel): the month as the large title, Today when another day is
+  picked, More with Agenda, Week, Month and (signed in) Subscribe to a calendar; the week strip (weekday letters,
+  today and the picked day filled, a dot for days with something on, weeks paged sideways keeping the weekday) with
+  its pull-down month (dragged 1:1 with rubber banding, settled with the release's speed, or by the grabber; open,
+  it pages by month and folds when a day is picked), pinned under the bar while the days scroll (`pinsHeader`); the
+  agenda: the picked day and the next 30 with something on, overdue first on today, done tasks ticked (the range now
+  asks for completed tasks, as the web's does), events with their calendar's colour, Nothing planned, a day's +
+  (a task on that day). Week and Month show the kit's grids (`CalendarGrids.swift`), not matched to the web's yet.
+- **Settings** (`PhoneSettingsKit.swift`, `PhoneSettings.swift`, `PhoneSettingsAccount.swift`,
+  `Rebuild/RebuildSettings.swift`): the web's iPhone Settings kit natively (IosSection, IosRow with its value up to
+  55% of the row, IosSwitch, IosText, ChoiceRow's pushed list with a check, DestructiveRow with iOS's action sheet),
+  each section and each pushed screen (`/settings/<section>?screen=<id>`) a screen of the frame's stack. The list
+  (You, the workspace's, Create a workspace, Support, the version). A library's sections: Library, AI on the device,
+  Appearance, Import & export, This device (the app's own Face ID lock, LockSettings and AppLock). An account's:
+  Account, AI, Plan & billing (the plan only: no buying in the app), Security, Privacy, Devices, Connected apps,
+  Notifications, Offline & sync, and the workspace's General, Members, Privacy, Guests, Plan & billing, from the
+  engine's settings views and the Convex allowlist (`settings.query`, `settings.run`, as the Mac's Settings).
+  `viewsSettings.ts` gives the library and local AI payloads the iPhone's own words (a `phone` object: the short
+  status, the device rows, the footers), no contract change.
+- **Kit fixes that move I3's screens too:** a large title that fits on one line is framed exactly (laid out as lines,
+  38.08 pt became 38.33 at 3x and everything under it sat a pixel low); the search field's placeholder is drawn in
+  the web's letter spacing (a UIKit prompt has none); grouped footers on exact CSS line boxes.
+- **Harness:** `screen-match.mjs` seeds tasks (in a note and the Inbox: overdue, today, tomorrow with a time and a
+  priority, later, undated, one done), has I4's screens, `--side web|native` (one side only, then `--diff-only`),
+  `settle` (a script run in the web frame once the screen is drawn: Tasks' capsule row placed by the web's own rule,
+  since the web places it once on first paint before or after the counts arrive; the month's grabber) and
+  `nativeEnv` (the new frame's launch hooks: `FOLEVI_REBUILD_MONTH=1`, `FOLEVI_REBUILD_TASK=<title>`). Run on a
+  Simulator of its own: `--device "Folevi I4 iPhone 18 Pro"` (a clone, `xcrun simctl clone`).

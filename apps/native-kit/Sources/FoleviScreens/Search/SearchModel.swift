@@ -189,7 +189,7 @@ public final class SearchModel {
     }
 
     /// Notes from the engine, or (when it can't answer) from earlier answers and recent notes on the device.
-    var noteHits: [SearchHit] {
+    public var noteHits: [SearchHit] {
         let q = trimmed
         if let result, answeredText == q { return result.hits.filter { $0.matchIn != "meaning" } }
         guard offline else { return [] }
@@ -206,7 +206,7 @@ public final class SearchModel {
         return out.sorted { $0.updatedAt > $1.updatedAt }
     }
 
-    var meaningHits: [SearchHit] {
+    public var meaningHits: [SearchHit] {
         guard let result, answeredText == trimmed else { return [] }
         let found = Set(result.hits.filter { $0.matchIn != "meaning" }.map(\.id))
         return result.hits.filter { $0.matchIn == "meaning" && !found.contains($0.id) }

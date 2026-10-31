@@ -40,6 +40,10 @@ export const SCREENS = [
   { id: "starred", path: "/starred", ready: "Packing list" },
   { id: "archive", path: "/archive", ready: "Old receipts" },
   { id: "trash", path: "/trash", ready: "Trash is empty" },
+  // Search: the web opens it from Home's field (`press`), types (`type`) and lets go of the keyboard; the new frame
+  // opens its route (`native`) without the keyboard.
+  { id: "search", path: "/documents", ready: "All notes", press: "Search in Personal", native: "/search" },
+  { id: "search-trip", path: "/documents", ready: "All notes", press: "Search in Personal", type: "trip", native: "/search?q=trip" },
 ];
 const screens = SCREENS.filter((s) => !only || only.includes(s.id));
 
@@ -77,11 +81,23 @@ if (process.argv.includes("--no-seed")) sim.simctl("install", sim.udid, app);
 const open = (screen, env) => {
   const native = env.FOLEVI_REBUILD === "1";
   const extra = native && screen.scroll ? { FOLEVI_REBUILD_SCROLL: String(screen.scroll) } : {};
-  sim.relaunch(native && screen.path !== "/documents" ? { ...env, ...extra, FOLEVI_REBUILD_OPEN: screen.path } : { ...env, ...extra });
+  const route = native ? (screen.native ?? screen.path) : screen.path;
+  const opens = native && route !== "/documents" ? { FOLEVI_REBUILD_OPEN: route, FOLEVI_GATE_NO_KEYBOARD: "1" } : {};
+  sim.relaunch({ ...env, ...extra, ...opens });
   waitUntil("the page", () => sim.evalJs('return document.readyState === "complete"'));
   if (!native) {
     if (sim.evalJs("return location.pathname") !== screen.path) sim.evalJs(`location.assign(${JSON.stringify(screen.path)}); return true;`);
     waitUntil(screen.ready, () => sim.evalJs(`return document.body.innerText.includes(${JSON.stringify(screen.ready)})`));
+    if (screen.press) {
+      sim.sleep(1000);
+      sim.press(screen.press);
+      sim.sleep(1200);
+      if (screen.type) {
+        sim.evalJs(`const i = document.querySelector("dialog input"); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(i, ${JSON.stringify(screen.type)}); i.dispatchEvent(new Event("input", { bubbles: true })); return true;`);
+        sim.sleep(1500);
+      }
+      sim.evalJs("document.activeElement?.blur(); return true");
+    }
     if (screen.scroll) {
       sim.sleep(1500);
       sim.evalJs(`document.querySelector("main#main").scrollTo(0, ${screen.scroll}); return true;`);

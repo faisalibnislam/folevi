@@ -93,6 +93,8 @@ public enum FrameRoute: Hashable, Sendable {
     }
 
     public var isNote: Bool { noteId != nil }
+    /// Search (it covers the whole screen, the tab bar too).
+    public var isSearch: Bool { if case .search = self { true } else { false } }
 
     /// Home's tab, the pinned first one (the Mac's and the iPad's tab strip).
     public static let homeTabKey = "home"

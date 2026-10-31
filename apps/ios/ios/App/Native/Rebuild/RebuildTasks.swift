@@ -67,6 +67,7 @@ struct RebuildRootPill: View {
 }
 
 struct RebuildTasksScreen: View {
+    @MainActor static var openedAtLaunch = false
     let view: TaskViewName
     let frame: PhoneFrameModel
     let menus: PhoneMenus
@@ -86,6 +87,14 @@ struct RebuildTasksScreen: View {
         self.openNotifications = openNotifications
         let feedback = RebuildFeedback.make(phone)
         _model = State(initialValue: TasksModel(client: phone.client, view: view, feedback: feedback))
+    }
+
+    /// FOLEVI_REBUILD_TASK=<title>: that task's sheet at launch (for checking it headlessly).
+    private func openLaunchTask() {
+        guard let title = ProcessInfo.processInfo.environment["FOLEVI_REBUILD_TASK"], !Self.openedAtLaunch,
+              let t = model.list.value?.groups.lazy.flatMap(\.tasks).first(where: { $0.title == title }) else { return }
+        Self.openedAtLaunch = true
+        model.open(t)
     }
 
     private var actions: PhoneTasksActions {
@@ -108,7 +117,15 @@ struct RebuildTasksScreen: View {
             PhoneTasksContent(model: model, actions: actions)
         }
         .onChange(of: view) { _, v in model.select(v) }
-        .onChange(of: model.list.value) { _, v in if let v { model.edits.reconcile(v.groups.lazy.flatMap(\.tasks)) } }
+        .onChange(of: model.list.value) { _, v in
+            guard let v else { return }
+            model.edits.reconcile(v.groups.lazy.flatMap(\.tasks))
+            openLaunchTask()
+        }
+        .task {
+            try? await Task.sleep(for: .seconds(1.5))
+            openLaunchTask()
+        }
         .phoneSheet(isPresented: Binding(get: { model.detail != nil }, set: { if !$0 { model.detail = nil } }), size: .fit) {
             if let task = model.detail {
                 PhoneTaskSheet(host: model, task: task, close: { model.detail = nil }, openNote: { t in phone.router?.openNote(t.noteId, source: nil, focus: false) })
@@ -153,7 +170,7 @@ struct RebuildCalendarScreen: View {
             RebuildRootPill(home: home, menus: menus, openNotifications: openNotifications) { menu }
         } header: {
             if layout != .week {
-                PhoneWeekStrip(today: model.today, selected: model.selected, marked: { model.marked($0, tasks: tasks, events: events) }, select: { model.select($0) }, feel: { model.feedback.haptic(.selection) })
+                PhoneWeekStrip(today: model.today, selected: model.selected, startsOpen: ProcessInfo.processInfo.environment["FOLEVI_REBUILD_MONTH"] == "1", marked: { model.marked($0, tasks: tasks, events: events) }, select: { model.select($0) }, feel: { model.feedback.haptic(.selection) })
             }
         } content: {
             switch layout {

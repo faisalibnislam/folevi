@@ -60,6 +60,9 @@ export const SCREENS = [
   { id: "tasks-upcoming", path: "/tasks/upcoming", ready: "Filter by task or note", settle: CHIPS_IN_SIGHT },
   { id: "tasks-done", path: "/tasks/completed", ready: "Filter by task or note", settle: CHIPS_IN_SIGHT },
   { id: "calendar", path: "/calendar", ready: "Today ·" },
+  // The month pulled down (its grabber), and a task's sheet; `nativeEnv`: the new frame's launch hooks for them.
+  { id: "calendar-month", path: "/calendar", ready: "Today ·", settle: `document.querySelector("button[aria-label='Show the whole month']").click(); return true;`, nativeEnv: { FOLEVI_REBUILD_MONTH: "1" } },
+  { id: "task-sheet", path: "/tasks/all", ready: "Filter by task or note", settle: CHIPS_IN_SIGHT, press: "Check in online", nativeEnv: { FOLEVI_REBUILD_TASK: "Check in online" } },
   { id: "settings", path: "/settings", ready: "Appearance" },
   { id: "settings-library", path: "/settings/library", ready: "Library" },
   { id: "settings-ai", path: "/settings/ai", ready: "Foli AI" },
@@ -129,7 +132,7 @@ if (screens.some((s) => s.folder)) {
 /** Opens `screen` in the frame `env` names, on the seeded install. */
 const open = (screen, env) => {
   const native = env.FOLEVI_REBUILD === "1";
-  const extra = native && screen.scroll ? { FOLEVI_REBUILD_SCROLL: String(screen.scroll) } : {};
+  const extra = { ...(native && screen.scroll ? { FOLEVI_REBUILD_SCROLL: String(screen.scroll) } : {}), ...(native ? screen.nativeEnv : {}) };
   const route = native ? (screen.native ?? screen.path) : screen.path;
   const opens = native && route !== "/documents" ? { FOLEVI_REBUILD_OPEN: route, FOLEVI_GATE_NO_KEYBOARD: "1" } : {};
   sim.relaunch({ ...env, ...extra, ...opens });
@@ -137,6 +140,10 @@ const open = (screen, env) => {
   if (!native) {
     if (sim.evalJs("return location.pathname") !== screen.path) sim.evalJs(`location.assign(${JSON.stringify(screen.path)}); return true;`);
     waitUntil(screen.ready, () => sim.evalJs(`return document.body.innerText.includes(${JSON.stringify(screen.ready)})`));
+    if (screen.settle) {
+      sim.sleep(1500);
+      sim.evalJs(screen.settle);
+    }
     if (screen.press) {
       sim.sleep(1000);
       sim.press(screen.press);
@@ -146,10 +153,6 @@ const open = (screen, env) => {
         sim.sleep(1500);
       }
       sim.evalJs("document.activeElement?.blur(); return true");
-    }
-    if (screen.settle) {
-      sim.sleep(1500);
-      sim.evalJs(screen.settle);
     }
     if (screen.scroll) {
       sim.sleep(1500);

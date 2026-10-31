@@ -225,6 +225,8 @@ private struct RebuildRoot: View {
                 RebuildTasksScreen(view: view, frame: model, menus: menus, home: home, phone: phone, openAccount: { account = true }, openNotifications: { notifications = true })
             } else if case .calendar(let date) = route {
                 RebuildCalendarScreen(date: date, frame: model, menus: menus, home: home, phone: phone, openAccount: { account = true }, openNotifications: { notifications = true })
+            } else if case .web(let path) = route, path == "/settings" || path.hasPrefix("/settings/") || path.hasPrefix("/settings?") {
+                RebuildSettingsScreen(path: path, frame: model, phone: phone, signIn: { accountAction(.signInAnother) {} })
             } else if route == .shared {
                 RebuildSharedScreen(frame: model, phone: phone)
             } else if route == .changes {

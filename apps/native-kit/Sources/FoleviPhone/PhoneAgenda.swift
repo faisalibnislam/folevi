@@ -36,7 +36,9 @@ public struct PhoneWeekStrip: View {
     /// One row of days: the date's circle (34) and the dot under it, in a 48 pt tall cell.
     static let rowHeight: CGFloat = 48
 
-    public init(today: String, selected: String, marked: @escaping (String) -> Bool, select: @escaping (String) -> Void, feel: @escaping () -> Void = {}) {
+    /// `startsOpen`: the month on show from the start (the rebuild frame's launch hook).
+    public init(today: String, selected: String, startsOpen: Bool = false, marked: @escaping (String) -> Bool, select: @escaping (String) -> Void, feel: @escaping () -> Void = {}) {
+        self._open = State(initialValue: startsOpen)
         self.today = today
         self.selected = selected
         self.marked = marked

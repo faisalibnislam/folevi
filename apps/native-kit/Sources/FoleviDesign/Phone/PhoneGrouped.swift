@@ -56,8 +56,8 @@ public struct PhoneGroupedSection<Content: View>: View {
             .background(PhoneSurface.row.resolve(scheme).color)
             .clipShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .circular))
             if let footer {
-                Text(footer)
-                    .webText(WebTextStyle(size: WebTypeRole.footnote.metrics.size, leading: 18))
+                // (On exact CSS line boxes: a paragraph laid out by Text drifted a little each line.)
+                WebFittedLines(footer, style: WebTextStyle(size: WebTypeRole.footnote.metrics.size, leading: 18), maxLines: 40)
                     .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)

@@ -127,6 +127,8 @@ struct VaultSelect: View {
     let label: String
     let options: [(String, String)]
     let selected: String
+    /// As wide as its place (`w-full`), as the Add dialog's Kind.
+    var fill = false
     let onSelect: (String) -> Void
     @Environment(\.colorScheme) private var scheme
     private var capturedLabel: String { style == "vault.settings.select" ? "5 minutes" : "All kinds" }
@@ -143,7 +145,11 @@ struct VaultSelect: View {
             .frame(height: s.height)
             Group {
                 // The web's trigger is as wide as its label, chevron and padding: the captured width for that label.
-                row.frame(minWidth: label == capturedLabel ? s.width : 0).fixedSize(horizontal: true, vertical: false)
+                if fill {
+                    row.frame(maxWidth: .infinity)
+                } else {
+                    row.frame(minWidth: label == capturedLabel ? s.width : 0).fixedSize(horizontal: true, vertical: false)
+                }
             }
             .foregroundStyle(s.color.color)
             .webBox(VS.pair(style))
@@ -576,7 +582,8 @@ struct VaultItemPanel: View {
                 let hidden = f.type == "secret" && !revealed.contains(f.key)
                 Group {
                     if f.type == "secret" || f.type == "multiline" {
-                        Text(hidden ? "••••••••••••" : f.value).font(.system(size: value.fontSize, design: .monospaced))
+                        // (The web's `font-mono`: JetBrains Mono, whose dots are the small spaced ones.)
+                        Text(hidden ? "••••••••••••" : f.value).webText(WebTextStyle(family: .mono, size: value.fontSize, leading: value.lineHeight ?? 18, weight: 400, letterSpacing: 0))
                     } else {
                         Text(f.value).webText(WebTextStyle(size: value.fontSize, leading: value.lineHeight ?? 18, weight: 400))
                     }

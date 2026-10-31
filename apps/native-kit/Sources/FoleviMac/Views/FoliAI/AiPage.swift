@@ -97,7 +97,7 @@ struct AiPageScreen: View {
     private func deleteDialog(_ row: ChatConversationRow) -> some View {
         ZStack {
             Color.black.opacity(0.0001).onTapGesture { deleting = nil }
-            WebDialog("Delete this conversation?", description: "“\(row.title)” and everything in it will be gone for good.", width: 384) {
+            WebDialog("Delete this conversation?", description: "“\(row.title)” and everything in it will be gone for good.", width: 384, close: { deleting = nil }) {
                 EmptyView()
             } footer: {
                 WebButton("Cancel") { deleting = nil }.keyboardShortcut(.cancelAction)

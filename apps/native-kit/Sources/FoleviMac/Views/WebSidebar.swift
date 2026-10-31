@@ -189,7 +189,8 @@ public struct WebSidebar: View {
             item(.notes(.all), icon: .files, title: "All notes")
             item(.tasks(.today), icon: .squareCheckBig, title: "Tasks", count: tasks.value?.today)
             item(.calendar(nil), icon: .calendar, title: "Calendar")
-            if let n = count(.reviews), n > 0 { item(.web("/review"), icon: .layers, title: "Reviews", count: n) }
+            // Listed once there's something to study, and while Reviews is open (Sidebar.tsx).
+            if (count(.reviews) ?? 0) > 0 || model.route.tabKey == FrameRoute.web("/review").tabKey { item(.web("/review"), icon: .layers, title: "Reviews", count: count(.reviews)) }
             if caps?.sharing ?? false { item(.shared, icon: .share2, title: "Shared with Me") }
             // The Vault where there's one for this person (vault.summary; a library's own Vault too, plan 5.6).
             VaultSidebarRow(model: model) { item(.web("/vault"), icon: .lock, title: "Vault") }
@@ -200,7 +201,9 @@ public struct WebSidebar: View {
 
     /// One row (the web's NavItem): icon, label, an optional count; the page's own row is selected.
     private func item(_ route: FrameRoute, icon: WebIcon, iconSize: CGFloat = 18, title: String, count: Int? = nil, newTab: Bool = false, glyph: AnyView? = nil) -> some View {
-        let selected = model.route == route || (route.tabKey == "view:ai" && model.route.tabKey == "view:ai")
+        // (A place's every view: Tasks on any of its lists, the Calendar on any day, Foli AI, Settings and the Vault
+        // on any section, as Sidebar.tsx isActive.)
+        let selected = model.route == route || (!route.isNote && model.route.tabKey == route.tabKey)
         let base = WebStyles.named(selected ? "frame.sidebar.item.active" : "frame.sidebar.item")
         let s = base.resolve(scheme)
         let selectedFill = (WebStyles.vars[active == .inactive ? "mac-selected-inactive" : "mac-selected"] ?? FoleviTokens.Chrome.surfaceSunken).resolve(scheme)
@@ -223,10 +226,11 @@ public struct WebSidebar: View {
                         .webText(countStyle.text)
                         .lineLimit(1)
                         .monospacedDigit()
-                        .foregroundStyle(countStyle.color.color)
+                        // The open item's count inverts (Sidebar.tsx: `bg-heading text-canvas` when active).
+                        .foregroundStyle(selected ? Folevi.color.canvas : countStyle.color.color)
                         .padding(countStyle.padding.edgeInsets)
                         .frame(minWidth: countStyle.width, minHeight: countStyle.height)
-                        .background(RoundedRectangle(cornerRadius: countStyle.radius, style: .circular).fill(countStyle.background.color))
+                        .background(RoundedRectangle(cornerRadius: countStyle.radius, style: .circular).fill(selected ? Folevi.color.heading : countStyle.background.color))
                 }
             }
             .padding(s.padding.edgeInsets)

@@ -81,7 +81,7 @@ private struct PromptDialog: View {
     @State private var name = ""
 
     var body: some View {
-        WebDialog(title, width: 384) {
+        WebDialog(title, width: 384, close: { model.dialog = nil }) {
             DialogField(label: label, text: $name)
         } footer: {
             WebButton("Cancel") { model.dialog = nil }
@@ -119,13 +119,13 @@ private struct ItemDialog: View {
 
     var body: some View {
         let def = kinds.first { $0.kind == kind }
-        WebDialog(existing.map { "Edit \($0.title)" } ?? "Add to the Vault", width: 512) {
+        WebDialog(existing.map { "Edit \($0.title)" } ?? "Add to the Vault", width: 512, close: { model.dialog = nil }) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     if existing == nil {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Kind").webText(VS.style("vault.gate.label", scheme).text)
-                            VaultSelect(style: "vault.pw.kind", label: def?.label ?? "Login", options: kinds.map { ($0.kind, $0.label) }, selected: kind) { kind = $0 }
+                            VaultSelect(style: "vault.pw.kind", label: def?.label ?? "Login", options: kinds.map { ($0.kind, $0.label) }, selected: kind, fill: true) { kind = $0 }
                         }
                     }
                     DialogField(label: "Title", text: $title)
@@ -151,7 +151,9 @@ private struct ItemDialog: View {
                 }
                 .padding(.bottom, 8)
             }
-            .frame(maxHeight: 460)
+            // (The web's dialog grows to the window less its margins, `calc(100dvh - 76px)`: the header and footer
+            // take about 130 of that.)
+            .frame(maxHeight: max(320, (NSApp.keyWindow?.contentView?.bounds.height ?? 820) - 76 - 130))
         } footer: {
             WebButton("Cancel") { model.dialog = nil }
             WebButton(busy ? "Saving…" : "Save", variant: .primary) { save() }.disabled(busy || title.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -208,7 +210,7 @@ private struct HistoryDialog: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        WebDialog("Earlier versions", width: 512) {
+        WebDialog("Earlier versions", width: 512, close: { model.dialog = nil }) {
             if let versions {
                 if versions.isEmpty {
                     VaultEmpty(icon: .rotateCcwClock, title: "No earlier versions", message: "Each time the item is changed, the version before is kept here.")
@@ -292,7 +294,7 @@ private struct ShareDialog: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        WebDialog("Share \(title)", width: 512) {
+        WebDialog("Share \(title)", width: 512, close: { model.dialog = nil }) {
             if model.value?.local == true {
                 VaultEmpty(icon: .users, title: "Sign in to Folevi to share and collaborate", message: "Your notes are kept on your devices. Sharing, comments and workspaces need a Folevi account.")
             } else {
@@ -409,7 +411,7 @@ private struct NoteDialog: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        WebDialog(row.title, width: 640) {
+        WebDialog(row.title, width: 640, close: { model.dialog = nil }) {
             if note != nil {
                 TextEditor(text: $text)
                     .font(.custom("Instrument Sans", size: 15))
@@ -465,7 +467,7 @@ private struct PreviewDialog: View {
 
     var body: some View {
         let current = files[index]
-        WebDialog(current.title, description: "\(current.detail) · \(VaultTime.relative(current.updatedAt))\(files.count > 1 ? " · \(index + 1) of \(files.count)" : "")", width: 880) {
+        WebDialog(current.title, description: "\(current.detail) · \(VaultTime.relative(current.updatedAt))\(files.count > 1 ? " · \(index + 1) of \(files.count)" : "")", width: 880, close: { model.dialog = nil }) {
             Group {
                 if let error {
                     Text(error).foregroundStyle(VS.color("danger", scheme)).frame(maxWidth: .infinity, minHeight: 192)
@@ -711,7 +713,7 @@ private struct EmptyTrashDialog: View {
     @Bindable var model: VaultModel
 
     var body: some View {
-        WebDialog("Empty the Trash?", width: 384) {
+        WebDialog("Empty the Trash?", width: 384, close: { model.dialog = nil }) {
             Text("Everything in the Trash goes for good, for everyone in the Vault. The log keeps a record that it happened.")
         } footer: {
             WebButton("Cancel") { model.dialog = nil }
@@ -736,7 +738,7 @@ private struct ChangePasscodeDialog: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        WebDialog("Change passcode", width: 448) {
+        WebDialog("Change passcode", width: 448, close: { model.dialog = nil }) {
             VStack(alignment: .leading, spacing: 16) {
                 PasscodeInput(label: "Current passcode", value: $current, autoFocus: true)
                 NewPasscodeFields(label: "New passcode", lengths: model.value?.passcodeLengths ?? [6, 8, 12], pin: $next)

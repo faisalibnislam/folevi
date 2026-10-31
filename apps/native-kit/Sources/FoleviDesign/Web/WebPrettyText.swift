@@ -221,14 +221,41 @@ public struct WebPrettyText: View {
 
     public var body: some View {
         let h: HorizontalAlignment = alignment == .center ? .center : alignment == .trailing ? .trailing : .leading
+        // The width the paragraph is placed in (never the lines' own, nor an ideal-size query's): what the lines are
+        // broken for.
+        PlacedWidth(report: { w in if abs(w - measured) > 0.5 { measured = w } }) {
         VStack(alignment: h, spacing: 0) {
-            // The width offered (never the lines' own): what the lines are broken for.
-            Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measured = $0 }
-            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+            if width <= 0 {
+                // (Until the width is known, the text wraps as SwiftUI wraps it, in the width offered: a single line
+                // here would size everything round it to the whole text.)
+                Text(verbatim: text).webText(style).multilineTextAlignment(alignment)
+            }
+            ForEach(Array((width > 0 ? lines : []).enumerated()), id: \.offset) { _, line in
+                // Each line its own width, inside a frame that takes only what's offered: a line never widens the
+                // paragraph (before the width was known, the whole text on one line did, and the width measured
+                // then was that line's, so a dialog's description stayed one line and pushed the dialog wide).
                 Text(verbatim: line).webText(style).lineLimit(1).fixedSize()
+                    .frame(maxWidth: .infinity, alignment: Alignment(horizontal: h, vertical: .center))
             }
         }
         .frame(maxWidth: .infinity, alignment: Alignment(horizontal: h, vertical: .top))
+        }
+    }
+}
+
+/// Lays out its one child as offered and reports the width it's finally placed in (sizing passes, which may ask
+/// with any width or none, report nothing).
+private struct PlacedWidth: Layout {
+    let report: @MainActor (CGFloat) -> Void
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        subviews.first?.sizeThatFits(proposal) ?? .zero
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
+        let w = bounds.width
+        guard w.isFinite, w > 0 else { return }
+        DispatchQueue.main.async { MainActor.assumeIsolated { report(w) } }
     }
 }

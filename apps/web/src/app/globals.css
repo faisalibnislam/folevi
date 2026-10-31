@@ -1064,8 +1064,9 @@
 /* The Ask Foli AI pill stays (owner's answer to P2), without the lift on hover. */
 :root[data-desktop="mac"] .ui-fab:hover { translate: none; }
 
-/* §2.3, §3.14 Menus (Folevi's own everywhere, decision M1): AppKit's measure in Folevi's type: at least 200 wide,
-   26 point rows in 13.5 / 18, 5 points of padding, 10 corners and 6 on the rows, separators inset 10 with 5 above
+/* §2.3, §3.14 Menus (Folevi's own everywhere, decision M1), in Folevi's type: at least 200 wide, 32 point rows in
+   13.5 / 18 as the web's (the owner, 2026-10-31: AppKit's 26 point rows read cramped), 6 points of padding, 12
+   corners and 8 on the rows, 10 between a row's icon and words, separators inset 10 with 6 above
    and below, the shortcut right-aligned and muted, a check in a leading column, open at once (no rise). The same
    material on popovers, lists and the palette. */
 :root[data-desktop="mac"] .ui-pop {
@@ -1074,8 +1075,8 @@
   backdrop-filter: blur(24px) saturate(1.8);
   box-shadow: inset 0 0 0 0.5px var(--mac-pop-edge), var(--mac-pop-shadow);
 }
-:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost], [role="listbox"]).ui-pop { min-width: 200px; padding: 5px; border-radius: var(--radius-control); animation: none; }
-:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost], [role="listbox"]) :is(.ui-menu-item, [role="option"]) { min-height: 26px; gap: 8px; padding-block: 3px; padding-inline: 8px; border-radius: var(--radius-chip); font-size: var(--type-body); line-height: 18px; }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost], [role="listbox"]).ui-pop { min-width: 200px; padding: 6px; border-radius: 12px; animation: none; }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost], [role="listbox"]) :is(.ui-menu-item, [role="option"]) { min-height: 32px; gap: 10px; padding-block: 6px; padding-inline: 10px; border-radius: var(--radius-small); font-size: var(--type-body); line-height: 18px; }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item:focus-visible { background: transparent; color: var(--color-ink); }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item:is(:hover:not(:disabled), [data-highlighted="true"]),
 :root[data-desktop="mac"][data-input="key"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item:focus-visible { background: var(--mac-highlight); color: var(--color-heading); }
@@ -1086,10 +1087,10 @@
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="shortcut"] { padding-left: 16px; font-size: var(--type-subheadline); color: var(--color-ink-muted); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] { order: -1; display: inline-flex; width: 16px; flex: none; justify-content: center; margin-right: -2px; color: var(--color-heading); }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] svg { width: 12px; height: 12px; stroke-width: 3; }
-:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost], [role="listbox"]) [role="separator"] { height: 1px; margin: 5px 10px; background: var(--color-line); }
-:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-caps { padding: 6px 8px 2px; font-size: var(--type-footnote); line-height: 16px; color: var(--color-ink-muted); }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost], [role="listbox"]) [role="separator"] { height: 1px; margin: 6px 10px; background: var(--color-line); }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-caps { padding: 8px 10px 4px; font-size: var(--type-footnote); line-height: 16px; color: var(--color-ink-muted); }
 /* An item with a second line (a workspace and its plan) and an item under another keep their room. */
-:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item[aria-description] { padding-block: 5px; }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item[aria-description] { padding-block: 8px; }
 /* §2.4 Tooltips (lib/desktop/tooltip.ts): 12 / 16 text, 6 corners, the shortcut in a keycap. */
 /* Joined notes (components/app/NotePanes.tsx): only the note you're in shows its page tools; the others' would
    overlap it on a narrow window. */
@@ -1169,8 +1170,8 @@
 :root[data-desktop="mac"] .ui-settings-window header.min-h-11 { display: none; }
 :root[data-desktop="mac"] [data-mac-settings-window] { display: block; max-width: none; margin: 0; padding: 20px 32px 32px; }
 :root[data-desktop="mac"] [data-mac-settings-window] > nav[hidden] { display: none; }
-/* The note's own right-click menu (EditorContextMenu.tsx) sets its rows with !important utilities: the same 26 point
+/* The note's own right-click menu (EditorContextMenu.tsx) sets its rows with !important utilities: the same 32 point
    rows here (in the utilities layer, where those live). */
 @layer utilities {
-  :root[data-desktop="mac"] [data-fb-context-menu] .ui-menu-item { min-height: 26px !important; font-size: var(--type-body) !important; }
+  :root[data-desktop="mac"] [data-fb-context-menu] .ui-menu-item { min-height: 32px !important; font-size: var(--type-body) !important; }
 }

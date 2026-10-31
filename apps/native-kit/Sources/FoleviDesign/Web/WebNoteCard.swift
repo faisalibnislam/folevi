@@ -316,8 +316,9 @@ public struct WebNoteCard: View {
                 Group {
                     if text.isEmpty {
                         Text("Empty page").italic().webText(bodyStyle).lineLimit(lines)
-                    } else if phone {
-                        // The iPhone's WebKit breaks a `<p>` the pretty way (globals.css `p { text-wrap: pretty }`).
+                    } else if phone || WebLineLayout.shared.requester != nil {
+                        // WebKit breaks a `<p>` the pretty way (globals.css `p { text-wrap: pretty }`): the page's own
+                        // lines when it can say them (the Mac and the iPhone), the model's until then.
                         VStack(alignment: .leading, spacing: 0) {
                             ForEach(Array(Self.phoneLines(text, style: bodyStyle, width: geo.size.width, max: lines).enumerated()), id: \.offset) { _, line in
                                 Text(line).webText(bodyStyle).lineLimit(1).truncationMode(.tail)

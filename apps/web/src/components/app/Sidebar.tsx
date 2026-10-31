@@ -52,6 +52,7 @@ function isActive(route: Route, href: string): boolean {
     "/drafts": (r) => r.name === "unsorted",
     "/settings/account": (r) => r.name === "settings",
     "/help": (r) => r.name === "help",
+    "/vault": (r) => r.name === "vault",
   };
   if (map[href]) return map[href]!(route);
   if (href === "/folders") return route.name === "folders";

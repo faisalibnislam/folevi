@@ -727,47 +727,20 @@ struct AppearanceSettingsView: View {
                 .accessibilityLabel("Theme")
             }
             SettingsCard("Editor text size") {
-                let picked = Self.nearest(zoom ?? a?.editorZoom ?? 1)
-                HStack(spacing: SettingsStyle.pair("theme.grid").light.gap) {
-                    ForEach(Self.sizes, id: \.zoom) { size in sizeTile(size, on: size.zoom == picked) }
+                // As the web's: Smaller, the range (0.85 to 1.35 in 0.05 steps) and Larger, at most 448 wide.
+                let value = Binding<Double>(get: { zoom ?? a?.editorZoom ?? 1 }, set: { zoom = $0 })
+                HStack(spacing: 12) {
+                    Text("Smaller").webText(.role(.subheadline)).foregroundStyle(Folevi.color.ink)
+                    Slider(value: value, in: 0.85...1.35, step: 0.05) { editing in
+                        if !editing, let z = zoom { Task { await model.perform(.settingsUpdate(editorZoom: z)) } }
+                    }
+                    .tint(WebStyles.vars["color-accent"]?.resolve(scheme).color ?? .accentColor)
+                    .accessibilityLabel("Editor text size")
+                    Text("Larger").webText(.role(.subheadline)).foregroundStyle(Folevi.color.ink)
                 }
-                .frame(maxWidth: .infinity)
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel("Editor text size")
+                .frame(maxWidth: 448, alignment: .leading)
             }
         }
-    }
-
-    /// The Mac's five editor text sizes, each one of the engine's steps (AppearanceSettings.editorZooms, 0.85 to 1.35).
-    static let sizes: [(name: String, zoom: Double)] = [("Smaller", 0.85), ("Small", 0.9), ("Default", 1), ("Large", 1.15), ("Larger", 1.3)]
-
-    /// The size a stored zoom shows as (the web's slider keeps any step, so 1.05 reads as Default).
-    static func nearest(_ z: Double) -> Double {
-        sizes.map(\.zoom).min { abs($0 - z) < abs($1 - z) } ?? 1
-    }
-
-    private func sizeTile(_ size: (name: String, zoom: Double), on: Bool) -> some View {
-        let pair = SettingsStyle.pair(on ? "theme.tile.on" : "theme.tile")
-        let s = pair.resolve(scheme)
-        return Button {
-            zoom = size.zoom
-            Task { await model.perform(.settingsUpdate(editorZoom: size.zoom)) }
-        } label: {
-            VStack(spacing: s.gap) {
-                // A sample at the size it gives, on one baseline across the row.
-                Text("Aa").font(.system(size: 15 * size.zoom)).frame(height: 20, alignment: .bottom)
-                Text(size.name).webText(s.text).lineLimit(1)
-            }
-            .foregroundStyle(s.color.color)
-            .padding(s.padding.edgeInsets)
-            .frame(maxWidth: .infinity)
-            .frame(height: s.height)
-            .webBox(pair)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(size.name)
-        .accessibilityAddTraits(on ? [.isSelected] : [])
     }
 
     private func tile(_ value: String, _ label: String, _ icon: WebIcon, _ current: String) -> some View {

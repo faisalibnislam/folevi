@@ -295,7 +295,12 @@ public struct WebTopBar: View {
                 joinedSections(t, panes, active: active)
             } else {
                 HStack(spacing: s.gap) {
-                    WebIconView(Self.icon(for: t.route), size: 14).opacity(style("frame.tab.icon").opacity)
+                    // (Foli AI's tab wears its flower, as the web's.)
+                    if t.route.tabKey == "view:ai" {
+                        AiMarkGlyph(size: 14)
+                    } else {
+                        WebIconView(Self.icon(for: t.route), size: 14).opacity(style("frame.tab.icon").opacity)
+                    }
                     TruncatingLabel(text: label, style: tabText(active))
                 }
                 .contentShape(Rectangle())

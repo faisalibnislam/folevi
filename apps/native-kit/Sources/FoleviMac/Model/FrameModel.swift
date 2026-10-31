@@ -7,6 +7,7 @@
 import Foundation
 import Observation
 import FoleviEngine
+import FoleviDesign
 import FoleviScreens
 
 /// What the frame asks of the app around it.
@@ -175,6 +176,20 @@ public final class FrameModel {
         #if os(macOS) || os(iOS)
         pictures.frame = self
         #endif
+        // Small web text drawn natively (a card's preview) takes the page's own line breaks (`text.layout`), as
+        // WebKit sets the card's clamped, `text-wrap: pretty` paragraph. (The iPhone's frame sets its own.)
+        if WebLineLayout.shared.requester == nil {
+            WebLineLayout.shared.requester = { [client] style, texts in
+                let r = try await client.command(.textLayout(
+                    texts: texts,
+                    family: style.family == .display ? .display : .sans,
+                    pxSize: Double(style.size), pxLineHeight: Double(style.lineHeight), weight: Int(style.weight),
+                    pxLetterSpacing: Double(style.letterSpacing), pxWidth: Double(style.width),
+                    wrap: style.wrap == .balance ? .balance : style.wrap == .wrap ? .wrap : .pretty,
+                    pre: style.pre, clamp: style.clamp))
+                return r.lines
+            }
+        }
     }
 
     /// Ends the model's work (the window closed).

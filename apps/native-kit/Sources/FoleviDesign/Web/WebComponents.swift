@@ -424,14 +424,22 @@ public struct WebDialog<Body: View, Footer: View>: View {
     let title: String
     let description: String?
     let width: CGFloat?
+    /// The header's × (ui/Dialog.tsx's Close button); none when nil.
+    let close: (() -> Void)?
     let content: Body
     let footer: Footer
     @Environment(\.colorScheme) private var scheme
 
-    public init(_ title: String, description: String? = nil, width: CGFloat? = nil, @ViewBuilder content: () -> Body, @ViewBuilder footer: () -> Footer) {
+    public init(_ title: String, description: String? = nil, width: CGFloat? = nil, close: (() -> Void)? = nil, @ViewBuilder content: () -> Body, @ViewBuilder footer: () -> Footer) {
         self.title = title
         self.description = description
+        self.close = close
+        // (The Mac's sheet keeps a medium dialog, `max-w-lg`, to 480: globals.css `dialog.ui-pop.max-w-lg`.)
+        #if os(macOS)
+        self.width = width == 512 ? 480 : width
+        #else
         self.width = width
+        #endif
         self.content = content()
         self.footer = footer()
     }
@@ -446,10 +454,18 @@ public struct WebDialog<Body: View, Footer: View>: View {
         let footerStyle = WebStyles.named("dialog.footer")
         let f = footerStyle.resolve(scheme)
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(title).webText(t.text).foregroundStyle(t.color.color).lineLimit(1)
-                if let description {
-                    Text(description).webText(d.text).foregroundStyle(d.color.color).padding(.top, 4)
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(title).webText(t.text).foregroundStyle(t.color.color).lineLimit(1)
+                    if let description {
+                        Text(description).webText(d.text).foregroundStyle(d.color.color).padding(.top, 4)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if let close {
+                    WebIconButton(.x, label: "Close", action: close)
+                        .padding(.top, -4)
+                        .padding(.trailing, -6)
                 }
             }
             .padding(header.padding.edgeInsets)

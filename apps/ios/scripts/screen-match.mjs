@@ -11,6 +11,10 @@
 // phone.json, in the web frame) into app-styles-cache/phone.ios.json; `node scripts/web-styles.mjs --no-samples`
 // puts them in WebStyles.
 //
+// The Vault (I6): the library's Vault set up with a scratch PIN (VAULT_PIN) and a few items, then unlocked before
+// each of its shots (the web by its passcode field, the new frame through the engine). "vault-setup" is shot only
+// when seeding, before the Vault exists.
+//
 //   node scripts/screen-match.mjs --app <App.app> [--device "iPhone 18 Pro"] [--only home,...] [--no-seed] [--styles]
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -30,6 +34,11 @@ const styles = process.argv.includes("--styles");
 if (!app) throw new Error("Pass --app <path to the built App.app>");
 const sim = simulator(device);
 
+/** The scratch Vault's passcode (a scratch library on a Simulator; nothing real). */
+const VAULT_PIN = "246810";
+/** Types the scratch PIN into every field of the web's Vault card (React's own value setter, then its input event). */
+const FILL_PIN = `const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; for (const i of document.querySelectorAll("main input")) { set.call(i, "${VAULT_PIN}"); i.dispatchEvent(new Event("input", { bubbles: true })); } return true;`;
+
 /** The screens, by route. `ready` is text the web shows once the screen is drawn. */
 // `scroll`: the screen scrolled down by that many points (FOLEVI_REBUILD_SCROLL in the new frame).
 export const SCREENS = [
@@ -47,6 +56,19 @@ export const SCREENS = [
   // opens its route (`native`) without the keyboard.
   { id: "search", path: "/documents", ready: "All notes", press: "Search in Personal", native: "/search" },
   { id: "search-trip", path: "/documents", ready: "All notes", press: "Search in Personal", type: "trip", native: "/search?q=trip" },
+  // The Vault (I6). `beforeVault`: shot right after the library is seeded, before its Vault is set up. `unlock`: the
+  // Vault opened first; `tab` a tab pressed, `menu` a section from the ⋯ menu, `row` a row pressed (the web);
+  // `native` the route the new frame opens and `nativeEnv` its debug hooks.
+  // `measureJs`: run in the web frame before its styles are measured (--styles): the passcode typed, so the buttons
+  // are measured enabled (natively they fade by themselves when disabled).
+  { id: "vault-setup", path: "/vault", ready: "Set up your Vault", beforeVault: true, measureJs: FILL_PIN },
+  { id: "vault-locked", path: "/vault", ready: "The Vault is locked", measureJs: FILL_PIN },
+  { id: "vault-files", path: "/vault", ready: "The Vault is locked", unlock: "Upload" },
+  { id: "vault-passwords", path: "/vault", ready: "The Vault is locked", unlock: "Upload", tab: "Passwords & Credentials", native: "/vault/passwords" },
+  { id: "vault-item", path: "/vault", ready: "The Vault is locked", unlock: "Upload", tab: "Passwords & Credentials", row: "Bank", native: "/vault/passwords", nativeEnv: { FOLEVI_VAULT_ITEM: "Bank" } },
+  { id: "vault-health", path: "/vault", ready: "The Vault is locked", unlock: "Upload", menu: "Health", native: "/vault/health" },
+  { id: "vault-trash", path: "/vault", ready: "The Vault is locked", unlock: "Upload", menu: "Trash", native: "/vault/trash" },
+  { id: "vault-settings", path: "/vault", ready: "The Vault is locked", unlock: "Upload", menu: "Settings", native: "/vault/settings" },
 ];
 const screens = SCREENS.filter((s) => !only || only.includes(s.id));
 
@@ -77,6 +99,18 @@ if (!process.argv.includes("--no-seed")) {
   console.log("seeded");
 }
 
+/** A view read once from the engine in the page (as `sim.command` sends commands). */
+const query = (name, args = {}) =>
+  sim.evalJs(`const marker = window.__foleviNativeChrome; const reply = JSON.parse(await window.__foleviEngine.handle({ v: 1, id: "script-" + Date.now(), kind: "query", place: marker?.place ?? null, name: ${JSON.stringify(name)}, args: ${JSON.stringify(args)} })); if (!reply.ok) throw new Error(JSON.stringify(reply.error)); return reply.value;`);
+/** The Vault opened through the engine (the new frame's shots). */
+const unlockVault = () => {
+  waitUntil("the engine", () => sim.evalJs("return Boolean(window.__foleviEngine)"));
+  waitUntil("the Vault's state", () => ["locked", "open"].includes(query("vault.summary").state), 20000);
+  const v = query("vault.summary");
+  if (v.state === "locked") sim.command("vault.unlock", { vaultId: v.vaultId, passcode: VAULT_PIN });
+  waitUntil("the Vault open", () => query("vault.summary").state === "open", 20000);
+};
+
 // Not seeded again: the build goes over the seeded install (its data stays).
 if (process.argv.includes("--no-seed")) sim.simctl("install", sim.udid, app);
 
@@ -97,9 +131,11 @@ const open = (screen, env) => {
   const native = env.FOLEVI_REBUILD === "1";
   const extra = native && screen.scroll ? { FOLEVI_REBUILD_SCROLL: String(screen.scroll) } : {};
   const route = native ? (screen.native ?? screen.path) : screen.path;
-  const opens = native && route !== "/documents" ? { FOLEVI_REBUILD_OPEN: route, FOLEVI_GATE_NO_KEYBOARD: "1" } : {};
+  const opens = native && route !== "/documents" ? { FOLEVI_REBUILD_OPEN: route, FOLEVI_GATE_NO_KEYBOARD: "1", ...(screen.nativeEnv ?? {}) } : {};
   sim.relaunch({ ...env, ...extra, ...opens });
   waitUntil("the page", () => sim.evalJs('return document.readyState === "complete"'));
+  if (native && screen.unlock) unlockVault();
+  if (!native && screen.path === "/vault") return openWebVault(screen);
   if (!native) {
     if (sim.evalJs("return location.pathname") !== screen.path) sim.evalJs(`location.assign(${JSON.stringify(screen.path)}); return true;`);
     waitUntil(screen.ready, () => sim.evalJs(`return document.body.innerText.includes(${JSON.stringify(screen.ready)})`));
@@ -121,11 +157,66 @@ const open = (screen, env) => {
   sim.sleep(2500);
 };
 
+/** The web's Vault: unlocked by its passcode field, then a tab, a ⋯ section or a row pressed, no field focused. */
+function openWebVault(screen) {
+  if (sim.evalJs("return location.pathname") !== "/vault") sim.evalJs(`location.assign("/vault"); return true;`);
+  waitUntil(screen.ready, () => sim.evalJs(`return document.body.innerText.includes(${JSON.stringify(screen.ready)})`));
+  sim.sleep(800);
+  if (screen.unlock) {
+    sim.evalJs(`const i = document.querySelector("main input"); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(i, ${JSON.stringify(VAULT_PIN)}); i.dispatchEvent(new Event("input", { bubbles: true })); setTimeout(() => [...document.querySelectorAll("button[type=submit]")].find((b) => b.textContent.includes("Unlock"))?.click(), 200); return true;`);
+    waitUntil(screen.unlock, () => sim.evalJs(`return document.body.innerText.includes(${JSON.stringify(screen.unlock)})`));
+    sim.sleep(1000);
+  }
+  if (screen.tab) sim.evalJs(`[...document.querySelectorAll("[role=tab]")].find((b) => b.textContent.includes(${JSON.stringify(screen.tab)})).click(); return true;`);
+  if (screen.menu) {
+    sim.evalJs(`document.querySelector("button[aria-label='More in the Vault']").click(); return true;`);
+    sim.sleep(800);
+    sim.evalJs(`[...document.querySelectorAll("[role^=menuitem]")].find((b) => b.textContent.trim() === ${JSON.stringify(screen.menu)}).click(); return true;`);
+  }
+  if (screen.row) {
+    sim.sleep(1200);
+    sim.evalJs(`[...document.querySelectorAll("main li button")].find((b) => b.textContent.includes(${JSON.stringify(screen.row)})).click(); return true;`);
+  }
+  sim.sleep(1200);
+  sim.evalJs("document.activeElement?.blur(); return true");
+  sim.sleep(2000);
+}
+
+/** The scratch library's Vault: set up with VAULT_PIN, its recovery key marked saved (never shown or kept), a folder,
+ * a note, a small file, a login, and one in the Trash. In today's frame, through the engine. */
+function seedVault() {
+  sim.relaunch({});
+  waitUntil("the engine", () => sim.evalJs("return Boolean(window.__foleviEngine)"));
+  sim.sleep(2500);
+  if (query("vault.summary").state === "setUp") sim.command("vault.setUp", { passcode: VAULT_PIN });
+  sim.sleep(1500);
+  unlockVault();
+  const vaultId = query("vault.summary").vaultId;
+  sim.command("vault.recoverySaved", { vaultId });
+  sim.command("vault.folder.create", { vaultId, name: "Taxes" });
+  sim.command("vault.note.create", { vaultId, title: "Wi-Fi at the cabin" });
+  sim.command("vault.file.upload", { vaultId, name: "insurance.txt", mime: "text/plain", data: Buffer.from("Policy 12345\nRenews in March.").toString("base64") });
+  sim.command("vault.item.save", { vaultId, kind: "login", title: "Bank", values: { username: "sam@example.com", password: "scratch-password-1", website: "https://bank.example" }, notes: "" });
+  const old = sim.command("vault.item.save", { vaultId, kind: "login", title: "Old router", values: { username: "admin", password: "scratch-password-2" }, notes: "" });
+  sim.command("vault.item.remove", { vaultId, itemId: old.id });
+  sim.sleep(2000);
+  console.log("vault seeded");
+}
+
 if (styles) {
   const spec = JSON.parse(readFileSync(join(repo, "packages/design-tokens/match/app-styles/phone.json"), "utf8"));
   const out = { light: {}, dark: {} };
-  for (const screen of screens) {
+  // (The Vault's set-up screen before its Vault exists, the rest after.)
+  const measuring = [...screens.filter((s) => s.beforeVault), ...screens.filter((s) => !s.beforeVault)];
+  for (const screen of measuring) {
+    if (screen === measuring.find((s) => !s.beforeVault && s.path === "/vault") && !process.argv.includes("--no-seed")) seedVault();
+    if (screen.beforeVault && process.argv.includes("--no-seed")) continue;
     open(screen, { FOLEVI_WEB_FRAME: "1" });
+    if (screen.measureJs) {
+      sim.evalJs(screen.measureJs);
+      sim.sleep(800);
+      sim.evalJs("document.activeElement?.blur(); return true");
+    }
     for (const scheme of ["light", "dark"]) {
       sim.appearance(scheme);
       sim.sleep(1200);
@@ -161,7 +252,7 @@ const crop = (path) => {
   const w = Number(/pixelWidth: (\d+)/.exec(info)[1]);
   execFileSync("sips", ["-c", String(h - TOP - BOTTOM), String(w), "--cropOffset", String(TOP), "0", path], { stdio: "pipe" });
 };
-for (const screen of process.argv.includes("--diff-only") ? [] : screens) {
+const shoot = (screen) => {
   for (const [side, env] of [["web", { FOLEVI_WEB_FRAME: "1" }], ["native", { FOLEVI_REBUILD: "1" }]]) {
     open(screen, env);
     for (const scheme of ["light", "dark"]) {
@@ -174,7 +265,12 @@ for (const screen of process.argv.includes("--diff-only") ? [] : screens) {
     sim.appearance("light");
   }
   console.log(`${screen.id}: shot`);
-}
+};
+const seeding = !process.argv.includes("--no-seed");
+const shooting = process.argv.includes("--diff-only") ? [] : screens;
+for (const screen of shooting.filter((s) => s.beforeVault && seeding)) shoot(screen);
+if (seeding && screens.some((s) => s.path === "/vault")) seedVault();
+for (const screen of shooting.filter((s) => !s.beforeVault)) shoot(screen);
 
 const require = createRequire(join(repo, "apps/web/package.json"));
 const { webkit } = require("@playwright/test");

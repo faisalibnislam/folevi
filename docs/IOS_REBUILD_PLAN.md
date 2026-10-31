@@ -358,3 +358,60 @@ account-mode sign-out and place switching want a run with a scratch test account
   (iOS's own alerts and sheets, where the web draws its dialogs: to match in a later pass). Moving a folder to
   another place and inviting people say they're coming.
 - Not yet in I3: iPad (I6 has its own frame).
+
+**I6 started (2026-10-31): the Vault.**
+- **Shared model:** the Mac's `VaultModel` (vault.summary, the open section's views, the commands, the dialogs it
+  opens) moved to `FoleviScreens/Vault` with a client and `ScreenFeedback` instead of the Mac's frame, so the Mac,
+  iPhone and iPad run the same model; `VaultTime`, the sections' labels and icons and the CSV reader moved with it.
+  The Mac's Vault views are unchanged but for reading `model.client` (its Touch ID offer gets the frame's hook
+  through the environment). The kit builds for the Mac and its Vault tests pass.
+- **The phone's Vault** (`FoleviPhone/PhoneVault*.swift`, `Rebuild/RebuildVault.swift`, `/vault` and
+  `/vault/<section>` in the frame): the web draws its Vault on the phone in the general screen, **not inverted**,
+  with the large title and a row under it ("Locked", or "Open on this device · locks after N idle minutes" with Lock
+  and ⋯ wrapping under it). Natively: the front door (set up with the PIN length and the PIN twice, locked,
+  forgotten passcode with the recovery key, a new passcode for an old one, waiting for the key, choosing a passcode,
+  encryption unlocked first on an account without its keys, the recovery key once), then the two tabs and the ⋯
+  sections as a third: Files & Notes (Grid or Lines, folders, New folder, New note, Upload from Photos or Files),
+  Passwords & Credentials (search, kind, Add, the item opened under the list with reveal, copy, 2FA code, history,
+  Edit, Share, Trash; long press for Open and Duplicate), Health, Trash, Settings, Activity and People (an
+  account's). Styles measured from the web's phone Vault: 81 `phone.vault.*` entries in `phone.json`, measured by
+  `screen-match.mjs --styles` (the passcode typed first, so buttons are measured enabled) into `phone.ios.json`.
+  `PhoneVaultFlow` is the web's `flex flex-wrap` with `mr-auto` (the header, the Files bar, the Trash bar).
+- **iOS's own:** dialogs are iOS sheets with the web's sheet look (New folder, New note, Add and Edit, Earlier
+  versions, Share, a vault note, Change passcode); Empty Trash is iOS's confirmation; Selects are Folevi's iOS menu.
+  **Previews:** the engine decrypts into memory; images, **PDFKit** (from memory), **AVKit** (an AVAsset read from
+  memory through a resource loader, no file), text and CSV drawn natively, **Quick Look** for anything else (Office,
+  iWork…); Share (the web's Download) hands the file to iOS's share sheet. Quick Look and Share need a file: it's
+  written to its own folder in the app's temporary folder with complete file protection and removed when the sheet
+  closes. Copied secrets stay on the device (no Handoff) and expire from the clipboard after 30 seconds.
+- **Face ID** (Touch ID or Optic ID where that's the device's): after a passcode unlock on a device with biometrics,
+  iOS asks once "Open the Vault with Face ID?"; on, the passcode is kept in this device's Keychain behind Face ID
+  (`biometryCurrentSet`, `WhenPasscodeSetThisDeviceOnly`: never synced or backed up, gone if faces change), and the
+  locked card asks for Face ID straight away (a button too; "Use Passcode" falls back). Off, or on again with the
+  passcode, in the Vault's Settings ("Unlock with Face ID", shown only where the device has biometrics). A passcode
+  changed here updates what's kept; one changed elsewhere turns Face ID off with a line saying so. The Vault still
+  locks itself after its idle minutes. **For the owner:** VAULT_PLAN §11.2 put "Touch ID or a passkey as a second
+  way to unlock" after the first release; this brings it forward on iPhone and iPad (the brief asked for it). The
+  web and the Mac don't have it.
+- **Comparisons** (`screen-match.mjs`, whole screen, light/dark, one seeded scratch library and its Vault, on a
+  Simulator of its own: `--device "Folevi I6 iPhone"`, a clone): Settings 0.02/0.01%, Trash 0.03/0.03%, Health
+  0.06/0.06%, Passwords 0.08/0.04%, Files & Notes 0.09/0.22%, the locked card 0.37/0.09%, an open item 0.40/0.36%
+  pass; set-up 0.92/0.43% doesn't (light): the passcode fields sit 1 to 2 px lower inside their lines, as WebKit
+  and Core Text place text in a line box differently (the header's subtitle has a measured 2 px nudge for the same
+  reason; the set-up card's lines don't yet). What it took, beside the measured styles: paragraphs take WebKit's
+  own line breaks (`text.layout`, `PhoneVaultText`; a `<p>` is `pretty`, a span plain), the web's 14 pt button
+  icons, the tab rows' `-mb-px`, "All kinds" and Lock after at their measured widths (as the Mac's selects), item
+  values breaking anywhere (`break-all`).
+- **Checked in the Simulator:** set-up, unlock, the sections and the item through the comparisons (the new frame
+  unlocked through the engine); Face ID with Face ID enrolled: a kept passcode opens the Vault at launch, and with
+  none enrolled the Vault stays at its passcode card (the Simulator's Keychain hands the item back without a face
+  match, so the Face ID prompt itself, the offer after unlocking and Settings' switch need a device or taps; taps
+  weren't possible here: the Simulator panel wasn't attached to this session). Debug hooks: `FOLEVI_VAULT_ITEM`
+  (an item opened by title), `FOLEVI_VAULT_BIOMETRICS` (a scratch PIN kept behind Face ID at launch).
+- **Not checked:** the account Vault against the web (Activity, People, sharing, encryption unlocked first): it
+  needs a signed-in scratch test account, as I3's Shared with Me; previews of each kind (PDF, video, Quick Look) by
+  eye; iPad (the same screens in the I7 frame).
+- **Open for the owner:** the web's phone layout has no way to the Vault but a link or a notification (the Vault
+  is a sidebar row, and the phone has no sidebar); the native frame opens `/vault` the same way. A Vault row on the
+  phone's Home (web and native together) is a decision for the owner. Import and export stay on the web, as on the
+  Mac.

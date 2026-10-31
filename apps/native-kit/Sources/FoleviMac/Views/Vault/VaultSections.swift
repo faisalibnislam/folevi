@@ -7,6 +7,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import FoleviDesign
 import FoleviEngine
+import FoleviScreens
 
 struct VaultSectionView: View {
     @Bindable var model: VaultModel
@@ -336,7 +337,7 @@ struct VaultFiles: View {
         busy = true
         Task { @MainActor in
             do {
-                _ = try await model.frame.client.command(.vaultFileUpload(vaultId: vaultId, folderId: folder, name: name, mime: mime, data: data.base64EncodedString()))
+                _ = try await model.client.command(.vaultFileUpload(vaultId: vaultId, folderId: folder, name: name, mime: mime, data: data.base64EncodedString()))
                 model.toast("\(name) added to the Vault", tone: .success)
             } catch { model.toast(VaultModel.message(error), tone: .error) }
             busy = false
@@ -445,10 +446,10 @@ struct VaultPasswords: View {
 
     private func duplicate(_ id: String) {
         model.run {
-            let r = try await model.frame.client.command(.vaultItemDuplicate(vaultId: vaultId, itemId: id))
+            let r = try await model.client.command(.vaultItemDuplicate(vaultId: vaultId, itemId: id))
             model.toast("Duplicated", tone: .success)
             model.selected = r.id
-            let item = try await model.frame.client.command(.vaultItemOpen(vaultId: vaultId, itemId: r.id))
+            let item = try await model.client.command(.vaultItemOpen(vaultId: vaultId, itemId: r.id))
             model.dialog = .editItem(item)
         }
     }
@@ -525,7 +526,7 @@ struct VaultItemPanel: View {
                     WebButton("Share", icon: .share2, size: .sm) { model.dialog = .share(itemId: item.id, title: item.title, note: false) }
                     WebIconButton(.trash, label: "Move to the Vault's Trash") {
                         model.run {
-                            _ = try await model.frame.client.command(.vaultItemRemove(vaultId: vaultId, itemId: item.id))
+                            _ = try await model.client.command(.vaultItemRemove(vaultId: vaultId, itemId: item.id))
                             model.toast("Moved to the Vault's Trash")
                             model.selected = nil
                         }
@@ -557,7 +558,7 @@ struct VaultItemPanel: View {
     }
 
     private func load() async {
-        do { item = try await model.frame.client.command(.vaultItemOpen(vaultId: vaultId, itemId: itemId)) } catch { model.toast(VaultModel.message(error), tone: .error) }
+        do { item = try await model.client.command(.vaultItemOpen(vaultId: vaultId, itemId: itemId)) } catch { model.toast(VaultModel.message(error), tone: .error) }
     }
 
     @ViewBuilder private func field(_ f: VaultFieldValue, item: VaultItemValue) -> some View {
@@ -621,7 +622,7 @@ struct VaultTotp: View {
         .task {
             model.record("totp.show", itemId: itemId)
             while !Task.isCancelled {
-                if let r = try? await model.frame.client.command(.vaultTotp(secret: secret)) {
+                if let r = try? await model.client.command(.vaultTotp(secret: secret)) {
                     unreadable = r.code == nil
                     code = r.code
                     seconds = r.secondsLeft
@@ -704,7 +705,7 @@ struct VaultTrash: View {
                             VaultRow(title: row.title, detail: [row.kindLabel, "deleted \(VaultTime.relative(row.deletedAt ?? row.updatedAt))", "\(left) \(left == 1 ? "day" : "days") left"].joined(separator: " · ")) {
                                 WebButton("Restore", icon: .rotateCcw, size: .sm) {
                                     model.run {
-                                        _ = try await model.frame.client.command(.vaultItemRestore(vaultId: vaultId, itemId: row.id))
+                                        _ = try await model.client.command(.vaultItemRestore(vaultId: vaultId, itemId: row.id))
                                         model.toast("Restored")
                                     }
                                 }
@@ -739,7 +740,7 @@ struct VaultSettingsView: View {
                     let m = v?.autoLockMinutes ?? 5
                     VaultSelect(style: "vault.settings.select", label: "\(m) \(m == 1 ? "minute" : "minutes")", options: [1, 2, 5, 10, 15, 30].map { ("\($0)", "\($0) \($0 == 1 ? "minute" : "minutes")") }, selected: "\(m)") { value in
                         model.run {
-                            _ = try await model.frame.client.command(.vaultSettingsUpdate(vaultId: vaultId, autoLockMinutes: Int(value)))
+                            _ = try await model.client.command(.vaultSettingsUpdate(vaultId: vaultId, autoLockMinutes: Int(value)))
                             model.toast("Saved")
                         }
                     }
@@ -754,7 +755,7 @@ struct VaultSettingsView: View {
                     Spacer(minLength: 0)
                     Toggle("", isOn: Binding(get: { v?.custodiansNameCustodians ?? false }, set: { on in
                         model.run {
-                            _ = try await model.frame.client.command(.vaultSettingsUpdate(vaultId: vaultId, custodiansNameCustodians: on))
+                            _ = try await model.client.command(.vaultSettingsUpdate(vaultId: vaultId, custodiansNameCustodians: on))
                             model.toast("Saved")
                         }
                     }))
@@ -776,7 +777,7 @@ struct VaultSettingsView: View {
             HStack(spacing: 8) {
                 WebButton("Change passcode") { model.dialog = .changePasscode }
                 WebButton("Make a new recovery key") {
-                    model.run { _ = try await model.frame.client.command(.vaultNewRecoveryKey(vaultId: vaultId)) }
+                    model.run { _ = try await model.client.command(.vaultNewRecoveryKey(vaultId: vaultId)) }
                 }
                 WebButton("Lock now") { model.lock() }
             }
@@ -858,14 +859,14 @@ struct VaultPeopleView: View {
                             guard let id = pick else { return }
                             pick = nil
                             model.run {
-                                _ = try await model.frame.client.command(.vaultPeopleAdd(vaultId: vaultId, profileId: id))
+                                _ = try await model.client.command(.vaultPeopleAdd(vaultId: vaultId, profileId: id))
                                 model.toast("Added. Their key arrives when you next open the Vault.")
                             }
                         }
                         .disabled(pick == nil)
                         WebButton("Everyone here should have access") {
                             model.run {
-                                _ = try await model.frame.client.command(.vaultPeopleReviewed(vaultId: vaultId))
+                                _ = try await model.client.command(.vaultPeopleReviewed(vaultId: vaultId))
                                 model.toast("Access reviewed")
                             }
                         }
@@ -879,7 +880,7 @@ struct VaultPeopleView: View {
                             } else if p.canNameCustodians {
                                 VaultSelect(style: "vault.pw.kind", label: person.role == "custodian" ? "Custodian" : "Member", options: [("custodian", "Custodian"), ("member", "Member")], selected: person.role) { role in
                                     model.run {
-                                        _ = try await model.frame.client.command(.vaultPeopleSetRole(vaultId: vaultId, profileId: person.profileId, role: role == "custodian" ? .custodian : .member))
+                                        _ = try await model.client.command(.vaultPeopleSetRole(vaultId: vaultId, profileId: person.profileId, role: role == "custodian" ? .custodian : .member))
                                         model.toast("Role changed")
                                     }
                                 }
@@ -889,7 +890,7 @@ struct VaultPeopleView: View {
                             if person.role != "owner" && (p.canAdd || person.isYou) {
                                 WebButton(person.isYou ? "Leave" : "Remove", variant: .quiet, size: .sm) {
                                     model.run {
-                                        _ = try await model.frame.client.command(.vaultPeopleRemove(vaultId: vaultId, profileId: person.profileId))
+                                        _ = try await model.client.command(.vaultPeopleRemove(vaultId: vaultId, profileId: person.profileId))
                                         model.toast(person.isYou ? "You left the Vault" : "Removed. The Vault's key changes when a custodian next opens it.")
                                     }
                                 }

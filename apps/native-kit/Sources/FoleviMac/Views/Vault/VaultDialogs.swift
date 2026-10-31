@@ -9,6 +9,7 @@ import PDFKit
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
+import FoleviScreens
 
 struct VaultDialogHost: View {
     @Bindable var model: VaultModel
@@ -94,8 +95,8 @@ private struct PromptDialog: View {
         let n = name
         model.dialog = nil
         model.run {
-            if folder { _ = try await model.frame.client.command(.vaultFolderCreate(vaultId: vaultId, parentId: parent, name: n)) }
-            else { _ = try await model.frame.client.command(.vaultNoteCreate(vaultId: vaultId, folderId: parent, title: n)) }
+            if folder { _ = try await model.client.command(.vaultFolderCreate(vaultId: vaultId, parentId: parent, name: n)) }
+            else { _ = try await model.client.command(.vaultNoteCreate(vaultId: vaultId, folderId: parent, title: n)) }
         }
     }
 }
@@ -171,12 +172,12 @@ private struct ItemDialog: View {
 
     private func rate() {
         let pw = values["password"] ?? ""
-        Task { strength = try? await model.frame.client.command(.vaultStrength(password: pw)) }
+        Task { strength = try? await model.client.command(.vaultStrength(password: pw)) }
     }
 
     private func generate(_ k: VaultGenerateArgs.Kind) {
         Task {
-            if let r = try? await model.frame.client.command(.vaultGenerate(kind: k)) {
+            if let r = try? await model.client.command(.vaultGenerate(kind: k)) {
                 values["password"] = r.value
                 rate()
             }
@@ -188,7 +189,7 @@ private struct ItemDialog: View {
         busy = true
         Task { @MainActor in
             do {
-                let r = try await model.frame.client.command(.vaultItemSave(vaultId: vaultId, itemId: existing?.id, kind: kind, title: title, values: values, notes: notes))
+                let r = try await model.client.command(.vaultItemSave(vaultId: vaultId, itemId: existing?.id, kind: kind, title: title, values: values, notes: notes))
                 model.toast(existing == nil ? "Added to the Vault" : "Saved", tone: existing == nil ? .success : .info)
                 model.selected = r.id
                 model.dialog = nil
@@ -227,7 +228,7 @@ private struct HistoryDialog: View {
         }
         .task {
             guard let vaultId = model.vaultId else { return }
-            do { versions = try await model.frame.client.command(.vaultItemHistory(vaultId: vaultId, itemId: itemId)).versions } catch { model.toast(VaultModel.message(error), tone: .error) }
+            do { versions = try await model.client.command(.vaultItemHistory(vaultId: vaultId, itemId: itemId)).versions } catch { model.toast(VaultModel.message(error), tone: .error) }
         }
     }
 
@@ -247,7 +248,7 @@ private struct HistoryDialog: View {
                     WebButton("Bring back", icon: .rotateCcw, size: .sm) {
                         guard let vaultId = model.vaultId else { return }
                         model.run {
-                            _ = try await model.frame.client.command(.vaultItemRestoreVersion(vaultId: vaultId, itemId: itemId, revision: v.revision))
+                            _ = try await model.client.command(.vaultItemRestoreVersion(vaultId: vaultId, itemId: itemId, revision: v.revision))
                             model.toast("Brought back version \(v.revision)")
                             model.dialog = nil
                         }
@@ -323,7 +324,7 @@ private struct ShareDialog: View {
                         WebButton("Stop", icon: .x, variant: .quiet, size: .sm) {
                             guard let vaultId = model.vaultId else { return }
                             model.run {
-                                _ = try await model.frame.client.command(.vaultShareStop(vaultId: vaultId, itemId: itemId, shareId: p.id))
+                                _ = try await model.client.command(.vaultShareStop(vaultId: vaultId, itemId: itemId, shareId: p.id))
                                 model.toast("Stopped sharing with \(p.name)")
                             }
                         }
@@ -357,7 +358,7 @@ private struct ShareDialog: View {
                         WebButton("End", variant: .quiet, size: .sm) {
                             guard let vaultId = model.vaultId else { return }
                             model.run {
-                                _ = try await model.frame.client.command(.vaultLinkRevoke(vaultId: vaultId, linkId: l.id))
+                                _ = try await model.client.command(.vaultLinkRevoke(vaultId: vaultId, linkId: l.id))
                                 model.toast("Link ended")
                             }
                         }
@@ -376,7 +377,7 @@ private struct ShareDialog: View {
         let to = email
         Task { @MainActor in
             do {
-                let r = try await model.frame.client.command(.vaultSharePerson(vaultId: vaultId, itemId: itemId, email: to, days: days, canEdit: canEdit))
+                let r = try await model.client.command(.vaultSharePerson(vaultId: vaultId, itemId: itemId, email: to, days: days, canEdit: canEdit))
                 model.toast(r.message, tone: r.status == "shared" ? .success : r.status == "inVault" ? .info : .error)
                 if r.status == "shared" { email = "" }
             } catch { model.toast(VaultModel.message(error), tone: .error) }
@@ -390,7 +391,7 @@ private struct ShareDialog: View {
         let pw = password
         Task { @MainActor in
             do {
-                made = try await model.frame.client.command(.vaultLinkCreate(vaultId: vaultId, itemId: itemId, maxViews: views, lastsMs: lasts, password: pw.isEmpty ? nil : pw)).url
+                made = try await model.client.command(.vaultLinkCreate(vaultId: vaultId, itemId: itemId, maxViews: views, lastsMs: lasts, password: pw.isEmpty ? nil : pw)).url
                 password = ""
             } catch { model.toast(VaultModel.message(error), tone: .error) }
             busy = false
@@ -430,7 +431,7 @@ private struct NoteDialog: View {
         .task {
             guard let vaultId = model.vaultId else { return }
             do {
-                let n = try await model.frame.client.command(.vaultNoteOpen(vaultId: vaultId, itemId: row.id))
+                let n = try await model.client.command(.vaultNoteOpen(vaultId: vaultId, itemId: row.id))
                 note = n
                 text = n.text
             } catch { model.toast(VaultModel.message(error), tone: .error) }
@@ -443,7 +444,7 @@ private struct NoteDialog: View {
         let body = text
         Task { @MainActor in
             do {
-                let r = try await model.frame.client.command(.vaultNoteSave(vaultId: vaultId, itemId: row.id, revision: n.revision, text: body))
+                let r = try await model.client.command(.vaultNoteSave(vaultId: vaultId, itemId: row.id, revision: n.revision, text: body))
                 note = VaultNoteValue(id: n.id, title: n.title, text: body, canChange: n.canChange, revision: r.revision)
                 model.toast("Saved")
             } catch { model.toast(VaultModel.message(error), tone: .error) }
@@ -497,7 +498,7 @@ private struct PreviewDialog: View {
         error = nil
         guard let vaultId = model.vaultId else { return }
         do {
-            let v = try await model.frame.client.command(.vaultFileOpen(vaultId: vaultId, itemId: f.id, purpose: .preview))
+            let v = try await model.client.command(.vaultFileOpen(vaultId: vaultId, itemId: f.id, purpose: .preview))
             bytes = Data(base64Encoded: v.data)
             file = v
         } catch { self.error = VaultModel.message(error) }
@@ -506,7 +507,7 @@ private struct PreviewDialog: View {
     private func download(_ f: VaultItemRow) {
         guard let vaultId = model.vaultId else { return }
         model.run {
-            let v = try await model.frame.client.command(.vaultFileOpen(vaultId: vaultId, itemId: f.id, purpose: .download))
+            let v = try await model.client.command(.vaultFileOpen(vaultId: vaultId, itemId: f.id, purpose: .download))
             let panel = NSSavePanel()
             panel.nameFieldStringValue = v.name
             guard panel.runModal() == .OK, let url = panel.url, let data = Data(base64Encoded: v.data) else { return }
@@ -618,33 +619,7 @@ private struct CSVPreview: View {
     let text: String
     @Environment(\.colorScheme) private var scheme
 
-    static func parse(_ text: String, max: Int = 501) -> [[String]] {
-        var rows: [[String]] = []
-        var row: [String] = []
-        var field = ""
-        var quoted = false
-        var it = Array(text)
-        var i = 0
-        while i < it.count && rows.count < max {
-            let c = it[i]
-            if quoted {
-                if c == "\"" && i + 1 < it.count && it[i + 1] == "\"" { field.append("\""); i += 1 }
-                else if c == "\"" { quoted = false }
-                else { field.append(c) }
-            } else if c == "\"" { quoted = true }
-            else if c == "," { row.append(field); field = "" }
-            else if c == "\n" || c == "\r" || c == "\r\n" {
-                row.append(field)
-                rows.append(row)
-                row = []
-                field = ""
-            } else { field.append(c) }
-            i += 1
-        }
-        if (!field.isEmpty || !row.isEmpty) && rows.count < max { rows.append(row + [field]) }
-        it.removeAll()
-        return rows
-    }
+    static func parse(_ text: String, max: Int = 501) -> [[String]] { VaultCSV.parse(text, max: max) }
 
     var body: some View {
         let rows = Self.parse(text)
@@ -687,7 +662,7 @@ private struct EmptyTrashDialog: View {
                 guard let vaultId = model.vaultId else { return }
                 model.dialog = nil
                 model.run {
-                    let r = try await model.frame.client.command(.vaultTrashEmpty(vaultId: vaultId))
+                    let r = try await model.client.command(.vaultTrashEmpty(vaultId: vaultId))
                     model.toast("Deleted \(r.removed) for good")
                 }
             }
@@ -723,7 +698,7 @@ private struct ChangePasscodeDialog: View {
         let cur = current
         Task { @MainActor in
             do {
-                let r = try await model.frame.client.command(.vaultChangePasscode(vaultId: vaultId, current: cur, next: next))
+                let r = try await model.client.command(.vaultChangePasscode(vaultId: vaultId, current: cur, next: next))
                 if r.status == "ok" {
                     model.toast("Passcode changed", tone: .success)
                     model.dialog = nil

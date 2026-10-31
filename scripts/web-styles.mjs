@@ -247,10 +247,10 @@ ${ipadChunks.map((part, i) => `
     private static func addIpad${i}(_ d: inout [String: WebStylePair]) {
 ${part.map((id) => `        d[${JSON.stringify(id)}] = WebStylePair(\n            light: ${style(ipadAppCache.light[id])},\n            dark: ${style(ipadAppCache.dark[id])}\n        )`).join("\n")}
     }`).join("\n")}
-
-    /// Whether this is an iPad (its wide layout's styles first): the app sets it at launch.
-    nonisolated(unsafe) public static var isPad = false
     #endif
+
+    /// Whether this is an iPad (its wide layout's styles first): the iOS app sets it at launch; never on the Mac.
+    nonisolated(unsafe) public static var isPad = false
 
     /// The CSS colour variables (\`--mac-selected\`, \`--glass-hover\`), light and dark, as this platform's web has them.
     public static let vars: [String: ColorPair] = {

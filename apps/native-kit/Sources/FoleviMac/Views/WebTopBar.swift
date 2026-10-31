@@ -42,16 +42,29 @@ public struct WebTopBar: View {
             historyButton(.arrowLeft, "Back", enabled: model.history.canGoBack, style: "frame.topbar.back") { model.goBack() }
                 .padding(.trailing, -bar.gap)
             historyButton(.arrowRight, "Forward", enabled: model.history.canGoForward, style: "frame.topbar.forward") { model.goForward() }
-            overviewButton
-            divider
+            // (The iPad's strip: no Tab Overview button or dividers, TabStrip.tsx `ipad`.)
+            if !WebStyles.isPad {
+                overviewButton
+                divider
+            }
             strip.layoutPriority(1)
             Spacer(minLength: 0)
-            // The web's <Button size="sm"> with <Plus size={14} />, as the top bar measures it (its icon at 70%).
-            WebButton("New note", icon: .plus, iconSize: 14, iconOpacity: style("frame.topbar.new.icon").opacity, styleName: "frame.topbar.new", variant: .primary, size: .sm) { model.newNote() }
-                // The button says "New note": its tooltip is the shortcut alone (tooltips never repeat what shows).
-                .foleviTooltip("(⌘⌥N)")
-                .fixedSize()
-                .padding(.trailing, newNoteInset - bar.padding.right)
+            if WebStyles.isPad {
+                // Foli AI (the Mac's floating pill has no place on an iPad) and New note, as round glass buttons.
+                #if os(iOS)
+                if model.session.value?.capabilities.ai ?? false {
+                    WebPillButton("Foli AI", action: { model.askAI() }) { AiMarkGlyph(size: 20) }
+                }
+                WebPillButton("New note", action: { model.newNote() }) { WebIconView(.plus, size: 22, strokeWidth: 2.2) }
+                #endif
+            } else {
+                // The web's <Button size="sm"> with <Plus size={14} />, as the top bar measures it (its icon at 70%).
+                WebButton("New note", icon: .plus, iconSize: 14, iconOpacity: style("frame.topbar.new.icon").opacity, styleName: "frame.topbar.new", variant: .primary, size: .sm) { model.newNote() }
+                    // The button says "New note": its tooltip is the shortcut alone (tooltips never repeat what shows).
+                    .foleviTooltip("(⌘⌥N)")
+                    .fixedSize()
+                    .padding(.trailing, newNoteInset - bar.padding.right)
+            }
         }
         .padding(bar.padding.edgeInsets)
         .frame(height: bar.height)
@@ -86,7 +99,7 @@ public struct WebTopBar: View {
                     .padding(.trailing, list.gap)
             }
             // The arrows only while the tabs overflow, each dimmed with nothing more on its side (TabStrip.tsx).
-            if overflow.start || overflow.end {
+            if !WebStyles.isPad, overflow.start || overflow.end {
                 HStack(spacing: style("frame.topbar").gap) {
                     scrollArrow(.chevronLeft, "Scroll tabs left", enabled: overflow.start) { scrollTabs(-1) }
                     scrollArrow(.chevronRight, "Scroll tabs right", enabled: overflow.end) { scrollTabs(1) }
@@ -266,7 +279,11 @@ public struct WebTopBar: View {
         let label = model.tabs.label(t)
         let hovered = hoveredTab == t.id
         return HStack(spacing: t.pinned ? 4 : s.gap) {
-            if t.isHome {
+            if t.isHome, WebStyles.isPad {
+                // The iPad's Home tab says its name (`<House size={17} /> Home`).
+                WebIconView(.house, size: 17)
+                Text("Home").webText(tabText(active)).lineLimit(1)
+            } else if t.isHome {
                 WebIconView(.house, size: 15)
                     .frame(width: 36)
             } else if t.isJoined, let panes = t.panes {

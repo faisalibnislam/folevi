@@ -176,7 +176,10 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         }
         // FOLEVI_REBUILD_NEWNOTE=1: a new note at launch (for checking the note page headlessly; scratch data only).
         if ProcessInfo.processInfo.environment["FOLEVI_REBUILD_NEWNOTE"] == "1" {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in self?.model.newNote() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+                guard let self else { return }
+                if UIDevice.current.userInterfaceIdiom == .pad, (self.view.window?.bounds.width ?? 0) >= RebuildIPad.minWidth { self.desk.newNote() } else { self.model.newNote() }
+            }
         }
     }
 

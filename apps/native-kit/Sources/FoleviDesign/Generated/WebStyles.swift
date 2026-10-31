@@ -4196,10 +4196,10 @@ public enum WebStyles {
             dark: WebComputedStyle(x: 368, y: 122, width: 50.03, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 57.109, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 15, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
     }
-
-    /// Whether this is an iPad (its wide layout's styles first): the app sets it at launch.
-    nonisolated(unsafe) public static var isPad = false
     #endif
+
+    /// Whether this is an iPad (its wide layout's styles first): the iOS app sets it at launch; never on the Mac.
+    nonisolated(unsafe) public static var isPad = false
 
     /// The CSS colour variables (`--mac-selected`, `--glass-hover`), light and dark, as this platform's web has them.
     public static let vars: [String: ColorPair] = {

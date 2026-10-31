@@ -63,6 +63,7 @@ private struct IPadNotePage: UIViewControllerRepresentable {
         }
 
         func pageViewWillLeave(_ pageView: WKWebView) {}
+
     }
 
     func makeUIViewController(context: Context) -> Controller {

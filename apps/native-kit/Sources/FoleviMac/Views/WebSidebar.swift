@@ -67,13 +67,20 @@ public struct WebSidebar: View {
             if let noteId = model.route.noteId, docMode == "document" {
                 // The note's own sidebar (DocumentSidebar.tsx), between the search and the account.
                 WebNoteSidebar(model: model, noteId: noteId)
-                    .padding(.top, WebStyles.named("notetools.card.wrap").resolve(scheme).y - style("search").y - style("search").height)
+                    // (The gap as measured together on the Mac: the note tools aren't measured on the iPad yet, and
+                    // their place against the iPad's taller search would come out negative.)
+                    .padding(.top, Self.noteToolsGap(scheme))
             } else {
                 appList
             }
             account
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    static func noteToolsGap(_ scheme: ColorScheme) -> CGFloat {
+        let mac = { (id: String) in (WebStyles.all[id] ?? WebStyles.named(id)).resolve(scheme) }
+        return max(0, mac("notetools.card.wrap").y - mac("frame.sidebar.search").y - mac("frame.sidebar.search").height)
     }
 
     /// The app's places, folders and tags (Sidebar.tsx's list).
@@ -102,6 +109,14 @@ public struct WebSidebar: View {
         let bar = style("topbar")
         let local = model.session.value?.mode == .local
         return HStack(spacing: bar.gap) {
+            if WebStyles.isPad {
+                // The iPad: the wordmark, to Home (the Mac has its window's buttons there).
+                Button { model.open(.home, .replace) } label: {
+                    WebFoleviLogo(height: 26, color: Folevi.color.heading).padding(4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Folevi")
+            }
             Spacer(minLength: 0)
             SyncDot(model: model)
             if !local {

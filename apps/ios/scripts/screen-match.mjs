@@ -67,6 +67,7 @@ export const SCREENS = [
   { id: "settings-library", path: "/settings/library", ready: "Library" },
   { id: "settings-ai", path: "/settings/ai", ready: "Foli AI" },
   { id: "settings-appearance", path: "/settings/appearance", ready: "Appearance" },
+  { id: "settings-theme", path: "/settings/appearance?screen=theme", ready: "Follows this device" },
   { id: "settings-data", path: "/settings/data", ready: "Import" },
   { id: "settings-this-device", path: "/settings/this-device", ready: "This device" },
 ];

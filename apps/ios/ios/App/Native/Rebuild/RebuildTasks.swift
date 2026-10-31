@@ -143,6 +143,7 @@ struct RebuildCalendarScreen: View {
     let openAccount: () -> Void
     let openNotifications: () -> Void
     @State private var model: CalendarModel
+    @State private var toTop = 0
 
     init(date: String?, frame: PhoneFrameModel, menus: PhoneMenus, home: HomeModel, phone: PhoneModel, openAccount: @escaping () -> Void, openNotifications: @escaping () -> Void) {
         self.date = date
@@ -156,12 +157,19 @@ struct RebuildCalendarScreen: View {
         _model = State(initialValue: CalendarModel(client: phone.client, date: date, feedback: feedback))
     }
 
+    /// The month as the title; the week strip stays under the bar while the days scroll.
+    private var calendarOptions: PhoneScreenOptions {
+        var o = PhoneScreenOptions(title: model.title)
+        o.pinsHeader = true
+        return o
+    }
+
     /// The iPhone shows the agenda unless Week or Month was picked from "…" (its own key, as the web keeps one).
     private var layout: CalendarLayout { model.layout(compact: true) }
 
     var body: some View {
         let tasks = model.tasksByDay, events = model.eventsByDay
-        PhoneScreen(PhoneScreenOptions(title: model.title), root: true, scrollToTop: frame.scrollToTop) {
+        PhoneScreen(calendarOptions, root: true, scrollToTop: frame.scrollToTop + toTop) {
             RebuildRootAvatar(home: home, open: openAccount)
         } trailing: {
             if model.selected != model.today {
@@ -183,6 +191,8 @@ struct RebuildCalendarScreen: View {
             }
         }
         .onChange(of: date) { _, d in if let d { model.select(d) } }
+        // A day picked in the strip starts the list there: back to the top of it (Agenda.tsx).
+        .onChange(of: model.selected) { toTop += 1 }
         .onChange(of: model.tasks.value) { _, _ in model.reconcile() }
         .onAppear { model.setVisible(true) }
         .onDisappear { model.setVisible(false) }

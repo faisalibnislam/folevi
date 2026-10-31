@@ -22,6 +22,8 @@ public struct PhoneScreenOptions {
     public var tint: RGBA?
     /// Where the content starts scrolled to (Debug: FOLEVI_REBUILD_SCROLL, for comparing a screen's lower part).
     public var startOffset: CGFloat?
+    /// The header stays under the bar once the large title has scrolled away (`sticky`: the Calendar's week strip).
+    public var pinsHeader = false
 
     public init(title: String, large: Bool = true, eyebrow: String? = nil, subtitle: String? = nil, status: String? = nil, grouped: Bool = false, collapseAt: CGFloat? = nil) {
         self.title = title
@@ -59,6 +61,7 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     @State private var offset: CGFloat = 0
     @State private var titleFoot: CGFloat = 60
     @State private var titleHeight: CGFloat = 38
+    @State private var largeHeight: CGFloat = 48
     @State private var position = ScrollPosition(edge: .top)
 
     public init(_ options: PhoneScreenOptions, root: Bool = false, scrollToTop: Int = 0, back: @escaping () -> Void = {}, @ViewBuilder leading: () -> Leading, @ViewBuilder trailing: () -> Trailing, @ViewBuilder header: () -> Header, @ViewBuilder content: () -> Content) {
@@ -89,8 +92,11 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                             Color.clear.frame(height: 0).id("top")
                             if options.large {
                                 largeTitle(width: geo.size.width - safe.leading - safe.trailing).opacity(largeOpacity)
+                                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { largeHeight = $0 }
                             }
                             header
+                                .offset(y: options.pinsHeader ? max(0, offset - (options.large ? largeHeight : 0)) : 0)
+                                .zIndex(1)
                             content
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)

@@ -1,0 +1,2406 @@
+{
+ "light": {
+  "phone.folders.card": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "y": 782.55,
+   "fontWeight": 400,
+   "height": 157.92,
+   "opacity": 1,
+   "width": 142,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "phone.row.icon": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "gap": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 20,
+   "fontSize": 16,
+   "opacity": 1,
+   "border": {
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 400,
+   "height": 22,
+   "fontFamily": "Instrument Sans",
+   "width": 28,
+   "y": 489.55
+  },
+  "phone.search.icon": {
+   "color": [
+    103,
+    103,
+    111,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 28,
+   "fontWeight": 400,
+   "y": 182.58,
+   "height": 19,
+   "fontFamily": "Instrument Sans",
+   "width": 19,
+   "border": {
+    "color": [
+     103,
+     103,
+     111,
+     1
+    ],
+    "width": 0
+   },
+   "fontSize": 17,
+   "opacity": 1
+  },
+  "phone.section.title": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.22,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 28,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 20,
+   "y": 614.55,
+   "fontWeight": 600,
+   "height": 28,
+   "border": {
+    "width": 0,
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ]
+   },
+   "width": 71.84,
+   "fontSize": 22,
+   "fontFamily": "Spectral",
+   "opacity": 1
+  },
+  "phone.more": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    20,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "height": 156,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "width": 402,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "y": 1060.47
+  },
+  "phone.row.detail": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 347.89,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ]
+   },
+   "fontWeight": 400,
+   "width": 10.11,
+   "fontSize": 17,
+   "height": 22,
+   "y": 541.55
+  },
+  "phone.recents.card": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontSize": 16,
+   "opacity": 1,
+   "height": 168.47,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "y": 230.08,
+   "width": 156
+  },
+  "phone.search.box": {
+   "color": [
+    103,
+    103,
+    111,
+    1
+   ],
+   "radius": 14,
+   "gap": 8,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    12,
+    0,
+    12
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "lineHeight": 22,
+   "background": [
+    24,
+    24,
+    27,
+    0.065
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontSize": 17,
+   "opacity": 1,
+   "height": 44,
+   "border": {
+    "width": 0,
+    "color": [
+     103,
+     103,
+     111,
+     1
+    ]
+   },
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "y": 170.08,
+   "width": 370
+  },
+  "phone.section": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    28,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 96,
+   "fontWeight": 400,
+   "width": 402,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "fontSize": 16,
+   "y": 606.55
+  },
+  "phone.row.label": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 60,
+   "fontWeight": 400,
+   "fontSize": 17,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "height": 22,
+   "width": 298,
+   "fontFamily": "Instrument Sans",
+   "y": 489.55,
+   "opacity": 1
+  },
+  "phone.row.chevron": {
+   "color": [
+    103,
+    103,
+    111,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    -4,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 366,
+   "fontSize": 16,
+   "opacity": 1,
+   "border": {
+    "color": [
+     103,
+     103,
+     111,
+     1
+    ],
+    "width": 0
+   },
+   "height": 20,
+   "width": 20,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "y": 490.55
+  },
+  "phone.catchup.icon": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 23,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "height": 22,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "width": 22,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "y": 437.55
+  },
+  "phone.section.head": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 8,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    5,
+    0,
+    20
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontWeight": 400,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
+   "height": 44,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "width": 402,
+   "opacity": 1,
+   "y": 606.55
+  },
+  "phone.folders": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    8,
+    16,
+    28,
+    16
+   ],
+   "gradient": null,
+   "gap": 12,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 193.92,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "width": 402,
+   "fontWeight": 400,
+   "fontSize": 16,
+   "y": 774.55
+  },
+  "phone.title.wrap": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    4,
+    20,
+    6,
+    20
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontSize": 16,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "height": 48.08,
+   "width": 402,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "y": 114
+  },
+  "phone.section.chevron": {
+   "color": [
+    103,
+    103,
+    111,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    1,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 95.84,
+   "fontWeight": 400,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     103,
+     103,
+     111,
+     1
+    ]
+   },
+   "fontSize": 16,
+   "width": 20,
+   "fontFamily": "Instrument Sans",
+   "height": 20,
+   "y": 619.05
+  },
+  "phone.section.link": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 6,
+   "backdropBlur": 0,
+   "gap": 4,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 20,
+   "fontSize": 16,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "width": 95.84,
+   "fontWeight": 400,
+   "height": 44,
+   "y": 606.55
+  },
+  "phone.row.body": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 8,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "padding": [
+    0,
+    4,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 60,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "height": 52,
+   "opacity": 1,
+   "width": 326,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "y": 474.55
+  },
+  "phone.row.icon.svg": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 23,
+   "fontWeight": 400,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ]
+   },
+   "height": 22,
+   "width": 22,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "y": 489.55
+  },
+  "phone.recents": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "gap": 14,
+   "padding": [
+    12,
+    16,
+    24,
+    16
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontWeight": 400,
+   "fontSize": 16,
+   "height": 204.47,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "width": 402,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "y": 218.08
+  },
+  "phone.search.text": {
+   "color": [
+    103,
+    103,
+    111,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 55,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 17,
+   "height": 22,
+   "border": {
+    "width": 0,
+    "color": [
+     103,
+     103,
+     111,
+     1
+    ]
+   },
+   "width": 319,
+   "opacity": 1,
+   "fontWeight": 400,
+   "y": 181.08
+  },
+  "phone.row": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "gap": 12,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    16,
+    0,
+    20
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontWeight": 400,
+   "fontSize": 16,
+   "height": 52,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "width": 402,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "y": 474.55
+  },
+  "phone.search.wrap": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    8,
+    16,
+    4,
+    16
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "height": 56,
+   "opacity": 1,
+   "width": 402,
+   "y": 162.08,
+   "fontSize": 16
+  },
+  "phone.section.more": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 999,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 353,
+   "fontSize": 16,
+   "opacity": 1,
+   "height": 44,
+   "fontFamily": "Instrument Sans",
+   "width": 44,
+   "fontWeight": 400,
+   "border": {
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ],
+    "width": 0
+   },
+   "y": 730.55
+  }
+ },
+ "dark": {
+  "phone.folders.card": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontSize": 16,
+   "y": 782.55,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "width": 142,
+   "height": 157.92,
+   "fontWeight": 400
+  },
+  "phone.row.icon": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 20,
+   "y": 489.55,
+   "fontWeight": 400,
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   },
+   "height": 22,
+   "width": 28,
+   "opacity": 1,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans"
+  },
+  "phone.section.title": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.22,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 28,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 20,
+   "fontSize": 22,
+   "y": 614.55,
+   "border": {
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 600,
+   "width": 71.84,
+   "fontFamily": "Spectral",
+   "opacity": 1,
+   "height": 28
+  },
+  "phone.search.icon": {
+   "color": [
+    147,
+    147,
+    155,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "backdropBlur": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 28,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "y": 182.58,
+   "border": {
+    "width": 0,
+    "color": [
+     147,
+     147,
+     155,
+     1
+    ]
+   },
+   "fontSize": 17,
+   "height": 19,
+   "opacity": 1,
+   "width": 19
+  },
+  "phone.more": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    20,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "y": 1060.47,
+   "opacity": 1,
+   "height": 156,
+   "fontWeight": 400,
+   "width": 402,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   }
+  },
+  "phone.row.detail": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 347.89,
+   "y": 541.55,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ]
+   },
+   "fontWeight": 400,
+   "height": 22,
+   "width": 10.11,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 17
+  },
+  "phone.recents.card": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "y": 230.08,
+   "fontWeight": 400,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "height": 168.47,
+   "opacity": 1,
+   "width": 156,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans"
+  },
+  "phone.search.box": {
+   "color": [
+    147,
+    147,
+    155,
+    1
+   ],
+   "radius": 14,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "gap": 8,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    12,
+    0,
+    12
+   ],
+   "gradient": null,
+   "lineHeight": 22,
+   "background": [
+    242,
+    242,
+    243,
+    0.065
+   ],
+   "shadows": [],
+   "x": 16,
+   "y": 170.08,
+   "opacity": 1,
+   "height": 44,
+   "border": {
+    "width": 0,
+    "color": [
+     147,
+     147,
+     155,
+     1
+    ]
+   },
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "width": 370,
+   "fontSize": 17
+  },
+  "phone.row.chevron": {
+   "color": [
+    147,
+    147,
+    155,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    -4,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 366,
+   "y": 490.55,
+   "opacity": 1,
+   "height": 20,
+   "fontWeight": 400,
+   "width": 20,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "border": {
+    "color": [
+     147,
+     147,
+     155,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "phone.catchup.icon": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.096,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 23,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "y": 437.55,
+   "height": 22,
+   "width": 22,
+   "fontSize": 16,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "fontWeight": 400
+  },
+  "phone.row.label": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "backdropBlur": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 60,
+   "fontWeight": 400,
+   "y": 489.55,
+   "opacity": 1,
+   "fontSize": 17,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "height": 22,
+   "width": 298
+  },
+  "phone.section": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    28,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "y": 606.55,
+   "opacity": 1,
+   "height": 96,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "width": 402
+  },
+  "phone.section.head": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 8,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    5,
+    0,
+    20
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "y": 606.55,
+   "height": 44,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "fontSize": 16,
+   "width": 402,
+   "fontWeight": 400
+  },
+  "phone.folders": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 12,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    8,
+    16,
+    28,
+    16
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontSize": 16,
+   "y": 774.55,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "height": 193.92,
+   "width": 402,
+   "opacity": 1
+  },
+  "phone.title.wrap": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "padding": [
+    4,
+    20,
+    6,
+    20
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "y": 114,
+   "fontWeight": 400,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontSize": 16,
+   "width": 402,
+   "opacity": 1,
+   "height": 48.08,
+   "fontFamily": "Instrument Sans"
+  },
+  "phone.section.chevron": {
+   "color": [
+    147,
+    147,
+    155,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    1,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 95.84,
+   "y": 619.05,
+   "fontSize": 16,
+   "height": 20,
+   "fontWeight": 400,
+   "width": 20,
+   "border": {
+    "width": 0,
+    "color": [
+     147,
+     147,
+     155,
+     1
+    ]
+   },
+   "opacity": 1,
+   "fontFamily": "Instrument Sans"
+  },
+  "phone.section.link": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 6,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gap": 4,
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 20,
+   "y": 606.55,
+   "fontFamily": "Instrument Sans",
+   "height": 44,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "width": 95.84,
+   "opacity": 1,
+   "fontWeight": 400,
+   "fontSize": 16
+  },
+  "phone.row.body": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 8,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "padding": [
+    0,
+    4,
+    0,
+    0
+   ],
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 60,
+   "fontSize": 16,
+   "opacity": 1,
+   "y": 474.55,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "fontWeight": 400,
+   "height": 52,
+   "fontFamily": "Instrument Sans",
+   "width": 326
+  },
+  "phone.row.icon.svg": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gap": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 23,
+   "y": 489.55,
+   "opacity": 1,
+   "height": 22,
+   "fontWeight": 400,
+   "width": 22,
+   "border": {
+    "width": 0,
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ]
+   },
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans"
+  },
+  "phone.recents": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 14,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "padding": [
+    12,
+    16,
+    24,
+    16
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontFamily": "Instrument Sans",
+   "y": 218.08,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "opacity": 1,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "height": 204.47,
+   "width": 402
+  },
+  "phone.search.text": {
+   "color": [
+    147,
+    147,
+    155,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 55,
+   "y": 181.08,
+   "opacity": 1,
+   "height": 22,
+   "border": {
+    "width": 0,
+    "color": [
+     147,
+     147,
+     155,
+     1
+    ]
+   },
+   "width": 319,
+   "fontSize": 17,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans"
+  },
+  "phone.section.more": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 999,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 353,
+   "fontFamily": "Instrument Sans",
+   "y": 730.55,
+   "fontWeight": 400,
+   "height": 44,
+   "fontSize": 16,
+   "width": 44,
+   "border": {
+    "width": 0,
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ]
+   },
+   "opacity": 1
+  },
+  "phone.search.wrap": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    8,
+    16,
+    4,
+    16
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "y": 162.08,
+   "fontWeight": 400,
+   "height": 56,
+   "opacity": 1,
+   "width": 402,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "phone.row": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    16,
+    0,
+    20
+   ],
+   "gradient": null,
+   "gap": 12,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 0,
+   "y": 474.55,
+   "opacity": 1,
+   "fontSize": 16,
+   "height": 52,
+   "width": 402,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "fontWeight": 400
+  }
+ }
+}

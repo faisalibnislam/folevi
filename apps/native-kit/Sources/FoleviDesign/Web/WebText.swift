@@ -275,9 +275,18 @@ struct WebTextModifier: ViewModifier {
                     .alignmentGuide(.top) { d in d[.firstTextBaseline] - cssBaseline }
                     .frame(height: style.leading, alignment: .top)
             } else {
+                // A line box shorter than the font's own line (Spectral's large titles: 52 pt of ascent and
+                // descent in a 38 pt box) takes only the box's height on iOS, as CSS does: the first line's
+                // overflow goes into the padding. (The Mac's matched screens keep the font's height.)
+                #if os(iOS)
+                text
+                    .padding(.top, top)
+                    .padding(.bottom, (style.leading - line) - top)
+                #else
                 text
                     .padding(.top, top)
                     .padding(.bottom, spacing - top)
+                #endif
             }
         }
     }

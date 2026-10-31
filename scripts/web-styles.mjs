@@ -49,6 +49,8 @@ async function fromApp(only) {
   const dir = join(repo, "apps/mac/build/run/screens");
   if (!existsSync(join(dir, "fixture.json"))) throw new Error("No scratch library yet: run node apps/mac/scripts/screens.mjs --fresh first.");
   let files = readdirSync(APP_DIR).filter((f) => f.endsWith(".json") && (!only || only.includes(f.replace(/\.json$/, ""))));
+  // Areas marked "ios" are the iPhone app's own screens, measured in the Simulator (apps/ios/scripts/screen-match.mjs).
+  files = files.filter((f) => !JSON.parse(readFileSync(join(APP_DIR, f), "utf8")).ios);
   // Areas marked "gates": the screens before the app, each from a fresh scratch folder (apps/mac/scripts/gates.mjs).
   const gateFiles = files.filter((f) => JSON.parse(readFileSync(join(APP_DIR, f), "utf8")).gates);
   files = files.filter((f) => !gateFiles.includes(f));

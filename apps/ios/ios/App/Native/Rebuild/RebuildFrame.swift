@@ -93,7 +93,8 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         let gate = GateModel(client: model.client, feedback: ScreenFeedback(toast: { [weak self] t in self?.model.toast(t.message, tone: t.tone == .error ? .error : .info) }), device: .current)
         let feedback = ScreenFeedback(toast: { [weak self] t in self?.model.toast(t.message, tone: t.tone == .error ? .error : .info) })
         let places = PlacesModel(client: model.client, feedback: feedback)
-        let root = UIHostingController(rootView: RebuildRoot(model: frame, menus: menus, phone: model, pageHost: pageHost, gate: gate, places: places, accountAction: { [weak self] action, close in
+        let home = HomeModel(client: model.client, feedback: feedback)
+        let root = UIHostingController(rootView: RebuildRoot(model: frame, menus: menus, phone: model, pageHost: pageHost, gate: gate, places: places, home: home, accountAction: { [weak self] action, close in
             self?.account(action, places: places, close: close)
         }, signOut: { [weak self] in self?.signOutNow() }))
         root.view.backgroundColor = .clear
@@ -190,6 +191,7 @@ private struct RebuildRoot: View {
     let pageHost: PageViewHost
     let gate: GateModel
     let places: PlacesModel
+    let home: HomeModel
     let accountAction: (PhoneAccountAction, @escaping () -> Void) -> Void
     let signOut: () -> Void
     // FOLEVI_REBUILD_SHEET=account opens the account sheet at launch (for checking it headlessly).
@@ -199,6 +201,8 @@ private struct RebuildRoot: View {
         PhoneFrameView(model: model, menus: menus, aiOn: phone.aiOn, actions: PhoneFrameActions(newNote: { phone.newNote() }, fromTemplate: { model.open(FrameRoute(path: "/templates")) })) { route in
             if case .note(let id) = route {
                 RebuildNoteScreen(noteId: id, model: phone, pageHost: pageHost, frame: model, menus: menus)
+            } else if route == .home {
+                RebuildHomeScreen(frame: model, menus: menus, home: home, phone: phone) { account = true }
             } else {
                 PlaceholderScreen(model: model, route: route) { account = true }
             }

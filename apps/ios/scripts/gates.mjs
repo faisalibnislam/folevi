@@ -80,8 +80,23 @@ export function simulator(device) {
   // (simctl passes its own SIMCTL_CHILD_* variables on to the app.)
   const launch = (env) => sh("xcrun", ["simctl", "launch", udid, BUNDLE], Object.fromEntries(Object.entries(env).map(([k, v]) => [`SIMCTL_CHILD_${k}`, v])));
   const press = (label) => evalJs(`const b = [...document.querySelectorAll("button, a")].find((x) => x.textContent.trim().startsWith(${JSON.stringify(label)})) ?? [...document.querySelectorAll("button, a")].find((x) => x.textContent.includes(${JSON.stringify(label)})); if (!b) return false; b.click(); return true;`);
+  /** Ends the app (if it runs) and launches it again with `env`, on the same install. */
+  const relaunch = (env) => {
+    try {
+      simctl("terminate", udid, BUNDLE);
+    } catch {
+      /* not running */
+    }
+    sleep(1000);
+    launch(env);
+  };
+  /** A command straight to the engine in the page, as native sends it (native chrome mode): its reply's value. */
+  const command = (name, args = {}) =>
+    evalJs(`const marker = window.__foleviNativeChrome; const reply = JSON.parse(await window.__foleviEngine.handle({ v: 1, id: "script-" + Date.now(), kind: "command", place: marker?.place ?? null, name: ${JSON.stringify(name)}, args: ${JSON.stringify(args)} })); if (!reply.ok) throw new Error(JSON.stringify(reply.error)); return reply.value;`);
   return {
     udid,
+    relaunch,
+    command,
     sleep,
     simctl,
     evalJs,

@@ -1,0 +1,105 @@
+{
+  "$description": "The iPhone app's screens as its web draws them (docs/IOS_REBUILD_PLAN.md, I3): measured in the Simulator's web frame by apps/ios/scripts/screen-match.mjs --styles into app-styles-cache/phone.ios.json. iPhone only: the Mac's measuring run skips it.",
+  "ios": true,
+  "screens": {
+    "home": "/documents"
+  },
+  "styles": {
+    "phone.search.box": {
+      "screen": "home",
+      "selector": "main button.rounded-panel"
+    },
+    "phone.search.wrap": {
+      "screen": "home",
+      "selector": "main > div:nth-child(2)"
+    },
+    "phone.search.icon": {
+      "screen": "home",
+      "selector": "main button.rounded-panel > svg"
+    },
+    "phone.search.text": {
+      "screen": "home",
+      "selector": "main button.rounded-panel > span"
+    },
+    "phone.title.wrap": {
+      "screen": "home",
+      "selector": "main > div:first-child"
+    },
+    "phone.recents": {
+      "screen": "home",
+      "selector": "ul[aria-label='Recent notes']"
+    },
+    "phone.recents.card": {
+      "screen": "home",
+      "selector": "ul[aria-label='Recent notes'] > li"
+    },
+    "phone.row": {
+      "screen": "home",
+      "selector": "nav[aria-label='Notes'] > a[href='/notes']"
+    },
+    "phone.row.icon": {
+      "screen": "home",
+      "selector": "nav[aria-label='Notes'] > a[href='/notes'] > span:first-child"
+    },
+    "phone.row.icon.svg": {
+      "screen": "home",
+      "selector": "nav[aria-label='Notes'] > a[href='/notes'] > span:first-child > svg"
+    },
+    "phone.row.body": {
+      "screen": "home",
+      "selector": "nav[aria-label='Notes'] > a[href='/notes'] > span.ui-row-sep"
+    },
+    "phone.row.label": {
+      "screen": "home",
+      "selector": "nav[aria-label='Notes'] > a[href='/notes'] > span.ui-row-sep > span"
+    },
+    "phone.row.chevron": {
+      "screen": "home",
+      "selector": "nav[aria-label='Notes'] > a[href='/notes'] > span.ui-row-sep > svg"
+    },
+    "phone.row.detail": {
+      "screen": "home",
+      "selector": "nav[aria-label='Notes'] > a[href='/drafts'] > span.ui-row-sep > span:nth-child(2)"
+    },
+    "phone.catchup.icon": {
+      "screen": "home",
+      "selector": "nav[aria-label='Notes'] > div > button > span:first-child > svg"
+    },
+    "phone.section": {
+      "screen": "home",
+      "selector": "section[aria-labelledby='home-starred']"
+    },
+    "phone.section.head": {
+      "screen": "home",
+      "selector": "section[aria-labelledby='home-starred'] > div"
+    },
+    "phone.section.link": {
+      "screen": "home",
+      "selector": "#home-starred > a"
+    },
+    "phone.section.title": {
+      "screen": "home",
+      "selector": "#home-starred > a > span"
+    },
+    "phone.section.chevron": {
+      "screen": "home",
+      "selector": "#home-starred > a > svg"
+    },
+    "phone.section.more": {
+      "screen": "home",
+      "selector": "section[aria-labelledby='home-folders'] > div > div > button"
+    },
+    "phone.folders": {
+      "screen": "home",
+      "selector": "ul[aria-label='Folders']"
+    },
+    "phone.folders.card": {
+      "screen": "home",
+      "selector": "ul[aria-label='Folders'] > li"
+    },
+    "phone.more": {
+      "screen": "home",
+      "selector": "nav[aria-label='More']"
+    }
+  }
+}

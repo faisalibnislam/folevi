@@ -55,6 +55,8 @@ public struct WebCornersShape: Shape {
 
     /// The note card's outline: square-ish at the spine, rounded on the open edge.
     public static let noteCard = WebCornersShape(topLeft: FoleviTokens.Radius.tiny, topRight: FoleviTokens.Radius.panel, bottomRight: FoleviTokens.Radius.panel, bottomLeft: FoleviTokens.Radius.tiny)
+    /// On the iPhone the open edge rounds by the container radius (18).
+    public static let phoneNoteCard = WebCornersShape(topLeft: FoleviTokens.Radius.tiny, topRight: FoleviTokens.Radius.container, bottomRight: FoleviTokens.Radius.container, bottomLeft: FoleviTokens.Radius.tiny)
 
     public func grown(_ d: CGFloat) -> WebCornersShape {
         var s = self
@@ -163,6 +165,21 @@ extension WebComputedStyle {
     var visibleShadows: [ShadowLayer] { shadows.filter { $0.color.a > 0 } }
 }
 
+// MARK: the iPhone's cards
+
+/// The phone's own card rules (globals.css `:root[data-iphone]`): note cards with 18 pt corners on the open edge,
+/// one date (the footer's), the title in Spectral 17/22 semibold, a faint edge in dark; folder names in Title 3.
+public struct WebPhoneCardsKey: EnvironmentKey {
+    public static let defaultValue = false
+}
+
+public extension EnvironmentValues {
+    var webPhoneCards: Bool {
+        get { self[WebPhoneCardsKey.self] }
+        set { self[WebPhoneCardsKey.self] = newValue }
+    }
+}
+
 // MARK: the note card
 
 /// What a note card shows. `NoteCardModel` (FoleviDesign Components) carries the same, from the engine's rows.
@@ -172,6 +189,7 @@ public struct WebNoteCard: View {
     let unsynced: Bool
     let hovered: Bool
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.webPhoneCards) private var phone
 
     public static let aspect: CGFloat = 25.0 / 27.0
 
@@ -217,7 +235,7 @@ public struct WebNoteCard: View {
         let faint = pal?.faint ?? s("created").color
         let muted = pal?.muted ?? s("time").color
         let chip = pal?.chip ?? s("chip").background
-        let shape = WebCornersShape.noteCard
+        let shape = phone ? WebCornersShape.phoneNoteCard : WebCornersShape.noteCard
         let sheetW = w - cq, sheetH = h - cq
         let shadows = hovered ? Self.hoverShadows : link.visibleShadows
         return ZStack(alignment: .topLeading) {
@@ -255,6 +273,11 @@ public struct WebNoteCard: View {
             }
             .clipShape(shape)
             .overlay(WebShapeBox(shape: shape, fill: nil, shadows: s("edge").visibleShadows))
+            .overlay {
+                if phone && scheme == .dark {
+                    shape.stroke(Color.white.opacity(0.08), lineWidth: 1).clipShape(shape)
+                }
+            }
         }
         .frame(width: w, height: h, alignment: .topLeading)
     }
@@ -268,20 +291,24 @@ public struct WebNoteCard: View {
     }
 
     private func content(cq: CGFloat, titleWidth: CGFloat, heading: RGBA, faint: RGBA, muted: RGBA, chip: RGBA) -> some View {
-        let titleStyle = WebTextStyle(family: .display, size: 6.6 * cq, leading: 6.6 * cq * 1.22, weight: 500, letterSpacing: 0.005 * 6.6 * cq)
+        let titleStyle = phone
+            ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 600, letterSpacing: -0.005 * 17)
+            : WebTextStyle(family: .display, size: 6.6 * cq, leading: 6.6 * cq * 1.22, weight: 500, letterSpacing: 0.005 * 6.6 * cq)
         let createdStyle = WebTextStyle(size: 4.5 * cq, leading: 4.5 * cq * 1.3)
         let bodyStyle = WebTextStyle(size: 3.6 * cq, leading: 5 * cq)
         let text = NoteCardView.previewText(model.preview, excerpt: model.excerpt)
         return VStack(alignment: .leading, spacing: 0) {
-            WebClampedText(model.title.isEmpty ? "Untitled" : model.title, style: titleStyle, maxLines: 2, width: titleWidth)
+            WebClampedText(model.title.isEmpty ? "Untitled" : model.title, style: titleStyle, maxLines: 2, width: titleWidth, balance: phone)
                 .foregroundStyle(heading.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Text(model.createdText)
-                .webText(createdStyle)
-                .lineLimit(1)
-                .foregroundStyle(faint.color)
-                .padding(.top, cq)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if !phone {
+                Text(model.createdText)
+                    .webText(createdStyle)
+                    .lineLimit(1)
+                    .foregroundStyle(faint.color)
+                    .padding(.top, cq)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             GeometryReader { geo in
                 // (A card not laid out yet has no width, so no line height: one line until it has.)
                 let fit = bodyStyle.leading > 0 ? ((geo.size.height + 1) / bodyStyle.leading).rounded(.down) : 1
@@ -443,8 +470,12 @@ public struct WebFolderCard: View {
     let labelScale: CGFloat
     let hovered: Bool
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.webPhoneCards) private var phone
 
     public static let aspect: CGFloat = 820.0 / 912.0
+
+    /// The phone in dark: the folder's darker tone, light words on it (globals.css `[data-fc]`, 4.5:1 everywhere).
+    private var phoneDark: Bool { phone && scheme == .dark }
 
     public init(_ model: FolderCardModel, labelScale: CGFloat = 1, hovered: Bool = false) {
         self.model = model
@@ -469,7 +500,7 @@ public struct WebFolderCard: View {
     private func drawing(w: CGFloat, h: CGFloat) -> some View {
         let cq = w / 100
         let base = FolderColor.resolve(model.colorId).color
-        let backTone = base.oklabMix(Self.grey, 0.8)
+        let backTone = phoneDark ? base.oklabMix(RGBA(35, 37, 44), 0.38) : base.oklabMix(Self.grey, 0.8)
         let back = s("back")
         let tabShape = WebCornersShape(topLeft: FoleviTokens.Radius.control, topRight: FoleviTokens.Radius.control, bottomRight: 0, bottomLeft: 0)
         let bodyShape = WebCornersShape(topLeft: 0, topRight: FoleviTokens.Radius.panel, bottomRight: FoleviTokens.Radius.panel, bottomLeft: FoleviTokens.Radius.panel)
@@ -540,28 +571,37 @@ public struct WebFolderCard: View {
         return ZStack(alignment: .topLeading) {
             WebShapeBox(shape: shape, fill: nil, shadows: f.visibleShadows.filter { !$0.inset })
             backdrop().clipShape(shape)
-            shape.fill(LinearGradient(colors: [base.opacity(0.62).color, base.opacity(0.86).color], startPoint: .top, endPoint: .bottom))
-            WebShapeBox(shape: shape, fill: nil, shadows: f.visibleShadows.filter(\.inset))
+            if phoneDark {
+                let deep = base.oklabMix(RGBA(18, 19, 24), 0.46)
+                shape.fill(LinearGradient(colors: [deep.opacity(0.72).color, deep.opacity(0.94).color], startPoint: .top, endPoint: .bottom))
+                // inset 0 1px 0 white 12%, inset 0 0 0 0.5px white 8%.
+                shape.stroke(Color.white.opacity(0.08), lineWidth: 1).clipShape(shape)
+                shape.stroke(Color.white.opacity(0.12), lineWidth: 2).clipShape(shape).mask(alignment: .top) { Rectangle().frame(height: 1) }
+            } else {
+                shape.fill(LinearGradient(colors: [base.opacity(0.62).color, base.opacity(0.86).color], startPoint: .top, endPoint: .bottom))
+                WebShapeBox(shape: shape, fill: nil, shadows: f.visibleShadows.filter(\.inset))
+            }
             Text(model.count.formatted())
                 .webText(WebTextStyle(family: .display, size: countSize, leading: countSize, weight: 600))
                 .lineLimit(1)
                 .monospacedDigit()
-                .foregroundStyle(RGBA(17, 17, 20).color)
+                .foregroundStyle((phoneDark ? RGBA(246, 246, 248) : RGBA(17, 17, 20)).color)
                 .padding(.horizontal, 2.2 * cq * k)
                 .padding(.vertical, 1.3 * cq * k)
-                .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular).fill(base.oklabMix(Self.grey, 0.55).color))
+                .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular).fill((phoneDark ? base.oklabMix(RGBA(12, 13, 16), 0.34) : base.oklabMix(Self.grey, 0.55)).color))
                 .fixedSize()
                 .offset(x: w * 0.07, y: frontH * 0.0926)
             Text(model.ageText)
                 .webText(WebTextStyle(family: .display, size: ageSize, leading: ageSize * 1.2))
                 .lineLimit(1)
-                .foregroundStyle(base.oklabMix(RGBA(60, 66, 80), 0.25).color)
+                .foregroundStyle((phoneDark ? base.oklabMix(RGBA(220, 222, 229), 0.22) : base.oklabMix(RGBA(60, 66, 80), 0.25)).color)
                 .frame(maxWidth: w * 0.55, alignment: .trailing)
                 .fixedSize()
                 .frame(width: w * 0.93, alignment: .trailing)
                 .offset(y: frontH * 0.1037 - 0.15 * ageSize)
-            WebClampedText(model.name, style: WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.12, letterSpacing: -0.01 * nameSize), maxLines: 2, width: w * 0.86)
-                .foregroundStyle(RGBA(13, 13, 16).color)
+            // (The phone's names are Title 3: 20 on 24 as its web measures them.)
+            WebClampedText(model.name, style: phone ? WebTextStyle(family: .display, size: 20, leading: 24, letterSpacing: -0.2) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.12, letterSpacing: -0.01 * nameSize), maxLines: 2, width: w * 0.86)
+                .foregroundStyle((phoneDark ? RGBA(246, 246, 248) : RGBA(13, 13, 16)).color)
                 .frame(width: w, height: frontH * (1 - 0.1148), alignment: .bottomLeading)
                 .offset(x: w * 0.07)
         }
@@ -726,23 +766,39 @@ public struct WebClampedText: View {
     let maxLines: Int
     let width: CGFloat
     let alignment: HorizontalAlignment
+    /// `text-wrap: balance` (an `h3`): lines as even as they go, when the whole text fits in `maxLines`.
+    let balance: Bool
 
-    public init(_ text: String, style: WebTextStyle, maxLines: Int, width: CGFloat, alignment: HorizontalAlignment = .leading) {
+    public init(_ text: String, style: WebTextStyle, maxLines: Int, width: CGFloat, alignment: HorizontalAlignment = .leading, balance: Bool = false) {
         self.text = text
         self.style = style
         self.maxLines = maxLines
         self.width = width
         self.alignment = alignment
+        self.balance = balance
     }
 
     public var body: some View {
-        let lines = Self.lines(text, style: style, width: width, max: maxLines)
+        let lines = balance ? Self.balanced(text, style: style, width: width, max: maxLines) : Self.lines(text, style: style, width: width, max: maxLines)
         VStack(alignment: alignment, spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                 Text(line).webText(style).lineLimit(1).truncationMode(.tail)
             }
         }
         .frame(width: width, alignment: Alignment(horizontal: alignment, vertical: .top))
+    }
+
+    /// Balanced lines: the narrowest width that still sets the text in as many lines as `width` does, when they're
+    /// all shown; otherwise the plain lines.
+    static func balanced(_ text: String, style: WebTextStyle, width: CGFloat, max: Int) -> [String] {
+        let plain = lines(text, style: style, width: width, max: .max)
+        guard plain.count > 1, plain.count <= max else { return lines(text, style: style, width: width, max: max) }
+        var lo: CGFloat = 1, hi = width
+        while hi - lo > 0.5 {
+            let mid = (lo + hi) / 2
+            if lines(text, style: style, width: mid, max: .max).count <= plain.count { hi = mid } else { lo = mid }
+        }
+        return lines(text, style: style, width: hi, max: max)
     }
 
     /// The lines CSS would show: up to `max`, the last holding the rest of the text (cut with "…" when drawn).

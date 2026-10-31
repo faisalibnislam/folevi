@@ -6,7 +6,7 @@
 //   node scripts/upgrade-check.mjs --app <App.app> [--device "iPhone 18 Pro"] [--out <folder for screenshots>]
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { BUNDLE, GATES, simulator } from "./gates.mjs";
+import { GATES, simulator } from "./gates.mjs";
 
 const arg = (name, fallback) => (process.argv.includes(name) ? process.argv[process.argv.indexOf(name) + 1] : fallback);
 const app = arg("--app");
@@ -17,19 +17,9 @@ if (out) mkdirSync(out, { recursive: true });
 
 const sim = simulator(device);
 const shot = (name) => out && sim.screenshot(join(out, `${name}.png`));
-const relaunch = (env) => {
-  try {
-    sim.simctl("terminate", sim.udid, BUNDLE);
-  } catch {
-    /* not running */
-  }
-  sim.sleep(1000);
-  sim.launch(env);
-};
+const relaunch = sim.relaunch;
 
-/** A command straight to the engine in the page, as native sends it; its reply's value. */
-const command = (name, args) =>
-  sim.evalJs(`const marker = window.__foleviNativeChrome; const reply = JSON.parse(await window.__foleviEngine.handle({ v: 1, id: "upgrade-" + Date.now(), kind: "command", place: marker?.place ?? null, name: ${JSON.stringify(name)}, args: ${JSON.stringify(args)} })); if (!reply.ok) throw new Error(JSON.stringify(reply.error)); return reply.value;`);
+const command = sim.command;
 
 const waitUntil = (what, test, ms = 30000) => {
   for (let t = 0; t < ms; t += 500) {

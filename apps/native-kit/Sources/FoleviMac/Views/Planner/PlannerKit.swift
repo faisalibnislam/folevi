@@ -708,8 +708,17 @@ struct PrettyText: View {
         self.center = center
     }
 
+    /// WebKit's own lines when the page can say them (`text.layout`), the model's until then.
+    private var broken: String {
+        if width > 0, WebLineLayout.shared.requester != nil {
+            let s = WebLineLayout.Style(family: style.family == .display ? .display : .sans, size: style.size, lineHeight: style.leading, weight: style.weight, letterSpacing: style.letterSpacing, width: width, wrap: .pretty, pre: false)
+            if let got = WebLineLayout.shared.lines(text, style: s), !got.isEmpty { return got.joined(separator: "\n") }
+        }
+        return PrettyWrap.lines(text, style, width: width)
+    }
+
     var body: some View {
-        Text(PrettyWrap.lines(text, style, width: width))
+        Text(broken)
             .strikethrough(strike)
             .webText(style)
             .multilineTextAlignment(center ? .center : .leading)

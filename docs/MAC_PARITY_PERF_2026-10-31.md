@@ -142,3 +142,33 @@ this report. Changed: `FoleviDesign/Web/WebComponents.swift`, `WebNoteCard.swift
 `More/CommandPalette.swift`, `More/MoreKit.swift`, `Settings/SettingsKit.swift`, `WebQuickAdd.swift`, `Planner/*`,
 `Vault/*`, `FoliAI/*`; `apps/mac/Folevi/Frame/FrameEval.swift`; the engine (`protocol.ts`, `commandsAi.ts`,
 `commandsMore.ts`, `viewsMore.ts`, fixtures) and the generated Swift models.
+
+## Visual pass (2026-10-31, later)
+
+The owner: menus "too compact, compressed", then "check everything and fix". Every screen of `screens.mjs` and
+every menu of `menus.mjs` looked at side by side, web and native, light and dark.
+
+- **Menus:** 32 pt rows (were AppKit's 26), 6 and 10 pt padding, 10 pt between a row's icon and its words, 12 pt
+  corners, 6 pt around separators: in the web's Mac CSS (`globals.css`, `data-desktop="mac"`), measured again into
+  the native menus (`menu.*`) and the palette. `menus.mjs`: every menu's rows the same as the web's and every panel
+  the web's height.
+- **Dialogs:** a description long enough to wrap made `WebPrettyText` lay out on one line at that width, and the
+  dialog with it: Move folder showed half its contents, cut off on the left. Fixed for every dialog (the width it's
+  placed in, never its own). Native dialogs get the web's Close button and the Mac's 480 pt medium width; scroll
+  views in dialogs are only as tall as what's in them.
+- **The Vault's Add:** full-width Kind, every field, the web's text area heights, Close; secrets in the web's mono.
+- **Settings › Appearance:** Editor text size as the web's slider (were five tiles).
+- **Sidebar:** the open item's count inverted; a place's every view selects it (Tasks on any list, the Calendar on
+  any day, the Vault on any section; the web's sidebar never lit the Vault: fixed there too); a section's header lit
+  while its page is open; Reviews listed while open.
+- **Tabs:** a tab's picture under its tab (it showed a sidebar's width to the right); Foli AI's tab has its flower.
+- **Text:** card previews and any text set the web's pretty or balanced way take the page's own line breaks
+  (`text.layout`), on the Mac as on the iPhone.
+- **Help, Graph, Reviews, Shared with Me, Changes:** on the card's white, as the web's (the note page waiting
+  behind showed its grey through).
+- **Tags:** chips never cut their count.
+
+`screens.mjs`: 35 of 98 shots under 1% (21 before); Graph, Reviews, Shared and Changes pass in both themes; Move
+folder 3.0% to 1.3%, the palette 2.7% to 1.4%, Calendar 2.96% to 1.27%. The rest are the capture's known limits
+(blur, SwiftUI shadows, different tabs open, a web toast in one shot) more than the app; the Vault's Add stays high
+because the web capture can't draw its frosted panel.

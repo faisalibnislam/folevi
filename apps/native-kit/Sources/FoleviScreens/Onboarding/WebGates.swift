@@ -71,24 +71,27 @@ struct GateParagraph: View {
     var center = true
     var width: CGFloat?
     var color: RGBA?
+    /// A `<p>` (`text-wrap: pretty`, globals.css); false for a span, which breaks greedily on the iPhone.
+    var paragraph = true
     @Environment(\.colorScheme) private var scheme
 
-    init(_ text: String, id: String, center: Bool = true, width: CGFloat? = nil, color: RGBA? = nil) {
-        self.init(runs: [WebRun(text)], id: id, center: center, width: width, color: color)
+    init(_ text: String, id: String, center: Bool = true, width: CGFloat? = nil, color: RGBA? = nil, paragraph: Bool = true) {
+        self.init(runs: [WebRun(text)], id: id, center: center, width: width, color: color, paragraph: paragraph)
     }
 
-    init(runs: [WebRun], id: String, center: Bool = true, width: CGFloat? = nil, color: RGBA? = nil) {
+    init(runs: [WebRun], id: String, center: Bool = true, width: CGFloat? = nil, color: RGBA? = nil, paragraph: Bool = true) {
         self.runs = runs
         self.id = id
         self.center = center
         self.width = width
         self.color = color
+        self.paragraph = paragraph
     }
 
     var body: some View {
         let s = gs(id, scheme)
         // (Its lines break inside its padding.)
-        WebParagraph(runs, style: s.text, width: width ?? (s.width - s.padding.left - s.padding.right), alignment: center ? .center : .leading, wrap: Self.wrap)
+        WebParagraph(runs, style: s.text, width: width ?? (s.width - s.padding.left - s.padding.right), alignment: center ? .center : .leading, wrap: Self.wrap(paragraph))
             .padding(.horizontal, width == nil ? s.padding.left : 0)
             .foregroundStyle((color ?? s.color).color)
             .opacity(s.opacity)
@@ -97,10 +100,10 @@ struct GateParagraph: View {
 }
 
 extension GateParagraph {
-    /// The Mac's WebKit evens paragraphs out (`text-wrap: pretty`); the iPhone's breaks them greedily.
-    static var wrap: WebTextWrap {
+    /// `text-wrap: pretty` (a paragraph) as each platform's WebKit lays it out; a span's plain breaks on the iPhone.
+    static func wrap(_ paragraph: Bool) -> WebTextWrap {
         #if os(iOS)
-        .greedy
+        paragraph ? .iPhonePretty : .greedy
         #else
         .pretty
         #endif
@@ -147,7 +150,6 @@ struct GateChoice<Icon: View>: View {
         let box = gs(base, scheme)
         let tile = gs("\(base).tile", scheme)
         let chevron = gs("\(base).chevron", scheme)
-        let muted = WebStyles.vars["color-muted"]?.resolve(scheme) ?? RGBA(86, 86, 94)
         let corners = WebCornersShape(topLeft: box.radius, topRight: box.radius, bottomRight: box.radius, bottomLeft: box.radius)
         return Button(action: action) {
             HStack(spacing: box.gap) {
@@ -156,13 +158,12 @@ struct GateChoice<Icon: View>: View {
                     .background(RoundedRectangle(cornerRadius: tile.radius, style: .continuous).fill(tile.background.color))
                 VStack(alignment: .leading, spacing: 0) {
                     if emphasis {
-                        Text("RECOMMENDED")
-                            .webText(WebTextStyle(size: WebTypeRole.subheadline.metrics.size, leading: 18, weight: FoleviTokens.FontWeight.semibold, letterSpacing: 0.04 * WebTypeRole.subheadline.metrics.size))
-                            .lineLimit(1)
-                            .foregroundStyle(muted.color)
+                        // (On the iPhone the Mac's selector for this card's title finds its caption, its first line:
+                        // that measured style is the caption's; both titles share the other card's.)
+                        GateLine(text: "RECOMMENDED", id: "gates.choice.emphasis.title")
                     }
-                    GateLine(text: title, id: "\(base).title")
-                    GateParagraph(detail, id: emphasis ? "gates.choice.emphasis.detail" : "gates.lib.place.detail", center: false)
+                    GateLine(text: title, id: "gates.choice.title")
+                    GateParagraph(detail, id: emphasis ? "gates.choice.emphasis.detail" : "gates.lib.place.detail", center: false, paragraph: false)
                         .padding(.top, 2)
                 }
                 Group {
@@ -478,10 +479,15 @@ struct ReadyForm: View {
                 .padding(card.padding.edgeInsets)
                 .padding(card.borderWidth)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
+                .background {
+                    #if os(iOS)
+                    // The grouped card: --iphone-row with its 0.5 pt hairline (a box-shadow), no border.
+                    WebShapeBox(shape: WebCornersShape(topLeft: card.radius, topRight: card.radius, bottomRight: card.radius, bottomLeft: card.radius), fill: card.background.color, shadows: card.shadows)
+                    #else
                     RoundedRectangle(cornerRadius: card.radius, style: .continuous).fill(card.background.color)
                         .overlay(RoundedRectangle(cornerRadius: card.radius, style: .continuous).strokeBorder(card.borderColor.color, lineWidth: card.borderWidth))
-                )
+                    #endif
+                }
             }
             if let error = model.errorMessage { GateParagraph(error, id: "gates.footnote", color: danger) }
             VStack(spacing: gs("gates.ready.buttons", scheme).gap) {

@@ -21,13 +21,20 @@ public struct WebRun: Hashable, Sendable {
     }
 }
 
-public enum WebTextWrap: Sendable {
+public enum WebTextWrap: Sendable, Equatable {
     /// `text-wrap: pretty` (paragraphs).
     case pretty
     /// `text-wrap: balance` (headings): the same, the last line weighed like the others.
     case balance
     /// The plain greedy breaks.
     case greedy
+    /// `text-wrap: pretty` as the iPhone's WebKit lays it out: even lines, the last one counting `lastLine` as much
+    /// as the others (it may be shorter).
+    case prettyLastWeighted(CGFloat)
+
+    /// The iPhone's `text-wrap: pretty`: one or two lines as they fall, longer paragraphs evened out with the last line
+    /// weighed at 0.6 (0.5 to 0.75 match the gates' paragraphs as the Simulator's WebKit breaks them; PrettyWrapTests).
+    public static let iPhonePretty = WebTextWrap.prettyLastWeighted(0.6)
 }
 
 public struct WebParagraph: View {
@@ -77,6 +84,9 @@ public enum WebLineBreaker {
         guard !chars.isEmpty else { return [] }
         var breaks: [Int] = []  // index after which a line may end
         for (i, c) in chars.enumerated() where i < chars.count - 1 {
+            // (Not after "› " or "‹ ": a quotation mark stays with the word after it, as WebKit's line breaking keeps
+            // "On My iPhone › Folevi" together across the arrow, Unicode's LB19.)
+            if c.0 == " ", i > 0, ["\u{203A}", "\u{2039}"].contains(chars[i - 1].0) { continue }
             if c.0 == " " || c.0 == "-" || c.0 == "\u{2010}" { breaks.append(i) }
         }
         breaks.append(chars.count - 1)
@@ -104,6 +114,11 @@ public enum WebLineBreaker {
         }
         // Greedy first: it is also the answer for `greedy`, and the fallback when a word alone is too wide.
         if wrap == .greedy { return greedy(breaks, measure: measure, width: width).map { slice($0.0, $0.1) } }
+        // The iPhone's WebKit leaves a paragraph of one or two lines as it falls.
+        if case .prettyLastWeighted = wrap {
+            let plain = greedy(breaks, measure: measure, width: width)
+            if plain.count <= 2 { return plain.map { slice($0.0, $0.1) } }
+        }
         // best[j]: the least cost of lines covering chars 0...breaks[j].
         let n = breaks.count
         var best = [CGFloat](repeating: .infinity, count: n)
@@ -122,7 +137,8 @@ public enum WebLineBreaker {
                 }
                 let slack = width - w
                 // Every line counts, the last too: that is what keeps WebKit's last lines from being orphans.
-                let cost = slack * slack
+                var cost = slack * slack
+                if case .prettyLastWeighted(let k) = wrap, j == n - 1 { cost *= k }
                 let prior = i < 0 ? 0 : best[i]
                 if prior + cost < best[j] { best[j] = prior + cost; from[j] = i }
             }

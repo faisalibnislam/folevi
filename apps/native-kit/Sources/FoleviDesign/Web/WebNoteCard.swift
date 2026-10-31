@@ -539,8 +539,9 @@ public struct WebFolderCard: View {
                 .frame(width: w * 0.44, height: h * 0.09)
             WebShapeBox(shape: bodyShape, fill: backTone.color, shadows: back.visibleShadows)
                 .frame(width: w, height: h * 0.95)
-                .offset(y: h * 0.05)
+                .padding(.top, h * 0.05)
         }
+        .frame(width: w, height: h, alignment: .topLeading)
         // The back and the papers flattened (their shadows are the costly part); the frosted front isn't, since
         // drawn into one picture its backdrop and inner shading came out differently from the web's.
         .flattened()
@@ -599,6 +600,7 @@ public struct WebFolderCard: View {
         let nameSize = min(40, max(16, 9.4 * cq * k))
         return ZStack(alignment: .topLeading) {
             WebShapeBox(shape: shape, fill: nil, shadows: f.visibleShadows.filter { !$0.inset })
+                .frame(width: w, height: frontH)
             backdrop().clipShape(shape)
             if phoneDark {
                 let deep = base.oklabMix(RGBA(18, 19, 24), 0.46)
@@ -608,31 +610,38 @@ public struct WebFolderCard: View {
                 shape.stroke(Color.white.opacity(0.12), lineWidth: 2).clipShape(shape).mask(alignment: .top) { Rectangle().frame(height: 1) }
             } else {
                 shape.fill(LinearGradient(colors: [base.opacity(0.62).color, base.opacity(0.86).color], startPoint: .top, endPoint: .bottom))
+                    .frame(width: w, height: frontH)
                 WebShapeBox(shape: shape, fill: nil, shadows: f.visibleShadows.filter(\.inset))
+                    .frame(width: w, height: frontH)
             }
-            Text(model.count.formatted())
-                .webText(WebTextStyle(family: .display, size: countSize, leading: countSize, weight: 600))
-                .lineLimit(1)
-                .monospacedDigit()
-                .foregroundStyle((phoneDark ? RGBA(246, 246, 248) : RGBA(17, 17, 20)).color)
-                .padding(.horizontal, 2.2 * cq * k)
-                .padding(.vertical, 1.3 * cq * k)
-                .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular).fill((phoneDark ? base.oklabMix(RGBA(12, 13, 16), 0.34) : base.oklabMix(Self.grey, 0.55)).color))
-                .fixedSize()
-                .offset(x: w * 0.07, y: frontH * 0.0926)
-            Text(model.ageText)
-                .webText(WebTextStyle(family: .display, size: ageSize, leading: ageSize * 1.2))
-                .lineLimit(1)
-                .foregroundStyle((phoneDark ? base.oklabMix(RGBA(220, 222, 229), 0.22) : base.oklabMix(RGBA(60, 66, 80), 0.25)).color)
-                .frame(maxWidth: w * 0.55, alignment: .trailing)
-                .fixedSize()
-                .frame(width: w * 0.93, alignment: .trailing)
-                .offset(y: frontH * 0.1037 - 0.15 * ageSize)
-            // (The phone's names are Title 3: 20 on 24 as its web measures them.)
-            WebClampedText(model.name, style: phone ? WebTextStyle(family: .display, size: 20, leading: 24, letterSpacing: -0.2) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.12, letterSpacing: -0.01 * nameSize), maxLines: 2, width: w * 0.86)
-                .foregroundStyle((phoneDark ? RGBA(246, 246, 248) : RGBA(13, 13, 16)).color)
-                .frame(width: w, height: frontH * (1 - 0.1148), alignment: .bottomLeading)
-                .offset(x: w * 0.07)
+            // The words in a box of the cover's own size: a line taller or wider than its place mustn't grow the
+            // cover (it did: the whole cover drawn 2 pt low and 2 pt long on the phone's 178 pt cards).
+            ZStack(alignment: .topLeading) {
+                Text(model.count.formatted())
+                    .webText(WebTextStyle(family: .display, size: countSize, leading: countSize, weight: 600))
+                    .lineLimit(1)
+                    .monospacedDigit()
+                    .foregroundStyle((phoneDark ? RGBA(246, 246, 248) : RGBA(17, 17, 20)).color)
+                    .padding(.horizontal, 2.2 * cq * k)
+                    .padding(.vertical, 1.3 * cq * k)
+                    .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular).fill((phoneDark ? base.oklabMix(RGBA(12, 13, 16), 0.34) : base.oklabMix(Self.grey, 0.55)).color))
+                    .fixedSize()
+                    .offset(x: w * 0.07, y: frontH * 0.0926)
+                Text(model.ageText)
+                    .webText(WebTextStyle(family: .display, size: ageSize, leading: ageSize * 1.2))
+                    .lineLimit(1)
+                    .foregroundStyle((phoneDark ? base.oklabMix(RGBA(220, 222, 229), 0.22) : base.oklabMix(RGBA(60, 66, 80), 0.25)).color)
+                    .frame(maxWidth: w * 0.55, alignment: .trailing)
+                    .fixedSize()
+                    .frame(width: w * 0.93, alignment: .trailing)
+                    .offset(y: frontH * 0.1037 - 0.15 * ageSize)
+                // (The phone's names are Title 3: 20 on 24 as its web measures them.)
+                WebClampedText(model.name, style: phone ? WebTextStyle(family: .display, size: 20, leading: 24, letterSpacing: -0.2) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.12, letterSpacing: -0.01 * nameSize), maxLines: 2, width: w * 0.86)
+                    .foregroundStyle((phoneDark ? RGBA(246, 246, 248) : RGBA(13, 13, 16)).color)
+                    .frame(width: w, height: frontH * (1 - 0.1148), alignment: .bottomLeading)
+                    .offset(x: w * 0.07)
+            }
+            .frame(width: w, height: frontH, alignment: .topLeading)
         }
         .frame(width: w, height: frontH, alignment: .topLeading)
     }

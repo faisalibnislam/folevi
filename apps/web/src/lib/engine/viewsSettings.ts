@@ -55,6 +55,17 @@ function syncLine(status: LibraryStatus | null): string {
   return "Not synced yet";
 }
 
+/** The status, short enough for a row's value on the iPhone (LibrarySection.tsx shortStatus). */
+function shortStatus(status: LibraryStatus | null): string {
+  if (!status) return "…";
+  if (status.state === "unavailable") return "Can't reach it";
+  if (status.state === "locked") return "Locked";
+  if (status.syncing) return "Syncing…";
+  if (status.unsaved > 0) return `${status.unsaved} waiting`;
+  if (status.lastSyncAt) return `Synced ${formatRelative(status.lastSyncAt)}`;
+  return "Not synced yet";
+}
+
 const platformName = (p: string) => (p === "ios" ? "iPhone or iPad" : p === "android" ? "Android phone or tablet" : p === "web" ? "Browser" : "Mac");
 
 const HEALTH = [
@@ -205,6 +216,24 @@ export function libraryValue(deps: EngineDeps, info: LibraryInfo | null, status:
       description: `In a library on your devices, Foli AI runs on ${here.onDeviceModel} on ${here.here}, or on your own OpenAI, Anthropic or Google key, called straight from ${here.here}.`,
       keysWhere: `. Keys stay ${shell()?.platform === "android" ? "sealed by the Android Keystore" : "in the Keychain"} on ${here.here}; Folevi never sees them.`,
     },
+    // The iPhone's own words for the same facts (LibrarySection.tsx's iPhone rows: a value short enough for a row,
+    // the explanations as the groups' footers).
+    phone: {
+      status: shortStatus(status),
+      problem: status?.state === "unavailable" ? syncLine(status) : status?.error ? `Last problem: ${status.error}` : null,
+      locationFooter: `The folder Folevi keeps your notes in. ${here.files === "Finder" ? "Finder" : "The Files app"} shows it too.`,
+      devices: status
+        ? status.devices.map((d) => ({
+            id: d.deviceId,
+            phone: d.platform === "ios" || d.platform === "android",
+            name: d.name && d.name !== "This device" ? d.name : d.thisDevice ? platformName(d.platform) : `Another ${platformName(d.platform)}`,
+            description: `${d.thisDevice ? `${here.Here} · ` : ""}${d.appVersion ? `Folevi ${d.appVersion}` : platformName(d.platform)}`,
+            value: d.thisDevice && status.syncing ? "Syncing…" : formatRelative(d.lastSeen),
+          }))
+        : null,
+      lockLabel: `Lock with ${name}`,
+      aiFooter: `Foli AI runs on ${here.onDeviceModel} on ${here.here}, or on your own OpenAI, Anthropic or Google key. Keys stay ${shell()?.platform === "android" ? "sealed by the Android Keystore" : "in the Keychain"} on ${here.here}; Folevi never sees them.`,
+    },
     forget: shell()?.places
       ? {
           title: `Remove from ${here.here}`,
@@ -285,6 +314,15 @@ export function localAiValue(deps: EngineDeps, state: LocalAiState) {
           note: "",
           answering: null,
         },
+    // The iPhone's own words (LocalAiSection.tsx IphoneLocalAi).
+    phone: {
+      onText: `Foli AI helps you write, answers from your notes and sums them up. It runs on ${here.onDeviceModel} on ${here.here}, or on your own key with OpenAI, Anthropic or Google, called straight from ${here.here}. Nothing goes through Folevi, and nothing is sent while it's off.`,
+      onDeviceValue: state.loaded === false ? "Checking…" : status === "available" ? "On" : "Not available",
+      onDeviceFooter: `${ON_DEVICE_COPY[status]}${status === "available" ? " It's a small model: it does writing help, questions about your notes, chats and the smaller block tools. Long notes are cut to what it can read, and wireframes and flowcharts need your own key." : ""}`,
+      historyText: `Your Foli AI conversations are kept on ${here.here} so you can come back to them, rename, pin and search them. They aren't synced with your library. When this is off, a conversation is deleted as soon as you close it.`,
+      noHost: "Foli AI in a library on your devices needs Folevi for Mac: it runs on Apple Intelligence there, or on your own key.",
+      phoneDevice: here.noun !== "Mac",
+    },
     historyText: `Your Foli AI conversations are kept on ${here.here} so you can come back to them, rename, pin and search them. They stay on this device and aren't synced with your library. When this is off, a conversation is deleted as soon as you close it.`,
     memory: Boolean(active),
   };

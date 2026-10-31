@@ -226,9 +226,18 @@ public struct PhoneSearchField: View {
         HStack(spacing: wrap.gap) {
             HStack(spacing: box.gap) {
                 WebIconView(.search, size: icon.width, strokeWidth: 2.1).foregroundStyle(icon.color.color)
-                TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(box.color.color))
+                // (The placeholder in the web's letter spacing: a UIKit field's prompt has none.)
+                TextField("", text: $text)
                     .font(Font(input.text.ctFont))
                     .foregroundStyle(input.color.color)
+                    .overlay(alignment: .leading) {
+                        if text.isEmpty {
+                            Text(placeholder).webText(input.text).lineLimit(1).foregroundStyle(box.color.color)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .accessibilityLabel(placeholder)
                     .focused($focused)
                     .submitLabel(.search)
                     .autocorrectionDisabled()

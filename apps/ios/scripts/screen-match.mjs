@@ -19,6 +19,7 @@
 // when seeding, before the Vault exists.
 //
 //   node scripts/screen-match.mjs --app <App.app> [--device "iPhone 18 Pro"] [--only home,...] [--no-seed] [--styles]
+//                                 [--side web|native]
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -34,6 +35,8 @@ const app = arg("--app");
 const device = arg("--device", "iPhone 18 Pro");
 const only = arg("--only")?.split(",");
 const styles = process.argv.includes("--styles");
+// --side web|native: shoot one side only (to look at it while building; the diff needs both).
+const side = arg("--side");
 if (!app) throw new Error("Pass --app <path to the built App.app>");
 const sim = simulator(device);
 
@@ -41,6 +44,7 @@ const sim = simulator(device);
 const VAULT_PIN = "246810";
 /** Types the scratch PIN into every field of the web's Vault card (React's own value setter, then its input event). */
 const FILL_PIN = `const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; for (const i of document.querySelectorAll("main input")) { set.call(i, "${VAULT_PIN}"); i.dispatchEvent(new Event("input", { bubbles: true })); } return true;`;
+const CHIPS_IN_SIGHT = `const n = document.querySelector("nav[aria-label='Task views']"); const on = n.querySelector("[aria-current=page]"); n.scrollLeft = Math.max(0, on.offsetLeft + on.offsetWidth + 16 - n.clientWidth); return true;`;
 
 /** The screens, by route. `ready` is text the web shows once the screen is drawn. */
 // `scroll`: the screen scrolled down by that many points (FOLEVI_REBUILD_SCROLL in the new frame).
@@ -82,6 +86,24 @@ export const SCREENS = [
   { id: "vault-health", path: "/vault", ready: "The Vault is locked", unlock: "Upload", menu: "Health", native: "/vault/health" },
   { id: "vault-trash", path: "/vault", ready: "The Vault is locked", unlock: "Upload", menu: "Trash", native: "/vault/trash" },
   { id: "vault-settings", path: "/vault", ready: "The Vault is locked", unlock: "Upload", menu: "Settings", native: "/vault/settings" },
+  // I4: Tasks, Calendar, Settings. Tasks' row of views keeps the chosen one in sight, but the web places it once, on
+  // its first paint, before or after the counts arrive (so its scroll varies run to run): `settle` places it again
+  // once the screen is drawn, by the same rule.
+  { id: "tasks", path: "/tasks/today", ready: "Filter by task or note", settle: CHIPS_IN_SIGHT },
+  { id: "tasks-all", path: "/tasks/all", ready: "Filter by task or note", settle: CHIPS_IN_SIGHT },
+  { id: "tasks-upcoming", path: "/tasks/upcoming", ready: "Filter by task or note", settle: CHIPS_IN_SIGHT },
+  { id: "tasks-done", path: "/tasks/completed", ready: "Filter by task or note", settle: CHIPS_IN_SIGHT },
+  { id: "calendar", path: "/calendar", ready: "Today ·" },
+  // The month pulled down (its grabber), and a task's sheet; `nativeEnv`: the new frame's launch hooks for them.
+  { id: "calendar-month", path: "/calendar", ready: "Today ·", settle: `document.querySelector("button[aria-label='Show the whole month']").click(); return true;`, nativeEnv: { FOLEVI_REBUILD_MONTH: "1" } },
+  { id: "task-sheet", path: "/tasks/all", ready: "Filter by task or note", settle: CHIPS_IN_SIGHT, press: "Check in online", nativeEnv: { FOLEVI_REBUILD_TASK: "Check in online" } },
+  { id: "settings", path: "/settings", ready: "Appearance" },
+  { id: "settings-library", path: "/settings/library", ready: "Library" },
+  { id: "settings-ai", path: "/settings/ai", ready: "Foli AI" },
+  { id: "settings-appearance", path: "/settings/appearance", ready: "Appearance" },
+  { id: "settings-theme", path: "/settings/appearance?screen=theme", ready: "Follows this device" },
+  { id: "settings-data", path: "/settings/data", ready: "Import" },
+  { id: "settings-this-device", path: "/settings/this-device", ready: "This device" },
 ];
 
 /** Page scripts for `js`: the tab bar's Foli AI button; that, then a question asked in the sheet. */
@@ -151,6 +173,21 @@ if (!process.argv.includes("--no-seed")) {
   sim.command("note.star", { ids: [made.id], starred: true });
   const old = sim.command("note.create", { text: "Old receipts\nKept for the tax year, then archived.", open: false });
   sim.command("note.archive", { ids: [old.id], archived: true });
+  // Tasks for Tasks and Calendar (I4): in the packing list and the Inbox, overdue, today, later, one with a time and
+  // a priority, one done.
+  const day = (n) => {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  sim.command("task.create", { text: "Buy travel adapters", noteId: made.id, dueDate: day(0) });
+  sim.command("task.create", { text: "Check in online", noteId: made.id, dueDate: day(1), dueTime: "18:30", priority: "high", keepText: true });
+  sim.command("task.create", { text: "Renew passport photos", noteId: made.id, dueDate: day(-2), keepText: true });
+  sim.command("task.create", { text: "Call the dentist", dueDate: day(0), keepText: true });
+  sim.command("task.create", { text: "Plan the weekend walk", dueDate: day(3), keepText: true });
+  sim.command("task.create", { text: "Water the plants", keepText: true });
+  const done = sim.command("task.create", { text: "Pick up dry cleaning", dueDate: day(0), keepText: true });
+  sim.command("task.update", { id: done.id, checked: true });
   sim.sleep(2000);
   console.log("seeded");
 }
@@ -207,6 +244,10 @@ const open = (screen, base) => {
   if (!native) {
     if (sim.evalJs("return location.pathname") !== screen.path) sim.evalJs(`location.assign(${JSON.stringify(screen.path)}); return true;`);
     waitUntil(screen.ready, () => sim.evalJs(`return document.body.innerText.includes(${JSON.stringify(screen.ready)})`));
+    if (screen.settle) {
+      sim.sleep(1500);
+      sim.evalJs(screen.settle);
+    }
     if (screen.press) {
       sim.sleep(1000);
       sim.press(screen.press);
@@ -345,12 +386,12 @@ const crop = (path) => {
   execFileSync("sips", ["-c", String(h - TOP - BOTTOM), String(w), "--cropOffset", String(TOP), "0", path], { stdio: "pipe" });
 };
 const shoot = (screen) => {
-  for (const [side, env] of [["web", { FOLEVI_WEB_FRAME: "1" }], ["native", { FOLEVI_REBUILD: "1" }]]) {
+  for (const [which, env] of [["web", { FOLEVI_WEB_FRAME: "1" }], ["native", { FOLEVI_REBUILD: "1" }]].filter(([w]) => !side || w === side)) {
     open(screen, env);
     for (const scheme of ["light", "dark"]) {
       sim.appearance(scheme);
       sim.sleep(1500);
-      const path = join(outDir, side, `${screen.id}-${scheme}.png`);
+      const path = join(outDir, which, `${screen.id}-${scheme}.png`);
       sim.screenshot(path);
       crop(path);
     }
@@ -364,6 +405,7 @@ for (const screen of shooting.filter((s) => s.beforeVault && seeding)) shoot(scr
 if (seeding && screens.some((s) => s.path === "/vault")) seedVault();
 for (const screen of shooting.filter((s) => !s.beforeVault)) shoot(screen);
 
+if (side) process.exit(0);
 const require = createRequire(join(repo, "apps/web/package.json"));
 const { webkit } = require("@playwright/test");
 const { diffAll, writeReport } = await import(join(repo, "apps/mac/scripts/diff.mjs"));

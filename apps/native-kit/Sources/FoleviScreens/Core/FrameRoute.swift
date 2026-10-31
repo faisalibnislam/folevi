@@ -83,6 +83,10 @@ public enum FrameRoute: Hashable, Sendable {
         case "folders": self = a.map { .folder($0) } ?? .web("/folders")
         case "tags": self = a.map { .tag($0) } ?? .web("/tags")
         case "d": self = a.map { .note($0) } ?? .home
+        // A Settings section's pushed screen keeps its `screen` (SettingsKit.tsx's ?screen=<id>).
+        case "settings":
+            let screen = comps?.queryItems?.first { $0.name == "screen" }?.value
+            self = .web((comps?.path ?? trimmed) + (screen.map { "?screen=\($0.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? $0)" } ?? ""))
         default: self = .web(comps?.path ?? trimmed)
         }
     }

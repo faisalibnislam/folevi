@@ -637,6 +637,9 @@ public struct WebFolderCard: View {
                     .padding(.horizontal, 2.2 * cq * k)
                     .padding(.vertical, 1.3 * cq * k)
                     .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular).fill((phoneDark ? base.oklabMix(RGBA(12, 13, 16), 0.34) : base.oklabMix(Self.grey, 0.55)).color))
+                    // (webText's top guide, moved down by the padding, would otherwise line the age and the name
+                    // up with it in this ZStack: both were drawn 1.3 cq low.)
+                    .alignmentGuide(.top) { _ in 0 }
                     .fixedSize()
                     .offset(x: w * 0.07, y: frontH * 0.0926)
                 Text(model.ageText)

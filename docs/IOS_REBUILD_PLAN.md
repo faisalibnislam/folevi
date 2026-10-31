@@ -330,17 +330,26 @@ account-mode sign-out and place switching want a run with a scratch test account
   Unread, Mark all read, Settings, Today, Yesterday and Earlier, swipes and a menu). Menus show their checks on
   iOS (a column before the words, as globals.css); card titles clamp after their last word; the keyboard no longer
   lifts the tab bar.
-- **Comparisons now** (light/dark): Starred 0.04/0.03%, Archive 0.03/0.02%, Trash 0.09%, a folder 0.50/0.46% pass;
-  Drafts 0.53/0.50%, Home 0.59/1.62%, Home's lower half 1.7%, All notes 1.0/0.9%, All folders 2.3/2.4%, search 2.7%
-  typed (5% empty: item 4). The gates are unchanged. What's left:
-  1. iOS WebKit's `text-wrap: pretty` in the cards' line-clamped previews makes several short even lines (sometimes
-     more lines than plain wrapping); no simple model of it fits the 46 paragraphs measured yet.
-  2. WebKit and Core Text shape Instrument Sans a little differently (digits about 4% wider in WebKit, letters about
-     1% narrower; the same font file, features make no difference): now and then a line breaks one word apart.
-  3. The native folder card is drawn about 2.4% taller for its width than the web's (the same on Home and All
-     folders; its width matches): the main part of All folders' difference. Not found yet.
-  4. Search's Recent: the web asks a live query that local mode never answers, so it shows nothing; native shows the
-     recently edited notes. (Looks like a web bug in local mode.)
+- **Comparisons now** (light/dark, 2026-10-31, after closing the gaps): Starred 0.04/0.03%, Archive 0.03/0.02%,
+  Drafts 0.06/0.05%, Trash 0.09%, a folder 0.12/0.11%, All notes 0.14/0.13%, empty search 0.24%, Home 0.35% light,
+  All folders 0.40/0.47%, Home's lower half 0.46/0.49% pass; search typed 0.70/0.69% and Home dark 1.35% don't.
+  The gates are unchanged (sign-in dark 0.51%). What closed them:
+  1. Cards' previews and folder papers take WebKit's own line breaks (`text.layout`, contract revision 24), since
+     iOS WebKit's `text-wrap: pretty` in a line-clamped box matched no model.
+  2. No kerning across a hyphen on iOS, as WebKit shapes text (a zero-width non-joiner and space after each one).
+  3. The folder card: its cover's words in a box of the cover's size (they grew it), and the count badge's top
+     guide no longer lines the age and the name up 1.3 cq low (`webText`'s explicit guide, carried out through the
+     badge's padding into the cover's ZStack). A thing to watch elsewhere: a one-line `webText` with padding in a
+     ZStack or HStack moves its siblings by that padding.
+  4. Search's Recent is the notes opened last (`recent.viewed`), as the web means it.
+  What's left:
+  1. Home dark: the tab bar's glass over the folder cards. The web blurs what's behind at 9 px with saturate(1.8),
+     which keeps the folders' colours in the glass; iOS's public blur (the lightest material, its tint removed)
+     blurs wider and doesn't saturate. Matching it needs private API (a custom backdrop filter), so it stays.
+     Light passes, since the light glass is near white either way.
+  2. Search typed: the marked words' highlight is about 1 pt wider each side natively.
+  3. Small text everywhere differs by antialiasing (WebKit and Core Text shape Instrument Sans a little
+     differently): the remaining 0.1 to 0.3% on every screen.
 - **Not checked against the web:** Shared with Me, Changes and Notifications exist only signed in, so the scratch
   library can't show them; they follow the web's markup and need a run with a scratch test account. Changes
   shows a note's changes with the kit's native diff, where the web draws the changed blocks in its editor.

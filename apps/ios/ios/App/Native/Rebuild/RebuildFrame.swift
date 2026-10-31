@@ -1,7 +1,6 @@
-// The iOS rebuild's frame (docs/IOS_REBUILD_PLAN.md, I1), while it's being built: Debug builds only, and only with
-// FOLEVI_REBUILD=1 in the environment (or the `folevi.rebuild` setting). Release builds, TestFlight and today's
-// frame are untouched. Screens are placeholders that name their route until the lists land (I3); a note is the real
-// note page (RebuildNote.swift) on today's app's one web view and engine.
+// The iOS rebuild's frame (docs/IOS_REBUILD_PLAN.md): Release builds' frame (TestFlight and the App Store), and in
+// Debug builds with FOLEVI_REBUILD=1 in the environment (or the `folevi.rebuild` setting). A note is the real note
+// page (RebuildNote.swift) on the app's one web view and engine.
 import SafariServices
 import SwiftUI
 import UIKit
@@ -13,11 +12,15 @@ import FoleviScreens
 
 @MainActor
 enum RebuildFrame {
+    /// The new frame: in Release builds wherever the native frame runs (the built-in interface, not the web frame);
+    /// in Debug builds when asked for (FOLEVI_REBUILD=1 or the `folevi.rebuild` setting), so the harnesses can shoot
+    /// the web frame (FOLEVI_WEB_FRAME=1) and the new frame from the same build.
     static let enabled: Bool = {
+        guard PhoneFrame.enabled else { return false }
         #if DEBUG
-        ProcessInfo.processInfo.environment["FOLEVI_REBUILD"] == "1" || UserDefaults.standard.bool(forKey: "folevi.rebuild")
+        return ProcessInfo.processInfo.environment["FOLEVI_REBUILD"] == "1" || UserDefaults.standard.bool(forKey: "folevi.rebuild")
         #else
-        false
+        return true
         #endif
     }()
 

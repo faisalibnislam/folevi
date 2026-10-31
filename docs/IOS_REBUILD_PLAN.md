@@ -18,7 +18,7 @@ Android stays paused completely. The Mac app keeps shipping (1.2.x) while this i
 | No account | Yes, like the Mac: first launch offers "Keep notes on my iPhone" (free, no limits, library on the device or in iCloud Drive, or a folder from Files) and "Sign in to Folevi". Local Vault and Foli AI (Apple's on-device model or the person's own key) work without an account. |
 | Web parts | Only the note editor and what's drawn inside a note (mind maps, flowcharts, tables, embeds). Everything else native: Vault, Foli AI, every Settings section, Graph, Reviews. |
 | Minimum iOS | iOS 18 (today's app is iOS 17; installs on 17 keep the current app). |
-| Rollout | One build at the end. No TestFlight builds on the way; the upload is asked first, as always. Same bundle id `com.folevi.ios`, data carries over. |
+| Rollout | One build at the end. No TestFlight builds on the way; the upload is asked first, as always. Same bundle id `com.folevi.ios`, data carries over. (2026-10-31: the owner asked for it: Release builds open the new frame, `RebuildFrame.enabled`.) |
 
 Unchanged from earlier decisions: no buying inside the app (no prices or upgrade links, App Store 3.1.1); every
 iPhone fix also applies to iPad ([[iphone-feedback-applies-to-ipad]]); the iOS extras stay (below).

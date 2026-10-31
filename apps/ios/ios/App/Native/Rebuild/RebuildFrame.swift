@@ -73,6 +73,10 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         return f
     }()
 
+    /// The window's rebuild frame (links from other apps, widgets, intents and Spotlight come here).
+    static weak var current: RebuildFrameController?
+    private var linksReady = false
+
     init(frame: PhoneFrameModel, menus: PhoneMenus) {
         let host = WebHost.take()
         self.host = host
@@ -144,6 +148,13 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
             },
         ]
         model.start()
+        Self.current = self
+        // Links that came before the engine was up open once it is (DeepLinkRouter keeps them till then).
+        observers.append(Observer { [weak self] in
+            guard let self, !self.linksReady, self.model.client.state == .ready else { return }
+            self.linksReady = true
+            DispatchQueue.main.async { DeepLinkRouter.bridgeReady() }
+        })
         // Small web text drawn natively asks the page how WebKit breaks it (`text.layout`).
         let client = model.client
         WebLineLayout.shared.requester = { style, texts in
@@ -215,6 +226,25 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
     }
 
     func share(noteId: String) { model.toast("Sharing comes to this screen soon.") }
+
+    /// A folevi:// link (another app, a widget, an App Intent, Spotlight, Handoff): its screen, in the layout on
+    /// screen (the iPad's wide one opens it in the desk's tab).
+    func openLink(_ url: URL) {
+        switch DeepLink.parse(url.absoluteString) {
+        case .newNote?: return model.newNote()
+        // Quick Add (the widget, the control, the intent): the Tasks tab, where a task is added.
+        case .quickAdd?: return openLink(DeepLink.tasksURL)
+        default: break
+        }
+        guard let path = DeepLink.path(of: url) else { return }
+        let route = FrameRoute(path: path)
+        if UIDevice.current.userInterfaceIdiom == .pad, (view.window?.bounds.width ?? 0) >= RebuildIPad.minWidth {
+            desk.open(route)
+            return
+        }
+        if case .note(let id) = route { return openNote(id, source: nil, focus: false) }
+        frame.open(route)
+    }
 }
 
 private struct RebuildRoot: View {

@@ -1,8 +1,12 @@
 // The open Vault's sections (components/vault/Files.tsx, Passwords.tsx, Health.tsx, Trash.tsx, Sections.tsx), drawn
 // from the live web's styles inside the inverted Vault: Files & Notes (Grid or Lines), Passwords & Credentials (the
 // list and the open item beside it), Health, Trash, Settings, Activity and People.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 import FoleviDesign
@@ -128,7 +132,7 @@ struct VaultSelect: View {
 
     var body: some View {
         let s = VS.style(style, scheme)
-        WebMenuButton(width: max(s.width, 180), entries: { options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == selected)) { onSelect(o.0) } } }) {
+        WebMenuButton(select: true, entries: { options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == selected)) { onSelect(o.0) } } }) {
             let row = HStack(spacing: s.gap) {
                 Text(label).webText(s.text).lineLimit(1)
                 Spacer(minLength: 0)

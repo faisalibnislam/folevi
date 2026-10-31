@@ -2,8 +2,12 @@
 // settings.json, read from /settings/<section> in the web frame): the section card (views/settings/Card.tsx), the
 // switch (ui/Switch.tsx), the select (ui/Select.tsx, a Folevi menu), text fields (.ui-input), term and value rows,
 // rows with a hint and a switch, and dialogs (ui/Dialog.tsx) in a panel over the window.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -238,7 +242,7 @@ struct SettingsSelect: View {
         let label = SettingsStyle.pair("select.label").resolve(scheme)
         let chevron = SettingsStyle.pair("select.chevron").resolve(scheme)
         let current = options.first { $0.value == value }?.label ?? value
-        WebMenuButton(width: max(width ?? s.width, 160), entries: {
+        WebMenuButton(select: true, entries: {
             options.map { o in WebMenuEntry(.item(o.label, checked: o.value == value, id: o.value)) { onChange(o.value) } }
         }) {
             HStack(spacing: s.gap) {
@@ -418,6 +422,7 @@ struct SettingsDialogView<Body: View, Footer: View>: View {
     }
 }
 
+#if os(macOS)
 /// A borderless panel over a window holding one dialog (one at a time), centred on the window.
 @MainActor
 final class SettingsDialogWindow: NSPanel {
@@ -488,6 +493,59 @@ func settingsConfirm(_ title: String, message: String?, confirm: String, destruc
         run()
     }
 }
+#else
+/// One dialog over the window (one at a time), centred, in a layer that takes every touch while it shows.
+@MainActor
+final class SettingsDialogWindow {
+    private static var current: SettingsDialogWindow?
+    private let layer = UIView()
+    private var host: UIHostingController<AnyView>?
+    private var onClose: (() -> Void)?
+    static let margin: CGFloat = 60
+
+    /// Shows `content` (a SettingsDialogView) over `window`.
+    @discardableResult
+    static func show<V: View>(over window: UIWindow, onClose: (() -> Void)? = nil, @ViewBuilder content: () -> V) -> SettingsDialogWindow {
+        current?.dismiss()
+        let d = SettingsDialogWindow()
+        d.onClose = onClose
+        let h = UIHostingController(rootView: AnyView(content().padding(margin)))
+        h.view.backgroundColor = .clear
+        h.safeAreaRegions = []
+        d.host = h
+        d.layer.frame = window.bounds
+        d.layer.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        d.layer.backgroundColor = UIColor.black.withAlphaComponent(0.0001)
+        let size = h.sizeThatFits(in: window.bounds.size)
+        h.view.frame = CGRect(x: window.bounds.midX - size.width / 2, y: window.bounds.midY - size.height / 2, width: size.width, height: size.height)
+        d.layer.addSubview(h.view)
+        window.addSubview(d.layer)
+        current = d
+        return d
+    }
+
+    static func closeCurrent() { current?.dismiss() }
+
+    func dismiss() {
+        layer.removeFromSuperview()
+        host = nil
+        if Self.current === self { Self.current = nil }
+        let done = onClose
+        onClose = nil
+        done?()
+    }
+}
+
+/// A confirmation as the iPad asks it: the system's alert.
+@MainActor
+func settingsConfirm(_ title: String, message: String?, confirm: String, destructive: Bool = true, in window: UIWindow?, then run: @escaping () -> Void) {
+    guard let presenter = (window ?? NSApp.keyWindow)?.rootViewController?.topmostPresented else { return }
+    let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    alert.addAction(UIAlertAction(title: confirm, style: destructive ? .destructive : .default) { _ in run() })
+    presenter.present(alert, animated: true)
+}
+#endif
 
 // MARK: data
 

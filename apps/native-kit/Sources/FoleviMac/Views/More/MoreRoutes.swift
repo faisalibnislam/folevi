@@ -1,7 +1,7 @@
 // The web routes the Mac frame draws natively beyond the shared screens: Help (/help), Graph (/graph), Reviews
 // (/review) and a folder shared with this person (/shared/<id>). Anything else keeps the placeholder that
 // names it.
-#if os(macOS)
+#if os(macOS) || os(iOS)
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

@@ -40,9 +40,9 @@ let package = Package(
             dependencies: ["FoleviEngine", "FoleviDesign"],
             swiftSettings: strict
         ),
-        // N8: the Mac app's native frame (split view, sidebar, tab strip, top bar, frame model). Used by the Mac app
-        // only: its AppKit views and its tests compile to nothing on iOS (#if os(macOS)), so the package's shared
-        // scheme still builds for iOS.
+        // N8: the Mac app's native frame (split view, sidebar, tab strip, top bar, frame model). Its SwiftUI views
+        // are the iPad's wide layout too (I7: IPadFrameView, Platform.swift's UIKit stand-ins); the AppKit
+        // controllers (FrameViews, SidebarViewController, TabStripView, Menus) stay Mac only.
         .target(
             name: "FoleviMac",
             dependencies: ["FoleviEngine", "FoleviDesign", "FoleviScreens"],

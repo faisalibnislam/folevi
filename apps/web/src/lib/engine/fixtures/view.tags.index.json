@@ -1,0 +1,24 @@
+{
+  "kind": "view",
+  "name": "tags.index",
+  "description": "The Tags page: every tag with its page count.",
+  "args": {},
+  "value": {
+    "tags": [
+      {
+        "id": "tag_travel",
+        "name": "travel",
+        "color": "moss",
+        "documentCount": 4,
+        "createdAt": 1761868800000
+      },
+      {
+        "id": "tag_ideas",
+        "name": "ideas",
+        "color": "accent",
+        "documentCount": 1,
+        "createdAt": 1761955200000
+      }
+    ]
+  }
+}

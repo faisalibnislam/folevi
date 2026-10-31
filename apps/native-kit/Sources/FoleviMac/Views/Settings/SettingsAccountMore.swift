@@ -3,8 +3,12 @@
 // billing as the web shows them on the Mac; buying goes to the web's checkout page), Connected apps
 // (ConnectedAppsSection.tsx, ApiTokens.tsx, Webhooks.tsx), and the workspace's General, Members, Guests, Plan
 // & billing and Privacy.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

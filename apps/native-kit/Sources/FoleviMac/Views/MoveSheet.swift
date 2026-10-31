@@ -2,8 +2,12 @@
 // places.move): pick another place (or a space in it), move or copy, see what goes and whether it fits, run it.
 // The move's progress shows as the placeMove gate (the page's own screen, full window); a move that has to run
 // in the other place answers `switched` and the window goes there.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -105,6 +109,7 @@ struct PlaceMoveSheet: View {
 
 @MainActor
 public enum PlaceMove {
+#if os(macOS)
     /// Shows the sheet over a window's frame.
     public static func present(from controller: NSViewController, model frame: FrameModel) {
         var host: NSHostingController<PlaceMoveSheet>?
@@ -115,5 +120,18 @@ public enum PlaceMove {
         host = h
         controller.presentAsSheet(h)
     }
+#else
+    /// Shows the sheet over a window's frame.
+    public static func present(from controller: UIViewController, model frame: FrameModel) {
+        var host: UIHostingController<PlaceMoveSheet>?
+        let sheet = PlaceMoveSheet(model: PlaceMoveModel(frame: frame)) {
+            host?.dismiss(animated: true)
+        }
+        let h = UIHostingController(rootView: sheet)
+        host = h
+        h.modalPresentationStyle = .formSheet
+        controller.present(h, animated: true)
+    }
+#endif
 }
 #endif

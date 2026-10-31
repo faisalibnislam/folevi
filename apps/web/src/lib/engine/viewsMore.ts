@@ -57,6 +57,31 @@ const templatesBuiltIn: ValueViewDef = {
 
 // ---- folders.cards
 
+/** The Tags page: organization.index's tags (names, colours, page counts, when made). */
+const tagsIndex: ValueViewDef = {
+  kind: "value",
+  parse: (args) => {
+    only(args, ["space"]);
+    const space = optionalId(args, "space");
+    return space !== undefined ? { space } : {};
+  },
+  create: (ctx, args) => {
+    const space = requireSpace(ctx.deps(), args.space as string | undefined);
+    const index = source<FolderIndexData>(ctx, api.organization.index, { scope: space.scope, only: "tags" }, space.scope);
+    return {
+      signals: [index, engineSignal(ctx)],
+      compute: () => {
+        const i = index.snapshot();
+        if (i.error) return { value: undefined, stale: false, error: i.error };
+        if (ctx.deps().spaceStatus(space.scope).locked) return { value: { tags: [] }, stale: false, error: null };
+        if (!i.value) return { value: undefined, stale: true, error: null };
+        const tags = i.value.tags.map((t) => ({ id: t.id, name: t.name, color: t.color, documentCount: t.documentCount, createdAt: t.createdAt }));
+        return { value: { tags }, stale: i.stale, error: null };
+      },
+    };
+  },
+};
+
 const foldersCards: ValueViewDef = {
   kind: "value",
   parse: (args) => {
@@ -342,6 +367,7 @@ export const MORE_VALUE_VIEWS = {
   "trash.summary": trashSummary,
   "templates.builtIn": templatesBuiltIn,
   "folders.cards": foldersCards,
+  "tags.index": tagsIndex,
   "shared.list": sharedList,
   changes,
   "notifications.list": notificationsList,

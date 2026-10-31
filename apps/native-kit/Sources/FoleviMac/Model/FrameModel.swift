@@ -172,7 +172,7 @@ public final class FrameModel {
                 self.handle(event)
             }
         }
-        #if os(macOS)
+        #if os(macOS) || os(iOS)
         pictures.frame = self
         #endif
     }
@@ -245,6 +245,11 @@ public final class FrameModel {
         open(r, .history)
     }
 
+    /// Bumped by Reload (the right-click menu's): the native screen on show reads its data again.
+    public private(set) var screenReloads = 0
+
+    public func reloadScreen() { screenReloads += 1 }
+
     public func selectTab(_ id: String) {
         guard let r = tabs.select(id: id) else { return }
         history.push(r)
@@ -295,13 +300,13 @@ public final class FrameModel {
     /// Whether the Tab Overview (every tab as a picture) is showing.
     public var overviewShown = false {
         didSet {
-            #if os(macOS)
+            #if os(macOS) || os(iOS)
             if overviewShown { preview.hide() }
             #endif
         }
     }
     /// The tab picture under the pointer in the strip, and the notes' pictures.
-    #if os(macOS)
+    #if os(macOS) || os(iOS)
     public let preview = TabPreviewState()
     public let pictures = TabPictureStore()
     #endif
@@ -694,6 +699,20 @@ public final class FrameModel {
         if route.isNote { return toggleNoteAI() }
         if route.tabKey == "view:ai" { return NotificationCenter.default.post(name: Self.focusAiComposer, object: nil) }
         askAiOpen.toggle()
+    }
+
+    /// A folder the floating chat opens about (its "Ask Foli AI about this folder…"), taken by the chat as it opens.
+    public struct AskAbout: Equatable, Sendable {
+        public let id: String
+        public let name: String
+    }
+
+    public var askAbout: AskAbout?
+
+    /// Ask Foli AI about this folder…: the floating chat, a new conversation about the folder (the web's openAsk).
+    public func askAI(aboutFolder id: String, name: String) {
+        askAbout = AskAbout(id: id, name: name)
+        askAiOpen = true
     }
 
     /// Asks the AI page's box to take the keys.

@@ -267,7 +267,8 @@ struct PhoneScopeChip: View {
     }
 }
 
-/// Text with what was searched for marked (the web's Highlight: a pale yellow box, 4 pt corners).
+/// Text with what was searched for marked (the web's Highlight, a `<mark>`: a pale yellow box with 4 pt corners
+/// over the font's ascent and descent, 1 pt of padding inside either end).
 struct PhoneHighlighted: View {
     let text: String
     let query: String
@@ -276,24 +277,60 @@ struct PhoneHighlighted: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        Text(attributed).webText(style).foregroundStyle(color.color)
+        composed
+            .textRenderer(MarkRenderer(fill: (scheme == .dark ? RGBA(74, 63, 28) : RGBA(252, 239, 180)).color, radius: FoleviTokens.Radius.tiny))
+            .webText(style)
+            .foregroundStyle(color.color)
     }
 
-    private var attributed: AttributedString {
-        var a = AttributedString(text.webKitShaped)
+    /// The text in pieces, each mark's padding as kerning: a zero-width space 1 pt wide before it, 1 pt after its
+    /// last letter.
+    private var composed: Text {
+        let shaped = text.webKitShaped
         let q = query.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return a }
-        var searchStart = a.startIndex
-        while searchStart < a.endIndex, let r = a[searchStart...].range(of: q, options: .caseInsensitive) {
-            a[r].backgroundColor = (scheme == .dark ? RGBA(92, 78, 24) : RGBA(252, 239, 180)).color
-            a[r].foregroundColor = FoleviTokens.Chrome.ink.resolve(scheme).color
-            // (The mark's 1 pt of padding either side: what follows it sits 2 pt further on.)
-            if let last = a[r].characters.indices.last {
-                a[last..<a.index(afterCharacter: last)].kern = 2
-            }
-            searchStart = r.upperBound
+        guard !q.isEmpty else { return Text(shaped) }
+        let ink = FoleviTokens.Chrome.ink.resolve(scheme).color
+        var out = Text("")
+        var at = shaped.startIndex
+        while at < shaped.endIndex, let r = shaped.range(of: q, options: .caseInsensitive, range: at..<shaped.endIndex) {
+            if r.lowerBound > at { out = out + Text(shaped[at..<r.lowerBound]) }
+            let last = shaped.index(before: r.upperBound)
+            out = out + Text("\u{200B}").kerning(1).customAttribute(MarkAttribute())
+            if last > r.lowerBound { out = out + Text(shaped[r.lowerBound..<last]).foregroundStyle(ink).customAttribute(MarkAttribute()) }
+            out = out + Text(shaped[last..<r.upperBound]).kerning(1).foregroundStyle(ink).customAttribute(MarkAttribute())
+            at = r.upperBound
         }
-        return a
+        if at < shaped.endIndex { out = out + Text(shaped[at...]) }
+        return out
+    }
+}
+
+private struct MarkAttribute: TextAttribute {}
+
+/// Draws a box behind each line's marked runs, then the text.
+private struct MarkRenderer: TextRenderer {
+    let fill: Color
+    let radius: CGFloat
+
+    func draw(layout: Text.Layout, in ctx: inout GraphicsContext) {
+        for line in layout {
+            var box: CGRect?
+            func flush() {
+                if let b = box { ctx.fill(Path(roundedRect: b, cornerRadius: radius, style: .circular), with: .color(fill)) }
+                box = nil
+            }
+            for run in line {
+                if run[MarkAttribute.self] != nil {
+                    let t = run.typographicBounds
+                    let r = CGRect(x: t.rect.minX, y: t.origin.y - t.ascent, width: t.width, height: t.ascent + t.descent)
+                    box = box.map { $0.union(r) } ?? r
+                } else {
+                    flush()
+                }
+            }
+            flush()
+        }
+        for line in layout { ctx.draw(line) }
     }
 }
 #endif

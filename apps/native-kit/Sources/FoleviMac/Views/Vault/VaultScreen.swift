@@ -2,8 +2,12 @@
 // styles (packages/design-tokens/match/app-styles/vault.json): the Vault in the other theme (.ui-invert), the header
 // row (open on this device, Lock, the ⋯ menu), the two tabs and the ⋯ section as a third, and the front door
 // (set up, unlock, a forgotten passcode, choosing a passcode) until it's open. The engine does the rest.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -103,6 +107,15 @@ struct VaultScreen: View {
     var body: some View {
         VaultBody(model: model)
             .uiInvert()
+            .onChange(of: model.dialog?.id) { _, id in
+                guard id != nil, let dialog = model.dialog else { return FrameSheets.dismiss(model.frame, notify: false) }
+                FrameSheets.present(model.frame, onClose: { [model] in model.dialog = nil }) { _ in
+                    VaultDialogHost(model: model, dialog: dialog)
+                }
+            }
+            // A dialog belongs to its section: another section closes it (the web's Vault draws it again).
+            .onChange(of: path) { _, _ in model.dialog = nil }
+            .onDisappear { if model.dialog != nil { model.dialog = nil; FrameSheets.dismiss(model.frame, notify: false) } }
             .onChange(of: model.summary.value) { _, _ in model.summaryChanged() }
             // A link to /vault/<section> on the open tab: that section (the Vault stays one tab).
             .onChange(of: path) { _, p in model.section = VaultSection(path: p) ?? .files }
@@ -147,9 +160,6 @@ private struct VaultBody: View {
                 }
             }
             .scrollIndicators(.automatic)
-            if let dialog = model.dialog {
-                VaultDialogHost(model: model, dialog: dialog)
-            }
         }
         .foregroundStyle(view.color.color)
     }

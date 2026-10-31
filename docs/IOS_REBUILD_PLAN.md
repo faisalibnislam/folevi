@@ -347,7 +347,8 @@ account-mode sign-out and place switching want a run with a scratch test account
      which keeps the folders' colours in the glass; iOS's public blur (the lightest material, its tint removed)
      blurs wider and doesn't saturate. Matching it needs private API (a custom backdrop filter), so it stays.
      Light passes, since the light glass is near white either way.
-  2. Search typed: the marked words' highlight is about 1 pt wider each side natively.
+  2. Search typed (0.70%): the marked words are now the web's `<mark>` (a rounded box, 1 pt padding inside, its
+     dark colour #4A3F1C); what's left is glyph widths (WebKit sets "Trip" wider, Core Text the digits).
   3. Small text everywhere differs by antialiasing (WebKit and Core Text shape Instrument Sans a little
      differently): the remaining 0.1 to 0.3% on every screen.
 - **Not checked against the web:** Shared with Me, Changes and Notifications exist only signed in, so the scratch
@@ -399,3 +400,44 @@ account-mode sign-out and place switching want a run with a scratch test account
   since the web places it once on first paint before or after the counts arrive; the month's grabber) and
   `nativeEnv` (the new frame's launch hooks: `FOLEVI_REBUILD_MONTH=1`, `FOLEVI_REBUILD_TASK=<title>`). Run on a
   Simulator of its own: `--device "Folevi I4 iPhone 18 Pro"` (a clone, `xcrun simctl clone`).
+
+  (iOS's own alerts and sheets). That matches: the web hands Rename and Delete to the system's alert in the apps
+  (`hasNative("alert")`); only Move's sheet is drawn differently. Moving a folder to another place and inviting
+  people say they're coming.
+
+### I7, I8, I9 (2026-10-31)
+
+- **I7, the iPad's wide layout** (`FoleviMac/Views/IPadFrame.swift`, `apps/ios/.../Rebuild/RebuildIPad.swift`): the
+  web's desktop layout as the iPad app shows it (lib/iphone.ts isIpadLayout, `<html data-ipad>`) is the Mac frame's
+  own SwiftUI views on iOS: the sidebar, the content card with its glass bar and tab strip, the screens
+  (ScreenRoot), the note as the app's one Page View in the card (the page draws the desktop note: the marker is
+  `ipados`). Under 700 pt wide (Split View, Slide Over, small Stage Manager windows) the phone's layout, as the
+  web. FoleviMac builds for iOS: `Platform.swift` names UIKit for AppKit (NSView, NSWindow, NSImage, NSColor,
+  NSFont), stands in for NSEvent monitors (never installed on iOS), NSPasteboard, NSWorkspace, NSApp,
+  NSOpenPanel and NSSavePanel (Cancel); the menu, account menu, Settings dialog and planner panels are layers over
+  the window on iOS; the find and Quick Add fields are SwiftUI fields; PDF and media previews use PDFKit and
+  AVPlayerViewController; tab pictures and citation chips draw with UIKit. The AppKit controllers (FrameViews,
+  SidebarViewController, TabStripView, Menus) stay Mac only.
+  - The iPad's own measurements: `screen-match.mjs --styles` on an iPad measures the frame and notes areas as the
+    web's iPad layout draws them (touch-sized rows, the wider sidebar) into `app-styles-cache/*.ipad.json`;
+    `WebStyles.ipad`, preferred on an iPad (`WebStyles.isPad`, set by the app at launch).
+  - iPad rules from the web: the top bar (TabStrip.tsx `ipad`: no Tab Overview button, dividers or arrows, Home
+    with its name, Foli AI and New note as round glass buttons), the wordmark atop the sidebar, no floating Foli AI
+    button (Shell.tsx `hideLauncher`), Home's Catch me up row wrapping (flex-wrap), All folders' search giving way
+    first, folder papers broken the iOS WebKit way.
+  - Comparisons (iPad Air 11-inch, `--device "iPad Air 11-inch (M4)"`, light/dark): Home 0.22/0.43%, All notes
+    0.25/0.48%, Drafts 0.32/0.52%, Starred 0.22/0.42%, Archive 0.45/0.55%, Trash 0.73/1.30%, a folder 0.83/1.11%,
+    All folders 0.80/0.99% (from 32%). Home's
+    lower half can't be compared yet (the harness scrolls only the phone frame).
+  - Still to do: the note page's own iPad look (the web's inset paper and floating format bar), the note tools
+    measured on the iPad, hardware keyboard focus inside lists, pointer hover states.
+- **I8, the rest on the phone**: every route the phone doesn't draw natively shows the frame's own screen
+  (DeskScreen, the Mac's and iPad's, under the phone's bar with Back), its links forwarded to the phone's stacks: no
+  placeholder left (Graph, Reviews, Help, Tags, and Tasks, Calendar, Settings, Foli AI and the Vault until I4 to
+  I6's phone screens land).
+- **I9, iOS extras on the new frame**: folevi:// links (other apps, widgets and the control, App Intents,
+  Spotlight, Handoff) open in the rebuild's stacks or the iPad's desk, New note and Quick Add links too, after the
+  engine is up; a notification from another place restarts into it and opens there; Folevi's hardware keyboard
+  shortcuts (New Note, Search, Quick Add, Ask Foli AI, Today, the sidebar, Back, Forward) done natively. Push
+  actions (Done, Snooze), background sync, the share extension and widgets work through the app's services, which
+  don't depend on the frame.

@@ -2,7 +2,7 @@
 // note list and folder, Shared with me, Changes, Tasks, Calendar, Search), given the frame's navigator (routes
 // become tabs), intents (places, Settings, sign-in, notes at a block) and feedback (toasts), plus Catch me up on
 // its own screen.
-#if os(macOS)
+#if os(macOS) || os(iOS)
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -13,6 +13,7 @@ public enum FrameDrag {
     public static let noteType = "com.folevi.note-ref"
     public static let folderType = "com.folevi.folder-ref"
 
+    #if os(macOS)
     /// The note ids on a pasteboard item (FoleviScreens' JSON: one note or a whole selection; or a bare id).
     static func noteIds(_ item: NSPasteboardItem) -> [String] {
         guard let data = item.data(forType: .init(noteType)) else { return [] }
@@ -28,6 +29,7 @@ public enum FrameDrag {
         }
         return nil
     }
+    #endif
 }
 
 /// The shared screens' view models, one per route, kept while the window lives (a tab coming back finds its
@@ -46,6 +48,7 @@ final class ScreenModels {
     lazy var more = MoreModels(frame: frame, feedback: feedback)
     /// Every folder as a card (Home's Recent folders, the Folders page).
     private var allFolders: ValueStore<FolderCardsValue>?
+    private var tags: ValueStore<TagsIndexValue>?
     private var aiPage: FoliChatModel?
     private var settings: MacSettingsModel?
 
@@ -136,6 +139,14 @@ final class ScreenModels {
     }
 
     /// The note list on screen for a route, when it has been shown.
+    /// The Tags page's tags, with their page counts.
+    func tagsIndex() -> ValueStore<TagsIndexValue> {
+        if let tags { return tags }
+        let v = frame.client.watch(.tagsIndex())
+        tags = v
+        return v
+    }
+
     func allFolderCards() -> ValueStore<FolderCardsValue> {
         if let allFolders { return allFolders }
         let v = frame.client.watch(.foldersCards(all: true))
@@ -269,7 +280,7 @@ struct ScreenRoot: View {
             case .folder(let id): WebNoteBrowser(frame: model, model: models.list(.folder(id)))
             case .tag(let id): WebNoteBrowser(frame: model, model: models.list(.tag(id)))
             case .web("/folders"): WebFoldersIndex(frame: model, home: models.homeModel(), allFolders: models.allFolderCards())
-            case .web("/tags"): WebTagsIndex(frame: model)
+            case .web("/tags"): WebTagsIndex(frame: model, tags: models.tagsIndex())
             case .shared: SharedWithMeScreen(model: models.more.sharedModel(), frame: model)
             case .changes: ChangesWebScreen(model: models.more.changesModel(), frame: model)
             case .catchUp: CatchUpScreen(model: model)

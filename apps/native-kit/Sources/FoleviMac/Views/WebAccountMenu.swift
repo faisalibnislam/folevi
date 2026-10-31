@@ -5,8 +5,12 @@
 // Settings (⌘,), Sign in to another account..., Move or copy notes..., Help; then Sign out of <name>. About 300
 // wide, opening up from the account button without covering it. Styles: "acct.*" (gates.json, the live web).
 // Keyboard: arrows, Return, Escape, type to select; a click outside closes it.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviScreens
@@ -271,6 +275,7 @@ struct WebPersonAvatar: View {
     }
 }
 
+#if os(macOS)
 /// A borderless panel holding the account menu, above its window.
 @MainActor
 public final class AccountMenuWindow: NSPanel {
@@ -362,4 +367,62 @@ public final class AccountMenuWindow: NSPanel {
         super.close()
     }
 }
+#else
+/// The account menu in a layer over the window, above the account button (a tap outside closes it).
+@MainActor
+public final class AccountMenuWindow {
+    private static var current: AccountMenuWindow?
+    private let state: AccountMenuState
+    private let layer = UIView()
+    private var host: UIHostingController<AnyView>?
+    static let margin: CGFloat = 32
+    static var leading: CGFloat { min(margin, WebStyles.named("acct.menu").light.x) }
+
+    private init(rows: [AccountMenuRow]) {
+        state = AccountMenuState(rows)
+    }
+
+    @objc private func tapped(_ g: UITapGestureRecognizer) {
+        guard let v = host?.view else { return close() }
+        if !v.frame.insetBy(dx: Self.margin, dy: Self.margin).contains(g.location(in: layer)) { close() }
+    }
+
+    /// Opens the menu for `model` in `window`, its bottom-left corner 8 pt above the account button.
+    @discardableResult
+    public static func show(model: FrameModel, in window: UIWindow) -> AccountMenuWindow {
+        current?.close()
+        let menu = AccountMenuWindow(rows: AccountMenuRows.build(model: model))
+        let h = UIHostingController(rootView: AnyView(AccountMenuPanel(state: menu.state) { [weak menu] r in menu?.pick(r) }.padding(EdgeInsets(top: margin, leading: leading, bottom: margin, trailing: margin))))
+        h.view.backgroundColor = .clear
+        h.safeAreaRegions = []
+        menu.host = h
+        let m = WebStyles.named("acct.menu").light
+        let size = h.sizeThatFits(in: window.bounds.size)
+        // (The foot of the sidebar is pinned to the bottom: the web's distance from a 820 pt window's bottom.)
+        let bottomInset = 820 - (m.y + m.height)
+        let bottom = window.bounds.maxY - window.safeAreaInsets.bottom - bottomInset
+        h.view.frame = CGRect(x: window.safeAreaInsets.left + m.x - leading, y: bottom - size.height + margin, width: size.width, height: size.height)
+        menu.layer.frame = window.bounds
+        menu.layer.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        menu.layer.addGestureRecognizer(UITapGestureRecognizer(target: menu, action: #selector(tapped(_:))))
+        menu.layer.addSubview(h.view)
+        window.addSubview(menu.layer)
+        current = menu
+        return menu
+    }
+
+    public static var shown: AccountMenuWindow? { current }
+
+    private func pick(_ r: AccountMenuRow) {
+        close()
+        DispatchQueue.main.async { MainActor.assumeIsolated { r.action() } }
+    }
+
+    public func close() {
+        layer.removeFromSuperview()
+        host = nil
+        if Self.current === self { Self.current = nil }
+    }
+}
+#endif
 #endif

@@ -2,7 +2,7 @@
 // first rests on a tab, then at once while it moves along the strip from tab to tab, with nothing hidden in between
 // (no flicker); gone when the pointer leaves the strip, a tab is pressed or dragged, or it reaches the open tab.
 // The picture is the page drawn small (the note's top, as an export draws it) and the tab's name, nothing else.
-#if os(macOS)
+#if os(macOS) || os(iOS)
 import SwiftUI
 import FoleviDesign
 

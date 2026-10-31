@@ -1,8 +1,12 @@
 // Settings > Import & export (views/settings/DataSection.tsx, TakeoutCard.tsx): import files or a folder into
 // Personal or the workspace (the engine runs the web's own import, lib/import/run.ts), a takeout file, and the
 // space's export as a ZIP.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 import FoleviDesign

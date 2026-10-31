@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 24;
+export const CONTRACT_REVISION = 25;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -1218,6 +1218,20 @@ export interface FolderRenameArgs {
   name: string;
 }
 
+/** A tag's name and/or colour (the sidebar's Edit tag… and Color: …; organization.updateTag). */
+export interface TagUpdateArgs {
+  id: string;
+  /** At most 40 characters. */
+  name?: string;
+  /** accent, moss, marigold, plum, coral or muted. */
+  color?: string;
+}
+
+/** Delete tag…: removed from every note, the notes stay. */
+export interface TagIdArgs {
+  id: string;
+}
+
 export interface FolderSetColorArgs {
   id: string;
   /** A folder colour key, null for the default. */
@@ -1268,6 +1282,25 @@ export interface FolderCardsArgs {
 
 export interface FolderCardsValue {
   folders: FolderCard[];
+}
+
+/** Revision 21: the Tags page (OrganizeIndex.tsx TagsIndex): every tag of the space with how many pages it's on. */
+export interface TagsIndexArgs {
+  space?: SpaceRef;
+}
+
+export interface TagIndexRow {
+  id: string;
+  name: string;
+  color: string;
+  /** Pages with the tag that this person can open. */
+  documentCount: number;
+  /** Unix milliseconds (the page's Newest sort). */
+  createdAt: number;
+}
+
+export interface TagsIndexValue {
+  tags: TagIndexRow[];
 }
 
 /** A page shared with this person (`sharing.sharedWithMe`). */
@@ -2219,6 +2252,12 @@ export interface ChatPinArgs {
   pinned: boolean;
 }
 
+/** Revision 21 (R12.6): share a conversation with its workspace (ConversationActions.tsx), or stop sharing it. */
+export interface ChatShareArgs {
+  conversationId: string;
+  shared: boolean;
+}
+
 export interface ChatMessageArgs {
   messageId: string;
 }
@@ -2227,6 +2266,13 @@ export interface ChatSaveArgs {
   conversationId: string;
   /** Just one answer (and its question); left out: the whole conversation. */
   messageId?: string;
+}
+
+/** Revision 21: a conversation (or one answer) as the web's Markdown file (ConversationActions.tsx's Copy as
+ *  Markdown and Download Markdown), with its file name. */
+export interface ChatMarkdownResult {
+  filename: string;
+  markdown: string;
 }
 
 export interface ChatActionsArgs {
@@ -3746,6 +3792,7 @@ export interface ViewMap {
   "trash.summary": { args: SpaceArgs; value: TrashSummaryValue };
   "templates.builtIn": { args: EmptyArgs; value: BuiltInTemplatesValue };
   "folders.cards": { args: FolderCardsArgs; value: FolderCardsValue };
+  "tags.index": { args: TagsIndexArgs; value: TagsIndexValue };
   "shared.list": { args: EmptyArgs; value: SharedValue };
   changes: { args: EmptyArgs; value: ChangesValue };
   "notifications.list": { args: EmptyArgs; value: NotificationsValue };
@@ -3869,6 +3916,8 @@ export interface CommandMap {
   "folder.setColor": { args: FolderSetColorArgs; result: OkResult };
   "folder.move": { args: FolderMoveArgs; result: OkResult };
   "folder.delete": { args: FolderIdArgs; result: OkResult };
+  "tag.update": { args: TagUpdateArgs; result: OkResult };
+  "tag.delete": { args: TagIdArgs; result: OkResult };
   "changes.markSeen": { args: NoteIdsArgs; result: OkResult };
   "proposal.accept": { args: ProposalIdArgs; result: OkResult };
   "proposal.reject": { args: ProposalIdArgs; result: OkResult };
@@ -3904,8 +3953,10 @@ export interface CommandMap {
   "ai.edit": { args: ChatEditArgs; result: ChatSendResult };
   "ai.rename": { args: ChatRenameArgs; result: OkResult };
   "ai.pin": { args: ChatPinArgs; result: OkResult };
+  "ai.share": { args: ChatShareArgs; result: OkResult };
   "ai.remove": { args: ChatConversationArgs; result: OkResult };
   "ai.saveAsNote": { args: ChatSaveArgs; result: NoteCreateResult };
+  "ai.exportMarkdown": { args: ChatSaveArgs; result: ChatMarkdownResult };
   "ai.actions": { args: ChatActionsArgs; result: OkResult };
   "ai.memory": { args: ChatMemoryArgs; result: OkResult };
   "notification.act": { args: NotificationActArgs; result: OkResult };
@@ -4056,7 +4107,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "settings.query", "graph", "reviews", "recent.viewed", "vault.summary", "vault.items", "vault.folders", "vault.health", "vault.activity", "vault.people", "vault.shares", "e2ee.state", "note.style"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "settings.query", "graph", "reviews", "recent.viewed", "vault.summary", "vault.items", "vault.folders", "vault.health", "vault.activity", "vault.people", "vault.shares", "e2ee.state", "note.style", "tags.index"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -4085,6 +4136,8 @@ const commandNames = [
   "folder.setColor",
   "folder.move",
   "folder.delete",
+  "tag.update",
+  "tag.delete",
   "changes.markSeen",
   "proposal.accept",
   "proposal.reject",
@@ -4120,8 +4173,10 @@ const commandNames = [
   "ai.edit",
   "ai.rename",
   "ai.pin",
+  "ai.share",
   "ai.remove",
   "ai.saveAsNote",
+  "ai.exportMarkdown",
   "ai.actions",
   "ai.memory",
   "notification.act",

@@ -1,0 +1,8346 @@
+{
+ "light": {
+  "notes.card.body": {
+   "color": [
+    103,
+    103,
+    111,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 12.5,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 400.34,
+   "fontSize": 9,
+   "opacity": 1,
+   "height": 12.5,
+   "border": {
+    "width": 0,
+    "color": [
+     103,
+     103,
+     111,
+     1
+    ]
+   },
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "y": 364.75,
+   "width": 200.16
+  },
+  "notes.folder.menu": {
+   "color": [
+    23,
+    23,
+    26,
+    1
+   ],
+   "radius": 6,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    255,
+    255,
+    255,
+    0.9
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 1,
+     "spread": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.18
+     ],
+     "blur": 3,
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 552,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "border": {
+    "width": 0,
+    "color": [
+     23,
+     23,
+     26,
+     1
+    ]
+   },
+   "height": 44,
+   "width": 44,
+   "y": 1378.75,
+   "opacity": 0,
+   "fontFamily": "Instrument Sans"
+  },
+  "notes.folder.name": {
+   "color": [
+    13,
+    13,
+    16,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.38728,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 43.375362,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 396.83,
+   "fontWeight": 400,
+   "fontFamily": "Spectral",
+   "fontSize": 38.728001,
+   "opacity": 1,
+   "width": 354.34,
+   "y": 1466.45,
+   "border": {
+    "width": 0,
+    "color": [
+     13,
+     13,
+     16,
+     1
+    ]
+   },
+   "height": 43.36
+  },
+  "notes.card.time": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 14.725,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 400.34,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 9.5,
+   "height": 14.72,
+   "fontWeight": 400,
+   "width": 143.42,
+   "y": 530.39,
+   "border": {
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ],
+    "width": 0
+   },
+   "opacity": 1
+  },
+  "notes.section.header": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "gap": 12,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    16,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "height": 32,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "width": 412,
+   "y": 240,
+   "opacity": 1,
+   "fontSize": 16
+  },
+  "notes.folder.age": {
+   "color": [
+    91,
+    89,
+    97,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    -3.453125,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    2.3072,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 27.686401,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 631.28,
+   "fontWeight": 400,
+   "opacity": 1,
+   "height": 29.97,
+   "fontFamily": "Spectral",
+   "width": 119.89,
+   "fontSize": 23.072001,
+   "y": 1312.97,
+   "border": {
+    "color": [
+     91,
+     89,
+     97,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "notes.card.face": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    20,
+    15,
+    15,
+    17.5
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 382.84,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 267.5,
+   "fontSize": 16,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "fontWeight": 400,
+   "y": 296,
+   "width": 232.66
+  },
+  "notes.card.chip": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 4,
+   "letterSpacing": -0.096,
+   "gap": 4.5,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    7.5,
+    0,
+    7.5
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 14.725,
+   "background": [
+    226,
+    226,
+    230,
+    0.75
+   ],
+   "shadows": [],
+   "x": 548.77,
+   "fontSize": 9.5,
+   "opacity": 1,
+   "border": {
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 600,
+   "width": 51.73,
+   "fontFamily": "Instrument Sans",
+   "y": 527,
+   "height": 21.5
+  },
+  "notes.folder.note.title": {
+   "color": [
+    28,
+    28,
+    31,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 26.697599,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 452.69,
+   "fontSize": 22.247999,
+   "opacity": 1,
+   "border": {
+    "color": [
+     28,
+     28,
+     31,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 500,
+   "width": 258,
+   "y": 1157.31,
+   "fontFamily": "Spectral",
+   "height": 57.82
+  },
+  "notes.section": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "margin": [
+    36,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "opacity": 1,
+   "width": 412,
+   "y": 240,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "height": 374
+  },
+  "notes.folder.back": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "backdropBlur": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    183,
+    159,
+    152,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.08
+     ],
+     "blur": 0,
+     "spread": 1,
+     "x": 0,
+     "inset": true
+    },
+    {
+     "y": 8,
+     "color": [
+      20,
+      20,
+      30,
+      0.1
+     ],
+     "blur": 14,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 1,
+     "color": [
+      20,
+      20,
+      30,
+      0.06
+     ],
+     "blur": 2,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 368,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "opacity": 1,
+   "width": 412,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "height": 435.31,
+   "y": 1102.91
+  },
+  "notes.catchup.button": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 10,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    16,
+    0,
+    16
+   ],
+   "gradient": null,
+   "gap": 8,
+   "lineHeight": 22,
+   "background": [
+    255,
+    255,
+    255,
+    0.85
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.6
+     ],
+     "blur": 0,
+     "spread": 1,
+     "x": 0,
+     "inset": true
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.06
+     ],
+     "inset": false,
+     "blur": 0,
+     "x": 0,
+     "spread": 1
+    },
+    {
+     "y": 1,
+     "color": [
+      0,
+      0,
+      0,
+      0.06
+     ],
+     "blur": 3,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 368,
+   "fontSize": 17,
+   "fontWeight": 600,
+   "fontFamily": "Instrument Sans",
+   "y": 132,
+   "width": 154.86,
+   "height": 40,
+   "border": {
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ],
+    "width": 0
+   },
+   "opacity": 1
+  },
+  "notes.folder.menu.button": {
+   "color": [
+    23,
+    23,
+    27,
+    0.749
+   ],
+   "radius": 6,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 552,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "border": {
+    "width": 0,
+    "color": [
+     23,
+     23,
+     27,
+     0.749
+    ]
+   },
+   "height": 44,
+   "width": 44,
+   "opacity": 1,
+   "fontSize": 16,
+   "y": 1378.75
+  },
+  "notes.section.seeAll": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 6,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    4,
+    10,
+    4,
+    10
+   ],
+   "gradient": null,
+   "gap": 4,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 698.66,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 500,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "height": 28,
+   "width": 81.34,
+   "y": 242,
+   "opacity": 1,
+   "fontSize": 15
+  },
+  "notes.card.link": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 4,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "inset": false,
+     "blur": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 10,
+     "spread": -8,
+     "blur": 14,
+     "color": [
+      20,
+      20,
+      30,
+      0.16
+     ],
+     "x": -3,
+     "inset": false
+    },
+    {
+     "y": 18,
+     "spread": -18,
+     "blur": 30,
+     "color": [
+      20,
+      20,
+      30,
+      0.14
+     ],
+     "x": -4,
+     "inset": false
+    },
+    {
+     "y": 2,
+     "inset": false,
+     "blur": 5,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      20,
+      20,
+      30,
+      0.03
+     ]
+    }
+   ],
+   "x": 368,
+   "fontSize": 16,
+   "opacity": 1,
+   "fontWeight": 400,
+   "y": 296,
+   "width": 250,
+   "height": 270,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "notes.folder.front": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 14,
+   "backdropBlur": 9,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": {
+    "stops": [
+     [
+      193,
+      161,
+      149,
+      0.62
+     ],
+     [
+      193,
+      161,
+      149,
+      0.86
+     ]
+    ],
+    "angle": 180
+   },
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 1,
+     "spread": 0,
+     "blur": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.75
+     ],
+     "x": 0,
+     "inset": true
+    },
+    {
+     "y": 0,
+     "spread": 1,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.08
+     ],
+     "x": 0,
+     "inset": true
+    },
+    {
+     "y": -6,
+     "inset": false,
+     "blur": 16,
+     "color": [
+      0,
+      0,
+      0,
+      0.25
+     ],
+     "x": 0,
+     "spread": -10
+    }
+   ],
+   "x": 368,
+   "fontSize": 16,
+   "opacity": 1,
+   "fontWeight": 400,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "y": 1290.77,
+   "fontFamily": "Instrument Sans",
+   "height": 247.45,
+   "width": 412
+  },
+  "notes.card.edge": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 4,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "spread": 1,
+     "blur": 0,
+     "inset": true,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.05
+     ]
+    }
+   ],
+   "x": 368,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 267.5,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "width": 247.5,
+   "y": 296,
+   "fontSize": 16,
+   "fontWeight": 400
+  },
+  "notes.card.sheet": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 4,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
+   "height": 267.5,
+   "fontWeight": 400,
+   "width": 247.5,
+   "y": 296,
+   "opacity": 1,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "notes.folder.tab": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 10,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    183,
+    159,
+    152,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "inset": true,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.08
+     ],
+     "x": 0,
+     "spread": 1
+    },
+    {
+     "y": 8,
+     "color": [
+      20,
+      20,
+      30,
+      0.1
+     ],
+     "blur": 14,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 1,
+     "inset": false,
+     "blur": 2,
+     "color": [
+      20,
+      20,
+      30,
+      0.06
+     ],
+     "x": 0,
+     "spread": 0
+    }
+   ],
+   "x": 368,
+   "fontSize": 16,
+   "opacity": 1,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "width": 181.27,
+   "y": 1080,
+   "height": 41.23,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "notes.section.title": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 10,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.264,
+   "lineHeight": 28,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontSize": 22,
+   "fontFamily": "Spectral",
+   "fontWeight": 600,
+   "height": 32,
+   "width": 167.13,
+   "y": 240,
+   "opacity": 1,
+   "border": {
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "notes.card.footer": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    8.75,
+    0,
+    0,
+    0
+   ],
+   "gap": 5,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 14.725,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 400.34,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "fontSize": 9.5,
+   "y": 527,
+   "width": 200.16,
+   "opacity": 1,
+   "height": 21.5
+  },
+  "notes.folders.grid": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 32,
+   "backdropBlur": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "height": 956.44,
+   "width": 412,
+   "opacity": 1,
+   "y": 1080,
+   "fontSize": 16
+  },
+  "notes.card.menu": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 6,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 1,
+     "inset": true,
+     "color": [
+      255,
+      255,
+      255,
+      0.3
+     ],
+     "blur": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.08
+     ],
+     "blur": 0,
+     "spread": 1,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 1,
+     "inset": false,
+     "color": [
+      0,
+      0,
+      0,
+      0.05
+     ],
+     "blur": 3,
+     "x": 0,
+     "spread": -1
+    }
+   ],
+   "x": 566,
+   "fontWeight": 400,
+   "opacity": 1,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
+   "height": 44,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "y": 304,
+   "width": 44
+  },
+  "notes.folder.note.excerpt": {
+   "color": [
+    62,
+    62,
+    65,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    8.234375,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 19.1168,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 453.76,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     62,
+     62,
+     65,
+     1
+    ]
+   },
+   "height": 138.12,
+   "y": 1218.88,
+   "width": 259.4,
+   "fontWeight": 400,
+   "fontSize": 13.184
+  },
+  "notes.catchup.hint": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ]
+   },
+   "fontWeight": 400,
+   "fontSize": 15,
+   "height": 20,
+   "y": 184,
+   "width": 342.08
+  },
+  "notes.home.content": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    8,
+    32,
+    32,
+    32
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 336,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 1968.44,
+   "fontWeight": 400,
+   "width": 476,
+   "y": 100,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "fontSize": 16
+  },
+  "notes.folder.note": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 6,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 1,
+     "color": [
+      0,
+      0,
+      0,
+      0.12
+     ],
+     "blur": 2,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 6,
+     "spread": -6,
+     "blur": 14,
+     "color": [
+      0,
+      0,
+      0,
+      0.25
+     ],
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 410.54,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "height": 326.31,
+   "opacity": 1,
+   "width": 326.91,
+   "fontFamily": "Instrument Sans",
+   "y": 1134.49,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   }
+  },
+  "notes.card.page": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 4,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    218,
+    218,
+    219,
+    1
+   ],
+   "shadows": [],
+   "x": 368,
+   "y": 299.77,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "fontFamily": "Instrument Sans",
+   "width": 250,
+   "fontWeight": 400,
+   "height": 266.23,
+   "fontSize": 16
+  },
+  "notes.section.count": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    8
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.264,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 567.59,
+   "fontWeight": 400,
+   "fontSize": 15,
+   "border": {
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ],
+    "width": 0
+   },
+   "height": 20,
+   "opacity": 1,
+   "y": 1038,
+   "fontFamily": "Spectral",
+   "width": 7.25
+  },
+  "notes.folder.count": {
+   "color": [
+    17,
+    17,
+    20,
+    1
+   ],
+   "radius": 4,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    5.356,
+    9.064,
+    5.356,
+    9.064
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 22,
+   "background": [
+    170,
+    155,
+    156,
+    1
+   ],
+   "shadows": [],
+   "x": 396.83,
+   "fontSize": 22,
+   "y": 1313.67,
+   "height": 32.69,
+   "border": {
+    "width": 0,
+    "color": [
+     17,
+     17,
+     20,
+     1
+    ]
+   },
+   "width": 29.83,
+   "fontFamily": "Spectral",
+   "fontWeight": 600,
+   "opacity": 1
+  },
+  "notes.section.icon": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 6,
+   "letterSpacing": -0.264,
+   "gap": 0,
+   "backdropBlur": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 28,
+   "background": [
+    0,
+    0,
+    0,
+    0.05
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontWeight": 600,
+   "fontFamily": "Spectral",
+   "border": {
+    "width": 0,
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ]
+   },
+   "fontSize": 22,
+   "width": 32,
+   "y": 240,
+   "opacity": 1,
+   "height": 32
+  },
+  "notes.card.star": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    226,
+    226,
+    230,
+    0.75
+   ],
+   "shadows": [],
+   "x": 1431.5,
+   "fontSize": 16,
+   "opacity": 1,
+   "height": 30,
+   "border": {
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ],
+    "width": 0
+   },
+   "width": 30,
+   "y": 296,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400
+  },
+  "notes.card.menu.button": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 6,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 566,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 44,
+   "border": {
+    "width": 0,
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ]
+   },
+   "width": 44,
+   "fontSize": 16,
+   "y": 304,
+   "fontWeight": 400
+  },
+  "notes.card.title": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": 0.0825,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    17.5,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 20.129999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 400.34,
+   "fontWeight": 500,
+   "opacity": 1,
+   "height": 20.13,
+   "fontSize": 16.5,
+   "width": 200.16,
+   "border": {
+    "width": 0,
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ]
+   },
+   "fontFamily": "Spectral",
+   "y": 316
+  },
+  "notes.carousel.arrow": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 6,
+   "gap": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 2,
+     "color": [
+      0,
+      0,
+      0,
+      0.16
+     ],
+     "blur": 10,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "spread": 1,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.05
+     ]
+    }
+   ],
+   "x": 0,
+   "fontWeight": 400,
+   "opacity": 1,
+   "height": 0,
+   "fontFamily": "Instrument Sans",
+   "y": 0,
+   "fontSize": 16,
+   "border": {
+    "width": 0,
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ]
+   },
+   "width": 0
+  },
+  "notes.carousel": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 32,
+   "backdropBlur": 0,
+   "padding": [
+    8,
+    24,
+    48,
+    24
+   ],
+   "margin": [
+    0,
+    -24,
+    -20,
+    -24
+   ],
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 344,
+   "fontWeight": 400,
+   "opacity": 1,
+   "height": 326,
+   "fontFamily": "Instrument Sans",
+   "width": 460,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "y": 288,
+   "fontSize": 16
+  },
+  "notes.card.spine": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    235,
+    235,
+    235,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.06
+     ],
+     "x": -1,
+     "inset": true
+    }
+   ],
+   "x": 368,
+   "fontSize": 16,
+   "opacity": 1,
+   "y": 296,
+   "height": 267.5,
+   "width": 14.84,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400
+  },
+  "notes.card.created": {
+   "color": [
+    103,
+    103,
+    111,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    2.5,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 14.625,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 400.34,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 11.25,
+   "height": 14.63,
+   "opacity": 1,
+   "width": 200.16,
+   "border": {
+    "width": 0,
+    "color": [
+     103,
+     103,
+     111,
+     1
+    ]
+   },
+   "y": 338.63,
+   "fontWeight": 400
+  },
+  "notes.toolbar.seg.off": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 8,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    9.6,
+    0,
+    9.6
+   ],
+   "gap": 5.6,
+   "gradient": null,
+   "lineHeight": 23.25,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 701.63,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "fontWeight": 550,
+   "y": 114,
+   "height": 36,
+   "width": 37.19,
+   "border": {
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ],
+    "width": 0
+   },
+   "fontSize": 15
+  },
+  "notes.browser.content": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    12,
+    32,
+    96,
+    32
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 336,
+   "fontSize": 16,
+   "y": 100,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "height": 4492.58,
+   "width": 476,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "opacity": 1
+  },
+  "notes.grid": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "gap": 32,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "y": 172,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "height": 4324.58,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "width": 412,
+   "fontWeight": 400,
+   "opacity": 1
+  },
+  "notes.toolbar.select": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 6,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    12,
+    0,
+    12
+   ],
+   "gradient": null,
+   "gap": 6,
+   "lineHeight": 21,
+   "background": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "shadows": [
+    {
+     "spread": 0,
+     "inset": true,
+     "blur": 2,
+     "y": 1,
+     "x": 0,
+     "color": [
+      11,
+      11,
+      12,
+      0.08
+     ]
+    },
+    {
+     "y": 0,
+     "color": [
+      226,
+      226,
+      230,
+      1
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 1
+    }
+   ],
+   "x": 524.08,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "y": 114,
+   "fontFamily": "Instrument Sans",
+   "height": 36,
+   "width": 124.36,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "opacity": 1
+  },
+  "notes.grid.title": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    28.84,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": 0.13596,
+   "lineHeight": 33.17424,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 421.3,
+   "y": 204.95,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ]
+   },
+   "fontSize": 27.191999,
+   "width": 329.88,
+   "fontFamily": "Spectral",
+   "fontWeight": 500,
+   "height": 33.16
+  },
+  "notes.toolbar.select.label": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 21,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 536.08,
+   "y": 121.5,
+   "opacity": 1,
+   "fontSize": 16,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "width": 80.36,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "height": 21
+  },
+  "notes.toolbar.sort": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 8,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 487.14,
+   "fontSize": 15,
+   "fontWeight": 400,
+   "y": 114,
+   "border": {
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ],
+    "width": 0
+   },
+   "fontFamily": "Instrument Sans",
+   "width": 161.3,
+   "opacity": 1,
+   "height": 36
+  },
+  "notes.toolbar.status": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    56.9375,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "y": 122,
+   "fontFamily": "Instrument Sans",
+   "height": 20,
+   "fontSize": 15,
+   "width": 50.2,
+   "fontWeight": 400,
+   "border": {
+    "width": 0,
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ]
+   },
+   "opacity": 1
+  },
+  "notes.toolbar.sort.label": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 487.14,
+   "y": 122,
+   "opacity": 1,
+   "height": 20,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 15,
+   "width": 28.94,
+   "border": {
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "notes.toolbar": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 12,
+   "margin": [
+    0,
+    0,
+    20,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 400,
+   "y": 112,
+   "height": 40,
+   "fontSize": 16,
+   "width": 412
+  },
+  "notes.grid.star": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gap": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    226,
+    226,
+    230,
+    0.75
+   ],
+   "shadows": [],
+   "x": 726.45,
+   "fontSize": 16,
+   "opacity": 1,
+   "y": 1626.86,
+   "height": 49.44,
+   "border": {
+    "width": 0,
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ]
+   },
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "width": 49.44
+  },
+  "notes.toolbar.seg": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 10,
+   "letterSpacing": -0.096,
+   "gap": 2,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    2,
+    2,
+    2,
+    2
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0.05
+   ],
+   "shadows": [
+    {
+     "inset": true,
+     "y": 0,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.07
+     ],
+     "x": 0,
+     "spread": 1
+    }
+   ],
+   "x": 660.44,
+   "y": 112,
+   "fontWeight": 400,
+   "height": 40,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "width": 119.56,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "fontSize": 16
+  },
+  "notes.toolbar.seg.on": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 8,
+   "letterSpacing": -0.096,
+   "gap": 5.6,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    9.6,
+    0,
+    9.6
+   ],
+   "lineHeight": 23.25,
+   "background": [
+    255,
+    255,
+    255,
+    0.85
+   ],
+   "shadows": [
+    {
+     "inset": true,
+     "spread": 1,
+     "blur": 0,
+     "y": 0,
+     "x": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.6
+     ]
+    },
+    {
+     "inset": false,
+     "spread": 1,
+     "blur": 0,
+     "y": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.06
+     ]
+    },
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0.08
+     ],
+     "inset": false,
+     "y": 1,
+     "blur": 3,
+     "x": 0,
+     "spread": 0
+    }
+   ],
+   "x": 662.44,
+   "fontFamily": "Instrument Sans",
+   "y": 114,
+   "border": {
+    "width": 0,
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ]
+   },
+   "fontWeight": 550,
+   "width": 37.19,
+   "opacity": 1,
+   "fontSize": 15,
+   "height": 36
+  },
+  "notes.grid.card": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 6,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontWeight": 400,
+   "y": 172,
+   "height": 444.95,
+   "fontSize": 16,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "width": 412
+  },
+  "notes.index.seg.off": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 8,
+   "letterSpacing": -0.096,
+   "gap": 5.6,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    9.6,
+    0,
+    9.6
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 23.25,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 740.81,
+   "fontWeight": 550,
+   "fontSize": 15,
+   "height": 36,
+   "fontFamily": "Instrument Sans",
+   "width": 37.19,
+   "y": 158,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ]
+   }
+  },
+  "notes.index.seg": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 10,
+   "letterSpacing": -0.096,
+   "gap": 2,
+   "backdropBlur": 0,
+   "padding": [
+    2,
+    2,
+    2,
+    2
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0.05
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "inset": true,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.07
+     ],
+     "x": 0,
+     "spread": 1
+    }
+   ],
+   "x": 699.63,
+   "fontSize": 16,
+   "opacity": 1,
+   "height": 40,
+   "y": 156,
+   "width": 80.38,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400
+  },
+  "notes.index.sort": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    -1,
+    -1,
+    -1,
+    -1
+   ],
+   "gap": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 367,
+   "fontWeight": 400,
+   "opacity": 1,
+   "height": 1,
+   "fontSize": 16,
+   "width": 1,
+   "y": 157,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "fontFamily": "Instrument Sans"
+  },
+  "notes.index.card": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gap": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontWeight": 400,
+   "fontSize": 16,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "height": 458.22,
+   "fontFamily": "Instrument Sans",
+   "width": 412,
+   "y": 220,
+   "opacity": 1
+  },
+  "notes.index.seg.on": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 8,
+   "gap": 5.6,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    9.6,
+    0,
+    9.6
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 23.25,
+   "background": [
+    255,
+    255,
+    255,
+    0.85
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "spread": 1,
+     "inset": true,
+     "blur": 0,
+     "x": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.6
+     ]
+    },
+    {
+     "y": 0,
+     "spread": 1,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.06
+     ]
+    },
+    {
+     "y": 1,
+     "spread": 0,
+     "blur": 3,
+     "color": [
+      0,
+      0,
+      0,
+      0.08
+     ],
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 701.63,
+   "fontSize": 15,
+   "fontWeight": 550,
+   "height": 36,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ]
+   },
+   "y": 158,
+   "width": 37.19
+  },
+  "notes.index.grid": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "gap": 32,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    24,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 956.44,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "fontSize": 16,
+   "y": 220,
+   "width": 412,
+   "fontWeight": 400
+  },
+  "notes.index.status": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gap": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 430.63,
+   "fontSize": 15,
+   "opacity": 1,
+   "border": {
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ],
+    "width": 0
+   },
+   "height": 20,
+   "fontWeight": 400,
+   "width": 57.73,
+   "fontFamily": "Instrument Sans",
+   "y": 166
+  },
+  "notes.index.search.icon": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "height": 36,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "fontFamily": "Instrument Sans",
+   "y": 158,
+   "opacity": 1,
+   "width": 50.63
+  },
+  "notes.index.search": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 6,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    32,
+    0,
+    32
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 21,
+   "background": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 1,
+     "color": [
+      11,
+      11,
+      12,
+      0.08
+     ],
+     "spread": 0,
+     "blur": 2,
+     "x": 0,
+     "inset": true
+    },
+    {
+     "y": 0,
+     "color": [
+      226,
+      226,
+      230,
+      1
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 1
+    }
+   ],
+   "x": 368,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
+   "height": 36,
+   "opacity": 1,
+   "width": 64,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "y": 158,
+   "fontWeight": 400
+  },
+  "notes.index.newFolder": {
+   "color": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "radius": 10,
+   "letterSpacing": -0.075,
+   "gap": 7.2,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    14,
+    0,
+    14
+   ],
+   "lineHeight": 20,
+   "background": [
+    31,
+    31,
+    34,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 1,
+     "color": [
+      255,
+      255,
+      255,
+      0.14
+     ],
+     "blur": 0,
+     "inset": true,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 1,
+     "color": [
+      0,
+      0,
+      0,
+      0.12
+     ],
+     "inset": false,
+     "blur": 2,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 4,
+     "inset": false,
+     "spread": -4,
+     "blur": 12,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.25
+     ]
+    }
+   ],
+   "x": 656,
+   "fontSize": 15,
+   "fontWeight": 550,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     255,
+     255,
+     255,
+     1
+    ]
+   },
+   "width": 124,
+   "fontFamily": "Instrument Sans",
+   "y": 100,
+   "height": 44
+  },
+  "notes.index.content": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    12,
+    32,
+    96,
+    32
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 336,
+   "fontWeight": 400,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "height": 1128.44,
+   "width": 476,
+   "y": 144,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans"
+  },
+  "notes.folderpage.tint": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gap": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    193,
+    161,
+    149,
+    0.1
+   ],
+   "shadows": [],
+   "x": 336,
+   "fontWeight": 400,
+   "y": 32,
+   "height": 1128,
+   "fontSize": 16,
+   "width": 476,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "opacity": 1
+  }
+ },
+ "dark": {
+  "notes.card.body": {
+   "color": [
+    147,
+    147,
+    155,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "gap": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 12.5,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 400.34,
+   "fontSize": 9,
+   "opacity": 1,
+   "fontWeight": 400,
+   "y": 364.75,
+   "width": 200.16,
+   "border": {
+    "color": [
+     147,
+     147,
+     155,
+     1
+    ],
+    "width": 0
+   },
+   "height": 12.5,
+   "fontFamily": "Instrument Sans"
+  },
+  "notes.card.time": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 14.725,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 400.34,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 9.5,
+   "fontWeight": 400,
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   },
+   "opacity": 1,
+   "y": 530.39,
+   "height": 14.72,
+   "width": 143.42
+  },
+  "notes.folder.name": {
+   "color": [
+    13,
+    13,
+    16,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.38728,
+   "lineHeight": 43.375362,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 396.83,
+   "y": 1466.45,
+   "opacity": 1,
+   "height": 43.36,
+   "border": {
+    "width": 0,
+    "color": [
+     13,
+     13,
+     16,
+     1
+    ]
+   },
+   "fontWeight": 400,
+   "fontSize": 38.728001,
+   "fontFamily": "Spectral",
+   "width": 354.34
+  },
+  "notes.folder.menu": {
+   "color": [
+    23,
+    23,
+    26,
+    1
+   ],
+   "radius": 6,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    255,
+    255,
+    255,
+    0.9
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "inset": false,
+     "blur": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 1,
+     "color": [
+      0,
+      0,
+      0,
+      0.18
+     ],
+     "blur": 3,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    }
+   ],
+   "x": 552,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "border": {
+    "width": 0,
+    "color": [
+     23,
+     23,
+     26,
+     1
+    ]
+   },
+   "opacity": 0,
+   "y": 1378.75,
+   "height": 44,
+   "fontWeight": 400,
+   "width": 44
+  },
+  "notes.folder.age": {
+   "color": [
+    91,
+    89,
+    97,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    -3.453125,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    2.3072,
+    0
+   ],
+   "lineHeight": 27.686401,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 631.28,
+   "fontWeight": 400,
+   "y": 1312.97,
+   "border": {
+    "color": [
+     91,
+     89,
+     97,
+     1
+    ],
+    "width": 0
+   },
+   "fontSize": 23.072001,
+   "width": 119.89,
+   "opacity": 1,
+   "height": 29.97,
+   "fontFamily": "Spectral"
+  },
+  "notes.section.header": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 12,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    16,
+    0
+   ],
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "height": 32,
+   "y": 240,
+   "width": 412,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   }
+  },
+  "notes.card.face": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "padding": [
+    20,
+    15,
+    15,
+    17.5
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 382.84,
+   "fontFamily": "Instrument Sans",
+   "y": 296,
+   "height": 267.5,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "opacity": 1,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "width": 232.66
+  },
+  "notes.card.chip": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 4,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    7.5,
+    0,
+    7.5
+   ],
+   "gradient": null,
+   "gap": 4.5,
+   "lineHeight": 14.725,
+   "background": [
+    44,
+    44,
+    47,
+    0.75
+   ],
+   "shadows": [],
+   "x": 548.77,
+   "fontSize": 9.5,
+   "y": 527,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ],
+    "width": 0
+   },
+   "width": 51.73,
+   "opacity": 1,
+   "height": 21.5,
+   "fontWeight": 600
+  },
+  "notes.folder.note.title": {
+   "color": [
+    28,
+    28,
+    31,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 26.697599,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 452.69,
+   "fontSize": 22.247999,
+   "fontWeight": 500,
+   "border": {
+    "color": [
+     28,
+     28,
+     31,
+     1
+    ],
+    "width": 0
+   },
+   "height": 57.82,
+   "y": 1157.31,
+   "fontFamily": "Spectral",
+   "opacity": 1,
+   "width": 258
+  },
+  "notes.section": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    36,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontWeight": 400,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
+   "y": 240,
+   "width": 412,
+   "height": 374,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "opacity": 1
+  },
+  "notes.folder.back": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    183,
+    159,
+    152,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.08
+     ],
+     "blur": 0,
+     "inset": true,
+     "x": 0,
+     "spread": 1
+    },
+    {
+     "color": [
+      20,
+      20,
+      30,
+      0.1
+     ],
+     "y": 8,
+     "spread": 0,
+     "blur": 14,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 1,
+     "inset": false,
+     "spread": 0,
+     "blur": 2,
+     "x": 0,
+     "color": [
+      20,
+      20,
+      30,
+      0.06
+     ]
+    }
+   ],
+   "x": 368,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "y": 1102.91,
+   "opacity": 1,
+   "width": 412,
+   "fontSize": 16,
+   "height": 435.31
+  },
+  "notes.catchup.button": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 10,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    16,
+    0,
+    16
+   ],
+   "gradient": null,
+   "gap": 8,
+   "lineHeight": 22,
+   "background": [
+    255,
+    255,
+    255,
+    0.12
+   ],
+   "shadows": [
+    {
+     "inset": false,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "y": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "inset": false,
+     "blur": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "spread": 1,
+     "blur": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.08
+     ],
+     "x": 0,
+     "inset": true
+    },
+    {
+     "y": 0,
+     "spread": 1,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.4
+     ],
+     "x": 0,
+     "inset": false
+    },
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0.06
+     ],
+     "y": 1,
+     "blur": 3,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 368,
+   "fontSize": 17,
+   "y": 132,
+   "height": 40,
+   "border": {
+    "width": 0,
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ]
+   },
+   "fontWeight": 600,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "width": 154.86
+  },
+  "notes.folder.menu.button": {
+   "color": [
+    23,
+    23,
+    27,
+    0.749
+   ],
+   "radius": 6,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "gap": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 552,
+   "fontFamily": "Instrument Sans",
+   "y": 1378.75,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "opacity": 1,
+   "height": 44,
+   "border": {
+    "color": [
+     23,
+     23,
+     27,
+     0.749
+    ],
+    "width": 0
+   },
+   "width": 44
+  },
+  "notes.section.seeAll": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 6,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "gap": 4,
+   "padding": [
+    4,
+    10,
+    4,
+    10
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 698.66,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 15,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "y": 242,
+   "fontWeight": 500,
+   "opacity": 1,
+   "height": 28,
+   "width": 81.34
+  },
+  "notes.card.link": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 4,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "spread": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "y": 0,
+     "blur": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 10,
+     "spread": -8,
+     "inset": false,
+     "blur": 14,
+     "x": -3,
+     "color": [
+      20,
+      20,
+      30,
+      0.16
+     ]
+    },
+    {
+     "y": 18,
+     "spread": -18,
+     "blur": 30,
+     "inset": false,
+     "x": -4,
+     "color": [
+      20,
+      20,
+      30,
+      0.14
+     ]
+    },
+    {
+     "y": 2,
+     "spread": 0,
+     "inset": false,
+     "blur": 5,
+     "x": 0,
+     "color": [
+      20,
+      20,
+      30,
+      0.03
+     ]
+    }
+   ],
+   "x": 368,
+   "fontFamily": "Instrument Sans",
+   "y": 296,
+   "height": 270,
+   "opacity": 1,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontSize": 16,
+   "width": 250,
+   "fontWeight": 400
+  },
+  "notes.folder.front": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 14,
+   "backdropBlur": 9,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": {
+    "stops": [
+     [
+      193,
+      161,
+      149,
+      0.62
+     ],
+     [
+      193,
+      161,
+      149,
+      0.86
+     ]
+    ],
+    "angle": 180
+   },
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "inset": false,
+     "y": 0,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "inset": false
+    },
+    {
+     "inset": true,
+     "y": 1,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.75
+     ]
+    },
+    {
+     "y": 0,
+     "inset": true,
+     "blur": 0,
+     "spread": 1,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.08
+     ]
+    },
+    {
+     "y": -6,
+     "spread": -10,
+     "blur": 16,
+     "color": [
+      0,
+      0,
+      0,
+      0.25
+     ],
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 368,
+   "fontSize": 16,
+   "y": 1290.77,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "fontFamily": "Instrument Sans",
+   "height": 247.45,
+   "fontWeight": 400,
+   "width": 412
+  },
+  "notes.card.edge": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 4,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "spread": 0,
+     "blur": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.05
+     ],
+     "blur": 0,
+     "inset": true,
+     "x": 0,
+     "spread": 1
+    }
+   ],
+   "x": 368,
+   "fontSize": 16,
+   "opacity": 1,
+   "y": 296,
+   "fontWeight": 400,
+   "width": 247.5,
+   "height": 267.5,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "notes.card.sheet": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 4,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    28,
+    28,
+    30,
+    1
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontSize": 16,
+   "y": 296,
+   "height": 267.5,
+   "opacity": 1,
+   "fontWeight": 400,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontFamily": "Instrument Sans",
+   "width": 247.5
+  },
+  "notes.folder.tab": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 10,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    183,
+    159,
+    152,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "spread": 1,
+     "blur": 0,
+     "inset": true,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.08
+     ]
+    },
+    {
+     "inset": false,
+     "y": 8,
+     "blur": 14,
+     "color": [
+      20,
+      20,
+      30,
+      0.1
+     ],
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 1,
+     "color": [
+      20,
+      20,
+      30,
+      0.06
+     ],
+     "blur": 2,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 368,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "y": 1080,
+   "fontSize": 16,
+   "height": 41.23,
+   "width": 181.27,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   }
+  },
+  "notes.card.menu": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 6,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    41,
+    41,
+    44,
+    1
+   ],
+   "shadows": [
+    {
+     "inset": true,
+     "color": [
+      255,
+      255,
+      255,
+      0.03
+     ],
+     "y": 1,
+     "blur": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "spread": 1,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.08
+     ]
+    },
+    {
+     "y": 1,
+     "spread": -1,
+     "inset": false,
+     "blur": 3,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.3
+     ]
+    }
+   ],
+   "x": 566,
+   "fontWeight": 400,
+   "fontSize": 16,
+   "height": 44,
+   "fontFamily": "Instrument Sans",
+   "y": 304,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "opacity": 1,
+   "width": 44
+  },
+  "notes.section.title": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.264,
+   "gap": 10,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 28,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontWeight": 600,
+   "y": 240,
+   "fontFamily": "Spectral",
+   "border": {
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ],
+    "width": 0
+   },
+   "opacity": 1,
+   "fontSize": 22,
+   "height": 32,
+   "width": 167.13
+  },
+  "notes.folders.grid": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 32,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontSize": 16,
+   "y": 1080,
+   "fontWeight": 400,
+   "opacity": 1,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontFamily": "Instrument Sans",
+   "height": 956.44,
+   "width": 412
+  },
+  "notes.card.footer": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 5,
+   "letterSpacing": -0.096,
+   "margin": [
+    8.75,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 14.725,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 400.34,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 21.5,
+   "y": 527,
+   "width": 200.16,
+   "fontSize": 9.5,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 400
+  },
+  "notes.catchup.hint": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gap": 0,
+   "gradient": null,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "fontSize": 15,
+   "opacity": 1,
+   "y": 184,
+   "border": {
+    "width": 0,
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ]
+   },
+   "height": 20,
+   "width": 342.08
+  },
+  "notes.folder.note.excerpt": {
+   "color": [
+    62,
+    62,
+    65,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    8.234375,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "lineHeight": 19.1168,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 453.76,
+   "y": 1218.88,
+   "opacity": 1,
+   "border": {
+    "color": [
+     62,
+     62,
+     65,
+     1
+    ],
+    "width": 0
+   },
+   "height": 138.12,
+   "fontSize": 13.184,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "width": 259.4
+  },
+  "notes.home.content": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "padding": [
+    8,
+    32,
+    32,
+    32
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 336,
+   "fontWeight": 400,
+   "y": 100,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontSize": 16,
+   "width": 476,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 1968.44
+  },
+  "notes.folder.note": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 6,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "gap": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "spread": 0,
+     "blur": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "y": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 1,
+     "spread": 0,
+     "blur": 2,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.12
+     ]
+    },
+    {
+     "y": 6,
+     "inset": false,
+     "blur": 14,
+     "color": [
+      0,
+      0,
+      0,
+      0.25
+     ],
+     "x": 0,
+     "spread": -6
+    }
+   ],
+   "x": 410.54,
+   "fontWeight": 400,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "y": 1134.49,
+   "width": 326.91,
+   "fontSize": 16,
+   "height": 326.31,
+   "fontFamily": "Instrument Sans"
+  },
+  "notes.card.page": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 4,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "gap": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    40,
+    40,
+    41,
+    1
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "height": 266.23,
+   "y": 299.77,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "width": 250,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   }
+  },
+  "notes.section.count": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.264,
+   "backdropBlur": 0,
+   "gap": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    8
+   ],
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 567.59,
+   "y": 1038,
+   "fontWeight": 400,
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   },
+   "height": 20,
+   "width": 7.25,
+   "opacity": 1,
+   "fontFamily": "Spectral",
+   "fontSize": 15
+  },
+  "notes.folder.count": {
+   "color": [
+    17,
+    17,
+    20,
+    1
+   ],
+   "radius": 4,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    5.356,
+    9.064,
+    5.356,
+    9.064
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 22,
+   "background": [
+    170,
+    155,
+    156,
+    1
+   ],
+   "shadows": [],
+   "x": 396.83,
+   "fontSize": 22,
+   "y": 1313.67,
+   "border": {
+    "color": [
+     17,
+     17,
+     20,
+     1
+    ],
+    "width": 0
+   },
+   "opacity": 1,
+   "width": 29.83,
+   "fontWeight": 600,
+   "height": 32.69,
+   "fontFamily": "Spectral"
+  },
+  "notes.section.icon": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 6,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.264,
+   "lineHeight": 28,
+   "background": [
+    255,
+    255,
+    255,
+    0.07
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontFamily": "Spectral",
+   "fontSize": 22,
+   "border": {
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ],
+    "width": 0
+   },
+   "height": 32,
+   "y": 240,
+   "fontWeight": 600,
+   "opacity": 1,
+   "width": 32
+  },
+  "notes.card.star": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    44,
+    44,
+    47,
+    0.75
+   ],
+   "shadows": [],
+   "x": 1431.5,
+   "fontSize": 16,
+   "y": 296,
+   "height": 30,
+   "fontFamily": "Instrument Sans",
+   "width": 30,
+   "fontWeight": 400,
+   "border": {
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ],
+    "width": 0
+   },
+   "opacity": 1
+  },
+  "notes.card.title": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    17.5,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": 0.0825,
+   "lineHeight": 20.129999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 400.34,
+   "y": 316,
+   "opacity": 1,
+   "height": 20.13,
+   "fontFamily": "Spectral",
+   "width": 200.16,
+   "fontWeight": 500,
+   "fontSize": 16.5,
+   "border": {
+    "width": 0,
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ]
+   }
+  },
+  "notes.card.menu.button": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 6,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 566,
+   "fontWeight": 400,
+   "opacity": 1,
+   "y": 304,
+   "fontSize": 16,
+   "width": 44,
+   "fontFamily": "Instrument Sans",
+   "height": 44,
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "notes.card.created": {
+   "color": [
+    147,
+    147,
+    155,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    2.5,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "lineHeight": 14.625,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 400.34,
+   "fontWeight": 400,
+   "opacity": 1,
+   "y": 338.63,
+   "fontSize": 11.25,
+   "height": 14.63,
+   "width": 200.16,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     147,
+     147,
+     155,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "notes.card.spine": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    29,
+    29,
+    30,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "spread": 0,
+     "inset": false,
+     "blur": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "inset": false
+    },
+    {
+     "spread": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "y": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.06
+     ],
+     "blur": 0,
+     "inset": true,
+     "x": -1,
+     "spread": 0
+    }
+   ],
+   "x": 368,
+   "y": 296,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "width": 14.84,
+   "height": 267.5,
+   "fontWeight": 400,
+   "opacity": 1
+  },
+  "notes.carousel.arrow": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 6,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    28,
+    28,
+    30,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "spread": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "y": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0.16
+     ],
+     "y": 2,
+     "inset": false,
+     "blur": 10,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.05
+     ],
+     "x": 0,
+     "spread": 1
+    }
+   ],
+   "x": 0,
+   "y": 0,
+   "fontWeight": 400,
+   "height": 0,
+   "border": {
+    "width": 0,
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ]
+   },
+   "width": 0,
+   "fontSize": 16,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans"
+  },
+  "notes.carousel": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 32,
+   "margin": [
+    0,
+    -24,
+    -20,
+    -24
+   ],
+   "padding": [
+    8,
+    24,
+    48,
+    24
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 344,
+   "y": 288,
+   "fontSize": 16,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "height": 326,
+   "width": 460,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1
+  },
+  "notes.toolbar.seg.off": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 8,
+   "backdropBlur": 0,
+   "gap": 5.6,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "padding": [
+    0,
+    9.6,
+    0,
+    9.6
+   ],
+   "lineHeight": 23.25,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 701.63,
+   "y": 114,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "height": 36,
+   "fontWeight": 550,
+   "fontSize": 15,
+   "border": {
+    "width": 0,
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ]
+   },
+   "width": 37.19
+  },
+  "notes.browser.content": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    12,
+    32,
+    96,
+    32
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 336,
+   "y": 100,
+   "opacity": 1,
+   "fontWeight": 400,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "height": 4492.58,
+   "width": 476
+  },
+  "notes.grid": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "gap": 32,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "y": 172,
+   "opacity": 1,
+   "height": 4324.58,
+   "fontSize": 16,
+   "width": 412,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "notes.toolbar.select": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 6,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    12,
+    0,
+    12
+   ],
+   "gradient": null,
+   "gap": 6,
+   "lineHeight": 21,
+   "background": [
+    28,
+    28,
+    30,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 1,
+     "color": [
+      250,
+      250,
+      250,
+      0.08
+     ],
+     "blur": 2,
+     "inset": true,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "color": [
+      44,
+      44,
+      47,
+      1
+     ],
+     "x": 0,
+     "spread": 1
+    }
+   ],
+   "x": 524.08,
+   "y": 114,
+   "opacity": 1,
+   "fontWeight": 400,
+   "fontSize": 16,
+   "width": 124.36,
+   "height": 36,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   }
+  },
+  "notes.grid.title": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": 0.13596,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gap": 0,
+   "padding": [
+    0,
+    28.84,
+    0,
+    0
+   ],
+   "gradient": null,
+   "lineHeight": 33.17424,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 421.3,
+   "y": 204.95,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ]
+   },
+   "fontSize": 27.191999,
+   "width": 329.88,
+   "fontWeight": 500,
+   "height": 33.16,
+   "fontFamily": "Spectral"
+  },
+  "notes.toolbar.select.label": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 21,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 536.08,
+   "y": 121.5,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "width": 80.36,
+   "opacity": 1,
+   "fontWeight": 400,
+   "height": 21
+  },
+  "notes.toolbar.sort": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 8,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 487.14,
+   "y": 114,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   },
+   "fontSize": 15,
+   "width": 161.3,
+   "fontWeight": 400,
+   "height": 36,
+   "opacity": 1
+  },
+  "notes.toolbar.status": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    56.9375,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "y": 122,
+   "fontSize": 15,
+   "height": 20,
+   "border": {
+    "width": 0,
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ]
+   },
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "width": 50.2,
+   "opacity": 1
+  },
+  "notes.toolbar.sort.label": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 487.14,
+   "y": 122,
+   "fontSize": 15,
+   "height": 20,
+   "fontFamily": "Instrument Sans",
+   "width": 28.94,
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   },
+   "opacity": 1,
+   "fontWeight": 400
+  },
+  "notes.toolbar": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 12,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    20,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "y": 112,
+   "opacity": 1,
+   "height": 40,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontFamily": "Instrument Sans",
+   "width": 412,
+   "fontWeight": 400,
+   "fontSize": 16
+  },
+  "notes.toolbar.seg": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 10,
+   "gap": 2,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    2,
+    2,
+    2,
+    2
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    255,
+    255,
+    255,
+    0.07
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "inset": true,
+     "spread": 1,
+     "blur": 0,
+     "x": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.1
+     ]
+    }
+   ],
+   "x": 660.44,
+   "y": 112,
+   "fontWeight": 400,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontFamily": "Instrument Sans",
+   "width": 119.56,
+   "fontSize": 16,
+   "opacity": 1,
+   "height": 40
+  },
+  "notes.grid.star": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    44,
+    44,
+    47,
+    0.75
+   ],
+   "shadows": [],
+   "x": 726.45,
+   "y": 1626.86,
+   "fontFamily": "Instrument Sans",
+   "height": 49.44,
+   "opacity": 1,
+   "width": 49.44,
+   "fontSize": 16,
+   "border": {
+    "width": 0,
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ]
+   },
+   "fontWeight": 400
+  },
+  "notes.toolbar.seg.on": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 8,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    9.6,
+    0,
+    9.6
+   ],
+   "gradient": null,
+   "gap": 5.6,
+   "lineHeight": 23.25,
+   "background": [
+    255,
+    255,
+    255,
+    0.12
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "spread": 1,
+     "blur": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.08
+     ],
+     "x": 0,
+     "inset": true
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "spread": 1,
+     "blur": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.4
+     ]
+    },
+    {
+     "y": 1,
+     "spread": 0,
+     "blur": 3,
+     "color": [
+      0,
+      0,
+      0,
+      0.08
+     ],
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 662.44,
+   "y": 114,
+   "fontSize": 15,
+   "height": 36,
+   "border": {
+    "width": 0,
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ]
+   },
+   "width": 37.19,
+   "fontWeight": 550,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans"
+  },
+  "notes.grid.card": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 6,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "y": 172,
+   "fontFamily": "Instrument Sans",
+   "height": 444.95,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontSize": 16,
+   "width": 412,
+   "opacity": 1,
+   "fontWeight": 400
+  },
+  "notes.index.seg.off": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 8,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    9.6,
+    0,
+    9.6
+   ],
+   "gradient": null,
+   "gap": 5.6,
+   "lineHeight": 23.25,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 740.81,
+   "fontWeight": 550,
+   "y": 158,
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   },
+   "height": 36,
+   "width": 37.19,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 15,
+   "opacity": 1
+  },
+  "notes.index.sort": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    -1,
+    -1,
+    -1,
+    -1
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 367,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "height": 1,
+   "width": 1,
+   "y": 157,
+   "fontSize": 16,
+   "opacity": 1
+  },
+  "notes.index.seg": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 10,
+   "backdropBlur": 0,
+   "gap": 2,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "padding": [
+    2,
+    2,
+    2,
+    2
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    255,
+    255,
+    255,
+    0.07
+   ],
+   "shadows": [
+    {
+     "inset": true,
+     "y": 0,
+     "blur": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.1
+     ],
+     "x": 0,
+     "spread": 1
+    }
+   ],
+   "x": 699.63,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 40,
+   "fontSize": 16,
+   "width": 80.38,
+   "y": 156,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "fontWeight": 400
+  },
+  "notes.index.card": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "height": 458.22,
+   "y": 220,
+   "width": 412,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   }
+  },
+  "notes.index.search": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 6,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    32,
+    0,
+    32
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 21,
+   "background": [
+    28,
+    28,
+    30,
+    1
+   ],
+   "shadows": [
+    {
+     "spread": 0,
+     "y": 1,
+     "color": [
+      250,
+      250,
+      250,
+      0.08
+     ],
+     "blur": 2,
+     "x": 0,
+     "inset": true
+    },
+    {
+     "y": 0,
+     "spread": 1,
+     "blur": 0,
+     "color": [
+      44,
+      44,
+      47,
+      1
+     ],
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 368,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "height": 36,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "width": 64,
+   "fontWeight": 400,
+   "y": 158,
+   "opacity": 1
+  },
+  "notes.index.status": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 430.63,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 15,
+   "height": 20,
+   "opacity": 1,
+   "width": 57.73,
+   "y": 166,
+   "fontWeight": 400,
+   "border": {
+    "width": 0,
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ]
+   }
+  },
+  "notes.index.search.icon": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 36,
+   "fontWeight": 400,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontSize": 16,
+   "y": 158,
+   "width": 50.63
+  },
+  "notes.index.grid": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 32,
+   "margin": [
+    24,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 368,
+   "y": 220,
+   "opacity": 1,
+   "height": 956.44,
+   "fontFamily": "Instrument Sans",
+   "width": 412,
+   "fontSize": 16,
+   "fontWeight": 400,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   }
+  },
+  "notes.index.seg.on": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 8,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "gap": 5.6,
+   "padding": [
+    0,
+    9.6,
+    0,
+    9.6
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 23.25,
+   "background": [
+    255,
+    255,
+    255,
+    0.12
+   ],
+   "shadows": [
+    {
+     "inset": true,
+     "y": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.08
+     ],
+     "blur": 0,
+     "x": 0,
+     "spread": 1
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "color": [
+      0,
+      0,
+      0,
+      0.4
+     ],
+     "blur": 0,
+     "x": 0,
+     "spread": 1
+    },
+    {
+     "y": 1,
+     "color": [
+      0,
+      0,
+      0,
+      0.08
+     ],
+     "blur": 3,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 701.63,
+   "fontWeight": 550,
+   "fontFamily": "Instrument Sans",
+   "y": 158,
+   "height": 36,
+   "width": 37.19,
+   "border": {
+    "width": 0,
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ]
+   },
+   "opacity": 1,
+   "fontSize": 15
+  },
+  "notes.index.newFolder": {
+   "color": [
+    16,
+    16,
+    17,
+    1
+   ],
+   "radius": 10,
+   "gap": 7.2,
+   "letterSpacing": -0.075,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    14,
+    0,
+    14
+   ],
+   "lineHeight": 20,
+   "background": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "shadows": [
+    {
+     "inset": true,
+     "y": 1,
+     "blur": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.14
+     ],
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0.12
+     ],
+     "y": 1,
+     "blur": 2,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 4,
+     "color": [
+      0,
+      0,
+      0,
+      0.25
+     ],
+     "blur": 12,
+     "spread": -4,
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 656,
+   "fontWeight": 550,
+   "fontSize": 15,
+   "border": {
+    "color": [
+     16,
+     16,
+     17,
+     1
+    ],
+    "width": 0
+   },
+   "opacity": 1,
+   "width": 124,
+   "y": 100,
+   "height": 44,
+   "fontFamily": "Instrument Sans"
+  },
+  "notes.index.content": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "backdropBlur": 0,
+   "padding": [
+    12,
+    32,
+    96,
+    32
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 336,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 400,
+   "width": 476,
+   "fontSize": 16,
+   "y": 144,
+   "height": 1128.44
+  },
+  "notes.folderpage.tint": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    193,
+    161,
+    149,
+    0.16
+   ],
+   "shadows": [],
+   "x": 336,
+   "y": 32,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "width": 476,
+   "opacity": 1,
+   "height": 1128,
+   "fontSize": 16
+  }
+ }
+}

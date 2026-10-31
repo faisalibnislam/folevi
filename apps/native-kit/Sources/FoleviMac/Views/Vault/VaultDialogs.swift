@@ -2,8 +2,12 @@
 // FilePreview, Empty the Trash, Change passcode), solid as the web draws them over the inverted Vault. A file is
 // decrypted by the engine for its preview (logged) and shown from memory only: PDFKit for PDFs, AVKit for audio
 // and video, an image view, text and code as text, CSV as a table; anything else gets a card with Download.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import AVKit
 import PDFKit
 import SwiftUI
@@ -15,16 +19,12 @@ struct VaultDialogHost: View {
     let dialog: VaultDialog
     @Environment(\.colorScheme) private var scheme
 
+    /// Presented by the frame as every dialog is (FrameSheets: centred on the window under the bar, the page not
+    /// dimmed, a click outside or Escape closes it), in the Vault's inverted theme.
     var body: some View {
-        ZStack {
-            Color.black.opacity(scheme == .dark ? 0.18 : 0.35)
-                .padding(.top, -ContentViewController.barHeight)
-                .onTapGesture { model.dialog = nil }
-            content
-                .shadow(color: .black.opacity(0.25), radius: 24, y: 12)
-                .onExitCommand { model.dialog = nil }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        content
+            .shadow(color: .black.opacity(0.25), radius: 24, y: 12)
+            .uiInvert()
     }
 
     @ViewBuilder private var content: some View {
@@ -526,7 +526,7 @@ private struct VaultFileBody: View {
         switch kind {
         case "image":
             if let image = NSImage(data: bytes) {
-                Image(nsImage: image).resizable().scaledToFit().frame(maxHeight: 540).clipShape(RoundedRectangle(cornerRadius: 4))
+                Image(platformImage: image).resizable().scaledToFit().frame(maxHeight: 540).clipShape(RoundedRectangle(cornerRadius: 4))
             } else { other }
         case "pdf": PDFPreview(data: bytes).frame(height: 540)
         case "audio", "video": MediaPreview(data: bytes, name: name).frame(height: kind == "audio" ? 64 : 480)
@@ -557,6 +557,7 @@ private struct VaultFileBody: View {
     }
 }
 
+#if os(macOS)
 /// PDFKit, from the bytes in memory (no file written). Links and forms aren't followed: the view only draws pages.
 private struct PDFPreview: NSViewRepresentable {
     let data: Data
@@ -612,6 +613,62 @@ private struct MediaPreview: NSViewRepresentable {
     func updateNSView(_ v: AVPlayerView, context: Context) {}
     static func dismantleNSView(_ v: AVPlayerView, coordinator: Loader) { v.player?.pause() }
 }
+#else
+/// PDFKit, from the bytes in memory (no file written).
+private struct PDFPreview: UIViewRepresentable {
+    let data: Data
+    func makeUIView(context: Context) -> PDFView {
+        let v = PDFView()
+        v.autoScales = true
+        v.displayMode = .singlePageContinuous
+        v.document = PDFDocument(data: data)
+        return v
+    }
+    func updateUIView(_ v: PDFView, context: Context) {}
+}
+
+/// AVKit over the bytes in memory: an asset read through a resource loader, never a file on disk.
+private struct MediaPreview: UIViewControllerRepresentable {
+    let data: Data
+    let name: String
+
+    final class Loader: NSObject, AVAssetResourceLoaderDelegate {
+        let data: Data
+        let type: String
+        init(data: Data, type: String) { self.data = data; self.type = type }
+        func resourceLoader(_ resourceLoader: AVAssetResourceLoader, shouldWaitForLoadingOfRequestedResource request: AVAssetResourceLoadingRequest) -> Bool {
+            if let info = request.contentInformationRequest {
+                info.contentType = type
+                info.contentLength = Int64(data.count)
+                info.isByteRangeAccessSupported = true
+            }
+            if let d = request.dataRequest {
+                let start = Int(d.requestedOffset)
+                let end = min(data.count, start + d.requestedLength)
+                if start < end { d.respond(with: data.subdata(in: start..<end)) }
+            }
+            request.finishLoading()
+            return true
+        }
+    }
+
+    func makeCoordinator() -> Loader {
+        let ext = (name as NSString).pathExtension.lowercased()
+        return Loader(data: data, type: UTType(filenameExtension: ext)?.identifier ?? "public.movie")
+    }
+
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let v = AVPlayerViewController()
+        let asset = AVURLAsset(url: URL(string: "folevi-vault-memory://file/\(name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? "file")")!)
+        asset.resourceLoader.setDelegate(context.coordinator, queue: .main)
+        v.player = AVPlayer(playerItem: AVPlayerItem(asset: asset))
+        return v
+    }
+
+    func updateUIViewController(_ v: AVPlayerViewController, context: Context) {}
+    static func dismantleUIViewController(_ v: AVPlayerViewController, coordinator: Loader) { v.player?.pause() }
+}
+#endif
 
 /// CSV as a table (FilePreview.tsx parseCsv: quotes, doubled quotes, commas and line breaks inside quotes).
 private struct CSVPreview: View {

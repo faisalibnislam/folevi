@@ -6,7 +6,7 @@ Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0
 
 ## Version 1.2.08: Small update
 
-Released 2026-10-31 15:15:16+06:00 (build 19, tag v1.2.08)
+Released 2026-10-31 15:15:16+06:00 (build 20, tag v1.2.08)
 
 Menus on Mac match the web
 

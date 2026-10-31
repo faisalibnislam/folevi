@@ -2,7 +2,7 @@
   "releases": [
     {
       "version": "1.2.08",
-      "build": 19,
+      "build": 20,
       "released": "2026-10-31T15:15:16+06:00",
       "type": "patch",
       "summary": "Menus on Mac match the web",

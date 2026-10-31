@@ -1224,7 +1224,8 @@ struct WebFoldersIndex: View {
         }
         .padding(.horizontal, 32)
         .frame(maxWidth: 1180 + 0)
-        .frame(height: content.y - 64)
+        // (Below the card's top and the glass bar's room: 8 + 56 on the Mac, 32 + 68 on the iPad.)
+        .frame(height: content.y - WebStyles.named("frame.content").light.y - ContentViewController.barHeight)
         .frame(maxWidth: .infinity)
     }
 

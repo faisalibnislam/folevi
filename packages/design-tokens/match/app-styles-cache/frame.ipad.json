@@ -8,14 +8,9 @@
     0.9
    ],
    "radius": 0,
-   "backdropBlur": 0,
    "letterSpacing": -0.096,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "gap": 0,
+   "backdropBlur": 0,
    "padding": [
     0,
     0,
@@ -23,7 +18,12 @@
     0
    ],
    "gradient": null,
-   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 22,
    "background": [
     0,
@@ -33,22 +33,22 @@
    ],
    "shadows": [],
    "x": 62,
-   "y": 385,
    "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "height": 22,
+   "y": 385,
    "border": {
-    "width": 0,
     "color": [
      24,
      24,
      27,
      0.9
-    ]
+    ],
+    "width": 0
    },
-   "opacity": 1,
-   "fontFamily": "Instrument Sans",
+   "width": 244,
    "fontSize": 17,
-   "height": 22,
-   "width": 244
+   "opacity": 1
   },
   "frame.sidebar.item.active": {
    "color": [
@@ -58,21 +58,21 @@
     1
    ],
    "radius": 999,
-   "gap": 12,
    "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    2,
-    0
-   ],
-   "gradient": null,
+   "gap": 12,
    "padding": [
     0,
     12,
     0,
     12
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    2,
+    0
    ],
    "lineHeight": 22,
    "background": [
@@ -83,11 +83,8 @@
    ],
    "shadows": [],
    "x": 18,
-   "y": 144,
-   "fontSize": 17,
-   "height": 44,
-   "fontWeight": 600,
-   "width": 300,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
    "border": {
     "color": [
      11,
@@ -97,8 +94,11 @@
     ],
     "width": 0
    },
-   "opacity": 1,
-   "fontFamily": "Instrument Sans"
+   "y": 144,
+   "width": 300,
+   "fontWeight": 600,
+   "height": 44,
+   "fontSize": 17
   },
   "frame.sidebar.account": {
    "color": [
@@ -108,7 +108,7 @@
     1
    ],
    "radius": 6,
-   "gap": 10,
+   "backdropBlur": 0,
    "letterSpacing": -0.096,
    "margin": [
     0,
@@ -116,14 +116,14 @@
     0,
     0
    ],
-   "backdropBlur": 0,
-   "gradient": null,
    "padding": [
     0,
     8,
     0,
     8
    ],
+   "gradient": null,
+   "gap": 10,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -133,21 +133,21 @@
    ],
    "shadows": [],
    "x": 18,
-   "y": 1104,
-   "opacity": 1,
-   "height": 48,
    "fontWeight": 400,
+   "opacity": 1,
    "fontSize": 16,
-   "fontFamily": "Instrument Sans",
+   "y": 1104,
    "width": 300,
+   "height": 48,
+   "fontFamily": "Instrument Sans",
    "border": {
+    "width": 0,
     "color": [
      24,
      24,
      27,
      1
-    ],
-    "width": 0
+    ]
    }
   },
   "frame.sidebar.search.icon": {
@@ -159,7 +159,7 @@
    ],
    "radius": 0,
    "gap": 0,
-   "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -172,8 +172,8 @@
     0,
     0
    ],
+   "backdropBlur": 0,
    "gradient": null,
-   "letterSpacing": -0.096,
    "lineHeight": 20,
    "background": [
     0,
@@ -184,8 +184,7 @@
    "shadows": [],
    "x": 32,
    "y": 101,
-   "fontFamily": "Instrument Sans",
-   "height": 18,
+   "opacity": 1,
    "border": {
     "width": 0,
     "color": [
@@ -195,10 +194,11 @@
      1
     ]
    },
+   "height": 18,
    "width": 18,
-   "fontWeight": 400,
    "fontSize": 17,
-   "opacity": 1
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400
   },
   "frame.tab.off": {
    "color": [
@@ -208,7 +208,7 @@
     1
    ],
    "radius": 999,
-   "gap": 8,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
    "margin": [
     0,
@@ -216,6 +216,7 @@
     0,
     0
    ],
+   "gap": 8,
    "padding": [
     0,
     6,
@@ -223,7 +224,6 @@
     14
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
    "lineHeight": 22,
    "background": [
     0,
@@ -233,22 +233,22 @@
    ],
    "shadows": [],
    "x": 552.8,
+   "fontSize": 17,
+   "opacity": 1,
    "y": 46,
-   "fontWeight": 400,
    "height": 40,
-   "fontFamily": "Instrument Sans",
    "border": {
-    "width": 0,
     "color": [
      86,
      86,
      94,
      1
-    ]
+    ],
+    "width": 0
    },
-   "width": 150,
-   "opacity": 1,
-   "fontSize": 17
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "width": 150
   },
   "frame.sidebar.section.title": {
    "color": [
@@ -284,19 +284,19 @@
    "shadows": [],
    "x": 50,
    "y": 622,
-   "fontWeight": 600,
+   "opacity": 1,
    "height": 28,
-   "fontFamily": "Instrument Sans",
    "border": {
+    "width": 0,
     "color": [
      86,
      86,
      94,
      1
-    ],
-    "width": 0
+    ]
    },
-   "opacity": 1,
+   "fontWeight": 600,
+   "fontFamily": "Instrument Sans",
    "fontSize": 13,
    "width": 210
   },
@@ -309,7 +309,7 @@
    ],
    "radius": 999,
    "backdropBlur": 0,
-   "letterSpacing": -0.096,
+   "gap": 12,
    "margin": [
     0,
     0,
@@ -323,7 +323,7 @@
     12
    ],
    "gradient": null,
-   "gap": 12,
+   "letterSpacing": -0.096,
    "lineHeight": 22,
    "background": [
     0,
@@ -333,10 +333,6 @@
    ],
    "shadows": [],
    "x": 18,
-   "fontFamily": "Instrument Sans",
-   "y": 374,
-   "height": 44,
-   "fontSize": 17,
    "fontWeight": 400,
    "opacity": 1,
    "border": {
@@ -348,7 +344,11 @@
      0.9
     ]
    },
-   "width": 300
+   "y": 374,
+   "width": 300,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 17,
+   "height": 44
   },
   "frame.sidebar.list": {
    "color": [
@@ -358,7 +358,7 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
+   "gap": 0,
    "backdropBlur": 0,
    "margin": [
     0,
@@ -366,7 +366,7 @@
     0,
     0
    ],
-   "gap": 0,
+   "letterSpacing": -0.096,
    "gradient": null,
    "padding": [
     0,
@@ -383,13 +383,12 @@
    ],
    "shadows": [],
    "x": 8,
-   "y": 132,
    "fontWeight": 400,
-   "height": 972,
-   "fontFamily": "Instrument Sans",
+   "y": 132,
    "opacity": 1,
-   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
    "width": 320,
+   "height": 972,
    "border": {
     "width": 0,
     "color": [
@@ -398,7 +397,8 @@
      27,
      1
     ]
-   }
+   },
+   "fontSize": 16
   },
   "frame.sidebar.starred.item": {
    "color": [
@@ -408,22 +408,22 @@
     0.9
    ],
    "radius": 999,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "gap": 12,
    "margin": [
     0,
     0,
     0,
     0
    ],
+   "gap": 12,
+   "gradient": null,
    "padding": [
     0,
     12,
     0,
     12
    ],
-   "gradient": null,
-   "letterSpacing": -0.096,
    "lineHeight": 22,
    "background": [
     0,
@@ -435,20 +435,20 @@
    "x": 38,
    "fontFamily": "Instrument Sans",
    "y": 282,
-   "opacity": 1,
-   "height": 44,
-   "width": 280,
-   "fontSize": 17,
-   "fontWeight": 400,
    "border": {
-    "width": 0,
     "color": [
      24,
      24,
      27,
      0.9
-    ]
-   }
+    ],
+    "width": 0
+   },
+   "height": 44,
+   "width": 280,
+   "fontSize": 17,
+   "opacity": 1,
+   "fontWeight": 400
   },
   "frame.topbar": {
    "color": [
@@ -458,8 +458,8 @@
     1
    ],
    "radius": 999,
+   "letterSpacing": -0.096,
    "gap": 4,
-   "backdropBlur": 9,
    "margin": [
     0,
     0,
@@ -472,7 +472,7 @@
     0,
     6
    ],
-   "letterSpacing": -0.096,
+   "backdropBlur": 9,
    "gradient": null,
    "lineHeight": 24.799999,
    "background": [
@@ -483,79 +483,77 @@
    ],
    "shadows": [
     {
+     "y": 1,
+     "inset": true,
+     "blur": 0,
      "color": [
       255,
       255,
       255,
       0.85
      ],
-     "spread": 0,
-     "blur": 0,
-     "y": 1,
      "x": 0,
-     "inset": true
+     "spread": 0
     },
     {
+     "inset": true,
+     "spread": 0,
+     "blur": 1,
+     "y": -1,
+     "x": 0,
      "color": [
       255,
       255,
       255,
       0.35
-     ],
-     "y": -1,
-     "blur": 1,
-     "spread": 0,
-     "x": 0,
-     "inset": true
+     ]
     },
     {
-     "inset": false,
-     "y": 0,
-     "blur": 0,
-     "spread": 0.5,
-     "x": 0,
      "color": [
       0,
       0,
       0,
       0.09
-     ]
+     ],
+     "y": 0,
+     "blur": 0,
+     "spread": 0.5,
+     "x": 0,
+     "inset": false
     },
     {
+     "y": 10,
+     "spread": -10,
+     "blur": 30,
      "color": [
       0,
       0,
       0,
       0.2
      ],
-     "inset": false,
-     "blur": 30,
-     "y": 10,
      "x": 0,
-     "spread": -10
+     "inset": false
     },
     {
-     "spread": -2,
-     "inset": false,
-     "blur": 8,
-     "y": 2,
-     "x": 0,
      "color": [
       0,
       0,
       0,
       0.08
-     ]
+     ],
+     "inset": false,
+     "blur": 8,
+     "y": 2,
+     "x": 0,
+     "spread": -2
     }
    ],
    "x": 344,
-   "y": 40,
-   "opacity": 1,
-   "height": 52,
    "fontSize": 16,
+   "y": 40,
+   "height": 52,
+   "opacity": 1,
    "width": 460,
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 400,
    "border": {
     "width": 0,
     "color": [
@@ -564,7 +562,9 @@
      27,
      1
     ]
-   }
+   },
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400
   },
   "frame.sidebar.bottom": {
    "color": [
@@ -575,21 +575,21 @@
    ],
    "radius": 0,
    "gap": 0,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
    "padding": [
     0,
     10,
     8,
     10
    ],
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "gradient": null,
-   "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -599,11 +599,13 @@
    ],
    "shadows": [],
    "x": 8,
-   "y": 1104,
-   "fontSize": 16,
-   "height": 56,
    "fontFamily": "Instrument Sans",
+   "y": 1104,
+   "fontWeight": 400,
+   "opacity": 1,
    "width": 320,
+   "height": 56,
+   "fontSize": 16,
    "border": {
     "color": [
      24,
@@ -612,9 +614,7 @@
      1
     ],
     "width": 0
-   },
-   "fontWeight": 400,
-   "opacity": 1
+   }
   },
   "frame.sidebar.search.kbd": {
    "color": [
@@ -624,22 +624,22 @@
     1
    ],
    "radius": 4,
-   "letterSpacing": -0.096,
+   "gap": 0,
    "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "letterSpacing": -0.096,
    "padding": [
     0,
     4.8,
     0,
     4.8
    ],
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "gradient": null,
-   "gap": 0,
    "lineHeight": 11,
    "background": [
     255,
@@ -649,38 +649,36 @@
    ],
    "shadows": [
     {
-     "spread": 1,
      "inset": false,
-     "blur": 0,
      "y": 0,
-     "x": 0,
+     "blur": 0,
      "color": [
       226,
       226,
       230,
       1
-     ]
+     ],
+     "x": 0,
+     "spread": 1
     },
     {
+     "inset": false,
+     "spread": 0,
+     "y": 1,
+     "blur": 0,
+     "x": 0,
      "color": [
       207,
       207,
       213,
       1
-     ],
-     "y": 1,
-     "blur": 0,
-     "spread": 0,
-     "x": 0,
-     "inset": false
+     ]
     }
    ],
    "x": 284.55,
    "y": 100,
-   "fontSize": 11,
+   "fontFamily": "Instrument Sans",
    "opacity": 1,
-   "fontWeight": 550,
-   "height": 20,
    "border": {
     "width": 0,
     "color": [
@@ -691,7 +689,9 @@
     ]
    },
    "width": 27.45,
-   "fontFamily": "Instrument Sans"
+   "fontWeight": 550,
+   "height": 20,
+   "fontSize": 11
   },
   "frame.sidebar.search.label": {
    "color": [
@@ -701,8 +701,8 @@
     1
    ],
    "radius": 0,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "gap": 0,
    "margin": [
     0,
     0,
@@ -715,8 +715,8 @@
     0,
     0
    ],
-   "letterSpacing": -0.096,
    "gradient": null,
+   "gap": 0,
    "lineHeight": 20,
    "background": [
     0,
@@ -726,10 +726,11 @@
    ],
    "shadows": [],
    "x": 58,
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 400,
+   "fontSize": 17,
    "y": 100,
    "height": 20,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
    "border": {
     "color": [
      86,
@@ -739,9 +740,8 @@
     ],
     "width": 0
    },
-   "width": 218.55,
-   "fontSize": 17,
-   "opacity": 1
+   "opacity": 1,
+   "width": 218.55
   },
   "frame.sidebar.section.body": {
    "color": [
@@ -751,7 +751,7 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
+   "backdropBlur": 0,
    "letterSpacing": -0.096,
    "margin": [
     4,
@@ -765,8 +765,8 @@
     0,
     0
    ],
+   "gap": 0,
    "gradient": null,
-   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -776,22 +776,22 @@
    ],
    "shadows": [],
    "x": 18,
-   "y": 654,
    "fontWeight": 400,
-   "opacity": 1,
-   "height": 90,
-   "width": 300,
-   "fontFamily": "Instrument Sans",
    "fontSize": 16,
+   "height": 90,
+   "y": 654,
    "border": {
-    "width": 0,
     "color": [
      24,
      24,
      27,
      1
-    ]
-   }
+    ],
+    "width": 0
+   },
+   "opacity": 1,
+   "width": 300,
+   "fontFamily": "Instrument Sans"
   },
   "frame.sidebar.section.header": {
    "color": [
@@ -801,7 +801,7 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
+   "gap": 4,
    "backdropBlur": 0,
    "margin": [
     0,
@@ -809,14 +809,14 @@
     0,
     0
    ],
-   "gap": 4,
-   "gradient": null,
    "padding": [
     0,
     10,
     0,
     6
    ],
+   "gradient": null,
+   "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -826,9 +826,7 @@
    ],
    "shadows": [],
    "x": 18,
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 400,
-   "y": 622,
+   "fontSize": 16,
    "opacity": 1,
    "border": {
     "width": 0,
@@ -839,9 +837,11 @@
      1
     ]
    },
-   "height": 28,
+   "y": 622,
+   "fontFamily": "Instrument Sans",
    "width": 300,
-   "fontSize": 16
+   "fontWeight": 400,
+   "height": 28
   },
   "frame.sidebar.folder.item": {
    "color": [
@@ -851,8 +851,8 @@
     0.9
    ],
    "radius": 999,
+   "gap": 12,
    "backdropBlur": 0,
-   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -866,7 +866,7 @@
     12
    ],
    "gradient": null,
-   "gap": 12,
+   "letterSpacing": -0.096,
    "lineHeight": 22,
    "background": [
     0,
@@ -878,7 +878,6 @@
    "x": 38,
    "y": 654,
    "opacity": 1,
-   "fontSize": 17,
    "border": {
     "width": 0,
     "color": [
@@ -888,10 +887,11 @@
      0.9
     ]
    },
-   "fontFamily": "Instrument Sans",
-   "height": 44,
+   "fontWeight": 400,
    "width": 236,
-   "fontWeight": 400
+   "fontSize": 17,
+   "fontFamily": "Instrument Sans",
+   "height": 44
   },
   "frame.sidebar": {
    "color": [
@@ -926,21 +926,21 @@
    ],
    "shadows": [],
    "x": 8,
-   "fontWeight": 400,
-   "opacity": 1,
+   "fontFamily": "Instrument Sans",
    "y": 32,
+   "height": 1128,
    "border": {
+    "width": 0,
     "color": [
      24,
      24,
      27,
      1
-    ],
-    "width": 0
+    ]
    },
    "width": 320,
-   "height": 1128,
-   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "fontWeight": 400,
    "fontSize": 16
   },
   "frame.sidebar.item.icon": {
@@ -976,10 +976,9 @@
    ],
    "shadows": [],
    "x": 30,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
    "y": 386,
-   "fontSize": 17,
-   "height": 20,
-   "opacity": 1,
    "border": {
     "color": [
      86,
@@ -990,8 +989,9 @@
     "width": 0
    },
    "width": 20,
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 400
+   "height": 20,
+   "fontSize": 17,
+   "opacity": 1
   },
   "frame.sidebar.section.action": {
    "color": [
@@ -1001,8 +1001,8 @@
     1
    ],
    "radius": 10,
-   "gap": 7.2,
    "letterSpacing": -0.075,
+   "gap": 7.2,
    "margin": [
     0,
     0,
@@ -1026,12 +1026,9 @@
    ],
    "shadows": [],
    "x": 264,
-   "fontSize": 15,
    "y": 614,
-   "height": 44,
    "opacity": 1,
-   "width": 44,
-   "fontFamily": "Instrument Sans",
+   "height": 44,
    "border": {
     "width": 0,
     "color": [
@@ -1041,6 +1038,9 @@
      1
     ]
    },
+   "fontFamily": "Instrument Sans",
+   "width": 44,
+   "fontSize": 15,
    "fontWeight": 550
   },
   "frame.tab.home": {
@@ -1051,7 +1051,7 @@
     1
    ],
    "radius": 999,
-   "letterSpacing": -0.096,
+   "gap": 8,
    "backdropBlur": 0,
    "margin": [
     0,
@@ -1066,7 +1066,7 @@
     14
    ],
    "gradient": null,
-   "gap": 8,
+   "letterSpacing": -0.096,
    "lineHeight": 22,
    "background": [
     255,
@@ -1076,23 +1076,23 @@
    ],
    "shadows": [
     {
-     "spread": 0,
-     "inset": false,
-     "blur": 0,
      "y": 0,
-     "x": 0,
+     "inset": false,
      "color": [
       0,
       0,
       0,
       0
-     ]
+     ],
+     "blur": 0,
+     "x": 0,
+     "spread": 0
     },
     {
-     "spread": 0,
      "y": 0,
-     "blur": 0,
      "inset": false,
+     "blur": 0,
+     "spread": 0,
      "x": 0,
      "color": [
       0,
@@ -1108,15 +1108,15 @@
       0,
       0
      ],
-     "inset": false,
-     "blur": 0,
      "y": 0,
+     "blur": 0,
+     "inset": false,
      "x": 0,
      "spread": 0
     },
     {
-     "spread": 0,
      "y": 0,
+     "spread": 0,
      "blur": 0,
      "inset": false,
      "x": 0,
@@ -1128,39 +1128,40 @@
      ]
     },
     {
+     "inset": false,
+     "y": 1,
+     "blur": 4,
      "color": [
       0,
       0,
       0,
       0.08
      ],
-     "spread": 0,
-     "blur": 4,
-     "y": 1,
      "x": 0,
-     "inset": false
+     "spread": 0
     },
     {
-     "inset": false,
+     "y": 0,
      "spread": 0.5,
      "blur": 0,
-     "y": 0,
-     "x": 0,
      "color": [
       60,
       60,
       67,
       0.16
-     ]
+     ],
+     "x": 0,
+     "inset": false
     }
    ],
    "x": 446,
-   "fontWeight": 600,
    "fontFamily": "Instrument Sans",
-   "opacity": 1,
-   "fontSize": 17,
-   "height": 40,
    "y": 46,
+   "fontSize": 17,
+   "fontWeight": 600,
+   "width": 100.8,
+   "height": 40,
+   "opacity": 1,
    "border": {
     "width": 0,
     "color": [
@@ -1169,8 +1170,7 @@
      12,
      1
     ]
-   },
-   "width": 100.8
+   }
   },
   "frame.html": {
    "color": [
@@ -1181,7 +1181,7 @@
    ],
    "radius": 0,
    "letterSpacing": 0,
-   "gap": 0,
+   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -1195,7 +1195,7 @@
     0
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "gap": 0,
    "lineHeight": 24,
    "background": [
     255,
@@ -1205,11 +1205,13 @@
    ],
    "shadows": [],
    "x": 0,
-   "fontFamily": "Instrument Sans",
-   "opacity": 1,
-   "y": 0,
    "fontSize": 16,
+   "fontWeight": 400,
    "height": 1180,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "y": 0,
+   "width": 820,
    "border": {
     "width": 0,
     "color": [
@@ -1218,9 +1220,7 @@
      27,
      1
     ]
-   },
-   "width": 820,
-   "fontWeight": 400
+   }
   },
   "frame.sidebar.column": {
    "color": [
@@ -1230,7 +1230,7 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
+   "backdropBlur": 0,
    "letterSpacing": -0.096,
    "margin": [
     0,
@@ -1245,7 +1245,7 @@
     0
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "gap": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -1255,9 +1255,13 @@
    ],
    "shadows": [],
    "x": 8,
-   "fontFamily": "Instrument Sans",
-   "y": 32,
    "fontSize": 16,
+   "fontWeight": 400,
+   "y": 32,
+   "height": 1128,
+   "width": 320,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
    "border": {
     "width": 0,
     "color": [
@@ -1266,11 +1270,7 @@
      27,
      1
     ]
-   },
-   "width": 320,
-   "opacity": 1,
-   "fontWeight": 400,
-   "height": 1128
+   }
   },
   "frame.sidebar.section": {
    "color": [
@@ -1280,22 +1280,22 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
-   "backdropBlur": 0,
    "gap": 0,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
+   "letterSpacing": -0.096,
    "margin": [
     20,
     0,
     0,
     0
    ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -1305,22 +1305,22 @@
    ],
    "shadows": [],
    "x": 18,
+   "fontFamily": "Instrument Sans",
    "y": 622,
-   "fontSize": 16,
    "border": {
-    "width": 0,
     "color": [
      24,
      24,
      27,
      1
-    ]
+    ],
+    "width": 0
    },
-   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "fontWeight": 400,
    "width": 300,
    "opacity": 1,
-   "height": 122,
-   "fontWeight": 400
+   "height": 122
   },
   "frame.topbar.new.icon": {
    "color": [
@@ -1330,17 +1330,17 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
    "gap": 0,
-   "margin": [
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "padding": [
     0,
     0,
     0,
     0
    ],
-   "letterSpacing": -0.096,
    "gradient": null,
-   "padding": [
+   "margin": [
     0,
     0,
     0,
@@ -1355,9 +1355,9 @@
    ],
    "shadows": [],
    "x": 765,
-   "y": 55,
    "fontWeight": 400,
-   "fontSize": 16,
+   "y": 55,
+   "height": 22,
    "border": {
     "width": 0,
     "color": [
@@ -1368,8 +1368,8 @@
     ]
    },
    "opacity": 1,
-   "height": 22,
    "fontFamily": "Instrument Sans",
+   "fontSize": 16,
    "width": 22
   },
   "frame.content": {
@@ -1381,7 +1381,7 @@
    ],
    "radius": 18,
    "letterSpacing": -0.096,
-   "gap": 0,
+   "backdropBlur": 30,
    "margin": [
     0,
     0,
@@ -1395,7 +1395,7 @@
     0
    ],
    "gradient": null,
-   "backdropBlur": 30,
+   "gap": 0,
    "lineHeight": 24.799999,
    "background": [
     255,
@@ -1405,75 +1405,75 @@
    ],
    "shadows": [
     {
-     "spread": 1,
      "y": 0,
-     "blur": 0,
      "inset": true,
-     "x": 0,
+     "blur": 0,
      "color": [
       255,
       255,
       255,
       0.6
-     ]
+     ],
+     "x": 0,
+     "spread": 1
     },
     {
      "inset": false,
      "y": 0,
-     "blur": 0,
-     "spread": 1,
-     "x": 0,
      "color": [
       0,
       0,
       0,
       0.06
-     ]
+     ],
+     "blur": 0,
+     "x": 0,
+     "spread": 1
     },
     {
+     "y": 1,
      "color": [
       0,
       0,
       0,
       0.04
      ],
-     "y": 1,
      "blur": 2,
-     "inset": false,
+     "spread": 0,
      "x": 0,
-     "spread": 0
+     "inset": false
     },
     {
      "spread": -12,
+     "y": 12,
+     "blur": 32,
      "color": [
       20,
       20,
       40,
       0.14
      ],
-     "blur": 32,
-     "y": 12,
      "x": 0,
      "inset": false
     }
    ],
    "x": 336,
-   "fontFamily": "Instrument Sans",
    "fontWeight": 400,
+   "y": 32,
    "height": 1128,
    "border": {
+    "width": 0,
     "color": [
      24,
      24,
      27,
      1
-    ],
-    "width": 0
+    ]
    },
-   "y": 32,
-   "opacity": 1,
    "width": 476,
-   "fontSize": 16
+   "fontSize": 16,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans"
   },
   "frame.tab.home.icon": {
    "color": [
@@ -1483,8 +1483,8 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
    "letterSpacing": -0.096,
+   "gap": 0,
    "margin": [
     0,
     0,
@@ -1498,7 +1498,7 @@
     0
    ],
    "gradient": null,
-   "gap": 0,
+   "backdropBlur": 0,
    "lineHeight": 22,
    "background": [
     0,
@@ -1509,9 +1509,7 @@
    "shadows": [],
    "x": 460,
    "y": 57.5,
-   "opacity": 1,
-   "height": 17,
-   "fontFamily": "Instrument Sans",
+   "fontWeight": 600,
    "border": {
     "width": 0,
     "color": [
@@ -1521,9 +1519,11 @@
      1
     ]
    },
-   "width": 17,
+   "height": 17,
+   "opacity": 1,
    "fontSize": 17,
-   "fontWeight": 600
+   "fontFamily": "Instrument Sans",
+   "width": 17
   },
   "frame.sidebar.section.chevron": {
    "color": [
@@ -1533,9 +1533,14 @@
     1
    ],
    "radius": 6,
-   "gap": 0,
    "letterSpacing": 0.52,
    "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "padding": [
     0,
     0,
@@ -1543,12 +1548,7 @@
     0
    ],
    "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "gap": 0,
    "lineHeight": 18,
    "background": [
     0,
@@ -1558,22 +1558,22 @@
    ],
    "shadows": [],
    "x": 24,
-   "fontWeight": 600,
-   "fontSize": 13,
+   "fontFamily": "Instrument Sans",
    "y": 622,
-   "opacity": 1,
-   "width": 24,
    "border": {
-    "width": 0,
     "color": [
      86,
      86,
      94,
      1
-    ]
+    ],
+    "width": 0
    },
-   "fontFamily": "Instrument Sans",
-   "height": 28
+   "opacity": 1,
+   "width": 24,
+   "fontWeight": 600,
+   "height": 28,
+   "fontSize": 13
   },
   "frame.sidebar.item.active.icon": {
    "color": [
@@ -1585,20 +1585,20 @@
    "radius": 0,
    "gap": 0,
    "letterSpacing": -0.096,
-   "backdropBlur": 0,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
    "margin": [
     0,
     0,
     0,
     0
    ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
    "gradient": null,
+   "backdropBlur": 0,
    "lineHeight": 22,
    "background": [
     0,
@@ -1608,12 +1608,11 @@
    ],
    "shadows": [],
    "x": 30,
-   "fontSize": 17,
+   "fontWeight": 600,
    "y": 156,
-   "opacity": 1,
-   "fontFamily": "Instrument Sans",
-   "width": 20,
    "height": 20,
+   "opacity": 1,
+   "width": 20,
    "border": {
     "width": 0,
     "color": [
@@ -1623,7 +1622,8 @@
      1
     ]
    },
-   "fontWeight": 600
+   "fontSize": 17,
+   "fontFamily": "Instrument Sans"
   },
   "frame.window": {
    "color": [
@@ -1633,8 +1633,8 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
    "gap": 0,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -1658,22 +1658,22 @@
    ],
    "shadows": [],
    "x": 0,
-   "fontFamily": "Instrument Sans",
    "y": 0,
+   "fontWeight": 400,
+   "height": 1180,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "width": 820,
    "border": {
+    "width": 0,
     "color": [
      24,
      24,
      27,
      1
-    ],
-    "width": 0
+    ]
    },
-   "height": 1180,
-   "fontSize": 16,
-   "width": 820,
-   "fontWeight": 400,
-   "opacity": 1
+   "fontSize": 16
   },
   "frame.sidebar.starred.toggle": {
    "color": [
@@ -1683,8 +1683,8 @@
     1
    ],
    "radius": 6,
-   "gap": 0,
    "letterSpacing": -0.096,
+   "gap": 0,
    "margin": [
     0,
     0,
@@ -1697,8 +1697,8 @@
     0,
     0
    ],
-   "backdropBlur": 0,
    "gradient": null,
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -1708,9 +1708,12 @@
    ],
    "shadows": [],
    "x": 290,
-   "fontWeight": 400,
    "y": 246,
+   "opacity": 1,
    "height": 24,
+   "fontWeight": 400,
+   "width": 24,
+   "fontFamily": "Instrument Sans",
    "fontSize": 16,
    "border": {
     "width": 0,
@@ -1720,10 +1723,7 @@
      111,
      1
     ]
-   },
-   "fontFamily": "Instrument Sans",
-   "width": 24,
-   "opacity": 1
+   }
   },
   "frame.tabs": {
    "color": [
@@ -1758,22 +1758,22 @@
    ],
    "shadows": [],
    "x": 442,
+   "fontFamily": "Instrument Sans",
    "y": 42,
-   "fontWeight": 400,
    "border": {
-    "width": 0,
     "color": [
      24,
      24,
      27,
      1
-    ]
+    ],
+    "width": 0
    },
+   "fontSize": 16,
    "opacity": 1,
-   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
    "height": 48,
-   "width": 256,
-   "fontSize": 16
+   "width": 256
   },
   "frame.topbar.new": {
    "color": [
@@ -1783,8 +1783,8 @@
     1
    ],
    "radius": 999,
+   "backdropBlur": 0,
    "letterSpacing": -0.096,
-   "gap": 0,
    "margin": [
     0,
     0,
@@ -1798,7 +1798,7 @@
     10
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "gap": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -1808,10 +1808,10 @@
    ],
    "shadows": [],
    "x": 754,
-   "y": 44,
    "fontFamily": "Instrument Sans",
-   "height": 44,
    "opacity": 1,
+   "height": 44,
+   "y": 44,
    "width": 44,
    "border": {
     "color": [
@@ -1822,8 +1822,8 @@
     ],
     "width": 0
    },
-   "fontSize": 16,
-   "fontWeight": 400
+   "fontWeight": 400,
+   "fontSize": 16
   },
   "frame.sidebar.topbar": {
    "color": [
@@ -1833,22 +1833,22 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "letterSpacing": -0.096,
+   "gap": 4,
    "padding": [
     0,
     12,
     0,
     12
    ],
-   "gap": 4,
    "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -1858,22 +1858,22 @@
    ],
    "shadows": [],
    "x": 8,
+   "fontFamily": "Instrument Sans",
    "y": 32,
-   "opacity": 1,
-   "height": 52,
    "border": {
-    "width": 0,
     "color": [
      24,
      24,
      27,
      1
-    ]
+    ],
+    "width": 0
    },
-   "width": 320,
+   "height": 52,
    "fontSize": 16,
+   "width": 320,
    "fontWeight": 400,
-   "fontFamily": "Instrument Sans"
+   "opacity": 1
   },
   "frame.sidebar.folder.row": {
    "color": [
@@ -1883,14 +1883,9 @@
     1
    ],
    "radius": 6,
+   "backdropBlur": 0,
    "letterSpacing": -0.096,
    "gap": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
    "padding": [
     0,
     0,
@@ -1898,7 +1893,12 @@
     0
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -1908,109 +1908,12 @@
    ],
    "shadows": [],
    "x": 18,
-   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "fontSize": 16,
    "y": 654,
-   "height": 44,
-   "border": {
-    "color": [
-     24,
-     24,
-     27,
-     1
-    ],
-    "width": 0
-   },
-   "opacity": 1,
-   "fontWeight": 400,
-   "fontSize": 16,
-   "width": 300
-  },
-  "frame.canvas": {
-   "color": [
-    24,
-    24,
-    27,
-    1
-   ],
-   "radius": 0,
-   "gap": 8,
-   "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    32,
-    8,
-    20,
-    8
-   ],
-   "gradient": null,
-   "letterSpacing": -0.096,
-   "lineHeight": 24.799999,
-   "background": [
-    238,
-    238,
-    241,
-    1
-   ],
-   "shadows": [],
-   "x": 0,
-   "y": 0,
    "fontFamily": "Instrument Sans",
-   "border": {
-    "color": [
-     24,
-     24,
-     27,
-     1
-    ],
-    "width": 0
-   },
+   "width": 300,
    "opacity": 1,
-   "width": 820,
-   "fontWeight": 400,
-   "height": 1180,
-   "fontSize": 16
-  },
-  "frame.main": {
-   "color": [
-    24,
-    24,
-    27,
-    1
-   ],
-   "radius": 0,
-   "gap": 0,
-   "letterSpacing": -0.096,
-   "backdropBlur": 0,
-   "padding": [
-    68,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "lineHeight": 24.799999,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 336,
-   "y": 32,
-   "fontSize": 16,
-   "height": 1128,
    "border": {
     "width": 0,
     "color": [
@@ -2020,10 +1923,107 @@
      1
     ]
    },
-   "width": 476,
+   "height": 44
+  },
+  "frame.canvas": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 8,
+   "backdropBlur": 0,
+   "padding": [
+    32,
+    8,
+    20,
+    8
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    238,
+    238,
+    241,
+    1
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontSize": 16,
+   "y": 0,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "height": 1180,
+   "width": 820,
+   "fontFamily": "Instrument Sans",
    "fontWeight": 400,
+   "opacity": 1
+  },
+  "frame.main": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    68,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 336,
+   "fontFamily": "Instrument Sans",
    "opacity": 1,
-   "fontFamily": "Instrument Sans"
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "y": 32,
+   "width": 476,
+   "fontSize": 16,
+   "height": 1128,
+   "fontWeight": 400
   },
   "frame.sidebar.item.count": {
    "color": [
@@ -2034,7 +2034,7 @@
    ],
    "radius": 6,
    "gap": 0,
-   "letterSpacing": -0.096,
+   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -2048,7 +2048,7 @@
     6
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "lineHeight": 20,
    "background": [
     0,
@@ -2060,7 +2060,8 @@
    "x": 286,
    "fontWeight": 600,
    "y": 340,
-   "height": 20,
+   "opacity": 1,
+   "fontSize": 11,
    "border": {
     "width": 0,
     "color": [
@@ -2070,10 +2071,9 @@
      1
     ]
    },
-   "fontSize": 11,
-   "fontFamily": "Instrument Sans",
-   "opacity": 1,
-   "width": 20
+   "height": 20,
+   "width": 20,
+   "fontFamily": "Instrument Sans"
   },
   "frame.sidebar.search": {
    "color": [
@@ -2083,20 +2083,20 @@
     1
    ],
    "radius": 999,
-   "gap": 8,
    "letterSpacing": -0.096,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "gap": 8,
    "backdropBlur": 0,
    "padding": [
     0,
     6,
     0,
     14
+   ],
+   "margin": [
+    0,
+    0,
+    0,
+    0
    ],
    "gradient": null,
    "lineHeight": 20,
@@ -2111,22 +2111,22 @@
      "spread": 1,
      "y": 0,
      "blur": 0,
-     "inset": true,
-     "x": 0,
      "color": [
       0,
       0,
       0,
       0.07
-     ]
+     ],
+     "x": 0,
+     "inset": true
     }
    ],
    "x": 18,
+   "fontWeight": 400,
+   "opacity": 1,
    "y": 88,
    "fontFamily": "Instrument Sans",
-   "opacity": 1,
-   "height": 44,
-   "width": 300,
+   "fontSize": 17,
    "border": {
     "color": [
      86,
@@ -2136,8 +2136,8 @@
     ],
     "width": 0
    },
-   "fontWeight": 400,
-   "fontSize": 17
+   "width": 300,
+   "height": 44
   },
   "frame.topbar.back": {
    "color": [
@@ -2147,7 +2147,7 @@
     1
    ],
    "radius": 999,
-   "letterSpacing": -0.096,
+   "gap": 0,
    "backdropBlur": 0,
    "margin": [
     0,
@@ -2162,7 +2162,7 @@
     10
    ],
    "gradient": null,
-   "gap": 0,
+   "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -2173,21 +2173,21 @@
    "shadows": [],
    "x": 350,
    "fontSize": 16,
-   "fontWeight": 400,
+   "opacity": 0.4,
    "border": {
-    "width": 0,
     "color": [
      11,
      11,
      12,
      1
-    ]
+    ],
+    "width": 0
    },
-   "opacity": 0.4,
-   "width": 44,
    "y": 44,
-   "height": 44,
-   "fontFamily": "Instrument Sans"
+   "width": 44,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "height": 44
   },
   "frame.tab.link": {
    "color": [
@@ -2197,8 +2197,8 @@
     1
    ],
    "radius": 0,
-   "gap": 8,
    "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -2212,7 +2212,7 @@
     0
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "gap": 8,
    "lineHeight": 22,
    "background": [
     0,
@@ -2222,57 +2222,12 @@
    ],
    "shadows": [],
    "x": 374.33,
+   "fontSize": 17,
    "fontWeight": 400,
    "opacity": 1,
-   "border": {
-    "color": [
-     86,
-     86,
-     94,
-     1
-    ],
-    "width": 0
-   },
    "height": 22,
    "width": 94,
-   "fontFamily": "Instrument Sans",
    "y": 55,
-   "fontSize": 17
-  },
-  "frame.tab.close": {
-   "color": [
-    86,
-    86,
-    94,
-    1
-   ],
-   "radius": 999,
-   "gap": 0,
-   "letterSpacing": -0.096,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "backdropBlur": 0,
-   "gradient": null,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "lineHeight": 22,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 476.33,
-   "fontWeight": 400,
    "fontFamily": "Instrument Sans",
    "border": {
     "width": 0,
@@ -2282,12 +2237,57 @@
      94,
      1
     ]
-   },
-   "opacity": 0,
+   }
+  },
+  "frame.tab.close": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 999,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 476.33,
    "fontSize": 17,
+   "opacity": 0,
+   "border": {
+    "width": 0,
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ]
+   },
+   "height": 28,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
    "y": 52,
-   "width": 28,
-   "height": 28
+   "width": 28
   },
   "frame.tab.home.off": {
    "color": [
@@ -2297,21 +2297,21 @@
     1
    ],
    "radius": 999,
-   "backdropBlur": 0,
    "gap": 8,
-   "letterSpacing": -0.096,
-   "padding": [
-    0,
-    14,
-    0,
-    14
-   ],
-   "gradient": null,
+   "backdropBlur": 0,
    "margin": [
     0,
     0,
     0,
     0
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "padding": [
+    0,
+    14,
+    0,
+    14
    ],
    "lineHeight": 22,
    "background": [
@@ -2322,12 +2322,12 @@
    ],
    "shadows": [],
    "x": 254,
-   "fontWeight": 400,
    "fontSize": 17,
-   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "y": 46,
    "height": 40,
-   "opacity": 1,
    "width": 100.33,
+   "opacity": 1,
    "border": {
     "color": [
      86,
@@ -2337,7 +2337,7 @@
     ],
     "width": 0
    },
-   "y": 46
+   "fontFamily": "Instrument Sans"
   },
   "frame.tab.icon": {
    "color": [
@@ -2361,8 +2361,8 @@
     0,
     0
    ],
-   "gradient": null,
    "backdropBlur": 0,
+   "gradient": null,
    "lineHeight": 22,
    "background": [
     0,
@@ -2373,7 +2373,8 @@
    "shadows": [],
    "x": 374.33,
    "fontSize": 17,
-   "fontWeight": 400,
+   "opacity": 0.7,
+   "fontFamily": "Instrument Sans",
    "border": {
     "width": 0,
     "color": [
@@ -2383,11 +2384,10 @@
      1
     ]
    },
-   "height": 14,
    "width": 14,
-   "fontFamily": "Instrument Sans",
    "y": 59,
-   "opacity": 0.7
+   "height": 14,
+   "fontWeight": 400
   },
   "frame.tab.label": {
    "color": [
@@ -2397,8 +2397,8 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
    "gap": 0,
+   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -2411,8 +2411,8 @@
     0,
     0
    ],
-   "gradient": null,
    "letterSpacing": -0.096,
+   "gradient": null,
    "lineHeight": 22,
    "background": [
     0,
@@ -2423,12 +2423,8 @@
    "shadows": [],
    "x": 396.33,
    "fontFamily": "Instrument Sans",
-   "opacity": 1,
-   "height": 22,
-   "fontSize": 17,
-   "width": 39.25,
-   "y": 55,
    "fontWeight": 400,
+   "height": 22,
    "border": {
     "width": 0,
     "color": [
@@ -2437,7 +2433,11 @@
      94,
      1
     ]
-   }
+   },
+   "width": 39.25,
+   "y": 55,
+   "fontSize": 17,
+   "opacity": 1
   },
   "frame.tab": {
    "color": [
@@ -2447,7 +2447,7 @@
     1
    ],
    "radius": 999,
-   "letterSpacing": -0.096,
+   "gap": 8,
    "backdropBlur": 0,
    "margin": [
     0,
@@ -2455,7 +2455,6 @@
     0,
     0
    ],
-   "gap": 8,
    "padding": [
     0,
     6,
@@ -2463,6 +2462,7 @@
     14
    ],
    "gradient": null,
+   "letterSpacing": -0.096,
    "lineHeight": 22,
    "background": [
     0,
@@ -2472,7 +2472,7 @@
    ],
    "shadows": [],
    "x": 360.33,
-   "fontFamily": "Instrument Sans",
+   "fontSize": 17,
    "opacity": 1,
    "border": {
     "width": 0,
@@ -2483,11 +2483,11 @@
      1
     ]
    },
-   "height": 40,
-   "width": 150,
    "y": 46,
-   "fontSize": 17,
-   "fontWeight": 400
+   "width": 150,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "height": 40
   },
   "frame.topbar.forward": {
    "color": [
@@ -2498,8 +2498,13 @@
    ],
    "radius": 999,
    "gap": 0,
-   "backdropBlur": 0,
    "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "padding": [
     0,
     10,
@@ -2507,12 +2512,7 @@
     10
    ],
    "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -2523,20 +2523,20 @@
    "shadows": [],
    "x": 394,
    "fontWeight": 400,
-   "opacity": 0.4,
-   "height": 44,
+   "fontSize": 16,
    "fontFamily": "Instrument Sans",
+   "opacity": 0.4,
    "width": 44,
    "y": 44,
-   "fontSize": 16,
+   "height": 44,
    "border": {
+    "width": 0,
     "color": [
      11,
      11,
      12,
      1
-    ],
-    "width": 0
+    ]
    }
   }
  },
@@ -2549,7 +2549,7 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
+   "backdropBlur": 0,
    "letterSpacing": -0.096,
    "margin": [
     0,
@@ -2564,7 +2564,7 @@
     0
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "gap": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -2577,19 +2577,19 @@
    "y": 32,
    "fontWeight": 400,
    "border": {
+    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ],
-    "width": 0
+    ]
    },
-   "height": 1128,
+   "fontFamily": "Instrument Sans",
    "width": 476,
    "fontSize": 16,
-   "fontFamily": "Instrument Sans",
-   "opacity": 1
+   "opacity": 1,
+   "height": 1128
   },
   "frame.sidebar.item.count": {
    "color": [
@@ -2599,9 +2599,14 @@
     1
    ],
    "radius": 6,
-   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "padding": [
     0,
     6,
@@ -2609,12 +2614,7 @@
     6
    ],
    "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "gap": 0,
    "lineHeight": 20,
    "background": [
     255,
@@ -2624,21 +2624,21 @@
    ],
    "shadows": [],
    "x": 286,
-   "fontSize": 11,
+   "y": 340,
+   "fontWeight": 600,
    "opacity": 1,
    "border": {
-    "width": 0,
     "color": [
      166,
      166,
      174,
      1
-    ]
+    ],
+    "width": 0
    },
-   "y": 340,
    "width": 20,
+   "fontSize": 11,
    "height": 20,
-   "fontWeight": 600,
    "fontFamily": "Instrument Sans"
   },
   "frame.sidebar.account": {
@@ -2649,14 +2649,9 @@
     1
    ],
    "radius": 6,
-   "gap": 10,
    "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "letterSpacing": -0.096,
+   "gap": 10,
    "padding": [
     0,
     8,
@@ -2664,7 +2659,12 @@
     8
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -2674,9 +2674,9 @@
    ],
    "shadows": [],
    "x": 18,
-   "fontFamily": "Instrument Sans",
-   "fontSize": 16,
-   "height": 48,
+   "y": 1104,
+   "opacity": 1,
+   "fontWeight": 400,
    "border": {
     "width": 0,
     "color": [
@@ -2687,9 +2687,9 @@
     ]
    },
    "width": 300,
-   "y": 1104,
-   "fontWeight": 400,
-   "opacity": 1
+   "height": 48,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16
   },
   "frame.sidebar.search.icon": {
    "color": [
@@ -2699,7 +2699,7 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
+   "gap": 0,
    "letterSpacing": -0.096,
    "margin": [
     0,
@@ -2713,8 +2713,8 @@
     0,
     0
    ],
+   "backdropBlur": 0,
    "gradient": null,
-   "gap": 0,
    "lineHeight": 20,
    "background": [
     0,
@@ -2724,12 +2724,9 @@
    ],
    "shadows": [],
    "x": 32,
-   "fontFamily": "Instrument Sans",
-   "opacity": 1,
-   "height": 18,
    "y": 101,
    "fontWeight": 400,
-   "width": 18,
+   "height": 18,
    "border": {
     "color": [
      166,
@@ -2739,7 +2736,10 @@
     ],
     "width": 0
    },
-   "fontSize": 17
+   "width": 18,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 17,
+   "opacity": 1
   },
   "frame.tab.off": {
    "color": [
@@ -2749,22 +2749,22 @@
     1
    ],
    "radius": 999,
-   "letterSpacing": -0.096,
    "backdropBlur": 0,
+   "gap": 8,
    "margin": [
     0,
     0,
     0,
     0
    ],
-   "gap": 8,
-   "gradient": null,
    "padding": [
     0,
     6,
     0,
     14
    ],
+   "gradient": null,
+   "letterSpacing": -0.096,
    "lineHeight": 22,
    "background": [
     0,
@@ -2774,10 +2774,10 @@
    ],
    "shadows": [],
    "x": 552.8,
-   "fontSize": 17,
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 400,
    "y": 46,
+   "fontFamily": "Instrument Sans",
+   "height": 40,
+   "opacity": 1,
    "width": 150,
    "border": {
     "color": [
@@ -2788,8 +2788,8 @@
     ],
     "width": 0
    },
-   "opacity": 1,
-   "height": 40
+   "fontWeight": 400,
+   "fontSize": 17
   },
   "frame.sidebar.section.title": {
    "color": [
@@ -2799,22 +2799,22 @@
     1
    ],
    "radius": 6,
-   "backdropBlur": 0,
    "gap": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "backdropBlur": 0,
+   "letterSpacing": 0.52,
    "padding": [
     0,
     8,
     0,
     4
    ],
-   "letterSpacing": 0.52,
    "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 18,
    "background": [
     0,
@@ -2824,8 +2824,12 @@
    ],
    "shadows": [],
    "x": 50,
+   "y": 622,
    "fontSize": 13,
+   "height": 28,
    "fontFamily": "Instrument Sans",
+   "fontWeight": 600,
+   "width": 210,
    "border": {
     "width": 0,
     "color": [
@@ -2835,11 +2839,7 @@
      1
     ]
    },
-   "y": 622,
-   "height": 28,
-   "opacity": 1,
-   "width": 210,
-   "fontWeight": 600
+   "opacity": 1
   },
   "frame.sidebar.item": {
    "color": [
@@ -2849,9 +2849,9 @@
     0.9
    ],
    "radius": 999,
-   "gap": 12,
    "backdropBlur": 0,
    "letterSpacing": -0.096,
+   "gap": 12,
    "padding": [
     0,
     12,
@@ -2874,8 +2874,8 @@
    ],
    "shadows": [],
    "x": 18,
-   "fontWeight": 400,
-   "opacity": 1,
+   "y": 374,
+   "fontFamily": "Instrument Sans",
    "border": {
     "width": 0,
     "color": [
@@ -2885,11 +2885,11 @@
      0.9
     ]
    },
-   "height": 44,
-   "y": 374,
+   "fontWeight": 400,
    "width": 300,
    "fontSize": 17,
-   "fontFamily": "Instrument Sans"
+   "height": 44,
+   "opacity": 1
   },
   "frame.sidebar.list": {
    "color": [
@@ -2899,9 +2899,14 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
-   "backdropBlur": 0,
    "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "padding": [
     0,
     10,
@@ -2909,12 +2914,7 @@
     10
    ],
    "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -2925,8 +2925,7 @@
    "shadows": [],
    "x": 8,
    "fontSize": 16,
-   "opacity": 1,
-   "y": 132,
+   "fontWeight": 400,
    "border": {
     "width": 0,
     "color": [
@@ -2936,10 +2935,11 @@
      1
     ]
    },
+   "y": 132,
    "height": 972,
-   "fontWeight": 400,
-   "width": 320,
-   "fontFamily": "Instrument Sans"
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "width": 320
   },
   "frame.sidebar.starred.item": {
    "color": [
@@ -2950,21 +2950,21 @@
    ],
    "radius": 999,
    "backdropBlur": 0,
-   "gap": 12,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
     0,
     0
    ],
-   "letterSpacing": -0.096,
-   "gradient": null,
+   "gap": 12,
    "padding": [
     0,
     12,
     0,
     12
    ],
+   "gradient": null,
    "lineHeight": 22,
    "background": [
     0,
@@ -2974,22 +2974,22 @@
    ],
    "shadows": [],
    "x": 38,
-   "fontFamily": "Instrument Sans",
    "y": 282,
+   "fontFamily": "Instrument Sans",
    "height": 44,
+   "fontWeight": 400,
+   "width": 280,
    "border": {
-    "width": 0,
     "color": [
      242,
      242,
      243,
      0.9
-    ]
+    ],
+    "width": 0
    },
-   "width": 280,
-   "fontSize": 17,
-   "fontWeight": 400,
-   "opacity": 1
+   "opacity": 1,
+   "fontSize": 17
   },
   "frame.sidebar.bottom": {
    "color": [
@@ -3024,22 +3024,22 @@
    ],
    "shadows": [],
    "x": 8,
-   "fontWeight": 400,
-   "fontFamily": "Instrument Sans",
-   "fontSize": 16,
-   "height": 56,
-   "opacity": 1,
    "y": 1104,
+   "fontWeight": 400,
+   "opacity": 1,
+   "fontSize": 16,
+   "width": 320,
+   "height": 56,
    "border": {
-    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ]
+    ],
+    "width": 0
    },
-   "width": 320
+   "fontFamily": "Instrument Sans"
   },
   "frame.sidebar.search.kbd": {
    "color": [
@@ -3049,8 +3049,8 @@
     1
    ],
    "radius": 4,
-   "gap": 0,
    "letterSpacing": -0.096,
+   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -3064,7 +3064,7 @@
     4.8
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "gap": 0,
    "lineHeight": 11,
    "background": [
     41,
@@ -3087,36 +3087,36 @@
      "inset": false
     },
     {
-     "y": 1,
      "color": [
       62,
       62,
       67,
       1
      ],
-     "inset": false,
+     "y": 1,
      "blur": 0,
+     "inset": false,
      "x": 0,
      "spread": 0
     }
    ],
    "x": 284.55,
-   "fontFamily": "Instrument Sans",
-   "opacity": 1,
-   "height": 20,
    "y": 100,
+   "fontFamily": "Instrument Sans",
    "fontSize": 11,
    "border": {
+    "width": 0,
     "color": [
      166,
      166,
      174,
      1
-    ],
-    "width": 0
+    ]
    },
-   "fontWeight": 550,
-   "width": 27.45
+   "opacity": 1,
+   "height": 20,
+   "width": 27.45,
+   "fontWeight": 550
   },
   "frame.topbar": {
    "color": [
@@ -3126,8 +3126,8 @@
     1
    ],
    "radius": 999,
-   "backdropBlur": 9,
    "gap": 4,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -3141,7 +3141,7 @@
     6
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "backdropBlur": 9,
    "lineHeight": 24.799999,
    "background": [
     44,
@@ -3152,18 +3152,19 @@
    "shadows": [
     {
      "y": 1,
+     "inset": true,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
      "color": [
       255,
       255,
       255,
       0.14
-     ],
-     "blur": 0,
-     "inset": true,
-     "x": 0,
-     "spread": 0
+     ]
     },
     {
+     "inset": true,
      "y": -1,
      "color": [
       255,
@@ -3172,67 +3173,66 @@
       0.04
      ],
      "blur": 1,
-     "inset": true,
      "x": 0,
      "spread": 0
     },
     {
-     "y": 0,
-     "inset": false,
-     "blur": 0,
      "color": [
       0,
       0,
       0,
       0.55
      ],
+     "y": 0,
+     "spread": 0.5,
+     "blur": 0,
      "x": 0,
-     "spread": 0.5
+     "inset": false
     },
     {
      "y": 12,
      "spread": -10,
-     "blur": 34,
      "color": [
       0,
       0,
       0,
       0.65
      ],
+     "blur": 34,
      "x": 0,
      "inset": false
     },
     {
      "y": 2,
-     "inset": false,
-     "blur": 8,
      "color": [
       0,
       0,
       0,
       0.4
      ],
+     "blur": 8,
+     "inset": false,
      "x": 0,
      "spread": -2
     }
    ],
    "x": 344,
-   "fontSize": 16,
-   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
    "y": 40,
    "opacity": 1,
+   "fontFamily": "Instrument Sans",
    "width": 460,
-   "fontWeight": 400,
    "border": {
+    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ],
-    "width": 0
+    ]
    },
-   "height": 52
+   "height": 52,
+   "fontSize": 16
   },
   "frame.sidebar.search.label": {
    "color": [
@@ -3242,9 +3242,14 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
    "backdropBlur": 0,
    "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "padding": [
     0,
     0,
@@ -3252,12 +3257,7 @@
     0
    ],
    "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "gap": 0,
    "lineHeight": 20,
    "background": [
     0,
@@ -3267,22 +3267,22 @@
    ],
    "shadows": [],
    "x": 58,
-   "fontWeight": 400,
-   "fontSize": 17,
-   "opacity": 1,
-   "height": 20,
-   "width": 218.55,
    "y": 100,
    "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "fontSize": 17,
+   "width": 218.55,
+   "fontWeight": 400,
    "border": {
-    "width": 0,
     "color": [
      166,
      166,
      174,
      1
-    ]
-   }
+    ],
+    "width": 0
+   },
+   "height": 20
   },
   "frame.sidebar.section.body": {
    "color": [
@@ -3293,7 +3293,6 @@
    ],
    "radius": 0,
    "gap": 0,
-   "backdropBlur": 0,
    "letterSpacing": -0.096,
    "margin": [
     4,
@@ -3301,13 +3300,14 @@
     0,
     0
    ],
-   "gradient": null,
    "padding": [
     0,
     0,
     0,
     0
    ],
+   "gradient": null,
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -3317,22 +3317,22 @@
    ],
    "shadows": [],
    "x": 18,
-   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "y": 654,
    "opacity": 1,
    "fontSize": 16,
-   "fontFamily": "Instrument Sans",
-   "width": 300,
-   "y": 654,
+   "fontWeight": 400,
+   "height": 90,
    "border": {
+    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ],
-    "width": 0
+    ]
    },
-   "height": 90
+   "width": 300
   },
   "frame.sidebar.section.header": {
    "color": [
@@ -3343,7 +3343,7 @@
    ],
    "radius": 0,
    "letterSpacing": -0.096,
-   "backdropBlur": 0,
+   "gap": 4,
    "margin": [
     0,
     0,
@@ -3357,7 +3357,7 @@
     6
    ],
    "gradient": null,
-   "gap": 4,
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -3368,10 +3368,8 @@
    "shadows": [],
    "x": 18,
    "fontSize": 16,
-   "fontWeight": 400,
-   "opacity": 1,
-   "fontFamily": "Instrument Sans",
-   "width": 300,
+   "y": 622,
+   "height": 28,
    "border": {
     "color": [
      242,
@@ -3381,8 +3379,10 @@
     ],
     "width": 0
    },
-   "height": 28,
-   "y": 622
+   "width": 300,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "opacity": 1
   },
   "frame.sidebar.folder.item": {
    "color": [
@@ -3392,8 +3392,8 @@
     0.9
    ],
    "radius": 999,
+   "letterSpacing": -0.096,
    "gap": 12,
-   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -3407,7 +3407,7 @@
     12
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "backdropBlur": 0,
    "lineHeight": 22,
    "background": [
     0,
@@ -3417,8 +3417,9 @@
    ],
    "shadows": [],
    "x": 38,
-   "fontFamily": "Instrument Sans",
-   "fontSize": 17,
+   "fontWeight": 400,
+   "y": 654,
+   "opacity": 1,
    "border": {
     "width": 0,
     "color": [
@@ -3429,10 +3430,9 @@
     ]
    },
    "height": 44,
-   "fontWeight": 400,
-   "y": 654,
-   "opacity": 1,
-   "width": 236
+   "width": 236,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 17
   },
   "frame.sidebar": {
    "color": [
@@ -3442,7 +3442,7 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
    "margin": [
     0,
@@ -3457,7 +3457,7 @@
     0
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "gap": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -3467,8 +3467,8 @@
    ],
    "shadows": [],
    "x": 8,
-   "fontSize": 16,
-   "opacity": 1,
+   "y": 32,
+   "fontFamily": "Instrument Sans",
    "height": 1128,
    "border": {
     "color": [
@@ -3479,10 +3479,10 @@
     ],
     "width": 0
    },
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 400,
-   "y": 32,
-   "width": 320
+   "width": 320,
+   "fontSize": 16,
+   "opacity": 1,
+   "fontWeight": 400
   },
   "frame.sidebar.item.icon": {
    "color": [
@@ -3492,9 +3492,14 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
    "gap": 0,
-   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "padding": [
     0,
     0,
@@ -3502,12 +3507,7 @@
     0
    ],
    "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "backdropBlur": 0,
    "lineHeight": 22,
    "background": [
     0,
@@ -3517,61 +3517,8 @@
    ],
    "shadows": [],
    "x": 30,
-   "fontFamily": "Instrument Sans",
    "y": 386,
-   "height": 20,
-   "border": {
-    "width": 0,
-    "color": [
-     166,
-     166,
-     174,
-     1
-    ]
-   },
-   "width": 20,
    "fontSize": 17,
-   "opacity": 1,
-   "fontWeight": 400
-  },
-  "frame.sidebar.section.action": {
-   "color": [
-    166,
-    166,
-    174,
-    1
-   ],
-   "radius": 10,
-   "letterSpacing": -0.075,
-   "backdropBlur": 0,
-   "gap": 7.2,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "lineHeight": 20,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 264,
-   "y": 614,
-   "opacity": 1,
-   "height": 44,
-   "fontFamily": "Instrument Sans",
-   "width": 44,
    "border": {
     "color": [
      166,
@@ -3581,8 +3528,61 @@
     ],
     "width": 0
    },
+   "fontWeight": 400,
+   "width": 20,
+   "height": 20,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans"
+  },
+  "frame.sidebar.section.action": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 10,
+   "backdropBlur": 0,
+   "letterSpacing": -0.075,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 7.2,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 264,
+   "fontFamily": "Instrument Sans",
+   "y": 614,
+   "opacity": 1,
+   "height": 44,
    "fontSize": 15,
-   "fontWeight": 550
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 550,
+   "width": 44
   },
   "frame.tab.home": {
    "color": [
@@ -3593,8 +3593,8 @@
    ],
    "radius": 999,
    "backdropBlur": 0,
-   "gap": 8,
    "letterSpacing": -0.096,
+   "gap": 8,
    "padding": [
     0,
     14,
@@ -3617,10 +3617,10 @@
    ],
    "shadows": [
     {
-     "y": 0,
-     "spread": 0,
      "inset": false,
+     "y": 0,
      "blur": 0,
+     "spread": 0,
      "x": 0,
      "color": [
       0,
@@ -3628,6 +3628,32 @@
       0,
       0
      ]
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "inset": false
     },
     {
      "y": 0,
@@ -3643,33 +3669,8 @@
      "spread": 0
     },
     {
-     "y": 0,
-     "spread": 0,
-     "blur": 0,
-     "inset": false,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "y": 0,
-     "spread": 0,
-     "blur": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "x": 0,
-     "inset": false
-    },
-    {
      "y": 1,
+     "spread": 0,
      "color": [
       0,
       0,
@@ -3677,41 +3678,40 @@
       0.08
      ],
      "blur": 4,
-     "spread": 0,
      "x": 0,
      "inset": false
     },
     {
      "y": 0,
-     "spread": 0.5,
+     "inset": false,
+     "blur": 0,
      "color": [
       84,
       84,
       88,
       0.5
      ],
-     "blur": 0,
      "x": 0,
-     "inset": false
+     "spread": 0.5
     }
    ],
    "x": 446,
+   "y": 46,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
    "fontWeight": 600,
-   "fontSize": 17,
+   "width": 100.8,
    "border": {
+    "width": 0,
     "color": [
      250,
      250,
      250,
      1
-    ],
-    "width": 0
+    ]
    },
-   "y": 46,
-   "width": 100.8,
    "height": 40,
-   "fontFamily": "Instrument Sans",
-   "opacity": 1
+   "fontSize": 17
   },
   "frame.html": {
    "color": [
@@ -3721,7 +3721,7 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
+   "letterSpacing": 0,
    "gap": 0,
    "margin": [
     0,
@@ -3736,7 +3736,7 @@
     0
    ],
    "gradient": null,
-   "letterSpacing": 0,
+   "backdropBlur": 0,
    "lineHeight": 24,
    "background": [
     16,
@@ -3747,21 +3747,21 @@
    "shadows": [],
    "x": 0,
    "fontWeight": 400,
-   "fontSize": 16,
    "y": 0,
-   "opacity": 1,
-   "width": 820,
    "border": {
-    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ]
+    ],
+    "width": 0
    },
-   "fontFamily": "Instrument Sans",
-   "height": 1180
+   "height": 1180,
+   "width": 820,
+   "opacity": 1,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans"
   },
   "frame.sidebar.column": {
    "color": [
@@ -3772,7 +3772,7 @@
    ],
    "radius": 0,
    "letterSpacing": -0.096,
-   "backdropBlur": 0,
+   "gap": 0,
    "margin": [
     0,
     0,
@@ -3786,7 +3786,7 @@
     0
    ],
    "gradient": null,
-   "gap": 0,
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -3796,22 +3796,22 @@
    ],
    "shadows": [],
    "x": 8,
-   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
    "y": 32,
+   "height": 1128,
+   "opacity": 1,
    "border": {
+    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ],
-    "width": 0
+    ]
    },
-   "height": 1128,
    "width": 320,
-   "fontWeight": 400,
-   "fontSize": 16,
-   "opacity": 1
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400
   },
   "frame.sidebar.section": {
    "color": [
@@ -3829,7 +3829,6 @@
     0,
     0
    ],
-   "letterSpacing": -0.096,
    "padding": [
     0,
     0,
@@ -3837,6 +3836,7 @@
     0
    ],
    "gradient": null,
+   "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -3846,9 +3846,9 @@
    ],
    "shadows": [],
    "x": 18,
-   "fontFamily": "Instrument Sans",
    "y": 622,
-   "height": 122,
+   "fontSize": 16,
+   "fontWeight": 400,
    "border": {
     "color": [
      242,
@@ -3859,9 +3859,9 @@
     "width": 0
    },
    "width": 300,
-   "opacity": 1,
-   "fontSize": 16,
-   "fontWeight": 400
+   "height": 122,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1
   },
   "frame.topbar.new.icon": {
    "color": [
@@ -3871,8 +3871,8 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
    "letterSpacing": -0.096,
+   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -3886,7 +3886,7 @@
     0
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "gap": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -3896,22 +3896,22 @@
    ],
    "shadows": [],
    "x": 765,
-   "fontWeight": 400,
-   "fontFamily": "Instrument Sans",
+   "y": 55,
+   "opacity": 1,
    "height": 22,
+   "fontFamily": "Instrument Sans",
+   "width": 22,
+   "fontSize": 16,
+   "fontWeight": 400,
    "border": {
+    "width": 0,
     "color": [
      250,
      250,
      250,
      1
-    ],
-    "width": 0
-   },
-   "y": 55,
-   "width": 22,
-   "fontSize": 16,
-   "opacity": 1
+    ]
+   }
   },
   "frame.content": {
    "color": [
@@ -3921,8 +3921,8 @@
     1
    ],
    "radius": 18,
-   "backdropBlur": 30,
    "letterSpacing": -0.096,
+   "backdropBlur": 30,
    "margin": [
     0,
     0,
@@ -3935,8 +3935,8 @@
     0,
     0
    ],
-   "gap": 0,
    "gradient": null,
+   "gap": 0,
    "lineHeight": 24.799999,
    "background": [
     24,
@@ -3948,73 +3948,73 @@
     {
      "y": 0,
      "spread": 1,
-     "inset": true,
      "blur": 0,
-     "x": 0,
      "color": [
       255,
       255,
       255,
       0.08
-     ]
+     ],
+     "x": 0,
+     "inset": true
     },
     {
      "y": 0,
      "spread": 1,
      "blur": 0,
+     "inset": false,
+     "x": 0,
      "color": [
       0,
       0,
       0,
       0.4
-     ],
-     "x": 0,
-     "inset": false
+     ]
     },
     {
      "y": 1,
      "spread": 0,
-     "blur": 2,
      "color": [
       0,
       0,
       0,
       0.3
      ],
+     "blur": 2,
      "x": 0,
      "inset": false
     },
     {
-     "y": 16,
      "color": [
       0,
       0,
       0,
       0.6
      ],
-     "blur": 40,
+     "y": 16,
      "spread": -14,
+     "blur": 40,
      "x": 0,
      "inset": false
     }
    ],
    "x": 336,
-   "fontSize": 16,
-   "opacity": 1,
-   "height": 1128,
    "y": 32,
-   "fontWeight": 400,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
    "border": {
-    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ]
+    ],
+    "width": 0
    },
-   "width": 476,
-   "fontFamily": "Instrument Sans"
+   "fontSize": 16,
+   "fontWeight": 400,
+   "height": 1128,
+   "width": 476
   },
   "frame.tab.home.icon": {
    "color": [
@@ -4049,13 +4049,13 @@
    ],
    "shadows": [],
    "x": 460,
+   "fontFamily": "Instrument Sans",
    "y": 57.5,
-   "opacity": 1,
    "fontSize": 17,
    "height": 17,
    "width": 17,
+   "opacity": 1,
    "fontWeight": 600,
-   "fontFamily": "Instrument Sans",
    "border": {
     "color": [
      250,
@@ -4074,8 +4074,8 @@
     1
    ],
    "radius": 6,
-   "gap": 0,
    "letterSpacing": 0.52,
+   "gap": 0,
    "margin": [
     0,
     0,
@@ -4088,8 +4088,8 @@
     0,
     0
    ],
-   "gradient": null,
    "backdropBlur": 0,
+   "gradient": null,
    "lineHeight": 18,
    "background": [
     0,
@@ -4099,22 +4099,22 @@
    ],
    "shadows": [],
    "x": 24,
-   "fontSize": 13,
-   "opacity": 1,
+   "fontWeight": 600,
+   "y": 622,
+   "height": 28,
    "border": {
-    "width": 0,
     "color": [
      166,
      166,
      174,
      1
-    ]
+    ],
+    "width": 0
    },
-   "height": 28,
-   "fontFamily": "Instrument Sans",
-   "y": 622,
-   "fontWeight": 600,
-   "width": 24
+   "opacity": 1,
+   "width": 24,
+   "fontSize": 13,
+   "fontFamily": "Instrument Sans"
   },
   "frame.sidebar.starred.toggle": {
    "color": [
@@ -4124,17 +4124,17 @@
     1
    ],
    "radius": 6,
-   "backdropBlur": 0,
-   "letterSpacing": -0.096,
    "gap": 0,
-   "padding": [
+   "backdropBlur": 0,
+   "margin": [
     0,
     0,
     0,
     0
    ],
+   "letterSpacing": -0.096,
    "gradient": null,
-   "margin": [
+   "padding": [
     0,
     0,
     0,
@@ -4150,10 +4150,7 @@
    "shadows": [],
    "x": 290,
    "fontWeight": 400,
-   "fontSize": 16,
    "y": 246,
-   "height": 24,
-   "width": 24,
    "border": {
     "color": [
      147,
@@ -4164,7 +4161,10 @@
     "width": 0
    },
    "fontFamily": "Instrument Sans",
-   "opacity": 1
+   "fontSize": 16,
+   "opacity": 1,
+   "width": 24,
+   "height": 24
   },
   "frame.window": {
    "color": [
@@ -4175,7 +4175,7 @@
    ],
    "radius": 0,
    "letterSpacing": -0.096,
-   "gap": 0,
+   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -4189,7 +4189,7 @@
     0
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "gap": 0,
    "lineHeight": 24.799999,
    "background": [
     16,
@@ -4199,8 +4199,12 @@
    ],
    "shadows": [],
    "x": 0,
-   "fontFamily": "Instrument Sans",
+   "y": 0,
    "opacity": 1,
+   "height": 1180,
+   "fontSize": 16,
+   "width": 820,
+   "fontFamily": "Instrument Sans",
    "fontWeight": 400,
    "border": {
     "width": 0,
@@ -4210,11 +4214,7 @@
      243,
      1
     ]
-   },
-   "width": 820,
-   "y": 0,
-   "height": 1180,
-   "fontSize": 16
+   }
   },
   "frame.sidebar.item.active.icon": {
    "color": [
@@ -4224,8 +4224,8 @@
     1
    ],
    "radius": 0,
+   "backdropBlur": 0,
    "letterSpacing": -0.096,
-   "gap": 0,
    "margin": [
     0,
     0,
@@ -4239,7 +4239,7 @@
     0
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "gap": 0,
    "lineHeight": 22,
    "background": [
     0,
@@ -4249,8 +4249,12 @@
    ],
    "shadows": [],
    "x": 30,
+   "y": 156,
+   "opacity": 1,
+   "height": 20,
    "fontSize": 17,
-   "fontFamily": "Instrument Sans",
+   "width": 20,
+   "fontWeight": 600,
    "border": {
     "width": 0,
     "color": [
@@ -4260,11 +4264,7 @@
      1
     ]
    },
-   "opacity": 1,
-   "width": 20,
-   "y": 156,
-   "height": 20,
-   "fontWeight": 600
+   "fontFamily": "Instrument Sans"
   },
   "frame.tabs": {
    "color": [
@@ -4299,21 +4299,21 @@
    ],
    "shadows": [],
    "x": 442,
-   "fontSize": 16,
-   "fontFamily": "Instrument Sans",
    "y": 42,
-   "opacity": 1,
-   "width": 256,
-   "height": 48,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
    "border": {
+    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ],
-    "width": 0
+    ]
    },
+   "width": 256,
+   "height": 48,
+   "opacity": 1,
    "fontWeight": 400
   },
   "frame.topbar.new": {
@@ -4324,22 +4324,22 @@
     1
    ],
    "radius": 999,
-   "gap": 0,
-   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "padding": [
-    0,
-    10,
-    0,
-    10
-   ],
-   "gradient": null,
+   "gap": 0,
    "margin": [
     0,
     0,
     0,
     0
    ],
+   "padding": [
+    0,
+    10,
+    0,
+    10
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -4349,13 +4349,11 @@
    ],
    "shadows": [],
    "x": 754,
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 400,
    "y": 44,
-   "height": 44,
-   "width": 44,
-   "opacity": 1,
    "fontSize": 16,
+   "height": 44,
+   "opacity": 1,
+   "width": 44,
    "border": {
     "width": 0,
     "color": [
@@ -4364,7 +4362,9 @@
      250,
      1
     ]
-   }
+   },
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400
   },
   "frame.sidebar.topbar": {
    "color": [
@@ -4374,8 +4374,8 @@
     1
    ],
    "radius": 0,
+   "gap": 4,
    "backdropBlur": 0,
-   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -4389,7 +4389,7 @@
     12
    ],
    "gradient": null,
-   "gap": 4,
+   "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -4399,21 +4399,21 @@
    ],
    "shadows": [],
    "x": 8,
-   "fontWeight": 400,
-   "fontFamily": "Instrument Sans",
+   "y": 32,
    "opacity": 1,
    "height": 52,
-   "width": 320,
-   "y": 32,
    "fontSize": 16,
+   "width": 320,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
    "border": {
+    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ],
-    "width": 0
+    ]
    }
   },
   "frame.sidebar.folder.row": {
@@ -4425,7 +4425,7 @@
    ],
    "radius": 6,
    "letterSpacing": -0.096,
-   "backdropBlur": 0,
+   "gap": 0,
    "margin": [
     0,
     0,
@@ -4438,8 +4438,8 @@
     0,
     0
    ],
+   "backdropBlur": 0,
    "gradient": null,
-   "gap": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -4449,22 +4449,22 @@
    ],
    "shadows": [],
    "x": 18,
-   "fontWeight": 400,
    "y": 654,
+   "opacity": 1,
+   "height": 44,
+   "fontSize": 16,
+   "width": 300,
+   "fontFamily": "Instrument Sans",
    "border": {
-    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ]
+    ],
+    "width": 0
    },
-   "opacity": 1,
-   "width": 300,
-   "fontFamily": "Instrument Sans",
-   "height": 44,
-   "fontSize": 16
+   "fontWeight": 400
   },
   "frame.canvas": {
    "color": [
@@ -4474,8 +4474,8 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
    "gap": 8,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -4489,7 +4489,7 @@
     8
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     12,
@@ -4500,21 +4500,21 @@
    "shadows": [],
    "x": 0,
    "y": 0,
-   "opacity": 1,
+   "fontWeight": 400,
+   "height": 1180,
    "border": {
-    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ]
+    ],
+    "width": 0
    },
-   "height": 1180,
-   "width": 820,
-   "fontWeight": 400,
    "fontSize": 16,
-   "fontFamily": "Instrument Sans"
+   "width": 820,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1
   },
   "frame.sidebar.search": {
    "color": [
@@ -4524,15 +4524,14 @@
     1
    ],
    "radius": 999,
+   "gap": 8,
    "letterSpacing": -0.096,
-   "backdropBlur": 0,
    "margin": [
     0,
     0,
     0,
     0
    ],
-   "gap": 8,
    "padding": [
     0,
     6,
@@ -4540,6 +4539,7 @@
     14
    ],
    "gradient": null,
+   "backdropBlur": 0,
    "lineHeight": 20,
    "background": [
     255,
@@ -4550,21 +4550,24 @@
    "shadows": [
     {
      "y": 0,
-     "inset": true,
-     "blur": 0,
-     "spread": 1,
-     "x": 0,
      "color": [
       255,
       255,
       255,
       0.1
-     ]
+     ],
+     "blur": 0,
+     "inset": true,
+     "x": 0,
+     "spread": 1
     }
    ],
    "x": 18,
-   "fontSize": 17,
+   "y": 88,
    "opacity": 1,
+   "height": 44,
+   "fontSize": 17,
+   "width": 300,
    "border": {
     "width": 0,
     "color": [
@@ -4574,9 +4577,6 @@
      1
     ]
    },
-   "y": 88,
-   "width": 300,
-   "height": 44,
    "fontWeight": 400,
    "fontFamily": "Instrument Sans"
   },
@@ -4588,22 +4588,22 @@
     0.9
    ],
    "radius": 0,
-   "backdropBlur": 0,
-   "gap": 0,
    "letterSpacing": -0.096,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "backdropBlur": 0,
    "margin": [
     0,
     0,
     0,
     0
    ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
    "gradient": null,
+   "gap": 0,
    "lineHeight": 22,
    "background": [
     0,
@@ -4614,7 +4614,7 @@
    "shadows": [],
    "x": 62,
    "fontFamily": "Instrument Sans",
-   "fontWeight": 400,
+   "y": 385,
    "height": 22,
    "border": {
     "width": 0,
@@ -4625,10 +4625,10 @@
      0.9
     ]
    },
-   "y": 385,
-   "fontSize": 17,
    "width": 244,
-   "opacity": 1
+   "fontWeight": 400,
+   "opacity": 1,
+   "fontSize": 17
   },
   "frame.sidebar.item.active": {
    "color": [
@@ -4638,21 +4638,21 @@
     1
    ],
    "radius": 999,
-   "gap": 12,
    "backdropBlur": 0,
-   "letterSpacing": -0.096,
-   "padding": [
-    0,
-    12,
-    0,
-    12
-   ],
-   "gradient": null,
+   "gap": 12,
    "margin": [
     0,
     0,
     2,
     0
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "padding": [
+    0,
+    12,
+    0,
+    12
    ],
    "lineHeight": 22,
    "background": [
@@ -4663,22 +4663,22 @@
    ],
    "shadows": [],
    "x": 18,
-   "fontWeight": 600,
+   "y": 144,
+   "opacity": 1,
+   "fontSize": 17,
    "fontFamily": "Instrument Sans",
+   "height": 44,
+   "fontWeight": 600,
+   "width": 300,
    "border": {
-    "width": 0,
     "color": [
      250,
      250,
      250,
      1
-    ]
-   },
-   "y": 144,
-   "width": 300,
-   "opacity": 1,
-   "fontSize": 17,
-   "height": 44
+    ],
+    "width": 0
+   }
   },
   "frame.topbar.back": {
    "color": [
@@ -4713,11 +4713,6 @@
    ],
    "shadows": [],
    "x": 350,
-   "fontSize": 16,
-   "y": 44,
-   "fontFamily": "Instrument Sans",
-   "height": 44,
-   "width": 44,
    "fontWeight": 400,
    "opacity": 0.4,
    "border": {
@@ -4728,7 +4723,12 @@
      250,
      1
     ]
-   }
+   },
+   "fontSize": 16,
+   "width": 44,
+   "y": 44,
+   "fontFamily": "Instrument Sans",
+   "height": 44
   },
   "frame.tab.link": {
    "color": [
@@ -4738,22 +4738,22 @@
     1
    ],
    "radius": 0,
+   "letterSpacing": -0.096,
    "gap": 8,
-   "backdropBlur": 0,
    "margin": [
     0,
     0,
     0,
     0
    ],
-   "letterSpacing": -0.096,
-   "gradient": null,
    "padding": [
     0,
     0,
     0,
     0
    ],
+   "gradient": null,
+   "backdropBlur": 0,
    "lineHeight": 22,
    "background": [
     0,
@@ -4763,8 +4763,8 @@
    ],
    "shadows": [],
    "x": 374.33,
-   "y": 55,
    "fontSize": 17,
+   "opacity": 1,
    "border": {
     "width": 0,
     "color": [
@@ -4774,11 +4774,11 @@
      1
     ]
    },
-   "opacity": 1,
+   "fontWeight": 400,
    "width": 94,
-   "fontFamily": "Instrument Sans",
    "height": 22,
-   "fontWeight": 400
+   "y": 55,
+   "fontFamily": "Instrument Sans"
   },
   "frame.tab.close": {
    "color": [
@@ -4788,8 +4788,8 @@
     1
    ],
    "radius": 999,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "gap": 0,
    "margin": [
     0,
     0,
@@ -4803,7 +4803,7 @@
     0
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "gap": 0,
    "lineHeight": 22,
    "background": [
     0,
@@ -4813,22 +4813,22 @@
    ],
    "shadows": [],
    "x": 476.33,
-   "y": 52,
-   "opacity": 0,
-   "fontFamily": "Instrument Sans",
    "fontSize": 17,
+   "opacity": 0,
+   "height": 28,
+   "y": 52,
+   "width": 28,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
    "border": {
-    "width": 0,
     "color": [
      166,
      166,
      174,
      1
-    ]
-   },
-   "width": 28,
-   "height": 28,
-   "fontWeight": 400
+    ],
+    "width": 0
+   }
   },
   "frame.tab.home.off": {
    "color": [
@@ -4838,8 +4838,8 @@
     1
    ],
    "radius": 999,
-   "gap": 8,
    "letterSpacing": -0.096,
+   "gap": 8,
    "backdropBlur": 0,
    "padding": [
     0,
@@ -4863,7 +4863,7 @@
    ],
    "shadows": [],
    "x": 254,
-   "y": 46,
+   "fontSize": 17,
    "fontWeight": 400,
    "border": {
     "color": [
@@ -4874,11 +4874,11 @@
     ],
     "width": 0
    },
-   "fontFamily": "Instrument Sans",
-   "width": 100.33,
-   "opacity": 1,
    "height": 40,
-   "fontSize": 17
+   "width": 100.33,
+   "fontFamily": "Instrument Sans",
+   "y": 46,
+   "opacity": 1
   },
   "frame.tab.icon": {
    "color": [
@@ -4888,15 +4888,15 @@
     1
    ],
    "radius": 0,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "gap": 0,
    "margin": [
     0,
     0,
     0,
     0
    ],
-   "letterSpacing": -0.096,
+   "gap": 0,
    "gradient": null,
    "padding": [
     0,
@@ -4913,13 +4913,63 @@
    ],
    "shadows": [],
    "x": 374.33,
+   "fontSize": 17,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   },
+   "opacity": 0.7,
+   "width": 14,
    "y": 59,
+   "fontWeight": 400,
+   "height": 14
+  },
+  "frame.tab.label": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 396.33,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 22,
+   "y": 55,
+   "width": 39.25,
    "fontSize": 17,
    "fontWeight": 400,
-   "fontFamily": "Instrument Sans",
-   "opacity": 0.7,
-   "height": 14,
-   "width": 14,
    "border": {
     "width": 0,
     "color": [
@@ -4930,56 +4980,6 @@
     ]
    }
   },
-  "frame.tab.label": {
-   "color": [
-    166,
-    166,
-    174,
-    1
-   ],
-   "radius": 0,
-   "gap": 0,
-   "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "letterSpacing": -0.096,
-   "gradient": null,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "lineHeight": 22,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 396.33,
-   "y": 55,
-   "fontSize": 17,
-   "fontWeight": 400,
-   "height": 22,
-   "width": 39.25,
-   "opacity": 1,
-   "border": {
-    "color": [
-     166,
-     166,
-     174,
-     1
-    ],
-    "width": 0
-   },
-   "fontFamily": "Instrument Sans"
-  },
   "frame.tab": {
    "color": [
     166,
@@ -4988,22 +4988,22 @@
     1
    ],
    "radius": 999,
+   "backdropBlur": 0,
    "gap": 8,
-   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
     0,
     0
    ],
+   "letterSpacing": -0.096,
+   "gradient": null,
    "padding": [
     0,
     6,
     0,
     14
    ],
-   "gradient": null,
-   "backdropBlur": 0,
    "lineHeight": 22,
    "background": [
     0,
@@ -5013,9 +5013,8 @@
    ],
    "shadows": [],
    "x": 360.33,
-   "y": 46,
-   "opacity": 1,
    "fontSize": 17,
+   "y": 46,
    "height": 40,
    "border": {
     "width": 0,
@@ -5026,9 +5025,10 @@
      1
     ]
    },
-   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
    "width": 150,
-   "fontFamily": "Instrument Sans"
+   "opacity": 1,
+   "fontWeight": 400
   },
   "frame.topbar.forward": {
    "color": [
@@ -5039,8 +5039,8 @@
    ],
    "radius": 999,
    "letterSpacing": -0.096,
-   "backdropBlur": 0,
    "gap": 0,
+   "backdropBlur": 0,
    "padding": [
     0,
     10,
@@ -5063,11 +5063,8 @@
    ],
    "shadows": [],
    "x": 394,
-   "y": 44,
-   "fontFamily": "Instrument Sans",
    "fontWeight": 400,
-   "opacity": 0.4,
-   "height": 44,
+   "fontFamily": "Instrument Sans",
    "border": {
     "color": [
      250,
@@ -5077,6 +5074,9 @@
     ],
     "width": 0
    },
+   "height": 44,
+   "y": 44,
+   "opacity": 0.4,
    "width": 44,
    "fontSize": 16
   }

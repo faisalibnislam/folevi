@@ -1,6 +1,24 @@
 {
   "releases": [
     {
+      "version": "1.2.11",
+      "build": 23,
+      "released": "2026-10-31T23:11:14+06:00",
+      "type": "patch",
+      "summary": "Notes look like themselves, and a better iPhone editor",
+      "improved": [
+        "On iPhone, charts, mind maps, flowcharts, sticky notes, wireframes and whiteboards show as preview cards that open full screen",
+        "Tables on iPhone are easier to read, with even rows and columns that fit their text",
+        "The / menu on iPhone spans the screen and stays clear of the keyboard",
+        "The notes peeking out of folders on Mac show more of their text, as on the web"
+      ],
+      "fixed": [
+        "On Mac, iPhone and iPad, notes with a style show it on their cards and in folders: the style's image down the side, and its page and text colours",
+        "Notes with your own style image show that image and its colours on their cards"
+      ],
+      "tag": "v1.2.11"
+    },
+    {
       "version": "1.2.10",
       "build": 22,
       "released": "2026-10-31T21:03:47+06:00",

@@ -4,6 +4,24 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.11: Small update
+
+Released 2026-10-31 23:11:14+06:00 (build 23, tag v1.2.11)
+
+Notes look like themselves, and a better iPhone editor
+
+### Improved
+
+- On iPhone, charts, mind maps, flowcharts, sticky notes, wireframes and whiteboards show as preview cards that open full screen
+- Tables on iPhone are easier to read, with even rows and columns that fit their text
+- The / menu on iPhone spans the screen and stays clear of the keyboard
+- The notes peeking out of folders on Mac show more of their text, as on the web
+
+### Fixed
+
+- On Mac, iPhone and iPad, notes with a style show it on their cards and in folders: the style's image down the side, and its page and text colours
+- Notes with your own style image show that image and its colours on their cards
+
 ## Version 1.2.10: Small update
 
 Released 2026-10-31 21:03:47+06:00 (build 22, tag v1.2.10)

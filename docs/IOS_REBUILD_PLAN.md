@@ -299,6 +299,37 @@ I1 is done but for Foli AI's sheet (I5) and tap checks (need Simulator input all
   This is today's frame from this branch's build, not the App Store binary (the Simulator can't install that one);
   a TestFlight-to-rebuild check on a device waits for the one build at the end.
 
-Next: I3, the lists (Home, All notes, folders, Starred, Shared, Drafts, search, Notifications), which replace the
-placeholder screens. Left in I2: email and password and TOTP sign-in are the website's in the sign-in sheet, as
-today (no native form); account-mode sign-out and place switching want a run with a scratch test account.
+Left in I2: email and password and TOTP sign-in are the website's in the sign-in sheet, as today (no native form);
+account-mode sign-out and place switching want a run with a scratch test account.
+
+**I3 started (2026-10-31):**
+- **Method**, as I2's: `apps/ios/scripts/screen-match.mjs` seeds one scratch library on a fresh install (the
+  sample notes and folders, a note made and starred, one archived, through the engine), then opens each screen in
+  the web frame and in the new frame, light and dark, and compares the whole screen. `--styles` measures the web's
+  elements for the native screens (`packages/design-tokens/match/app-styles/phone.json`, iPhone only, skipped by
+  the Mac's run) into `phone.ios.json`; `scripts/web-styles.mjs` keeps styles only the iPhone has. Debug hooks:
+  FOLEVI_REBUILD_SCROLL (a screen's lower part), FOLEVI_GATE_NO_KEYBOARD (search and the lock without the keyboard).
+  Times ("4 mins ago") come from the clock on both sides: run `--no-seed` an hour after seeding for steady shots.
+- **Home** (FoleviPhone `PhoneHome.swift`, from HomeModel): the avatar, the pill (the bell only signed in), the
+  search field, recent cards, Catch me up and the rows, Starred, Folders (cards and their menu), Tags (folding),
+  Templates, Archive, Trash. The phone's card rules (globals.css `:root[data-iphone]`): 18 pt open edge, one date,
+  balanced Spectral 17/22 titles, folder names 20/24, the dark folder tones. Line boxes shorter than the font (the
+  large titles) now keep their CSS height on iOS (WebText).
+- **Note lists** (`PhoneNotesList.swift`, from NotesListModel): All notes, Drafts, Starred, Archive, Trash,
+  Templates, a folder (its folders first), a tag; cards or rows, the search field, the empty screens, View as and
+  Sort; Select mode (Select All, the count, Done, checks and rings, the action bar in the tab bar's place); swipe
+  actions on rows (`PhoneSwipe.swift`, the web's SwipeRow); the long-press menu (the web's items; menus now blur
+  what's behind them on iOS); Move, Copy and the confirmations (the kit's sheets); pull to refresh (iOS's own).
+- **Search** (`PhoneSearch.swift`, from SearchModel): the palette's full screen, chips with their menus, Recent,
+  Actions, notes found with the words marked, by meaning.
+- **Comparisons now** (light/dark): Starred 0.04%, Archive 0.03%, Trash 0.09% pass; Drafts 0.54/0.50%, Home 0.59/1.62%,
+  Home's lower half 1.4%, All notes 1.1%, search 2.7% typed (5% empty: item 4). The gates are unchanged. What's left:
+  1. iOS WebKit's `text-wrap: pretty` in the cards' line-clamped previews makes several short even lines (sometimes
+     more lines than plain wrapping); no simple model of it fits the 46 paragraphs measured yet.
+  2. WebKit and Core Text shape Instrument Sans a little differently (digits about 4% wider in WebKit, letters about
+     1% narrower; the same font file, features make no difference): now and then a line breaks one word apart.
+  3. The folder card's paper text and a 3 pt difference in the folder card's height on the phone.
+  4. Search's Recent: the web asks a live query that local mode never answers, so it shows nothing; native shows the
+     recently edited notes. (Looks like a web bug in local mode.)
+- Not yet: Notifications (a sheet from the bell, account mode), Shared with Me and Changes, All folders, the tag
+  screen's check, New folder from Home (it says it's coming), the folder screen's own menu, iPad.

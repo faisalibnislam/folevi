@@ -4,6 +4,28 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.09: Small update
+
+Released 2026-10-31 20:21:47+06:00 (build 21, tag v1.2.09)
+
+Roomier menus and a cleaner Mac
+
+### Improved
+
+- Menus on Mac have more room: taller rows and more space around their icons and separators
+- Editor text size in Settings is a slider, as on the web
+- Text in cards, dialogs, empty pages and tasks breaks onto lines where the web breaks it
+- The sidebar shows where you are on every view of a page: Tasks on any list, the Calendar on any day, the Vault on any section, and Folders or Tags while their page is open
+
+### Fixed
+
+- Move folder and other dialogs with a long description no longer cut off what's inside them
+- A tab's preview shows under its tab, not beside it
+- The Vault's Add dialog shows every field with room to type, and its kind picker spans the dialog
+- Dialogs on Mac have a Close button
+- Help, Graph, Reviews, Shared with Me and Changes have the white background they have on the web
+- Tags show their full page count
+
 ## Version 1.2.08: Small update
 
 Released 2026-10-31 15:15:16+06:00 (build 20, tag v1.2.08)

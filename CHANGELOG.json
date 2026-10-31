@@ -1,6 +1,28 @@
 {
   "releases": [
     {
+      "version": "1.2.09",
+      "build": 21,
+      "released": "2026-10-31T20:21:47+06:00",
+      "type": "patch",
+      "summary": "Roomier menus and a cleaner Mac",
+      "improved": [
+        "Menus on Mac have more room: taller rows and more space around their icons and separators",
+        "Editor text size in Settings is a slider, as on the web",
+        "Text in cards, dialogs, empty pages and tasks breaks onto lines where the web breaks it",
+        "The sidebar shows where you are on every view of a page: Tasks on any list, the Calendar on any day, the Vault on any section, and Folders or Tags while their page is open"
+      ],
+      "fixed": [
+        "Move folder and other dialogs with a long description no longer cut off what's inside them",
+        "A tab's preview shows under its tab, not beside it",
+        "The Vault's Add dialog shows every field with room to type, and its kind picker spans the dialog",
+        "Dialogs on Mac have a Close button",
+        "Help, Graph, Reviews, Shared with Me and Changes have the white background they have on the web",
+        "Tags show their full page count"
+      ],
+      "tag": "v1.2.09"
+    },
+    {
       "version": "1.2.08",
       "build": 20,
       "released": "2026-10-31T15:15:16+06:00",

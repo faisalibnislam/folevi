@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "note.theme.set",
+  "description": "A theme the plan doesn't include.",
+  "args": {
+    "id": "doc_00003",
+    "theme": "art-60"
+  },
+  "error": {
+    "code": "unavailable",
+    "message": "Studio light is for Pro plans and up. Change your plan in Settings, under Plan & billing."
+  }
+}

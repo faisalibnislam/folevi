@@ -1,0 +1,90 @@
+{
+  "kind": "view",
+  "name": "note.style",
+  "description": "The Style tool for a note with a theme and a chosen page colour (revision 22).",
+  "args": {
+    "id": "doc_00003"
+  },
+  "value": {
+    "found": true,
+    "canEdit": true,
+    "current": "art-27",
+    "styleName": "Harbour",
+    "themeId": "art-27",
+    "ownImage": false,
+    "themes": [
+      {
+        "id": "art-01",
+        "name": "Poppy print",
+        "thumb": null,
+        "locked": false
+      },
+      {
+        "id": "art-27",
+        "name": "Harbour",
+        "thumb": null,
+        "locked": false
+      },
+      {
+        "id": "art-60",
+        "name": "Studio light",
+        "thumb": "https://themes.folevi.com/art-60-thumb.webp",
+        "locked": true
+      }
+    ],
+    "hasBackdrop": true,
+    "blur": false,
+    "sheet": "paper",
+    "text": null,
+    "sheetColor": "#fbf8f2",
+    "textColor": "#23406f",
+    "autoPaper": "#eef3f8",
+    "autoInk": "#23406f",
+    "font": "serif",
+    "separator": "line",
+    "width": "default",
+    "sheets": [
+      {
+        "id": "white",
+        "name": "White",
+        "color": "#ffffff"
+      },
+      {
+        "id": "paper",
+        "name": "Paper",
+        "color": "#fbf8f2"
+      }
+    ],
+    "texts": [
+      {
+        "id": "ink",
+        "name": "Ink",
+        "color": "#1c1c1f"
+      }
+    ],
+    "fonts": [
+      {
+        "id": "modern",
+        "name": "Modern"
+      },
+      {
+        "id": "serif",
+        "name": "Serif"
+      }
+    ],
+    "separators": [
+      {
+        "id": "line",
+        "name": "Line"
+      },
+      {
+        "id": "dots",
+        "name": "Dots"
+      },
+      {
+        "id": "doodle",
+        "name": "Doodle"
+      }
+    ]
+  }
+}

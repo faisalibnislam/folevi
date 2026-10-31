@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "comment.create",
+  "description": "A comment on the whole note (revision 22).",
+  "args": {
+    "noteId": "doc_00001",
+    "text": "Looks good to me."
+  },
+  "result": {
+    "threadId": "thr_9",
+    "commentId": "cmt_9"
+  }
+}

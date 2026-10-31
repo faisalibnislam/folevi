@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "comment.reply",
+  "description": "A reply.",
+  "args": {
+    "threadId": "thr_1",
+    "text": "Thanks!"
+  },
+  "result": {
+    "commentId": "cmt_10"
+  }
+}

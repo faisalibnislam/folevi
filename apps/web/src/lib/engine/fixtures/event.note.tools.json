@@ -93,7 +93,27 @@
           "resolvedBy": null,
           "unread": true,
           "lastActivityAt": 1761600000000,
-          "waiting": null
+          "waiting": null,
+          "comments": [
+            {
+              "id": "cmt_1",
+              "author": "Mira",
+              "avatarUrl": null,
+              "text": "Reservations open two months ahead.",
+              "deleted": false,
+              "createdAt": 1761500000000
+            },
+            {
+              "id": "cmt_2",
+              "author": "Sam",
+              "avatarUrl": null,
+              "text": "@Mira booked for the 14th.",
+              "deleted": false,
+              "createdAt": 1761600000000
+            }
+          ],
+          "canResolve": true,
+          "canDelete": false
         }
       ]
     },

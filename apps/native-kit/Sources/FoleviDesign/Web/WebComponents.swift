@@ -43,7 +43,18 @@ public struct WebButton: View {
             WebButtonLabel(title: title, icon: icon, style: style, iconSize: iconSize, iconOpacity: iconOpacity)
         }
         .buttonStyle(WebPressStyle())
-        .opacity(enabled ? 1 : 0.4)
+        // (CSS opacity fades the button as one picture, not its fill and label each.)
+        .compositingGroup()
+        .opacity(enabled ? 1 : Self.disabledOpacity)
+    }
+
+    /// `.ui-btn:disabled`: 0.5, and 0.4 on the Mac (`[data-desktop="mac"]`).
+    static var disabledOpacity: CGFloat {
+        #if os(macOS)
+        0.4
+        #else
+        0.5
+        #endif
     }
 }
 

@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "note.theme.set",
+  "description": "Pick a theme (revision 22).",
+  "args": {
+    "id": "doc_00003",
+    "theme": "art-01"
+  },
+  "result": {
+    "ok": true
+  }
+}

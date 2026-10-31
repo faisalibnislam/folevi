@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "comment.create",
+  "description": "Local mode: no comments.",
+  "args": {
+    "noteId": "doc_00001",
+    "text": "Hi"
+  },
+  "error": {
+    "code": "unavailable",
+    "message": "Comments need a Folevi account."
+  }
+}

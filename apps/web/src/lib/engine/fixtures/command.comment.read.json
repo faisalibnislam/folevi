@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "comment.read",
+  "description": "Mark a thread unread.",
+  "args": {
+    "threadId": "thr_1",
+    "read": false
+  },
+  "result": {
+    "ok": true
+  }
+}

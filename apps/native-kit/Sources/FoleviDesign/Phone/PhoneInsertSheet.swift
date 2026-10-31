@@ -286,68 +286,91 @@ public struct PhoneInsertSheetContent: View {
     }
 }
 
-/// A tile's label: Subheadline on 16 pt lines, centred, at most two (`line-clamp-2 break-words leading-4`). The
-/// lines are broken here, by words and inside a word too long for one, since SwiftUI won't set lines closer than
-/// the font's own height.
-struct TileLabel: View {
+/// Text on exact CSS line boxes, clamped (`line-clamp-N break-words`: words wrapped greedily, a word too long for a
+/// line broken inside, the last line cut with an ellipsis), as wide as the space it's given. WebClampedText does
+/// the same at a width the caller knows; this one measures its own and breaks inside long words as `break-words`.
+public struct WebFittedLines: View {
     let text: String
-    @State private var width: CGFloat = 0
-    static let style = WebTextStyle(size: WebTypeRole.subheadline.metrics.size, leading: 16)
+    let style: WebTextStyle
+    let maxLines: Int
+    let alignment: HorizontalAlignment
 
-    var body: some View {
-        let lines = Self.lines(text, width: width)
-        // (The lines sit over a box as wide as the column: they never widen it.)
-        Color.clear
-            .frame(maxWidth: .infinity)
-            .frame(height: CGFloat(lines.count) * Self.style.leading)
-            .overlay(alignment: .top) {
-                VStack(spacing: 0) {
-                    ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-                        Text(line).webText(Self.style).lineLimit(1).fixedSize()
-                    }
+    public init(_ text: String, style: WebTextStyle, maxLines: Int, alignment: HorizontalAlignment = .leading) {
+        self.text = text
+        self.style = style
+        self.maxLines = maxLines
+        self.alignment = alignment
+    }
+
+    public var body: some View {
+        // One pass: the layout takes the width it's offered and is as tall as the lines that makes; the canvas
+        // breaks the same lines at that width and sets each in its CSS line box.
+        FittedLinesLayout(text: text, style: style, maxLines: maxLines) {
+            Canvas { context, size in
+                let lines = Self.lines(text, style: style, width: size.width, maxLines: maxLines)
+                let font = style.ctFont
+                let ascent = CTFontGetAscent(font), descent = CTFontGetDescent(font)
+                let baseline = (style.leading - ascent - descent) / 2 + ascent
+                for (i, line) in lines.enumerated() {
+                    let resolved = context.resolve(Text(line).font(Font(font)).tracking(style.letterSpacing))
+                    let w = Self.measure(line, style)
+                    let x: CGFloat = alignment == .center ? (size.width - w) / 2 : alignment == .trailing ? size.width - w : 0
+                    // Its baseline on the CSS line box's.
+                    let first = resolved.firstBaseline(in: CGSize(width: CGFloat.greatestFiniteMagnitude, height: .greatestFiniteMagnitude))
+                    context.draw(resolved, at: CGPoint(x: x, y: CGFloat(i) * style.leading + baseline - first), anchor: .topLeading)
                 }
             }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(text)
     }
 
-    static func measure(_ s: String) -> CGFloat {
+    static func measure(_ s: String, _ style: WebTextStyle) -> CGFloat {
         let attrs: [NSAttributedString.Key: Any] = [NSAttributedString.Key(kCTFontAttributeName as String): style.ctFont, NSAttributedString.Key(kCTKernAttributeName as String): style.letterSpacing]
         let line = CTLineCreateWithAttributedString(NSAttributedString(string: s, attributes: attrs))
         return CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
     }
 
-    /// Greedy lines by words; a word wider than the line is broken where it runs out; two lines at most, the
-    /// second cut with an ellipsis.
-    static func lines(_ text: String, width: CGFloat) -> [String] {
+    static func lines(_ text: String, style: WebTextStyle, width: CGFloat, maxLines: Int) -> [String] {
         guard width > 0 else { return [text] }
+        let fits = { (s: String) in measure(s, style) <= width + 0.5 }
         var lines: [String] = []
-        var current = ""
-        for word in text.split(separator: " ").map(String.init) {
-            let tryLine = current.isEmpty ? word : current + " " + word
-            if measure(tryLine) <= width + 0.5 {
-                current = tryLine
-                continue
+        for paragraph in text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init) {
+            var current = ""
+            for word in paragraph.split(separator: " ").map(String.init) {
+                let tryLine = current.isEmpty ? word : current + " " + word
+                if fits(tryLine) {
+                    current = tryLine
+                    continue
+                }
+                if !current.isEmpty { lines.append(current) }
+                current = ""
+                var rest = word
+                while !fits(rest), rest.count > 1 {
+                    var cut = rest.count - 1
+                    while cut > 1, !fits(String(rest.prefix(cut))) { cut -= 1 }
+                    lines.append(String(rest.prefix(cut)))
+                    rest = String(rest.dropFirst(cut))
+                }
+                current = rest
             }
-            if !current.isEmpty { lines.append(current) }
-            current = ""
-            var rest = word
-            while measure(rest) > width + 0.5, rest.count > 1 {
-                var cut = rest.count - 1
-                while cut > 1, measure(String(rest.prefix(cut))) > width + 0.5 { cut -= 1 }
-                lines.append(String(rest.prefix(cut)))
-                rest = String(rest.dropFirst(cut))
-            }
-            current = rest
+            lines.append(current)
         }
-        if !current.isEmpty { lines.append(current) }
-        if lines.count > 2 {
-            var second = lines[1] + " " + lines[2...].joined(separator: " ")
-            while second.count > 1, measure(second + "…") > width + 0.5 { second.removeLast() }
-            lines = [lines[0], second + "…"]
+        if lines.count > maxLines {
+            var last = lines[maxLines - 1] + " " + lines[maxLines...].joined(separator: " ")
+            while last.count > 1, !fits(last + "…") { last.removeLast() }
+            lines = Array(lines.prefix(maxLines - 1)) + [last + "…"]
         }
         return lines
+    }
+}
+
+/// A tile's label: Subheadline on 16 pt lines, centred, at most two (`line-clamp-2 break-words leading-4`).
+struct TileLabel: View {
+    let text: String
+
+    var body: some View {
+        WebFittedLines(text, style: WebTextStyle(size: WebTypeRole.subheadline.metrics.size, leading: 16), maxLines: 2, alignment: .center)
     }
 }
 
@@ -411,5 +434,22 @@ extension PhoneInsertSheetContent {
         var v = PhoneInsertSheetContent(scanner: false, stockPhotos: true) { _ in }
         v.sampleTitles = titles
         return v
+    }
+}
+
+/// WebFittedLines' layout: the width offered, the height of its lines at that width.
+private struct FittedLinesLayout: Layout {
+    let text: String
+    let style: WebTextStyle
+    let maxLines: Int
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? WebFittedLines.measure(text, style)
+        let n = WebFittedLines.lines(text, style: style, width: width, maxLines: maxLines).count
+        return CGSize(width: width, height: CGFloat(max(1, n)) * style.leading)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for s in subviews { s.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size)) }
     }
 }

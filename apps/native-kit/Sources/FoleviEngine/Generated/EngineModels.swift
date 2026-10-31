@@ -7572,8 +7572,14 @@ public struct NoteToolsThread: Codable, Hashable, Sendable {
     public var lastActivityAt: Double
     /// "waiting" or "failed" while it's not on the server yet, else null.
     public var waiting: String?
+    /// Revision 22: every comment of the thread, oldest first (a thread on the whole note opens in the list).
+    public var comments: [NoteToolsComment]
+    /// Revision 22: this person may resolve or reopen it (`comment.resolve`).
+    public var canResolve: Bool
+    /// Revision 22: this person may delete it (`comment.deleteThread`).
+    public var canDelete: Bool
 
-    public init(id: String, blockId: String? = nil, anchor: String, author: String, avatarUrl: String? = nil, text: String, deleted: Bool, replies: Int, status: Status, resolvedBy: String? = nil, unread: Bool, lastActivityAt: Double, waiting: String? = nil) {
+    public init(id: String, blockId: String? = nil, anchor: String, author: String, avatarUrl: String? = nil, text: String, deleted: Bool, replies: Int, status: Status, resolvedBy: String? = nil, unread: Bool, lastActivityAt: Double, waiting: String? = nil, comments: [NoteToolsComment], canResolve: Bool, canDelete: Bool) {
         self.id = id
         self.blockId = blockId
         self.anchor = anchor
@@ -7587,6 +7593,9 @@ public struct NoteToolsThread: Codable, Hashable, Sendable {
         self.unread = unread
         self.lastActivityAt = lastActivityAt
         self.waiting = waiting
+        self.comments = comments
+        self.canResolve = canResolve
+        self.canDelete = canDelete
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -7604,6 +7613,39 @@ public struct NoteToolsThread: Codable, Hashable, Sendable {
         try container.encode(self.unread, forKey: .unread)
         try container.encode(self.lastActivityAt, forKey: .lastActivityAt)
         try container.encode(self.waiting, forKey: .waiting)
+        try container.encode(self.comments, forKey: .comments)
+        try container.encode(self.canResolve, forKey: .canResolve)
+        try container.encode(self.canDelete, forKey: .canDelete)
+    }
+}
+
+/// Revision 22: one comment of a thread.
+public struct NoteToolsComment: Codable, Hashable, Sendable {
+    public var id: String
+    public var author: String
+    public var avatarUrl: String?
+    /// Its text (plain; a mention as "@Name").
+    public var text: String
+    public var deleted: Bool
+    public var createdAt: Double
+
+    public init(id: String, author: String, avatarUrl: String? = nil, text: String, deleted: Bool, createdAt: Double) {
+        self.id = id
+        self.author = author
+        self.avatarUrl = avatarUrl
+        self.text = text
+        self.deleted = deleted
+        self.createdAt = createdAt
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.author, forKey: .author)
+        try container.encode(self.avatarUrl, forKey: .avatarUrl)
+        try container.encode(self.text, forKey: .text)
+        try container.encode(self.deleted, forKey: .deleted)
+        try container.encode(self.createdAt, forKey: .createdAt)
     }
 }
 
@@ -7751,5 +7793,275 @@ public struct FindResult: Codable, Hashable, Sendable {
         self.current = current
         self.truncated = truncated
         self.matches = matches
+    }
+}
+
+/// A note theme as the Style tool offers it.
+public struct NoteStyleTheme: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    /// Its small picture: a web address for a theme added since the app was built, else null (the app's own
+    /// covers/<id>-thumb.webp).
+    public var thumb: String?
+    /// Not on the plan where the note lives: picking it is refused with what it needs.
+    public var locked: Bool
+
+    public init(id: String, name: String, thumb: String? = nil, locked: Bool) {
+        self.id = id
+        self.name = name
+        self.thumb = thumb
+        self.locked = locked
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.thumb, forKey: .thumb)
+        try container.encode(self.locked, forKey: .locked)
+    }
+}
+
+/// A colour the Style tool offers (a page colour or a text colour).
+public struct NoteStyleColor: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    /// CSS hex.
+    public var color: String
+
+    public init(id: String, name: String, color: String) {
+        self.id = id
+        self.name = name
+        self.color = color
+    }
+}
+
+public struct NoteStyleOption: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+
+    public init(id: String, name: String) {
+        self.id = id
+        self.name = name
+    }
+}
+
+/// `note.style`: the Style tool for a note (components/doc/Inspector.tsx StylePanel).
+public struct NoteStyleValue: Codable, Hashable, Sendable {
+    public var found: Bool
+    public var canEdit: Bool
+    /// "plain", "image" (the person's own image) or the theme's id.
+    public var current: String
+    /// What the preview names it: the theme's name, "Your image" or "Plain".
+    public var styleName: String
+    /// The theme it has, if any (for its picture behind the preview).
+    public var themeId: String?
+    /// The note has the person's own image as its style.
+    public var ownImage: Bool
+    /// Published themes, plus the note's own even if it's been retired.
+    public var themes: [NoteStyleTheme]
+    /// The page has a background behind it (a theme's or an image), which can be blurred.
+    public var hasBackdrop: Bool
+    public var blur: Bool
+    /// The page and text colours chosen (null: Auto, from the theme).
+    public var sheet: String?
+    public var text: String?
+    /// The page and text colours drawn now (CSS hex or a CSS colour).
+    public var sheetColor: String
+    public var textColor: String
+    /// Auto's colours (the theme's), or null without a theme.
+    public var autoPaper: String?
+    public var autoInk: String?
+    public var font: String
+    public var separator: String
+    /// "default" (Narrow) or "wide".
+    public var width: String
+    public var sheets: [NoteStyleColor]
+    public var texts: [NoteStyleColor]
+    public var fonts: [NoteStyleOption]
+    public var separators: [NoteStyleOption]
+
+    public init(found: Bool, canEdit: Bool, current: String, styleName: String, themeId: String? = nil, ownImage: Bool, themes: [NoteStyleTheme], hasBackdrop: Bool, blur: Bool, sheet: String? = nil, text: String? = nil, sheetColor: String, textColor: String, autoPaper: String? = nil, autoInk: String? = nil, font: String, separator: String, width: String, sheets: [NoteStyleColor], texts: [NoteStyleColor], fonts: [NoteStyleOption], separators: [NoteStyleOption]) {
+        self.found = found
+        self.canEdit = canEdit
+        self.current = current
+        self.styleName = styleName
+        self.themeId = themeId
+        self.ownImage = ownImage
+        self.themes = themes
+        self.hasBackdrop = hasBackdrop
+        self.blur = blur
+        self.sheet = sheet
+        self.text = text
+        self.sheetColor = sheetColor
+        self.textColor = textColor
+        self.autoPaper = autoPaper
+        self.autoInk = autoInk
+        self.font = font
+        self.separator = separator
+        self.width = width
+        self.sheets = sheets
+        self.texts = texts
+        self.fonts = fonts
+        self.separators = separators
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.found, forKey: .found)
+        try container.encode(self.canEdit, forKey: .canEdit)
+        try container.encode(self.current, forKey: .current)
+        try container.encode(self.styleName, forKey: .styleName)
+        try container.encode(self.themeId, forKey: .themeId)
+        try container.encode(self.ownImage, forKey: .ownImage)
+        try container.encode(self.themes, forKey: .themes)
+        try container.encode(self.hasBackdrop, forKey: .hasBackdrop)
+        try container.encode(self.blur, forKey: .blur)
+        try container.encode(self.sheet, forKey: .sheet)
+        try container.encode(self.text, forKey: .text)
+        try container.encode(self.sheetColor, forKey: .sheetColor)
+        try container.encode(self.textColor, forKey: .textColor)
+        try container.encode(self.autoPaper, forKey: .autoPaper)
+        try container.encode(self.autoInk, forKey: .autoInk)
+        try container.encode(self.font, forKey: .font)
+        try container.encode(self.separator, forKey: .separator)
+        try container.encode(self.width, forKey: .width)
+        try container.encode(self.sheets, forKey: .sheets)
+        try container.encode(self.texts, forKey: .texts)
+        try container.encode(self.fonts, forKey: .fonts)
+        try container.encode(self.separators, forKey: .separators)
+    }
+}
+
+public struct NoteStyleSetArgs: Codable, Hashable, Sendable {
+    public var id: String
+    /// A page colour's id, or null for Auto.
+    public var sheet: Patch<String>
+    /// A text colour's id, or null for Auto.
+    public var text: Patch<String>
+    public var font: String?
+    public var separator: String?
+    public var width: String?
+    public var blur: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case sheet
+        case text
+        case font
+        case separator
+        case width
+        case blur
+    }
+
+    public init(id: String, sheet: String? = nil, text: String? = nil, font: String? = nil, separator: String? = nil, width: String? = nil, blur: Bool? = nil) {
+        self.id = id
+        self.sheet = Patch(sheet)
+        self.text = Patch(text)
+        self.font = font
+        self.separator = separator
+        self.width = width
+        self.blur = blur
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encodePatch(self.sheet, forKey: .sheet)
+        try container.encodePatch(self.text, forKey: .text)
+        try container.encodeIfPresent(self.font, forKey: .font)
+        try container.encodeIfPresent(self.separator, forKey: .separator)
+        try container.encodeIfPresent(self.width, forKey: .width)
+        try container.encodeIfPresent(self.blur, forKey: .blur)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.sheet = try container.decodePatch(String.self, forKey: .sheet)
+        self.text = try container.decodePatch(String.self, forKey: .text)
+        self.font = try container.decodeIfPresent(String.self, forKey: .font)
+        self.separator = try container.decodeIfPresent(String.self, forKey: .separator)
+        self.width = try container.decodeIfPresent(String.self, forKey: .width)
+        self.blur = try container.decodeIfPresent(Bool.self, forKey: .blur)
+    }
+}
+
+public struct NoteThemeSetArgs: Codable, Hashable, Sendable {
+    public var id: String
+    /// "plain" or a theme's id.
+    public var theme: String
+
+    public init(id: String, theme: String) {
+        self.id = id
+        self.theme = theme
+    }
+}
+
+public struct CommentCreateArgs: Codable, Hashable, Sendable {
+    /// The note; the comment is on the whole note.
+    public var noteId: String
+    public var text: String
+
+    public init(noteId: String, text: String) {
+        self.noteId = noteId
+        self.text = text
+    }
+}
+
+public struct CommentCreateResult: Codable, Hashable, Sendable {
+    public var threadId: String
+    public var commentId: String
+
+    public init(threadId: String, commentId: String) {
+        self.threadId = threadId
+        self.commentId = commentId
+    }
+}
+
+public struct CommentReplyArgs: Codable, Hashable, Sendable {
+    public var threadId: String
+    public var text: String
+
+    public init(threadId: String, text: String) {
+        self.threadId = threadId
+        self.text = text
+    }
+}
+
+public struct CommentReplyResult: Codable, Hashable, Sendable {
+    public var commentId: String
+
+    public init(commentId: String) {
+        self.commentId = commentId
+    }
+}
+
+public struct CommentResolveArgs: Codable, Hashable, Sendable {
+    public var threadId: String
+    public var resolved: Bool
+
+    public init(threadId: String, resolved: Bool) {
+        self.threadId = threadId
+        self.resolved = resolved
+    }
+}
+
+public struct CommentReadArgs: Codable, Hashable, Sendable {
+    public var threadId: String
+    /// true: read up to its latest activity; false: unread again.
+    public var read: Bool
+
+    public init(threadId: String, read: Bool) {
+        self.threadId = threadId
+        self.read = read
+    }
+}
+
+public struct ThreadIdArgs: Codable, Hashable, Sendable {
+    public var threadId: String
+
+    public init(threadId: String) {
+        self.threadId = threadId
     }
 }

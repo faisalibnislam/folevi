@@ -58,11 +58,20 @@ describe("note.tools", () => {
       unread: true,
       lastActivityAt: 5,
       comments: [
-        { authorName: "Mira", authorAvatarUrl: null, deleted: false, body: [{ type: "text", text: "Ask " }, { type: "mention", label: "Sam" }] },
-        { authorName: "Sam", authorAvatarUrl: null, deleted: false, body: [{ type: "text", text: "Done" }] },
+        { id: "c1", createdAt: 1, authorName: "Mira", authorAvatarUrl: null, deleted: false, body: [{ type: "text", text: "Ask " }, { type: "mention", label: "Sam" }] },
+        { id: "c2", createdAt: 2, authorName: "Sam", authorAvatarUrl: null, deleted: false, body: [{ type: "text", text: "Done" }] },
       ],
+      canResolve: true,
+      canDelete: false,
     };
-    expect(threadOf(t as never)).toEqual({ id: "thr_1", blockId: "p1", anchor: "“Temples to see”", author: "Mira", avatarUrl: null, text: "Ask @Sam", deleted: false, replies: 1, status: "open", resolvedBy: null, unread: true, lastActivityAt: 5, waiting: null });
+    expect(threadOf(t as never)).toEqual({ id: "thr_1", blockId: "p1", anchor: "“Temples to see”", author: "Mira", avatarUrl: null, text: "Ask @Sam", deleted: false, replies: 1, status: "open", resolvedBy: null, unread: true, lastActivityAt: 5, waiting: null,
+      comments: [
+        { id: "c1", author: "Mira", avatarUrl: null, text: "Ask @Sam", deleted: false, createdAt: 1 },
+        { id: "c2", author: "Sam", avatarUrl: null, text: "Done", deleted: false, createdAt: 2 },
+      ],
+      canResolve: true,
+      canDelete: false,
+    });
     expect(threadOf({ ...t, blockExists: false } as never)).toMatchObject({ blockId: null, anchor: "On a deleted block" });
   });
 });

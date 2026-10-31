@@ -44,6 +44,8 @@ final class PhoneModel {
     private(set) var editorState: EditorStateEvent?
     private(set) var editorPanel: EditorPanel?
     private(set) var noteMeta: [String: NoteMeta] = [:]
+    /// What each open note's tools show (its comments, outline, tasks: `note.tools`).
+    private(set) var noteTools: [String: NoteToolsEvent] = [:]
     /// Notes the page has drawn since they were last asked for (note.ready).
     private(set) var readyNotes: Set<String> = []
     /// The note the page shows (or is preparing).
@@ -131,7 +133,9 @@ final class PhoneModel {
                 title = "Undo"
             }
             push(PhoneToast(message: e.message, tone: e.tone == .error ? .error : e.tone == .success ? .success : .info, actionTitle: title, action: action))
-        case .placeChanged, .syncStatus, .memoryRelieved, .noteTools, .panesChange, .unknown:
+        case .noteTools(let e):
+            if noteTools[e.noteId] != e { noteTools[e.noteId] = e }
+        case .placeChanged, .syncStatus, .memoryRelieved, .panesChange, .unknown:
             break
         }
     }

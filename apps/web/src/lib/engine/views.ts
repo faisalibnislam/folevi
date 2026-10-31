@@ -376,7 +376,7 @@ type DocumentGet = {
   inTrash: boolean;
 } | null;
 
-const EDIT_ACCESS = new Set(["write", "manage"]);
+export const EDIT_ACCESS = new Set(["write", "manage"]);
 
 export function noteMetaValue(noteId: string, got: DocumentGet | undefined, deps: EngineDeps, colors: ReadonlyMap<string, string | null> = new Map()): NoteMeta {
   const marks = marksOf(deps);

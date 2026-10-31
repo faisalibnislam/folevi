@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "note.style.set",
+  "description": "Page colour back to Auto, wide page (revision 22).",
+  "args": {
+    "id": "doc_00003",
+    "sheet": null,
+    "width": "wide"
+  },
+  "result": {
+    "ok": true
+  }
+}

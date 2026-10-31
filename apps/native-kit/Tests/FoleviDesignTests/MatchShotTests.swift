@@ -97,7 +97,16 @@ struct MatchShotTests {
         renderer.scale = scale
         renderer.isOpaque = false
         renderer.colorMode = .nonLinear
-        return renderer.cgImage
+        // Drawn until it stops changing size (up to five times, a moment apart), so views that lay out from their
+        // own size (lines broken at their width) have settled.
+        var last = renderer.cgImage
+        for _ in 0..<5 {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+            let next = renderer.cgImage
+            if next?.width == last?.width, next?.height == last?.height { return next }
+            last = next
+        }
+        return last
     }
 }
 #endif

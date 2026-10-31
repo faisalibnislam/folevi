@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "comment.resolve",
+  "description": "Resolve a thread.",
+  "args": {
+    "threadId": "thr_1",
+    "resolved": true
+  },
+  "result": {
+    "ok": true
+  }
+}

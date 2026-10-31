@@ -234,5 +234,25 @@ I1 continued (2026-10-31):
   Foli AI are still the page's sheets: Style and Comments need the note's look and its comment threads in the
   contract (views and commands), Foli AI is I5.
 
-Next in I1: Style and Comments natively (contract first), scene restore; then I2. Tap checks in the Simulator
-need input allowed in the simulator panel.
+- **Style and Comments native** (2026-10-31): the note's Style and Comments tools are native sheets
+  (`PhoneStyleSheet.swift`, `PhoneCommentsSheet.swift`), matching the web's iPhone panels at 0.13% and 0.44%
+  (`iphone-style`, `iphone-comments`; the iOS suite is 26 of 26, the Mac's 14 of 14). Contract revision 22: the
+  `note.style` view (themes with their pictures and plan locks, the colours, separator, font and width as the panel
+  shows them) with `note.style.set` and `note.theme.set`; `note.tools` threads carry their comments and who may
+  resolve or delete them; `comment.create`, `comment.reply`, `comment.resolve`, `comment.read` and
+  `comment.deleteThread` go through the outbox as the web's own controls. Style: preview, themes (the app's own
+  covers, or a picture from the web for a theme added later), All themes, Blur background, Document and Text
+  colour, Separator, Font, Page width. Comments: a comment on the whole note, Open and Resolved, search, threads
+  (one on a line opens in the note with `thread.open`; one on the whole note opens in the sheet with its comments
+  and a reply), each with Resolve, read marks, Copy link and Delete; local mode says what comments need.
+  Checked in the Simulator: a theme and a page colour sent through the engine change the note and show in the
+  sheet (`FOLEVI_REBUILD_EDIT=style`); Comments in local mode.
+- Not yet: uploading the person's own image as a style (the web's gallery does it), a theme's own typefaces in the
+  Style sheet (each font type's standard face shows), @-mentions picked from a list (a typed "@Name" stays text),
+  reactions and editing a comment, a note's Follow/Mute comments row; comments checked with an account.
+- Kit changes on the way: disabled buttons fade as one picture at the web's 0.5 (0.4 on the Mac);
+  `WebFittedLines` sets wrapped text in exact CSS line boxes in one layout pass; the match test redraws until a
+  picture stops changing size.
+
+Next in I1: scene restore; then I2. Foli AI's sheet is I5. Tap checks in the Simulator need input allowed in the
+simulator panel.

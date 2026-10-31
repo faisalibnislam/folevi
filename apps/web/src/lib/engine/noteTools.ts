@@ -92,6 +92,16 @@ export function threadOf(t: CommentThread): NoteToolsThread {
     unread: Boolean(t.unread),
     lastActivityAt: t.lastActivityAt,
     waiting: t.waiting ?? null,
+    comments: t.comments.map((c) => ({
+      id: c.id,
+      author: c.authorName,
+      avatarUrl: c.authorAvatarUrl ?? null,
+      text: ((c.body ?? []) as { type: string; text?: string; label?: string }[]).map((n) => (n.type === "mention" ? `@${n.label ?? ""}` : (n.text ?? ""))).join(""),
+      deleted: Boolean(c.deleted),
+      createdAt: c.createdAt,
+    })),
+    canResolve: Boolean(t.canResolve),
+    canDelete: Boolean(t.canDelete),
   };
 }
 

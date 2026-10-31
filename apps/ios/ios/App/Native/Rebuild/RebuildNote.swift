@@ -22,7 +22,7 @@ struct RebuildNoteScreen: View {
     @State private var askingLink = false
     @State private var linkText = ""
     @State private var safe = EdgeInsets()
-    /// Format or Insert, drawn natively in a sheet (the other tools are still the page's own).
+    /// Format, Insert, Style or Comments, drawn natively in a sheet (Foli AI is still the page's own).
     @State private var nativeTool: PhoneNoteTool?
 
     var body: some View {
@@ -72,6 +72,17 @@ struct RebuildNoteScreen: View {
             if let t = ProcessInfo.processInfo.environment["FOLEVI_REBUILD_SHEET"].flatMap(PhoneNoteTool.init(rawValue:)) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) { nativeTool = t }
             }
+            // FOLEVI_REBUILD_EDIT=style: a theme and a page colour through the engine, as the Style sheet sends them.
+            if ProcessInfo.processInfo.environment["FOLEVI_REBUILD_EDIT"] == "style" {
+                Task {
+                    try? await Task.sleep(for: .seconds(3))
+                    var paper = NoteStyleSetArgs(id: noteId)
+                    paper.sheet = .set("paper")
+                    _ = try? await model.client.command(.noteThemeSet(id: noteId, theme: "art-01"))
+                    try? await Task.sleep(for: .seconds(1))
+                    _ = try? await model.client.command(Commands.NoteStyleSet(paper))
+                }
+            }
             // FOLEVI_REBUILD_EDIT=1: an insert and a format.set through the engine, as the sheets send them.
             if ProcessInfo.processInfo.environment["FOLEVI_REBUILD_EDIT"] == "1" {
                 Task {
@@ -99,6 +110,14 @@ struct RebuildNoteScreen: View {
                     // The sheet steps aside to show what was added, as the web's does.
                     nativeTool = nil
                 }
+            }
+        }
+        .phoneSheet(isPresented: Binding(get: { nativeTool == .style }, set: { if !$0 { nativeTool = nil } }), size: .medium) {
+            NoteStyleSheet(noteId: noteId, model: model) { nativeTool = nil }
+        }
+        .phoneSheet(isPresented: Binding(get: { nativeTool == .comments }, set: { if !$0 { nativeTool = nil } }), size: .medium) {
+            PhoneSheetPanel(title: "Comments", close: { nativeTool = nil }) {
+                PhoneCommentsSheetContent(state: commentsState) { runComments($0) }
             }
         }
         .alert(model.editorState?.link == true ? "Edit link" : "Add link", isPresented: $askingLink) {
@@ -158,7 +177,7 @@ struct RebuildNoteScreen: View {
 
     private func toggle(_ tool: PhoneNoteTool) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        if tool == .format || tool == .insert {
+        if tool != .ai {
             nativeTool = nativeTool == tool ? nil : tool
             return
         }
@@ -183,6 +202,45 @@ struct RebuildNoteScreen: View {
         case .undo: model.editor(.undo)
         case .redo: model.editor(.redo)
         case .hide: done()
+        }
+    }
+
+    /// The note's comment threads for the Comments sheet (`note.tools`, revision 22's thread comments).
+    private var commentsState: PhoneCommentsState {
+        var st = PhoneCommentsState()
+        guard let c = model.noteTools[noteId]?.comments else {
+            st.loaded = false
+            st.available = model.session.value?.mode != .local
+            return st
+        }
+        st.available = c.available
+        st.loaded = c.loaded
+        st.canComment = c.canComment
+        st.threads = c.threads.map { t in
+            PhoneCommentsState.Thread(
+                id: t.id, blockId: t.blockId, anchor: t.anchor, author: t.author, avatarUrl: t.avatarUrl, text: t.text, deleted: t.deleted, replies: t.replies,
+                resolved: t.status == .resolved, resolvedBy: t.resolvedBy, unread: t.unread, lastActivityAt: Date(timeIntervalSince1970: Double(t.lastActivityAt) / 1000), waiting: t.waiting,
+                comments: t.comments.map { PhoneCommentsState.Comment(id: $0.id, author: $0.author, avatarUrl: $0.avatarUrl, text: $0.text, deleted: $0.deleted, createdAt: Date(timeIntervalSince1970: Double($0.createdAt) / 1000)) },
+                canResolve: t.canResolve, canDelete: t.canDelete
+            )
+        }
+        return st
+    }
+
+    private func runComments(_ action: PhoneCommentsAction) {
+        switch action {
+        case .create(let text): model.perform { _ = try await model.client.command(.commentCreate(noteId: noteId, text: text)) }
+        case .reply(let id, let text): model.perform { _ = try await model.client.command(.commentReply(threadId: id, text: text)) }
+        case .open(let id):
+            // A thread on a line opens in the note, under its line.
+            nativeTool = nil
+            model.editor(.threadOpen(threadId: id))
+        case .resolve(let id, let on): model.perform { _ = try await model.client.command(.commentResolve(threadId: id, resolved: on)) }
+        case .read(let id, let on): model.perform { _ = try await model.client.command(.commentRead(threadId: id, read: on)) }
+        case .delete(let id): model.perform { _ = try await model.client.command(.commentDeleteThread(threadId: id)) }
+        case .copyLink(let id):
+            UIPasteboard.general.string = "https://app.folevi.com/d/\(noteId)#comment-\(id)"
+            model.toast("Link copied")
         }
     }
 
@@ -445,5 +503,78 @@ final class PageScroll: NSObject, WKScriptMessageHandler {
         let y = (body["y"] as? NSNumber)?.doubleValue ?? 0
         let foot = (body["foot"] as? NSNumber)?.doubleValue ?? 72
         MainActor.assumeIsolated { owner?.onScroll?(CGFloat(y), CGFloat(foot)) }
+    }
+}
+
+/// The Style sheet: the note's `note.style` while it's open, its choices sent back as `note.style.set` and
+/// `note.theme.set`; All themes in a sheet of its own.
+private struct NoteStyleSheet: View {
+    let noteId: String
+    let model: PhoneModel
+    let close: () -> Void
+    @State private var store: ValueStore<NoteStyleValue>?
+    @State private var gallery = false
+
+    var body: some View {
+        let state = Self.state(store?.value)
+        PhoneSheetPanel(title: "Style", close: close) {
+            PhoneStyleSheetContent(state: state) { run($0) }
+        }
+        .onAppear { if store == nil { store = model.client.watch(.noteStyle(id: noteId)) } }
+        .phoneSheet(isPresented: $gallery, size: .large) {
+            PhoneSheetPanel(title: "All themes", close: { gallery = false }) {
+                PhoneThemeGallery(state: state) { id in
+                    gallery = false
+                    run(.theme(id))
+                }
+            }
+        }
+    }
+
+    static func state(_ v: NoteStyleValue?) -> PhoneStyleState {
+        var s = PhoneStyleState()
+        guard let v else { return s }
+        s.canEdit = v.canEdit
+        s.current = v.current
+        s.styleName = v.styleName
+        s.themeId = v.themeId
+        s.ownImage = v.ownImage
+        s.themes = v.themes.map { PhoneStyleState.Theme(id: $0.id, name: $0.name, thumb: $0.thumb, locked: $0.locked) }
+        s.hasBackdrop = v.hasBackdrop
+        s.blur = v.blur
+        s.sheet = v.sheet
+        s.text = v.text
+        s.sheetColor = v.sheetColor
+        s.textColor = v.textColor
+        s.autoPaper = v.autoPaper
+        s.autoInk = v.autoInk
+        s.font = v.font
+        s.separator = v.separator
+        s.width = v.width
+        s.sheets = v.sheets.map { PhoneStyleState.Choice(id: $0.id, name: $0.name, color: $0.color) }
+        s.texts = v.texts.map { PhoneStyleState.Choice(id: $0.id, name: $0.name, color: $0.color) }
+        s.fonts = v.fonts.map { PhoneStyleState.Choice(id: $0.id, name: $0.name) }
+        s.separators = v.separators.map { PhoneStyleState.Choice(id: $0.id, name: $0.name) }
+        return s
+    }
+
+    private func run(_ action: PhoneStyleAction) {
+        UISelectionFeedbackGenerator().selectionChanged()
+        var a = NoteStyleSetArgs(id: noteId)
+        switch action {
+        case .allThemes:
+            gallery = true
+            return
+        case .theme(let id):
+            model.perform { _ = try await model.client.command(.noteThemeSet(id: noteId, theme: id)) }
+            return
+        case .blur(let on): a.blur = on
+        case .sheet(let id): a.sheet = id.map { .set($0) } ?? .clear
+        case .text(let id): a.text = id.map { .set($0) } ?? .clear
+        case .font(let f): a.font = f
+        case .separator(let sep): a.separator = sep
+        case .width(let w): a.width = w
+        }
+        model.perform { _ = try await model.client.command(Commands.NoteStyleSet(a)) }
     }
 }

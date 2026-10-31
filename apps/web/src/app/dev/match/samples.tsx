@@ -10,6 +10,10 @@ import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, Code2, Eraser, FileText, Italic, List, ListOrdered, PanelTop, Play, Quote, StickyNote, Strikethrough, Underline } from "lucide-react";
 import { NATIVE_INSERT_SECTIONS } from "@/components/doc/InsertPanel";
 import { InsertPreview } from "@/components/doc/insertPreviews";
+import { Button as UiButton } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
+import { CornerDownRight, Equal, Grip } from "lucide-react";
+import { SHEETS, TEXTS, familyFor } from "@/lib/themes";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
 import "@/components/iphone/editor-phone.css";
@@ -412,6 +416,159 @@ const SAMPLES: Sample[] = [
               {row("Link", <Link2 {...ic} />)}
               {row("Clear formatting", <Eraser {...ic} />)}
             </div>
+          </div>
+        </div>
+      );
+    })(),
+  },
+  // A note's Style and Comments tools as their iPhone sheets draw them (components/doc/Inspector.tsx StylePanel and
+  // Comments.tsx CommentsList in the iPhone layout: their markup and classes with fixed values, since both read
+  // live data): a Plain note on the Paper colour with Document color open; two open threads, one unread.
+  {
+    id: "iphone.style",
+    node: (() => {
+      const paper = SHEETS.find((x) => x.id === "paper")!.color;
+      const ink = TEXTS.find((x) => x.id === "ink")!.color;
+      const caps = "ui-caption-caps mb-2 px-1";
+      const dot = (css: string) => <span aria-hidden className="inline-block h-7 w-7 flex-none iphone-round shadow-[inset_0_0_0_0.5px_rgb(0_0_0/0.16),0_0_0_0.5px_rgb(255_255_255/0.08)]" style={{ background: css }} />;
+      const chevron = (open: boolean) => <ChevronRight size={15} strokeWidth={2.4} aria-hidden className={`flex-none text-faint ${open ? "rotate-90" : ""}`} />;
+      const choice = (label: string, on: boolean, child: ReactNode) => (
+        <button key={label} type="button" role="radio" aria-checked={on} aria-label={label} className={`relative mx-auto h-11 w-11 overflow-hidden iphone-round ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--iphone-solid)]" : "shadow-[inset_0_0_0_0.5px_rgb(0_0_0/0.16)]"}`}>
+          {child}
+        </button>
+      );
+      const seg = (items: [string, ReactNode, boolean, React.CSSProperties?][]) => (
+        <div className="ui-seg ui-well">
+          {items.map(([key, child, on, style]) => (
+            <button key={key} type="button" aria-pressed={on} className="!flex-1 gap-1.5" style={style}>
+              {child}
+            </button>
+          ))}
+        </div>
+      );
+      return (
+        <div className="w-[393px] bg-[var(--iphone-solid)] px-4 pb-4 pt-1">
+          <div className="space-y-5 text-subheadline">
+            <section aria-label="Page style">
+              <div aria-hidden className="relative block h-32 w-full overflow-hidden rounded-chip shadow-[var(--shadow-card)]" style={{ background: "linear-gradient(180deg, var(--color-surface-sunken), var(--color-canvas))" }}>
+                <span className="absolute bottom-0 left-1/2 top-3 w-[38%] -translate-x-1/2 rounded-t-chip px-2 pt-2 text-left shadow-[0_6px_18px_-6px_rgb(0_0_0/0.35)]" style={{ background: paper, color: ink, fontFamily: familyFor("serif") }}>
+                  <span className="block text-footnote font-semibold leading-tight">Plain</span>
+                  <span className="mt-1.5 block h-1 w-4/5 rounded-tiny opacity-25" style={{ background: ink }} />
+                  <span className="mt-1 block h-1 w-3/5 rounded-tiny opacity-25" style={{ background: ink }} />
+                </span>
+              </div>
+            </section>
+            <fieldset>
+              <legend className={caps}>Note theme</legend>
+              <div role="radiogroup" aria-label="Note theme" className="-mx-4 flex gap-3 overflow-hidden px-4 pb-1 pt-1">
+                <button type="button" role="radio" aria-checked className="flex w-16 flex-none flex-col items-center gap-1.5">
+                  <span aria-hidden className="relative block h-20 w-16 overflow-hidden rounded-panel ring-2 ring-heading ring-offset-2 ring-offset-[var(--iphone-solid)]" style={{ background: "#F1F1F3" }} />
+                  <span className="w-full truncate text-center text-subheadline leading-4 font-semibold text-heading">Plain</span>
+                </button>
+                <button type="button" className="flex w-16 flex-none flex-col items-center gap-1.5">
+                  <span aria-hidden className="grid h-20 w-16 place-items-center rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_5.5%,transparent)] text-heading">
+                    <ChevronRight size={20} strokeWidth={2.2} />
+                  </span>
+                  <span className="w-full truncate text-center text-subheadline leading-4 text-ink">All themes</span>
+                </button>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend className={caps}>Color</legend>
+              <div className="iphone-style-list">
+                <div className="iphone-style-row-wrap">
+                  <button type="button" aria-expanded className="iphone-style-row">
+                    <span className="min-w-0 flex-1 truncate">Document color</span>
+                    {dot(paper)}
+                    {chevron(true)}
+                  </button>
+                  <div className="px-4 pb-4 pt-1">
+                    <div role="radiogroup" aria-label="Document color" className="grid grid-cols-5 gap-y-3">
+                      {choice("Auto", false, <span className="grid h-full place-items-center text-footnote" style={{ background: "var(--color-surface)", color: "var(--color-ink-muted)" }}>Auto</span>)}
+                      {SHEETS.map((x) => choice(x.name, x.id === "paper", <span aria-hidden className="block h-full w-full" style={{ background: x.color }} />))}
+                    </div>
+                  </div>
+                </div>
+                <div className="iphone-style-row-wrap">
+                  <button type="button" className="iphone-style-row">
+                    <span className="min-w-0 flex-1 truncate">Text color</span>
+                    {dot(ink)}
+                    {chevron(false)}
+                  </button>
+                </div>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend className={caps}>Separator style</legend>
+              {seg([
+                ["line", <><span aria-hidden><Equal size={15} /></span><span aria-hidden>Line</span></>, true],
+                ["dots", <><span aria-hidden><Grip size={15} /></span><span aria-hidden>Dots</span></>, false],
+              ])}
+            </fieldset>
+            <fieldset>
+              <legend className={caps}>Page width</legend>
+              {seg([
+                ["default", "Narrow", true],
+                ["wide", "Wide", false],
+              ])}
+            </fieldset>
+          </div>
+        </div>
+      );
+    })(),
+  },
+  {
+    id: "iphone.comments",
+    node: (() => {
+      const rows = [
+        { anchor: "“Temples to see”", author: "Mira", when: "2 hours ago", text: "Reservations open two months ahead, so book Saiho-ji early.", replies: 1, unread: true },
+        { anchor: "On the whole note", author: "Sam", when: "3 days ago", text: "Looks good to me.", replies: 0, unread: false },
+      ];
+      return (
+        <div className="w-[393px] bg-[var(--iphone-solid)] px-4 pb-4 pt-1">
+          <div className="space-y-3 text-subheadline">
+            <form className="ui-input rounded-panel pb-1 pl-3 pr-1 pt-2">
+              <textarea rows={1} aria-label="Comment on this document" placeholder="Comment on the whole note" className="block w-full resize-none bg-transparent pr-2 text-body leading-snug outline-none placeholder:text-faint" />
+              <div className="mt-1.5 flex items-center justify-between gap-2">
+                <p className="text-footnote text-faint">@ to mention · Enter to send</p>
+                <UiButton size="sm" variant="primary" type="submit" disabled>
+                  Comment
+                </UiButton>
+              </div>
+            </form>
+            <div className="space-y-2">
+              <div role="group" aria-label="Show threads" className="ui-seg bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
+                <button type="button" aria-pressed className="whitespace-nowrap">Open · 2</button>
+                <button type="button" aria-pressed={false} className="whitespace-nowrap">Resolved</button>
+              </div>
+            </div>
+            <ul className="space-y-1.5">
+              {rows.map((t) => (
+                <li key={t.author} className="relative">
+                  <span className="absolute right-1.5 top-1.5 z-10 grid h-7 w-7 place-items-center rounded-chip text-muted">
+                    <MoreHorizontal size={15} aria-hidden />
+                  </span>
+                  <button type="button" className="block w-full rounded-control px-2.5 py-2 text-left">
+                    <span className="flex min-w-0 items-center gap-1 pr-8 text-footnote text-faint">{t.anchor}</span>
+                    <span className="mt-1.5 flex items-center gap-2">
+                      <Avatar name={t.author} size={20} />
+                      <span className="min-w-0 flex-1 truncate text-subheadline">
+                        <span className="font-semibold text-heading">{t.author}</span> <span className="text-faint">· {t.when}</span>
+                      </span>
+                      {t.unread ? <span className="h-2 w-2 flex-none rounded-tiny bg-coral" aria-label="Unread" role="img" /> : null}
+                    </span>
+                    <span className="mt-1 line-clamp-2 block whitespace-pre-wrap text-subheadline leading-snug text-ink">{t.text}</span>
+                    {t.replies > 0 ? (
+                      <span className="mt-1 flex items-center gap-2 text-footnote text-muted">
+                        <span className="inline-flex items-center gap-1">
+                          <CornerDownRight size={11} aria-hidden /> {t.replies} reply
+                        </span>
+                      </span>
+                    ) : null}
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       );

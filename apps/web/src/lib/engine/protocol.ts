@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 21;
+export const CONTRACT_REVISION = 22;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -3526,6 +3526,23 @@ export interface NoteToolsThread {
   lastActivityAt: number;
   /** "waiting" or "failed" while it's not on the server yet, else null. */
   waiting: string | null;
+  /** Revision 22: every comment of the thread, oldest first (a thread on the whole note opens in the list). */
+  comments: NoteToolsComment[];
+  /** Revision 22: this person may resolve or reopen it (`comment.resolve`). */
+  canResolve: boolean;
+  /** Revision 22: this person may delete it (`comment.deleteThread`). */
+  canDelete: boolean;
+}
+
+/** Revision 22: one comment of a thread. */
+export interface NoteToolsComment {
+  id: string;
+  author: string;
+  avatarUrl: string | null;
+  /** Its text (plain; a mention as "@Name"). */
+  text: string;
+  deleted: boolean;
+  createdAt: number;
 }
 
 export interface NoteToolsComments {
@@ -3600,6 +3617,125 @@ export interface FindResult {
   matches: FindMatch[];
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Revision 22: the note's Style and Comments tools drawn natively (the iPhone app's sheets; docs/IOS_REBUILD_PLAN.md
+// I1). Style reads `note.style` and writes with `note.style.set` and `note.theme.set`; Comments lists the threads
+// `note.tools` sends and writes with the `comment.*` commands (through the outbox, as the web's own controls).
+// ---------------------------------------------------------------------------------------------------------------
+
+/** A note theme as the Style tool offers it. */
+export interface NoteStyleTheme {
+  id: string;
+  name: string;
+  /** Its small picture: a web address for a theme added since the app was built, else null (the app's own
+   * covers/<id>-thumb.webp). */
+  thumb: string | null;
+  /** Not on the plan where the note lives: picking it is refused with what it needs. */
+  locked: boolean;
+}
+
+/** A colour the Style tool offers (a page colour or a text colour). */
+export interface NoteStyleColor {
+  id: string;
+  name: string;
+  /** CSS hex. */
+  color: string;
+}
+
+export interface NoteStyleOption {
+  id: string;
+  name: string;
+}
+
+/** `note.style`: the Style tool for a note (components/doc/Inspector.tsx StylePanel). */
+export interface NoteStyleValue {
+  found: boolean;
+  canEdit: boolean;
+  /** "plain", "image" (the person's own image) or the theme's id. */
+  current: string;
+  /** What the preview names it: the theme's name, "Your image" or "Plain". */
+  styleName: string;
+  /** The theme it has, if any (for its picture behind the preview). */
+  themeId: string | null;
+  /** The note has the person's own image as its style. */
+  ownImage: boolean;
+  /** Published themes, plus the note's own even if it's been retired. */
+  themes: NoteStyleTheme[];
+  /** The page has a background behind it (a theme's or an image), which can be blurred. */
+  hasBackdrop: boolean;
+  blur: boolean;
+  /** The page and text colours chosen (null: Auto, from the theme). */
+  sheet: string | null;
+  text: string | null;
+  /** The page and text colours drawn now (CSS hex or a CSS colour). */
+  sheetColor: string;
+  textColor: string;
+  /** Auto's colours (the theme's), or null without a theme. */
+  autoPaper: string | null;
+  autoInk: string | null;
+  font: string;
+  separator: string;
+  /** "default" (Narrow) or "wide". */
+  width: string;
+  sheets: NoteStyleColor[];
+  texts: NoteStyleColor[];
+  fonts: NoteStyleOption[];
+  separators: NoteStyleOption[];
+}
+
+export interface NoteStyleSetArgs {
+  id: string;
+  /** A page colour's id, or null for Auto. */
+  sheet?: string | null;
+  /** A text colour's id, or null for Auto. */
+  text?: string | null;
+  font?: string;
+  separator?: string;
+  width?: string;
+  blur?: boolean;
+}
+
+export interface NoteThemeSetArgs {
+  id: string;
+  /** "plain" or a theme's id. */
+  theme: string;
+}
+
+export interface CommentCreateArgs {
+  /** The note; the comment is on the whole note. */
+  noteId: string;
+  text: string;
+}
+
+export interface CommentCreateResult {
+  threadId: string;
+  commentId: string;
+}
+
+export interface CommentReplyArgs {
+  threadId: string;
+  text: string;
+}
+
+export interface CommentReplyResult {
+  commentId: string;
+}
+
+export interface CommentResolveArgs {
+  threadId: string;
+  resolved: boolean;
+}
+
+export interface CommentReadArgs {
+  threadId: string;
+  /** true: read up to its latest activity; false: unread again. */
+  read: boolean;
+}
+
+export interface ThreadIdArgs {
+  threadId: string;
+}
+
 export interface ViewMap {
   session: { args: EmptyArgs; value: SessionValue };
   "places.list": { args: EmptyArgs; value: PlacesValue };
@@ -3660,6 +3796,7 @@ export interface ViewMap {
   "vault.people": { args: VaultIdArgs; value: VaultPeopleValue };
   "vault.shares": { args: VaultItemIdArgs; value: VaultSharesValue };
   "e2ee.state": { args: EmptyArgs; value: E2eeStateValue };
+  "note.style": { args: NoteIdArgs; value: NoteStyleValue };
 }
 
 export interface ListViewMap {
@@ -3800,6 +3937,13 @@ export interface CommandMap {
   "e2ee.unlock": { args: E2eeUnlockArgs; result: E2eeUnlockResult };
   "e2ee.approval.start": { args: EmptyArgs; result: OkResult };
   "e2ee.approval.cancel": { args: EmptyArgs; result: OkResult };
+  "note.style.set": { args: NoteStyleSetArgs; result: OkResult };
+  "note.theme.set": { args: NoteThemeSetArgs; result: OkResult };
+  "comment.create": { args: CommentCreateArgs; result: CommentCreateResult };
+  "comment.reply": { args: CommentReplyArgs; result: CommentReplyResult };
+  "comment.resolve": { args: CommentResolveArgs; result: OkResult };
+  "comment.read": { args: CommentReadArgs; result: OkResult };
+  "comment.deleteThread": { args: ThreadIdArgs; result: OkResult };
 }
 
 export interface EditorCommandMap {
@@ -3871,7 +4015,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "settings.query", "graph", "reviews", "recent.viewed", "vault.summary", "vault.items", "vault.folders", "vault.health", "vault.activity", "vault.people", "vault.shares", "e2ee.state"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "settings.query", "graph", "reviews", "recent.viewed", "vault.summary", "vault.items", "vault.folders", "vault.health", "vault.activity", "vault.people", "vault.shares", "e2ee.state", "note.style"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -4007,6 +4151,13 @@ const commandNames = [
   "e2ee.unlock",
   "e2ee.approval.start",
   "e2ee.approval.cancel",
+  "note.style.set",
+  "note.theme.set",
+  "comment.create",
+  "comment.reply",
+  "comment.resolve",
+  "comment.read",
+  "comment.deleteThread",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

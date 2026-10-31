@@ -6110,7 +6110,7 @@
    "fontWeight": 400,
    "gap": 0,
    "gradient": null,
-   "height": 229,
+   "height": 281,
    "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "margin": [
@@ -6121,12 +6121,12 @@
    ],
    "opacity": 1,
    "padding": [
-    5,
-    5,
-    5,
-    5
+    6,
+    6,
+    6,
+    6
    ],
-   "radius": 10,
+   "radius": 12,
    "shadows": [
     {
      "blur": 0,
@@ -6171,6 +6171,56 @@
    "width": 200,
    "x": 381.33,
    "y": 180
+  },
+  "notes.list.menu": {
+   "backdropBlur": 0,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "border": {
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ],
+    "width": 0
+   },
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "fontWeight": 400,
+   "gap": 0,
+   "gradient": null,
+   "height": 32,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "opacity": 1,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "radius": 6,
+   "shadows": [],
+   "width": 32,
+   "x": 1192,
+   "y": 142
   }
  },
  "dark": {
@@ -12258,7 +12308,7 @@
    "fontWeight": 400,
    "gap": 0,
    "gradient": null,
-   "height": 229,
+   "height": 281,
    "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "margin": [
@@ -12269,12 +12319,12 @@
    ],
    "opacity": 1,
    "padding": [
-    5,
-    5,
-    5,
-    5
+    6,
+    6,
+    6,
+    6
    ],
-   "radius": 10,
+   "radius": 12,
    "shadows": [
     {
      "blur": 0,
@@ -12319,6 +12369,56 @@
    "width": 200,
    "x": 381.33,
    "y": 180
+  },
+  "notes.list.menu": {
+   "backdropBlur": 0,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   },
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "fontWeight": 400,
+   "gap": 0,
+   "gradient": null,
+   "height": 32,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "opacity": 1,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "radius": 6,
+   "shadows": [],
+   "width": 32,
+   "x": 1192,
+   "y": 142
   }
  }
 }

@@ -454,6 +454,7 @@ struct GraphCanvasView: View {
                 }
             }
             .frame(maxHeight: 192)
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
         .frame(width: min(300, size.width - 24))

@@ -1406,12 +1406,12 @@
    "x": 16,
    "y": 648,
    "width": 224,
-   "height": 123,
+   "height": 149,
    "padding": [
-    5,
-    5,
-    5,
-    5
+    6,
+    6,
+    6,
+    6
    ],
    "margin": [
     0,
@@ -1419,7 +1419,7 @@
     0,
     0
    ],
-   "radius": 10,
+   "radius": 12,
    "background": [
     255,
     255,
@@ -1493,15 +1493,15 @@
    "backdropBlur": 24
   },
   "menu.heading": {
-   "x": 21,
-   "y": 653,
-   "width": 214,
-   "height": 24,
+   "x": 22,
+   "y": 654,
+   "width": 212,
+   "height": 28,
    "padding": [
-    6,
     8,
-    2,
-    8
+    10,
+    4,
+    10
    ],
    "margin": [
     0,
@@ -1543,15 +1543,15 @@
    "backdropBlur": 0
   },
   "menu.item": {
-   "x": 21,
-   "y": 677,
-   "width": 214,
-   "height": 26,
+   "x": 22,
+   "y": 682,
+   "width": 212,
+   "height": 32,
    "padding": [
-    3,
-    8,
-    3,
-    8
+    6,
+    10,
+    6,
+    10
    ],
    "margin": [
     0,
@@ -1559,7 +1559,7 @@
     0,
     0
    ],
-   "radius": 6,
+   "radius": 8,
    "background": [
     0,
     0,
@@ -1589,12 +1589,12 @@
    "fontWeight": 400,
    "lineHeight": 18,
    "letterSpacing": -0.096,
-   "gap": 8,
+   "gap": 10,
    "backdropBlur": 0
   },
   "menu.item.icon": {
-   "x": 29,
-   "y": 682,
+   "x": 32,
+   "y": 690,
    "width": 16,
    "height": 16,
    "padding": [
@@ -1643,9 +1643,9 @@
    "backdropBlur": 0
   },
   "menu.item.label": {
-   "x": 53,
-   "y": 681,
-   "width": 127.83,
+   "x": 58,
+   "y": 689,
+   "width": 117.83,
    "height": 18,
    "padding": [
     0,
@@ -1693,8 +1693,8 @@
    "backdropBlur": 0
   },
   "menu.item.shortcut": {
-   "x": 188.83,
-   "y": 681,
+   "x": 185.83,
+   "y": 689,
    "width": 38.17,
    "height": 18,
    "padding": [
@@ -1743,15 +1743,15 @@
    "backdropBlur": 0
   },
   "menu.item.highlighted": {
-   "x": 21,
-   "y": 703,
-   "width": 214,
-   "height": 26,
+   "x": 22,
+   "y": 714,
+   "width": 212,
+   "height": 32,
    "padding": [
-    3,
-    8,
-    3,
-    8
+    6,
+    10,
+    6,
+    10
    ],
    "margin": [
     0,
@@ -1759,7 +1759,7 @@
     0,
     0
    ],
-   "radius": 6,
+   "radius": 8,
    "background": [
     24,
     24,
@@ -1789,13 +1789,13 @@
    "fontWeight": 400,
    "lineHeight": 18,
    "letterSpacing": -0.096,
-   "gap": 8,
+   "gap": 10,
    "backdropBlur": 0
   },
   "menu.separator": {
-   "x": 31,
-   "y": 734,
-   "width": 194,
+   "x": 32,
+   "y": 752,
+   "width": 192,
    "height": 1,
    "padding": [
     0,
@@ -1804,9 +1804,9 @@
     0
    ],
    "margin": [
-    5,
+    6,
     10,
-    5,
+    6,
     10
    ],
    "radius": 0,
@@ -1843,15 +1843,15 @@
    "backdropBlur": 0
   },
   "menu.item.danger": {
-   "x": 21,
-   "y": 740,
-   "width": 214,
-   "height": 26,
+   "x": 22,
+   "y": 759,
+   "width": 212,
+   "height": 32,
    "padding": [
-    3,
-    8,
-    3,
-    8
+    6,
+    10,
+    6,
+    10
    ],
    "margin": [
     0,
@@ -1859,7 +1859,7 @@
     0,
     0
    ],
-   "radius": 6,
+   "radius": 8,
    "background": [
     0,
     0,
@@ -1889,12 +1889,12 @@
    "fontWeight": 400,
    "lineHeight": 18,
    "letterSpacing": -0.096,
-   "gap": 8,
+   "gap": 10,
    "backdropBlur": 0
   },
   "dialog.panel": {
    "x": 16,
-   "y": 787,
+   "y": 813,
    "width": 440,
    "height": 197,
    "padding": [
@@ -1984,7 +1984,7 @@
   },
   "dialog.header": {
    "x": 16,
-   "y": 787,
+   "y": 813,
    "width": 440,
    "height": 77,
    "padding": [
@@ -2034,7 +2034,7 @@
   },
   "dialog.title": {
    "x": 40,
-   "y": 807,
+   "y": 833,
    "width": 392,
    "height": 27,
    "padding": [
@@ -2084,7 +2084,7 @@
   },
   "dialog.description": {
    "x": 40,
-   "y": 838,
+   "y": 864,
    "width": 392,
    "height": 18,
    "padding": [
@@ -2134,7 +2134,7 @@
   },
   "dialog.body": {
    "x": 16,
-   "y": 864,
+   "y": 890,
    "width": 440,
    "height": 64,
    "padding": [
@@ -2184,7 +2184,7 @@
   },
   "dialog.footer": {
    "x": 16,
-   "y": 928,
+   "y": 954,
    "width": 440,
    "height": 56,
    "padding": [
@@ -2300,7 +2300,7 @@
   },
   "card": {
    "x": 16,
-   "y": 1000,
+   "y": 1026,
    "width": 256,
    "height": 76,
    "padding": [
@@ -2403,7 +2403,7 @@
   },
   "card.title": {
    "x": 32,
-   "y": 1016,
+   "y": 1042,
    "width": 224,
    "height": 22,
    "padding": [
@@ -2453,7 +2453,7 @@
   },
   "card.subtitle": {
    "x": 32,
-   "y": 1042,
+   "y": 1068,
    "width": 224,
    "height": 18,
    "padding": [
@@ -2503,7 +2503,7 @@
   },
   "chip": {
    "x": 16,
-   "y": 1092,
+   "y": 1118,
    "width": 56.42,
    "height": 25.59,
    "padding": [
@@ -2553,7 +2553,7 @@
   },
   "kbd": {
    "x": 16,
-   "y": 1133.59,
+   "y": 1159.59,
    "width": 29.03,
    "height": 20,
    "padding": [
@@ -4010,12 +4010,12 @@
    "x": 16,
    "y": 648,
    "width": 224,
-   "height": 123,
+   "height": 149,
    "padding": [
-    5,
-    5,
-    5,
-    5
+    6,
+    6,
+    6,
+    6
    ],
    "margin": [
     0,
@@ -4023,7 +4023,7 @@
     0,
     0
    ],
-   "radius": 10,
+   "radius": 12,
    "background": [
     40,
     40,
@@ -4097,15 +4097,15 @@
    "backdropBlur": 24
   },
   "menu.heading": {
-   "x": 21,
-   "y": 653,
-   "width": 214,
-   "height": 24,
+   "x": 22,
+   "y": 654,
+   "width": 212,
+   "height": 28,
    "padding": [
-    6,
     8,
-    2,
-    8
+    10,
+    4,
+    10
    ],
    "margin": [
     0,
@@ -4147,15 +4147,15 @@
    "backdropBlur": 0
   },
   "menu.item": {
-   "x": 21,
-   "y": 677,
-   "width": 214,
-   "height": 26,
+   "x": 22,
+   "y": 682,
+   "width": 212,
+   "height": 32,
    "padding": [
-    3,
-    8,
-    3,
-    8
+    6,
+    10,
+    6,
+    10
    ],
    "margin": [
     0,
@@ -4163,7 +4163,7 @@
     0,
     0
    ],
-   "radius": 6,
+   "radius": 8,
    "background": [
     0,
     0,
@@ -4193,12 +4193,12 @@
    "fontWeight": 400,
    "lineHeight": 18,
    "letterSpacing": -0.096,
-   "gap": 8,
+   "gap": 10,
    "backdropBlur": 0
   },
   "menu.item.icon": {
-   "x": 29,
-   "y": 682,
+   "x": 32,
+   "y": 690,
    "width": 16,
    "height": 16,
    "padding": [
@@ -4247,9 +4247,9 @@
    "backdropBlur": 0
   },
   "menu.item.label": {
-   "x": 53,
-   "y": 681,
-   "width": 127.83,
+   "x": 58,
+   "y": 689,
+   "width": 117.83,
    "height": 18,
    "padding": [
     0,
@@ -4297,8 +4297,8 @@
    "backdropBlur": 0
   },
   "menu.item.shortcut": {
-   "x": 188.83,
-   "y": 681,
+   "x": 185.83,
+   "y": 689,
    "width": 38.17,
    "height": 18,
    "padding": [
@@ -4347,15 +4347,15 @@
    "backdropBlur": 0
   },
   "menu.item.highlighted": {
-   "x": 21,
-   "y": 703,
-   "width": 214,
-   "height": 26,
+   "x": 22,
+   "y": 714,
+   "width": 212,
+   "height": 32,
    "padding": [
-    3,
-    8,
-    3,
-    8
+    6,
+    10,
+    6,
+    10
    ],
    "margin": [
     0,
@@ -4363,7 +4363,7 @@
     0,
     0
    ],
-   "radius": 6,
+   "radius": 8,
    "background": [
     255,
     255,
@@ -4393,13 +4393,13 @@
    "fontWeight": 400,
    "lineHeight": 18,
    "letterSpacing": -0.096,
-   "gap": 8,
+   "gap": 10,
    "backdropBlur": 0
   },
   "menu.separator": {
-   "x": 31,
-   "y": 734,
-   "width": 194,
+   "x": 32,
+   "y": 752,
+   "width": 192,
    "height": 1,
    "padding": [
     0,
@@ -4408,9 +4408,9 @@
     0
    ],
    "margin": [
-    5,
+    6,
     10,
-    5,
+    6,
     10
    ],
    "radius": 0,
@@ -4447,15 +4447,15 @@
    "backdropBlur": 0
   },
   "menu.item.danger": {
-   "x": 21,
-   "y": 740,
-   "width": 214,
-   "height": 26,
+   "x": 22,
+   "y": 759,
+   "width": 212,
+   "height": 32,
    "padding": [
-    3,
-    8,
-    3,
-    8
+    6,
+    10,
+    6,
+    10
    ],
    "margin": [
     0,
@@ -4463,7 +4463,7 @@
     0,
     0
    ],
-   "radius": 6,
+   "radius": 8,
    "background": [
     0,
     0,
@@ -4493,12 +4493,12 @@
    "fontWeight": 400,
    "lineHeight": 18,
    "letterSpacing": -0.096,
-   "gap": 8,
+   "gap": 10,
    "backdropBlur": 0
   },
   "dialog.panel": {
    "x": 16,
-   "y": 787,
+   "y": 813,
    "width": 440,
    "height": 197,
    "padding": [
@@ -4588,7 +4588,7 @@
   },
   "dialog.header": {
    "x": 16,
-   "y": 787,
+   "y": 813,
    "width": 440,
    "height": 77,
    "padding": [
@@ -4638,7 +4638,7 @@
   },
   "dialog.title": {
    "x": 40,
-   "y": 807,
+   "y": 833,
    "width": 392,
    "height": 27,
    "padding": [
@@ -4688,7 +4688,7 @@
   },
   "dialog.description": {
    "x": 40,
-   "y": 838,
+   "y": 864,
    "width": 392,
    "height": 18,
    "padding": [
@@ -4738,7 +4738,7 @@
   },
   "dialog.body": {
    "x": 16,
-   "y": 864,
+   "y": 890,
    "width": 440,
    "height": 64,
    "padding": [
@@ -4788,7 +4788,7 @@
   },
   "dialog.footer": {
    "x": 16,
-   "y": 928,
+   "y": 954,
    "width": 440,
    "height": 56,
    "padding": [
@@ -4904,7 +4904,7 @@
   },
   "card": {
    "x": 16,
-   "y": 1000,
+   "y": 1026,
    "width": 256,
    "height": 76,
    "padding": [
@@ -4994,7 +4994,7 @@
   },
   "card.title": {
    "x": 32,
-   "y": 1016,
+   "y": 1042,
    "width": 224,
    "height": 22,
    "padding": [
@@ -5044,7 +5044,7 @@
   },
   "card.subtitle": {
    "x": 32,
-   "y": 1042,
+   "y": 1068,
    "width": 224,
    "height": 18,
    "padding": [
@@ -5094,7 +5094,7 @@
   },
   "chip": {
    "x": 16,
-   "y": 1092,
+   "y": 1118,
    "width": 56.42,
    "height": 25.59,
    "padding": [
@@ -5144,7 +5144,7 @@
   },
   "kbd": {
    "x": 16,
-   "y": 1133.59,
+   "y": 1159.59,
    "width": 29.03,
    "height": 20,
    "padding": [

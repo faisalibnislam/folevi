@@ -3376,7 +3376,7 @@
    "fontFamily": "Instrument Sans",
    "fontSize": 14,
    "fontWeight": 400,
-   "gap": 8,
+   "gap": 10,
    "gradient": null,
    "height": 36,
    "letterSpacing": -0.096,
@@ -3389,10 +3389,10 @@
    ],
    "opacity": 1,
    "padding": [
-    3,
-    8,
-    3,
-    8
+    6,
+    10,
+    6,
+    10
    ],
    "radius": 6,
    "shadows": [],
@@ -3576,7 +3576,7 @@
    "fontFamily": "Instrument Sans",
    "fontSize": 14,
    "fontWeight": 400,
-   "gap": 8,
+   "gap": 10,
    "gradient": null,
    "height": 36,
    "letterSpacing": -0.096,
@@ -3589,10 +3589,10 @@
    ],
    "opacity": 1,
    "padding": [
-    3,
-    8,
-    3,
-    8
+    6,
+    10,
+    6,
+    10
    ],
    "radius": 6,
    "shadows": [
@@ -8044,7 +8044,7 @@
    "fontFamily": "Instrument Sans",
    "fontSize": 14,
    "fontWeight": 400,
-   "gap": 8,
+   "gap": 10,
    "gradient": null,
    "height": 36,
    "letterSpacing": -0.096,
@@ -8057,10 +8057,10 @@
    ],
    "opacity": 1,
    "padding": [
-    3,
-    8,
-    3,
-    8
+    6,
+    10,
+    6,
+    10
    ],
    "radius": 6,
    "shadows": [],
@@ -8244,7 +8244,7 @@
    "fontFamily": "Instrument Sans",
    "fontSize": 14,
    "fontWeight": 400,
-   "gap": 8,
+   "gap": 10,
    "gradient": null,
    "height": 36,
    "letterSpacing": -0.096,
@@ -8257,10 +8257,10 @@
    ],
    "opacity": 1,
    "padding": [
-    3,
-    8,
-    3,
-    8
+    6,
+    10,
+    6,
+    10
    ],
    "radius": 6,
    "shadows": [

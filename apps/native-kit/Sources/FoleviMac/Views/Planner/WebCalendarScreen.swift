@@ -627,6 +627,7 @@ struct EventPopover: View {
                     Rectangle().fill(PV("color-line").c(scheme)).frame(height: 1)
                     ScrollView { Text(event.description).webText(.role(.subheadline)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 12) }
                         .frame(maxHeight: 240)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.top, 12)
             }

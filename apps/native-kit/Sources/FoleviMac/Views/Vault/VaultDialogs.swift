@@ -154,6 +154,8 @@ private struct ItemDialog: View {
             // (The web's dialog grows to the window less its margins, `calc(100dvh - 76px)`: the header and footer
             // take about 130 of that.)
             .frame(maxHeight: max(320, (NSApp.keyWindow?.contentView?.bounds.height ?? 820) - 76 - 130))
+            // (Only as tall as the fields: a scroll view takes all the height it's allowed otherwise.)
+            .fixedSize(horizontal: false, vertical: true)
         } footer: {
             WebButton("Cancel") { model.dialog = nil }
             WebButton(busy ? "Saving…" : "Save", variant: .primary) { save() }.disabled(busy || title.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -221,6 +223,7 @@ private struct HistoryDialog: View {
                         }
                     }
                     .frame(maxHeight: 420)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
                 RoundedRectangle(cornerRadius: 6).fill(VS.color("surface", scheme)).frame(height: 96)
@@ -543,6 +546,7 @@ private struct VaultFileBody: View {
                     .padding(16)
             }
             .frame(maxHeight: 540)
+            .fixedSize(horizontal: false, vertical: true)
             .background(RoundedRectangle(cornerRadius: 10).fill(VS.color("surface", scheme)))
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(VS.color("line", scheme)))
         default: other
@@ -705,6 +709,7 @@ private struct CSVPreview: View {
             .textSelection(.enabled)
         }
         .frame(maxHeight: 540)
+        .fixedSize(horizontal: false, vertical: true)
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(VS.color("line", scheme)))
     }
 }

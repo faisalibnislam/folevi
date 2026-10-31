@@ -31,9 +31,12 @@ struct RebuildNoteScreen: View {
         let canEdit = meta.map { $0.found ? $0.canEdit : true } ?? true
         let editing = model.editing && model.shownNote == noteId
         let panel = model.editorPanel
+        // Focus Mode, or a block open full screen on the page (a mind map, a chart): the page alone, no bars.
+        let immersive = model.editorState?.focus == true
         ZStack(alignment: .bottom) {
             NotePage(noteId: noteId, model: model, pageHost: pageHost, scrolled: $scrolled, titleFoot: $titleFoot)
                 .ignoresSafeArea()
+            if !immersive {
             PhoneNoteTopBar(
                 title: meta?.title ?? "",
                 place: place(meta),
@@ -49,7 +52,10 @@ struct RebuildNoteScreen: View {
                 done: done
             )
             .frame(maxHeight: .infinity, alignment: .top)
-            if editing, panel == nil, canEdit {
+            .transition(.opacity)
+            }
+            if immersive {
+            } else if editing, panel == nil, canEdit {
                 PhoneKeyboardBar(state: PhoneKeyboardBarState(block: model.editorState?.block, link: model.editorState?.link ?? false, undo: model.editorState?.undo ?? false, redo: model.editorState?.redo ?? false), aiOn: model.aiOn, run: run)
                     .transition(.opacity)
             } else if !model.keyboardVisible, panel == nil {

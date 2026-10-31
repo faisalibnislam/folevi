@@ -130,6 +130,7 @@ import { webAddressIn } from "./autolink";
 import { setRangeHighlight } from "./blockHighlight";
 import { coarsePointer, useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { visibleBottom } from "@/lib/hooks/useVisualViewport";
+import { safeInsets } from "@/lib/iphone";
 import { nativeApp, type NativeScan } from "@/lib/nativeApp";
 import { fileFromNative, useNativeDevice } from "@/lib/nativeDevice";
 import { offerPushAfterReminder } from "@/lib/nativePush";
@@ -175,6 +176,7 @@ function Popover({
   popRef,
   tall = false,
   follow,
+  dock = false,
 }: {
   anchor: Anchor | null;
   children: React.ReactNode;
@@ -188,6 +190,8 @@ function Popover({
   tall?: boolean;
   /** Where the anchor is now: the popover follows it when the page scrolls. */
   follow?: () => Anchor | null;
+  /** In the iPhone layout: as wide as the screen less its margins (the / menu, mentions). */
+  dock?: boolean;
 }) {
   const ownRef = useRef<HTMLDivElement>(null);
   const ref = popRef ?? ownRef;
@@ -210,7 +214,7 @@ function Popover({
     };
   }, [anchor, ref]);
   const at = moved ?? anchor;
-  const [pos, setPos] = useState<{ left: number; top: number; maxHeight?: number } | null>(null);
+  const [pos, setPos] = useState<{ left: number; top: number; width?: number; maxHeight?: number } | null>(null);
   // In the top layer, so no panel or stacking order can clip or cover it (it stays in the editor's DOM).
   useShowInTopLayer(Boolean(anchor), ref);
   // A field marked data-autofocus takes focus once the popover is showing (React's autoFocus fires earlier,
@@ -230,16 +234,21 @@ function Popover({
     // Its whole height, even while it's held shorter to fit (so it doesn't flip between the two).
     const h = Math.max(ref.current.offsetHeight, ref.current.scrollHeight);
     const below = at.bottom + 6;
-    // Above the on-screen keyboard, where there is one.
-    const bottom = visibleBottom();
-    if (side.current === null) side.current = below + h > bottom - 8 && at.top - h - 6 >= 8 ? "above" : "below";
+    // Above the on-screen keyboard, where there is one; in the iPhone app, clear of the app's own bars too.
+    const room = phoneRoom();
+    const bottom = room ? room.bottom : visibleBottom();
+    const ceiling = room ? room.top : 8;
+    const w = room && dock ? window.innerWidth - 16 : width;
+    if (side.current === null) side.current = below + h > bottom - 8 && at.top - h - 6 >= ceiling ? "above" : room && bottom - below - 8 < at.top - 6 - ceiling ? "above" : "below";
     // A list that scrolls fits the room under the line instead of sliding up over it (a phone with its
-    // keyboard up has little room below).
+    // keyboard up has little room below), or over it on a phone when there's more room there.
     const roomBelow = bottom - below - 8;
+    const roomAbove = at.top - 6 - ceiling;
     const shrink = side.current === "below" && h > roomBelow && roomBelow >= 150;
-    const top = side.current === "above" ? Math.max(8, at.top - h - 6) : shrink ? below : Math.min(below, Math.max(8, bottom - h - 8));
-    setPos({ left: Math.max(8, Math.min(at.left, window.innerWidth - width - 8)), top, maxHeight: shrink ? roomBelow : undefined });
-  }, [at, width, children, ref]);
+    const shrinkAbove = Boolean(room) && side.current === "above" && h > roomAbove;
+    const top = side.current === "above" ? Math.max(ceiling, at.top - (shrinkAbove ? roomAbove : h) - 6) : shrink ? below : Math.min(below, Math.max(ceiling, bottom - h - 8));
+    setPos({ left: Math.max(8, Math.min(room && dock ? 8 : at.left, window.innerWidth - w - 8)), top, width: w, maxHeight: shrink ? roomBelow : shrinkAbove ? roomAbove : undefined });
+  }, [at, width, dock, children, ref]);
   if (!anchor) return null;
   return (
     <div
@@ -247,7 +256,8 @@ function Popover({
       role={role}
       aria-label={role === "dialog" ? label : undefined}
       popover="manual"
-      style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: pos?.left ?? anchor.left, top: pos?.top ?? anchor.bottom + 6, width, maxHeight: scroll ? pos?.maxHeight : undefined, ["--pop-max" as string]: !scroll && pos?.maxHeight ? `${pos.maxHeight - 12}px` : undefined, visibility: pos ? "visible" : "hidden" }}
+      style={{ position: "fixed", margin: 0, right: "auto", bottom: "auto", left: pos?.left ?? anchor.left, top: pos?.top ?? anchor.bottom + 6, width: pos?.width ?? width, maxHeight: scroll ? pos?.maxHeight : undefined, ["--pop-max" as string]: !scroll && pos?.maxHeight ? `${pos.maxHeight - 12}px` : undefined, visibility: pos ? "visible" : "hidden" }}
+      data-dock={dock || undefined}
       className={`z-[100] border-0 text-ink ${scroll ? `${tall ? "max-h-[min(600px,85vh)]" : "max-h-[min(420px,70vh)]"} overflow-y-auto` : ""} ui-pop p-1.5 animate-[folio-rise_120ms_var(--ease-folio)]`}
       onMouseDown={(e) => {
         // Keep focus in the editor, except for form controls inside the popover (fields, and Folevi's own
@@ -276,6 +286,21 @@ function Popover({
       {children}
     </div>
   );
+}
+
+/**
+ * In the iPhone app, the room a popover has: under the app's top bar and over its bottom bars or the keyboard
+ * and the bar on it (the insets native sends, --native-inset-*), else the screen's safe area. Null elsewhere.
+ */
+function phoneRoom(): { top: number; bottom: number } | null {
+  if (typeof document === "undefined" || !document.documentElement.hasAttribute("data-iphone")) return null;
+  const css = getComputedStyle(document.documentElement);
+  const nativeTop = parseFloat(css.getPropertyValue("--native-inset-top"));
+  const nativeBottom = parseFloat(css.getPropertyValue("--native-inset-bottom"));
+  const safe = safeInsets();
+  const top = (Number.isFinite(nativeTop) && nativeTop > 0 ? nativeTop : safe.top + 52) + 8;
+  const bottom = Math.min(visibleBottom(), window.innerHeight - (Number.isFinite(nativeBottom) && nativeBottom > 0 ? nativeBottom : safe.bottom)) - 8;
+  return { top, bottom };
 }
 
 function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }: { items: MenuItem[]; active: number; setActive: (i: number) => void; onRun: (i: MenuItem) => void; emptyLabel: string; listId: string; label: string }) {
@@ -1116,7 +1141,7 @@ export function EditorMenus({
       <p className="sr-only" aria-live="polite">
         {resultsLive}
       </p>
-      <Popover anchor={open ? anchor : null} label={menuLabel} role="presentation" scroll={false}>
+      <Popover anchor={open ? anchor : null} label={menuLabel} role="presentation" scroll={false} dock>
         <ListMenu items={items} active={active} setActive={setActive} onRun={run} listId={listId} label={menuLabel} emptyLabel={emptyLabel} />
       </Popover>
       <input
@@ -1503,6 +1528,12 @@ function SelectionBubble({ editor, onComment, inCell = false }: { editor: Editor
     const bar = document.querySelector<HTMLElement>("[data-iphone-keyboard-bar]")?.getBoundingClientRect();
     if (bar && bar.height) {
       setPlaced({ left: Math.max(8, (window.innerWidth - w) / 2), top: bar.top + Math.max(0, (bar.height - h) / 2) });
+      return;
+    }
+    // In the app, where the bar on the keyboard is native: just above it, centred, clear of the text.
+    const room = phoneRoom();
+    if (room) {
+      setPlaced({ left: Math.max(8, (window.innerWidth - w) / 2), top: Math.max(room.top, room.bottom - h) });
       return;
     }
     // Above the on-screen keyboard, where there is one.

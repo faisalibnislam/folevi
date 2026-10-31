@@ -12,7 +12,7 @@ import { insertKind } from "@/components/doc/InsertPanel";
 import { requestSpecialInsert, type SpecialInsert } from "@/components/editor/EditorMenus";
 import { AI_FOCUS_EVENT, askNoteAi } from "@/components/ai/chat/events";
 import { nativeChrome } from "@/lib/nativeApp";
-import { bridgeListening, emitNoteEvent, focusMode, markNoteReady, onNoteHost, registerNote, setFocusMode, type NoteHandle } from "./noteHost";
+import { blockFullScreen, bridgeListening, emitNoteEvent, focusMode, markNoteReady, onNoteHost, registerNote, setFocusMode, type NoteHandle } from "./noteHost";
 import { clearMatches, findMatches, MAX_MATCHES, paintMatches, revealMatch } from "@/components/doc/findInNote";
 import { BridgeError, id, num, oneOf, only, text } from "./validate";
 import { EDITOR_BLOCKS, EDITOR_MARKS, EDITOR_PANELS, NOTE_MENU_ACTIONS, type BlockAlign, type CalloutTone, type EditorBlock, type EditorCommandName, type EditorFormatState, type EditorMark, type EditorPanel, type EditorStateEvent, type FindResult, type NoteMenuAction, type TextStyleName } from "./protocol";
@@ -156,7 +156,7 @@ function setFormat(editor: Editor, args: Record<string, unknown>) {
 }
 
 export function editorState(editor: Editor | null, noteId: string, readOnly: boolean, lock: { locked?: boolean; canLock?: boolean } = {}): EditorStateEvent {
-  const extra = { focus: focusMode(), locked: Boolean(lock.locked), canLock: Boolean(lock.canLock) };
+  const extra = { focus: focusMode() || blockFullScreen(), locked: Boolean(lock.locked), canLock: Boolean(lock.canLock) };
   if (!editor || editor.isDestroyed) return { noteId, focused: typingOnPage(), canEdit: !readOnly, block: "paragraph", marks: [], link: false, undo: false, redo: false, ...extra, format: null };
   return {
     ...extra,

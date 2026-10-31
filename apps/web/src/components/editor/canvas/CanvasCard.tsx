@@ -12,6 +12,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 import { Expand, Shrink } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 import { BlockExportMenu } from "./BlockExport";
+import { PhoneCanvasCover } from "./PhoneCanvasCover";
 import { ToolFold, type FoldTool } from "./ToolFold";
 import { useFullCanvas, type FullCanvas } from "./useFullCanvas";
 
@@ -102,7 +103,7 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
 
   return (
     <NodeViewWrapper className={`fb-atom fb-${type} ${selected ? "fb-atom-selected" : ""}`} aria-label={name}>
-      <div ref={cardRef} contentEditable={false} className="fb-vcard fb-canvas-card" data-active={active || undefined} {...cardProps} aria-label={full ? `${name}, full canvas` : undefined}>
+      <div ref={cardRef} contentEditable={false} className="fb-vcard fb-canvas-card" data-active={active || undefined} data-blank={blank || undefined} {...cardProps} aria-label={full ? `${name}, full canvas` : undefined}>
         {/* Full canvas in the Mac app: the window's buttons sit in this corner (canvas.css). */}
         <span aria-hidden className="ui-traffic-space fb-full-traffic" />
         <div
@@ -153,6 +154,7 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
             </button>
           </div>
         </div>
+        <PhoneCanvasCover name={name} icon={icon} empty={blank} full={full} onOpen={() => toggleFull(true)} onDone={() => toggleFull(false)} />
         {editable ? (
           <div
             className="fb-wb-resize"

@@ -143,6 +143,11 @@ final class NoteViewController: UIViewController, PageViewOwner {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        if immersive {
+            immersive = false
+            navigationController?.setNavigationBarHidden(false, animated: animated)
+            navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+        }
         // Back while writing: the keyboard goes first (what was typed is saved as always).
         if isMovingFromParent || model.keyboardVisible {
             pageHost.pageView.endEditing(true)
@@ -190,10 +195,14 @@ final class NoteViewController: UIViewController, PageViewOwner {
         let items: [UIBarButtonItem] = editing ? [doneItem] : (meta.map { $0.found && $0.access != "read" } ?? true ? [moreItem, shareItem] : [moreItem])
         if navigationItem.rightBarButtonItems != items { navigationItem.setRightBarButtonItems(items, animated: appeared) }
 
-        let showKeyboardBar = editing && !panelOpen && canEdit
+        // Focus Mode, or a block open full screen on the page (a mind map, a chart): the page alone, no bars,
+        // and no edge swipe back (a finger drawing from the edge would leave the note).
+        let immersive = model.editorState?.focus == true && model.shownNote == noteId
+        setImmersive(immersive)
+        let showKeyboardBar = editing && !panelOpen && canEdit && !immersive
         setKeyboardBar(visible: showKeyboardBar)
         keyboardBar.update(model.editorState, aiOn: model.aiOn)
-        let showBars = !model.keyboardVisible && !panelOpen
+        let showBars = !model.keyboardVisible && !panelOpen && !immersive
         setBottomBars(visible: showBars, canEdit: canEdit)
 
         if model.isReady(noteId), model.shownNote == noteId, coverShown { hideCover() }
@@ -273,6 +282,15 @@ final class NoteViewController: UIViewController, PageViewOwner {
             self.leftBar.alpha = alpha
             self.rightBar.alpha = alpha
         }
+    }
+
+    private var immersive = false
+
+    private func setImmersive(_ on: Bool) {
+        guard on != immersive, let nav = navigationController, nav.topViewController === self else { return }
+        immersive = on
+        nav.setNavigationBarHidden(on, animated: appeared)
+        nav.interactivePopGestureRecognizer?.isEnabled = !on
     }
 
     private func setKeyboardBar(visible: Bool) {

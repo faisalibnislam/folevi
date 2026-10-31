@@ -119,9 +119,25 @@ export function setFocusMode(on: boolean): void {
   for (const l of [...listeners]) l();
 }
 
+let lifted = 0;
+
+/**
+ * A block open full screen in the iPhone layout (a visual block's full canvas, canvas/PhoneCanvasCover.tsx):
+ * the native app hides its bars as it does for Focus Mode, so the block's own tools and Done are all there is.
+ */
+export function blockFullScreen(): boolean {
+  return lifted > 0;
+}
+
+export function setBlockFullScreen(on: boolean): void {
+  lifted = Math.max(0, lifted + (on ? 1 : -1));
+  for (const l of [...listeners]) l();
+}
+
 /** For tests. */
 export function resetNoteHost(): void {
   focus = false;
+  lifted = 0;
   panes = NO_PANES;
   active = null;
   ready.clear();

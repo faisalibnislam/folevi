@@ -13,6 +13,7 @@ import { useEditable } from "../useEditable";
 import { layoutOf, type TabsGroup } from "./tabsState";
 import { addTab, deleteTab, moveTab, openTab, renameTab, writeInTab } from "./tabsExtension";
 import "./tabs.css";
+import { coarsePointer } from "@/lib/hooks/useMediaQuery";
 
 interface StripState {
   tabs: { id: string; name: string; empty: boolean }[];
@@ -284,7 +285,7 @@ export function TabsView({ node, editor, selected }: ReactNodeViewProps) {
       ) : openTabInfo?.empty ? (
         editable ? (
           <button type="button" className="fb-tabs-empty" onMouseDown={(e) => e.preventDefault()} onClick={() => writeInTab(view, tabsId, openTabInfo.id)}>
-            Empty tab. Click to write.
+            Empty tab. {coarsePointer() ? "Tap" : "Click"} to write.
           </button>
         ) : (
           <p className="fb-tabs-empty">This tab is empty.</p>

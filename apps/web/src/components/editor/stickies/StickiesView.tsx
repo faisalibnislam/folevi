@@ -85,6 +85,7 @@ import {
 } from "./ops";
 import { useStickiesDoc } from "./useStickiesDoc";
 import { targetUnder } from "../canvas/targetUnder";
+import { coarsePointer } from "@/lib/hooks/useMediaQuery";
 
 const MIN_K = 0.15;
 const MAX_K = 2.5;
@@ -1027,7 +1028,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
       maxHeight={LIMITS.maxStickiesHeight}
       defaultHeight={STICKIES_DEFAULT_HEIGHT}
       empty={empty && !editing}
-      hint="Double-click anywhere to add a note, or add several at once."
+      hint={`${coarsePointer() ? "Double-tap" : "Double-click"} anywhere to add a note, or add several at once.`}
       tools={tools}
       onRefit={() => fitView()}
       onKey={onKey}

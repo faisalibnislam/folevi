@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/Toast";
 import { haptic } from "@/lib/nativeApp";
 import { WB_COLOR_NAMES, clampHeight, strokeColor } from "./RichBlocks";
 import { useEditable } from "./useEditable";
+import { PhoneCanvasCover } from "./canvas/PhoneCanvasCover";
 import { BlockExportMenu } from "./canvas/BlockExport";
 import { useFullCanvas } from "./canvas/useFullCanvas";
 import { targetUnder } from "./canvas/targetUnder";
@@ -560,7 +561,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
 
   return (
     <NodeViewWrapper className={`fb-atom fb-whiteboard ${selected ? "fb-atom-selected" : ""}`} aria-label="Whiteboard">
-      <div ref={cardRef} contentEditable={false} className="fb-whiteboard-box fb-canvas-card" {...cardProps} aria-label={full ? "Whiteboard, full canvas" : undefined} onKeyDown={onKeyDown}>
+      <div ref={cardRef} contentEditable={false} className="fb-whiteboard-box fb-canvas-card" data-blank={count ? undefined : true} {...cardProps} aria-label={full ? "Whiteboard, full canvas" : undefined} onKeyDown={onKeyDown}>
         {/* Full canvas in the Mac app: the window's buttons sit in this corner (canvas.css). */}
         <span aria-hidden className="ui-traffic-space fb-full-traffic" />
         <div
@@ -739,6 +740,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
           </div>
         ) : null}
         {menu ? <ContextMenu at={menu.at} label="Stroke" host={menu.host} items={menuItems()} onClose={closeMenu} /> : null}
+        <PhoneCanvasCover name="Whiteboard" icon={<PenLine size={15} />} empty={!count} full={full} onOpen={() => toggleFull(true)} onDone={() => toggleFull(false)} />
       </div>
     </NodeViewWrapper>
   );

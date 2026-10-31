@@ -415,6 +415,57 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
  * view's settings, a new view), its views as a segmented control, and a table view as a list of rows (the
  * title, two properties under it) or a gallery in two columns. Board and calendar views stay as they are.
  */
+/**
+ * A calendar view on the phone: an agenda, not a month of seven slivers. Rows under their day (Today and
+ * Tomorrow by name), soonest first from today, then the days before, then those without a date.
+ */
+function PhoneAgenda({ data, view, rows, visible }: { data: CollectionData; view: View; rows: Row[]; visible: Property[] }) {
+  const today = useMemo(() => localDate(Date.now(), Intl.DateTimeFormat().resolvedOptions().timeZone), []);
+  const prop = data.properties.find((p) => p.id === view.config.dateBy && p.type === "date");
+  if (!prop) return <p className="px-4 pb-3 text-subheadline text-muted">Choose a date property to place rows on this calendar (View settings).</p>;
+  const { byDate, undated } = rowsByDate(rows, prop.id);
+  const days = [...byDate.keys()].sort();
+  const ordered = [...days.filter((d) => d >= today), ...days.filter((d) => d < today).reverse()];
+  const tomorrow = localDate(Date.now() + 86_400_000, Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const dayName = (d: string) => (d === today ? "Today" : d === tomorrow ? "Tomorrow" : formatCalendarDate(d, { weekday: "short", month: "short", day: "numeric" }));
+  const subtitle = visible.filter((p) => p.id !== prop.id).slice(0, 2);
+  const groups: { key: string; label: string; rows: Row[] }[] = [...ordered.map((d) => ({ key: d, label: dayName(d), rows: byDate.get(d)! })), ...(undated.length ? [{ key: "none", label: "No date", rows: undated }] : [])];
+  if (!groups.length) return <p className="px-4 pb-3 text-subheadline italic text-muted">No rows{data.rows.length ? " match this view" : " yet"}.</p>;
+  return (
+    <div className="pb-1">
+      {groups.map((g) => (
+        <section key={g.key} aria-label={g.label}>
+          <h4 className={`px-4 pb-1 pt-3 text-footnote font-semibold ${g.key === today ? "text-accent" : "text-muted"}`}>{g.label}</h4>
+          <ul className="iphone-collection-list">
+            {g.rows.map((row) => (
+              <li key={row.id}>
+                <RowLink row={row} className="flex min-h-12 items-center gap-3 px-4 py-2 outline-none active:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-body leading-[22px] text-ink">{row.title || "Untitled"}</span>
+                    {subtitle.some((p) => !isEmptyValue(row.values[p.id])) ? (
+                      <span className="mt-0.5 block truncate text-subheadline leading-5 text-muted">
+                        {subtitle
+                          .filter((p) => !isEmptyValue(row.values[p.id]))
+                          .map((p, i) => (
+                            <span key={p.id}>
+                              {i ? " · " : null}
+                              <CellDisplay prop={p} value={row.values[p.id]} people={data.people} inLink />
+                            </span>
+                          ))}
+                      </span>
+                    ) : null}
+                  </span>
+                  <ChevronRight size={15} strokeWidth={2.4} aria-hidden className="flex-none text-faint" />
+                </RowLink>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 function PhoneCollection({
   data,
   view,
@@ -549,10 +600,10 @@ function PhoneCollection({
       ) : view.type === "board" ? (
         <BoardCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onAdd={onAdd} />
       ) : (
-        <CalendarCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onAdd={onAdd} />
+        <PhoneAgenda data={data} view={view} rows={rows} visible={visible} />
       )}
       {canEdit && (view.type !== "board" || data.properties.some((p) => p.id === view.config.groupBy && p.type === "formula")) ? (
-        <button type="button" onClick={() => void onAdd()} className="flex min-h-11 w-full items-center gap-2.5 px-4 text-left text-body text-heading outline-none active:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
+        <button type="button" onClick={() => void onAdd(view.type === "calendar" && view.config.dateBy ? { [view.config.dateBy]: localDate(Date.now(), Intl.DateTimeFormat().resolvedOptions().timeZone) } : undefined)} className="flex min-h-11 w-full items-center gap-2.5 px-4 text-left text-body text-heading outline-none active:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
           <Plus size={20} strokeWidth={2.2} aria-hidden /> New row
         </button>
       ) : null}

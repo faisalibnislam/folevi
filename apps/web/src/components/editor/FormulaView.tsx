@@ -7,6 +7,7 @@ import { LIMITS, ulid } from "@folevi/editor-schema";
 import { FormulaRender } from "./RichBlocks";
 import { useDraft } from "./useDraft";
 import { useEditable } from "./useEditable";
+import { coarsePointer } from "@/lib/hooks/useMediaQuery";
 
 /** Formula blocks inserted by this person open straight into editing. */
 const OPEN_ON_MOUNT = new Set<string>();
@@ -117,7 +118,7 @@ export function FormulaView({ node, selected, updateAttributes, editor, getPos }
             title={editable ? "Click to edit the formula (Enter when selected)" : undefined}
             onClick={() => editable && setEditing(true)}
           >
-            {latex.trim() ? <FormulaRender latex={latex} /> : <span className="fb-formula-empty">{editable ? "Empty formula. Click to write LaTeX" : "Empty formula"}</span>}
+            {latex.trim() ? <FormulaRender latex={latex} /> : <span className="fb-formula-empty">{editable ? `Empty formula. ${coarsePointer() ? "Tap" : "Click"} to write LaTeX` : "Empty formula"}</span>}
           </div>
         )}
       </div>

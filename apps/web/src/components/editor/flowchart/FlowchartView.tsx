@@ -59,7 +59,7 @@
 //   Panels: add their open state to the controller (like aiOpen) and their element to the chrome below.
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { useEffect, useMemo, useState } from "react";
-import { GitBranchPlus, ListChecks, ListPlus } from "lucide-react";
+import { GitBranchPlus, ListChecks, ListPlus, Workflow } from "lucide-react";
 import { useAiEnabled, useNoteAi } from "@/components/ai/useAi";
 import { insertAiMarkdown } from "@/components/ai/insert";
 import { useAiFeature } from "@/lib/mode";
@@ -68,6 +68,7 @@ import { FlowchartReadOnly } from "./FlowchartReadOnly";
 import { MainToolbar, ZoomBar } from "./FlowchartChrome";
 import { FlowchartAi } from "./FlowchartAi";
 import { BlockExportMenu } from "../canvas/BlockExport";
+import { PhoneCanvasCover } from "../canvas/PhoneCanvasCover";
 import { useFlowController } from "./controller/useFlowController";
 import { useFlowActions } from "./controller/useFlowActions";
 import { useInteractions } from "./controller/useInteractions";
@@ -103,6 +104,7 @@ import { useFlowAi } from "./controller/useFlowAi";
 import { TidyControl } from "./chrome/TidyControl";
 import { CheckPanel } from "./chrome/CheckPanel";
 import { takePendingFlowchart } from "./noteConvert";
+import { coarsePointer } from "@/lib/hooks/useMediaQuery";
 
 /** The flowchart block's node view: the editable canvas, or a static picture in read-only notes. */
 export function FlowchartView(props: ReactNodeViewProps) {
@@ -198,7 +200,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   const nodeCount = doc.nodes.length;
   return (
     <NodeViewWrapper className={`fb-atom fb-flowchart ${props.selected ? "fb-atom-selected" : ""}`} aria-label="Flowchart">
-      <div ref={ctrl.cardRef} contentEditable={false} className="fc-card fb-canvas-card" data-active={ctrl.active || undefined} {...ctrl.fullCardProps} aria-label={full ? "Flowchart, full canvas" : undefined}>
+      <div ref={ctrl.cardRef} contentEditable={false} className="fc-card fb-canvas-card" data-active={ctrl.active || undefined} data-blank={nodeCount ? undefined : true} {...ctrl.fullCardProps} aria-label={full ? "Flowchart, full canvas" : undefined}>
         {/* Full canvas in the Mac app: the window's buttons sit in this corner (canvas.css). */}
         <span aria-hidden className="ui-traffic-space fb-full-traffic" />
         <div
@@ -256,7 +258,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
           </p>
           {!nodeCount && !editing ? (
             <div className="fc-empty">
-              <p>Double-click anywhere to add a shape, or pick one above.</p>
+              <p>{coarsePointer() ? "Double-tap" : "Double-click"} anywhere to add a shape, or pick one above.</p>
               {aiOn ? (
                 <button type="button" className="fc-btn fc-btn-text fc-empty-ai" onClick={() => ctrl.setAiOpen(true)} onPointerDown={(e) => e.stopPropagation()}>
                   Create with AI
@@ -316,6 +318,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
         </div>
         <HeightHandle ctrl={ctrl} />
         {menu.element}
+        <PhoneCanvasCover name="Flowchart" icon={<Workflow size={15} />} empty={!nodeCount} full={full} onOpen={() => ctrl.toggleFull(true)} onDone={() => ctrl.toggleFull(false)} />
       </div>
     </NodeViewWrapper>
   );

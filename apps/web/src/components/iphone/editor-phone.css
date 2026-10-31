@@ -97,3 +97,92 @@
    (EditorContextMenu.tsx). */
 :root[data-iphone][data-note-hold] .fb-editor,
 :root[data-iphone][data-note-hold] .fb-editor * { -webkit-user-select: none !important; user-select: none !important; }
+/* ------------------------------------------------------------------------------------------------
+ * Visual blocks (mind map, flowchart, sticky notes, chart, wireframe, whiteboard; canvas/PhoneCanvasCover.tsx):
+ * in the note a picture of the block under a plain header with Open, the whole card one target that opens it
+ * full screen. Their desktop chrome (the floating toolbar, zoom bar, height handle, empty-state hint) shows
+ * only there, where a Done capsule brings the note back.
+ * --------------------------------------------------------------------------------------------- */
+:root[data-iphone] .fb-canvas-card:not([data-full]) { position: relative; padding-top: 44px; border-radius: var(--radius-container); box-shadow: 0 0 0 0.5px var(--color-line-strong); background: var(--fb-canvas-bg); overflow: hidden; }
+:root[data-iphone] .fb-canvas-card:not([data-full]) :is(.fb-vc-bar, .fb-wb-toolbar, [class^="fc-bar"], [class*=" fc-bar"], .wf-bar, .st-bar, .mm-bar, .wf-zoom, .st-zoom, .fc-zoom, .fb-chart-zoom-bar, .fb-wb-resize, .fc-resize, .st-resize, .fb-vc-empty, .fc-empty, .wf-empty, .st-hint, [role="toolbar"]) { display: none !important; }
+:root[data-iphone] .fb-canvas-card:not([data-full]) ~ .fb-wb-resize,
+:root[data-iphone] .fb-atom > .fb-canvas-card:not([data-full]) + .fb-wb-resize { display: none !important; }
+/* A preview, not a place to work: nothing in it takes a touch. */
+:root[data-iphone] .fb-canvas-card:not([data-full]) .fb-canvas-body { pointer-events: none; }
+/* The room the hidden toolbar kept at the top goes to the content. */
+:root[data-iphone] .fb-canvas-card:not([data-full]) :is(.fb-chart-body, .fb-vc-content) { top: 8px; }
+:root[data-iphone] .fb-canvas-card[data-blank]:not([data-full]) .fb-canvas-body { height: 0 !important; min-height: 0; aspect-ratio: auto !important; }
+:root[data-iphone] .fb-vc-phone {
+  position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
+  width: 100%; padding: 0; text-align: left; background: transparent; -webkit-tap-highlight-color: transparent; transition: background-color 150ms;
+}
+:root[data-iphone] .fb-vc-phone:active { background: color-mix(in oklab, var(--color-ink) 5%, transparent); }
+:root[data-iphone] .fb-vc-phone-head {
+  display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 8px 0 14px; flex: none;
+  box-shadow: inset 0 -0.5px 0 var(--iphone-separator, var(--color-line));
+  font: 600 var(--type-subheadline)/1.2 var(--font-sans); color: var(--color-heading);
+}
+:root[data-iphone] .fb-vc-phone-icon { display: inline-grid; place-items: center; color: var(--color-ink-muted); }
+:root[data-iphone] .fb-vc-phone-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-iphone] .fb-canvas-card[data-blank]:not([data-full]) .fb-canvas-body { display: none; }
+:root[data-iphone] .fb-vc-phone-open {
+  display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 12px; border-radius: var(--radius-capsule);
+  background: color-mix(in oklab, var(--color-ink) 7%, transparent); color: var(--color-heading); font: 600 var(--type-footnote)/1 var(--font-sans);
+}
+:root[data-iphone] .fb-canvas-card[data-blank] .fb-vc-phone-open { background: var(--color-heading); color: var(--color-canvas); }
+:root[data-iphone] .fb-canvas-card[data-blank]:not([data-full]) { padding-top: 60px; }
+:root[data-iphone] .fb-canvas-card[data-blank]:not([data-full]) .fb-vc-phone-head { height: 60px; box-shadow: none; }
+:root[data-iphone] .fb-canvas-card[data-blank]:not([data-full]) .fb-vc-phone-icon { width: 34px; height: 34px; border-radius: var(--radius-small); background: color-mix(in oklab, var(--color-ink) 6%, transparent); color: var(--color-heading); }
+:root[data-iphone] .fb-vc-phone-sub { display: block; margin-top: 3px; font: 400 var(--type-footnote)/1.2 var(--font-sans); color: var(--color-ink-muted); }
+/* Full screen: the block's own tools along the top under the status bar, Done at the bottom over the home bar. */
+:root[data-iphone] .fb-canvas-card[data-full] { padding-top: calc(max(env(safe-area-inset-top), var(--native-inset-top, 0px)) + 4px); padding-bottom: 0; }
+/* (In the app the page runs under native bars and env() reads 0: the room native gave the bar on top is the
+   status bar's once its bars step aside.) */
+:root[data-iphone] .fb-vc-phone-done {
+  position: absolute; z-index: 20; left: 50%; bottom: calc(max(env(safe-area-inset-bottom), 24px) + 10px); transform: translateX(-50%);
+  min-width: 112px; height: 48px; padding: 0 24px; border-radius: var(--radius-capsule);
+  background: var(--color-heading); color: var(--color-canvas); font: 600 var(--type-body)/1 var(--font-sans);
+  box-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.35), 0 0 0 0.5px rgb(0 0 0 / 0.08);
+}
+:root[data-iphone] .fb-vc-phone-done:active { transform: translateX(-50%) scale(0.96); }
+/* ------------------------------------------------------------------------------------------------
+ * Tables (table/TableView.tsx) on the phone: a card with rounded corners and hairline rules, the header row on a
+ * soft wash in the sans face, cells in the note's face a size down with room for a finger, numbers lined up.
+ * Columns keep a readable width and the card scrolls sideways past the screen's edge (.fb-hscroll above).
+ * --------------------------------------------------------------------------------------------- */
+:root[data-iphone] .fb-editor .fb-table { width: auto; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--type-subheadline); line-height: 20px; }
+:root[data-iphone] .fb-editor .fb-table :is(tbody, thead:not(:has(.fb-table-label))) > tr > :is(td, th).border-line { border-width: 0 0.5px 0.5px 0; border-color: var(--color-line-strong); }
+:root[data-iphone] .fb-editor .fb-table tbody > tr:first-child > :is(td, th).border-line { border-top-width: 0.5px; }
+:root[data-iphone] .fb-editor .fb-table tbody > tr > :is(td, th).border-line:first-child { border-left-width: 0.5px; }
+:root[data-iphone] .fb-editor .fb-table tbody > tr:first-child > .border-line:first-child { border-top-left-radius: var(--radius-panel); }
+:root[data-iphone] .fb-editor .fb-table tbody > tr:first-child > .border-line:nth-last-child(1 of .border-line) { border-top-right-radius: var(--radius-panel); }
+:root[data-iphone] .fb-editor .fb-table tbody > tr:last-child > .border-line:first-child { border-bottom-left-radius: var(--radius-panel); }
+:root[data-iphone] .fb-editor .fb-table tbody > tr:last-child > .border-line:nth-last-child(1 of .border-line) { border-bottom-right-radius: var(--radius-panel); }
+:root[data-iphone] .fb-editor .fb-table .fb-cell { width: max-content; min-width: 7.5rem; max-width: 15rem; min-height: 44px; padding: 12px; }
+:root[data-iphone] .fb-editor .fb-table :is(td, th) { min-width: 7.5rem; vertical-align: top; }
+/* The column tools' row (letters, move, options) only takes room while the table is being edited. */
+:root[data-iphone] .fb-editor .fb-table > thead.invisible { visibility: collapse; }
+:root[data-iphone] .fb-editor .fb-table > thead.invisible > tr > * { padding: 0; height: 0; line-height: 0; }
+:root[data-iphone] .fb-editor .fb-table th { background: color-mix(in oklab, var(--color-ink) 4%, var(--color-surface)); }
+:root[data-iphone] .fb-editor .fb-table th .fb-cell { font: 600 var(--type-footnote)/20px var(--font-sans); letter-spacing: 0.01em; color: var(--color-ink-muted); padding-block: 12px; }
+:root[data-iphone] .fb-editor .fb-table .fb-cell-host .fb-cell-editor { min-height: 44px; padding: 12px; }
+/* Adding: a quiet "+" row under the last row, inside the card's width, and a slim "+" column at the end. */
+:root[data-iphone] .fb-editor .fb-table tfoot .fb-table-add { height: 40px; place-items: center start; padding-left: 12px; background: transparent; color: var(--color-ink-faint); }
+:root[data-iphone] .fb-editor .fb-table tfoot .fb-table-add:active { background: color-mix(in oklab, var(--color-ink) 6%, transparent); }
+:root[data-iphone] .fb-editor .fb-table .fb-table-add-col .fb-table-add { width: 36px; background: color-mix(in oklab, var(--color-ink) 3%, transparent); color: var(--color-ink-faint); }
+/* The / menu and mentions (EditorMenus.tsx, Popover dock): across the screen, rows a finger's height, no
+   keyboard hints (there's no keyboard shortcut to show on a phone). */
+:root[data-iphone] .ui-pop[data-dock] { padding: 6px; border-radius: var(--radius-container); }
+:root[data-iphone] .ui-pop[data-dock] [role="option"] { min-height: 48px; gap: 12px; padding: 6px 10px; font-size: var(--type-body); }
+:root[data-iphone] .ui-pop[data-dock] [role="option"] > span:first-child { width: 34px; height: 34px; border-radius: var(--radius-small); }
+:root[data-iphone] .ui-pop[data-dock] [role="option"] > span:nth-child(3) { display: none; }
+/* A toggle's arrow: drawn the same size, but a finger's target around it. */
+:root[data-iphone] .fb-editor .fb-disclosure { position: relative; }
+:root[data-iphone] .fb-editor .fb-disclosure::after { content: ""; position: absolute; inset: -10px; }
+/* Done is the way out on a phone: the toolbar's own exit button would be a second one. */
+:root[data-iphone] .fb-canvas-card[data-full] button[aria-label="Exit full canvas"] { display: none; }
+/* Links, files and embeds: the name in the note's face, what's said about it (site, size, Open) in the app's
+   sans a size down, as on a share card; a link's description holds to two lines. */
+:root[data-iphone] .fb-editor :is(.node-bookmark, .node-file, .node-embed, .node-audio) :is(.text-footnote, .text-subheadline:not(.font-medium)) { font-family: var(--font-sans); }
+:root[data-iphone] .fb-editor .node-embed .font-medium { font-family: var(--font-sans); font-weight: 600; }
+:root[data-iphone] .fb-editor .node-bookmark .line-clamp-2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }

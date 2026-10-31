@@ -17,7 +17,7 @@ import { shellSignIn } from "@/lib/auth/shellFetch";
 import { setShellMode } from "@/lib/shell";
 import { deviceWords } from "@/lib/shell/words";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
-import { ModeChoice, PRE_APP_PAGE, mobileApp, preAppBackground, preAppTitle } from "./ModeChoice";
+import { ModeChoice, PRE_APP_PAGE, mobileApp, preAppBackground, preAppTitle, useSystemTheme } from "./ModeChoice";
 import { MOBILE_TEXT_BUTTON } from "./LibrarySetup";
 import { NativeGate, type NativeGateAction } from "@/lib/engine/NativeGate";
 
@@ -28,6 +28,8 @@ const MAC_BUTTON = "h-11 w-full text-body";
 const WAY_NAMES: Record<SignInWay, string> = { apple: "Apple", google: "Google", email: "Folevi" };
 
 export function ShellSignIn() {
+  // The phone and tablet screen isn't a FullPageMessage: it follows the system's appearance itself.
+  useSystemTheme();
   // "choose": Apple, Google or email, before anything opens.
   const [state, setState] = useState<"idle" | "choose" | "waiting" | "failed">("idle");
   const [way, setWay] = useState<SignInWay>("email");
@@ -151,6 +153,8 @@ export function ShellSignIn() {
     // The phone and tablet apps: a screen of the app's own (no web card), the buttons iOS's size.
     return (
       <main id="main" tabIndex={-1} data-pre-app="" className={`${PRE_APP_PAGE} ${preAppBackground()}`}>
+        {/* The iPhone and iPad's native frame draws this screen too, with the same buttons. */}
+        <NativeGate gate="signedOut" title="Sign in to Folevi" message={body} actions={nativeActions} error={nativeError} />
         <div className="grid w-full max-w-md gap-8">
           <div className="grid justify-items-center gap-5 text-center">
             <FoleviLogo height={26} className="text-ink" />

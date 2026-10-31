@@ -56,6 +56,8 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
     let pageHost: PageViewHost
     let frame: PhoneFrameModel
     let menus: PhoneMenus
+    private let transport: PhoneEngineTransport
+    private var retiring: PageRetirement?
     private var observers: [Observer] = []
     private var tokens: [NSObjectProtocol] = []
 
@@ -65,6 +67,7 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         self.frame = frame
         self.menus = menus
         let transport = PhoneEngineTransport(host: host)
+        self.transport = transport
         let info = Bundle.main.infoDictionary
         let platform: AppInfo.Platform = UIDevice.current.userInterfaceIdiom == .pad ? .ipados : .ios
         let client = EngineClient(transport: transport, place: ShellPlaces.state.current ?? "", app: AppInfo(platform: platform, version: info?["CFBundleShortVersionString"] as? String ?? "0", build: info?["CFBundleVersion"] as? String ?? "0", protocol: EngineContract.protocolVersion, schemaHash: EngineContract.schemaHash))
@@ -118,6 +121,17 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         // FOLEVI_REBUILD_NEWNOTE=1: a new note at launch (for checking the note page headlessly; scratch data only).
         if ProcessInfo.processInfo.environment["FOLEVI_REBUILD_NEWNOTE"] == "1" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in self?.model.newNote() }
+        }
+    }
+
+    /// Before a new mode's web view (FoleviViewController.restart): the engine stops and the page goes away first.
+    func retire(then done: @escaping () -> Void) {
+        model.stop()
+        transport.detach()
+        retiring = PageRetirement(host.pageView) { [weak self] in
+            self?.retiring = nil
+            self?.host.tearDown()
+            done()
         }
     }
 

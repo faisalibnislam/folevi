@@ -15,6 +15,9 @@ export const GATES = [
   { id: "first-launch", steps: [], ready: "Where should your notes live?" },
   { id: "library-setup", steps: [["Keep notes on my devices", "Where should your library live?"]], ready: "Where should your library live?" },
   { id: "library-ready", steps: [["Keep notes on my devices", "Where should your library live?"], ["This device", "Your library is ready"]], ready: "Your library is ready" },
+  // Account mode with no session: the sign-in card. (It asks the Folevi website whether there's a session; nothing
+  // is signed in to. The page reloads into account mode first, which may show the choice again.)
+  { id: "sign-in", steps: [["Sign in to Folevi", "Continue with Apple|Where should your notes live?", 15000], ["?Sign in to Folevi", "Continue with Apple", 15000]], ready: "Continue with Apple" },
 ];
 
 export function simulator(device) {
@@ -40,7 +43,18 @@ export function simulator(device) {
     }
     throw new Error(`"${text}" never showed`);
   };
-  const press = (label) => evalJs(`const b = [...document.querySelectorAll("button, a")].find((x) => x.textContent.trim().startsWith(${JSON.stringify(label)})); if (!b) return false; b.click(); return true;`);
+  const waitForAny = (texts, ms) => {
+    for (let t = 0; t < ms; t += 500) {
+      try {
+        if (evalJs(`return ${JSON.stringify(texts)}.some((x) => document.body.innerText.includes(x))`)) return;
+      } catch {
+        /* the page is reloading */
+      }
+      sleep(500);
+    }
+    throw new Error(`none of ${texts.join(", ")} showed`);
+  };
+  const press = (label) => evalJs(`const b = [...document.querySelectorAll("button, a")].find((x) => x.textContent.trim().startsWith(${JSON.stringify(label)})) ?? [...document.querySelectorAll("button, a")].find((x) => x.textContent.includes(${JSON.stringify(label)})); if (!b) return false; b.click(); return true;`);
   return {
     udid,
     sleep,
@@ -63,9 +77,14 @@ export function simulator(device) {
       simctl("install", udid, app);
       sh("xcrun", ["simctl", "launch", udid, BUNDLE], Object.fromEntries(Object.entries(env).map(([k, v]) => [`SIMCTL_CHILD_${k}`, v])));
       waitFor("Where should your notes live?", 60000);
-      for (const [label, next] of gate.steps) {
-        if (!press(label)) throw new Error(`${gate.id}: no button "${label}"`);
-        waitFor(next);
+      // A step's label starting "?" is pressed only if it's there; "a|b" waits for either.
+      for (const [label, next, ms] of gate.steps) {
+        const optional = label.startsWith("?");
+        const name = optional ? label.slice(1) : label;
+        if (optional && evalJs(`return document.body.innerText.includes(${JSON.stringify(next.split("|")[0])})`)) continue;
+        if (!press(name) && !optional) throw new Error(`${gate.id}: no button "${name}"`);
+        sleep(1500);
+        waitForAny(next.split("|"), ms ?? 30000);
       }
       waitFor(gate.ready);
     },

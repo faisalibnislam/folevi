@@ -178,6 +178,18 @@ final class FoleviViewController: UIViewController {
             }
             return
         }
+        if let rebuild = window.rootViewController as? RebuildFrameController {
+            // The same frame model (its routes stay), a new controller on the new mode's web view.
+            rebuild.retire {
+                let next = RebuildFrame.controller()
+                if UIAccessibility.isReduceMotionEnabled {
+                    window.rootViewController = next
+                } else {
+                    UIView.transition(with: window, duration: 0.28, options: [.transitionCrossDissolve, .allowAnimatedContent]) { window.rootViewController = next }
+                }
+            }
+            return
+        }
         guard let old = window.rootViewController as? FoleviViewController else {
             window.rootViewController = FoleviViewController(host: WebHost())
             return

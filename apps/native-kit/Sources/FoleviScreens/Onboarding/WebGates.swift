@@ -39,6 +39,9 @@ public struct WebGateScreen: View {
             case .modeChoice: ModeChoiceGate(model: model)
             case .librarySetup: LibrarySetupGate(model: model)
             case .libraryLocked: LockedLibraryGate(model: model)
+            #if os(iOS)
+            case .signedOut: PhoneSignInGate(model: model)
+            #endif
             default: MessageCardGate(model: model)
             }
         }
@@ -807,6 +810,31 @@ struct MessageCardGate: View {
         return !g.actions.isEmpty || !g.fields.isEmpty || g.deviceLimit != nil || g.e2ee?.recoveryKey != nil || g.migration != nil || model.errorMessage != nil
     }
 }
+
+#if os(iOS)
+/// ShellSignIn on the iPhone and iPad (components/app/ShellSignIn.tsx, `mobile`): no card, the logo, the title and
+/// its line over the buttons, then Keep notes on my devices instead as a text button.
+struct PhoneSignInGate: View {
+    @Bindable var model: GateModel
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let column = gs("gates.signin.card", scheme)
+        let title = gs("gates.signin.title", scheme)
+        GateColumn(width: column.width, gap: column.gap) {
+            // (grid gap-5: 20 between the logo, the title and the text.)
+            VStack(spacing: 20) {
+                WebFoleviLogo(height: 26, color: gs("gates.logo", scheme).color.color)
+                WebParagraph([WebRun(model.title)], style: title.text, width: title.width, alignment: .center, wrap: .balance)
+                    .foregroundStyle(title.color.color)
+                    .frame(maxWidth: .infinity)
+                GateParagraph(model.message, id: "gates.signin.body")
+            }
+            SignInChoices(model: model)
+        }
+    }
+}
+#endif
 
 /// ShellSignIn's buttons (components/app/ShellSignIn.tsx, the Mac's): Continue with Apple (Apple's black button),
 /// Continue with Google, Sign in with email, Keep notes on my devices instead; while the sign-in sheet is open,

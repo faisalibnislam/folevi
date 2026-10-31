@@ -249,11 +249,11 @@
     },
     "gates.signin.title": {
       "screen": "sign-in",
-      "selector": "main > div > h1"
+      "selector": "main h1"
     },
     "gates.signin.body": {
       "screen": "sign-in",
-      "selector": "main > div > h1 + div"
+      "selector": "main h1 + *"
     },
     "gates.signin.list": {
       "screen": "sign-in",

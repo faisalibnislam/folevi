@@ -271,6 +271,7 @@ struct ScreenRoot: View {
     let model: FrameModel
     let models: ScreenModels
     let route: FrameRoute
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         Group {
@@ -301,8 +302,9 @@ struct ScreenRoot: View {
         // content runs on under it.
         .safeAreaPadding(.top, ContentViewController.barHeight)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        // Help, Graph, Reviews and shared folders show the content card through (the web's main is clear).
-        .background(MoreScreen.clear(route) ? Color.clear : Folevi.color.canvas)
+        // Help, Graph, Reviews and shared folders show the content card through (the web's main is clear): the card's
+        // own fill drawn here, since the note page waiting behind the screens has its own canvas over the card's.
+        .background(MoreScreen.clear(route) ? WebStyles.named("frame.content").resolve(scheme).background.color : Folevi.color.canvas)
         // Another place or space: the screen crossfades instead of cutting.
         .placeCrossfade("\(model.session.value?.place ?? "")|\(model.session.value?.space ?? "")")
         .environment(\.screenNavigator, FrameNavigation.navigator(model))

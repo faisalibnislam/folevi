@@ -380,6 +380,7 @@ public struct WebSidebar: View {
         let header = style("section.header")
         let chevron = style("section.chevron")
         let titleStyle = style("section.title")
+        let here = model.route.tabKey == route.tabKey
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: header.gap) {
                 Button { open.wrappedValue.toggle() } label: {
@@ -393,9 +394,11 @@ public struct WebSidebar: View {
                     Text(title.uppercased())
                         .webText(titleStyle.text)
                         .lineLimit(1)
-                        .foregroundStyle(titleStyle.color.color)
+                        .foregroundStyle(here ? Folevi.color.heading : titleStyle.color.color)
                         .padding(titleStyle.padding.edgeInsets)
                         .frame(maxWidth: .infinity, minHeight: titleStyle.height, alignment: .leading)
+                        // Its page open: the glass fill and the heading's ink (Sidebar.tsx's Section, isActive).
+                        .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular).fill(here ? (WebStyles.vars["glass-hover"]?.resolve(scheme).color ?? .clear) : .clear))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

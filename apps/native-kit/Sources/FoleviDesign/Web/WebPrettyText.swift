@@ -212,6 +212,12 @@ public struct WebPrettyText: View {
 
     private var lines: [String] {
         guard width > 0 else { return [text] }
+        // WebKit's own breaks when the page can say them (`text.layout`, the Mac and the iPhone): no model of
+        // `text-wrap: pretty` matches it everywhere. Mono text and an unanswered request use the model.
+        if style.family != .mono, WebLineLayout.shared.requester != nil {
+            let s = WebLineLayout.Style(family: style.family == .display ? .display : .sans, size: style.size, lineHeight: style.leading, weight: style.weight, letterSpacing: style.letterSpacing, width: width, wrap: wrap == .pretty ? .pretty : wrap == .balance ? .balance : .wrap, pre: false)
+            if let got = WebLineLayout.shared.lines(text, style: s), !got.isEmpty { return got }
+        }
         switch wrap {
         case .pretty: return WebPrettyWrap.lines(text, style: style, width: width)
         case .balance: return WebPrettyWrap.balanced(text, style: style, width: width)

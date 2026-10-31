@@ -1329,6 +1329,8 @@ struct WebTagsIndex: View {
                                         .padding(.vertical, 2)
                                         .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular).fill(webVar("color-surface-sunken", scheme).color))
                                 }
+                                // (Its own width always: placed at its measured width, a rounding short cut the count to "1 p…".)
+                                .fixedSize()
                                 .padding(.leading, 12)
                                 .padding(.trailing, 8)
                                 .frame(height: 36)

@@ -7,6 +7,7 @@ import SwiftUI
 import UIKit
 import FoleviDesign
 import FoleviEngine
+import FoleviMac
 import FoleviPhone
 import FoleviScreens
 
@@ -43,6 +44,7 @@ enum RebuildFrame {
 
     static func controller() -> UIViewController {
         FoleviFonts.register()
+        WebStyles.isPad = UIDevice.current.userInterfaceIdiom == .pad
         return RebuildFrameController(frame: model, menus: menus)
     }
 }
@@ -60,6 +62,16 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
     private var retiring: PageRetirement?
     private var observers: [Observer] = []
     private var tokens: [NSObjectProtocol] = []
+    /// The iPad's wide layout: the Mac frame's model on the same engine (RebuildIPad.swift).
+    lazy var desk: FrameModel = {
+        let f = FrameModel(client: model.client)
+        f.host = self
+        // FOLEVI_REBUILD_OPEN: the routes to open at launch, as on the phone (each in a tab of its own).
+        for path in (ProcessInfo.processInfo.environment["FOLEVI_REBUILD_OPEN"] ?? "").split(separator: ",") {
+            f.open(FrameRoute(path: String(path)))
+        }
+        return f
+    }()
 
     init(frame: PhoneFrameModel, menus: PhoneMenus) {
         let host = WebHost.take()
@@ -94,7 +106,7 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         let feedback = ScreenFeedback(toast: { [weak self] t in self?.model.toast(t.message, tone: t.tone == .error ? .error : .info) })
         let places = PlacesModel(client: model.client, feedback: feedback)
         let home = HomeModel(client: model.client, feedback: feedback)
-        let root = UIHostingController(rootView: RebuildRoot(model: frame, menus: menus, phone: model, pageHost: pageHost, gate: gate, places: places, home: home, accountAction: { [weak self] action, close in
+        let root = UIHostingController(rootView: RebuildRoot(model: frame, menus: menus, phone: model, desk: desk, pageHost: pageHost, gate: gate, places: places, home: home, accountAction: { [weak self] action, close in
             self?.account(action, places: places, close: close)
         }, signOut: { [weak self] in self?.signOutNow() }))
         root.view.backgroundColor = .clear
@@ -200,6 +212,7 @@ private struct RebuildRoot: View {
     let model: PhoneFrameModel
     let menus: PhoneMenus
     let phone: PhoneModel
+    let desk: FrameModel
     let pageHost: PageViewHost
     let gate: GateModel
     let places: PlacesModel
@@ -216,6 +229,19 @@ private struct RebuildRoot: View {
     @State private var newFolder: NewFolderRequest?
 
     var body: some View {
+        // The iPad in a window wide enough for the sidebar: the web's desktop layout (lib/iphone.ts
+        // isIpadLayout, under 700 pt the phone's); the iPhone always the phone's.
+        GeometryReader { g in
+            if UIDevice.current.userInterfaceIdiom == .pad, g.size.width >= RebuildIPad.minWidth {
+                RebuildIPadRoot(desk: desk, phone: phone, pageHost: pageHost, gate: gate)
+            } else {
+                phoneBody
+            }
+        }
+        .ignoresSafeArea(.keyboard)
+    }
+
+    private var phoneBody: some View {
         PhoneFrameView(model: model, menus: menus, aiOn: phone.aiOn, tabBarHidden: selecting || model.top.isSearch, actions: PhoneFrameActions(newNote: { phone.newNote() }, fromTemplate: { model.open(FrameRoute(path: "/templates")) })) { route in
             if case .note(let id) = route {
                 RebuildNoteScreen(noteId: id, model: phone, pageHost: pageHost, frame: model, menus: menus)

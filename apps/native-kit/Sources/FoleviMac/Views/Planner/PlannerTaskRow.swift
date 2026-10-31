@@ -2,8 +2,12 @@
 // priority, repeat and due date on the right, and Edit on hover; a right click opens the web's task menu (Mark as
 // done, Edit task, Move to, Open note, Open in new tab). What the rows do (tick with Undo, edit, move) is shared
 // by Tasks and the Calendar through `PlannerTasks`.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

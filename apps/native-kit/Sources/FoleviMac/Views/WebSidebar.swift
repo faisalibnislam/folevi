@@ -5,8 +5,12 @@
 //   Home, Work with Foli AI, Starred (with its first starred notes), Drafts, All notes, Tasks, Calendar, Shared
 //   with Me, Changes, Templates; Folders (the tree, a New folder button); Tags (closed until opened); Archive and
 //   Trash; and the account button at the bottom.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -26,13 +30,21 @@ public struct WebSidebar: View {
     let tasks: ValueStore<TaskCounts>
     let actions: WebSidebarActions
     @Environment(\.colorScheme) private var scheme
+    #if os(macOS)
     @Environment(\.controlActiveState) private var active
+    #else
+    private let active = ControlActiveStateShim.key
+    #endif
     @AppStorage("folevi.sidebar.starredOpen") private var starredOpen = true
     @AppStorage("folevi.sidebar.section.folders") private var foldersOpen = true
     @AppStorage("folevi.sidebar.section.tags") private var tagsOpen = false
     /// On a note: the note's own tools ("document", the web's default) or the folders (`folevi:doc-sidebar-mode`).
     @AppStorage("folevi.sidebar.docMode") private var docMode = "document"
     @State private var openFolders: Set<String> = []
+    #if os(iOS)
+    /// The account row, for the account menu's place on the iPad.
+    @State private var accountAnchor: UIView?
+    #endif
 
     /// The first few starred notes, folders and tags; the rest are a click away on their own pages.
     static let limit = 5
@@ -106,7 +118,7 @@ public struct WebSidebar: View {
         .padding(.horizontal, bar.padding.left)
         .frame(height: bar.height)
         .contentShape(Rectangle())
-        .gesture(WindowDragGesture())
+        .windowDrag()
     }
 
     /// The sidebar's own menu (the web's SidebarMenu).
@@ -370,7 +382,13 @@ public struct WebSidebar: View {
         let a = style("account")
         let name = model.accountName.isEmpty ? "You" : model.accountName
         let foot = accountFoot(name)
-        return Button { actions.account(NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation(in: NSApp.keyWindow))) } label: {
+        return Button {
+            #if os(macOS)
+            actions.account(NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation(in: NSApp.keyWindow)))
+            #else
+            actions.account(accountAnchor)
+            #endif
+        } label: {
             HStack(spacing: a.gap) {
                 WebAvatar(name: foot.markName, url: foot.markUrl, size: 28)
                 VStack(alignment: .leading, spacing: 0) {
@@ -461,6 +479,7 @@ struct SyncDot: View {
     }
 }
 
+#if os(macOS)
 extension NSEvent {
     /// The mouse location in a window's content view coordinates (for anchoring a popover to what was clicked).
     @MainActor static func mouseLocation(in window: NSWindow?) -> NSPoint {
@@ -468,5 +487,6 @@ extension NSEvent {
         return content.convert(window.mouseLocationOutsideOfEventStream, from: nil)
     }
 }
+#endif
 
 #endif

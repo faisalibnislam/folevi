@@ -1,8 +1,12 @@
 // The open Vault's sections (components/vault/Files.tsx, Passwords.tsx, Health.tsx, Trash.tsx, Sections.tsx), drawn
 // from the live web's styles inside the inverted Vault: Files & Notes (Grid or Lines), Passwords & Credentials (the
 // list and the open item beside it), Health, Trash, Settings, Activity and People.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 import FoleviDesign

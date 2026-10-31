@@ -2,8 +2,12 @@
 // priority, assignee, Open in the page), Move task (MoveTaskDialog), and Quick add task (app/QuickAddTask.tsx:
 // the task's words with the date and repeat Folevi reads in them, due date, time, priority and the page it goes
 // to). Return in a field submits, Escape and Command-period close.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

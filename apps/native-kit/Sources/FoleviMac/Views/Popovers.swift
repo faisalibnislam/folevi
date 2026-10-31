@@ -1,7 +1,7 @@
 // The sidebar foot's popovers (plan 3.9 and 5.6) and the window's toasts, in SwiftUI inside AppKit popovers and
 // hosting views: the sync status (the web's states: Synced, Syncing, Waiting/Offline, Not saved, with Retry), the
 // notifications list (mark read, open), and toasts with their Undo or the web page's button.
-#if os(macOS)
+#if os(macOS) || os(iOS)
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

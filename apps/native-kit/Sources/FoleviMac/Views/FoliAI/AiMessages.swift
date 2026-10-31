@@ -2,8 +2,12 @@
 // AgentRunCard, SaveMemoryCard, ResearchCard): your words in the dark bubble on the right (the last one can be
 // edited and sent again), Foli AI's answer on the glass with its sources, proposed changes, Copy, Regenerate
 // and follow-ups; while it streams, what it's doing and Stop; a refusal as the web's notice.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -536,7 +540,9 @@ struct AiAgentRunCard: View {
                         Toggle(isOn: Binding(get: { !unticked.contains(op.id) }, set: { on in if on { unticked.remove(op.id) } else { unticked.insert(op.id) } })) {
                             Text(op.summary).webText(.role(.subheadline)).foregroundStyle(look.ink)
                         }
+                        #if os(macOS)
                         .toggleStyle(.checkbox)
+                        #endif
                         .disabled(busy)
                         .padding(.vertical, 6)
                         Rectangle().fill(look.color("color-line").opacity(0.6)).frame(height: 1)

@@ -3,8 +3,12 @@
 // above it. The chat isn't modal (you keep working while it's open), keeps its conversation while closed,
 // starts afresh with New chat, and moves to the AI page with Open in full view. With history off, closing it
 // deletes the conversation (FoliChatModel.closed).
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

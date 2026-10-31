@@ -2,8 +2,12 @@
 // floating chat and the thread share. Sizes, colours and type come from the live web app's computed styles
 // (packages/design-tokens/match/app-styles/ai.json, "ai.*"); a few values the styles can't carry (a corner that
 // is smaller than the others, the size of a list's bullet) are the web's Tailwind classes, named where used.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -203,7 +207,7 @@ struct AiRowButton: View {
 }
 #endif
 
-#if os(macOS)
+#if os(macOS) || os(iOS)
 /// A paragraph wrapped as WebKit's `text-wrap: pretty` wraps every `p` in the app (globals.css): the same number
 /// of lines as greedy wrapping, with the breaks that make the lines' leftover room most even (the least sum of
 /// squared slack, the last line's counting for less: it may stay shorter, as WebKit sets it). Lines are measured

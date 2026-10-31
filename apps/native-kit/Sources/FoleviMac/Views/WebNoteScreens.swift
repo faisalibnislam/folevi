@@ -2,8 +2,12 @@
 // OrganizeIndex.tsx, SelectionBar.tsx, ai/CatchUp.tsx, ai/AskAiChat.tsx's launcher), from the live app's computed
 // styles (WebStyles "notes.*", app-styles/notes.json). The data is the shared screens' models (FoleviScreens
 // HomeModel, NotesListModel); menus are Folevi's own (WebMenus), never the system's.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -466,12 +470,21 @@ struct WebHomeScreen: View {
         let bs = b.resolve(scheme)
         let hint = notesStyle("catchup.hint", scheme)
         return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                CatchUpButton(style: b) {
-                    frame.runCatchUp()
-                    frame.open(.catchUp)
+            // `flex flex-wrap gap-3`: the words go under the button when the row is too narrow for both (the iPad).
+            let button = CatchUpButton(style: b) {
+                frame.runCatchUp()
+                frame.open(.catchUp)
+            }
+            let words = Text("A quick AI brief of this week’s notes and what’s due.").webText(hint.text).lineLimit(1).foregroundStyle(hint.color.color)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    button
+                    words
                 }
-                Text("A quick AI brief of this week’s notes and what’s due.").webText(hint.text).lineLimit(1).foregroundStyle(hint.color.color)
+                VStack(alignment: .leading, spacing: 12) {
+                    button
+                    words
+                }
             }
             if let error {
                 Text(error).webText(.role(.subheadline)).foregroundStyle(webVar("color-danger", scheme).color)

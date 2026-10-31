@@ -4,8 +4,12 @@
 // the open one raised), and New note at the end. Home is pinned: it stays put after Back and Forward and only the
 // tabs after it scroll (the owner, 2026-10-30, for the Mac; the web keeps Home in the list). While the sidebar is
 // hidden, the window buttons' room and the sync state come first, as on the web.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -62,7 +66,7 @@ public struct WebTopBar: View {
         }
         // The bar moves the window, as the web's .ui-drag bars do (its buttons still take their clicks).
         .contentShape(Rectangle())
-        .gesture(WindowDragGesture())
+        .windowDrag()
     }
 
     /// New note sits as far from the bar's right edge as from its top and bottom edges (the owner's ask, 1.1.04): the
@@ -489,6 +493,7 @@ private struct TabDrag: ViewModifier {
     }
 }
 
+#if os(macOS)
 /// Takes only middle clicks (a tab's close, as on the web and in browsers); every other click goes through.
 private struct MiddleClick: NSViewRepresentable {
     let action: () -> Void
@@ -513,10 +518,17 @@ private struct MiddleClick: NSViewRepresentable {
 
     func updateNSView(_ v: View, context: Context) { v.action = action }
 }
+#else
+/// (No middle button on the iPad.)
+private struct MiddleClick: View {
+    let action: () -> Void
+    var body: some View { Color.clear.allowsHitTesting(false) }
+}
+#endif
 #endif
 
 
-#if os(macOS)
+#if os(macOS) || os(iOS)
 /// A label that's cut off at its end when it doesn't fit, with Folevi's tooltip giving the whole of it then (and
 /// none when it fits: tooltips never repeat what shows).
 struct TruncatingLabel: View {

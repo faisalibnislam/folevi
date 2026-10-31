@@ -8,8 +8,12 @@
 //
 // What it shows comes from the note page (`note.tools`, bridge revision 14); its clicks go back as editor
 // commands (block.jump, task.toggle, thread.open, find, find.clear, scrollToTop).
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -803,6 +807,7 @@ private struct HoverFillModifier: ViewModifier {
     }
 }
 
+#if os(macOS)
 /// The Find tab's text field (a plain AppKit field in the web's input well): Return steps forward, Shift-Return
 /// back, Escape clears; it takes the keyboard when the tab opens, as the web's does.
 private struct FindField: NSViewRepresentable {
@@ -863,4 +868,35 @@ private struct FindField: NSViewRepresentable {
         }
     }
 }
+#else
+/// The Find tab's text field: Return steps forward; it takes the keyboard when the tab opens, as the web's does.
+private struct FindField: View {
+    @Binding var text: String
+    let style: WebTextStyle
+    let color: Color
+    let placeholderColor: Color
+    let onChange: () -> Void
+    let onSubmit: (_ back: Bool) -> Void
+    let onEscape: () -> Void
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        TextField("", text: $text, prompt: Text("Text in document").foregroundStyle(placeholderColor))
+            .font(Font(style.ctFont))
+            .foregroundStyle(color)
+            .textFieldStyle(.plain)
+            .submitLabel(.search)
+            .focused($focused)
+            .onChange(of: text) { onChange() }
+            .onSubmit { onSubmit(false) }
+            .onKeyPress(.escape) {
+                guard !text.isEmpty else { return .ignored }
+                onEscape()
+                return .handled
+            }
+            .accessibilityLabel("Find text in this page")
+            .onAppear { focused = true }
+    }
+}
+#endif
 #endif

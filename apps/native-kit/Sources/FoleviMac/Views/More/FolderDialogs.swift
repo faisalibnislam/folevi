@@ -1,8 +1,12 @@
 // The small dialogs the frame opens from the sidebar and list screens, as the web draws them on the Mac:
 // a name prompt (ui/PromptDialog.tsx: New folder, Rename folder), a folder's colour (app/FolderColorDialog.tsx,
 // the palette's 25) and the folder picker (views/MoveToFolderDialog.tsx: Move to folder, Move folder).
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

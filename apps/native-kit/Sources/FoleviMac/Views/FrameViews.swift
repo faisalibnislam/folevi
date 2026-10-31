@@ -580,9 +580,6 @@ final class HoverButton: NSButton {
     override func mouseExited(with event: NSEvent) { hovering = false }
 }
 
-extension String {
-    var nonEmpty: String? { isEmpty ? nil : self }
-}
 #endif
 
 #if os(macOS)

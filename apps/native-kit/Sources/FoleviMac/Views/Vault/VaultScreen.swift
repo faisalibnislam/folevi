@@ -2,8 +2,12 @@
 // styles (packages/design-tokens/match/app-styles/vault.json): the Vault in the other theme (.ui-invert), the header
 // row (open on this device, Lock, the ⋯ menu), the two tabs and the ⋯ section as a third, and the front door
 // (set up, unlock, a forgotten passcode, choosing a passcode) until it's open. The engine does the rest.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

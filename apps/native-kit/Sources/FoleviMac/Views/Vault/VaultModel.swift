@@ -1,8 +1,12 @@
 // The Vault screen's state (docs/VAULT_PLAN.md §9, docs/MAC_REBUILD_PLAN.md §5.6): the engine's vault.summary and the
 // open section's views (bridge revision 18), and the commands the screens send. Nothing is decrypted here: the
 // engine opens what's shown and logs it; values the screens show live in memory only, and go when the Vault locks.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviEngine
 
@@ -141,7 +145,7 @@ enum VaultDialog: Identifiable {
 extension ValueStore: Cancellable {}
 #endif
 
-#if os(macOS)
+#if os(macOS) || os(iOS)
 /// The sidebar's Vault row, shown while vault.summary says there's a Vault for this person here (the web's
 /// Sidebar: `vault !== null`). Its own subscription, so the frame model stays as it is.
 struct VaultSidebarRow<Row: View>: View {

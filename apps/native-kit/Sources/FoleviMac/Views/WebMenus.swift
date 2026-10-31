@@ -2,8 +2,12 @@
 // drawn natively, the top menu bar stays the system's): a WebMenuPanel in a borderless panel above the window,
 // opened from a button or by a right click, with the keyboard (arrows, Return, Escape, type to select) and the
 // pointer (hover highlights, a click picks, a click outside closes).
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 
@@ -56,6 +60,7 @@ struct WebMenuContent: View {
     }
 }
 
+#if os(macOS)
 /// A borderless panel holding one menu. One at a time.
 @MainActor
 public final class WebMenuWindow: NSPanel {
@@ -227,10 +232,113 @@ struct MenuAnchor: NSViewRepresentable {
     func updateNSView(_ v: MenuAnchorView, context: Context) {}
 }
 
+#else
+/// The iPad's menu: the same panel in a layer over the window (a tap outside closes it), one at a time.
+@MainActor
+public final class WebMenuWindow {
+    private static var current: WebMenuWindow?
+    private let state: WebMenuState
+    private let layer = UIView()
+    private let host: UIHostingController<AnyView>
+    static let margin: CGFloat = 32
+
+    private init(entries: [WebMenuEntry], width: CGFloat) {
+        state = WebMenuState(entries)
+        host = UIHostingController(rootView: AnyView(EmptyView()))
+        host.rootView = AnyView(WebMenuContent(state: state, width: width) { [weak self] e in self?.pick(e) }.padding(Self.margin))
+        host.view.backgroundColor = .clear
+        host.safeAreaRegions = []
+        layer.backgroundColor = .clear
+        layer.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapped)))
+    }
+
+    @objc private func tapped(_ g: UITapGestureRecognizer) {
+        if !host.view.frame.insetBy(dx: Self.margin, dy: Self.margin).contains(g.location(in: layer)) { close() }
+    }
+
+    /// Opens the menu with its top-left corner at `point` (in `window`'s coordinates), kept on screen.
+    @discardableResult
+    public static func show(_ entries: [WebMenuEntry], width: CGFloat = 224, at point: CGPoint, in window: UIWindow) -> WebMenuWindow {
+        current?.close()
+        let menu = WebMenuWindow(entries: entries, width: width)
+        menu.layer.frame = window.bounds
+        menu.layer.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        let size = menu.host.sizeThatFits(in: CGSize(width: width + margin * 2, height: window.bounds.height))
+        let safe = window.bounds.inset(by: window.safeAreaInsets)
+        var origin = CGPoint(x: point.x - margin, y: point.y - margin)
+        origin.x = min(max(origin.x, safe.minX - margin + 8), safe.maxX - size.width + margin - 8)
+        if origin.y + size.height - margin > safe.maxY { origin.y = max(safe.minY - margin, point.y - size.height + margin - 28) }
+        menu.host.view.frame = CGRect(origin: origin, size: size)
+        menu.host.overrideUserInterfaceStyle = window.overrideUserInterfaceStyle
+        menu.layer.addSubview(menu.host.view)
+        window.addSubview(menu.layer)
+        current = menu
+        return menu
+    }
+
+    /// Opens the menu under a view (its bottom-left corner, 4 pt below).
+    @discardableResult
+    public static func show(_ entries: [WebMenuEntry], width: CGFloat = 224, below view: UIView) -> WebMenuWindow? {
+        guard let window = view.window else { return nil }
+        let r = view.convert(view.bounds, to: window)
+        return show(entries, width: width, at: CGPoint(x: r.minX, y: r.maxY + 4), in: window)
+    }
+
+    /// The menu on screen, if any.
+    public static var shown: WebMenuWindow? { current }
+
+    private func pick(_ e: WebMenuEntry) {
+        close()
+        DispatchQueue.main.async { MainActor.assumeIsolated { e.action() } }
+    }
+
+    public func close() {
+        layer.removeFromSuperview()
+        if Self.current === self { Self.current = nil }
+    }
+}
+
+/// An anchor for a menu opened from a SwiftUI button: a view of the button's size.
+struct MenuAnchor: UIViewRepresentable {
+    let hold: (UIView) -> Void
+    func makeUIView(context: Context) -> UIView {
+        let v = UIView()
+        v.isUserInteractionEnabled = false
+        DispatchQueue.main.async { hold(v) }
+        return v
+    }
+
+    func updateUIView(_ v: UIView, context: Context) {}
+}
+
+/// A long press opens a Folevi menu where the view is (the iPad's right click; a pointer's secondary click too).
+struct ContextCatcher: ViewModifier {
+    let entries: @MainActor () -> [WebMenuEntry]
+    @State private var anchor: UIView?
+
+    func body(content: Content) -> some View {
+        content
+            .background(MenuAnchor { anchor = $0 })
+            .onLongPressGesture(minimumDuration: 0.45) {
+                guard let anchor, let window = anchor.window else { return }
+                let list = entries()
+                guard !list.isEmpty else { return }
+                let r = anchor.convert(anchor.bounds, to: window)
+                WebMenuWindow.show(list, at: CGPoint(x: r.midX, y: r.midY), in: window)
+            }
+    }
+}
+
+#endif
+
 public extension View {
     /// A Folevi menu on right click (instead of the system's context menu).
     func webContextMenu(_ entries: @escaping @MainActor () -> [WebMenuEntry]) -> some View {
+        #if os(macOS)
         background(ContextCatcher(entries: entries))
+        #else
+        modifier(ContextCatcher(entries: entries))
+        #endif
     }
 }
 

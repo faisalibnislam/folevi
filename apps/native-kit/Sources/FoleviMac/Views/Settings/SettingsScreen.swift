@@ -5,8 +5,12 @@
 //
 // The sections read the engine: the views Settings already had (settings.appearance, .account, .notifications,
 // .ai, .security, account.details) and `settings.query` / `settings.run` (viewsSettings.ts) for the rest.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

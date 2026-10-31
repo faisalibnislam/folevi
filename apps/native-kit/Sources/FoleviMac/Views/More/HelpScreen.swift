@@ -2,8 +2,12 @@
 // computed styles ("more.help.*", packages/design-tokens/match/app-styles/more.json): the guide's address,
 // support (an email in local mode; requests and Contact support with an account), the keyboard shortcuts table
 // and what the save status means.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

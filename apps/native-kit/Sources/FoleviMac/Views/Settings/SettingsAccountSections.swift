@@ -1,8 +1,12 @@
 // Settings' account sections on the Mac, drawn as the web's views/settings/*: Account (AccountSection.tsx), AI
 // (AiSection.tsx), Notifications (NotificationsSection.tsx), Security (SecuritySection.tsx, SignInMethods.tsx,
 // DeleteAccountCard.tsx), Devices (DevicesSection.tsx) and Offline & sync (SyncSection.tsx, the device's copy).
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

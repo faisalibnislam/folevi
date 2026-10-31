@@ -3,8 +3,12 @@
 // web's date words (lib/format.ts dueLabel, formatRelative, i18n formatCalendarDate), the segmented control
 // (.ui-seg .ui-well), the small buttons, the empty states (ui/EmptyState.tsx), and the floating panels that hold
 // Folevi's dialogs and popovers above the window (ui/Dialog.tsx, ui/Popover.tsx; never a system sheet).
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -372,6 +376,7 @@ struct PlannerField: View {
 
 // MARK: Floating panels (dialogs and popovers above the window)
 
+#if os(macOS)
 /// A borderless panel above a window holding a Folevi dialog or popover: Escape closes the top one, a click
 /// outside it closes it (a dialog's backdrop is transparent on the Mac, as on the web).
 @MainActor
@@ -478,6 +483,88 @@ final class PlannerPanel: NSPanel {
     /// The panel on top, if any (tests).
     static var top: PlannerPanel? { stack.last }
 }
+#else
+/// A Folevi dialog or popover over the window, in a layer of its own: a tap outside it closes the top one.
+@MainActor
+final class PlannerPanel {
+    private static var stack: [PlannerPanel] = []
+    private let layer = UIView()
+    private var host: UIHostingController<AnyView>?
+    var onClose: (() -> Void)?
+    static let margin: CGFloat = 32
+
+    private init() {}
+
+    private func show(_ content: AnyView, frame: CGRect, in window: UIWindow, outside: CGRect?) {
+        let h = UIHostingController(rootView: content)
+        h.view.backgroundColor = .clear
+        h.safeAreaRegions = []
+        h.view.frame = frame
+        host = h
+        layer.frame = window.bounds
+        layer.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        if let outside {
+            // A popover: a tap anywhere but on it closes it.
+            let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
+            layer.addGestureRecognizer(tap)
+            hitArea = outside
+        }
+        layer.addSubview(h.view)
+        window.addSubview(layer)
+        Self.stack.append(self)
+    }
+
+    private var hitArea: CGRect = .zero
+
+    @objc private func tapped(_ g: UITapGestureRecognizer) {
+        if !hitArea.contains(g.location(in: layer)) { close() }
+    }
+
+    /// A dialog: the whole window, the dialog centred across it and `top` points from the window's top.
+    @discardableResult
+    static func dialog<V: View>(in window: UIWindow, top: CGFloat = 56, @ViewBuilder _ content: (_ close: @escaping @MainActor () -> Void) -> V) -> PlannerPanel {
+        let p = PlannerPanel()
+        let close: @MainActor () -> Void = { [weak p] in p?.close() }
+        let view = ZStack(alignment: .top) {
+            Color.black.opacity(0.001).onTapGesture { close() }
+            content(close).padding(.top, top + window.safeAreaInsets.top)
+        }
+        .frame(width: window.bounds.width, height: window.bounds.height, alignment: .top)
+        p.show(AnyView(view), frame: window.bounds, in: window, outside: nil)
+        return p
+    }
+
+    /// A popover under (or above) a view: its top-left at the view's bottom-left, `gap` below.
+    @discardableResult
+    static func popover<V: View>(below anchor: UIView, gap: CGFloat = 4, alignEnd: Bool = false, @ViewBuilder _ content: (_ close: @escaping @MainActor () -> Void) -> V) -> PlannerPanel? {
+        guard let window = anchor.window else { return nil }
+        let p = PlannerPanel()
+        let close: @MainActor () -> Void = { [weak p] in p?.close() }
+        let view = AnyView(content(close).padding(margin))
+        let size = UIHostingController(rootView: view).sizeThatFits(in: window.bounds.size)
+        let r = anchor.convert(anchor.bounds, to: window)
+        let safe = window.bounds.inset(by: window.safeAreaInsets)
+        var origin = CGPoint(x: alignEnd ? r.maxX - size.width + margin : r.minX - margin, y: r.maxY + gap - margin)
+        origin.x = min(max(origin.x, safe.minX - margin), safe.maxX - size.width + margin)
+        if origin.y + size.height - margin > safe.maxY { origin.y = r.minY - gap - size.height + margin }
+        let frame = CGRect(origin: origin, size: size)
+        p.show(view, frame: frame, in: window, outside: frame.insetBy(dx: margin, dy: margin))
+        return p
+    }
+
+    func close() {
+        layer.removeFromSuperview()
+        host = nil
+        Self.stack.removeAll { $0 === self }
+        let done = onClose
+        onClose = nil
+        done?()
+    }
+
+    /// The panel on top, if any (tests).
+    static var top: PlannerPanel? { stack.last }
+}
+#endif
 
 /// Holds the NSView a SwiftUI control sits on (to open a panel or a menu at it).
 final class PlannerAnchor {
@@ -542,7 +629,7 @@ struct WebMaterial: View {
 
 // MARK: Paragraphs (`p { text-wrap: pretty }`)
 
-#if os(macOS)
+#if os(macOS) || os(iOS)
 /// The web's paragraphs wrap with `text-wrap: pretty`: as many lines as plain wrapping takes, the breaks moved so
 /// the lines come out even (no word alone on the last line). Lines are measured with the style's font and
 /// tracking, the breaks chosen by least squared slack (the last line's at three quarters), and the text drawn with those breaks.

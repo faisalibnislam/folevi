@@ -2,7 +2,7 @@
 // note list and folder, Shared with me, Changes, Tasks, Calendar, Search), given the frame's navigator (routes
 // become tabs), intents (places, Settings, sign-in, notes at a block) and feedback (toasts), plus Catch me up on
 // its own screen.
-#if os(macOS)
+#if os(macOS) || os(iOS)
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -13,6 +13,7 @@ public enum FrameDrag {
     public static let noteType = "com.folevi.note-ref"
     public static let folderType = "com.folevi.folder-ref"
 
+    #if os(macOS)
     /// The note ids on a pasteboard item (FoleviScreens' JSON: one note or a whole selection; or a bare id).
     static func noteIds(_ item: NSPasteboardItem) -> [String] {
         guard let data = item.data(forType: .init(noteType)) else { return [] }
@@ -28,6 +29,7 @@ public enum FrameDrag {
         }
         return nil
     }
+    #endif
 }
 
 /// The shared screens' view models, one per route, kept while the window lives (a tab coming back finds its

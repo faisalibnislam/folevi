@@ -1,8 +1,12 @@
 // The Calendar's subscriptions, drawn as the web's (views/CalendarSubscriptions.tsx CalendarsButton): calendars
 // you subscribe to by link (show or hide, rename, colour, refresh, remove) and adding one; and "Your tasks in your
 // calendar" (CalendarFeedDialog.tsx), the private link for other calendar apps, with a Folevi account only.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

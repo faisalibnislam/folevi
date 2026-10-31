@@ -4,8 +4,12 @@
 // beside it; the week with its all-day row and the hour grid (tasks with a time as half-hour blocks, side by side
 // when they overlap, the line at the current time); the agenda of the next 30 days. Tasks drag onto a day (or a
 // time) to be rescheduled, with Undo. Arrow keys move between days.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 import FoleviDesign

@@ -47,6 +47,7 @@ struct RebuildHomeScreen: View {
             ))
             .padding(.bottom, 24)
         }
+        .refreshable { await home.refresh() }
         .onAppear { home.setVisible(true) }
         .onDisappear { home.setVisible(false) }
     }

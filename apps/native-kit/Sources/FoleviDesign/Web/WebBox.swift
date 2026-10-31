@@ -168,6 +168,10 @@ struct WebBoxFill: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: style.radius, style: .circular)
         ZStack {
+            #if os(iOS)
+            // `backdrop-filter: blur()` under a see-through fill (the iPhone's menus): what's behind, blurred.
+            if style.backdropBlur > 0, style.background.a < 1 { shape.fill(.ultraThinMaterial) }
+            #endif
             if style.background.a > 0 { shape.fill(style.background.color) }
             if let g = style.gradient, g.stops.count >= 2 {
                 shape.fill(LinearGradient(colors: g.stops.map(\.color), startPoint: Self.point(g.angle, start: true), endPoint: Self.point(g.angle, start: false)))

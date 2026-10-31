@@ -196,15 +196,17 @@ private struct RebuildRoot: View {
     let signOut: () -> Void
     // FOLEVI_REBUILD_SHEET=account opens the account sheet at launch (for checking it headlessly).
     @State private var account = ProcessInfo.processInfo.environment["FOLEVI_REBUILD_SHEET"] == "account"
+    /// A list in Select mode: its bar takes the tab bar's place.
+    @State private var selecting = false
 
     var body: some View {
-        PhoneFrameView(model: model, menus: menus, aiOn: phone.aiOn, actions: PhoneFrameActions(newNote: { phone.newNote() }, fromTemplate: { model.open(FrameRoute(path: "/templates")) })) { route in
+        PhoneFrameView(model: model, menus: menus, aiOn: phone.aiOn, tabBarHidden: selecting, actions: PhoneFrameActions(newNote: { phone.newNote() }, fromTemplate: { model.open(FrameRoute(path: "/templates")) })) { route in
             if case .note(let id) = route {
                 RebuildNoteScreen(noteId: id, model: phone, pageHost: pageHost, frame: model, menus: menus)
             } else if route == .home {
                 RebuildHomeScreen(frame: model, menus: menus, home: home, phone: phone) { account = true }
             } else if let kind = NotesListKind(route: route) {
-                RebuildNotesScreen(kind: kind, frame: model, menus: menus, phone: phone)
+                RebuildNotesScreen(kind: kind, frame: model, menus: menus, phone: phone) { selecting = $0 }
             } else {
                 PlaceholderScreen(model: model, route: route) { account = true }
             }

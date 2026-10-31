@@ -360,12 +360,22 @@ public final class AccountMenuWindow: NSPanel {
         DispatchQueue.main.async { MainActor.assumeIsolated { r.action() } }
     }
 
+    private var closing = false
+
+    /// Goes: a short fade (macOS's menus fade as they close), then closed.
     override public func close() {
+        guard !closing else { return }
+        closing = true
         monitors.forEach(NSEvent.removeMonitor)
         monitors.removeAll()
-        parent?.removeChildWindow(self)
-        super.close()
+        fadeAway { [weak self] in
+            guard let self else { return }
+            self.parent?.removeChildWindow(self)
+            self.closeNow()
+        }
     }
+
+    private func closeNow() { super.close() }
 }
 #else
 /// The account menu in a layer over the window, above the account button (a tap outside closes it).

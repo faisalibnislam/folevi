@@ -206,3 +206,21 @@ enum WebSidebarController {
     nonisolated(unsafe) static var defaults: UserDefaults = .standard
 }
 #endif
+
+#if os(macOS)
+import AppKit
+import FoleviDesign
+
+extension NSWindow {
+    /// Fades the window away, macOS's own for a menu, a popover or a sheet going (at once with Reduce Motion), then
+    /// runs `done` (which closes it). It takes no clicks while it fades.
+    func fadeAway(then done: @escaping @MainActor () -> Void) {
+        guard !WebMotion.reduced, isVisible else { return done() }
+        ignoresMouseEvents = true
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = WebMotion.fadeOut
+            animator().alphaValue = 0
+        }, completionHandler: { MainActor.assumeIsolated { done() } })
+    }
+}
+#endif

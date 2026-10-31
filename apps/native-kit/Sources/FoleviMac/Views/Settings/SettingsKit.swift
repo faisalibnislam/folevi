@@ -441,7 +441,7 @@ final class SettingsDialogWindow: NSPanel {
         panel.hasShadow = false
         panel.isReleasedWhenClosed = false
         panel.onClose = onClose
-        let host = NSHostingView(rootView: content().padding(margin).environment(\.colorScheme, window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light))
+        let host = NSHostingView(rootView: content().webSheetIn().padding(margin).environment(\.colorScheme, window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light))
         host.safeAreaRegions = []
         panel.contentView = host
         let size = host.fittingSize
@@ -467,14 +467,22 @@ final class SettingsDialogWindow: NSPanel {
 
     override var canBecomeKey: Bool { true }
 
+    private var closing = false
+
     func dismiss() {
+        guard !closing else { return }
+        closing = true
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil
-        parent?.removeChildWindow(self)
-        close()
         let done = onClose
         onClose = nil
         done?()
+        // A short fade, as a sheet goes on macOS.
+        fadeAway { [weak self] in
+            guard let self else { return }
+            self.parent?.removeChildWindow(self)
+            self.close()
+        }
     }
 }
 

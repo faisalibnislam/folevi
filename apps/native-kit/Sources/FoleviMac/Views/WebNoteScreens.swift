@@ -272,6 +272,8 @@ struct WebSegmented<T: Hashable>: View {
         .padding(s.padding.edgeInsets)
         .frame(height: s.height)
         .webBox(seg)
+        // The chosen segment eases across, as a macOS segmented control's does.
+        .animation(WebMotion.change(WebMotion.viewSwitch), value: value)
     }
 }
 
@@ -742,10 +744,16 @@ struct WebNoteBrowser: View {
                         } else if model.total == 0 || (model.isFiltering && model.slots.isEmpty) {
                             empty
                         } else {
-                            switch layout {
-                            case .list: listLayout
-                            case .grid, .compact: gridLayout(width: inner)
+                            // Grid, Compact cards and List trade places with a short crossfade.
+                            Group {
+                                switch layout {
+                                case .list: listLayout
+                                case .grid, .compact: gridLayout(width: inner)
+                                }
                             }
+                            .id(layout)
+                            .transition(.opacity)
+                            .animation(WebMotion.change(WebMotion.viewSwitch), value: layout)
                         }
                     }
                     .padding(content.padding.edgeInsets)
@@ -1158,6 +1166,7 @@ struct WebFoldersIndex: View {
                     WebEmptyState(icon: .folderOpen, title: query.isEmpty ? "No folders yet" : "No folders match “\(query.trimmingCharacters(in: .whitespaces))”", message: query.isEmpty ? "Create one to group related pages." : nil)
                 } else if layoutRaw == "list" {
                     folderList(shown).padding(.top, 24)
+                        .transition(.opacity)
                 } else {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 32, alignment: .top)], alignment: .leading, spacing: 40) {
                         ForEach(shown, id: \.id) { f in
@@ -1165,6 +1174,7 @@ struct WebFoldersIndex: View {
                         }
                     }
                     .padding(.top, 24)
+                    .transition(.opacity)
                 }
             }
             .padding(content.padding.edgeInsets)
@@ -1173,6 +1183,7 @@ struct WebFoldersIndex: View {
         }
         .safeAreaInset(edge: .top, spacing: 0) { actions }
         }
+        .animation(WebMotion.change(WebMotion.viewSwitch), value: layoutRaw)
         .folderDialogs(home.dialogs, actions: home.actions, tree: home.tree.value?.folders ?? [])
         .accessibilityIdentifier("screen.folders")
     }

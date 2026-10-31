@@ -136,6 +136,7 @@ struct TaskBox: View {
                     Color.clear.webBox(style)
                     if done {
                         Text("✓").webText(WebTextStyle(size: 12, leading: 12)).foregroundStyle(s.color.color)
+                            .transition(.scale(scale: 0.6).combined(with: .opacity))
                     } else if over {
                         RoundedRectangle(cornerRadius: s.radius, style: .circular).strokeBorder(PV("color-moss").c(scheme), lineWidth: s.borderWidth)
                     }
@@ -143,6 +144,8 @@ struct TaskBox: View {
             }
             .frame(width: s.width, height: s.height)
             .contentShape(Rectangle())
+            // Done: the fill eases in and the tick settles (the web's `transition-colors`, 150 ms).
+            .animation(WebMotion.reduced ? nil : .easeOut(duration: 0.15), value: status)
         }
         .buttonStyle(PlainPress())
         .onHover { over = $0 }

@@ -192,8 +192,11 @@ public struct WebTopBar: View {
                     // joined notes as wide as two.
                     .layoutValue(key: TabRoleKey.self, value: t.isHome || t.pinned ? .own : t.isJoined ? .joined : .other)
                     .layoutValue(key: TabActiveKey.self, value: t.id == model.tabs.activeID)
+                    .transition(.opacity)
             }
         }
+        // A tab opening, closing or moving: the others ease into their new places and widths (macOS's tab bars).
+        .animation(WebMotion.change(0.18), value: model.tabs.tabs.map(\.id))
         .clipped()
         // The soft edges, on a side with more tabs only (the web's mask).
         .mask(LinearGradient(stops: [

@@ -167,8 +167,8 @@ public struct WebSidebar: View {
                 item(.notes(.starred), icon: .star, title: "Starred")
                 if !starred.isEmpty {
                     let t = style("starred.toggle")
-                    Button { starredOpen.toggle() } label: {
-                        WebIconView(starredOpen ? .chevronDown : .chevronRight, size: 12)
+                    Button { WebMotion.animate { starredOpen.toggle() } } label: {
+                        DisclosureChevron(open: starredOpen)
                             .frame(width: t.width, height: t.height)
                             .foregroundStyle(t.color.color)
                             .contentShape(Rectangle())
@@ -184,6 +184,7 @@ public struct WebSidebar: View {
                     }
                 }
                 .padding(.leading, 20)
+                .transition(.opacity)
             }
             item(.notes(.unsorted), icon: .inbox, title: "Drafts", count: count(.drafts))
             item(.notes(.all), icon: .files, title: "All notes")
@@ -276,9 +277,9 @@ public struct WebSidebar: View {
                     Button {
                         var next = closed
                         if open { next.insert(f.id) } else { next.remove(f.id) }
-                        closedFolders = next.sorted().joined(separator: ",")
+                        WebMotion.animate { closedFolders = next.sorted().joined(separator: ",") }
                     } label: {
-                        WebIconView(open ? .chevronDown : .chevronRight, size: 12)
+                        DisclosureChevron(open: open)
                             .frame(width: toggle.width, height: toggle.height)
                             .foregroundStyle(toggle.color.color)
                             .contentShape(Rectangle())
@@ -292,7 +293,7 @@ public struct WebSidebar: View {
             .padding(.leading, CGFloat(f.depth) * 14)
             .webContextMenu { folderMenu(f) }
             if open {
-                ForEach(children, id: \.id) { c in folder(c, all: all) }
+                ForEach(children, id: \.id) { c in folder(c, all: all).transition(.opacity) }
             }
         })
     }
@@ -383,8 +384,8 @@ public struct WebSidebar: View {
         let here = model.route.tabKey == route.tabKey
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: header.gap) {
-                Button { open.wrappedValue.toggle() } label: {
-                    WebIconView(open.wrappedValue ? .chevronDown : .chevronRight, size: 12)
+                Button { WebMotion.animate { open.wrappedValue.toggle() } } label: {
+                    DisclosureChevron(open: open.wrappedValue)
                         .frame(width: chevron.width, height: chevron.height)
                         .foregroundStyle(chevron.color.color)
                         .contentShape(Rectangle())
@@ -409,6 +410,7 @@ public struct WebSidebar: View {
             if open.wrappedValue {
                 VStack(alignment: .leading, spacing: 2) { rows() }
                     .padding(.top, 4)
+                    .transition(.opacity)
             }
         }
         .padding(.top, 20)
@@ -577,4 +579,17 @@ extension NSEvent {
 }
 #endif
 
+#endif
+
+#if os(macOS) || os(iOS)
+/// A disclosure triangle's chevron: pointing right when closed, turned down when open, turning between them as
+/// an outline's does on macOS.
+struct DisclosureChevron: View {
+    let open: Bool
+
+    var body: some View {
+        WebIconView(.chevronRight, size: 12)
+            .rotationEffect(.degrees(open ? 90 : 0))
+    }
+}
 #endif

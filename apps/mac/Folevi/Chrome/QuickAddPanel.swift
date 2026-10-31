@@ -92,8 +92,18 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         shownAt = Date()
         if view == nil || view?.place != place { load() }
         position(panel)
-        panel.alphaValue = 1
+        // In with a quick fade, as Spotlight comes (it goes with one too, in hide()).
+        let fading = !panel.isVisible
+        if fading { panel.alphaValue = 0 }
         panel.makeKeyAndOrderFront(nil)
+        if fading {
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.1
+                panel.animator().alphaValue = 1
+            }
+        } else {
+            panel.alphaValue = 1
+        }
         // Shown again: a fresh field, as the web's panel starts each time; keys typed meanwhile wait for it.
         if let model = nativeModel, model.added == nil { model.startOver() }
         replayWhenNativeFieldReady()

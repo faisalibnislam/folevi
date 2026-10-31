@@ -151,15 +151,33 @@ public enum FrameSheets {
         let key = ObjectIdentifier(model)
         guard let s = shown.removeValue(forKey: key) else { return }
         if let m = s.monitor { NSEvent.removeMonitor(m) }
-        s.host.removeFromSuperview()
+        fadeAway(s.host)
         if notify { s.onClose?() }
+    }
+
+    /// Takes a dialog away as macOS does: a short fade, then gone (at once with Reduce Motion).
+    private static func fadeAway(_ host: NSView) {
+        #if os(macOS)
+        guard !WebMotion.reduced, host.window != nil else { return host.removeFromSuperview() }
+        // (It takes no clicks while it fades: the next dialog, or the page, has them.)
+        (host as? SheetHostingView)?.fading = true
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = WebMotion.fadeOut
+            host.animator().alphaValue = 0
+        }, completionHandler: { MainActor.assumeIsolated { host.removeFromSuperview() } })
+        #else
+        guard !WebMotion.reduced else { return host.removeFromSuperview() }
+        UIView.animate(withDuration: WebMotion.fadeOut, animations: { host.alpha = 0 }, completion: { _ in host.removeFromSuperview() })
+        #endif
     }
 }
 
 #if os(macOS)
 /// Takes every click over the window while a dialog shows (the page behind is inert, as under a modal <dialog>).
 final class SheetHostingView: NSHostingView<AnyView> {
-    override func hitTest(_ point: NSPoint) -> NSView? { super.hitTest(point) ?? self }
+    /// Going away: no longer takes clicks.
+    var fading = false
+    override func hitTest(_ point: NSPoint) -> NSView? { fading ? nil : (super.hitTest(point) ?? self) }
     override var acceptsFirstResponder: Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
 }
@@ -177,7 +195,11 @@ private struct SheetLayer<Content: View>: View {
             Color.black.opacity(0.0001)
                 .contentShape(Rectangle())
                 .onTapGesture { close() }
-            content.padding(.top, top).padding(.leading, leading ?? 0)
+            // A dialog drops in from above (`mac-sheet-in`), a popover rises (`mac-pop-in`).
+            Group {
+                if leading == nil { content.webSheetIn() } else { content.webPopIn() }
+            }
+            .padding(.top, top).padding(.leading, leading ?? 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: leading == nil ? .top : .topLeading)
     }

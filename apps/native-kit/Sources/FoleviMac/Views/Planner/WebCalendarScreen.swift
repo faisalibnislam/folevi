@@ -150,11 +150,17 @@ struct WebCalendarScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 toolbar
-                switch state.layout {
-                case .month: month(byDate: byDate, events: events)
-                case .week: week(byDate: byDate, events: events)
-                case .agenda: agenda(byDate: byDate, events: events)
+                // Month, Week and Agenda trade places with a short crossfade.
+                Group {
+                    switch state.layout {
+                    case .month: month(byDate: byDate, events: events)
+                    case .week: week(byDate: byDate, events: events)
+                    case .agenda: agenda(byDate: byDate, events: events)
+                    }
                 }
+                .id(state.layout)
+                .transition(.opacity)
+                .animation(WebMotion.change(WebMotion.viewSwitch), value: state.layout)
             }
             .padding(content.padding.edgeInsets)
             .frame(maxWidth: 1180)

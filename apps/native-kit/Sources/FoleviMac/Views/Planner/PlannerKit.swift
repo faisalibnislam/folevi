@@ -408,7 +408,7 @@ final class PlannerPanel: NSPanel {
         let close: @MainActor () -> Void = { panel?.close() }
         let view = ZStack(alignment: .top) {
             Color.black.opacity(0.001).onTapGesture { close() }
-            content(close).padding(.top, top)
+            content(close).webSheetIn().padding(.top, top)
         }
         .frame(width: window.frame.width, height: window.contentLayoutRect.height + (window.frame.height - window.contentLayoutRect.height), alignment: .top)
         .environment(\.colorScheme, window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light)
@@ -425,7 +425,7 @@ final class PlannerPanel: NSPanel {
         var panel: PlannerPanel?
         let close: @MainActor () -> Void = { panel?.close() }
         let scheme: ColorScheme = window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light
-        let view = content(close).padding(margin).environment(\.colorScheme, scheme)
+        let view = content(close).webPopIn().padding(margin).environment(\.colorScheme, scheme)
         let host = NSHostingView(rootView: view)
         let size = host.fittingSize
         let r = window.convertToScreen(anchor.convert(anchor.bounds, to: nil))
@@ -467,18 +467,28 @@ final class PlannerPanel: NSPanel {
         } as Any)
     }
 
+    private var closing = false
+
+    /// Goes: a short fade (a popover or a sheet going on macOS), then closed.
     override func close() {
+        guard !closing else { return }
+        closing = true
         monitors.forEach(NSEvent.removeMonitor)
         monitors.removeAll()
         Self.stack.removeAll { $0 === self }
         let parentWindow = parent
-        parentWindow?.removeChildWindow(self)
-        super.close()
         parentWindow?.makeKey()
         let done = onClose
         onClose = nil
         done?()
+        fadeAway { [weak self] in
+            guard let self else { return }
+            parentWindow?.removeChildWindow(self)
+            self.closeNow()
+        }
     }
+
+    private func closeNow() { super.close() }
 
     /// The panel on top, if any (tests).
     static var top: PlannerPanel? { stack.last }

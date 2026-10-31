@@ -1,8 +1,12 @@
 // Pieces the web's views share, as Folevi for Mac draws them (from "more.*" styles): the empty state
 // (components/ui/EmptyState.tsx, size "page"), the facts row under the glass bar (ViewChrome's header: a
 // view's subtitle and actions), and the bare Select trigger those rows carry.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 
@@ -76,7 +80,7 @@ struct WebBareSelect: View {
         let s = moreStyle("more.review.select", scheme)
         let l = moreStyle("more.review.select.label", scheme)
         let c = moreStyle("more.review.select.chevron", scheme)
-        WebMenuButton(width: 224, entries: {
+        WebMenuButton(select: true, entries: {
             options.map { o in WebMenuEntry(.item(o.title, checked: o.id == selected, id: o.id)) { onSelect(o.id) } }
         }) {
             HStack(spacing: s.gap) {

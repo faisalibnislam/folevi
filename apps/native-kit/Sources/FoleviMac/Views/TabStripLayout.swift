@@ -2,7 +2,7 @@
 // `flex min-w-0 flex-initial overflow-x-auto px-1 py-1 gap-1.5`, Home keeps its own width, every other tab, open or
 // not, is `flex-[0_1_284px] min-w-[172px]` and they shrink evenly before the list scrolls. Only the list scrolls;
 // Back, Forward, Home (pinned before the list on the Mac), the arrows and New note stay put.
-#if os(macOS)
+#if os(macOS) || os(iOS)
 import SwiftUI
 
 /// The strip's numbers, apart from any view (tests drive them directly).
@@ -191,6 +191,7 @@ struct TabRow: Layout {
     }
 }
 
+#if os(macOS)
 /// Takes the trackpad's and the scroll wheel's sideways scrolls over the list (shift turns a wheel sideways, as
 /// AppKit does for every scroller); every other event goes through to the tabs.
 struct SidewaysScroll: NSViewRepresentable {
@@ -220,4 +221,11 @@ struct SidewaysScroll: NSViewRepresentable {
 
     func updateNSView(_ v: View, context: Context) { v.by = by }
 }
+#else
+/// (The iPad scrolls the strip by touch: nothing to catch.)
+struct SidewaysScroll: View {
+    let by: (CGFloat) -> Void
+    var body: some View { Color.clear.allowsHitTesting(false) }
+}
+#endif
 #endif

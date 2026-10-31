@@ -2,8 +2,12 @@
 // field and its month calendar (WAI-ARIA date grid keys: arrows by day and week, Page Up and Down by month, with
 // Shift by year, Home and End, Return picks), the time list in 15-minute steps, and the select. Never the system's
 // date picker or pop-up button.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -33,7 +37,7 @@ struct PlannerSelect: View {
             let entries = options.map { o in
                 WebMenuEntry(.item(o.title, checked: o.id == value, id: "opt:\(o.id)")) { value = o.id }
             }
-            WebMenuWindow.show(entries, width: max(v.bounds.width, 160), below: v)
+            WebMenuWindow.showSelect(entries, below: v)
         } label: {
             HStack(spacing: s.gap) {
                 Text(title).webText(s.text).lineLimit(1)

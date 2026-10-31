@@ -1,7 +1,7 @@
 // Reviews (apps/web/src/components/views/ReviewView.tsx as Folevi for Mac shows it): the cards due today, one at
 // a time. Show the answer (Space), then say how well you knew it (1 to 4); each rating button says when the
 // card comes back. Data from the bridge's `reviews` view (study.queue), ratings through `review.rate`.
-#if os(macOS)
+#if os(macOS) || os(iOS)
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

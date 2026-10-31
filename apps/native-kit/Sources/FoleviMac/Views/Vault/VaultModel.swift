@@ -1,14 +1,10 @@
-// The sidebar's Vault row on the Mac. The Vault screen's state (VaultModel) is shared with the iPhone and iPad, in
-// FoleviScreens/Vault.
-#if os(macOS)
-import AppKit
+// The sidebar's Vault row (the Mac, and the iPad's wide layout on the Mac frame's views). The Vault screen's state
+// (VaultModel) is shared with the iPhone and iPad, in FoleviScreens/Vault.
+#if os(macOS) || os(iOS)
 import SwiftUI
 import FoleviEngine
 import FoleviScreens
 
-#endif
-
-#if os(macOS)
 /// The sidebar's Vault row, shown while vault.summary says there's a Vault for this person here (the web's
 /// Sidebar: `vault !== null`). Its own subscription, so the frame model stays as it is.
 struct VaultSidebarRow<Row: View>: View {

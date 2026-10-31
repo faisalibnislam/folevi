@@ -5,8 +5,12 @@
 //   Home, Work with Foli AI, Starred (with its first starred notes), Drafts, All notes, Tasks, Calendar, Shared
 //   with Me, Changes, Templates; Folders (the tree, a New folder button); Tags (closed until opened); Archive and
 //   Trash; and the account button at the bottom.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -26,13 +30,23 @@ public struct WebSidebar: View {
     let tasks: ValueStore<TaskCounts>
     let actions: WebSidebarActions
     @Environment(\.colorScheme) private var scheme
+    #if os(macOS)
     @Environment(\.controlActiveState) private var active
+    #else
+    private let active = ControlActiveStateShim.key
+    #endif
     @AppStorage("folevi.sidebar.starredOpen") private var starredOpen = true
     @AppStorage("folevi.sidebar.section.folders") private var foldersOpen = true
     @AppStorage("folevi.sidebar.section.tags") private var tagsOpen = false
     /// On a note: the note's own tools ("document", the web's default) or the folders (`folevi:doc-sidebar-mode`).
     @AppStorage("folevi.sidebar.docMode") private var docMode = "document"
-    @State private var openFolders: Set<String> = []
+    /// The folders closed in the sidebar (every folder starts open; lib/app/folders.ts useOpenFolders keeps the
+    /// closed ones, `folevi:sidebar-folders-closed`).
+    @AppStorage("folevi.sidebar-folders-closed") private var closedFolders = ""
+    #if os(iOS)
+    /// The account row, for the account menu's place on the iPad.
+    @State private var accountAnchor: UIView?
+    #endif
 
     /// The first few starred notes, folders and tags; the rest are a click away on their own pages.
     static let limit = 5
@@ -55,13 +69,20 @@ public struct WebSidebar: View {
             if let noteId = model.route.noteId, docMode == "document" {
                 // The note's own sidebar (DocumentSidebar.tsx), between the search and the account.
                 WebNoteSidebar(model: model, noteId: noteId)
-                    .padding(.top, WebStyles.named("notetools.card.wrap").resolve(scheme).y - style("search").y - style("search").height)
+                    // (The gap as measured together on the Mac: the note tools aren't measured on the iPad yet, and
+                    // their place against the iPad's taller search would come out negative.)
+                    .padding(.top, Self.noteToolsGap(scheme))
             } else {
                 appList
             }
             account
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    static func noteToolsGap(_ scheme: ColorScheme) -> CGFloat {
+        let mac = { (id: String) in (WebStyles.all[id] ?? WebStyles.named(id)).resolve(scheme) }
+        return max(0, mac("notetools.card.wrap").y - mac("frame.sidebar.search").y - mac("frame.sidebar.search").height)
     }
 
     /// The app's places, folders and tags (Sidebar.tsx's list).
@@ -90,34 +111,25 @@ public struct WebSidebar: View {
         let bar = style("topbar")
         let local = model.session.value?.mode == .local
         return HStack(spacing: bar.gap) {
+            if WebStyles.isPad {
+                // The iPad: the wordmark, to Home (the Mac has its window's buttons there).
+                Button { model.open(.home, .replace) } label: {
+                    WebFoleviLogo(height: 26, color: Folevi.color.heading).padding(4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Folevi")
+            }
             Spacer(minLength: 0)
             SyncDot(model: model)
             if !local {
                 WebIconButton(.bell, label: "Notifications") { actions.notifications(nil) }
             }
-            WebMenuButton(width: 200, entries: { sidebarMenu }) {
-                WebIconView(.panelLeft, size: 16)
-                    .frame(width: 32, height: 32)
-                    .foregroundStyle(Folevi.color.inkMuted)
-                    .contentShape(Rectangle())
-            }
-            .foleviTooltip("Sidebar")
+            SidebarMenuButton(model: model)
         }
         .padding(.horizontal, bar.padding.left)
         .frame(height: bar.height)
         .contentShape(Rectangle())
-        .gesture(WindowDragGesture())
-    }
-
-    /// The sidebar's own menu (the web's SidebarMenu).
-    private var sidebarMenu: [WebMenuEntry] {
-        [
-            WebMenuEntry(.item(model.sidebarCollapsed ? "Show sidebar" : "Hide sidebar", icon: .panelLeft, shortcut: "⌘\\")) { model.sidebarCollapsed.toggle() },
-        ] + (model.route.isNote ? [
-            .separator(),
-            WebMenuEntry(.item("Show folders", checked: docMode == "folders")) { docMode = "folders" },
-            WebMenuEntry(.item("Show document", checked: docMode == "document")) { docMode = "document" },
-        ] : [])
+        .windowDrag()
     }
 
     // MARK: search
@@ -128,7 +140,7 @@ public struct WebSidebar: View {
         let label = style("search.label")
         return Button { CommandPalette.show(model) } label: {
             HStack(spacing: r.gap) {
-                WebIconView(.search, size: 14).foregroundStyle(style("search.icon").color.color)
+                WebIconView(.search, size: style("search.icon").height).foregroundStyle(style("search.icon").color.color)
                 Text("Search or jump to…").webText(label.text).lineLimit(1).foregroundStyle(label.color.color)
                 Spacer(minLength: 0)
                 WebKbd("⌘K")
@@ -175,7 +187,7 @@ public struct WebSidebar: View {
             }
             item(.notes(.unsorted), icon: .inbox, title: "Drafts", count: count(.drafts))
             item(.notes(.all), icon: .files, title: "All notes")
-            item(.tasks(.today), icon: .squareCheck, title: "Tasks", count: tasks.value?.today)
+            item(.tasks(.today), icon: .squareCheckBig, title: "Tasks", count: tasks.value?.today)
             item(.calendar(nil), icon: .calendar, title: "Calendar")
             if let n = count(.reviews), n > 0 { item(.web("/review"), icon: .layers, title: "Reviews", count: n) }
             if caps?.sharing ?? false { item(.shared, icon: .share2, title: "Shared with Me") }
@@ -193,15 +205,17 @@ public struct WebSidebar: View {
         let s = base.resolve(scheme)
         let selectedFill = (WebStyles.vars[active == .inactive ? "mac-selected-inactive" : "mac-selected"] ?? FoleviTokens.Chrome.surfaceSunken).resolve(scheme)
         let iconColor = style(selected ? "item.active.icon" : "item.icon").color
+        let iconBox = style("item.icon").height
         let countStyle = style("item.count")
         return Button {
             model.open(route, newTab ? .newTab : .replace)
         } label: {
             HStack(spacing: s.gap) {
                 Group {
-                    if let glyph { glyph } else { WebIconView(icon, size: iconSize) }
+                    // (The iPad's touch rows have 20 pt icons, the Mac's 18: sized from the measured box.)
+                    if let glyph { glyph.scaleEffect(iconBox / 18) } else { WebIconView(icon, size: iconSize * iconBox / 18) }
                 }
-                .frame(width: 18, height: 18)
+                .frame(width: iconBox, height: iconBox)
                 .foregroundStyle(iconColor.color)
                 Text(title).webText(s.text).lineLimit(1).foregroundStyle(s.color.color).frame(maxWidth: .infinity, alignment: .leading)
                 if let count, count > 0 {
@@ -245,15 +259,20 @@ public struct WebSidebar: View {
 
     private func folder(_ f: FolderNode, all: [FolderNode]) -> AnyView {
         let children = all.filter { $0.parentId == f.id }
-        let open = openFolders.contains(f.id)
+        let closed = Set(closedFolders.split(separator: ",").map(String.init))
+        // The open folder's own ancestors are always open (Sidebar.tsx activePath).
+        let open = !closed.contains(f.id) || activePath(all).contains(f.id)
         let toggle = style("folder.toggle")
         return AnyView(VStack(alignment: .leading, spacing: 2) {
+            HoverReveal { hovered in
             HStack(spacing: 0) {
                 if children.isEmpty {
                     Color.clear.frame(width: toggle.width, height: 1)
                 } else {
                     Button {
-                        if open { openFolders.remove(f.id) } else { openFolders.insert(f.id) }
+                        var next = closed
+                        if open { next.insert(f.id) } else { next.remove(f.id) }
+                        closedFolders = next.sorted().joined(separator: ",")
                     } label: {
                         WebIconView(open ? .chevronDown : .chevronRight, size: 12)
                             .frame(width: toggle.width, height: toggle.height)
@@ -263,6 +282,8 @@ public struct WebSidebar: View {
                     .buttonStyle(.plain)
                 }
                 item(.folder(f.id), icon: .folder, title: f.name, glyph: AnyView(FolderGlyph(colorId: f.color, size: 18)))
+                RowMoreButton(label: "Folder options for \(f.name)", shown: hovered) { folderMenu(f) }
+            }
             }
             .padding(.leading, CGFloat(f.depth) * 14)
             .webContextMenu { folderMenu(f) }
@@ -272,24 +293,47 @@ public struct WebSidebar: View {
         })
     }
 
-    /// A folder's right-click menu (the web's FolderMenu).
+    /// The folder on screen and the folders it's in (Sidebar.tsx folderAncestors), open whatever was closed.
+    private func activePath(_ all: [FolderNode]) -> Set<String> {
+        guard case .folder(let id) = model.route else { return [] }
+        var out: Set<String> = []
+        var p = all.first { $0.id == id }?.parentId
+        var guardCount = 0
+        while let pid = p, guardCount < 50 {
+            out.insert(pid)
+            p = all.first { $0.id == pid }?.parentId
+            guardCount += 1
+        }
+        return out
+    }
+
+    /// A folder's menu (the web's FolderMenu, WebFolderMenu.swift): its "…" button and its right click.
     private func folderMenu(_ f: FolderNode) -> [WebMenuEntry] {
-        [
-            WebMenuEntry(.item("Open in new tab", icon: .externalLink)) { model.open(.folder(f.id), .newTab) },
-            .separator(),
-            WebMenuEntry(.item("New note here", icon: .plus)) { model.newNote(in: f.id) },
-            WebMenuEntry(.item("New folder inside…", icon: .folderPlus)) { FrameDialogs.newFolder(model, parent: f) },
-            .separator(1),
-            WebMenuEntry(.item("Rename…", icon: .pencilLine)) { FrameDialogs.renameFolder(model, f) },
-            WebMenuEntry(.item("Change color…", icon: .palette)) { FrameDialogs.folderColor(model, f) },
-            WebMenuEntry(.item("Move folder…", icon: .folderInput)) { FrameDialogs.moveFolder(model, f) },
-        ] + (model.session.value?.capabilities.sharing ?? false ? [
-            .separator(2),
-            WebMenuEntry(.item("Share…", icon: .share2)) { FrameDialogs.folderShare(model, folderId: f.id, name: f.name) },
-        ] : [])
+        WebFolderMenu.entries(MenuFolder(f), context: WebFolderMenu.context(model, locks: nil), frame: model)
     }
 
     // MARK: tags
+
+    private var canEdit: Bool {
+        guard let s = model.session.value else { return true }
+        return s.spaces.first { $0.id == s.space }?.canEdit ?? true
+    }
+
+    /// The web's TagMenu: Edit tag…, the other colours, Delete tag….
+    private func tagMenu(_ t: TagRow) -> [WebMenuEntry] {
+        var out = [WebMenuEntry(.item("Edit tag…")) { FrameDialogs.editTag(model, id: t.id, name: t.name, color: t.color) }]
+        for c in Self.tagColors where c.id != t.color {
+            out.append(WebMenuEntry(.item("Color: \(c.label)", swatch: Self.tagColor(c.id), id: "color:\(c.id)")) {
+                model.perform { _ = try await model.client.command(.tagUpdate(id: t.id, color: c.id)) }
+            })
+        }
+        out.append(.separator())
+        out.append(WebMenuEntry(.item("Delete tag…", danger: true)) { FrameDialogs.deleteTag(model, id: t.id, name: t.name) })
+        return out
+    }
+
+    /// The tag colours, in the web's order (Sidebar.tsx TAG_COLORS).
+    static let tagColors: [(id: String, label: String)] = [("accent", "Cocoa"), ("moss", "Moss"), ("marigold", "Marigold"), ("plum", "Plum"), ("coral", "Coral"), ("muted", "Gray")]
 
     private var tagsSection: some View {
         let tags = model.folders.value?.tags ?? model.home.value?.tags ?? []
@@ -298,7 +342,17 @@ public struct WebSidebar: View {
                 Text("Tag documents from the inspector").webText(.role(.footnote)).foregroundStyle(Folevi.color.inkFaint).padding(.horizontal, 8).padding(.vertical, 4)
             }
             ForEach(Array(tags.prefix(Self.limit)), id: \.id) { t in
-                item(.tag(t.id), icon: .hash, iconSize: 15, title: t.name, glyph: AnyView(WebIconView(.hash, size: 15).foregroundStyle(Self.tagColor(t.color))))
+                if canEdit {
+                    HoverReveal { hovered in
+                        HStack(spacing: 0) {
+                            item(.tag(t.id), icon: .hash, iconSize: 15, title: t.name, glyph: AnyView(WebIconView(.hash, size: 15).foregroundStyle(Self.tagColor(t.color))))
+                            RowMoreButton(label: "Tag options for \(t.name)", shown: hovered) { tagMenu(t) }
+                        }
+                    }
+                    .webContextMenu { tagMenu(t) }
+                } else {
+                    item(.tag(t.id), icon: .hash, iconSize: 15, title: t.name, glyph: AnyView(WebIconView(.hash, size: 15).foregroundStyle(Self.tagColor(t.color))))
+                }
             }
             if tags.count > Self.limit {
                 moreLink("+\(tags.count - Self.limit) more", route: .web("/tags"))
@@ -370,7 +424,13 @@ public struct WebSidebar: View {
         let a = style("account")
         let name = model.accountName.isEmpty ? "You" : model.accountName
         let foot = accountFoot(name)
-        return Button { actions.account(NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation(in: NSApp.keyWindow))) } label: {
+        return Button {
+            #if os(macOS)
+            actions.account(NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation(in: NSApp.keyWindow)))
+            #else
+            actions.account(accountAnchor)
+            #endif
+        } label: {
             HStack(spacing: a.gap) {
                 WebAvatar(name: foot.markName, url: foot.markUrl, size: 28)
                 VStack(alignment: .leading, spacing: 0) {
@@ -448,6 +508,45 @@ struct WebHoverRowStyle: ButtonStyle {
 }
 
 /// The sync state at the sidebar's top: a cloud with a coloured dot (the web's SyncStatus).
+/// The sidebar's own menu (SidebarMenu.tsx): hide or show it, focus mode, and on a note whether the sidebar shows
+/// the folders or the note's tools. In the sidebar, or in the tab strip while the sidebar is hidden.
+struct SidebarMenuButton: View {
+    let model: FrameModel
+    @AppStorage("folevi.sidebar.docMode", store: WebSidebarController.defaults) private var docMode = "document"
+
+    var body: some View {
+        WebMenuButton(align: .start, entries: { entries }) {
+            WebIconView(.panelLeft, size: 16)
+                .frame(width: 32, height: 32)
+                .foregroundStyle(Folevi.color.inkMuted)
+                .contentShape(Rectangle())
+        }
+        .foleviTooltip("Sidebar")
+    }
+
+    private var entries: [WebMenuEntry] {
+        // (The web's focusMode: the sidebar hidden and the note's inspector closed.)
+        let focus = model.sidebarCollapsed && model.editorPanel == nil
+        var out: [WebMenuEntry] = [
+            WebMenuEntry(.item(model.sidebarCollapsed ? "Show sidebar" : "Hide sidebar", icon: .panelLeft, shortcut: "⌘\\")) { model.sidebarCollapsed.toggle() },
+            focus
+                ? WebMenuEntry(.item("Exit focus mode", icon: .minimize2)) { model.sidebarCollapsed = false }
+                : WebMenuEntry(.item("Focus mode", icon: .maximize2)) {
+                    model.sidebarCollapsed = true
+                    if model.editorPanel != nil { model.editor(.panelClose) }
+                },
+        ]
+        if model.route.isNote {
+            out += [
+                .separator(),
+                WebMenuEntry(.item("Show folders", checked: docMode == "folders")) { docMode = "folders"; model.sidebarCollapsed = false },
+                WebMenuEntry(.item("Show document", checked: docMode == "document")) { docMode = "document"; model.sidebarCollapsed = false },
+            ]
+        }
+        return out
+    }
+}
+
 struct SyncDot: View {
     let model: FrameModel
 
@@ -461,6 +560,7 @@ struct SyncDot: View {
     }
 }
 
+#if os(macOS)
 extension NSEvent {
     /// The mouse location in a window's content view coordinates (for anchoring a popover to what was clicked).
     @MainActor static func mouseLocation(in window: NSWindow?) -> NSPoint {
@@ -468,5 +568,6 @@ extension NSEvent {
         return content.convert(window.mouseLocationOutsideOfEventStream, from: nil)
     }
 }
+#endif
 
 #endif

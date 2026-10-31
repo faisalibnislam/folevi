@@ -4,8 +4,12 @@
 // so the picture is the web's; drawn here with the web's maths (fit, zoom around a point, radii, shapes).
 // Pan by dragging, zoom with the wheel or a pinch, arrow keys move between nodes, Return opens a note or shows
 // an entity's notes, + and - zoom, 0 fits. The List view shows the same graph as text.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -469,6 +473,7 @@ struct GraphCanvasView: View {
     }
 }
 
+#if os(macOS)
 /// The scroll wheel over the graph zooms around the pointer (as the web's non-passive wheel listener).
 private struct ScrollWheelCatcher: NSViewRepresentable {
     let onScroll: (CGFloat, CGPoint) -> Void
@@ -505,6 +510,13 @@ private struct ScrollWheelCatcher: NSViewRepresentable {
         }
     }
 }
+#else
+/// (The iPad zooms the graph by pinching: nothing to catch for a wheel.)
+private struct ScrollWheelCatcher: View {
+    let onScroll: (CGFloat, CGPoint) -> Void
+    var body: some View { Color.clear.allowsHitTesting(false) }
+}
+#endif
 
 /// The graph as text: every note and entity with what it's connected to.
 struct GraphListView: View {

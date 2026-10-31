@@ -13,9 +13,50 @@ public enum WebPrettyWrap {
 
     /// The width of a run of text in a style (CSS letter spacing after every character, as WebKit adds it).
     public static func width(_ s: Substring, _ style: WebTextStyle) -> CGFloat {
-        let attr = NSAttributedString(string: String(s), attributes: [.font: style.ctFont, .kern: style.letterSpacing])
-        let line = CTLineCreateWithAttributedString(attr)
-        return CTLineGetTypographicBounds(line, nil, nil, nil)
+        memo.width(String(s), style) {
+            let attr = NSAttributedString(string: String(s), attributes: [.font: style.ctFont, .kern: style.letterSpacing])
+            let line = CTLineCreateWithAttributedString(attr)
+            return CTLineGetTypographicBounds(line, nil, nil, nil)
+        }
+    }
+
+    /// Words measured and paragraphs wrapped before (a card's preview is wrapped again on every layout pass, and
+    /// again for each card a list scrolls into view): the same answer without measuring again. Bounded, cleared
+    /// when full.
+    static let memo = Memo()
+
+    final class Memo: @unchecked Sendable {
+        private struct WidthKey: Hashable { let text: String; let style: WebTextStyle; let family: WebFontFamily }
+        private struct LinesKey: Hashable { let text: String; let style: WebTextStyle; let family: WebFontFamily; let width: CGFloat; let lastLine: CGFloat }
+        private let lock = NSLock()
+        private var widths: [WidthKey: CGFloat] = [:]
+        private var wrapped: [LinesKey: [String]] = [:]
+
+        func width(_ text: String, _ style: WebTextStyle, make: () -> CGFloat) -> CGFloat {
+            let k = WidthKey(text: text, style: style, family: style.family)
+            lock.lock()
+            if let w = widths[k] { lock.unlock(); return w }
+            lock.unlock()
+            let w = make()
+            lock.lock()
+            if widths.count > 20_000 { widths.removeAll(keepingCapacity: true) }
+            widths[k] = w
+            lock.unlock()
+            return w
+        }
+
+        func lines(_ text: String, _ style: WebTextStyle, width: CGFloat, lastLine: CGFloat, make: () -> [String]) -> [String] {
+            let k = LinesKey(text: text, style: style, family: style.family, width: width, lastLine: lastLine)
+            lock.lock()
+            if let l = wrapped[k] { lock.unlock(); return l }
+            lock.unlock()
+            let l = make()
+            lock.lock()
+            if wrapped.count > 4_000 { wrapped.removeAll(keepingCapacity: true) }
+            wrapped[k] = l
+            lock.unlock()
+            return l
+        }
     }
 
     /// `text-wrap: balance` (globals.css sets it on h1 to h3): as many lines as the greedy fill, as even as they can
@@ -31,46 +72,88 @@ public enum WebPrettyWrap {
         return greedy(text, style: style, width: hi)
     }
 
+    /// A piece of a paragraph between two places a line may break: after a space, or after a hyphen inside a word
+    /// ("Saiho-" "ji"), as WebKit breaks. `space`: a space follows it (else the next piece joins it directly).
+    struct Piece {
+        let text: Substring
+        let space: Bool
+    }
+
+    static func pieces(_ text: String) -> [Piece] {
+        var out: [Piece] = []
+        for word in text.split(separator: " ", omittingEmptySubsequences: false) {
+            var start = word.startIndex
+            var i = word.startIndex
+            while i < word.endIndex {
+                let next = word.index(after: i)
+                if word[i] == "-", i > word.startIndex, next < word.endIndex, word[word.index(before: i)].isLetter, word[next].isLetter {
+                    out.append(Piece(text: word[start..<next], space: false))
+                    start = next
+                }
+                i = next
+            }
+            out.append(Piece(text: word[start...], space: true))
+        }
+        return out
+    }
+
+    private static func join(_ p: ArraySlice<Piece>) -> String {
+        var s = ""
+        for (k, piece) in zip(p.indices, p) {
+            s += piece.text
+            if k < p.endIndex - 1, piece.space { s += " " }
+        }
+        return s
+    }
+
     /// The browser's ordinary fill.
     public static func greedy(_ text: String, style: WebTextStyle, width: CGFloat) -> [String] {
-        let words = text.split(separator: " ", omittingEmptySubsequences: false)
+        let p = pieces(text)
         let space = Self.width(" ", style)
+        let w = p.map { Self.width($0.text, style) }
         var out: [String] = []
-        var line: [Substring] = []
+        var start = 0
         var lw: CGFloat = 0
-        for w in words {
-            let ww = Self.width(w, style)
-            if !line.isEmpty, lw + space + ww > width + 0.01 {
-                out.append(line.joined(separator: " "))
-                line = [w]
-                lw = ww
+        for k in p.indices {
+            let gap: CGFloat = k > start && p[k - 1].space ? space : 0
+            if k > start, lw + gap + w[k] > width + 0.01 {
+                out.append(join(p[start..<k]))
+                start = k
+                lw = w[k]
             } else {
-                lw += (line.isEmpty ? 0 : space) + ww
-                line.append(w)
+                lw += gap + w[k]
             }
         }
-        if !line.isEmpty { out.append(line.joined(separator: " ")) }
+        if start < p.count { out.append(join(p[start..<p.count])) }
         return out
     }
 
     /// The paragraph's lines for `width`.
     public static func lines(_ text: String, style: WebTextStyle, width: CGFloat, lastLine: CGFloat = WebPrettyWrap.lastLine) -> [String] {
-        let words = text.split(separator: " ", omittingEmptySubsequences: false)
-        guard words.count > 1, width > 0 else { return [text] }
+        memo.lines(text, style, width: width, lastLine: lastLine) { prettyLines(text, style: style, width: width, lastLine: lastLine) }
+    }
+
+    private static func prettyLines(_ text: String, style: WebTextStyle, width: CGFloat, lastLine: CGFloat) -> [String] {
+        let p = pieces(text)
+        guard p.count > 1, width > 0 else { return [text] }
         let space = Self.width(" ", style)
-        let w = words.map { Self.width($0, style) }
-        func lineWidth(_ i: Int, _ j: Int) -> CGFloat { w[i..<j].reduce(0, +) + space * CGFloat(j - i - 1) }
+        let w = p.map { Self.width($0.text, style) }
+        func lineWidth(_ i: Int, _ j: Int) -> CGFloat {
+            var total: CGFloat = 0
+            for k in i..<j { total += w[k] + (k < j - 1 && p[k].space ? space : 0) }
+            return total
+        }
         // Greedy: how many lines the browser's ordinary fill makes.
         var greedy = 0, i = 0
-        while i < words.count {
+        while i < p.count {
             var j = i + 1
-            while j < words.count, lineWidth(i, j + 1) <= width + 0.01 { j += 1 }
+            while j < p.count, lineWidth(i, j + 1) <= width + 0.01 { j += 1 }
             greedy += 1
             i = j
         }
         guard greedy > 1 else { return [text] }
         // Least cost over break points, with exactly `greedy` lines.
-        let n = words.count
+        let n = p.count
         let inf = CGFloat.infinity
         var cost = Array(repeating: Array(repeating: inf, count: greedy + 1), count: n + 1)
         var from = Array(repeating: Array(repeating: -1, count: greedy + 1), count: n + 1)
@@ -95,7 +178,7 @@ public enum WebPrettyWrap {
         var end = n, k = greedy
         while k > 0 {
             let start = from[end][k]
-            out.insert(words[start..<end].joined(separator: " "), at: 0)
+            out.insert(join(p[start..<end]), at: 0)
             end = start
             k -= 1
         }

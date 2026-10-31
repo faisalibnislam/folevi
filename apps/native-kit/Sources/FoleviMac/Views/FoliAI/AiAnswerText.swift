@@ -2,8 +2,12 @@
 // 14 pt at 1.55 with no letter spacing, paragraphs 3 pt above and below), from FoleviScreens' MDBlocks (parsed
 // as the answer streams, only the growing block redone). Citations ("[2]") are small numbered chips that open
 // the cited note; app links stay in the app, other links open in the browser.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -130,7 +134,7 @@ struct AiAnswerText: View {
             let before = String(rest[rest.startIndex..<m.range.lowerBound])
             if !before.isEmpty { out = out + Text(inline(before, look: look, size: size)) }
             if cited.contains(n) {
-                out = out + Text(Image(nsImage: AiCiteChip.image(n, scheme: scheme))).baselineOffset(AiCiteChip.baselineOffset(size: size))
+                out = out + Text(Image(platformImage: AiCiteChip.image(n, scheme: scheme))).baselineOffset(AiCiteChip.baselineOffset(size: size))
             } else {
                 out = out + Text(inline("[\(n)]", look: look, size: size))
             }
@@ -228,7 +232,7 @@ struct AiCodeBlock: View {
 }
 #endif
 
-#if os(macOS)
+#if os(macOS) || os(iOS)
 /// The web's citation chip in an answer (`a.fb-link[href^="#cite"]`): a 12.84 pt pill on the glass with a hairline,
 /// the number in 9.52 pt semibold, 1 pt either side; its bottom just under the baseline, as the web sets it.
 @MainActor
@@ -240,7 +244,11 @@ enum AiCiteChip {
         if let hit = cache[key] { return hit }
         let s = WebStyles.named("ai.answer.cite").resolve(scheme)
         let label = "\(n)" as NSString
+        #if os(macOS)
         let font = WebFont.nsFont(.sans, size: s.fontSize, weight: s.fontWeight)
+        #else
+        let font = WebTextStyle(size: s.fontSize, leading: s.fontSize, weight: s.fontWeight, letterSpacing: 0).ctFont as UIFont
+        #endif
         let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor(s.color.color)]
         let textSize = label.size(withAttributes: attrs)
         let w = max(s.height, textSize.width + s.padding.left + s.padding.right)
@@ -248,6 +256,7 @@ enum AiCiteChip {
         let size = NSSize(width: w + margin * 2, height: s.height)
         let fill = NSColor(s.background.color)
         let ring = s.shadows.first { $0.inset && $0.color.a > 0 }.map { NSColor($0.color.color) }
+        #if os(macOS)
         let img = NSImage(size: size, flipped: false) { _ in
             let r = NSRect(x: margin, y: 0, width: w, height: s.height)
             let path = NSBezierPath(roundedRect: r, xRadius: min(s.radius, s.height / 2), yRadius: min(s.radius, s.height / 2))
@@ -262,6 +271,21 @@ enum AiCiteChip {
             label.draw(at: NSPoint(x: margin + (w - textSize.width) / 2, y: (s.height - textSize.height) / 2), withAttributes: attrs)
             return true
         }
+        #else
+        let img = UIGraphicsImageRenderer(size: size).image { _ in
+            let r = CGRect(x: margin, y: 0, width: w, height: s.height)
+            let path = UIBezierPath(roundedRect: r, cornerRadius: min(s.radius, s.height / 2))
+            fill.setFill()
+            path.fill()
+            if let ring {
+                let inner = UIBezierPath(roundedRect: r.insetBy(dx: 0.5, dy: 0.5), cornerRadius: min(s.radius, s.height / 2) - 0.5)
+                inner.lineWidth = 1
+                ring.setStroke()
+                inner.stroke()
+            }
+            label.draw(at: CGPoint(x: margin + (w - textSize.width) / 2, y: (s.height - textSize.height) / 2), withAttributes: attrs)
+        }
+        #endif
         cache[key] = img
         return img
     }
@@ -280,7 +304,7 @@ enum AiCiteChip {
 }
 #endif
 
-#if os(macOS)
+#if os(macOS) || os(iOS)
 /// Keeps a paragraph whole lines tall: a citation chip (an image in the text) makes AppKit's line a little taller
 /// than the CSS line box, which would push everything under it down.
 struct AiLineSnap: Layout {

@@ -1,8 +1,12 @@
 // The Tab Overview (the web's TabOverview.tsx): every open tab at once as pictures of their pages, like Safari's
 // tab overview. Search them, open one, close them, or start a new note; the arrows move the selection, Return opens
 // it, Esc (or Done, the grid button, ⌘⇧\, a click on the background) closes it.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 
@@ -230,6 +234,7 @@ public struct TabOverviewLayer: View {
     private func color(_ name: String) -> Color { WebStyles.vars[name]?.resolve(scheme).color ?? .clear }
 }
 
+#if os(macOS)
 /// The overview's backdrop-blur-xl over the window.
 private struct VisualEffectBlur: NSViewRepresentable {
     func makeNSView(context: Context) -> NSVisualEffectView {
@@ -241,4 +246,11 @@ private struct VisualEffectBlur: NSViewRepresentable {
     }
     func updateNSView(_ v: NSVisualEffectView, context: Context) {}
 }
+#else
+/// The overview's backdrop-blur-xl over the window.
+private struct VisualEffectBlur: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIVisualEffectView { UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial)) }
+    func updateUIView(_ v: UIVisualEffectView, context: Context) {}
+}
+#endif
 #endif

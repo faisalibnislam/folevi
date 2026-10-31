@@ -3,8 +3,12 @@
 // All, Completed, My Tasks), the filter, then the tasks in a card (Upcoming by day). The data is TasksModel's
 // (the engine's `tasks.list` and `tasks.counts`), in the web's order. Command-N adds a task, Command-F filters,
 // Command-1 to Command-6 pick a view.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

@@ -29,6 +29,9 @@ public struct WebTopBar: View {
 
     public init(model: FrameModel) { self.model = model }
 
+    /// The bar's coordinate space (a tab's picture is placed from its tab's frame in it).
+    static let space = "frame.topbar"
+
     private func style(_ id: String) -> WebComputedStyle { WebStyles.named(id).resolve(scheme) }
 
     public var body: some View {
@@ -71,6 +74,7 @@ public struct WebTopBar: View {
         .frame(height: bar.height)
         .frame(maxWidth: .infinity)
         .webBox(WebStyles.named("frame.topbar"))
+        .coordinateSpace(name: Self.space)
         // Over the Vault (drawn in the other theme), the strip sits on the surface, so its tabs stay readable (the web's
         // `!bg-surface` on the Vault route).
         .background {

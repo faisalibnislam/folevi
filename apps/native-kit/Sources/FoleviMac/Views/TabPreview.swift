@@ -58,7 +58,9 @@ struct TabPreviewHover: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { frame = $0 }
+            // In the bar's own coordinates (TabPreviewLayer adds where the bar sits): `.global` is the window's on
+            // the Mac, which put the picture a sidebar's width to the right of its tab.
+            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .named(WebTopBar.space)) }) { frame = $0 }
             .onHover { inside in
                 if inside { model.preview.enter(id, frame: frame, active: active) } else { model.preview.leaveTab() }
             }

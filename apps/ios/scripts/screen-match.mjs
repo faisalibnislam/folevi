@@ -4,6 +4,9 @@
 // (FOLEVI_WEB_FRAME=1, the web draws it) and in the new frame (FOLEVI_REBUILD=1), light and dark, the status bar
 // and home indicator left out, compared as gate-match.mjs compares the gates. Report in apps/ios/match-report/screens.
 //
+// Times ("4 mins ago") come from the clock on both sides: run with --no-seed an hour or more after seeding for
+// shots that can't fall either side of a minute.
+//
 // --styles measures the web's elements for the native screens instead (packages/design-tokens/match/app-styles/
 // phone.json, in the web frame) into app-styles-cache/phone.ios.json; `node scripts/web-styles.mjs --no-samples`
 // puts them in WebStyles.
@@ -28,7 +31,11 @@ if (!app) throw new Error("Pass --app <path to the built App.app>");
 const sim = simulator(device);
 
 /** The screens, by route. `ready` is text the web shows once the screen is drawn. */
-export const SCREENS = [{ id: "home", path: "/documents", ready: "All notes" }];
+// `scroll`: the screen scrolled down by that many points (FOLEVI_REBUILD_SCROLL in the new frame).
+export const SCREENS = [
+  { id: "home", path: "/documents", ready: "All notes" },
+  { id: "home-lower", path: "/documents", ready: "All notes", scroll: 420 },
+];
 const screens = SCREENS.filter((s) => !only || only.includes(s.id));
 
 const waitUntil = (what, test, ms = 60000) => {
@@ -62,11 +69,16 @@ if (process.argv.includes("--no-seed")) sim.simctl("install", sim.udid, app);
 /** Opens `screen` in the frame `env` names, on the seeded install. */
 const open = (screen, env) => {
   const native = env.FOLEVI_REBUILD === "1";
-  sim.relaunch(native && screen.path !== "/documents" ? { ...env, FOLEVI_REBUILD_OPEN: screen.path } : env);
+  const extra = native && screen.scroll ? { FOLEVI_REBUILD_SCROLL: String(screen.scroll) } : {};
+  sim.relaunch(native && screen.path !== "/documents" ? { ...env, ...extra, FOLEVI_REBUILD_OPEN: screen.path } : { ...env, ...extra });
   waitUntil("the page", () => sim.evalJs('return document.readyState === "complete"'));
   if (!native) {
     if (sim.evalJs("return location.pathname") !== screen.path) sim.evalJs(`location.assign(${JSON.stringify(screen.path)}); return true;`);
     waitUntil(screen.ready, () => sim.evalJs(`return document.body.innerText.includes(${JSON.stringify(screen.ready)})`));
+    if (screen.scroll) {
+      sim.sleep(1500);
+      sim.evalJs(`document.querySelector("main#main").scrollTo(0, ${screen.scroll}); return true;`);
+    }
   }
   sim.sleep(2500);
 };

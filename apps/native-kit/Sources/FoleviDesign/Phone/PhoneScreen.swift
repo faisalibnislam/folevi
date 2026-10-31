@@ -18,6 +18,8 @@ public struct PhoneScreenOptions {
     public var grouped = false
     /// How far the content scrolls before the small title shows (defaults to the large title's foot).
     public var collapseAt: CGFloat?
+    /// Where the content starts scrolled to (Debug: FOLEVI_REBUILD_SCROLL, for comparing a screen's lower part).
+    public var startOffset: CGFloat?
 
     public init(title: String, large: Bool = true, eyebrow: String? = nil, subtitle: String? = nil, status: String? = nil, grouped: Bool = false, collapseAt: CGFloat? = nil) {
         self.title = title
@@ -27,6 +29,9 @@ public struct PhoneScreenOptions {
         self.status = status
         self.grouped = grouped
         self.collapseAt = collapseAt
+        #if DEBUG
+        startOffset = ProcessInfo.processInfo.environment["FOLEVI_REBUILD_SCROLL"].flatMap(Double.init).map { CGFloat($0) }
+        #endif
     }
 }
 
@@ -52,6 +57,7 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     @State private var offset: CGFloat = 0
     @State private var titleFoot: CGFloat = 60
     @State private var titleHeight: CGFloat = 38
+    @State private var position = ScrollPosition(edge: .top)
 
     public init(_ options: PhoneScreenOptions, root: Bool = false, scrollToTop: Int = 0, back: @escaping () -> Void = {}, @ViewBuilder leading: () -> Leading, @ViewBuilder trailing: () -> Trailing, @ViewBuilder header: () -> Header, @ViewBuilder content: () -> Content) {
         self.options = options
@@ -92,6 +98,13 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                         .padding(.trailing, safe.trailing)
                     }
                     .scrollContentBackground(.hidden)
+                    .scrollPosition($position)
+                    // (After the data has come and the layout settled: a scroll before then is clamped short.)
+                    .task {
+                        guard let y = options.startOffset else { return }
+                        try? await Task.sleep(for: .seconds(2.5))
+                        position.scrollTo(y: y)
+                    }
                     .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in offset = y }
                     .onChange(of: scrollToTop) { withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo("top", anchor: .top) } }
                 }

@@ -1,6 +1,22 @@
 {
   "releases": [
     {
+      "version": "1.2.10",
+      "build": 22,
+      "released": "2026-10-31T21:03:47+06:00",
+      "type": "patch",
+      "summary": "Gentle motion on Mac",
+      "improved": [
+        "Dialogs and popovers on Mac slide in gently, and menus, popovers and dialogs fade as they close",
+        "Sections and folders in the sidebar open and close smoothly, with their arrow turning",
+        "Switching between Grid, Compact and List, or between Month, Week and Agenda, crossfades",
+        "Tabs ease into place as you open, close or move them",
+        "A task's check mark settles in when you tick it, and Quick Add fades in like Spotlight",
+        "With Reduce Motion on, everything simply fades"
+      ],
+      "tag": "v1.2.10"
+    },
+    {
       "version": "1.2.09",
       "build": 21,
       "released": "2026-10-31T20:21:47+06:00",

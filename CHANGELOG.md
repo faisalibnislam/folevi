@@ -4,6 +4,21 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.10: Small update
+
+Released 2026-10-31 21:03:47+06:00 (build 22, tag v1.2.10)
+
+Gentle motion on Mac
+
+### Improved
+
+- Dialogs and popovers on Mac slide in gently, and menus, popovers and dialogs fade as they close
+- Sections and folders in the sidebar open and close smoothly, with their arrow turning
+- Switching between Grid, Compact and List, or between Month, Week and Agenda, crossfades
+- Tabs ease into place as you open, close or move them
+- A task's check mark settles in when you tick it, and Quick Add fades in like Spotlight
+- With Reduce Motion on, everything simply fades
+
 ## Version 1.2.09: Small update
 
 Released 2026-10-31 20:21:47+06:00 (build 21, tag v1.2.09)

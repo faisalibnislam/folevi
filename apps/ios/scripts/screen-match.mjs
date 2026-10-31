@@ -12,6 +12,7 @@
 // puts them in WebStyles.
 //
 //   node scripts/screen-match.mjs --app <App.app> [--device "iPhone 18 Pro"] [--only home,...] [--no-seed] [--styles]
+//                                 [--side web|native]
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -27,8 +28,12 @@ const app = arg("--app");
 const device = arg("--device", "iPhone 18 Pro");
 const only = arg("--only")?.split(",");
 const styles = process.argv.includes("--styles");
+// --side web|native: shoot one side only (to look at it while building; the diff needs both).
+const side = arg("--side");
 if (!app) throw new Error("Pass --app <path to the built App.app>");
 const sim = simulator(device);
+
+const CHIPS_IN_SIGHT = `const n = document.querySelector("nav[aria-label='Task views']"); const on = n.querySelector("[aria-current=page]"); n.scrollLeft = Math.max(0, on.offsetLeft + on.offsetWidth + 16 - n.clientWidth); return true;`;
 
 /** The screens, by route. `ready` is text the web shows once the screen is drawn. */
 // `scroll`: the screen scrolled down by that many points (FOLEVI_REBUILD_SCROLL in the new frame).
@@ -47,6 +52,20 @@ export const SCREENS = [
   // opens its route (`native`) without the keyboard.
   { id: "search", path: "/documents", ready: "All notes", press: "Search in Personal", native: "/search" },
   { id: "search-trip", path: "/documents", ready: "All notes", press: "Search in Personal", type: "trip", native: "/search?q=trip" },
+  // I4: Tasks, Calendar, Settings. Tasks' row of views keeps the chosen one in sight, but the web places it once, on
+  // its first paint, before or after the counts arrive (so its scroll varies run to run): `settle` places it again
+  // once the screen is drawn, by the same rule.
+  { id: "tasks", path: "/tasks/today", ready: "Filter by task or note", settle: CHIPS_IN_SIGHT },
+  { id: "tasks-all", path: "/tasks/all", ready: "Filter by task or note", settle: CHIPS_IN_SIGHT },
+  { id: "tasks-upcoming", path: "/tasks/upcoming", ready: "Filter by task or note", settle: CHIPS_IN_SIGHT },
+  { id: "tasks-done", path: "/tasks/completed", ready: "Filter by task or note", settle: CHIPS_IN_SIGHT },
+  { id: "calendar", path: "/calendar", ready: "Today ·" },
+  { id: "settings", path: "/settings", ready: "Appearance" },
+  { id: "settings-library", path: "/settings/library", ready: "Library" },
+  { id: "settings-ai", path: "/settings/ai", ready: "Foli AI" },
+  { id: "settings-appearance", path: "/settings/appearance", ready: "Appearance" },
+  { id: "settings-data", path: "/settings/data", ready: "Import" },
+  { id: "settings-this-device", path: "/settings/this-device", ready: "This device" },
 ];
 const screens = SCREENS.filter((s) => !only || only.includes(s.id));
 
@@ -73,6 +92,21 @@ if (!process.argv.includes("--no-seed")) {
   sim.command("note.star", { ids: [made.id], starred: true });
   const old = sim.command("note.create", { text: "Old receipts\nKept for the tax year, then archived.", open: false });
   sim.command("note.archive", { ids: [old.id], archived: true });
+  // Tasks for Tasks and Calendar (I4): in the packing list and the Inbox, overdue, today, later, one with a time and
+  // a priority, one done.
+  const day = (n) => {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  sim.command("task.create", { text: "Buy travel adapters", noteId: made.id, dueDate: day(0) });
+  sim.command("task.create", { text: "Check in online", noteId: made.id, dueDate: day(1), dueTime: "18:30", priority: "high", keepText: true });
+  sim.command("task.create", { text: "Renew passport photos", noteId: made.id, dueDate: day(-2), keepText: true });
+  sim.command("task.create", { text: "Call the dentist", dueDate: day(0), keepText: true });
+  sim.command("task.create", { text: "Plan the weekend walk", dueDate: day(3), keepText: true });
+  sim.command("task.create", { text: "Water the plants", keepText: true });
+  const done = sim.command("task.create", { text: "Pick up dry cleaning", dueDate: day(0), keepText: true });
+  sim.command("task.update", { id: done.id, checked: true });
   sim.sleep(2000);
   console.log("seeded");
 }
@@ -112,6 +146,10 @@ const open = (screen, env) => {
         sim.sleep(1500);
       }
       sim.evalJs("document.activeElement?.blur(); return true");
+    }
+    if (screen.settle) {
+      sim.sleep(1500);
+      sim.evalJs(screen.settle);
     }
     if (screen.scroll) {
       sim.sleep(1500);
@@ -162,12 +200,12 @@ const crop = (path) => {
   execFileSync("sips", ["-c", String(h - TOP - BOTTOM), String(w), "--cropOffset", String(TOP), "0", path], { stdio: "pipe" });
 };
 for (const screen of process.argv.includes("--diff-only") ? [] : screens) {
-  for (const [side, env] of [["web", { FOLEVI_WEB_FRAME: "1" }], ["native", { FOLEVI_REBUILD: "1" }]]) {
+  for (const [which, env] of [["web", { FOLEVI_WEB_FRAME: "1" }], ["native", { FOLEVI_REBUILD: "1" }]].filter(([w]) => !side || w === side)) {
     open(screen, env);
     for (const scheme of ["light", "dark"]) {
       sim.appearance(scheme);
       sim.sleep(1500);
-      const path = join(outDir, side, `${screen.id}-${scheme}.png`);
+      const path = join(outDir, which, `${screen.id}-${scheme}.png`);
       sim.screenshot(path);
       crop(path);
     }
@@ -176,6 +214,7 @@ for (const screen of process.argv.includes("--diff-only") ? [] : screens) {
   console.log(`${screen.id}: shot`);
 }
 
+if (side) process.exit(0);
 const require = createRequire(join(repo, "apps/web/package.json"));
 const { webkit } = require("@playwright/test");
 const { diffAll, writeReport } = await import(join(repo, "apps/mac/scripts/diff.mjs"));

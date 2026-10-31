@@ -221,6 +221,10 @@ private struct RebuildRoot: View {
                 RebuildNoteScreen(noteId: id, model: phone, pageHost: pageHost, frame: model, menus: menus)
             } else if route == .home {
                 RebuildHomeScreen(frame: model, menus: menus, home: home, phone: phone, openAccount: { account = true }, openNotifications: { notifications = true }, newFolder: { newFolder = NewFolderRequest(parent: $0) })
+            } else if case .tasks(let view) = route {
+                RebuildTasksScreen(view: view, frame: model, menus: menus, home: home, phone: phone, openAccount: { account = true }, openNotifications: { notifications = true })
+            } else if case .calendar(let date) = route {
+                RebuildCalendarScreen(date: date, frame: model, menus: menus, home: home, phone: phone, openAccount: { account = true }, openNotifications: { notifications = true })
             } else if route == .shared {
                 RebuildSharedScreen(frame: model, phone: phone)
             } else if route == .changes {

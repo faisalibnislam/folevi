@@ -9,7 +9,7 @@ import FoleviEngine
 @Observable
 public final class TaskEdits {
     let client: EngineClient
-    let feedback: ScreenFeedback
+    public let feedback: ScreenFeedback
     /// Statuses shown before the engine has them (a box ticked a moment ago).
     public private(set) var status: [String: String] = [:]
     /// Due dates shown before the engine has them.

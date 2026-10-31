@@ -88,7 +88,7 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                         VStack(alignment: .leading, spacing: 0) {
                             Color.clear.frame(height: 0).id("top")
                             if options.large {
-                                largeTitle.opacity(largeOpacity)
+                                largeTitle(width: geo.size.width - safe.leading - safe.trailing).opacity(largeOpacity)
                             }
                             header
                             content
@@ -121,7 +121,7 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     }
 
     /// `px-5 pb-1.5 pt-1`: the eyebrow (caption caps), the large title, the subtitle.
-    private var largeTitle: some View {
+    private func largeTitle(width: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             if let eyebrow = options.eyebrow {
                 Text(eyebrow.uppercased())
@@ -131,8 +131,12 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
             }
             // .ui-large-title: Spectral 600 at Large Title, line height 1.12, -0.02em.
             let size = WebTypeRole.largeTitle.metrics.size
+            let style = WebTextStyle(family: .display, size: size, leading: size * 1.12, weight: FoleviTokens.FontWeight.semibold, letterSpacing: -0.02 * size)
+            // A title that fits on one line is framed exactly (38.08 pt; laid out as lines it took 38.33 at 3x, and
+            // everything under it sat a pixel low).
             Text(options.title)
-                .webText(WebTextStyle(family: .display, size: size, leading: size * 1.12, weight: FoleviTokens.FontWeight.semibold, letterSpacing: -0.02 * size))
+                .webText(style)
+                .lineLimit(WebFittedLines.measure(options.title, style) <= width - 40 ? 1 : nil)
                 .foregroundStyle(FoleviTokens.Chrome.heading.resolve(scheme).color)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("phone-screen-content")) } action: { r in
                     titleFoot = r.maxY

@@ -62,7 +62,7 @@ public struct PendingTask: Hashable, Sendable, Identifiable {
 @Observable
 public final class TasksModel: TaskSheetHost {
     public let client: EngineClient
-    let feedback: ScreenFeedback
+    public let feedback: ScreenFeedback
     public let space: SpaceRef?
     public private(set) var view: TaskViewName
     public private(set) var list: ValueStore<TasksValue>

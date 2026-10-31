@@ -44,7 +44,7 @@ public struct AgendaDay: Hashable, Sendable, Identifiable {
 @Observable
 public final class CalendarModel: TaskSheetHost {
     public let client: EngineClient
-    let feedback: ScreenFeedback
+    public let feedback: ScreenFeedback
     public let space: SpaceRef?
     public let session: ValueStore<SessionValue>
     public private(set) var tasks: ValueStore<TasksRangeValue>
@@ -85,7 +85,7 @@ public final class CalendarModel: TaskSheetHost {
         self.chosenLayout = defaults.string(forKey: Self.layoutKey).flatMap(CalendarLayout.init(rawValue:))
         let r = Self.range(for: start)
         self.range = r
-        self.tasks = client.watch(.tasksRange(space: space, from: r.from, to: r.to), snapshotKey: "calendar.tasks.\(client.place).\(space ?? "current")")
+        self.tasks = client.watch(.tasksRange(space: space, from: r.from, to: r.to, includeCompleted: true), snapshotKey: "calendar.tasks.\(client.place).\(space ?? "current")")
         self.events = client.watch(.calendarsEvents(from: TaskDates.ms(day: r.from, timeZone: tz), to: TaskDates.ms(day: TaskDates.add(r.to, days: 1), timeZone: tz)), snapshotKey: "calendar.events.\(client.place)")
         self.todayList = client.watch(.tasksList(space: space, view: .today), snapshotKey: TasksModel.snapshotKey(client.place, space, .today))
         self.edits = TaskEdits(client: client, feedback: feedback)
@@ -162,7 +162,7 @@ public final class CalendarModel: TaskSheetHost {
         range = r
         tasks.cancel()
         events.cancel()
-        tasks = client.watch(.tasksRange(space: space, from: r.from, to: r.to))
+        tasks = client.watch(.tasksRange(space: space, from: r.from, to: r.to, includeCompleted: true))
         events = client.watch(.calendarsEvents(from: TaskDates.ms(day: r.from, timeZone: timeZone), to: TaskDates.ms(day: TaskDates.add(r.to, days: 1), timeZone: timeZone)))
     }
 

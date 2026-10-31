@@ -21,7 +21,7 @@ struct AiPageScreen: View {
     @Environment(\.colorScheme) private var scheme
 
     var host: AiHost {
-        AiHost(session: frame.session.value, openSettings: { [weak frame] section in frame?.host?.frameOpenSettings(section: section) })
+        AiHost(session: frame.session.value, frame: frame, openSettings: { [weak frame] section in frame?.host?.frameOpenSettings(section: section) })
     }
 
     var body: some View {
@@ -79,7 +79,7 @@ struct AiPageScreen: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
             if !model.isNew, model.info != nil {
-                WebMenuButton(width: 240, entries: { AiConversationMenu.entries(model: model, host: host, id: model.conversationId ?? "", title: title, includeRows: false) }) {
+                WebMenuButton(width: 240, entries: { AiConversationMenu.entries(model: model, host: host, id: model.conversationId ?? "", title: title, shared: model.info?.shared ?? false, ephemeral: model.info?.ephemeral ?? false, includeRows: false) }) {
                     WebIconView(.ellipsis, size: 16).frame(width: more.width, height: more.height).foregroundStyle(more.color.color).contentShape(Rectangle())
                 }
                 .buttonStyle(AiHoverStyle(radius: more.radius))
@@ -114,7 +114,7 @@ struct AiPageScreen: View {
 /// share (says plainly why it can't), Copy as Markdown, Download Markdown, Save as note, and Delete.
 @MainActor
 enum AiConversationMenu {
-    static func entries(model: FoliChatModel, host: AiHost, id: String, title: String, pinned: Bool = false, includeRows: Bool, onRename: @escaping @MainActor @Sendable () -> Void = {}, onDelete: @escaping @MainActor @Sendable () -> Void = {}) -> [WebMenuEntry] {
+    static func entries(model: FoliChatModel, host: AiHost, id: String, title: String, pinned: Bool = false, shared: Bool = false, ephemeral: Bool = false, includeRows: Bool, onRename: @escaping @MainActor @Sendable () -> Void = {}, onDelete: @escaping @MainActor @Sendable () -> Void = {}) -> [WebMenuEntry] {
         var out: [WebMenuEntry] = []
         if includeRows {
             out.append(WebMenuEntry(.item("Rename", icon: .pencil, id: "rename"), action: onRename))
@@ -122,17 +122,24 @@ enum AiConversationMenu {
             out.append(.separator(1))
         }
         if !host.local {
-            // Sharing a chat with the workspace needs R12.6 (the encrypted-content consent): said plainly here.
-            out.append(WebMenuEntry(.item("Share with workspace", icon: .share2, id: "share"), disabled: true))
+            // ConversationActions.tsx shareExportItems: Stop sharing, or why it can't be shared, or Share with workspace….
+            if shared {
+                out.append(WebMenuEntry(.item("Stop sharing", icon: .userX, id: "share")) { setShared(host, id: id, false) })
+            } else if !host.inWorkspace {
+                out.append(WebMenuEntry(.item("Share with workspace", icon: .share2, description: "Personal conversations can't be shared.", id: "share"), disabled: true))
+            } else if ephemeral {
+                out.append(WebMenuEntry(.item("Share with workspace", icon: .share2, description: "History is off, so this one isn't kept.", id: "share"), disabled: true))
+            } else {
+                out.append(WebMenuEntry(.item("Share with workspace…", icon: .share2, id: "share")) {
+                    guard let frame = host.frame else { return }
+                    FrameDialogs.confirm(frame, title: "Share this Foli AI conversation?", description: "Members of this workspace can read \u{201C}\(title)\u{201D} but can't change it or ask in it. Someone sees it only if they can open every note it uses. Files you uploaded stay private. You can stop sharing at any time.", action: "Share", danger: false) {
+                        setShared(host, id: id, true)
+                    }
+                })
+            }
             out.append(.separator(2))
         }
-        out.append(WebMenuEntry(.item("Copy as Markdown", icon: .clipboardCopy, id: "copy")) {
-            Task { if let md = await markdown(model: model, id: id, title: title) { AiPasteboard.copy(md) } }
-        })
-        out.append(WebMenuEntry(.item("Download Markdown", icon: .download, id: "download")) {
-            Task { if let md = await markdown(model: model, id: id, title: title) { save(md, title: title) } }
-        })
-        out.append(WebMenuEntry(.item("Save as note", icon: .filePlusCorner, id: "save")) { model.saveAsNote(conversationId: id) })
+        out += exportEntries(model: model, host: host, id: id, title: title, messageId: nil, saves: true)
         if includeRows {
             out.append(.separator(3))
             out.append(WebMenuEntry(.item("Delete…", icon: .trash, danger: true, id: "delete"), action: onDelete))
@@ -140,23 +147,48 @@ enum AiConversationMenu {
         return out
     }
 
-    /// The conversation as Markdown: its title, then each turn.
-    static func markdown(model: FoliChatModel, id: String, title: String) async -> String? {
-        let messages: [ChatMessage]
-        if id == model.conversationId { messages = model.messages } else {
-            guard let v = try? await model.client.query(.aiConversation(conversationId: id)) else { return nil }
-            messages = v.messages
+    /// ai.share: shares the conversation with the workspace, or stops sharing it, and says so.
+    private static func setShared(_ host: AiHost, id: String, _ on: Bool) {
+        guard let frame = host.frame else { return }
+        frame.perform {
+            _ = try await frame.client.command(.aiShare(conversationId: id, shared: on))
+            frame.toast(on ? "Shared with the workspace" : "Stopped sharing", tone: on ? .success : .info)
         }
-        var out = "# \(title.isEmpty ? "Foli AI" : title)\n"
-        for m in messages { out += "\n**\(m.role == .user ? "You" : "Foli AI")**\n\n\(m.text)\n" }
+    }
+
+    /// Copy as Markdown, Download Markdown and Save as note, for a conversation or one answer (`messageId`), with
+    /// the web's file (ai.exportMarkdown: the server's conversationMarkdown and file name).
+    static func exportEntries(model: FoliChatModel, host: AiHost, id: String, title: String, messageId: String?, saves: Bool) -> [WebMenuEntry] {
+        var out = [
+            WebMenuEntry(.item("Copy as Markdown", icon: .clipboardCopy, id: "copy")) {
+                Task { if let r = await markdown(model: model, id: id, messageId: messageId, host: host) { AiPasteboard.copy(r.markdown); host.frame?.toast("Copied as Markdown") } }
+            },
+            WebMenuEntry(.item("Download Markdown", icon: .download, id: "download")) {
+                Task { if let r = await markdown(model: model, id: id, messageId: messageId, host: host) { save(r.markdown, filename: r.filename) } }
+            },
+        ]
+        if saves {
+            out.append(WebMenuEntry(.item("Save as note", icon: .filePlusCorner, id: "save")) {
+                if let messageId { model.saveAsNote(messageId) } else { model.saveAsNote(conversationId: id) }
+            })
+        }
         return out
     }
 
-    static func save(_ text: String, title: String) {
+    static func markdown(model: FoliChatModel, id: String, messageId: String?, host: AiHost) async -> ChatMarkdownResult? {
+        do {
+            return try await model.client.command(.aiExportMarkdown(conversationId: id, messageId: messageId))
+        } catch {
+            host.frame?.toast((error as? LocalizedError)?.errorDescription ?? error.localizedDescription, tone: .error)
+            return nil
+        }
+    }
+
+    /// Download Markdown: where to keep the file, under the web's name for it.
+    static func save(_ text: String, filename: String) {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "md") ?? .plainText]
-        let safe = title.replacingOccurrences(of: "/", with: "-").trimmingCharacters(in: .whitespaces)
-        panel.nameFieldStringValue = "\(safe.isEmpty ? "Foli AI" : String(safe.prefix(80))).md"
+        panel.nameFieldStringValue = filename
         guard panel.runModal() == .OK, let url = panel.url else { return }
         try? text.write(to: url, atomically: true, encoding: .utf8)
     }
@@ -173,7 +205,7 @@ struct AiConversationList: View {
     @FocusState private var renameFocused: Bool
     @Environment(\.colorScheme) private var scheme
 
-    var host: AiHost { AiHost(session: frame.session.value, openSettings: { [weak frame] s in frame?.host?.frameOpenSettings(section: s) }) }
+    var host: AiHost { AiHost(session: frame.session.value, frame: frame, openSettings: { [weak frame] s in frame?.host?.frameOpenSettings(section: s) }) }
 
     var body: some View {
         let look = AiLook(scheme: scheme)
@@ -286,7 +318,7 @@ struct AiConversationList: View {
                 .accessibilityLabel("Conversation name")
         } else {
             AiConversationRowView(row: r, active: r.id == model.conversationId, open: { frame.open(.web("/ai/\(r.id)"), title: r.title) }) {
-                AiConversationMenu.entries(model: model, host: host, id: r.id, title: r.title, pinned: r.pinned, includeRows: true, onRename: {
+                AiConversationMenu.entries(model: model, host: host, id: r.id, title: r.title, pinned: r.pinned, shared: r.shared, includeRows: true, onRename: {
                     name = r.title
                     renaming = r.id
                     DispatchQueue.main.async { renameFocused = true }

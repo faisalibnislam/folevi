@@ -92,6 +92,16 @@ export const AI_COMMANDS = {
     },
   },
 
+  "ai.share": {
+    async run(deps, args) {
+      only(args, ["conversationId", "shared"]);
+      const conversationId = id(args, "conversationId");
+      if (bool(args, "shared")) await deps.client.mutation(api.aiSharing.share, { conversationId });
+      else await deps.client.mutation(api.aiSharing.unshare, { conversationId });
+      return { ok: true };
+    },
+  },
+
   "ai.remove": {
     async run(deps, args) {
       only(args, ["conversationId", "web"]);
@@ -105,6 +115,14 @@ export const AI_COMMANDS = {
       only(args, ["conversationId", "messageId"]);
       const r = (await deps.client.mutation(api.aiChat.saveAsNote, { conversationId: id(args, "conversationId"), ...(args.messageId !== undefined ? { messageId: id(args, "messageId") } : {}) })) as { id: string };
       return { id: r.id };
+    },
+  },
+
+  "ai.exportMarkdown": {
+    async run(deps, args) {
+      only(args, ["conversationId", "messageId"]);
+      const r = (await deps.client.query(api.aiChat.exportMarkdown, { conversationId: id(args, "conversationId"), ...(args.messageId !== undefined ? { messageId: id(args, "messageId") } : {}) })) as { filename: string; markdown: string };
+      return { filename: r.filename, markdown: r.markdown };
     },
   },
 

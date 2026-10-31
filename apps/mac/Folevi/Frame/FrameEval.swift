@@ -47,6 +47,36 @@ extension NativeFrame {
             else { return done(["error": "no native screen scrolling"]) }
             ScrollBench(scroll: scroll, distance: req["distance"] as? Double ?? 3000, seconds: req["seconds"] as? Double ?? 3, done: done).start()
         }
+        // cmd menus {"do":"rightClick"|"click","x":…,"y":…}  a right click or a click at a point of the front
+        // window's content (points, from its top left), then the menu it opened: its rows and where it is.
+        // {"do":"shot","out":path} draws the open menu's panel; {"do":"close"} closes it.
+        MacEval.commands["menus"] = { req, done in
+            let menuState: () -> [String: Any] = {
+                guard let m = WebMenuWindow.shown else { return ["open": false] }
+                return ["open": true, "rows": m.rows, "frame": [m.frame.minX, m.frame.minY, m.frame.width, m.frame.height]]
+            }
+            switch req["do"] as? String {
+            case "rightClick", "click":
+                guard let window = WindowManager.shared.frontMain?.window, let cv = window.contentView else { return done(["error": "no window"]) }
+                let p = NSPoint(x: req["x"] as? Double ?? 0, y: cv.bounds.height - (req["y"] as? Double ?? 0))
+                let right = req["do"] as? String == "rightClick"
+                let types: [NSEvent.EventType] = right ? [.rightMouseDown, .rightMouseUp] : [.mouseMoved, .leftMouseDown, .leftMouseUp]
+                for t in types {
+                    if let e = NSEvent.mouseEvent(with: t, location: p, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: t == .mouseMoved ? 0 : 1, pressure: t == .mouseMoved ? 0 : 1) {
+                        NSApp.postEvent(e, atStart: false)
+                    }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { done(["value": menuState()]) }
+            case "shot":
+                guard let m = WebMenuWindow.shown, let path = req["out"] as? String, let png = m.snapshot()?.representation(using: .png, properties: [:]) else { return done(["error": "no menu"]) }
+                do { try png.write(to: URL(fileURLWithPath: path)); done(["value": menuState()]) } catch { done(["error": error.localizedDescription]) }
+            case "close":
+                WebMenuWindow.shown?.close()
+                done(["value": true])
+            default:
+                done(["value": menuState()])
+            }
+        }
         MacEval.commands["frame"] = { req, done in
             let mains = WindowManager.shared.mains
             let i = req["window"] as? Int ?? 0

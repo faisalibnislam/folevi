@@ -145,7 +145,8 @@ struct NotificationsPanel: View {
     private func row(_ raw: NotificationRow) -> some View {
         let n = model.row(raw)
         let muted = moreVar("color-ink-muted", scheme)
-        return VStack(alignment: .leading, spacing: 0) {
+        return HoverReveal { hovered in
+        VStack(alignment: .leading, spacing: 0) {
             HoverFill {
                 Task {
                     if let intent = await model.tap(n) { open(intent) }
@@ -183,11 +184,17 @@ struct NotificationsPanel: View {
                     if !n.read { RoundedRectangle(cornerRadius: 2).fill(moreVar("color-coral", scheme)).frame(width: 8, height: 8).padding(.top, 16).padding(.trailing, 14) }
                 }
             }
-            .webContextMenu {
-                [
-                    WebMenuEntry(.item(n.read ? "Mark as unread" : "Mark as read", icon: .mail)) { Task { await model.toggleRead(n) } },
-                    WebMenuEntry(.item("Remove", icon: .trash, danger: true)) { Task { await model.remove(n) } },
-                ]
+            // The "…" in the row's corner while it's hovered (NotificationsButton.tsx: right-1.5 top-2, h-7 w-7, no
+            // icons on the desktop); a right click is the window's own menu, as on the web.
+            .overlay(alignment: .topTrailing) {
+                RowMoreButton(label: "Options for this notification", shown: hovered, size: 28, iconSize: 15) {
+                    [
+                        WebMenuEntry(.item(n.read ? "Mark as unread" : "Mark as read")) { Task { await model.toggleRead(n) } },
+                        WebMenuEntry(.item("Remove", danger: true)) { Task { await model.remove(n) } },
+                    ]
+                }
+                .padding(.top, 8)
+                .padding(.trailing, 6)
             }
             if model.inviteKind(n) != nil || n.folderInviteId != nil {
                 HStack(spacing: 6) {
@@ -196,6 +203,7 @@ struct NotificationsPanel: View {
                 }
                 .padding(.leading, 50).padding(.bottom, 10).padding(.top, -4)
             }
+        }
         }
     }
 

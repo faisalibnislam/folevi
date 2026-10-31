@@ -512,7 +512,6 @@ struct MonthChip: View {
         .buttonStyle(PlainPress())
         .foleviTooltip(task.title)
         .onDrag { NSItemProvider(object: task.id as NSString) }
-        .webContextMenu { tasks.menu(task) }
     }
 }
 
@@ -794,7 +793,6 @@ struct HourGrid: View {
         .buttonStyle(PlainPress())
         .foleviTooltip("\(t.dueTime ?? "") \(t.title)")
         .onDrag { NSItemProvider(object: t.id as NSString) }
-        .webContextMenu { tasks.menu(t) }
         .offset(x: r.minX, y: r.minY)
     }
 

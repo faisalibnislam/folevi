@@ -15,16 +15,12 @@ struct VaultDialogHost: View {
     let dialog: VaultDialog
     @Environment(\.colorScheme) private var scheme
 
+    /// Presented by the frame as every dialog is (FrameSheets: centred on the window under the bar, the page not
+    /// dimmed, a click outside or Escape closes it), in the Vault's inverted theme.
     var body: some View {
-        ZStack {
-            Color.black.opacity(scheme == .dark ? 0.18 : 0.35)
-                .padding(.top, -ContentViewController.barHeight)
-                .onTapGesture { model.dialog = nil }
-            content
-                .shadow(color: .black.opacity(0.25), radius: 24, y: 12)
-                .onExitCommand { model.dialog = nil }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        content
+            .shadow(color: .black.opacity(0.25), radius: 24, y: 12)
+            .uiInvert()
     }
 
     @ViewBuilder private var content: some View {

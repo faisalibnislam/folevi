@@ -172,9 +172,24 @@ public struct WebMenuItem: Identifiable, Sendable {
     public var shortcut: String?
     public var danger: Bool
     public var checked: Bool
+    /// Foli AI's flower (ai/AiIcon.tsx) in place of an icon, as the web's AI items draw it.
+    public var aiMark = false
+    /// A second, quieter line under the label (MenuItem.description).
+    public var description: String?
+    /// A quiet note after the label (MenuItem.detail).
+    public var detail: String?
+    /// Whether the item can be on or off (MenuItem.checked set): a menu with any such item shows the checkmark.
+    public var checkable = false
+    /// A colour square in the icon's place (the tag menu's "Color: Moss").
+    public var swatch: Color?
 
-    public static func item(_ title: String, icon: WebIcon? = nil, shortcut: String? = nil, danger: Bool = false, checked: Bool = false, id: String? = nil) -> WebMenuItem {
-        WebMenuItem(id: id ?? title, kind: .item, title: title, icon: icon, shortcut: shortcut, danger: danger, checked: checked)
+    public static func item(_ title: String, icon: WebIcon? = nil, shortcut: String? = nil, danger: Bool = false, checked: Bool? = nil, description: String? = nil, detail: String? = nil, swatch: Color? = nil, id: String? = nil) -> WebMenuItem {
+        WebMenuItem(id: id ?? title, kind: .item, title: title, icon: icon, shortcut: shortcut, danger: danger, checked: checked ?? false, description: description, detail: detail, checkable: checked != nil, swatch: swatch)
+    }
+
+    /// A Foli AI item: the flower in the icon's place.
+    public static func ai(_ title: String, shortcut: String? = nil, id: String? = nil) -> WebMenuItem {
+        WebMenuItem(id: id ?? title, kind: .item, title: title, icon: nil, shortcut: shortcut, danger: false, checked: false, aiMark: true)
     }
 
     public static func heading(_ title: String) -> WebMenuItem {
@@ -192,15 +207,21 @@ public struct WebMenuPanel: View {
     let items: [WebMenuItem]
     let width: CGFloat
     let highlighted: String?
+    /// A select's list (ui/Select.tsx's listbox) rather than a menu: the chosen option semibold with its check,
+    /// every row keeping the check's room, the soft glass hover, at least `width` (no 200 floor).
+    let select: Bool
     let onSelect: (WebMenuItem) -> Void
     @Environment(\.colorScheme) private var scheme
 
-    public init(_ items: [WebMenuItem], width: CGFloat = 224, highlighted: String? = nil, onSelect: @escaping (WebMenuItem) -> Void = { _ in }) {
+    public init(_ items: [WebMenuItem], width: CGFloat = 200, highlighted: String? = nil, select: Bool = false, onSelect: @escaping (WebMenuItem) -> Void = { _ in }) {
         self.items = items
         self.width = width
         self.highlighted = highlighted
+        self.select = select
         self.onSelect = onSelect
     }
+
+    private var checks: Bool { items.contains { $0.checkable } }
 
     public var body: some View {
         let panel = WebStyles.named("menu.panel")
@@ -211,9 +232,14 @@ public struct WebMenuPanel: View {
             }
         }
         .padding(p.padding.edgeInsets)
-        .frame(width: width, alignment: .topLeading)
+        // (At least 200 and as wide as its longest row, as the web's popover sizes itself on the Mac.)
+        .frame(minWidth: select ? width : max(width, Self.minWidth), alignment: .topLeading)
+        .fixedSize(horizontal: true, vertical: false)
         .webBox(panel)
     }
+
+    /// The least width of a menu on the Mac (globals.css: `min-width: 200px` for menus in Folevi for Mac).
+    public static let minWidth: CGFloat = 200
 
     @ViewBuilder
     private func row(_ item: WebMenuItem) -> some View {
@@ -231,6 +257,8 @@ public struct WebMenuPanel: View {
             Rectangle().fill(sep.background.color)
                 .frame(height: sep.height)
                 .padding(sep.margin.edgeInsets)
+        case .item where select:
+            selectRow(item)
         case .item:
             let styleId = item.danger ? "menu.item.danger" : highlighted == item.id ? "menu.item.highlighted" : "menu.item"
             let style = WebStyles.named(styleId)
@@ -239,24 +267,79 @@ public struct WebMenuPanel: View {
             let shortcut = WebStyles.named("menu.item.shortcut").resolve(scheme)
             Button { onSelect(item) } label: {
                 HStack(spacing: s.gap) {
+                    // (The Mac draws a menu's icons at 16 in the icon's muted colour, a destructive row's too: only its
+                    // words turn red. globals.css "[data-menu-part=icon] svg".)
                     if let i = item.icon {
-                        WebIconView(i, size: 15)
+                        WebIconView(i, size: icon.width)
                             .frame(width: icon.width, height: icon.height)
-                            .foregroundStyle(item.danger ? s.color.color : icon.color.color)
+                            .foregroundStyle(icon.color.color)
+                    } else if item.aiMark {
+                        AiMarkGlyph(size: icon.width).frame(width: icon.width, height: icon.height)
+                    } else if let c = item.swatch {
+                        // (h-2.5 w-2.5 rounded-tiny)
+                        RoundedRectangle(cornerRadius: 4, style: .circular).fill(c).frame(width: 10, height: 10)
                     }
-                    Text(item.title).webText(s.text).lineLimit(1)
-                    Spacer(minLength: 0)
+                    // The label takes the room left (flex-1): no spacer, whose own gap would widen the menu.
+                    Group {
+                        if let d = item.description {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.title).webText(s.text).lineLimit(1)
+                                Text(d).webText(.role(.footnote)).lineLimit(1).truncationMode(.tail).foregroundStyle(icon.color.color)
+                            }
+                        } else {
+                            Text(item.title).webText(s.text).lineLimit(1)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    if let d = item.detail {
+                        Text(d).webText(.role(.footnote)).lineLimit(1).foregroundStyle(icon.color.color)
+                    }
                     if let k = item.shortcut {
                         Text(k).webText(shortcut.text).lineLimit(1).foregroundStyle(shortcut.color.color).padding(.leading, shortcut.padding.left)
                     }
+                    // The checkmark at the end, as the web's desktop menus draw it (Check 14, stroke 2.5, text-heading).
+                    if checks && item.checked {
+                        WebIconView(.check, size: 14, strokeWidth: 2.5).frame(width: 14, height: 14)
+                    }
                 }
                 .padding(s.padding.edgeInsets)
-                .frame(maxWidth: .infinity, minHeight: s.height, maxHeight: s.height, alignment: .leading)
+                .padding(.vertical, item.description == nil ? 0 : 8 - s.padding.edgeInsets.top)
+                .frame(maxWidth: .infinity, minHeight: s.height, maxHeight: item.description == nil ? s.height : nil, alignment: .leading)
                 .foregroundStyle(s.color.color)
                 .webBox(style)
             }
             .buttonStyle(WebPressStyle())
         }
+    }
+}
+
+extension WebMenuPanel {
+    /// An option of a select's list (ui/Select.tsx `li[role=option]` with the Mac's row: 26 tall, 3 / 8 padding,
+    /// gap 8, the chip radius): the active one on the glass hover in the heading colour, the chosen one semibold with
+    /// its check (14, stroke 2.5), the others keeping the check's room (w-3.5).
+    @ViewBuilder
+    func selectRow(_ item: WebMenuItem) -> some View {
+        let base = WebStyles.named("menu.item").resolve(scheme)
+        let heading = WebStyles.vars["color-heading"]?.resolve(scheme).color ?? .primary
+        let ink = WebStyles.vars["color-ink"]?.resolve(scheme).color ?? .primary
+        let hover = WebStyles.vars["glass-hover"]?.resolve(scheme).color ?? .clear
+        let active = highlighted == item.id
+        Button { onSelect(item) } label: {
+            HStack(spacing: 8) {
+                Text(item.title).webText(item.checked ? base.text.weight(600) : base.text).lineLimit(1).truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Group {
+                    if item.checked { WebIconView(.check, size: 14, strokeWidth: 2.5) } else { Color.clear }
+                }
+                .frame(width: 14, height: 14)
+            }
+            .padding(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
+            .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
+            .foregroundStyle(active || item.checked ? heading : ink)
+            .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular).fill(active ? hover : .clear))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(WebPressStyle())
     }
 }
 

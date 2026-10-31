@@ -77,6 +77,11 @@ struct AiAskOverlay: View {
         .padding(.bottom, 820 - (fab.y + fab.height) - Self.cardInset)
         .animation(.easeOut(duration: 0.18), value: frame.askAiOpen)
         .onChange(of: frame.askAiOpen) { _, open in if !open { state.model.closed() } }
+        .onChange(of: frame.askAbout, initial: true) { _, about in
+            guard let about else { return }
+            state.model.reopen(about: .folder(id: about.id, name: about.name))
+            frame.askAbout = nil
+        }
     }
 
     private func close() {
@@ -136,7 +141,7 @@ struct AiAskPanelView: View {
     var height: CGFloat = 640
     @Environment(\.colorScheme) private var scheme
 
-    var host: AiHost { AiHost(session: frame.session.value, openSettings: { [weak frame] s in frame?.askAiOpen = false; frame?.host?.frameOpenSettings(section: s) }) }
+    var host: AiHost { AiHost(session: frame.session.value, frame: frame, openSettings: { [weak frame] s in frame?.askAiOpen = false; frame?.host?.frameOpenSettings(section: s) }) }
 
     var body: some View {
         let look = AiLook(scheme: scheme)
@@ -149,7 +154,7 @@ struct AiAskPanelView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityAddTraits(.isHeader)
                 if let id = model.conversationId, model.info != nil {
-                    WebMenuButton(width: 240, entries: { AiConversationMenu.entries(model: model, host: host, id: id, title: model.title, includeRows: false) }) {
+                    WebMenuButton(width: 240, entries: { AiConversationMenu.entries(model: model, host: host, id: id, title: model.title, shared: model.info?.shared ?? false, ephemeral: model.info?.ephemeral ?? false, includeRows: false) }) {
                         headerIcon(.ellipsis, look: look)
                     }
                     .buttonStyle(AiHoverStyle(radius: look.s("ai.panel.button").radius))

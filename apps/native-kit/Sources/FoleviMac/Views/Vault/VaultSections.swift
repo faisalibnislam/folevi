@@ -128,7 +128,7 @@ struct VaultSelect: View {
 
     var body: some View {
         let s = VS.style(style, scheme)
-        WebMenuButton(width: max(s.width, 180), entries: { options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == selected)) { onSelect(o.0) } } }) {
+        WebMenuButton(select: true, entries: { options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == selected)) { onSelect(o.0) } } }) {
             let row = HStack(spacing: s.gap) {
                 Text(label).webText(s.text).lineLimit(1)
                 Spacer(minLength: 0)

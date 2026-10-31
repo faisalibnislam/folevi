@@ -386,7 +386,7 @@ public struct WebQuickAddPanel: View {
                     Text("Add to").webText(.role(.subheadline)).fixedSize()
                     // The web's Select with no box of its own here: the label, then its chevron at the far end.
                     GeometryReader { g in
-                        WebMenuButton(width: max(g.size.width, 180), entries: {
+                        WebMenuButton(select: true, entries: {
                             places.options.map { o in WebMenuEntry(.item(o.label, checked: o.id == places.current, id: o.id)) { places.pick(o.id) } }
                         }) {
                             HStack(spacing: 6) {

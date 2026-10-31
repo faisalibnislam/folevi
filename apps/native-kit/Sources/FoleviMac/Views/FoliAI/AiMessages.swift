@@ -150,6 +150,7 @@ struct AiAssistantMessage: View {
     let model: FoliChatModel
     let message: ChatMessage
     let last: Bool
+    var host = AiHost()
     var purchases = false
     var onBilling: () -> Void = {}
     @Environment(\.colorScheme) private var scheme
@@ -316,8 +317,13 @@ struct AiAssistantMessage: View {
                     AiRowButton(icon: .fileText, title: job.noteId == nil ? "Save as note" : "Open note") { model.saveResearch(job) }
                         .disabled(model.busy.contains(job.id))
                 }
-            } else if message.agentRun != nil, !message.text.isEmpty {
-                AiRowButton(icon: .fileText, title: "Save as note") { model.saveAsNote(message.id) }
+            }
+            // Export (ChatMessage.tsx AnswerExport): an agent's report or a research report on its own, as Markdown
+            // or (not a research report, which has its own) a note.
+            if let id = model.conversationId, !message.text.isEmpty, message.agentRun != nil || job != nil {
+                AiExportButton {
+                    AiConversationMenu.exportEntries(model: model, host: host, id: id, title: model.title, messageId: message.id, saves: job == nil)
+                }
             }
             if message.status == "stopped", job?.status != "cancelled" {
                 Text("Stopped").webText(.role(.footnote)).foregroundStyle(look.faint).padding(.horizontal, 6)
@@ -643,6 +649,32 @@ struct AiFlow: Layout {
             x += s.width + spacing
             row = max(row, s.height)
         }
+    }
+}
+
+
+/// "Export" under an answer (a row button, `<MoreHorizontal size={12} /> Export`): its menu opens above it.
+struct AiExportButton: View {
+    let entries: @MainActor () -> [WebMenuEntry]
+    @State private var hover = false
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let s = AiLook(scheme: scheme).s("ai.rowbtn")
+        WebMenuButton(side: .top, entries: entries) {
+            HStack(spacing: s.gap) {
+                WebIconView(.ellipsis, size: 12)
+                Text("Export").webText(s.text).lineLimit(1)
+            }
+            .padding(.horizontal, s.padding.left)
+            .frame(height: s.height)
+            // (hover:bg-[var(--glass-hover)] hover:text-heading, as the row's other buttons)
+            .foregroundStyle(hover ? (WebStyles.vars["color-heading"]?.resolve(scheme).color ?? s.color.color) : s.color.color)
+            .background(RoundedRectangle(cornerRadius: s.radius, style: .circular).fill(hover ? (WebStyles.vars["glass-hover"]?.resolve(scheme).color ?? .clear) : .clear))
+            .contentShape(Rectangle())
+        }
+        .onHover { hover = $0 }
+        .accessibilityLabel("Export this answer")
     }
 }
 #endif

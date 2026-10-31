@@ -31,6 +31,7 @@ public struct WebTopBar: View {
         HStack(spacing: bar.gap) {
             if model.sidebarCollapsed {
                 Color.clear.frame(width: 60, height: 1)
+                SidebarMenuButton(model: model)
                 SyncDot(model: model)
                 divider
             }
@@ -412,11 +413,11 @@ public struct WebTopBar: View {
             out.append(WebMenuEntry(.item(n > 2 ? "Unjoin all notes" : "Unjoin notes", icon: .squareSplitHorizontal)) { model.unjoinTab(t.id) })
         }
         out += [
-            .separator(),
+            .separator(1),
             WebMenuEntry(.item("Close tab", icon: .x), disabled: t.pinned) { model.closeTab(t.id) },
             WebMenuEntry(.item("Close tabs to the right", icon: .arrowRightToLine), disabled: right.isEmpty) { model.closeTabsToTheRight(of: t.id) },
             WebMenuEntry(.item("Close tabs to the left", icon: .arrowLeftToLine), disabled: left.isEmpty) { model.closeTabsToTheLeft(of: t.id) },
-            .separator(),
+            .separator(2),
             WebMenuEntry(.item("Close all tabs", icon: .circleX, danger: true)) { model.closeAllTabs() },
         ]
         return out
@@ -439,7 +440,7 @@ public struct WebTopBar: View {
         case .tag: return .hash
         case .shared: return .share2
         case .changes: return .fileDiff
-        case .tasks: return .squareCheck
+        case .tasks: return .squareCheckBig
         case .calendar: return .calendar
         case .note: return .fileText
         case .search: return .search
@@ -449,6 +450,8 @@ public struct WebTopBar: View {
             if path.hasPrefix("/review") { return .layers }
             if path.hasPrefix("/settings") { return .settings }
             if path.hasPrefix("/vault") { return .lock }
+            if path == "/folders" { return .folder }
+            if path == "/tags" { return .hash }
             if path.hasPrefix("/help") { return .circleQuestionMark }
             return .layoutList
         }

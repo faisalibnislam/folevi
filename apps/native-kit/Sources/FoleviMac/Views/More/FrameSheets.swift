@@ -74,21 +74,38 @@ public enum FrameSheets {
         }
     }
 
-    /// The window as it is, blurred as `backdrop-filter: blur(24px)` blurs what's behind a dialog (a Gaussian
-    /// with a 24 pt standard deviation, edges extended). Drawn under the dialog's 82% fill, aligned to the window.
+    /// The window as it is, blurred as `backdrop-filter: blur(24px) saturate(1.8)` treats what's behind a dialog (a
+    /// Gaussian with a 24 pt standard deviation, edges extended). Drawn under the dialog's fill, aligned to the window.
     static func blurredSnapshot(of view: NSView) -> NSImage? {
-        guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
-        view.cacheDisplay(in: view.bounds, to: rep)
+        blurred(view, rect: view.bounds)
+    }
+
+    /// One Core Image context for every backdrop (making one costs more than the blur itself).
+    private static let ciContext = CIContext(options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB)!, .cacheIntermediates: false])
+
+    /// `rect` of `view` (its own coordinates) as `backdrop-filter: blur(24px) saturate(1.8)` shows it: drawn with
+    /// 72 pt round it (three standard deviations, so the edges blur as the page's do), blurred, cut back to `rect`.
+    static func blurred(_ view: NSView, rect: NSRect) -> NSImage? {
+        let reach = rect == view.bounds ? 0 : 72
+        let area = rect.insetBy(dx: -CGFloat(reach), dy: -CGFloat(reach)).intersection(view.bounds)
+        guard !area.isEmpty, let rep = view.bitmapImageRepForCachingDisplay(in: area) else { return nil }
+        view.cacheDisplay(in: area, to: rep)
         guard let cg = rep.cgImage else { return nil }
-        let scale = CGFloat(rep.pixelsWide) / max(1, view.bounds.width)
+        let scale = CGFloat(rep.pixelsWide) / max(1, area.width)
         let input = CIImage(cgImage: cg)
-        guard let blur = CIFilter(name: "CIGaussianBlur") else { return nil }
-        blur.setValue(input.clampedToExtent(), forKey: kCIInputImageKey)
+        let saturate = CIFilter(name: "CIColorControls")
+        saturate?.setValue(input, forKey: kCIInputImageKey)
+        saturate?.setValue(1.8, forKey: kCIInputSaturationKey)
+        guard let saturated = saturate?.outputImage, let blur = CIFilter(name: "CIGaussianBlur") else { return nil }
+        blur.setValue(saturated.clampedToExtent(), forKey: kCIInputImageKey)
         blur.setValue(24 * scale, forKey: kCIInputRadiusKey)
-        guard let out = blur.outputImage?.cropped(to: input.extent) else { return nil }
-        let ctx = CIContext(options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB)!])
-        guard let image = ctx.createCGImage(out, from: input.extent, format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)) else { return nil }
-        return NSImage(cgImage: image, size: view.bounds.size)
+        // The part wanted, in the picture's pixels (Core Image's origin is at the bottom left; a flipped view's isn't).
+        let dx = (rect.minX - area.minX) * scale
+        let dy = (view.isFlipped ? area.maxY - rect.maxY : rect.minY - area.minY) * scale
+        let crop = CGRect(x: dx, y: dy, width: rect.width * scale, height: rect.height * scale).intersection(input.extent)
+        guard let out = blur.outputImage?.cropped(to: crop),
+              let image = ciContext.createCGImage(out, from: crop, format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)) else { return nil }
+        return NSImage(cgImage: image, size: NSSize(width: crop.width / scale, height: crop.height / scale))
     }
 
     static func dismiss(_ model: FrameModel, notify: Bool = true) {

@@ -134,6 +134,26 @@ export const MORE_COMMANDS = {
     },
   },
 
+  "tag.update": {
+    async run(deps, args) {
+      only(args, ["id", "name", "color"]);
+      const tagId = id(args, "id");
+      const name = text(args, "name", { max: 40, optional: true })?.trim();
+      const color = text(args, "color", { max: 32, optional: true });
+      if (name === undefined && color === undefined) throw new BridgeError("invalid_args", "Give a name or a color.");
+      await deps.client.mutation(api.organization.updateTag, { tagId, ...(name !== undefined ? { name } : {}), ...(color !== undefined ? { color } : {}) });
+      return { ok: true };
+    },
+  },
+
+  "tag.delete": {
+    async run(deps, args) {
+      only(args, ["id"]);
+      await deps.client.mutation(api.organization.deleteTag, { tagId: id(args, "id") });
+      return { ok: true };
+    },
+  },
+
   "folder.move": {
     // Nest, un-nest or reorder; refused as the server and folderDrop.ts refuse (checked on this device's copy).
     async run(deps, args) {

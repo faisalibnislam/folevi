@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "7346f387"
+        "schemaHash": "d6a659cb"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 20,
+        "revision": 21,
         "build": "dev",
-        "schemaHash": "7346f387",
+        "schemaHash": "d6a659cb",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -93,7 +93,8 @@
           "vault.activity",
           "vault.people",
           "vault.shares",
-          "e2ee.state"
+          "e2ee.state",
+          "tags.index"
         ],
         "listViews": [
           "notes.list"
@@ -125,6 +126,8 @@
           "folder.setColor",
           "folder.move",
           "folder.delete",
+          "tag.update",
+          "tag.delete",
           "changes.markSeen",
           "proposal.accept",
           "proposal.reject",
@@ -160,8 +163,10 @@
           "ai.edit",
           "ai.rename",
           "ai.pin",
+          "ai.share",
           "ai.remove",
           "ai.saveAsNote",
+          "ai.exportMarkdown",
           "ai.actions",
           "ai.memory",
           "notification.act",

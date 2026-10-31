@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "name": "tag.update",
+  "description": "Rename a tag and change its colour.",
+  "args": {
+    "id": "tag_travel",
+    "name": "Trips",
+    "color": "moss"
+  },
+  "result": {
+    "ok": true
+  }
+}

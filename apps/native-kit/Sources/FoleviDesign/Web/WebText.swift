@@ -82,8 +82,59 @@ public enum WebFont {
     /// `wght`, the variation axis of Instrument Sans and JetBrains Mono.
     private static let weightAxis: Int = 0x7767_6874
 
+    private struct Key: Hashable {
+        let family: WebFontFamily
+        let size: CGFloat
+        let weight: CGFloat
+        let italic: Bool
+    }
+
+    /// Each font made once: a variable face with its features and fallback is costly to make, and every text in
+    /// the app asks for its font each time it draws (a new font object each time also kept SwiftUI from reusing
+    /// the text's layout). Fonts never change, so they're kept for the app's life (a few dozen sizes and weights).
+    private static let cache = FontCache()
+
+    private final class FontCache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var fonts: [Key: CTFont] = [:]
+        private var swiftUI: [Key: Font] = [:]
+
+        func font(_ key: Key, make: () -> CTFont) -> CTFont {
+            lock.lock()
+            defer { lock.unlock() }
+            if let f = fonts[key] { return f }
+            let f = make()
+            fonts[key] = f
+            return f
+        }
+
+        func swiftUIFont(_ key: Key, make: () -> Font) -> Font {
+            lock.lock()
+            if let f = swiftUI[key] { lock.unlock(); return f }
+            lock.unlock()
+            let f = make()
+            lock.lock()
+            swiftUI[key] = f
+            lock.unlock()
+            return f
+        }
+    }
+
     /// A Core Text font for a CSS family, size and weight, with the body text features on.
     public static func ctFont(_ family: WebFontFamily, size: CGFloat, weight: CGFloat = 400, italic: Bool = false) -> CTFont {
+        cache.font(Key(family: family, size: size, weight: weight, italic: italic)) {
+            makeCTFont(family, size: size, weight: weight, italic: italic)
+        }
+    }
+
+    /// The SwiftUI font for the same, the same object each time.
+    public static func swiftUIFont(_ family: WebFontFamily, size: CGFloat, weight: CGFloat = 400, italic: Bool = false) -> Font {
+        cache.swiftUIFont(Key(family: family, size: size, weight: weight, italic: italic)) {
+            Font(ctFont(family, size: size, weight: weight, italic: italic))
+        }
+    }
+
+    private static func makeCTFont(_ family: WebFontFamily, size: CGFloat, weight: CGFloat, italic: Bool) -> CTFont {
         FoleviFonts.register()
         let name: String
         var variable = false
@@ -124,7 +175,7 @@ public enum WebFont {
     }
 
     public static func font(_ family: WebFontFamily, size: CGFloat, weight: CGFloat = 400, italic: Bool = false) -> Font {
-        Font(ctFont(family, size: size, weight: weight, italic: italic))
+        swiftUIFont(family, size: size, weight: weight, italic: italic)
     }
 
     /// Draws text as the web app does: `-webkit-font-smoothing: antialiased` (globals.css) turns off macOS font
@@ -266,7 +317,7 @@ struct WebTextModifier: ViewModifier {
         let spacing = max(0, style.leading - line)
         let top = cssBaseline - snapped(ascent)
         let text = content
-            .font(Font(font))
+            .font(WebFont.swiftUIFont(style.family, size: style.size, weight: style.weight))
             .tracking(style.letterSpacing)
             .lineSpacing(spacing)
         return Group {

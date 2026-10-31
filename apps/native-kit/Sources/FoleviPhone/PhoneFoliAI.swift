@@ -152,7 +152,9 @@ public struct PhoneAiThread: View {
                 } : nil, disabled: model.isWorking)
             } else {
                 // (No buying on the iPhone: never a Buy more or Upgrade.)
-                AiAssistantMessage(model: model, message: m, last: i == messages.count - 1)
+                AiAssistantMessage(model: model, message: m, last: i == messages.count - 1, export: { [model, menus] messageId, saves in
+                    AnyView(PhoneAiExportButton(model: model, menus: menus, messageId: messageId, saves: saves))
+                })
             }
         }
         if let p = model.shownPending {
@@ -602,16 +604,37 @@ enum PhoneAiMenus {
         return out
     }
 
-    /// The conversation as Markdown: its title, then each turn.
-    static func markdown(model: FoliChatModel, id: String, title: String) async -> String? {
-        let messages: [ChatMessage]
-        if id == model.conversationId { messages = model.messages } else {
-            guard let v = try? await model.client.query(.aiConversation(conversationId: id)) else { return nil }
-            messages = v.messages
-        }
-        var out = "# \(title.isEmpty ? "Foli AI" : title)\n"
-        for m in messages { out += "\n**\(m.role == .user ? "You" : "Foli AI")**\n\n\(m.text)\n" }
+    /// The conversation (or one answer) as Markdown, as the web writes it (`ai.exportMarkdown`).
+    static func markdown(model: FoliChatModel, id: String, title: String, messageId: String? = nil) async -> String? {
+        try? await model.client.command(.aiExportMarkdown(conversationId: id, messageId: messageId)).markdown
+    }
+
+    /// Export under an answer (ChatMessage.tsx AnswerExport): Copy as Markdown and, not for a research report,
+    /// Save as note. (Download Markdown is the Mac's: on the iPhone, Copy, then Files or Share.)
+    static func export(model: FoliChatModel, messageId: String, saves: Bool) -> [PhoneMenuEntry] {
+        guard let id = model.conversationId else { return [] }
+        var out = [PhoneMenuEntry(.item("Copy as Markdown", icon: .clipboardCopy, id: "copy")) {
+            Task { if let md = await markdown(model: model, id: id, title: model.title, messageId: messageId) { AiPasteboard.copy(md) } }
+        }]
+        if saves { out.append(PhoneMenuEntry(.item("Save as note", icon: .filePlusCorner, id: "save")) { model.saveAsNote(messageId) }) }
         return out
+    }
+}
+
+/// "Export" under an answer, in the iPhone's row-button size; its menu opens above it.
+struct PhoneAiExportButton: View {
+    let model: FoliChatModel
+    let menus: PhoneMenus
+    let messageId: String
+    let saves: Bool
+    @State private var frame: CGRect = .zero
+
+    var body: some View {
+        AiRowButton(icon: .ellipsis, title: "Export") {
+            menus.show(PhoneAiMenus.export(model: model, messageId: messageId, saves: saves), from: frame, side: .top, align: .start)
+        }
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+        .accessibilityLabel("Export this answer")
     }
 }
 

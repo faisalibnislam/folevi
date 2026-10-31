@@ -4,6 +4,28 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.08: Small update
+
+Released 2026-10-31 15:15:16+06:00 (build 19, tag v1.2.08)
+
+Menus on Mac match the web
+
+### Added
+
+- Right-click anywhere on Mac for New note, Search, Ask Foli AI, Back, Forward and Reload; text fields get Cut, Copy, Paste, spelling suggestions and Look Up
+- Edit, recolour and delete tags from the Mac sidebar, and sort the Tags page
+- Share Foli AI conversations with your workspace and export them as Markdown on Mac
+
+### Improved
+
+- Right-click and button menus on Mac look and work like the web's: their size, placement, checkmarks, icons and blurred background
+- Home and Folders scroll more smoothly on Mac
+
+### Fixed
+
+- Ask Foli AI about this folder opens the chat about that folder on Mac
+- Folder dialogs on Mac are Folevi's own instead of the system's alerts
+
 ## Version 1.2.07: Small update
 
 Released 2026-10-30 22:06:26+06:00 (build 18, tag v1.2.07)

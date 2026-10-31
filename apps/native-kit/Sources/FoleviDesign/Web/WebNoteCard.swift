@@ -315,7 +315,7 @@ public struct WebNoteCard: View {
                 let lines = fit.isFinite ? max(1, Int(min(fit, 1000))) : 1
                 Group {
                     if text.isEmpty {
-                        Text("Empty page").italic().webText(bodyStyle)
+                        Text("Empty page").italic().webText(bodyStyle).lineLimit(lines)
                     } else if phone {
                         // The iPhone's WebKit breaks a `<p>` the pretty way (globals.css `p { text-wrap: pretty }`).
                         VStack(alignment: .leading, spacing: 0) {
@@ -324,11 +324,20 @@ public struct WebNoteCard: View {
                             }
                         }
                     } else {
-                        Text(Self.preLine(text)).webText(bodyStyle)
+                        // The <p>'s own lines (`text-wrap: pretty`, breaks after spaces and hyphens), clamped: the
+                        // last line shown runs on into the next and ends in "…" (-webkit-line-clamp).
+                        let all = Self.previewLines(text, style: bodyStyle, width: geo.size.width)
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(all.prefix(lines).enumerated()), id: \.offset) { i, line in
+                                let more = i == lines - 1 && all.count > lines
+                                Text(verbatim: more ? line + " " + all[lines...].joined(separator: " ") : (line.isEmpty ? " " : line))
+                                    .webText(bodyStyle)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                            }
+                        }
                     }
                 }
-                .lineLimit(lines)
-                .truncationMode(.tail)
                 .foregroundStyle(faint.color)
                 .frame(width: geo.size.width, alignment: .topLeading)
             }
@@ -412,6 +421,14 @@ public struct WebNoteCard: View {
             out[max - 1] += "…"
         }
         return out
+    }
+
+    /// A preview's lines as the card's <p> sets them (white-space: pre-line, text-wrap: pretty).
+    static func previewLines(_ text: String, style: WebTextStyle, width: CGFloat) -> [String] {
+        guard width > 0 else { return [text] }
+        return preLine(text).split(separator: "\n", omittingEmptySubsequences: false).flatMap { p in
+            p.isEmpty ? [""] : WebPrettyWrap.lines(String(p), style: style, width: width)
+        }
     }
 
     static func preLine(_ s: String) -> String {
@@ -554,8 +571,9 @@ public struct WebFolderCard: View {
                 .padding(.top, h * 0.05)
         }
         .frame(width: w, height: h, alignment: .topLeading)
-        // The back and the papers flattened (their shadows are the costly part); the frosted front isn't, since
-        // drawn into one picture its backdrop and inner shading came out differently from the web's.
+        // The back and the papers flattened (their shadows are the costly part), and the whole card again below:
+        // the card's picture is drawn again as it moves while a list scrolls, and these keep that cheap (taking them
+        // out made Home's p95 frame 8 ms to 24 ms).
         .flattened()
         let notes = notesLayer(w: w, h: h, cq: cq).flattened()
         return ZStack(alignment: .topLeading) {
@@ -576,6 +594,12 @@ public struct WebFolderCard: View {
             .offset(y: h * 0.46)
         }
         .frame(width: w, height: h, alignment: .topLeading)
+        // The whole card in one picture too: the front's frosted backdrop (a second copy of the back and the papers,
+        // saturated and blurred) and its shadows were blurred again on every frame while Home or Folders scrolled
+        // (2026-10-31: Folders' p95 frame 33 to 19 ms, Home's 30 to 8 ms). Real window captures, light and dark, show
+        // the front as the web draws it; the app's own snapshots (screens.mjs) never drew the live blur at all, which
+        // is why flattening the front once looked like a change.
+        .flattened()
         .offset(y: hovered ? -4 : 0)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2), value: hovered)
     }

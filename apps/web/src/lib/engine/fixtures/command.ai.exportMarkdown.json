@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "ai.exportMarkdown",
+  "description": "A conversation as the web's Markdown file.",
+  "args": {
+    "conversationId": "conv_2"
+  },
+  "result": {
+    "filename": "Kyoto in three days.md",
+    "markdown": "# Kyoto in three days\n\n_Exported from Folevi AI on 2026-10-31._\n\n## You\n\nPlan three days in Kyoto.\n"
+  }
+}

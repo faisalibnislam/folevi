@@ -227,6 +227,7 @@ public final class WebSidebarController: NSViewController {
     public override func viewDidAppear() {
         super.viewDidAppear()
         FrameSheets.attach(model, window: view.window)
+        AppContextMenu.attach(model, window: view.window)
     }
 
     /// The bell: the web's notifications panel, in glass under the sidebar's top bar.
@@ -415,6 +416,11 @@ public final class ContentViewController: NSViewController {
         })
         observers.append(Observer { [weak self] in
             guard let self else { return }
+            let n = self.model.screenReloads
+            if n != self.reloadsSeen { self.reloadsSeen = n; self.reloadScreen() }
+        })
+        observers.append(Observer { [weak self] in
+            guard let self else { return }
             let shown = self.model.overviewShown
             self.overviewView?.isHidden = !shown
             if !shown, self.model.route.isNote { self.view.window?.makeFirstResponder(self.pageView) }
@@ -481,6 +487,18 @@ public final class ContentViewController: NSViewController {
         models.keep(only: Set(model.tabs.tabs.map(\.route)))
         let title = route.isNote ? (model.activeNote?.title.nonEmpty ?? model.tabs.active.title) : model.tabs.active.title
         if view.window?.title != title { view.window?.title = title }
+    }
+
+    private var reloadsSeen = 0
+
+    /// Reload: the screen on show lets go of its models and draws again from the engine's views (the web reloads
+    /// its page). A note reloads in its own page.
+    private func reloadScreen() {
+        let route = model.route
+        guard !route.isNote, let s = screen else { return }
+        models.keep(only: Set(model.tabs.tabs.map(\.route)).subtracting([route]))
+        models.prepare(route)
+        s.rootView = ScreenRoot(model: model, models: models, route: route)
     }
 
     /// The note's page shows: the native screen goes, and stops drawing behind the note (its screen is emptied, so

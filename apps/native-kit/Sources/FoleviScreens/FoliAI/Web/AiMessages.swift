@@ -203,14 +203,18 @@ public struct AiAssistantMessage: View {
     let model: FoliChatModel
     let message: ChatMessage
     let last: Bool
+    /// Export under an agent's or research report (ChatMessage.tsx AnswerExport): the platform's button and menu,
+    /// for this message, and whether it offers Save as note (a research report has its own).
+    var export: ((_ messageId: String, _ saves: Bool) -> AnyView)?
     var purchases = false
     var onBilling: () -> Void = {}
 
-    public init(model: FoliChatModel, message: ChatMessage, last: Bool, purchases: Bool = false, onBilling: @escaping () -> Void = {}) {
+    public init(model: FoliChatModel, message: ChatMessage, last: Bool, purchases: Bool = false, export: ((_ messageId: String, _ saves: Bool) -> AnyView)? = nil, onBilling: @escaping () -> Void = {}) {
         self.model = model
         self.message = message
         self.last = last
         self.purchases = purchases
+        self.export = export
         self.onBilling = onBilling
     }
     @Environment(\.colorScheme) private var scheme
@@ -391,8 +395,11 @@ public struct AiAssistantMessage: View {
                     AiRowButton(icon: .fileText, title: job.noteId == nil ? "Save as note" : "Open note") { model.saveResearch(job) }
                         .disabled(model.busy.contains(job.id))
                 }
-            } else if message.agentRun != nil, !message.text.isEmpty {
-                AiRowButton(icon: .fileText, title: "Save as note") { model.saveAsNote(message.id) }
+            }
+            // Export (ChatMessage.tsx AnswerExport): an agent's report or a research report on its own, as Markdown
+            // or (not a research report, which has its own) a note.
+            if let export, model.conversationId != nil, !message.text.isEmpty, message.agentRun != nil || job != nil {
+                export(message.id, job == nil)
             }
             if message.status == "stopped", job?.status != "cancelled" {
                 Text("Stopped").webText(.role(.footnote)).foregroundStyle(look.faint).padding(.horizontal, 6)

@@ -2359,6 +2359,30 @@ public struct FolderRenameArgs: Codable, Hashable, Sendable {
     }
 }
 
+/// A tag's name and/or colour (the sidebar's Edit tag… and Color: …; organization.updateTag).
+public struct TagUpdateArgs: Codable, Hashable, Sendable {
+    public var id: String
+    /// At most 40 characters.
+    public var name: String?
+    /// accent, moss, marigold, plum, coral or muted.
+    public var color: String?
+
+    public init(id: String, name: String? = nil, color: String? = nil) {
+        self.id = id
+        self.name = name
+        self.color = color
+    }
+}
+
+/// Delete tag…: removed from every note, the notes stay.
+public struct TagIdArgs: Codable, Hashable, Sendable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+}
+
 public struct FolderSetColorArgs: Codable, Hashable, Sendable {
     public var id: String
     /// A folder colour key, null for the default.
@@ -2484,6 +2508,41 @@ public struct FolderCardsValue: Codable, Hashable, Sendable {
 
     public init(folders: [FolderCard]) {
         self.folders = folders
+    }
+}
+
+/// Revision 21: the Tags page (OrganizeIndex.tsx TagsIndex): every tag of the space with how many pages it's on.
+public struct TagsIndexArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+
+    public init(space: SpaceRef? = nil) {
+        self.space = space
+    }
+}
+
+public struct TagIndexRow: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    public var color: String
+    /// Pages with the tag that this person can open.
+    public var documentCount: Int
+    /// Unix milliseconds (the page's Newest sort).
+    public var createdAt: Double
+
+    public init(id: String, name: String, color: String, documentCount: Int, createdAt: Double) {
+        self.id = id
+        self.name = name
+        self.color = color
+        self.documentCount = documentCount
+        self.createdAt = createdAt
+    }
+}
+
+public struct TagsIndexValue: Codable, Hashable, Sendable {
+    public var tags: [TagIndexRow]
+
+    public init(tags: [TagIndexRow]) {
+        self.tags = tags
     }
 }
 
@@ -4698,6 +4757,17 @@ public struct ChatPinArgs: Codable, Hashable, Sendable {
     }
 }
 
+/// Revision 21 (R12.6): share a conversation with its workspace (ConversationActions.tsx), or stop sharing it.
+public struct ChatShareArgs: Codable, Hashable, Sendable {
+    public var conversationId: String
+    public var shared: Bool
+
+    public init(conversationId: String, shared: Bool) {
+        self.conversationId = conversationId
+        self.shared = shared
+    }
+}
+
 public struct ChatMessageArgs: Codable, Hashable, Sendable {
     public var messageId: String
 
@@ -4714,6 +4784,18 @@ public struct ChatSaveArgs: Codable, Hashable, Sendable {
     public init(conversationId: String, messageId: String? = nil) {
         self.conversationId = conversationId
         self.messageId = messageId
+    }
+}
+
+/// Revision 21: a conversation (or one answer) as the web's Markdown file (ConversationActions.tsx's Copy as
+/// Markdown and Download Markdown), with its file name.
+public struct ChatMarkdownResult: Codable, Hashable, Sendable {
+    public var filename: String
+    public var markdown: String
+
+    public init(filename: String, markdown: String) {
+        self.filename = filename
+        self.markdown = markdown
     }
 }
 

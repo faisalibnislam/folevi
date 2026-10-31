@@ -37,7 +37,7 @@ struct PlannerSelect: View {
             let entries = options.map { o in
                 WebMenuEntry(.item(o.title, checked: o.id == value, id: "opt:\(o.id)")) { value = o.id }
             }
-            WebMenuWindow.show(entries, width: max(v.bounds.width, 160), below: v)
+            WebMenuWindow.showSelect(entries, below: v)
         } label: {
             HStack(spacing: s.gap) {
                 Text(title).webText(s.text).lineLimit(1)

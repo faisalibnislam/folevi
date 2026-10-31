@@ -199,3 +199,10 @@ extension View {
         #endif
     }
 }
+
+#if os(iOS)
+/// Where the sidebar's choices are kept (the Mac's controller holds this; the iPad has no controller).
+enum WebSidebarController {
+    nonisolated(unsafe) static var defaults: UserDefaults = .standard
+}
+#endif

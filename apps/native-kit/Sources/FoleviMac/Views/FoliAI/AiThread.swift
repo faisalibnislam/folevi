@@ -20,12 +20,16 @@ enum AiVariant { case page, floating }
 @MainActor
 struct AiHost {
     var session: SessionValue?
+    /// The window's frame, for its dialogs (Share this conversation?).
+    var frame: FrameModel? = nil
     var openSettings: (String) -> Void = { _ in }
     var openPolicy: () -> Void = { NSWorkspace.shared.open(URL(string: "https://folevi.com/ai-policy")!) }
     var local: Bool { session?.mode == .local }
     var purchases: Bool { session?.capabilities.purchases ?? false }
     /// "All notes" in Personal, "Workspace" in a workspace (ContextChips.tsx).
     var whole: String { (session?.space ?? "personal") == "personal" ? "All notes" : "Workspace" }
+    /// The place is a team workspace (Personal conversations can't be shared).
+    var inWorkspace: Bool { session.flatMap { s in s.spaces.first { $0.id == s.space } }?.kind == .workspace }
 }
 
 struct AiThreadView: View {
@@ -146,7 +150,11 @@ struct AiThreadView: View {
                     model.send()
                 } : nil, disabled: model.isWorking)
             } else {
-                AiAssistantMessage(model: model, message: m, last: i == messages.count - 1, purchases: host.purchases) { host.openSettings("billing") }
+                AiAssistantMessage(model: model, message: m, last: i == messages.count - 1, purchases: host.purchases, export: { [model, host] messageId, saves in
+                    AnyView(AiExportButton {
+                        AiConversationMenu.exportEntries(model: model, host: host, id: model.conversationId ?? "", title: model.title, messageId: messageId, saves: saves)
+                    })
+                }, onBilling: { host.openSettings("billing") })
             }
         }
         if let p = model.shownPending {
@@ -431,8 +439,15 @@ struct AiContextChips: View {
         // A saved conversation keeps what it was about until the engine can change it (R12.1).
         let locked = !model.isNew
         let chosen = Set(model.context.map(\.id))
+        // The folder on screen behind the floating chat (ContextChips.tsx "Current folder"); a note on screen has
+        // its own Foli AI panel, so there's no "Current note" here.
+        if case .folder(let fid)? = host.frame?.route, !(model.context.first?.kind == .folder && model.context.first?.id == fid),
+           let f = host.frame?.folders.value?.folders.first(where: { $0.id == fid }) {
+            out.append(WebMenuEntry(.item("Current folder", icon: .folder, description: f.name, id: "folder-\(fid)"), disabled: locked) { model.setAbout(.folder(id: fid, name: f.name)) })
+        }
         let notes = recent.filter { !chosen.contains($0.id) }.prefix(5)
         if !notes.isEmpty {
+            if !out.isEmpty { out.append(.separator(1)) }
             out.append(.heading("Recent notes"))
             for n in notes {
                 out.append(WebMenuEntry(.item(n.title.isEmpty ? "Untitled" : n.title, icon: .fileText, id: "note-\(n.id)"), disabled: locked) { model.addNote(id: n.id, title: n.title) })
@@ -440,7 +455,7 @@ struct AiContextChips: View {
         }
         if !model.context.isEmpty {
             if !out.isEmpty { out.append(.separator()) }
-            out.append(WebMenuEntry(.item(host.whole, icon: .layers, id: "whole")) {
+            out.append(WebMenuEntry(.item(host.whole, icon: .layers, description: "Search everything here", id: "whole")) {
                 for c in model.context { model.removeContext(c.id) }
             })
         }

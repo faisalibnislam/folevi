@@ -148,7 +148,7 @@ this report. Changed: `FoleviDesign/Web/WebComponents.swift`, `WebNoteCard.swift
 The owner: menus "too compact, compressed", then "check everything and fix". Every screen of `screens.mjs` and
 every menu of `menus.mjs` looked at side by side, web and native, light and dark.
 
-- **Menus:** 32 pt rows (were AppKit's 26), 6 and 10 pt padding, 10 pt between a row's icon and its words, 12 pt
+- **Menus:** 32 pt rows (were AppKit's 26), 6 and 10 pt padding, 10 pt between a row's icon and its words, 10 pt
   corners, 6 pt around separators: in the web's Mac CSS (`globals.css`, `data-desktop="mac"`), measured again into
   the native menus (`menu.*`) and the palette. `menus.mjs`: every menu's rows the same as the web's and every panel
   the web's height.

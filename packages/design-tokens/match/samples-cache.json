@@ -1419,7 +1419,7 @@
     0,
     0
    ],
-   "radius": 12,
+   "radius": 10,
    "background": [
     255,
     255,
@@ -4023,7 +4023,7 @@
     0,
     0
    ],
-   "radius": 12,
+   "radius": 10,
    "background": [
     40,
     40,

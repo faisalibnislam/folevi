@@ -1,10 +1,11 @@
 {
   "kind": "view",
   "name": "files.urls",
-  "description": "A signed link for a notification's export, and one that can't be had.",
+  "description": "A signed link for a notification's export, a note style image with its colours (revision 26), and one that can't be had.",
   "args": {
     "ids": [
       "file_export",
+      "file_cover",
       "file_gone"
     ]
   },
@@ -15,14 +16,29 @@
         "filename": "Folevi export.zip",
         "mimeType": "application/zip",
         "size": 48000000,
-        "sealed": false
+        "sealed": false,
+        "palette": null
+      },
+      "file_cover": {
+        "url": "https://files.folevi.com/signed/cover",
+        "filename": "Harbour.jpg",
+        "mimeType": "image/jpeg",
+        "size": 420000,
+        "sealed": false,
+        "palette": {
+          "paper": "#f4efe6",
+          "ink": "#2b2420",
+          "paperDark": "#1f1b18",
+          "inkDark": "#ece4d8"
+        }
       },
       "file_gone": {
         "url": null,
         "filename": null,
         "mimeType": null,
         "size": null,
-        "sealed": false
+        "sealed": false,
+        "palette": null
       }
     }
   }

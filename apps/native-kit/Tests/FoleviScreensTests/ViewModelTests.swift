@@ -415,7 +415,9 @@ struct RoutesAndMappingTests {
         #expect(CardMapping.cover(CardCover(kind: "theme", value: "art-03")) == .theme("art-03"))
         #expect(CardMapping.cover(CardCover(kind: "theme", value: "nope")) == .plain)
         #expect(CardMapping.cover(CardCover(kind: "none")) == .plain)
-        #expect(CardMapping.cover(CardCover(kind: "image", value: "x")) == .plain)
+        #expect(CardMapping.cover(CardCover(kind: "art", value: "art-03")) == .theme("art-03"))
+        #expect(CardMapping.cover(CardCover(kind: "image", value: "x")) == .file("x"))
+        #expect(CardMapping.cover(CardCover(kind: "image", value: "x"), images: false) == .plain)
         let offline = Fixtures.decode(SyncStatusValue.self, "view.sync.status.offline.json")
         if case .offline = CardMapping.sync(offline) {} else { Issue.record("offline maps to \(CardMapping.sync(offline))") }
     }

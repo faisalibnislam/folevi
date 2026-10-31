@@ -79,8 +79,13 @@ describe("calendar feed, files, recents, search", () => {
   });
 
   it("files.urls", async () => {
-    r.client.answer("files:urls", { f1: { url: "https://x/f1", mimeType: "application/zip", filename: "e.zip", size: 9 } });
-    expect(((await query("files.urls", { ids: ["f1", "f2"] })) as FileUrlsValue).urls).toEqual({ f1: { url: "https://x/f1", filename: "e.zip", mimeType: "application/zip", size: 9, sealed: false }, f2: { url: null, filename: null, mimeType: null, size: null, sealed: false } });
+    const palette = { paper: "#f4efe6", ink: "#2b2420", paperDark: "#1f1b18", inkDark: "#ece4d8", accent: "#8a5a3c", accentDark: "#d9a27c", tone: "light", text: ["#111111", "#222222", "#333333", "#444444", "#555555"], textDark: ["#eeeeee", "#dddddd", "#cccccc", "#bbbbbb", "#aaaaaa"], highlight: ["#fff1a8", "#d4f5c9", "#cfe8ff", "#ffd6e7"], highlightDark: ["#5a4f10", "#1f4a1a", "#173a5c", "#5c1f38"], names: ["Ink", "Moss", "Gold", "Plum", "Coral"] };
+    r.client.answer("files:urls", { f1: { url: "https://x/f1", mimeType: "application/zip", filename: "e.zip", size: 9 }, f3: { url: "https://x/f3", mimeType: "image/jpeg", filename: "c.jpg", size: 5, palette } });
+    expect(((await query("files.urls", { ids: ["f1", "f2", "f3"] })) as FileUrlsValue).urls).toEqual({
+      f1: { url: "https://x/f1", filename: "e.zip", mimeType: "application/zip", size: 9, sealed: false, palette: null },
+      f2: { url: null, filename: null, mimeType: null, size: null, sealed: false, palette: null },
+      f3: { url: "https://x/f3", filename: "c.jpg", mimeType: "image/jpeg", size: 5, sealed: false, palette: { paper: "#f4efe6", ink: "#2b2420", paperDark: "#1f1b18", inkDark: "#ece4d8" } },
+    });
   });
 
   it("recent across spaces, newest first, a locked space left out", async () => {

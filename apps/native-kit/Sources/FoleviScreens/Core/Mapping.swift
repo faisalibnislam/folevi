@@ -5,12 +5,16 @@ import FoleviDesign
 import FoleviEngine
 
 public enum CardMapping {
-    /// A note's cover: a built-in theme, a colour, or plain. Custom images need `files.urls` (plan 3.10) and
-    /// draw plain until the attachment store has them.
-    public static func cover(_ c: CardCover) -> NoteCover {
+    /// A note's cover: a built-in style ("art", the engine's kind; "theme" from older rows), the person's own
+    /// image (by file id, fetched through `CoverFiles`), a colour, or plain. A folder card's papers draw built-in
+    /// styles only, as the web's FolderCardArt does (`images: false`).
+    public static func cover(_ c: CardCover, images: Bool = true) -> NoteCover {
         switch c.kind {
-        case "theme":
+        case "art", "theme":
             if let v = c.value, NoteTheme.named(v) != nil { return .theme(v) }
+            return .plain
+        case "image":
+            if images, let v = c.value, !v.isEmpty { return .file(v) }
             return .plain
         case "color":
             if let v = c.value {
@@ -61,7 +65,7 @@ public enum CardMapping {
             colorId: f.color,
             count: f.noteCount,
             ageText: f.updatedAt > 0 ? AgeText.age(Date(timeIntervalSince1970: f.updatedAt / 1000), now: now) : "",
-            notes: f.previews.prefix(3).map { FolderCardModel.Note(title: $0.title, excerpt: $0.excerpt, cover: cover($0.cover)) },
+            notes: f.previews.prefix(3).map { FolderCardModel.Note(title: $0.title, excerpt: $0.excerpt, cover: cover($0.cover, images: false)) },
             parentName: parentName
         )
     }
@@ -105,4 +109,26 @@ func notesText(_ n: Int) -> String { n == 1 ? "1 note" : "\(n.formatted()) notes
 public enum ScreenClock {
     nonisolated(unsafe) public static var fixed: Date?
     public static func now() -> Date { fixed ?? Date() }
+}
+
+public extension CoverFiles {
+    /// Fetches style images' links and colours from the engine's `files.urls` (the Mac's and the iPhone's frames set it).
+    static func engineLoader(_ client: EngineClient) -> Loader {
+        { ids in
+            let value = try await client.query(.filesUrls(ids: ids))
+            func pair(_ light: String, _ dark: String) -> ColorPair? {
+                guard let l = RGBA(hex: light), let d = RGBA(hex: dark) else { return nil }
+                return ColorPair(light: l, dark: d)
+            }
+            return value.urls.mapValues { link in
+                // (A sealed image's bytes are ciphertext: only the note page can open them, so the card stays plain.)
+                let palette = link.palette.value
+                return Link(
+                    url: link.sealed ? nil : link.url.flatMap(URL.init(string:)),
+                    paper: palette.flatMap { pair($0.paper, $0.paperDark) },
+                    ink: palette.flatMap { pair($0.ink, $0.inkDark) }
+                )
+            }
+        }
+    }
 }

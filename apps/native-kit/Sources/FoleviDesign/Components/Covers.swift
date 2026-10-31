@@ -2,6 +2,7 @@
 // and the page and text colours that come with it. Built-in theme images load from the app bundle by key
 // (plan 3.10: the shell export carries covers/), through a provider the host can replace.
 import SwiftUI
+import Observation
 #if canImport(UIKit)
 import UIKit
 #elseif canImport(AppKit)
@@ -17,6 +18,9 @@ public enum NoteCover: Hashable, Sendable {
     case color(RGBA, RGBA? = nil)
     /// The person's own image (already downloaded; custom covers come through the attachment store).
     case image(ImageBox)
+    /// The person's own style image by its file id (the engine's cover kind "image"), drawn once `CoverFiles`
+    /// has fetched it.
+    case file(String)
 
     public var theme: NoteTheme? {
         if case .theme(let id) = self { return NoteTheme.named(id) }
@@ -122,6 +126,104 @@ public struct CoverFill: View {
             }
         case .image(let box):
             box.image.resizable().scaledToFill()
+        case .file(let id):
+            if let image = CoverFiles.shared.image(id) {
+                image.resizable().scaledToFill()
+            } else {
+                FoleviTokens.Chrome.heading.resolve(scheme).mix(FoleviTokens.Chrome.canvas.resolve(scheme), 0.07).color
+            }
         }
+    }
+}
+
+/// The person's own style images (a note card's cover kind "image"): the image and the page and text colours
+/// picked from it, as the web's `useCoverImage` gives them. A card asks by file id; the first time it gets nil
+/// (and draws plain), the ids asked for in the same moment go out in one request (the engine's `files.urls`), each
+/// image is downloaded, and the answer redraws the cards. Kept for the run. The app sets `loader`.
+@MainActor
+@Observable
+public final class CoverFiles {
+    public static let shared = CoverFiles()
+
+    /// A file's signed link and the colours picked from it (revision 26), as the engine answers.
+    public struct Link: Sendable {
+        public var url: URL?
+        public var paper: ColorPair?
+        public var ink: ColorPair?
+        public init(url: URL?, paper: ColorPair?, ink: ColorPair?) {
+            self.url = url
+            self.paper = paper
+            self.ink = ink
+        }
+    }
+
+    public typealias Loader = @MainActor ([String]) async throws -> [String: Link]
+
+    /// What asks the engine (set by the app).
+    @ObservationIgnored public var loader: Loader?
+    private var images: [String: Image] = [:]
+    private var colors: [String: (paper: ColorPair, ink: ColorPair)] = [:]
+    @ObservationIgnored private var asked: Set<String> = []
+    @ObservationIgnored private var queue: [String] = []
+    @ObservationIgnored private var flushing = false
+
+    public init() {}
+
+    /// The style image, or nil until it has come (asked for now if not yet).
+    public func image(_ id: String) -> Image? {
+        if let image = images[id] { return image }
+        ask(id)
+        return nil
+    }
+
+    /// The page and text colours picked from the image, or nil (not yet, or never picked).
+    public func colors(_ id: String) -> (paper: ColorPair, ink: ColorPair)? {
+        if let c = colors[id] { return c }
+        ask(id)
+        return nil
+    }
+
+    private func ask(_ id: String) {
+        guard loader != nil, !asked.contains(id) else { return }
+        asked.insert(id)
+        queue.append(id)
+        if !flushing {
+            flushing = true
+            DispatchQueue.main.async { [weak self] in self?.flush() }
+        }
+    }
+
+    private func flush() {
+        flushing = false
+        let ids = queue
+        queue = []
+        guard let loader, !ids.isEmpty else { return }
+        for chunk in stride(from: 0, to: ids.count, by: 100).map({ Array(ids[$0..<min($0 + 100, ids.count)]) }) {
+            Task { @MainActor in
+                guard let links = try? await loader(chunk) else {
+                    // (Asked again the next time a card wants it.)
+                    for id in chunk { asked.remove(id) }
+                    return
+                }
+                for (id, link) in links {
+                    if let paper = link.paper, let ink = link.ink { colors[id] = (paper, ink) }
+                    guard let url = link.url else { continue }
+                    Task { @MainActor in
+                        guard let (data, _) = try? await URLSession.shared.data(from: url), let image = Self.decode(data) else { return }
+                        images[id] = image
+                    }
+                }
+            }
+        }
+    }
+
+    private nonisolated static func decode(_ data: Data) -> Image? {
+        #if canImport(UIKit)
+        guard let ui = UIImage(data: data) else { return nil }
+        return Image(uiImage: ui)
+        #else
+        guard let ns = NSImage(data: data) else { return nil }
+        return Image(nsImage: ns)
+        #endif
     }
 }

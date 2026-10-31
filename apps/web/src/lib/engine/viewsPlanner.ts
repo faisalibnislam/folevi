@@ -7,7 +7,8 @@ import { noteRowOf, type SummaryLike } from "./rows";
 import { taskRow, type TaskData } from "./viewsWork";
 import { marksOf, requireSpace, source, type ValueViewDef } from "./views";
 import { ids, num, oneOf, only, optionalId } from "./validate";
-import type { RecentRow, ViewName } from "./protocol";
+import type { CoverPalette, RecentRow, ViewName } from "./protocol";
+import { isImagePalette } from "@/lib/palette";
 
 type Args = Record<string, unknown>;
 
@@ -59,7 +60,12 @@ const tasksUnscheduled: ValueViewDef = {
   },
 };
 
-type UrlsData = Record<string, { url: string; mimeType: string; filename: string; size: number; sealed?: unknown }>;
+type UrlsData = Record<string, { url: string; mimeType: string; filename: string; size: number; sealed?: unknown; palette?: unknown }>;
+
+/** A note style image's page and text colours, when they were picked and are well formed. */
+function coverPalette(p: unknown): CoverPalette | null {
+  return isImagePalette(p) ? { paper: p.paper, ink: p.ink, paperDark: p.paperDark, inkDark: p.inkDark } : null;
+}
 
 const filesUrls: ValueViewDef = {
   kind: "value",
@@ -75,7 +81,7 @@ const filesUrls: ValueViewDef = {
         if (s.error) return { value: undefined, stale: false, error: s.error };
         if (s.value === undefined) return { value: undefined, stale: true, error: null };
         const got = s.value;
-        const urls = Object.fromEntries(wanted.map((fid) => [fid, got[fid] ? { url: got[fid]!.url, filename: got[fid]!.filename, mimeType: got[fid]!.mimeType, size: got[fid]!.size, sealed: Boolean(got[fid]!.sealed) } : { url: null, filename: null, mimeType: null, size: null, sealed: false }]));
+        const urls = Object.fromEntries(wanted.map((fid) => [fid, got[fid] ? { url: got[fid]!.url, filename: got[fid]!.filename, mimeType: got[fid]!.mimeType, size: got[fid]!.size, sealed: Boolean(got[fid]!.sealed), palette: coverPalette(got[fid]!.palette) } : { url: null, filename: null, mimeType: null, size: null, sealed: false, palette: null }]));
         return { value: { urls }, stale: false, error: null };
       },
     };

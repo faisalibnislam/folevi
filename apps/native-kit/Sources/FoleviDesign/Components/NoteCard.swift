@@ -110,6 +110,7 @@ public struct NoteCardView: View {
     private var colors: (paper: RGBA, ink: RGBA) {
         if let paper = model.paper?.resolve(scheme), let ink = model.ink?.resolve(scheme) { return (paper, ink) }
         if let theme = model.cover.theme { return (theme.paper(scheme), theme.ink(scheme)) }
+        if case .file(let id) = model.cover, let picked = CoverFiles.shared.colors(id) { return (picked.paper.resolve(scheme), picked.ink.resolve(scheme)) }
         return (FoleviTokens.Chrome.surface.resolve(scheme), FoleviTokens.Chrome.heading.resolve(scheme))
     }
 

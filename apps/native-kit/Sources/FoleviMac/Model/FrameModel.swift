@@ -190,6 +190,8 @@ public final class FrameModel {
                 return r.lines
             }
         }
+        // Note cards with the person's own style image fetch it, and its colours, through `files.urls`.
+        if CoverFiles.shared.loader == nil { CoverFiles.shared.loader = CoverFiles.engineLoader(client) }
     }
 
     /// Ends the model's work (the window closed).

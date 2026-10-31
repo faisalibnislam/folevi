@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "b23d37ea"
+        "schemaHash": "473d8565"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 25,
+        "revision": 26,
         "build": "dev",
-        "schemaHash": "b23d37ea",
+        "schemaHash": "473d8565",
         "ready": true,
         "place": "acct:user_1",
         "features": [

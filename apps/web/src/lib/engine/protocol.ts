@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 25;
+export const CONTRACT_REVISION = 26;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -2501,6 +2501,20 @@ export interface FileLink {
   size: number | null;
   /** End-to-end encrypted: the bytes behind `url` are ciphertext (opened in the note page). */
   sealed: boolean;
+  /**
+   * Revision 26: a note style image's page and text colours, picked from it when it was added (null for other
+   * files, or an image whose colours haven't been picked yet). A native note card draws its page in them.
+   * @default null
+   */
+  palette?: CoverPalette | null;
+}
+
+/** Revision 26: the page and text colours a note's own style image gives, light and dark (hex). */
+export interface CoverPalette {
+  paper: string;
+  ink: string;
+  paperDark: string;
+  inkDark: string;
 }
 
 export interface FileUrlsValue {

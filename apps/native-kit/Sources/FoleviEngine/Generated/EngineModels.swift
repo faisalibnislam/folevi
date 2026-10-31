@@ -5262,13 +5262,26 @@ public struct FileLink: Codable, Hashable, Sendable {
     public var size: Int?
     /// End-to-end encrypted: the bytes behind `url` are ciphertext (opened in the note page).
     public var sealed: Bool
+    /// Revision 26: a note style image's page and text colours, picked from it when it was added (null for other
+    /// files, or an image whose colours haven't been picked yet). A native note card draws its page in them.
+    public var palette: Patch<CoverPalette>
 
-    public init(url: String? = nil, filename: String? = nil, mimeType: String? = nil, size: Int? = nil, sealed: Bool) {
+    enum CodingKeys: String, CodingKey {
+        case url
+        case filename
+        case mimeType
+        case size
+        case sealed
+        case palette
+    }
+
+    public init(url: String? = nil, filename: String? = nil, mimeType: String? = nil, size: Int? = nil, sealed: Bool, palette: CoverPalette? = nil) {
         self.url = url
         self.filename = filename
         self.mimeType = mimeType
         self.size = size
         self.sealed = sealed
+        self.palette = Patch(palette)
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -5278,6 +5291,32 @@ public struct FileLink: Codable, Hashable, Sendable {
         try container.encode(self.mimeType, forKey: .mimeType)
         try container.encode(self.size, forKey: .size)
         try container.encode(self.sealed, forKey: .sealed)
+        try container.encodePatch(self.palette, forKey: .palette)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.url = try container.decodeIfPresent(String.self, forKey: .url)
+        self.filename = try container.decodeIfPresent(String.self, forKey: .filename)
+        self.mimeType = try container.decodeIfPresent(String.self, forKey: .mimeType)
+        self.size = try container.decodeIfPresent(Int.self, forKey: .size)
+        self.sealed = try container.decode(Bool.self, forKey: .sealed)
+        self.palette = try container.decodePatch(CoverPalette.self, forKey: .palette)
+    }
+}
+
+/// Revision 26: the page and text colours a note's own style image gives, light and dark (hex).
+public struct CoverPalette: Codable, Hashable, Sendable {
+    public var paper: String
+    public var ink: String
+    public var paperDark: String
+    public var inkDark: String
+
+    public init(paper: String, ink: String, paperDark: String, inkDark: String) {
+        self.paper = paper
+        self.ink = ink
+        self.paperDark = paperDark
+        self.inkDark = inkDark
     }
 }
 

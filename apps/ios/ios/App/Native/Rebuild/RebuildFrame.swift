@@ -181,6 +181,8 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
                 pre: style.pre, clamp: style.clamp))
             return r.lines
         }
+        // Note cards with the person's own style image fetch it, and its colours, through `files.urls`.
+        CoverFiles.shared.loader = CoverFiles.engineLoader(client)
         // FOLEVI_REBUILD_NEWNOTE=1: a new note at launch (for checking the note page headlessly; scratch data only).
         if ProcessInfo.processInfo.environment["FOLEVI_REBUILD_NEWNOTE"] == "1" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in

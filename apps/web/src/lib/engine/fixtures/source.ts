@@ -1328,9 +1328,15 @@ export const FIXTURES: Record<string, Fixture> = {
   "view.tasks.unscheduled": view({ name: "tasks.unscheduled", description: "Open tasks with no date, newest first.", args: {}, value: { tasks: [task(7, { dueDate: null }), task(8, { dueDate: null })].map((t) => taskRow(t, TODAY)) } }),
   "view.files.urls": view({
     name: "files.urls",
-    description: "A signed link for a notification's export, and one that can't be had.",
-    args: { ids: ["file_export", "file_gone"] },
-    value: { urls: { file_export: { url: "https://files.folevi.com/signed/abc", filename: "Folevi export.zip", mimeType: "application/zip", size: 48_000_000, sealed: false }, file_gone: { url: null, filename: null, mimeType: null, size: null, sealed: false } } },
+    description: "A signed link for a notification's export, a note style image with its colours (revision 26), and one that can't be had.",
+    args: { ids: ["file_export", "file_cover", "file_gone"] },
+    value: {
+      urls: {
+        file_export: { url: "https://files.folevi.com/signed/abc", filename: "Folevi export.zip", mimeType: "application/zip", size: 48_000_000, sealed: false, palette: null },
+        file_cover: { url: "https://files.folevi.com/signed/cover", filename: "Harbour.jpg", mimeType: "image/jpeg", size: 420_000, sealed: false, palette: { paper: "#f4efe6", ink: "#2b2420", paperDark: "#1f1b18", inkDark: "#ece4d8" } },
+        file_gone: { url: null, filename: null, mimeType: null, size: null, sealed: false, palette: null },
+      },
+    },
   }),
   "view.recent": view({
     name: "recent",

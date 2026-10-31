@@ -7,9 +7,9 @@ public enum EngineContract {
     /// The envelope's major version (`v` on every message to the engine).
     public static let protocolVersion = 1
     /// Bumps with every added view, command, editor command, event or field.
-    public static let revision = 25
+    public static let revision = 26
     /// FNV-1a of the names and revision; the engine's `hello` reply carries the same when this file is current.
-    public static let schemaHash = "b23d37ea"
+    public static let schemaHash = "473d8565"
     /// The `WKScriptMessageHandler` name the engine posts to.
     public static let messageHandler = "foleviEngine"
     /// The global the host calls (`__foleviEngine.handle(json)`).

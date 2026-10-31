@@ -210,6 +210,10 @@ public struct WebNoteCard: View {
         } else if let theme = model.cover.theme {
             paper = theme.paper(scheme)
             ink = theme.ink(scheme)
+        } else if case .file(let id) = model.cover, let picked = CoverFiles.shared.colors(id) {
+            // The person's own style image: the colours picked from it (the web's useCoverImage palette).
+            paper = picked.paper.resolve(scheme)
+            ink = picked.ink.resolve(scheme)
         } else {
             return nil
         }
@@ -735,9 +739,10 @@ struct WebFolderNote: View {
                                 }
                                 .frame(width: w * 0.8, alignment: .leading)
                             } else {
+                                // The paper's text box: 13% in from the spine side, 7% from the other (80%).
                                 Text(WebNoteCard.preLine(note.excerpt))
                                     .webText(body)
-                                    .frame(width: w * 0.53, alignment: .leading)
+                                    .frame(width: w * 0.8, alignment: .leading)
                             }
                         }
                         .foregroundStyle(ink.oklabMix(paper, 0.82).color)

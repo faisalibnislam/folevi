@@ -316,6 +316,13 @@ public struct WebNoteCard: View {
                 Group {
                     if text.isEmpty {
                         Text("Empty page").italic().webText(bodyStyle)
+                    } else if phone {
+                        // The iPhone's WebKit breaks a `<p>` the pretty way (globals.css `p { text-wrap: pretty }`).
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(Self.prettyLines(text, style: bodyStyle, width: geo.size.width, max: lines).enumerated()), id: \.offset) { _, line in
+                                Text(line).webText(bodyStyle).lineLimit(1).truncationMode(.tail)
+                            }
+                        }
                     } else {
                         Text(Self.preLine(text)).webText(bodyStyle)
                     }
@@ -373,6 +380,28 @@ public struct WebNoteCard: View {
     }
 
     /// `white-space: pre-line`: runs of spaces become one, line breaks stay.
+    /// The body's lines as the iPhone's WebKit sets a `white-space: pre-line` paragraph with `text-wrap: pretty`:
+    /// each line of the text broken on its own, up to `max`; the last shown holds the rest (cut with "…").
+    static func prettyLines(_ text: String, style: WebTextStyle, width: CGFloat, max: Int) -> [String] {
+        guard width > 0, max > 0 else { return [] }
+        var out: [String] = []
+        for piece in preLine(text).split(separator: "\n", omittingEmptySubsequences: false) {
+            if piece.isEmpty {
+                out.append(" ")
+            } else {
+                let broken = WebLineBreaker.lines([WebRun(String(piece))], style: style, width: width, wrap: .iPhonePretty)
+                out += broken.map { line in line.map { $0.text }.joined().trimmingCharacters(in: .whitespaces) }
+            }
+            if out.count > max { break }
+        }
+        // More lines than room: the clamp ends the last one shown with "…" (cut further if it doesn't fit).
+        if out.count > max {
+            out = Array(out.prefix(max))
+            out[max - 1] += "…"
+        }
+        return out
+    }
+
     static func preLine(_ s: String) -> String {
         s.split(separator: "\n", omittingEmptySubsequences: false).map { line in
             line.split(separator: " ", omittingEmptySubsequences: true).joined(separator: " ")

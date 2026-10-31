@@ -7,7 +7,7 @@ public enum WebStyles {
     // Built one assignment at a time in small functions, never one big literal: the Swift type checker takes a
     // dictionary literal as one expression, and at this size it ran out of memory and froze the Mac (2026-10-28).
     public static let all: [String: WebStylePair] = {
-        var d = [String: WebStylePair](minimumCapacity: 790)
+        var d = [String: WebStylePair](minimumCapacity: 807)
         add0(&d)
         add1(&d)
         add2(&d)
@@ -40,6 +40,7 @@ public enum WebStyles {
         add29(&d)
         add30(&d)
         add31(&d)
+        add32(&d)
         return d
     }()
 
@@ -1982,6 +1983,25 @@ public enum WebStyles {
             light: WebComputedStyle(x: 23, y: 437.55, width: 22, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 23, y: 437.55, width: 22, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
+        d["phone.empty"] = WebStylePair(
+            light: WebComputedStyle(x: 61, y: 162.08, width: 280, height: 282, padding: WebInsets(140, 0, 40, 0), margin: WebInsets(0, 61, 0, 61), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 61, y: 162.08, width: 280, height: 282, padding: WebInsets(140, 0, 40, 0), margin: WebInsets(0, 61, 0, 61), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+        d["phone.empty.body"] = WebStylePair(
+            light: WebComputedStyle(x: 80.66, y: 384.08, width: 240.69, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 15, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 80.66, y: 384.08, width: 240.69, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 15, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+        d["phone.empty.icon"] = WebStylePair(
+            light: WebComputedStyle(x: 179, y: 302.08, width: 44, height: 44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 12, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 179, y: 302.08, width: 44, height: 44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 12, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+        d["phone.empty.title"] = WebStylePair(
+            light: WebComputedStyle(x: 143.98, y: 358.08, width: 114.03, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 17, fontWeight: 600, lineHeight: 22, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 143.98, y: 358.08, width: 114.03, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 17, fontWeight: 600, lineHeight: 22, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+    }
+
+    private static func add19(_ d: inout [String: WebStylePair]) {
         d["phone.folders"] = WebStylePair(
             light: WebComputedStyle(x: 0, y: 774.55, width: 402, height: 193.92, padding: WebInsets(8, 16, 28, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 0, y: 774.55, width: 402, height: 193.92, padding: WebInsets(8, 16, 28, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
@@ -1989,6 +2009,50 @@ public enum WebStyles {
         d["phone.folders.card"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 782.55, width: 142, height: 157.92, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 782.55, width: 142, height: 157.92, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+        d["phone.grid"] = WebStylePair(
+            light: WebComputedStyle(x: 0, y: 218.08, width: 402, height: 632.7, padding: WebInsets(16, 16, 0, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 14, backdropBlur: 0),
+            dark: WebComputedStyle(x: 0, y: 218.08, width: 402, height: 632.7, padding: WebInsets(16, 16, 0, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 14, backdropBlur: 0)
+        )
+        d["phone.grid.card"] = WebStylePair(
+            light: WebComputedStyle(x: 16, y: 234.08, width: 178, height: 192.23, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 16, y: 234.08, width: 178, height: 192.23, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+        d["phone.list"] = WebStylePair(
+            light: WebComputedStyle(x: 0, y: 218.08, width: 402, height: 72, padding: WebInsets(8, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 0, y: 218.08, width: 402, height: 72, padding: WebInsets(8, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+        d["phone.list.body"] = WebStylePair(
+            light: WebComputedStyle(x: 60, y: 226.08, width: 326, height: 64, padding: WebInsets(10, 0, 10, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 60, y: 226.08, width: 326, height: 64, padding: WebInsets(10, 0, 10, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+        d["phone.list.glyph"] = WebStylePair(
+            light: WebComputedStyle(x: 24, y: 246.08, width: 20, height: 24, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 24, y: 246.08, width: 20, height: 24, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47), inset: true), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.06))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+        d["phone.list.line1"] = WebStylePair(
+            light: WebComputedStyle(x: 32, y: 252.08, width: 6, height: 1.5, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 999, background: RGBA(207, 207, 213), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 32, y: 252.08, width: 6, height: 1.5, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 999, background: RGBA(62, 62, 67), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+        d["phone.list.line2"] = WebStylePair(
+            light: WebComputedStyle(x: 32, y: 258.08, width: 2, height: 1.5, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 999, background: RGBA(226, 226, 230), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 32, y: 258.08, width: 2, height: 1.5, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 999, background: RGBA(44, 44, 47), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+        d["phone.list.row"] = WebStylePair(
+            light: WebComputedStyle(x: 0, y: 226.08, width: 402, height: 64, padding: WebInsets(0, 16, 0, 20), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
+            dark: WebComputedStyle(x: 0, y: 226.08, width: 402, height: 64, padding: WebInsets(0, 16, 0, 20), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
+        )
+        d["phone.list.spine"] = WebStylePair(
+            light: WebComputedStyle(x: 24, y: 246.08, width: 4, height: 24, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(216, 216, 216), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 24, y: 246.08, width: 4, height: 24, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(42, 42, 43), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+        d["phone.list.sub"] = WebStylePair(
+            light: WebComputedStyle(x: 60, y: 260.08, width: 326, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 15, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 60, y: 260.08, width: 326, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 15, fontWeight: 400, lineHeight: 20, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+        d["phone.list.title"] = WebStylePair(
+            light: WebComputedStyle(x: 60, y: 236.08, width: 93.02, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 17, fontWeight: 400, lineHeight: 22, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 60, y: 236.08, width: 93.02, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 17, fontWeight: 400, lineHeight: 22, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
         d["phone.more"] = WebStylePair(
             light: WebComputedStyle(x: 0, y: 1060.47, width: 402, height: 156, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(20, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
@@ -1998,9 +2062,6 @@ public enum WebStyles {
             light: WebComputedStyle(x: 0, y: 218.08, width: 402, height: 204.47, padding: WebInsets(12, 16, 24, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 14, backdropBlur: 0),
             dark: WebComputedStyle(x: 0, y: 218.08, width: 402, height: 204.47, padding: WebInsets(12, 16, 24, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 14, backdropBlur: 0)
         )
-    }
-
-    private static func add19(_ d: inout [String: WebStylePair]) {
         d["phone.recents.card"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 230.08, width: 156, height: 168.47, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 230.08, width: 156, height: 168.47, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -2041,6 +2102,9 @@ public enum WebStyles {
             light: WebComputedStyle(x: 28, y: 182.58, width: 19, height: 19, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 17, fontWeight: 400, lineHeight: 22, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 28, y: 182.58, width: 19, height: 19, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 17, fontWeight: 400, lineHeight: 22, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
+    }
+
+    private static func add20(_ d: inout [String: WebStylePair]) {
         d["phone.search.text"] = WebStylePair(
             light: WebComputedStyle(x: 55, y: 181.08, width: 319, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 17, fontWeight: 400, lineHeight: 22, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 55, y: 181.08, width: 319, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 17, fontWeight: 400, lineHeight: 22, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -2048,6 +2112,14 @@ public enum WebStyles {
         d["phone.search.wrap"] = WebStylePair(
             light: WebComputedStyle(x: 0, y: 162.08, width: 402, height: 56, padding: WebInsets(8, 16, 4, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 0, y: 162.08, width: 402, height: 56, padding: WebInsets(8, 16, 4, 16), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
+        )
+        d["phone.searchfield.box"] = WebStylePair(
+            light: WebComputedStyle(x: 16, y: 170.08, width: 370, height: 44, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(24, 24, 27, 0.065), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 17, fontWeight: 400, lineHeight: 22, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
+            dark: WebComputedStyle(x: 16, y: 170.08, width: 370, height: 44, padding: WebInsets(0, 12, 0, 12), margin: WebInsets(0, 0, 0, 0), radius: 14, background: RGBA(242, 242, 243, 0.065), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 17, fontWeight: 400, lineHeight: 22, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
+        )
+        d["phone.searchfield.input"] = WebStylePair(
+            light: WebComputedStyle(x: 55, y: 170.08, width: 319, height: 44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 17, fontWeight: 400, lineHeight: 22, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
+            dark: WebComputedStyle(x: 55, y: 170.08, width: 319, height: 44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 17, fontWeight: 400, lineHeight: 22, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
         d["phone.section"] = WebStylePair(
             light: WebComputedStyle(x: 0, y: 606.55, width: 402, height: 96, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(28, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
@@ -2101,9 +2173,6 @@ public enum WebStyles {
             light: WebComputedStyle(x: 940, y: 124, width: 300, height: 829.59, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 940, y: 124, width: 300, height: 829.59, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
-    }
-
-    private static func add20(_ d: inout [String: WebStylePair]) {
         d["planner.cal.aside.card"] = WebStylePair(
             light: WebComputedStyle(x: 940, y: 160.8, width: 300, height: 56.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.9), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06)), ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(0, 0, 0, 0.05)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.18))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 940, y: 160.8, width: 300, height: 56.89, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 10, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.05), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.07)), ShadowLayer(x: 0, y: 14, blur: 32, spread: -14, color: RGBA(0, 0, 0, 0.7))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -2136,6 +2205,9 @@ public enum WebStyles {
             light: WebComputedStyle(x: 302, y: 163, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 302, y: 163, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
+    }
+
+    private static func add21(_ d: inout [String: WebStylePair]) {
         d["planner.cal.cell.number.today"] = WebStylePair(
             light: WebComputedStyle(x: 479.14, y: 579, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(11, 11, 12), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.25), inset: true)], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 479.14, y: 579, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(250, 250, 250), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0, color: RGBA(0, 0, 0, 0)), ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.25), inset: true)], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -2204,9 +2276,6 @@ public enum WebStyles {
             light: WebComputedStyle(x: 940, y: 301.69, width: 300, height: 651.91, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 940, y: 301.69, width: 300, height: 651.91, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
-    }
-
-    private static func add21(_ d: inout [String: WebStylePair]) {
         d["planner.cal.unscheduled.title"] = WebStylePair(
             light: WebComputedStyle(x: 940, y: 301.69, width: 300, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 940, y: 301.69, width: 300, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -2239,6 +2308,9 @@ public enum WebStyles {
             light: WebComputedStyle(x: 698.48, y: 423, width: 270.97, height: 32.38, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16.2, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 698.48, y: 423, width: 270.97, height: 32.38, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16.2, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
+    }
+
+    private static func add22(_ d: inout [String: WebStylePair]) {
         d["planner.cals.add.title"] = WebStylePair(
             light: WebComputedStyle(x: 698.48, y: 201, width: 328, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 698.48, y: 201, width: 328, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -2307,9 +2379,6 @@ public enum WebStyles {
             light: WebComputedStyle(x: 482, y: 340, width: 33.14, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 482, y: 340, width: 33.14, height: 28, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
-    }
-
-    private static func add22(_ d: inout [String: WebStylePair]) {
         d["planner.dialog"] = WebStylePair(
             light: WebComputedStyle(x: 448, y: 56, width: 384, height: 400, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(56, 448, 364, 448), radius: 14, background: RGBA(255, 255, 255, 0.82), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.12), inset: true), ShadowLayer(x: 0, y: 18, blur: 50, spread: 0, color: RGBA(0, 0, 0, 0.2)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.1))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24),
             dark: WebComputedStyle(x: 448, y: 56, width: 384, height: 400, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(56, 448, 364, 448), radius: 14, background: RGBA(40, 40, 44, 0.86), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(255, 255, 255, 0.1), inset: true), ShadowLayer(x: 0, y: 18, blur: 50, spread: 0, color: RGBA(0, 0, 0, 0.55)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(0, 0, 0, 0.7))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 24)
@@ -2342,6 +2411,9 @@ public enum WebStyles {
             light: WebComputedStyle(x: 472, y: 262, width: 176, height: 28, padding: WebInsets(0, 32, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 262, width: 176, height: 28, padding: WebInsets(0, 32, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
         )
+    }
+
+    private static func add23(_ d: inout [String: WebStylePair]) {
         d["planner.edit.datefield.icon"] = WebStylePair(
             light: WebComputedStyle(x: 482, y: 269, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 482, y: 269, width: 14, height: 14, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -2410,9 +2482,6 @@ public enum WebStyles {
             light: WebComputedStyle(x: 746, y: 276, width: 44, height: 44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 16, 0), radius: 6, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 746, y: 276, width: 44, height: 44, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 16, 0), radius: 6, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
-    }
-
-    private static func add23(_ d: inout [String: WebStylePair]) {
         d["planner.empty.title"] = WebStylePair(
             light: WebComputedStyle(x: 632.31, y: 336, width: 271.38, height: 30, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 24, fontWeight: 600, lineHeight: 30, letterSpacing: -0.288, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 632.31, y: 336, width: 271.38, height: 30, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 24, fontWeight: 600, lineHeight: 30, letterSpacing: -0.288, gap: 0, backdropBlur: 0)
@@ -2445,6 +2514,9 @@ public enum WebStyles {
             light: WebComputedStyle(x: 472, y: 262, width: 176, height: 28, padding: WebInsets(0, 32, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1.5, color: RGBA(11, 11, 12, 0.165))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 262, width: 176, height: 28, padding: WebInsets(0, 32, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 8, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08)), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1.5, color: RGBA(250, 250, 250, 0.165))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
         )
+    }
+
+    private static func add24(_ d: inout [String: WebStylePair]) {
         d["planner.quick.description"] = WebStylePair(
             light: WebComputedStyle(x: 472, y: 102.94, width: 292, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 472, y: 102.94, width: 292, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -2513,9 +2585,6 @@ public enum WebStyles {
             light: WebComputedStyle(x: 416, y: 236, width: 704, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: 0.72, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 416, y: 236, width: 704, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: 0.72, gap: 0, backdropBlur: 0)
         )
-    }
-
-    private static func add24(_ d: inout [String: WebStylePair]) {
         d["planner.tasks.meta"] = WebStylePair(
             light: WebComputedStyle(x: 462, y: 266.89, width: 482.09, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 462, y: 266.89, width: 482.09, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(2, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
@@ -2548,6 +2617,9 @@ public enum WebStyles {
             light: WebComputedStyle(x: 416, y: 120, width: 704, height: 40, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.07), inset: true)], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0),
             dark: WebComputedStyle(x: 416, y: 120, width: 704, height: 40, padding: WebInsets(4, 4, 4, 4), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.06), gradient: nil, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.1), inset: true)], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 2, backdropBlur: 0)
         )
+    }
+
+    private static func add25(_ d: inout [String: WebStylePair]) {
         d["planner.tasks.seg.count"] = WebStylePair(
             light: WebComputedStyle(x: 487.47, y: 131, width: 18.52, height: 18, padding: WebInsets(0, 6, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 11, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 487.47, y: 131, width: 18.52, height: 18, padding: WebInsets(0, 6, 0, 6), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 11, fontWeight: 600, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -2616,9 +2688,6 @@ public enum WebStyles {
             light: WebComputedStyle(x: 673.25, y: 132, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(11, 11, 12), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(255, 255, 255), color: RGBA(255, 255, 255), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 673.25, y: 132, width: 24, height: 24, padding: WebInsets(0, 4, 0, 4), margin: WebInsets(0, 0, 0, 0), radius: 6, background: RGBA(250, 250, 250), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(16, 16, 17), color: RGBA(16, 16, 17), opacity: 1, family: .sans, fontSize: 12, fontWeight: 600, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
-    }
-
-    private static func add25(_ d: inout [String: WebStylePair]) {
         d["planner.week.hint"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 785.59, width: 944, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 785.59, width: 944, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(12, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -2651,6 +2720,9 @@ public enum WebStyles {
             light: WebComputedStyle(x: 296, y: 825.59, width: 944, height: 576.34, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 825.59, width: 944, height: 576.34, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(24, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
+    }
+
+    private static func add26(_ d: inout [String: WebStylePair]) {
         d["select.trigger"] = WebStylePair(
             light: WebComputedStyle(x: 16, y: 552, width: 160, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(11, 11, 12, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(226, 226, 230))], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0),
             dark: WebComputedStyle(x: 16, y: 552, width: 160, height: 32, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(28, 28, 30), gradient: nil, shadows: [ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(250, 250, 250, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(44, 44, 47))], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 6, backdropBlur: 0)
@@ -2719,9 +2791,6 @@ public enum WebStyles {
             light: WebComputedStyle(x: 572, y: 192.39, width: 648, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 572, y: 192.39, width: 648, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(4, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
-    }
-
-    private static func add26(_ d: inout [String: WebStylePair]) {
         d["settings.card.title"] = WebStylePair(
             light: WebComputedStyle(x: 572, y: 166.39, width: 648, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .display, fontSize: 17, fontWeight: 600, lineHeight: 22, letterSpacing: -0.204, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 572, y: 166.39, width: 648, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .display, fontSize: 17, fontWeight: 600, lineHeight: 22, letterSpacing: -0.204, gap: 0, backdropBlur: 0)
@@ -2754,6 +2823,9 @@ public enum WebStyles {
             light: WebComputedStyle(x: 616, y: 478.39, width: 480.48, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 616, y: 478.39, width: 480.48, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
+    }
+
+    private static func add27(_ d: inout [String: WebStylePair]) {
         d["settings.device.row"] = WebStylePair(
             light: WebComputedStyle(x: 572, y: 478.39, width: 648, height: 34, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 572, y: 478.39, width: 648, height: 34, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
@@ -2822,9 +2894,6 @@ public enum WebStyles {
             light: WebComputedStyle(x: 572, y: 572.39, width: 648, height: 172, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 572, y: 572.39, width: 648, height: 172, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
-    }
-
-    private static func add27(_ d: inout [String: WebStylePair]) {
         d["settings.key.name"] = WebStylePair(
             light: WebComputedStyle(x: 572, y: 572.39, width: 67.52, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 572, y: 572.39, width: 67.52, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
@@ -2857,6 +2926,9 @@ public enum WebStyles {
             light: WebComputedStyle(x: 572, y: 939.39, width: 147.39, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 572, y: 939.39, width: 147.39, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
+    }
+
+    private static func add28(_ d: inout [String: WebStylePair]) {
         d["settings.lock.row"] = WebStylePair(
             light: WebComputedStyle(x: 572, y: 936.39, width: 648, height: 24, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 16, backdropBlur: 0),
             dark: WebComputedStyle(x: 572, y: 936.39, width: 648, height: 24, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 16, backdropBlur: 0)
@@ -2925,9 +2997,6 @@ public enum WebStyles {
             light: WebComputedStyle(x: 296, y: 296, width: 216, height: 14, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 6, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(103, 103, 111), color: RGBA(103, 103, 111), opacity: 1, family: .sans, fontSize: 11, fontWeight: 600, lineHeight: 14, letterSpacing: 0.77, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 296, width: 216, height: 14, padding: WebInsets(0, 10, 0, 10), margin: WebInsets(0, 0, 6, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(147, 147, 155), color: RGBA(147, 147, 155), opacity: 1, family: .sans, fontSize: 11, fontWeight: 600, lineHeight: 14, letterSpacing: 0.77, gap: 0, backdropBlur: 0)
         )
-    }
-
-    private static func add28(_ d: inout [String: WebStylePair]) {
         d["settings.progress"] = WebStylePair(
             light: WebComputedStyle(x: 572, y: 334.39, width: 648, height: 0, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 572, y: 334.39, width: 648, height: 0, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(8, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -2960,6 +3029,9 @@ public enum WebStyles {
             light: WebComputedStyle(x: 572, y: 558.39, width: 512, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 572, y: 558.39, width: 512, height: 32, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
+    }
+
+    private static func add29(_ d: inout [String: WebStylePair]) {
         d["settings.row.label"] = WebStylePair(
             light: WebComputedStyle(x: 572, y: 422.39, width: 349.97, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 572, y: 422.39, width: 349.97, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -3028,9 +3100,6 @@ public enum WebStyles {
             light: WebComputedStyle(x: 878.66, y: 226.39, width: 141.34, height: 78, padding: WebInsets(16, 16, 16, 16), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(0, 0, 0, 0.05), gradient: nil, shadows: [], borderWidth: 1, borderColor: RGBA(31, 31, 34), color: RGBA(31, 31, 34), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 878.66, y: 226.39, width: 141.34, height: 78, padding: WebInsets(16, 16, 16, 16), margin: WebInsets(0, 0, 0, 0), radius: 10, background: RGBA(255, 255, 255, 0.07), gradient: nil, shadows: [], borderWidth: 1, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
         )
-    }
-
-    private static func add29(_ d: inout [String: WebStylePair]) {
         d["settings.toggle.row"] = WebStylePair(
             light: WebComputedStyle(x: 572, y: 204.39, width: 648, height: 54, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 24, backdropBlur: 0),
             dark: WebComputedStyle(x: 572, y: 204.39, width: 648, height: 54, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 24, backdropBlur: 0)
@@ -3063,6 +3132,9 @@ public enum WebStyles {
             light: WebComputedStyle(x: 308, y: 319, width: 158.39, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 308, y: 319, width: 158.39, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
+    }
+
+    private static func add30(_ d: inout [String: WebStylePair]) {
         d["vault.files.cards"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 282, width: 944, height: 83, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 282, width: 944, height: 83, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 8, backdropBlur: 0)
@@ -3131,9 +3203,6 @@ public enum WebStyles {
             light: WebComputedStyle(x: 568, y: 306, width: 400, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 4, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 12, backdropBlur: 0),
             dark: WebComputedStyle(x: 568, y: 306, width: 400, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 4, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 12, fontWeight: 500, lineHeight: 16, letterSpacing: -0.096, gap: 12, backdropBlur: 0)
         )
-    }
-
-    private static func add30(_ d: inout [String: WebStylePair]) {
         d["vault.gate.title"] = WebStylePair(
             light: WebComputedStyle(x: 568, y: 276, width: 400, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(250, 250, 250), color: RGBA(250, 250, 250), opacity: 1, family: .sans, fontSize: 17, fontWeight: 600, lineHeight: 22, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 568, y: 276, width: 400, height: 22, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(11, 11, 12), color: RGBA(11, 11, 12), opacity: 1, family: .sans, fontSize: 17, fontWeight: 600, lineHeight: 22, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -3166,6 +3235,9 @@ public enum WebStyles {
             light: WebComputedStyle(x: 296, y: 238, width: 944, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 238, width: 944, height: 16, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 8, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 12, fontWeight: 400, lineHeight: 16, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
+    }
+
+    private static func add31(_ d: inout [String: WebStylePair]) {
         d["vault.health.count"] = WebStylePair(
             light: WebComputedStyle(x: 333.18, y: 221.07, width: 15.35, height: 15.86, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 333.18, y: 221.07, width: 15.35, height: 15.86, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -3234,9 +3306,6 @@ public enum WebStyles {
             light: WebComputedStyle(x: 296, y: 238, width: 944, height: 78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 20, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 238, width: 944, height: 78, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 20, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 400, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
-    }
-
-    private static func add31(_ d: inout [String: WebStylePair]) {
         d["vault.settings.label"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 183, width: 279.08, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(242, 242, 243), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 183, width: 279.08, height: 18, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(24, 24, 27), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
@@ -3269,6 +3338,9 @@ public enum WebStyles {
             light: WebComputedStyle(x: 693.91, y: 132, width: 20, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(166, 166, 174), color: RGBA(166, 166, 174), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0),
             dark: WebComputedStyle(x: 693.91, y: 132, width: 20, height: 20, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 0, 0), radius: 4, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(86, 86, 94), color: RGBA(86, 86, 94), opacity: 1, family: .sans, fontSize: 13, fontWeight: 500, lineHeight: 18, letterSpacing: -0.096, gap: 0, backdropBlur: 0)
         )
+    }
+
+    private static func add32(_ d: inout [String: WebStylePair]) {
         d["vault.tabs"] = WebStylePair(
             light: WebComputedStyle(x: 296, y: 124, width: 944, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 20, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(44, 44, 47), color: RGBA(242, 242, 243), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 4, backdropBlur: 0),
             dark: WebComputedStyle(x: 296, y: 124, width: 944, height: 36, padding: WebInsets(0, 0, 0, 0), margin: WebInsets(0, 0, 20, 0), radius: 0, background: RGBA(0, 0, 0, 0), gradient: nil, shadows: [], borderWidth: 0, borderColor: RGBA(226, 226, 230), color: RGBA(24, 24, 27), opacity: 1, family: .sans, fontSize: 16, fontWeight: 400, lineHeight: 24.8, letterSpacing: -0.096, gap: 4, backdropBlur: 0)

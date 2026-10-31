@@ -35,6 +35,11 @@ const sim = simulator(device);
 export const SCREENS = [
   { id: "home", path: "/documents", ready: "All notes" },
   { id: "home-lower", path: "/documents", ready: "All notes", scroll: 420 },
+  { id: "notes", path: "/notes", ready: "Packing list" },
+  { id: "drafts", path: "/drafts", ready: "Packing list" },
+  { id: "starred", path: "/starred", ready: "Packing list" },
+  { id: "archive", path: "/archive", ready: "Old receipts" },
+  { id: "trash", path: "/trash", ready: "Trash is empty" },
 ];
 const screens = SCREENS.filter((s) => !only || only.includes(s.id));
 
@@ -59,6 +64,8 @@ if (!process.argv.includes("--no-seed")) {
   sim.sleep(3000);
   const made = sim.command("note.create", { text: "Packing list\nPassport, charger, the good socks.", open: false });
   sim.command("note.star", { ids: [made.id], starred: true });
+  const old = sim.command("note.create", { text: "Old receipts\nKept for the tax year, then archived.", open: false });
+  sim.command("note.archive", { ids: [old.id], archived: true });
   sim.sleep(2000);
   console.log("seeded");
 }

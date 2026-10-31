@@ -2,7 +2,10 @@
   "$description": "The iPhone app's screens as its web draws them (docs/IOS_REBUILD_PLAN.md, I3): measured in the Simulator's web frame by apps/ios/scripts/screen-match.mjs --styles into app-styles-cache/phone.ios.json. iPhone only: the Mac's measuring run skips it.",
   "ios": true,
   "screens": {
-    "home": "/documents"
+    "home": "/documents",
+    "notes": "/notes",
+    "archive": "/archive",
+    "trash": "/trash"
   },
   "styles": {
     "phone.search.box": {
@@ -100,6 +103,74 @@
     "phone.more": {
       "screen": "home",
       "selector": "nav[aria-label='More']"
+    },
+    "phone.searchfield.box": {
+      "screen": "notes",
+      "selector": "main > div:nth-child(2) > label"
+    },
+    "phone.searchfield.input": {
+      "screen": "notes",
+      "selector": "main > div:nth-child(2) input"
+    },
+    "phone.grid": {
+      "screen": "notes",
+      "selector": "main > ul.grid"
+    },
+    "phone.grid.card": {
+      "screen": "notes",
+      "selector": "main > ul.grid > li"
+    },
+    "phone.list": {
+      "screen": "archive",
+      "selector": "main > ul.pt-2"
+    },
+    "phone.list.row": {
+      "screen": "archive",
+      "selector": "main > ul.pt-2 a"
+    },
+    "phone.list.glyph": {
+      "screen": "archive",
+      "selector": "main > ul.pt-2 a > span:first-child > span"
+    },
+    "phone.list.spine": {
+      "screen": "archive",
+      "selector": "main > ul.pt-2 a > span:first-child > span > span:nth-child(1)"
+    },
+    "phone.list.line1": {
+      "screen": "archive",
+      "selector": "main > ul.pt-2 a > span:first-child > span > span:nth-child(2)"
+    },
+    "phone.list.line2": {
+      "screen": "archive",
+      "selector": "main > ul.pt-2 a > span:first-child > span > span:nth-child(3)"
+    },
+    "phone.list.body": {
+      "screen": "archive",
+      "selector": "main > ul.pt-2 a > span.ui-row-sep"
+    },
+    "phone.list.title": {
+      "screen": "archive",
+      "selector": "main > ul.pt-2 a > span.ui-row-sep > span:first-child > span"
+    },
+    "phone.list.sub": {
+      "screen": "archive",
+      "selector": "main > ul.pt-2 a > span.ui-row-sep > span:nth-child(2)"
+    },
+    "phone.empty": {
+      "screen": "trash",
+      "selector": "main [data-empty-state]"
+    },
+    "phone.empty.icon": {
+      "screen": "trash",
+      "selector": "main [data-empty-state] > span"
+    },
+    "phone.empty.title": {
+      "screen": "trash",
+      "selector": "main [data-empty-state] > h2"
+    },
+    "phone.empty.body": {
+      "screen": "trash",
+      "selector": "main [data-empty-state] > p"
     }
   }
 }

@@ -51,7 +51,7 @@ public struct PhoneListRow<Icon: View>: View {
                 }
                 .padding(.trailing, body.padding.right)
                 .frame(minHeight: body.height)
-                .overlay(alignment: .bottom) { PhoneRowHairline() }
+                .overlay(alignment: .bottom) { PhoneRowHairlineView() }
             }
             .padding(.leading, row.padding.left)
             .padding(.trailing, row.padding.right)
@@ -68,9 +68,10 @@ public extension PhoneListRow where Icon == EmptyView {
 }
 
 /// `.ui-row-sep::after`: half a point of --iphone-separator from the label to past the row's right padding (16).
-struct PhoneRowHairline: View {
+public struct PhoneRowHairlineView: View {
     @Environment(\.colorScheme) private var scheme
-    var body: some View {
+    public init() {}
+    public var body: some View {
         PhoneSurface.separator.resolve(scheme).color
             .frame(height: 0.5)
             .padding(.trailing, -16)
@@ -202,5 +203,136 @@ public struct PhoneEmptyBox: View {
             .frame(maxWidth: .infinity, minHeight: 56)
             .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous).fill(ink.opacity(0.04).color))
             .padding(.horizontal, 16)
+    }
+}
+
+/// SearchField with a value: the same pill as a field that filters a list, Cancel beside it while it's in use.
+public struct PhoneSearchField: View {
+    let placeholder: String
+    @Binding var text: String
+    @FocusState private var focused: Bool
+    @Environment(\.colorScheme) private var scheme
+
+    public init(_ placeholder: String, text: Binding<String>) {
+        self.placeholder = placeholder
+        self._text = text
+    }
+
+    public var body: some View {
+        let wrap = ps("phone.search.wrap", scheme)
+        let box = ps("phone.searchfield.box", scheme)
+        let input = ps("phone.searchfield.input", scheme)
+        let icon = ps("phone.search.icon", scheme)
+        HStack(spacing: wrap.gap) {
+            HStack(spacing: box.gap) {
+                WebIconView(.search, size: icon.width, strokeWidth: 2.1).foregroundStyle(icon.color.color)
+                TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(box.color.color))
+                    .font(Font(input.text.ctFont))
+                    .foregroundStyle(input.color.color)
+                    .focused($focused)
+                    .submitLabel(.search)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+            }
+            .padding(.horizontal, box.padding.left)
+            .frame(height: box.height)
+            .background(RoundedRectangle(cornerRadius: box.radius, style: .continuous).fill(box.background.color))
+            if focused || !text.isEmpty {
+                Button("Cancel") {
+                    text = ""
+                    focused = false
+                }
+                .webText(input.text)
+                .foregroundStyle(FoleviTokens.Chrome.heading.resolve(scheme).color)
+                .padding(.horizontal, 4)
+                .frame(height: 44)
+                .transition(.opacity)
+            }
+        }
+        .padding(wrap.padding.edgeInsets)
+        .animation(.easeOut(duration: 0.15), value: focused || !text.isEmpty)
+    }
+}
+
+/// ScreenEmpty: a whole screen with nothing in it, one centred block 280 wide: the icon, a title and a line of
+/// help, and an action if there is one.
+public struct PhoneScreenEmpty<Action: View>: View {
+    let icon: WebIcon?
+    let title: String
+    let message: String?
+    let action: Action
+    @Environment(\.colorScheme) private var scheme
+
+    public init(icon: WebIcon?, title: String, message: String?, @ViewBuilder action: () -> Action) {
+        self.icon = icon
+        self.title = title
+        self.message = message
+        self.action = action()
+    }
+
+    public var body: some View {
+        let block = ps("phone.empty", scheme)
+        let glyph = ps("phone.empty.icon", scheme)
+        let t = ps("phone.empty.title", scheme)
+        let b = ps("phone.empty.body", scheme)
+        VStack(spacing: 0) {
+            if let icon {
+                WebIconView(icon, size: 40, strokeWidth: 1.5)
+                    .foregroundStyle(glyph.color.color)
+                    .frame(width: glyph.width, height: glyph.height)
+                    .padding(.bottom, 12)
+            }
+            WebParagraph([WebRun(title)], style: t.text, width: block.width, alignment: .center, wrap: .balance)
+                .foregroundStyle(t.color.color)
+            if let message {
+                WebParagraph([WebRun(message)], style: b.text, width: block.width, alignment: .center, wrap: .greedy)
+                    .foregroundStyle(b.color.color)
+                    .padding(.top, 4)
+            }
+            action.padding(.top, 20)
+        }
+        .frame(width: block.width)
+        .padding(.top, block.padding.top)
+        .padding(.bottom, block.padding.bottom)
+        .frame(maxWidth: .infinity)
+    }
+}
+
+public extension PhoneScreenEmpty where Action == EmptyView {
+    init(icon: WebIcon?, title: String, message: String?) {
+        self.init(icon: icon, title: title, message: message) { EmptyView() }
+    }
+}
+
+/// NoteGlyph: a note in a list row, a small page with its folder's colour down the spine (a draft's is plain).
+public struct PhoneNoteGlyph: View {
+    /// The folder's colour id; nil for a draft, `.some(nil)`-like "none" for a template (a plain page).
+    let folderColorId: String?
+    let template: Bool
+    @Environment(\.colorScheme) private var scheme
+
+    public init(folderColorId: String?, template: Bool = false) {
+        self.folderColorId = folderColorId
+        self.template = template
+    }
+
+    public var body: some View {
+        let page = WebStyles.named("phone.list.glyph")
+        let p = page.resolve(scheme)
+        let line1 = ps("phone.list.line1", scheme)
+        let line2 = ps("phone.list.line2", scheme)
+        let spine: RGBA = template ? p.background
+            : folderColorId.map { FolderColor.resolve($0).color } ?? ps("phone.list.spine", scheme).background
+        let shape = WebCornersShape(topLeft: FoleviTokens.Radius.tiny, topRight: FoleviTokens.Radius.chip, bottomRight: FoleviTokens.Radius.chip, bottomLeft: FoleviTokens.Radius.tiny)
+        ZStack(alignment: .topLeading) {
+            shape.fill(p.background.color)
+            spine.color.frame(width: 4)
+            Capsule().fill(line1.background.color).frame(width: line1.width, height: 1.5).offset(x: 8, y: 6)
+            Capsule().fill(line2.background.color).frame(width: line2.width, height: 1.5).offset(x: 8, y: 12)
+        }
+        .frame(width: p.width, height: p.height)
+        .clipShape(shape)
+        .overlay(WebShapeBox(shape: shape, fill: nil, shadows: p.visibleShadows))
+        .frame(width: 28, height: 28)
     }
 }

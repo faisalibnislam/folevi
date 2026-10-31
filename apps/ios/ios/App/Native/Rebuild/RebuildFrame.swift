@@ -203,6 +203,8 @@ private struct RebuildRoot: View {
                 RebuildNoteScreen(noteId: id, model: phone, pageHost: pageHost, frame: model, menus: menus)
             } else if route == .home {
                 RebuildHomeScreen(frame: model, menus: menus, home: home, phone: phone) { account = true }
+            } else if let kind = NotesListKind(route: route) {
+                RebuildNotesScreen(kind: kind, frame: model, menus: menus, phone: phone)
             } else {
                 PlaceholderScreen(model: model, route: route) { account = true }
             }

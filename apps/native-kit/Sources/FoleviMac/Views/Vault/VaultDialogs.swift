@@ -50,6 +50,8 @@ private struct DialogField: View {
     @Binding var text: String
     var mono = false
     var multiline = false
+    /// A text area's rows (`rows={4}` for a field, 3 for Notes): 18 pt lines and 8 pt padding above and below.
+    var rows = 4
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -61,7 +63,7 @@ private struct DialogField: View {
                     .font(mono ? .system(size: 13, design: .monospaced) : .custom("Instrument Sans", size: 13))
                     .scrollContentBackground(.hidden)
                     .padding(6)
-                    .frame(height: 84)
+                    .frame(height: CGFloat(rows) * 18 + 16)
                     .webBox(VS.pair("vault.gate.input"))
             } else if mono {
                 TextField("", text: $text).textFieldStyle(.plain).font(.system(size: 13, design: .monospaced))
@@ -147,7 +149,7 @@ private struct ItemDialog: View {
                             }
                         }
                     }
-                    DialogField(label: "Notes", text: $notes, multiline: true)
+                    DialogField(label: "Notes", text: $notes, multiline: true, rows: 3)
                 }
                 .padding(.bottom, 8)
             }

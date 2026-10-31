@@ -10,6 +10,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
 
+        // The new frame comes back where the scene left it (its tabs and their screens), as iOS restores a scene.
+        if RebuildFrame.enabled, let data = session.stateRestorationActivity?.userInfo?[RebuildFrame.restorationKey] as? Data {
+            RebuildFrame.restore(data)
+        }
         let window = UIWindow(windowScene: windowScene)
         window.rootViewController = RebuildFrame.enabled ? RebuildFrame.controller() : PhoneFrame.enabled ? PhoneFrameController() : FoleviViewController()
         window.makeKeyAndVisible()
@@ -36,6 +40,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         PhoneFrameController.current?.snapshot.flush()
         AppLock.shared.didEnterBackground()
         AppServices.enteredBackground()
+    }
+
+    /// What iOS keeps for the scene: the new frame's tabs and screens.
+    func stateRestorationActivity(for scene: UIScene) -> NSUserActivity? {
+        guard RebuildFrame.enabled, let data = RebuildFrame.model.snapshotData else { return nil }
+        let activity = NSUserActivity(activityType: RebuildFrame.restorationType)
+        activity.userInfo = [RebuildFrame.restorationKey: data]
+        return activity
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {

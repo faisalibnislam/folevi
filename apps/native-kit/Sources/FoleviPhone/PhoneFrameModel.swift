@@ -115,4 +115,51 @@ public final class PhoneFrameModel {
         s[s.count - 1].scroll = offset
         stacks[current] = s
     }
+
+    // MARK: Scene restore
+
+    /// Where the frame is, to save with the scene and restore at the next launch: the tab on show and each tab's
+    /// stack as the web's addresses, with how far each screen was scrolled.
+    public struct Snapshot: Codable, Equatable, Sendable {
+        public struct Entry: Codable, Equatable, Sendable {
+            public var path: String
+            public var scroll: Double
+        }
+
+        public var current: String
+        public var stacks: [String: [Entry]]
+    }
+
+    public var snapshot: Snapshot {
+        Snapshot(
+            current: current.rawValue,
+            stacks: Dictionary(uniqueKeysWithValues: stacks.map { tab, entries in
+                (tab.rawValue, entries.map { Snapshot.Entry(path: $0.route.path, scroll: Double($0.scroll)) })
+            })
+        )
+    }
+
+    /// Back where a snapshot says. A tab missing from it (or one whose stack doesn't start at one of its own first
+    /// screens) starts again from its first screen.
+    public func restore(_ s: Snapshot) {
+        for tab in PhoneTab.allCases {
+            let entries = (s.stacks[tab.rawValue] ?? []).map { PhoneStackEntry(FrameRoute(path: $0.path), scroll: CGFloat($0.scroll)) }
+            if let first = entries.first, Self.isTabRoot(first.route), Self.tab(of: first.route) == tab {
+                stacks[tab] = entries
+            } else {
+                stacks[tab] = [PhoneStackEntry(Self.root(of: tab))]
+            }
+        }
+        current = PhoneTab(rawValue: s.current) ?? .home
+    }
+
+    /// The snapshot as data (JSON), and back.
+    public var snapshotData: Data? { try? JSONEncoder().encode(snapshot) }
+
+    @discardableResult
+    public func restore(data: Data) -> Bool {
+        guard let s = try? JSONDecoder().decode(Snapshot.self, from: data) else { return false }
+        restore(s)
+        return true
+    }
 }

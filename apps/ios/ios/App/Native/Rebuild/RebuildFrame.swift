@@ -31,6 +31,16 @@ enum RebuildFrame {
 
     static let menus = PhoneMenus()
 
+    /// The scene's restoration activity (SceneDelegate): its type and the snapshot's key in it.
+    static let restorationType = "com.folevi.ios.frame"
+    static let restorationKey = "frame"
+
+    /// Back where the scene was, unless launched to open routes (FOLEVI_REBUILD_OPEN).
+    static func restore(_ data: Data) {
+        guard (ProcessInfo.processInfo.environment["FOLEVI_REBUILD_OPEN"] ?? "").isEmpty else { return }
+        model.restore(data: data)
+    }
+
     static func controller() -> UIViewController {
         FoleviFonts.register()
         return RebuildFrameController(frame: model, menus: menus)

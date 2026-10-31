@@ -153,7 +153,14 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         observers.append(Observer { [weak self] in
             guard let self, !self.linksReady, self.model.client.state == .ready else { return }
             self.linksReady = true
-            DispatchQueue.main.async { DeepLinkRouter.bridgeReady() }
+            DispatchQueue.main.async {
+                // Restarted into another place to open something there (a notification from it).
+                if let path = FoleviViewController.startPath, let url = DeepLink.fromPath(path) {
+                    FoleviViewController.startPath = nil
+                    self.openLink(url)
+                }
+                DeepLinkRouter.bridgeReady()
+            }
         })
         // Small web text drawn natively asks the page how WebKit breaks it (`text.layout`).
         let client = model.client

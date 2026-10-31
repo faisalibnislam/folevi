@@ -110,3 +110,28 @@ extension RebuildFrameController: FrameHost {
 
     func frameStateChanged() {}
 }
+
+/// Folevi's shortcuts with a hardware keyboard (KeyCommands.swift's list, in the ⌘ overlay): done natively, on the
+/// desk in the iPad's wide layout and on the phone's frame otherwise. A note's page still gets its own keys.
+extension RebuildFrameController {
+    override var keyCommands: [UIKeyCommand]? {
+        (super.keyCommands ?? []) + FoleviShortcut.all.map { $0.keyCommand(action: #selector(pressRebuildShortcut(_:))) }
+    }
+
+    private var wide: Bool { UIDevice.current.userInterfaceIdiom == .pad && (view.window?.bounds.width ?? 0) >= RebuildIPad.minWidth }
+
+    @objc func pressRebuildShortcut(_ command: UIKeyCommand) {
+        guard let shortcut = FoleviShortcut.matching(command) else { return }
+        switch shortcut.input {
+        case "n": wide ? desk.newNote() : model.newNote()
+        case "k": wide ? CommandPalette.show(desk) : frame.open(FrameRoute(path: "/search"))
+        case "a": openLink(DeepLink.tasksURL)
+        case "j": wide ? desk.askAI() : frame.open(FrameRoute(path: "/ai"))
+        case "t": openLink(DeepLink.todayURL)
+        case "\\": if wide { desk.sidebarCollapsed.toggle() }
+        case "[": wide ? desk.goBack() : frame.back()
+        case "]": if wide { desk.goForward() }
+        default: break
+        }
+    }
+}

@@ -3,8 +3,12 @@
 // Rename, Pin, Copy, Download, Save as note and Delete), the chat on the right with its title and options. A
 // new chat gets its address once you ask the first question (the tab follows). When Foli AI can't be used here
 // it says why (AiUnavailable.tsx): turned off, not on the plan, or not set up on this Mac yet.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 import FoleviDesign

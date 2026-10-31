@@ -3,8 +3,12 @@
 // above it. The chat isn't modal (you keep working while it's open), keeps its conversation while closed,
 // starts afresh with New chat, and moves to the AI page with Open in full view. With history off, closing it
 // deletes the conversation (FoliChatModel.closed).
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -44,6 +48,8 @@ final class AiAskState {
 struct AiAskOverlay: View {
     @Bindable var frame: FrameModel
     let state: AiAskState
+    /// The floating button (the iPad has none: Shell.tsx `hideLauncher` there; ⌘J and the menus open the chat).
+    var launcher = true
     @Environment(\.colorScheme) private var scheme
 
     /// The web places them on the window (`bottom-9 right-9`, the chat `bottom-[104px]`); this view sits in the
@@ -67,7 +73,7 @@ struct AiAskOverlay: View {
                 AiAskPanelView(frame: frame, model: state.model, height: min(panel.height, state.maxHeight))
                     .transition(.asymmetric(insertion: .scale(scale: 0.96, anchor: .bottomTrailing).combined(with: .opacity), removal: .opacity))
             }
-            if shows {
+            if shows, launcher {
                 AiLauncher(open: frame.askAiOpen, thinking: frame.askAiOpen ? false : (state.isWorking)) {
                     if frame.askAiOpen { close() } else { frame.askAiOpen = true }
                 }

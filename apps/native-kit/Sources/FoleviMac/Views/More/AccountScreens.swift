@@ -4,8 +4,12 @@
 // changed). In local mode they're the web's "Sign in to Folevi to share and collaborate" page
 // (app/SignInToCollaborate.tsx). Lists are drawn with the web's card, row and type styles (more.help.*: the same
 // classes), as the scratch library the screenshot diffs use has no account.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

@@ -172,7 +172,7 @@ public final class FrameModel {
                 self.handle(event)
             }
         }
-        #if os(macOS)
+        #if os(macOS) || os(iOS)
         pictures.frame = self
         #endif
     }
@@ -295,13 +295,13 @@ public final class FrameModel {
     /// Whether the Tab Overview (every tab as a picture) is showing.
     public var overviewShown = false {
         didSet {
-            #if os(macOS)
+            #if os(macOS) || os(iOS)
             if overviewShown { preview.hide() }
             #endif
         }
     }
     /// The tab picture under the pointer in the strip, and the notes' pictures.
-    #if os(macOS)
+    #if os(macOS) || os(iOS)
     public let preview = TabPreviewState()
     public let pictures = TabPictureStore()
     #endif

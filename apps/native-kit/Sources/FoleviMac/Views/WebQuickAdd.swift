@@ -6,8 +6,12 @@
 // something in it. Return adds and closes, Command-Return adds and opens its page in the main window, Shift-Return
 // adds and stays for another; Escape puts an editor away, then closes. After adding, "Added to Inbox" shows for a
 // moment with Open. The panel is as tall as this (the host sizes it); the material is the panel's own.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -517,6 +521,7 @@ public struct WebQuickAddPanel: View {
     }
 }
 
+#if os(macOS)
 /// The task's field: an AppKit text field, so the web's letter spacing (`-0.096px`) holds while typing (SwiftUI's
 /// TextField drops tracking on the Mac), in Instrument Sans 17 (`text-title-3`), heading ink, the faint
 /// placeholder. It reads Return, Shift-Return, Command-Return and Escape itself.
@@ -615,6 +620,42 @@ private struct PanelField: NSViewRepresentable {
         }
     }
 }
+#else
+/// The task's field in Instrument Sans 17 (`text-title-3`) with the web's letter spacing, heading ink, the faint
+/// placeholder. Return submits (Shift-Return and Command-Return from a hardware keyboard), Escape closes.
+private struct PanelField: View {
+    enum Key { case plain, shift, command }
+
+    @Binding var text: String
+    let placeholder: String
+    let ink: RGBA
+    let faint: RGBA
+    let focusTick: Int
+    let submit: (Key) -> Void
+    let escape: () -> Void
+    @FocusState private var focused: Bool
+
+    static let inset: CGFloat = 0
+    static let kern = WebTextStyle.bodyLetterSpacing
+
+    var body: some View {
+        TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(faint.color))
+            .font(Font(WebTextStyle(size: 17, leading: 22, letterSpacing: Self.kern).ctFont))
+            .tracking(Self.kern)
+            .foregroundStyle(ink.color)
+            .textFieldStyle(.plain)
+            .focused($focused)
+            .onSubmit { submit(.plain) }
+            .onKeyPress(.return, phases: .down) { press in
+                if press.modifiers.contains(.command) { submit(.command); return .handled }
+                if press.modifiers.contains(.shift) { submit(.shift); return .handled }
+                return .ignored
+            }
+            .onKeyPress(.escape) { escape(); return .handled }
+            .onChange(of: focusTick, initial: true) { focused = true }
+    }
+}
+#endif
 
 /// The chips' × (`-mr-1.5 grid h-5 w-5 rounded-tiny text-faint hover:text-heading`).
 private struct RemoveButton: View {
@@ -709,7 +750,9 @@ private struct QuickAddTimeField: View {
         .popover(isPresented: $open, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 8) {
                 DatePicker("", selection: Binding(get: { Self.time(time) }, set: { set(Self.hhmm($0)) }), displayedComponents: .hourAndMinute)
+                    #if os(macOS)
                     .datePickerStyle(.stepperField)
+                    #endif
                     .labelsHidden()
                 WebButton("All day", variant: .secondary, size: .sm) {
                     set(nil)

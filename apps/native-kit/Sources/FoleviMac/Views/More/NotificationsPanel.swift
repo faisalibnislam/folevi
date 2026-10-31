@@ -4,8 +4,12 @@
 // invitations (workspace, page, folder) Accept and Decline. Data and actions from FoleviScreens'
 // NotificationsModel (bridge `notifications.list`); folder invitations through folderInvite.accept and
 // invite.decline { kind: "folder" }.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

@@ -5,8 +5,12 @@
 //   Home, Work with Foli AI, Starred (with its first starred notes), Drafts, All notes, Tasks, Calendar, Shared
 //   with Me, Changes, Templates; Folders (the tree, a New folder button); Tags (closed until opened); Archive and
 //   Trash; and the account button at the bottom.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -26,13 +30,21 @@ public struct WebSidebar: View {
     let tasks: ValueStore<TaskCounts>
     let actions: WebSidebarActions
     @Environment(\.colorScheme) private var scheme
+    #if os(macOS)
     @Environment(\.controlActiveState) private var active
+    #else
+    private let active = ControlActiveStateShim.key
+    #endif
     @AppStorage("folevi.sidebar.starredOpen") private var starredOpen = true
     @AppStorage("folevi.sidebar.section.folders") private var foldersOpen = true
     @AppStorage("folevi.sidebar.section.tags") private var tagsOpen = false
     /// On a note: the note's own tools ("document", the web's default) or the folders (`folevi:doc-sidebar-mode`).
     @AppStorage("folevi.sidebar.docMode") private var docMode = "document"
     @State private var openFolders: Set<String> = []
+    #if os(iOS)
+    /// The account row, for the account menu's place on the iPad.
+    @State private var accountAnchor: UIView?
+    #endif
 
     /// The first few starred notes, folders and tags; the rest are a click away on their own pages.
     static let limit = 5
@@ -55,13 +67,20 @@ public struct WebSidebar: View {
             if let noteId = model.route.noteId, docMode == "document" {
                 // The note's own sidebar (DocumentSidebar.tsx), between the search and the account.
                 WebNoteSidebar(model: model, noteId: noteId)
-                    .padding(.top, WebStyles.named("notetools.card.wrap").resolve(scheme).y - style("search").y - style("search").height)
+                    // (The gap as measured together on the Mac: the note tools aren't measured on the iPad yet, and
+                    // their place against the iPad's taller search would come out negative.)
+                    .padding(.top, Self.noteToolsGap(scheme))
             } else {
                 appList
             }
             account
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    static func noteToolsGap(_ scheme: ColorScheme) -> CGFloat {
+        let mac = { (id: String) in (WebStyles.all[id] ?? WebStyles.named(id)).resolve(scheme) }
+        return max(0, mac("notetools.card.wrap").y - mac("frame.sidebar.search").y - mac("frame.sidebar.search").height)
     }
 
     /// The app's places, folders and tags (Sidebar.tsx's list).
@@ -90,6 +109,14 @@ public struct WebSidebar: View {
         let bar = style("topbar")
         let local = model.session.value?.mode == .local
         return HStack(spacing: bar.gap) {
+            if WebStyles.isPad {
+                // The iPad: the wordmark, to Home (the Mac has its window's buttons there).
+                Button { model.open(.home, .replace) } label: {
+                    WebFoleviLogo(height: 26, color: Folevi.color.heading).padding(4)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Folevi")
+            }
             Spacer(minLength: 0)
             SyncDot(model: model)
             if !local {
@@ -106,7 +133,7 @@ public struct WebSidebar: View {
         .padding(.horizontal, bar.padding.left)
         .frame(height: bar.height)
         .contentShape(Rectangle())
-        .gesture(WindowDragGesture())
+        .windowDrag()
     }
 
     /// The sidebar's own menu (the web's SidebarMenu).
@@ -128,7 +155,7 @@ public struct WebSidebar: View {
         let label = style("search.label")
         return Button { CommandPalette.show(model) } label: {
             HStack(spacing: r.gap) {
-                WebIconView(.search, size: 14).foregroundStyle(style("search.icon").color.color)
+                WebIconView(.search, size: style("search.icon").height).foregroundStyle(style("search.icon").color.color)
                 Text("Search or jump to…").webText(label.text).lineLimit(1).foregroundStyle(label.color.color)
                 Spacer(minLength: 0)
                 WebKbd("⌘K")
@@ -193,15 +220,17 @@ public struct WebSidebar: View {
         let s = base.resolve(scheme)
         let selectedFill = (WebStyles.vars[active == .inactive ? "mac-selected-inactive" : "mac-selected"] ?? FoleviTokens.Chrome.surfaceSunken).resolve(scheme)
         let iconColor = style(selected ? "item.active.icon" : "item.icon").color
+        let iconBox = style("item.icon").height
         let countStyle = style("item.count")
         return Button {
             model.open(route, newTab ? .newTab : .replace)
         } label: {
             HStack(spacing: s.gap) {
                 Group {
-                    if let glyph { glyph } else { WebIconView(icon, size: iconSize) }
+                    // (The iPad's touch rows have 20 pt icons, the Mac's 18: sized from the measured box.)
+                    if let glyph { glyph.scaleEffect(iconBox / 18) } else { WebIconView(icon, size: iconSize * iconBox / 18) }
                 }
-                .frame(width: 18, height: 18)
+                .frame(width: iconBox, height: iconBox)
                 .foregroundStyle(iconColor.color)
                 Text(title).webText(s.text).lineLimit(1).foregroundStyle(s.color.color).frame(maxWidth: .infinity, alignment: .leading)
                 if let count, count > 0 {
@@ -370,7 +399,13 @@ public struct WebSidebar: View {
         let a = style("account")
         let name = model.accountName.isEmpty ? "You" : model.accountName
         let foot = accountFoot(name)
-        return Button { actions.account(NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation(in: NSApp.keyWindow))) } label: {
+        return Button {
+            #if os(macOS)
+            actions.account(NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation(in: NSApp.keyWindow)))
+            #else
+            actions.account(accountAnchor)
+            #endif
+        } label: {
             HStack(spacing: a.gap) {
                 WebAvatar(name: foot.markName, url: foot.markUrl, size: 28)
                 VStack(alignment: .leading, spacing: 0) {
@@ -461,6 +496,7 @@ struct SyncDot: View {
     }
 }
 
+#if os(macOS)
 extension NSEvent {
     /// The mouse location in a window's content view coordinates (for anchoring a popover to what was clicked).
     @MainActor static func mouseLocation(in window: NSWindow?) -> NSPoint {
@@ -468,5 +504,6 @@ extension NSEvent {
         return content.convert(window.mouseLocationOutsideOfEventStream, from: nil)
     }
 }
+#endif
 
 #endif

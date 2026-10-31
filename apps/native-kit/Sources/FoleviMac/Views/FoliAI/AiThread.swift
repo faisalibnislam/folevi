@@ -3,8 +3,12 @@
 // to read ("Jump to latest" brings you back), and the dock: what Foli AI reads (chips, Add), the box that grows
 // from two lines to six (Return sends, Shift-Return a new line), Send, and the footnote. The AI page and the
 // floating chat both use it (`variant`); FoliChatModel (FoleviScreens) talks to the engine.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -480,7 +484,11 @@ struct AiComposer: View {
     let variant: AiVariant
     var focused: FocusState<Bool>.Binding
     @Environment(\.colorScheme) private var scheme
+    #if os(macOS)
     @Environment(\.controlActiveState) private var controlActive
+    #else
+    private let controlActive = ControlActiveStateShim.key
+    #endif
 
     var body: some View {
         let look = AiLook(scheme: scheme)

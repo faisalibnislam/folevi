@@ -2,8 +2,12 @@
 // field, the filters (folder, tag, updated, the space), then the notes (Recent before typing: the notes opened
 // last, `recent.viewed`; then the engine's `search` answers), Ask Foli AI, and the actions. Arrow keys move,
 // Return opens, Escape closes. The sidebar's "Search or jump to…", ⌘K and Open Quickly open it.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -41,7 +45,11 @@ final class PaletteModel {
     var typed: String { search.text.trimmingCharacters(in: .whitespacesAndNewlines) }
     var answered: Bool { search.answeredText == typed && search.result != nil }
 
+    #if os(macOS)
     private var dark: Bool { NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua }
+    #else
+    private var dark: Bool { UITraitCollection.current.userInterfaceStyle == .dark }
+    #endif
 
     private var actions: [Item] {
         [

@@ -2,8 +2,12 @@
 // window with a clear backdrop, attached at the top (56 pt down, or where the dialog's own margin puts it, as
 // ⌘K's 12vh), centred across the window, in frosted glass (82% surface over a 24 pt blur) with the Mac sheet
 // shadow. A click on the backdrop, Escape or ⌘. closes it; the window behind takes no clicks meanwhile.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import CoreImage
 import SwiftUI
 import FoleviDesign
@@ -14,6 +18,8 @@ public enum FrameSheets {
         let host: NSView
         let monitor: Any?
         let onClose: (() -> Void)?
+        /// (The iPad's hosting controller, kept while its view shows.)
+        var keep: AnyObject?
         init(host: NSView, monitor: Any?, onClose: (() -> Void)?) {
             self.host = host
             self.monitor = monitor
@@ -40,11 +46,17 @@ public enum FrameSheets {
     /// Shows `content` as the frame's dialog (replacing one already shown). `top` is where it attaches.
     static func present<Content: View>(_ model: FrameModel, top: CGFloat = 56, leading: CGFloat? = nil, onClose: (() -> Void)? = nil, @ViewBuilder content: (_ close: @escaping @MainActor () -> Void) -> Content) {
         dismiss(model, notify: false)
+        #if os(macOS)
         guard let window = window(for: model), let root = window.contentView else { return }
+        #else
+        guard let window = window(for: model) else { return }
+        let root: UIView = window
+        #endif
         let key = ObjectIdentifier(model)
         let close: @MainActor () -> Void = { [weak model] in if let model { FrameSheets.dismiss(model) } }
         let layer = SheetLayer(top: top, leading: leading, close: close, content: content(close))
             .environment(\.sheetBackdrop, SheetBackdropImage(image: blurredSnapshot(of: root)))
+        #if os(macOS)
         let host = SheetHostingView(rootView: AnyView(layer))
         host.safeAreaRegions = []
         host.frame = root.bounds
@@ -52,6 +64,17 @@ public enum FrameSheets {
         root.addSubview(host, positioned: .above, relativeTo: nil)
         // The dialog takes the keys (its field gets the focus, as `autoFocus` gives it).
         window.makeFirstResponder(host)
+        let keep: AnyObject? = nil
+        #else
+        let controller = UIHostingController(rootView: AnyView(layer))
+        controller.safeAreaRegions = []
+        controller.view.backgroundColor = .clear
+        let host: UIView = controller.view
+        host.frame = root.bounds
+        host.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        root.addSubview(host)
+        let keep: AnyObject? = controller
+        #endif
         // Escape and ⌘. close it, wherever the focus is inside it (AppKit's field editor keeps Escape otherwise).
         let monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
             guard e.window === window else { return e }
@@ -62,7 +85,9 @@ public enum FrameSheets {
             }
             return e
         }
-        shown[key] = Shown(host: host, monitor: monitor, onClose: onClose)
+        let entry = Shown(host: host, monitor: monitor, onClose: onClose)
+        entry.keep = keep
+        shown[key] = entry
     }
 
     /// Closes every frame's dialog (the eval hook between screens).
@@ -77,10 +102,16 @@ public enum FrameSheets {
     /// The window as it is, blurred as `backdrop-filter: blur(24px)` blurs what's behind a dialog (a Gaussian
     /// with a 24 pt standard deviation, edges extended). Drawn under the dialog's 82% fill, aligned to the window.
     static func blurredSnapshot(of view: NSView) -> NSImage? {
+        #if os(macOS)
         guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
         view.cacheDisplay(in: view.bounds, to: rep)
         guard let cg = rep.cgImage else { return nil }
         let scale = CGFloat(rep.pixelsWide) / max(1, view.bounds.width)
+        #else
+        let picture = UIGraphicsImageRenderer(bounds: view.bounds).image { _ in _ = view.drawHierarchy(in: view.bounds, afterScreenUpdates: false) }
+        guard let cg = picture.cgImage else { return nil }
+        let scale = picture.scale
+        #endif
         let input = CIImage(cgImage: cg)
         guard let blur = CIFilter(name: "CIGaussianBlur") else { return nil }
         blur.setValue(input.clampedToExtent(), forKey: kCIInputImageKey)
@@ -88,7 +119,11 @@ public enum FrameSheets {
         guard let out = blur.outputImage?.cropped(to: input.extent) else { return nil }
         let ctx = CIContext(options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB)!])
         guard let image = ctx.createCGImage(out, from: input.extent, format: .RGBA8, colorSpace: CGColorSpace(name: CGColorSpace.sRGB)) else { return nil }
+        #if os(macOS)
         return NSImage(cgImage: image, size: view.bounds.size)
+        #else
+        return UIImage(cgImage: image, scale: scale, orientation: .up)
+        #endif
     }
 
     static func dismiss(_ model: FrameModel, notify: Bool = true) {
@@ -100,12 +135,14 @@ public enum FrameSheets {
     }
 }
 
+#if os(macOS)
 /// Takes every click over the window while a dialog shows (the page behind is inert, as under a modal <dialog>).
 final class SheetHostingView: NSHostingView<AnyView> {
     override func hitTest(_ point: NSPoint) -> NSView? { super.hitTest(point) ?? self }
     override var acceptsFirstResponder: Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
 }
+#endif
 
 private struct SheetLayer<Content: View>: View {
     let top: CGFloat
@@ -148,7 +185,7 @@ struct WebBackdrop: View {
         GeometryReader { g in
             if let image = backdrop.image {
                 let f = g.frame(in: .global)
-                Image(nsImage: image)
+                Image(platformImage: image)
                     .resizable()
                     .frame(width: image.size.width, height: image.size.height)
                     .offset(x: -f.minX, y: -f.minY)

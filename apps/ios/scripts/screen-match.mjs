@@ -202,31 +202,40 @@ const open = (screen, base) => {
 };
 
 if (styles) {
-  const spec = JSON.parse(readFileSync(join(repo, "packages/design-tokens/match/app-styles/phone.json"), "utf8"));
-  const out = { light: {}, dark: {} };
-  for (const screen of screens) {
-    open(screen, { FOLEVI_WEB_FRAME: "1" });
-    for (const scheme of ["light", "dark"]) {
-      sim.appearance(scheme);
-      sim.sleep(1200);
+  // The iPhone measures its own screens (phone.json into phone.ios.json); the iPad measures the Mac frame's areas
+  // as its web draws them in the wide layout (--spec frame,notes into frame.ipad.json, notes.ipad.json: the
+  // iPad's `data-ipad` touch sizes, which WebStyles.ipad holds and `named` prefers on an iPad).
+  const ipad = /ipad/i.test(device);
+  const areas = arg("--spec", ipad ? "frame,notes" : "phone").split(",");
+  for (const area of areas) {
+    const spec = JSON.parse(readFileSync(join(repo, `packages/design-tokens/match/app-styles/${area}.json`), "utf8"));
+    const out = { light: {}, dark: {} };
+    for (const screen of screens) {
       const tags = Object.fromEntries(Object.entries(spec.styles).filter(([, t]) => t.screen === screen.id));
-      Object.assign(out[scheme], sim.evalJs(`return (${extract.toString()})(${JSON.stringify(tags)})`));
+      if (!Object.keys(tags).length) continue;
+      open(screen, { FOLEVI_WEB_FRAME: "1" });
+      for (const scheme of ["light", "dark"]) {
+        sim.appearance(scheme);
+        sim.sleep(1200);
+        Object.assign(out[scheme], sim.evalJs(`return (${extract.toString()})(${JSON.stringify(tags)})`));
+      }
     }
+    sim.appearance("light");
+    const wanted = Object.entries(spec.styles).filter(([, t]) => screens.some((s) => s.id === t.screen)).map(([id]) => id);
+    const missing = wanted.filter((id) => !out.light[id]);
+    if (missing.length) console.warn(`${area}: not found on the ${ipad ? "iPad" : "iPhone"}: ${missing.join(", ")}`);
+    const name = `${area}.${ipad ? "ipad" : "ios"}.json`;
+    const file = join(repo, "packages/design-tokens/match/app-styles-cache", name);
+    // Screens measured before stay unless measured again.
+    let kept = { light: {}, dark: {} };
+    try {
+      kept = JSON.parse(readFileSync(file, "utf8"));
+    } catch {
+      /* none yet */
+    }
+    writeFileSync(file, JSON.stringify({ light: { ...kept.light, ...out.light }, dark: { ...kept.dark, ...out.dark } }, null, 1) + "\n");
+    console.log(`wrote ${name} (${Object.keys(out.light).length} styles)`);
   }
-  sim.appearance("light");
-  const wanted = Object.entries(spec.styles).filter(([, t]) => screens.some((s) => s.id === t.screen)).map(([id]) => id);
-  const missing = wanted.filter((id) => !out.light[id]);
-  if (missing.length) console.warn(`not found on the iPhone: ${missing.join(", ")}`);
-  const file = join(repo, "packages/design-tokens/match/app-styles-cache/phone.ios.json");
-  // Screens measured before stay unless measured again.
-  let kept = { light: {}, dark: {} };
-  try {
-    kept = JSON.parse(readFileSync(file, "utf8"));
-  } catch {
-    /* none yet */
-  }
-  writeFileSync(file, JSON.stringify({ light: { ...kept.light, ...out.light }, dark: { ...kept.dark, ...out.dark } }, null, 1) + "\n");
-  console.log(`wrote phone.ios.json (${Object.keys(out.light).length} styles)`);
   process.exit(0);
 }
 

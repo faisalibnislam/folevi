@@ -1,8 +1,12 @@
 // Settings' sections a library has (local mode), drawn as the web's: Library (views/settings/LibrarySection.tsx),
 // AI on the device (LocalAiSection.tsx, AiMemory.tsx), Appearance (AppearanceSection.tsx), Desktop app
 // (DesktopSection.tsx). Their words come from the engine (viewsSettings.ts), as the web words them.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -364,7 +368,7 @@ private struct PassphraseDialog: View {
                     labelled(kind == .change ? "New passphrase" : "Passphrase") { SettingsField(placeholder: "", text: $passphrase, secure: true, height: 40) }
                     labelled("Type it again") { SettingsField(placeholder: "", text: $confirm, secure: true, height: 40) }
                     SMuted("Use at least \(min) characters. A few unrelated words are easy to remember and hard to guess.")
-                    Toggle("I understand Folevi can't recover a lost passphrase", isOn: $understood).toggleStyle(.checkbox)
+                    Toggle("I understand Folevi can't recover a lost passphrase", isOn: $understood).checkboxStyle()
                         .webText(.role(.body))
                 }
                 if let problem { Text(problem).webText(.role(.body)).foregroundStyle(SettingsColor.v("color-danger", scheme)) }

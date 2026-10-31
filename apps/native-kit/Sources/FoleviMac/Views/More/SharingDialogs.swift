@@ -2,8 +2,12 @@
 // who has access, people and roles, invitations, public links) and a folder's (app/FolderShareDialog.tsx: what
 // sharing reaches, people, from folders above, invitations). Bridge views `sharing.get` and `folderSharing.get`;
 // commands sharing.* / folderSharing.* / publicLink.*. Sharing inside an open note stays the editor's own.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

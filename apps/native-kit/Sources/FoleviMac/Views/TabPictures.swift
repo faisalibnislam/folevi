@@ -1,8 +1,12 @@
 // Tabs as pictures (the web's TabPreview.tsx and TabOverview.tsx): a note's page drawn small from the same HTML as
 // an export (the engine's note.picture), in a web view where nothing can run, take focus or be clicked; joined notes
 // side by side; a view as its icon and name. The strip's hover card and the Tab Overview draw from here.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import WebKit
 import FoleviDesign
@@ -37,6 +41,7 @@ public final class TabPictureStore {
     }
 }
 
+#if os(macOS)
 /// A web view that shows a page and nothing else: no scripts, no pointer, no focus, its own empty data store.
 private final class PictureWebView: WKWebView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -85,6 +90,52 @@ private struct PageFrame: NSViewRepresentable {
         v.loadHTMLString(html, baseURL: nil)
     }
 }
+#else
+/// A web view that shows a page and nothing else: no scripts, no touches, its own empty data store.
+private struct PageFrame: UIViewRepresentable {
+    let html: String
+    let scale: CGFloat
+    @Binding var loaded: Bool
+
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        var parent: PageFrame
+        var shown: String?
+        init(_ p: PageFrame) { parent = p }
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { parent.loaded = true }
+        func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
+            action.navigationType == .other && action.request.url?.absoluteString == "about:blank" ? .allow : .cancel
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    @MainActor private static let store = WKWebsiteDataStore.nonPersistent()
+
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.websiteDataStore = Self.store
+        config.defaultWebpagePreferences.allowsContentJavaScript = false
+        config.suppressesIncrementalRendering = true
+        let v = WKWebView(frame: .zero, configuration: config)
+        v.isOpaque = false
+        v.backgroundColor = .clear
+        v.scrollView.isScrollEnabled = false
+        v.isUserInteractionEnabled = false
+        v.isAccessibilityElement = false
+        v.accessibilityElementsHidden = true
+        v.navigationDelegate = context.coordinator
+        return v
+    }
+
+    func updateUIView(_ v: WKWebView, context: Context) {
+        context.coordinator.parent = self
+        if v.pageZoom != scale { v.pageZoom = scale }
+        guard context.coordinator.shown != html else { return }
+        context.coordinator.shown = html
+        v.loadHTMLString(html, baseURL: nil)
+    }
+}
+#endif
 
 /// One note's page, small: a placeholder until the picture is drawn, which then fades in (never a blank frame).
 struct MiniPage: View {

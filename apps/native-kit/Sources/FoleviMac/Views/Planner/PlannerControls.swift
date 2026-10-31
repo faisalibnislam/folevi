@@ -2,8 +2,12 @@
 // field and its month calendar (WAI-ARIA date grid keys: arrows by day and week, Page Up and Down by month, with
 // Shift by year, Home and End, Return picks), the time list in 15-minute steps, and the select. Never the system's
 // date picker or pop-up button.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import FoleviDesign
 import FoleviEngine

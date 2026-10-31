@@ -344,5 +344,8 @@ account-mode sign-out and place switching want a run with a scratch test account
 - **Not checked against the web:** Shared with Me, Changes and Notifications exist only signed in, so the scratch
   library can't show them; they follow the web's markup and need a run with a scratch test account. Changes
   shows a note's changes with the kit's native diff, where the web draws the changed blocks in its editor.
-- Not yet in I3: a folder's own menu (rename, colour, move, delete: the web's folder card "…" and long press) on
-  folder cards and the folder screen; iPad (I6 has its own frame).
+- A folder's menu: a long press on a folder card (Home, All folders) shows the kit's folder menu (new note, new
+  folder inside, rename, colour, move, Foli AI, copy link, delete); rename, move and delete use the kit's dialogs
+  (iOS's own alerts and sheets, where the web draws its dialogs: to match in a later pass). Moving a folder to
+  another place and inviting people say they're coming.
+- Not yet in I3: iPad (I6 has its own frame).

@@ -251,8 +251,10 @@ public struct WebNoteCard: View {
                 .offset(y: h * 0.014)
             // The cover.
             HStack(spacing: 0) {
+                // (Clipped at the strip's own width: a style image fills it and would otherwise spread under the text.)
                 spine
-                    .frame(width: sheetW * 0.06)
+                    .frame(width: sheetW * 0.06, height: sheetH)
+                    .clipped()
                     .overlay(alignment: .trailing) { Rectangle().fill(Color.black.opacity(0.06)).frame(width: 1) }
                 content(cq: cq, titleWidth: sheetW * 0.94 - 20 * cq, heading: heading, faint: faint, muted: muted, chip: chip)
             }

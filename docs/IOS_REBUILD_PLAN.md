@@ -356,9 +356,9 @@ account-mode sign-out and place switching want a run with a scratch test account
   shows a note's changes with the kit's native diff, where the web draws the changed blocks in its editor.
 - A folder's menu: a long press on a folder card (Home, All folders) shows the kit's folder menu (new note, new
   folder inside, rename, colour, move, Foli AI, copy link, delete); rename, move and delete use the kit's dialogs
-  (iOS's own alerts and sheets, where the web draws its dialogs: to match in a later pass). Moving a folder to
-  another place and inviting people say they're coming.
-- Not yet in I3: iPad (I6 has its own frame).
+  (iOS's own alerts and sheets). That matches: the web hands Rename and Delete to the system's alert in the apps
+  (`hasNative("alert")`); only Move's sheet is drawn differently. Moving a folder to another place and inviting
+  people say they're coming.
 
 **I4 (2026-10-31): Tasks, Calendar and Settings, native** (branch `claude/xenodochial-lamarr-eba91d`, on top of I3):
 - **Tasks** (`FoleviPhone/PhoneTasks.swift`, `Rebuild/RebuildTasks.swift`, from TasksModel): the views as capsules
@@ -400,10 +400,23 @@ account-mode sign-out and place switching want a run with a scratch test account
   since the web places it once on first paint before or after the counts arrive; the month's grabber) and
   `nativeEnv` (the new frame's launch hooks: `FOLEVI_REBUILD_MONTH=1`, `FOLEVI_REBUILD_TASK=<title>`). Run on a
   Simulator of its own: `--device "Folevi I4 iPhone 18 Pro"` (a clone, `xcrun simctl clone`).
-
-  (iOS's own alerts and sheets). That matches: the web hands Rename and Delete to the system's alert in the apps
-  (`hasNative("alert")`); only Move's sheet is drawn differently. Moving a folder to another place and inviting
-  people say they're coming.
+- **Comparisons** (light/dark, whole screen, the seeded scratch library, 2026-10-31): Tasks Today 0.19/0.18%, All
+  0.16/0.15%, Upcoming 0.10/0.10%, Completed 0.32/0.31%, Calendar 0.16/0.15%, the pulled-down month 0.13/0.13%,
+  Settings 0.07/0.07%, Library 0.31/0.30%, AI 0.41/0.42%, Appearance 0.01/0.01%, Theme 0.07/0.07%, Import & export
+  0.04/0.08%, This device 0.01/0.01%: all under 0.5%. I3's screens after the kit fixes: Home 0.20% light (was
+  0.35), 1.19% dark (was 1.35, the glass, as before), All folders 0.26/0.29% (was 0.40/0.47), the rest as before
+  (search typed still 0.70%).
+- **Not under 0.5%: a task's sheet** (7.2% light, 8.7% dark). Its content matches the web's; the difference is
+  where the sheet sits: on iOS 26 a sheet at a partial height floats in from the screen's edges and its foot (the
+  system's look, noted in I1), where the web's Sheet.tsx stays attached at the full width. Matching it needs the
+  frame's own sheet instead of iOS's, a decision for the whole frame (every fitted sheet has it).
+- **Not checked against the web:** the account's Settings sections, Calendar events and Subscribe to a calendar
+  exist only signed in, so the scratch library can't show them: they follow the web's sections and the Mac's
+  words, and want a run with a scratch test account. Week and Month (from "…") show the kit's grids, not the web's.
+  Quick task (+ on Tasks, a day's + uses an alert for now) is I8's Quick Add. Two-step verification and passkeys
+  open the website; making API tokens and webhooks stays on the web (the rows list, switch and remove them).
+- iPad: the shared views (PhoneTasks, PhoneAgenda, PhoneSettings*) are the iPhone's; I7's wide iPad layout draws
+  the Mac's own Planner and Settings views.
 
 ### I7, I8, I9 (2026-10-31)
 

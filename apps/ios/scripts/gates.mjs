@@ -77,6 +77,8 @@ export function simulator(device) {
     }
     throw new Error(`none of ${texts.join(", ")} showed`);
   };
+  // (simctl passes its own SIMCTL_CHILD_* variables on to the app.)
+  const launch = (env) => sh("xcrun", ["simctl", "launch", udid, BUNDLE], Object.fromEntries(Object.entries(env).map(([k, v]) => [`SIMCTL_CHILD_${k}`, v])));
   const press = (label) => evalJs(`const b = [...document.querySelectorAll("button, a")].find((x) => x.textContent.trim().startsWith(${JSON.stringify(label)})) ?? [...document.querySelectorAll("button, a")].find((x) => x.textContent.includes(${JSON.stringify(label)})); if (!b) return false; b.click(); return true;`);
   return {
     udid,
@@ -85,6 +87,7 @@ export function simulator(device) {
     evalJs,
     waitFor,
     press,
+    launch,
     /** A fresh install of `app`, launched with `env`, at `gate` (its steps pressed in the page). */
     open(app, gate, env) {
       try {
@@ -98,7 +101,7 @@ export function simulator(device) {
         /* not installed */
       }
       simctl("install", udid, app);
-      sh("xcrun", ["simctl", "launch", udid, BUNDLE], Object.fromEntries(Object.entries(env).map(([k, v]) => [`SIMCTL_CHILD_${k}`, v])));
+      launch(env);
       waitFor("Where should your notes live?", 60000);
       // A step's label starting "?" is pressed only if it's there; "a|b" waits for either.
       for (const [label, next, ms] of gate.steps) {
@@ -120,7 +123,7 @@ export function simulator(device) {
       if (gate.relaunch) {
         sleep(gate.settle ?? 3000);
         simctl("terminate", udid, BUNDLE);
-        sh("xcrun", ["simctl", "launch", udid, BUNDLE], Object.fromEntries(Object.entries({ ...env, ...gate.relaunch }).map(([k, v]) => [`SIMCTL_CHILD_${k}`, v])));
+        launch({ ...env, ...gate.relaunch });
       }
       waitFor(gate.ready, 60000);
       if (gate.blur) {

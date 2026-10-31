@@ -191,7 +191,7 @@ I1 continued (2026-10-31):
   start at a row's text (`.phoneSeparatorInset`).
 - **The account sheet** (`PhoneAccountSheet.swift`): AccountSheet.tsx's places (accounts, workspaces under them,
   the library), Settings, Sign in to another account, Move or copy notes, Help, Sign out; medium, ending after
-  Places. Filled with sample places in the Debug frame until I2 brings the real ones.
+  Places. Filled from the engine since I2.
 - **Menus and +** (`PhoneMenu.swift`): the web's iOS menu panel placed as Menu.tsx places it (8 pt off, flips,
   stays on screen) and grown on the menu spring from its corner; the Create menu over + (New note, From template,
   New folder, Quick task; on Tasks, + is Quick task). The sheets New folder and Quick task open come with their
@@ -271,11 +271,34 @@ I1 is done but for Foli AI's sheet (I5) and tap checks (need Simulator input all
   Mac's measuring script, now `scripts/style-extract.mjs`) into `app-styles-cache/gates.ios.json`; `pnpm
   styles:gen` puts the 46 that differ in WebStyles.ios.
 - Whole-screen check: `apps/ios/scripts/gate-match.mjs` takes each gate from a fresh install, in the web frame
-  and in the new frame, light and dark, and compares them (status bar and home indicator left out). Now: first
-  launch 4.0%, library setup 1.4%, library ready 1.6% (the threshold is 0.5%): the column a few pixels apart, the
-  footnote's and the passphrase card's line breaks, the bold path in "Your library is ready". The Mac's gates are
-  unchanged (its paragraphs have no padding; it builds and its tests compile).
+  and in the new frame, light and dark, and compares them (status bar and home indicator left out; the threshold
+  is 0.5%). Now (2026-10-31): first launch 0.04/0.05%, library setup 0.13/0.14%, library ready 0.26/0.27%, sign-in
+  0.49/0.51%, the locked library 0.39/0.05% (light/dark). Sign-in dark is 0.01 over: white-on-black text
+  antialiasing, the same to the eye. Paragraphs break as the iPhone's WebKit does (`text-wrap: pretty` measured
+  against the web's own breaks: a last-line weight of 0.6, `WebTextWrap.iPhonePretty`).
+- **Sign-in**: the page's phone layout now reports its screen to native (it didn't: only the Mac's card did), and
+  follows the system's appearance (it kept the one it loaded with; a bug in today's app too). The native screen is
+  the logo, the title and its line over Continue with Apple, Continue with Google, Sign in with email and Keep notes
+  on my devices instead; each presses the page's own button (Apple's sheet, PKCE in the sign-in sheet).
+- The new frame survives a change of mode or place (`FoleviViewController.restart` retires it and makes a new one
+  on the new web view; before, it fell back to the old frame).
+- **The locked library**: measured from the web (`gates.locked.*`), "this iPhone" or "this iPad", unlocks through
+  the page (checked in the Simulator: the passphrase typed in the native field opens the library). The column
+  moves up out of the keyboard's way, and the hidden page's own field no longer takes the keyboard (it did: a dark
+  keyboard, and typing would have gone into the hidden page). The harness reaches it by encrypting a scratch
+  library and opening it again without its key (`FOLEVI_FORGET_LIBRARY_KEY`, Debug Simulator builds only).
+- **The account sheet** is real: the places from the engine (FoleviScreens' PlacesModel: the open account with
+  Personal, its workspaces and New workspace…, the other accounts, the library on this device), a space switching
+  in the engine, another place through ShellPlaces and a restart, Sign in to another account through ShellAuth,
+  Settings, Help. Sign out is the page's own (`account.signOut`, contract revision 23: this account's copy and keys
+  here go, then the host opens the next place), with a warning only when changes haven't synced, as the web.
+  Checked in local mode (the page signs out and starts again); in account mode not yet (needs a signed-in test
+  account). New workspace and Move or copy say they come with the next update, as today's app does.
+- **Upgrade**: `apps/ios/scripts/upgrade-check.mjs` makes a library and a note in today's frame, opens the same
+  install in the new frame straight on that note, makes one there, and finds it in today's app again: 5 of 5 pass.
+  This is today's frame from this branch's build, not the App Store binary (the Simulator can't install that one);
+  a TestFlight-to-rebuild check on a device waits for the one build at the end.
 
-Next in I2: the gates to under 0.5%, then sign-in (the account gate's card, Apple and Google through the page's
-PKCE), the locked library, the real account sheet (places from the engine, switching), migration from the shipped
-app with scratch data.
+Next: I3, the lists (Home, All notes, folders, Starred, Shared, Drafts, search, Notifications), which replace the
+placeholder screens. Left in I2: email and password and TOTP sign-in are the website's in the sign-in sheet, as
+today (no native form); account-mode sign-out and place switching want a run with a scratch test account.

@@ -8065,3 +8065,58 @@ public struct ThreadIdArgs: Codable, Hashable, Sendable {
         self.threadId = threadId
     }
 }
+
+public struct TextLayoutArgs: Codable, Hashable, Sendable {
+    public enum Family: String, Codable, Hashable, Sendable, CaseIterable {
+        case sans
+        case display
+    }
+
+    public enum Wrap: String, Codable, Hashable, Sendable, CaseIterable {
+        case pretty
+        case wrap
+        case balance
+    }
+
+    /// Up to 64 texts, each up to 4,000 characters, set one after another in the same style.
+    public var texts: [String]
+    /// The app's sans (Instrument Sans) or display face (Spectral).
+    public var family: Family
+    /// CSS pixels (the `px` names are Doubles in the native contract).
+    public var pxSize: Double
+    public var pxLineHeight: Double
+    /// Default 400.
+    public var weight: Int?
+    /// CSS pixels (default 0).
+    public var pxLetterSpacing: Double?
+    /// The paragraph's width in CSS pixels.
+    public var pxWidth: Double
+    public var wrap: Wrap
+    /// `white-space: pre-line` (line breaks in the text kept), else normal.
+    public var pre: Bool?
+    /// A `-webkit-line-clamp` box of this many lines, as a card's preview is (one line more comes back, so a caller
+    /// knows there's more).
+    public var clamp: Int?
+
+    public init(texts: [String], family: Family, pxSize: Double, pxLineHeight: Double, weight: Int? = nil, pxLetterSpacing: Double? = nil, pxWidth: Double, wrap: Wrap, pre: Bool? = nil, clamp: Int? = nil) {
+        self.texts = texts
+        self.family = family
+        self.pxSize = pxSize
+        self.pxLineHeight = pxLineHeight
+        self.weight = weight
+        self.pxLetterSpacing = pxLetterSpacing
+        self.pxWidth = pxWidth
+        self.wrap = wrap
+        self.pre = pre
+        self.clamp = clamp
+    }
+}
+
+public struct TextLayoutResult: Codable, Hashable, Sendable {
+    /// Each text's lines, as laid out, trailing spaces dropped; an empty line for each blank one.
+    public var lines: [[String]]
+
+    public init(lines: [[String]]) {
+        self.lines = lines
+    }
+}

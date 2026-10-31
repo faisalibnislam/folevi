@@ -15,9 +15,30 @@ public struct WebRun: Hashable, Sendable {
     public var color: RGBA?
 
     public init(_ text: String, weight: CGFloat? = nil, color: RGBA? = nil) {
-        self.text = text
+        self.text = text.webKitShaped
         self.weight = weight
         self.color = color
+    }
+}
+
+public extension String {
+    /// The text as WebKit shapes it: in pieces split where a line may break, so no kerning across a hyphen (the
+    /// "-1" in "2026-11-12" loses 1.7 pt in Core Text, none in WebKit). A zero-width non-joiner after each hyphen
+    /// keeps Core Text from kerning across it (it kerns straight across a zero-width space), and a zero-width space
+    /// after that keeps the line break the hyphen allows (the non-joiner takes it away); both draw nothing. iOS only for now: the Mac's matched screens were measured without it.
+    var webKitShaped: String {
+        #if os(iOS)
+        guard contains("-") else { return self }
+        var out = ""
+        let chars = Array(self)
+        for (i, c) in chars.enumerated() {
+            out.append(c)
+            if c == "-", i + 1 < chars.count, !chars[i + 1].isWhitespace, chars[i + 1] != "\u{200C}" { out.append("\u{200C}\u{200B}") }
+        }
+        return out
+        #else
+        self
+        #endif
     }
 }
 

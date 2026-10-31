@@ -319,7 +319,7 @@ public struct WebNoteCard: View {
                     } else if phone {
                         // The iPhone's WebKit breaks a `<p>` the pretty way (globals.css `p { text-wrap: pretty }`).
                         VStack(alignment: .leading, spacing: 0) {
-                            ForEach(Array(Self.prettyLines(text, style: bodyStyle, width: geo.size.width, max: lines).enumerated()), id: \.offset) { _, line in
+                            ForEach(Array(Self.phoneLines(text, style: bodyStyle, width: geo.size.width, max: lines).enumerated()), id: \.offset) { _, line in
                                 Text(line).webText(bodyStyle).lineLimit(1).truncationMode(.tail)
                             }
                         }
@@ -380,6 +380,18 @@ public struct WebNoteCard: View {
     }
 
     /// `white-space: pre-line`: runs of spaces become one, line breaks stay.
+    /// A card preview's lines on the phone: WebKit's own (the page's `text.layout`, in the clamped box the card's
+    /// `<p>` is) once they've come, the pretty model's until then.
+    @MainActor
+    static func phoneLines(_ text: String, style: WebTextStyle, width: CGFloat, max: Int) -> [String] {
+        let s = WebLineLayout.Style(family: .sans, size: style.size, lineHeight: style.leading, weight: style.weight, letterSpacing: style.letterSpacing, width: width, wrap: .pretty, pre: true, clamp: max)
+        guard let got = WebLineLayout.shared.lines(text, style: s) else { return prettyLines(text, style: style, width: width, max: max) }
+        guard got.count > max else { return got.map { $0.isEmpty ? " " : $0.webKitShaped } }
+        var shown = Array(got.prefix(max)).map { $0.isEmpty ? " " : $0.webKitShaped }
+        shown[max - 1] += "…"
+        return shown
+    }
+
     /// The body's lines as the iPhone's WebKit sets a `white-space: pre-line` paragraph with `text-wrap: pretty`:
     /// each line of the text broken on its own, up to `max`; the last shown holds the rest (cut with "…").
     static func prettyLines(_ text: String, style: WebTextStyle, width: CGFloat, max: Int) -> [String] {
@@ -653,6 +665,15 @@ struct WebFolderNote: View {
     let cq: CGFloat
     let labelScale: CGFloat
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.webPhoneCards) private var phone
+
+    /// The paper's lines: WebKit's own once they've come (`text.layout`), the pretty model's until then.
+    @MainActor
+    static func paperLines(_ text: String, style: WebTextStyle, width: CGFloat) -> [String] {
+        let s = WebLineLayout.Style(family: .sans, size: style.size, lineHeight: style.leading, weight: style.weight, letterSpacing: style.letterSpacing, width: width, wrap: .pretty, pre: true)
+        guard let got = WebLineLayout.shared.lines(text, style: s) else { return WebNoteCard.prettyLines(text, style: style, width: width, max: 12) }
+        return got.prefix(12).map { $0.isEmpty ? " " : $0.webKitShaped }
+    }
 
     var body: some View {
         let style = WebStyles.named("notes.folder.note").resolve(scheme)
@@ -671,11 +692,25 @@ struct WebFolderNote: View {
                     VStack(alignment: .leading, spacing: 0) {
                         WebClampedText(note.title.isEmpty ? "Untitled" : note.title, style: WebTextStyle(family: .display, size: 5.4 * cq, leading: 5.4 * cq * 1.2, weight: 500), maxLines: 2, width: w * 0.8)
                             .foregroundStyle(ink.color)
-                        Text(WebNoteCard.preLine(note.excerpt))
-                            .webText(WebTextStyle(size: 3.2 * cq, leading: 3.2 * cq * 1.45))
-                            .foregroundStyle(ink.oklabMix(paper, 0.82).color)
-                            .padding(.top, 2 * cq)
-                            .frame(width: w * 0.53, alignment: .leading)
+                        let body = WebTextStyle(size: 3.2 * cq, leading: 3.2 * cq * 1.45)
+                        Group {
+                            if phone {
+                                // The phone: the paper's whole text box (80% of it), a `<p>` broken the iPhone's
+                                // pretty way; what runs past the paper is clipped.
+                                VStack(alignment: .leading, spacing: 0) {
+                                    ForEach(Array(Self.paperLines(note.excerpt, style: body, width: w * 0.8).enumerated()), id: \.offset) { _, line in
+                                        Text(line).webText(body).lineLimit(1)
+                                    }
+                                }
+                                .frame(width: w * 0.8, alignment: .leading)
+                            } else {
+                                Text(WebNoteCard.preLine(note.excerpt))
+                                    .webText(body)
+                                    .frame(width: w * 0.53, alignment: .leading)
+                            }
+                        }
+                        .foregroundStyle(ink.oklabMix(paper, 0.82).color)
+                        .padding(.top, 2 * cq)
                     }
                     .frame(width: w * 0.8, alignment: .topLeading)
                     .padding(.top, h * 0.07)
@@ -808,7 +843,7 @@ public struct WebClampedText: View {
     let balance: Bool
 
     public init(_ text: String, style: WebTextStyle, maxLines: Int, width: CGFloat, alignment: HorizontalAlignment = .leading, balance: Bool = false) {
-        self.text = text
+        self.text = text.webKitShaped
         self.style = style
         self.maxLines = maxLines
         self.width = width

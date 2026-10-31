@@ -31,7 +31,9 @@ final class FolderCardGeometryTests: XCTestCase {
         let h = Double(w) * 912 / 820
         XCTAssertEqual(Double(img.height) / 3 - 40, h, accuracy: 0.5)
         // The cover starts at 46% (its 1 pt highlight) and ends with the card (its 1 pt edge).
-        XCTAssertEqual(edges.first ?? 0, h * 0.46, accuracy: 1.5, "cover top, edges \(edges)")
+        // (The back's edges come first: the cover's top is the edge nearest 46%.)
+        let top = edges.min { abs($0 - h * 0.46) < abs($1 - h * 0.46) } ?? 0
+        XCTAssertEqual(top, h * 0.46, accuracy: 1.5, "cover top, edges \(edges)")
         XCTAssertEqual(edges.last ?? 0, h, accuracy: 1, "cover foot, edges \(edges)")
     }
 }

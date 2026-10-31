@@ -1,0 +1,26 @@
+{
+  "kind": "command",
+  "name": "text.layout",
+  "description": "A card preview's lines as WebKit breaks them (revision 24).",
+  "args": {
+    "texts": [
+      "Folevi is a quiet place for ideas that keep growing."
+    ],
+    "family": "sans",
+    "pxSize": 6.408,
+    "pxLineHeight": 8.9,
+    "pxLetterSpacing": -0.096,
+    "pxWidth": 142.55,
+    "wrap": "pretty",
+    "pre": true,
+    "clamp": 10
+  },
+  "result": {
+    "lines": [
+      [
+        "Folevi is a quiet place for ideas that keep",
+        "growing."
+      ]
+    ]
+  }
+}

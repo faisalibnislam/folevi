@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "cabb9be6"
+        "schemaHash": "86ac933c"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 23,
+        "revision": 24,
         "build": "dev",
-        "schemaHash": "cabb9be6",
+        "schemaHash": "86ac933c",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -240,7 +240,8 @@
           "comment.resolve",
           "comment.read",
           "comment.deleteThread",
-          "account.signOut"
+          "account.signOut",
+          "text.layout"
         ],
         "editorCommands": [
           "note.prepare",

@@ -35,6 +35,8 @@ public struct PhoneSearchScreen: View {
     /// A scope chip's menu, from where it was tapped.
     let scopeMenu: (String, CGRect) -> Void
     @FocusState private var focused: Bool
+    /// Recent: the notes opened last (`recent.viewed`, the palette's), not the ones edited last.
+    @State private var viewed: ValueStore<RecentViewedValue>?
     @Environment(\.colorScheme) private var scheme
 
     public init(model: SearchModel, aiOn: Bool, actions: [PhoneSearchAction], askAI: @escaping (String?) -> Void, openNote: @escaping (String) -> Void, close: @escaping () -> Void, scopeMenu: @escaping (String, CGRect) -> Void) {
@@ -68,8 +70,17 @@ public struct PhoneSearchScreen: View {
             .ignoresSafeArea(edges: [.top, .bottom])
         }
         .background(FoleviTokens.Chrome.canvas.resolve(scheme).color.ignoresSafeArea())
-        .onAppear { focused = !Self.noKeyboard }
+        .onAppear {
+            focused = !Self.noKeyboard
+            if viewed == nil { viewed = model.client.watch(.recentViewed(limit: 8)) }
+        }
         .onSubmit { model.remember() }
+    }
+
+    static func relative(_ ms: Double) -> String {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .full
+        return f.localizedString(for: Date(timeIntervalSince1970: ms / 1000), relativeTo: ScreenClock.now())
     }
 
     /// FOLEVI_GATE_NO_KEYBOARD=1 (Debug): opens without the keyboard, for comparing the screen.
@@ -145,7 +156,7 @@ public struct PhoneSearchScreen: View {
                 ForEach(meaning, id: \.id) { hit in noteRow(hit) }
             }
         } else {
-            ForEach((model.home.value?.recents ?? []).prefix(8), id: \.id) { row in
+            ForEach(viewed?.value?.rows ?? [], id: \.id) { row in
                 recentRow(row)
             }
         }
@@ -174,7 +185,8 @@ public struct PhoneSearchScreen: View {
 
     private func noteRow(_ hit: SearchHit) -> some View {
         row(icon: AnyView(WebIconView(.fileText, size: 22, strokeWidth: 1.8)), minHeight: 64) {
-            VStack(alignment: .leading, spacing: 0) {
+            // (The snippet 2 below the title: `mt-0.5`.)
+            VStack(alignment: .leading, spacing: 2) {
                 PhoneHighlighted(text: hit.title.isEmpty ? "Untitled" : hit.title, query: model.answeredText, style: body17, color: ink).lineLimit(1)
                 if !hit.snippet.isEmpty {
                     // (The place only when searching all of them; the snippet's line breaks collapse, as in a span.)
@@ -189,11 +201,11 @@ public struct PhoneSearchScreen: View {
         }
     }
 
-    private func recentRow(_ row: NoteRow) -> some View {
+    private func recentRow(_ row: RecentViewedRow) -> some View {
         self.row(icon: AnyView(WebIconView(.fileText, size: 22, strokeWidth: 1.8)), minHeight: 64) {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(row.title.isEmpty ? "Untitled" : row.title).webText(body17).lineLimit(1).foregroundStyle(ink.color)
-                Text("Edited \(CardMapping.timeText(row, inTrash: false))").webText(sub15).lineLimit(1).foregroundStyle(faint.color)
+                Text("Edited \(Self.relative(row.updatedAt))").webText(sub15).lineLimit(1).foregroundStyle(faint.color)
             }
             .padding(.vertical, 10)
         } action: { openNote(row.id) }
@@ -268,13 +280,17 @@ struct PhoneHighlighted: View {
     }
 
     private var attributed: AttributedString {
-        var a = AttributedString(text)
+        var a = AttributedString(text.webKitShaped)
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return a }
         var searchStart = a.startIndex
         while searchStart < a.endIndex, let r = a[searchStart...].range(of: q, options: .caseInsensitive) {
             a[r].backgroundColor = (scheme == .dark ? RGBA(92, 78, 24) : RGBA(252, 239, 180)).color
             a[r].foregroundColor = FoleviTokens.Chrome.ink.resolve(scheme).color
+            // (The mark's 1 pt of padding either side: what follows it sits 2 pt further on.)
+            if let last = a[r].characters.indices.last {
+                a[last..<a.index(afterCharacter: last)].kern = 2
+            }
             searchStart = r.upperBound
         }
         return a

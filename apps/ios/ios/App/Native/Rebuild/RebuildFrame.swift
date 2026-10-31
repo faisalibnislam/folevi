@@ -123,6 +123,18 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
             },
         ]
         model.start()
+        // Small web text drawn natively asks the page how WebKit breaks it (`text.layout`).
+        let client = model.client
+        WebLineLayout.shared.requester = { style, texts in
+            let r = try await client.command(.textLayout(
+                texts: texts,
+                family: style.family == .display ? .display : .sans,
+                pxSize: Double(style.size), pxLineHeight: Double(style.lineHeight), weight: Int(style.weight),
+                pxLetterSpacing: Double(style.letterSpacing), pxWidth: Double(style.width),
+                wrap: style.wrap == .balance ? .balance : style.wrap == .wrap ? .wrap : .pretty,
+                pre: style.pre, clamp: style.clamp))
+            return r.lines
+        }
         // FOLEVI_REBUILD_NEWNOTE=1: a new note at launch (for checking the note page headlessly; scratch data only).
         if ProcessInfo.processInfo.environment["FOLEVI_REBUILD_NEWNOTE"] == "1" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in self?.model.newNote() }

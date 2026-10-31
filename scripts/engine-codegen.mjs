@@ -16,7 +16,7 @@
 //
 // It reads the TypeScript syntax tree directly (the compiler API, no checker), so protocol.ts must keep to the
 // codegen-friendly rules written at its top. Anything it can't map becomes JSONValue with a warning, never a
-// silent guess. Numbers become Int, except timestamps (`...At`, `at`) and CSS lengths (`top`, `bottom`) and the editor's text size (`editorZoom`), which
+// silent guess. Numbers become Int, except timestamps (`...At`, `at`), CSS lengths (`top`, `bottom`, anything named `px...`) and the editor's text size (`editorZoom`), which
 // become Double (NUMBER_OVERRIDES below).
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve, relative } from "node:path";
@@ -55,7 +55,7 @@ const SKIP = new Set([
 ]);
 const MAPS = { views: "ViewMap", lists: "ListViewMap", commands: "CommandMap", editor: "EditorCommandMap", events: "EventMap" };
 /** Property names whose numbers are Double rather than Int. */
-const NUMBER_OVERRIDES = [/At$/, /^at$/, /^top$/, /^bottom$/, /^editorZooms?$/, /^[xy]$/, /^sizes$/];
+const NUMBER_OVERRIDES = [/At$/, /^at$/, /^top$/, /^bottom$/, /^editorZooms?$/, /^[xy]$/, /^sizes$/, /^px[A-Z]/];
 const SWIFT_KEYWORDS = new Set(
   "associatedtype class deinit enum extension fileprivate func import init inout internal let open operator private precedencegroup protocol public rethrows static struct subscript typealias var break case catch continue default defer do else fallthrough for guard if in repeat return throw switch where while as false is nil self Self super throws true try Any Type".split(" "),
 );

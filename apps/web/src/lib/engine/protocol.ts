@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 23;
+export const CONTRACT_REVISION = 24;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -3809,6 +3809,39 @@ export interface ListViewMap {
 // the next place (or, in local mode, the page starts again). The app warns about unsynced changes first.
 // ---------------------------------------------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------------------------------------------
+// Revision 24: `text.layout`, lines as the page's WebKit breaks them, for small web text the native apps draw
+// themselves (a note card's preview, a folder card's papers): iOS WebKit's `text-wrap: pretty` in a line-clamped
+// box can't be modelled closely enough. Read-only.
+// ---------------------------------------------------------------------------------------------------------------
+
+export interface TextLayoutArgs {
+  /** Up to 64 texts, each up to 4,000 characters, set one after another in the same style. */
+  texts: string[];
+  /** The app's sans (Instrument Sans) or display face (Spectral). */
+  family: "sans" | "display";
+  /** CSS pixels (the `px` names are Doubles in the native contract). */
+  pxSize: number;
+  pxLineHeight: number;
+  /** Default 400. */
+  weight?: number;
+  /** CSS pixels (default 0). */
+  pxLetterSpacing?: number;
+  /** The paragraph's width in CSS pixels. */
+  pxWidth: number;
+  wrap: "pretty" | "wrap" | "balance";
+  /** `white-space: pre-line` (line breaks in the text kept), else normal. */
+  pre?: boolean;
+  /** A `-webkit-line-clamp` box of this many lines, as a card's preview is (one line more comes back, so a caller
+   * knows there's more). */
+  clamp?: number;
+}
+
+export interface TextLayoutResult {
+  /** Each text's lines, as laid out, trailing spaces dropped; an empty line for each blank one. */
+  lines: string[][];
+}
+
 export interface CommandMap {
   "space.switch": { args: SpaceSwitchArgs; result: SpaceSwitchResult };
   "note.create": { args: NoteCreateArgs; result: NoteCreateResult };
@@ -3951,6 +3984,7 @@ export interface CommandMap {
   "comment.read": { args: CommentReadArgs; result: OkResult };
   "comment.deleteThread": { args: ThreadIdArgs; result: OkResult };
   "account.signOut": { args: EmptyArgs; result: OkResult };
+  "text.layout": { args: TextLayoutArgs; result: TextLayoutResult };
 }
 
 export interface EditorCommandMap {
@@ -4166,6 +4200,7 @@ const commandNames = [
   "comment.read",
   "comment.deleteThread",
   "account.signOut",
+  "text.layout",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

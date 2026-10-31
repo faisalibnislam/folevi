@@ -149,43 +149,21 @@ struct WebFolderCell: View {
     }
 }
 
-/// The folder menu's rows (the web's FolderMenu) as Folevi menu entries.
+/// The folder menu's rows (the web's FolderMenu, WebFolderMenu.swift) as Folevi menu entries.
 @MainActor
 func folderMenuEntries(_ folder: MenuFolder, context: FolderMenuContext, actions: NoteActions, dialogs: FolderDialogState, navigator: ScreenNavigator, feedback: ScreenFeedback, frame: FrameModel) -> [WebMenuEntry] {
-    var out: [WebMenuEntry] = [WebMenuEntry(.item("Open in new tab", icon: .externalLink)) { frame.open(.folder(folder.id), .newTab) }, .separator(100)]
-    for (n, group) in FolderMenuItem.groups(for: folder, in: context).enumerated() {
-        if n > 0 { out.append(.separator(n)) }
-        for item in group where item != .color && item != .lock {
-            let icon: WebIcon = switch item {
-            case .newNote: .filePlusCorner
-            case .newFolderInside: .folderPlus
-            case .rename: .pencil
-            case .color: .palette
-            case .move: .folderInput
-            case .movePlaces: .arrowLeftRight
-            case .moveToTop: .folderUp
-            case .askAI: .sparkles
-            case .lock: .lock
-            case .copyLink: .link
-            case .invite: .userPlus
-            case .delete: .trash
-            }
-            out.append(WebMenuEntry(.item(item.title, icon: icon, danger: item == .delete)) {
-                FolderMenuItems.perform(item, folder: folder, context: context, actions: actions, dialogs: dialogs, navigator: navigator, feedback: feedback)
-            })
-        }
-    }
-    return out
+    WebFolderMenu.entries(folder, context: context, frame: frame)
 }
 
 /// A note's actions (the web's DocMenu, desktop order): shared by its "…" button and its right-click menu.
 @MainActor
-func noteMenuEntries(_ row: NoteRow, list: NotesListModel, frame: FrameModel, recent: Bool = false, canSelect: Bool = true) -> [WebMenuEntry] {
+/// `arrange: false` on Home, whose cards have no Move up / Move down (HomeDashboard.tsx).
+func noteMenuEntries(_ row: NoteRow, list: NotesListModel, frame: FrameModel, recent: Bool = false, canSelect: Bool = true, arrange: Bool = true) -> [WebMenuEntry] {
     let run: (NotesListModel.RowAction) -> Void = { a in Task { await list.run(a, on: row) } }
     let selected = list.selection.contains(row.id)
     if list.isTrash {
         var out = [WebMenuEntry(.item("Restore", icon: .undo2)) { run(.restore) }]
-        if canSelect { out.append(WebMenuEntry(.item(selected ? "Deselect" : "Select", icon: .squareCheck)) { list.toggle(row.id) }) }
+        if canSelect && list.selectable { out.append(WebMenuEntry(.item(selected ? "Deselect" : "Select", icon: .squareCheckBig)) { list.toggle(row.id) }) }
         out.append(.separator())
         out.append(WebMenuEntry(.item("Delete permanently…", icon: .trash, danger: true)) { run(.deleteForever) })
         return out
@@ -206,8 +184,8 @@ func noteMenuEntries(_ row: NoteRow, list: NotesListModel, frame: FrameModel, re
     if !list.copyTargets.isEmpty { out.append(WebMenuEntry(.item("Copy to…", icon: .copyPlus)) { run(.copyTo) }) }
     out.append(WebMenuEntry(.item(row.archived ? "Unarchive" : "Archive", icon: row.archived ? .archiveRestore : .archive)) { run(row.archived ? .unarchive : .archive) })
     if recent { out.append(WebMenuEntry(.item("Remove from recent", icon: .eyeOff)) { Task { await list.actions.removeFromRecent([row.id]) } }) }
-    if canSelect && list.selectable { out.append(WebMenuEntry(.item(selected ? "Deselect" : "Select", icon: .squareCheck)) { list.toggle(row.id) }) }
-    if list.canArrange {
+    if canSelect && list.selectable { out.append(WebMenuEntry(.item(selected ? "Deselect" : "Select", icon: .squareCheckBig)) { list.toggle(row.id) }) }
+    if arrange && list.canArrange {
         out.append(.separator(1))
         out.append(WebMenuEntry(.item("Move up", icon: .arrowUp)) { run(.moveUp) })
         out.append(WebMenuEntry(.item("Move down", icon: .arrowDown)) { run(.moveDown) })
@@ -309,7 +287,7 @@ struct WebSortSelect<T: Hashable>: View {
         let select = notesStyle("toolbar.select", scheme)
         HStack(spacing: sort.gap) {
             Text("Sort").webText(label.text).lineLimit(1).foregroundStyle(label.color.color)
-            WebMenuButton(width: max(160, select.width), entries: {
+            WebMenuButton(select: true, entries: {
                 options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == value)) { value = o.0 } }
             }) {
                 trigger(options.first { $0.0 == value }?.1 ?? "")
@@ -452,7 +430,7 @@ struct WebHomeScreen: View {
         .accessibilityIdentifier("screen.home")
     }
 
-    // MARK: Catch me up (the resting state; a brief shows on its own screen)
+    // MARK: Catch me up (ai/CatchUp.tsx: the button, then the "Your week" card in its place on Home)
 
     @ViewBuilder private var catchUp: some View {
         switch home.catchUp {
@@ -460,8 +438,10 @@ struct WebHomeScreen: View {
             EmptyView()
         case .offer(let error):
             catchUpOffer(error: error)
-        case .running, .ready:
-            catchUpOffer(error: nil)
+        case .running:
+            WebCatchUpCard(brief: nil, frame: frame, home: home)
+        case .ready(let brief):
+            WebCatchUpCard(brief: brief, frame: frame, home: home)
         }
     }
 
@@ -471,10 +451,7 @@ struct WebHomeScreen: View {
         let hint = notesStyle("catchup.hint", scheme)
         return VStack(alignment: .leading, spacing: 8) {
             // `flex flex-wrap gap-3`: the words go under the button when the row is too narrow for both (the iPad).
-            let button = CatchUpButton(style: b) {
-                frame.runCatchUp()
-                frame.open(.catchUp)
-            }
+            let button = CatchUpButton(style: b) { frame.runCatchUp() }
             let words = Text("A quick AI brief of this week’s notes and what’s due.").webText(hint.text).lineLimit(1).foregroundStyle(hint.color.color)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 12) {
@@ -651,7 +628,7 @@ struct WebNoteCarousel: View {
                 HStack(alignment: .top, spacing: ul.gap) {
                     ForEach(rows, id: \.id) { row in
                         WebNoteCell(card: list.card(row), drag: NoteDragItem(id: row.id, title: row.title, folderId: row.folder?.id), selected: false, compact: false, unsynced: row.sync != .saved, menu: {
-                            noteMenuEntries(row, list: list, frame: frame, recent: recent, canSelect: false)
+                            noteMenuEntries(row, list: list, frame: frame, recent: recent, canSelect: false, arrange: false)
                         }, open: { frame.open(.note(row.id)) })
                         .frame(width: Self.cardWidth)
                     }
@@ -1304,24 +1281,36 @@ struct WebIndexSearch: View {
 
 struct WebTagsIndex: View {
     let frame: FrameModel
+    let tags: ValueStore<TagsIndexValue>
     @State private var query = ""
+    /// The sort, kept as the web keeps it (`folevi:tags-sort`): Name, Most used or Newest.
+    @AppStorage("folevi.tags-sort") private var sort = "name"
     @Environment(\.colorScheme) private var scheme
+
+    /// OrganizeIndex.tsx: "1 page", "12 pages".
+    private static func pages(_ n: Int) -> String { n == 1 ? "1 page" : "\(n.formatted()) pages" }
 
     var body: some View {
         let content = notesStyle("tags.content", scheme)
-        let all = (frame.folders.value?.tags ?? []).sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let all = (tags.value?.tags ?? []).sorted { a, b in
+            switch sort {
+            case "count": return a.documentCount != b.documentCount ? a.documentCount > b.documentCount : a.name.localizedCompare(b.name) == .orderedAscending
+            case "created": return a.createdAt > b.createdAt
+            default: return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            }
+        }
         let needle = query.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "#", with: "").lowercased()
         let shown = all.filter { needle.isEmpty || $0.name.lowercased().contains(needle) }
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 12) {
                     WebIndexSearch(placeholder: "Search tags", text: $query)
-                    Text(frame.folders.value == nil ? "Loading…" : !needle.isEmpty ? "\(shown.count) of \(all.count) tags" : "\(all.count) \(all.count == 1 ? "tag" : "tags")")
+                    Text(tags.value == nil ? "Loading…" : !needle.isEmpty ? "\(shown.count) of \(all.count) tags" : "\(all.count) \(all.count == 1 ? "tag" : "tags")")
                         .webText(notesStyle("tags.status", scheme).text).lineLimit(1).foregroundStyle(notesStyle("tags.status", scheme).color.color)
                     Spacer(minLength: 0)
-                    WebSortSelect(options: [("name", "Name"), ("count", "Most used"), ("created", "Newest")], value: .constant("name"))
+                    WebSortSelect(options: [("name", "Name"), ("count", "Most used"), ("created", "Newest")], value: $sort)
                 }
-                if frame.folders.value != nil && shown.isEmpty {
+                if tags.value != nil && shown.isEmpty {
                     WebEmptyState(icon: .hash, title: needle.isEmpty ? "No tags yet" : "No tags match “\(needle)”", message: needle.isEmpty ? "Add tags to a page from its Info panel." : nil)
                 } else {
                     WebFlow(spacing: 8) {
@@ -1330,6 +1319,15 @@ struct WebTagsIndex: View {
                                 HStack(spacing: 8) {
                                     WebIconView(.hash, size: 14).foregroundStyle(WebSidebar.tagColor(t.color))
                                     Text(t.name).webText(.role(.body, weight: 500)).lineLimit(1).foregroundStyle(webVar("color-ink", scheme).color)
+                                    // (rounded-chip bg-sunken px-2 py-0.5 text-caption-2 tabular-nums text-muted)
+                                    Text(Self.pages(t.documentCount))
+                                        .webText(.role(.caption2))
+                                        .monospacedDigit()
+                                        .lineLimit(1)
+                                        .foregroundStyle(webVar("color-ink-muted", scheme).color)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
+                                        .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular).fill(webVar("color-surface-sunken", scheme).color))
                                 }
                                 .padding(.leading, 12)
                                 .padding(.trailing, 8)
@@ -1385,6 +1383,96 @@ struct WebFlow: Layout {
             x += s.width + spacing
             line = max(line, s.height)
         }
+    }
+}
+/// The brief on Home (CatchUp.tsx's section): glass, "Your week" with Refresh and Close, then "Reading this week's
+/// notes…" and four shimmering lines while it's written, or the brief and the notes it cites.
+struct WebCatchUpCard: View {
+    let brief: CatchUpBrief?
+    let frame: FrameModel
+    let home: HomeModel
+    @State private var pulse = false
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let dark = scheme == .dark
+        let muted = webVar("color-ink-muted", scheme).color
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                AiMarkGlyph(size: 15)
+                Text("Your week").webText(.display(.title3)).lineLimit(1).foregroundStyle(webVar("color-heading", scheme).color)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if brief != nil {
+                    iconButton(.rotateCcw, size: 14, label: "Refresh brief", tip: "Refresh") { frame.runCatchUp() }
+                    iconButton(.x, size: 15, label: "Close brief", tip: "Close") { Task { await home.closeCatchUp() } }
+                }
+            }
+            .frame(minHeight: 32)
+            .padding(.bottom, 8)
+            if let brief {
+                AiAnswerText(blocks: MarkdownBlocks.parse(brief.text[...]), cited: Set(brief.sources.indices.map { $0 + 1 }), onCite: { n in
+                    if brief.sources.indices.contains(n - 1) { frame.open(.note(brief.sources[n - 1].id)) }
+                })
+                if !brief.sources.isEmpty {
+                    WebFlow(spacing: 6) {
+                        ForEach(Array(brief.sources.enumerated()), id: \.element.id) { i, src in
+                            Button { frame.open(.note(src.id)) } label: {
+                                HStack(spacing: 6) {
+                                    Text("\(i + 1)").webText(.role(.subheadline, weight: 600)).foregroundStyle(muted)
+                                    WebIconView(.fileText, size: 12).foregroundStyle(muted)
+                                    Text(src.title.isEmpty ? "Untitled" : src.title).webText(.role(.subheadline)).lineLimit(1).foregroundStyle(webVar("color-ink", scheme).color)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular).fill(webVar("glass-hover", scheme).color))
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.top, 12)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Reading this week’s notes…").webText(.role(.subheadline)).foregroundStyle(muted)
+                    ForEach([0.9, 0.75, 0.82, 0.6], id: \.self) { w in
+                        GeometryReader { g in
+                            RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular)
+                                .fill(LinearGradient(colors: [Color(red: 0x8b / 255, green: 0x7c / 255, blue: 0xf6 / 255).opacity(0.2), Color(red: 0xf5 / 255, green: 0x8a / 255, blue: 0xb8 / 255).opacity(0.16)], startPoint: .leading, endPoint: .trailing))
+                                .frame(width: g.size.width * w)
+                        }
+                        .frame(height: 12)
+                        .opacity(pulse ? 0.5 : 1)
+                    }
+                }
+                .padding(.vertical, 4)
+                .onAppear { withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: true)) { pulse = true } }
+                .accessibilityLabel("Reading this week’s notes")
+            }
+        }
+        .padding(20)
+        .background {
+            let shape = RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous)
+            shape.fill(webVar("glass-active", scheme).color)
+                // --glass-edge (an inner and an outer hairline) and --glass-shadow
+                .overlay(shape.inset(by: 0.5).stroke(Color.white.opacity(dark ? 0.08 : 0.6), lineWidth: 1))
+                .overlay(shape.inset(by: -0.5).stroke(Color.black.opacity(dark ? 0.4 : 0.06), lineWidth: 1))
+                .shadow(color: .black.opacity(dark ? 0.3 : 0.04), radius: 1, y: 1)
+                .shadow(color: Color(red: dark ? 0 : 20 / 255, green: dark ? 0 : 20 / 255, blue: dark ? 0 : 40 / 255).opacity(dark ? 0.6 : 0.14), radius: dark ? 13 : 10, y: dark ? 16 : 12)
+        }
+        .padding(.top, 24)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Catch-up brief")
+    }
+
+    private func iconButton(_ icon: WebIcon, size: CGFloat, label: String, tip: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            WebIconView(icon, size: size).frame(width: 32, height: 32).contentShape(Rectangle())
+        }
+        .buttonStyle(WebHoverRowStyle(radius: FoleviTokens.Radius.chip, hover: WebStyles.vars["glass-hover"], press: WebStyles.vars["mac-press"], selected: false))
+        .foregroundStyle(webVar("color-ink-muted", scheme).color)
+        .foleviTooltip(tip)
+        .accessibilityLabel(label)
     }
 }
 #endif

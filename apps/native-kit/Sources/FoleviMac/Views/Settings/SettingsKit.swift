@@ -242,7 +242,7 @@ struct SettingsSelect: View {
         let label = SettingsStyle.pair("select.label").resolve(scheme)
         let chevron = SettingsStyle.pair("select.chevron").resolve(scheme)
         let current = options.first { $0.value == value }?.label ?? value
-        WebMenuButton(width: max(width ?? s.width, 160), entries: {
+        WebMenuButton(select: true, entries: {
             options.map { o in WebMenuEntry(.item(o.label, checked: o.value == value, id: o.value)) { onChange(o.value) } }
         }) {
             HStack(spacing: s.gap) {

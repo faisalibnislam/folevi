@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "tag.delete",
+  "description": "Delete a tag (removed from every note).",
+  "args": {
+    "id": "tag_travel"
+  },
+  "result": {
+    "ok": true
+  }
+}

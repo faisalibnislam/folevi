@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "ai.share",
+  "description": "Share a conversation with its workspace.",
+  "args": {
+    "conversationId": "conv_2",
+    "shared": true
+  },
+  "result": {
+    "ok": true
+  }
+}

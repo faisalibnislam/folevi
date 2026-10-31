@@ -124,6 +124,15 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
                 self.model.closeNote()
             }
         })
+        // The phone's fallback screens are the desk's: where they go, the phone goes (the iPad's wide layout
+        // shows the desk itself).
+        observers.append(Observer { [weak self] in
+            guard let self else { return }
+            let r = self.desk.route
+            guard r != RebuildDeskBridge.placed, (self.view.window?.bounds.width ?? 0) < RebuildIPad.minWidth || UIDevice.current.userInterfaceIdiom != .pad else { return }
+            RebuildDeskBridge.placed = r
+            if case .note(let id) = r { self.openNote(id, source: nil, focus: false) } else { self.frame.open(r) }
+        })
         let center = NotificationCenter.default
         tokens = [
             center.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main) { [weak self] note in
@@ -258,7 +267,7 @@ private struct RebuildRoot: View {
             } else if let kind = NotesListKind(route: route) {
                 RebuildNotesScreen(kind: kind, frame: model, menus: menus, phone: phone) { selecting = $0 }
             } else {
-                PlaceholderScreen(model: model, route: route) { account = true }
+                PlaceholderScreen(model: model, route: route, desk: desk)
             }
         }
         // The keyboard covers the tab bar and the screens (the web's page doesn't move for it); a field that needs
@@ -328,35 +337,44 @@ private struct RebuildRoot: View {
 }
 
 /// A screen that names its route, with links to try the stacks (a folder, a note, another tab's first screen).
+/// A route the phone doesn't draw natively yet: the frame's own screen for it (FoleviMac's, the Mac's and the
+/// iPad's), under the phone's bar with its back button. Its links go to the desk model, which the controller
+/// forwards to the phone's stacks.
 private struct PlaceholderScreen: View {
     let model: PhoneFrameModel
     let route: FrameRoute
-    let openAccount: () -> Void
+    let desk: FrameModel
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let root = PhoneFrameModel.isTabRoot(route) && model.stack.first?.route == route
-        PhoneScreen(PhoneScreenOptions(title: route.fallbackTitle, large: !route.isNote, eyebrow: route == .home ? "Personal" : nil), root: root, scrollToTop: model.scrollToTop, back: { model.back() }) {
-            Button(action: openAccount) {
-                PhonePlaceMarkView(mark: .avatar(name: "Sam Rivera", url: nil), size: 34).frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Account")
-        } trailing: {
-            WebGlassPill {
-                WebPillButton("Notifications") { WebIconView(.bell, size: 21, strokeWidth: 1.9) }
-                WebPillButton("More") { WebIconView(.ellipsis, size: 24, strokeWidth: 2.2) }
-            }
-        } content: {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(route.path).webText(.role(.footnote)).foregroundStyle(.secondary)
-                ForEach(["/folders/sample", "/d/sample-note", "/tasks/completed", "/calendar", "/documents"], id: \.self) { path in
-                    WebButton("Open \(path)", variant: .secondary) { model.open(FrameRoute(path: path)) }
-                        .phoneZoomSource(String(path.split(separator: "/").last ?? ""))
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                if !root {
+                    WebGlassCircle("Back", action: { model.back() }) {
+                        WebIconView(.chevronLeft, size: 22, strokeWidth: 2.2)
+                    }
                 }
-                ForEach(0..<40, id: \.self) { i in
-                    Text("Row \(i + 1)").webText(.role(.body)).foregroundStyle(.primary).frame(height: 44)
-                }
+                Text(route.fallbackTitle).webText(.display(.title3)).lineLimit(1).foregroundStyle(FoleviTokens.Chrome.heading.resolve(scheme).color)
+                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 16)
+            .frame(height: 52)
+            DeskScreen(model: desk, route: route)
         }
+        .background(FoleviTokens.Chrome.canvas.resolve(scheme).color.ignoresSafeArea())
+        .onAppear { RebuildDeskBridge.show(route, on: desk) }
+    }
+}
+
+/// Keeps the desk model on the route the phone shows, and sends where the desk's screens go to the phone.
+@MainActor
+enum RebuildDeskBridge {
+    /// The route the phone last put the desk on (a change to anything else came from a desk screen).
+    static var placed: FrameRoute?
+
+    static func show(_ route: FrameRoute, on desk: FrameModel) {
+        placed = route
+        if desk.route != route { desk.open(route, .replace) }
     }
 }

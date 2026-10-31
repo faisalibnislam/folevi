@@ -693,12 +693,15 @@ struct WebFolderNote: View {
                         CoverFill(note.cover).frame(width: w * 0.07, height: h).clipped()
                     }
                     VStack(alignment: .leading, spacing: 0) {
-                        WebClampedText(note.title.isEmpty ? "Untitled" : note.title, style: WebTextStyle(family: .display, size: 5.4 * cq, leading: 5.4 * cq * 1.2, weight: 500), maxLines: 2, width: w * 0.8)
+                        // (iOS WebKit: the iPad's papers balance their titles and break their text the pretty way,
+                        // as the phone's do.)
+                        let ios = phone || WebStyles.isPad
+                        WebClampedText(note.title.isEmpty ? "Untitled" : note.title, style: WebTextStyle(family: .display, size: 5.4 * cq, leading: 5.4 * cq * 1.2, weight: 500), maxLines: 2, width: w * 0.8, balance: WebStyles.isPad && !phone)
                             .foregroundStyle(ink.color)
                         let body = WebTextStyle(size: 3.2 * cq, leading: 3.2 * cq * 1.45)
                         Group {
-                            if phone {
-                                // The phone: the paper's whole text box (80% of it), a `<p>` broken the iPhone's
+                            if ios {
+                                // The phone and the iPad: the paper's whole text box (80% of it), a `<p>` broken the iPhone's
                                 // pretty way; what runs past the paper is clipped.
                                 VStack(alignment: .leading, spacing: 0) {
                                     ForEach(Array(Self.paperLines(note.excerpt, style: body, width: w * 0.8).enumerated()), id: \.offset) { _, line in

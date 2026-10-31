@@ -1166,12 +1166,16 @@ struct WebFoldersIndex: View {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 12) {
-                    WebIndexSearch(placeholder: "Search folders", text: $query, width: min(384, max(160, (inner - 290) / 2)))
+                    WebIndexSearch(placeholder: "Search folders", text: $query, width: WebStyles.isPad ? 384 : min(384, max(160, (inner - 290) / 2)))
+                        .layoutPriority(WebStyles.isPad ? 1 : 0)
                     Text(allFolders.value == nil ? "Loading…" : !query.trimmingCharacters(in: .whitespaces).isEmpty ? "\(shown.count) of \(total) folders" : "\(total) \(total == 1 ? "folder" : "folders")")
                         .webText(notesStyle("index.status", scheme).text).lineLimit(1).foregroundStyle(notesStyle("index.status", scheme).color.color)
+                        .fixedSize()
                     Spacer(minLength: 0)
                     WebSortSelect(options: [(WebFolderSort.name, "Name"), (.updated, "Last updated"), (.count, "Most pages"), (.created, "Newest")], value: Binding(get: { sort }, set: { sortRaw = $0.rawValue }))
+                        .fixedSize()
                     WebSegmented(options: [("grid", WebIcon.layoutGrid, "Grid"), ("list", .rows3, "List")], value: $layoutRaw, prefix: "index")
+                        .fixedSize()
                 }
                 if allFolders.value != nil && shown.isEmpty {
                     WebEmptyState(icon: .folderOpen, title: query.isEmpty ? "No folders yet" : "No folders match “\(query.trimmingCharacters(in: .whitespaces))”", message: query.isEmpty ? "Create one to group related pages." : nil)
@@ -1277,7 +1281,8 @@ struct WebIndexSearch: View {
         }
         .padding(s.padding.edgeInsets)
         .frame(height: s.height)
-        .frame(width: width)
+        // (On the iPad the row's touch-sized controls leave the field what's over: `min-w-0`, down to its icon.)
+        .frame(minWidth: WebStyles.isPad ? 0 : width, maxWidth: width)
         .foregroundStyle(s.color.color)
         .webBox(style)
         .overlay(alignment: .leading) {

@@ -140,7 +140,7 @@ public struct WebSidebar: View {
         let label = style("search.label")
         return Button { CommandPalette.show(model) } label: {
             HStack(spacing: r.gap) {
-                WebIconView(.search, size: 14).foregroundStyle(style("search.icon").color.color)
+                WebIconView(.search, size: style("search.icon").height).foregroundStyle(style("search.icon").color.color)
                 Text("Search or jump to…").webText(label.text).lineLimit(1).foregroundStyle(label.color.color)
                 Spacer(minLength: 0)
                 WebKbd("⌘K")
@@ -205,15 +205,17 @@ public struct WebSidebar: View {
         let s = base.resolve(scheme)
         let selectedFill = (WebStyles.vars[active == .inactive ? "mac-selected-inactive" : "mac-selected"] ?? FoleviTokens.Chrome.surfaceSunken).resolve(scheme)
         let iconColor = style(selected ? "item.active.icon" : "item.icon").color
+        let iconBox = style("item.icon").height
         let countStyle = style("item.count")
         return Button {
             model.open(route, newTab ? .newTab : .replace)
         } label: {
             HStack(spacing: s.gap) {
                 Group {
-                    if let glyph { glyph } else { WebIconView(icon, size: iconSize) }
+                    // (The iPad's touch rows have 20 pt icons, the Mac's 18: sized from the measured box.)
+                    if let glyph { glyph.scaleEffect(iconBox / 18) } else { WebIconView(icon, size: iconSize * iconBox / 18) }
                 }
-                .frame(width: 18, height: 18)
+                .frame(width: iconBox, height: iconBox)
                 .foregroundStyle(iconColor.color)
                 Text(title).webText(s.text).lineLimit(1).foregroundStyle(s.color.color).frame(maxWidth: .infinity, alignment: .leading)
                 if let count, count > 0 {

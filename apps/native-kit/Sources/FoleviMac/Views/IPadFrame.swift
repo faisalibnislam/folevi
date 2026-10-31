@@ -82,7 +82,7 @@ public struct IPadFrameView<Page: View>: View {
                 Spacer()
                 ToastStack(model: model)
             }
-            AiAskOverlay(frame: model, state: askAi)
+            AiAskOverlay(frame: model, state: askAi, launcher: false)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
             if model.overviewShown { TabOverviewLayer(model: model) }
         }
@@ -127,5 +127,29 @@ private struct WindowCatcher: UIViewRepresentable {
     }
 
     func updateUIView(_ v: Probe, context: Context) { v.found = found }
+}
+#endif
+
+#if os(iOS)
+/// One of the frame's screens on its own (the phone's fallback for a route it doesn't draw itself yet): the Mac's
+/// screen for `route`, its links going through `model` (the phone forwards them to its own stacks).
+@MainActor
+public struct DeskScreen: View {
+    let model: FrameModel
+    let route: FrameRoute
+    @State private var models: ScreenModels
+
+    public init(model: FrameModel, route: FrameRoute) {
+        self.model = model
+        self.route = route
+        _models = State(initialValue: ScreenModels(frame: model))
+    }
+
+    public var body: some View {
+        ScreenRoot(model: model, models: models, route: route)
+            // (No glass bar over it here: the phone's own bar sits above.)
+            .safeAreaPadding(.top, -ContentViewController.barHeight)
+            .background(WindowCatcher { FrameSheets.attach(model, window: $0) })
+    }
 }
 #endif

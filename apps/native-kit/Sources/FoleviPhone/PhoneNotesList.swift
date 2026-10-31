@@ -2,6 +2,7 @@
 // Drafts, Starred, Archive, Trash, Templates, a folder (its folders first) and a tag. The search field filters
 // the list; the notes are two columns of cards or rows (the "…" menu picks, and the sort). Everything comes from
 // FoleviScreens' NotesListModel (`notes.list`, windowed).
+#if os(iOS)
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
@@ -20,6 +21,8 @@ public struct PhoneNotesListActions {
     public var rowMenu: (NoteRow, CGRect) -> Void
     /// Select mode starts or ends (its bar takes the tab bar's place).
     public var selecting: (Bool) -> Void
+    /// A new note (in the folder on show), from the empty screen's New note.
+    public var newNote: () -> Void = {}
 
     public init(open: @escaping (String) -> Void, openNote: @escaping (String) -> Void, back: @escaping () -> Void, menu: @escaping (CGRect) -> Void, rowMenu: @escaping (NoteRow, CGRect) -> Void, selecting: @escaping (Bool) -> Void) {
         self.open = open
@@ -51,7 +54,7 @@ public struct PhoneNotesListScreen: View {
         let picked = model.selection.count
         let all = picked > 0 && picked >= model.loadedRows.count
         // Select mode: Select All where Back was, how many are picked in the bar's middle, Done.
-        PhoneScreen(PhoneScreenOptions(title: model.title, status: model.selecting ? (picked > 0 ? "\(picked) selected" : "Select notes") : nil), root: model.selecting, scrollToTop: scrollToTop, back: actions.back) {
+        PhoneScreen(options, root: model.selecting, scrollToTop: scrollToTop, back: actions.back) {
             WebGlassTextButton(all ? "Deselect All" : "Select All") {
                 if all { model.selection = [] } else { model.selection = Set(model.loadedRows.map(\.id)) }
             }
@@ -112,6 +115,14 @@ public struct PhoneNotesListScreen: View {
         }
     }
 
+    /// The bar's title, Select mode's status, and a folder's colour washed over its screen.
+    private var options: PhoneScreenOptions {
+        let picked = model.selection.count
+        var o = PhoneScreenOptions(title: model.title, status: model.selecting ? (picked > 0 ? "\(picked) selected" : "Select notes") : nil)
+        if model.kind.view == .folder { o.tint = FolderColor.resolve(model.folder?.color).color }
+        return o
+    }
+
     private func setSelecting(_ on: Bool) {
         model.selecting = on
         if !on { model.selection = [] }
@@ -161,7 +172,11 @@ public struct PhoneNotesListScreen: View {
             if model.isFiltering {
                 PhoneScreenEmpty(icon: nil, title: model.filterEmptyTitle, message: "Try other words, or search everywhere from Home.")
             } else {
-                PhoneScreenEmpty(icon: Self.emptyIcon(model.kind.view), title: model.empty.title, message: model.empty.message)
+                PhoneScreenEmpty(icon: Self.emptyIcon(model.kind.view), title: model.empty.title, message: model.empty.message) {
+                    if model.emptyOffersNewNote {
+                        WebButton("New note", icon: .plus, variant: .primary, action: actions.newNote)
+                    }
+                }
             }
         } else if model.layout == .cards {
             LazyVGrid(columns: columns(grid), spacing: 20) {
@@ -400,3 +415,4 @@ struct PhoneSelectBar: View {
         }
     }
 }
+#endif

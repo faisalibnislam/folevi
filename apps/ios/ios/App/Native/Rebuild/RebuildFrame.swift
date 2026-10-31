@@ -198,13 +198,23 @@ private struct RebuildRoot: View {
     @State private var account = ProcessInfo.processInfo.environment["FOLEVI_REBUILD_SHEET"] == "account"
     /// A list in Select mode: its bar takes the tab bar's place.
     @State private var selecting = false
+    /// The bell's sheet.
+    @State private var notifications = false
+    /// New folder's card, over everything.
+    @State private var newFolder: NewFolderRequest?
 
     var body: some View {
         PhoneFrameView(model: model, menus: menus, aiOn: phone.aiOn, tabBarHidden: selecting || model.top.isSearch, actions: PhoneFrameActions(newNote: { phone.newNote() }, fromTemplate: { model.open(FrameRoute(path: "/templates")) })) { route in
             if case .note(let id) = route {
                 RebuildNoteScreen(noteId: id, model: phone, pageHost: pageHost, frame: model, menus: menus)
             } else if route == .home {
-                RebuildHomeScreen(frame: model, menus: menus, home: home, phone: phone) { account = true }
+                RebuildHomeScreen(frame: model, menus: menus, home: home, phone: phone, openAccount: { account = true }, openNotifications: { notifications = true }, newFolder: { newFolder = NewFolderRequest(parent: $0) })
+            } else if route == .shared {
+                RebuildSharedScreen(frame: model, phone: phone)
+            } else if route == .changes {
+                RebuildChangesScreen(frame: model, phone: phone)
+            } else if route == .web("/folders") {
+                RebuildAllFoldersScreen(frame: model, menus: menus, phone: phone) { newFolder = NewFolderRequest(parent: $0) }
             } else if case .search(let text) = route {
                 RebuildSearchScreen(text: text, frame: model, menus: menus, phone: phone)
             } else if let kind = NotesListKind(route: route) {
@@ -213,6 +223,9 @@ private struct RebuildRoot: View {
                 PlaceholderScreen(model: model, route: route) { account = true }
             }
         }
+        // The keyboard covers the tab bar and the screens (the web's page doesn't move for it); a field that needs
+        // room takes it itself (search, the note's bars, New folder's card).
+        .ignoresSafeArea(.keyboard)
         // The screens before the app (first launch, the library, sign-in), as the web draws them, over the frame
         // while the engine says one is up ("loading" never covers a returning person's app).
         .overlay {
@@ -224,6 +237,14 @@ private struct RebuildRoot: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: phone.gate?.gate)
+        .overlay {
+            if let request = newFolder {
+                RebuildNewFolder(request: request, frame: model, menus: menus, phone: phone) { newFolder = nil }
+                    .id(request.id)
+                // (Its Inside menu comes out over the card.)
+                PhoneMenuLayer(menus: menus)
+            }
+        }
         .overlay(alignment: .top) {
             ToastStack(model: phone)
             #if DEBUG
@@ -244,6 +265,9 @@ private struct RebuildRoot: View {
                 PhoneMenuEntry(.item("New folder", icon: .folderPlus)),
                 PhoneMenuEntry(.item("Quick task", icon: .listPlus)),
             ], from: plus, side: .top, align: .end, minWidth: 248)
+        }
+        .phoneSheet(isPresented: $notifications, size: .medium) {
+            RebuildNotificationsSheet(frame: model, menus: menus, phone: phone) { notifications = false }
         }
         .phoneSheet(isPresented: $account, size: .medium, snapToBlocks: true) {
             PhoneSheetPanel(title: "Account", close: { account = false }) {

@@ -13,6 +13,8 @@ struct RebuildHomeScreen: View {
     let home: HomeModel
     let phone: PhoneModel
     let openAccount: () -> Void
+    let openNotifications: () -> Void
+    let newFolder: (String?) -> Void
     @State private var moreFrame: CGRect = .zero
 
     private var signedIn: Bool { home.session.value?.mode == .account }
@@ -28,11 +30,12 @@ struct RebuildHomeScreen: View {
         } trailing: {
             WebGlassPill {
                 if signedIn {
-                    WebPillButton("Notifications", action: { frame.open(FrameRoute(path: "/notifications")) }) {
+                    WebPillButton("Notifications", action: openNotifications) {
                         WebIconView(.bell, size: 21, strokeWidth: 1.9)
                     }
                 }
-                WebPillButton("More", action: { showMore(from: moreFrame) }) {
+                // (A moment after the press: opened in the same update as the pill's own press, the menu was lost.)
+                WebPillButton("More", action: { DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { showMore(from: moreFrame) } }) {
                     WebIconView(.ellipsis, size: 24, strokeWidth: 2.2)
                 }
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
@@ -55,7 +58,7 @@ struct RebuildHomeScreen: View {
     /// The pill's More and the Folders section's "…": New folder, All folders (and Graph, from the pill).
     private func showMore(from anchor: CGRect, graph: Bool = true) {
         var entries = [
-            PhoneMenuEntry(.item("New folder", icon: .folderPlus)) { phone.toast("New folders come to this screen soon.") },
+            PhoneMenuEntry(.item("New folder", icon: .folderPlus)) { newFolder(nil) },
             PhoneMenuEntry(.item("All folders", icon: .files)) { frame.open(FrameRoute(path: "/folders")) },
         ]
         if graph && home.graphOn {

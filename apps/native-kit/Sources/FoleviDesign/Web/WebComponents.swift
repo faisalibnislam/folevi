@@ -250,6 +250,9 @@ public struct WebMenuPanel: View {
         #endif
     }
 
+    /// Whether any item is checked (the web draws the check column for the whole menu then).
+    private var hasChecks: Bool { items.contains { $0.checked } }
+
     /// `--iphone-separator`, the hairline between a section's rows on iOS.
     private var hairline: Color {
         (scheme == .dark ? RGBA(84, 84, 88, 0.5) : RGBA(60, 60, 67, 0.16)).color
@@ -285,6 +288,18 @@ public struct WebMenuPanel: View {
             let shortcut = WebStyles.named("menu.item.shortcut").resolve(scheme)
             Button { onSelect(item) } label: {
                 HStack(spacing: s.gap) {
+                    // iOS: a menu with checks gives every item a 16 pt column before its words (globals.css
+                    // `[data-menu-part="check"]`: order -1, 2 pt pulled in), the tick in the ink when chosen.
+                    if Self.ios, hasChecks {
+                        ZStack {
+                            if item.checked {
+                                WebIconView(.check, size: 16, strokeWidth: 2.6)
+                                    .foregroundStyle(FoleviTokens.Chrome.ink.resolve(scheme).color)
+                            }
+                        }
+                        .frame(width: 16)
+                        .padding(.trailing, -2)
+                    }
                     if let i = item.icon, !Self.ios {
                         WebIconView(i, size: 15)
                             .frame(width: icon.width, height: icon.height)

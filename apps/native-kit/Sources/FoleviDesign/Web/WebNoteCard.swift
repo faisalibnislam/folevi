@@ -808,7 +808,7 @@ public struct WebClampedText: View {
     }
 
     public var body: some View {
-        let lines = balance ? Self.balanced(text, style: style, width: width, max: maxLines) : Self.lines(text, style: style, width: width, max: maxLines)
+        let lines = balance ? Self.balancedClamped(text, style: style, width: width, max: maxLines) : Self.lines(text, style: style, width: width, max: maxLines)
         VStack(alignment: alignment, spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                 Text(line).webText(style).lineLimit(1).truncationMode(.tail)
@@ -828,6 +828,16 @@ public struct WebClampedText: View {
             if lines(text, style: style, width: mid, max: .max).count <= plain.count { hi = mid } else { lo = mid }
         }
         return lines(text, style: style, width: hi, max: max)
+    }
+
+    /// Balanced lines under `-webkit-line-clamp`: when the text needs more lines than shown, WebKit lays it out as
+    /// it falls and ends the last line it shows with "…" after its last word ("Trip Sketch: / Coastal…").
+    static func balancedClamped(_ text: String, style: WebTextStyle, width: CGFloat, max: Int) -> [String] {
+        let all = lines(text, style: style, width: width, max: .max)
+        guard all.count > max else { return balanced(text, style: style, width: width, max: max) }
+        var shown = Array(all.prefix(max))
+        shown[max - 1] += "…"
+        return shown
     }
 
     /// The lines CSS would show: up to `max`, the last holding the rest of the text (cut with "…" when drawn).

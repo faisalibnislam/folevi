@@ -40,6 +40,9 @@ export const SCREENS = [
   { id: "starred", path: "/starred", ready: "Packing list" },
   { id: "archive", path: "/archive", ready: "Old receipts" },
   { id: "trash", path: "/trash", ready: "Trash is empty" },
+  { id: "folders", path: "/folders", ready: "Projects" },
+  // A folder by its name (`folder`): its id is looked up in the web frame first.
+  { id: "folder", folder: "Personal", ready: "Reading Shelf" },
   // Search: the web opens it from Home's field (`press`), types (`type`) and lets go of the keyboard; the new frame
   // opens its route (`native`) without the keyboard.
   { id: "search", path: "/documents", ready: "All notes", press: "Search in Personal", native: "/search" },
@@ -76,6 +79,18 @@ if (!process.argv.includes("--no-seed")) {
 
 // Not seeded again: the build goes over the seeded install (its data stays).
 if (process.argv.includes("--no-seed")) sim.simctl("install", sim.udid, app);
+
+// Folders named by screens: their ids, from Home's folder links in the web frame.
+if (screens.some((s) => s.folder)) {
+  sim.relaunch({ FOLEVI_WEB_FRAME: "1" });
+  waitUntil("Home", () => sim.evalJs("return document.body.innerText.includes(\"All notes\")"));
+  sim.sleep(1500);
+  for (const s of screens.filter((x) => x.folder)) {
+    const href = sim.evalJs(`return [...document.querySelectorAll("a[href^='/folders/']")].find((a) => (a.getAttribute("aria-label") ?? a.textContent).startsWith(${JSON.stringify(s.folder)}))?.getAttribute("href") ?? null`);
+    if (!href) throw new Error(`no folder called ${s.folder}`);
+    s.path = href;
+  }
+}
 
 /** Opens `screen` in the frame `env` names, on the seeded install. */
 const open = (screen, env) => {

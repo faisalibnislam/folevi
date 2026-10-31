@@ -2,6 +2,7 @@
 // screen, the field at the top with Cancel, the scope chips (Folder, Tag, Edited, and where when there are several
 // places), then Recent and Actions; with something typed, the notes found (the words marked), those found by
 // meaning, and the actions that match. Results come from FoleviScreens' SearchModel (`search`).
+#if os(iOS)
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -86,7 +87,9 @@ public struct PhoneSearchScreen: View {
                     .focused($focused)
                     .submitLabel(.search)
                     .autocorrectionDisabled()
+                    #if os(iOS)
                     .textInputAutocapitalization(.never)
+                    #endif
                     .accessibilityLabel("Search documents or type a command")
             }
             .padding(.horizontal, 12)
@@ -277,3 +280,4 @@ struct PhoneHighlighted: View {
         return a
     }
 }
+#endif

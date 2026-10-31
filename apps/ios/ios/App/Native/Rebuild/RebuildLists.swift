@@ -25,14 +25,20 @@ struct RebuildNotesScreen: View {
     }
 
     var body: some View {
-        PhoneNotesListScreen(model: model, actions: PhoneNotesListActions(
+        PhoneNotesListScreen(model: model, actions: actions, scrollToTop: frame.scrollToTop)
+    }
+
+    private var actions: PhoneNotesListActions {
+        var a = PhoneNotesListActions(
             open: { frame.open(FrameRoute(path: $0)) },
             openNote: { phone.router?.openNote($0, source: nil, focus: false) },
             back: { frame.back() },
             menu: { showMenu(from: $0) },
             rowMenu: { row, frame in showRowMenu(row, from: frame) },
             selecting: selecting
-        ), scrollToTop: frame.scrollToTop)
+        )
+        a.newNote = { phone.newNote(folderId: model.kind.folderId) }
+        return a
     }
 
     /// A note's long-press menu (NoteContextMenu), in the model's groups, coming out of the card or row.
@@ -95,9 +101,25 @@ struct RebuildNotesScreen: View {
         for (sort, label) in model.sortOptions {
             entries.append(PhoneMenuEntry(.item(label, checked: model.sort == sort)) { model.sort = sort })
         }
+        // The list's own (DocumentBrowser.tsx `menu`): Empty Trash, New template, Generate with AI, New note here.
+        var own: [PhoneMenuEntry] = []
         if model.isTrash && model.total > 0 {
+            own.append(PhoneMenuEntry(.item("Empty Trash", icon: .trash, danger: true)) { model.confirmation = .emptyTrash(model.total) })
+        }
+        if model.kind.view == .templates {
+            own.append(PhoneMenuEntry(.item("New template", icon: .plus)) {
+                Task { if let id = await model.actions.createTemplate() { phone.router?.openNote(id, source: nil, focus: true) } }
+            })
+            if phone.aiOn {
+                own.append(PhoneMenuEntry(.item("Generate with AI", icon: .sparkles)) { model.startGenerating() })
+            }
+        }
+        if model.kind.view == .folder, let folderId = model.kind.folderId {
+            own.append(PhoneMenuEntry(.item("New note here", icon: .filePlusCorner)) { phone.newNote(folderId: folderId) })
+        }
+        if !own.isEmpty {
             entries.append(PhoneMenuEntry(.separator(1)))
-            entries.append(PhoneMenuEntry(.item("Empty Trash…", icon: .trash, danger: true)) { model.confirmation = .emptyTrash(model.total) })
+            entries += own
         }
         menus.show(entries, from: anchor, side: .bottom, align: .end)
     }

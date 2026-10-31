@@ -18,6 +18,8 @@ public struct PhoneScreenOptions {
     public var grouped = false
     /// How far the content scrolls before the small title shows (defaults to the large title's foot).
     public var collapseAt: CGFloat?
+    /// A colour washed faintly over the screen and its bar (a folder's: `.ui-view-tint`, 10%, 16% in dark).
+    public var tint: RGBA?
     /// Where the content starts scrolled to (Debug: FOLEVI_REBUILD_SCROLL, for comparing a screen's lower part).
     public var startOffset: CGFloat?
 
@@ -80,7 +82,7 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
             let titleIn = options.status != nil ? 1 : (options.large ? min(1, max(0, (offset - (at - 12)) / 12)) : (offset > at - 12 && !options.title.isEmpty ? 1 : 0))
             let largeOpacity = 1 - min(1, max(0, (offset - (at - titleHeight)) / max(1, titleHeight - 12)))
             ZStack(alignment: .top) {
-                (options.grouped ? PhoneSurface.grouped : FoleviTokens.Chrome.canvas).resolve(scheme).color
+                surface.color
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
@@ -150,8 +152,15 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
     }
 
     /// `.iphone-bar`: the screen's colour, solid, with a hairline at its foot.
+    /// The screen's surface: the canvas (the grouped grey), with the tint mixed in.
+    private var surface: RGBA {
+        let base = (options.grouped ? PhoneSurface.grouped : FoleviTokens.Chrome.canvas).resolve(scheme)
+        guard let tint = options.tint else { return base }
+        return tint.oklabMix(base, scheme == .dark ? 0.16 : 0.10)
+    }
+
     private func barFade(height: CGFloat) -> some View {
-        (options.grouped ? PhoneSurface.grouped : FoleviTokens.Chrome.canvas).resolve(scheme).color
+        surface.color
             .frame(height: height)
             .overlay(alignment: .bottom) {
                 PhoneSurface.separator.resolve(scheme).color.frame(height: 0.5)

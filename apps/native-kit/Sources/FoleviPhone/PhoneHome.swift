@@ -2,6 +2,7 @@
 // in a row, then Catch me up, All notes, Drafts, Shared with Me, Changes and Reviews as rows, Starred, Folders
 // (their cards in a row) and Tags (folded at first), and Templates, Archive and Trash at the end. Everything
 // comes from the engine's `home` view (HomeModel); the frame draws the bar, the large title and the search field.
+#if os(iOS)
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
@@ -197,3 +198,4 @@ struct PhoneCardPressStyle: ButtonStyle {
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
+#endif

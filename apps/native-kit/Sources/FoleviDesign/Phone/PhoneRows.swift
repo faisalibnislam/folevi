@@ -232,7 +232,9 @@ public struct PhoneSearchField: View {
                     .focused($focused)
                     .submitLabel(.search)
                     .autocorrectionDisabled()
+                    #if os(iOS)
                     .textInputAutocapitalization(.never)
+                    #endif
             }
             .padding(.horizontal, box.padding.left)
             .frame(height: box.height)
@@ -334,5 +336,46 @@ public struct PhoneNoteGlyph: View {
         .clipShape(shape)
         .overlay(WebShapeBox(shape: shape, fill: nil, shadows: p.visibleShadows))
         .frame(width: 28, height: 28)
+    }
+}
+
+/// `ui-seg`: two or three choices in a 6% ink well, the chosen one raised on the glass (Comments' Open and
+/// Resolved, Notifications' All and Unread).
+public struct PhoneSegmented: View {
+    let options: [(id: String, label: String)]
+    @Binding var selection: String
+    let accessibility: String
+    @Environment(\.colorScheme) private var scheme
+
+    public init(_ options: [(id: String, label: String)], selection: Binding<String>, accessibility: String) {
+        self.options = options
+        self._selection = selection
+        self.accessibility = accessibility
+    }
+
+    public var body: some View {
+        let c = { (p: ColorPair) in p.resolve(scheme).color }
+        HStack(spacing: 2) {
+            ForEach(options, id: \.id) { o in
+                let on = selection == o.id
+                Button { selection = o.id } label: {
+                    Text(o.label)
+                        .webText(WebTextStyle(size: WebTypeRole.callout.metrics.size, leading: WebTypeRole.callout.metrics.leading, weight: 550))
+                        .lineLimit(1)
+                        .foregroundStyle(c(on ? FoleviTokens.Chrome.heading : FoleviTokens.Chrome.inkMuted))
+                        .frame(maxWidth: .infinity, minHeight: 32)
+                        .background {
+                            if on {
+                                WebShapeBox(shape: WebCornersShape(topLeft: FoleviTokens.Radius.chip, topRight: FoleviTokens.Radius.chip, bottomRight: FoleviTokens.Radius.chip, bottomLeft: FoleviTokens.Radius.chip), fill: c(FoleviTokens.Glass.active), shadows: PhoneStyleSheetContent.glassEdge(scheme) + [ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))])
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(4)
+        .background(c(FoleviTokens.Chrome.ink).opacity(0.06), in: RoundedRectangle(cornerRadius: FoleviTokens.Radius.control, style: .circular))
+        .accessibilityLabel(accessibility)
     }
 }

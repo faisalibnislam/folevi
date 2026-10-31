@@ -1,4 +1,4 @@
-// The screens before the app in the Mac's native frame, drawn as the web draws them in Folevi for Mac (owner,
+// The screens before the app in the native frames (the Mac's, and the iPhone's from I2), drawn as the web draws them in Folevi for Mac (owner,
 // 2026-10-27: "looks must match 100% with the web app"), from the live web's styles ("gates.*" in
 // packages/design-tokens/match/app-styles/gates.json):
 //
@@ -14,12 +14,12 @@
 // The page's own screen stays mounted behind (components/engine NativeGate reports it); every button here is
 // `gate.act` on it, so the web's handlers do the work (library.setup opens the folder picker, sign-in opens the
 // sign-in sheet with PKCE) and native never has a second copy of the logic.
-#if os(macOS)
-import AppKit
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 import FoleviDesign
 import FoleviEngine
-import FoleviScreens
 
 /// A gate style by id, for this scheme.
 @MainActor
@@ -87,10 +87,23 @@ struct GateParagraph: View {
 
     var body: some View {
         let s = gs(id, scheme)
-        WebParagraph(runs, style: s.text, width: width ?? s.width, alignment: center ? .center : .leading)
+        // (Its lines break inside its padding.)
+        WebParagraph(runs, style: s.text, width: width ?? (s.width - s.padding.left - s.padding.right), alignment: center ? .center : .leading, wrap: Self.wrap)
+            .padding(.horizontal, width == nil ? s.padding.left : 0)
             .foregroundStyle((color ?? s.color).color)
             .opacity(s.opacity)
             .frame(maxWidth: .infinity, alignment: center ? .center : .leading)
+    }
+}
+
+extension GateParagraph {
+    /// The Mac's WebKit evens paragraphs out (`text-wrap: pretty`); the iPhone's breaks them greedily.
+    static var wrap: WebTextWrap {
+        #if os(iOS)
+        .greedy
+        #else
+        .pretty
+        #endif
     }
 }
 
@@ -120,6 +133,55 @@ struct GateChoice<Icon: View>: View {
     @Environment(\.isEnabled) private var enabled
 
     var body: some View {
+        #if os(iOS)
+        phone
+        #else
+        mac
+        #endif
+    }
+
+    /// The iPhone's: every answer the same card (--iphone-row, the container radius, a hairline and a soft
+    /// shadow), the suggested one saying so in a caption over its title.
+    private var phone: some View {
+        let base = emphasis ? "gates.choice.emphasis" : "gates.choice"
+        let box = gs(base, scheme)
+        let tile = gs("\(base).tile", scheme)
+        let chevron = gs("\(base).chevron", scheme)
+        let muted = WebStyles.vars["color-muted"]?.resolve(scheme) ?? RGBA(86, 86, 94)
+        let corners = WebCornersShape(topLeft: box.radius, topRight: box.radius, bottomRight: box.radius, bottomLeft: box.radius)
+        return Button(action: action) {
+            HStack(spacing: box.gap) {
+                icon()
+                    .frame(width: tile.width, height: tile.height)
+                    .background(RoundedRectangle(cornerRadius: tile.radius, style: .continuous).fill(tile.background.color))
+                VStack(alignment: .leading, spacing: 0) {
+                    if emphasis {
+                        Text("RECOMMENDED")
+                            .webText(WebTextStyle(size: WebTypeRole.subheadline.metrics.size, leading: 18, weight: FoleviTokens.FontWeight.semibold, letterSpacing: 0.04 * WebTypeRole.subheadline.metrics.size))
+                            .lineLimit(1)
+                            .foregroundStyle(muted.color)
+                    }
+                    GateLine(text: title, id: "\(base).title")
+                    GateParagraph(detail, id: emphasis ? "gates.choice.emphasis.detail" : "gates.lib.place.detail", center: false)
+                        .padding(.top, 2)
+                }
+                Group {
+                    if busy { GateSpinner(size: 18) } else { WebIconView(.chevronRight, size: 18, strokeWidth: 2.2) }
+                }
+                .frame(width: chevron.width, height: chevron.height)
+                .foregroundStyle(chevron.color.color)
+            }
+            .padding(box.padding.edgeInsets)
+            .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+            .foregroundStyle(box.color.color)
+            .background(WebShapeBox(shape: corners, fill: box.background.color, shadows: box.shadows))
+            .contentShape(RoundedRectangle(cornerRadius: box.radius, style: .continuous))
+        }
+        .buttonStyle(ChoicePress())
+        .opacity(enabled ? 1 : 0.6)
+    }
+
+    @ViewBuilder private var mac: some View {
         let base = emphasis ? "gates.choice.emphasis" : "gates.choice"
         let box = gs(base, scheme)
         let tile = gs("\(base).tile", scheme)
@@ -160,7 +222,9 @@ struct GateChoice<Icon: View>: View {
     }
 }
 
-/// The column every screen before the app stands in: centred in the window, `width` wide.
+/// The column every screen before the app stands in: centred in the window, `width` wide. On the iPhone the web's
+/// page starts under the status bar (the page's body is padded by it) and is the screen's height from there, so the
+/// column centres there and the page scrolls by the status bar's height.
 struct GateColumn<Content: View>: View {
     let width: CGFloat
     let gap: CGFloat
@@ -169,6 +233,21 @@ struct GateColumn<Content: View>: View {
 
     var body: some View {
         let page = gs("gates.page", scheme)
+        #if os(iOS)
+        GeometryReader { geo in
+            let top = geo.safeAreaInsets.top
+            ScrollView(.vertical) {
+                VStack(spacing: gap, content: content)
+                    .frame(width: width)
+                    .padding(page.padding.edgeInsets)
+                    .frame(maxWidth: .infinity)
+                    .containerRelativeFrame(.vertical, alignment: .center) { h, _ in h }
+                    .padding(.top, top)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .ignoresSafeArea()
+        }
+        #else
         ScrollView(.vertical) {
             VStack(spacing: gap, content: content)
                 .frame(width: width)
@@ -178,6 +257,7 @@ struct GateColumn<Content: View>: View {
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollIndicators(.automatic)
+        #endif
     }
 }
 
@@ -193,7 +273,15 @@ struct GateHeader: View {
         let logo = gs("gates.logo", scheme)
         VStack(spacing: gap) {
             WebFoleviLogo(height: logo.height, color: logo.color.color)
+            #if os(iOS)
+            // The large title, on as many lines as it takes at its width (`text-wrap: balance`).
+            let t = gs("gates.title", scheme)
+            WebParagraph([WebRun(title)], style: t.text, width: t.width, alignment: .center, wrap: .balance)
+                .foregroundStyle(t.color.color)
+                .frame(maxWidth: .infinity)
+            #else
             GateLine(text: title, id: "gates.title", align: .center)
+            #endif
             if let message { GateParagraph(runs: message, id: messageId) }
         }
     }
@@ -223,7 +311,8 @@ struct ModeChoiceGate: View {
                     let account = a.id == "account"
                     GateChoice(title: a.label, detail: Self.detail(a.id), emphasis: account, busy: model.pending == a.id, action: { Task { await model.act(a.id) } }) {
                         if account {
-                            WebFoleviMark(size: 24, inverse: true)
+                            // (Inverse on the Mac's black card; the iPhone's cards are all white.)
+                            WebFoleviMark(size: 24, inverse: Self.macCards)
                         } else {
                             WebIconView(.hardDrive, size: 20)
                         }
@@ -237,6 +326,14 @@ struct ModeChoiceGate: View {
                 GateParagraph(error, id: "gates.footnote", color: WebStyles.vars["color-danger"]?.resolve(scheme) ?? RGBA(179, 52, 44))
             }
         }
+    }
+
+    static var macCards: Bool {
+        #if os(macOS)
+        true
+        #else
+        false
+        #endif
     }
 
     static func detail(_ id: String) -> String {
@@ -297,7 +394,24 @@ struct LibrarySetupGate: View {
         ReadyForm(model: model)
     }
 
+    /// LibrarySetup.tsx's placeOptions, in the words of the device it's on.
     static func detail(_ kind: String) -> String {
+        #if os(iOS)
+        let here = UIDevice.current.userInterfaceIdiom == .pad ? "this iPad" : "this iPhone"
+        switch kind {
+        case "icloud": return "The Folevi folder in iCloud Drive, on every iPhone, iPad and Mac signed in to your iCloud account."
+        case "dropbox": return "Sign in to Dropbox in the sign-in sheet. Folevi only uses its own folder, Apps \u{203A} Folevi."
+        case "gdrive": return "Sign in to Google in the sign-in sheet. Folevi only sees the files it makes."
+        case "folder": return "Any folder the Files app offers, such as one in Dropbox, Google Drive or OneDrive."
+        case "device": return "Your notes stay on \(here). You can turn on sync later in Settings."
+        default: return ""
+        }
+        #else
+        return macDetail(kind)
+        #endif
+    }
+
+    static func macDetail(_ kind: String) -> String {
         switch kind {
         case "icloud": "A Folevi folder in iCloud Drive, on every Mac signed in to your iCloud account."
         case "dropbox": "Sign in to Dropbox in the sign-in sheet. Folevi only uses its own folder, Apps \u{203A} Folevi."
@@ -354,7 +468,7 @@ struct ReadyForm: View {
                             .background(RoundedRectangle(cornerRadius: tile.radius, style: .continuous).fill(tile.background.color))
                         VStack(alignment: .leading, spacing: 2) {
                             GateLine(text: "Encrypt with a passphrase", id: "gates.ready.card.title")
-                            GateParagraph(model.message.contains("this Mac") || model.message.hasSuffix("only.") ? "Optional. The library's files can't be read without it, by anyone, including Folevi." : "Optional. The synced copy can't be read without it, by anyone, including Folevi.", id: "gates.ready.card.detail", center: false)
+                            GateParagraph(model.message.contains("this Mac") || model.message.contains("On My iPhone") || model.message.contains("On My iPad") || model.message.hasSuffix("only.") ? "Optional. The library's files can't be read without it, by anyone, including Folevi." : "Optional. The synced copy can't be read without it, by anyone, including Folevi.", id: "gates.ready.card.detail", center: false)
                         }
                         .frame(width: gs("gates.ready.card.detail", scheme).width)
                         WebSwitch(on: $encrypt, label: "Encrypt with a passphrase")
@@ -401,7 +515,7 @@ struct ReadyForm: View {
             labeled("Passphrase") { WebSecureField(text: Binding(get: { model.values["passphrase"] ?? "" }, set: { model.values["passphrase"] = $0; problem = nil })) }
             labeled("Type it again") { WebSecureField(text: $confirm) }
             Text("Use at least 8 characters. A few unrelated words are easy to remember and hard to guess.").webText(.role(.subheadline)).foregroundStyle(muted.color)
-            Toggle("I understand Folevi can't recover a lost passphrase", isOn: $understood).toggleStyle(.checkbox).font(Font(WebFont.ctFont(.sans, size: 14)))
+            Toggle("I understand Folevi can't recover a lost passphrase", isOn: $understood).toggleStyle(GateCheckboxStyle()).font(Font(WebFont.ctFont(.sans, size: 14)))
             if let problem { Text(problem).webText(.role(.body)).foregroundStyle(danger.color) }
         }
     }
@@ -702,7 +816,7 @@ struct SignInChoices: View {
             ForEach(actions, id: \.id) { a in
                 Group {
                     switch a.id {
-                    case "apple": AppleButton(title: a.label, busy: !a.enabled) { press(a) }
+                    case "apple": WebAppleButton(title: a.label, busy: !a.enabled) { press(a) }
                     case "google": GateFullButton(title: a.label, id: "gates.signin.google", leading: AnyView(WebGoogleMark().frame(width: 18, height: 18))) { press(a) }
                     case "local": GateFullButton(title: a.label, id: "gates.signin.local") { press(a) }
                     case "waiting": GateFullButton(title: a.label, id: "gates.card.button") {}.disabled(true)
@@ -724,7 +838,7 @@ struct SignInChoices: View {
 }
 
 /// Apple's sign-in button as the web draws it (APPLE_BUTTON): the system font, black (white in dark), 44 tall.
-struct AppleButton: View {
+struct WebAppleButton: View {
     let title: String
     var busy = false
     let action: () -> Void
@@ -895,11 +1009,41 @@ struct GateFlowRow: Layout {
         }
     }
 }
-#endif
 
-#if os(macOS)
 /// No system highlight: the web draws its own hover and press states.
-struct GatePressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View { configuration.label.contentShape(Rectangle()) }
+public struct GatePressStyle: ButtonStyle {
+    public init() {}
+    public func makeBody(configuration: Configuration) -> some View { configuration.label.contentShape(Rectangle()) }
 }
-#endif
+
+/// A checkbox: the system's on the Mac; on the iPhone and iPad (which have none) a 18 pt box with a tick, as the
+/// web draws its native checkbox there.
+struct GateCheckboxStyle: ToggleStyle {
+    @Environment(\.colorScheme) private var scheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        #if os(macOS)
+        Toggle(configuration).toggleStyle(.checkbox)
+        #else
+        Button { configuration.isOn.toggle() } label: {
+            HStack(alignment: .top, spacing: 8) {
+                RoundedRectangle(cornerRadius: 4, style: .circular)
+                    .fill(configuration.isOn ? FoleviTokens.Chrome.heading.resolve(scheme).color : .clear)
+                    .overlay(RoundedRectangle(cornerRadius: 4, style: .circular).strokeBorder(configuration.isOn ? .clear : FoleviTokens.Chrome.inkMuted.resolve(scheme).color, lineWidth: 1.5))
+                    .overlay { if configuration.isOn { WebIconView(.check, size: 13, strokeWidth: 3).foregroundStyle(FoleviTokens.Chrome.canvas.resolve(scheme).color) } }
+                    .frame(width: 18, height: 18)
+                configuration.label.foregroundStyle(FoleviTokens.Chrome.ink.resolve(scheme).color)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(configuration.isOn ? .isSelected : [])
+        #endif
+    }
+}
+
+/// A choice card pressed on the iPhone: it shrinks to 98.5% (150 ms).
+struct ChoicePress: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.scaleEffect(configuration.isPressed ? 0.985 : 1).animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
+}

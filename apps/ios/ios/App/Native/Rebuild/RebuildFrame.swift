@@ -87,7 +87,8 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         view.backgroundColor = Chrome.canvas
         pageHost.parking = view
         pageHost.park()
-        let root = UIHostingController(rootView: RebuildRoot(model: frame, menus: menus, phone: model, pageHost: pageHost))
+        let gate = GateModel(client: model.client, feedback: ScreenFeedback(toast: { [weak self] t in self?.model.toast(t.message, tone: t.tone == .error ? .error : .info) }), device: .current)
+        let root = UIHostingController(rootView: RebuildRoot(model: frame, menus: menus, phone: model, pageHost: pageHost, gate: gate))
         root.view.backgroundColor = .clear
         addChild(root)
         root.view.frame = view.bounds
@@ -169,6 +170,7 @@ private struct RebuildRoot: View {
     let menus: PhoneMenus
     let phone: PhoneModel
     let pageHost: PageViewHost
+    let gate: GateModel
     // FOLEVI_REBUILD_SHEET=account opens the account sheet at launch (for checking it headlessly).
     @State private var account = ProcessInfo.processInfo.environment["FOLEVI_REBUILD_SHEET"] == "account"
 
@@ -180,6 +182,17 @@ private struct RebuildRoot: View {
                 PlaceholderScreen(model: model, route: route) { account = true }
             }
         }
+        // The screens before the app (first launch, the library, sign-in), as the web draws them, over the frame
+        // while the engine says one is up ("loading" never covers a returning person's app).
+        .overlay {
+            if let g = phone.gate, g.gate != nil, g.gate != "loading" {
+                WebGateScreen(model: gate)
+                    .onAppear { gate.show(g) }
+                    .onChange(of: g) { _, next in gate.show(next) }
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: phone.gate?.gate)
         .overlay(alignment: .top) {
             ToastStack(model: phone)
             #if DEBUG

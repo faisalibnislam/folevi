@@ -254,5 +254,28 @@ I1 continued (2026-10-31):
   `WebFittedLines` sets wrapped text in exact CSS line boxes in one layout pass; the match test redraws until a
   picture stops changing size.
 
-Next in I1: scene restore; then I2. Foli AI's sheet is I5. Tap checks in the Simulator need input allowed in the
-simulator panel.
+- **Scene restore** (2026-10-31): the new frame's tabs and their screens are saved with the scene (its
+  restoration activity, `NSUserActivityTypes` com.folevi.ios.frame) and come back at the next launch; checked in
+  the Simulator (Calendar on show and a folder in Home's stack, back after the app was ended in the background).
+
+I1 is done but for Foli AI's sheet (I5) and tap checks (need Simulator input allowed in the simulator panel).
+
+**I2 started (2026-10-31):**
+- The gate screens (first launch, library setup, the library ready, the locked library, the sign-in and message
+  cards) moved from FoleviMac to FoleviScreens (`Onboarding/WebGates.swift`) and branch for the iPhone as the web
+  does there: every choice the same white card with the suggested one captioned RECOMMENDED, the large title on
+  balanced lines, paragraphs broken greedily inside their padding, the column centred on the page as the web lays
+  it out (under the status bar), the iPhone's own words for the places. The new frame shows them over itself while
+  the engine says one is up.
+- iPhone styles for the gates: `apps/ios/scripts/gate-styles.mjs` measures them in the Simulator's web frame (the
+  Mac's measuring script, now `scripts/style-extract.mjs`) into `app-styles-cache/gates.ios.json`; `pnpm
+  styles:gen` puts the 46 that differ in WebStyles.ios.
+- Whole-screen check: `apps/ios/scripts/gate-match.mjs` takes each gate from a fresh install, in the web frame
+  and in the new frame, light and dark, and compares them (status bar and home indicator left out). Now: first
+  launch 4.0%, library setup 1.4%, library ready 1.6% (the threshold is 0.5%): the column a few pixels apart, the
+  footnote's and the passphrase card's line breaks, the bold path in "Your library is ready". The Mac's gates are
+  unchanged (its paragraphs have no padding; it builds and its tests compile).
+
+Next in I2: the gates to under 0.5%, then sign-in (the account gate's card, Apple and Google through the page's
+PKCE), the locked library, the real account sheet (places from the engine, switching), migration from the shipped
+app with scratch data.

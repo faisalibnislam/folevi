@@ -85,12 +85,18 @@ extension View {
 
 /// A web box on any `WebCornersShape`: its background, then every `box-shadow` layer as CSS paints them (outer
 /// shadows only outside the shape, inset ones only inside).
-struct WebShapeBox: View {
+public struct WebShapeBox: View {
     let shape: WebCornersShape
     let fill: Color?
     let shadows: [ShadowLayer]
 
-    var body: some View {
+    public init(shape: WebCornersShape, fill: Color?, shadows: [ShadowLayer]) {
+        self.shape = shape
+        self.fill = fill
+        self.shadows = shadows
+    }
+
+    public var body: some View {
         ZStack {
             ForEach(Array(shadows.enumerated().filter { !$0.element.inset && $0.element.color.a > 0 }.reversed()), id: \.offset) { item in
                 let l = item.element

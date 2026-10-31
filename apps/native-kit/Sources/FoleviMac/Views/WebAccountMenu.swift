@@ -9,6 +9,7 @@
 import AppKit
 import SwiftUI
 import FoleviDesign
+import FoleviScreens
 import FoleviEngine
 
 /// One row of the account menu.

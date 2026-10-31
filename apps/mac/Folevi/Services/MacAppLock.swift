@@ -15,6 +15,7 @@ import Foundation
 import LocalAuthentication
 import SwiftUI
 import FoleviMac
+import FoleviScreens
 
 enum AppLock {
     private static var lastYes: Date?

@@ -4,6 +4,16 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.12: Small update
+
+Released 2026-11-01 05:24:39+06:00 (build 24, tag v1.2.12)
+
+Copy code in one tap
+
+### Added
+
+- A Copy button in the corner of every code block: always shown on iPhone and iPad, on hover on web and Mac
+
 ## Version 1.2.11: Small update
 
 Released 2026-10-31 23:11:14+06:00 (build 23, tag v1.2.11)

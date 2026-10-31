@@ -1,6 +1,17 @@
 {
   "releases": [
     {
+      "version": "1.2.12",
+      "build": 24,
+      "released": "2026-11-01T05:24:39+06:00",
+      "type": "patch",
+      "summary": "Copy code in one tap",
+      "added": [
+        "A Copy button in the corner of every code block: always shown on iPhone and iPad, on hover on web and Mac"
+      ],
+      "tag": "v1.2.12"
+    },
+    {
       "version": "1.2.11",
       "build": 23,
       "released": "2026-10-31T23:11:14+06:00",

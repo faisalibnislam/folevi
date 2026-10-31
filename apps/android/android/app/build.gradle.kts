@@ -20,8 +20,8 @@ android {
         applicationId = "com.folevi.android"
         minSdk = rootProject.extra["minSdkVersion"] as Int
         targetSdk = rootProject.extra["targetSdkVersion"] as Int
-        versionCode = 23
-        versionName = "1.2.11"
+        versionCode = 24
+        versionName = "1.2.12"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // OAuth client ids are public (they ship in every copy of the app) but come from the build, never the
         // repository (docs/LOCAL_MODE.md "Owner setup checklist"; apps/android/README.md). Empty hides the option.

@@ -1,7 +1,8 @@
 // Node view for code blocks. It renders exactly what Code.renderHTML does (pre > code). Mermaid blocks
 // become a diagram card instead: the rendered diagram in a clean frame, with the source folded away
 // behind "Edit diagram" and shown while the caret is in it (mermaidFocusPlugin marks that block), and
-// "Convert to flowchart" for flowchart diagrams. The card chrome is outside the editable text.
+// "Convert to flowchart" for flowchart diagrams. The card chrome is outside the editable text. Every other code
+// block has a Copy button in its corner (always there on a touch screen, on hover or focus with a mouse).
 import type { NodeViewRenderer } from "@tiptap/core";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { NodeSelection, Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
@@ -9,6 +10,7 @@ import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { LIMITS, flowchartBounds, mermaidToFlowchart, serializeFlowchart, ulid } from "@folevi/editor-schema";
 import { onThemeChange, renderMermaid, svgDataUrl } from "./richRender";
 import { neighbourIndex } from "./blockSelectionState";
+import { haptic } from "@/lib/nativeApp";
 
 const PREVIEW_DELAY = 350;
 
@@ -66,6 +68,8 @@ export const codeBlockNodeView: NodeViewRenderer = ({ node, getPos, editor, deco
   dom.dataset.block = "code";
   const content = document.createElement("code");
   dom.append(content);
+  const copyBtn = copyButton(() => current.textContent);
+  dom.append(copyBtn);
   const view = (): EditorView => editor.view;
   const pos = () => (typeof getPos === "function" ? getPos() : undefined);
 
@@ -231,6 +235,7 @@ export const codeBlockNodeView: NodeViewRenderer = ({ node, getPos, editor, deco
     dom.dataset.language = a.language ?? "plaintext";
     const mermaid = a.language === "mermaid";
     dom.classList.toggle("fb-code-mermaid", mermaid);
+    copyBtn.hidden = mermaid || !current.textContent.trim();
     if (mermaid && !preview) buildCard();
     else if (!mermaid && preview) dropCard();
     if (!preview) return;
@@ -247,7 +252,7 @@ export const codeBlockNodeView: NodeViewRenderer = ({ node, getPos, editor, deco
   };
   sync();
 
-  const inCard = (t: EventTarget | null) => t instanceof Node && Boolean((preview && preview.contains(t)) || (bar && bar.contains(t)));
+  const inCard = (t: EventTarget | null) => t instanceof Node && Boolean(copyBtn.contains(t) || (preview && preview.contains(t)) || (bar && bar.contains(t)));
 
   return {
     dom,
@@ -275,4 +280,59 @@ function status(text: string): HTMLElement {
   p.setAttribute("role", "status");
   p.textContent = text;
   return p;
+}
+
+const COPY_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+const CHECK_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+
+/** The code block's Copy button: the block's text to the clipboard, "Copied" for a moment. */
+function copyButton(text: () => string): HTMLButtonElement {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "fb-code-copy";
+  b.contentEditable = "false";
+  let timer: number | null = null;
+  const show = (copied: boolean) => {
+    b.innerHTML = `${copied ? CHECK_ICON : COPY_ICON}<span>${copied ? "Copied" : "Copy"}</span>`;
+    b.setAttribute("aria-label", copied ? "Copied" : "Copy code");
+    b.dataset.copied = copied ? "true" : "false";
+  };
+  show(false);
+  // Keep the caret where it is: the button isn't part of the text.
+  b.addEventListener("mousedown", (e) => e.preventDefault());
+  b.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void writeClipboard(text()).then((ok) => {
+      if (!ok) return;
+      haptic("light");
+      show(true);
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => show(false), 1500);
+    });
+  });
+  return b;
+}
+
+/** The clipboard API where there is one (and it's allowed), else the old copy command from a hidden field. */
+async function writeClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const field = document.createElement("textarea");
+    field.value = text;
+    field.setAttribute("readonly", "");
+    field.style.cssText = "position:fixed;top:0;left:0;opacity:0;pointer-events:none";
+    document.body.append(field);
+    field.select();
+    let ok: boolean;
+    try {
+      ok = document.execCommand("copy");
+    } catch {
+      ok = false;
+    }
+    field.remove();
+    return ok;
+  }
 }

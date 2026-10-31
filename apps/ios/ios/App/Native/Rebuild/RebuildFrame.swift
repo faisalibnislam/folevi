@@ -91,7 +91,11 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         pageHost.parking = view
         pageHost.park()
         let gate = GateModel(client: model.client, feedback: ScreenFeedback(toast: { [weak self] t in self?.model.toast(t.message, tone: t.tone == .error ? .error : .info) }), device: .current)
-        let root = UIHostingController(rootView: RebuildRoot(model: frame, menus: menus, phone: model, pageHost: pageHost, gate: gate))
+        let feedback = ScreenFeedback(toast: { [weak self] t in self?.model.toast(t.message, tone: t.tone == .error ? .error : .info) })
+        let places = PlacesModel(client: model.client, feedback: feedback)
+        let root = UIHostingController(rootView: RebuildRoot(model: frame, menus: menus, phone: model, pageHost: pageHost, gate: gate, places: places, accountAction: { [weak self] action, close in
+            self?.account(action, places: places, close: close)
+        }, signOut: { [weak self] in self?.signOutNow() }))
         root.view.backgroundColor = .clear
         addChild(root)
         root.view.frame = view.bounds
@@ -185,6 +189,9 @@ private struct RebuildRoot: View {
     let phone: PhoneModel
     let pageHost: PageViewHost
     let gate: GateModel
+    let places: PlacesModel
+    let accountAction: (PhoneAccountAction, @escaping () -> Void) -> Void
+    let signOut: () -> Void
     // FOLEVI_REBUILD_SHEET=account opens the account sheet at launch (for checking it headlessly).
     @State private var account = ProcessInfo.processInfo.environment["FOLEVI_REBUILD_SHEET"] == "account"
 
@@ -230,14 +237,20 @@ private struct RebuildRoot: View {
         }
         .phoneSheet(isPresented: $account, size: .medium, snapToBlocks: true) {
             PhoneSheetPanel(title: "Account", close: { account = false }) {
-                // Sample places until the account and places arrive (I2).
-                PhoneAccountSheetContent(places: [
-                    PhonePlaceRow(id: "me", mark: .avatar(name: "Sam Rivera", url: nil), label: "Sam Rivera", description: "sam.rivera@example.com", checked: true),
-                    PhonePlaceRow(id: "w1", mark: .workspace(name: "Studio", url: nil), label: "Studio", detail: "Team", sub: true),
-                    PhonePlaceRow(id: "new", mark: .newWorkspace, label: "New workspace…", checked: nil, sub: true),
-                    PhonePlaceRow(id: "library", mark: .library(.smartphone), label: "On this iPhone", description: "On your devices", dot: true),
-                ], severalPlaces: true, otherPlaces: true, signOutLabel: "Sign out of Sam Rivera") { _ in account = false }
+                RebuildAccountSheet(places: places) { action in accountAction(action) { account = false } }
             }
+        }
+        // Opened again: the checks follow where the engine says this is, not an earlier pick.
+        .onChange(of: account) { _, open in if open { places.settle() } }
+        // Signing out with changes that haven't synced: what would be lost, first.
+        .alert(places.signOutTitle, isPresented: Bindable(places).confirmingSignOut) {
+            Button(places.signOutAction, role: .destructive) {
+                account = false
+                signOut()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(places.signOutMessage)
         }
     }
 }

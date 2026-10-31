@@ -171,6 +171,13 @@ Object.assign(iosThemes.light, iosAppCache.light);
 Object.assign(iosThemes.dark, iosAppCache.dark);
 Object.assign(themes.light, appCache.light);
 Object.assign(themes.dark, appCache.dark);
+// Styles only the iPhone app has (screens the Mac's harness doesn't reach, like the locked library): the same
+// values everywhere, so `named` finds them.
+for (const id of Object.keys(iosAppCache.light)) {
+  if (themes.light[id] || !iosAppCache.dark[id]) continue;
+  themes.light[id] = iosAppCache.light[id];
+  themes.dark[id] = iosAppCache.dark[id];
+}
 
 const vars = Object.keys(themes.light).filter((k) => k.startsWith("var:")).sort();
 const ids = Object.keys(themes.light).filter((k) => !k.startsWith("var:")).sort();

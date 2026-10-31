@@ -15,6 +15,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         Keychain.forgetAfterReinstall()
         // Several places: what was saved to an account that isn't open goes to it in the background too.
         BackgroundRefresh.register()
+        #if DEBUG && targetEnvironment(simulator)
+        DebugHooks.forgetLibraryKeyFromEnvironment()
+        #endif
         // The page starts loading now (a background launch for a refresh or a silent push doesn't need it).
         if application.applicationState != .background { WebHost.prewarm() }
         PhoneMetrics.mark("prewarmed")

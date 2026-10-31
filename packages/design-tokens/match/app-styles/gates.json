@@ -351,6 +351,50 @@
     "acct.trigger": {
       "screen": "account-menu",
       "selector": "button[aria-haspopup][aria-label$='settings and help']"
+    },
+    "gates.locked.page": {
+      "screen": "locked",
+      "selector": "[data-testid='library-locked']"
+    },
+    "gates.locked.form": {
+      "screen": "locked",
+      "selector": "[data-testid='library-locked'] > form"
+    },
+    "gates.locked.head": {
+      "screen": "locked",
+      "selector": "[data-testid='library-locked'] > form > div:first-child"
+    },
+    "gates.locked.tile": {
+      "screen": "locked",
+      "selector": "[data-testid='library-locked'] > form > div:first-child > span"
+    },
+    "gates.locked.title": {
+      "screen": "locked",
+      "selector": "[data-testid='library-locked'] h1"
+    },
+    "gates.locked.body": {
+      "screen": "locked",
+      "selector": "[data-testid='library-locked'] h1 + p"
+    },
+    "gates.locked.where": {
+      "screen": "locked",
+      "selector": "[data-testid='library-locked'] h1 + p > span"
+    },
+    "gates.locked.label": {
+      "screen": "locked",
+      "selector": "[data-testid='library-locked'] > form > label"
+    },
+    "gates.locked.input": {
+      "screen": "locked",
+      "selector": "[data-testid='library-locked'] input[type=password]"
+    },
+    "gates.locked.unlock": {
+      "screen": "locked",
+      "selector": "[data-testid='library-locked'] button[type=submit]"
+    },
+    "gates.locked.help": {
+      "screen": "locked",
+      "selector": "[data-testid='library-locked'] > form > div:last-child > button"
     }
   },
   "prepare": {}

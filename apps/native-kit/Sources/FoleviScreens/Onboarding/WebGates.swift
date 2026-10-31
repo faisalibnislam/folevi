@@ -249,7 +249,8 @@ struct GateColumn<Content: View>: View {
                     .padding(.top, top)
             }
             .scrollBounceBehavior(.basedOnSize)
-            .ignoresSafeArea()
+            // (Not the keyboard's: the column moves up out of its way, as the page scrolls to its field.)
+            .ignoresSafeArea(.container)
         }
         #else
         ScrollView(.vertical) {
@@ -664,16 +665,18 @@ struct WebSwitch: View {
 struct WebSecureField: View {
     @Binding var text: String
     var height: CGFloat = 40
+    /// A measured style of the field itself (its box, text and padding); the shared input's otherwise.
+    var styleId: String?
     var submit: () -> Void = {}
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let style = WebStyles.named("input")
+        let style = WebStyles.named(styleId ?? "input")
         let s = style.resolve(scheme)
         SecureField("", text: $text)
             .textFieldStyle(.plain)
-            .font(Font(WebFont.ctFont(.sans, size: 14)))
-            .padding(.horizontal, 12)
+            .font(Font(WebFont.ctFont(.sans, size: styleId == nil ? 14 : s.fontSize)))
+            .padding(.horizontal, styleId == nil ? 12 : s.padding.left)
             .frame(maxWidth: .infinity)
             .frame(height: height)
             .foregroundStyle(s.color.color)
@@ -691,8 +694,72 @@ struct LockedLibraryGate: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
+        #if os(iOS)
+        phone
+        #else
+        mac
+        #endif
+    }
+
+    #if os(iOS)
+    /// The iPhone's and iPad's: the same screen in the styles its web draws (LockedLibrary.tsx), "this iPhone".
+    private var phone: some View {
+        let form = gs("gates.locked.form", scheme)
+        let head = gs("gates.locked.head", scheme)
+        let tile = gs("gates.locked.tile", scheme)
+        let title = gs("gates.locked.title", scheme)
+        let label = gs("gates.locked.label", scheme)
+        let input = gs("gates.locked.input", scheme)
+        let device = UIDevice.current.userInterfaceIdiom == .pad ? "this iPad" : "this iPhone"
+        let tail = " is encrypted. Folevi needs the passphrase once on \(device) to read it."
+        return GateColumn(width: form.width, gap: form.gap) {
+            VStack(spacing: head.gap) {
+                WebFoleviLogo(height: 26, color: gs("gates.logo", scheme).color.color)
+                WebIconView(.lock, size: 22)
+                    .frame(width: tile.width, height: tile.height)
+                    .foregroundStyle(tile.color.color)
+                    .background(RoundedRectangle(cornerRadius: tile.radius, style: .continuous).fill(tile.background.color))
+                WebParagraph([WebRun("Enter your library's passphrase")], style: title.text, width: title.width, alignment: .center, wrap: .balance)
+                    .foregroundStyle(title.color.color)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityAddTraits(.isHeader)
+                GateParagraph(runs: model.message.isEmpty
+                    ? [WebRun("This library" + tail)]
+                    : [WebRun("This library in "), WebRun(model.message, weight: gs("gates.locked.where", scheme).fontWeight, color: gs("gates.locked.where", scheme).color), WebRun(tail)], id: "gates.locked.body")
+            }
+            VStack(alignment: .leading, spacing: label.gap) {
+                Text("Passphrase").webText(label.text).foregroundStyle(label.color.color)
+                WebSecureField(text: Binding(get: { model.values["passphrase"] ?? "" }, set: { model.values["passphrase"] = $0 }), height: input.height, styleId: "gates.locked.input") { unlock() }
+                    .focused($focused)
+                    .accessibilityIdentifier("gate-field-passphrase")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if let error = model.errorMessage {
+                Text(error).webText(.role(.body)).foregroundStyle((WebStyles.vars["color-danger"]?.resolve(scheme) ?? RGBA(179, 52, 44)).color)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.top, -12)
+                    .accessibilityIdentifier("gate-error")
+            }
+            GateFullButton(title: "Unlock", id: "gates.locked.unlock", busy: model.pending == "unlock") { unlock() }
+                .disabled(model.pending != nil)
+                .accessibilityIdentifier("gate-action-unlock")
+            VStack(spacing: 8) {
+                GateTextButton(title: "Forgot the passphrase?", id: "gates.locked.help") { help.toggle() }
+                if help {
+                    GateParagraph("Nobody can reset it, Folevi included. If another device still opens this library, change the passphrase there in Settings, under Library. Without any device that opens it, the synced copy can't be read.", id: "gates.choice.detail", width: form.width)
+                }
+            }
+        }
+        .onAppear { focused = !Self.noKeyboard }
+    }
+
+    /// FOLEVI_GATE_NO_KEYBOARD=1: the field isn't focused at first (apps/ios/scripts/gates.mjs compares the screen
+    /// without the keyboard).
+    static var noKeyboard: Bool { ProcessInfo.processInfo.environment["FOLEVI_GATE_NO_KEYBOARD"] == "1" }
+    #endif
+
+    private var mac: some View {
         let where_ = model.message
-        GateColumn(width: 384, gap: 24) {
+        return GateColumn(width: 384, gap: 24) {
             VStack(spacing: 20) {
                 WebFoleviLogo(height: 26, color: gs("gates.logo", scheme).color.color)
                 WebIconView(.lock, size: 22)

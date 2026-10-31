@@ -10,6 +10,13 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 export const BUNDLE = "com.folevi.ios";
 
+// Types a scratch passphrase twice into the library's encryption fields (React's own value setter, then its input
+// event), ticks "I understand", and submits.
+const PASSPHRASE_JS = `const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+for (const el of document.querySelectorAll("input[type=password]")) { set.call(el, "scratch gate words"); el.dispatchEvent(new Event("input", { bubbles: true })); }
+const box = document.querySelector("input[type=checkbox]") ?? document.querySelector("[role=checkbox]"); if (box && !(box.checked || box.getAttribute("aria-checked") === "true")) box.click();
+setTimeout(() => [...document.querySelectorAll("button[type=submit]")].find((b) => b.textContent.includes("Open Folevi"))?.click(), 300); return true;`;
+
 // The gates reached without a website, and how (apps/mac/scripts/gates.mjs, with the iPhone's labels).
 export const GATES = [
   { id: "first-launch", steps: [], ready: "Where should your notes live?" },
@@ -18,6 +25,22 @@ export const GATES = [
   // Account mode with no session: the sign-in card. (It asks the Folevi website whether there's a session; nothing
   // is signed in to. The page reloads into account mode first, which may show the choice again.)
   { id: "sign-in", steps: [["Sign in to Folevi", "Continue with Apple|Where should your notes live?", 15000], ["?Sign in to Folevi", "Continue with Apple", 15000]], ready: "Continue with Apple" },
+  // A library on this device encrypted with a passphrase, then opened again without its key (as a device joining it
+  // would: FOLEVI_FORGET_LIBRARY_KEY, Debug Simulator builds only): the locked library.
+  {
+    id: "locked",
+    steps: [
+      ["Keep notes on my devices", "Where should your library live?"],
+      ["This device", "Your library is ready"],
+      [{ js: `document.querySelector("[aria-label='Encrypt with a passphrase']").click(); return true;` }, "Type it again"],
+      [{ js: PASSPHRASE_JS }, null],
+    ],
+    settle: 8000,
+    // Compared without the keyboard: the web's field let go, the native one never focused.
+    relaunch: { FOLEVI_FORGET_LIBRARY_KEY: "1", FOLEVI_GATE_NO_KEYBOARD: "1" },
+    blur: true,
+    ready: "Enter your library's passphrase",
+  },
 ];
 
 export function simulator(device) {
@@ -79,6 +102,13 @@ export function simulator(device) {
       waitFor("Where should your notes live?", 60000);
       // A step's label starting "?" is pressed only if it's there; "a|b" waits for either.
       for (const [label, next, ms] of gate.steps) {
+        // A step may be a script run in the page instead of a button pressed: { js }.
+        if (typeof label === "object") {
+          if (!evalJs(label.js)) throw new Error(`${gate.id}: a step's script failed`);
+          sleep(1500);
+          if (next) waitForAny(next.split("|"), ms ?? 30000);
+          continue;
+        }
         const optional = label.startsWith("?");
         const name = optional ? label.slice(1) : label;
         if (optional && evalJs(`return document.body.innerText.includes(${JSON.stringify(next.split("|")[0])})`)) continue;
@@ -86,7 +116,17 @@ export function simulator(device) {
         sleep(1500);
         waitForAny(next.split("|"), ms ?? 30000);
       }
-      waitFor(gate.ready);
+      // Launched again (not reinstalled), with more in the environment: the gate is what the next launch shows.
+      if (gate.relaunch) {
+        sleep(gate.settle ?? 3000);
+        simctl("terminate", udid, BUNDLE);
+        sh("xcrun", ["simctl", "launch", udid, BUNDLE], Object.fromEntries(Object.entries({ ...env, ...gate.relaunch }).map(([k, v]) => [`SIMCTL_CHILD_${k}`, v])));
+      }
+      waitFor(gate.ready, 60000);
+      if (gate.blur) {
+        evalJs("document.activeElement?.blur(); return true");
+        sleep(1000);
+      }
     },
     appearance: (scheme) => simctl("ui", udid, "appearance", scheme),
     screenshot: (path) => simctl("io", udid, "screenshot", path),

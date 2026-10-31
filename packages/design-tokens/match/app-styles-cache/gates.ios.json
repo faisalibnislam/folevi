@@ -1,11 +1,69 @@
 {
  "light": {
+  "gates.choice.emphasis.tile": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 8,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    24,
+    24,
+    27,
+    0.06
+   ],
+   "shadows": [],
+   "x": 32,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "border": {
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ],
+    "width": 0
+   },
+   "y": 474,
+   "width": 40,
+   "height": 40,
+   "fontSize": 16,
+   "fontWeight": 400
+  },
   "var:color-surface": {
    "color": [
     255,
     255,
     255,
     1
+   ]
+  },
+  "var:glass-hover": {
+   "color": [
+    0,
+    0,
+    0,
+    0.05
    ]
   },
   "gates.choice": {
@@ -18,20 +76,20 @@
    "radius": 18,
    "gap": 14,
    "backdropBlur": 0,
-   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
     0,
     0
    ],
-   "gradient": null,
    "padding": [
     14,
     16,
     14,
     16
    ],
+   "gradient": null,
+   "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "background": [
     255,
@@ -40,6 +98,19 @@
     1
    ],
    "shadows": [
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "inset": false
+    },
     {
      "y": 0,
      "color": [
@@ -54,43 +125,30 @@
      "inset": false
     },
     {
-     "y": 0,
      "color": [
       0,
       0,
       0,
       0
      ],
+     "y": 0,
      "blur": 0,
      "inset": false,
      "x": 0,
      "spread": 0
     },
     {
+     "inset": false,
      "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "x": 0,
      "color": [
       0,
       0,
       0,
       0
-     ],
-     "blur": 0,
-     "inset": false,
-     "x": 0,
-     "spread": 0
-    },
-    {
-     "y": 0,
-     "inset": false,
-     "blur": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "x": 0,
-     "spread": 0
+     ]
     },
     {
      "y": 0,
@@ -106,22 +164,23 @@
      "inset": false
     },
     {
-     "y": 1,
+     "spread": 0,
      "inset": false,
+     "y": 1,
      "blur": 3,
+     "x": 0,
      "color": [
       0,
       0,
       0,
       0.05
-     ],
-     "x": 0,
-     "spread": 0
+     ]
     }
    ],
    "x": 16,
+   "fontWeight": 400,
    "y": 561,
-   "fontSize": 16,
+   "height": 72,
    "border": {
     "width": 0,
     "color": [
@@ -131,69 +190,10 @@
      1
     ]
    },
-   "height": 72,
    "width": 370,
-   "fontWeight": 400,
-   "fontFamily": "Instrument Sans",
-   "opacity": 1
-  },
-  "var:glass-hover": {
-   "color": [
-    0,
-    0,
-    0,
-    0.05
-   ]
-  },
-  "gates.choice.emphasis.tile": {
-   "color": [
-    11,
-    11,
-    12,
-    1
-   ],
-   "radius": 8,
-   "gap": 0,
-   "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "letterSpacing": -0.096,
-   "lineHeight": 24.799999,
-   "background": [
-    24,
-    24,
-    27,
-    0.06
-   ],
-   "shadows": [],
-   "x": 32,
-   "y": 474,
-   "fontWeight": 400,
-   "border": {
-    "width": 0,
-    "color": [
-     11,
-     11,
-     12,
-     1
-    ]
-   },
    "opacity": 1,
-   "width": 40,
-   "fontFamily": "Instrument Sans",
-   "height": 40,
-   "fontSize": 16
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans"
   },
   "var:color-heading": {
    "color": [
@@ -211,8 +211,8 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
    "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "margin": [
     2,
     0,
@@ -226,7 +226,7 @@
     0
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "gap": 0,
    "lineHeight": 20,
    "background": [
     0,
@@ -236,22 +236,22 @@
    ],
    "shadows": [],
    "x": 86,
+   "fontSize": 15,
+   "opacity": 1,
+   "height": 40,
+   "fontFamily": "Instrument Sans",
+   "width": 252,
    "y": 495,
    "fontWeight": 400,
-   "fontFamily": "Instrument Sans",
-   "height": 40,
-   "width": 252,
-   "opacity": 1,
    "border": {
-    "width": 0,
     "color": [
      86,
      86,
      94,
      1
-    ]
-   },
-   "fontSize": 15
+    ],
+    "width": 0
+   }
   },
   "gates.column": {
    "color": [
@@ -261,8 +261,8 @@
     1
    ],
    "radius": 0,
+   "gap": 32,
    "letterSpacing": -0.096,
-   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -276,7 +276,7 @@
     0
    ],
    "gradient": null,
-   "gap": 32,
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -286,9 +286,11 @@
    ],
    "shadows": [],
    "x": 16,
-   "y": 279,
-   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "fontWeight": 400,
    "height": 440,
+   "opacity": 1,
+   "width": 370,
    "border": {
     "width": 0,
     "color": [
@@ -298,10 +300,8 @@
      1
     ]
    },
-   "width": 370,
-   "fontSize": 16,
-   "fontWeight": 400,
-   "opacity": 1
+   "y": 279,
+   "fontFamily": "Instrument Sans"
   },
   "var:color-canvas": {
    "color": [
@@ -319,8 +319,8 @@
     1
    ],
    "radius": 8,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "gap": 0,
    "margin": [
     0,
     0,
@@ -334,7 +334,7 @@
     0
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "gap": 0,
    "lineHeight": 24.799999,
    "background": [
     24,
@@ -344,22 +344,22 @@
    ],
    "shadows": [],
    "x": 32,
-   "y": 577,
    "fontWeight": 400,
-   "height": 40,
    "opacity": 1,
+   "height": 40,
+   "fontFamily": "Instrument Sans",
+   "width": 40,
    "border": {
+    "width": 0,
     "color": [
      11,
      11,
      12,
      1
-    ],
-    "width": 0
+    ]
    },
-   "fontSize": 16,
-   "fontFamily": "Instrument Sans",
-   "width": 40
+   "y": 577,
+   "fontSize": 16
   },
   "gates.choice.emphasis": {
    "color": [
@@ -369,8 +369,8 @@
     1
    ],
    "radius": 18,
+   "gap": 14,
    "letterSpacing": -0.096,
-   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -384,7 +384,7 @@
     16
    ],
    "gradient": null,
-   "gap": 14,
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     255,
@@ -394,56 +394,56 @@
    ],
    "shadows": [
     {
-     "y": 0,
      "color": [
       0,
       0,
       0,
       0
      ],
+     "y": 0,
+     "spread": 0,
      "blur": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
      "inset": false,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
      "x": 0,
      "spread": 0
     },
     {
      "y": 0,
+     "inset": false,
+     "blur": 0,
      "color": [
       0,
       0,
       0,
       0
      ],
-     "blur": 0,
-     "spread": 0,
      "x": 0,
-     "inset": false
-    },
-    {
-     "y": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "blur": 0,
-     "spread": 0,
-     "x": 0,
-     "inset": false
+     "spread": 0
     },
     {
      "y": 0,
      "inset": false,
      "blur": 0,
-     "spread": 0,
-     "x": 0,
      "color": [
       0,
       0,
       0,
       0
-     ]
+     ],
+     "x": 0,
+     "spread": 0
     },
     {
      "y": 0,
@@ -454,41 +454,41 @@
       0.16
      ],
      "blur": 0,
-     "spread": 0.5,
+     "inset": false,
      "x": 0,
-     "inset": false
+     "spread": 0.5
     },
     {
      "y": 1,
-     "inset": false,
-     "spread": 0,
-     "blur": 3,
-     "x": 0,
      "color": [
       0,
       0,
       0,
       0.05
-     ]
+     ],
+     "blur": 3,
+     "spread": 0,
+     "x": 0,
+     "inset": false
     }
    ],
    "x": 16,
-   "y": 439,
    "fontWeight": 400,
-   "height": 110,
-   "fontSize": 16,
    "opacity": 1,
+   "fontFamily": "Instrument Sans",
    "border": {
-    "width": 0,
     "color": [
      24,
      24,
      27,
      1
-    ]
+    ],
+    "width": 0
    },
-   "fontFamily": "Instrument Sans",
-   "width": 370
+   "fontSize": 16,
+   "y": 439,
+   "width": 370,
+   "height": 110
   },
   "gates.choice.icon": {
    "color": [
@@ -498,8 +498,8 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
    "gap": 0,
+   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -513,7 +513,7 @@
     0
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -523,22 +523,22 @@
    ],
    "shadows": [],
    "x": 42,
-   "y": 587,
-   "fontWeight": 400,
+   "fontSize": 16,
+   "opacity": 1,
    "border": {
-    "width": 0,
     "color": [
      11,
      11,
      12,
      1
-    ]
+    ],
+    "width": 0
    },
-   "fontFamily": "Instrument Sans",
-   "width": 20,
-   "fontSize": 16,
    "height": 20,
-   "opacity": 1
+   "width": 20,
+   "fontWeight": 400,
+   "y": 587,
+   "fontFamily": "Instrument Sans"
   },
   "gates.choice.detail": {
    "color": [
@@ -548,18 +548,18 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
    "gap": 0,
-   "backdropBlur": 0,
-   "padding": [
-    0,
+   "letterSpacing": -0.096,
+   "margin": [
+    2,
     0,
     0,
     0
    ],
+   "backdropBlur": 0,
    "gradient": null,
-   "margin": [
-    2,
+   "padding": [
+    0,
     0,
     0,
     0
@@ -573,30 +573,22 @@
    ],
    "shadows": [],
    "x": 86,
-   "y": 599,
-   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 15,
    "border": {
+    "width": 0,
     "color": [
      86,
      86,
      94,
      1
-    ],
-    "width": 0
+    ]
    },
    "opacity": 1,
-   "fontFamily": "Instrument Sans",
+   "y": 599,
    "width": 252,
-   "fontSize": 15,
-   "height": 20
-  },
-  "var:color-line": {
-   "color": [
-    226,
-    226,
-    230,
-    1
-   ]
+   "height": 20,
+   "fontWeight": 400
   },
   "gates.title": {
    "color": [
@@ -606,8 +598,8 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
    "backdropBlur": 0,
+   "letterSpacing": -0.68,
    "margin": [
     0,
     0,
@@ -621,7 +613,7 @@
     0
    ],
    "gradient": null,
-   "letterSpacing": -0.68,
+   "gap": 0,
    "lineHeight": 41,
    "background": [
     0,
@@ -631,8 +623,9 @@
    ],
    "shadows": [],
    "x": 16,
-   "y": 325,
    "fontWeight": 600,
+   "opacity": 1,
+   "height": 82,
    "border": {
     "color": [
      11,
@@ -642,11 +635,68 @@
     ],
     "width": 0
    },
-   "fontSize": 34,
-   "height": 82,
-   "width": 370,
    "fontFamily": "Spectral",
-   "opacity": 1
+   "y": 325,
+   "width": 370,
+   "fontSize": 34
+  },
+  "var:color-line": {
+   "color": [
+    226,
+    226,
+    230,
+    1
+   ]
+  },
+  "gates.page": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    40,
+    16,
+    40,
+    16
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    242,
+    242,
+    244,
+    1
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontWeight": 400,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "fontFamily": "Instrument Sans",
+   "width": 402,
+   "y": 62,
+   "fontSize": 16,
+   "height": 874
   },
   "gates.footnote": {
    "color": [
@@ -656,7 +706,7 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
+   "gap": 0,
    "letterSpacing": -0.096,
    "margin": [
     0,
@@ -664,14 +714,14 @@
     0,
     0
    ],
+   "backdropBlur": 0,
+   "gradient": null,
    "padding": [
     0,
     16,
     0,
     16
    ],
-   "gradient": null,
-   "gap": 0,
    "lineHeight": 18,
    "background": [
     0,
@@ -682,32 +732,32 @@
    "shadows": [],
    "x": 16,
    "y": 665,
-   "fontFamily": "Instrument Sans",
-   "fontSize": 15,
    "opacity": 1,
-   "width": 370,
-   "fontWeight": 400,
-   "height": 54,
    "border": {
+    "width": 0,
     "color": [
      86,
      86,
      94,
      1
-    ],
-    "width": 0
-   }
+    ]
+   },
+   "height": 54,
+   "width": 370,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 15
   },
-  "gates.logo": {
+  "gates.choice.emphasis.chevron": {
    "color": [
-    24,
-    24,
-    27,
+    103,
+    103,
+    111,
     1
    ],
    "radius": 0,
+   "gap": 0,
    "backdropBlur": 0,
-   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -720,8 +770,8 @@
     0,
     0
    ],
-   "gap": 0,
    "gradient": null,
+   "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -730,23 +780,23 @@
     0
    ],
    "shadows": [],
-   "x": 149.5,
-   "y": 279,
-   "fontFamily": "Instrument Sans",
+   "x": 352,
+   "fontSize": 16,
+   "y": 485,
+   "height": 18,
    "border": {
     "color": [
-     24,
-     24,
-     27,
+     103,
+     103,
+     111,
      1
     ],
     "width": 0
    },
-   "fontSize": 16,
+   "width": 18,
+   "fontFamily": "Instrument Sans",
    "opacity": 1,
-   "fontWeight": 400,
-   "width": 103,
-   "height": 26
+   "fontWeight": 400
   },
   "gates.choice.emphasis.mark": {
    "color": [
@@ -756,9 +806,15 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
    "letterSpacing": -0.096,
    "backdropBlur": 0,
+   "gap": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
    "margin": [
     0,
     0,
@@ -766,12 +822,6 @@
     0
    ],
    "gradient": null,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -781,11 +831,8 @@
    ],
    "shadows": [],
    "x": 40,
-   "y": 482,
-   "fontSize": 16,
-   "opacity": 1,
    "fontWeight": 400,
-   "width": 24,
+   "fontFamily": "Instrument Sans",
    "height": 24,
    "border": {
     "width": 0,
@@ -796,106 +843,9 @@
      1
     ]
    },
-   "fontFamily": "Instrument Sans"
-  },
-  "gates.page": {
-   "color": [
-    24,
-    24,
-    27,
-    1
-   ],
-   "radius": 0,
-   "letterSpacing": -0.096,
-   "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    40,
-    16,
-    40,
-    16
-   ],
-   "gradient": null,
-   "gap": 0,
-   "lineHeight": 24.799999,
-   "background": [
-    242,
-    242,
-    244,
-    1
-   ],
-   "shadows": [],
-   "x": 0,
-   "y": 62,
-   "fontSize": 16,
-   "height": 874,
-   "border": {
-    "color": [
-     24,
-     24,
-     27,
-     1
-    ],
-    "width": 0
-   },
-   "width": 402,
+   "width": 24,
    "opacity": 1,
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 400
-  },
-  "gates.choice.emphasis.chevron": {
-   "color": [
-    103,
-    103,
-    111,
-    1
-   ],
-   "radius": 0,
-   "letterSpacing": -0.096,
-   "backdropBlur": 0,
-   "gap": 0,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "lineHeight": 24.799999,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 352,
-   "y": 485,
-   "fontFamily": "Instrument Sans",
-   "border": {
-    "width": 0,
-    "color": [
-     103,
-     103,
-     111,
-     1
-    ]
-   },
-   "height": 18,
-   "width": 18,
-   "opacity": 1,
-   "fontWeight": 400,
+   "y": 482,
    "fontSize": 16
   },
   "gates.choice.emphasis.title": {
@@ -906,17 +856,17 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": 0.6,
    "gap": 0,
    "backdropBlur": 0,
-   "margin": [
+   "letterSpacing": 0.6,
+   "padding": [
     0,
     0,
     0,
     0
    ],
    "gradient": null,
-   "padding": [
+   "margin": [
     0,
     0,
     0,
@@ -932,21 +882,71 @@
    "shadows": [],
    "x": 86,
    "fontSize": 15,
-   "y": 453,
-   "fontFamily": "Instrument Sans",
-   "height": 18,
-   "fontWeight": 600,
+   "opacity": 1,
    "border": {
+    "width": 0,
     "color": [
      86,
      86,
      94,
      1
-    ],
-    "width": 0
+    ]
    },
+   "fontWeight": 600,
    "width": 252,
-   "opacity": 1
+   "height": 18,
+   "y": 453,
+   "fontFamily": "Instrument Sans"
+  },
+  "gates.logo": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 149.5,
+   "fontWeight": 400,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "y": 279,
+   "width": 103,
+   "height": 26
   },
   "gates.choice.chevron": {
    "color": [
@@ -956,8 +956,8 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
    "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -971,7 +971,7 @@
     0
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "gap": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -981,22 +981,22 @@
    ],
    "shadows": [],
    "x": 352,
+   "fontSize": 16,
    "y": 588,
-   "fontWeight": 400,
+   "height": 18,
+   "fontFamily": "Instrument Sans",
+   "width": 18,
    "border": {
-    "width": 0,
     "color": [
      103,
      103,
      111,
      1
-    ]
+    ],
+    "width": 0
    },
-   "fontFamily": "Instrument Sans",
-   "width": 18,
-   "opacity": 1,
-   "height": 18,
-   "fontSize": 16
+   "fontWeight": 400,
+   "opacity": 1
   },
   "var:color-danger": {
    "color": [
@@ -1014,14 +1014,6 @@
     1
    ]
   },
-  "var:color-focus": {
-   "color": [
-    31,
-    31,
-    34,
-    1
-   ]
-  },
   "gates.choice.title": {
    "color": [
     11,
@@ -1030,17 +1022,17 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
    "letterSpacing": -0.096,
-   "margin": [
+   "backdropBlur": 0,
+   "gap": 0,
+   "padding": [
     0,
     0,
     0,
     0
    ],
-   "backdropBlur": 0,
    "gradient": null,
-   "padding": [
+   "margin": [
     0,
     0,
     0,
@@ -1055,22 +1047,30 @@
    ],
    "shadows": [],
    "x": 86,
-   "y": 575,
-   "fontWeight": 600,
-   "height": 22,
-   "opacity": 1,
    "fontFamily": "Instrument Sans",
+   "fontSize": 17,
    "border": {
+    "width": 0,
     "color": [
      11,
      11,
      12,
      1
-    ],
-    "width": 0
+    ]
    },
+   "y": 575,
    "width": 252,
-   "fontSize": 17
+   "height": 22,
+   "opacity": 1,
+   "fontWeight": 600
+  },
+  "var:color-focus": {
+   "color": [
+    31,
+    31,
+    34,
+    1
+   ]
   },
   "gates.lib.place.detail": {
    "color": [
@@ -1080,8 +1080,8 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
    "gap": 0,
+   "backdropBlur": 0,
    "letterSpacing": -0.096,
    "margin": [
     2,
@@ -1105,9 +1105,9 @@
    ],
    "shadows": [],
    "x": 86,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
    "y": 451,
-   "opacity": 1,
-   "height": 60,
    "border": {
     "width": 0,
     "color": [
@@ -1117,10 +1117,110 @@
      1
     ]
    },
-   "fontSize": 15,
    "width": 252,
+   "opacity": 1,
+   "height": 60,
+   "fontSize": 15
+  },
+  "gates.lib.message": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "y": 325,
    "fontWeight": 400,
-   "fontFamily": "Instrument Sans"
+   "fontFamily": "Instrument Sans",
+   "height": 60,
+   "fontSize": 15,
+   "border": {
+    "width": 0,
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ]
+   },
+   "opacity": 1,
+   "width": 370
+  },
+  "gates.lib.back.row": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "y": 777,
+   "opacity": 1,
+   "fontWeight": 400,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "width": 370,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "height": 44
   },
   "gates.lib.place.title": {
    "color": [
@@ -1130,8 +1230,8 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
    "gap": 0,
+   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -1156,199 +1256,20 @@
    "shadows": [],
    "x": 86,
    "y": 427,
-   "opacity": 1,
+   "fontWeight": 600,
    "height": 22,
    "border": {
-    "width": 0,
     "color": [
      11,
      11,
      12,
      1
-    ]
+    ],
+    "width": 0
    },
    "width": 252,
    "fontFamily": "Instrument Sans",
-   "fontWeight": 600,
-   "fontSize": 17
-  },
-  "gates.lib.message": {
-   "color": [
-    86,
-    86,
-    94,
-    1
-   ],
-   "radius": 0,
-   "letterSpacing": -0.096,
-   "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "gap": 0,
-   "lineHeight": 20,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 16,
-   "fontWeight": 400,
-   "y": 325,
-   "fontFamily": "Instrument Sans",
-   "opacity": 1,
-   "height": 60,
-   "fontSize": 15,
-   "width": 370,
-   "border": {
-    "color": [
-     86,
-     86,
-     94,
-     1
-    ],
-    "width": 0
-   }
-  },
-  "gates.lib.place.folder": {
-   "color": [
-    24,
-    24,
-    27,
-    1
-   ],
-   "radius": 18,
-   "gap": 14,
-   "letterSpacing": -0.096,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    14,
-    16,
-    14,
-    16
-   ],
-   "gradient": null,
-   "backdropBlur": 0,
-   "lineHeight": 24.799999,
-   "background": [
-    255,
-    255,
-    255,
-    1
-   ],
-   "shadows": [
-    {
-     "y": 0,
-     "spread": 0,
-     "inset": false,
-     "blur": 0,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "y": 0,
-     "inset": false,
-     "blur": 0,
-     "spread": 0,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "y": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "blur": 0,
-     "inset": false,
-     "x": 0,
-     "spread": 0
-    },
-    {
-     "y": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "blur": 0,
-     "spread": 0,
-     "x": 0,
-     "inset": false
-    },
-    {
-     "y": 0,
-     "color": [
-      60,
-      60,
-      67,
-      0.16
-     ],
-     "blur": 0,
-     "inset": false,
-     "x": 0,
-     "spread": 0.5
-    },
-    {
-     "y": 1,
-     "inset": false,
-     "blur": 3,
-     "color": [
-      0,
-      0,
-      0,
-      0.05
-     ],
-     "x": 0,
-     "spread": 0
-    }
-   ],
-   "x": 16,
-   "fontWeight": 400,
-   "fontSize": 16,
-   "height": 112,
-   "y": 535,
-   "width": 370,
-   "fontFamily": "Instrument Sans",
-   "border": {
-    "color": [
-     24,
-     24,
-     27,
-     1
-    ],
-    "width": 0
-   },
+   "fontSize": 17,
    "opacity": 1
   },
   "gates.lib.place.tile": {
@@ -1359,14 +1280,9 @@
     1
    ],
    "radius": 8,
+   "letterSpacing": -0.096,
    "gap": 0,
    "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
    "padding": [
     0,
     0,
@@ -1374,7 +1290,12 @@
     0
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 24.799999,
    "background": [
     24,
@@ -1384,63 +1305,137 @@
    ],
    "shadows": [],
    "x": 32,
-   "fontWeight": 400,
    "fontFamily": "Instrument Sans",
-   "height": 40,
    "y": 449,
-   "width": 40,
-   "opacity": 1,
    "border": {
-    "width": 0,
     "color": [
      11,
      11,
      12,
      1
-    ]
+    ],
+    "width": 0
    },
-   "fontSize": 16
+   "height": 40,
+   "width": 40,
+   "opacity": 1,
+   "fontSize": 16,
+   "fontWeight": 400
   },
-  "gates.lib.back.row": {
+  "gates.lib.place.folder": {
    "color": [
     24,
     24,
     27,
     1
    ],
-   "radius": 0,
+   "radius": 18,
+   "gap": 14,
    "backdropBlur": 0,
-   "gap": 0,
-   "letterSpacing": -0.096,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
    "margin": [
     0,
     0,
     0,
     0
    ],
+   "padding": [
+    14,
+    16,
+    14,
+    16
+   ],
    "gradient": null,
+   "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "background": [
-    0,
-    0,
-    0,
-    0
+    255,
+    255,
+    255,
+    1
    ],
-   "shadows": [],
+   "shadows": [
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "inset": false,
+     "blur": 0,
+     "y": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "inset": false,
+     "blur": 0,
+     "y": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "y": 0,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "color": [
+      60,
+      60,
+      67,
+      0.16
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0.5
+    },
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0.05
+     ],
+     "y": 1,
+     "blur": 3,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    }
+   ],
    "x": 16,
-   "fontSize": 16,
    "fontFamily": "Instrument Sans",
-   "height": 44,
-   "y": 777,
-   "width": 370,
-   "fontWeight": 400,
-   "opacity": 1,
+   "y": 535,
    "border": {
     "width": 0,
     "color": [
@@ -1449,7 +1444,12 @@
      27,
      1
     ]
-   }
+   },
+   "opacity": 1,
+   "width": 370,
+   "fontWeight": 400,
+   "height": 112,
+   "fontSize": 16
   },
   "gates.lib.page": {
    "color": [
@@ -1460,13 +1460,8 @@
    ],
    "radius": 0,
    "gap": 0,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
    "padding": [
     40,
     16,
@@ -1474,7 +1469,12 @@
     16
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 24.799999,
    "background": [
     242,
@@ -1484,22 +1484,22 @@
    ],
    "shadows": [],
    "x": 0,
-   "fontWeight": 400,
-   "opacity": 1,
-   "height": 874,
-   "y": 62,
-   "width": 402,
    "fontFamily": "Instrument Sans",
+   "y": 62,
+   "height": 874,
    "border": {
-    "width": 0,
     "color": [
      24,
      24,
      27,
      1
-    ]
+    ],
+    "width": 0
    },
-   "fontSize": 16
+   "width": 402,
+   "fontWeight": 400,
+   "fontSize": 16,
+   "opacity": 1
   },
   "gates.lib.group": {
    "color": [
@@ -1509,8 +1509,8 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
    "gap": 10,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -1523,8 +1523,8 @@
     0,
     0
    ],
-   "backdropBlur": 0,
    "gradient": null,
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -1534,8 +1534,8 @@
    ],
    "shadows": [],
    "x": 16,
-   "fontSize": 16,
-   "opacity": 1,
+   "fontWeight": 400,
+   "y": 413,
    "border": {
     "width": 0,
     "color": [
@@ -1545,140 +1545,11 @@
      1
     ]
    },
-   "y": 413,
-   "width": 370,
    "height": 336,
-   "fontWeight": 400,
-   "fontFamily": "Instrument Sans"
-  },
-  "gates.lib.place.device": {
-   "color": [
-    24,
-    24,
-    27,
-    1
-   ],
-   "radius": 18,
-   "gap": 14,
-   "letterSpacing": -0.096,
-   "backdropBlur": 0,
-   "padding": [
-    14,
-    16,
-    14,
-    16
-   ],
-   "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "lineHeight": 24.799999,
-   "background": [
-    255,
-    255,
-    255,
-    1
-   ],
-   "shadows": [
-    {
-     "y": 0,
-     "inset": false,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "blur": 0,
-     "x": 0,
-     "spread": 0
-    },
-    {
-     "y": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "blur": 0,
-     "inset": false,
-     "x": 0,
-     "spread": 0
-    },
-    {
-     "y": 0,
-     "inset": false,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "blur": 0,
-     "x": 0,
-     "spread": 0
-    },
-    {
-     "y": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "spread": 0,
-     "blur": 0,
-     "x": 0,
-     "inset": false
-    },
-    {
-     "y": 0,
-     "inset": false,
-     "blur": 0,
-     "color": [
-      60,
-      60,
-      67,
-      0.16
-     ],
-     "x": 0,
-     "spread": 0.5
-    },
-    {
-     "y": 1,
-     "color": [
-      0,
-      0,
-      0,
-      0.05
-     ],
-     "blur": 3,
-     "inset": false,
-     "x": 0,
-     "spread": 0
-    }
-   ],
-   "x": 16,
-   "fontWeight": 400,
-   "opacity": 1,
-   "fontSize": 16,
-   "height": 92,
    "width": 370,
-   "y": 657,
+   "opacity": 1,
    "fontFamily": "Instrument Sans",
-   "border": {
-    "width": 0,
-    "color": [
-     24,
-     24,
-     27,
-     1
-    ]
-   }
+   "fontSize": 16
   },
   "gates.lib.column": {
    "color": [
@@ -1688,17 +1559,17 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
-   "gap": 28,
    "letterSpacing": -0.096,
-   "padding": [
+   "backdropBlur": 0,
+   "margin": [
     0,
     0,
     0,
     0
    ],
+   "gap": 28,
    "gradient": null,
-   "margin": [
+   "padding": [
     0,
     0,
     0,
@@ -1713,8 +1584,9 @@
    ],
    "shadows": [],
    "x": 16,
-   "fontFamily": "Instrument Sans",
-   "opacity": 1,
+   "y": 177,
+   "fontSize": 16,
+   "height": 644,
    "border": {
     "width": 0,
     "color": [
@@ -1724,11 +1596,139 @@
      1
     ]
    },
-   "height": 644,
    "width": 370,
-   "fontSize": 16,
-   "y": 177,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
    "fontWeight": 400
+  },
+  "gates.lib.place.device": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 18,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gap": 14,
+   "padding": [
+    14,
+    16,
+    14,
+    16
+   ],
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "shadows": [
+    {
+     "inset": false,
+     "y": 0,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "inset": false,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "y": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "inset": false,
+     "blur": 0,
+     "y": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "y": 0,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "spread": 0.5,
+     "y": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      60,
+      60,
+      67,
+      0.16
+     ]
+    },
+    {
+     "spread": 0,
+     "y": 1,
+     "blur": 3,
+     "color": [
+      0,
+      0,
+      0,
+      0.05
+     ],
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 16,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "fontSize": 16,
+   "y": 657,
+   "width": 370,
+   "fontWeight": 400,
+   "height": 92,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   }
   },
   "gates.lib.place": {
    "color": [
@@ -1746,14 +1746,14 @@
     0,
     0
    ],
-   "backdropBlur": 0,
-   "gradient": null,
    "padding": [
     14,
     16,
     14,
     16
    ],
+   "gradient": null,
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     255,
@@ -1763,59 +1763,58 @@
    ],
    "shadows": [
     {
-     "y": 0,
      "spread": 0,
-     "blur": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "x": 0,
-     "inset": false
-    },
-    {
-     "y": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "blur": 0,
-     "spread": 0,
-     "x": 0,
-     "inset": false
-    },
-    {
-     "y": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "blur": 0,
      "inset": false,
+     "y": 0,
+     "blur": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "inset": false,
+     "blur": 0,
+     "y": 0,
      "x": 0,
      "spread": 0
     },
     {
+     "spread": 0,
      "y": 0,
+     "blur": 0,
      "inset": false,
+     "x": 0,
      "color": [
       0,
       0,
       0,
       0
-     ],
-     "blur": 0,
-     "x": 0,
-     "spread": 0
+     ]
     },
     {
+     "inset": false,
      "y": 0,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
      "inset": false,
      "color": [
       60,
@@ -1824,14 +1823,15 @@
       0.16
      ],
      "blur": 0,
+     "y": 0,
      "x": 0,
      "spread": 0.5
     },
     {
-     "y": 1,
      "inset": false,
-     "blur": 3,
      "spread": 0,
+     "blur": 3,
+     "y": 1,
      "x": 0,
      "color": [
       0,
@@ -1842,22 +1842,22 @@
     }
    ],
    "x": 16,
-   "fontFamily": "Instrument Sans",
-   "opacity": 1,
    "fontSize": 16,
-   "y": 413,
-   "width": 370,
    "fontWeight": 400,
    "border": {
+    "width": 0,
     "color": [
      24,
      24,
      27,
      1
-    ],
-    "width": 0
+    ]
    },
-   "height": 112
+   "y": 413,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "height": 112,
+   "width": 370
   },
   "gates.lib.places": {
    "color": [
@@ -1867,14 +1867,9 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "letterSpacing": -0.096,
+   "gap": 10,
    "padding": [
     0,
     0,
@@ -1882,7 +1877,12 @@
     0
    ],
    "gradient": null,
-   "gap": 10,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -1893,8 +1893,10 @@
    "shadows": [],
    "x": 16,
    "y": 413,
+   "fontWeight": 400,
    "fontSize": 16,
-   "fontFamily": "Instrument Sans",
+   "height": 336,
+   "width": 370,
    "opacity": 1,
    "border": {
     "width": 0,
@@ -1905,9 +1907,7 @@
      1
     ]
    },
-   "width": 370,
-   "height": 336,
-   "fontWeight": 400
+   "fontFamily": "Instrument Sans"
   },
   "gates.lib.back": {
    "color": [
@@ -1917,8 +1917,8 @@
     1
    ],
    "radius": 10,
+   "letterSpacing": -0.096,
    "gap": 0,
-   "backdropBlur": 0,
    "margin": [
     0,
     150.171875,
@@ -1932,7 +1932,7 @@
     16
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "backdropBlur": 0,
    "lineHeight": 22,
    "background": [
     0,
@@ -1942,22 +1942,22 @@
    ],
    "shadows": [],
    "x": 166.17,
+   "fontWeight": 400,
    "y": 777,
-   "fontFamily": "Instrument Sans",
    "height": 44,
    "border": {
-    "width": 0,
     "color": [
      11,
      11,
      12,
      1
-    ]
+    ],
+    "width": 0
    },
    "width": 69.66,
-   "fontSize": 17,
    "opacity": 1,
-   "fontWeight": 400
+   "fontFamily": "Instrument Sans",
+   "fontSize": 17
   },
   "gates.lib.header": {
    "color": [
@@ -1967,14 +1967,9 @@
     1
    ],
    "radius": 0,
-   "gap": 20,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "gap": 20,
    "padding": [
     0,
     0,
@@ -1982,7 +1977,12 @@
     0
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -1992,22 +1992,22 @@
    ],
    "shadows": [],
    "x": 16,
-   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
    "opacity": 1,
    "border": {
+    "width": 0,
     "color": [
      24,
      24,
      27,
      1
-    ],
-    "width": 0
+    ]
    },
-   "fontSize": 16,
-   "y": 177,
+   "height": 208,
    "width": 370,
-   "fontWeight": 400,
-   "height": 208
+   "y": 177,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400
   },
   "gates.lib.title": {
    "color": [
@@ -2017,22 +2017,22 @@
     1
    ],
    "radius": 0,
+   "letterSpacing": -0.68,
    "gap": 0,
    "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
    "padding": [
     0,
     0,
     0,
     0
    ],
-   "letterSpacing": -0.68,
    "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 41,
    "background": [
     0,
@@ -2042,8 +2042,148 @@
    ],
    "shadows": [],
    "x": 16,
-   "fontWeight": 600,
    "fontSize": 34,
+   "y": 223,
+   "border": {
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ],
+    "width": 0
+   },
+   "fontFamily": "Spectral",
+   "width": 370,
+   "height": 82,
+   "opacity": 1,
+   "fontWeight": 600
+  },
+  "gates.ready.open": {
+   "color": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "radius": 10,
+   "letterSpacing": -0.075,
+   "gap": 7.2,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    16,
+    0,
+    16
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 20,
+   "background": [
+    31,
+    31,
+    34,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 1,
+     "spread": 0,
+     "inset": true,
+     "blur": 0,
+     "x": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.14
+     ]
+    },
+    {
+     "y": 1,
+     "spread": 0,
+     "blur": 2,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.12
+     ]
+    },
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0.25
+     ],
+     "inset": false,
+     "blur": 12,
+     "y": 4,
+     "x": 0,
+     "spread": -4
+    }
+   ],
+   "x": 16,
+   "fontSize": 15,
+   "opacity": 1,
+   "height": 44,
+   "border": {
+    "color": [
+     255,
+     255,
+     255,
+     1
+    ],
+    "width": 0
+   },
+   "width": 370,
+   "fontFamily": "Instrument Sans",
+   "y": 606.5,
+   "fontWeight": 600
+  },
+  "gates.ready.elsewhere": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 10,
+   "gap": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "padding": [
+    0,
+    16,
+    0,
+    16
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    84.421875,
+    0,
+    84.421875
+   ],
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 100.42,
+   "fontWeight": 400,
+   "fontSize": 17,
    "border": {
     "color": [
      11,
@@ -2054,175 +2194,9 @@
     "width": 0
    },
    "opacity": 1,
-   "width": 370,
-   "y": 223,
-   "height": 82,
-   "fontFamily": "Spectral"
-  },
-  "gates.ready.card": {
-   "color": [
-    24,
-    24,
-    27,
-    1
-   ],
-   "radius": 18,
-   "backdropBlur": 0,
-   "letterSpacing": -0.096,
-   "gap": 12,
-   "padding": [
-    16,
-    16,
-    16,
-    16
-   ],
-   "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "lineHeight": 24.799999,
-   "background": [
-    255,
-    255,
-    255,
-    1
-   ],
-   "shadows": [
-    {
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "y": 0,
-     "blur": 0,
-     "inset": false,
-     "x": 0,
-     "spread": 0
-    },
-    {
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "y": 0,
-     "blur": 0,
-     "spread": 0,
-     "x": 0,
-     "inset": false
-    },
-    {
-     "inset": false,
-     "spread": 0,
-     "y": 0,
-     "blur": 0,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "inset": false,
-     "y": 0,
-     "blur": 0,
-     "spread": 0,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "inset": false,
-     "y": 0,
-     "blur": 0,
-     "spread": 0.5,
-     "x": 0,
-     "color": [
-      60,
-      60,
-      67,
-      0.16
-     ]
-    }
-   ],
-   "x": 16,
-   "fontSize": 16,
-   "fontWeight": 400,
-   "height": 116,
-   "opacity": 1,
-   "width": 370,
-   "border": {
-    "width": 0,
-    "color": [
-     24,
-     24,
-     27,
-     1
-    ]
-   },
-   "fontFamily": "Instrument Sans",
-   "y": 470.5
-  },
-  "gates.ready.elsewhere": {
-   "color": [
-    11,
-    11,
-    12,
-    1
-   ],
-   "radius": 10,
-   "letterSpacing": -0.096,
-   "gap": 0,
-   "margin": [
-    0,
-    84.421875,
-    0,
-    84.421875
-   ],
-   "padding": [
-    0,
-    16,
-    0,
-    16
-   ],
-   "gradient": null,
-   "backdropBlur": 0,
-   "lineHeight": 22,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 100.42,
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 400,
-   "border": {
-    "width": 0,
-    "color": [
-     11,
-     11,
-     12,
-     1
-    ]
-   },
-   "opacity": 1,
    "width": 201.16,
+   "fontFamily": "Instrument Sans",
    "height": 44,
-   "fontSize": 17,
    "y": 658.5
   },
   "gates.ready.title": {
@@ -2233,8 +2207,8 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.68,
    "gap": 0,
+   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -2248,7 +2222,7 @@
     0
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "letterSpacing": -0.68,
    "lineHeight": 41,
    "background": [
     0,
@@ -2259,19 +2233,19 @@
    "shadows": [],
    "x": 51.53,
    "fontSize": 34,
-   "fontWeight": 600,
    "opacity": 1,
-   "fontFamily": "Spectral",
    "height": 41,
+   "fontFamily": "Spectral",
    "width": 298.94,
+   "fontWeight": 600,
    "border": {
+    "width": 0,
     "color": [
      11,
      11,
      12,
      1
-    ],
-    "width": 0
+    ]
    },
    "y": 341.5
   },
@@ -2284,7 +2258,7 @@
    ],
    "radius": 8,
    "gap": 0,
-   "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -2297,8 +2271,8 @@
     0,
     0
    ],
-   "letterSpacing": -0.096,
    "gradient": null,
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     24,
@@ -2309,7 +2283,7 @@
    "shadows": [],
    "x": 32,
    "fontWeight": 400,
-   "fontSize": 16,
+   "opacity": 1,
    "border": {
     "width": 0,
     "color": [
@@ -2319,11 +2293,11 @@
      1
     ]
    },
-   "fontFamily": "Instrument Sans",
-   "width": 36,
    "height": 36,
-   "opacity": 1,
-   "y": 486.5
+   "width": 36,
+   "fontFamily": "Instrument Sans",
+   "y": 486.5,
+   "fontSize": 16
   },
   "gates.ready.switch": {
    "color": [
@@ -2333,17 +2307,17 @@
     1
    ],
    "radius": 999,
-   "gap": 0,
-   "backdropBlur": 0,
    "letterSpacing": -0.096,
-   "padding": [
+   "gap": 0,
+   "margin": [
     0,
     0,
     0,
     0
    ],
+   "backdropBlur": 0,
    "gradient": null,
-   "margin": [
+   "padding": [
     0,
     0,
     0,
@@ -2358,12 +2332,12 @@
    ],
    "shadows": [],
    "x": 319,
-   "fontSize": 16,
-   "opacity": 1,
-   "fontFamily": "Instrument Sans",
    "fontWeight": 400,
-   "width": 51,
+   "fontFamily": "Instrument Sans",
    "height": 31,
+   "opacity": 1,
+   "width": 51,
+   "fontSize": 16,
    "border": {
     "color": [
      24,
@@ -2383,7 +2357,7 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
+   "gap": 8,
    "backdropBlur": 0,
    "margin": [
     0,
@@ -2397,8 +2371,8 @@
     0,
     0
    ],
+   "letterSpacing": -0.096,
    "gradient": null,
-   "gap": 8,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -2408,9 +2382,8 @@
    ],
    "shadows": [],
    "x": 16,
-   "fontSize": 16,
+   "fontWeight": 400,
    "fontFamily": "Instrument Sans",
-   "height": 96,
    "border": {
     "width": 0,
     "color": [
@@ -2420,10 +2393,11 @@
      1
     ]
    },
+   "height": 96,
    "width": 370,
-   "fontWeight": 400,
-   "y": 606.5,
-   "opacity": 1
+   "fontSize": 16,
+   "opacity": 1,
+   "y": 606.5
   },
   "gates.ready.message": {
    "color": [
@@ -2435,7 +2409,12 @@
    "radius": 0,
    "letterSpacing": -0.096,
    "gap": 0,
-   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "padding": [
     0,
     0,
@@ -2443,12 +2422,7 @@
     0
    ],
    "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "backdropBlur": 0,
    "lineHeight": 20,
    "background": [
     0,
@@ -2458,22 +2432,22 @@
    ],
    "shadows": [],
    "x": 16,
-   "fontFamily": "Instrument Sans",
    "fontSize": 15,
-   "height": 40,
+   "fontWeight": 400,
    "border": {
-    "width": 0,
     "color": [
      86,
      86,
      94,
      1
-    ]
+    ],
+    "width": 0
    },
+   "fontFamily": "Instrument Sans",
    "width": 370,
-   "fontWeight": 400,
    "opacity": 1,
-   "y": 402.5
+   "y": 402.5,
+   "height": 40
   },
   "gates.ready.form": {
    "color": [
@@ -2483,15 +2457,15 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
-   "letterSpacing": -0.096,
    "gap": 20,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
     0,
     0
    ],
+   "backdropBlur": 0,
    "gradient": null,
    "padding": [
     0,
@@ -2510,6 +2484,7 @@
    "x": 16,
    "fontSize": 16,
    "fontFamily": "Instrument Sans",
+   "height": 232,
    "border": {
     "width": 0,
     "color": [
@@ -2520,139 +2495,9 @@
     ]
    },
    "fontWeight": 400,
-   "width": 370,
    "opacity": 1,
    "y": 470.5,
-   "height": 232
-  },
-  "gates.ready.switch.thumb": {
-   "color": [
-    24,
-    24,
-    27,
-    1
-   ],
-   "radius": 999,
-   "letterSpacing": -0.096,
-   "backdropBlur": 0,
-   "gap": 0,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "lineHeight": 24.799999,
-   "background": [
-    255,
-    255,
-    255,
-    1
-   ],
-   "shadows": [
-    {
-     "spread": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "blur": 0,
-     "y": 0,
-     "x": 0,
-     "inset": false
-    },
-    {
-     "y": 0,
-     "inset": false,
-     "blur": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "x": 0,
-     "spread": 0
-    },
-    {
-     "y": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "blur": 0,
-     "inset": false,
-     "x": 0,
-     "spread": 0
-    },
-    {
-     "inset": false,
-     "spread": 0,
-     "blur": 0,
-     "y": 0,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "spread": 0,
-     "y": 3,
-     "blur": 8,
-     "color": [
-      0,
-      0,
-      0,
-      0.15
-     ],
-     "x": 0,
-     "inset": false
-    },
-    {
-     "color": [
-      0,
-      0,
-      0,
-      0.16
-     ],
-     "spread": 0,
-     "y": 1,
-     "blur": 1,
-     "x": 0,
-     "inset": false
-    }
-   ],
-   "x": 321,
-   "fontFamily": "Instrument Sans",
-   "opacity": 1,
-   "height": 27,
-   "fontWeight": 400,
-   "fontSize": 16,
-   "border": {
-    "color": [
-     24,
-     24,
-     27,
-     1
-    ],
-    "width": 0
-   },
-   "width": 27,
-   "y": 488.5
+   "width": 370
   },
   "gates.ready.card.detail": {
    "color": [
@@ -2662,7 +2507,7 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
+   "backdropBlur": 0,
    "gap": 0,
    "margin": [
     2,
@@ -2677,7 +2522,7 @@
     0
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "lineHeight": 20,
    "background": [
     0,
@@ -2687,33 +2532,33 @@
    ],
    "shadows": [],
    "x": 80,
-   "fontWeight": 400,
    "fontSize": 15,
-   "height": 60,
    "opacity": 1,
-   "width": 227,
    "border": {
+    "width": 0,
     "color": [
      86,
      86,
      94,
      1
-    ],
-    "width": 0
+    ]
    },
    "fontFamily": "Instrument Sans",
+   "width": 227,
+   "height": 60,
+   "fontWeight": 400,
    "y": 510.5
   },
-  "gates.ready.column": {
+  "gates.ready.switch.thumb": {
    "color": [
     24,
     24,
     27,
     1
    ],
-   "radius": 0,
+   "radius": 999,
+   "gap": 0,
    "letterSpacing": -0.096,
-   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -2726,8 +2571,137 @@
     0,
     0
    ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "spread": 0,
+     "blur": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 3,
+     "inset": false,
+     "blur": 8,
+     "color": [
+      0,
+      0,
+      0,
+      0.15
+     ],
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "spread": 0,
+     "y": 1,
+     "blur": 1,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.16
+     ]
+    }
+   ],
+   "x": 321,
+   "fontSize": 16,
+   "opacity": 1,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 400,
+   "width": 27,
+   "fontFamily": "Instrument Sans",
+   "height": 27,
+   "y": 488.5
+  },
+  "gates.ready.column": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "gap": 28,
    "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -2737,21 +2711,21 @@
    ],
    "shadows": [],
    "x": 16,
-   "fontWeight": 400,
+   "fontSize": 16,
    "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "height": 407,
+   "width": 370,
+   "fontWeight": 400,
    "border": {
-    "width": 0,
     "color": [
      24,
      24,
      27,
      1
-    ]
+    ],
+    "width": 0
    },
-   "fontFamily": "Instrument Sans",
-   "width": 370,
-   "fontSize": 16,
-   "height": 407,
    "y": 295.5
   },
   "gates.ready.path": {
@@ -2762,7 +2736,7 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
+   "gap": 0,
    "backdropBlur": 0,
    "margin": [
     0,
@@ -2777,7 +2751,7 @@
     0
    ],
    "gradient": null,
-   "gap": 0,
+   "letterSpacing": -0.096,
    "lineHeight": 20,
    "background": [
     0,
@@ -2787,8 +2761,8 @@
    ],
    "shadows": [],
    "x": 123.74,
-   "fontSize": 15,
-   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 500,
    "border": {
     "color": [
      24,
@@ -2800,99 +2774,125 @@
    },
    "height": 39,
    "width": 237.42,
-   "fontWeight": 500,
-   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "fontSize": 15,
    "y": 403
   },
-  "gates.ready.open": {
+  "gates.ready.card": {
    "color": [
-    255,
-    255,
-    255,
+    24,
+    24,
+    27,
     1
    ],
-   "radius": 10,
-   "gap": 7.2,
+   "radius": 18,
+   "letterSpacing": -0.096,
+   "gap": 12,
    "backdropBlur": 0,
+   "padding": [
+    16,
+    16,
+    16,
+    16
+   ],
+   "gradient": null,
    "margin": [
     0,
     0,
     0,
     0
    ],
-   "padding": [
-    0,
-    16,
-    0,
-    16
-   ],
-   "gradient": null,
-   "letterSpacing": -0.075,
-   "lineHeight": 20,
+   "lineHeight": 24.799999,
    "background": [
-    31,
-    31,
-    34,
+    255,
+    255,
+    255,
     1
    ],
    "shadows": [
     {
-     "inset": true,
-     "y": 1,
+     "y": 0,
+     "spread": 0,
      "blur": 0,
-     "spread": 0,
+     "inset": false,
      "x": 0,
      "color": [
-      255,
-      255,
-      255,
-      0.14
+      0,
+      0,
+      0,
+      0
      ]
     },
     {
-     "spread": 0,
-     "inset": false,
-     "blur": 2,
-     "y": 1,
-     "x": 0,
+     "y": 0,
      "color": [
       0,
       0,
       0,
-      0.12
-     ]
+      0
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0
     },
     {
+     "y": 0,
      "inset": false,
-     "y": 4,
-     "blur": 12,
-     "spread": -4,
-     "x": 0,
      "color": [
       0,
       0,
       0,
-      0.25
+      0
+     ],
+     "blur": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "spread": 0,
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "spread": 0.5,
+     "inset": false,
+     "blur": 0,
+     "y": 0,
+     "x": 0,
+     "color": [
+      60,
+      60,
+      67,
+      0.16
      ]
     }
    ],
    "x": 16,
-   "fontSize": 15,
+   "fontSize": 16,
    "opacity": 1,
-   "height": 44,
+   "height": 116,
    "fontFamily": "Instrument Sans",
    "width": 370,
    "border": {
     "width": 0,
     "color": [
-     255,
-     255,
-     255,
+     24,
+     24,
+     27,
      1
     ]
    },
-   "fontWeight": 600,
-   "y": 606.5
+   "y": 470.5,
+   "fontWeight": 400
   },
   "gates.ready.card.title": {
    "color": [
@@ -2902,9 +2902,14 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
-   "gap": 0,
    "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "padding": [
     0,
     0,
@@ -2912,12 +2917,7 @@
     0
    ],
    "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "letterSpacing": -0.096,
    "lineHeight": 22,
    "background": [
     0,
@@ -2927,9 +2927,9 @@
    ],
    "shadows": [],
    "x": 80,
-   "fontWeight": 600,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 17,
    "opacity": 1,
-   "height": 22,
    "border": {
     "color": [
      11,
@@ -2940,8 +2940,8 @@
     "width": 0
    },
    "width": 227,
-   "fontSize": 17,
-   "fontFamily": "Instrument Sans",
+   "fontWeight": 600,
+   "height": 22,
    "y": 486.5
   },
   "gates.signin.apple": {
@@ -2952,8 +2952,8 @@
     1
    ],
    "radius": 10,
-   "gap": 8,
    "backdropBlur": 0,
+   "gap": 8,
    "margin": [
     0,
     0,
@@ -2977,412 +2977,32 @@
    ],
    "shadows": [],
    "x": 16,
-   "y": 483.5,
-   "fontSize": 17,
-   "height": 50,
-   "border": {
-    "width": 0,
-    "color": [
-     255,
-     255,
-     255,
-     1
-    ]
-   },
-   "width": 370,
    "fontFamily": "-apple-system",
    "opacity": 1,
-   "fontWeight": 600
-  },
-  "gates.signin.google.icon": {
-   "color": [
-    24,
-    24,
-    27,
-    1
-   ],
-   "radius": 0,
-   "gap": 0,
-   "letterSpacing": -0.085,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "backdropBlur": 0,
-   "lineHeight": 22,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 100.83,
-   "fontFamily": "Instrument Sans",
-   "y": 561.5,
-   "height": 18,
-   "border": {
-    "width": 0,
-    "color": [
-     24,
-     24,
-     27,
-     1
-    ]
-   },
-   "width": 18,
-   "fontSize": 17,
-   "opacity": 1,
-   "fontWeight": 600
-  },
-  "gates.signin.email": {
-   "color": [
-    24,
-    24,
-    27,
-    1
-   ],
-   "radius": 10,
-   "letterSpacing": -0.085,
-   "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    16,
-    0,
-    16
-   ],
-   "gradient": null,
-   "gap": 7.2,
-   "lineHeight": 22,
-   "background": [
-    255,
-    255,
-    255,
-    0.72
-   ],
-   "shadows": [
-    {
-     "color": [
-      255,
-      255,
-      255,
-      0.6
-     ],
-     "inset": true,
-     "blur": 0,
-     "y": 0,
-     "x": 0,
-     "spread": 1
-    },
-    {
-     "inset": false,
-     "y": 0,
-     "blur": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0.06
-     ],
-     "x": 0,
-     "spread": 1
-    },
-    {
-     "inset": false,
-     "y": 1,
-     "blur": 2,
-     "spread": 0,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0.06
-     ]
-    }
-   ],
-   "x": 16,
-   "fontSize": 17,
-   "fontWeight": 600,
-   "border": {
-    "color": [
-     24,
-     24,
-     27,
-     1
-    ],
-    "width": 0
-   },
-   "y": 607.5,
-   "width": 370,
-   "opacity": 1,
-   "fontFamily": "Instrument Sans",
-   "height": 50
-  },
-  "gates.signin.local": {
-   "color": [
-    11,
-    11,
-    12,
-    1
-   ],
-   "radius": 10,
-   "backdropBlur": 0,
-   "gap": 0,
-   "letterSpacing": -0.096,
-   "padding": [
-    0,
-    16,
-    0,
-    16
-   ],
-   "gradient": null,
-   "margin": [
-    0,
-    39.4375,
-    0,
-    39.4375
-   ],
-   "lineHeight": 22,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 55.44,
-   "fontWeight": 400,
-   "opacity": 1,
-   "fontSize": 17,
-   "y": 669.5,
-   "width": 291.13,
-   "height": 44,
-   "fontFamily": "Instrument Sans",
-   "border": {
-    "width": 0,
-    "color": [
-     11,
-     11,
-     12,
-     1
-    ]
-   }
-  },
-  "gates.signin.google": {
-   "color": [
-    24,
-    24,
-    27,
-    1
-   ],
-   "radius": 10,
-   "letterSpacing": -0.085,
-   "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    16,
-    0,
-    16
-   ],
-   "gradient": null,
-   "gap": 10,
-   "lineHeight": 22,
-   "background": [
-    255,
-    255,
-    255,
-    0.72
-   ],
-   "shadows": [
-    {
-     "spread": 1,
-     "inset": true,
-     "blur": 0,
-     "y": 0,
-     "x": 0,
-     "color": [
-      255,
-      255,
-      255,
-      0.6
-     ]
-    },
-    {
-     "color": [
-      0,
-      0,
-      0,
-      0.06
-     ],
-     "y": 0,
-     "blur": 0,
-     "inset": false,
-     "x": 0,
-     "spread": 1
-    },
-    {
-     "color": [
-      0,
-      0,
-      0,
-      0.06
-     ],
-     "inset": false,
-     "blur": 2,
-     "y": 1,
-     "x": 0,
-     "spread": 0
-    }
-   ],
-   "x": 16,
-   "fontSize": 17,
-   "opacity": 1,
    "height": 50,
-   "y": 545.5,
-   "width": 370,
-   "fontFamily": "Instrument Sans",
    "border": {
     "width": 0,
     "color": [
-     24,
-     24,
-     27,
+     255,
+     255,
+     255,
      1
     ]
    },
-   "fontWeight": 600
+   "width": 370,
+   "fontSize": 17,
+   "fontWeight": 600,
+   "y": 483.5
   },
-  "gates.signin.list": {
+  "gates.signin.body": {
    "color": [
-    24,
-    24,
-    27,
+    86,
+    86,
+    94,
     1
    ],
    "radius": 0,
    "letterSpacing": -0.096,
-   "gap": 12,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "backdropBlur": 0,
-   "lineHeight": 24.799999,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 16,
-   "fontWeight": 400,
-   "fontFamily": "Instrument Sans",
-   "height": 230,
-   "y": 483.5,
-   "width": 370,
-   "opacity": 1,
-   "border": {
-    "width": 0,
-    "color": [
-     24,
-     24,
-     27,
-     1
-    ]
-   },
-   "fontSize": 16
-  },
-  "gates.signin.card": {
-   "color": [
-    24,
-    24,
-    27,
-    1
-   ],
-   "radius": 0,
-   "letterSpacing": -0.096,
-   "gap": 32,
-   "backdropBlur": 0,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "lineHeight": 24.799999,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 16,
-   "fontSize": 16,
-   "opacity": 1,
-   "fontFamily": "Instrument Sans",
-   "y": 284.5,
-   "width": 370,
-   "border": {
-    "color": [
-     24,
-     24,
-     27,
-     1
-    ],
-    "width": 0
-   },
-   "fontWeight": 400,
-   "height": 429
-  },
-  "gates.signin.title": {
-   "color": [
-    11,
-    11,
-    12,
-    1
-   ],
-   "radius": 0,
-   "letterSpacing": -0.68,
    "backdropBlur": 0,
    "margin": [
     0,
@@ -3392,13 +3012,13 @@
    ],
    "padding": [
     0,
+    8,
     0,
-    0,
-    0
+    8
    ],
    "gradient": null,
    "gap": 0,
-   "lineHeight": 41,
+   "lineHeight": 20,
    "background": [
     0,
     0,
@@ -3406,23 +3026,23 @@
     0
    ],
    "shadows": [],
-   "x": 81.47,
-   "fontFamily": "Spectral",
-   "fontWeight": 600,
-   "y": 330.5,
-   "opacity": 1,
-   "width": 239.06,
-   "height": 41,
+   "x": 16,
+   "fontSize": 17,
+   "fontWeight": 400,
    "border": {
+    "width": 0,
     "color": [
-     11,
-     11,
-     12,
+     86,
+     86,
+     94,
      1
-    ],
-    "width": 0
+    ]
    },
-   "fontSize": 34
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "width": 370,
+   "height": 60,
+   "y": 391.5
   },
   "gates.signin.apple.icon": {
    "color": [
@@ -3432,16 +3052,16 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.085,
+   "gap": 0,
    "backdropBlur": 0,
-   "margin": [
+   "letterSpacing": -0.085,
+   "padding": [
     0,
     0,
     0,
     0
    ],
-   "gap": 0,
-   "padding": [
+   "margin": [
     0,
     0,
     0,
@@ -3457,28 +3077,78 @@
    ],
    "shadows": [],
    "x": 108.94,
-   "fontFamily": "-apple-system",
-   "opacity": 1,
-   "y": 500,
-   "fontWeight": 600,
-   "width": 17,
    "fontSize": 17,
+   "opacity": 1,
+   "fontWeight": 600,
+   "fontFamily": "-apple-system",
+   "width": 17,
    "height": 17,
    "border": {
+    "width": 0,
     "color": [
      255,
      255,
      255,
      1
-    ],
-    "width": 0
-   }
+    ]
+   },
+   "y": 500
   },
-  "gates.signin.body": {
+  "gates.signin.local": {
    "color": [
-    86,
-    86,
-    94,
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 10,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    39.4375,
+    0,
+    39.4375
+   ],
+   "padding": [
+    0,
+    16,
+    0,
+    16
+   ],
+   "gap": 0,
+   "gradient": null,
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 55.44,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 44,
+   "fontWeight": 400,
+   "width": 291.13,
+   "fontSize": 17,
+   "border": {
+    "width": 0,
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ]
+   },
+   "y": 669.5
+  },
+  "gates.signin.google.icon": {
+   "color": [
+    24,
+    24,
+    27,
     1
    ],
    "radius": 0,
@@ -3490,15 +3160,65 @@
     0,
     0
    ],
+   "letterSpacing": -0.085,
+   "gradient": null,
    "padding": [
     0,
-    8,
     0,
-    8
+    0,
+    0
    ],
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 100.83,
+   "fontWeight": 600,
+   "opacity": 1,
+   "height": 18,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "fontSize": 17,
+   "fontFamily": "Instrument Sans",
+   "width": 18,
+   "y": 561.5
+  },
+  "gates.signin.list": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
    "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
    "gradient": null,
-   "lineHeight": 20,
+   "gap": 12,
+   "lineHeight": 24.799999,
    "background": [
     0,
     0,
@@ -3508,34 +3228,779 @@
    "shadows": [],
    "x": 16,
    "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
    "opacity": 1,
+   "height": 230,
+   "width": 370,
+   "fontSize": 16,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "y": 483.5
+  },
+  "gates.signin.card": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "gap": 32,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.096,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "height": 429,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 400,
+   "opacity": 1,
+   "y": 284.5,
+   "width": 370
+  },
+  "gates.signin.email": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 10,
+   "letterSpacing": -0.085,
+   "gap": 7.2,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    16,
+    0,
+    16
+   ],
+   "lineHeight": 22,
+   "background": [
+    255,
+    255,
+    255,
+    0.72
+   ],
+   "shadows": [
+    {
+     "inset": true,
+     "spread": 1,
+     "blur": 0,
+     "y": 0,
+     "x": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.6
+     ]
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.06
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 1
+    },
+    {
+     "y": 1,
+     "spread": 0,
+     "blur": 2,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.06
+     ]
+    }
+   ],
+   "x": 16,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 50,
    "border": {
     "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "width": 370,
+   "fontSize": 17,
+   "fontWeight": 600,
+   "y": 607.5
+  },
+  "gates.signin.google": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 10,
+   "gap": 10,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    16,
+    0,
+    16
+   ],
+   "gradient": null,
+   "letterSpacing": -0.085,
+   "lineHeight": 22,
+   "background": [
+    255,
+    255,
+    255,
+    0.72
+   ],
+   "shadows": [
+    {
+     "color": [
+      255,
+      255,
+      255,
+      0.6
+     ],
+     "y": 0,
+     "blur": 0,
+     "spread": 1,
+     "x": 0,
+     "inset": true
+    },
+    {
+     "spread": 1,
+     "inset": false,
+     "y": 0,
+     "blur": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.06
+     ]
+    },
+    {
+     "inset": false,
+     "y": 1,
+     "blur": 2,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.06
+     ]
+    }
+   ],
+   "x": 16,
+   "fontSize": 17,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 50,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "fontWeight": 600,
+   "width": 370,
+   "y": 545.5
+  },
+  "gates.signin.title": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.68,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gap": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 41,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 81.47,
+   "fontSize": 34,
+   "opacity": 1,
+   "height": 41,
+   "border": {
+    "width": 0,
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ]
+   },
+   "width": 239.06,
+   "fontFamily": "Spectral",
+   "fontWeight": 600,
+   "y": 330.5
+  },
+  "gates.locked.tile": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 14,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    24,
+    24,
+    27,
+    0.06
+   ],
+   "shadows": [],
+   "x": 177,
+   "y": 52,
+   "opacity": 1,
+   "height": 48,
+   "fontSize": 16,
+   "border": {
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ],
+    "width": 0
+   },
+   "width": 48,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans"
+  },
+  "gates.locked.head": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gap": 20,
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "y": 6,
+   "opacity": 1,
+   "height": 298.88,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "fontSize": 16,
+   "fontWeight": 400,
+   "width": 370,
+   "fontFamily": "Instrument Sans"
+  },
+  "gates.locked.input": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 6,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    12,
+    0,
+    12
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 22,
+   "background": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "shadows": [
+    {
+     "inset": false,
+     "color": [
+      0,
+      0,
+      0,
+      0.08
+     ],
+     "blur": 3,
+     "y": 1,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "spread": 1.5,
+     "y": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      11,
+      11,
+      12,
+      0.165
+     ]
+    }
+   ],
+   "x": 16,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "y": 352.88,
+   "height": 44,
+   "fontSize": 17,
+   "fontWeight": 400,
+   "width": 370,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "gates.locked.body": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 27.625,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontSize": 17,
+   "opacity": 1,
+   "border": {
     "color": [
      86,
      86,
      94,
      1
-    ]
+    ],
+    "width": 0
    },
-   "height": 60,
-   "y": 391.5,
-   "fontSize": 17,
    "fontWeight": 400,
-   "width": 370
-  }
- },
- "dark": {
-  "gates.choice.emphasis.tile": {
+   "height": 82.88,
+   "y": 222,
+   "width": 370,
+   "fontFamily": "Instrument Sans"
+  },
+  "gates.locked.form": {
    "color": [
-    250,
-    250,
-    250,
+    24,
+    24,
+    27,
     1
    ],
-   "radius": 8,
-   "gap": 0,
+   "radius": 0,
+   "gap": 24,
    "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.096,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "y": 6,
+   "fontSize": 16,
+   "height": 526.88,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "width": 370,
+   "opacity": 1
+  },
+  "gates.locked.help": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 10,
+   "backdropBlur": 0,
+   "letterSpacing": -0.075,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    14,
+    0,
+    14
+   ],
+   "gradient": null,
+   "gap": 7.2,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 105.53,
+   "fontSize": 15,
+   "y": 488.88,
+   "border": {
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ],
+    "width": 0
+   },
+   "height": 44,
+   "width": 190.94,
+   "fontWeight": 550,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1
+  },
+  "gates.locked.unlock": {
+   "color": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "radius": 10,
+   "backdropBlur": 0,
+   "letterSpacing": -0.075,
+   "gap": 7.2,
+   "padding": [
+    0,
+    16,
+    0,
+    16
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 20,
+   "background": [
+    31,
+    31,
+    34,
+    1
+   ],
+   "shadows": [
+    {
+     "color": [
+      255,
+      255,
+      255,
+      0.14
+     ],
+     "spread": 0,
+     "blur": 0,
+     "y": 1,
+     "x": 0,
+     "inset": true
+    },
+    {
+     "spread": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.12
+     ],
+     "blur": 2,
+     "y": 1,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "inset": false,
+     "y": 4,
+     "blur": 12,
+     "color": [
+      0,
+      0,
+      0,
+      0.25
+     ],
+     "x": 0,
+     "spread": -4
+    }
+   ],
+   "x": 16,
+   "y": 420.88,
+   "opacity": 1,
+   "fontWeight": 550,
+   "fontSize": 15,
+   "width": 370,
+   "height": 44,
+   "border": {
+    "width": 0,
+    "color": [
+     255,
+     255,
+     255,
+     1
+    ]
+   },
+   "fontFamily": "Instrument Sans"
+  },
+  "gates.locked.page": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.096,
+   "padding": [
+    40,
+    16,
+    40,
+    16
+   ],
+   "gradient": null,
+   "lineHeight": 24.799999,
+   "background": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontFamily": "Instrument Sans",
+   "y": -34,
+   "fontWeight": 400,
+   "opacity": 1,
+   "width": 402,
+   "fontSize": 16,
+   "height": 606.88,
+   "border": {
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "gates.locked.label": {
+   "color": [
+    86,
+    86,
+    94,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 4,
    "margin": [
     0,
     0,
@@ -3550,6 +4015,158 @@
    ],
    "gradient": null,
    "letterSpacing": -0.096,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "y": 328.88,
+   "fontSize": 15,
+   "height": 68,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "opacity": 1,
+   "width": 370,
+   "border": {
+    "color": [
+     86,
+     86,
+     94,
+     1
+    ],
+    "width": 0
+   }
+  },
+  "gates.locked.title": {
+   "color": [
+    11,
+    11,
+    12,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "backdropBlur": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 41,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "y": 120,
+   "opacity": 1,
+   "height": 82,
+   "border": {
+    "width": 0,
+    "color": [
+     11,
+     11,
+     12,
+     1
+    ]
+   },
+   "fontWeight": 400,
+   "fontFamily": "Spectral",
+   "width": 370,
+   "fontSize": 34
+  },
+  "gates.locked.where": {
+   "color": [
+    24,
+    24,
+    27,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 27.625,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 58.3,
+   "y": 224.81,
+   "fontWeight": 500,
+   "height": 49.63,
+   "fontSize": 17,
+   "border": {
+    "width": 0,
+    "color": [
+     24,
+     24,
+     27,
+     1
+    ]
+   },
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "width": 308.23
+  }
+ },
+ "dark": {
+  "gates.choice.emphasis.tile": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 8,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 24.799999,
    "background": [
     242,
@@ -3559,22 +4176,22 @@
    ],
    "shadows": [],
    "x": 32,
-   "fontWeight": 400,
+   "fontSize": 16,
+   "y": 474,
    "fontFamily": "Instrument Sans",
-   "opacity": 1,
+   "height": 40,
+   "fontWeight": 400,
+   "width": 40,
    "border": {
-    "width": 0,
     "color": [
      250,
      250,
      250,
      1
-    ]
+    ],
+    "width": 0
    },
-   "width": 40,
-   "height": 40,
-   "fontSize": 16,
-   "y": 474
+   "opacity": 1
   },
   "gates.choice": {
    "color": [
@@ -3585,7 +4202,7 @@
    ],
    "radius": 18,
    "backdropBlur": 0,
-   "gap": 14,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -3598,8 +4215,8 @@
     14,
     16
    ],
-   "letterSpacing": -0.096,
    "gradient": null,
+   "gap": 14,
    "lineHeight": 24.799999,
    "background": [
     28,
@@ -3610,20 +4227,33 @@
    "shadows": [
     {
      "y": 0,
+     "spread": 0,
      "inset": false,
      "blur": 0,
+     "x": 0,
      "color": [
       0,
       0,
       0,
       0
-     ],
-     "x": 0,
-     "spread": 0
+     ]
     },
     {
-     "spread": 0,
+     "inset": false,
      "y": 0,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "spread": 0,
      "blur": 0,
      "inset": false,
      "x": 0,
@@ -3635,75 +4265,62 @@
      ]
     },
     {
-     "y": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
      "spread": 0,
-     "blur": 0,
-     "x": 0,
-     "inset": false
-    },
-    {
      "y": 0,
      "inset": false,
      "blur": 0,
+     "x": 0,
      "color": [
       0,
       0,
       0,
       0
-     ],
-     "x": 0,
-     "spread": 0
+     ]
     },
     {
      "y": 0,
      "inset": false,
+     "spread": 0.5,
+     "blur": 0,
+     "x": 0,
      "color": [
       84,
       84,
       88,
       0.5
-     ],
-     "blur": 0,
-     "x": 0,
-     "spread": 0.5
+     ]
     },
     {
      "y": 1,
+     "inset": false,
+     "blur": 3,
+     "spread": 0,
+     "x": 0,
      "color": [
       0,
       0,
       0,
       0.05
-     ],
-     "inset": false,
-     "blur": 3,
-     "x": 0,
-     "spread": 0
+     ]
     }
    ],
    "x": 16,
-   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
+   "y": 561,
    "opacity": 1,
-   "height": 72,
    "border": {
+    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ],
-    "width": 0
+    ]
    },
+   "height": 72,
    "width": 370,
-   "y": 561,
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 400
+   "fontWeight": 400,
+   "fontSize": 16
   },
   "var:glass-hover": {
    "color": [
@@ -3737,18 +4354,18 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
    "letterSpacing": -0.096,
    "gap": 0,
-   "padding": [
-    0,
+   "margin": [
+    2,
     0,
     0,
     0
    ],
+   "backdropBlur": 0,
    "gradient": null,
-   "margin": [
-    2,
+   "padding": [
+    0,
     0,
     0,
     0
@@ -3762,22 +4379,22 @@
    ],
    "shadows": [],
    "x": 86,
-   "fontFamily": "Instrument Sans",
    "fontSize": 15,
+   "y": 495,
+   "height": 40,
+   "fontWeight": 400,
+   "width": 252,
    "border": {
-    "width": 0,
     "color": [
      166,
      166,
      174,
      1
-    ]
+    ],
+    "width": 0
    },
-   "y": 495,
-   "width": 252,
-   "opacity": 1,
-   "fontWeight": 400,
-   "height": 40
+   "fontFamily": "Instrument Sans",
+   "opacity": 1
   },
   "gates.column": {
    "color": [
@@ -3787,8 +4404,8 @@
     1
    ],
    "radius": 0,
+   "gap": 32,
    "letterSpacing": -0.096,
-   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -3801,7 +4418,7 @@
     0,
     0
    ],
-   "gap": 32,
+   "backdropBlur": 0,
    "gradient": null,
    "lineHeight": 24.799999,
    "background": [
@@ -3812,8 +4429,9 @@
    ],
    "shadows": [],
    "x": 16,
-   "fontWeight": 400,
+   "y": 279,
    "opacity": 1,
+   "height": 440,
    "border": {
     "width": 0,
     "color": [
@@ -3823,11 +4441,10 @@
      1
     ]
    },
-   "height": 440,
-   "width": 370,
    "fontFamily": "Instrument Sans",
+   "width": 370,
    "fontSize": 16,
-   "y": 279
+   "fontWeight": 400
   },
   "var:color-canvas": {
    "color": [
@@ -3845,8 +4462,8 @@
     1
    ],
    "radius": 8,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "gap": 0,
    "margin": [
     0,
     0,
@@ -3860,7 +4477,7 @@
     0
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "gap": 0,
    "lineHeight": 24.799999,
    "background": [
     242,
@@ -3870,22 +4487,22 @@
    ],
    "shadows": [],
    "x": 32,
-   "fontWeight": 400,
+   "y": 577,
    "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "height": 40,
+   "fontSize": 16,
+   "width": 40,
    "border": {
+    "width": 0,
     "color": [
      250,
      250,
      250,
      1
-    ],
-    "width": 0
+    ]
    },
-   "height": 40,
-   "width": 40,
-   "fontFamily": "Instrument Sans",
-   "y": 577,
-   "fontSize": 16
+   "fontWeight": 400
   },
   "gates.choice.emphasis": {
    "color": [
@@ -3895,22 +4512,22 @@
     1
    ],
    "radius": 18,
-   "gap": 14,
    "backdropBlur": 0,
+   "gap": 14,
    "margin": [
     0,
     0,
     0,
     0
    ],
+   "letterSpacing": -0.096,
+   "gradient": null,
    "padding": [
     14,
     16,
     14,
     16
    ],
-   "gradient": null,
-   "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "background": [
     28,
@@ -3921,29 +4538,16 @@
    "shadows": [
     {
      "y": 0,
+     "inset": false,
+     "blur": 0,
      "spread": 0,
+     "x": 0,
      "color": [
       0,
       0,
       0,
       0
-     ],
-     "blur": 0,
-     "x": 0,
-     "inset": false
-    },
-    {
-     "y": 0,
-     "spread": 0,
-     "blur": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "x": 0,
-     "inset": false
+     ]
     },
     {
      "y": 0,
@@ -3959,36 +4563,49 @@
      "spread": 0
     },
     {
-     "y": 0,
      "inset": false,
+     "y": 0,
      "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
      "color": [
       0,
       0,
       0,
       0
      ],
+     "blur": 0,
+     "spread": 0,
      "x": 0,
-     "spread": 0
+     "inset": false
     },
     {
+     "y": 0,
+     "spread": 0.5,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
      "color": [
       84,
       84,
       88,
       0.5
-     ],
-     "y": 0,
-     "inset": false,
-     "blur": 0,
-     "x": 0,
-     "spread": 0.5
+     ]
     },
     {
      "y": 1,
-     "inset": false,
      "spread": 0,
      "blur": 3,
+     "inset": false,
      "x": 0,
      "color": [
       0,
@@ -3999,13 +4616,13 @@
     }
    ],
    "x": 16,
-   "fontFamily": "Instrument Sans",
    "fontSize": 16,
-   "height": 110,
    "fontWeight": 400,
-   "width": 370,
-   "opacity": 1,
    "y": 439,
+   "height": 110,
+   "opacity": 1,
+   "width": 370,
+   "fontFamily": "Instrument Sans",
    "border": {
     "color": [
      242,
@@ -4024,14 +4641,9 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
+   "backdropBlur": 0,
    "letterSpacing": -0.096,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "gap": 0,
    "padding": [
     0,
     0,
@@ -4039,7 +4651,12 @@
     0
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -4049,22 +4666,22 @@
    ],
    "shadows": [],
    "x": 42,
-   "fontSize": 16,
-   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "y": 587,
    "height": 20,
+   "opacity": 1,
+   "fontSize": 16,
+   "width": 20,
    "border": {
-    "width": 0,
     "color": [
      250,
      250,
      250,
      1
-    ]
+    ],
+    "width": 0
    },
-   "width": 20,
-   "fontWeight": 400,
-   "opacity": 1,
-   "y": 587
+   "fontFamily": "Instrument Sans"
   },
   "gates.choice.detail": {
    "color": [
@@ -4074,7 +4691,7 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
+   "backdropBlur": 0,
    "letterSpacing": -0.096,
    "margin": [
     2,
@@ -4088,8 +4705,8 @@
     0,
     0
    ],
-   "backdropBlur": 0,
    "gradient": null,
+   "gap": 0,
    "lineHeight": 20,
    "background": [
     0,
@@ -4099,12 +4716,12 @@
    ],
    "shadows": [],
    "x": 86,
-   "fontSize": 15,
-   "opacity": 1,
-   "height": 20,
    "fontFamily": "Instrument Sans",
    "y": 599,
+   "height": 20,
    "fontWeight": 400,
+   "width": 252,
+   "fontSize": 15,
    "border": {
     "width": 0,
     "color": [
@@ -4114,7 +4731,7 @@
      1
     ]
    },
-   "width": 252
+   "opacity": 1
   },
   "var:color-line": {
    "color": [
@@ -4132,22 +4749,22 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
-   "backdropBlur": 0,
    "letterSpacing": -0.68,
+   "backdropBlur": 0,
+   "gap": 0,
    "padding": [
     0,
     0,
     0,
     0
    ],
+   "gradient": null,
    "margin": [
     0,
     0,
     0,
     0
    ],
-   "gradient": null,
    "lineHeight": 41,
    "background": [
     0,
@@ -4157,13 +4774,9 @@
    ],
    "shadows": [],
    "x": 16,
-   "fontWeight": 600,
-   "opacity": 1,
    "fontFamily": "Spectral",
-   "height": 82,
-   "width": 370,
-   "y": 325,
    "fontSize": 34,
+   "height": 82,
    "border": {
     "width": 0,
     "color": [
@@ -4172,157 +4785,11 @@
      250,
      1
     ]
-   }
-  },
-  "gates.logo": {
-   "color": [
-    242,
-    242,
-    243,
-    1
-   ],
-   "radius": 0,
-   "backdropBlur": 0,
-   "letterSpacing": -0.096,
-   "gap": 0,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "lineHeight": 24.799999,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 149.5,
-   "fontWeight": 400,
-   "opacity": 1,
-   "height": 26,
-   "fontSize": 16,
-   "width": 103,
-   "y": 279,
-   "border": {
-    "width": 0,
-    "color": [
-     242,
-     242,
-     243,
-     1
-    ]
    },
-   "fontFamily": "Instrument Sans"
-  },
-  "gates.footnote": {
-   "color": [
-    166,
-    166,
-    174,
-    1
-   ],
-   "radius": 0,
-   "backdropBlur": 0,
-   "letterSpacing": -0.096,
-   "gap": 0,
-   "padding": [
-    0,
-    16,
-    0,
-    16
-   ],
-   "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "lineHeight": 18,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 16,
-   "fontSize": 15,
-   "opacity": 1,
-   "border": {
-    "color": [
-     166,
-     166,
-     174,
-     1
-    ],
-    "width": 0
-   },
-   "y": 665,
-   "height": 54,
+   "y": 325,
    "width": 370,
-   "fontWeight": 400,
-   "fontFamily": "Instrument Sans"
-  },
-  "gates.choice.emphasis.title": {
-   "color": [
-    166,
-    166,
-    174,
-    1
-   ],
-   "radius": 0,
-   "gap": 0,
-   "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "letterSpacing": 0.6,
-   "gradient": null,
-   "lineHeight": 18,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 86,
-   "fontWeight": 600,
-   "fontFamily": "Instrument Sans",
-   "height": 18,
-   "border": {
-    "width": 0,
-    "color": [
-     166,
-     166,
-     174,
-     1
-    ]
-   },
-   "width": 252,
-   "y": 453,
-   "fontSize": 15,
-   "opacity": 1
+   "opacity": 1,
+   "fontWeight": 600
   },
   "gates.page": {
    "color": [
@@ -4334,12 +4801,7 @@
    "radius": 0,
    "letterSpacing": -0.096,
    "gap": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "backdropBlur": 0,
    "padding": [
     40,
     16,
@@ -4347,7 +4809,12 @@
     16
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -4357,6 +4824,206 @@
    ],
    "shadows": [],
    "x": 0,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
+   "y": 62,
+   "fontWeight": 400,
+   "width": 402,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "height": 874
+  },
+  "gates.footnote": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    16,
+    0,
+    16
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 18,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontSize": 15,
+   "fontFamily": "Instrument Sans",
+   "y": 665,
+   "height": 54,
+   "fontWeight": 400,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ]
+   },
+   "width": 370
+  },
+  "gates.choice.emphasis.chevron": {
+   "color": [
+    147,
+    147,
+    155,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 352,
+   "fontFamily": "Instrument Sans",
+   "y": 485,
+   "border": {
+    "color": [
+     147,
+     147,
+     155,
+     1
+    ],
+    "width": 0
+   },
+   "height": 18,
+   "width": 18,
+   "fontSize": 16,
+   "opacity": 1,
+   "fontWeight": 400
+  },
+  "gates.choice.emphasis.title": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": 0.6,
+   "lineHeight": 18,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 86,
+   "y": 453,
+   "fontSize": 15,
+   "height": 18,
+   "opacity": 1,
+   "width": 252,
+   "fontWeight": 600,
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   },
+   "fontFamily": "Instrument Sans"
+  },
+  "gates.logo": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 149.5,
    "fontFamily": "Instrument Sans",
    "opacity": 1,
    "border": {
@@ -4368,11 +5035,11 @@
     ],
     "width": 0
    },
-   "fontSize": 16,
-   "width": 402,
+   "y": 279,
+   "height": 26,
    "fontWeight": 400,
-   "height": 874,
-   "y": 62
+   "width": 103,
+   "fontSize": 16
   },
   "gates.choice.emphasis.mark": {
    "color": [
@@ -4382,9 +5049,14 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
-   "letterSpacing": -0.096,
    "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "padding": [
     0,
     0,
@@ -4392,12 +5064,7 @@
     0
    ],
    "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -4407,130 +5074,22 @@
    ],
    "shadows": [],
    "x": 40,
-   "fontWeight": 400,
-   "fontFamily": "Instrument Sans",
-   "height": 24,
+   "y": 482,
+   "fontSize": 16,
+   "border": {
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ],
+    "width": 0
+   },
    "opacity": 1,
    "width": 24,
-   "border": {
-    "width": 0,
-    "color": [
-     250,
-     250,
-     250,
-     1
-    ]
-   },
-   "y": 482,
-   "fontSize": 16
-  },
-  "gates.choice.emphasis.chevron": {
-   "color": [
-    147,
-    147,
-    155,
-    1
-   ],
-   "radius": 0,
-   "gap": 0,
-   "letterSpacing": -0.096,
-   "backdropBlur": 0,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "lineHeight": 24.799999,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 352,
    "fontFamily": "Instrument Sans",
-   "opacity": 1,
-   "border": {
-    "width": 0,
-    "color": [
-     147,
-     147,
-     155,
-     1
-    ]
-   },
-   "y": 485,
-   "width": 18,
    "fontWeight": 400,
-   "fontSize": 16,
-   "height": 18
-  },
-  "gates.choice.chevron": {
-   "color": [
-    147,
-    147,
-    155,
-    1
-   ],
-   "radius": 0,
-   "gap": 0,
-   "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "letterSpacing": -0.096,
-   "lineHeight": 24.799999,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 352,
-   "fontSize": 16,
-   "opacity": 1,
-   "border": {
-    "width": 0,
-    "color": [
-     147,
-     147,
-     155,
-     1
-    ]
-   },
-   "fontWeight": 400,
-   "fontFamily": "Instrument Sans",
-   "y": 588,
-   "width": 18,
-   "height": 18
-  },
-  "var:color-danger": {
-   "color": [
-    255,
-    138,
-    128,
-    1
-   ]
+   "height": 24
   },
   "var:color-ink": {
    "color": [
@@ -4540,11 +5099,61 @@
     1
    ]
   },
-  "var:color-focus": {
+  "gates.choice.chevron": {
    "color": [
-    242,
-    242,
-    243,
+    147,
+    147,
+    155,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gap": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 352,
+   "fontWeight": 400,
+   "opacity": 1,
+   "y": 588,
+   "fontFamily": "Instrument Sans",
+   "width": 18,
+   "fontSize": 16,
+   "border": {
+    "width": 0,
+    "color": [
+     147,
+     147,
+     155,
+     1
+    ]
+   },
+   "height": 18
+  },
+  "var:color-danger": {
+   "color": [
+    255,
+    138,
+    128,
     1
    ]
   },
@@ -4557,7 +5166,7 @@
    ],
    "radius": 0,
    "letterSpacing": -0.096,
-   "backdropBlur": 0,
+   "gap": 0,
    "margin": [
     0,
     0,
@@ -4570,8 +5179,8 @@
     0,
     0
    ],
+   "backdropBlur": 0,
    "gradient": null,
-   "gap": 0,
    "lineHeight": 22,
    "background": [
     0,
@@ -4581,7 +5190,7 @@
    ],
    "shadows": [],
    "x": 86,
-   "fontSize": 17,
+   "y": 575,
    "opacity": 1,
    "border": {
     "color": [
@@ -4592,11 +5201,19 @@
     ],
     "width": 0
    },
-   "height": 22,
    "fontFamily": "Instrument Sans",
+   "width": 252,
    "fontWeight": 600,
-   "y": 575,
-   "width": 252
+   "fontSize": 17,
+   "height": 22
+  },
+  "var:color-focus": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ]
   },
   "gates.lib.place.detail": {
    "color": [
@@ -4606,9 +5223,15 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
    "gap": 0,
    "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    2,
+    0,
+    0,
+    0
+   ],
    "padding": [
     0,
     0,
@@ -4616,12 +5239,6 @@
     0
    ],
    "gradient": null,
-   "margin": [
-    2,
-    0,
-    0,
-    0
-   ],
    "lineHeight": 20,
    "background": [
     0,
@@ -4631,301 +5248,22 @@
    ],
    "shadows": [],
    "x": 86,
-   "fontWeight": 400,
-   "opacity": 1,
-   "height": 60,
-   "border": {
-    "width": 0,
-    "color": [
-     166,
-     166,
-     174,
-     1
-    ]
-   },
-   "fontFamily": "Instrument Sans",
    "fontSize": 15,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "height": 60,
    "width": 252,
-   "y": 451
-  },
-  "gates.lib.back.row": {
-   "color": [
-    242,
-    242,
-    243,
-    1
-   ],
-   "radius": 0,
-   "letterSpacing": -0.096,
-   "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "gap": 0,
-   "lineHeight": 24.799999,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 16,
-   "fontSize": 16,
-   "fontFamily": "Instrument Sans",
-   "height": 44,
-   "opacity": 1,
-   "width": 370,
+   "y": 451,
    "border": {
-    "color": [
-     242,
-     242,
-     243,
-     1
-    ],
-    "width": 0
-   },
-   "y": 777,
-   "fontWeight": 400
-  },
-  "gates.lib.message": {
-   "color": [
-    166,
-    166,
-    174,
-    1
-   ],
-   "radius": 0,
-   "backdropBlur": 0,
-   "letterSpacing": -0.096,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gap": 0,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "lineHeight": 20,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 16,
-   "fontFamily": "Instrument Sans",
-   "fontSize": 15,
-   "border": {
-    "width": 0,
     "color": [
      166,
      166,
      174,
      1
-    ]
-   },
-   "opacity": 1,
-   "fontWeight": 400,
-   "height": 60,
-   "width": 370,
-   "y": 325
-  },
-  "gates.lib.place.folder": {
-   "color": [
-    242,
-    242,
-    243,
-    1
-   ],
-   "radius": 18,
-   "backdropBlur": 0,
-   "gap": 14,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    14,
-    16,
-    14,
-    16
-   ],
-   "gradient": null,
-   "letterSpacing": -0.096,
-   "lineHeight": 24.799999,
-   "background": [
-    28,
-    28,
-    30,
-    1
-   ],
-   "shadows": [
-    {
-     "spread": 0,
-     "y": 0,
-     "blur": 0,
-     "inset": false,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "inset": false,
-     "y": 0,
-     "blur": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "x": 0,
-     "spread": 0
-    },
-    {
-     "inset": false,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "y": 0,
-     "blur": 0,
-     "x": 0,
-     "spread": 0
-    },
-    {
-     "inset": false,
-     "spread": 0,
-     "blur": 0,
-     "y": 0,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "color": [
-      84,
-      84,
-      88,
-      0.5
-     ],
-     "inset": false,
-     "y": 0,
-     "blur": 0,
-     "x": 0,
-     "spread": 0.5
-    },
-    {
-     "y": 1,
-     "inset": false,
-     "blur": 3,
-     "spread": 0,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0.05
-     ]
-    }
-   ],
-   "x": 16,
-   "fontWeight": 400,
-   "opacity": 1,
-   "border": {
-    "color": [
-     242,
-     242,
-     243,
-     1
     ],
     "width": 0
    },
-   "height": 112,
-   "width": 370,
-   "fontFamily": "Instrument Sans",
-   "fontSize": 16,
-   "y": 535
-  },
-  "gates.lib.place.tile": {
-   "color": [
-    250,
-    250,
-    250,
-    1
-   ],
-   "radius": 8,
-   "letterSpacing": -0.096,
-   "gap": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "backdropBlur": 0,
-   "gradient": null,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "lineHeight": 24.799999,
-   "background": [
-    242,
-    242,
-    243,
-    0.06
-   ],
-   "shadows": [],
-   "x": 32,
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 400,
-   "border": {
-    "color": [
-     250,
-     250,
-     250,
-     1
-    ],
-    "width": 0
-   },
-   "height": 40,
-   "width": 40,
-   "opacity": 1,
-   "fontSize": 16,
-   "y": 449
+   "opacity": 1
   },
   "gates.lib.place.title": {
    "color": [
@@ -4935,8 +5273,8 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
    "gap": 0,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -4961,21 +5299,300 @@
    "shadows": [],
    "x": 86,
    "y": 427,
-   "opacity": 1,
+   "fontSize": 17,
+   "height": 22,
    "border": {
-    "width": 0,
     "color": [
      250,
      250,
      250,
      1
+    ],
+    "width": 0
+   },
+   "width": 252,
+   "fontWeight": 600,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans"
+  },
+  "gates.lib.message": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontSize": 15,
+   "opacity": 1,
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 400,
+   "y": 325,
+   "fontFamily": "Instrument Sans",
+   "height": 60,
+   "width": 370
+  },
+  "gates.lib.place.folder": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 18,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "gap": 14,
+   "padding": [
+    14,
+    16,
+    14,
+    16
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    28,
+    28,
+    30,
+    1
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "inset": false,
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "color": [
+      84,
+      84,
+      88,
+      0.5
+     ],
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "spread": 0.5
+    },
+    {
+     "y": 1,
+     "color": [
+      0,
+      0,
+      0,
+      0.05
+     ],
+     "blur": 3,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    }
+   ],
+   "x": 16,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 16,
+   "height": 112,
+   "y": 535,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
     ]
    },
-   "fontWeight": 600,
-   "width": 252,
-   "fontSize": 17,
-   "height": 22,
+   "opacity": 1,
+   "width": 370,
+   "fontWeight": 400
+  },
+  "gates.lib.back.row": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontSize": 16,
+   "opacity": 1,
+   "fontWeight": 400,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "y": 777,
+   "width": 370,
+   "height": 44,
    "fontFamily": "Instrument Sans"
+  },
+  "gates.lib.place.tile": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 8,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    242,
+    242,
+    243,
+    0.06
+   ],
+   "shadows": [],
+   "x": 32,
+   "fontWeight": 400,
+   "fontSize": 16,
+   "border": {
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ],
+    "width": 0
+   },
+   "height": 40,
+   "y": 449,
+   "width": 40,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1
   },
   "gates.lib.page": {
    "color": [
@@ -5010,8 +5627,11 @@
    ],
    "shadows": [],
    "x": 0,
+   "fontSize": 16,
+   "y": 62,
+   "height": 874,
    "fontFamily": "Instrument Sans",
-   "opacity": 1,
+   "width": 402,
    "border": {
     "color": [
      242,
@@ -5021,11 +5641,8 @@
     ],
     "width": 0
    },
-   "height": 874,
    "fontWeight": 400,
-   "width": 402,
-   "y": 62,
-   "fontSize": 16
+   "opacity": 1
   },
   "gates.lib.group": {
    "color": [
@@ -5035,8 +5652,8 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
    "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
@@ -5060,12 +5677,13 @@
    ],
    "shadows": [],
    "x": 16,
-   "fontFamily": "Instrument Sans",
-   "fontSize": 16,
-   "height": 336,
-   "opacity": 1,
-   "width": 370,
    "fontWeight": 400,
+   "opacity": 1,
+   "height": 336,
+   "fontSize": 16,
+   "width": 370,
+   "y": 413,
+   "fontFamily": "Instrument Sans",
    "border": {
     "color": [
      242,
@@ -5074,8 +5692,7 @@
      1
     ],
     "width": 0
-   },
-   "y": 413
+   }
   },
   "gates.lib.place.device": {
    "color": [
@@ -5085,14 +5702,9 @@
     1
    ],
    "radius": 18,
-   "gap": 14,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "gap": 14,
    "padding": [
     14,
     16,
@@ -5100,7 +5712,12 @@
     16
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 24.799999,
    "background": [
     28,
@@ -5109,6 +5726,45 @@
     1
    ],
    "shadows": [
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "spread": 0,
+     "blur": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "spread": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "inset": false,
+     "blur": 0,
+     "x": 0,
+     "spread": 0
+    },
     {
      "y": 0,
      "spread": 0,
@@ -5123,74 +5779,37 @@
      "inset": false
     },
     {
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "inset": false,
-     "blur": 0,
      "y": 0,
-     "x": 0,
-     "spread": 0
-    },
-    {
-     "inset": false,
-     "spread": 0,
-     "y": 0,
-     "blur": 0,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ],
-     "y": 0,
+     "spread": 0.5,
      "blur": 0,
      "inset": false,
      "x": 0,
-     "spread": 0
-    },
-    {
-     "inset": false,
-     "y": 0,
-     "blur": 0,
      "color": [
       84,
       84,
       88,
       0.5
-     ],
-     "x": 0,
-     "spread": 0.5
+     ]
     },
     {
      "y": 1,
+     "spread": 0,
+     "blur": 3,
      "color": [
       0,
       0,
       0,
       0.05
      ],
-     "blur": 3,
-     "inset": false,
      "x": 0,
-     "spread": 0
+     "inset": false
     }
    ],
    "x": 16,
+   "fontSize": 16,
+   "y": 657,
+   "height": 92,
    "fontFamily": "Instrument Sans",
-   "opacity": 1,
    "border": {
     "width": 0,
     "color": [
@@ -5200,11 +5819,9 @@
      1
     ]
    },
-   "height": 92,
-   "width": 370,
+   "opacity": 1,
    "fontWeight": 400,
-   "fontSize": 16,
-   "y": 657
+   "width": 370
   },
   "gates.lib.column": {
    "color": [
@@ -5214,7 +5831,7 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
+   "backdropBlur": 0,
    "gap": 28,
    "margin": [
     0,
@@ -5222,14 +5839,14 @@
     0,
     0
    ],
-   "backdropBlur": 0,
-   "gradient": null,
    "padding": [
     0,
     0,
     0,
     0
    ],
+   "letterSpacing": -0.096,
+   "gradient": null,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -5242,19 +5859,19 @@
    "fontFamily": "Instrument Sans",
    "fontWeight": 400,
    "border": {
-    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ]
+    ],
+    "width": 0
    },
-   "height": 644,
-   "fontSize": 16,
+   "y": 177,
    "width": 370,
+   "fontSize": 16,
    "opacity": 1,
-   "y": 177
+   "height": 644
   },
   "gates.lib.place": {
    "color": [
@@ -5264,7 +5881,7 @@
     1
    ],
    "radius": 18,
-   "letterSpacing": -0.096,
+   "backdropBlur": 0,
    "gap": 14,
    "margin": [
     0,
@@ -5279,7 +5896,7 @@
     16
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "background": [
     28,
@@ -5289,8 +5906,8 @@
    ],
    "shadows": [
     {
-     "inset": false,
      "y": 0,
+     "inset": false,
      "color": [
       0,
       0,
@@ -5303,6 +5920,7 @@
     },
     {
      "y": 0,
+     "spread": 0,
      "color": [
       0,
       0,
@@ -5310,80 +5928,79 @@
       0
      ],
      "blur": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 0,
      "inset": false,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
      "x": 0,
      "spread": 0
     },
     {
-     "spread": 0,
+     "y": 0,
      "inset": false,
      "blur": 0,
-     "y": 0,
+     "spread": 0.5,
      "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "y": 0,
-     "spread": 0,
-     "blur": 0,
-     "inset": false,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "inset": false,
      "color": [
       84,
       84,
       88,
       0.5
-     ],
-     "blur": 0,
-     "y": 0,
-     "x": 0,
-     "spread": 0.5
+     ]
     },
     {
-     "spread": 0,
      "y": 1,
+     "spread": 0,
      "blur": 3,
-     "inset": false,
-     "x": 0,
      "color": [
       0,
       0,
       0,
       0.05
-     ]
+     ],
+     "x": 0,
+     "inset": false
     }
    ],
    "x": 16,
-   "fontFamily": "Instrument Sans",
    "fontSize": 16,
-   "height": 112,
    "opacity": 1,
-   "width": 370,
-   "fontWeight": 400,
+   "height": 112,
    "border": {
-    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ]
+    ],
+    "width": 0
    },
-   "y": 413
+   "width": 370,
+   "y": 413,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans"
   },
   "gates.lib.places": {
    "color": [
@@ -5393,22 +6010,22 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
    "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
     0,
     0
    ],
+   "gap": 10,
+   "gradient": null,
    "padding": [
     0,
     0,
     0,
     0
    ],
-   "gradient": null,
-   "gap": 10,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -5420,20 +6037,20 @@
    "x": 16,
    "fontSize": 16,
    "opacity": 1,
+   "fontWeight": 400,
+   "height": 336,
+   "width": 370,
    "border": {
-    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ]
+    ],
+    "width": 0
    },
-   "fontWeight": 400,
-   "width": 370,
-   "fontFamily": "Instrument Sans",
    "y": 413,
-   "height": 336
+   "fontFamily": "Instrument Sans"
   },
   "gates.lib.back": {
    "color": [
@@ -5452,13 +6069,13 @@
     0,
     16
    ],
-   "gradient": null,
    "margin": [
     0,
     150.171875,
     0,
     150.171875
    ],
+   "gradient": null,
    "lineHeight": 22,
    "background": [
     0,
@@ -5468,22 +6085,22 @@
    ],
    "shadows": [],
    "x": 166.17,
-   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
    "opacity": 1,
    "border": {
+    "width": 0,
     "color": [
      250,
      250,
      250,
      1
-    ],
-    "width": 0
+    ]
    },
-   "height": 44,
-   "fontWeight": 400,
-   "width": 69.66,
    "fontSize": 17,
-   "y": 777
+   "width": 69.66,
+   "y": 777,
+   "fontFamily": "Instrument Sans",
+   "height": 44
   },
   "gates.lib.header": {
    "color": [
@@ -5495,15 +6112,15 @@
    "radius": 0,
    "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "gap": 20,
-   "padding": [
+   "margin": [
     0,
     0,
     0,
     0
    ],
+   "gap": 20,
    "gradient": null,
-   "margin": [
+   "padding": [
     0,
     0,
     0,
@@ -5518,22 +6135,22 @@
    ],
    "shadows": [],
    "x": 16,
-   "fontSize": 16,
    "fontWeight": 400,
+   "opacity": 1,
+   "fontFamily": "Instrument Sans",
+   "height": 208,
+   "width": 370,
+   "y": 177,
+   "fontSize": 16,
    "border": {
-    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ]
-   },
-   "opacity": 1,
-   "width": 370,
-   "height": 208,
-   "y": 177,
-   "fontFamily": "Instrument Sans"
+    ],
+    "width": 0
+   }
   },
   "gates.lib.title": {
    "color": [
@@ -5543,7 +6160,7 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
+   "gap": 0,
    "letterSpacing": -0.68,
    "margin": [
     0,
@@ -5558,7 +6175,7 @@
     0
    ],
    "gradient": null,
-   "gap": 0,
+   "backdropBlur": 0,
    "lineHeight": 41,
    "background": [
     0,
@@ -5568,9 +6185,12 @@
    ],
    "shadows": [],
    "x": 16,
+   "fontWeight": 600,
    "fontFamily": "Spectral",
+   "y": 223,
+   "height": 82,
+   "width": 370,
    "opacity": 1,
-   "fontSize": 34,
    "border": {
     "color": [
      250,
@@ -5580,10 +6200,7 @@
     ],
     "width": 0
    },
-   "width": 370,
-   "fontWeight": 600,
-   "height": 82,
-   "y": 223
+   "fontSize": 34
   },
   "gates.ready.open": {
    "color": [
@@ -5607,8 +6224,8 @@
     0,
     16
    ],
-   "backdropBlur": 0,
    "gradient": null,
+   "backdropBlur": 0,
    "lineHeight": 20,
    "background": [
     242,
@@ -5618,48 +6235,50 @@
    ],
    "shadows": [
     {
+     "inset": true,
+     "spread": 0,
+     "blur": 0,
      "y": 1,
+     "x": 0,
      "color": [
       255,
       255,
       255,
       0.14
-     ],
-     "blur": 0,
-     "inset": true,
-     "x": 0,
-     "spread": 0
+     ]
     },
     {
-     "y": 1,
      "color": [
       0,
       0,
       0,
       0.12
      ],
-     "spread": 0,
+     "inset": false,
      "blur": 2,
+     "y": 1,
      "x": 0,
-     "inset": false
+     "spread": 0
     },
     {
-     "y": 4,
+     "spread": -4,
      "inset": false,
+     "blur": 12,
+     "y": 4,
+     "x": 0,
      "color": [
       0,
       0,
       0,
       0.25
-     ],
-     "blur": 12,
-     "x": 0,
-     "spread": -4
+     ]
     }
    ],
    "x": 16,
-   "fontWeight": 600,
-   "y": 606.5,
+   "fontSize": 15,
+   "fontFamily": "Instrument Sans",
+   "height": 44,
+   "opacity": 1,
    "border": {
     "width": 0,
     "color": [
@@ -5669,11 +6288,9 @@
      1
     ]
    },
-   "fontFamily": "Instrument Sans",
    "width": 370,
-   "fontSize": 15,
-   "height": 44,
-   "opacity": 1
+   "fontWeight": 600,
+   "y": 606.5
   },
   "gates.ready.elsewhere": {
    "color": [
@@ -5683,8 +6300,8 @@
     1
    ],
    "radius": 10,
-   "letterSpacing": -0.096,
    "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     84.421875,
@@ -5697,8 +6314,8 @@
     0,
     16
    ],
-   "gradient": null,
    "gap": 0,
+   "gradient": null,
    "lineHeight": 22,
    "background": [
     0,
@@ -5708,9 +6325,8 @@
    ],
    "shadows": [],
    "x": 100.42,
-   "y": 658.5,
+   "fontWeight": 400,
    "opacity": 1,
-   "height": 44,
    "border": {
     "color": [
      250,
@@ -5720,10 +6336,11 @@
     ],
     "width": 0
    },
-   "fontWeight": 400,
    "fontFamily": "Instrument Sans",
+   "width": 201.16,
    "fontSize": 17,
-   "width": 201.16
+   "height": 44,
+   "y": 658.5
   },
   "gates.ready.title": {
    "color": [
@@ -5734,7 +6351,7 @@
    ],
    "radius": 0,
    "gap": 0,
-   "letterSpacing": -0.68,
+   "backdropBlur": 0,
    "margin": [
     0,
     0,
@@ -5747,8 +6364,8 @@
     0,
     0
    ],
+   "letterSpacing": -0.68,
    "gradient": null,
-   "backdropBlur": 0,
    "lineHeight": 41,
    "background": [
     0,
@@ -5759,11 +6376,8 @@
    "shadows": [],
    "x": 51.53,
    "fontFamily": "Spectral",
-   "y": 341.5,
-   "height": 41,
-   "fontWeight": 600,
-   "width": 298.94,
    "fontSize": 34,
+   "fontWeight": 600,
    "border": {
     "width": 0,
     "color": [
@@ -5773,7 +6387,10 @@
      1
     ]
    },
-   "opacity": 1
+   "width": 298.94,
+   "opacity": 1,
+   "height": 41,
+   "y": 341.5
   },
   "gates.ready.card.tile": {
    "color": [
@@ -5783,7 +6400,7 @@
     1
    ],
    "radius": 8,
-   "letterSpacing": -0.096,
+   "backdropBlur": 0,
    "gap": 0,
    "margin": [
     0,
@@ -5798,7 +6415,7 @@
     0
    ],
    "gradient": null,
-   "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "background": [
     242,
@@ -5811,10 +6428,6 @@
    "fontSize": 16,
    "opacity": 1,
    "height": 36,
-   "y": 486.5,
-   "fontWeight": 400,
-   "fontFamily": "Instrument Sans",
-   "width": 36,
    "border": {
     "color": [
      242,
@@ -5823,7 +6436,11 @@
      1
     ],
     "width": 0
-   }
+   },
+   "width": 36,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
+   "y": 486.5
   },
   "gates.ready.switch": {
    "color": [
@@ -5833,17 +6450,17 @@
     1
    ],
    "radius": 999,
+   "backdropBlur": 0,
    "gap": 0,
    "letterSpacing": -0.096,
-   "margin": [
+   "padding": [
     0,
     0,
     0,
     0
    ],
-   "backdropBlur": 0,
    "gradient": null,
-   "padding": [
+   "margin": [
     0,
     0,
     0,
@@ -5858,61 +6475,8 @@
    ],
    "shadows": [],
    "x": 319,
-   "fontSize": 16,
-   "opacity": 1,
-   "y": 486.5,
-   "border": {
-    "width": 0,
-    "color": [
-     242,
-     242,
-     243,
-     1
-    ]
-   },
-   "width": 51,
-   "fontFamily": "Instrument Sans",
    "fontWeight": 400,
-   "height": 31
-  },
-  "gates.ready.buttons": {
-   "color": [
-    242,
-    242,
-    243,
-    1
-   ],
-   "radius": 0,
-   "backdropBlur": 0,
-   "gap": 8,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "letterSpacing": -0.096,
-   "lineHeight": 24.799999,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 16,
-   "y": 606.5,
-   "fontFamily": "Instrument Sans",
-   "height": 96,
-   "opacity": 1,
-   "width": 370,
+   "fontSize": 16,
    "border": {
     "color": [
      242,
@@ -5922,8 +6486,61 @@
     ],
     "width": 0
    },
+   "fontFamily": "Instrument Sans",
+   "width": 51,
+   "opacity": 1,
+   "height": 31,
+   "y": 486.5
+  },
+  "gates.ready.buttons": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "gap": 8,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
    "fontSize": 16,
-   "fontWeight": 400
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "height": 96,
+   "width": 370,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "y": 606.5
   },
   "gates.ready.message": {
    "color": [
@@ -5933,22 +6550,22 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
    "gap": 0,
+   "backdropBlur": 0,
    "margin": [
     0,
     0,
     0,
     0
    ],
-   "backdropBlur": 0,
-   "gradient": null,
    "padding": [
     0,
     0,
     0,
     0
    ],
+   "gradient": null,
+   "letterSpacing": -0.096,
    "lineHeight": 20,
    "background": [
     0,
@@ -5958,22 +6575,22 @@
    ],
    "shadows": [],
    "x": 16,
-   "fontSize": 15,
-   "y": 402.5,
    "fontFamily": "Instrument Sans",
-   "height": 40,
-   "width": 370,
-   "opacity": 1,
+   "fontSize": 15,
    "border": {
-    "width": 0,
     "color": [
      166,
      166,
      174,
      1
-    ]
+    ],
+    "width": 0
    },
-   "fontWeight": 400
+   "fontWeight": 400,
+   "opacity": 1,
+   "width": 370,
+   "height": 40,
+   "y": 402.5
   },
   "gates.ready.form": {
    "color": [
@@ -5991,7 +6608,6 @@
     0,
     0
    ],
-   "letterSpacing": -0.096,
    "padding": [
     0,
     0,
@@ -5999,6 +6615,7 @@
     0
    ],
    "gradient": null,
+   "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "background": [
     0,
@@ -6008,8 +6625,8 @@
    ],
    "shadows": [],
    "x": 16,
-   "y": 470.5,
-   "opacity": 1,
+   "fontWeight": 400,
+   "fontFamily": "Instrument Sans",
    "height": 232,
    "fontSize": 16,
    "width": 370,
@@ -6022,58 +6639,8 @@
      1
     ]
    },
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 400
-  },
-  "gates.ready.card.detail": {
-   "color": [
-    166,
-    166,
-    174,
-    1
-   ],
-   "radius": 0,
-   "letterSpacing": -0.096,
-   "backdropBlur": 0,
-   "margin": [
-    2,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gap": 0,
-   "gradient": null,
-   "lineHeight": 20,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 80,
-   "y": 510.5,
-   "fontSize": 15,
-   "height": 60,
-   "border": {
-    "width": 0,
-    "color": [
-     166,
-     166,
-     174,
-     1
-    ]
-   },
-   "width": 227,
-   "fontWeight": 400,
    "opacity": 1,
-   "fontFamily": "Instrument Sans"
+   "y": 470.5
   },
   "gates.ready.switch.thumb": {
    "color": [
@@ -6085,20 +6652,20 @@
    "radius": 999,
    "gap": 0,
    "letterSpacing": -0.096,
-   "backdropBlur": 0,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
    "margin": [
     0,
     0,
     0,
     0
    ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
    "lineHeight": 24.799999,
    "background": [
     255,
@@ -6108,10 +6675,10 @@
    ],
    "shadows": [
     {
-     "y": 0,
      "inset": false,
      "spread": 0,
      "blur": 0,
+     "y": 0,
      "x": 0,
      "color": [
       0,
@@ -6121,20 +6688,7 @@
      ]
     },
     {
-     "y": 0,
      "inset": false,
-     "blur": 0,
-     "spread": 0,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "y": 0,
      "color": [
       0,
       0,
@@ -6142,15 +6696,28 @@
       0
      ],
      "blur": 0,
-     "inset": false,
+     "y": 0,
      "x": 0,
      "spread": 0
     },
     {
+     "inset": false,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "blur": 0,
      "y": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "inset": false,
      "spread": 0,
      "blur": 0,
-     "inset": false,
+     "y": 0,
      "x": 0,
      "color": [
       0,
@@ -6160,49 +6727,99 @@
      ]
     },
     {
-     "y": 3,
-     "spread": 0,
-     "blur": 8,
      "color": [
       0,
       0,
       0,
       0.15
      ],
+     "inset": false,
+     "blur": 8,
+     "y": 3,
      "x": 0,
-     "inset": false
+     "spread": 0
     },
     {
+     "inset": false,
+     "spread": 0,
+     "blur": 1,
      "y": 1,
+     "x": 0,
      "color": [
       0,
       0,
       0,
       0.16
-     ],
-     "inset": false,
-     "blur": 1,
-     "x": 0,
-     "spread": 0
+     ]
     }
    ],
    "x": 321,
-   "y": 488.5,
    "fontWeight": 400,
+   "opacity": 1,
    "fontSize": 16,
    "border": {
-    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ]
+    ],
+    "width": 0
    },
    "width": 27,
-   "opacity": 1,
    "height": 27,
-   "fontFamily": "Instrument Sans"
+   "fontFamily": "Instrument Sans",
+   "y": 488.5
+  },
+  "gates.ready.card.detail": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "margin": [
+    2,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 80,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 15,
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 400,
+   "height": 60,
+   "width": 227,
+   "opacity": 1,
+   "y": 510.5
   },
   "gates.ready.column": {
    "color": [
@@ -6212,7 +6829,7 @@
     1
    ],
    "radius": 0,
-   "letterSpacing": -0.096,
+   "gap": 28,
    "backdropBlur": 0,
    "margin": [
     0,
@@ -6220,7 +6837,7 @@
     0,
     0
    ],
-   "gap": 28,
+   "letterSpacing": -0.096,
    "gradient": null,
    "padding": [
     0,
@@ -6237,22 +6854,22 @@
    ],
    "shadows": [],
    "x": 16,
-   "fontWeight": 400,
-   "y": 295.5,
-   "height": 407,
-   "opacity": 1,
    "fontSize": 16,
-   "fontFamily": "Instrument Sans",
+   "opacity": 1,
    "border": {
-    "width": 0,
     "color": [
      242,
      242,
      243,
      1
-    ]
+    ],
+    "width": 0
    },
-   "width": 370
+   "fontFamily": "Instrument Sans",
+   "width": 370,
+   "height": 407,
+   "fontWeight": 400,
+   "y": 295.5
   },
   "gates.ready.path": {
    "color": [
@@ -6263,13 +6880,8 @@
    ],
    "radius": 0,
    "gap": 0,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
    "padding": [
     0,
     0,
@@ -6277,7 +6889,12 @@
     0
    ],
    "gradient": null,
-   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "lineHeight": 20,
    "background": [
     0,
@@ -6288,7 +6905,7 @@
    "shadows": [],
    "x": 123.74,
    "fontFamily": "Instrument Sans",
-   "y": 403,
+   "fontSize": 15,
    "border": {
     "color": [
      242,
@@ -6298,11 +6915,11 @@
     ],
     "width": 0
    },
-   "fontSize": 15,
    "opacity": 1,
    "width": 237.42,
+   "height": 39,
    "fontWeight": 500,
-   "height": 39
+   "y": 403
   },
   "gates.ready.card": {
    "color": [
@@ -6313,8 +6930,13 @@
    ],
    "radius": 18,
    "gap": 12,
-   "backdropBlur": 0,
    "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "padding": [
     16,
     16,
@@ -6322,12 +6944,7 @@
     16
    ],
    "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "backdropBlur": 0,
    "lineHeight": 24.799999,
    "background": [
     28,
@@ -6337,49 +6954,36 @@
    ],
    "shadows": [
     {
-     "y": 0,
-     "spread": 0,
-     "blur": 0,
-     "inset": false,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "y": 0,
-     "inset": false,
-     "blur": 0,
-     "spread": 0,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0
-     ]
-    },
-    {
-     "y": 0,
      "color": [
       0,
       0,
       0,
       0
      ],
-     "blur": 0,
      "spread": 0,
+     "blur": 0,
+     "y": 0,
      "x": 0,
      "inset": false
     },
     {
-     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
      "spread": 0,
      "blur": 0,
+     "y": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
      "inset": false,
+     "spread": 0,
+     "blur": 0,
+     "y": 0,
      "x": 0,
      "color": [
       0,
@@ -6389,7 +6993,20 @@
      ]
     },
     {
+     "color": [
+      0,
+      0,
+      0,
+      0
+     ],
+     "inset": false,
+     "blur": 0,
      "y": 0,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "spread": 0.5,
      "color": [
       84,
       84,
@@ -6397,14 +7014,14 @@
       0.5
      ],
      "blur": 0,
-     "inset": false,
+     "y": 0,
      "x": 0,
-     "spread": 0.5
+     "inset": false
     }
    ],
    "x": 16,
    "fontWeight": 400,
-   "y": 470.5,
+   "opacity": 1,
    "border": {
     "width": 0,
     "color": [
@@ -6414,11 +7031,11 @@
      1
     ]
    },
-   "opacity": 1,
-   "width": 370,
    "height": 116,
+   "width": 370,
+   "fontFamily": "Instrument Sans",
    "fontSize": 16,
-   "fontFamily": "Instrument Sans"
+   "y": 470.5
   },
   "gates.ready.card.title": {
    "color": [
@@ -6429,14 +7046,13 @@
    ],
    "radius": 0,
    "gap": 0,
-   "backdropBlur": 0,
+   "letterSpacing": -0.096,
    "margin": [
     0,
     0,
     0,
     0
    ],
-   "letterSpacing": -0.096,
    "padding": [
     0,
     0,
@@ -6444,6 +7060,7 @@
     0
    ],
    "gradient": null,
+   "backdropBlur": 0,
    "lineHeight": 22,
    "background": [
     0,
@@ -6453,22 +7070,72 @@
    ],
    "shadows": [],
    "x": 80,
-   "y": 486.5,
-   "opacity": 1,
+   "fontWeight": 600,
    "fontSize": 17,
    "height": 22,
-   "width": 227,
    "border": {
-    "width": 0,
     "color": [
      250,
      250,
      250,
      1
-    ]
+    ],
+    "width": 0
    },
+   "width": 227,
    "fontFamily": "Instrument Sans",
-   "fontWeight": 600
+   "opacity": 1,
+   "y": 486.5
+  },
+  "gates.signin.title": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "letterSpacing": -0.68,
+   "lineHeight": 41,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 81.47,
+   "y": 330.5,
+   "opacity": 1,
+   "height": 41,
+   "border": {
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 600,
+   "width": 239.06,
+   "fontFamily": "Spectral",
+   "fontSize": 34
   },
   "gates.signin.local": {
    "color": [
@@ -6478,15 +7145,15 @@
     1
    ],
    "radius": 10,
-   "letterSpacing": -0.096,
-   "backdropBlur": 0,
    "gap": 0,
+   "backdropBlur": 0,
    "margin": [
     0,
     39.4375,
     0,
     39.4375
    ],
+   "letterSpacing": -0.096,
    "gradient": null,
    "padding": [
     0,
@@ -6503,22 +7170,72 @@
    ],
    "shadows": [],
    "x": 55.44,
-   "y": 669.5,
-   "fontSize": 17,
-   "opacity": 1,
    "fontWeight": 400,
+   "opacity": 1,
+   "y": 669.5,
    "fontFamily": "Instrument Sans",
+   "width": 291.13,
+   "fontSize": 17,
    "border": {
+    "width": 0,
     "color": [
      250,
      250,
      250,
      1
-    ],
-    "width": 0
+    ]
    },
-   "height": 44,
-   "width": 291.13
+   "height": 44
+  },
+  "gates.signin.body": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    8,
+    0,
+    8
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 17,
+   "border": {
+    "width": 0,
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ]
+   },
+   "y": 391.5,
+   "width": 370,
+   "height": 60,
+   "fontWeight": 400,
+   "opacity": 1
   },
   "gates.signin.google.icon": {
    "color": [
@@ -6528,9 +7245,14 @@
     1
    ],
    "radius": 0,
-   "backdropBlur": 0,
-   "letterSpacing": -0.085,
    "gap": 0,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
    "padding": [
     0,
     0,
@@ -6538,12 +7260,7 @@
     0
    ],
    "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
+   "letterSpacing": -0.085,
    "lineHeight": 22,
    "background": [
     0,
@@ -6554,12 +7271,11 @@
    "shadows": [],
    "x": 100.83,
    "y": 561.5,
-   "fontSize": 17,
    "opacity": 1,
-   "fontFamily": "Instrument Sans",
-   "width": 18,
    "height": 18,
+   "fontSize": 17,
    "fontWeight": 600,
+   "fontFamily": "Instrument Sans",
    "border": {
     "width": 0,
     "color": [
@@ -6568,9 +7284,957 @@
      243,
      1
     ]
+   },
+   "width": 18
+  },
+  "gates.signin.apple.icon": {
+   "color": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "radius": 0,
+   "gap": 0,
+   "letterSpacing": -0.085,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "lineHeight": 22,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 108.94,
+   "y": 500,
+   "opacity": 1,
+   "fontSize": 17,
+   "fontWeight": 600,
+   "width": 17,
+   "border": {
+    "color": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "width": 0
+   },
+   "height": 17,
+   "fontFamily": "-apple-system"
+  },
+  "gates.signin.list": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "gap": 12,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "backdropBlur": 0,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontSize": 16,
+   "fontFamily": "Instrument Sans",
+   "y": 483.5,
+   "height": 230,
+   "fontWeight": 400,
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "width": 370
+  },
+  "gates.signin.card": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 32,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontFamily": "Instrument Sans",
+   "y": 284.5,
+   "fontWeight": 400,
+   "opacity": 1,
+   "fontSize": 16,
+   "height": 429,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "width": 370
+  },
+  "gates.signin.apple": {
+   "color": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "radius": 10,
+   "backdropBlur": 0,
+   "letterSpacing": -0.085,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 8,
+   "lineHeight": 22,
+   "background": [
+    255,
+    255,
+    255,
+    1
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontWeight": 600,
+   "y": 483.5,
+   "height": 50,
+   "border": {
+    "width": 0,
+    "color": [
+     0,
+     0,
+     0,
+     1
+    ]
+   },
+   "opacity": 1,
+   "width": 370,
+   "fontSize": 17,
+   "fontFamily": "-apple-system"
+  },
+  "gates.signin.email": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 10,
+   "gap": 7.2,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.085,
+   "gradient": null,
+   "padding": [
+    0,
+    16,
+    0,
+    16
+   ],
+   "lineHeight": 22,
+   "background": [
+    41,
+    41,
+    44,
+    0.72
+   ],
+   "shadows": [
+    {
+     "y": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.08
+     ],
+     "blur": 0,
+     "spread": 1,
+     "x": 0,
+     "inset": true
+    },
+    {
+     "y": 0,
+     "spread": 1,
+     "blur": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.4
+     ],
+     "x": 0,
+     "inset": false
+    },
+    {
+     "y": 1,
+     "inset": false,
+     "blur": 2,
+     "spread": 0,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.06
+     ]
+    }
+   ],
+   "x": 16,
+   "fontSize": 17,
+   "opacity": 1,
+   "height": 50,
+   "y": 607.5,
+   "width": 370,
+   "fontFamily": "Instrument Sans",
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "fontWeight": 600
+  },
+  "gates.signin.google": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 10,
+   "gap": 10,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "letterSpacing": -0.085,
+   "gradient": null,
+   "padding": [
+    0,
+    16,
+    0,
+    16
+   ],
+   "lineHeight": 22,
+   "background": [
+    41,
+    41,
+    44,
+    0.72
+   ],
+   "shadows": [
+    {
+     "color": [
+      255,
+      255,
+      255,
+      0.08
+     ],
+     "y": 0,
+     "blur": 0,
+     "spread": 1,
+     "x": 0,
+     "inset": true
+    },
+    {
+     "y": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.4
+     ],
+     "inset": false,
+     "blur": 0,
+     "x": 0,
+     "spread": 1
+    },
+    {
+     "y": 1,
+     "spread": 0,
+     "inset": false,
+     "blur": 2,
+     "x": 0,
+     "color": [
+      0,
+      0,
+      0,
+      0.06
+     ]
+    }
+   ],
+   "x": 16,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "y": 545.5,
+   "width": 370,
+   "fontWeight": 600,
+   "fontSize": 17,
+   "height": 50
+  },
+  "gates.locked.form": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 24,
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "height": 526.88,
+   "width": 370,
+   "fontWeight": 400,
+   "y": 6,
+   "fontSize": 16
+  },
+  "gates.locked.head": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gap": 20,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "height": 298.88,
+   "width": 370,
+   "fontWeight": 400,
+   "fontSize": 16,
+   "y": 6
+  },
+  "gates.locked.help": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 10,
+   "backdropBlur": 0,
+   "gap": 7.2,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    14,
+    0,
+    14
+   ],
+   "gradient": null,
+   "letterSpacing": -0.075,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 105.53,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 15,
+   "border": {
+    "width": 0,
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ]
+   },
+   "height": 44,
+   "width": 190.94,
+   "opacity": 1,
+   "y": 488.88,
+   "fontWeight": 550
+  },
+  "gates.locked.body": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 27.625,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontWeight": 400,
+   "opacity": 1,
+   "height": 82.88,
+   "fontFamily": "Instrument Sans",
+   "width": 370,
+   "fontSize": 17,
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
+   },
+   "y": 222
+  },
+  "gates.locked.input": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 6,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "gap": 0,
+   "padding": [
+    0,
+    12,
+    0,
+    12
+   ],
+   "gradient": null,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 22,
+   "background": [
+    28,
+    28,
+    30,
+    1
+   ],
+   "shadows": [
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0.08
+     ],
+     "y": 1,
+     "blur": 3,
+     "spread": 0,
+     "x": 0,
+     "inset": false
+    },
+    {
+     "spread": 1.5,
+     "y": 0,
+     "blur": 0,
+     "inset": false,
+     "x": 0,
+     "color": [
+      250,
+      250,
+      250,
+      0.165
+     ]
+    }
+   ],
+   "x": 16,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "opacity": 1,
+   "height": 44,
+   "width": 370,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontSize": 17,
+   "y": 352.88
+  },
+  "gates.locked.page": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "gap": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    40,
+    16,
+    40,
+    16
+   ],
+   "gradient": null,
+   "letterSpacing": -0.096,
+   "lineHeight": 24.799999,
+   "background": [
+    16,
+    16,
+    17,
+    1
+   ],
+   "shadows": [],
+   "x": 0,
+   "fontFamily": "Instrument Sans",
+   "opacity": 1,
+   "height": 606.88,
+   "border": {
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ],
+    "width": 0
+   },
+   "fontWeight": 400,
+   "width": 402,
+   "fontSize": 16,
+   "y": -34
+  },
+  "gates.locked.unlock": {
+   "color": [
+    16,
+    16,
+    17,
+    1
+   ],
+   "radius": 10,
+   "gap": 7.2,
+   "letterSpacing": -0.075,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    16,
+    0,
+    16
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "lineHeight": 20,
+   "background": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "shadows": [
+    {
+     "inset": true,
+     "y": 1,
+     "blur": 0,
+     "color": [
+      255,
+      255,
+      255,
+      0.14
+     ],
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "color": [
+      0,
+      0,
+      0,
+      0.12
+     ],
+     "inset": false,
+     "y": 1,
+     "blur": 2,
+     "x": 0,
+     "spread": 0
+    },
+    {
+     "y": 4,
+     "color": [
+      0,
+      0,
+      0,
+      0.25
+     ],
+     "blur": 12,
+     "inset": false,
+     "x": 0,
+     "spread": -4
+    }
+   ],
+   "x": 16,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 15,
+   "border": {
+    "width": 0,
+    "color": [
+     16,
+     16,
+     17,
+     1
+    ]
+   },
+   "opacity": 1,
+   "width": 370,
+   "fontWeight": 550,
+   "y": 420.88,
+   "height": 44
+  },
+  "gates.locked.where": {
+   "color": [
+    242,
+    242,
+    243,
+    1
+   ],
+   "radius": 0,
+   "letterSpacing": -0.096,
+   "backdropBlur": 0,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 0,
+   "lineHeight": 27.625,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 58.3,
+   "fontWeight": 500,
+   "opacity": 1,
+   "height": 49.63,
+   "border": {
+    "width": 0,
+    "color": [
+     242,
+     242,
+     243,
+     1
+    ]
+   },
+   "width": 308.23,
+   "fontFamily": "Instrument Sans",
+   "fontSize": 17,
+   "y": 224.81
+  },
+  "gates.locked.tile": {
+   "color": [
+    250,
+    250,
+    250,
+    1
+   ],
+   "radius": 14,
+   "gap": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "backdropBlur": 0,
+   "gradient": null,
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "lineHeight": 24.799999,
+   "background": [
+    242,
+    242,
+    243,
+    0.06
+   ],
+   "shadows": [],
+   "x": 177,
+   "fontSize": 16,
+   "opacity": 1,
+   "height": 48,
+   "fontFamily": "Instrument Sans",
+   "fontWeight": 400,
+   "width": 48,
+   "border": {
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ],
+    "width": 0
+   },
+   "y": 52
+  },
+  "gates.locked.label": {
+   "color": [
+    166,
+    166,
+    174,
+    1
+   ],
+   "radius": 0,
+   "backdropBlur": 0,
+   "letterSpacing": -0.096,
+   "margin": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "padding": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "gradient": null,
+   "gap": 4,
+   "lineHeight": 20,
+   "background": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "shadows": [],
+   "x": 16,
+   "fontWeight": 400,
+   "opacity": 1,
+   "fontSize": 15,
+   "fontFamily": "Instrument Sans",
+   "width": 370,
+   "height": 68,
+   "y": 328.88,
+   "border": {
+    "color": [
+     166,
+     166,
+     174,
+     1
+    ],
+    "width": 0
    }
   },
-  "gates.signin.title": {
+  "gates.locked.title": {
    "color": [
     250,
     250,
@@ -6578,9 +8242,9 @@
     1
    ],
    "radius": 0,
-   "gap": 0,
-   "letterSpacing": -0.68,
+   "letterSpacing": -0.096,
    "backdropBlur": 0,
+   "gap": 0,
    "padding": [
     0,
     0,
@@ -6602,453 +8266,23 @@
     0
    ],
    "shadows": [],
-   "x": 81.47,
-   "y": 330.5,
+   "x": 16,
+   "fontWeight": 400,
+   "opacity": 1,
+   "fontFamily": "Spectral",
+   "height": 82,
+   "border": {
+    "color": [
+     250,
+     250,
+     250,
+     1
+    ],
+    "width": 0
+   },
+   "width": 370,
    "fontSize": 34,
-   "height": 41,
-   "opacity": 1,
-   "width": 239.06,
-   "border": {
-    "color": [
-     250,
-     250,
-     250,
-     1
-    ],
-    "width": 0
-   },
-   "fontWeight": 600,
-   "fontFamily": "Spectral"
-  },
-  "gates.signin.google": {
-   "color": [
-    242,
-    242,
-    243,
-    1
-   ],
-   "radius": 10,
-   "letterSpacing": -0.085,
-   "gap": 10,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    16,
-    0,
-    16
-   ],
-   "gradient": null,
-   "backdropBlur": 0,
-   "lineHeight": 22,
-   "background": [
-    41,
-    41,
-    44,
-    0.72
-   ],
-   "shadows": [
-    {
-     "y": 0,
-     "inset": true,
-     "blur": 0,
-     "spread": 1,
-     "x": 0,
-     "color": [
-      255,
-      255,
-      255,
-      0.08
-     ]
-    },
-    {
-     "y": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0.4
-     ],
-     "blur": 0,
-     "inset": false,
-     "x": 0,
-     "spread": 1
-    },
-    {
-     "y": 1,
-     "inset": false,
-     "blur": 2,
-     "color": [
-      0,
-      0,
-      0,
-      0.06
-     ],
-     "x": 0,
-     "spread": 0
-    }
-   ],
-   "x": 16,
-   "fontSize": 17,
-   "y": 545.5,
-   "height": 50,
-   "border": {
-    "color": [
-     242,
-     242,
-     243,
-     1
-    ],
-    "width": 0
-   },
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 600,
-   "width": 370,
-   "opacity": 1
-  },
-  "gates.signin.apple": {
-   "color": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "radius": 10,
-   "gap": 8,
-   "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "letterSpacing": -0.085,
-   "lineHeight": 22,
-   "background": [
-    255,
-    255,
-    255,
-    1
-   ],
-   "shadows": [],
-   "x": 16,
-   "y": 483.5,
-   "fontWeight": 600,
-   "height": 50,
-   "opacity": 1,
-   "width": 370,
-   "fontFamily": "-apple-system",
-   "fontSize": 17,
-   "border": {
-    "width": 0,
-    "color": [
-     0,
-     0,
-     0,
-     1
-    ]
-   }
-  },
-  "gates.signin.list": {
-   "color": [
-    242,
-    242,
-    243,
-    1
-   ],
-   "radius": 0,
-   "letterSpacing": -0.096,
-   "backdropBlur": 0,
-   "gap": 12,
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "gradient": null,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "lineHeight": 24.799999,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 16,
-   "fontWeight": 400,
-   "opacity": 1,
-   "y": 483.5,
-   "fontFamily": "Instrument Sans",
-   "width": 370,
-   "border": {
-    "width": 0,
-    "color": [
-     242,
-     242,
-     243,
-     1
-    ]
-   },
-   "height": 230,
-   "fontSize": 16
-  },
-  "gates.signin.card": {
-   "color": [
-    242,
-    242,
-    243,
-    1
-   ],
-   "radius": 0,
-   "letterSpacing": -0.096,
-   "gap": 32,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "backdropBlur": 0,
-   "gradient": null,
-   "lineHeight": 24.799999,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 16,
-   "fontSize": 16,
-   "y": 284.5,
-   "height": 429,
-   "fontFamily": "Instrument Sans",
-   "width": 370,
-   "fontWeight": 400,
-   "border": {
-    "width": 0,
-    "color": [
-     242,
-     242,
-     243,
-     1
-    ]
-   },
-   "opacity": 1
-  },
-  "gates.signin.email": {
-   "color": [
-    242,
-    242,
-    243,
-    1
-   ],
-   "radius": 10,
-   "letterSpacing": -0.085,
-   "backdropBlur": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    16,
-    0,
-    16
-   ],
-   "gap": 7.2,
-   "gradient": null,
-   "lineHeight": 22,
-   "background": [
-    41,
-    41,
-    44,
-    0.72
-   ],
-   "shadows": [
-    {
-     "y": 0,
-     "spread": 1,
-     "blur": 0,
-     "inset": true,
-     "x": 0,
-     "color": [
-      255,
-      255,
-      255,
-      0.08
-     ]
-    },
-    {
-     "y": 0,
-     "inset": false,
-     "spread": 1,
-     "blur": 0,
-     "x": 0,
-     "color": [
-      0,
-      0,
-      0,
-      0.4
-     ]
-    },
-    {
-     "y": 1,
-     "inset": false,
-     "color": [
-      0,
-      0,
-      0,
-      0.06
-     ],
-     "blur": 2,
-     "x": 0,
-     "spread": 0
-    }
-   ],
-   "x": 16,
-   "fontSize": 17,
-   "opacity": 1,
-   "border": {
-    "color": [
-     242,
-     242,
-     243,
-     1
-    ],
-    "width": 0
-   },
-   "y": 607.5,
-   "width": 370,
-   "height": 50,
-   "fontFamily": "Instrument Sans",
-   "fontWeight": 600
-  },
-  "gates.signin.apple.icon": {
-   "color": [
-    0,
-    0,
-    0,
-    1
-   ],
-   "radius": 0,
-   "backdropBlur": 0,
-   "gap": 0,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "letterSpacing": -0.085,
-   "gradient": null,
-   "lineHeight": 22,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 108.94,
-   "fontWeight": 600,
-   "fontSize": 17,
-   "border": {
-    "width": 0,
-    "color": [
-     0,
-     0,
-     0,
-     1
-    ]
-   },
-   "y": 500,
-   "width": 17,
-   "fontFamily": "-apple-system",
-   "height": 17,
-   "opacity": 1
-  },
-  "gates.signin.body": {
-   "color": [
-    166,
-    166,
-    174,
-    1
-   ],
-   "radius": 0,
-   "gap": 0,
-   "letterSpacing": -0.096,
-   "margin": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "padding": [
-    0,
-    8,
-    0,
-    8
-   ],
-   "gradient": null,
-   "backdropBlur": 0,
-   "lineHeight": 20,
-   "background": [
-    0,
-    0,
-    0,
-    0
-   ],
-   "shadows": [],
-   "x": 16,
-   "y": 391.5,
-   "opacity": 1,
-   "border": {
-    "color": [
-     166,
-     166,
-     174,
-     1
-    ],
-    "width": 0
-   },
-   "height": 60,
-   "fontWeight": 400,
-   "fontFamily": "Instrument Sans",
-   "width": 370,
-   "fontSize": 17
+   "y": 120
   }
  }
 }

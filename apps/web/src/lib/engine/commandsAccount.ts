@@ -93,6 +93,16 @@ export const ACCOUNT_COMMANDS = {
     },
   },
 
+  "account.signOut": {
+    async run(deps, args) {
+      only(args, []);
+      const { signOutNow } = await import("@/components/auth/SignOut");
+      // After this reply goes: signing out ends with the host opening the next place, or a reload.
+      setTimeout(() => void signOutNow(undefined, { profileId: deps.app.accountKey }), 50);
+      return { ok: true };
+    },
+  },
+
   "session.revoke": {
     async run(deps, args) {
       only(args, ["id"]);

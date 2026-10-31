@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 22;
+export const CONTRACT_REVISION = 23;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -3803,6 +3803,12 @@ export interface ListViewMap {
   "notes.list": { args: NotesListArgs; row: NoteRow };
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Revision 23: `account.signOut`, the page's own sign-out of the place it shows (the account sheet's Sign out in
+// the iPhone's native frame): this account's copy and keys on the device go, the host ends its session and opens
+// the next place (or, in local mode, the page starts again). The app warns about unsynced changes first.
+// ---------------------------------------------------------------------------------------------------------------
+
 export interface CommandMap {
   "space.switch": { args: SpaceSwitchArgs; result: SpaceSwitchResult };
   "note.create": { args: NoteCreateArgs; result: NoteCreateResult };
@@ -3944,6 +3950,7 @@ export interface CommandMap {
   "comment.resolve": { args: CommentResolveArgs; result: OkResult };
   "comment.read": { args: CommentReadArgs; result: OkResult };
   "comment.deleteThread": { args: ThreadIdArgs; result: OkResult };
+  "account.signOut": { args: EmptyArgs; result: OkResult };
 }
 
 export interface EditorCommandMap {
@@ -4158,6 +4165,7 @@ const commandNames = [
   "comment.resolve",
   "comment.read",
   "comment.deleteThread",
+  "account.signOut",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

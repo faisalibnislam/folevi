@@ -1363,6 +1363,7 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.note.style.set": command({ name: "note.style.set", description: "Page colour back to Auto, wide page (revision 22).", args: { id: "doc_00003", sheet: null, width: "wide" }, result: { ok: true } }),
   "command.note.theme.set": command({ name: "note.theme.set", description: "Pick a theme (revision 22).", args: { id: "doc_00003", theme: "art-01" }, result: { ok: true } }),
   "command.note.theme.set.locked": command({ name: "note.theme.set", description: "A theme the plan doesn't include.", args: { id: "doc_00003", theme: "art-60" }, error: { code: "unavailable", message: "Studio light is for Pro plans and up. Change your plan in Settings, under Plan & billing." } }),
+  "command.account.signOut": command({ name: "account.signOut", description: "Sign out of the place on screen (revision 23).", args: {}, result: { ok: true } }),
   "command.comment.create": command({ name: "comment.create", description: "A comment on the whole note (revision 22).", args: { noteId: "doc_00001", text: "Looks good to me." }, result: { threadId: "thr_9", commentId: "cmt_9" } }),
   "command.comment.reply": command({ name: "comment.reply", description: "A reply.", args: { threadId: "thr_1", text: "Thanks!" }, result: { commentId: "cmt_10" } }),
   "command.comment.resolve": command({ name: "comment.resolve", description: "Resolve a thread.", args: { threadId: "thr_1", resolved: true }, result: { ok: true } }),

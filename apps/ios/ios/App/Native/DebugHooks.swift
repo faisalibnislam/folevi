@@ -15,6 +15,7 @@
 //   respond       a notification's button pressed (or the notification tapped): { action?, userInfo }
 #if DEBUG && targetEnvironment(simulator)
 import CoreSpotlight
+import Security
 import UIKit
 import UserNotifications
 import WidgetKit
@@ -46,6 +47,13 @@ enum DebugHooks {
             ShellPlaces.setCurrent(a.id)
             FoleviViewController.restart()
         }
+    }
+
+    /// FOLEVI_FORGET_LIBRARY_KEY=1: an encrypted library's key forgotten at launch, as on a device joining it, so the
+    /// library opens locked (apps/ios/scripts/gates.mjs, the locked gate). Scratch libraries only.
+    static func forgetLibraryKeyFromEnvironment() {
+        guard ProcessInfo.processInfo.environment["FOLEVI_FORGET_LIBRARY_KEY"] == "1" else { return }
+        SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: Platform.keychainService("com.folevi.library-key")] as CFDictionary)
     }
 
     private static func run() async {

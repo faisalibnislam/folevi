@@ -10,6 +10,7 @@ import type { LibraryControl } from "@/lib/local/store/types";
 import { thisDevice } from "./LibrarySetup";
 import { useSystemTheme } from "./ModeChoice";
 import { NativeGate } from "@/lib/engine/NativeGate";
+import { nativeChrome } from "@/lib/nativeApp";
 import { BridgeError } from "@/lib/engine/validate";
 
 export function LockedLibrary({ control, where }: { control: LibraryControl; where: string | null }) {
@@ -80,7 +81,8 @@ export function LockedLibrary({ control, where }: { control: LibraryControl; whe
             id={`${id}-p`}
             type="password"
             autoComplete="current-password"
-            autoFocus
+            // (Under a native frame's own screen the page stays hidden: its field mustn't take the keyboard.)
+            autoFocus={!nativeChrome()}
             value={passphrase}
             onChange={(e) => {
               setPassphrase(e.target.value);

@@ -1,0 +1,9 @@
+{
+  "kind": "command",
+  "name": "account.signOut",
+  "description": "Sign out of the place on screen (revision 23).",
+  "args": {},
+  "result": {
+    "ok": true
+  }
+}

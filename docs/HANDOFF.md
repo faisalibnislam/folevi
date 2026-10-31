@@ -11,8 +11,10 @@ decisions and rules), then the plan docs named below.
 - Native Mac app (AppKit + WKWebView, `apps/mac`), notarized, published through Sparkle at
   `https://folevi.com/download/mac/appcast.xml`. The owner's Mac runs 1.0.04 and updates itself through
   Check for Updates (verified for 1.0.01 to 1.0.04).
-- iPhone/iPad app (Capacitor shell, `apps/ios`) on TestFlight, group "Folevi team". Not submitted to the
-  App Store yet (owner's decision, and the export compliance question is still open).
+- iPhone/iPad app (`apps/ios`) on TestFlight, group "Folevi team": since 1.2.08 (build 20, 2026-10-31) the native
+  rebuild (docs/IOS_REBUILD_PLAN.md: the web's phone layout drawn natively, the iPad's wide layout on the Mac
+  frame's views, only the note editor web). Release builds open it (`RebuildFrame.enabled`); iOS 18 and later.
+  Not submitted to the App Store yet (owner's decision, and the export compliance question is still open).
 - Android (`apps/android`) is built but PAUSED: no builds, releases or Android work until the owner says.
 
 **What 1.0.01 to 1.0.04 shipped:** Mac memory work, folder drag and drop, open tab always visible, flowchart

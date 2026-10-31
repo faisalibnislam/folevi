@@ -52,6 +52,9 @@ public enum WebTextWrap: Sendable, Equatable {
     /// `text-wrap: pretty` as the iPhone's WebKit lays it out: even lines, the last one counting `lastLine` as much
     /// as the others (it may be shorter).
     case prettyLastWeighted(CGFloat)
+    /// The same for every paragraph, one of two lines too: Foli AI's answers on the iPhone, whose two-line paragraphs
+    /// WebKit evens (fitted to its breaks: a last-line weight of 0.24 to 0.33).
+    case prettyAllLastWeighted(CGFloat)
 
     /// The iPhone's `text-wrap: pretty`: one or two lines as they fall, longer paragraphs evened out with the last line
     /// weighed at 0.6 (0.5 to 0.75 match the gates' paragraphs as the Simulator's WebKit breaks them; PrettyWrapTests).
@@ -160,6 +163,7 @@ public enum WebLineBreaker {
                 // Every line counts, the last too: that is what keeps WebKit's last lines from being orphans.
                 var cost = slack * slack
                 if case .prettyLastWeighted(let k) = wrap, j == n - 1 { cost *= k }
+                if case .prettyAllLastWeighted(let k) = wrap, j == n - 1 { cost *= k }
                 let prior = i < 0 ? 0 : best[i]
                 if prior + cost < best[j] { best[j] = prior + cost; from[j] = i }
             }

@@ -1,41 +1,57 @@
-// Foli AI on the Mac, drawn as the web draws it (apps/web/src/components/ai/**): the pieces the AI page, the
-// floating chat and the thread share. Sizes, colours and type come from the live web app's computed styles
+// Foli AI drawn as the web draws it (apps/web/src/components/ai/**): the pieces the AI page, the floating chat
+// and the thread share, on the Mac and on the iPhone (FoleviPhone's sheet and page set `aiPhone`, where the
+// web's iPhone layout differs: useIphoneApp() in ChatMessage.tsx and ChatThread.tsx). Sizes, colours and type come from the live web app's computed styles
 // (packages/design-tokens/match/app-styles/ai.json, "ai.*"); a few values the styles can't carry (a corner that
 // is smaller than the others, the size of a list's bullet) are the web's Tailwind classes, named where used.
-#if os(macOS)
-import AppKit
 import SwiftUI
+#if canImport(AppKit)
+import AppKit
+#endif
+#if canImport(UIKit)
+import UIKit
+#endif
 import FoleviDesign
 import FoleviEngine
-import FoleviScreens
 
 /// The web's styles for Foli AI, resolved for the colour scheme.
 @MainActor
-struct AiLook {
-    let scheme: ColorScheme
+public struct AiLook {
+    public let scheme: ColorScheme
+    /// The iPhone's layout: a style measured there (`phone.<id>`, phone.json) wins over the shared one.
+    public let phone: Bool
 
-    func s(_ id: String) -> WebComputedStyle { WebStyles.named(id).resolve(scheme) }
-    func text(_ id: String) -> WebTextStyle { s(id).text }
-    func color(_ v: String) -> Color { (WebStyles.vars[v]?.resolve(scheme) ?? RGBA(0, 0, 0, 0)).color }
+    public init(scheme: ColorScheme, phone: Bool = false) {
+        self.scheme = scheme
+        self.phone = phone
+    }
 
-    var heading: Color { color("color-heading") }
-    var ink: Color { color("color-ink") }
-    var muted: Color { color("color-ink-muted") }
-    var faint: Color { color("color-ink-faint") }
-    var canvas: Color { color("color-canvas") }
-    var glassHover: Color { color("glass-hover") }
-    var glassActive: Color { color("glass-active") }
-    var glassBorder: Color { color("glass-border") }
+    public func pair(_ id: String) -> WebStylePair {
+        if phone, let p = WebStyles.all["phone." + id] { return p }
+        return WebStyles.named(id)
+    }
+
+    public func s(_ id: String) -> WebComputedStyle { pair(id).resolve(scheme) }
+    public func text(_ id: String) -> WebTextStyle { s(id).text }
+    public func color(_ v: String) -> Color { (WebStyles.vars[v]?.resolve(scheme) ?? RGBA(0, 0, 0, 0)).color }
+
+    public var heading: Color { color("color-heading") }
+    public var ink: Color { color("color-ink") }
+    public var muted: Color { color("color-ink-muted") }
+    public var faint: Color { color("color-ink-faint") }
+    public var canvas: Color { color("color-canvas") }
+    public var glassHover: Color { color("glass-hover") }
+    public var glassActive: Color { color("glass-active") }
+    public var glassBorder: Color { color("glass-border") }
     /// `border-line/70`
-    var line70: Color { color("color-line").opacity(0.7) }
-    var danger: Color { color("color-danger") }
-    var dangerSoft: Color { color("color-danger-soft") }
+    public var line70: Color { color("color-line").opacity(0.7) }
+    public var danger: Color { color("color-danger") }
+    public var dangerSoft: Color { color("color-danger-soft") }
 
     /// Tailwind's `rounded-tiny` (the small corner of a chat bubble).
-    static let tiny: CGFloat = 4
+    public static let tiny: CGFloat = 4
 }
 
-extension View {
+public extension View {
     /// A web element's box with one corner of its own (the bubbles' `rounded-br-tiny` / `rounded-bl-tiny`):
     /// the style's fill and its 1 px rings (the glass edge), drawn on an uneven rounded rectangle.
     func aiBubble(_ pair: WebStylePair, scheme: ColorScheme, small corner: UnitPoint) -> some View {
@@ -66,13 +82,20 @@ extension View {
 
 /// A plain button whose background shows on hover and press (`hover:bg-[var(--glass-hover)]`), with the text
 /// going to the heading colour on hover (`hover:text-heading`).
-struct AiHoverStyle: ButtonStyle {
+public struct AiHoverStyle: ButtonStyle {
     var radius: CGFloat
     var hover: String = "glass-hover"
     var base: Color? = nil
     var hoverText: Bool = true
 
-    func makeBody(configuration: Configuration) -> some View {
+    public init(radius: CGFloat, hover: String = "glass-hover", base: Color? = nil, hoverText: Bool = true) {
+        self.radius = radius
+        self.hover = hover
+        self.base = base
+        self.hoverText = hoverText
+    }
+
+    public func makeBody(configuration: Configuration) -> some View {
         HoverBody(configuration: configuration, radius: radius, hover: hover, base: base, hoverText: hoverText)
     }
 
@@ -84,10 +107,11 @@ struct AiHoverStyle: ButtonStyle {
         let hoverText: Bool
         @State private var over = false
         @Environment(\.colorScheme) private var scheme
+        @Environment(\.aiPhone) private var phone
         @Environment(\.isEnabled) private var enabled
 
         var body: some View {
-            let look = AiLook(scheme: scheme)
+            let look = AiLook(scheme: scheme, phone: phone)
             configuration.label
                 .foregroundStyle(over && hoverText && enabled ? AnyShapeStyle(look.heading) : AnyShapeStyle(.foreground))
                 .background {
@@ -101,8 +125,8 @@ struct AiHoverStyle: ButtonStyle {
 }
 
 /// "Just now", "5 mins ago", "1 hour ago", "Sep 10" (apps/web/src/lib/format.ts ageText).
-enum AiAge {
-    static func text(_ ms: Double, now: Date = Date()) -> String {
+public enum AiAge {
+    public static func text(_ ms: Double, now: Date = Date()) -> String {
         let ts = Date(timeIntervalSince1970: ms / 1000)
         let exact = abs(now.timeIntervalSince(ts)) / 60
         let ahead = ts > now
@@ -130,23 +154,54 @@ enum AiAge {
 
 /// Copies plain text to the pasteboard.
 @MainActor
-enum AiPasteboard {
-    static func copy(_ text: String) {
+public enum AiPasteboard {
+    public static func copy(_ text: String) {
+        #if os(macOS)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
+        #else
+        UIPasteboard.general.string = text
+        #endif
     }
 }
 
+/// Opens a web page outside the app (a link or a web source in an answer): the browser on the Mac; on the
+/// iPhone whatever the frame sets (an in-app Safari sheet), else the system.
+@MainActor
+public enum AiExternal {
+    public static var opener: ((URL) -> Void)?
+
+    public static func open(_ url: URL) {
+        if let opener { return opener(url) }
+        #if os(macOS)
+        NSWorkspace.shared.open(url)
+        #else
+        UIApplication.shared.open(url)
+        #endif
+    }
+}
+
+public extension EnvironmentValues {
+    /// Foli AI drawn in the iPhone's layout (the web's useIphoneApp()): bigger type, no bubbles on answers.
+    @Entry var aiPhone = false
+}
+
 /// The web's `RunStatus`: three softly pulsing dots, what Foli AI is doing, and Stop.
-struct AiRunStatus: View {
+public struct AiRunStatus: View {
     let label: String
     var onStop: (() -> Void)?
+
+    public init(label: String, onStop: (() -> Void)? = nil) {
+        self.label = label
+        self.onStop = onStop
+    }
+    @Environment(\.aiPhone) private var phone
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pulse = false
 
-    var body: some View {
-        let look = AiLook(scheme: scheme)
+    public var body: some View {
+        let look = AiLook(scheme: scheme, phone: phone)
         HStack(spacing: 10) {
             HStack(spacing: 3) {
                 ForEach(0..<3, id: \.self) { i in
@@ -161,10 +216,10 @@ struct AiRunStatus: View {
                 Button(action: onStop) {
                     HStack(spacing: 6) {
                         RoundedRectangle(cornerRadius: 2).frame(width: 9, height: 9)
-                        Text("Stop").webText(.role(.footnote, weight: 500)).lineLimit(1)
+                        Text("Stop").webText(.role(phone ? .subheadline : .footnote, weight: 500)).lineLimit(1)
                     }
-                    .padding(.horizontal, 10)
-                    .frame(height: 28)
+                    .padding(.horizontal, phone ? 12 : 10)
+                    .frame(height: phone ? 32 : 28)
                     .foregroundStyle(look.heading)
                     .background(RoundedRectangle(cornerRadius: 12).fill(look.ink.opacity(0.07)))
                     .contentShape(Rectangle())
@@ -174,24 +229,31 @@ struct AiRunStatus: View {
                 .keyboardShortcut(".", modifiers: .command)
             }
         }
-        .frame(minHeight: 32)
+        .frame(minHeight: phone ? 44 : 32)
         .onAppear { pulse = true }
     }
 }
 
 /// A small row action under an answer (`.ai-row-btn`: Copy, Regenerate, Try again, Edit).
-struct AiRowButton: View {
+public struct AiRowButton: View {
     let icon: WebIcon
     let title: String
     let action: () -> Void
-    @Environment(\.colorScheme) private var scheme
 
-    var body: some View {
-        let look = AiLook(scheme: scheme)
+    public init(icon: WebIcon, title: String, action: @escaping () -> Void) {
+        self.icon = icon
+        self.title = title
+        self.action = action
+    }
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.aiPhone) private var phone
+
+    public var body: some View {
+        let look = AiLook(scheme: scheme, phone: phone)
         let s = look.s("ai.rowbtn")
         Button(action: action) {
             HStack(spacing: s.gap) {
-                WebIconView(icon, size: 12)
+                WebIconView(icon, size: phone ? 16 : 12)
                 Text(title).webText(s.text).lineLimit(1)
             }
             .padding(.horizontal, s.padding.left)
@@ -201,19 +263,21 @@ struct AiRowButton: View {
         .buttonStyle(AiHoverStyle(radius: s.radius))
     }
 }
-#endif
-
-#if os(macOS)
 /// A paragraph wrapped as WebKit's `text-wrap: pretty` wraps every `p` in the app (globals.css): the same number
 /// of lines as greedy wrapping, with the breaks that make the lines' leftover room most even (the least sum of
 /// squared slack, the last line's counting for less: it may stay shorter, as WebKit sets it). Lines are measured
 /// in the web font with its letter spacing.
-struct AiPrettyText: View {
+public struct AiPrettyText: View {
     let text: String
     let style: WebTextStyle
+
+    public init(text: String, style: WebTextStyle) {
+        self.text = text
+        self.style = style
+    }
     @State private var width: CGFloat = 0
 
-    var body: some View {
+    public var body: some View {
         Text(width > 0 ? AiPretty.lines(text, style: style, width: width).joined(separator: "\n") : text)
             .webText(style)
             .fixedSize(horizontal: false, vertical: true)
@@ -222,7 +286,7 @@ struct AiPrettyText: View {
     }
 }
 
-enum AiPretty {
+public enum AiPretty {
     /// How much the last line's room counts (fitted to WebKit's breaks on the Foli AI page and chat).
     static let lastLineWeight: CGFloat = 0.4
 
@@ -232,7 +296,7 @@ enum AiPretty {
         return CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
     }
 
-    static func lines(_ text: String, style: WebTextStyle, width: CGFloat) -> [String] {
+    public static func lines(_ text: String, style: WebTextStyle, width: CGFloat) -> [String] {
         let words = text.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
         guard words.count > 2, !text.contains("\n") else { return [text] }
         let w = words.map { measure($0, style) }
@@ -278,4 +342,3 @@ enum AiPretty {
         return out
     }
 }
-#endif

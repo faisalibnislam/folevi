@@ -31,6 +31,9 @@ enum RebuildFrame {
 
     static let menus = PhoneMenus()
 
+    /// Foli AI's sheet and page (RebuildAI.swift).
+    static let ai = RebuildAI()
+
     /// The scene's restoration activity (SceneDelegate): its type and the snapshot's key in it.
     static let restorationType = "com.folevi.ios.frame"
     static let restorationKey = "frame"
@@ -94,7 +97,8 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         let feedback = ScreenFeedback(toast: { [weak self] t in self?.model.toast(t.message, tone: t.tone == .error ? .error : .info) })
         let places = PlacesModel(client: model.client, feedback: feedback)
         let home = HomeModel(client: model.client, feedback: feedback)
-        let root = UIHostingController(rootView: RebuildRoot(model: frame, menus: menus, phone: model, pageHost: pageHost, gate: gate, places: places, home: home, accountAction: { [weak self] action, close in
+        RebuildFrame.ai.attach(phone: model, frame: frame)
+        let root = UIHostingController(rootView: RebuildRoot(model: frame, menus: menus, phone: model, pageHost: pageHost, gate: gate, places: places, home: home, ai: RebuildFrame.ai, accountAction: { [weak self] action, close in
             self?.account(action, places: places, close: close)
         }, signOut: { [weak self] in self?.signOutNow() }))
         root.view.backgroundColor = .clear
@@ -204,6 +208,7 @@ private struct RebuildRoot: View {
     let gate: GateModel
     let places: PlacesModel
     let home: HomeModel
+    let ai: RebuildAI
     let accountAction: (PhoneAccountAction, @escaping () -> Void) -> Void
     let signOut: () -> Void
     // FOLEVI_REBUILD_SHEET=account opens the account sheet at launch (for checking it headlessly).
@@ -216,7 +221,7 @@ private struct RebuildRoot: View {
     @State private var newFolder: NewFolderRequest?
 
     var body: some View {
-        PhoneFrameView(model: model, menus: menus, aiOn: phone.aiOn, tabBarHidden: selecting || model.top.isSearch, actions: PhoneFrameActions(newNote: { phone.newNote() }, fromTemplate: { model.open(FrameRoute(path: "/templates")) })) { route in
+        PhoneFrameView(model: model, menus: menus, aiOn: phone.aiOn, tabBarHidden: selecting || model.top.isSearch, actions: PhoneFrameActions(openAI: { ai.ask() }, newNote: { phone.newNote() }, fromTemplate: { model.open(FrameRoute(path: "/templates")) })) { route in
             if case .note(let id) = route {
                 RebuildNoteScreen(noteId: id, model: phone, pageHost: pageHost, frame: model, menus: menus)
             } else if route == .home {
@@ -227,6 +232,8 @@ private struct RebuildRoot: View {
                 RebuildChangesScreen(frame: model, phone: phone)
             } else if route == .web("/folders") {
                 RebuildAllFoldersScreen(frame: model, menus: menus, phone: phone) { newFolder = NewFolderRequest(parent: $0) }
+            } else if case .web(let path) = route, path == "/ai" || path.hasPrefix("/ai/") || path.hasPrefix("/ai?") {
+                RebuildAiPage(ai: ai, frame: model, path: path)
             } else if case .search(let text) = route {
                 RebuildSearchScreen(text: text, frame: model, menus: menus, phone: phone)
             } else if let kind = NotesListKind(route: route) {
@@ -277,6 +284,11 @@ private struct RebuildRoot: View {
                 PhoneMenuEntry(.item("New folder", icon: .folderPlus)),
                 PhoneMenuEntry(.item("Quick task", icon: .listPlus)),
             ], from: plus, side: .top, align: .end, minWidth: 248)
+        }
+        // Foli AI from the tab bar (or search's Ask Foli AI): medium, pulled up to the whole screen. With history off,
+        // its conversation goes when it closes.
+        .phoneSheet(isPresented: Bindable(ai).sheetOpen, size: .medium, onDismiss: { ai.sheet.closed() }) {
+            RebuildAiSheet(ai: ai, frame: model)
         }
         .phoneSheet(isPresented: $notifications, size: .medium) {
             RebuildNotificationsSheet(frame: model, menus: menus, phone: phone) { notifications = false }

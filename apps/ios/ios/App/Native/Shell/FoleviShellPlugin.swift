@@ -501,7 +501,14 @@ final class FoleviShellPlugin: BridgePlugin {
 
     // MARK: Foli AI
 
-    @objc func aiCapabilities(_ call: BridgeCall) { guarded(call) { call.resolve(ShellAI.capabilities()) } }
+    @objc func aiCapabilities(_ call: BridgeCall) {
+        guarded(call) {
+            #if DEBUG
+            if FakeAI.on { return call.resolve(FakeAI.capabilities) }
+            #endif
+            call.resolve(ShellAI.capabilities())
+        }
+    }
 
     @objc func aiGenerate(_ call: BridgeCall) {
         guarded(call) {
@@ -511,7 +518,12 @@ final class FoleviShellPlugin: BridgePlugin {
                 call.resolve(AiResult(text: "", stopReason: "error", error: e.message, errorCode: "invalid").json)
             case .success(let req):
                 let task = Task {
-                    let result = await ShellAI.generate(req) { [weak self] text in self?.notifyListeners("aiChunk", data: ["id": id, "text": text]) }
+                    let chunk: (String) -> Void = { [weak self] text in self?.notifyListeners("aiChunk", data: ["id": id, "text": text]) }
+                    #if DEBUG
+                    let result = FakeAI.on ? await FakeAI.generate(req, onChunk: chunk) : await ShellAI.generate(req, onChunk: chunk)
+                    #else
+                    let result = await ShellAI.generate(req, onChunk: chunk)
+                    #endif
                     self.aiLock.withLock { self.aiTasks[id] = nil }
                     call.resolve(result.json)
                 }

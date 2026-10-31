@@ -11,6 +11,10 @@
 // phone.json, in the web frame) into app-styles-cache/phone.ios.json; `node scripts/web-styles.mjs --no-samples`
 // puts them in WebStyles.
 //
+// Foli AI's screens (I5) run on the Debug stand-in model (FOLEVI_FAKE_AI=1, Native/Shell/FakeAI.swift: offline, the
+// same answer every time, nothing sent anywhere): the sheet from the tab bar, new and with an answer, and the page,
+// new and with the fixture conversation (asked through the engine in the web frame, then opened in both).
+//
 //   node scripts/screen-match.mjs --app <App.app> [--device "iPhone 18 Pro"] [--only home,...] [--no-seed] [--styles]
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -47,7 +51,60 @@ export const SCREENS = [
   // opens its route (`native`) without the keyboard.
   { id: "search", path: "/documents", ready: "All notes", press: "Search in Personal", native: "/search" },
   { id: "search-trip", path: "/documents", ready: "All notes", press: "Search in Personal", type: "trip", native: "/search?q=trip" },
+  // Foli AI (`ai`: on the stand-in model). The web opens the sheet from the tab bar (`js`); the new frame at launch
+  // (`nativeEnv`). Both at the sheet's large detent, where the keyboard takes it on both (iOS 26 floats a sheet at a
+  // partial detent in from the screen's edges, the web's stays attached: the medium height isn't comparable). The
+  // web focuses the box (the sheet goes large) and lets go of the keyboard; asking, it types and presses Ask, the
+  // new frame asks at launch; both wait for the answer and read from its end (`toEnd`).
+  { id: "ai-sheet", path: "/documents", ready: "All notes", ai: true, js: "OPEN_AI", after: "Suggestions", nativeEnv: { FOLEVI_REBUILD_SHEET: "ai", FOLEVI_REBUILD_SHEET_DETENT: "large" } },
+  { id: "ai-chat", path: "/documents", ready: "All notes", ai: true, js: "ASK_AI", after: "Regenerate", toEnd: true, nativeEnv: { FOLEVI_REBUILD_SHEET: "ai", FOLEVI_REBUILD_SHEET_DETENT: "large", FOLEVI_REBUILD_ASK: "Plan three days in Kyoto" }, settle: 6000 },
+  { id: "ai-page", path: "/ai", ready: "Meet Foli AI", ai: true },
+  // The fixture conversation's page (`conversation`: its id from asking through the engine).
+  { id: "ai-page-chat", conversation: true, ready: "Regenerate", ai: true, toEnd: true },
 ];
+
+/** Page scripts for `js`: the tab bar's Foli AI button; that, then a question asked in the sheet. */
+const PAGE_JS = {
+  OPEN_AI: `document.querySelector('[aria-label="Foli AI"]').click();
+    for (let i = 0; i < 40 && !document.querySelector(".ai-chat textarea"); i++) await new Promise((r) => setTimeout(r, 250));
+    await new Promise((r) => setTimeout(r, 600));
+    document.querySelector(".ai-chat textarea").focus();
+    await new Promise((r) => setTimeout(r, 1200));
+    document.activeElement?.blur();
+    return true;`,
+  ASK_AI: `document.querySelector('[aria-label="Foli AI"]').click();
+    for (let i = 0; i < 40 && !document.querySelector(".ai-chat textarea"); i++) await new Promise((r) => setTimeout(r, 250));
+    await new Promise((r) => setTimeout(r, 600));
+    const t = document.querySelector(".ai-chat textarea");
+    t.focus();
+    await new Promise((r) => setTimeout(r, 1200));
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(t, "Plan three days in Kyoto");
+    t.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 300));
+    document.querySelector(".ai-chat [aria-label=Ask]").click();
+    return true;`,
+};
+/** After an answer: the thread at its end (WebKit's "Jump to latest" can stay up after the stream's last scroll). */
+const TO_END = `const s = document.querySelector(".ai-chat div.overflow-y-auto.px-4, main section div.overflow-y-auto.px-4"); if (s) { s.scrollTop = s.scrollHeight; s.dispatchEvent(new Event("scroll")); } return true;`;
+/** The fixture conversation: one question, answered by the stand-in model, through the engine (screens.mjs's). */
+const AI_FIXTURE = `
+  const engine = window.__foleviEngine;
+  const place = window.__foleviNativeChrome && window.__foleviNativeChrome.place;
+  let n = 0;
+  const call = async (kind, name, args) => {
+    const reply = JSON.parse(await engine.handle({ v: 1, id: "ai" + n++, kind, place, name, args }));
+    if (!reply.ok) throw new Error(name + ": " + JSON.stringify(reply.error));
+    return reply.value;
+  };
+  const sent = await call("command", "ai.send", { text: "Plan three days in Kyoto" });
+  for (let i = 0; i < 120; i++) {
+    await new Promise((r) => setTimeout(r, 250));
+    const c = await call("query", "ai.conversation", { conversationId: sent.conversationId }).catch(() => null);
+    const last = c && c.messages && c.messages[c.messages.length - 1];
+    if (last && last.role === "assistant" && last.status !== "streaming") return sent.conversationId;
+  }
+  throw new Error("the fixture answer didn't finish");
+`;
 const screens = SCREENS.filter((s) => !only || only.includes(s.id));
 
 const waitUntil = (what, test, ms = 60000) => {
@@ -92,10 +149,22 @@ if (screens.some((s) => s.folder)) {
   }
 }
 
+// Foli AI's fixture conversation, for the screens that show it.
+if (screens.some((s) => s.conversation)) {
+  // (In today's frame: the engine runs where native chrome asks it, as in the seeding.)
+  sim.relaunch({ FOLEVI_FAKE_AI: "1" });
+  waitUntil("the engine", () => sim.evalJs("return Boolean(window.__foleviEngine)"));
+  sim.sleep(2000);
+  const id = sim.evalJs(AI_FIXTURE);
+  for (const s of screens.filter((x) => x.conversation)) s.path = `/ai/${id}`;
+  console.log(`fixture conversation ${id}`);
+}
+
 /** Opens `screen` in the frame `env` names, on the seeded install. */
-const open = (screen, env) => {
+const open = (screen, base) => {
+  const env = { ...base, ...(screen.ai ? { FOLEVI_FAKE_AI: "1" } : {}) };
   const native = env.FOLEVI_REBUILD === "1";
-  const extra = native && screen.scroll ? { FOLEVI_REBUILD_SCROLL: String(screen.scroll) } : {};
+  const extra = { ...(native && screen.scroll ? { FOLEVI_REBUILD_SCROLL: String(screen.scroll) } : {}), ...(native ? screen.nativeEnv : {}) };
   const route = native ? (screen.native ?? screen.path) : screen.path;
   const opens = native && route !== "/documents" ? { FOLEVI_REBUILD_OPEN: route, FOLEVI_GATE_NO_KEYBOARD: "1" } : {};
   sim.relaunch({ ...env, ...extra, ...opens });
@@ -117,8 +186,19 @@ const open = (screen, env) => {
       sim.sleep(1500);
       sim.evalJs(`document.querySelector("main#main").scrollTo(0, ${screen.scroll}); return true;`);
     }
+    if (screen.js) {
+      sim.sleep(1000);
+      sim.evalJs(PAGE_JS[screen.js]);
+    }
+    if (screen.after) waitUntil(screen.after, () => sim.evalJs(`return document.body.innerText.includes(${JSON.stringify(screen.after)})`));
+    if (screen.ai) {
+      sim.sleep(1500);
+      sim.evalJs("document.activeElement?.blur(); return true");
+      sim.sleep(1000);
+      if (screen.toEnd) sim.evalJs(TO_END);
+    }
   }
-  sim.sleep(2500);
+  sim.sleep(screen.settle ?? 2500);
 };
 
 if (styles) {

@@ -2,27 +2,37 @@
 // AgentRunCard, SaveMemoryCard, ResearchCard): your words in the dark bubble on the right (the last one can be
 // edited and sent again), Foli AI's answer on the glass with its sources, proposed changes, Copy, Regenerate
 // and follow-ups; while it streams, what it's doing and Stop; a refusal as the web's notice.
-#if os(macOS)
-import AppKit
 import SwiftUI
+#if canImport(AppKit)
+import AppKit
+#endif
+#if canImport(UIKit)
+import UIKit
+#endif
 import FoleviDesign
 import FoleviEngine
-import FoleviScreens
 
 // MARK: your message
 
-struct AiUserMessage: View {
+public struct AiUserMessage: View {
     let text: String
     /// The last question of a saved conversation: Edit puts it in a box here and sends it again.
     var onEdit: ((String) -> Void)?
     var disabled = false
+
+    public init(text: String, onEdit: ((String) -> Void)? = nil, disabled: Bool = false) {
+        self.text = text
+        self.onEdit = onEdit
+        self.disabled = disabled
+    }
     @State private var editing = false
     @State private var draft = ""
     @State private var over = false
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.aiPhone) private var phone
 
-    var body: some View {
-        let look = AiLook(scheme: scheme)
+    public var body: some View {
+        let look = AiLook(scheme: scheme, phone: phone)
         let bubble = look.s("ai.user.bubble")
         if editing, let onEdit {
             VStack(alignment: .trailing, spacing: 4) {
@@ -54,6 +64,42 @@ struct AiUserMessage: View {
             .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(look.glassBorder))
             .containerRelativeFrame(.horizontal, alignment: .trailing) { w, _ in w * 0.85 }
             .frame(maxWidth: .infinity, alignment: .trailing)
+        } else if phone {
+            // The iPhone: the ink at 7% on the right, 17/24, no small corner; Edit a small word under its end.
+            VStack(alignment: .trailing, spacing: look.s("ai.user").gap) {
+                Text(text)
+                    .webText(bubble.text)
+                    .foregroundStyle(bubble.color.color)
+                    .multilineTextAlignment(.leading)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(bubble.padding.edgeInsets)
+                    .background(RoundedRectangle(cornerRadius: bubble.radius, style: .circular).fill(bubble.background.color))
+                    .containerRelativeFrame(.horizontal, alignment: .trailing) { w, _ in w * 0.85 }
+                if let onEdit {
+                    let edit = look.s("ai.user.edit")
+                    Button {
+                        draft = text
+                        editing = true
+                        _ = onEdit
+                    } label: {
+                        HStack(spacing: edit.gap) {
+                            WebIconView(.pencil, size: 13)
+                            Text("Edit").webText(edit.text).lineLimit(1)
+                        }
+                        .frame(height: edit.height)
+                        .foregroundStyle(edit.color.color)
+                        .padding(8)
+                        .contentShape(Rectangle())
+                        .padding(-8)
+                    }
+                    .buttonStyle(PressFade())
+                    .padding(.trailing, edit.margin.right)
+                    .disabled(disabled)
+                    .opacity(disabled ? 0.4 : 1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         } else {
             VStack(alignment: .trailing, spacing: look.s("ai.user").gap) {
                 Text(text)
@@ -63,7 +109,7 @@ struct AiUserMessage: View {
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(bubble.padding.edgeInsets)
-                    .aiBubble(WebStyles.named("ai.user.bubble"), scheme: scheme, small: .bottomTrailing)
+                    .aiBubble(look.pair("ai.user.bubble"), scheme: scheme, small: .bottomTrailing)
                     .frame(maxWidth: 0.85 * 768, alignment: .trailing)
                 if let onEdit {
                     AiRowButton(icon: .pencil, title: "Edit") {
@@ -92,14 +138,14 @@ struct AiUserMessage: View {
 // MARK: Foli AI's answer
 
 /// A refusal or failure, as the web reads it (chatText.ts storedProblem, AiCredits.tsx aiProblem).
-struct AiProblem: Equatable {
-    enum Kind { case credits, notIncluded, other }
-    var kind: Kind
-    var message: String
+public struct AiProblem: Equatable {
+    public enum Kind: Sendable { case credits, notIncluded, other }
+    public var kind: Kind
+    public var message: String
     /// "buy" or "upgrade" when that helps (shown only where buying is allowed).
-    var action: String?
+    public var action: String?
 
-    init(_ error: EngineError) {
+    public init(_ error: EngineError) {
         let reason = error.data?["reason"]?.string
         let action = error.data?["action"]?.string
         message = error.message
@@ -108,22 +154,29 @@ struct AiProblem: Equatable {
         else { kind = .other; self.action = nil }
     }
 
-    init(message: String) {
+    public init(message: String) {
         kind = .other
         self.message = message
         action = nil
     }
 }
 
-struct AiProblemNotice: View {
+public struct AiProblemNotice: View {
     let problem: AiProblem
     /// Buying is allowed here (account mode, not iOS): "Buy more" / "Upgrade" open Settings > Billing.
     var purchases = false
     var onBilling: () -> Void = {}
-    @Environment(\.colorScheme) private var scheme
 
-    var body: some View {
-        let look = AiLook(scheme: scheme)
+    public init(problem: AiProblem, purchases: Bool = false, onBilling: @escaping () -> Void = {}) {
+        self.problem = problem
+        self.purchases = purchases
+        self.onBilling = onBilling
+    }
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.aiPhone) private var phone
+
+    public var body: some View {
+        let look = AiLook(scheme: scheme, phone: phone)
         if problem.kind == .other {
             Text(problem.message)
                 .webText(.role(.subheadline))
@@ -146,17 +199,26 @@ struct AiProblemNotice: View {
     }
 }
 
-struct AiAssistantMessage: View {
+public struct AiAssistantMessage: View {
     let model: FoliChatModel
     let message: ChatMessage
     let last: Bool
     var purchases = false
     var onBilling: () -> Void = {}
+
+    public init(model: FoliChatModel, message: ChatMessage, last: Bool, purchases: Bool = false, onBilling: @escaping () -> Void = {}) {
+        self.model = model
+        self.message = message
+        self.last = last
+        self.purchases = purchases
+        self.onBilling = onBilling
+    }
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.aiPhone) private var phone
     @State private var copied = false
 
-    var body: some View {
-        let look = AiLook(scheme: scheme)
+    public var body: some View {
+        let look = AiLook(scheme: scheme, phone: phone)
         let answer = model.answer(message.id)
         let shown = answer?.shownText ?? ""
         let streaming = message.status == "streaming"
@@ -194,11 +256,11 @@ struct AiAssistantMessage: View {
     private var cited: Set<Int> { Set(message.citations.map(\.n) + message.webCitations.map(\.n)) }
 
     private func cite(_ n: Int) {
-        if let c = message.citations.first(where: { $0.n == n }) { model.openCitation(c) } else if let w = message.webCitations.first(where: { $0.n == n }), let url = URL(string: w.url) { NSWorkspace.shared.open(url) }
+        if let c = message.citations.first(where: { $0.n == n }) { model.openCitation(c) } else if let w = message.webCitations.first(where: { $0.n == n }), let url = URL(string: w.url) { AiExternal.open(url) }
     }
 
     /// The web's phaseLabel (with its ellipsis character).
-    static func phase(_ phase: String?, hasText: Bool) -> String {
+    public static func phase(_ phase: String?, hasText: Bool) -> String {
         if hasText { return "Writing…" }
         switch phase {
         case "searching": return "Searching your notes…"
@@ -213,12 +275,21 @@ struct AiAssistantMessage: View {
         }
     }
 
+    @ViewBuilder
     private func box<C: View>(@ViewBuilder _ content: () -> C) -> some View {
-        let s = WebStyles.named("ai.answer").resolve(scheme)
-        return content()
-            .padding(s.padding.edgeInsets)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .aiBubble(WebStyles.named("ai.answer"), scheme: scheme, small: .bottomLeading)
+        let look = AiLook(scheme: scheme, phone: phone)
+        if phone {
+            // IPHONE_ANSWER: plain text, 4 pt in.
+            content()
+                .padding(.horizontal, look.s("ai.answer").padding.left)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            let s = look.pair("ai.answer").resolve(scheme)
+            content()
+                .padding(s.padding.edgeInsets)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .aiBubble(look.pair("ai.answer"), scheme: scheme, small: .bottomLeading)
+        }
     }
 
     @ViewBuilder
@@ -249,7 +320,11 @@ struct AiAssistantMessage: View {
             if last, !message.suggestions.isEmpty, !busy {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(message.suggestions, id: \.self) { s in
-                        AiSuggestionButton(text: s, style: "ai.panel.suggestion", radius: 6) { model.send(s) }
+                        if phone {
+                            PhoneFollowUp(text: s) { model.send(s) }
+                        } else {
+                            AiSuggestionButton(text: s, style: "ai.panel.suggestion", radius: 6) { model.send(s) }
+                        }
                     }
                 }
                 .accessibilityElement(children: .contain)
@@ -280,7 +355,7 @@ struct AiAssistantMessage: View {
                     .foleviTooltip(c.title)
                 }
                 ForEach(message.webCitations, id: \.n) { c in
-                    Button { if let u = URL(string: c.url) { NSWorkspace.shared.open(u) } } label: {
+                    Button { if let u = URL(string: c.url) { AiExternal.open(u) } } label: {
                         HStack(spacing: chip.gap) {
                             Text("\(c.n)").webText(look.text("ai.source.n")).lineLimit(1).foregroundStyle(look.muted)
                             WebIconView(.globe, size: 12).foregroundStyle(look.muted)
@@ -328,16 +403,45 @@ struct AiAssistantMessage: View {
     }
 }
 
-/// The follow-ups and "Try asking" suggestions: glass chips with a hairline.
-struct AiSuggestionButton: View {
+/// A follow-up on the iPhone: the ink at 6.5%, 44 tall at least, the subheadline (ChatMessage.tsx, iphone).
+struct PhoneFollowUp: View {
     let text: String
-    let style: String
-    var radius: CGFloat?
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let look = AiLook(scheme: scheme)
+        let s = AiLook(scheme: scheme, phone: true).s("ai.followup")
+        Button(action: action) {
+            Text(text)
+                .webText(s.text)
+                .multilineTextAlignment(.leading)
+                .foregroundStyle(s.color.color)
+                .padding(s.padding.edgeInsets)
+                .frame(minHeight: s.height, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: s.radius, style: .circular).fill(s.background.color))
+        }
+        .buttonStyle(PressFade())
+    }
+}
+
+/// The follow-ups and "Try asking" suggestions: glass chips with a hairline.
+public struct AiSuggestionButton: View {
+    let text: String
+    let style: String
+    var radius: CGFloat?
+    let action: () -> Void
+
+    public init(text: String, style: String, radius: CGFloat? = nil, action: @escaping () -> Void) {
+        self.text = text
+        self.style = style
+        self.radius = radius
+        self.action = action
+    }
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.aiPhone) private var phone
+
+    public var body: some View {
+        let look = AiLook(scheme: scheme, phone: phone)
         let s = look.s(style)
         Button(action: action) {
             Text(text)
@@ -352,14 +456,17 @@ struct AiSuggestionButton: View {
 }
 
 /// What an agent did, in a few words ("Searched notes", "Read 3 notes"): chatText.ts stepLines.
-struct AiAgentSteps: View {
+public struct AiAgentSteps: View {
     let steps: [ChatAgentStep]
+
+    public init(steps: [ChatAgentStep]) { self.steps = steps }
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.aiPhone) private var phone
 
     static let writes: Set<String> = ["create_note", "update_note", "append_to_note", "rename_note", "move_note", "create_folder", "add_tags", "create_checklist", "create_tasks", "merge_notes"]
     static let reads: Set<String> = ["get_note", "get_notes", "compare_notes"]
 
-    static func lines(_ steps: [ChatAgentStep]) -> [String] {
+    public static func lines(_ steps: [ChatAgentStep]) -> [String] {
         var order: [String] = []
         var groups: [String: (n: Int, count: Int)] = [:]
         for s in steps where s.ok {
@@ -387,8 +494,8 @@ struct AiAgentSteps: View {
         }
     }
 
-    var body: some View {
-        let look = AiLook(scheme: scheme)
+    public var body: some View {
+        let look = AiLook(scheme: scheme, phone: phone)
         AiFlow(spacing: 6) {
             ForEach(Self.lines(steps), id: \.self) { l in
                 Text(l).webText(.role(.footnote)).lineLimit(1).foregroundStyle(look.muted)
@@ -403,9 +510,10 @@ struct AiAgentSteps: View {
 struct AiCard<C: View>: View {
     @ViewBuilder let content: () -> C
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.aiPhone) private var phone
 
     var body: some View {
-        let look = AiLook(scheme: scheme)
+        let look = AiLook(scheme: scheme, phone: phone)
         content()
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -419,9 +527,10 @@ struct AiActionsCard: View {
     let model: FoliChatModel
     let message: ChatMessage
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.aiPhone) private var phone
 
     var body: some View {
-        let look = AiLook(scheme: scheme)
+        let look = AiLook(scheme: scheme, phone: phone)
         let applied = message.actionsOutcome == "applied"
         let applying = model.busy.contains(message.id)
         AiCard {
@@ -469,9 +578,10 @@ struct AiMemoryCard: View {
     let message: ChatMessage
     let memory: ChatMemoryOffer
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.aiPhone) private var phone
 
     var body: some View {
-        let look = AiLook(scheme: scheme)
+        let look = AiLook(scheme: scheme, phone: phone)
         let busy = model.busy.contains(message.id)
         if memory.status == "saved" {
             HStack(spacing: 6) {
@@ -508,11 +618,12 @@ struct AiAgentRunCard: View {
     let run: ChatAgentRun
     @State private var unticked: Set<String> = []
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.aiPhone) private var phone
 
     static let done: [String: String] = ["done": "Done", "partial": "Partly done", "failed": "Not done", "undone": "Undone", "undoing": "Undoing", "executing": "Applying changes", "discarded": "Not applied", "running": "Applying changes"]
 
     var body: some View {
-        let look = AiLook(scheme: scheme)
+        let look = AiLook(scheme: scheme, phone: phone)
         let busy = model.busy.contains(run.id)
         let preview = run.status == "preview"
         let picked = run.operations.map(\.id).filter { !unticked.contains($0) }
@@ -536,7 +647,9 @@ struct AiAgentRunCard: View {
                         Toggle(isOn: Binding(get: { !unticked.contains(op.id) }, set: { on in if on { unticked.remove(op.id) } else { unticked.insert(op.id) } })) {
                             Text(op.summary).webText(.role(.subheadline)).foregroundStyle(look.ink)
                         }
+                        #if os(macOS)
                         .toggleStyle(.checkbox)
+                        #endif
                         .disabled(busy)
                         .padding(.vertical, 6)
                         Rectangle().fill(look.color("color-line").opacity(0.6)).frame(height: 1)
@@ -588,10 +701,11 @@ struct AiResearchProgress: View {
     let job: ResearchJob
     let onCancel: () -> Void
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.aiPhone) private var phone
 
     var body: some View {
-        let look = AiLook(scheme: scheme)
-        let s = WebStyles.named("ai.answer").resolve(scheme)
+        let look = AiLook(scheme: scheme, phone: phone)
+        let s = look.pair("ai.answer").resolve(scheme)
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 HStack(spacing: 8) {
@@ -613,15 +727,17 @@ struct AiResearchProgress: View {
         }
         .padding(s.padding.edgeInsets)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .aiBubble(WebStyles.named("ai.answer"), scheme: scheme, small: .bottomLeading)
+        .aiBubble(look.pair("ai.answer"), scheme: scheme, small: .bottomLeading)
     }
 }
 
 /// Wrapping rows (CSS `flex flex-wrap gap-*`).
-struct AiFlow: Layout {
+public struct AiFlow: Layout {
     var spacing: CGFloat
 
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+    public init(spacing: CGFloat) { self.spacing = spacing }
+
+    public func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width ?? .infinity
         var x: CGFloat = 0, y: CGFloat = 0, row: CGFloat = 0, widest: CGFloat = 0
         for v in subviews {
@@ -634,7 +750,7 @@ struct AiFlow: Layout {
         return CGSize(width: proposal.width ?? widest, height: y + row)
     }
 
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+    public func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         var x: CGFloat = 0, y: CGFloat = 0, row: CGFloat = 0
         for v in subviews {
             let s = v.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
@@ -645,4 +761,3 @@ struct AiFlow: Layout {
         }
     }
 }
-#endif

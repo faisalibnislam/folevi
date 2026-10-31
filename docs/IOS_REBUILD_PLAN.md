@@ -358,3 +358,44 @@ account-mode sign-out and place switching want a run with a scratch test account
   (iOS's own alerts and sheets, where the web draws its dialogs: to match in a later pass). Moving a folder to
   another place and inviting people say they're coming.
 - Not yet in I3: iPad (I6 has its own frame).
+
+**I5 Foli AI (2026-10-31):**
+- **Shared with the Mac:** the Mac's Foli AI pieces that are plain SwiftUI moved from FoleviMac to FoleviScreens
+  (`FoliAI/Web/AiKit.swift`, `AiAnswerText.swift`, `AiMessages.swift`: the look, the answer's Markdown with its
+  citation chips, your message, Foli AI's answer with its sources, proposed changes, the agent's run card (tick,
+  Approve, Discard, Undo), memory offers, research progress, Continue, Copy, Regenerate, follow-ups). They branch
+  for the iPhone as ChatMessage.tsx does (`.environment(\.aiPhone, true)`: no bubble on answers, 17/24, the ink at 7%
+  for your words, 44 pt row buttons) and read the web's iPhone measurements first (`AiLook(phone:)`: `phone.ai.*`,
+  else the shared `ai.*`). The Mac's thread, page and floating chat stay in FoleviMac and draw as before; the kit
+  builds for macOS and its Foli AI tests pass (`streamsIntoTheChat` still misses its frame budget on a busy Mac, as
+  before).
+- **The iPhone** (FoleviPhone `PhoneFoliAI.swift`, wired in `Rebuild/RebuildAI.swift`): the tab bar's Foli AI opens
+  the sheet (AskAiPanel.tsx, `iphone`: Conversations and the conversation's options on the left, New chat and Close
+  on the right; Suggestions while it's new; the composer with what Foli AI reads inside it, Add, Chat or Research
+  when the web is on, Send; the footnote). It keeps its conversation while closed; with history off it goes when the
+  sheet closes. Conversations opens the page (`/ai`, `/ai/<id>`: Back, the large title on balanced lines,
+  Conversations and the title in a row, Meet Foli AI while it's new, the chat filling the rest) and its drawer of
+  conversations (New chat, search, pinned and recent, Rename, Pin, Copy as Markdown, Save as note, Delete). Search's
+  "Ask Foli AI" opens the sheet with the words in its box; a folder's Foli AI a new chat about the folder. Citations
+  and notes an agent made open in the frame; links outside the app in Safari's sheet. No buying anywhere (no Buy
+  more or Upgrade). Every medium sheet now goes to its large detent when the keyboard comes, as Sheet.tsx does, and
+  its large detent stops 10 pt under the status bar as the web's.
+- **Local mode:** the engine asks Apple's on-device model or the person's own key (Shell/ShellAI.swift), so the
+  native chat needed nothing of its own. Debug builds have the Mac's stand-in model (`FOLEVI_FAKE_AI=1`,
+  `Shell/FakeAI.swift`: offline, one fixed answer, nothing sent; it now also knows the local engine's naming
+  request, so the fixture conversation is "Three days in Kyoto"). Hooks: `FOLEVI_REBUILD_SHEET=ai`,
+  `FOLEVI_REBUILD_ASK="…"`, `FOLEVI_REBUILD_SHEET_DETENT=large`.
+- **Comparisons** (screen-match.mjs, on the stand-in model; light/dark): the sheet new 0.07/0.15%, the sheet with an
+  answer 0.40/0.46%, the page new 0.05/0.05%, the page with the fixture conversation 0.37/0.37%. The sheets are
+  compared at their large detent: iOS 26 floats a sheet at a partial detent in from the screen's edges (the web's
+  stays attached), so the medium height isn't comparable whole-screen. What it took: answers' paragraphs break as
+  the iPhone's WebKit does (`text-wrap: pretty`, two-line paragraphs evened too: `.prettyAllLastWeighted(0.3)`,
+  fitted to WebKit's breaks), the citation chip's offset taken within its line, the thread's end where the web's
+  end marker is (it takes the messages' 20 pt), the page's dock 72 pt above the foot as the web keeps it.
+- **Found in the web:** on the page a title of three lines pushes the composer off the screen's foot (AiView's chat
+  is the screen's height less a fixed amount, under a large title of any height); natively the dock stays on screen.
+  Worth fixing on the web.
+- **Not yet:** the note's own Foli AI tool (AiPanel: writing help in a note) is still the page's sheet; attaching files
+  to a question and the web toggle's chip (not in the stand-in model's screens, so not drawn natively yet); sharing a conversation with a workspace (the Mac says why it can't too); not checked by tapping (the
+  Simulator panel's input wasn't used): the drawer, the menus, Edit, the keyboard taking the sheet to large, Stop.
+  Signed in (credits, account-mode copy) wants a run with a scratch test account. iPad: I7.

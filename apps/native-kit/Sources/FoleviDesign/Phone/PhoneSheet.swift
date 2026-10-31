@@ -305,12 +305,23 @@ private struct PhoneSheetHost<Body: View>: View {
     @State private var fitted: CGFloat = 0
     @State private var blocks: [CGFloat] = []
     @State private var screen = PhoneSheetHost.measureScreen()
+    /// A medium sheet's detent: it goes to large when the keyboard comes (Sheet.tsx), as the web's does.
+    @State private var detent: PresentationDetent? = {
+        #if DEBUG
+        // FOLEVI_REBUILD_SHEET_DETENT=large: a medium sheet opens at its large detent (the screen diffs).
+        if ProcessInfo.processInfo.environment["FOLEVI_REBUILD_SHEET_DETENT"] == "large" { return .large }
+        #endif
+        return nil
+    }()
 
     var body: some View {
         content()
             .environment(\.phoneSheetNaturalHeight, size == .fit ? { h in if abs(fitted - h) > 0.5 { fitted = h } } : nil)
             .frame(maxHeight: .infinity, alignment: .top)
-            .presentationDetents(detents)
+            .modifier(Detents(detents: detents, heights: mediumHeights, selection: size == .medium && !snapToBlocks ? $detent : nil))
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+                if size == .medium, !snapToBlocks { detent = .large }
+            }
             .presentationDragIndicator(.hidden)
             .presentationCornerRadius(FoleviTokens.Radius.sheet)
             .presentationBackground(PhoneSurface.solid.resolve(scheme).color)
@@ -319,6 +330,33 @@ private struct PhoneSheetHost<Body: View>: View {
                 // Taken as it first lays out, at its top (scrolling moves the blocks, not the detent).
                 if snapToBlocks, blocks.isEmpty, !ys.isEmpty { blocks = ys }
             }
+    }
+
+    /// A medium sheet's heights: medium (or fitted to its blocks) and the web's large.
+    private var mediumHeights: (low: PresentationDetent, high: PresentationDetent)? {
+        guard size == .medium else { return nil }
+        let large = PhoneSheetDetents.large(screenHeight: screen.height, top: screen.top)
+        return (.height(PhoneSheetDetents.medium(screenHeight: screen.height, top: screen.top, blocks: snapToBlocks ? blocks : []) - screen.bottom), .height(large - screen.bottom))
+    }
+
+    /// The detents, with the one shown bound when the sheet moves itself (nil: the person's drag only). A medium
+    /// sheet's two are heights (the web's large stops 10 pt under the status bar, higher than iOS's `.large`):
+    /// `.large` asked for is the higher of them.
+    private struct Detents: ViewModifier {
+        let detents: Set<PresentationDetent>
+        let heights: (low: PresentationDetent, high: PresentationDetent)?
+        let selection: Binding<PresentationDetent?>?
+
+        func body(content: Content) -> some View {
+            if let selection, let heights {
+                content.presentationDetents(detents, selection: Binding(get: {
+                    guard let want = selection.wrappedValue else { return heights.low }
+                    return want == .large ? heights.high : (detents.contains(want) ? want : heights.low)
+                }, set: { selection.wrappedValue = $0 == heights.high ? .large : $0 }))
+            } else {
+                content.presentationDetents(detents)
+            }
+        }
     }
 
     /// (iOS's height detent counts what's above the home indicator; the web's heights run to the screen's foot.)
@@ -330,7 +368,8 @@ private struct PhoneSheetHost<Body: View>: View {
             let h = fitted > 0 ? fitted : PhoneSheetDetents.medium(screenHeight: screen.height, top: screen.top) - screen.bottom
             return [.height(max(1, min(h, large - screen.bottom)))]
         case .medium:
-            return [.height(PhoneSheetDetents.medium(screenHeight: screen.height, top: screen.top, blocks: snapToBlocks ? blocks : []) - screen.bottom), .large]
+            let m = mediumHeights!
+            return [m.low, m.high]
         case .large:
             return [.large]
         }

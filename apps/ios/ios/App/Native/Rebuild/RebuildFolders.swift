@@ -14,7 +14,7 @@ enum RebuildFolderHooks {
             open: { frame.open(FrameRoute(path: $0)) },
             openNote: { phone.router?.openNote($0, source: nil, focus: true) },
             newFolder: { newFolder($0) },
-            askAI: { _, _ in frame.open(FrameRoute(path: "/ai")) },
+            askAI: { id, name in RebuildFrame.ai.ask(about: .folder(id: id, name: name)) },
             toast: { phone.toast($0) }
         )
     }

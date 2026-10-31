@@ -1,5 +1,5 @@
 {
-  "$description": "The iPhone app's screens as its web draws them (docs/IOS_REBUILD_PLAN.md, I3): measured in the Simulator's web frame by apps/ios/scripts/screen-match.mjs --styles into app-styles-cache/phone.ios.json. iPhone only: the Mac's measuring run skips it.",
+  "$description": "The iPhone app's screens as its web draws them (docs/IOS_REBUILD_PLAN.md, I3): measured in the Simulator's web frame by apps/ios/scripts/screen-match.mjs --styles into app-styles-cache/phone.ios.json. iPhone only: the Mac's measuring run skips it. Foli AI (I5): the sheet from the tab bar, new (ai-sheet) and with the stand-in model's answer (ai-chat), and the page (ai-page).",
   "ios": true,
   "screens": {
     "home": "/documents",
@@ -171,6 +171,214 @@
     "phone.empty.body": {
       "screen": "trash",
       "selector": "main [data-empty-state] > p"
+    },
+    "phone.ai.thread": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.overflow-y-auto.px-4"
+    },
+    "phone.ai.thread.list": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.overflow-y-auto.px-4 > div.space-y-5"
+    },
+    "phone.ai.user": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.group\\/user"
+    },
+    "phone.ai.user.bubble": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.group\\/user > p"
+    },
+    "phone.ai.user.edit": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.group\\/user > button"
+    },
+    "phone.ai.answer.group": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2"
+    },
+    "phone.ai.answer": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1"
+    },
+    "phone.ai.answer.md": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1 div.fb-ai-answer"
+    },
+    "phone.ai.answer.p": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1 div.fb-ai-answer p"
+    },
+    "phone.ai.answer.strong": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1 div.fb-ai-answer strong"
+    },
+    "phone.ai.answer.cite": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1 div.fb-ai-answer a.fb-link"
+    },
+    "phone.ai.sources": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1 > div.border-t"
+    },
+    "phone.ai.sources.title": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1 > div.border-t > p"
+    },
+    "phone.ai.sources.list": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1 > div.border-t > div"
+    },
+    "phone.ai.source": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1 > div.border-t button"
+    },
+    "phone.ai.source.n": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1 > div.border-t button > span:first-child"
+    },
+    "phone.ai.source.icon": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1 > div.border-t button svg"
+    },
+    "phone.ai.answer.actions": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1 > div.-mb-1"
+    },
+    "phone.ai.rowbtn": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1 .ai-row-btn"
+    },
+    "phone.ai.rowbtn.icon": {
+      "screen": "ai-chat",
+      "selector": ".ai-chat div.space-y-2 > div.px-1 .ai-row-btn svg"
+    },
+    "phone.ai.sheet.title": {
+      "screen": "ai-sheet",
+      "selector": "dialog header h2"
+    },
+    "phone.ai.suggest": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div.space-y-5 > div:has(> h3)"
+    },
+    "phone.ai.suggest.title": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div.space-y-5 h3"
+    },
+    "phone.ai.suggest.list": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div.space-y-5 ul"
+    },
+    "phone.ai.suggest.item": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div.space-y-5 ul button"
+    },
+    "phone.ai.suggest.icon": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div.space-y-5 ul button svg"
+    },
+    "phone.ai.suggest.note": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div.space-y-5 > div > p"
+    },
+    "phone.ai.dock": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div[data-sheet-dock]"
+    },
+    "phone.ai.composer": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div.iphone-composer"
+    },
+    "phone.ai.composer.chips": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div.iphone-composer > div:first-child"
+    },
+    "phone.ai.chip": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div[aria-label='What Foli AI reads'] > span"
+    },
+    "phone.ai.chip.icon": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div[aria-label='What Foli AI reads'] > span > svg"
+    },
+    "phone.ai.chip.add": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat button[aria-label='Add to what Foli AI reads']"
+    },
+    "phone.ai.composer.input": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div.iphone-composer textarea"
+    },
+    "phone.ai.composer.bar": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div.iphone-composer > div:last-child"
+    },
+    "phone.ai.send": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat button[aria-label='Ask']"
+    },
+    "phone.ai.send.disc": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat button[aria-label='Ask'] > span"
+    },
+    "phone.ai.footnote": {
+      "screen": "ai-sheet",
+      "selector": ".ai-chat div[data-sheet-dock] p.text-footnote"
+    },
+    "phone.ai.page.header": {
+      "screen": "ai-page",
+      "selector": "main section > div.h-11"
+    },
+    "phone.ai.page.conversations": {
+      "screen": "ai-page",
+      "selector": "main section > div.h-11 > button"
+    },
+    "phone.ai.page.title": {
+      "screen": "ai-page",
+      "selector": "main section > div.h-11 > h1"
+    },
+    "phone.ai.page.thread": {
+      "screen": "ai-page",
+      "selector": "main section div.overflow-y-auto.px-4"
+    },
+    "phone.ai.page.dock": {
+      "screen": "ai-page",
+      "selector": "main section div[data-sheet-dock]"
+    },
+    "phone.ai.page.footnote": {
+      "screen": "ai-page",
+      "selector": "main section div[data-sheet-dock] p.text-footnote"
+    },
+    "phone.ai.intro": {
+      "screen": "ai-page",
+      "selector": "main section div.max-w-2xl"
+    },
+    "phone.ai.intro.title": {
+      "screen": "ai-page",
+      "selector": "main section div.max-w-2xl > h2"
+    },
+    "phone.ai.intro.lead": {
+      "screen": "ai-page",
+      "selector": "main section div.max-w-2xl > p:first-of-type"
+    },
+    "phone.ai.intro.list": {
+      "screen": "ai-page",
+      "selector": "main section div.max-w-2xl ul"
+    },
+    "phone.ai.intro.item": {
+      "screen": "ai-page",
+      "selector": "main section div.max-w-2xl ul > li"
+    },
+    "phone.ai.intro.try": {
+      "screen": "ai-page",
+      "selector": "main section div.max-w-2xl > p.flex"
+    },
+    "phone.ai.intro.suggestions": {
+      "screen": "ai-page",
+      "selector": "main section div.max-w-2xl > div.flex-wrap"
+    },
+    "phone.ai.intro.suggestion": {
+      "screen": "ai-page",
+      "selector": "main section div.max-w-2xl > div.flex-wrap > button"
     }
   }
 }

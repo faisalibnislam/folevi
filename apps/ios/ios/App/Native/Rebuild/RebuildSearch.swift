@@ -22,8 +22,9 @@ struct RebuildSearchScreen: View {
 
     var body: some View {
         PhoneSearchScreen(model: model, aiOn: phone.aiOn, actions: actions, askAI: { q in
+            // (The web's openAsk: the sheet, the words in its box.)
             frame.back()
-            frame.open(FrameRoute(path: q.map { "/ai?q=\($0.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")" } ?? "/ai"))
+            RebuildFrame.ai.ask(draft: q)
         }, openNote: { id in
             frame.back()
             phone.router?.openNote(id, source: nil, focus: false)

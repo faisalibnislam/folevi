@@ -322,14 +322,27 @@ account-mode sign-out and place switching want a run with a scratch test account
   what's behind them on iOS); Move, Copy and the confirmations (the kit's sheets); pull to refresh (iOS's own).
 - **Search** (`PhoneSearch.swift`, from SearchModel): the palette's full screen, chips with their menus, Recent,
   Actions, notes found with the words marked, by meaning.
-- **Comparisons now** (light/dark): Starred 0.04%, Archive 0.03%, Trash 0.09% pass; Drafts 0.54/0.50%, Home 0.59/1.62%,
-  Home's lower half 1.4%, All notes 1.1%, search 2.7% typed (5% empty: item 4). The gates are unchanged. What's left:
+- **The rest of the screens** (2026-10-31): All folders (`PhoneFolders.swift`: cards or rows, search, View as
+  and Sort), New folder (the web's card in the middle of the screen: title, colour, inside, Create; from Home, All
+  folders and a folder; checked in the Simulator: made and opened), a folder's colour washed over its screen, New
+  note here and the empty screens' New note, Templates' New template and Generate with AI, Shared with Me and
+  Changes (`PhoneShared.swift`, signed in only), the bell's Notifications sheet (`PhoneNotifications.swift`: All or
+  Unread, Mark all read, Settings, Today, Yesterday and Earlier, swipes and a menu). Menus show their checks on
+  iOS (a column before the words, as globals.css); card titles clamp after their last word; the keyboard no longer
+  lifts the tab bar.
+- **Comparisons now** (light/dark): Starred 0.04/0.03%, Archive 0.03/0.02%, Trash 0.09%, a folder 0.50/0.46% pass;
+  Drafts 0.53/0.50%, Home 0.59/1.62%, Home's lower half 1.7%, All notes 1.0/0.9%, All folders 2.3/2.4%, search 2.7%
+  typed (5% empty: item 4). The gates are unchanged. What's left:
   1. iOS WebKit's `text-wrap: pretty` in the cards' line-clamped previews makes several short even lines (sometimes
      more lines than plain wrapping); no simple model of it fits the 46 paragraphs measured yet.
   2. WebKit and Core Text shape Instrument Sans a little differently (digits about 4% wider in WebKit, letters about
      1% narrower; the same font file, features make no difference): now and then a line breaks one word apart.
-  3. The folder card's paper text and a 3 pt difference in the folder card's height on the phone.
+  3. The native folder card is drawn about 2.4% taller for its width than the web's (the same on Home and All
+     folders; its width matches): the main part of All folders' difference. Not found yet.
   4. Search's Recent: the web asks a live query that local mode never answers, so it shows nothing; native shows the
      recently edited notes. (Looks like a web bug in local mode.)
-- Not yet: Notifications (a sheet from the bell, account mode), Shared with Me and Changes, All folders, the tag
-  screen's check, New folder from Home (it says it's coming), the folder screen's own menu, iPad.
+- **Not checked against the web:** Shared with Me, Changes and Notifications exist only signed in, so the scratch
+  library can't show them; they follow the web's markup and need a run with a scratch test account. Changes
+  shows a note's changes with the kit's native diff, where the web draws the changed blocks in its editor.
+- Not yet in I3: iPad (I6 has its own frame), the folder screen's own menu items beyond New note here (rename,
+  colour, move and delete are in the long-press menus of the cards).

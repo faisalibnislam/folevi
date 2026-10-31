@@ -309,6 +309,8 @@ private struct RebuildRoot: View {
                 RebuildAllFoldersScreen(frame: model, menus: menus, phone: phone) { newFolder = NewFolderRequest(parent: $0) }
             } else if case .web(let path) = route, path == "/ai" || path.hasPrefix("/ai/") || path.hasPrefix("/ai?") {
                 RebuildAiPage(ai: ai, frame: model, path: path)
+            } else if case .web(let p) = route, p == "/vault" || p.hasPrefix("/vault/") {
+                RebuildVaultScreen(path: p, frame: model, menus: menus, phone: phone)
             } else if case .search(let text) = route {
                 RebuildSearchScreen(text: text, frame: model, menus: menus, phone: phone)
             } else if let kind = NotesListKind(route: route) {

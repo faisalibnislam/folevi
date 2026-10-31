@@ -379,6 +379,334 @@
     "phone.ai.intro.suggestion": {
       "screen": "ai-page",
       "selector": "main section div.max-w-2xl > div.flex-wrap > button"
+    },
+    "phone.vault.header": {
+      "screen": "vault-locked",
+      "selector": "main > div.flex-wrap"
+    },
+    "phone.vault.header.subtitle": {
+      "screen": "vault-locked",
+      "selector": "main > div.flex-wrap > [role='status']"
+    },
+    "phone.vault.content": {
+      "screen": "vault-locked",
+      "selector": "main > div.mx-auto"
+    },
+    "phone.vault.gate.card": {
+      "screen": "vault-locked",
+      "selector": "main .rounded-panel.ui-card"
+    },
+    "phone.vault.gate.icon": {
+      "screen": "vault-locked",
+      "selector": "main .rounded-panel.ui-card > div:first-child"
+    },
+    "phone.vault.gate.title": {
+      "screen": "vault-locked",
+      "selector": "main .rounded-panel.ui-card > h2"
+    },
+    "phone.vault.gate.body": {
+      "screen": "vault-locked",
+      "selector": "main .rounded-panel.ui-card > div.mt-2"
+    },
+    "phone.vault.gate.label": {
+      "screen": "vault-locked",
+      "selector": "main .rounded-panel.ui-card label > span"
+    },
+    "phone.vault.gate.input": {
+      "screen": "vault-locked",
+      "selector": "main .rounded-panel.ui-card input"
+    },
+    "phone.vault.gate.actions": {
+      "screen": "vault-locked",
+      "selector": "main .rounded-panel.ui-card form > div.flex"
+    },
+    "phone.vault.gate.unlock": {
+      "screen": "vault-locked",
+      "selector": "main .rounded-panel.ui-card button[type='submit']"
+    },
+    "phone.vault.gate.forgot": {
+      "screen": "vault-locked",
+      "selector": "main .rounded-panel.ui-card button[type='button']"
+    },
+    "phone.vault.setup.text": {
+      "screen": "vault-setup",
+      "selector": "main .rounded-panel.ui-card > div.mt-2 > p"
+    },
+    "phone.vault.setup.length": {
+      "screen": "vault-setup",
+      "selector": "main .rounded-panel.ui-card form p.mb-1"
+    },
+    "phone.vault.setup.seg": {
+      "screen": "vault-setup",
+      "selector": "main .rounded-panel.ui-card [role='radiogroup']"
+    },
+    "phone.vault.setup.seg.on": {
+      "screen": "vault-setup",
+      "selector": "main .rounded-panel.ui-card [role='radiogroup'] button[aria-checked='true']"
+    },
+    "phone.vault.setup.seg.off": {
+      "screen": "vault-setup",
+      "selector": "main .rounded-panel.ui-card [role='radiogroup'] button[aria-checked='false']"
+    },
+    "phone.vault.setup.count": {
+      "screen": "vault-setup",
+      "selector": "main .rounded-panel.ui-card label > span > span"
+    },
+    "phone.vault.setup.input": {
+      "screen": "vault-setup",
+      "selector": "main .rounded-panel.ui-card input"
+    },
+    "phone.vault.setup.submit": {
+      "screen": "vault-setup",
+      "selector": "main .rounded-panel.ui-card button[type='submit']"
+    },
+    "phone.vault.header.open": {
+      "screen": "vault-files",
+      "selector": "main > div.flex-wrap"
+    },
+    "phone.vault.header.actions": {
+      "screen": "vault-files",
+      "selector": "main > div.flex-wrap > div"
+    },
+    "phone.vault.header.lock": {
+      "screen": "vault-files",
+      "selector": "main > div.flex-wrap button.ui-btn-primary"
+    },
+    "phone.vault.header.more": {
+      "screen": "vault-files",
+      "selector": "main button[aria-label='More in the Vault']"
+    },
+    "phone.vault.tabs": {
+      "screen": "vault-files",
+      "selector": "main [role='tablist']"
+    },
+    "phone.vault.tab.active": {
+      "screen": "vault-files",
+      "selector": "main [role='tab'][aria-selected='true']"
+    },
+    "phone.vault.tab": {
+      "screen": "vault-files",
+      "selector": "main [role='tab'][aria-selected='false']"
+    },
+    "phone.vault.files.bar": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] > div:first-child"
+    },
+    "phone.vault.files.title": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] h3"
+    },
+    "phone.vault.files.seg": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] .ui-seg"
+    },
+    "phone.vault.files.seg.on": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] .ui-seg button[aria-pressed='true']"
+    },
+    "phone.vault.files.seg.off": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] .ui-seg button[aria-pressed='false']"
+    },
+    "phone.vault.files.button": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] > div:first-child > button.ui-btn-secondary"
+    },
+    "phone.vault.files.upload": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] > div:first-child > button.ui-btn-primary"
+    },
+    "phone.vault.files.folders": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] > ul.mb-4"
+    },
+    "phone.vault.files.folder": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] > ul.mb-4 button"
+    },
+    "phone.vault.files.folder.name": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] > ul.mb-4 button > span"
+    },
+    "phone.vault.files.cards": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] > ul:not(.mb-4)"
+    },
+    "phone.vault.files.card": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] > ul:not(.mb-4) button"
+    },
+    "phone.vault.files.card.icon": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] > ul:not(.mb-4) button > svg"
+    },
+    "phone.vault.files.card.title": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] > ul:not(.mb-4) button span.block"
+    },
+    "phone.vault.files.card.detail": {
+      "screen": "vault-files",
+      "selector": "main section[aria-label='Files and notes'] > ul:not(.mb-4) button span.block",
+      "nth": 1
+    },
+    "phone.vault.pw.bar": {
+      "screen": "vault-passwords",
+      "selector": "main [role='tabpanel'] > div > div:first-child"
+    },
+    "phone.vault.pw.search": {
+      "screen": "vault-passwords",
+      "selector": "main [role='tabpanel'] input[placeholder='Search']"
+    },
+    "phone.vault.pw.search.icon": {
+      "screen": "vault-passwords",
+      "selector": "main [role='tabpanel'] label > svg"
+    },
+    "phone.vault.pw.kind": {
+      "screen": "vault-passwords",
+      "selector": "main [role='tabpanel'] button[role='combobox']"
+    },
+    "phone.vault.pw.add": {
+      "screen": "vault-passwords",
+      "selector": "main [role='tabpanel'] > div > div:first-child > button.ui-btn-primary"
+    },
+    "phone.vault.list": {
+      "screen": "vault-passwords",
+      "selector": "main section[aria-label='Passwords and credentials'] ul"
+    },
+    "phone.vault.row": {
+      "screen": "vault-passwords",
+      "selector": "main section[aria-label='Passwords and credentials'] li button"
+    },
+    "phone.vault.row.title": {
+      "screen": "vault-passwords",
+      "selector": "main section[aria-label='Passwords and credentials'] li button span.block"
+    },
+    "phone.vault.row.detail": {
+      "screen": "vault-passwords",
+      "selector": "main section[aria-label='Passwords and credentials'] li button span.block",
+      "nth": 1
+    },
+    "phone.vault.row.time": {
+      "screen": "vault-passwords",
+      "selector": "main section[aria-label='Passwords and credentials'] li button > span.text-faint"
+    },
+    "phone.vault.item.card": {
+      "screen": "vault-item",
+      "selector": "main [role='tabpanel'] section.rounded-panel.ui-card"
+    },
+    "phone.vault.tab.menu": {
+      "screen": "vault-health",
+      "selector": "main [role='tablist'] > span"
+    },
+    "phone.vault.tab.menu.close": {
+      "screen": "vault-health",
+      "selector": "main [role='tablist'] > span > button"
+    },
+    "phone.vault.health.section": {
+      "screen": "vault-health",
+      "selector": "main section[aria-label='Health']"
+    },
+    "phone.vault.health.lead": {
+      "screen": "vault-health",
+      "selector": "main section[aria-label='Health'] > p"
+    },
+    "phone.vault.health.heading": {
+      "screen": "vault-health",
+      "selector": "main section[aria-label='Health'] h3"
+    },
+    "phone.vault.health.count": {
+      "screen": "vault-health",
+      "selector": "main section[aria-label='Health'] h3 > span"
+    },
+    "phone.vault.health.body": {
+      "screen": "vault-health",
+      "selector": "main section[aria-label='Health'] h3 + p"
+    },
+    "phone.vault.trash.bar": {
+      "screen": "vault-trash",
+      "selector": "main section[aria-label='Trash'] > div"
+    },
+    "phone.vault.trash.lead": {
+      "screen": "vault-trash",
+      "selector": "main section[aria-label='Trash'] p"
+    },
+    "phone.vault.trash.empty": {
+      "screen": "vault-trash",
+      "selector": "main section[aria-label='Trash'] button.text-danger"
+    },
+    "phone.vault.trash.list": {
+      "screen": "vault-trash",
+      "selector": "main section[aria-label='Trash'] ul"
+    },
+    "phone.vault.trash.row": {
+      "screen": "vault-trash",
+      "selector": "main section[aria-label='Trash'] li"
+    },
+    "phone.vault.trash.restore": {
+      "screen": "vault-trash",
+      "selector": "main section[aria-label='Trash'] li button"
+    },
+    "phone.vault.settings.section": {
+      "screen": "vault-settings",
+      "selector": "main section[aria-label='Vault settings']"
+    },
+    "phone.vault.settings.label": {
+      "screen": "vault-settings",
+      "selector": "main section[aria-label='Vault settings'] > label span.block"
+    },
+    "phone.vault.settings.hint": {
+      "screen": "vault-settings",
+      "selector": "main section[aria-label='Vault settings'] > label span.block",
+      "nth": 1
+    },
+    "phone.vault.settings.select": {
+      "screen": "vault-settings",
+      "selector": "main section[aria-label='Vault settings'] button[role='combobox']"
+    },
+    "phone.vault.settings.import": {
+      "screen": "vault-settings",
+      "selector": "main section[aria-label='Vault settings'] > div.space-y-2"
+    },
+    "phone.vault.settings.button": {
+      "screen": "vault-settings",
+      "selector": "main section[aria-label='Vault settings'] > div.flex-wrap > button"
+    },
+    "phone.vault.item.head": {
+      "screen": "vault-item",
+      "selector": "main [role='tabpanel'] section.rounded-panel.ui-card > div.mb-3"
+    },
+    "phone.vault.item.title": {
+      "screen": "vault-item",
+      "selector": "main [role='tabpanel'] section.rounded-panel.ui-card h3"
+    },
+    "phone.vault.item.sub": {
+      "screen": "vault-item",
+      "selector": "main [role='tabpanel'] section.rounded-panel.ui-card > div.mb-3 p"
+    },
+    "phone.vault.item.field": {
+      "screen": "vault-item",
+      "selector": "main [role='tabpanel'] section.rounded-panel.ui-card dl > div"
+    },
+    "phone.vault.item.label": {
+      "screen": "vault-item",
+      "selector": "main [role='tabpanel'] section.rounded-panel.ui-card dt"
+    },
+    "phone.vault.item.value": {
+      "screen": "vault-item",
+      "selector": "main [role='tabpanel'] section.rounded-panel.ui-card dd > span"
+    },
+    "phone.vault.item.secret": {
+      "screen": "vault-item",
+      "selector": "main [role='tabpanel'] section.rounded-panel.ui-card dd > span",
+      "nth": 1
+    },
+    "phone.vault.item.icon": {
+      "screen": "vault-item",
+      "selector": "main [role='tabpanel'] section.rounded-panel.ui-card dd button"
+    },
+    "phone.vault.item.button": {
+      "screen": "vault-item",
+      "selector": "main [role='tabpanel'] section.rounded-panel.ui-card > div.mb-3 > button.ui-btn-secondary"
     }
   }
 }

@@ -11,6 +11,7 @@ import UIKit
 import SwiftUI
 import FoleviDesign
 import FoleviEngine
+import FoleviScreens
 
 /// The Vault's own styles, read inside .ui-invert: already the other theme's, so the screen (drawn with its scheme
 /// flipped for the shared components) takes them flipped back.
@@ -30,92 +31,39 @@ enum VS {
     }
 }
 
-/// The web's formatRelative (lib/format.ts): "just now", "5 mins ago", "2 hours ago", "3 days ago", "Oct 2".
-enum VaultTime {
-    static func relative(_ ms: Double, now: Date = Date()) -> String {
-        let nowMs = now.timeIntervalSince1970 * 1000
-        let ahead = ms > nowMs
-        let unit = { (n: Int, u: String) -> String in
-            let words = "\(n) \(u)\(n == 1 ? "" : "s")"
-            return ahead ? "in \(words)" : "\(words) ago"
-        }
-        let exact = abs(nowMs - ms) / 60_000
-        let mins = ahead ? max(1, Int(exact.rounded())) : Int(exact.rounded())
-        if mins < 1 { return "just now" }
-        if mins < 60 { return unit(mins, "min") }
-        let hours = Int((Double(mins) / 60).rounded())
-        if hours < 24 { return unit(hours, "hour") }
-        let days = Int((Double(hours) / 24).rounded())
-        if days < 7 { return unit(days, "day") }
-        let date = Date(timeIntervalSince1970: ms / 1000)
-        let f = DateFormatter()
-        f.setLocalizedDateFormatFromTemplate(Calendar.current.component(.year, from: date) == Calendar.current.component(.year, from: now) ? "MMM d" : "MMM d y")
-        return f.string(from: date)
-    }
-
-    /// The web's formatDateTime.
-    static func dateTime(_ ms: Double) -> String {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .short
-        return f.string(from: Date(timeIntervalSince1970: ms / 1000))
-    }
-}
-
-/// The section a /vault/<section> link opens (the screen captures use it; the web ignores the rest of the path).
-extension VaultSection {
-    init?(path: String) {
-        let parts = path.split(separator: "/")
-        guard parts.count > 1 else { return nil }
-        self.init(rawValue: String(parts[1]))
-    }
-
-    var label: String {
-        switch self {
-        case .files: return "Files & Notes"
-        case .passwords: return "Passwords & Credentials"
-        case .health: return "Health"
-        case .activity: return "Activity"
-        case .people: return "People"
-        case .trash: return "Trash"
-        case .settings: return "Settings"
-        }
-    }
-
-    var icon: WebIcon {
-        switch self {
-        case .files: return .folderLock
-        case .passwords: return .keyRound
-        case .health: return .heartPulse
-        case .activity: return .activity
-        case .people: return .users
-        case .trash: return .trash
-        case .settings: return .settings
-        }
-    }
+extension EnvironmentValues {
+    /// This Mac's Touch ID, for the passcode card's offer after unlocking encryption here.
+    @Entry var vaultTouchId: TouchIdHook? = nil
 }
 
 struct VaultScreen: View {
     @State private var model: VaultModel
     let path: String
+    /// The frame the Vault's dialogs are presented on (FrameSheets), and its Touch ID.
+    let frame: FrameModel
+    let touchId: TouchIdHook?
 
     init(frame: FrameModel, path: String) {
         self.path = path
-        _model = State(initialValue: VaultModel(frame: frame, section: VaultSection(path: path)))
+        self.frame = frame
+        touchId = frame.touchId
+        _model = State(initialValue: VaultModel(client: frame.client, feedback: ScreenFeedback(toast: { [weak frame] t in
+            frame?.toast(t.message, tone: t.tone == .error ? .error : t.tone == .success ? .success : .info)
+        }), section: VaultSection(path: path)))
     }
 
     var body: some View {
         VaultBody(model: model)
             .uiInvert()
             .onChange(of: model.dialog?.id) { _, id in
-                guard id != nil, let dialog = model.dialog else { return FrameSheets.dismiss(model.frame, notify: false) }
-                FrameSheets.present(model.frame, onClose: { [model] in model.dialog = nil }) { _ in
+                guard id != nil, let dialog = model.dialog else { return FrameSheets.dismiss(frame, notify: false) }
+                FrameSheets.present(frame, onClose: { [model] in model.dialog = nil }) { _ in
                     VaultDialogHost(model: model, dialog: dialog)
                 }
             }
             // A dialog belongs to its section: another section closes it (the web's Vault draws it again).
             .onChange(of: path) { _, _ in model.dialog = nil }
-            .onDisappear { if model.dialog != nil { model.dialog = nil; FrameSheets.dismiss(model.frame, notify: false) } }
+            .onDisappear { if model.dialog != nil { model.dialog = nil; FrameSheets.dismiss(frame, notify: false) } }
             .onChange(of: model.summary.value) { _, _ in model.summaryChanged() }
             // A link to /vault/<section> on the open tab: that section (the Vault stays one tab).
             .onChange(of: path) { _, p in model.section = VaultSection(path: p) ?? .files }
@@ -131,6 +79,7 @@ struct VaultScreen: View {
                 }
             }
             #endif
+            .environment(\.vaultTouchId, touchId)
             .accessibilityIdentifier("screen.vault")
     }
 }
@@ -495,7 +444,7 @@ private struct VaultGateView: View {
                     errorLine
                     WebButton(busy ? "Opening…" : "Set passcode and open", variant: .primary) {
                         guard let next, let id = summary.vaultId else { return }
-                        go { try await model.frame.client.command(.vaultFinishPasscode(vaultId: id, passcode: next)) }
+                        go { try await model.client.command(.vaultFinishPasscode(vaultId: id, passcode: next)) }
                     }
                     .disabled(busy || next == nil)
                 }
@@ -511,7 +460,7 @@ private struct VaultGateView: View {
                             WebButton(busy ? "Opening…" : "Save passcode and open", variant: .primary) {
                                 guard let next, let id = summary.vaultId else { return }
                                 go {
-                                    let r = try await model.frame.client.command(.vaultChangePasscode(vaultId: id, current: old, next: next))
+                                    let r = try await model.client.command(.vaultChangePasscode(vaultId: id, current: old, next: next))
                                     if r.status != "ok" { self.old = nil }
                                     return r
                                 }
@@ -561,7 +510,7 @@ private struct VaultGateView: View {
                         Button("Ask a custodian") {
                             guard let id = summary.vaultId else { return }
                             model.run {
-                                _ = try await model.frame.client.command(.vaultRequestReset(vaultId: id))
+                                _ = try await model.client.command(.vaultRequestReset(vaultId: id))
                                 model.toast("Asked. A custodian's device shares the key with you again when they next open the Vault.", tone: .success)
                             }
                         }
@@ -586,7 +535,7 @@ private struct VaultGateView: View {
             guard !passcode.isEmpty else { return }
             let p = passcode
             go {
-                let r = try await model.frame.client.command(.vaultUnlock(vaultId: id, passcode: p))
+                let r = try await model.client.command(.vaultUnlock(vaultId: id, passcode: p))
                 if r.status == "oldPasscode" {
                     self.old = p
                     self.passcode = ""
@@ -597,7 +546,7 @@ private struct VaultGateView: View {
         } else {
             guard let next, !recovery.isEmpty else { return }
             let key = recovery
-            go { try await model.frame.client.command(.vaultReset(vaultId: id, recoveryKey: key, passcode: next)) }
+            go { try await model.client.command(.vaultReset(vaultId: id, recoveryKey: key, passcode: next)) }
         }
     }
 
@@ -606,7 +555,7 @@ private struct VaultGateView: View {
         busy = true
         error = nil
         Task { @MainActor in
-            do { _ = try await model.frame.client.command(.vaultSetUp(passcode: next)) } catch { self.error = VaultModel.message(error) }
+            do { _ = try await model.client.command(.vaultSetUp(passcode: next)) } catch { self.error = VaultModel.message(error) }
             busy = false
         }
     }
@@ -732,11 +681,11 @@ private struct EncryptionStep: View {
 
     private func approve() {
         start("approve")
-        model.run { _ = try await model.frame.client.command(.e2eeApprovalStart) }
+        model.run { _ = try await model.client.command(.e2eeApprovalStart) }
     }
 
     private func back() {
-        if step == "approve" { model.run { _ = try await model.frame.client.command(.e2eeApprovalCancel) } }
+        if step == "approve" { model.run { _ = try await model.client.command(.e2eeApprovalCancel) } }
         error = nil
         step = "choose"
     }
@@ -749,7 +698,7 @@ private struct EncryptionStep: View {
         let method: E2eeUnlockMethod = step == "recovery" ? .recovery : .passphrase
         Task { @MainActor in
             do {
-                let r = try await model.frame.client.command(.e2eeUnlock(method: method, secret: secret))
+                let r = try await model.client.command(.e2eeUnlock(method: method, secret: secret))
                 if r.status != .ok { error = r.message ?? "That didn't unlock this Mac. Check it and try again." }
             } catch { self.error = VaultModel.message(error) }
             busy = false
@@ -804,10 +753,11 @@ private struct TouchIdOffer: View {
     @State private var answered = false
     @State private var busy = false
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.vaultTouchId) private var touchId
 
     /// Shown while this Mac has Touch ID and it isn't on yet.
     private var shown: Bool {
-        guard !answered, let s = model.frame.touchId?.status() else { return false }
+        guard !answered, let s = touchId?.status() else { return false }
         return s.available && !s.on
     }
 
@@ -819,7 +769,7 @@ private struct TouchIdOffer: View {
                     GateText("This Mac asks for Touch ID instead of your passphrase before it opens your encrypted notes and your Vault's keys. You can change this in Settings.")
                     HStack(spacing: 8) {
                         WebButton("Use Touch ID", variant: .primary, size: .sm) {
-                            guard let hook = model.frame.touchId, !busy else { return }
+                            guard let hook = touchId, !busy else { return }
                             busy = true
                             Task { @MainActor in
                                 if let on = try? await hook.turnOn() { answered = on }
@@ -867,7 +817,7 @@ private struct RecoveryKeyCard: View {
                 WebButton("Save as a file…", icon: .download) { save() }
             }
             WebButton("I've saved it", variant: .primary) {
-                model.run { _ = try await model.frame.client.command(.vaultRecoverySaved(vaultId: vaultId)) }
+                model.run { _ = try await model.client.command(.vaultRecoverySaved(vaultId: vaultId)) }
             }
         }
     }

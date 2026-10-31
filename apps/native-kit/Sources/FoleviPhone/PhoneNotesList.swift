@@ -319,7 +319,9 @@ struct PhonePressable<Content: View>: View {
                 #if canImport(UIKit)
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 #endif
-                onLongPress(frame)
+                // (A moment later: a menu opened in the same update as the press ending can be lost.)
+                let at = frame
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { onLongPress(at) }
             } onPressingChanged: { pressed = $0 }
             .accessibilityAddTraits(.isButton)
             .accessibilityAction(named: "More actions") { onLongPress?(frame) }

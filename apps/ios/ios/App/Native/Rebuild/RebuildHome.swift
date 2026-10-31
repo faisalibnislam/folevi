@@ -43,16 +43,26 @@ struct RebuildHomeScreen: View {
         } header: {
             PhoneSearchButton(home.searchPrompt) { frame.open(.search("")) }
         } content: {
-            PhoneHomeContent(model: home, actions: PhoneHomeActions(
-                open: { frame.open(FrameRoute(path: $0)) },
-                openNote: { phone.router?.openNote($0, source: nil, focus: false) },
-                foldersMenu: { showMore(from: $0, graph: false) }
-            ))
+            PhoneHomeContent(model: home, actions: homeActions)
             .padding(.bottom, 24)
         }
+        .folderDialogs(home.dialogs, actions: home.actions, tree: home.tree.value?.folders ?? [])
         .refreshable { await home.refresh() }
         .onAppear { home.setVisible(true) }
         .onDisappear { home.setVisible(false) }
+    }
+
+    private var homeActions: PhoneHomeActions {
+        var a = PhoneHomeActions(
+            open: { frame.open(FrameRoute(path: $0)) },
+            openNote: { phone.router?.openNote($0, source: nil, focus: false) },
+            foldersMenu: { showMore(from: $0, graph: false) }
+        )
+        a.folderMenu = { card, anchor in
+            let context = FolderMenuContext(session: home.session.value, places: home.places.value, links: home.folderLinks, locks: home.locks.error == nil ? home.locks.value : nil)
+            PhoneFolderMenu.show(MenuFolder(card), from: anchor, context: context, actions: home.actions, dialogs: home.dialogs, menus: menus, hooks: RebuildFolderHooks.make(frame: frame, phone: phone, newFolder: newFolder))
+        }
+        return a
     }
 
     /// The pill's More and the Folders section's "…": New folder, All folders (and Graph, from the pill).

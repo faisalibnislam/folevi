@@ -4,6 +4,9 @@
 // opaque); picked or dismissed, it shrinks to 0.9 and fades over 160 ms while the choice goes ahead. A tap anywhere
 // else closes it.
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 import Observation
 
 /// What a menu row does when picked.
@@ -76,6 +79,15 @@ public struct PhoneMenuLayer: View {
 
     public init(menus: PhoneMenus) { self.menus = menus }
 
+    /// The status bar's height: the layer ignores the safe area, so its own insets read 0.
+    static var windowTop: CGFloat {
+        #if canImport(UIKit)
+        UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.safeAreaInsets.top ?? 0
+        #else
+        0
+        #endif
+    }
+
     public var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
@@ -89,7 +101,7 @@ public struct PhoneMenuLayer: View {
                     // status bar measured from where the layer starts.
                     let at = geo.frame(in: .global)
                     let anchor = open.anchor.offsetBy(dx: -at.minX, dy: -at.minY)
-                    let spot = PhoneMenuPlacement.place(size: size, anchor: anchor, side: open.side, align: open.align, screen: CGSize(width: geo.size.width, height: geo.size.height + geo.safeAreaInsets.bottom), safeTop: max(0, geo.safeAreaInsets.top))
+                    let spot = PhoneMenuPlacement.place(size: size, anchor: anchor, side: open.side, align: open.align, screen: CGSize(width: geo.size.width, height: geo.size.height + geo.safeAreaInsets.bottom), safeTop: max(0, geo.safeAreaInsets.top, Self.windowTop))
                     WebMenuPanel(open.entries.map(\.item), width: open.minWidth) { item in
                         guard !leaving, let e = open.entries.first(where: { $0.id == item.id }) else { return }
                         menus.close()

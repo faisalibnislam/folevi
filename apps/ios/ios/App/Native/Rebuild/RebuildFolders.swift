@@ -6,6 +6,20 @@ import FoleviEngine
 import FoleviPhone
 import FoleviScreens
 
+/// What a folder's menu asks of the frame.
+@MainActor
+enum RebuildFolderHooks {
+    static func make(frame: PhoneFrameModel, phone: PhoneModel, newFolder: @escaping (String?) -> Void) -> PhoneFolderMenuHooks {
+        PhoneFolderMenuHooks(
+            open: { frame.open(FrameRoute(path: $0)) },
+            openNote: { phone.router?.openNote($0, source: nil, focus: true) },
+            newFolder: { newFolder($0) },
+            askAI: { _, _ in frame.open(FrameRoute(path: "/ai")) },
+            toast: { phone.toast($0) }
+        )
+    }
+}
+
 /// New folder asked for: inside which folder it starts (nil: the top level).
 struct NewFolderRequest: Identifiable {
     let id = UUID()
@@ -28,7 +42,11 @@ struct RebuildAllFoldersScreen: View {
     }
 
     var body: some View {
-        PhoneAllFoldersScreen(model: model, open: { frame.open(FrameRoute(path: $0)) }, back: { frame.back() }, menu: { showMenu(from: $0) }, scrollToTop: frame.scrollToTop)
+        var screen = PhoneAllFoldersScreen(model: model, open: { frame.open(FrameRoute(path: $0)) }, back: { frame.back() }, menu: { showMenu(from: $0) }, scrollToTop: frame.scrollToTop)
+        screen.folderMenu = { node, anchor in
+            PhoneFolderMenu.show(MenuFolder(node), from: anchor, context: model.context, actions: model.actions, dialogs: model.dialogs, menus: menus, hooks: RebuildFolderHooks.make(frame: frame, phone: phone, newFolder: newFolder))
+        }
+        return screen.folderDialogs(model.dialogs, actions: model.actions, tree: model.nodes)
     }
 
     /// IphoneFolders' menu: New folder, View as Tiles or List, Sort by.

@@ -13,6 +13,8 @@ public struct PhoneAllFoldersScreen: View {
     let open: (String) -> Void
     let back: () -> Void
     let menu: (CGRect) -> Void
+    /// A folder card's menu (its long press), from the card.
+    public var folderMenu: (FolderNode, CGRect) -> Void = { _, _ in }
     let scrollToTop: Int
     @State private var moreFrame: CGRect = .zero
     @Environment(\.colorScheme) private var scheme
@@ -55,10 +57,9 @@ public struct PhoneAllFoldersScreen: View {
             } else {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: grid.gap), GridItem(.flexible(), spacing: grid.gap)], spacing: 20) {
                     ForEach(shown, id: \.id) { f in
-                        Button { open("/folders/\(f.id)") } label: {
+                        PhonePressable(scale: 0.97, onTap: { open("/folders/\(f.id)") }, onLongPress: { folderMenu(f, $0) }) {
                             WebFolderCard(model.cardModel(f))
                         }
-                        .buttonStyle(PhoneCardPressStyle())
                     }
                 }
                 .padding(grid.padding.edgeInsets)

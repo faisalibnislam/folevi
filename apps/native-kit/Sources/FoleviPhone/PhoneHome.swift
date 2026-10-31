@@ -15,6 +15,8 @@ public struct PhoneHomeActions {
     public var openNote: (String) -> Void
     /// The Folders section's "…" (New folder, All folders), from where it was tapped.
     public var foldersMenu: (CGRect) -> Void
+    /// A folder card's menu (its long press), from the card.
+    public var folderMenu: (FolderCard, CGRect) -> Void = { _, _ in }
 
     public init(open: @escaping (String) -> Void, openNote: @escaping (String) -> Void, foldersMenu: @escaping (CGRect) -> Void) {
         self.open = open
@@ -149,10 +151,9 @@ public struct PhoneHomeContent: View {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: strip.gap) {
                         ForEach(Array(zip(model.folders, model.folderCards)), id: \.0.id) { folder, model_ in
-                            Button { actions.open("/folders/\(folder.id)") } label: {
+                            PhonePressable(scale: 0.97, onTap: { actions.open("/folders/\(folder.id)") }, onLongPress: { actions.folderMenu(folder, $0) }) {
                                 WebFolderCard(model_).frame(width: card.width)
                             }
-                            .buttonStyle(PhoneCardPressStyle())
                         }
                     }
                     .scrollTargetLayout()

@@ -89,7 +89,8 @@ if (env === "production") {
         if (get(k) === "false") problems.push(`Convex ${k}=false disables a required protection; remove it in production.`);
       }
     } catch {
-      warn.push("Could not read the Convex environment (skipping Convex checks).");
+      // Not being able to look is a failure too: shipping without these checks could ship without the protections.
+      problems.push("Could not read the Convex environment (npx convex env list failed), so its required settings can't be checked.");
     }
   }
 }

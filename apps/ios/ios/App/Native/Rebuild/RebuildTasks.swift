@@ -178,14 +178,15 @@ struct RebuildCalendarScreen: View {
             RebuildRootPill(home: home, menus: menus, openNotifications: openNotifications) { menu }
         } header: {
             if layout != .week {
-                PhoneWeekStrip(today: model.today, selected: model.selected, startsOpen: ProcessInfo.processInfo.environment["FOLEVI_REBUILD_MONTH"] == "1", marked: { model.marked($0, tasks: tasks, events: events) }, select: { model.select($0) }, feel: { model.feedback.haptic(.selection) })
+                // Month: the strip's own month, open and paged by month (its days on the weekdays' columns), with
+                // the picked day's agenda under it; Agenda: the week, pulled down for the month.
+                PhoneWeekStrip(today: model.today, selected: model.selected, startsOpen: ProcessInfo.processInfo.environment["FOLEVI_REBUILD_MONTH"] == "1", monthOnly: layout == .month, marked: { model.marked($0, tasks: tasks, events: events) }, select: { model.select($0) }, feel: { model.feedback.haptic(.selection) })
+                    .id(layout)
             }
         } content: {
             switch layout {
-            case .agenda:
+            case .agenda, .month:
                 PhoneAgendaContent(model: model, actions: PhoneAgendaActions(add: { model.addingOn = $0 }, openEvent: { model.openEvent = $0 }))
-            case .month:
-                CalendarMonthGrid(model: model).padding(.horizontal, 12).padding(.top, 8)
             case .week:
                 CalendarWeekGrid(model: model).frame(height: 640)
             }
@@ -201,6 +202,7 @@ struct RebuildCalendarScreen: View {
                 PhoneTaskSheet(host: model, task: task, close: { model.detail = nil }, openNote: { t in phone.router?.openNote(t.noteId, source: nil, focus: false) })
             }
         }
+        .calendarSubscriptionsSheet(model)
         .alert("New task", isPresented: Binding(get: { model.addingOn != nil }, set: { if !$0 { model.addingOn = nil } })) {
             AddOnDayField(model: model)
         } message: {

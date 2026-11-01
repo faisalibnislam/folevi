@@ -5,6 +5,13 @@ import SwiftUI
 import FoleviDesign
 import FoleviEngine
 
+public extension View {
+    /// The subscribed calendars' sheet (Subscribe to a calendar), for a host drawing its own Calendar (the iPhone's).
+    func calendarSubscriptionsSheet(_ model: CalendarModel) -> some View {
+        sheet(isPresented: Binding(get: { model.showsCalendars }, set: { model.showsCalendars = $0 })) { CalendarsSheet(model: model) }
+    }
+}
+
 struct CalendarsSheet: View {
     let model: CalendarModel
     @State private var url = ""

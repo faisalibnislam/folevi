@@ -157,6 +157,7 @@ public struct SettingsSectionScreen: View {
     public var body: some View {
         Form { content }
             .formStyle(.grouped)
+            .toggleStyle(.folevi)
             .settingsBackground()
             .navigationTitle(section.title)
             #if os(iOS)

@@ -259,10 +259,11 @@ public struct WebMenuPanel: View {
             }
         }
         .padding(p.padding.edgeInsets)
-        // (iOS: at least 250, the menu's own width; the Mac: at least 200 and as wide as its longest row, as the
+        // (iOS: at least 250, the menu's own width, and wider for a longer row up to 340, so a row's words are
+        // shown whole ("Subscribe to a calendar"); the Mac: at least 200 and as wide as its longest row, as the
         // web's popover sizes itself there.)
         #if os(iOS)
-        .frame(width: max(width, 250), alignment: .topLeading)
+        .frame(minWidth: max(width, 250), maxWidth: max(width, 340), alignment: .topLeading)
         #else
         .frame(minWidth: select ? width : max(width, Self.minWidth), alignment: .topLeading)
         .fixedSize(horizontal: true, vertical: false)

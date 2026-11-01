@@ -10,6 +10,7 @@
 // work as for any screen; the section stays mounted (hidden) under them, so its state (a draft, a choice
 // half made) and handlers carry on from one of its screens to the next.
 
+import { Switch } from "@/components/ui/Switch";
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronRight } from "lucide-react";
@@ -204,25 +205,19 @@ export function IosRow({
 
 /** iOS's on/off switch, in the app's neutral colours (dark when on, light in dark mode). */
 export function IosSwitch({ checked, onChange, label, describedBy, disabled }: { checked: boolean; onChange: (next: boolean) => void; label: string; describedBy?: string; disabled?: boolean }) {
+  // The web's and the Mac's switch (a rounded rectangle), not iOS's capsule: one switch everywhere (the owner,
+  // 2026-11-01). The light tap of feedback stays.
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      aria-describedby={describedBy}
+    <Switch
+      checked={checked}
+      label={label}
+      describedBy={describedBy}
       disabled={disabled}
-      onClick={() => {
+      onChange={(next) => {
         haptic("light");
-        onChange(!checked);
+        onChange(next);
       }}
-      className={`relative inline-flex h-[31px] w-[51px] flex-none items-center rounded-capsule outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-40 ${checked ? "bg-heading" : "bg-[color-mix(in_oklab,var(--color-ink)_16%,transparent)]"}`}
-    >
-      <span
-        aria-hidden
-        className={`inline-block h-[27px] w-[27px] rounded-capsule shadow-[0_3px_8px_rgb(0_0_0/0.15),0_1px_1px_rgb(0_0_0/0.16)] transition-[transform,background-color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${checked ? "translate-x-[22px] bg-canvas" : "translate-x-[2px] bg-white"}`}
-      />
-    </button>
+    />
   );
 }
 

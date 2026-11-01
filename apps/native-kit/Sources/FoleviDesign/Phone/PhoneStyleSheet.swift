@@ -114,10 +114,7 @@ public struct PhoneStyleSheetContent: View {
                     list {
                         HStack(spacing: 12) {
                             Text("Blur background").webText(PhoneType.body()).foregroundStyle(ink).frame(maxWidth: .infinity, alignment: .leading)
-                            Toggle("Blur background", isOn: Binding(get: { state.blur }, set: { run(.blur($0)) }))
-                                .labelsHidden()
-                                .tint(heading)
-                                .disabled(off)
+                            FoleviSwitch("Blur background", on: state.blur, disabled: off) { run(.blur($0)) }
                         }
                         .padding(.horizontal, 16)
                         .frame(minHeight: 52)

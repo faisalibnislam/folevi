@@ -25,6 +25,8 @@ public struct PhoneWeekStrip: View {
     let marked: (String) -> Bool
     let select: (String) -> Void
     let feel: () -> Void
+    /// The Month layout: the month always open (no grabber, no pull back to the week); the agenda runs under it.
+    let monthOnly: Bool
     @State private var open = false
     /// 0 (the week) to 1 (the month) while a finger pulls it; nil at rest.
     @State private var pull: CGFloat?
@@ -37,8 +39,9 @@ public struct PhoneWeekStrip: View {
     static let rowHeight: CGFloat = 48
 
     /// `startsOpen`: the month on show from the start (the rebuild frame's launch hook).
-    public init(today: String, selected: String, startsOpen: Bool = false, marked: @escaping (String) -> Bool, select: @escaping (String) -> Void, feel: @escaping () -> Void = {}) {
-        self._open = State(initialValue: startsOpen)
+    public init(today: String, selected: String, startsOpen: Bool = false, monthOnly: Bool = false, marked: @escaping (String) -> Bool, select: @escaping (String) -> Void, feel: @escaping () -> Void = {}) {
+        self._open = State(initialValue: startsOpen || monthOnly)
+        self.monthOnly = monthOnly
         self.today = today
         self.selected = selected
         self.marked = marked
@@ -84,6 +87,7 @@ public struct PhoneWeekStrip: View {
             .frame(height: max(0, height), alignment: .top)
             .clipped()
             // The grabber: tap for the month (or back to the week); the whole strip drags too.
+            if !monthOnly {
             Button {
                 feel()
                 withAnimation(reduceMotion ? nil : settle) { open.toggle() }
@@ -94,13 +98,14 @@ public struct PhoneWeekStrip: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(open ? "Show the week" : "Show the whole month")
+            }
         }
         .padding(.horizontal, 10)
         .padding(.top, 6)
-        .padding(.bottom, 4)
+        .padding(.bottom, monthOnly ? 10 : 4)
         .background(C(FoleviTokens.Chrome.canvas, scheme))
         .contentShape(Rectangle())
-        .simultaneousGesture(pullGesture(travel: max(1, fullHeight - Self.rowHeight)))
+        .simultaneousGesture(pullGesture(travel: max(1, fullHeight - Self.rowHeight)), including: monthOnly ? .subviews : .all)
     }
 
     /// The pull: a vertical drag anywhere on the strip (sideways drags page it), 1:1 with the finger and
@@ -136,7 +141,7 @@ public struct PhoneWeekStrip: View {
     private func pick(_ date: String) {
         if date != selected { feel() }
         select(date)
-        if open { withAnimation(reduceMotion ? nil : settle) { open = false } }
+        if open && !monthOnly { withAnimation(reduceMotion ? nil : settle) { open = false } }
     }
 
     /// A day: the circle (the picked day filled in the heading's ink, today in the ink at 9%) and the dot.

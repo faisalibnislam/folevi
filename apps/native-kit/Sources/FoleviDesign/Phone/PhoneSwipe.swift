@@ -88,7 +88,13 @@ public struct PhoneSwipeRow<Content: View>: View {
         }
         .clipped()
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        #if canImport(UIKit)
+        // UIKit's pan, begun only by a sideways move: a SwiftUI drag took every move, so an up or down swipe on a
+        // sheet's list (Notifications) couldn't raise or lower the sheet.
+        .gesture(PhoneSideways(changed: { dragged($0) }, ended: dragEnded))
+        #else
         .simultaneousGesture(drag)
+        #endif
         .onChange(of: state.open) { _, open in
             if open != id, offset != 0 { settle(0) }
         }
@@ -109,31 +115,41 @@ public struct PhoneSwipeRow<Content: View>: View {
                     horizontal = abs(g.translation.width) > abs(g.translation.height)
                     base = offset
                 }
-                guard horizontal == true else { return }
-                var next = base + g.translation.width
-                if next > 0 && leading.isEmpty { next /= 6 }
-                if next < 0 && trailing.isEmpty { next /= 6 }
-                offset = next
-                let past = width > 0 && abs(next) >= width * 0.6 && (next > 0 ? !leading.isEmpty : !trailing.isEmpty)
-                if past != full {
-                    full = past
-                    if past { tap(.medium) }
-                }
+                dragged(g.translation.width)
             }
-            .onEnded { _ in
-                defer { horizontal = nil }
-                guard horizontal == true else { return }
-                let x = offset
-                full = false
-                if width > 0, abs(x) >= width * 0.6 {
-                    if x > 0, let a = leading.first { return run(a) }
-                    if x < 0, let a = trailing.first { return run(a) }
-                }
-                let open = x > 40 && !leading.isEmpty ? CGFloat(leading.count) * Self.actionWidth
-                    : x < -40 && !trailing.isEmpty ? -CGFloat(trailing.count) * Self.actionWidth : 0
-                settle(open)
-                if open != 0 { state.open = id }
-            }
+            .onEnded { _ in dragEnded() }
+    }
+
+    private func dragged(_ dx: CGFloat) {
+        if horizontal == nil {
+            horizontal = true
+            base = offset
+        }
+        guard horizontal == true else { return }
+        var next = base + dx
+        if next > 0 && leading.isEmpty { next /= 6 }
+        if next < 0 && trailing.isEmpty { next /= 6 }
+        offset = next
+        let past = width > 0 && abs(next) >= width * 0.6 && (next > 0 ? !leading.isEmpty : !trailing.isEmpty)
+        if past != full {
+            full = past
+            if past { tap(.medium) }
+        }
+    }
+
+    private func dragEnded() {
+        defer { horizontal = nil }
+        guard horizontal == true else { return }
+        let x = offset
+        full = false
+        if width > 0, abs(x) >= width * 0.6 {
+            if x > 0, let a = leading.first { return run(a) }
+            if x < 0, let a = trailing.first { return run(a) }
+        }
+        let open = x > 40 && !leading.isEmpty ? CGFloat(leading.count) * Self.actionWidth
+            : x < -40 && !trailing.isEmpty ? -CGFloat(trailing.count) * Self.actionWidth : 0
+        settle(open)
+        if open != 0 { state.open = id }
     }
 
     private func run(_ a: PhoneSwipeAction) {
@@ -155,3 +171,36 @@ public struct PhoneSwipeRow<Content: View>: View {
 
     private enum TapStyle { case medium, rigid }
 }
+
+#if canImport(UIKit)
+/// A pan that begins only when the finger moves more across than up or down; anything else is left to the list
+/// and the sheet around it.
+private struct PhoneSideways: UIGestureRecognizerRepresentable {
+    let changed: (CGFloat) -> Void
+    let ended: () -> Void
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.delegate = context.coordinator
+        return pan
+    }
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func handleUIGestureRecognizerAction(_ pan: UIPanGestureRecognizer, context: Context) {
+        switch pan.state {
+        case .began, .changed: changed(pan.translation(in: pan.view).x)
+        case .ended, .cancelled, .failed: ended()
+        default: break
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
+            guard let pan = g as? UIPanGestureRecognizer else { return false }
+            let v = pan.velocity(in: pan.view)
+            return abs(v.x) > abs(v.y) * 1.2
+        }
+    }
+}
+#endif

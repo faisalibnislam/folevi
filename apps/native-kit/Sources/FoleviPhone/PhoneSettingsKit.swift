@@ -253,38 +253,15 @@ extension PhoneSettingsRow where Icon == EmptyView, Trailing == EmptyView {
     }
 }
 
-/// IosSwitch: iOS's switch in the app's neutral colours (dark when on, light in dark mode), 51 by 31.
+/// IosSwitch: Folevi's switch (FoleviSwitch), the web's and the Mac's rounded rectangle, not iOS's capsule.
 struct PhoneSettingsSwitch: View {
     let label: String
     let on: Bool
     var disabled = false
     let change: (Bool) -> Void
-    @Environment(\.colorScheme) private var scheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            change(!on)
-        } label: {
-            ZStack(alignment: .leading) {
-                Capsule().fill(on ? C(FoleviTokens.Chrome.heading, scheme) : inkMix(0.16, scheme))
-                Circle()
-                    .fill(on ? C(FoleviTokens.Chrome.canvas, scheme) : .white)
-                    .shadow(color: .black.opacity(0.15), radius: 4, y: 3)
-                    .shadow(color: .black.opacity(0.16), radius: 0.5, y: 1)
-                    .frame(width: 27, height: 27)
-                    .offset(x: on ? 22 : 2)
-            }
-            .frame(width: 51, height: 31)
-            .animation(reduceMotion ? nil : .timingCurve(0.32, 0.72, 0, 1, duration: 0.2), value: on)
-        }
-        .buttonStyle(.plain)
-        .disabled(disabled)
-        .opacity(disabled ? 0.4 : 1)
-        .accessibilityLabel(label)
-        .accessibilityValue(on ? "On" : "Off")
-        .accessibilityAddTraits(.isToggle)
+        FoleviSwitch(label, on: on, disabled: disabled, change: change)
     }
 }
 

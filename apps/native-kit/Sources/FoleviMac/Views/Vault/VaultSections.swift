@@ -764,14 +764,12 @@ struct VaultSettingsView: View {
                         Text("Otherwise only you do. Custodians always add and remove members.").webText(hint.text).foregroundStyle(hint.color.color)
                     }
                     Spacer(minLength: 0)
-                    Toggle("", isOn: Binding(get: { v?.custodiansNameCustodians ?? false }, set: { on in
+                    FoleviSwitch("Custodians can name custodians", on: v?.custodiansNameCustodians ?? false) { on in
                         model.run {
                             _ = try await model.client.command(.vaultSettingsUpdate(vaultId: vaultId, custodiansNameCustodians: on))
                             model.toast("Saved")
                         }
-                    }))
-                    .toggleStyle(.switch)
-                    .labelsHidden()
+                    }
                 }
             }
             VStack(alignment: .leading, spacing: 8) {
@@ -816,7 +814,10 @@ struct VaultActivityView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 VaultSelect(style: "vault.pw.kind", label: Self.filters.first { $0.0 == event }?.1 ?? "Everything", options: Self.filters, selected: event) { event = $0 }
-                Toggle("Failures only", isOn: $failedOnly).toggleStyle(.switch).controlSize(.small)
+                HStack(spacing: 8) {
+                    Text("Failures only").webText(.role(.footnote, weight: 500))
+                    FoleviSwitch("Failures only", on: failedOnly) { failedOnly = $0 }
+                }
                 Spacer(minLength: 0)
             }
             if log.value?.everything == false {

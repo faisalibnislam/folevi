@@ -149,8 +149,7 @@ struct SubscriptionRow: View {
                     Text(status.isEmpty ? host : "\(host) · \(status)").webText(.role(.footnote)).lineLimit(1).foregroundStyle(PV("color-ink-faint").c(scheme)).foleviTooltip(host)
                 }
                 Spacer(minLength: 0)
-                Toggle("Show \(cal.name)", isOn: Binding(get: { cal.visible }, set: { v in run(.calendarUpdate(id: cal.id, visible: v)) }))
-                    .toggleStyle(.switch).labelsHidden().controlSize(.mini)
+                FoleviSwitch("Show \(cal.name)", on: cal.visible) { v in run(.calendarUpdate(id: cal.id, visible: v)) }
                 PlannerButton(editing ? "Close" : "Edit", style: "edit.clear") {
                     editing.toggle()
                     confirming = false
@@ -290,10 +289,9 @@ struct CalendarFeedDialog: View {
                         Text("Your Personal tasks are always in it.").webText(.role(.footnote)).foregroundStyle(PV("color-ink-muted").c(scheme))
                     }
                     Spacer(minLength: 0)
-                    Toggle("Workspace tasks assigned to you", isOn: Binding(get: { feed?.active == true ? feed!.includeWorkspaces : include }, set: { on in
+                    FoleviSwitch("Workspace tasks assigned to you", on: feed?.active == true ? feed!.includeWorkspaces : include) { on in
                         if feed?.active == true { Task { _ = try? await client.command(.calendarFeedWorkspaces(includeWorkspaces: on)); await load() } } else { include = on }
-                    }))
-                    .toggleStyle(.switch).labelsHidden().controlSize(.mini)
+                    }
                 }
                 if let link {
                     VStack(alignment: .leading, spacing: 8) {

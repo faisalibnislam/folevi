@@ -834,7 +834,7 @@ struct PhoneVaultSettings: View {
                 Text(hint).webText(h.text).foregroundStyle(h.color.color).fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            Toggle(title, isOn: isOn).labelsHidden().tint(FoleviTokens.Chrome.heading.resolve(scheme).color)
+            FoleviSwitch(title, on: isOn.wrappedValue) { isOn.wrappedValue = $0 }
         }
     }
 
@@ -910,7 +910,7 @@ struct PhoneVaultActivity: View {
                 PhoneVaultSelect(style: "pw.kind", label: Self.filters.first { $0.0 == event }?.1 ?? "Everything", options: Self.filters, selected: event, menus: menus) { event = $0 }
                 Spacer(minLength: 0)
                 Text("Failures only").webText(detail.text).foregroundStyle(detail.color.color)
-                Toggle("Failures only", isOn: $failedOnly).labelsHidden().tint(FoleviTokens.Chrome.heading.resolve(scheme).color)
+                FoleviSwitch("Failures only", on: failedOnly) { failedOnly = $0 }
             }
             if log.value?.everything == false {
                 Text("You see your own activity. The owner and custodians see everyone's.").webText(PV.style("health.body", scheme).text).foregroundStyle(PV.style("health.body", scheme).color.color)

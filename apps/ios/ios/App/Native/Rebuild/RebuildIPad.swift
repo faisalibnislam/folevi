@@ -229,6 +229,7 @@ extension RebuildFrameController {
         case .reopenTab: desk.reopenClosedTab()
         case .nextTab: desk.nextTab(1)
         case .previousTab: desk.nextTab(-1)
+        case .allTabs: desk.overviewShown.toggle()
         case .tab(let n): desk.selectTab(number: n)
         }
     }
@@ -254,7 +255,7 @@ extension RebuildFrameController {
 /// The Mac's keys for the iPad's wide layout (apps/mac/Folevi/Chrome/MenuModel.swift): Settings, Search All Notes and
 /// the tabs. Listed in the overlay iPadOS shows while ⌘ is held.
 struct IPadShortcut {
-    enum Action: Equatable { case settings, searchAll, closeTab, reopenTab, nextTab, previousTab, tab(Int) }
+    enum Action: Equatable { case settings, searchAll, closeTab, reopenTab, nextTab, previousTab, allTabs, tab(Int) }
 
     let title: String
     let input: String
@@ -268,6 +269,7 @@ struct IPadShortcut {
         IPadShortcut(title: "Reopen Closed Tab", input: "t", modifiers: [.command, .shift], action: .reopenTab),
         IPadShortcut(title: "Show Next Tab", input: "\t", modifiers: .control, action: .nextTab),
         IPadShortcut(title: "Show Previous Tab", input: "\t", modifiers: [.control, .shift], action: .previousTab),
+        IPadShortcut(title: "Show All Tabs", input: "\\", modifiers: [.command, .shift], action: .allTabs),
     ] + (1...9).map { IPadShortcut(title: "Tab \($0)", input: "\($0)", modifiers: .command, action: .tab($0)) }
 
     func keyCommand(action selector: Selector) -> UIKeyCommand {

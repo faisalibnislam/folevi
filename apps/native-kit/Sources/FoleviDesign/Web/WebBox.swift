@@ -270,3 +270,25 @@ struct WebBackdropBlur: View {
 
     var body: some View { Color.clear }
 }
+
+extension WebStylePair {
+    /// A control (a button, field, picker or menu trigger) at least 44 points tall, as the web's
+    /// `pointer-coarse:h-11` makes them on a touch screen; anything else as measured. For an iPad's styles that fall
+    /// back to the Mac's measurements (WebStyles.named).
+    public func touchSized(_ id: String) -> WebStylePair {
+        guard Self.isControl(id) else { return self }
+        func up(_ s: WebComputedStyle) -> WebComputedStyle {
+            var s = s
+            if s.height >= 24 && s.height < 44 { s.height = 44 }
+            return s
+        }
+        return WebStylePair(light: up(light), dark: up(dark))
+    }
+
+    /// Ids naming a control: `button.*`, or a part called input, field, submit, cancel, button, btn, select or
+    /// trigger ("more.prompt.input", "more.prompt.cancel").
+    static func isControl(_ id: String) -> Bool {
+        if id.hasPrefix("button.") { return true }
+        return id.split(separator: ".").contains { ["input", "field", "submit", "cancel", "button", "btn", "select", "trigger"].contains($0) }
+    }
+}

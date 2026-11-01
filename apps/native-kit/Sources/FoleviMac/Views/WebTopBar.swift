@@ -51,15 +51,15 @@ public struct WebTopBar: View {
             historyButton(.arrowLeft, "Back", enabled: model.history.canGoBack, style: "frame.topbar.back") { model.goBack() }
                 .padding(.trailing, -bar.gap)
             historyButton(.arrowRight, "Forward", enabled: model.history.canGoForward, style: "frame.topbar.forward") { model.goForward() }
-            // (The iPad's strip: no Tab Overview button or dividers, TabStrip.tsx `ipad`.)
-            if !WebStyles.isPad {
-                overviewButton
-                divider
-            }
+            // The Mac's strip on the iPad too (the owner, 2026-11-01: the iPad follows the Mac's tab rules): Tab Overview
+            // and its divider, Home pinned as its house, the arrows while the tabs overflow.
+            overviewButton
+            divider
             strip.layoutPriority(1)
             Spacer(minLength: 0)
             if WebStyles.isPad {
-                // Foli AI (the Mac's floating pill has no place on an iPad) and New note, as round glass buttons.
+                // Foli AI (the Mac's floating pill has no place on an iPad) and New note as round glass buttons, a
+                // finger's size: the Mac's small "New note" text button is a pointer's.
                 #if os(iOS)
                 if model.session.value?.capabilities.ai ?? false {
                     WebPillButton("Foli AI", action: { model.askAI() }) { AiMarkGlyph(size: 20) }
@@ -109,7 +109,7 @@ public struct WebTopBar: View {
                     .padding(.trailing, list.gap)
             }
             // The arrows only while the tabs overflow, each dimmed with nothing more on its side (TabStrip.tsx).
-            if !WebStyles.isPad, overflow.start || overflow.end {
+            if overflow.start || overflow.end {
                 HStack(spacing: style("frame.topbar").gap) {
                     scrollArrow(.chevronLeft, "Scroll tabs left", enabled: overflow.start) { scrollTabs(-1) }
                     scrollArrow(.chevronRight, "Scroll tabs right", enabled: overflow.end) { scrollTabs(1) }
@@ -294,13 +294,10 @@ public struct WebTopBar: View {
         let label = model.tabs.label(t)
         let hovered = hoveredTab == t.id
         return HStack(spacing: t.pinned ? 4 : s.gap) {
-            if t.isHome, WebStyles.isPad {
-                // The iPad's Home tab says its name (`<House size={17} /> Home`).
-                WebIconView(.house, size: 17)
-                Text("Home").webText(tabText(active)).lineLimit(1)
-            } else if t.isHome {
-                WebIconView(.house, size: 15)
-                    .frame(width: 36)
+            if t.isHome {
+                // Pinned first as its house alone, as on the Mac (on an iPad 44 wide, a finger's size).
+                WebIconView(.house, size: WebStyles.isPad ? 17 : 15)
+                    .frame(width: WebStyles.isPad ? 44 : 36)
             } else if t.isJoined, let panes = t.panes {
                 joinedSections(t, panes, active: active)
             } else {
@@ -318,15 +315,15 @@ public struct WebTopBar: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             if !t.isHome {
-                pinButton(t, label: label, hovered: hovered)
+                // (An iPad has no hover to show the pin on: it's there only on a pinned tab, and the tab's long-press
+                // menu pins one, so the title runs on up to the ×.)
+                if !WebStyles.isPad || t.pinned { pinButton(t, label: label, hovered: hovered) }
                 if !t.pinned { closeButton(t, label: label, visible: active || hovered) }
             }
         }
         .foregroundStyle(s.color.color)
-        // (The iPad's Home says its name, so it takes the room that needs; the Mac's is its house alone, 36 wide.)
-        .padding(t.isHome ? (WebStyles.isPad ? EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 14) : EdgeInsets()) : inset.edgeInsets)
-        .frame(width: t.isHome ? (WebStyles.isPad ? nil : 36) : t.pinned ? (t.isJoined ? 112 : 86) : nil, height: s.height)
-        .fixedSize(horizontal: t.isHome && WebStyles.isPad, vertical: false)
+        .padding(t.isHome ? EdgeInsets() : inset.edgeInsets)
+        .frame(width: t.isHome ? (WebStyles.isPad ? 44 : 36) : t.pinned ? (t.isJoined ? 112 : 86) : nil, height: s.height)
         .webBox(active ? on : off)
         // The whole tab opens it, as the web's link that fills the tab up to its buttons (they keep their own clicks);
         // the bar's window drag is only for the space outside the tabs.

@@ -4872,6 +4872,10 @@ public enum WebStyles {
         if let s = ios[id] { return s }
         #endif
         guard let s = all[id] else { preconditionFailure("no web style \(id): add it to apps/web/src/app/dev/match/samples.tsx and run pnpm styles:gen") }
+        #if os(iOS)
+        // An iPad has a finger, not a pointer: the Mac's controls at the web's touch height (pointer-coarse:h-11).
+        if isPad { return s.touchSized(id) }
+        #endif
         return s
     }
 }

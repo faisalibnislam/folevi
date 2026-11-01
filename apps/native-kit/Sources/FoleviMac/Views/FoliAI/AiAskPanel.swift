@@ -79,8 +79,13 @@ struct AiAskOverlay: View {
                 }
             }
         }
-        .padding(.trailing, 1280 - (fab.x + fab.width) - Self.cardInset)
-        .padding(.bottom, 820 - (fab.y + fab.height) - Self.cardInset)
+        // (The iPad has no button: the chat floats over the card's corner, 16 points in, with its own shadow, as
+        // the Mac's floating window gets one from the system.)
+        .compositingGroup()
+        .shadow(color: launcher ? .clear : .black.opacity(0.06), radius: 1, x: 0, y: 0)
+        .shadow(color: launcher ? .clear : .black.opacity(0.16), radius: 28, x: 0, y: 14)
+        .padding(.trailing, launcher ? 1280 - (fab.x + fab.width) - Self.cardInset : 16)
+        .padding(.bottom, launcher ? 820 - (fab.y + fab.height) - Self.cardInset : 16)
         .animation(.easeOut(duration: 0.18), value: frame.askAiOpen)
         .onChange(of: frame.askAiOpen) { _, open in if !open { state.model.closed() } }
         .onChange(of: frame.askAbout, initial: true) { _, about in

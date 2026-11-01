@@ -304,7 +304,12 @@ struct ScreenRoot: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         // Help, Graph, Reviews and shared folders show the content card through (the web's main is clear): the card's
         // own fill drawn here, since the note page waiting behind the screens has its own canvas over the card's.
-        .background(MoreScreen.clear(route) ? WebStyles.named("frame.content").resolve(scheme).background.color : Folevi.color.canvas)
+        // (Drawn to the card's top edge, under the glass bar too: on an iPad the padded safe area left a white band
+        // of the card's own fill above the screen's canvas.)
+        .background {
+            (MoreScreen.clear(route) ? WebStyles.named("frame.content").resolve(scheme).background.color : Folevi.color.canvas)
+                .ignoresSafeArea()
+        }
         // Another place or space: the screen crossfades instead of cutting.
         .placeCrossfade("\(model.session.value?.place ?? "")|\(model.session.value?.space ?? "")")
         .environment(\.screenNavigator, FrameNavigation.navigator(model))

@@ -46,6 +46,8 @@ public struct WebSidebar: View {
     #if os(iOS)
     /// The account row, for the account menu's place on the iPad.
     @State private var accountAnchor: UIView?
+    /// The folder row a dragged note or folder is over (iPad: the Mac's AppKit sidebar takes its own drops).
+    @State private var dropTarget: String?
     #endif
 
     /// The first few starred notes, folders and tags; the rest are a click away on their own pages.
@@ -292,6 +294,26 @@ public struct WebSidebar: View {
             }
             .padding(.leading, CGFloat(f.depth) * 14)
             .webContextMenu { folderMenu(f) }
+            #if os(iOS)
+            // Drop notes (one or a selection) or a folder on a folder to move them into it, as on the Mac and the web.
+            .background {
+                if dropTarget == f.id {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Folevi.color.heading, lineWidth: 2)
+                }
+            }
+            .dropDestination(for: NoteDragItem.self) { items, _ in
+                let ids = items.flatMap(\.ids)
+                guard !ids.isEmpty else { return false }
+                model.move(notes: ids, to: f.id)
+                return true
+            } isTargeted: { over in dropTarget = over ? f.id : (dropTarget == f.id ? nil : dropTarget) }
+            .dropDestination(for: FolderDragItem.self) { items, _ in
+                guard let dragged = items.first, dragged.id != f.id else { return false }
+                model.move(folder: dragged.id, into: f.id, after: nil)
+                return true
+            } isTargeted: { over in dropTarget = over ? f.id : (dropTarget == f.id ? nil : dropTarget) }
+            .draggable(FolderDragItem(id: f.id, name: f.name, parentId: f.parentId))
+            #endif
             if open {
                 ForEach(children, id: \.id) { c in folder(c, all: all).transition(.opacity) }
             }

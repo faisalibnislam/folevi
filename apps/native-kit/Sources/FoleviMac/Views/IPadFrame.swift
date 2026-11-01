@@ -110,11 +110,9 @@ public struct IPadFrameView<Page: View>: View {
         }
     }
 
-    /// From the card's top to the glass bar's bottom edge.
-    static var barRoom: CGFloat {
-        let bar = WebStyles.named("frame.topbar").light
-        return bar.y - WebStyles.named("frame.content").light.y + bar.height
-    }
+    /// The bar's room at the page's top, as the web measures its main area (`frame.main`'s top padding, the Mac's
+    /// value too): the bar and the 8-point gap under it, so the page never touches the bar.
+    static var barRoom: CGFloat { WebStyles.named("frame.main").light.padding.top }
 
     /// The rounded card: the screen (or the note's page) under the glass bar, toasts at its foot.
     private var content: some View {
@@ -139,11 +137,13 @@ public struct IPadFrameView<Page: View>: View {
                 Spacer()
                 ToastStack(model: model)
             }
-            AiAskOverlay(frame: model, state: askAi, launcher: false)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
             if model.overviewShown { TabOverviewLayer(model: model) }
         }
         .clipShape(RoundedRectangle(cornerRadius: card.light.radius, style: .continuous))
+        // Foli AI's chat floats above the card, not inside it, so the card's rounded edge never cuts its shadow.
+        .overlay(alignment: .bottomTrailing) {
+            AiAskOverlay(frame: model, state: askAi, launcher: false)
+        }
     }
 
     private var sidebarActions: WebSidebarActions {

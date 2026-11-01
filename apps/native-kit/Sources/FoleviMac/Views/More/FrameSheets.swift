@@ -293,6 +293,8 @@ struct WebSheetDialog<Body: View, Footer: View>: View {
             .padding(header.padding.edgeInsets)
             content()
                 .padding(b.padding.edgeInsets)
+                // (On an iPad the body follows the title closely: the header's own padding is room enough there.)
+                .padding(.top, WebStyles.isPad ? min(0, 4 - b.padding.top) : 0)
                 .frame(maxWidth: .infinity, alignment: .leading)
             footer()
         }

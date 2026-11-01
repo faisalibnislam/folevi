@@ -17,6 +17,8 @@ public struct PhoneHomeActions {
     public var foldersMenu: (CGRect) -> Void
     /// A folder card's menu (its long press), from the card.
     public var folderMenu: (FolderCard, CGRect) -> Void = { _, _ in }
+    /// A note's menu (its long press on a recent card or a Starred row), from where it was held.
+    public var noteMenu: (NoteRow, CGRect) -> Void = { _, _ in }
 
     public init(open: @escaping (String) -> Void, openNote: @escaping (String) -> Void, foldersMenu: @escaping (CGRect) -> Void) {
         self.open = open
@@ -102,10 +104,9 @@ public struct PhoneHomeContent: View {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: strip.gap) {
                     ForEach(Array(zip(model.recents, model.recentCards)), id: \.0.id) { row, card_ in
-                        Button { actions.openNote(row.id) } label: {
+                        PhonePressable(scale: 0.97, onTap: { actions.openNote(row.id) }, onLongPress: { actions.noteMenu(row, $0) }) {
                             WebNoteCard(card_).frame(width: card.width)
                         }
-                        .buttonStyle(PhoneCardPressStyle())
                         .phoneZoomSource(row.id)
                     }
                 }
@@ -129,7 +130,7 @@ public struct PhoneHomeContent: View {
             } else {
                 VStack(spacing: 0) {
                     ForEach(model.starred.prefix(6), id: \.id) { row in
-                        PhoneListRow(row.title.isEmpty ? "Untitled" : row.title, action: { actions.openNote(row.id) }) { PhoneRowGlyph(.fileText) }
+                        PhoneListRow(row.title.isEmpty ? "Untitled" : row.title, action: { actions.openNote(row.id) }, onLongPress: { actions.noteMenu(row, $0) }) { PhoneRowGlyph(.fileText) }
                     }
                     if model.moreStarred {
                         PhoneListRow("See all starred", action: { actions.open("/starred") })

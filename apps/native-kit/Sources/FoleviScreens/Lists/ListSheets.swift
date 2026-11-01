@@ -12,6 +12,17 @@ public extension View {
     }
 }
 
+public extension View {
+    /// Home's Move to folder picker, for a note's long-press menu there (`HomeModel.movingNotes`).
+    func homeNoteSheets(_ model: HomeModel) -> some View {
+        sheet(item: Binding { model.movingNotes.map { NotesListSheets.Request(ids: $0) } } set: { if $0 == nil { model.movingNotes = nil } }) { request in
+            MoveNotesSheet(count: request.ids.count, targets: model.moveTargets) { target in
+                Task { await model.move(request.ids, to: target) }
+            } onCancel: { model.movingNotes = nil }
+        }
+    }
+}
+
 struct NotesListSheets: ViewModifier {
     @Bindable var model: NotesListModel
     @Environment(\.screenNavigator) private var navigator

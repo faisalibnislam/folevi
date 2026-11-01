@@ -3,6 +3,9 @@
 // title as a link, a "…" menu), the search field under a large title, and an empty section's quiet box. Sizes
 // and colours are measured from the iPhone app's web (packages/design-tokens/match/app-styles/phone.json).
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 private func ps(_ id: String, _ scheme: ColorScheme) -> WebComputedStyle { WebStyles.named(id).resolve(scheme) }
 
@@ -13,14 +16,19 @@ public struct PhoneListRow<Icon: View>: View {
     let chevron: Bool
     let icon: Icon?
     let action: () -> Void
+    /// Held (a note's row on Home): its menu, from the row's frame on screen; a tap still opens.
+    let onLongPress: ((CGRect) -> Void)?
     @Environment(\.colorScheme) private var scheme
+    @State private var pressed = false
+    @State private var frame: CGRect = .zero
 
-    public init(_ label: String, detail: String? = nil, chevron: Bool = true, action: @escaping () -> Void, @ViewBuilder icon: () -> Icon) {
+    public init(_ label: String, detail: String? = nil, chevron: Bool = true, action: @escaping () -> Void, onLongPress: ((CGRect) -> Void)? = nil, @ViewBuilder icon: () -> Icon) {
         self.label = label
         self.detail = detail
         self.chevron = chevron
         self.icon = icon()
         self.action = action
+        self.onLongPress = onLongPress
     }
 
     public var body: some View {
@@ -30,34 +38,51 @@ public struct PhoneListRow<Icon: View>: View {
         let text = ps("phone.row.label", scheme)
         let count = ps("phone.row.detail", scheme)
         let chev = ps("phone.row.chevron", scheme)
-        Button(action: action) {
-            HStack(spacing: row.gap) {
-                if let icon {
-                    icon.frame(width: iconBox.width).foregroundStyle(ps("phone.row.icon.svg", scheme).color.color)
-                }
-                HStack(spacing: body.gap) {
-                    Text(label).webText(text.text).lineLimit(1).truncationMode(.tail)
-                        .foregroundStyle(text.color.color)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    if let detail, !detail.isEmpty {
-                        Text(detail).webText(count.text).monospacedDigit().foregroundStyle(count.color.color)
-                    }
-                    if chevron {
-                        // (-mr-1: the chevron reaches 4 into the label column's right padding.)
-                        WebIconView(.chevronRight, size: chev.width, strokeWidth: 2.4, absoluteStrokeWidth: true)
-                            .foregroundStyle(chev.color.color)
-                            .padding(.trailing, -4)
-                    }
-                }
-                .padding(.trailing, body.padding.right)
-                .frame(minHeight: body.height)
-                .overlay(alignment: .bottom) { PhoneRowHairlineView() }
+        let content = HStack(spacing: row.gap) {
+            if let icon {
+                icon.frame(width: iconBox.width).foregroundStyle(ps("phone.row.icon.svg", scheme).color.color)
             }
-            .padding(.leading, row.padding.left)
-            .padding(.trailing, row.padding.right)
-            .contentShape(Rectangle())
+            HStack(spacing: body.gap) {
+                Text(label).webText(text.text).lineLimit(1).truncationMode(.tail)
+                    .foregroundStyle(text.color.color)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let detail, !detail.isEmpty {
+                    Text(detail).webText(count.text).monospacedDigit().foregroundStyle(count.color.color)
+                }
+                if chevron {
+                    // (-mr-1: the chevron reaches 4 into the label column's right padding.)
+                    WebIconView(.chevronRight, size: chev.width, strokeWidth: 2.4, absoluteStrokeWidth: true)
+                        .foregroundStyle(chev.color.color)
+                        .padding(.trailing, -4)
+                }
+            }
+            .padding(.trailing, body.padding.right)
+            .frame(minHeight: body.height)
+            .overlay(alignment: .bottom) { PhoneRowHairlineView() }
         }
-        .buttonStyle(PhoneRowPressStyle())
+        .padding(.leading, row.padding.left)
+        .padding(.trailing, row.padding.right)
+        .contentShape(Rectangle())
+        if let onLongPress {
+            // A Button can't also be held, so a row with a menu takes the tap and the hold itself, with the same
+            // press fill.
+            content
+                .background { if pressed { WebStyles.vars["liquid-press"]?.resolve(scheme).color ?? Color.black.opacity(0.06) } }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+                .onTapGesture(perform: action)
+                .onLongPressGesture(minimumDuration: 0.45) {
+                    #if canImport(UIKit)
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    #endif
+                    let at = frame
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { onLongPress(at) }
+                } onPressingChanged: { pressed = $0 }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction(named: "More actions") { onLongPress(frame) }
+        } else {
+            Button(action: action) { content }
+                .buttonStyle(PhoneRowPressStyle())
+        }
     }
 }
 
@@ -355,6 +380,7 @@ public struct PhoneSegmented: View {
     @Binding var selection: String
     let accessibility: String
     @Environment(\.colorScheme) private var scheme
+    @Namespace private var pill
 
     public init(_ options: [(id: String, label: String)], selection: Binding<String>, accessibility: String) {
         self.options = options
@@ -367,15 +393,19 @@ public struct PhoneSegmented: View {
         HStack(spacing: 2) {
             ForEach(options, id: \.id) { o in
                 let on = selection == o.id
-                Button { selection = o.id } label: {
+                Button { withAnimation(FoleviSpring.slide) { selection = o.id } } label: {
                     Text(o.label)
                         .webText(WebTextStyle(size: WebTypeRole.callout.metrics.size, leading: WebTypeRole.callout.metrics.leading, weight: 550))
                         .lineLimit(1)
                         .foregroundStyle(c(on ? FoleviTokens.Chrome.heading : FoleviTokens.Chrome.inkMuted))
+                        // .ui-seg button: 0.6rem (10 pt) either side of the label, so a fitted control (Foli AI's Chat or
+                        // Research) never hugs its words; the chosen one's glass slides between them.
+                        .padding(.horizontal, 10)
                         .frame(maxWidth: .infinity, minHeight: 32)
                         .background {
                             if on {
                                 WebShapeBox(shape: WebCornersShape(topLeft: FoleviTokens.Radius.chip, topRight: FoleviTokens.Radius.chip, bottomRight: FoleviTokens.Radius.chip, bottomLeft: FoleviTokens.Radius.chip), fill: c(FoleviTokens.Glass.active), shadows: PhoneStyleSheetContent.glassEdge(scheme) + [ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))])
+                                    .matchedGeometryEffect(id: "chosen", in: pill)
                             }
                         }
                 }

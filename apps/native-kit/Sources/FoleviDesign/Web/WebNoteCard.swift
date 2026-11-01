@@ -890,6 +890,9 @@ public struct WebClampedText: View {
     }
 
     public var body: some View {
+        // One word (a folder called "Brainstorming") is never broken across lines: it stays on one and ends in
+        // "…" when it doesn't fit (the owner, 2026-11-01).
+        let maxLines = text.contains(where: \.isWhitespace) ? maxLines : 1
         let lines = balance ? Self.balancedClamped(text, style: style, width: width, max: maxLines) : Self.lines(text, style: style, width: width, max: maxLines)
         VStack(alignment: alignment, spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in

@@ -15,6 +15,9 @@ extension PlacesModel {
     var sheetRows: [PhonePlaceRow] {
         let current = places.value?.current ?? session.value?.place ?? client.place
         let avatars = Dictionary((places.value?.places ?? []).map { ($0.id, $0.avatarUrl) }, uniquingKeysWith: { a, _ in a })
+        // Each workspace's picture (its logo), by place and workspace: the open account's and the others'.
+        let logos = Dictionary((places.value?.places ?? []).flatMap { p in p.workspaces.map { ("\(p.id):\($0.id)", $0.logoUrl) } }, uniquingKeysWith: { a, _ in a })
+        func logo(_ place: String, _ workspace: String) -> URL? { (logos["\(place):\(workspace)"] ?? nil).flatMap(URL.init(string:)) }
         let pad = UIDevice.current.userInterfaceIdiom == .pad
         var rows: [PhonePlaceRow] = []
         var newAfter: Int?
@@ -24,11 +27,11 @@ extension PlacesModel {
                 let url = (session.value?.profile.avatarUrl ?? avatars[current] ?? nil).flatMap(URL.init(string:))
                 rows.append(PhonePlaceRow(id: item.id, mark: .avatar(name: item.avatarName, url: url), label: item.title, description: item.subtitle, detail: item.detail, checked: item.checked))
                 newAfter = rows.count
-            case .workspace:
-                rows.append(PhonePlaceRow(id: item.id, mark: .workspace(name: item.title, url: nil), label: item.title, detail: item.detail, checked: item.checked, sub: true))
+            case .workspace(let space):
+                rows.append(PhonePlaceRow(id: item.id, mark: .workspace(name: item.title, url: (account.value?.spaces.first { $0.id == space }?.logoUrl).flatMap(URL.init(string:)) ?? logo(current, space)), label: item.title, detail: item.detail, checked: item.checked, sub: true))
                 newAfter = rows.count
             case .otherAccount(let place, let workspace):
-                let mark: PhonePlaceMark = workspace == nil ? .avatar(name: item.avatarName, url: (avatars[place] ?? nil).flatMap(URL.init(string:))) : .workspace(name: item.title, url: nil)
+                let mark: PhonePlaceMark = workspace == nil ? .avatar(name: item.avatarName, url: (avatars[place] ?? nil).flatMap(URL.init(string:))) : .workspace(name: item.title, url: logo(place, workspace ?? ""))
                 rows.append(PhonePlaceRow(id: item.id, mark: mark, label: item.title, description: item.subtitle, checked: item.checked, sub: item.nested, badge: item.unread, dot: item.dot))
             case .library:
                 rows.append(PhonePlaceRow(id: item.id, mark: .library(pad ? .tablet : .smartphone), label: item.title, description: item.subtitle, checked: item.checked, dot: item.dot))

@@ -126,6 +126,7 @@ public struct PhoneFrameView<Screen: View>: View {
         return NavigationStack(path: path) {
             screen(first)
                 .toolbar(.hidden, for: .navigationBar)
+                .background { PhoneEdgeSwipeBack().frame(width: 0, height: 0) }
                 .navigationDestination(for: PhoneStackEntry.self) { entry in
                     destination(entry.route)
                 }
@@ -140,6 +141,38 @@ public struct PhoneFrameView<Screen: View>: View {
             screen(route).toolbar(.hidden, for: .navigationBar).navigationTransition(.zoom(sourceID: id, in: zoom))
         } else {
             screen(route).toolbar(.hidden, for: .navigationBar)
+        }
+    }
+}
+
+/// iOS turns Back's edge swipe off with the navigation bar hidden (every screen here draws its own bar): this puts
+/// it back on the tab's stack, whenever there is a screen to go back to.
+private struct PhoneEdgeSwipeBack: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> Probe { Probe() }
+    func updateUIViewController(_ probe: Probe, context: Context) { probe.hook() }
+
+    final class Probe: UIViewController, UIGestureRecognizerDelegate {
+        private weak var nav: UINavigationController?
+
+        override func didMove(toParent parent: UIViewController?) {
+            super.didMove(toParent: parent)
+            hook()
+        }
+
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            hook()
+        }
+
+        func hook() {
+            guard let nav = navigationController, let pop = nav.interactivePopGestureRecognizer else { return }
+            self.nav = nav
+            pop.isEnabled = true
+            pop.delegate = self
+        }
+
+        func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
+            (nav?.viewControllers.count ?? 0) > 1
         }
     }
 }

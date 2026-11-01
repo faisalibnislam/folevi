@@ -22,7 +22,7 @@ struct RebuildHomeScreen: View {
     var body: some View {
         PhoneScreen(PhoneScreenOptions(title: "Home", eyebrow: home.eyebrow), root: true, scrollToTop: frame.scrollToTop) {
             Button(action: openAccount) {
-                PhonePlaceMarkView(mark: .avatar(name: home.profileName.isEmpty ? "You" : home.profileName, url: home.session.value?.profile.avatarUrl.flatMap(URL.init(string:))), size: 34)
+                PhoneHereMark(you: (home.profileName.isEmpty ? "You" : home.profileName, home.session.value?.profile.avatarUrl.flatMap(URL.init(string:))), workspace: home.workspaceMark.map { ($0.name, $0.logoUrl) })
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
@@ -47,6 +47,7 @@ struct RebuildHomeScreen: View {
             .padding(.bottom, 24)
         }
         .folderDialogs(home.dialogs, actions: home.actions, tree: home.tree.value?.folders ?? [])
+        .homeNoteSheets(home)
         .refreshable { await home.refresh() }
         .onAppear { home.setVisible(true) }
         .onDisappear { home.setVisible(false) }
@@ -62,7 +63,34 @@ struct RebuildHomeScreen: View {
             let context = FolderMenuContext(session: home.session.value, places: home.places.value, links: home.folderLinks, locks: home.locks.error == nil ? home.locks.value : nil)
             PhoneFolderMenu.show(MenuFolder(card), from: anchor, context: context, actions: home.actions, dialogs: home.dialogs, menus: menus, hooks: RebuildFolderHooks.make(frame: frame, phone: phone, newFolder: newFolder))
         }
+        a.noteMenu = { row, anchor in showNoteMenu(row, from: anchor) }
         return a
+    }
+
+    /// A note's long press on Home (a recent card, a Starred row): the lists' menu, the same items and icons.
+    private func showNoteMenu(_ row: FoleviEngine.NoteRow, from anchor: CGRect) {
+        var entries: [PhoneMenuEntry] = []
+        for (i, group) in home.noteMenu(for: row).enumerated() {
+            if i > 0 { entries.append(PhoneMenuEntry(.separator(i))) }
+            for action in group {
+                entries.append(PhoneMenuEntry(.item(Self.title(action), icon: RebuildNotesScreen.icon(action), danger: action == .trash)) {
+                    Task { await home.run(action, on: row) }
+                })
+            }
+        }
+        menus.show(entries, from: anchor, side: .bottom, align: .start)
+    }
+
+    private static func title(_ action: NotesListModel.RowAction) -> String {
+        switch action {
+        case .star: "Star"
+        case .unstar: "Unstar"
+        case .move: "Move to folder…"
+        case .duplicate: "Duplicate"
+        case .archive: "Archive"
+        case .unarchive: "Unarchive"
+        default: "Move to Trash"
+        }
     }
 
     /// The pill's More and the Folders section's "…": New folder, All folders (and Graph, from the pill).

@@ -34,7 +34,7 @@ struct RebuildRootAvatar: View {
 
     var body: some View {
         Button(action: open) {
-            PhonePlaceMarkView(mark: .avatar(name: home.profileName.isEmpty ? "You" : home.profileName, url: home.session.value?.profile.avatarUrl.flatMap(URL.init(string:))), size: 34)
+            PhoneHereMark(you: (home.profileName.isEmpty ? "You" : home.profileName, home.session.value?.profile.avatarUrl.flatMap(URL.init(string:))), workspace: home.workspaceMark.map { ($0.name, $0.logoUrl) })
                 .frame(width: 44, height: 44)
         }
         .buttonStyle(.plain)

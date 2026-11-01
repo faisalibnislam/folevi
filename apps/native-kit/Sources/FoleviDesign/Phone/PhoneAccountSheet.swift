@@ -201,6 +201,38 @@ public struct PhonePlaceRowView: View {
 
 /// A place's picture (WorkspaceMenu.tsx's Mark): the picture, or the initial in the canvas colour on the heading
 /// colour at 46% of the size, round for a person, the chip radius for a workspace.
+/// The root screens' account button: where you are. In Personal your round picture; in a workspace the workspace's
+/// logo (a rounded square, as the web's and the iPad's sidebar draw it) with your picture small in its corner, so
+/// whose account it is still shows.
+public struct PhoneHereMark: View {
+    let you: (name: String, url: URL?)
+    let workspace: (name: String, url: URL?)?
+    let size: CGFloat
+    @Environment(\.colorScheme) private var scheme
+
+    public init(you: (name: String, url: URL?), workspace: (name: String, url: URL?)?, size: CGFloat = 34) {
+        self.you = you
+        self.workspace = workspace
+        self.size = size
+    }
+
+    public var body: some View {
+        if let workspace {
+            let badge = (size * 0.5).rounded()
+            PhonePlaceMarkView(mark: .workspace(name: workspace.name, url: workspace.url), size: size)
+                .overlay(alignment: .bottomTrailing) {
+                    PhonePlaceMarkView(mark: .avatar(name: you.name, url: you.url), size: badge)
+                        // A ring of the screen's own colour parts the picture from the logo.
+                        .padding(1.5)
+                        .background(Circle().fill(PhoneSurface.grouped.resolve(scheme).color))
+                        .offset(x: badge * 0.32, y: badge * 0.32)
+                }
+        } else {
+            PhonePlaceMarkView(mark: .avatar(name: you.name, url: you.url), size: size)
+        }
+    }
+}
+
 public struct PhonePlaceMarkView: View {
     let mark: PhonePlaceMark
     let size: CGFloat

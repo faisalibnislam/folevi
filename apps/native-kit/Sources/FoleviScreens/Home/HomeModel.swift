@@ -39,6 +39,45 @@ public final class HomeModel {
         self.locks = client.watch(PendingN7Views.FolderLocks(SpaceArgs(space: space)))
     }
 
+    // MARK: A note's long-press menu (Recent notes and Starred): the lists' menu (web NoteContextMenu), less Open
+    // (a tap opens), Select and ordering, which only a list has.
+
+    /// The notes Move to folder is choosing a folder for (`homeNoteSheets` shows the picker).
+    public var movingNotes: [String]?
+
+    public func noteMenu(for row: NoteRow) -> [[NotesListModel.RowAction]] {
+        var first: [NotesListModel.RowAction] = [actions.isStarred(row) ? .unstar : .star]
+        if row.kind != "template" && canEdit { first.append(.move) }
+        first.append(.duplicate)
+        first.append(row.archived ? .unarchive : .archive)
+        return [first, [.trash]]
+    }
+
+    public func run(_ action: NotesListModel.RowAction, on row: NoteRow) async {
+        let ids = [row.id]
+        switch action {
+        case .star: await actions.star(ids, true)
+        case .unstar: await actions.star(ids, false)
+        case .move: movingNotes = ids
+        case .duplicate: _ = await actions.duplicate(row.id)
+        case .archive: await actions.archive(ids, true)
+        case .unarchive: await actions.archive(ids, false)
+        case .trash: await actions.trash(ids)
+        default: break
+        }
+    }
+
+    public var moveTargets: [(target: FolderTarget, depth: Int, color: String?)] {
+        [(FolderTarget.drafts, 0, nil)] + (tree.value?.folders ?? []).map { (FolderTarget(id: $0.id, name: $0.name), $0.depth, $0.color) }
+    }
+
+    public func move(_ ids: [String], to target: FolderTarget) async {
+        movingNotes = nil
+        var from: [String: String?] = [:]
+        for row in recents + starred where ids.contains(row.id) { from[row.id] = row.folder?.id }
+        await actions.move(ids, to: target, from: from)
+    }
+
     // MARK: What the screen shows
 
     public var value: HomeValue? { home.value }
@@ -79,6 +118,15 @@ public final class HomeModel {
     }
 
     public var profileName: String { session.value?.profile.name ?? "" }
+
+    /// The open workspace's name and logo, nil in Personal: the root screens' account button shows it (the web's and
+    /// the iPad's sidebar show the workspace there too), with your picture in its corner.
+    public var workspaceMark: (name: String, logoUrl: URL?)? {
+        guard let s = session.value, let space = s.spaces.first(where: { $0.id == s.space }), space.kind == .workspace else { return nil }
+        let current = places.value?.current ?? s.place ?? client.place
+        let logo = places.value?.places.first { $0.id == current }?.workspaces.first { $0.id == space.id }?.logoUrl
+        return (space.name, logo.flatMap { $0 }.flatMap(URL.init(string:)))
+    }
 
     public var syncIndicator: SyncIndicator? { sync.value.map(CardMapping.sync) }
 

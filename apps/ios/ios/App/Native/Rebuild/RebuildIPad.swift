@@ -24,7 +24,7 @@ struct RebuildIPadRoot: View {
 
     var body: some View {
         IPadFrameView(model: desk) {
-            IPadNotePage(pageHost: pageHost)
+            IPadNotePage(pageHost: pageHost, desk: desk)
         }
         // The screens before the app, as on the phone.
         .overlay {
@@ -39,17 +39,54 @@ struct RebuildIPadRoot: View {
     }
 }
 
-/// The note in the card: the Page View, adopted while the note shows and parked again when it goes.
+/// The note in the card: the Page View, adopted while the note shows and parked again when it goes. While the
+/// on-screen keyboard is up, the iPhone's formatting bar rides on it (insert, checklist, text style, bold, italic,
+/// indent, undo, Foli AI, and the key that puts the keyboard away); a hardware keyboard has the shortcuts instead.
 private struct IPadNotePage: UIViewControllerRepresentable {
     let pageHost: PageViewHost
+    let desk: FrameModel
 
     final class Controller: UIViewController, PageViewOwner {
         weak var pageHost: PageViewHost?
-        var pageViewContainer: UIView { view }
+        weak var desk: FrameModel?
+        /// The page sits in this, which ends where the on-screen keyboard (and its formatting bar) begins: the page
+        /// gets shorter while the keyboard is up, so the editor keeps the line being typed in view above it (a page
+        /// left full height went on typing under the keys). A floating keyboard, or none, leaves it full height.
+        private let holder = UIView()
+        private let keyboardBar = KeyboardToolbar()
+        private var holderBottom: NSLayoutConstraint?
+        /// The docked on-screen keyboard is up (not a hardware keyboard's short shortcuts bar, nor a floating one).
+        private var softKeyboard = false
+        var pageViewContainer: UIView { holder }
 
         override func viewDidLoad() {
             super.viewDidLoad()
             view.backgroundColor = .clear
+            holder.backgroundColor = .clear
+            holder.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(holder)
+            keyboardBar.translatesAutoresizingMaskIntoConstraints = false
+            keyboardBar.isHidden = true
+            keyboardBar.alpha = 0
+            keyboardBar.onCommand = { [weak self] in self?.run($0) }
+            view.addSubview(keyboardBar)
+            view.keyboardLayoutGuide.usesBottomSafeArea = false
+            let bottom = holder.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor)
+            holderBottom = bottom
+            NSLayoutConstraint.activate([
+                holder.topAnchor.constraint(equalTo: view.topAnchor),
+                holder.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                holder.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                bottom,
+                keyboardBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                keyboardBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                keyboardBar.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor),
+                keyboardBar.heightAnchor.constraint(equalToConstant: KeyboardToolbar.height),
+            ])
+            let center = NotificationCenter.default
+            center.addObserver(self, selector: #selector(keyboardChanged(_:)), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+            center.addObserver(self, selector: #selector(keyboardChanged(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
+            watchEditor()
         }
 
         override func viewWillAppear(_ animated: Bool) {
@@ -64,11 +101,72 @@ private struct IPadNotePage: UIViewControllerRepresentable {
 
         func pageViewWillLeave(_ pageView: WKWebView) {}
 
+        /// How much of this view the keyboard covers decides it: a hardware keyboard's shortcuts bar covers little.
+        @objc private func keyboardChanged(_ note: Notification) {
+            var covered: CGFloat = 0
+            if note.name != UIResponder.keyboardWillHideNotification,
+               let end = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue,
+               let window = view.window {
+                let frame = view.convert(view.bounds, to: window.coordinateSpace)
+                covered = frame.intersection(window.convert(end, from: window.screen.coordinateSpace)).height
+            }
+            softKeyboard = covered > 120
+            showBar()
+        }
+
+        /// The bar shows while the docked on-screen keyboard is up and the editor has it.
+        private func showBar() {
+            let visible = softKeyboard && (desk?.editorState?.focused ?? false)
+            holderBottom?.constant = visible ? -KeyboardToolbar.height : 0
+            guard keyboardBar.isHidden == visible else { return }
+            if visible { keyboardBar.isHidden = false }
+            UIView.animate(withDuration: 0.18) {
+                self.keyboardBar.alpha = visible ? 1 : 0
+                self.view.layoutIfNeeded()
+            } completion: { _ in
+                if !visible, self.keyboardBar.alpha == 0 { self.keyboardBar.isHidden = true }
+            }
+        }
+
+        /// The editor's state lights the bar's buttons and says whether the editor has the keyboard.
+        private func watchEditor() {
+            guard let desk else { return }
+            withObservationTracking {
+                keyboardBar.update(desk.editorState, aiOn: desk.session.value?.capabilities.ai ?? false)
+            } onChange: { [weak self] in
+                Task { @MainActor [weak self] in
+                    self?.watchEditor()
+                    self?.showBar()
+                }
+            }
+        }
+
+        private func run(_ c: KeyboardToolbar.Command) {
+            guard let desk else { return }
+            switch c {
+            case .insert: desk.editor(.panelOpen(panel: .insert))
+            case .checklist: desk.editor(.format(block: .todo))
+            case .block(let b): desk.editor(.format(block: b))
+            case .formatPanel: desk.editor(.panelOpen(panel: .format))
+            case .bold: desk.editor(.format(mark: .bold))
+            case .italic: desk.editor(.format(mark: .italic))
+            case .outdent: desk.editor(.outdent)
+            case .indent: desk.editor(.indent)
+            case .undo: desk.editor(.undo)
+            case .redo: desk.editor(.redo)
+            case .ai: desk.editor(.ai(action: .open))
+            case .hideKeyboard:
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                desk.editor(.dismissKeyboard)
+                pageHost?.pageView.endEditing(true)
+            }
+        }
     }
 
     func makeUIViewController(context: Context) -> Controller {
         let c = Controller()
         c.pageHost = pageHost
+        c.desk = desk
         return c
     }
 
@@ -116,7 +214,23 @@ extension RebuildFrameController: FrameHost {
 /// desk in the iPad's wide layout and on the phone's frame otherwise. A note's page still gets its own keys.
 extension RebuildFrameController {
     override var keyCommands: [UIKeyCommand]? {
-        (super.keyCommands ?? []) + FoleviShortcut.all.map { $0.keyCommand(action: #selector(pressRebuildShortcut(_:))) }
+        let app = FoleviShortcut.all.map { $0.keyCommand(action: #selector(pressRebuildShortcut(_:))) }
+        // The iPad's wide layout has the Mac's tabs, so the Mac's keys for them (and Settings, Search All Notes).
+        let desk = wide ? IPadShortcut.all.map { $0.keyCommand(action: #selector(pressDeskShortcut(_:))) } : []
+        return (super.keyCommands ?? []) + app + desk
+    }
+
+    @objc func pressDeskShortcut(_ command: UIKeyCommand) {
+        guard wide, let shortcut = IPadShortcut.all.first(where: { $0.input == command.input && $0.modifiers == command.modifierFlags }) else { return }
+        switch shortcut.action {
+        case .settings: desk.open(FrameRoute(path: "/settings"))
+        case .searchAll: desk.open(FrameRoute(path: "/search"))
+        case .closeTab: desk.closeTab()
+        case .reopenTab: desk.reopenClosedTab()
+        case .nextTab: desk.nextTab(1)
+        case .previousTab: desk.nextTab(-1)
+        case .tab(let n): desk.selectTab(number: n)
+        }
     }
 
     private var wide: Bool { UIDevice.current.userInterfaceIdiom == .pad && (view.window?.bounds.width ?? 0) >= RebuildIPad.minWidth }
@@ -129,10 +243,37 @@ extension RebuildFrameController {
         case "a": openLink(DeepLink.tasksURL)
         case "j": wide ? desk.askAI() : RebuildFrame.ai.ask()  // (the phone: the sheet, as the web's openAsk)
         case "t": openLink(DeepLink.todayURL)
-        case "\\": if wide { desk.sidebarCollapsed.toggle() }
+        case "\\": if wide { desk.toggleSidebar() }
         case "[": wide ? desk.goBack() : frame.back()
         case "]": if wide { desk.goForward() }
         default: break
         }
+    }
+}
+
+/// The Mac's keys for the iPad's wide layout (apps/mac/Folevi/Chrome/MenuModel.swift): Settings, Search All Notes and
+/// the tabs. Listed in the overlay iPadOS shows while ⌘ is held.
+struct IPadShortcut {
+    enum Action: Equatable { case settings, searchAll, closeTab, reopenTab, nextTab, previousTab, tab(Int) }
+
+    let title: String
+    let input: String
+    let modifiers: UIKeyModifierFlags
+    let action: Action
+
+    static let all: [IPadShortcut] = [
+        IPadShortcut(title: "Settings", input: ",", modifiers: .command, action: .settings),
+        IPadShortcut(title: "Search All Notes", input: "f", modifiers: [.command, .shift], action: .searchAll),
+        IPadShortcut(title: "Close Tab", input: "w", modifiers: .command, action: .closeTab),
+        IPadShortcut(title: "Reopen Closed Tab", input: "t", modifiers: [.command, .shift], action: .reopenTab),
+        IPadShortcut(title: "Show Next Tab", input: "\t", modifiers: .control, action: .nextTab),
+        IPadShortcut(title: "Show Previous Tab", input: "\t", modifiers: [.control, .shift], action: .previousTab),
+    ] + (1...9).map { IPadShortcut(title: "Tab \($0)", input: "\($0)", modifiers: .command, action: .tab($0)) }
+
+    func keyCommand(action selector: Selector) -> UIKeyCommand {
+        let command = UIKeyCommand(title: title, action: selector, input: input, modifierFlags: modifiers)
+        command.discoverabilityTitle = title
+        command.wantsPriorityOverSystemBehavior = true
+        return command
     }
 }

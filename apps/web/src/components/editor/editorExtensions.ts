@@ -1,5 +1,6 @@
 import { Placeholder, UndoRedo, Dropcursor, Gapcursor } from "@tiptap/extensions";
 import { isIphoneApp } from "@/lib/iphone";
+import { coarsePointer } from "@/lib/hooks/useMediaQuery";
 import { ALL_MARKS, ALL_NODES, BlockFormat } from "./extensions";
 import { NODE_VIEW_EXTENSIONS } from "./NodeViews";
 import { BlockDecorations, BlockIdentity, BlockKeymap, CaretAfterClick, MarkdownShortcuts, Triggers, type TriggerState } from "./plugins";
@@ -47,8 +48,9 @@ export function editorExtensions({
         if (node.type.name === "quote") return "Quote";
         if (node.type.name === "toggle") return "Toggle";
         if (node.type.name === "callout") return "Callout";
-        // (A phone has no ⌘J: its Foli AI button is in the note's bar.)
-        const ai = aiHint.current && !isIphoneApp() ? ", ⌘J for AI" : "";
+        // (A phone has no ⌘J: its Foli AI button is in the note's bar. Nor does an iPad or other touch screen as a
+        // rule: its keyboard bar has Foli AI.)
+        const ai = aiHint.current && !isIphoneApp() && !coarsePointer() ? ", ⌘J for AI" : "";
         return pos === 0 && editor.state.doc.childCount === 1 ? (placeholder ?? `Start writing, or type / for blocks${ai}`) : `Type / for blocks${ai}, [[ to link a page`;
       },
       showOnlyCurrent: true,

@@ -346,7 +346,8 @@ struct PasscodeInput: View {
             .foregroundStyle(input.color.color)
             .webBox(VS.pair("vault.gate.input"))
         }
-        .onAppear { if autoFocus { focused = true } }
+        // (On an iPad without a hardware keyboard the cursor waits for a tap: the on-screen one would cover half the screen.)
+        .onAppear { if autoFocus && HardwareKeyboard.shared.connected { focused = true } }
     }
 }
 

@@ -37,8 +37,13 @@ public struct WebTopBar: View {
     public var body: some View {
         let bar = style("frame.topbar")
         HStack(spacing: bar.gap) {
-            if model.sidebarCollapsed {
-                Color.clear.frame(width: 60, height: 1)
+            if model.sidebarFloats {
+                // A narrow iPad: the sidebar slides over the content (IPadFrameView).
+                SidebarToggleButton(model: model)
+                divider
+            } else if model.sidebarCollapsed {
+                // (The Mac's window buttons sit in this corner; an iPad has none.)
+                if !WebStyles.isPad { Color.clear.frame(width: 60, height: 1) }
                 SidebarMenuButton(model: model)
                 SyncDot(model: model)
                 divider
@@ -151,7 +156,9 @@ public struct WebTopBar: View {
             WebIconView(icon, size: 15)
                 .frame(width: s.width, height: s.height)
                 .foregroundStyle(s.color.color)
+                .padding(WebStyles.isPad ? 6 : 0)
                 .contentShape(Rectangle())
+                .padding(WebStyles.isPad ? -6 : 0)
         }
         .buttonStyle(WebHoverRowStyle(radius: s.radius, hover: WebStyles.vars["glass-hover"], press: WebStyles.vars["mac-press"], selected: false))
         .opacity(enabled ? 1 : style("frame.topbar.forward").opacity)
@@ -316,8 +323,10 @@ public struct WebTopBar: View {
             }
         }
         .foregroundStyle(s.color.color)
-        .padding(t.isHome ? EdgeInsets() : inset.edgeInsets)
-        .frame(width: t.isHome ? 36 : t.pinned ? (t.isJoined ? 112 : 86) : nil, height: s.height)
+        // (The iPad's Home says its name, so it takes the room that needs; the Mac's is its house alone, 36 wide.)
+        .padding(t.isHome ? (WebStyles.isPad ? EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 14) : EdgeInsets()) : inset.edgeInsets)
+        .frame(width: t.isHome ? (WebStyles.isPad ? nil : 36) : t.pinned ? (t.isJoined ? 112 : 86) : nil, height: s.height)
+        .fixedSize(horizontal: t.isHome && WebStyles.isPad, vertical: false)
         .webBox(active ? on : off)
         // The whole tab opens it, as the web's link that fills the tab up to its buttons (they keep their own clicks);
         // the bar's window drag is only for the space outside the tabs.
@@ -389,7 +398,11 @@ public struct WebTopBar: View {
             WebIconView(.x, size: 12)
                 .frame(width: close.width, height: close.height)
                 .foregroundStyle(close.color.color)
+                // (A finger needs more than the Mac's 20-point ×: on an iPad it takes taps 10 points round it, the
+                // tab keeping its size.)
+                .padding(WebStyles.isPad ? 10 : 0)
                 .contentShape(Rectangle())
+                .padding(WebStyles.isPad ? -10 : 0)
         }
         .buttonStyle(WebHoverRowStyle(radius: close.radius, hover: WebStyles.vars["glass-hover"], press: WebStyles.vars["mac-press"], selected: false))
         .opacity(visible ? 1 : 0)

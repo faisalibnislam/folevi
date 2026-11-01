@@ -143,7 +143,7 @@ public struct WebSidebar: View {
                 WebIconView(.search, size: style("search.icon").height).foregroundStyle(style("search.icon").color.color)
                 Text("Search or jump to…").webText(label.text).lineLimit(1).foregroundStyle(label.color.color)
                 Spacer(minLength: 0)
-                WebKbd("⌘K")
+                if HardwareKeyboard.shared.connected { WebKbd("⌘K") }
             }
             .padding(r.padding.edgeInsets)
             .frame(maxWidth: .infinity, minHeight: r.height, maxHeight: r.height)
@@ -553,6 +553,22 @@ struct SidebarMenuButton: View {
             ]
         }
         return out
+    }
+}
+
+/// The narrow iPad's sidebar button: the sidebar slides over the content, or goes again.
+struct SidebarToggleButton: View {
+    let model: FrameModel
+
+    var body: some View {
+        Button { model.toggleSidebar() } label: {
+            WebIconView(.panelLeft, size: 18)
+                .frame(width: 40, height: 40)
+                .foregroundStyle(Folevi.color.inkMuted)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(model.sidebarOverlayShown ? "Hide sidebar" : "Show sidebar")
     }
 }
 

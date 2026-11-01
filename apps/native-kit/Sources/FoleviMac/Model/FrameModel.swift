@@ -139,6 +139,16 @@ public final class FrameModel {
 
     /// The sidebar is collapsed (⌘\, View > Hide Sidebar).
     public var sidebarCollapsed = false
+    /// iPad: the window is too narrow for the sidebar beside the content (portrait, Split View), so the sidebar
+    /// slides over the content when asked for and goes again once something in it is picked.
+    public var sidebarFloats = false
+    /// iPad: the floating sidebar is out.
+    public var sidebarOverlayShown = false
+
+    /// ⌘\ and the bar's sidebar button: the floating sidebar in or out on a narrow iPad, else collapse or expand.
+    public func toggleSidebar() {
+        if sidebarFloats { sidebarOverlayShown.toggle() } else { sidebarCollapsed.toggle() }
+    }
     /// This Mac's Touch ID for its encryption keys (the app sets it from E2eeKeys; nil in tests and the demo).
     public var touchId: TouchIdHook?
     #if DEBUG
@@ -226,7 +236,7 @@ public final class FrameModel {
     /// The place and space for the sidebar's header and the account button.
     public var spaceName: String {
         guard let s = session.value else { return "Folevi" }
-        if s.mode == .local { return "On this Mac" }
+        if s.mode == .local { return "On this \(ThisDevice.noun)" }
         return s.spaces.first { $0.id == s.space }?.name ?? "Personal"
     }
 

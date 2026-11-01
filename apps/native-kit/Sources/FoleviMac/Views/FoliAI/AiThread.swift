@@ -67,7 +67,8 @@ struct AiThreadView: View {
             }
             dock(look: look)
         }
-        .onAppear { if autoFocus { DispatchQueue.main.async { focused = true } } }
+        // (On an iPad without a hardware keyboard the cursor waits for a tap: the on-screen one would cover half the screen.)
+        .onAppear { if autoFocus && HardwareKeyboard.shared.connected { DispatchQueue.main.async { focused = true } } }
         .onReceive(NotificationCenter.default.publisher(for: AiThreadView.focusComposer)) { _ in focused = true }
     }
 
@@ -336,7 +337,7 @@ struct AiIntroBody: View {
             VStack(alignment: .leading, spacing: li.margin.bottom) {
                 bullet("Foli AI never changes a note without showing you the change first.", li)
                 if host.local {
-                    bullet("What you ask, and the notes it needs, go straight from this Mac to the model you chose, never through Folevi. Nothing is sent until you ask.", li)
+                    bullet("What you ask, and the notes it needs, go straight from this \(ThisDevice.noun) to the model you chose, never through Folevi. Nothing is sent until you ask.", li)
                     bullet(settingsLine(prefix: "Choose the model in ", suffix: ".", look: look), li)
                 } else {
                     bullet("What you ask, and the notes it needs, go to Google Gemini. Nothing is sent until you ask.", li)

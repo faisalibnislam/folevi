@@ -10,6 +10,13 @@ import FoleviDesign
 import FoleviEngine
 import FoleviScreens
 
+/// The iPad frame's widths.
+public enum IPadFrameMetrics {
+    /// Narrower than this (every iPad in portrait but the 13-inch ones, Split View, Stage Manager windows), the
+    /// sidebar floats over the content instead of taking a third of the width beside it.
+    public static let floatingSidebarBelow: CGFloat = 1000
+}
+
 @MainActor
 public struct IPadFrameView<Page: View>: View {
     @Bindable var model: FrameModel
@@ -36,27 +43,77 @@ public struct IPadFrameView<Page: View>: View {
         // bar's room and 8), the home indicator's room below (on the iPad: 32 pt from the top, 20 from the bottom).
         let m = side.x
         return GeometryReader { g in
+            let bottom = max(m, NSApp.keyWindow?.safeAreaInsets.bottom ?? g.safeAreaInsets.bottom)
+            let inline = !model.sidebarFloats && !model.sidebarCollapsed
             ZStack(alignment: .topLeading) {
                 WebCanvas()
                 HStack(spacing: 0) {
-                    if !model.sidebarCollapsed {
+                    if inline {
                         WebSidebar(model: model, tasks: tasks, actions: sidebarActions)
                             .frame(width: side.width)
                             .padding(.leading, side.x)
                             .transition(.move(edge: .leading))
                     }
                     content
-                        .padding(.leading, model.sidebarCollapsed ? m : card.x - side.x - side.width)
+                        .padding(.leading, inline ? card.x - side.x - side.width : m)
                         .padding(.trailing, m)
                 }
                 .padding(.top, side.y)
-                .padding(.bottom, max(m, NSApp.keyWindow?.safeAreaInsets.bottom ?? g.safeAreaInsets.bottom))
+                .padding(.bottom, bottom)
+                // Too narrow for the sidebar beside the content: it slides over it, on its own canvas, and goes
+                // again with a tap beside it or once something in it is picked (the route changes).
+                if model.sidebarFloats && model.sidebarOverlayShown {
+                    Color.black.opacity(0.16)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture { model.sidebarOverlayShown = false }
+                        .transition(.opacity)
+                    WebSidebar(model: model, tasks: tasks, actions: sidebarActions)
+                        .frame(width: side.width)
+                        .padding(.top, side.y)
+                        .padding(.bottom, bottom)
+                        .padding(.horizontal, side.x)
+                        .background {
+                            WebCanvas()
+                                .clipShape(UnevenRoundedRectangle(bottomTrailingRadius: 20, topTrailingRadius: 20, style: .continuous))
+                                .shadow(color: .black.opacity(0.18), radius: 24, x: 4, y: 0)
+                                .ignoresSafeArea()
+                        }
+                        .transition(.move(edge: .leading))
+                }
             }
             .ignoresSafeArea(.container, edges: .vertical)
+            .onChange(of: g.size.width, initial: true) { _, width in
+                let floats = width < IPadFrameMetrics.floatingSidebarBelow
+                if floats != model.sidebarFloats {
+                    model.sidebarFloats = floats
+                    model.sidebarOverlayShown = false
+                }
+            }
         }
         .animation(.easeOut(duration: 0.18), value: model.sidebarCollapsed)
+        .animation(.easeOut(duration: 0.22), value: model.sidebarOverlayShown)
+        .animation(.easeOut(duration: 0.18), value: model.sidebarFloats)
         .background(WindowCatcher { FrameSheets.attach(model, window: $0) })
-        .onChange(of: model.route) { models.keep(only: Set(model.tabs.tabs.map(\.route))) }
+        .onChange(of: model.route) {
+            models.keep(only: Set(model.tabs.tabs.map(\.route)))
+            model.sidebarOverlayShown = false
+        }
+        // The page leaves the glass bar's room at its top (--native-inset-top), as the Mac's does, so a note's
+        // paper starts below the bar instead of under it.
+        // (Again once the note has drawn: at launch the page may not be listening yet when the route changes.)
+        .onChange(of: model.route.noteId, initial: true) { _, id in
+            if id != nil { model.editor(.insets(top: Double(Self.barRoom), bottom: 0)) }
+        }
+        .onChange(of: model.drawnNote) { _, id in
+            if id != nil { model.editor(.insets(top: Double(Self.barRoom), bottom: 0)) }
+        }
+    }
+
+    /// From the card's top to the glass bar's bottom edge.
+    static var barRoom: CGFloat {
+        let bar = WebStyles.named("frame.topbar").light
+        return bar.y - WebStyles.named("frame.content").light.y + bar.height
     }
 
     /// The rounded card: the screen (or the note's page) under the glass bar, toasts at its foot.

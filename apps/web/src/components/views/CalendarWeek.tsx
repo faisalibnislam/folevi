@@ -22,8 +22,29 @@ function useNowMinutes(): number {
   return now;
 }
 
+/** A task's block: tinted in the heading's ink with a bar of it down its edge; done ones quiet and struck through. */
 function taskChipClass(t: TaskRow) {
-  return t.status === "open" ? "bg-accent-soft text-accent-soft-ink" : "bg-sunken text-faint line-through";
+  return t.status === "open"
+    ? "border-l-[3px] border-heading bg-[color-mix(in_oklab,var(--color-heading)_9%,transparent)] text-ink"
+    : "border-l-[3px] border-line-strong bg-sunken text-faint line-through";
+}
+
+/** An event's block: its calendar's colour as a tint and a bar down its edge. */
+function eventStyle(color: string): CSSProperties {
+  const c = calendarColor(color);
+  return { borderColor: c, background: `color-mix(in oklab, ${c} 16%, transparent)` };
+}
+
+/** "9 AM", or "21" where the clock is 24-hour: short enough for one line in the gutter. */
+const hourFormat = new Intl.DateTimeFormat(undefined, { hour: "numeric" });
+function hourLabel(h: number): string {
+  return hourFormat.format(new Date(2024, 0, 1, h));
+}
+
+/** Minutes after midnight in this device's clock ("9:30 AM" or "21:30"), as the gutter's hours read. */
+const clockFormat = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+function clock(minutes: number): string {
+  return clockFormat.format(new Date(2024, 0, 1, Math.floor(minutes / 60), minutes % 60));
 }
 
 /**
@@ -68,10 +89,14 @@ export function CalendarWeek({
   // One day in the row takes Tab focus: the selected one when it's shown, else the first.
   const focusable = days.includes(selected) ? selected : days[0];
   const columns: CSSProperties = { gridTemplateColumns: `3.5rem repeat(${days.length}, minmax(0, 1fr))` };
-  // Opens at 6:00 with the evening below; earlier hours are a scroll up.
+  const showsToday = days.includes(today);
+  // Opens an hour before now when today is shown, else at 6:00; earlier hours are a scroll up.
   useLayoutEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = FIRST_VISIBLE_HOUR * HOUR_PX - 10;
-  }, []);
+    const hour = showsToday ? Math.max(0, Math.min(16, Math.floor(now / 60) - 1)) : FIRST_VISIBLE_HOUR;
+    if (scrollRef.current) scrollRef.current.scrollTop = hour * HOUR_PX - 10;
+    // Only when the days shown change, not every minute.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showsToday]);
   const hasTask = (e: React.DragEvent) => e.dataTransfer.types.includes(TASK_TYPE);
   const dragStart = (e: React.DragEvent, t: TaskRow) => {
     e.dataTransfer.setData(TASK_TYPE, t.blockId);
@@ -86,14 +111,14 @@ export function CalendarWeek({
             <span className="sr-only">Time</span>
           </div>
           {days.map((date) => (
-            <div key={date} role="columnheader" className="flex items-center justify-center gap-1.5 py-2 font-medium text-muted">
-              {formatCalendarDate(date, { weekday: "short" })}
-              <span className={`grid h-6 min-w-6 place-items-center rounded-chip px-1 tabular-nums ${date === today ? "bg-heading font-semibold text-canvas" : "text-ink"}`}>{Number(date.slice(8))}</span>
+            <div key={date} role="columnheader" className={`flex flex-col items-center justify-center gap-0.5 py-1.5 sm:flex-row sm:gap-1.5 sm:py-2 ${date === today ? "text-heading" : "text-muted"}`}>
+              <span className="text-caption-2 font-semibold uppercase tracking-[0.04em]">{formatCalendarDate(date, { weekday: "short" })}</span>
+              <span className={`grid h-6 min-w-6 place-items-center rounded-chip px-1 text-subheadline tabular-nums ${date === today ? "bg-heading font-semibold text-canvas" : selected === date ? "font-semibold text-ink" : "text-ink"}`}>{Number(date.slice(8))}</span>
             </div>
           ))}
         </div>
         <div role="row" className="grid border-b border-line" style={columns}>
-          <div role="rowheader" className="px-2 py-2 text-right text-footnote text-muted">
+          <div role="rowheader" className="whitespace-nowrap px-2 py-2 text-right text-caption-2 font-medium text-faint">
             All day
           </div>
           {days.map((date) => {
@@ -135,7 +160,7 @@ export function CalendarWeek({
                         onDragStart={(e) => dragStart(e, t)}
                         onClick={() => onEdit(t)}
                         title={t.title}
-                        className={`block w-full cursor-grab truncate rounded-tiny px-1 text-left text-footnote leading-5 ${taskChipClass(t)}`}
+                        className={`block w-full cursor-grab truncate rounded-tiny px-1.5 text-left text-footnote font-medium leading-6 ${taskChipClass(t)}`}
                       >
                         {t.title || "Untitled task"}
                       </button>
@@ -148,8 +173,8 @@ export function CalendarWeek({
                         onClick={(e) => onOpenEvent(ev, e.currentTarget)}
                         aria-label={`${ev.title || "Untitled event"}, all day, from ${ev.calendarName}`}
                         title={ev.title}
-                        className="block w-full truncate rounded-tiny border-l-2 bg-surface px-1 text-left text-footnote leading-5 text-muted hover:bg-sunken"
-                        style={{ borderColor: calendarColor(ev.color) }}
+                        className="block w-full truncate rounded-tiny border-l-[3px] px-1.5 text-left text-footnote font-medium leading-6 text-ink hover:opacity-90"
+                        style={eventStyle(ev.color)}
                       >
                         {ev.title || "Untitled event"}
                       </button>
@@ -164,11 +189,19 @@ export function CalendarWeek({
       <div ref={scrollRef} className="max-h-[min(68vh,748px)] overflow-y-auto overscroll-contain" role="region" aria-label="Hours" tabIndex={-1}>
         <div className="grid" style={{ ...columns, height: 24 * HOUR_PX }}>
           <div aria-hidden className="relative">
-            {Array.from({ length: 23 }, (_, i) => i + 1).map((h) => (
-              <span key={h} className="absolute right-2 -translate-y-1/2 text-caption-2 tabular-nums text-faint" style={{ top: h * HOUR_PX }}>
-                {minutesToTime(h * 60)}
+            {Array.from({ length: 23 }, (_, i) => i + 1)
+              // An hour within 20 minutes of now gives way to now's time.
+              .filter((h) => !showsToday || Math.abs(h * 60 - now) >= 20)
+              .map((h) => (
+                <span key={h} className="absolute right-2 -translate-y-1/2 whitespace-nowrap text-caption-2 font-medium tabular-nums text-faint" style={{ top: h * HOUR_PX }}>
+                  {hourLabel(h)}
+                </span>
+              ))}
+            {showsToday ? (
+              <span className="absolute right-1.5 z-10 -translate-y-1/2 whitespace-nowrap bg-canvas px-0.5 text-caption-2 font-semibold tabular-nums text-ember" style={{ top: minutesToPx(now) }}>
+                {clock(now)}
               </span>
-            ))}
+            ) : null}
           </div>
           {days.map((date) => {
             const timed = (tasksByDate.get(date) ?? []).flatMap((t) => {
@@ -188,7 +221,7 @@ export function CalendarWeek({
               <div
                 key={date}
                 data-day-column={date}
-                className="relative border-l border-line"
+                className={`relative border-l border-line ${date === today ? "bg-[color-mix(in_oklab,var(--color-ink)_2.5%,transparent)]" : ""}`}
                 onDragOver={(e) => {
                   if (!hasTask(e)) return;
                   e.preventDefault();
@@ -213,7 +246,9 @@ export function CalendarWeek({
                   <div aria-hidden className="pointer-events-none absolute inset-x-1 rounded-tiny border border-dashed border-accent bg-accent-soft/50" style={{ top: minutesToPx(hover.minutes), height: HOUR_PX / 2 }} />
                 ) : null}
                 {date === today ? (
-                  <div aria-hidden className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-accent" style={{ top: minutesToPx(now) }} />
+                  <div aria-hidden className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-ember" style={{ top: minutesToPx(now) - 1 }}>
+                    <span className="absolute -left-1 -top-[5px] h-2 w-2 rounded-capsule bg-ember" />
+                  </div>
                 ) : null}
                 {timedEvents.map((pe) => {
                   const p = placed.get(`e:${pe.event.id}`)!;
@@ -226,19 +261,17 @@ export function CalendarWeek({
                       onClick={(e) => onOpenEvent(ev, e.currentTarget)}
                       aria-label={`${ev.title || "Untitled event"}, ${time}, from ${ev.calendarName}`}
                       title={`${time} ${ev.title}`}
-                      className="absolute overflow-hidden rounded-tiny border-l-2 bg-surface px-1 text-left text-caption-2 leading-[14px] text-muted shadow-[0_0_0_1px_var(--color-canvas)] hover:bg-sunken"
+                      className="absolute overflow-hidden rounded-tiny border-l-[3px] px-1.5 py-0.5 text-left text-caption-1 font-medium leading-4 text-ink shadow-[0_0_0_1px_var(--color-canvas)] hover:opacity-90"
                       style={{
                         top: minutesToPx(p.start) + 1,
                         height: minutesToPx(p.end - p.start) - 2,
                         left: `calc(${(p.col / p.cols) * 100}% + 2px)`,
                         width: `calc(${100 / p.cols}% - 4px)`,
-                        borderColor: calendarColor(ev.color),
+                        ...eventStyle(ev.color),
                       }}
                     >
-                      <span className="block truncate">
-                        {pe.segment.first ? <span className="mr-1 tabular-nums opacity-80">{minutesToTime(pe.segment.start)}</span> : null}
-                        {ev.title || "Untitled event"}
-                      </span>
+                      <span className="line-clamp-3 break-words">{ev.title || "Untitled event"}</span>
+                      {pe.segment.first && p.end - p.start >= 45 ? <span className="block truncate text-caption-2 tabular-nums text-muted">{clock(pe.segment.start)}</span> : null}
                     </button>
                   );
                 })}
@@ -253,11 +286,10 @@ export function CalendarWeek({
                       onClick={() => onEdit(t)}
                       aria-label={`${t.title || "Untitled task"}, ${t.dueTime}${t.status === "done" ? ", done" : ""}`}
                       title={`${t.dueTime} ${t.title}`}
-                      className={`absolute cursor-grab truncate rounded-tiny px-1 text-left text-caption-2 leading-[14px] shadow-[0_0_0_1px_var(--color-canvas)] ${taskChipClass(t)}`}
+                      className={`absolute cursor-grab overflow-hidden rounded-tiny px-1.5 text-left text-caption-1 font-medium leading-4 shadow-[0_0_0_1px_var(--color-canvas)] ${taskChipClass(t)}`}
                       style={{ top: minutesToPx(start) + 1, height: minutesToPx(TASK_MINUTES) - 2, left: `calc(${(p.col / p.cols) * 100}% + 2px)`, width: `calc(${100 / p.cols}% - 4px)` }}
                     >
-                      <span className="mr-1 tabular-nums opacity-80">{t.dueTime}</span>
-                      {t.title || "Untitled task"}
+                      <span className="block truncate pt-0.5">{t.title || "Untitled task"}</span>
                     </button>
                   );
                 })}

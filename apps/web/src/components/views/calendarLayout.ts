@@ -3,7 +3,7 @@
 import { addDays } from "@folevi/editor-schema";
 
 /** Height of one hour on the grid, in pixels. */
-export const HOUR_PX = 44;
+export const HOUR_PX = 52;
 /** Drops snap to this many minutes. */
 export const SLOT_MINUTES = 30;
 /** A task with a time shows as a block this long. */

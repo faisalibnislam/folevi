@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { SETTLE_MS, settlePending } from "./lib/editSettle";
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, type PaginationOptions, type PaginationResult } from "convex/server";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -177,6 +177,81 @@ function offsetOf(cursor: string | null): number {
   return Number.isInteger(n) && n > 0 ? n : 0;
 }
 
+/** Cursors of a small view that outgrew its cap and pages through its index (documents.list). */
+const OVERFLOW = "i:";
+
+type SmallView = "starred" | "folder" | "tag" | "templates" | "archive";
+type SmallPage = { docs: Doc<"documents">[]; starred?: Set<string> };
+
+/**
+ * Where a small view's pages come from: `take` reads the whole list, or null when it has more rows than
+ * its cap (then `paginate` walks the same index a page at a time, nothing left out). Filters that aren't
+ * in the index (kind, Trash, scope) apply per row, so an overflow page can come back short. Each read
+ * builds its query afresh (a Convex query runs once).
+ */
+async function smallViewSource(ctx: QueryCtx, profile: Doc<"profiles">, scope: Scope, view: SmallView, folderId?: string, tagId?: string) {
+  type Rows<T> = { take(n: number): Promise<T[]>; paginate(opts: PaginationOptions): Promise<PaginationResult<T>> };
+  const make = <T,>(cap: number, rows: () => Rows<T>, toDocs: (rows: T[]) => Promise<SmallPage>) => ({
+    async take(): Promise<SmallPage | null> {
+      const all = await rows().take(cap + 1);
+      return all.length > cap ? null : toDocs(all);
+    },
+    async paginate(opts: PaginationOptions) {
+      const r = await rows().paginate(opts);
+      const { docs, starred } = await toDocs(r.page);
+      return { page: docs, starred, isDone: r.isDone, continueCursor: r.continueCursor };
+    },
+  });
+  const docsOf = async (list: Doc<"documents">[], keep: (d: Doc<"documents">) => boolean) => ({ docs: list.filter(keep) });
+
+  if (view === "starred") {
+    const stars = () => ctx.db.query("stars").withIndex("by_profile", (q) => q.eq("profileId", profile._id)).order("desc");
+    return make(500, stars, async (rows) => {
+      // Every page listed here is starred (withExtras needn't look the stars up again).
+      const starred = new Set(rows.map((s) => s.documentId as string));
+      const docs: Doc<"documents">[] = [];
+      for (const s of rows) {
+        const d = await ctx.db.get(s.documentId);
+        if (d && inScope(d, scope) && !d.inTrash) docs.push(d);
+      }
+      return { docs, starred };
+    });
+  }
+  if (view === "folder") {
+    const folder = folderId
+      ? await ctx.db
+          .query("folders")
+          .withIndex("by_public_id", (q) => q.eq("publicId", folderId))
+          .unique()
+      : null;
+    if (!folder || !inScope(folder, scope)) fail("not_found", "Folder not found.");
+    const listed = () =>
+      ctx.db
+        .query("documents")
+        .withIndex("by_folder_listed", (q) => q.eq("folderId", folder._id).eq("parentDocumentId", undefined).eq("inTrash", false).eq("archivedAt", undefined))
+        .order("desc");
+    return make(1000, listed, (rows) => docsOf(rows, (d) => d.kind === "document" || d.kind === "daily"));
+  }
+  if (view === "templates") return make(2000, () => scopeTemplates(ctx, scope), (rows) => docsOf(rows, (d) => !d.inTrash));
+  if (view === "archive") return make(2000, () => scopeArchive(ctx, scope), (rows) => docsOf(rows, () => true));
+  const tag = tagId
+    ? await ctx.db
+        .query("tags")
+        .withIndex("by_public_id", (q) => q.eq("publicId", tagId))
+        .unique()
+    : null;
+  if (!tag || !inScope(tag, scope)) fail("not_found", "Tag not found.");
+  const links = () => ctx.db.query("documentTags").withIndex("by_tag", (q) => q.eq("tagId", tag._id));
+  return make(1000, links, async (rows) => {
+    const docs: Doc<"documents">[] = [];
+    for (const l of rows) {
+      const d = await ctx.db.get(l.documentId);
+      if (d && !d.inTrash) docs.push(d);
+    }
+    return { docs };
+  });
+}
+
 /** Document lists of a scope (All, Starred, Archive, Trash, Templates, Daily, Drafts (no folder), folder, tag). */
 export const list = query({
   args: {
@@ -207,63 +282,30 @@ export const list = query({
     const sort = args.sort ?? "updated";
 
     // Views backed by small per-person/per-container sets (read through their own indexes) are fetched
-    // fully, then sorted.
+    // whole, then sorted. One past its cap pages through its index instead (in the index's order, cursors
+    // starting OVERFLOW), so a large folder, tag, Archive or Templates never leaves pages out.
     if (view === "starred" || view === "folder" || view === "tag" || view === "templates" || view === "archive") {
-      let docs: Doc<"documents">[] = [];
-      let starred: Set<string> | undefined;
-      if (view === "starred") {
-        const stars = await ctx.db
-          .query("stars")
-          .withIndex("by_profile", (q) => q.eq("profileId", profile._id))
-          .order("desc")
-          .take(500);
-        // Every page listed here is starred (withExtras needn't look the stars up again).
-        starred = new Set(stars.map((s) => s.documentId as string));
-        for (const s of stars) {
-          const d = await ctx.db.get(s.documentId);
-          if (d && inScope(d, scope) && !d.inTrash) docs.push(d);
-        }
-      } else if (view === "folder") {
-        const folder = args.folderId
-          ? await ctx.db
-              .query("folders")
-              .withIndex("by_public_id", (q) => q.eq("publicId", args.folderId!))
-              .unique()
-          : null;
-        if (!folder || !inScope(folder, scope)) fail("not_found", "Folder not found.");
-        docs = (
-          await ctx.db
-            .query("documents")
-            .withIndex("by_folder_listed", (q) => q.eq("folderId", folder._id).eq("parentDocumentId", undefined).eq("inTrash", false).eq("archivedAt", undefined))
-            .take(1000)
-        ).filter((d) => d.kind === "document" || d.kind === "daily");
-      } else if (view === "templates") {
-        docs = (await scopeTemplates(ctx, scope).take(2000)).filter((d) => !d.inTrash);
-      } else if (view === "archive") {
-        docs = await scopeArchive(ctx, scope).take(2000);
-      } else {
-        const tag = args.tagId
-          ? await ctx.db
-              .query("tags")
-              .withIndex("by_public_id", (q) => q.eq("publicId", args.tagId!))
-              .unique()
-          : null;
-        if (!tag || !inScope(tag, scope)) fail("not_found", "Tag not found.");
-        const links = await ctx.db
-          .query("documentTags")
-          .withIndex("by_tag", (q) => q.eq("tagId", tag._id))
-          .take(1000);
-        for (const l of links) {
-          const d = await ctx.db.get(l.documentId);
-          if (d && !d.inTrash) docs.push(d);
-        }
-      }
-      docs = await reader.filter(docs);
+      const source = await smallViewSource(ctx, profile, scope, view, args.folderId, args.tagId);
+      const cursor = args.paginationOpts.cursor;
+      const overflowPage = async (from: string | null) => {
+        const r = await source.paginate({ ...args.paginationOpts, cursor: from });
+        const page = await reader.filter(r.page);
+        return {
+          page: await withExtras(ctx, profile, ids, page, { scope, starred: r.starred }),
+          isDone: r.isDone,
+          continueCursor: OVERFLOW + r.continueCursor,
+        };
+      };
+      if (cursor?.startsWith(OVERFLOW)) return overflowPage(cursor.slice(OVERFLOW.length));
+      const whole = await source.take();
+      if (!whole) return overflowPage(null);
+      const docs = await reader.filter(whole.docs);
+      const starred = whole.starred;
       // Templates and the Archive keep the order the scope's sort indexes give (as they did when walked
       // through them): titles byte-wise, re-sorted case-insensitively only when the list fits one page.
       const indexed = view === "templates" || view === "archive";
       docs.sort(indexed ? indexOrder(sort) : sorter(sort));
-      const start = offsetOf(args.paginationOpts.cursor);
+      const start = offsetOf(cursor);
       let page = docs.slice(start, start + args.paginationOpts.numItems);
       const end = start + page.length;
       if (indexed && sort === "title" && start === 0 && end >= docs.length) page = [...page].sort(sorter(sort));

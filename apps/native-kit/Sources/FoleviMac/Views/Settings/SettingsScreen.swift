@@ -176,9 +176,13 @@ public final class MacSettingsModel {
 
     /// The sections in their groups, as SettingsView.tsx lists them for this mode and role.
     var groups: [(label: String, items: [MacSettingsSection])] {
-        let you: [MacSettingsSection] = isLocal
+        var you: [MacSettingsSection] = isLocal
             ? [.library, .ai, .appearance, .data, .desktop]
             : [.account, .ai, .billing, .security, .privacy, .devices, .connectedApps, .appearance, .notifications, .sync, .data, .desktop]
+        // (The Mac app's own settings: the menu bar icon, the global Quick Add key. An iPad has none of them.)
+        #if os(iOS)
+        you.removeAll { $0 == .desktop }
+        #endif
         var out: [(String, [MacSettingsSection])] = [("You", you)]
         if let w = workspace, !isLocal {
             var items: [MacSettingsSection] = [.workspace, .members, .workspacePrivacy]

@@ -65,7 +65,7 @@ private struct PrivacySettings: View {
                 .frame(maxWidth: 560, alignment: .leading)
             SettingsCard("End-to-end encryption", description: space?.encrypted == true ? "This space is end-to-end encrypted: its notes are locked on your devices, and Folevi's servers can't read them." : "Notes here are encrypted in transit and at rest. Turn on end-to-end encryption so only your devices can read them.") {
                 VStack(alignment: .leading, spacing: 12) {
-                    SettingsTerms(rows: [("Level", space?.encrypted == true ? "End-to-end encrypted" : "Standard", nil), ("Status", space?.locked == true ? "Locked on this Mac" : "Open on this Mac", nil)])
+                    SettingsTerms(rows: [("Level", space?.encrypted == true ? "End-to-end encrypted" : "Standard", nil), ("Status", space?.locked == true ? "Locked on this \(ThisDevice.noun)" : "Open on this \(ThisDevice.noun)", nil)])
                     if space?.canLock == true || workspace == nil {
                         WebButton(space?.encrypted == true ? "Lock a folder…" : "Turn on end-to-end encryption…") { model.frame.open(.web(workspace == nil ? "/settings/privacy" : "/settings/workspace-privacy")); model.frame.toast("Choose a folder and Lock it from its menu, or set encryption up when Folevi asks.") }
                     }

@@ -47,7 +47,7 @@ public enum AccountMenu {
             }
             if let lib = rows.first(where: { $0.kind == .library }) {
                 let isHere = lib.id == current
-                let item = ClosureMenuItem(title: "On this Mac") { [weak model] in
+                let item = ClosureMenuItem(title: "On this \(ThisDevice.noun)") { [weak model] in
                     guard let model, !isHere else { return }
                     model.host?.frameSwitchPlace(lib.id, space: nil)
                 }

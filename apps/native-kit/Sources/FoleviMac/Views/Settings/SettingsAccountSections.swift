@@ -223,7 +223,7 @@ struct NotificationSettingsView: View {
                 }
                 .settingsRowWidth(576, alignment: .center)
             }
-            SettingsCard("Notifications on this Mac", description: "Reminders and mentions show up here even when Folevi isn’t open, following the In app choices above. A reminder shows its to-do line; a mention says only who and where.") {
+            SettingsCard("Notifications on this \(ThisDevice.noun)", description: "Reminders and mentions show up here even when Folevi isn’t open, following the In app choices above. A reminder shows its to-do line; a mention says only who and where.") {
                 WebButton("Open Desktop app settings") { model.frame.open(.web("/settings/desktop")) }
             }
             SettingsCard("Email delivery", description: "How comment, reply and mention emails arrive. Shares, invitations and access changes are always sent as they happen.") {
@@ -350,7 +350,7 @@ struct SyncSettingsView: View {
     var body: some View {
         let s = model.storage.value
         VStack(alignment: .leading, spacing: 20) {
-            SettingsCard("This device", description: "Folevi keeps your recent documents and every unsent change on this Mac, so you can keep writing offline and nothing is lost if a window closes.") {
+            SettingsCard("This device", description: "Folevi keeps your recent documents and every unsent change on this \(ThisDevice.noun), so you can keep writing offline and nothing is lost if a window closes.") {
                 VStack(alignment: .leading, spacing: 16) {
                     SettingsTerms(rows: [
                         ("Connection", model.session?.online == false ? "Offline" : "Online", nil),
@@ -358,14 +358,14 @@ struct SyncSettingsView: View {
                         ("Notes kept", s?.notesKept.map(String.init) ?? "…", nil),
                         ("Space used", s?.usedBytes.map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "…", nil),
                     ])
-                    SettingsSwitchRow(label: "Keep all notes on this Mac", hint: "Every note and its attachments stay on this Mac, so all of them open offline.", isOn: s?.keepAll ?? false, disabled: s?.available == false) { on in
+                    SettingsSwitchRow(label: "Keep all notes on this \(ThisDevice.noun)", hint: "Every note and its attachments stay on this \(ThisDevice.noun), so all of them open offline.", isOn: s?.keepAll ?? false, disabled: s?.available == false) { on in
                         Task { await model.perform(.deviceKeepAll(on: on), done: "Saved") }
                     }
                     .settingsRowWidth(576, alignment: .center)
                     SettingsButtons {
                         WebButton("Download everything now") { Task { await model.perform(.deviceDownload) } }
-                        WebButton("Remove this Mac's copy…", variant: .danger) {
-                            settingsConfirm("Remove this Mac's copy?", message: "Notes stay in your account. They download again when you open them.", confirm: "Remove", in: NSApp.keyWindow) {
+                        WebButton("Remove this \(ThisDevice.noun)'s copy…", variant: .danger) {
+                            settingsConfirm("Remove this \(ThisDevice.noun)'s copy?", message: "Notes stay in your account. They download again when you open them.", confirm: "Remove", in: NSApp.keyWindow) {
                                 Task { await model.perform(.deviceRemoveCopy(force: true), done: "Removed") }
                             }
                         }

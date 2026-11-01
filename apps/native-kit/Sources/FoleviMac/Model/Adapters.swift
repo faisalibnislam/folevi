@@ -35,11 +35,11 @@ public extension SyncStatusValue {
     /// The popover's explanation.
     var detail: String {
         switch state {
-        case .saved: return "Everything on this Mac is saved to Folevi."
+        case .saved: return "Everything on this \(ThisDevice.noun) is saved to Folevi."
         case .saving, .syncing: return pending > 0 ? "\(pending) \(pending == 1 ? "change" : "changes") on the way to Folevi." : "Bringing your notes up to date."
-        case .offline: return pending > 0 ? "\(pending) \(pending == 1 ? "change is" : "changes are") saved on this Mac and will sync when you're back online." : "You're offline. Changes are saved on this Mac and sync when you're back online."
+        case .offline: return pending > 0 ? "\(pending) \(pending == 1 ? "change is" : "changes are") saved on this \(ThisDevice.noun) and will sync when you're back online." : "You're offline. Changes are saved on this \(ThisDevice.noun) and sync when you're back online."
         case .conflict: return conflicts == 1 ? "A note was changed in two places. Open it to choose what to keep." : "\(conflicts) notes were changed in two places. Open them to choose what to keep."
-        case .error: return authRequired ? "Sign in again to keep syncing. Your changes are kept on this Mac." : "Some changes couldn't be saved to Folevi. They're kept on this Mac."
+        case .error: return authRequired ? "Sign in again to keep syncing. Your changes are kept on this \(ThisDevice.noun)." : "Some changes couldn't be saved to Folevi. They're kept on this \(ThisDevice.noun)."
         }
     }
 

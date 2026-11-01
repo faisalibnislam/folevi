@@ -80,11 +80,11 @@ enum AccountMenuRows {
             }
         }
         if let lib = rows.first(where: { $0.kind == .library }) {
-            out.append(AccountMenuRow(id: "place:library", kind: .place, title: "On this Mac", detail: lib.syncs ?? "On your devices", mark: .library, checked: local, dot: !local && (lib.reminders > 0 || lib.waiting > 0)) {
+            out.append(AccountMenuRow(id: "place:library", kind: .place, title: "On this \(ThisDevice.noun)", detail: lib.syncs ?? "On your devices", mark: .library, checked: local, dot: !local && (lib.reminders > 0 || lib.waiting > 0)) {
                 if !local { host?.frameSwitchPlace(lib.id, space: nil) }
             })
         } else if local {
-            out.append(AccountMenuRow(id: "place:library", kind: .place, title: "On this Mac", detail: "On your devices", mark: .library, checked: true))
+            out.append(AccountMenuRow(id: "place:library", kind: .place, title: "On this \(ThisDevice.noun)", detail: "On your devices", mark: .library, checked: true))
         }
         out.append(AccountMenuRow(id: "sep:1", kind: .separator))
         out.append(AccountMenuRow(id: "settings", kind: .item, title: "Settings", mark: .icon(.settings), shortcut: "\u{2318},") { host?.frameOpenSettings(section: nil) })

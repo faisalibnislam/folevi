@@ -18,10 +18,10 @@ struct SyncPopover: View {
             }
             Text(s?.detail ?? "Folevi is starting.").foleviFont(.callout).foregroundStyle(Folevi.color.inkMuted).fixedSize(horizontal: false, vertical: true)
             if let s, s.pending > 0 {
-                Text("\(s.pending) waiting on this Mac").foleviFont(.caption).foregroundStyle(Folevi.color.inkFaint)
+                Text("\(s.pending) waiting on this \(ThisDevice.noun)").foleviFont(.caption).foregroundStyle(Folevi.color.inkFaint)
             }
             if let spaces = s?.spaces, let d = spaces.first(where: { $0.state == .downloading }), let total = d.total, total > 0 {
-                ProgressView(value: Double(d.have), total: Double(total)) { Text("Downloading notes to this Mac").foleviFont(.caption) }
+                ProgressView(value: Double(d.have), total: Double(total)) { Text("Downloading notes to this \(ThisDevice.noun)").foleviFont(.caption) }
             }
             if s?.canRetry == true {
                 Button("Retry") { model.retrySync() }.buttonStyle(.folevi(.secondary, size: .small))

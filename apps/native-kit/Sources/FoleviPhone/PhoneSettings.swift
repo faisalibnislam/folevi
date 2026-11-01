@@ -15,6 +15,7 @@ private func C(_ pair: ColorPair, _ scheme: ColorScheme) -> Color { pair.resolve
 public enum PhoneSettingsSection: String, CaseIterable, Sendable {
     case account, ai, billing, security, privacy, devices, connectedApps = "connected-apps", appearance, notifications, sync, library, data, desktop
     case thisDevice = "this-device"
+    case about
     case workspace, members, workspacePrivacy = "workspace-privacy", workspaceGuests = "workspace-guests", workspaceBilling = "workspace-billing", workspaceData = "workspace-data"
 
     public var label: String {
@@ -33,6 +34,7 @@ public enum PhoneSettingsSection: String, CaseIterable, Sendable {
         case .data, .workspaceData: "Import & export"
         case .desktop: "Desktop app"
         case .thisDevice: "This device"
+        case .about: "About"
         case .workspace: "General"
         case .members: "Members"
         case .workspaceGuests: "Guests"
@@ -64,6 +66,7 @@ public enum PhoneSettingsSection: String, CaseIterable, Sendable {
         case .data, .workspaceData: .arrowDownUp
         case .desktop: .appWindowMac
         case .thisDevice: .smartphone
+        case .about: .info
         case .workspace: .buildingComplex
         case .members: .users
         case .workspaceGuests: .userRoundPlus
@@ -155,8 +158,8 @@ public struct PhoneSettingsList: View {
             PhoneSettingsGroup("Support") {
                 PhoneSettingsRow("Help", chevron: true, action: { model.open("/help") }) { PhoneRowIcon(.circleQuestionMark) }
                 PhoneSettingsRow("Contact support", action: host.contactSupport) { PhoneRowIcon(.lifeBuoy) }
+                PhoneSettingsRow("About", chevron: true, action: { model.open("/settings/about") }) { PhoneRowIcon(.info) }
             }
-            PhoneSettingsVersion(version: model.version)
         }
     }
 }
@@ -205,6 +208,7 @@ public struct PhoneSettingsSectionView: View {
             case .appearance: PhoneAppearanceSettings(model: model, screen: screen)
             case .data, .workspaceData: PhoneDataSettings(model: model, workspace: section == .workspaceData ? model.workspace : nil, screen: screen)
             case .thisDevice: PhoneThisDeviceSettings(model: model, host: host, screen: screen)
+            case .about: PhoneAboutSettings(model: model, host: host)
             default: PhoneAccountSettings(model: model, host: host, section: section, screen: screen)
             }
         }
@@ -779,3 +783,38 @@ struct PhoneThisDeviceSettings: View {
     }
 }
 #endif
+
+// MARK: About
+
+/// Settings > About (the web's AboutSection.tsx): the version, never a build number, and the website's pages about
+/// Folevi. The version lives here only; the list of sections has no version line at its foot any more.
+struct PhoneAboutSettings: View {
+    let model: PhoneSettingsModel
+    let host: PhoneSettingsHost
+
+    static let links: [(label: String, path: String)] = [
+        ("What's new", "/changelog"),
+        ("Privacy policy", "/privacy"),
+        ("Terms of service", "/terms"),
+        ("AI policy", "/ai-policy"),
+        ("Security", "/security"),
+        ("Service status", "/status"),
+    ]
+
+    var body: some View {
+        PhoneSettingsPage {
+            PhoneSettingsGroup {
+                PhoneSettingsRow("Version", value: model.version)
+            }
+            PhoneSettingsGroup {
+                ForEach(Self.links, id: \.path) { link in
+                    PhoneSettingsRow(link.label, action: { if let u = URL(string: "https://folevi.com\(link.path)") { host.openURL(u) } }) {
+                        EmptyView()
+                    } trailing: {
+                        WebIconView(.externalLink, size: 15).foregroundStyle(Folevi.color.inkMuted)
+                    }
+                }
+            }
+        }
+    }
+}

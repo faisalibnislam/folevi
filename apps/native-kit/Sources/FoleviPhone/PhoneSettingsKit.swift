@@ -151,23 +151,6 @@ public struct PhoneSettingsPage<Content: View>: View {
 /// IosSection: PhoneGroupedSection (Grouped.tsx's heading, rows and footer are the same).
 typealias PhoneSettingsGroup = PhoneGroupedSection
 
-/// VersionFooter: "Folevi 1.2.07", centred, Footnote, muted.
-struct PhoneSettingsVersion: View {
-    let version: String
-    @Environment(\.colorScheme) private var scheme
-
-    var body: some View {
-        Text("Folevi \(version)")
-            .webText(WebTextStyle(size: WebTypeRole.footnote.metrics.size, leading: 18))
-            .lineLimit(1)
-            .foregroundStyle(C(FoleviTokens.Chrome.inkMuted, scheme))
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 32)
-            .padding(.top, 4)
-            .padding(.bottom, 8)
-    }
-}
-
 // MARK: Rows
 
 /// IosRow: an icon, a label (with a quieter line under it), a value, something at the end (a switch), then a check

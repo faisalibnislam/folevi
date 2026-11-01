@@ -15,7 +15,7 @@ import { ViewChrome } from "@/components/app/Shell";
 import { TaskEditDialog, TaskItem, useToggleTask, type TaskRow } from "./TasksView";
 import { CalendarFeedDialog } from "./CalendarFeedDialog";
 import { CalendarWeek } from "./CalendarWeek";
-import { CalendarsButton, EventPopover, calendarColor, eventWhen, useExternalEvents, type ExternalEvent, type PlacedEvent } from "./CalendarSubscriptions";
+import { CalendarsButton, CalendarsDialog, EventPopover, calendarColor, eventWhen, useExternalEvents, type ExternalEvent, type PlacedEvent } from "./CalendarSubscriptions";
 import { minutesToTime, monthGrid, shiftMonth, visibleDays } from "./calendarLayout";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { useHardwareKeyboard } from "@/lib/hooks/useHardwareKeyboard";
@@ -95,6 +95,7 @@ export function CalendarView({ month }: { month: string | null }) {
   const toast = useToast();
   const toggle = useToggleTask();
   const [feedOpen, setFeedOpen] = useState(false);
+  const [calendarsOpen, setCalendarsOpen] = useState(false);
   // The tasks feed is served by Folevi: not in local mode.
   const feeds = useCapabilities().calendarFeeds;
   const gridRef = useRef<HTMLDivElement>(null);
@@ -205,10 +206,11 @@ export function CalendarView({ month }: { month: string | null }) {
     <>
       {iphone ? <IphoneTaskSheet task={editing} onClose={() => setEditing(null)} /> : <TaskEditDialog task={editing} onClose={() => setEditing(null)} />}
       {feeds ? <CalendarFeedDialog open={feedOpen} onClose={() => setFeedOpen(false)} /> : null}
+      {iphone ? <CalendarsDialog open={calendarsOpen} onClose={() => setCalendarsOpen(false)} /> : null}
       <EventPopover event={openEvent} anchor={eventAnchor} timeZone={timeZone} onClose={() => setOpenEvent(null)} />
     </>
   );
-  const iphoneMenu = calendarMenu(mode, pickLayout, feeds ? () => setFeedOpen(true) : null);
+  const iphoneMenu = calendarMenu(mode, pickLayout, feeds ? () => setFeedOpen(true) : null, () => setCalendarsOpen(true));
   if (iphone && mode === "agenda") {
     return (
       <IphoneAgenda today={today} selected={selected} onSelect={setSelected} days={agendaDays} byDate={byDate} eventsByDate={eventsByDate} overdue={overdue} timeZone={timeZone} onToggle={toggle} onEdit={setEditing} onOpenEvent={showEvent} menu={iphoneMenu}>
@@ -228,7 +230,7 @@ export function CalendarView({ month }: { month: string | null }) {
           </h2>
           {pager}
           <div className="ml-auto flex items-center gap-1.5">
-            <CalendarsButton />
+            {iphone ? null : <CalendarsButton />}
             {iphone || !feeds ? null : (
               <Button size="sm" title="Subscribe to a calendar feed" onClick={() => setFeedOpen(true)}>
                 <Rss size={14} aria-hidden /> <span className="max-md:sr-only">Subscribe</span>

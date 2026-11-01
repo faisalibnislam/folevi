@@ -6,6 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { CalendarRange, MapPin, RefreshCw, Trash2 } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 import { Popover } from "@/components/ui/Popover";
 import { Switch } from "@/components/ui/Switch";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -306,19 +307,38 @@ export function CalendarsButton() {
         ) : null}
       </Button>
       <Popover open={open} onClose={() => setOpen(false)} anchor={anchor} label="Calendars" align="end" className="w-[360px]">
-        <div className="border-b border-line px-4 py-3">
-          <h2 className="text-subheadline font-semibold">Calendars</h2>
-          <p className="mt-0.5 text-footnote text-muted">Calendars you subscribe to by link show beside your tasks. They’re read-only here. Turn one off to hide its events.</p>
-        </div>
-        {cals?.length ? (
-          <ul className="divide-y divide-line border-b border-line" aria-label="Subscribed calendars">
-            {cals.map((c) => (
-              <SubscriptionRow key={c.id} cal={c} />
-            ))}
-          </ul>
-        ) : null}
-        <AddCalendar count={cals?.length ?? 0} />
+        <CalendarsBody />
       </Popover>
     </>
+  );
+}
+
+/** The Calendars list and Add, for the button's popover and the iPhone's sheet. */
+function CalendarsBody() {
+  const cals = useQuery(api.externalCalendars.list, {});
+  return (
+    <>
+      <div className="border-b border-line px-4 py-3">
+        <h2 className="text-subheadline font-semibold">Calendars</h2>
+        <p className="mt-0.5 text-footnote text-muted">Calendars you subscribe to by link show beside your tasks. They’re read-only here. Turn one off to hide its events.</p>
+      </div>
+      {cals?.length ? (
+        <ul className="divide-y divide-line border-b border-line" aria-label="Subscribed calendars">
+          {cals.map((c) => (
+            <SubscriptionRow key={c.id} cal={c} />
+          ))}
+        </ul>
+      ) : null}
+      <AddCalendar count={cals?.length ?? 0} />
+    </>
+  );
+}
+
+/** The iPhone's Calendars (from the Calendar's "…" menu): the same list and Add, in a sheet. */
+export function CalendarsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Dialog open={open} onClose={onClose} title="Calendars">
+      <CalendarsBody />
+    </Dialog>
   );
 }

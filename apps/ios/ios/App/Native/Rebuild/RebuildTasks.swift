@@ -144,6 +144,8 @@ struct RebuildCalendarScreen: View {
     let openNotifications: () -> Void
     @State private var model: CalendarModel
     @State private var toTop = 0
+    /// Subscribe's sheet: your tasks in Google, Apple or Outlook's calendar.
+    @State private var feedOpen = false
 
     init(date: String?, frame: PhoneFrameModel, menus: PhoneMenus, home: HomeModel, phone: PhoneModel, openAccount: @escaping () -> Void, openNotifications: @escaping () -> Void) {
         self.date = date
@@ -203,6 +205,9 @@ struct RebuildCalendarScreen: View {
             }
         }
         .calendarSubscriptionsSheet(model)
+        .phoneSheet(isPresented: $feedOpen, size: .fit) {
+            PhoneCalendarFeedSheet(client: model.client, feedback: model.feedback) { feedOpen = false }
+        }
         .alert("New task", isPresented: Binding(get: { model.addingOn != nil }, set: { if !$0 { model.addingOn = nil } })) {
             AddOnDayField(model: model)
         } message: {
@@ -227,7 +232,10 @@ struct RebuildCalendarScreen: View {
         ]
         if home.session.value?.mode == .account {
             entries.append(PhoneMenuEntry(.separator()))
-            entries.append(PhoneMenuEntry(.item("Subscribe to a calendar", icon: .rss)) { model.openCalendars() })
+            // As the web and the Mac: Subscribe puts your tasks in another calendar app; Calendars brings other
+            // calendars (by their link) in here.
+            entries.append(PhoneMenuEntry(.item("Subscribe", icon: .rss)) { feedOpen = true })
+            entries.append(PhoneMenuEntry(.item("Calendars", icon: .calendarRange)) { model.openCalendars() })
         }
         return entries
     }

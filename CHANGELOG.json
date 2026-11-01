@@ -1,6 +1,19 @@
 {
   "releases": [
     {
+      "version": "1.2.13",
+      "build": 25,
+      "released": "2026-11-01T10:21:27+06:00",
+      "type": "patch",
+      "summary": "A better iPad",
+      "improved": [
+        "iPad in portrait and Split View: the sidebar slides over the content instead of squeezing it",
+        "Writing on iPad: the note scrolls to keep what you type above the keyboard, with a formatting bar on the keyboard",
+        "The iPad's Home tab, note page and wording fit the iPad, with the Mac's keyboard shortcuts for tabs and Settings"
+      ],
+      "tag": "v1.2.13"
+    },
+    {
       "version": "1.2.12",
       "build": 24,
       "released": "2026-11-01T05:24:39+06:00",

@@ -4,6 +4,18 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.13: Small update
+
+Released 2026-11-01 10:21:27+06:00 (build 25, tag v1.2.13)
+
+A better iPad
+
+### Improved
+
+- iPad in portrait and Split View: the sidebar slides over the content instead of squeezing it
+- Writing on iPad: the note scrolls to keep what you type above the keyboard, with a formatting bar on the keyboard
+- The iPad's Home tab, note page and wording fit the iPad, with the Mac's keyboard shortcuts for tabs and Settings
+
 ## Version 1.2.12: Small update
 
 Released 2026-11-01 05:24:39+06:00 (build 24, tag v1.2.12)

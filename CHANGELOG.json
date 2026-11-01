@@ -1,6 +1,21 @@
 {
   "releases": [
     {
+      "version": "1.2.14",
+      "build": 26,
+      "released": "2026-11-01T10:49:08+06:00",
+      "type": "patch",
+      "summary": "iPad polish and About",
+      "added": [
+        "Drag notes and folders onto folders in the iPad sidebar",
+        "Settings > About with the version and Folevi's policies, on every platform"
+      ],
+      "improved": [
+        "iPad: the Mac's tab rules, tab names up to the close button, no white band behind the tab bar, shadows that aren't cut off, and bigger fields and buttons"
+      ],
+      "tag": "v1.2.14"
+    },
+    {
       "version": "1.2.13",
       "build": 25,
       "released": "2026-11-01T10:21:27+06:00",

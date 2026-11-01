@@ -4,6 +4,21 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.14: Small update
+
+Released 2026-11-01 10:49:08+06:00 (build 26, tag v1.2.14)
+
+iPad polish and About
+
+### Added
+
+- Drag notes and folders onto folders in the iPad sidebar
+- Settings > About with the version and Folevi's policies, on every platform
+
+### Improved
+
+- iPad: the Mac's tab rules, tab names up to the close button, no white band behind the tab bar, shadows that aren't cut off, and bigger fields and buttons
+
 ## Version 1.2.13: Small update
 
 Released 2026-11-01 10:21:27+06:00 (build 25, tag v1.2.13)

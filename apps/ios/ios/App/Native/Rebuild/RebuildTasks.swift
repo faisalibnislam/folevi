@@ -179,8 +179,8 @@ struct RebuildCalendarScreen: View {
             }
             RebuildRootPill(home: home, menus: menus, openNotifications: openNotifications) { menu }
         } header: {
-            if layout != .week {
-                // Month: the strip's own month, open and paged by month (its days on the weekdays' columns), with
+            Group {
+                // Week: the strip picks the day the three-day grid starts on. Month: the strip's own month, open and paged by month (its days on the weekdays' columns), with
                 // the picked day's agenda under it; Agenda: the week, pulled down for the month.
                 PhoneWeekStrip(today: model.today, selected: model.selected, startsOpen: ProcessInfo.processInfo.environment["FOLEVI_REBUILD_MONTH"] == "1", monthOnly: layout == .month, marked: { model.marked($0, tasks: tasks, events: events) }, select: { model.select($0) }, feel: { model.feedback.haptic(.selection) })
                     .id(layout)
@@ -190,7 +190,7 @@ struct RebuildCalendarScreen: View {
             case .agenda, .month:
                 PhoneAgendaContent(model: model, actions: PhoneAgendaActions(add: { model.addingOn = $0 }, openEvent: { model.openEvent = $0 }))
             case .week:
-                CalendarWeekGrid(model: model).frame(height: 640)
+                PhoneWeekGrid(model: model) { model.openEvent = $0 }
             }
         }
         .onChange(of: date) { _, d in if let d { model.select(d) } }

@@ -4,6 +4,16 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.15: Small update
+
+Released 2026-11-01 12:59:10+06:00 (build 27, tag v1.2.15)
+
+Playful motion
+
+### Improved
+
+- Sheets and menus grow from the button you tapped, the tab selection slides, search rises to the top, and buttons and cards press like real ones; with Reduce Motion on, everything simply fades
+
 ## Version 1.2.14: Small update
 
 Released 2026-11-01 10:49:08+06:00 (build 26, tag v1.2.14)

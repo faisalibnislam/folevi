@@ -1,6 +1,17 @@
 {
   "releases": [
     {
+      "version": "1.2.15",
+      "build": 27,
+      "released": "2026-11-01T12:59:10+06:00",
+      "type": "patch",
+      "summary": "Playful motion",
+      "improved": [
+        "Sheets and menus grow from the button you tapped, the tab selection slides, search rises to the top, and buttons and cards press like real ones; with Reduce Motion on, everything simply fades"
+      ],
+      "tag": "v1.2.15"
+    },
+    {
       "version": "1.2.14",
       "build": 26,
       "released": "2026-11-01T10:49:08+06:00",

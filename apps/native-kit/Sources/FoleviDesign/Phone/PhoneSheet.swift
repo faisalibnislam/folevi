@@ -288,13 +288,48 @@ struct PhoneSheetModifier<Body: View>: ViewModifier {
     let size: PhoneSheetSize
     let snapToBlocks: Bool
     let onDismiss: (() -> Void)?
+    /// The button it grows out of (marked `.sheetZoomSource(id)`), nil: it rises from the bottom.
+    var zoomFrom: String? = nil
     let sheet: () -> Body
+    @Environment(\.sheetZoom) private var zoom
 
     func body(content: Content) -> some View {
         content.sheet(isPresented: $isPresented, onDismiss: onDismiss) {
-            PhoneSheetHost(size: size, snapToBlocks: snapToBlocks, content: sheet)
+            if let zoomFrom, let zoom, !WebMotion.reduced {
+                // Grows out of the button tapped and shrinks back into it (the owner's videos; iOS's zoom).
+                PhoneSheetHost(size: size, snapToBlocks: snapToBlocks, content: sheet)
+                    .navigationTransition(.zoom(sourceID: zoomFrom, in: zoom))
+            } else {
+                PhoneSheetHost(size: size, snapToBlocks: snapToBlocks, content: sheet)
+            }
         }
     }
+}
+
+/// The namespace sheets zoom from (the app sets it at its root, RebuildRoot).
+private struct SheetZoomKey: EnvironmentKey {
+    static let defaultValue: Namespace.ID? = nil
+}
+
+public extension EnvironmentValues {
+    var sheetZoom: Namespace.ID? {
+        get { self[SheetZoomKey.self] }
+        set { self[SheetZoomKey.self] = newValue }
+    }
+}
+
+/// Marks what a sheet grows out of (a `phoneSheet(zoomFrom:)` with the same id).
+private struct SheetZoomSource: ViewModifier {
+    let id: String
+    @Environment(\.sheetZoom) private var zoom
+
+    func body(content: Content) -> some View {
+        if let zoom { content.matchedTransitionSource(id: id, in: zoom) } else { content }
+    }
+}
+
+public extension View {
+    func sheetZoomSource(_ id: String) -> some View { modifier(SheetZoomSource(id: id)) }
 }
 
 private struct PhoneSheetHost<Body: View>: View {
@@ -386,8 +421,16 @@ private struct PhoneSheetHost<Body: View>: View {
 public extension View {
     /// A sheet drawn as the web's (Sheet.tsx) on iOS's own: `size` picks its detents; `snapToBlocks`, for a medium
     /// sheet, ends its medium detent after the last whole block (marked `.phoneSheetBlock()`) that fits.
-    func phoneSheet<Content: View>(isPresented: Binding<Bool>, size: PhoneSheetSize = .fit, snapToBlocks: Bool = false, onDismiss: (() -> Void)? = nil, @ViewBuilder content: @escaping () -> Content) -> some View {
-        modifier(PhoneSheetModifier(isPresented: isPresented, size: size, snapToBlocks: snapToBlocks, onDismiss: onDismiss, sheet: content))
+    /// `zoomFrom`: the id of the button it grows out of (`.sheetZoomSource(id)`).
+    func phoneSheet<Content: View>(isPresented: Binding<Bool>, size: PhoneSheetSize = .fit, snapToBlocks: Bool = false, zoomFrom: String? = nil, onDismiss: (() -> Void)? = nil, @ViewBuilder content: @escaping () -> Content) -> some View {
+        modifier(PhoneSheetModifier(isPresented: isPresented, size: size, snapToBlocks: snapToBlocks, onDismiss: onDismiss, zoomFrom: zoomFrom, sheet: content))
     }
+}
+#endif
+
+#if !os(iOS)
+public extension View {
+    /// (Sheets zoom from their button on iOS only; elsewhere this marks nothing.)
+    func sheetZoomSource(_ id: String) -> some View { self }
 }
 #endif

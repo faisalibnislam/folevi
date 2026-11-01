@@ -512,6 +512,7 @@ struct WebHoverRowStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         HoverFill(label: configuration.label, pressed: configuration.isPressed, radius: radius, hover: hover, press: press, selected: selected)
+            .pressDip(configuration.isPressed, scale: 0.97)
     }
 
     struct HoverFill<L: View>: View {

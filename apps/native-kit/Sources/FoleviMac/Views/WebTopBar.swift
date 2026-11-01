@@ -26,6 +26,8 @@ public struct WebTopBar: View {
     @State private var dragging: (id: String, dx: CGFloat, grab: CGFloat)?
     /// The list of tabs' scroll and measures, in one object the layout's reports and the timers change directly.
     @State private var scroller = TabScroller()
+    /// The open tab's raised pill, one view that slides from tab to tab (FoleviSpring.slide).
+    @Namespace private var tabPill
 
     public init(model: FrameModel) { self.model = model }
 
@@ -120,6 +122,7 @@ public struct WebTopBar: View {
             tabs.layoutPriority(1)
         }
         .coordinateSpace(name: Self.strip)
+        .animation(FoleviSpring.slide, value: model.tabs.activeID)
         .onPreferenceChange(TabFrames.self) { tabFrames = $0 }
         #if DEBUG
         .background(GeometryReader { g in
@@ -324,7 +327,11 @@ public struct WebTopBar: View {
         .foregroundStyle(s.color.color)
         .padding(t.isHome ? EdgeInsets() : inset.edgeInsets)
         .frame(width: t.isHome ? (WebStyles.isPad ? 44 : 36) : t.pinned ? (t.isJoined ? 112 : 86) : nil, height: s.height)
-        .webBox(active ? on : off)
+        .webBox(off)
+        // The open tab's pill slides here from the tab that had it (one shape, matched across the strip).
+        .background {
+            if active { Color.clear.webBox(on).matchedGeometryEffect(id: "open-tab", in: tabPill) }
+        }
         // The whole tab opens it, as the web's link that fills the tab up to its buttons (they keep their own clicks);
         // the bar's window drag is only for the space outside the tabs.
         .contentShape(RoundedRectangle(cornerRadius: s.radius, style: .continuous))

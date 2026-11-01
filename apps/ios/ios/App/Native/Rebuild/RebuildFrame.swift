@@ -286,6 +286,8 @@ private struct RebuildRoot: View {
     @State private var notifications = false
     /// New folder's card, over everything.
     @State private var newFolder: NewFolderRequest?
+    /// What sheets grow out of (phoneZoomSource / phoneSheet(zoomFrom:)).
+    @Namespace private var zoom
 
     var body: some View {
         // The iPad in a window wide enough for the sidebar: the web's desktop layout (lib/iphone.ts
@@ -298,6 +300,7 @@ private struct RebuildRoot: View {
             }
         }
         .ignoresSafeArea(.keyboard)
+        .environment(\.sheetZoom, zoom)
     }
 
     private var phoneBody: some View {
@@ -375,7 +378,7 @@ private struct RebuildRoot: View {
         }
         // Foli AI from the tab bar (or search's Ask Foli AI): medium, pulled up to the whole screen. With history off,
         // its conversation goes when it closes.
-        .phoneSheet(isPresented: Bindable(ai).sheetOpen, size: .medium, onDismiss: { ai.sheet.closed() }) {
+        .phoneSheet(isPresented: Bindable(ai).sheetOpen, size: .medium, zoomFrom: "ai", onDismiss: { ai.sheet.closed() }) {
             RebuildAiSheet(ai: ai, frame: model)
         }
         .phoneSheet(isPresented: $notifications, size: .medium) {

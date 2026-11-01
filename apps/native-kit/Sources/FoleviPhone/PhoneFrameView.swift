@@ -93,7 +93,7 @@ public struct PhoneFrameView<Screen: View>: View {
                         .accessibilityHidden(tab != model.current)
                 }
                 // The tab bar floats over the home indicator and steps away for a note (which has its own bars),
-                // the keyboard and Select (TabBar.tsx: 300 ms, cubic-bezier(0.32, 0.72, 0, 1)).
+                // the keyboard and Select, on FoleviSpring.slide.
                 let hidden = tabBarHidden || model.top.isNote || model.top == .web("/ai") || isAI(model.top)
                 PhoneTabBar(current: model.current, aiOn: aiOn, pick: { model.pick($0) }, openAI: actions.openAI, plus: plus)
                     .padding(.leading, geo.safeAreaInsets.leading)
@@ -101,7 +101,7 @@ public struct PhoneFrameView<Screen: View>: View {
                     .padding(.bottom, max(10, geo.safeAreaInsets.bottom - 10))
                     .offset(y: hidden ? 64 * 1.4 + 20 : 0)
                     .opacity(hidden ? 0 : 1)
-                    .animation(.timingCurve(0.32, 0.72, 0, 1, duration: 0.3), value: hidden)
+                    .animation(FoleviSpring.slide, value: hidden)
                     .allowsHitTesting(!hidden)
                     .accessibilityHidden(hidden)
             }

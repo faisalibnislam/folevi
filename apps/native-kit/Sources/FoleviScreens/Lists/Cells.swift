@@ -14,8 +14,7 @@ public struct CardPressStyle: ButtonStyle {
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
-            .animation(reduceMotion ? nil : .folevi(FoleviTokens.Motion.fast), value: configuration.isPressed)
+            .pressDip(configuration.isPressed && !reduceMotion, scale: 0.97)
             .onChange(of: configuration.isPressed) { _, pressed in if pressed { onPress() } }
     }
 }

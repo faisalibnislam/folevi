@@ -39,8 +39,7 @@ public struct FoleviButtonStyle: ButtonStyle {
             .modifier(ButtonDepth(kind: kind, radius: radius))
             .contentShape(Rectangle().inset(by: -max(0, (minTouch - size.height) / 2)))
             .opacity(isEnabled ? 1 : 0.45)
-            .scaleEffect(pressed && kind != .ghost ? 0.985 : 1)
-            .foleviAnimation(FoleviTokens.Motion.fast, value: pressed)
+            .pressDip(pressed && kind != .ghost, scale: 0.96)
     }
 
     private var minTouch: CGFloat {

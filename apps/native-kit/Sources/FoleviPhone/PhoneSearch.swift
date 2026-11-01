@@ -35,6 +35,9 @@ public struct PhoneSearchScreen: View {
     /// A scope chip's menu, from where it was tapped.
     let scopeMenu: (String, CGRect) -> Void
     @FocusState private var focused: Bool
+    /// The opening: the field rises from where Home's search sits to the top, the rest fades up after it (the
+    /// owner's videos), on FoleviSpring.pop; under Reduce Motion everything only fades.
+    @State private var arrived = false
     /// Recent: the notes opened last (`recent.viewed`, the palette's), not the ones edited last.
     @State private var viewed: ValueStore<RecentViewedValue>?
     @Environment(\.colorScheme) private var scheme
@@ -59,18 +62,24 @@ public struct PhoneSearchScreen: View {
         GeometryReader { geo in
             VStack(spacing: 0) {
                 header
-                scopes
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) { results }
-                        .padding(.bottom, geo.safeAreaInsets.bottom + 16)
+                    .offset(y: arrived || WebMotion.reduced ? 0 : 110)
+                Group {
+                    scopes
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) { results }
+                            .padding(.bottom, geo.safeAreaInsets.bottom + 16)
+                    }
+                    .scrollDismissesKeyboard(.interactively)
                 }
-                .scrollDismissesKeyboard(.interactively)
+                .opacity(arrived ? 1 : 0)
+                .offset(y: arrived || WebMotion.reduced ? 0 : 24)
             }
             .padding(.top, geo.safeAreaInsets.top)
             .ignoresSafeArea(edges: [.top, .bottom])
         }
         .background(FoleviTokens.Chrome.canvas.resolve(scheme).color.ignoresSafeArea())
         .onAppear {
+            withAnimation(FoleviSpring.pop) { arrived = true }
             focused = !Self.noKeyboard
             if viewed == nil { viewed = model.client.watch(.recentViewed(limit: 8)) }
         }

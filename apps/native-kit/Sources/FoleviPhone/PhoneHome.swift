@@ -194,9 +194,7 @@ public struct PhoneHomeContent: View {
 /// A card in a row pressed: it shrinks to 97% (`active:scale-[0.97]`).
 struct PhoneCardPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+        configuration.label.pressDip(configuration.isPressed, scale: 0.97)
     }
 }
 #endif

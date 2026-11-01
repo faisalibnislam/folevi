@@ -183,6 +183,8 @@
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+  /* With Reduce Motion what floats in still fades in (the owner, 2026-11-01), without moving or bouncing. */
+  .ui-pop { animation-name: folio-fade !important; animation-duration: 120ms !important; animation-timing-function: linear !important; }
 }
 
 /* Utility: visually hidden but available to assistive tech. */
@@ -337,8 +339,10 @@
     font-weight: 550;
     letter-spacing: -0.005em;
     user-select: none;
-    transition: box-shadow 160ms var(--motion-easing), transform 120ms var(--motion-easing), background-color 160ms, color 160ms, filter 160ms;
+    transition: box-shadow 160ms var(--motion-easing), transform 420ms var(--spring-press), background-color 160ms, color 160ms, filter 160ms;
   }
+  /* A press dips the button and lets it spring back (the owner, 2026-11-01). */
+  .ui-btn:active:not(:disabled) { transform: scale(0.96); transition-duration: 160ms, 90ms, 160ms, 160ms, 160ms; }
   .ui-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .ui-btn-primary {
     color: var(--color-accent-ink);
@@ -495,6 +499,16 @@
   .ui-btn-secondary, .ui-raised, .ui-card { box-shadow: 0 0 0 1px var(--color-line-strong); }
 }
 
+:root {
+  /* Folevi's springs (the owner, 2026-11-01: playful, as iOS 26's own; FoleviSpring on the native apps). A sheet,
+   popover or menu growing out of what opened it settles with a visible overshoot; a press springs back. */
+  --spring-pop: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.004 83.8%, 1);
+  --spring-press: linear(0, 0.25 8%, 0.72 20%, 1.08 34%, 1.12 40%, 1.06 50%, 0.99 64%, 1);
+}
+
+/* A dialog, popover or menu growing in (on --spring-pop: it overshoots a touch, then settles). */
+@keyframes folio-pop { from { opacity: 0; transform: translateY(6px) scale(0.9); } 30% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes folio-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes folio-rise {
   from {
     opacity: 0;
@@ -1117,17 +1131,17 @@
 
 /* §2.6 Popovers fade in and rise 4 points over 120 ms; §3.14 dialogs are sheets: attached under the top bar,
    480 wide, 14 corners, no dim behind them, sliding 8 points down as they fade in (180 ms ease-out). */
-:root[data-desktop="mac"] [role="dialog"][popover].ui-pop { animation: mac-pop-in 120ms ease-out; }
+:root[data-desktop="mac"] [role="dialog"][popover].ui-pop { animation: mac-pop-in 420ms var(--spring-pop); transform-origin: top; }
 :root[data-desktop="mac"] dialog.ui-pop { margin: 56px auto auto; border-radius: var(--radius-panel); box-shadow: inset 0 0 0 0.5px var(--mac-pop-edge), var(--mac-sheet-shadow); }
 :root[data-desktop="mac"] dialog.ui-pop.max-w-lg { max-width: 480px; }
-:root[data-desktop="mac"] dialog.ui-pop[open] { animation: mac-sheet-in 180ms ease-out; }
+:root[data-desktop="mac"] dialog.ui-pop[open] { animation: mac-sheet-in 480ms var(--spring-pop); transform-origin: top; }
 :root[data-desktop="mac"] dialog.ui-pop > div { max-height: calc(100dvh - 76px); }
 :root[data-desktop="mac"] dialog.ui-pop > div > header h2 { font-size: var(--type-title-3); }
 /* §3.14 The command palette isn't a sheet: it keeps its place, 640 wide, its rows 36 tall. */
 :root[data-desktop="mac"] dialog.ui-pop.mt-\[12vh\] { margin-top: 12vh; max-width: 640px; }
 :root[data-desktop="mac"] dialog.ui-pop.mt-\[12vh\] [role="option"] { min-height: 36px; border-radius: var(--radius-chip); }
-@keyframes mac-pop-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-@keyframes mac-sheet-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes mac-pop-in { from { opacity: 0; transform: translateY(4px) scale(0.92); } 30% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes mac-sheet-in { from { opacity: 0; transform: translateY(-8px) scale(0.94); } 30% { opacity: 1; } to { opacity: 1; transform: none; } }
 @keyframes mac-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   :root[data-desktop="mac"] :is([role="dialog"][popover].ui-pop, dialog.ui-pop[open]) { animation: mac-fade-in 120ms linear; }

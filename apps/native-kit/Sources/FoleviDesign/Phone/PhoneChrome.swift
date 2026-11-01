@@ -157,6 +157,8 @@ public struct PhoneTabBar: View {
     let plus: (CGRect) -> Void
     @Environment(\.colorScheme) private var scheme
     @State private var plusFrame: CGRect = .zero
+    /// The lens stretches as it slides to another tab, like liquid, then settles round (the owner's videos).
+    @State private var stretch: CGFloat = 1
 
     public init(current: PhoneTab?, aiOn: Bool = true, pick: @escaping (PhoneTab) -> Void = { _ in }, openAI: @escaping () -> Void = {}, plus: @escaping (CGRect) -> Void = { _ in }) {
         self.current = current
@@ -197,13 +199,20 @@ public struct PhoneTabBar: View {
                     ? [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.14), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(255, 255, 255, 0.08), inset: true)]
                     : [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.55), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(255, 255, 255, 0.35), inset: true)])
                     .frame(width: 64, height: 56)
+                    .scaleEffect(x: stretch, y: 2 - stretch, anchor: .center)
                     .offset(x: CGFloat(i) * 66)
-                    .animation(.spring(response: 0.38, dampingFraction: 0.78), value: i)
+                    .animation(FoleviSpring.slide, value: i)
             }
         }
         .padding(4)
         .frame(height: 64)
         .liquidGlass(fill: LiquidGlassLook.tabPillFill)
+        .onChange(of: current) { old, new in
+            guard old != nil, new != nil, !WebMotion.reduced else { return }
+            withAnimation(.spring(response: 0.16, dampingFraction: 0.9)) { stretch = 1.16 }
+            withAnimation(FoleviSpring.slide.delay(0.1)) { stretch = 1 }
+        }
+        .sensoryFeedback(.selection, trigger: current)
     }
 
     /// Foli AI and +, 56 pt targets 4 pt apart.
@@ -214,6 +223,8 @@ public struct PhoneTabBar: View {
                     AiMarkGlyph(size: 26).frame(width: 56, height: 56)
                 }
                 .buttonStyle(GlassPressStyle())
+                // Foli AI's sheet grows out of it (RebuildRoot, phoneSheet(zoomFrom: "ai")).
+                .sheetZoomSource("ai")
                 .accessibilityLabel("Foli AI")
             }
             Button { plus(plusFrame) } label: {

@@ -111,7 +111,7 @@ public struct WebIconButton: View {
 /// No system highlight: the web shows its own hover and press states.
 struct WebPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.contentShape(Rectangle())
+        configuration.label.contentShape(Rectangle()).pressDip(configuration.isPressed, scale: 0.94)
     }
 }
 

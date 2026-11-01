@@ -72,7 +72,7 @@ export function Popover({
       aria-label={label}
       tabIndex={-1}
       style={style}
-      className={`ui-pop z-[100] max-h-[min(620px,calc(100vh-2rem))] max-w-[calc(100vw-1rem)] overflow-y-auto rounded-panel border-0 p-0 text-ink outline-none animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none ${className}`}
+      className={`ui-pop z-[100] max-h-[min(620px,calc(100vh-2rem))] max-w-[calc(100vw-1rem)] overflow-y-auto rounded-panel border-0 p-0 text-ink outline-none origin-top animate-[folio-pop_440ms_var(--spring-pop)] ${className}`}
     >
       {children}
     </div>

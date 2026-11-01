@@ -484,7 +484,7 @@ function MenuPanel({
       data-checks={checks || undefined}
       data-variant={variant}
       style={pos ?? { position: "fixed", left: 0, top: 0, margin: 0, right: "auto", bottom: "auto", visibility: "hidden" }}
-      className={`ui-pop z-[100] min-w-56 overflow-y-auto border-0 p-1.5 text-ink animate-[folio-rise_140ms_var(--ease-folio)] motion-reduce:animate-none ${(menuClassName ?? "").replace(/(^|\s)w-full(?=\s|$)/g, " ")}`}
+      className={`ui-pop z-[100] min-w-56 overflow-y-auto border-0 p-1.5 text-ink origin-top animate-[folio-pop_420ms_var(--spring-pop)] ${(menuClassName ?? "").replace(/(^|\s)w-full(?=\s|$)/g, " ")}`}
       onContextMenu={(e) => e.preventDefault()}
       onKeyDown={(e) => {
         const at = actionable.indexOf(active);

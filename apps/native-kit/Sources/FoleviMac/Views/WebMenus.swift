@@ -359,7 +359,27 @@ public final class WebMenuWindow {
         menu.layer.addSubview(menu.host.view)
         window.addSubview(menu.layer)
         current = menu
+        // (After any placing under or over a view: it grows out of the point it was opened from.)
+        DispatchQueue.main.async { MainActor.assumeIsolated { menu.growIn(from: point) } }
         return menu
+    }
+
+    /// Grows out of `point` (the window's coordinates) on a spring with a little overshoot (FoleviSpring.pop's feel);
+    /// under Reduce Motion it only fades in.
+    private func growIn(from point: CGPoint) {
+        guard let v = host.view else { return }
+        v.alpha = 0
+        if UIAccessibility.isReduceMotionEnabled {
+            UIView.animate(withDuration: 0.12) { v.alpha = 1 }
+            return
+        }
+        let p = v.convert(point, from: layer)
+        let scale: CGFloat = 0.8
+        v.transform = CGAffineTransform(translationX: (p.x - v.bounds.midX) * (1 - scale), y: (p.y - v.bounds.midY) * (1 - scale)).scaledBy(x: scale, y: scale)
+        UIView.animate(withDuration: 0.42, delay: 0, usingSpringWithDamping: 0.66, initialSpringVelocity: 0, options: [.allowUserInteraction]) {
+            v.transform = .identity
+            v.alpha = 1
+        }
     }
 
     public enum Align { case start, end }
@@ -398,8 +418,14 @@ public final class WebMenuWindow {
     }
 
     public func close() {
-        layer.removeFromSuperview()
         if Self.current === self { Self.current = nil }
+        // Fades as it goes, shrinking a touch (taps go through to the window meanwhile).
+        let layer = layer
+        layer.isUserInteractionEnabled = false
+        UIView.animate(withDuration: 0.14, delay: 0, options: [.beginFromCurrentState]) { [host] in
+            host.view.alpha = 0
+            if !UIAccessibility.isReduceMotionEnabled { host.view.transform = CGAffineTransform(scaleX: 0.96, y: 0.96) }
+        } completion: { _ in layer.removeFromSuperview() }
     }
 }
 

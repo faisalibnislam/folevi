@@ -37,20 +37,22 @@ struct WebNoteCell: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            Group {
-                if compact {
-                    WebCompactNoteCard(card, hovered: hovered)
-                } else {
-                    WebNoteCard(card, unsynced: unsynced, hovered: hovered)
-                }
-            }
-            .offset(y: hovered ? -2 : 0)
-            .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2), value: hovered)
-            .contentShape(Rectangle())
-            .onTapGesture {
+            // (A button, so the card dips while pressed and springs back: FoleviSpring.press.)
+            Button {
                 let flags = NSEvent.modifierFlags
                 if let select, flags.contains(.command) { select(false) } else if let select, flags.contains(.shift) { select(true) } else { open() }
+            } label: {
+                Group {
+                    if compact {
+                        WebCompactNoteCard(card, hovered: hovered)
+                    } else {
+                        WebNoteCard(card, unsynced: unsynced, hovered: hovered)
+                    }
+                }
+                .offset(y: hovered ? -2 : 0)
+                .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2), value: hovered)
             }
+            .buttonStyle(PressDipButtonStyle())
             .draggable(drag)
             if hovered {
                 GeometryReader { geo in
@@ -119,9 +121,10 @@ struct WebFolderCell: View {
                     .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).strokeBorder(webVar("color-heading", scheme).color, lineWidth: 2))
                     .padding(-8)
             }
-            WebFolderCard(card, labelScale: labelScale, hovered: hovered)
-                .contentShape(Rectangle())
-                .onTapGesture { open() }
+            Button(action: open) {
+                WebFolderCard(card, labelScale: labelScale, hovered: hovered)
+            }
+            .buttonStyle(PressDipButtonStyle())
                 .draggable(FolderDragItem(id: card.id, name: card.name, parentId: nil))
             GeometryReader { geo in
                 let m = WebStyles.named("notes.folder.menu")

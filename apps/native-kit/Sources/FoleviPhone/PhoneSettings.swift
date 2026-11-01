@@ -784,6 +784,7 @@ struct PhoneThisDeviceSettings: View {
 }
 #endif
 
+#if os(iOS)
 // MARK: About
 
 /// Settings > About (the web's AboutSection.tsx): the version, never a build number, and the website's pages about
@@ -818,3 +819,4 @@ struct PhoneAboutSettings: View {
         }
     }
 }
+#endif

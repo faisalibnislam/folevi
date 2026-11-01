@@ -138,13 +138,25 @@
 :root[data-iphone] .fb-canvas-card[data-full] { padding-top: calc(max(env(safe-area-inset-top), var(--native-inset-top, 0px)) + 4px); padding-bottom: 0; }
 /* (In the app the page runs under native bars and env() reads 0: the room native gave the bar on top is the
    status bar's once its bars step aside.) */
+/* The bottom row of a full canvas: Done on the left, the block's zoom on the right, both 16 in from the sides and
+   12 over the home indicator (the app gives its height as --native-inset-bottom once its bars step aside), so
+   neither sits on the screen's edge nor on the other; notices (a warning, "Saved") rise above the row. */
+:root[data-iphone] .fb-canvas-card[data-full] { --fb-full-foot: calc(max(env(safe-area-inset-bottom), var(--native-inset-bottom, 0px), 8px) + 12px); }
 :root[data-iphone] .fb-vc-phone-done {
-  position: absolute; z-index: 20; left: 50%; bottom: calc(max(env(safe-area-inset-bottom), 24px) + 10px); transform: translateX(-50%);
-  min-width: 112px; height: 48px; padding: 0 24px; border-radius: var(--radius-capsule);
+  position: absolute; z-index: 20; left: 16px; bottom: var(--fb-full-foot);
+  min-width: 96px; height: 44px; padding: 0 24px; border-radius: var(--radius-capsule);
   background: var(--color-heading); color: var(--color-canvas); font: 600 var(--type-body)/1 var(--font-sans);
   box-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.35), 0 0 0 0.5px rgb(0 0 0 / 0.08);
+  transition: transform 420ms var(--spring-press);
 }
-:root[data-iphone] .fb-vc-phone-done:active { transform: translateX(-50%) scale(0.96); }
+:root[data-iphone] .fb-vc-phone-done:active { transform: scale(0.96); }
+:root[data-iphone] .fb-canvas-card[data-full] :is(.fc-bar-zoom, .mm-zoom, .st-bar-zoom, .wf-bar-zoom, .fb-chart-zoom-bar) {
+  right: 16px; bottom: var(--fb-full-foot); opacity: 1;
+}
+:root[data-iphone] .fb-canvas-card[data-full] :is(.fc-warning, .mm-warning, .st-warning, .wf-warning) { left: 16px; bottom: calc(var(--fb-full-foot) + 56px); }
+:root[data-iphone] .fb-canvas-card[data-full] .fc-status { bottom: calc(var(--fb-full-foot) + 56px); }
+/* The block's own toolbar along the top: 16 in from the sides like the bottom row. */
+:root[data-iphone] .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) { top: 8px; max-width: calc(100% - 32px); }
 /* ------------------------------------------------------------------------------------------------
  * Tables (table/TableView.tsx) on the phone: a card with rounded corners and hairline rules, the header row on a
  * soft wash in the sans face, cells in the note's face a size down with room for a finger, numbers lined up.
@@ -186,3 +198,5 @@
 :root[data-iphone] .fb-editor :is(.node-bookmark, .node-file, .node-embed, .node-audio) :is(.text-footnote, .text-subheadline:not(.font-medium)) { font-family: var(--font-sans); }
 :root[data-iphone] .fb-editor .node-embed .font-medium { font-family: var(--font-sans); font-weight: 600; }
 :root[data-iphone] .fb-editor .node-bookmark .line-clamp-2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+/* A whiteboard's sheet stops above the bottom row (Done), as the other canvases' zoom does. */
+:root[data-iphone] .fb-whiteboard-box[data-full] .fb-wb-body { padding-bottom: calc(var(--fb-full-foot) + 56px); }

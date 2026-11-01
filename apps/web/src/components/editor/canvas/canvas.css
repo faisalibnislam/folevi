@@ -33,6 +33,11 @@
 :root[data-desktop="mac"] .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) { -webkit-app-region: drag; }
 :root[data-desktop="mac"] .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) :is(a, button, input, textarea, select, [role="button"], [role="group"] > *, [tabindex]) { -webkit-app-region: no-drag; }
 .fb-canvas-card[data-full] .fb-canvas-body { flex: 1; min-height: 0; }
+/* A phone's browser: the zoom bar and notices 16 in from the edges and clear of the home indicator. */
+@media (max-width: 767px) {
+  .fb-canvas-card[data-full] :is(.fc-bar-zoom, .mm-zoom, .st-bar-zoom, .wf-bar-zoom, .fb-chart-zoom-bar) { right: 16px; bottom: 16px; opacity: 1; }
+  .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) { max-width: calc(100% - 32px); }
+}
 .fb-canvas-card[data-full] .fb-wb-resize { display: none; }
 
 /* ---------------------------------------------------------------- the visual block card (CanvasCard.tsx)

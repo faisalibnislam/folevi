@@ -139,10 +139,12 @@ struct RebuildNoteScreen: View {
     }
 
     /// The bars' room over the page (points): the top bar; at the bottom the keyboard and the bar on it while
-    /// writing, else the floating tool bars.
+    /// writing, else the floating tool bars. With the bars hidden (Focus Mode, a block open full screen) only the
+    /// status bar and the home indicator: a full canvas's tools sit right under the status bar, not a bar lower.
     private var insets: [Double] {
-        let top = safe.top + 52
-        let bottom: CGFloat = model.keyboardVisible ? model.keyboardOverlap + 48 + 8 : max(10, safe.bottom - 10) + 60 + 8
+        let immersive = model.editorState?.focus == true
+        let top = immersive ? safe.top : safe.top + 52
+        let bottom: CGFloat = model.keyboardVisible ? model.keyboardOverlap + 48 + 8 : immersive ? safe.bottom : max(10, safe.bottom - 10) + 60 + 8
         return [Double(top.rounded()), Double(bottom.rounded())]
     }
 

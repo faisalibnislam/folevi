@@ -576,7 +576,7 @@ export function VersionFooter({ className }: { className?: string }) {
 /** The iPhone, iPad or Android app's own version, else this interface's (the website's, and the Mac app's, whose
  * built-in interface is built for its version). Before hydration the interface's, so a page built ahead of time
  * shows the same words before it knows where it runs. */
-function useShownVersion() {
+export function useShownVersion() {
   return useSyncExternalStore(noSubscription, () => nativeApp()?.version || FOLEVI_VERSION, () => FOLEVI_VERSION);
 }
 const noSubscription = () => () => undefined;

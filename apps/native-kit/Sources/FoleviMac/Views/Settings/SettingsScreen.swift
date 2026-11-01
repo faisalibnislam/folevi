@@ -17,7 +17,7 @@ import FoleviEngine
 
 /// The web's Settings sections (SettingsView.tsx `Section`).
 public enum MacSettingsSection: String, CaseIterable, Sendable {
-    case account, ai, billing, security, privacy, devices, connectedApps = "connected-apps", appearance, notifications, sync, library, data, desktop
+    case account, ai, billing, security, privacy, devices, connectedApps = "connected-apps", appearance, notifications, sync, library, data, desktop, about
     case workspace, members, workspacePrivacy = "workspace-privacy", workspaceGuests = "workspace-guests", workspaceBilling = "workspace-billing", workspaceData = "workspace-data"
 
     var label: String {
@@ -35,6 +35,7 @@ public enum MacSettingsSection: String, CaseIterable, Sendable {
         case .library: "Library"
         case .data: "Import & export"
         case .desktop: "Desktop app"
+        case .about: "About"
         case .workspace: "General"
         case .members: "Members"
         case .workspacePrivacy: "Privacy"
@@ -68,6 +69,7 @@ public enum MacSettingsSection: String, CaseIterable, Sendable {
         case .library: .libraryBig
         case .data, .workspaceData: .arrowDownUp
         case .desktop: .appWindowMac
+        case .about: .info
         case .workspace: .buildingComplex
         case .members: .users
         case .workspaceGuests: .userRoundPlus
@@ -200,11 +202,12 @@ public final class MacSettingsModel {
     /// The section to show for an asked one (a section this mode lacks shows the first it has: the library).
     func shown(_ asked: MacSettingsSection?) -> MacSettingsSection {
         let all = groups.flatMap(\.items)
+        if asked == .about { return .about }
         if let asked, all.contains(asked) || (asked.isWorkspace && !isLocal) { return asked }
         return isLocal ? .library : (asked == nil ? .account : (all.first ?? .account))
     }
 
-    /// "Folevi 1.0.05", the app's own version.
+    /// "Folevi 1.0.05", the app's own version (Settings > About).
     var version: String { "Folevi \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")" }
 }
 
@@ -280,6 +283,7 @@ struct SettingsNav: View {
             group("Support") {
                 item("Help", icon: .circleQuestionMark, active: false) { model.frame.host?.frameOpenHelp() }
                 item("Contact support…", icon: .lifeBuoy, active: false) { contact() }
+                item(MacSettingsSection.about.label, icon: .info, active: current == .about) { model.frame.open(.web("/settings/about")) }
             }
         }
         .accessibilityElement(children: .contain)
@@ -352,7 +356,7 @@ private struct NavRowLabel: View {
     }
 }
 
-/// The open section: its large title, its cards, the version.
+/// The open section: its large title and its cards (the version is under About).
 struct SettingsContent: View {
     let model: MacSettingsModel
     let section: MacSettingsSection
@@ -367,10 +371,6 @@ struct SettingsContent: View {
                     .accessibilityAddTraits(.isHeader)
             }
             sectionBody
-            // The window shows the version once, at the end of General (the Mac's own settings), not under every pane.
-            if !windowed || section == .desktop {
-                SText(model.version, "footer").padding(.top, SettingsStyle.pair("footer").light.padding.top)
-            }
         }
     }
 
@@ -381,6 +381,7 @@ struct SettingsContent: View {
         case .appearance: AppearanceSettingsView(model: model)
         case .data: DataSettings(model: model, workspace: nil)
         case .desktop: DesktopSettingsView(model: model)
+        case .about: AboutSettingsView(model: model)
         case .account: AccountSettingsView(model: model)
         case .notifications: NotificationSettingsView(model: model)
         case .security: SecuritySettingsView(model: model)

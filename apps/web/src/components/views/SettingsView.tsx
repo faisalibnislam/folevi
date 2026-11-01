@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppWindowMac, ArrowDownUp, Bell, Building2, CreditCard, HelpCircle, LifeBuoy, LockKeyhole, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, Shield, ShieldCheck, Smartphone, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
+import { AppWindowMac, Info, ArrowDownUp, Bell, Building2, CreditCard, HelpCircle, LifeBuoy, LockKeyhole, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, Shield, ShieldCheck, Smartphone, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { ViewChrome } from "@/components/app/Shell";
@@ -30,6 +30,7 @@ import { ConnectedAppsSection } from "./settings/ConnectedAppsSection";
 import { PrivacySection } from "./settings/PrivacySection";
 import { WorkspacePrivacySection } from "./settings/WorkspacePrivacySection";
 import { Card } from "./settings/Card";
+import { AboutSection } from "./settings/AboutSection";
 import { useCapabilities, type Capability } from "@/lib/mode";
 import { desktop } from "@/lib/desktop";
 import { nativeApp } from "@/lib/nativeApp";
@@ -38,9 +39,9 @@ import { ChevronLeft } from "lucide-react";
 import { PillButton } from "@/components/iphone/Glass";
 import { RowIcon } from "@/components/iphone/Grouped";
 import { inMacApp } from "@/lib/desktop/mac";
-import { IosRow, IosSection, IosText, SettingsScreensHost, VersionFooter, useSettingsScreens } from "@/components/iphone/SettingsKit";
+import { IosRow, IosSection, IosText, SettingsScreensHost, useSettingsScreens } from "@/components/iphone/SettingsKit";
 
-type Section = "account" | "ai" | "billing" | "security" | "privacy" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "workspace-privacy" | "sync" | "library" | "data" | "desktop" | "this-device";
+type Section = "account" | "ai" | "billing" | "security" | "privacy" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "workspace-privacy" | "sync" | "library" | "data" | "desktop" | "this-device" | "about";
 type Item = { id: Section; label: string; icon: LucideIcon };
 /** Things about you (your account and your Personal), the same whichever context is open. */
 const YOU: Item[] = [
@@ -78,6 +79,8 @@ const WORKSPACE: (Item & { who: "everyone" | "managers" | "billing" })[] = [
   { id: "workspace-data", label: "Import & export", icon: ArrowDownUp, who: "managers" },
 ];
 const WORKSPACE_SECTIONS = new Set<Section>(WORKSPACE.map((i) => i.id));
+/** About (the version and the policies): in the Support group, at the end of the list. */
+const ABOUT: Item = { id: "about", label: "About", icon: Info };
 /**
  * Sections only an account has (docs/LOCAL_MODE_PLAN.md §5.2): in local mode they're not listed, and opened by
  * address they show the "Sign in to Folevi" note. Settings > AI stays: in local mode it sets up Foli AI on the
@@ -122,7 +125,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
     // In local mode the library comes first: it's where Settings opens (LOCAL_FIRST).
     .sort((a, b) => Number(b.id === "library") - Number(a.id === "library"));
   const groups = [{ label: "You", items: you }, ...(workspace ? [{ label: workspace.name, items: workspaceItems }] : [])];
-  const item = [...YOU, ...WORKSPACE].find((s) => s.id === section);
+  const item = [...YOU, ...WORKSPACE, ABOUT].find((s) => s.id === section);
   const heading = (WORKSPACE_SECTIONS.has(section) && HEADINGS[section]) || item?.label;
   // A workspace section opened in Personal (a bookmark, or right after leaving a workspace).
   const noWorkspace = WORKSPACE_SECTIONS.has(section) && !workspace;
@@ -154,8 +157,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
             </IosSection>
           ))}
           {!workspace && caps.workspaces ? <IphoneCreateWorkspace /> : null}
-          <SupportGroup look="ios" />
-          <VersionFooter />
+          <SupportGroup look="ios" current={section} />
         </div>
       </ViewChrome>
     );
@@ -207,8 +209,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
                 </IosSection>
               ))}
               {!workspace && caps.workspaces ? <IphoneCreateWorkspace /> : null}
-              <SupportGroup look="ios" />
-              <VersionFooter />
+              <SupportGroup look="ios" current={section} />
             </nav>
             <IphoneLookContext.Provider value>
               <SettingsScreensHost
@@ -263,7 +264,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
               </div>
             ))}
             {!workspace && caps.workspaces ? <CreateWorkspaceNudge /> : null}
-            <SupportGroup look="web" />
+            <SupportGroup look="web" current={section} />
           </div>
         </nav>
         <div className="min-w-0 space-y-5">
@@ -294,7 +295,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
           {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
           {section === "desktop" ? <DesktopSection /> : null}
           {section === "this-device" ? <ThisDeviceSection /> : null}
-          <VersionFooter className="pt-4 text-footnote leading-4 text-muted" />
+          {section === "about" ? <AboutSection /> : null}
         </div>
       </div>
     </ViewChrome>
@@ -361,6 +362,7 @@ function SectionBody({ section, noWorkspace, sectionHidden }: { section: Section
       {section === "data" ? <DataSection key="personal" target={{ kind: "personal" }} /> : null}
       {section === "desktop" ? <DesktopSection /> : null}
       {section === "this-device" ? <ThisDeviceSection /> : null}
+      {section === "about" ? <AboutSection /> : null}
     </div>
   );
 }
@@ -369,7 +371,7 @@ function SectionBody({ section, noWorkspace, sectionHidden }: { section: Section
  * Help, Contact support and (for Folevi's own admins) the Admin console, at the end of the list of sections: the
  * account menu keeps only Help, so these live here.
  */
-function SupportGroup({ look }: { look: "web" | "ios" }) {
+function SupportGroup({ look, current }: { look: "web" | "ios"; current?: Section }) {
   const { profile } = useAppState();
   const caps = useCapabilities();
   const [contacting, setContacting] = useState(false);
@@ -382,6 +384,7 @@ function SupportGroup({ look }: { look: "web" | "ios" }) {
       <IosSection header="Support">
         <IosRow icon={<RowIcon><HelpCircle /></RowIcon>} label="Help" href="/help" />
         <IosRow icon={<RowIcon><LifeBuoy /></RowIcon>} label="Contact support" onClick={contact} />
+        <IosRow icon={<RowIcon><Info /></RowIcon>} label="About" href="/settings/about" current={current === "about"} />
         {admin ? <IosRow icon={<RowIcon><Shield /></RowIcon>} label="Admin console" onClick={openAdminConsole} /> : null}
         {dialog}
       </IosSection>
@@ -403,6 +406,12 @@ function SupportGroup({ look }: { look: "web" | "ios" }) {
             <LifeBuoy size={16} aria-hidden className={icon} />
             Contact support…
           </button>
+        </li>
+        <li>
+          <AppLink href="/settings/about" className={row} aria-current={current === "about" ? "page" : undefined}>
+            <Info size={16} aria-hidden className={icon} />
+            About
+          </AppLink>
         </li>
         {admin ? (
           <li>

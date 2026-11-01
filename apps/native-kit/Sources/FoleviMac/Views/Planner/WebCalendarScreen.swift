@@ -681,8 +681,9 @@ struct AllDayCell: View {
     }
 }
 
-/// The hour grid (24 hours of 44 pt): hour labels, tasks with a time as 30-minute blocks, timed events, the line at
-/// the current time; it opens at 6:00.
+/// The hour grid (24 hours of 52 pt, as the web's): hours as "9 AM" (an hour near now gives way to now's time),
+/// tasks with a time as 30-minute blocks and timed events, tinted with a coloured edge, today's column lighter with
+/// now's line and dot; it opens an hour before now when today is shown, else at 6:00.
 struct HourGrid: View {
     let days: [String]
     let today: String
@@ -690,7 +691,7 @@ struct HourGrid: View {
     let events: [String: [PlacedEvent]]
     let state: WebCalendarState
     let tasks: PlannerTasks
-    static let hour: CGFloat = 44
+    static let hour: CGFloat = 52
     @Environment(\.colorScheme) private var scheme
     @State private var now = Self.minutesNow()
     @State private var hover: (day: String, minutes: Int)?
@@ -701,24 +702,50 @@ struct HourGrid: View {
         return (c.hour ?? 0) * 60 + (c.minute ?? 0)
     }
 
+    /// "9 AM", or "21" where the clock is 24-hour (web hourLabel).
+    static func hourLabel(_ h: Int) -> String {
+        var parts = DateComponents()
+        parts.hour = h
+        return Calendar.current.date(from: parts).map { $0.formatted(.dateTime.hour(.defaultDigits(amPM: .abbreviated))) } ?? "\(h)"
+    }
+
+    /// Minutes after midnight in this device's clock (web clock()).
+    static func clock(_ minutes: Int) -> String {
+        var parts = DateComponents()
+        parts.hour = minutes / 60
+        parts.minute = minutes % 60
+        return Calendar.current.date(from: parts).map { $0.formatted(date: .omitted, time: .shortened) } ?? PlannerDates.time(minutes)
+    }
+
     var body: some View {
         let label = PS("week.hour.label").resolve(scheme)
         let line = PV("color-line").c(scheme)
+        let showsToday = days.contains(today)
+        let ember = FoleviTokens.Chrome.ember.resolve(scheme).color
+        let openHour = showsToday ? max(0, min(16, now / 60 - 1)) : CalendarMath.firstVisibleHour
         ScrollViewReader { reader in
             ScrollView {
                 ZStack(alignment: .topLeading) {
-                    // Where it opens: 6:00 less 10 pt.
+                    // Where it opens: an hour before now on today, else 6:00, less 10 pt.
                     VStack(spacing: 0) {
-                        Color.clear.frame(width: 1, height: CGFloat(CalendarMath.firstVisibleHour) * Self.hour - 10)
+                        Color.clear.frame(width: 1, height: max(0, CGFloat(openHour) * Self.hour - 10))
                         Color.clear.frame(width: 1, height: 1).id("start")
                     }
                     HStack(alignment: .top, spacing: 0) {
                         ZStack(alignment: .topTrailing) {
                             Color.clear
-                            ForEach(1..<24, id: \.self) { h in
-                                Text(PlannerDates.time(h * 60)).webText(label.text).monospacedDigit().foregroundStyle(label.color.color)
+                            ForEach(Array(1..<24).filter { !showsToday || abs($0 * 60 - now) >= 20 }, id: \.self) { h in
+                                Text(Self.hourLabel(h)).webText(label.text).monospacedDigit().lineLimit(1).fixedSize().foregroundStyle(label.color.color)
                                     .padding(.trailing, 8)
                                     .offset(y: CGFloat(h) * Self.hour - label.height / 2)
+                            }
+                            if showsToday {
+                                Text(Self.clock(now)).webText(WebTextStyle(size: 11, leading: 14, weight: 600)).monospacedDigit().lineLimit(1).fixedSize()
+                                    .foregroundStyle(ember)
+                                    .padding(.horizontal, 2)
+                                    .background(PV("color-canvas").c(scheme))
+                                    .padding(.trailing, 6)
+                                    .offset(y: CGFloat(now) / 60 * Self.hour - 7)
                             }
                         }
                         .frame(width: 56, height: 24 * Self.hour, alignment: .topTrailing)
@@ -741,6 +768,8 @@ struct HourGrid: View {
         return GeometryReader { geo in
             let w = geo.size.width
             ZStack(alignment: .topLeading) {
+                // Today's column a touch lighter, so it stands out.
+                if d == today { PV("color-ink").c(scheme).opacity(0.025) }
                 VStack(spacing: 0) {
                     ForEach(0..<24, id: \.self) { _ in
                         Color.clear.frame(height: Self.hour - 1)
@@ -761,8 +790,13 @@ struct HourGrid: View {
                     if let pl = placed["t:\(t.id)"] { taskBlock(t, pl, width: w) }
                 }
                 if d == today {
-                    Rectangle().fill(PS("week.now").resolve(scheme).borderColor.color).frame(width: w, height: 2).offset(y: CGFloat(now) / 60 * Self.hour)
-                        .allowsHitTesting(false)
+                    let ember = FoleviTokens.Chrome.ember.resolve(scheme).color
+                    let y = CGFloat(now) / 60 * Self.hour
+                    ZStack(alignment: .topLeading) {
+                        ember.frame(width: w, height: 2).offset(y: y - 1)
+                        RoundedRectangle(cornerRadius: 4, style: .circular).fill(ember).frame(width: 8, height: 8).offset(x: -4, y: y - 4)
+                    }
+                    .allowsHitTesting(false)
                 }
             }
             .frame(width: w, height: 24 * Self.hour, alignment: .topLeading)
@@ -785,20 +819,23 @@ struct HourGrid: View {
 
     private func taskBlock(_ t: TaskRow, _ p: CalendarMath.Placed, width: CGFloat) -> some View {
         let r = frameFor(p, width: width)
-        let s = PS("week.timed")
-        let st = s.resolve(scheme)
         let open = t.status == "open"
+        let bar = PV(open ? "color-heading" : "color-line-strong").c(scheme)
         return Button { tasks.edit(t) } label: {
-            (Text(t.dueTime ?? "").foregroundStyle((open ? st.color.color : PV("color-ink-faint").c(scheme)).opacity(0.8)) + Text(" ") + Text(t.title.isEmpty ? "Untitled task" : t.title))
-                .webText(st.text)
-                .monospacedDigit()
+            // web taskChipClass: the heading's ink as a tint and a 3 pt bar down its edge; done ones quiet.
+            Text(t.title.isEmpty ? "Untitled task" : t.title)
+                .webText(WebTextStyle(size: 12, leading: 16, weight: 500))
                 .lineLimit(1)
                 .strikethrough(!open)
-                .foregroundStyle(open ? st.color.color : PV("color-ink-faint").c(scheme))
-                .padding(st.padding.edgeInsets)
+                .foregroundStyle(PV(open ? "color-ink" : "color-ink-faint").c(scheme))
+                .padding(.leading, 6 + 3)
+                .padding(.trailing, 6)
+                .padding(.top, 2)
                 .frame(width: r.width, height: r.height, alignment: .topLeading)
-                .background(RoundedRectangle(cornerRadius: st.radius, style: .circular).fill(open ? st.background.color : PV("color-surface-sunken").c(scheme)))
-                .background(RoundedRectangle(cornerRadius: st.radius + 1, style: .circular).fill(PV("color-canvas").c(scheme)).padding(-1))
+                .background(open ? PV("color-heading").c(scheme).opacity(0.09) : PV("color-surface-sunken").c(scheme))
+                .overlay(alignment: .leading) { bar.frame(width: 3) }
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .circular))
+                .background(RoundedRectangle(cornerRadius: 5, style: .circular).fill(PV("color-canvas").c(scheme)).padding(-1))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PlainPress())
@@ -825,17 +862,27 @@ struct EventBlock: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
+        let tone = calendarColor(event.color).c(scheme)
         Button { showEvent(event, anchor: anchor) } label: {
+            // web eventStyle: the calendar's colour as a tint and a 3 pt bar; the title up to three lines, the time
+            // under it when there's room.
             HStack(spacing: 0) {
-                Rectangle().fill(calendarColor(event.color).c(scheme)).frame(width: 2)
-                Text("\(first ? PlannerDates.time(start) + " " : "")\(event.title.isEmpty ? "Untitled event" : event.title)")
-                    .webText(WebTextStyle(size: 11, leading: 14)).lineLimit(1)
-                    .padding(.horizontal, 4)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                tone.frame(width: 3)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(event.title.isEmpty ? "Untitled event" : event.title)
+                        .webText(WebTextStyle(size: 12, leading: 16, weight: 500)).lineLimit(3)
+                        .foregroundStyle(PV("color-ink").c(scheme))
+                    if first, size.height >= 38 {
+                        Text(HourGrid.clock(start)).webText(WebTextStyle(size: 11, leading: 14)).monospacedDigit().lineLimit(1)
+                            .foregroundStyle(PV("color-ink-muted").c(scheme))
+                    }
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            .foregroundStyle(PV("color-ink-muted").c(scheme))
             .frame(width: size.width, height: size.height)
-            .background(PV(over ? "color-surface-sunken" : "color-surface").c(scheme))
+            .background(tone.opacity(over ? 0.24 : 0.16))
             .clipShape(RoundedRectangle(cornerRadius: 4, style: .circular))
             .contentShape(Rectangle())
             .plannerAnchor(anchor)
@@ -851,7 +898,11 @@ struct SlotDrop: DropDelegate {
     @Binding var hover: (day: String, minutes: Int)?
     let drop: @MainActor (String, Int) -> Void
 
-    func slot(_ info: DropInfo) -> Int { CalendarMath.slot(atY: info.location.y) }
+    /// The half hour under the pointer, on this grid's 52 pt hours.
+    func slot(_ info: DropInfo) -> Int {
+        let m = Int(info.location.y / HourGrid.hour * 60) / CalendarMath.slotMinutes * CalendarMath.slotMinutes
+        return max(0, min(24 * 60 - CalendarMath.slotMinutes, m))
+    }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
         let m = slot(info)

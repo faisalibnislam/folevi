@@ -31,7 +31,7 @@ const credits = (n: number) => n.toLocaleString("en-US");
 
 export const metadata = pageMetadata({
   title: `Pricing: a free notes app, with plans from ${formatPrice(PRICES.core.month)}`,
-  description: `Folevi is free to start. Core is ${formatPrice(PRICES.core.month)} a month with no AI, Pro is ${formatPrice(PRICES.pro.month)} with ${MONTHLY_CREDITS.pro} AI credits, and Pro AI is ${formatPrice(PRICES.pro_ai.month)} with unlimited AI. Try it free.`,
+  description: `Folevi is free to start. Core is ${formatPrice(PRICES.core.month)} a month with no AI, Pro is ${formatPrice(PRICES.pro.month)} with ${MONTHLY_CREDITS.pro} AI credits, and Pro AI is ${formatPrice(PRICES.pro_ai.month)} with ${MONTHLY_CREDITS.pro_ai} AI credits. Try it free.`,
   path: "/pricing",
 });
 
@@ -52,8 +52,8 @@ const faqs: FaqItem[] = [
     a: `Every new account gets ${trialName} free for ${TRIAL_DAYS} days, with ${TRIAL_CREDITS} AI credits and no card. When the trial ends you move to Free, which has no AI, unless you choose a plan. Nothing is charged automatically.`,
   },
   {
-    q: "What does “Unlimited AI, fair use” mean?",
-    a: `${TIER_NAMES.pro_ai} is for people who use AI every day. Fair use means ${credits(MONTHLY_CREDITS.pro_ai)} credits a month for each person, which is about ${credits(Math.floor(MONTHLY_CREDITS.pro_ai / 2))} questions to Foli AI. If you reach it, buy a credit pack or wait for your credits to reset. There is also an hourly limit that stops automated use.`,
+    q: "How much AI does ${TIER_NAMES.pro_ai} include?",
+    a: `${TIER_NAMES.pro_ai} is for people who use AI every day: ${credits(MONTHLY_CREDITS.pro_ai)} credits a month for each person, which is about ${credits(Math.floor(MONTHLY_CREDITS.pro_ai / 2))} questions to Foli AI. If you reach it, buy a credit pack or wait for your credits to reset. There is also an hourly limit that stops automated use.`,
   },
   {
     q: "Why does Core have no AI?",
@@ -113,7 +113,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: "Is the Mac app included?",
-    a: "Folevi runs on the web today, on every plan. The Mac app is coming soon, and every plan, including Free, will include it.",
+    a: "Folevi runs on the web and on Mac, on every plan, including Free.",
   },
 ];
 

@@ -467,7 +467,7 @@ export const DOC_ARTICLES: DocArticle[] = [
             {TIER_NAMES.pro}: {MONTHLY_CREDITS.pro} credits a month.
           </li>
           <li>
-            {TIER_NAMES.pro_ai}: unlimited AI with fair use, which is {MONTHLY_CREDITS.pro_ai.toLocaleString("en-US")} credits a month.
+            {TIER_NAMES.pro_ai}: {MONTHLY_CREDITS.pro_ai.toLocaleString("en-US")} AI credits a month.
           </li>
           <li>
             The {TRIAL_DAYS}-day trial for new accounts: {TRIAL_CREDITS} credits.

@@ -161,7 +161,7 @@ export const FEATURES: Feature[] = [
                 {TIER_NAMES.pro}: {MONTHLY_CREDITS.pro} credits a month, for {formatPrice(PRICES.pro.month)} a month.
               </li>
               <li>
-                {TIER_NAMES.pro_ai}: unlimited AI with fair use ({credits(MONTHLY_CREDITS.pro_ai)} credits a month), for {formatPrice(PRICES.pro_ai.month)} a month.
+                {TIER_NAMES.pro_ai}: {credits(MONTHLY_CREDITS.pro_ai)} AI credits a month, for {formatPrice(PRICES.pro_ai.month)} a month.
               </li>
               <li>
                 {TIER_NAMES.core}: no AI at all, for {formatPrice(PRICES.core.month)} a month.

@@ -9,7 +9,7 @@ import { BUILT_IN_TEMPLATES } from "@/lib/templates";
  *
  * - Folevi's side comes only from this repository: prices and limits from the plan catalog
  *   (convex/lib/plans.ts), features from the feature pages and docs (content/features.tsx, content/docs.tsx)
- *   and docs/PRODUCT.md. Platforms are stated plainly: the web today, the Mac app coming soon, no iOS or
+ *   and docs/PRODUCT.md. Platforms are stated plainly: the web and the Mac app today, no iOS or
  *   Android app.
  * - The other product's side comes only from that company's own public pages. Every competitor fact names
  *   its sources (`sources` on the row, listed on the page with links) and the day it was checked
@@ -95,7 +95,7 @@ export const FOLEVI_ROWS: Record<FoleviRowKey, { label: string; value: string }>
     value: `Metered in credits: Pro ${MONTHLY_CREDITS.pro}, Pro AI ${MONTHLY_CREDITS.pro_ai} (fair use). Free has AI only during the trial, and Core has none. Packs of ${credits(CREDIT_PACKS.credits_500.credits)} for ${p(CREDIT_PACKS.credits_500.priceCents)} or ${credits(CREDIT_PACKS.credits_1000.credits)} for ${p(CREDIT_PACKS.credits_1000.priceCents)}.`,
   },
   offline: { label: "Offline", value: "Yes, in the browser. Every edit is saved on the device first and syncs when you reconnect." },
-  platforms: { label: "Apps", value: "Web, in any modern browser, and installable as a web app. Mac app coming soon. No iOS, iPad, Android or Windows app yet." },
+  platforms: { label: "Apps", value: "Web, in any modern browser, and installable as a web app, plus a Mac app. No iOS, iPad, Android or Windows app yet." },
   collaboration: { label: "Working together", value: "Workspaces with roles, guests, comments and mentions. If two people change the same block at once, Folevi shows a conflict to resolve." },
   publish: { label: "Public sharing", value: "Public links with an optional password and expiry date, revocable at any time" },
   export: { label: "Export", value: "A page as Markdown, HTML or PDF (through print). Everything as a ZIP of Markdown files." },
@@ -155,7 +155,7 @@ const diff = {
 
 /** Said plainly wherever apps are compared. */
 const PLATFORMS_HONEST =
-  "Folevi runs in the browser today. The Mac app is coming soon, and there is no iPhone, iPad, Android or Windows app yet. You can install the web app from your browser so it opens in its own window.";
+  "Folevi runs in the browser and on Mac. There is no iPhone, iPad, Android or Windows app yet. You can install the web app from your browser so it opens in its own window.";
 
 const importSteps = (exportStep: ReactNode) => (
   <>
@@ -230,7 +230,7 @@ export const COMPETITORS: Competitor[] = [
       { q: "Can Folevi replace Notion?", a: "For notes, documents, tasks and linked pages, yes. If you rely on Notion’s databases, automations, integrations or mobile apps, Folevi doesn’t have those today." },
       { q: "Does Folevi work offline in the browser?", a: "Yes. Every edit is saved in the browser’s storage first and syncs when you reconnect. After one visit online, Folevi also opens with no connection." },
       { q: "Can I import my Notion pages?", a: "Yes, as Markdown. Export from Notion as Markdown, then import the ZIP in Settings → Import & export. Databases export as CSV, which Folevi doesn’t import." },
-      { q: "Does Folevi have mobile apps?", a: "Not yet. Folevi runs in the browser, and the Mac app is coming soon. There is no iOS or Android app yet." },
+      { q: "Does Folevi have mobile apps?", a: "Not yet. Folevi runs in the browser and on Mac. There is no iOS or Android app yet." },
       { q: "How much does Folevi cost compared with Notion?", a: `Folevi’s paid plans are ${p(PRICES.core.month)}, ${p(PRICES.pro.month)} and ${p(PRICES.pro_ai.month)} a month, per member in a workspace. On 30 September 2026, Notion’s website listed Plus at $12 and Business at $24 per member a month, or $10 and $20 billed yearly.` },
     ],
     sources: [
@@ -299,7 +299,7 @@ export const COMPETITORS: Competitor[] = [
     faq: [
       { q: "Is Folevi an alternative to Craft?", a: "For notes, tasks and linked pages on the web, yes. Folevi doesn’t have Craft’s native apps, on-device AI or website publishing." },
       { q: "Can I move my Craft documents to Folevi?", a: "Yes. Export them from Craft as Markdown, then import the files, a folder or a ZIP in Folevi under Settings → Import & export." },
-      { q: "Does Folevi have an iPhone or Android app?", a: "Not yet. Folevi runs in the browser today and the Mac app is coming soon." },
+      { q: "Does Folevi have an iPhone or Android app?", a: "Not yet. Folevi runs in the browser and on Mac today." },
       { q: "Can I use Folevi without AI?", a: `Yes. Core costs ${p(PRICES.core.month)} a month and has no AI at all. On the other plans you can turn Foli AI off in Settings.` },
       { q: "How is Folevi priced for a team?", a: `Per member: ${p(PRICES.core.month)}, ${p(PRICES.pro.month)} or ${p(PRICES.pro_ai.month)} a month on Core, Pro or Pro AI. Guests are free.` },
     ],
@@ -366,7 +366,7 @@ export const COMPETITORS: Competitor[] = [
     faq: [
       { q: "Is Folevi a good Apple Notes alternative?", a: "It is if you want tasks with dates, linked pages, team workspaces or notes you can open in any browser. If you mostly write on an iPhone, Folevi has no iPhone app yet." },
       { q: "Can I move my Apple Notes to Folevi?", a: "Yes. Export your notes as Markdown from Apple Notes on a Mac or iPhone, then import the files in Folevi under Settings → Import & export." },
-      { q: "Does Folevi have an iPhone app?", a: "Not yet. Folevi runs in the browser today, and the Mac app is coming soon." },
+      { q: "Does Folevi have an iPhone app?", a: "Not yet. Folevi runs in the browser and on Mac today." },
       { q: "Is Folevi end-to-end encrypted like Apple Notes?", a: "No. Folevi encrypts data in transit and at rest, but its servers can process your content so search, sharing and sync work. Apple Notes is end-to-end encrypted when you turn on Advanced Data Protection." },
     ],
     sources: [
@@ -444,7 +444,7 @@ export const COMPETITORS: Competitor[] = [
       { q: "Is Folevi an Obsidian alternative?", a: "It is if you want linked notes with sync, sharing and team workspaces included, in the browser. If you want local Markdown files and plugins, Obsidian does that and Folevi doesn’t." },
       { q: "Can I import my Obsidian vault?", a: "Yes. Choose the vault folder, or a ZIP of it, in Settings → Import & export. Wiki links come in as plain text." },
       { q: "Does Folevi have backlinks?", a: "Yes. Type [[ to link a page. The linked page lists every page that links to it, with a line of text around each link." },
-      { q: "Does Folevi have mobile apps?", a: "Not yet. Folevi runs in the browser, and the Mac app is coming soon. There is no iOS or Android app yet." },
+      { q: "Does Folevi have mobile apps?", a: "Not yet. Folevi runs in the browser and on Mac. There is no iOS or Android app yet." },
       { q: "Is Folevi end-to-end encrypted?", a: "No. Data is encrypted in transit and at rest, but Folevi’s servers can process your content so search, sharing and sync work." },
     ],
     sources: [
@@ -515,7 +515,7 @@ export const COMPETITORS: Competitor[] = [
     faq: [
       { q: "Is Folevi a Bear alternative?", a: "It is if you want to share notes, work in a team or write on a computer that isn’t a Mac. If you mostly write on an iPhone or iPad, Folevi has no app for those yet." },
       { q: "Can I move my Bear notes to Folevi?", a: "Yes. Export them from Bear as Markdown, then import the files, a folder or a ZIP in Folevi under Settings → Import & export." },
-      { q: "Does Folevi have an iPhone app?", a: "Not yet. Folevi runs in the browser today, and the Mac app is coming soon." },
+      { q: "Does Folevi have an iPhone app?", a: "Not yet. Folevi runs in the browser and on Mac today." },
       { q: "Does Folevi sync on the free plan?", a: `Yes. Free syncs across ${FREE_DEVICES} devices, with ${gb(STORAGE_BYTES.free)} of storage.` },
     ],
     sources: [
@@ -601,7 +601,7 @@ export const COMPETITORS: Competitor[] = [
       { q: "Is Folevi an Evernote alternative?", a: "For notes, tasks and documents on the web, yes. Folevi doesn’t have Evernote’s web clipper, document scanning, phone apps or integrations." },
       { q: "Can I import my Evernote notes?", a: "Not directly. Folevi imports Markdown and text, and Evernote exports ENEX, HTML and PDF. Convert the ENEX file to Markdown first, for example with Obsidian’s Importer plugin or Apple Notes on a Mac, then import the Markdown." },
       { q: "Does the Folevi Free plan limit notes?", a: `No. Free has no limit on notes or folders. It has ${gb(STORAGE_BYTES.free)} of storage, works on ${FREE_DEVICES} devices, and has AI during the ${TRIAL_DAYS}-day trial.` },
-      { q: "Does Folevi have mobile apps?", a: "Not yet. Folevi runs in the browser, and the Mac app is coming soon. There is no iOS or Android app yet." },
+      { q: "Does Folevi have mobile apps?", a: "Not yet. Folevi runs in the browser and on Mac. There is no iOS or Android app yet." },
       { q: "Does Folevi work offline?", a: "Yes, in the browser. Every edit is saved on your device first and syncs when you reconnect." },
     ],
     sources: [

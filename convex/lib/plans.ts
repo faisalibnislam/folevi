@@ -207,7 +207,7 @@ export const DAY_MS = 86_400_000;
 // ---------------------------------------------------------------------------------------------------
 
 /** Where Folevi runs today (the Mac app isn't out yet and there's no iOS app). */
-export const AVAILABILITY = "On the web · Mac app coming soon";
+export const AVAILABILITY = "On the web and Mac";
 
 export const TIER_NAMES: Record<PlanTier, string> = { free: "Free", core: "Core", pro: "Pro", pro_ai: "Pro AI" };
 
@@ -272,7 +272,7 @@ export const PLANS: Record<PersonalTier, PersonalPlanCard> = {
   ]),
   pro_ai: personalCard("pro_ai", "AI as much as you need, with the most room.", [
     `${sizeLabel(STORAGE_BYTES.pro_ai)} storage`,
-    `Unlimited AI, fair use (${MONTHLY_CREDITS.pro_ai} credits a month)`,
+    `${MONTHLY_CREDITS.pro_ai} AI credits a month, the most of any plan`,
     "Unlimited devices",
     "Buy more AI credits when you need them",
     "Everything in Pro",
@@ -338,7 +338,7 @@ export const WORKSPACE_PLANS: Record<WorkspaceTier, WorkspacePlanCard> = {
   ]),
   pro_ai: workspaceCard("pro_ai", "AI as much as your team needs.", [
     `${sizeLabel(STORAGE_BYTES.pro_ai)} per member`,
-    `Unlimited AI, fair use (${MONTHLY_CREDITS.pro_ai} credits per member a month)`,
+    `${MONTHLY_CREDITS.pro_ai} AI credits per member a month, the most of any plan`,
     "Unlimited members, each billed; guests are free",
     "Everything in Pro",
   ]),

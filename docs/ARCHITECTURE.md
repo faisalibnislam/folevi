@@ -46,7 +46,7 @@ safe for the service worker to keep a copy for offline boot.
 - Methods: email + password only (10–128 characters), a confirmed email address (links valid 24 h; the
   person is signed in after confirming), password reset by email (link valid 1 h; resetting ends every
   other session) and an **optional** authenticator-app second step (TOTP, 10 single-use backup codes,
-  optional “trust this device” for 30 days). There is no social sign-in, passkey or passwordless sign-in.
+  optional “trust this device” for 30 days). Passkeys and Google and Apple sign-in are offered too; there is no magic-link sign-in.
 - Routes: `convex/http.ts` registers the Better Auth routes on the Convex site URL; the Next.js route
   `apps/web/src/app/api/auth/[...all]/route.ts` proxies `/api/auth/*` to it, so the session cookie
   (prefix `folevi`, HTTP-only) is first-party on `app.folevi.com`. Pages: `/signin`, `/signup`,

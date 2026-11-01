@@ -17,7 +17,8 @@
 
 Folevi runs its own accounts on **Better Auth inside Convex**, with exactly these methods:
 
-1. **Email + password only.** No social sign-in, magic links, passkeys or anonymous accounts.
+1. **Email + password only** at first. No magic links or anonymous accounts. Passkeys and Google and Apple
+   sign-in were added later (see below and `convex/auth.ts`).
 2. **A confirmed email address** before first sign-in.
 3. **An optional authenticator-app second step (TOTP)** with single-use backup codes, turned on or off
    in Settings → Security; required only for the admin console. No SMS or email codes. (Until
@@ -164,8 +165,10 @@ Apple wherever another social sign-in is offered), each only when its keys are s
 
 - **Stolen password:** enough on its own for an account without two-step verification (which is
   optional); with it on, the attacker also needs the authenticator or a backup code. Reset emails go
-  only to the account's confirmed address. A breached-password check is not built yet.
-- **Phishing:** TOTP codes can be phished in real time; passkeys would close this (not built yet).
+  only to the account's confirmed address. New passwords found in Have I Been Pwned's list are refused
+  (sign-up, change and reset; `convex/lib/breachedPasswords.ts`).
+- **Phishing:** TOTP codes can be phished in real time; passkeys (built, `convex/auth.ts`) close this for
+  people who add one.
 - **Stolen session cookie:** HTTP-only (not readable by script), and ended from Settings or by an admin
   with immediate effect. There is no device binding.
 - **Lost authenticator and all backup codes:** there is no self-service recovery and, as of this
@@ -209,8 +212,6 @@ first, and check the Better Auth documentation for the version in use before doi
 
 ## Known gaps
 
-- **No breached-password check yet** (Better Auth ships a `haveibeenpwned` plugin; it is not enabled).
-- **No passkeys** yet.
 - **Social sign-in** was left out at first; Google and Apple were added later (see "Google and Apple" above).
 - **No admin or support procedure for a lost second factor** (see threat notes).
 - **Email address changes** are handled by support, not self-service.

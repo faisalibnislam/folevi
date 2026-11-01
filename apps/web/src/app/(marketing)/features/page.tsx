@@ -72,7 +72,7 @@ const LAYOUT: { slug: string; size: Size }[] = [
 const STICKERS: Record<string, { text: string; tone: "paper" | "violet" | "ink"; rotate: number }> = {
   "offline-notes": { text: "Most loved", tone: "violet", rotate: -7 },
   tasks: { text: "Due today", tone: "paper", rotate: 6 },
-  mac: { text: "Coming soon", tone: "ink", rotate: -5 },
+  mac: { text: "New", tone: "ink", rotate: -5 },
 };
 
 function CardSticker({ slug }: { slug: string }) {
@@ -143,7 +143,7 @@ export default function FeaturesPage() {
                     <LinkCard
                       href="/mac"
                       title="Mac app"
-                      body="Quick Add, a menu bar icon and notifications. Coming soon."
+                      body="Quick Add, a menu bar icon and notifications."
                       cover={<FeatureCover picture={{ width: 1000, node: <MacCover /> }} className={COVER[size]} />}
                       headingLevel="h2"
                       layout={layout}

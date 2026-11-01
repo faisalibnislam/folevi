@@ -44,7 +44,7 @@ export const SECURITY_CONTROLS: Array<{ icon: IconName; title: string; body: str
 /** The plans the home page singles out: Core for no AI at all, Pro AI for as much AI as you need. */
 const BADGES: Partial<Record<(typeof PLAN_ORDER)[number], string>> = {
   core: "No AI",
-  pro_ai: "Unlimited AI",
+  pro_ai: "Most AI",
 };
 
 /**

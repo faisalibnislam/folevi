@@ -16,7 +16,7 @@ export const metadata = pageMetadata({
   title: "Folevi: a quiet notes app for ideas that keep growing",
   absoluteTitle: true,
   description:
-    "Folevi is a calm notes app for the web, with a Mac app coming soon: block documents, tasks, linked pages and offline editing that syncs. Free to start.",
+    "Folevi is a calm notes app for the web and Mac: block documents, tasks, linked pages and offline editing that syncs. Free to start.",
   path: "/",
 });
 

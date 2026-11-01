@@ -107,7 +107,8 @@ describe("the catalog", () => {
     expect(PLANS.free.features.join(" ")).not.toMatch(/credits/);
     expect([PLANS.core, PLANS.pro, PLANS.pro_ai].map((p) => p.features[0])).toEqual(["10 GB storage", "10 GB storage", "50 GB storage"]);
     expect(WORKSPACE_PLANS.free.features.slice(0, 2)).toEqual(["Uses the owner's free 500 MB", "No AI after members' trials"]);
-    expect(PLANS.pro_ai.features.join(" ")).toMatch(/Unlimited AI, fair use \(550 credits a month\)/);
+    expect(PLANS.pro_ai.features.join(" ")).toMatch(/550 AI credits a month, the most of any plan/);
+    expect(Object.values(PLANS).flatMap((p) => p.features).join(" ")).not.toMatch(/Unlimited AI/i);
     expect(Object.values(PLANS).flatMap((p) => p.features).join(" ")).not.toMatch(/\u2014|iOS/);
   });
 

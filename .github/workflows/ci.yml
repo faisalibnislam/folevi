@@ -25,27 +25,35 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Generated files are up to date (tokens, block schema, email templates)
+      - name: Generated files are up to date (tokens, block schema, email templates, native bridge, icons)
         run: |
           node packages/design-tokens/scripts/build.mjs --check
           node packages/editor-schema/scripts/generate.mjs --check
           node packages/design-tokens/scripts/contrast.mjs
+          node scripts/engine-codegen.mjs --check
+          node scripts/icons-codegen.mjs --check
       - name: Lint
         run: |
           pnpm exec eslint convex
           pnpm --filter @folevi/web exec eslint src
           pnpm exec eslint --config packages/email/eslint.config.js packages/email/src packages/email/test
+          pnpm --filter @folevi/local-store lint
+          pnpm --filter @folevi/ai-prompts lint
       - name: Typecheck
         run: |
           pnpm exec tsc -p convex/tsconfig.json --noEmit
           pnpm --filter @folevi/editor-schema exec tsc --noEmit
           pnpm --filter @folevi/email typecheck
+          pnpm --filter @folevi/local-store typecheck
+          pnpm --filter @folevi/ai-prompts typecheck
           pnpm --filter @folevi/web exec tsc --noEmit
-      - name: Schema, sync reducer, email contract and cloud provider tests
+      - name: Schema, sync reducer, email contract, cloud provider, local store and AI prompt tests
         run: |
           pnpm --filter @folevi/editor-schema test
           pnpm --filter @folevi/email test
           pnpm --filter @folevi/cloud-folders test
+          pnpm --filter @folevi/local-store test
+          pnpm --filter @folevi/ai-prompts test
       - name: Convex integration tests (tenant isolation, sync, sharing, deletion, admin RBAC)
         run: pnpm exec vitest run
       - name: Web unit tests (editor conversion, paste, sync engine)

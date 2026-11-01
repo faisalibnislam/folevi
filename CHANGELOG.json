@@ -1,6 +1,27 @@
 {
   "releases": [
     {
+      "version": "1.2.16",
+      "build": 28,
+      "released": "2026-11-02T05:42:18+06:00",
+      "type": "patch",
+      "summary": "iPhone polish: calendar views, toggles, gestures and full-screen canvases",
+      "improved": [
+        "The Chat and Research switch has room and slides between its two sides",
+        "Long folder names that are one word stay on one line with an ellipsis",
+        "Long-press a note on Home for its menu, like folder cards",
+        "Swipe from the left edge to go back",
+        "The top-left button shows your workspace's logo with your photo in its corner",
+        "Swipe up or down on a sheet's list to resize it",
+        "Every toggle matches the web and Mac's rounded switch",
+        "The month view lines each date up under its weekday",
+        "A redesigned week view on iPhone, iPad, Mac and the web",
+        "The calendar menu has Subscribe, with one-tap Add to Apple Calendar and Add to Google, and Calendars",
+        "Full-screen canvases use the whole screen, with Done and the zoom clear of the edges"
+      ],
+      "tag": "v1.2.16"
+    },
+    {
       "version": "1.2.15",
       "build": 27,
       "released": "2026-11-01T12:59:10+06:00",

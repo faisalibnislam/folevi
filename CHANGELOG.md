@@ -4,6 +4,26 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.16: Small update
+
+Released 2026-11-02 05:42:18+06:00 (build 28, tag v1.2.16)
+
+iPhone polish: calendar views, toggles, gestures and full-screen canvases
+
+### Improved
+
+- The Chat and Research switch has room and slides between its two sides
+- Long folder names that are one word stay on one line with an ellipsis
+- Long-press a note on Home for its menu, like folder cards
+- Swipe from the left edge to go back
+- The top-left button shows your workspace's logo with your photo in its corner
+- Swipe up or down on a sheet's list to resize it
+- Every toggle matches the web and Mac's rounded switch
+- The month view lines each date up under its weekday
+- A redesigned week view on iPhone, iPad, Mac and the web
+- The calendar menu has Subscribe, with one-tap Add to Apple Calendar and Add to Google, and Calendars
+- Full-screen canvases use the whole screen, with Done and the zoom clear of the edges
+
 ## Version 1.2.15: Small update
 
 Released 2026-11-01 12:59:10+06:00 (build 27, tag v1.2.15)

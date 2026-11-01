@@ -247,7 +247,7 @@ export function CalendarWeek({
                 ) : null}
                 {date === today ? (
                   <div aria-hidden className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-ember" style={{ top: minutesToPx(now) - 1 }}>
-                    <span className="absolute -left-1 -top-[5px] h-2 w-2 rounded-capsule bg-ember" />
+                    <span className="absolute -left-1 -top-1 h-2 w-2 rounded-tiny bg-ember" />
                   </div>
                 ) : null}
                 {timedEvents.map((pe) => {

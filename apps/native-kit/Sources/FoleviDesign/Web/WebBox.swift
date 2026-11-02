@@ -102,6 +102,14 @@ public struct WebStylePair: Hashable, Sendable {
     }
 
     public func resolve(_ scheme: ColorScheme) -> WebComputedStyle { scheme == .dark ? dark : light }
+
+    /// The same box with another corner radius (a native screen fitting its corners to what's inside).
+    public func radius(_ r: CGFloat) -> WebStylePair {
+        var l = light, d = dark
+        l.radius = r
+        d.radius = r
+        return WebStylePair(light: l, dark: d)
+    }
 }
 
 public extension View {

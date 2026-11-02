@@ -118,7 +118,7 @@ public enum FoliAISheet {
         sheet.detents = [.medium(), .large()]
         sheet.prefersGrabberVisible = true
         sheet.prefersScrollingExpandsWhenScrolledToEdge = false
-        sheet.preferredCornerRadius = FoleviTokens.Radius.sheet
+        sheet.preferredCornerRadius = PhoneSheetCorner.radius
         // A chat with something in it opens large; a new one at medium, so its suggestions show over the page.
         sheet.selectedDetentIdentifier = controller.model.messages.isEmpty ? .medium : .large
     }

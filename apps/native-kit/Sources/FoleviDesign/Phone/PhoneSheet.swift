@@ -8,6 +8,18 @@ import SwiftUI
 import UIKit
 #endif
 
+/// Every sheet's corners on the iPhone: one radius for all four (iOS allows no other), 38, less round at the top
+/// than the 52 iOS picks to follow the screen's corners. Elsewhere the design's sheet radius.
+public enum PhoneSheetCorner {
+    @MainActor public static var radius: CGFloat {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone ? 38 : FoleviTokens.Radius.sheet
+        #else
+        FoleviTokens.Radius.sheet
+        #endif
+    }
+}
+
 public enum PhoneSheetSize: Sendable {
     /// As tall as its content (a short form, a few choices).
     case fit
@@ -361,7 +373,10 @@ private struct PhoneSheetHost<Body: View>: View {
                 if size == .medium, !snapToBlocks { detent = .large }
             }
             .presentationDragIndicator(.hidden)
-            // (No corner radius of ours: iOS rounds a floating sheet's foot to follow the screen's own corners.)
+            // iOS gives a sheet one radius for all four corners (it draws the edge and shadow on it, so a second
+            // radius drawn underneath leaves a sliver): 38, less round at the top than the 52 iOS picks to follow the
+            // screen's corners, a little less at the foot.
+            .presentationCornerRadius(PhoneSheetCorner.radius)
             .presentationBackground(PhoneSurface.solid.resolve(scheme).color)
             .presentationContentInteraction(.resizes)
             .onPreferenceChange(PhoneSheetBlocks.self) { ys in

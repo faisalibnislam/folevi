@@ -84,7 +84,11 @@ public struct PhoneNotificationsContent: View {
                 }
                 .padding(.bottom, 8)
             }
+            // The list runs to the sheet's foot (its white stopped at the home indicator's room, over a grey band),
+            // the last row scrolling clear of the corners.
+            .contentMargins(.bottom, 24, for: .scrollContent)
             .background(FoleviTokens.Chrome.canvas.resolve(scheme).color)
+            .ignoresSafeArea(.container, edges: .bottom)
         }
         .onAppear { model.setVisible(true) }
         .onDisappear { model.setVisible(false) }

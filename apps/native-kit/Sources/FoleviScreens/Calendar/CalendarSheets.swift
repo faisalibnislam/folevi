@@ -97,7 +97,7 @@ struct CalendarsSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
-        .presentationCornerRadius(FoleviTokens.Radius.sheet)
+        .presentationCornerRadius(PhoneSheetCorner.radius)
         #if os(macOS)
         .frame(minWidth: 460, minHeight: 520)
         #endif
@@ -209,7 +209,7 @@ struct EventDetailSheet: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.fontWeight(.semibold) } }
         }
         .presentationDetents([.medium, .large])
-        .presentationCornerRadius(FoleviTokens.Radius.sheet)
+        .presentationCornerRadius(PhoneSheetCorner.radius)
         #if os(macOS)
         .frame(minWidth: 380, minHeight: 320)
         #endif
@@ -255,7 +255,7 @@ struct AddTaskOnDaySheet: View {
             .onAppear { focused = true }
         }
         .presentationDetents([.height(220), .medium])
-        .presentationCornerRadius(FoleviTokens.Radius.sheet)
+        .presentationCornerRadius(PhoneSheetCorner.radius)
         #if os(macOS)
         .frame(minWidth: 380, minHeight: 200)
         #endif

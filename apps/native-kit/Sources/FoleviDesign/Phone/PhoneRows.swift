@@ -381,8 +381,11 @@ public struct PhoneSegmented: View {
     let accessibility: String
     @Environment(\.colorScheme) private var scheme
     @Namespace private var pill
+    /// The control's corner radius; the chosen option's pill, 4 pt in, takes 4 less (concentric).
+    var radius: CGFloat = FoleviTokens.Radius.control
 
-    public init(_ options: [(id: String, label: String)], selection: Binding<String>, accessibility: String) {
+    public init(_ options: [(id: String, label: String)], selection: Binding<String>, accessibility: String, radius: CGFloat = FoleviTokens.Radius.control) {
+        self.radius = radius
         self.options = options
         self._selection = selection
         self.accessibility = accessibility
@@ -390,6 +393,8 @@ public struct PhoneSegmented: View {
 
     public var body: some View {
         let c = { (p: ColorPair) in p.resolve(scheme).color }
+        // (The chip radius as before for the usual control; a rounder control's pill follows its corners.)
+        let inner = radius == FoleviTokens.Radius.control ? FoleviTokens.Radius.chip : max(4, radius - 4)
         HStack(spacing: 2) {
             ForEach(options, id: \.id) { o in
                 let on = selection == o.id
@@ -404,7 +409,7 @@ public struct PhoneSegmented: View {
                         .frame(maxWidth: .infinity, minHeight: 32)
                         .background {
                             if on {
-                                WebShapeBox(shape: WebCornersShape(topLeft: FoleviTokens.Radius.chip, topRight: FoleviTokens.Radius.chip, bottomRight: FoleviTokens.Radius.chip, bottomLeft: FoleviTokens.Radius.chip), fill: c(FoleviTokens.Glass.active), shadows: PhoneStyleSheetContent.glassEdge(scheme) + [ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))])
+                                WebShapeBox(shape: WebCornersShape(topLeft: inner, topRight: inner, bottomRight: inner, bottomLeft: inner), fill: c(FoleviTokens.Glass.active), shadows: PhoneStyleSheetContent.glassEdge(scheme) + [ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.08))])
                                     .matchedGeometryEffect(id: "chosen", in: pill)
                             }
                         }
@@ -414,7 +419,7 @@ public struct PhoneSegmented: View {
             }
         }
         .padding(4)
-        .background(c(FoleviTokens.Chrome.ink).opacity(0.06), in: RoundedRectangle(cornerRadius: FoleviTokens.Radius.control, style: .circular))
+        .background(c(FoleviTokens.Chrome.ink).opacity(0.06), in: RoundedRectangle(cornerRadius: radius, style: .circular))
         .accessibilityLabel(accessibility)
     }
 }

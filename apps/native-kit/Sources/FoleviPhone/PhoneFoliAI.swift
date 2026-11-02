@@ -339,7 +339,8 @@ struct PhoneAiDock: View {
                 bar(look: look)
             }
             .frame(maxWidth: .infinity)
-            .webBox(look.pair("ai.composer"))
+            // Concentric with what's inside: the controls sit 9 pt in and round at 12, so the box rounds at 21.
+            .webBox(look.pair("ai.composer").radius(21))
             .contentShape(Rectangle())
             .onTapGesture { focused.wrappedValue = true }
             footnote(look: look)
@@ -376,7 +377,7 @@ struct PhoneAiDock: View {
         let canSend = model.canSend
         return HStack(spacing: bar.gap) {
             if model.webAvailable {
-                PhoneSegmented([("chat", "Chat"), ("research", "Research")], selection: Binding(get: { model.mode == .research ? "research" : "chat" }, set: { model.mode = $0 == "research" ? .research : .chat }), accessibility: "How Foli AI helps")
+                PhoneSegmented([("chat", "Chat"), ("research", "Research")], selection: Binding(get: { model.mode == .research ? "research" : "chat" }, set: { model.mode = $0 == "research" ? .research : .chat }), accessibility: "How Foli AI helps", radius: 12)
                     .fixedSize()
                     .disabled(model.isWorking)
             }
@@ -386,7 +387,8 @@ struct PhoneAiDock: View {
                 WebIconView(.arrowUp, size: 19, strokeWidth: 2.4)
                     .foregroundStyle(disc.color.color)
                     .frame(width: disc.width, height: disc.height)
-                    .background(Circle().fill(disc.background.color))
+                    // (Rounded at 12 like the composer's other controls, following the corner it sits in.)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(disc.background.color))
                     .compositingGroup()
                     .opacity(canSend ? 1 : 0.3)
                     .frame(width: 44, height: 44)

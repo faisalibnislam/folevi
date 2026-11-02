@@ -28,7 +28,7 @@ enum PhoneSheets {
         if let sheet = host.sheetPresentationController {
             sheet.detents = detents
             sheet.prefersGrabberVisible = true
-            sheet.preferredCornerRadius = FoleviTokens.Radius.sheet
+            sheet.preferredCornerRadius = PhoneSheetCorner.radius
             sheet.prefersScrollingExpandsWhenScrolledToEdge = true
         }
         top.present(host, animated: true)

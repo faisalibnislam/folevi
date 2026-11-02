@@ -105,7 +105,7 @@ struct TaskDetailSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(FoleviTokens.Radius.sheet)
+        .presentationCornerRadius(PhoneSheetCorner.radius)
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 560)
         #endif

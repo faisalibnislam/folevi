@@ -578,6 +578,9 @@ public struct PhoneAiSheet: View {
         } footer: {
             EmptyView()
         }
+        // The composer sits on the sheet's foot: iOS floats a sheet this tall clear of the home indicator already, so
+        // the room it keeps for it was an empty band under the footnote.
+        .ignoresSafeArea(.container, edges: .bottom)
         .overlay { PhoneMenuLayer(menus: menus) }
     }
 }

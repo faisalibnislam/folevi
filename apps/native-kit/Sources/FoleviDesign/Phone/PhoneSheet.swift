@@ -358,7 +358,7 @@ private struct PhoneSheetHost<Body: View>: View {
                 if size == .medium, !snapToBlocks { detent = .large }
             }
             .presentationDragIndicator(.hidden)
-            .presentationCornerRadius(FoleviTokens.Radius.sheet)
+            // (No corner radius of ours: iOS rounds a floating sheet's foot to follow the screen's own corners.)
             .presentationBackground(PhoneSurface.solid.resolve(scheme).color)
             .presentationContentInteraction(.resizes)
             .onPreferenceChange(PhoneSheetBlocks.self) { ys in

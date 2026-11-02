@@ -47,6 +47,8 @@ export interface DocumentSummary {
   seq: number;
   excerpt: string;
   preview: PreviewLine[] | null;
+  /** Its card's look from its content (derive.ts deriveShape); null until it's derived. */
+  shape: string | null;
   wordCount: number;
   charCount: number;
   blockCount: number;
@@ -223,6 +225,7 @@ export async function toSummary(ids: IdResolver, doc: Doc<"documents">): Promise
     seq: doc.seq,
     excerpt: doc.excerpt,
     preview: doc.preview ?? null,
+    shape: doc.shape ?? null,
     wordCount: doc.wordCount,
     charCount: doc.charCount,
     blockCount: doc.blockCount,
@@ -297,6 +300,7 @@ export async function refreshDerived(ctx: MutationCtx, doc: Doc<"documents">, ro
     blockCount: own.length,
     excerpt: derived.excerpt,
     preview: derived.preview,
+    shape: derived.shape,
   });
   // The notes in its place that show it include its text.
   if (doc.kind === "synced") for (const note of await notesShowingInPlace(ctx, doc)) await refreshDerived(ctx, note);

@@ -375,6 +375,8 @@ export default defineSchema({
         }),
       ),
     ),
+    /** What kind of page it is, for the look of its card: tabs, pocket, canvas, list or page (derived; derive.ts deriveShape). */
+    shape: v.optional(v.string()),
     /**
      * End-to-end encryption (docs/E2EE_DESIGN.md §5.2). A sealed note has `sealedAt`; its plaintext columns
      * then hold placeholders (title "", no icon, cover none, default style, empty derived text, counts 0) and

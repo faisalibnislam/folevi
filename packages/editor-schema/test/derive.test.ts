@@ -9,6 +9,7 @@ import {
   builtInTemplateBlocks,
   cloneBlocks,
   deriveDocumentText,
+  deriveShape,
   documentSearchText,
   fieldNotesBlocks,
   flattenTree,
@@ -177,5 +178,27 @@ describe("templates and seed content", () => {
     }
     expect(welcomeBlocks(today).find((s) => s.props?.dueDate)?.props?.dueDate).toBe(today);
     expect(JSON.stringify(tripSketchBlocks(today))).toContain('"2026-11-01"');
+  });
+});
+
+describe("deriveShape", () => {
+  const text = (x: string) => [{ type: "text" as const, text: x }];
+  const para = (x = "Words") => block("paragraph", { text: text(x) });
+  it("ranks pages, then tabs, then content", () => {
+    expect(deriveShape([para(), block("page"), block("tabs")])).toBe("pages");
+    expect(deriveShape([para(), block("tabs"), block("image"), block("image")])).toBe("tabs");
+  });
+  it("finds a pocket, a canvas and a list", () => {
+    expect(deriveShape([block("image"), block("file"), para()])).toBe("pocket");
+    expect(deriveShape([block("whiteboard"), para(), para()])).toBe("canvas");
+    expect(deriveShape([block("todo"), block("todo"), block("bulleted"), para()])).toBe("list");
+  });
+  it("is a page otherwise, and empty paragraphs and headings don't count", () => {
+    expect(deriveShape([])).toBe("page");
+    expect(deriveShape([para(), para(), block("todo")])).toBe("page");
+    expect(deriveShape([block("heading"), block("paragraph"), block("todo"), block("todo"), block("todo")])).toBe("list");
+  });
+  it("is part of the derived text", () => {
+    expect(deriveDocumentText("T", [block("whiteboard")]).shape).toBe("canvas");
   });
 });

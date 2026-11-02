@@ -92,6 +92,7 @@ export function toSummary(doc: LocalDocument, profileId: string): DocumentSummar
     seq: doc.seq,
     excerpt: doc.excerpt,
     preview: doc.preview,
+    shape: doc.shape ?? null,
     wordCount: doc.wordCount,
     charCount: doc.charCount,
     blockCount: doc.blockCount,
@@ -191,6 +192,7 @@ export async function refreshDerived(db: LocalWriter, doc: LocalDocument): Promi
     blockCount: own.length,
     excerpt: derived.excerpt,
     preview: derived.preview,
+    shape: derived.shape,
   };
 }
 
@@ -272,6 +274,7 @@ export async function insertDocument(ctx: LocalMutationCtx, input: NewDocument):
     blockCount: 0,
     excerpt: "",
     preview: null,
+    shape: null,
     starred: false,
     tagIds: input.tagIds ?? [],
     editedByDevice: ctx.deviceId,

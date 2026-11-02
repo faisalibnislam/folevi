@@ -40,6 +40,8 @@ export interface LocalDocument {
   blockCount: number;
   excerpt: string;
   preview: NonNullable<Doc<"documents">["preview"]> | null;
+  /** Its card's look from its content (derive.ts deriveShape); absent on rows kept before it was derived. */
+  shape?: string | null;
   /** One person per library, so a star and the tags live on the note itself. */
   starred: boolean;
   tagIds: string[];

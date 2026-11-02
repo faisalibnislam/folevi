@@ -46,6 +46,8 @@ function RecentCard({ doc }: { doc: Summary }) {
             title={doc.title}
             excerpt={doc.excerpt}
             preview={doc.preview}
+            shape={doc.shape}
+            kind={doc.kind}
             cover={doc.cover}
             style={doc.style}
             createdAt={doc.createdAt}

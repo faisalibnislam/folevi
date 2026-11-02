@@ -200,6 +200,8 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
                     title={d.title}
                     excerpt={d.excerpt}
                     preview={d.preview}
+                    shape={d.shape}
+                    kind={d.kind}
                     cover={d.cover}
                     style={d.style}
                     createdAt={d.createdAt}

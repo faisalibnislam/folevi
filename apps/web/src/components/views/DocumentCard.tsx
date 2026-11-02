@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { DocumentCover, DocumentStyle } from "@folevi/editor-schema";
-import { PencilLine, Star } from "lucide-react";
+import { PencilLine } from "lucide-react";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 
 import { accentVar, coverArtOf, coverArtThumbUrl, coverBackground, pageBackdrop, sheetProps, softVar } from "@/lib/cover";
@@ -77,6 +77,26 @@ function useFitLines() {
 export const NOTE_CARD_LINK =
   "note-card-r block aspect-[25/27] rounded-l-tiny rounded-r-panel shadow-[-3px_10px_14px_-8px_rgb(20_20_30/0.16),-4px_18px_30px_-18px_rgb(20_20_30/0.14),0_2px_5px_rgb(20_20_30/0.03)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[-3px_12px_16px_-8px_rgb(20_20_30/0.18),-5px_24px_36px_-18px_rgb(20_20_30/0.18),0_3px_8px_rgb(20_20_30/0.04)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
+/**
+ * How a note's card looks, chosen from what the note is (the first that fits): starred, a binder clip; pages
+ * inside, sheets fanned behind; tabs, a tab divider; mostly attachments, a pocket; mostly a canvas, graph paper;
+ * mostly a list, an index card; a template, a typed memo; anything else, a spiral-bound page. Its theme (spine
+ * artwork, colours, fonts) shows in every look. `shape` is derived from its content (derive.ts deriveShape).
+ */
+export type CardLook = "spiral" | "clip" | "stack" | "tabs" | "pocket" | "graph" | "index" | "memo";
+
+export function noteLook(note: { starred?: boolean; shape?: string | null; kind?: string }): CardLook {
+  if (note.starred) return "clip";
+  switch (note.shape) {
+    case "pages": return "stack";
+    case "tabs": return "tabs";
+    case "pocket": return "pocket";
+    case "canvas": return "graph";
+    case "list": return "index";
+  }
+  return note.kind === "template" ? "memo" : "spiral";
+}
+
 /** Aspect ratio of a note card (a portrait notebook), for placeholders that stand in for one. */
 export const NOTE_CARD_ASPECT = "aspect-[25/27]";
 
@@ -98,6 +118,8 @@ export function NoteCardFace({
   folder,
   showFolder = true,
   extra,
+  shape,
+  kind,
 }: {
   title: string;
   excerpt: string;
@@ -111,7 +133,12 @@ export function NoteCardFace({
   folder?: HomeFolder | null;
   showFolder?: boolean;
   extra?: ReactNode;
+  /** What kind of page it is (documents.shape), and its kind (a template looks like a memo): its card's look. */
+  shape?: string | null;
+  kind?: string;
 }) {
+  const look = noteLook({ starred, shape, kind });
+  const tint = (pct: number) => `color-mix(in oklab, var(--color-heading) ${pct}%, var(--color-surface))`;
   const body = useFitLines();
   const { url: imageUrl, palette } = useCoverImage(cover);
   // A built-in style shows its small thumbnail in the spine (sharp at 2×, much lighter than the full image).
@@ -127,6 +154,19 @@ export function NoteCardFace({
   const sheet = sheetProps(style, cover, palette);
   return (
     <div className="relative h-full w-full [container-type:inline-size]">
+      {look === "stack" ? (
+        <>
+          <span aria-hidden className="note-card-r absolute inset-[2%_0_0_3%] rotate-[5deg] rounded-l-tiny rounded-r-panel shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08),0_4px_10px_-6px_rgb(20_20_30/0.25)]" style={{ background: tint(16) }} />
+          <span aria-hidden className="note-card-r absolute inset-[1%_3%_1%_0] -rotate-[3.5deg] rounded-l-tiny rounded-r-panel shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08),0_4px_10px_-6px_rgb(20_20_30/0.25)]" style={{ background: tint(9) }} />
+        </>
+      ) : null}
+      {look === "tabs" ? (
+        <span aria-hidden className="absolute right-[-3cqw] top-[12%] flex h-[62%] w-[5cqw] flex-col gap-[1.4cqw]">
+          <span className="flex-[1.2] rounded-r-tiny bg-heading" />
+          <span className="flex-1 rounded-r-tiny" style={{ background: tint(30) }} />
+          <span className="flex-1 rounded-r-tiny" style={{ background: tint(16) }} />
+        </span>
+      ) : null}
       {/* the page block, peeking out past the cover's open edge and bottom */}
       <span aria-hidden className="note-card-r absolute bottom-0 left-0 right-0 top-[1.4%] rounded-l-tiny rounded-r-panel bg-[color-mix(in_oklab,var(--color-heading)_13%,var(--color-canvas))]" />
       {/* the cover */}
@@ -136,19 +176,46 @@ export function NoteCardFace({
       >
       {/* the spine, in the note's theme */}
       <div aria-hidden className="relative w-[6%] flex-none shadow-[inset_-1px_0_0_rgb(0_0_0/0.06)]" style={{ background: strip }} />
+      {look === "spiral" ? (
+        // A spiral's punched holes down the spine's edge.
+        <span aria-hidden className="pointer-events-none absolute bottom-[6%] left-[3.4%] top-[6%] z-10 flex flex-col justify-between">
+          {Array.from({ length: 9 }, (_, i) => <span key={i} className="block h-[2.6cqw] w-[2.6cqw] rounded-chip bg-[color-mix(in_oklab,var(--color-heading)_82%,transparent)] shadow-[0_0_0_0.6cqw_var(--color-surface)]" />)}
+        </span>
+      ) : null}
       {/* the cover's face: title, preview and footer */}
-      <div className="flex min-w-0 flex-1 flex-col pb-[6cqw] pl-[7cqw] pr-[6cqw] pt-[8cqw]">
-        <h3 data-card="title" className="line-clamp-2 text-ellipsis wrap-normal break-normal pr-[7cqw] font-serif text-[6.6cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
+      <div
+        className="relative flex min-w-0 flex-1 flex-col pb-[6cqw] pl-[7cqw] pr-[6cqw] pt-[8cqw]"
+        style={
+          look === "graph"
+            ? { backgroundImage: `linear-gradient(${tint(9)} 1px, transparent 1px), linear-gradient(90deg, ${tint(9)} 1px, transparent 1px)`, backgroundSize: "6cqw 6cqw" }
+            : undefined
+        }
+      >
+        {look === "memo" ? (
+          <h3 data-card="title" className="line-clamp-2 self-start text-ellipsis break-words rounded-tiny bg-heading px-[2.4cqw] py-[1.2cqw] font-mono text-[4cqw] font-medium uppercase leading-[1.3] tracking-[0.06em] text-surface">{title || "Untitled"}</h3>
+        ) : (
+          <h3 data-card="title" className="line-clamp-2 text-ellipsis wrap-normal break-normal pr-[7cqw] font-serif text-[6.6cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
+        )}
+        {look === "index" ? <span aria-hidden className="mt-[2.4cqw] block h-[0.5cqw] bg-[#e88e8e]" /> : null}
         <p data-card="created" className="mt-[1cqw] truncate text-[4.5cqw] leading-[1.3] text-faint">
           <span className="sr-only">Created </span>
           {ageText(createdAt)}
         </p>
-        <div ref={body.ref} className="mt-[4.6cqw] min-h-0 flex-1 overflow-hidden text-[3.6cqw] leading-[5cqw]">
+        <div
+          ref={body.ref}
+          className="mt-[4.6cqw] min-h-0 flex-1 overflow-hidden text-[3.6cqw] leading-[5cqw]"
+          // An index card's blue lines under each line of text.
+          style={look === "index" ? { backgroundImage: "repeating-linear-gradient(transparent 0 calc(5cqw - 1px), rgb(120 160 210 / 0.35) calc(5cqw - 1px) 5cqw)" } : undefined}
+        >
           <p className="whitespace-pre-line break-words text-faint [-webkit-box-orient:vertical] [display:-webkit-box] overflow-hidden" style={{ WebkitLineClamp: body.lines }}>
             {text || <span className="italic">Empty page</span>}
           </p>
         </div>
-        <div className="mt-[3.5cqw] flex h-[8.6cqw] flex-none items-center gap-[2cqw] text-[3.8cqw]">
+        {look === "pocket" ? (
+          // A sleeve over the lower part of the page, the note peeking out of it.
+          <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[44%] border-t border-[color-mix(in_oklab,var(--color-heading)_14%,transparent)]" style={{ background: tint(7) }} />
+        ) : null}
+        <div className="relative mt-[3.5cqw] flex h-[8.6cqw] flex-none items-center gap-[2cqw] text-[3.8cqw]">
           {extra}
           <span className="min-w-0 flex-1 truncate text-muted">{time}</span>
           {showFolder ? (
@@ -170,12 +237,14 @@ export function NoteCardFace({
       </div>
       {/* A 1px, 5% black outline drawn above the spine and cover so it runs round the whole cover. */}
       <span aria-hidden data-card="edge" className="note-card-r pointer-events-none absolute inset-0 z-10 rounded-l-tiny rounded-r-panel shadow-[inset_0_0_0_1px_rgb(0_0_0/0.05)]" />
-      {starred ? (
-        <span className={`absolute right-0 top-0 grid h-[12cqw] w-[12cqw] place-items-center rounded-bl-chip text-heading ${chip}`}>
-          <Star className="h-[5.6cqw] w-[5.6cqw] fill-current" aria-label="Starred" />
+      </div>
+      {look === "clip" ? (
+        // A binder clip across the top: the starred note.
+        <span role="img" aria-label="Starred" className="pointer-events-none absolute left-1/2 top-[-2.4cqw] z-20 -translate-x-1/2">
+          <span aria-hidden className="absolute bottom-[4cqw] left-1/2 h-[6cqw] w-[13cqw] -translate-x-1/2 rounded-t-chip border-[0.9cqw] border-b-0 border-[color-mix(in_oklab,var(--color-heading)_45%,transparent)]" />
+          <span aria-hidden className="block h-[7cqw] w-[20cqw] rounded-tiny bg-[#1e1d1a] shadow-[0_1px_2px_rgb(0_0_0/0.3)]" />
         </span>
       ) : null}
-      </div>
     </div>
   );
 }

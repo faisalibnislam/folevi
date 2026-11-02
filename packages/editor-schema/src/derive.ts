@@ -49,13 +49,50 @@ export function buildPreview(entries: { block: WireBlock; depth: number }[]): Pr
   return out;
 }
 
-/** What a note's blocks say about it: what search reads, its counts, its excerpt and its card preview. */
+/**
+ * What kind of page a note is, from all its blocks, for the look of its card (stacked sheets, a tab divider, a
+ * pocket, graph paper, an index card, or a plain page): it has pages inside; it has tabs; it's mostly files, images, links and collections; it's
+ * mostly a canvas (whiteboard, flowchart, mind map, sticky notes, chart, wireframe); it's mostly a list. What a
+ * device knows itself (starred, pages inside, a template) is decided there, before this.
+ */
+export type NoteShape = "pages" | "tabs" | "pocket" | "canvas" | "list" | "page";
+
+const ATTACHED = new Set(["image", "file", "audio", "bookmark", "embed", "collection"]);
+const CANVAS = new Set(["whiteboard", "flowchart", "mindmap", "stickies", "chart", "wireframe"]);
+const LISTED = new Set(["bulleted", "numbered", "todo"]);
+// Structure, not content: never counted either way.
+const FRAME = new Set(["columns", "column", "tab", "divider", "pageBreak", "heading", "synced"]);
+
+export function deriveShape(blocks: readonly WireBlock[]): NoteShape {
+  let attached = 0, canvas = 0, listed = 0, other = 0, tabs = false;
+  for (const b of blocks) {
+    if (b.type === "page") return "pages";
+    if (b.type === "tabs") tabs = true;
+    if (FRAME.has(b.type)) continue;
+    if (ATTACHED.has(b.type)) attached++;
+    else if (CANVAS.has(b.type)) canvas++;
+    else if (LISTED.has(b.type)) listed++;
+    // An empty paragraph is room, not writing.
+    else if (b.type !== "paragraph" || plainText(b.text).trim()) other++;
+  }
+  if (tabs) return "tabs";
+  const total = attached + canvas + listed + other;
+  if (!total) return "page";
+  if (attached && attached * 2 >= total) return "pocket";
+  // A canvas is one block but a whole page's worth: it leads unless the writing around it is more than a few lines.
+  if (canvas && other + listed <= 3 * canvas) return "canvas";
+  if (listed >= 3 && listed * 5 >= total * 3) return "list";
+  return "page";
+}
+
+/** What a note's blocks say about it: what search reads, its counts, its excerpt, its card preview and shape. */
 export interface DerivedText {
   searchText: string;
   wordCount: number;
   charCount: number;
   excerpt: string;
   preview: PreviewLine[];
+  shape: NoteShape;
 }
 
 /**
@@ -74,6 +111,7 @@ export function deriveDocumentText(title: string, blocks: readonly WireBlock[], 
     charCount: joined.length,
     excerpt: text.join(" ").replace(/\s+/g, " ").slice(0, 240),
     preview: buildPreview(flat),
+    shape: deriveShape(ordered),
   };
 }
 

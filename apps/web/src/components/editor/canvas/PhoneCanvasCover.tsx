@@ -22,7 +22,16 @@ export function PhoneCanvasCover({ name, icon, empty, full, onOpen, onDone }: { 
   if (!phone) return null;
   if (full) {
     return (
-      <button type="button" className="fb-vc-phone-done" onClick={onDone} onPointerDown={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className="fb-vc-phone-done"
+        onClick={() => {
+          // Nothing keeps focus on the way out, so nothing hands it back to the note's text (and its keyboard).
+          if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+          onDone();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         Done
       </button>
     );

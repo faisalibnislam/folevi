@@ -180,11 +180,28 @@ function MindmapEditor(props: ReactNodeViewProps) {
     [layout, size],
   );
 
-  // Fit once, when the canvas first has a size.
-  const fitted = useRef(false);
+  // Fit when the canvas first has a size, and again as that size settles (an iPad or Mac window still laying the
+  // note out), until the person touches, scrolls or types in the map: from then on the view is theirs.
+  const fitted = useRef<{ w: number; h: number } | null>(null);
+  const handled = useRef(false);
   useEffect(() => {
-    if (fitted.current || !size.w || !size.h) return;
-    fitted.current = true;
+    const el = wrapRef.current;
+    if (!el) return;
+    const mine = () => {
+      handled.current = true;
+    };
+    el.addEventListener("pointerdown", mine, true);
+    el.addEventListener("wheel", mine, { capture: true, passive: true });
+    el.addEventListener("keydown", mine, true);
+    return () => {
+      el.removeEventListener("pointerdown", mine, true);
+      el.removeEventListener("wheel", mine, true);
+      el.removeEventListener("keydown", mine, true);
+    };
+  }, [outline]);
+  useEffect(() => {
+    if (!size.w || !size.h || (fitted.current && (handled.current || (fitted.current.w === size.w && fitted.current.h === size.h)))) return;
+    fitted.current = { w: size.w, h: size.h };
     fitView(layout, size.w, size.h, true);
   }, [size, fitView, layout]);
 

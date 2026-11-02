@@ -13,6 +13,8 @@ import { origin } from "@/lib/security/csp";
 export interface ShellCspOptions {
   convexUrl: string;
   convexSiteUrl: string;
+  /** The website: embeds' players sit in its /api/embed page inside the apps (components/editor/EmbedFrame.tsx). */
+  appUrl: string;
   /** `next dev` with FOLEVI_BUILD=shell: React's dev tools need eval, and HMR a local WebSocket. */
   dev: boolean;
 }
@@ -30,7 +32,7 @@ export function shellContentSecurityPolicy(opts: ShellCspOptions): string {
     `media-src 'self' blob: folevi-file: ${site}`,
     "font-src 'self'",
     `connect-src 'self' folevi-file: ${convex} ${convexWs} ${site}${opts.dev ? " ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:*" : ""}`,
-    `frame-src ${site} ${EMBED_FRAME_ORIGINS.join(" ")}`,
+    `frame-src ${site} ${origin(opts.appUrl)} ${EMBED_FRAME_ORIGINS.join(" ")}`,
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",

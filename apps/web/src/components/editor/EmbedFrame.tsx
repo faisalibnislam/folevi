@@ -2,11 +2,18 @@
 
 import { ExternalLink } from "lucide-react";
 import { EMBED_PROVIDER_LABEL, embedFor, sanitizeHref } from "@folevi/editor-schema";
+import { APP_URL } from "@/lib/env";
 
 // An embed block's frame (the editor and shared pages): the provider's player built from the stored page
 // address (packages/editor-schema/src/embeds.ts), never the address itself. The frame is sandboxed to
 // what players need, loads lazily, and sends only its origin as the referrer; the bar under it names the
-// provider and opens the original.
+// provider and opens the original. In the apps (app://folevi, capacitor://localhost: no referrer a player can
+// see, and YouTube won't play without one) the player sits in the website's /api/embed page instead.
+
+function frameSrc(src: string): string {
+  if (typeof location === "undefined" || /^https?:$/.test(location.protocol)) return src;
+  return `${APP_URL.replace(/\/$/, "")}/api/embed?src=${encodeURIComponent(src)}`;
+}
 
 export function EmbedFrame({ url, children }: { url: string; children?: React.ReactNode }) {
   const embed = embedFor(url);
@@ -17,7 +24,7 @@ export function EmbedFrame({ url, children }: { url: string; children?: React.Re
       {embed ? (
         <div className="relative w-full bg-sunken" style={{ aspectRatio: String(embed.aspect) }}>
           <iframe
-            src={embed.src}
+            src={frameSrc(embed.src)}
             title={`${label} embed`}
             loading="lazy"
             referrerPolicy="strict-origin-when-cross-origin"

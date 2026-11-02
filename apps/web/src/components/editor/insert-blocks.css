@@ -235,6 +235,7 @@
 .fb-wb-group { display: inline-flex; align-items: center; gap: 4px; }
 .fb-wb-sep { width: 1px; height: 18px; margin: 0 4px; background: var(--color-line-strong); }
 .fb-wb-spacer { flex: 1; }
+.fb-wb-break { display: none; }
 .fb-wb-btn {
   display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--radius-control);
   color: var(--color-ink-muted);

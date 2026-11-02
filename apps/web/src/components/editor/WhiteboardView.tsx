@@ -102,7 +102,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
   const strokes = useMemo(() => (pending ? applyEdit(committed, pending) : committed), [committed, pending]);
   const keys = useMemo(() => strokes.map(strokeKey), [strokes]);
   const [liveHeight, setLiveHeight] = useState<number | null>(null);
-  const height = liveHeight ?? savedHeight;
+  const sheetHeight = liveHeight ?? savedHeight;
 
   const [tool, setToolState] = useState<Tool>("pen");
   const [penColor, setPenColor] = useState<string>("ink");
@@ -153,6 +153,24 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
 
   const fullCanvas = useFullCanvas({ cardRef, focusRef: bodyRef });
   const { full, toggleFull, cardProps, handleKey: fullKey } = fullCanvas;
+  // Full canvas in a window taller than the sheet (a phone held upright): the sheet runs on down to fill it, so
+  // there's room to draw rather than a strip across the middle. The block keeps its height until a stroke lands
+  // below it (write() below).
+  const [room, setRoom] = useState(0);
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!full || !body) return setRoom(0);
+    const ro = new ResizeObserver(() => {
+      // The sheet's box inside the body's padding (where the canvas's 100cqw and 100cqh measure).
+      const cs = getComputedStyle(body);
+      const width = body.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const h = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      setRoom(width > 0 ? Math.floor((WHITEBOARD_WIDTH * h) / width) : 0);
+    });
+    ro.observe(body);
+    return () => ro.disconnect();
+  }, [full]);
+  const height = full && room > sheetHeight ? Math.min(room, LIMITS.maxWhiteboardHeight) : sheetHeight;
 
   const setTool = (t: Tool) => {
     setToolState(t);
@@ -175,7 +193,11 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
       // The view is going away: what it last showed is the best guess.
     }
     const next = applyEdit(base, edit);
-    updateAttributes({ data: next.length ? serializeWhiteboard({ strokes: next }) : "" });
+    // Drawn on the extra room of a full canvas: the block grows to keep it, with a little margin.
+    const box = strokesBounds(next);
+    const bottom = box ? box.y + box.h : 0;
+    const grown = bottom > savedHeight ? clampHeight(Math.ceil(bottom + 24)) : null;
+    updateAttributes({ data: next.length ? serializeWhiteboard({ strokes: next }) : "", ...(grown ? { height: grown } : {}) });
   };
   const writeRef = useRef(write);
   writeRef.current = write;
@@ -631,6 +653,8 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
             </>
           ) : null}
           <span className="fb-wb-spacer" />
+          {/* Where a phone's full canvas starts the bar's second row: colours and sizes (editor-phone.css). */}
+          <span className="fb-wb-break" aria-hidden />
           {editable ? (
             <>
               <button type="button" className={btn} aria-label="Undo" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo}>
@@ -642,7 +666,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
               <span className="fb-wb-sep" aria-hidden />
             </>
           ) : null}
-          <BlockExportMenu type="whiteboard" attrs={() => ({ data: count ? serializeWhiteboard({ strokes: latest.current }) : "", height })} empty={!count} triggerClassName={btn} />
+          <BlockExportMenu type="whiteboard" attrs={() => ({ data: count ? serializeWhiteboard({ strokes: latest.current }) : "", height: sheetHeight })} empty={!count} triggerClassName={btn} />
           <button type="button" className={btn} aria-pressed={full} aria-label={full ? "Exit full canvas" : "Full canvas"} title={full ? "Exit full canvas (Esc)" : "Full canvas (⇧⌘F)"} onClick={() => toggleFull()}>
             {full ? <Shrink size={15} aria-hidden /> : <Expand size={15} aria-hidden />}
           </button>

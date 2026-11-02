@@ -167,6 +167,21 @@ async function headers() {
         { key: "CDN-Cache-Control", value: "no-store" },
       ],
     },
+    // The page an embed's player sits in inside the apps (src/app/api/embed/route.ts): framed by the Mac app
+    // (app://folevi) and the iPhone and iPad apps (capacitor://localhost), and it frames only the players.
+    // Last, so it wins over the site-wide headers above. X-Frame-Options has no value that allows another
+    // origin; browsers ignore it where frame-ancestors is set, and an unknown value is ignored too.
+    {
+      source: "/api/embed",
+      headers: [
+        {
+          key: "Content-Security-Policy",
+          value: `default-src 'none'; style-src 'unsafe-inline'; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.loom.com https://www.figma.com https://maps.google.com; frame-ancestors 'self' app://folevi capacitor://localhost; base-uri 'none'; form-action 'none'`,
+        },
+        { key: "X-Frame-Options", value: "ALLOWALL" },
+        { key: "Cache-Control", value: "public, max-age=3600" },
+      ],
+    },
   ];
 }
 

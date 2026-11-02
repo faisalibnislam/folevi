@@ -4,7 +4,7 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from 
 import { NodeSelection } from "@tiptap/pm/state";
 import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Download,
   ExternalLink,
@@ -731,15 +731,31 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
   );
 }
 
+/**
+ * A collection the server won't give (deleted, in another workspace, no longer shared): its card says so, rather
+ * than the error taking the whole note down with it.
+ */
+class CollectionGone extends Component<{ children: ReactNode }, { failed: boolean }> {
+  override state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  override render() {
+    return this.state.failed ? <p className="rounded-chip border border-dashed border-line p-4 text-subheadline text-muted">This collection is unavailable.</p> : this.props.children;
+  }
+}
+
 function CollectionView({ node, selected, editor }: ReactNodeViewProps) {
   const a = node.attrs as { collectionId: string; viewId: string | null };
   const editable = useEditable(editor);
   return (
     <Frame selected={selected} label="Collection">
       <div contentEditable={false} className="my-3">
-        <Suspense fallback={<div aria-busy aria-label="Loading collection" className="h-48 animate-pulse rounded-control bg-sunken motion-reduce:animate-none" />}>
-          <CollectionEmbed collectionId={a.collectionId} initialViewId={a.viewId} editable={editable} />
-        </Suspense>
+        <CollectionGone key={a.collectionId}>
+          <Suspense fallback={<div aria-busy aria-label="Loading collection" className="h-48 animate-pulse rounded-control bg-sunken motion-reduce:animate-none" />}>
+            <CollectionEmbed collectionId={a.collectionId} initialViewId={a.viewId} editable={editable} />
+          </Suspense>
+        </CollectionGone>
       </div>
     </Frame>
   );

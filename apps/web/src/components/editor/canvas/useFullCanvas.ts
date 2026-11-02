@@ -66,6 +66,13 @@ export function useFullCanvas({
       } catch {
         /* Already gone. */
       }
+      // Hiding hands focus back to what had it before, the note's text: on a phone that would raise the keyboard
+      // as Done brings the note back. (React restores focus once more as it finishes, so a frame later.)
+      if (!document.documentElement.hasAttribute("data-iphone")) return;
+      requestAnimationFrame(() => {
+        const back = document.activeElement;
+        if (back instanceof HTMLElement && back.isContentEditable) back.blur();
+      });
     };
   }, [full, cardRef, focusRef]);
 

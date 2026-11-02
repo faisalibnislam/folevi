@@ -200,3 +200,17 @@
 :root[data-iphone] .fb-editor .node-bookmark .line-clamp-2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 /* A whiteboard's sheet stops above the bottom row (Done), as the other canvases' zoom does. */
 :root[data-iphone] .fb-whiteboard-box[data-full] .fb-wb-body { padding-bottom: calc(var(--fb-full-foot) + 56px); }
+/* Its tools in two rows rather than three: the tools, Undo, Clear and Export, then the colours and sizes (or what
+   a selection offers) below, a little narrower than 44 so nine fit across, still 44 tall. */
+:root[data-iphone] .fb-whiteboard-box[data-full] .fb-wb-toolbar { row-gap: 4px; max-width: calc(100% - 32px); }
+:root[data-iphone] .fb-whiteboard-box[data-full] .fb-wb-toolbar > .fb-wb-group { order: 2; gap: 0; }
+:root[data-iphone] .fb-whiteboard-box[data-full] .fb-wb-break { display: block; order: 1; flex-basis: 100%; height: 0; }
+:root[data-iphone] .fb-whiteboard-box[data-full] .fb-wb-toolbar:not(:has(> .fb-wb-group)) > .fb-wb-break { display: none; }
+:root[data-iphone] .fb-whiteboard-box[data-full] .fb-wb-group > :is(.fb-wb-btn, .fb-wb-swatch) { width: 36px; }
+/* A chart doesn't pan: it lays out between the toolbar (12 under it) and the bottom row (Done), 16 in from the
+   sides like everything else on the screen. */
+:root[data-iphone] .fb-canvas-card[data-full] .fb-chart-body { top: 72px; bottom: calc(var(--fb-full-foot) + 56px); }
+/* Its data under the chart, not beside it: there's no width for two columns. */
+:root[data-iphone] .fb-canvas-card[data-full] .fb-chart-body[data-grid] { flex-direction: column; }
+:root[data-iphone] .fb-canvas-card[data-full] .fb-chart-body[data-grid] .fb-chart-grid { max-width: none; border-left: 0; border-top: 1px solid var(--color-line); }
+:root[data-iphone] .fb-canvas-card[data-full] .fb-chart-main { padding-inline: 16px; }

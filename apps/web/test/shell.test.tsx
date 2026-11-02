@@ -96,16 +96,16 @@ describe("the bridge accessor (lib/shell)", () => {
 });
 
 describe("the shell's Content Security Policy", () => {
-  const opts = { convexUrl: "https://happy-otter-123.convex.cloud", convexSiteUrl: "https://happy-otter-123.convex.site", dev: false };
+  const opts = { convexUrl: "https://happy-otter-123.convex.cloud", convexSiteUrl: "https://happy-otter-123.convex.site", appUrl: "https://app.folevi.com", dev: false };
 
-  test("allows the build's Convex deployment, the library's files and the embed players, nothing else", () => {
+  test("allows the build's Convex deployment, the library's files, the embed players and the website's page for them, nothing else", () => {
     const policy = shellContentSecurityPolicy(opts);
     const d = (name: string) => policy.split("; ").find((x) => x.startsWith(`${name} `));
     expect(d("default-src")).toBe("default-src 'self'");
     expect(d("script-src")).toBe("script-src 'self' 'unsafe-inline'");
     expect(d("connect-src")).toBe("connect-src 'self' folevi-file: https://happy-otter-123.convex.cloud wss://happy-otter-123.convex.cloud https://happy-otter-123.convex.site");
     expect(d("img-src")).toContain("folevi-file:");
-    expect(d("frame-src")).toBe(`frame-src https://happy-otter-123.convex.site ${EMBED_FRAME_ORIGINS.join(" ")}`);
+    expect(d("frame-src")).toBe(`frame-src https://happy-otter-123.convex.site https://app.folevi.com ${EMBED_FRAME_ORIGINS.join(" ")}`);
     expect(policy).toContain("object-src 'none'");
     expect(policy).toContain("base-uri 'self'");
     expect(policy).not.toMatch(/\s{2,}/);

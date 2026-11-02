@@ -11,6 +11,7 @@ import { fontVariables } from "./fonts";
 const csp = shellContentSecurityPolicy({
   convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL ?? "",
   convexSiteUrl: process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "",
+  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "https://app.folevi.com",
   dev: process.env.NODE_ENV !== "production",
 });
 

@@ -64,6 +64,10 @@ public struct PhoneNotePlaceChip: View {
             .padding(.trailing, 8)
             .frame(height: 32)
             .liquidGlass()
+            // (A 44 pt target around the 32 pt chip: a tap just off it went to the note under the bar.)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 4)
+            .contentShape(Rectangle())
         }
         .buttonStyle(ChipPressStyle())
         .accessibilityLabel("In \(place.label)")
@@ -77,8 +81,8 @@ private struct ChipPressStyle: ButtonStyle {
 }
 
 /// The note's top bar (Screen.tsx's header with NoteTrailing): Back, the place chip in the middle until the small
-/// title takes its place, Share and "…" (Done while writing). Over a solid fade with a hairline once the note has
-/// scrolled 4 pt.
+/// title takes its place, Share and "…" (Done while writing). Over a blur that fades out downward once the note
+/// has scrolled 4 pt.
 public struct PhoneNoteTopBar: View {
     let title: String
     let place: PhoneNotePlace?
@@ -117,9 +121,15 @@ public struct PhoneNoteTopBar: View {
             let top = geo.safeAreaInsets.top
             let titleIn = min(1, max(0, (scrolled - (titleFoot - 12)) / 12))
             ZStack(alignment: .top) {
-                FoleviTokens.Chrome.canvas.resolve(scheme).color
-                    .frame(height: top + 52)
-                    .overlay(alignment: .bottom) { PhoneSurface.separator.resolve(scheme).color.frame(height: 0.5) }
+                // What scrolls under the bar blurs, the blur fading out below the buttons (no hard edge, and the
+                // material's own tint, so it suits a note's coloured page too).
+                let solid = top + 56, fade: CGFloat = 40
+                Rectangle().fill(.regularMaterial)
+                    .frame(height: solid + fade)
+                    .mask {
+                        // Full under the status bar and the buttons, then fading out over 40 pt.
+                        LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: solid / (solid + fade)), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom)
+                    }
                     .opacity(scrolled > 4 ? 1 : 0)
                     .animation(.easeOut(duration: 0.12), value: scrolled > 4)
                     .allowsHitTesting(false)
@@ -128,7 +138,8 @@ public struct PhoneNoteTopBar: View {
                         .webText(.role(.headline, weight: FoleviTokens.FontWeight.semibold))
                         .lineLimit(1)
                         .foregroundStyle(FoleviTokens.Chrome.heading.resolve(scheme).color)
-                        .frame(maxWidth: 220)
+                        // (Centred, and short of the buttons on both sides: Share and "…" take 104 pt, Done about 80.)
+                        .frame(maxWidth: max(80, geo.size.width - 2 * (16 + (writing ? 84 : 108) + 8)))
                         .opacity(titleIn)
                         .offset(y: (1 - titleIn) * 4)
                         .accessibilityHidden(titleIn < 0.5)

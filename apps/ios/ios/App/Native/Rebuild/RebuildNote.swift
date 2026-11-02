@@ -143,7 +143,8 @@ struct RebuildNoteScreen: View {
     /// status bar and the home indicator: a full canvas's tools sit right under the status bar, not a bar lower.
     private var insets: [Double] {
         let immersive = model.editorState?.focus == true
-        let top = immersive ? safe.top : safe.top + 52
+        // (The bar's buttons end 48 under the status bar; the note starts 16 below them, not right against them.)
+        let top = immersive ? safe.top : safe.top + 64
         let bottom: CGFloat = model.keyboardVisible ? model.keyboardOverlap + 48 + 8 : immersive ? safe.bottom : max(10, safe.bottom - 10) + 60 + 8
         return [Double(top.rounded()), Double(bottom.rounded())]
     }

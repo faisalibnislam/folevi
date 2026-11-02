@@ -1,6 +1,25 @@
 {
   "releases": [
     {
+      "version": "1.2.17",
+      "build": 29,
+      "released": "2026-11-02T06:30:40+06:00",
+      "type": "patch",
+      "summary": "Note cards that work everywhere",
+      "improved": [
+        "The whiteboard fills the screen in full screen on iPhone, with its tools in two rows",
+        "A full-screen chart sits between its tools and Done"
+      ],
+      "fixed": [
+        "YouTube and other videos play inside notes in the app",
+        "A note with a missing collection opens, and that card says the collection is unavailable",
+        "Done on a full-screen card no longer brings up the keyboard",
+        "A mind map opens centred in its card on iPad",
+        "Show all tabs opens the tab overview again on iPad"
+      ],
+      "tag": "v1.2.17"
+    },
+    {
       "version": "1.2.16",
       "build": 28,
       "released": "2026-11-02T05:42:18+06:00",

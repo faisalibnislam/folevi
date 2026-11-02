@@ -4,6 +4,25 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.17: Small update
+
+Released 2026-11-02 06:30:40+06:00 (build 29, tag v1.2.17)
+
+Note cards that work everywhere
+
+### Improved
+
+- The whiteboard fills the screen in full screen on iPhone, with its tools in two rows
+- A full-screen chart sits between its tools and Done
+
+### Fixed
+
+- YouTube and other videos play inside notes in the app
+- A note with a missing collection opens, and that card says the collection is unavailable
+- Done on a full-screen card no longer brings up the keyboard
+- A mind map opens centred in its card on iPad
+- Show all tabs opens the tab overview again on iPad
+
 ## Version 1.2.16: Small update
 
 Released 2026-11-02 05:42:18+06:00 (build 28, tag v1.2.16)

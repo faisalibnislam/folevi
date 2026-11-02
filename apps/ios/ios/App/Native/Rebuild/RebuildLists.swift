@@ -39,11 +39,12 @@ struct RebuildNotesScreen: View {
         )
         a.newNote = { phone.newNote(folderId: model.kind.folderId) }
         a.closeMenu = { menus.close() }
+        a.arrangeMenu = { row, frame, arrange in showRowMenu(row, from: frame, arrange: arrange) }
         return a
     }
 
     /// A note's long-press menu (NoteContextMenu), in the model's groups, coming out of the card or row.
-    private func showRowMenu(_ row: FoleviEngine.NoteRow, from anchor: CGRect) {
+    private func showRowMenu(_ row: FoleviEngine.NoteRow, from anchor: CGRect, arrange: (() -> Void)? = nil) {
         var entries: [PhoneMenuEntry] = []
         // (The phone's menu has no Open: a tap opens the note.)
         // (Cards in manual order are dragged into place instead of Move up and Move down, which stay for VoiceOver.)
@@ -67,6 +68,10 @@ struct RebuildNotesScreen: View {
                     }
                 })
             }
+        }
+        // Manual order's cards: Arrange notes, the Home Screen's Edit Home Screen (they wiggle and drag until Done).
+        if let arrange {
+            entries.insert(contentsOf: [PhoneMenuEntry(.item("Arrange notes", icon: .gripVertical)) { arrange() }, PhoneMenuEntry(.separator(99))], at: 0)
         }
         menus.show(entries, from: anchor, side: .bottom, align: .start)
     }

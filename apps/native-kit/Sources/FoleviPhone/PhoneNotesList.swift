@@ -23,8 +23,11 @@ public struct PhoneNotesListActions {
     public var selecting: (Bool) -> Void
     /// A new note (in the folder on show), from the empty screen's New note.
     public var newNote: () -> Void = {}
-    /// Closes a note's long-press menu (a card held and then dragged picks itself up instead).
+    /// Closes a note's long-press menu.
     public var closeMenu: () -> Void = {}
+    /// A card's long-press menu in manual order, with Arrange notes (the Home Screen's Edit Home Screen): the
+    /// closure it's given starts arranging. Nil: `rowMenu`.
+    public var arrangeMenu: ((NoteRow, CGRect, @escaping () -> Void) -> Void)?
 
     public init(open: @escaping (String) -> Void, openNote: @escaping (String) -> Void, back: @escaping () -> Void, menu: @escaping (CGRect) -> Void, rowMenu: @escaping (NoteRow, CGRect) -> Void, selecting: @escaping (Bool) -> Void) {
         self.open = open
@@ -166,6 +169,15 @@ public struct PhoneNotesListScreen: View {
         return shown.count == slots.count ? shown : slots
     }
 
+    /// A card's long-press menu, with Arrange notes when the cards can be arranged.
+    private func cardMenu(_ row: NoteRow, _ frame: CGRect) {
+        if canArrange, let arrangeMenu = actions.arrangeMenu {
+            arrangeMenu(row, frame) { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { arranging = true } }
+        } else {
+            actions.rowMenu(row, frame)
+        }
+    }
+
     /// Held (and, outside arranging, held for the menu's time), a card follows the finger; let go, it takes its place.
     private func arrangeGesture(_ row: NoteRow) -> some Gesture {
         LongPressGesture(minimumDuration: arranging ? 0.15 : 0.45)
@@ -292,7 +304,7 @@ public struct PhoneNotesListScreen: View {
                     Group {
                         if let row = slot.row {
                             let held = drag?.id == row.id
-                            PhonePressable(scale: 0.97, onTap: { tap(row) }, onLongPress: model.selecting || arranging ? nil : { actions.rowMenu(row, $0) }) {
+                            PhonePressable(scale: 0.97, onTap: { tap(row) }, onLongPress: model.selecting || arranging ? nil : { cardMenu(row, $0) }) {
                                 WebNoteCard(model.card(row))
                                     .overlay(alignment: .topTrailing) {
                                         if model.selecting { PhoneSelectMark(on: model.selection.contains(row.id)).padding(8) }
@@ -305,7 +317,9 @@ public struct PhoneNotesListScreen: View {
                             .offset(liftOffset(row.id))
                             .zIndex(held ? 1 : 0)
                             .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.grid)) } action: { frames[row.id] = $0 }
-                            .simultaneousGesture(arrangeGesture(row), including: arrangeable ? .all : .subviews)
+                            // (Only while arranging: a drag on the cards at other times keeps iOS's swipe from the screen's edge from
+                            // going Back.)
+                            .simultaneousGesture(arrangeGesture(row), including: arrangeable && arranging ? .all : .subviews)
                             .accessibilityAddTraits(model.selection.contains(row.id) ? .isSelected : [])
                             .accessibilityActions {
                                 if arrangeable {

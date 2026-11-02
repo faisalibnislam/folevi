@@ -4,6 +4,21 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.18: Small update
+
+Released 2026-11-02 08:46:16+06:00 (build 30, tag v1.2.18)
+
+Arrange your notes like your Home Screen
+
+### Added
+
+- In Manual order on iPhone, hold a note and drag it into place; the others make room until you tap Done
+
+### Improved
+
+- Sheets on iPhone follow the screen's rounded corners
+- The Foli AI sheet's message box sits at the bottom of the sheet
+
 ## Version 1.2.17: Small update
 
 Released 2026-11-02 06:30:40+06:00 (build 29, tag v1.2.17)

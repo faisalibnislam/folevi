@@ -1,6 +1,21 @@
 {
   "releases": [
     {
+      "version": "1.2.18",
+      "build": 30,
+      "released": "2026-11-02T08:46:16+06:00",
+      "type": "patch",
+      "summary": "Arrange your notes like your Home Screen",
+      "added": [
+        "In Manual order on iPhone, hold a note and drag it into place; the others make room until you tap Done"
+      ],
+      "improved": [
+        "Sheets on iPhone follow the screen's rounded corners",
+        "The Foli AI sheet's message box sits at the bottom of the sheet"
+      ],
+      "tag": "v1.2.18"
+    },
+    {
       "version": "1.2.17",
       "build": 29,
       "released": "2026-11-02T06:30:40+06:00",

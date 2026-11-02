@@ -86,6 +86,8 @@ public struct PhoneStyleSheetContent: View {
     let state: PhoneStyleState
     let run: (PhoneStyleAction) -> Void
     @State private var open: String?
+    /// The theme tapped that the note hasn't switched to yet.
+    @State private var pending: String?
     @Environment(\.colorScheme) private var scheme
     @Environment(\.webSnapshot) private var snapshot
     @Environment(\.coverArt) private var art
@@ -110,6 +112,7 @@ public struct PhoneStyleSheetContent: View {
             VStack(alignment: .leading, spacing: 0) {
                 caps("Note theme")
                 themes
+                    .onChange(of: state.current) { _, now in if pending == now { pending = nil } }
                 if state.hasBackdrop {
                     list {
                         HStack(spacing: 12) {
@@ -232,15 +235,24 @@ public struct PhoneStyleSheetContent: View {
 
     // MARK: Themes
 
+    /// A theme tapped: shown as loading until the note has it (or for 20 s at most, if it never comes).
+    private func pickTheme(_ id: String, locked: Bool) {
+        if !locked, id != state.current {
+            pending = id
+            DispatchQueue.main.asyncAfter(deadline: .now() + 20) { if pending == id { pending = nil } }
+        }
+        run(.theme(id))
+    }
+
     /// Plain, the person's image, the themes and All themes, 64 wide and 12 apart, scrolling past the edges.
     private var themes: some View {
         let row = HStack(alignment: .top, spacing: 12) {
-            ThemeChip(label: "Plain", on: state.current == "plain", locked: false) { Self.plain.color } pick: { run(.theme("plain")) }
+            ThemeChip(label: "Plain", on: state.current == "plain" && pending == nil, locked: false, loading: pending == "plain") { Self.plain.color } pick: { pickTheme("plain", locked: false) }
             if state.ownImage {
                 ThemeChip(label: "Your image", on: true, locked: false) { FoleviTokens.Chrome.surfaceSunken.resolve(scheme).color } pick: { run(.allThemes) }
             }
             ForEach(state.themes) { t in
-                ThemeChip(label: t.name, on: state.current == t.id, locked: t.locked) { ThemePicture(id: t.id, thumb: t.thumb) } pick: { run(.theme(t.id)) }
+                ThemeChip(label: t.name, on: state.current == t.id && pending == nil, locked: t.locked, loading: pending == t.id) { ThemePicture(id: t.id, thumb: t.thumb) } pick: { pickTheme(t.id, locked: t.locked) }
             }
             Button { run(.allThemes) } label: {
                 VStack(spacing: 6) {
@@ -433,13 +445,16 @@ struct ThemeChip<Art: View>: View {
     let label: String
     let on: Bool
     let locked: Bool
+    /// Picked and on its way (a theme's page comes from the server): ringed at once, a spinner over its picture.
+    var loading = false
     let art: Art
     let pick: () -> Void
     @Environment(\.colorScheme) private var scheme
 
-    init(label: String, on: Bool, locked: Bool, @ViewBuilder art: () -> Art, pick: @escaping () -> Void) {
+    init(label: String, on: Bool, locked: Bool, loading: Bool = false, @ViewBuilder art: () -> Art, pick: @escaping () -> Void) {
         self.label = label
-        self.on = on
+        self.on = on || loading
+        self.loading = loading
         self.locked = locked
         self.art = art()
         self.pick = pick
@@ -453,6 +468,16 @@ struct ThemeChip<Art: View>: View {
                     .frame(width: 64, height: 80)
                     .clipShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular))
                     .overlay { if !on { RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).strokeBorder(.black.opacity(0.16), lineWidth: 0.5) } }
+                    .overlay {
+                        if loading {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).fill(.black.opacity(0.28))
+                                ProgressView().controlSize(.small).tint(.white)
+                            }
+                            .transition(.opacity)
+                        }
+                    }
+                    .animation(.easeOut(duration: 0.15), value: loading)
                     .overlay(alignment: .topTrailing) {
                         if locked {
                             WebIconView(.lock, size: 11, strokeWidth: 2.5)
@@ -473,7 +498,7 @@ struct ThemeChip<Art: View>: View {
             }
         }
         .buttonStyle(SwatchPress())
-        .accessibilityLabel(locked ? "\(label), not on this plan" : label)
+        .accessibilityLabel(locked ? "\(label), not on this plan" : loading ? "\(label), loading" : label)
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
@@ -496,6 +521,8 @@ private struct StyleRowPress: ButtonStyle {
 public struct PhoneThemeGallery: View {
     let state: PhoneStyleState
     let pick: (String) -> Void
+    /// The theme tapped that the note hasn't switched to yet (as the sheet's row).
+    @State private var pending: String?
 
     public init(state: PhoneStyleState, pick: @escaping (String) -> Void) {
         self.state = state
@@ -504,14 +531,23 @@ public struct PhoneThemeGallery: View {
 
     public var body: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: 4), spacing: 16) {
-            ThemeChip(label: "Plain", on: state.current == "plain", locked: false) { PhoneStyleSheetContent.plain.color } pick: { pick("plain") }
+            ThemeChip(label: "Plain", on: state.current == "plain" && pending == nil, locked: false, loading: pending == "plain") { PhoneStyleSheetContent.plain.color } pick: { choose("plain", locked: false) }
             ForEach(state.themes) { t in
-                ThemeChip(label: t.name, on: state.current == t.id, locked: t.locked) { ThemePicture(id: t.id, thumb: t.thumb) } pick: { pick(t.id) }
+                ThemeChip(label: t.name, on: state.current == t.id && pending == nil, locked: t.locked, loading: pending == t.id) { ThemePicture(id: t.id, thumb: t.thumb) } pick: { choose(t.id, locked: t.locked) }
             }
         }
+        .onChange(of: state.current) { _, now in if pending == now { pending = nil } }
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 24)
         .disabled(!state.canEdit)
+    }
+
+    private func choose(_ id: String, locked: Bool) {
+        if !locked, id != state.current {
+            pending = id
+            DispatchQueue.main.asyncAfter(deadline: .now() + 20) { if pending == id { pending = nil } }
+        }
+        pick(id)
     }
 }

@@ -262,7 +262,7 @@ public enum PhoneKeyboardKey: Sendable {
 }
 
 /// The bar over the keyboard while writing: a glass capsule 48 tall, 8 pt in from the screen's sides and the
-/// keyboard's top; its keys (44 pt) scroll sideways, then a hairline and the key that puts the keyboard away.
+/// keyboard's top; its keys (44 pt) scroll sideways and fade out before the key that puts the keyboard away.
 public struct PhoneKeyboardBar: View {
     let state: PhoneKeyboardBarState
     let aiOn: Bool
@@ -280,16 +280,23 @@ public struct PhoneKeyboardBar: View {
     public var body: some View {
         HStack(spacing: 0) {
             // (A picture for the diffs can't draw a scroll view: the keys are clipped at the same place instead.)
-            if snapshot {
-                Color.clear.frame(height: 44).overlay(alignment: .leading) { keys.fixedSize() }.clipped()
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) { keys }
-                    .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            Group {
+                if snapshot {
+                    Color.clear.frame(height: 44).overlay(alignment: .leading) { keys.fixedSize() }.clipped()
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) { keys }
+                        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+                        // (Scrolled to the end, the last key stops clear of the fade.)
+                        .contentMargins(.trailing, 20, for: .scrollContent)
+                }
             }
-            PhoneSurface.separator.resolve(scheme).color
-                .frame(width: 1, height: 24)
-                .padding(.horizontal, 2)
-                .accessibilityHidden(true)
+            // The keys fade out over their last 24 pt before Hide keyboard, rather than meeting a hairline.
+            .mask {
+                HStack(spacing: 0) {
+                    Color.black
+                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: 24)
+                }
+            }
             key(.hide, "Hide keyboard") { WebIconView(.chevronDown, size: 24, strokeWidth: 2.2) }
         }
         .padding(.horizontal, 2)

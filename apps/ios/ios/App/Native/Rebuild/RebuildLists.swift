@@ -38,6 +38,7 @@ struct RebuildNotesScreen: View {
             selecting: selecting
         )
         a.newNote = { phone.newNote(folderId: model.kind.folderId) }
+        a.closeMenu = { menus.close() }
         return a
     }
 
@@ -45,7 +46,9 @@ struct RebuildNotesScreen: View {
     private func showRowMenu(_ row: FoleviEngine.NoteRow, from anchor: CGRect) {
         var entries: [PhoneMenuEntry] = []
         // (The phone's menu has no Open: a tap opens the note.)
-        let groups = model.menu(for: row, wide: false).map { $0.filter { $0 != .open && $0 != .openInNewTab } }.filter { !$0.isEmpty }
+        // (Cards in manual order are dragged into place instead of Move up and Move down, which stay for VoiceOver.)
+        let dragged: Set<NotesListModel.RowAction> = model.layout == .cards && !model.isFiltering ? [.moveUp, .moveDown] : []
+        let groups = model.menu(for: row, wide: false).map { $0.filter { $0 != .open && $0 != .openInNewTab && !dragged.contains($0) } }.filter { !$0.isEmpty }
         for (i, group) in groups.enumerated() {
             if i > 0 { entries.append(PhoneMenuEntry(.separator(i))) }
             for action in group {

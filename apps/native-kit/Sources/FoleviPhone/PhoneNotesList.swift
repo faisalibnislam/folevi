@@ -23,6 +23,8 @@ public struct PhoneNotesListActions {
     public var selecting: (Bool) -> Void
     /// A new note (in the folder on show), from the empty screen's New note.
     public var newNote: () -> Void = {}
+    /// Closes a note's long-press menu (a card held and then dragged picks itself up instead).
+    public var closeMenu: () -> Void = {}
 
     public init(open: @escaping (String) -> Void, openNote: @escaping (String) -> Void, back: @escaping () -> Void, menu: @escaping (CGRect) -> Void, rowMenu: @escaping (NoteRow, CGRect) -> Void, selecting: @escaping (Bool) -> Void) {
         self.open = open
@@ -40,7 +42,24 @@ public struct PhoneNotesListScreen: View {
     let scrollToTop: Int
     @State private var moreFrame: CGRect = .zero
     @State private var swipes = PhoneSwipeState()
+    /// Arranging the cards in manual order, as the Home Screen does: they wiggle, one held is dragged about and the
+    /// others make room, until Done.
+    @State private var arranging = false
+    @State private var drag: CardDrag?
+    /// The order on show while arranging (the cards' ids), until the list has the new one.
+    @State private var order: [String]?
+    /// Each card's frame in the grid, laid out (not where a drag has it).
+    @State private var frames: [String: CGRect] = [:]
     @Environment(\.colorScheme) private var scheme
+
+    private struct CardDrag: Equatable {
+        var id: String
+        /// Where the finger took hold of the card, from its corner.
+        var grab: CGSize
+        var location: CGPoint
+    }
+
+    private static let grid = "phone.notes.grid"
 
     public init(model: NotesListModel, actions: PhoneNotesListActions, scrollToTop: Int = 0) {
         self.model = model
@@ -59,7 +78,9 @@ public struct PhoneNotesListScreen: View {
                 if all { model.selection = [] } else { model.selection = Set(model.loadedRows.map(\.id)) }
             }
         } trailing: {
-            if model.selecting {
+            if arranging {
+                WebGlassTextButton("Done", strong: true) { stopArranging() }
+            } else if model.selecting {
                 WebGlassTextButton("Done", strong: true) { setSelecting(false) }
             } else {
                 HStack(spacing: 8) {
@@ -105,6 +126,10 @@ public struct PhoneNotesListScreen: View {
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.9), value: model.selecting)
+        // (The finger moves the card, not the list, while one is held.)
+        .scrollDisabled(drag != nil)
+        .onChange(of: model.slots.map(\.id)) { _, _ in if drag == nil { order = nil } }
+        .onChange(of: canArrange) { _, can in if !can { stopArranging() } }
         .notesListSheets(model)
         // Pull to refresh: iOS's own control on the screen's scroll view.
         .refreshable { await model.refresh() }
@@ -112,6 +137,7 @@ public struct PhoneNotesListScreen: View {
         .onDisappear {
             model.setVisible(false)
             if model.selecting { setSelecting(false) }
+            stopArranging()
         }
     }
 
@@ -123,6 +149,86 @@ public struct PhoneNotesListScreen: View {
         return o
     }
 
+    /// Cards can be dragged about: manual order, the whole list on show (no search), not picking notes.
+    private var canArrange: Bool { model.canArrange && model.layout == .cards && !model.isFiltering && !model.selecting }
+
+    private func stopArranging() {
+        arranging = false
+        drag = nil
+    }
+
+    /// The cards in the order on show: the list's, or the one a drag is making.
+    private var shownSlots: [NoteSlot] {
+        let slots = model.slots
+        guard let order else { return slots }
+        let byId = Dictionary(slots.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let shown = order.compactMap { byId[$0] }
+        return shown.count == slots.count ? shown : slots
+    }
+
+    /// Held (and, outside arranging, held for the menu's time), a card follows the finger; let go, it takes its place.
+    private func arrangeGesture(_ row: NoteRow) -> some Gesture {
+        LongPressGesture(minimumDuration: arranging ? 0.15 : 0.45)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.grid)))
+            .onChanged { value in
+                guard case .second(true, let d?) = value else { return }
+                if drag == nil {
+                    // Held for the menu, it stays a menu until the finger moves off.
+                    guard arranging || hypot(d.translation.width, d.translation.height) > 10, let f = frames[row.id] else { return }
+                    actions.closeMenu()
+                    #if canImport(UIKit)
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    #endif
+                    order = order ?? model.slots.map(\.id)
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        arranging = true
+                        drag = CardDrag(id: row.id, grab: CGSize(width: d.startLocation.x - f.minX, height: d.startLocation.y - f.minY), location: d.location)
+                    }
+                    return
+                }
+                drag?.location = d.location
+                makeRoom()
+            }
+            .onEnded { _ in drop() }
+    }
+
+    /// The card under the held one's middle gives up its place.
+    private func makeRoom() {
+        guard let drag, var next = order, let f = frames[drag.id], let from = next.firstIndex(of: drag.id) else { return }
+        let mid = CGPoint(x: drag.location.x - drag.grab.width + f.width / 2, y: drag.location.y - drag.grab.height + f.height / 2)
+        guard let target = next.first(where: { $0 != drag.id && !$0.hasPrefix("#") && frames[$0]?.contains(mid) == true }),
+              let to = next.firstIndex(of: target) else { return }
+        next.remove(at: from)
+        next.insert(drag.id, at: to)
+        #if canImport(UIKit)
+        UISelectionFeedbackGenerator().selectionChanged()
+        #endif
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) { order = next }
+    }
+
+    /// Let go: the card settles in its place, and the list keeps the order.
+    private func drop() {
+        guard let held = drag else { return }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { drag = nil }
+        let ids = model.slots.map(\.id)
+        guard let from = ids.firstIndex(of: held.id), let to = order?.firstIndex(of: held.id), from != to else {
+            order = nil
+            return
+        }
+        Task {
+            await model.reorder(from: [from], to: to > from ? to + 1 : to)
+            // (Normally the list's new order has replaced this one already.)
+            try? await Task.sleep(for: .seconds(1))
+            if drag == nil { order = nil }
+        }
+    }
+
+    /// Where a held card is drawn: under the finger, from its laid-out place.
+    private func liftOffset(_ id: String) -> CGSize {
+        guard let drag, drag.id == id, let f = frames[id] else { return .zero }
+        return CGSize(width: drag.location.x - drag.grab.width - f.minX, height: drag.location.y - drag.grab.height - f.minY)
+    }
+
     private func setSelecting(_ on: Bool) {
         model.selecting = on
         if !on { model.selection = [] }
@@ -131,6 +237,7 @@ public struct PhoneNotesListScreen: View {
 
     /// In Select mode a tap picks the note; otherwise it opens.
     private func tap(_ row: NoteRow) {
+        if arranging { return }
         if model.selecting {
             if model.selection.contains(row.id) { model.selection.remove(row.id) } else { model.selection.insert(row.id) }
         } else {
@@ -179,18 +286,33 @@ public struct PhoneNotesListScreen: View {
                 }
             }
         } else if model.layout == .cards {
+            let arrangeable = canArrange
             LazyVGrid(columns: columns(grid), spacing: 20) {
-                ForEach(model.slots) { slot in
+                ForEach(Array(shownSlots.enumerated()), id: \.element.id) { at, slot in
                     Group {
                         if let row = slot.row {
-                            PhonePressable(scale: 0.97, onTap: { tap(row) }, onLongPress: model.selecting ? nil : { actions.rowMenu(row, $0) }) {
+                            let held = drag?.id == row.id
+                            PhonePressable(scale: 0.97, onTap: { tap(row) }, onLongPress: model.selecting || arranging ? nil : { actions.rowMenu(row, $0) }) {
                                 WebNoteCard(model.card(row))
                                     .overlay(alignment: .topTrailing) {
                                         if model.selecting { PhoneSelectMark(on: model.selection.contains(row.id)).padding(8) }
                                     }
                             }
                             .phoneZoomSource(row.id)
+                            .modifier(PhoneWiggle(on: arranging && !held, clockwise: at.isMultiple(of: 2)))
+                            .scaleEffect(held ? 1.06 : 1)
+                            .shadow(color: .black.opacity(held ? 0.22 : 0), radius: held ? 18 : 0, y: held ? 10 : 0)
+                            .offset(liftOffset(row.id))
+                            .zIndex(held ? 1 : 0)
+                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.grid)) } action: { frames[row.id] = $0 }
+                            .simultaneousGesture(arrangeGesture(row), including: arrangeable ? .all : .subviews)
                             .accessibilityAddTraits(model.selection.contains(row.id) ? .isSelected : [])
+                            .accessibilityActions {
+                                if arrangeable {
+                                    Button("Move up") { Task { await model.run(.moveUp, on: row) } }
+                                    Button("Move down") { Task { await model.run(.moveDown, on: row) } }
+                                }
+                            }
                         } else {
                             RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous)
                                 .fill(FoleviTokens.Chrome.surfaceSunken.resolve(scheme).color)
@@ -201,6 +323,7 @@ public struct PhoneNotesListScreen: View {
                     .onDisappear { model.slotDisappeared(slot.index) }
                 }
             }
+            .coordinateSpace(name: Self.grid)
             .padding(grid.padding.edgeInsets)
             .environment(\.webPhoneCards, true)
         } else {
@@ -325,6 +448,22 @@ struct PhonePressable<Content: View>: View {
             } onPressingChanged: { pressed = $0 }
             .accessibilityAddTraits(.isButton)
             .accessibilityAction(named: "More actions") { onLongPress?(frame) }
+    }
+}
+
+/// The Home Screen's wiggle while cards are being arranged: a slight tilt to and fro, every other card the other
+/// way. Reduce Motion: still.
+struct PhoneWiggle: ViewModifier {
+    let on: Bool
+    let clockwise: Bool
+
+    func body(content: Content) -> some View {
+        // (Drawn from the clock, not a repeating animation, so it stops level the moment it's off.)
+        let still = !on || WebMotion.reduced
+        TimelineView(.animation(paused: still)) { t in
+            let swing = sin(t.date.timeIntervalSinceReferenceDate * .pi / 0.14) * 0.8 * (clockwise ? 1 : -1)
+            content.rotationEffect(.degrees(still ? 0 : swing))
+        }
     }
 }
 

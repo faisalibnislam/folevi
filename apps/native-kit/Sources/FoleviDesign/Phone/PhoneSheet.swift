@@ -132,8 +132,11 @@ public struct PhoneSheetHeader<Leading: View, Trailing: View>: View {
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { side = max(side, $0) }
             .frame(minWidth: side, alignment: .trailing)
         }
-        .padding(.horizontal, 6)
-        .frame(height: 56)
+        // (The buttons' circles 20 pt in from the sides and 14 from the top: iOS's sheet rounds its corners wide, and
+        // nearer the edge they crowded the curve.)
+        .padding(.horizontal, 14)
+        .padding(.top, 2)
+        .frame(height: 58, alignment: .center)
     }
 }
 

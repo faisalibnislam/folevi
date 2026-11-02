@@ -16,6 +16,7 @@ function summaryOf(row: NoteRow): SummaryLike {
     kind: row.kind,
     excerpt: row.excerpt,
     preview: row.preview,
+    shape: row.shape,
     cover: row.cover,
     style: row.style,
     starred: row.starred,

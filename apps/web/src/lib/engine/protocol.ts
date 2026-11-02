@@ -393,6 +393,11 @@ export interface NoteRow {
   kind: string;
   excerpt: string;
   preview: PreviewLine[] | null;
+  /**
+   * What kind of page it is, from all its blocks (derive.ts deriveShape): "pages", "tabs", "pocket", "canvas",
+   * "list" or "page"; null until the server has worked it out. Its card's look (DocumentCard.tsx noteLook).
+   */
+  shape: string | null;
   cover: CardCover;
   style: CardStyle;
   starred: boolean;

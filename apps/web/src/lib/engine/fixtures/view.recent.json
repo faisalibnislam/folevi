@@ -32,6 +32,7 @@
               "c": false
             }
           ],
+          "shape": "list",
           "cover": {
             "kind": "theme",
             "value": "art-03"
@@ -63,7 +64,7 @@
           "inTrash": false,
           "deletedAt": null,
           "sync": "saved",
-          "h": "b8d65473"
+          "h": "ab371a08"
         },
         "space": "personal",
         "spaceName": "Personal"
@@ -81,6 +82,7 @@
               "x": "Q4 planning. First lines of the note."
             }
           ],
+          "shape": "page",
           "cover": {
             "kind": "none"
           },
@@ -105,7 +107,7 @@
           "inTrash": false,
           "deletedAt": null,
           "sync": "saved",
-          "h": "57ee77eb"
+          "h": "e2153493"
         },
         "space": "ws_studio",
         "spaceName": "Airly Studio"
@@ -123,6 +125,7 @@
               "x": "Reading list. First lines of the note."
             }
           ],
+          "shape": "page",
           "cover": {
             "kind": "theme",
             "value": "art-27"
@@ -148,7 +151,7 @@
           "inTrash": false,
           "deletedAt": null,
           "sync": "saved",
-          "h": "a9a7f9f2"
+          "h": "d17ff632"
         },
         "space": "personal",
         "spaceName": "Personal"

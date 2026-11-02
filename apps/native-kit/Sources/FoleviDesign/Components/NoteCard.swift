@@ -32,6 +32,13 @@ public struct CardPreviewLine: Hashable, Sendable {
     }
 }
 
+/// How a note's card looks (DocumentCard.tsx CardLook): starred, a binder clip; pages inside, sheets fanned behind;
+/// tabs, a tab divider; mostly attachments, a pocket; mostly a canvas, graph paper; mostly a list, an index card; a
+/// template, a typed memo; anything else, a spiral-bound page.
+public enum NoteCardLook: String, Sendable, CaseIterable {
+    case spiral, clip, stack, tabs, pocket, graph, index, memo
+}
+
 public struct NoteCardModel: Hashable, Sendable, Identifiable {
     public var id: String
     public var title: String
@@ -51,8 +58,11 @@ public struct NoteCardModel: Hashable, Sendable, Identifiable {
     /// An explicit document colour (the note's Style > Document color); nil = Auto (from the theme, else surface).
     public var paper: ColorPair?
     public var ink: ColorPair?
+    /// What kind of page it is (the row's `shape`, derive.ts deriveShape) and whether it's a template: the card's look.
+    public var shape: String?
+    public var template: Bool
 
-    public init(id: String, title: String, excerpt: String = "", preview: [CardPreviewLine] = [], cover: NoteCover = .plain, fontType: NoteFontType = .system, createdText: String, timeText: String, starred: Bool = false, folderName: String? = nil, folderColorId: String? = nil, showsFolder: Bool = true, paper: ColorPair? = nil, ink: ColorPair? = nil) {
+    public init(id: String, title: String, excerpt: String = "", preview: [CardPreviewLine] = [], cover: NoteCover = .plain, fontType: NoteFontType = .system, createdText: String, timeText: String, starred: Bool = false, folderName: String? = nil, folderColorId: String? = nil, showsFolder: Bool = true, paper: ColorPair? = nil, ink: ColorPair? = nil, shape: String? = nil, template: Bool = false) {
         self.id = id
         self.title = title
         self.excerpt = excerpt
@@ -67,12 +77,28 @@ public struct NoteCardModel: Hashable, Sendable, Identifiable {
         self.showsFolder = showsFolder
         self.paper = paper
         self.ink = ink
+        self.shape = shape
+        self.template = template
+    }
+
+    /// The card's look (DocumentCard.tsx noteLook): the first that fits.
+    public var look: NoteCardLook {
+        if starred { return .clip }
+        switch shape {
+        case "pages": return .stack
+        case "tabs": return .tabs
+        case "pocket": return .pocket
+        case "canvas": return .graph
+        case "list": return .index
+        default: return template ? .memo : .spiral
+        }
     }
 
     public static func == (a: NoteCardModel, b: NoteCardModel) -> Bool {
         a.id == b.id && a.title == b.title && a.excerpt == b.excerpt && a.preview == b.preview && a.cover == b.cover && a.fontType == b.fontType
             && a.createdText == b.createdText && a.timeText == b.timeText && a.starred == b.starred && a.folderName == b.folderName
             && a.folderColorId == b.folderColorId && a.showsFolder == b.showsFolder && a.paper == b.paper && a.ink == b.ink
+            && a.shape == b.shape && a.template == b.template
     }
 
     public func hash(into h: inout Hasher) { h.combine(id) }

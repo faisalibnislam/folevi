@@ -56,6 +56,7 @@
                 "c": false
               }
             ],
+            "shape": "list",
             "cover": {
               "kind": "theme",
               "value": "art-03"
@@ -87,7 +88,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "b8d65473"
+            "h": "ab371a08"
           },
           "doc_00002": {
             "id": "doc_00002",
@@ -101,6 +102,7 @@
                 "x": "Q4 planning. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "none"
             },
@@ -125,7 +127,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "57ee77eb"
+            "h": "e2153493"
           },
           "doc_00003": {
             "id": "doc_00003",
@@ -139,6 +141,7 @@
                 "x": "Reading list. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "theme",
               "value": "art-27"
@@ -164,7 +167,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "a9a7f9f2"
+            "h": "d17ff632"
           },
           "doc_00004": {
             "id": "doc_00004",
@@ -178,6 +181,7 @@
                 "x": "Sourdough notes. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "none"
             },
@@ -198,7 +202,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "97149c30"
+            "h": "07695d4a"
           },
           "doc_00005": {
             "id": "doc_00005",
@@ -212,6 +216,7 @@
                 "x": "Interview loop. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "theme",
               "value": "art-55"
@@ -237,7 +242,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "00cb2dcd"
+            "h": "36a70bcd"
           },
           "doc_00006": {
             "id": "doc_00006",
@@ -262,6 +267,7 @@
                 "c": false
               }
             ],
+            "shape": "list",
             "cover": {
               "kind": "none"
             },
@@ -286,7 +292,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "ff14f067"
+            "h": "288c595c"
           },
           "doc_00007": {
             "id": "doc_00007",
@@ -300,6 +306,7 @@
                 "x": "Weekly review. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "theme",
               "value": "art-12"
@@ -325,7 +332,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "d85a844b"
+            "h": "aab00a61"
           },
           "doc_00008": {
             "id": "doc_00008",
@@ -339,6 +346,7 @@
                 "x": "Book club: The Overstory. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "none"
             },
@@ -365,7 +373,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "dbcff856"
+            "h": "37c7470e"
           },
           "doc_00009": {
             "id": "doc_00009",
@@ -379,6 +387,7 @@
                 "x": "Note 9. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "theme",
               "value": "art-41"
@@ -404,7 +413,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "71956f94"
+            "h": "ed0fe5b2"
           },
           "doc_00010": {
             "id": "doc_00010",
@@ -418,6 +427,7 @@
                 "x": "Note 10. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "none"
             },
@@ -442,7 +452,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "a0f8d8a7"
+            "h": "e58e6cb1"
           }
         }
       }
@@ -468,6 +478,7 @@
                 "x": "Reading list. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "theme",
               "value": "art-27"
@@ -493,7 +504,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "waiting",
-            "h": "5c2415de"
+            "h": "da57169e"
           }
         }
       }
@@ -527,6 +538,7 @@
             "c": false
           }
         ],
+        "shape": "list",
         "cover": {
           "kind": "theme",
           "value": "art-03"
@@ -558,7 +570,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "saved",
-        "h": "b8d65473"
+        "h": "ab371a08"
       },
       {
         "id": "doc_00002",
@@ -572,6 +584,7 @@
             "x": "Q4 planning. First lines of the note."
           }
         ],
+        "shape": "page",
         "cover": {
           "kind": "none"
         },
@@ -596,7 +609,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "saved",
-        "h": "57ee77eb"
+        "h": "e2153493"
       },
       {
         "id": "doc_00003",
@@ -610,6 +623,7 @@
             "x": "Reading list. First lines of the note."
           }
         ],
+        "shape": "page",
         "cover": {
           "kind": "theme",
           "value": "art-27"
@@ -635,7 +649,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "waiting",
-        "h": "5c2415de"
+        "h": "da57169e"
       },
       {
         "id": "doc_00004",
@@ -649,6 +663,7 @@
             "x": "Sourdough notes. First lines of the note."
           }
         ],
+        "shape": "page",
         "cover": {
           "kind": "none"
         },
@@ -669,7 +684,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "saved",
-        "h": "97149c30"
+        "h": "07695d4a"
       },
       {
         "id": "doc_00005",
@@ -683,6 +698,7 @@
             "x": "Interview loop. First lines of the note."
           }
         ],
+        "shape": "page",
         "cover": {
           "kind": "theme",
           "value": "art-55"
@@ -708,7 +724,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "saved",
-        "h": "00cb2dcd"
+        "h": "36a70bcd"
       },
       {
         "id": "doc_00006",
@@ -733,6 +749,7 @@
             "c": false
           }
         ],
+        "shape": "list",
         "cover": {
           "kind": "none"
         },
@@ -757,7 +774,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "saved",
-        "h": "ff14f067"
+        "h": "288c595c"
       },
       {
         "id": "doc_00007",
@@ -771,6 +788,7 @@
             "x": "Weekly review. First lines of the note."
           }
         ],
+        "shape": "page",
         "cover": {
           "kind": "theme",
           "value": "art-12"
@@ -796,7 +814,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "saved",
-        "h": "d85a844b"
+        "h": "aab00a61"
       },
       {
         "id": "doc_00008",
@@ -810,6 +828,7 @@
             "x": "Book club: The Overstory. First lines of the note."
           }
         ],
+        "shape": "page",
         "cover": {
           "kind": "none"
         },
@@ -836,7 +855,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "saved",
-        "h": "dbcff856"
+        "h": "37c7470e"
       },
       {
         "id": "doc_00009",
@@ -850,6 +869,7 @@
             "x": "Note 9. First lines of the note."
           }
         ],
+        "shape": "page",
         "cover": {
           "kind": "theme",
           "value": "art-41"
@@ -875,7 +895,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "saved",
-        "h": "71956f94"
+        "h": "ed0fe5b2"
       },
       {
         "id": "doc_00010",
@@ -889,6 +909,7 @@
             "x": "Note 10. First lines of the note."
           }
         ],
+        "shape": "page",
         "cover": {
           "kind": "none"
         },
@@ -913,7 +934,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "saved",
-        "h": "a0f8d8a7"
+        "h": "e58e6cb1"
       }
     ]
   }

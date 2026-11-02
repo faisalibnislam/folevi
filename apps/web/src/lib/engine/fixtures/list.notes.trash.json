@@ -36,6 +36,7 @@
                 "x": "Sourdough notes. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "none"
             },
@@ -56,7 +57,7 @@
             "inTrash": true,
             "deletedAt": 1792659600000,
             "sync": "saved",
-            "h": "77d34ce9"
+            "h": "ce7e1a29"
           },
           "doc_00005": {
             "id": "doc_00005",
@@ -70,6 +71,7 @@
                 "x": "Interview loop. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "theme",
               "value": "art-55"
@@ -95,7 +97,7 @@
             "inTrash": true,
             "deletedAt": 1792400400000,
             "sync": "saved",
-            "h": "6430b722"
+            "h": "d5fcf4d0"
           }
         }
       }
@@ -118,6 +120,7 @@
             "x": "Sourdough notes. First lines of the note."
           }
         ],
+        "shape": "page",
         "cover": {
           "kind": "none"
         },
@@ -138,7 +141,7 @@
         "inTrash": true,
         "deletedAt": 1792659600000,
         "sync": "saved",
-        "h": "77d34ce9"
+        "h": "ce7e1a29"
       },
       {
         "id": "doc_00005",
@@ -152,6 +155,7 @@
             "x": "Interview loop. First lines of the note."
           }
         ],
+        "shape": "page",
         "cover": {
           "kind": "theme",
           "value": "art-55"
@@ -177,7 +181,7 @@
         "inTrash": true,
         "deletedAt": 1792400400000,
         "sync": "saved",
-        "h": "6430b722"
+        "h": "d5fcf4d0"
       }
     ]
   }

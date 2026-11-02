@@ -192,7 +192,7 @@ export function NoteCardFace({
         }
       >
         {look === "memo" ? (
-          <h3 data-card="title" className="line-clamp-2 self-start text-ellipsis break-words rounded-tiny bg-heading px-[2.4cqw] py-[1.2cqw] font-mono text-[4cqw] font-medium uppercase leading-[1.3] tracking-[0.06em] text-surface">{title || "Untitled"}</h3>
+          <h3 data-card="memo" className="line-clamp-2 self-start text-ellipsis break-words rounded-tiny bg-heading px-[2.4cqw] py-[1.2cqw] font-mono text-[4cqw] font-medium uppercase leading-[1.3] tracking-[0.06em] text-surface">{title || "Untitled"}</h3>
         ) : (
           <h3 data-card="title" className="line-clamp-2 text-ellipsis wrap-normal break-normal pr-[7cqw] font-serif text-[6.6cqw] font-medium leading-[1.22] tracking-[0.005em] text-heading">{title || "Untitled"}</h3>
         )}
@@ -242,7 +242,7 @@ export function NoteCardFace({
         // A binder clip across the top: the starred note.
         <span role="img" aria-label="Starred" className="pointer-events-none absolute left-1/2 top-[-2.4cqw] z-20 -translate-x-1/2">
           <span aria-hidden className="absolute bottom-[4cqw] left-1/2 h-[6cqw] w-[13cqw] -translate-x-1/2 rounded-t-chip border-[0.9cqw] border-b-0 border-[color-mix(in_oklab,var(--color-heading)_45%,transparent)]" />
-          <span aria-hidden className="block h-[7cqw] w-[20cqw] rounded-tiny bg-[#1e1d1a] shadow-[0_1px_2px_rgb(0_0_0/0.3)]" />
+          <span aria-hidden className="block h-[7cqw] w-[20cqw] rounded-tiny bg-[#1e1d1a] shadow-[0_1px_2px_rgb(0_0_0/0.3)] dark:bg-[#5a5853]" />
         </span>
       ) : null}
     </div>

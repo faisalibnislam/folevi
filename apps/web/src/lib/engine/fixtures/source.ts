@@ -154,6 +154,7 @@ export function seedRow(i: number, over: Partial<Omit<NoteRow, "h">> = {}): Note
             { t: "todo", x: "Rail pass", c: false },
           ]
         : [{ t: "paragraph", x: `${title}. First lines of the note.` }],
+    shape: i % 5 === 0 ? "list" : "page",
     cover: i % 2 === 0 ? { kind: "theme", value: THEMES[i % THEMES.length]! } : { kind: "none" },
     style: STYLE,
     starred: i % 6 === 0,

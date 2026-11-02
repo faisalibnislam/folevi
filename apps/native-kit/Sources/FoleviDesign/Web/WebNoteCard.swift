@@ -242,7 +242,39 @@ public struct WebNoteCard: View {
         let shape = phone ? WebCornersShape.phoneNoteCard : WebCornersShape.noteCard
         let sheetW = w - cq, sheetH = h - cq
         let shadows = hovered ? Self.hoverShadows : link.visibleShadows
+        let look = model.look
+        let paper = pal?.paper ?? sheetStyle.background
+        // `color-mix(in oklab, var(--color-heading) p%, var(--color-surface))`: outside the cover the app's colours,
+        // on it the note's.
+        let appHeading = s("title").color
+        let appTint = { (p: Double) in appHeading.oklabMix(sheetStyle.background, p / 100) }
+        let tint = { (p: Double) in heading.oklabMix(paper, p / 100) }
         return ZStack(alignment: .topLeading) {
+            if look == .stack {
+                // Sheets fanned behind the cover: the note has pages inside.
+                let sheetShadows = [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.08), inset: true), ShadowLayer(x: 0, y: 4, blur: 10, spread: -6, color: RGBA(20, 20, 30, 0.25))]
+                WebShapeBox(shape: shape, fill: appTint(16).color, shadows: sheetShadows)
+                    .frame(width: w * 0.97, height: h * 0.98)
+                    .rotationEffect(.degrees(5))
+                    .offset(x: w * 0.03, y: h * 0.02)
+                WebShapeBox(shape: shape, fill: appTint(9).color, shadows: sheetShadows)
+                    .frame(width: w * 0.97, height: h * 0.98)
+                    .rotationEffect(.degrees(-3.5))
+                    .offset(y: h * 0.01)
+            }
+            if look == .tabs {
+                // A tab divider's tabs past the open edge (`flex-[1.2]`, then `flex-1` twice).
+                let unit = (h * 0.62 - 2 * 1.4 * cq) / 3.2
+                VStack(spacing: 1.4 * cq) {
+                    ForEach(Array([(appHeading, 1.2), (appTint(30), 1.0), (appTint(16), 1.0)].enumerated()), id: \.offset) { _, tab in
+                        UnevenRoundedRectangle(bottomTrailingRadius: FoleviTokens.Radius.tiny, topTrailingRadius: FoleviTokens.Radius.tiny, style: .circular)
+                            .fill(tab.0.color)
+                            .frame(height: unit * tab.1)
+                    }
+                }
+                .frame(width: 5 * cq, height: h * 0.62)
+                .offset(x: w - 2 * cq, y: h * 0.12)
+            }
             WebShapeBox(shape: shape, fill: nil, shadows: shadows)
                 .frame(width: w, height: h)
             // The page block, peeking out past the cover's open edge and bottom.
@@ -256,33 +288,71 @@ public struct WebNoteCard: View {
                     .frame(width: sheetW * 0.06, height: sheetH)
                     .clipped()
                     .overlay(alignment: .trailing) { Rectangle().fill(Color.black.opacity(0.06)).frame(width: 1) }
-                content(cq: cq, titleWidth: sheetW * 0.94 - 20 * cq, heading: heading, faint: faint, muted: muted, chip: chip)
+                content(cq: cq, titleWidth: sheetW * 0.94 - 20 * cq, heading: heading, faint: faint, muted: muted, chip: chip, look: look, tint: tint)
+                    .background {
+                        if look == .graph { GraphPaper(step: 6 * cq, line: tint(9).color) }
+                    }
+                    .overlay(alignment: .bottom) {
+                        if look == .pocket {
+                            // A sleeve over the lower part of the page, the note peeking out of it.
+                            GeometryReader { g in
+                                tint(7).color
+                                    .overlay(alignment: .top) { Rectangle().fill(heading.opacity(0.14).color).frame(height: 1) }
+                                    .frame(height: g.size.height * 0.44)
+                                    .frame(maxHeight: .infinity, alignment: .bottom)
+                            }
+                            .allowsHitTesting(false)
+                        }
+                    }
+                    .overlay(alignment: .bottom) {
+                        // The footer stays over the sleeve.
+                        if look == .pocket {
+                            footer(cq: cq, heading: heading, muted: muted, chip: chip)
+                                .padding(EdgeInsets(top: 0, leading: 7 * cq, bottom: 6 * cq, trailing: 6 * cq))
+                        }
+                    }
             }
             .frame(width: sheetW, height: sheetH)
-            .background((pal?.paper ?? sheetStyle.background).color)
-            // The star's tab (DocumentCard.tsx: absolute right-0 top-0, 12cqw square, rounded-bl-chip): flush with
-            // the cover's top and right, only its bottom-left corner rounded; the cover's own rounded corner clips
-            // its top-right, as the web card's overflow-hidden does (it was clipped to a card shape of its own
-            // size before, so it sat in the corner as a rounded blob, 2026-10-28).
-            .overlay(alignment: .topTrailing) {
-                if model.starred {
-                    ZStack {
-                        UnevenRoundedRectangle(bottomLeadingRadius: FoleviTokens.Radius.chip, style: .circular).fill(chip.color)
-                        WebIconShape(icon: .star)
-                            .fill(heading.color)
-                            .overlay(WebIconView(.star, size: 5.6 * cq).foregroundStyle(heading.color))
-                            .frame(width: 5.6 * cq, height: 5.6 * cq)
+            .overlay(alignment: .topLeading) {
+                if look == .spiral {
+                    // A spiral's punched holes down the spine's edge.
+                    VStack(spacing: 0) {
+                        ForEach(0..<9, id: \.self) { i in
+                            if i > 0 { Spacer(minLength: 0) }
+                            Circle().fill(heading.opacity(0.82).color)
+                                .padding(-0.6 * cq).background(Circle().fill(paper.color)).padding(0.6 * cq)
+                                .frame(width: 2.6 * cq, height: 2.6 * cq)
+                        }
                     }
-                    .frame(width: 12 * cq, height: 12 * cq)
-                    .accessibilityLabel("Starred")
+                    .frame(height: sheetH * 0.88)
+                    .offset(x: sheetW * 0.034, y: sheetH * 0.06)
                 }
             }
+            .background(paper.color)
             .clipShape(shape)
             .overlay(WebShapeBox(shape: shape, fill: nil, shadows: s("edge").visibleShadows))
             .overlay {
                 if phone && scheme == .dark {
                     shape.stroke(Color.white.opacity(0.08), lineWidth: 1).clipShape(shape)
                 }
+            }
+            if look == .clip {
+                // A binder clip across the top: the starred note.
+                ZStack(alignment: .bottom) {
+                    UnevenRoundedRectangle(topLeadingRadius: FoleviTokens.Radius.chip, topTrailingRadius: FoleviTokens.Radius.chip, style: .circular)
+                        .inset(by: 0.45 * cq)
+                        .stroke(appHeading.opacity(0.45).color, lineWidth: 0.9 * cq)
+                        .mask(Rectangle().padding(.bottom, 0.45 * cq))
+                        .frame(width: 13 * cq, height: 6 * cq)
+                        .offset(y: -4 * cq)
+                    RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular)
+                        .fill((scheme == .dark ? RGBA(90, 88, 83) : RGBA(30, 29, 26)).color)
+                        .shadow(color: .black.opacity(0.3), radius: 1, y: 1)
+                        .frame(width: 20 * cq, height: 7 * cq)
+                }
+                .frame(width: 20 * cq, height: 7 * cq, alignment: .bottom)
+                .offset(x: w / 2 - 10 * cq, y: -2.4 * cq)
+                .accessibilityLabel("Starred")
             }
         }
         .frame(width: w, height: h, alignment: .topLeading)
@@ -296,17 +366,36 @@ public struct WebNoteCard: View {
         }
     }
 
-    private func content(cq: CGFloat, titleWidth: CGFloat, heading: RGBA, faint: RGBA, muted: RGBA, chip: RGBA) -> some View {
+    private func content(cq: CGFloat, titleWidth: CGFloat, heading: RGBA, faint: RGBA, muted: RGBA, chip: RGBA, look: NoteCardLook, tint: (Double) -> RGBA) -> some View {
         let titleStyle = phone
             ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 600, letterSpacing: -0.005 * 17)
             : WebTextStyle(family: .display, size: 6.6 * cq, leading: 6.6 * cq * 1.22, weight: 500, letterSpacing: 0.005 * 6.6 * cq)
         let createdStyle = WebTextStyle(size: 4.5 * cq, leading: 4.5 * cq * 1.3)
         let bodyStyle = WebTextStyle(size: 3.6 * cq, leading: 5 * cq)
         let text = NoteCardView.previewText(model.preview, excerpt: model.excerpt)
+        // A template's title is a typed label (the iPhone's 12/16, as globals.css sets [data-card="memo"]).
+        let memoStyle = phone
+            ? WebTextStyle(family: .mono, size: 12, leading: 16, weight: 500, letterSpacing: 0.06 * 12)
+            : WebTextStyle(family: .mono, size: 4 * cq, leading: 4 * cq * 1.3, weight: 500, letterSpacing: 0.06 * 4 * cq)
+        let memoPad = phone ? (h: CGFloat(7), v: CGFloat(3)) : (h: 2.4 * cq, v: 1.2 * cq)
         return VStack(alignment: .leading, spacing: 0) {
-            WebClampedText(model.title.isEmpty ? "Untitled" : model.title, style: titleStyle, maxLines: 2, width: titleWidth, balance: phone)
-                .foregroundStyle(heading.color)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if look == .memo {
+                Text((model.title.isEmpty ? "Untitled" : model.title).uppercased())
+                    .webText(memoStyle)
+                    .lineLimit(2)
+                    .foregroundStyle((model.paper?.resolve(scheme) ?? palette?.paper ?? s("sheet").background).color)
+                    .padding(.horizontal, memoPad.h)
+                    .padding(.vertical, memoPad.v)
+                    .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular).fill(heading.color))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                WebClampedText(model.title.isEmpty ? "Untitled" : model.title, style: titleStyle, maxLines: 2, width: titleWidth, balance: phone)
+                    .foregroundStyle(heading.color)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if look == .index {
+                Rectangle().fill(RGBA(232, 142, 142).color).frame(height: 0.5 * cq).padding(.top, 2.4 * cq)
+            }
             if !phone {
                 Text(model.createdText)
                     .webText(createdStyle)
@@ -348,11 +437,16 @@ public struct WebNoteCard: View {
                 .foregroundStyle(faint.color)
                 .frame(width: geo.size.width, alignment: .topLeading)
             }
+            .background(alignment: .topLeading) {
+                // An index card's blue lines under each line of text.
+                if look == .index { RuledLines(step: bodyStyle.leading, line: RGBA(120, 160, 210, 0.35).color) }
+            }
             .padding(.top, 4.6 * cq)
             .frame(maxHeight: .infinity)
             .clipped()
             footer(cq: cq, heading: heading, muted: muted, chip: chip)
                 .padding(.top, 3.5 * cq)
+                .opacity(look == .pocket ? 0 : 1)
         }
         .padding(EdgeInsets(top: 8 * cq, leading: 7 * cq, bottom: 6 * cq, trailing: 6 * cq))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -450,6 +544,40 @@ public struct WebNoteCard: View {
         ShadowLayer(x: -5, y: 24, blur: 36, spread: -18, color: RGBA(20, 20, 30, 0.18)),
         ShadowLayer(x: 0, y: 3, blur: 8, spread: 0, color: RGBA(20, 20, 30, 0.04)),
     ]
+}
+
+/// Graph paper: a line every `step` both ways, from the top-left (the card's graph look).
+private struct GraphPaper: View {
+    let step: CGFloat
+    let line: Color
+
+    var body: some View {
+        Canvas { ctx, size in
+            guard step > 1 else { return }
+            var p = Path()
+            var x: CGFloat = 0
+            while x < size.width { p.addRect(CGRect(x: x, y: 0, width: 1, height: size.height)); x += step }
+            var y: CGFloat = 0
+            while y < size.height { p.addRect(CGRect(x: 0, y: y, width: size.width, height: 1)); y += step }
+            ctx.fill(p, with: .color(line))
+        }
+    }
+}
+
+/// Ruled lines: a 1 pt line closing each `step` (the index card's, under each line of text).
+private struct RuledLines: View {
+    let step: CGFloat
+    let line: Color
+
+    var body: some View {
+        Canvas { ctx, size in
+            guard step > 1 else { return }
+            var p = Path()
+            var y = step - 1
+            while y < size.height { p.addRect(CGRect(x: 0, y: y, width: size.width, height: 1)); y += step }
+            ctx.fill(p, with: .color(line))
+        }
+    }
 }
 
 /// The compact card (Compact layout, DocumentCardPreview): title and folder in a short tile.

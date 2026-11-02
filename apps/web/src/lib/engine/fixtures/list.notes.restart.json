@@ -48,6 +48,7 @@
                 "c": false
               }
             ],
+            "shape": "list",
             "cover": {
               "kind": "theme",
               "value": "art-03"
@@ -79,7 +80,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "b8d65473"
+            "h": "ab371a08"
           },
           "doc_00002": {
             "id": "doc_00002",
@@ -93,6 +94,7 @@
                 "x": "Q4 planning. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "none"
             },
@@ -117,7 +119,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "57ee77eb"
+            "h": "e2153493"
           },
           "doc_00003": {
             "id": "doc_00003",
@@ -131,6 +133,7 @@
                 "x": "Reading list. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "theme",
               "value": "art-27"
@@ -156,7 +159,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "a9a7f9f2"
+            "h": "d17ff632"
           }
         }
       }
@@ -200,6 +203,7 @@
                 "c": false
               }
             ],
+            "shape": "list",
             "cover": {
               "kind": "theme",
               "value": "art-03"
@@ -231,7 +235,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "b8d65473"
+            "h": "ab371a08"
           },
           "doc_00002": {
             "id": "doc_00002",
@@ -245,6 +249,7 @@
                 "x": "Q4 planning. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "none"
             },
@@ -269,7 +274,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "57ee77eb"
+            "h": "e2153493"
           },
           "doc_00003": {
             "id": "doc_00003",
@@ -283,6 +288,7 @@
                 "x": "Reading list. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "theme",
               "value": "art-27"
@@ -308,7 +314,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "a9a7f9f2"
+            "h": "d17ff632"
           },
           "doc_00004": {
             "id": "doc_00004",
@@ -322,6 +328,7 @@
                 "x": "Sourdough notes. First lines of the note."
               }
             ],
+            "shape": "page",
             "cover": {
               "kind": "none"
             },
@@ -342,7 +349,7 @@
             "inTrash": false,
             "deletedAt": null,
             "sync": "saved",
-            "h": "97149c30"
+            "h": "07695d4a"
           }
         }
       }
@@ -376,6 +383,7 @@
             "c": false
           }
         ],
+        "shape": "list",
         "cover": {
           "kind": "theme",
           "value": "art-03"
@@ -407,7 +415,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "saved",
-        "h": "b8d65473"
+        "h": "ab371a08"
       },
       {
         "id": "doc_00002",
@@ -421,6 +429,7 @@
             "x": "Q4 planning. First lines of the note."
           }
         ],
+        "shape": "page",
         "cover": {
           "kind": "none"
         },
@@ -445,7 +454,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "saved",
-        "h": "57ee77eb"
+        "h": "e2153493"
       },
       {
         "id": "doc_00003",
@@ -459,6 +468,7 @@
             "x": "Reading list. First lines of the note."
           }
         ],
+        "shape": "page",
         "cover": {
           "kind": "theme",
           "value": "art-27"
@@ -484,7 +494,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "saved",
-        "h": "a9a7f9f2"
+        "h": "d17ff632"
       },
       {
         "id": "doc_00004",
@@ -498,6 +508,7 @@
             "x": "Sourdough notes. First lines of the note."
           }
         ],
+        "shape": "page",
         "cover": {
           "kind": "none"
         },
@@ -518,7 +529,7 @@
         "inTrash": false,
         "deletedAt": null,
         "sync": "saved",
-        "h": "97149c30"
+        "h": "07695d4a"
       }
     ]
   }

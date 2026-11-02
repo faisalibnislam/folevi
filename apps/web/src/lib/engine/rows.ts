@@ -14,6 +14,7 @@ export interface SummaryLike {
   kind: string;
   excerpt: string;
   preview: PreviewLine[] | null;
+  shape?: string | null;
   cover: CardCover;
   style: CardStyle;
   starred?: boolean;
@@ -94,6 +95,7 @@ export function noteRowOf(d: SummaryLike, marks: SyncMarks = NO_MARKS, o: { fold
     kind: d.kind,
     excerpt: d.excerpt ?? "",
     preview: d.preview ?? null,
+    shape: d.shape ?? null,
     cover: coverOf(d.cover),
     style: styleOf(d.style),
     starred: o.starred ?? Boolean(d.starred),

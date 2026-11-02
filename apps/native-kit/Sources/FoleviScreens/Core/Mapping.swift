@@ -54,7 +54,9 @@ public enum CardMapping {
             starred: starred ?? row.starred,
             folderName: row.folder?.name,
             folderColorId: row.folder?.color,
-            showsFolder: row.kind != "template"
+            showsFolder: row.kind != "template",
+            shape: row.shape,
+            template: row.kind == "template"
         )
     }
 

@@ -416,6 +416,9 @@ public struct NoteRow: Codable, Hashable, Sendable {
     public var kind: String
     public var excerpt: String
     public var preview: [PreviewLine]?
+    /// What kind of page it is, from all its blocks (derive.ts deriveShape): "pages", "tabs", "pocket", "canvas",
+    /// "list" or "page"; null until the server has worked it out. Its card's look (DocumentCard.tsx noteLook).
+    public var shape: String?
     public var cover: CardCover
     public var style: CardStyle
     public var starred: Bool
@@ -436,13 +439,14 @@ public struct NoteRow: Codable, Hashable, Sendable {
     /// Content hash of the row (everything above); equal hashes mean equal rows.
     public var h: String
 
-    public init(id: String, title: String, icon: String? = nil, kind: String, excerpt: String, preview: [PreviewLine]? = nil, cover: CardCover, style: CardStyle, starred: Bool, createdAt: Double, updatedAt: Double, folder: FolderChip? = nil, tags: [TagChip], encrypted: Bool, archived: Bool, inTrash: Bool, deletedAt: Double? = nil, sync: SyncMark, h: String) {
+    public init(id: String, title: String, icon: String? = nil, kind: String, excerpt: String, preview: [PreviewLine]? = nil, shape: String? = nil, cover: CardCover, style: CardStyle, starred: Bool, createdAt: Double, updatedAt: Double, folder: FolderChip? = nil, tags: [TagChip], encrypted: Bool, archived: Bool, inTrash: Bool, deletedAt: Double? = nil, sync: SyncMark, h: String) {
         self.id = id
         self.title = title
         self.icon = icon
         self.kind = kind
         self.excerpt = excerpt
         self.preview = preview
+        self.shape = shape
         self.cover = cover
         self.style = style
         self.starred = starred
@@ -466,6 +470,7 @@ public struct NoteRow: Codable, Hashable, Sendable {
         try container.encode(self.kind, forKey: .kind)
         try container.encode(self.excerpt, forKey: .excerpt)
         try container.encode(self.preview, forKey: .preview)
+        try container.encode(self.shape, forKey: .shape)
         try container.encode(self.cover, forKey: .cover)
         try container.encode(self.style, forKey: .style)
         try container.encode(self.starred, forKey: .starred)

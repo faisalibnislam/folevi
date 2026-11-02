@@ -67,7 +67,8 @@ public struct InsertPicture: View {
         let art = InsertCatalog.pictures[preview] ?? []
         // (The picture's own `text-ink` keeps its marks in the ink; only the accent takes the tile's colour.)
         let current = FoleviTokens.Chrome.ink.resolve(scheme).color
-        let accent = (hue.flatMap { FoleviTokens.Chrome.named[$0] } ?? FoleviTokens.Chrome.accent).resolve(scheme).color
+        // (Grey on every tile, as the web's and the Mac's pickers draw them: no block's colour.)
+        let accent = FoleviTokens.Chrome.inkMuted.resolve(scheme).color
         let paper = FoleviTokens.Chrome.surfaceRaised.resolve(scheme).color
         Canvas { context, size in
             context.scaleBy(x: size.width / 48, y: size.height / 36)
@@ -240,7 +241,7 @@ public struct PhoneInsertSheetContent: View {
                 .padding(.bottom, 10)
             if !s.tiles.isEmpty {
                 // Four to a row (a plain grid: the tiles are few, and pictures for the diffs can draw it).
-                Grid(alignment: .top, horizontalSpacing: 8, verticalSpacing: 14) {
+                Grid(alignment: .top, horizontalSpacing: 8, verticalSpacing: 6) {
                     ForEach(Array(stride(from: 0, to: s.tiles.count, by: 4)), id: \.self) { i in
                         GridRow {
                             ForEach(0..<4, id: \.self) { j in
@@ -259,10 +260,10 @@ public struct PhoneInsertSheetContent: View {
     }
 
     private func tile(_ t: InsertTileSpec) -> some View {
-        let hue = t.hue.flatMap { FoleviTokens.Chrome.named[$0] }?.resolve(scheme).color ?? FoleviTokens.Chrome.ink.resolve(scheme).color
+        let ink = FoleviTokens.Chrome.ink.resolve(scheme).color
         let raised = FoleviTokens.Chrome.surfaceRaised.resolve(scheme).color
         return Button { insert(t.kind) } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 Group {
                     if let p = t.preview {
                         InsertPicture(preview: p, hue: t.hue)
@@ -272,13 +273,15 @@ public struct PhoneInsertSheetContent: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)
-                // .iphone-insert-art: the tile's colour at 8% over the raised surface, a 0.5 pt edge at 14%.
-                .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).fill(raised).overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).fill(hue.opacity(0.08))))
-                .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).strokeBorder(hue.opacity(0.14), lineWidth: 0.5))
+                // Every tile the same grey: the ink at 4.5% over the raised surface, a 0.5 pt edge at 8%.
+                .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).fill(raised).overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).fill(ink.opacity(0.045))))
+                .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).strokeBorder(ink.opacity(0.08), lineWidth: 0.5))
+                // (Two lines' room under every tile, so a row's names start level whether or not one wraps.)
                 TileLabel(text: t.label)
-                    .foregroundStyle(FoleviTokens.Chrome.ink.resolve(scheme).color)
+                    .foregroundStyle(ink)
                     .padding(.horizontal, 2)
                     .frame(maxWidth: .infinity)
+                    .frame(height: 32, alignment: .top)
             }
         }
         .buttonStyle(TilePressStyle())
@@ -370,7 +373,8 @@ struct TileLabel: View {
     let text: String
 
     var body: some View {
-        WebFittedLines(text, style: WebTextStyle(size: WebTypeRole.subheadline.metrics.size, leading: 16), maxLines: 2, alignment: .center)
+        // Footnote 500: under the sections' caps and smaller than the sheet's body text.
+        WebFittedLines(text, style: WebTextStyle(size: WebTypeRole.footnote.metrics.size, leading: 16, weight: FoleviTokens.FontWeight.medium), maxLines: 2, alignment: .center)
     }
 }
 

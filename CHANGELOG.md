@@ -4,6 +4,16 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.20: Small update
+
+Released 2026-11-02 09:57:35+06:00 (build 32, tag v1.2.20)
+
+Rearrange notes from any sort
+
+### Improved
+
+- Rearrange in a note's menu works in any sort, and Done switches the list to Manual order
+
 ## Version 1.2.19: Small update
 
 Released 2026-11-02 09:50:28+06:00 (build 31, tag v1.2.19)

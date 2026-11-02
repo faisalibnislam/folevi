@@ -1,6 +1,17 @@
 {
   "releases": [
     {
+      "version": "1.2.20",
+      "build": 32,
+      "released": "2026-11-02T09:57:35+06:00",
+      "type": "patch",
+      "summary": "Rearrange notes from any sort",
+      "improved": [
+        "Rearrange in a note's menu works in any sort, and Done switches the list to Manual order"
+      ],
+      "tag": "v1.2.20"
+    },
+    {
       "version": "1.2.19",
       "build": 31,
       "released": "2026-11-02T09:50:28+06:00",

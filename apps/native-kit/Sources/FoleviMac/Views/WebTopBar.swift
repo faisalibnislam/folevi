@@ -208,6 +208,10 @@ public struct WebTopBar: View {
         // A tab opening, closing or moving: the others ease into their new places and widths (macOS's tab bars).
         .animation(WebMotion.change(0.18), value: model.tabs.tabs.map(\.id))
         .clipped()
+        // Clipping only hides the tabs scrolled out of the list: they'd still take the pointer over Home, the arrows and
+        // the Tab Overview's button (hovering it showed a hidden tab's picture, clicking it opened that tab). The list
+        // takes the pointer only where it shows.
+        .contentShape(Rectangle())
         // The soft edges, on a side with more tabs only (the web's mask).
         .mask(LinearGradient(stops: [
             .init(color: overflow.start ? .clear : .black, location: 0),

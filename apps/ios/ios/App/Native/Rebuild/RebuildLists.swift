@@ -69,9 +69,9 @@ struct RebuildNotesScreen: View {
                 })
             }
         }
-        // Manual order's cards: Arrange notes, the Home Screen's Edit Home Screen (they wiggle and drag until Done).
+        // Rearrange, the Home Screen's Edit Home Screen: the cards wiggle and drag until Done, which makes it manual order.
         if let arrange {
-            entries.insert(contentsOf: [PhoneMenuEntry(.item("Arrange notes", icon: .gripVertical)) { arrange() }, PhoneMenuEntry(.separator(99))], at: 0)
+            entries.insert(contentsOf: [PhoneMenuEntry(.item("Rearrange", icon: .gripVertical)) { arrange() }, PhoneMenuEntry(.separator(99))], at: 0)
         }
         menus.show(entries, from: anchor, side: .bottom, align: .start)
     }

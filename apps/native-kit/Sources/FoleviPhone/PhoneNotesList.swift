@@ -25,8 +25,8 @@ public struct PhoneNotesListActions {
     public var newNote: () -> Void = {}
     /// Closes a note's long-press menu.
     public var closeMenu: () -> Void = {}
-    /// A card's long-press menu in manual order, with Arrange notes (the Home Screen's Edit Home Screen): the
-    /// closure it's given starts arranging. Nil: `rowMenu`.
+    /// A card's long-press menu with Rearrange (the Home Screen's Edit Home Screen): the closure it's given starts
+    /// rearranging. Nil: `rowMenu`.
     public var arrangeMenu: ((NoteRow, CGRect, @escaping () -> Void) -> Void)?
 
     public init(open: @escaping (String) -> Void, openNote: @escaping (String) -> Void, back: @escaping () -> Void, menu: @escaping (CGRect) -> Void, rowMenu: @escaping (NoteRow, CGRect) -> Void, selecting: @escaping (Bool) -> Void) {
@@ -82,7 +82,7 @@ public struct PhoneNotesListScreen: View {
             }
         } trailing: {
             if arranging {
-                WebGlassTextButton("Done", strong: true) { stopArranging() }
+                WebGlassTextButton("Done", strong: true) { finishArranging() }
             } else if model.selecting {
                 WebGlassTextButton("Done", strong: true) { setSelecting(false) }
             } else {
@@ -131,7 +131,7 @@ public struct PhoneNotesListScreen: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.9), value: model.selecting)
         // (The finger moves the card, not the list, while one is held.)
         .scrollDisabled(drag != nil)
-        .onChange(of: model.slots.map(\.id)) { _, _ in if drag == nil { order = nil } }
+        .onChange(of: model.slots.map(\.id)) { _, _ in if drag == nil, !(arranging && model.sort != .manual) { order = nil } }
         .onChange(of: canArrange) { _, can in if !can { stopArranging() } }
         .notesListSheets(model)
         // Pull to refresh: iOS's own control on the screen's scroll view.
@@ -152,8 +152,24 @@ public struct PhoneNotesListScreen: View {
         return o
     }
 
-    /// Cards can be dragged about: manual order, the whole list on show (no search), not picking notes.
-    private var canArrange: Bool { model.canArrange && model.layout == .cards && !model.isFiltering && !model.selecting }
+    /// Cards can be rearranged: in any sort (Done makes it manual order), the whole list on show (no search), not
+    /// picking notes.
+    private var canArrange: Bool { model.canRearrange && model.layout == .cards && !model.isFiltering && !model.selecting }
+
+    /// Done: in manual order each drop has saved already; from another sort the cards' order now becomes the
+    /// manual order and the list switches to it (kept on show until it has).
+    private func finishArranging() {
+        let wasManual = model.sort == .manual
+        let ids = order ?? model.slots.map(\.id)
+        stopArranging()
+        guard !wasManual else { return }
+        order = ids
+        Task {
+            await model.adoptOrder(ids)
+            try? await Task.sleep(for: .seconds(1))
+            if drag == nil, !arranging { order = nil }
+        }
+    }
 
     private func stopArranging() {
         arranging = false
@@ -222,6 +238,8 @@ public struct PhoneNotesListScreen: View {
     private func drop() {
         guard let held = drag else { return }
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { drag = nil }
+        // (In another sort the order is kept on show and saved at Done, as the manual order.)
+        guard model.sort == .manual else { return }
         let ids = model.slots.map(\.id)
         guard let from = ids.firstIndex(of: held.id), let to = order?.firstIndex(of: held.id), from != to else {
             order = nil

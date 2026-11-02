@@ -214,6 +214,8 @@ public final class NotesListModel {
 
     /// Manual order is offered where the web offers it, and rows move by drag only in it.
     public var canArrange: Bool { sort == .manual && canEdit && [.all, .unsorted, .folder].contains(kind.view) }
+    /// The notes can be rearranged here by hand from any sort (the iPhone's Rearrange): finishing makes it manual order.
+    public var canRearrange: Bool { canEdit && [.all, .unsorted, .folder].contains(kind.view) }
 
     public var sortOptions: [(NotesSort, String)] {
         let all: [(NotesSort, String)] = [(.updated, "Last edited"), (.created, "Created"), (.title, "Title"), (.manual, "Manual order")]
@@ -601,6 +603,17 @@ public final class NotesListModel {
             guard let at = next.firstIndex(of: id) else { continue }
             await actions.reorder(id, after: at > 0 ? next[at - 1] : nil, view: kind.view, folderId: kind.folderId)
         }
+    }
+
+    /// Rearranging finished in another sort: the notes in the order they were left (`ids`, the loaded ones) become
+    /// the manual order, top down, and the list switches to it, so nothing moves.
+    public func adoptOrder(_ ids: [String]) async {
+        var after: String?
+        for id in ids where !id.hasPrefix("#") {
+            await actions.reorder(id, after: after, view: kind.view, folderId: kind.folderId)
+            after = id
+        }
+        sort = .manual
     }
 
     // MARK: The screen's "…" menu

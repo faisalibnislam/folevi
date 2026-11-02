@@ -4,6 +4,30 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.19: Small update
+
+Released 2026-11-02 09:50:28+06:00 (build 31, tag v1.2.19)
+
+Smoother iPhone notes and sheets
+
+### Added
+
+- Arrange notes in a note's menu lets you drag your notes into place in Manual order
+
+### Improved
+
+- The note's top bar blurs what scrolls under it
+- More room between the note and the buttons above it
+- Sheet buttons sit further in from the rounded corners
+- The Insert sheet's tiles are all grey, with tidier names
+- A note theme shows it's loading as soon as you tap it
+- The keyboard toolbar fades out before the hide-keyboard button
+
+### Fixed
+
+- Swiping from the left edge goes back again in Manual order
+- The folder above a note opens on the first tap
+
 ## Version 1.2.18: Small update
 
 Released 2026-11-02 08:46:16+06:00 (build 30, tag v1.2.18)

@@ -1,6 +1,29 @@
 {
   "releases": [
     {
+      "version": "1.2.19",
+      "build": 31,
+      "released": "2026-11-02T09:50:28+06:00",
+      "type": "patch",
+      "summary": "Smoother iPhone notes and sheets",
+      "added": [
+        "Arrange notes in a note's menu lets you drag your notes into place in Manual order"
+      ],
+      "improved": [
+        "The note's top bar blurs what scrolls under it",
+        "More room between the note and the buttons above it",
+        "Sheet buttons sit further in from the rounded corners",
+        "The Insert sheet's tiles are all grey, with tidier names",
+        "A note theme shows it's loading as soon as you tap it",
+        "The keyboard toolbar fades out before the hide-keyboard button"
+      ],
+      "fixed": [
+        "Swiping from the left edge goes back again in Manual order",
+        "The folder above a note opens on the first tap"
+      ],
+      "tag": "v1.2.19"
+    },
+    {
       "version": "1.2.18",
       "build": 30,
       "released": "2026-11-02T08:46:16+06:00",

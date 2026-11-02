@@ -1,6 +1,21 @@
 {
   "releases": [
     {
+      "version": "1.2.21",
+      "build": 33,
+      "released": "2026-11-02T10:31:44+06:00",
+      "type": "patch",
+      "summary": "Softer sheets on iPhone",
+      "improved": [
+        "Sheets have gentler corners at the top",
+        "Foli AI's message box and its buttons have matching corners"
+      ],
+      "fixed": [
+        "The Notifications list reaches the bottom of its sheet, with no grey band"
+      ],
+      "tag": "v1.2.21"
+    },
+    {
       "version": "1.2.20",
       "build": 32,
       "released": "2026-11-02T09:57:35+06:00",

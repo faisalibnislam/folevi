@@ -4,6 +4,21 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.21: Small update
+
+Released 2026-11-02 10:31:44+06:00 (build 33, tag v1.2.21)
+
+Softer sheets on iPhone
+
+### Improved
+
+- Sheets have gentler corners at the top
+- Foli AI's message box and its buttons have matching corners
+
+### Fixed
+
+- The Notifications list reaches the bottom of its sheet, with no grey band
+
 ## Version 1.2.20: Small update
 
 Released 2026-11-02 09:57:35+06:00 (build 32, tag v1.2.20)

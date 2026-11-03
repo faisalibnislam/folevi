@@ -445,6 +445,9 @@ private struct NotePage: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> NotePageController {
         let c = NotePageRegistry.controller(for: noteId)
         c.onScroll = { y, foot in
+            // The bars only change until the note's title has gone under them (its small title fully in, the
+            // backing on after 4 pt): further down the offset stays put, so a scroll doesn't redraw them each frame.
+            let y = min(y, max(foot, 4) + 1)
             if abs(scrolled - y) > 0.5 { scrolled = y }
             if abs(titleFoot - foot) > 0.5 { titleFoot = foot }
         }

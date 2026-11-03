@@ -10,14 +10,14 @@ struct RebuildSearchScreen: View {
     let frame: PhoneFrameModel
     let menus: PhoneMenus
     let phone: PhoneModel
-    @State private var model: SearchModel
+    @MadeOnce private var model: SearchModel
 
     init(text: String, frame: PhoneFrameModel, menus: PhoneMenus, phone: PhoneModel) {
         self.frame = frame
         self.menus = menus
         self.phone = phone
         let feedback = ScreenFeedback(toast: { [weak phone] t in phone?.toast(t.message, tone: t.tone == .error ? .error : .info) })
-        _model = State(initialValue: SearchModel(client: phone.client, text: text, feedback: feedback))
+        _model = MadeOnce(wrappedValue: SearchModel(client: phone.client, text: text, feedback: feedback))
     }
 
     var body: some View {

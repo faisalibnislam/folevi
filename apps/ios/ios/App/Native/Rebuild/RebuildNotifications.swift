@@ -11,7 +11,7 @@ struct RebuildNotificationsSheet: View {
     let menus: PhoneMenus
     let phone: PhoneModel
     let close: () -> Void
-    @State private var model: NotificationsModel
+    @MadeOnce private var model: NotificationsModel
 
     init(frame: PhoneFrameModel, menus: PhoneMenus, phone: PhoneModel, close: @escaping () -> Void) {
         self.frame = frame
@@ -19,7 +19,7 @@ struct RebuildNotificationsSheet: View {
         self.phone = phone
         self.close = close
         let feedback = ScreenFeedback(toast: { [weak phone] t in phone?.toast(t.message, tone: t.tone == .error ? .error : .info) })
-        _model = State(initialValue: NotificationsModel(client: phone.client, feedback: feedback))
+        _model = MadeOnce(wrappedValue: NotificationsModel(client: phone.client, feedback: feedback))
     }
 
     var body: some View {

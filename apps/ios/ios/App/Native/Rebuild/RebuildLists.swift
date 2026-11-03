@@ -13,7 +13,7 @@ struct RebuildNotesScreen: View {
     let phone: PhoneModel
     /// Select mode on or off (the frame hides its tab bar for the selection's bar).
     let selecting: (Bool) -> Void
-    @State private var model: NotesListModel
+    @MadeOnce private var model: NotesListModel
 
     init(kind: NotesListKind, frame: PhoneFrameModel, menus: PhoneMenus, phone: PhoneModel, selecting: @escaping (Bool) -> Void) {
         self.frame = frame
@@ -21,7 +21,7 @@ struct RebuildNotesScreen: View {
         self.phone = phone
         self.selecting = selecting
         let feedback = ScreenFeedback(toast: { [weak phone] t in phone?.toast(t.message, tone: t.tone == .error ? .error : .info) })
-        _model = State(initialValue: NotesListModel(client: phone.client, kind: kind, feedback: feedback))
+        _model = MadeOnce(wrappedValue: NotesListModel(client: phone.client, kind: kind, feedback: feedback))
     }
 
     var body: some View {

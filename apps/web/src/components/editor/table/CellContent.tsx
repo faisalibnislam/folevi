@@ -36,10 +36,12 @@ export function marked(text: React.ReactNode, marks: readonly Mark[] | undefined
 }
 
 /** A cell's content as it reads (the same as its editor shows it while editing). */
-export function CellContent({ nodes }: { nodes: readonly InlineNode[] }) {
+export function CellContent({ nodes }: { nodes: readonly InlineNode[] | string | null | undefined }) {
+  // A cell may also be stored as plain text (TableCellInput), or be missing.
+  const list: readonly InlineNode[] = typeof nodes === "string" ? (nodes ? [{ type: "text", text: nodes }] : []) : (nodes ?? []);
   return (
     <>
-      {nodes.map((n, i) => {
+      {list.map((n, i) => {
         if (n.type === "mention")
           return (
             <span key={i} className="fb-mention" data-mention={n.userId}>

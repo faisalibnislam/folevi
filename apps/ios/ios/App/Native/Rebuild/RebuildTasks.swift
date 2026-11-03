@@ -75,7 +75,7 @@ struct RebuildTasksScreen: View {
     let phone: PhoneModel
     let openAccount: () -> Void
     let openNotifications: () -> Void
-    @State private var model: TasksModel
+    @MadeOnce private var model: TasksModel
 
     init(view: TaskViewName, frame: PhoneFrameModel, menus: PhoneMenus, home: HomeModel, phone: PhoneModel, openAccount: @escaping () -> Void, openNotifications: @escaping () -> Void) {
         self.view = view
@@ -86,7 +86,7 @@ struct RebuildTasksScreen: View {
         self.openAccount = openAccount
         self.openNotifications = openNotifications
         let feedback = RebuildFeedback.make(phone)
-        _model = State(initialValue: TasksModel(client: phone.client, view: view, feedback: feedback))
+        _model = MadeOnce(wrappedValue: TasksModel(client: phone.client, view: view, feedback: feedback))
     }
 
     /// FOLEVI_REBUILD_TASK=<title>: that task's sheet at launch (for checking it headlessly).
@@ -142,7 +142,7 @@ struct RebuildCalendarScreen: View {
     let phone: PhoneModel
     let openAccount: () -> Void
     let openNotifications: () -> Void
-    @State private var model: CalendarModel
+    @MadeOnce private var model: CalendarModel
     @State private var toTop = 0
     /// Subscribe's sheet: your tasks in Google, Apple or Outlook's calendar.
     @State private var feedOpen = false
@@ -156,7 +156,7 @@ struct RebuildCalendarScreen: View {
         self.openAccount = openAccount
         self.openNotifications = openNotifications
         let feedback = RebuildFeedback.make(phone)
-        _model = State(initialValue: CalendarModel(client: phone.client, date: date, feedback: feedback))
+        _model = MadeOnce(wrappedValue: CalendarModel(client: phone.client, date: date, feedback: feedback))
     }
 
     /// The month as the title; the week strip stays under the bar while the days scroll.

@@ -8,12 +8,12 @@ import FoleviScreens
 struct RebuildSharedScreen: View {
     let frame: PhoneFrameModel
     let phone: PhoneModel
-    @State private var model: SharedListModel
+    @MadeOnce private var model: SharedListModel
 
     init(frame: PhoneFrameModel, phone: PhoneModel) {
         self.frame = frame
         self.phone = phone
-        _model = State(initialValue: SharedListModel(client: phone.client))
+        _model = MadeOnce(wrappedValue: SharedListModel(client: phone.client))
     }
 
     var body: some View {
@@ -24,13 +24,13 @@ struct RebuildSharedScreen: View {
 struct RebuildChangesScreen: View {
     let frame: PhoneFrameModel
     let phone: PhoneModel
-    @State private var model: ChangesModel
+    @MadeOnce private var model: ChangesModel
 
     init(frame: PhoneFrameModel, phone: PhoneModel) {
         self.frame = frame
         self.phone = phone
         let feedback = ScreenFeedback(toast: { [weak phone] t in phone?.toast(t.message, tone: t.tone == .error ? .error : .info) })
-        _model = State(initialValue: ChangesModel(client: phone.client, feedback: feedback))
+        _model = MadeOnce(wrappedValue: ChangesModel(client: phone.client, feedback: feedback))
     }
 
     var body: some View {

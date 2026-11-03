@@ -23,8 +23,8 @@ public struct IPadFrameView<Page: View>: View {
     let page: Page
     @State private var models: ScreenModels
     @State private var askAi: AiAskState
-    @State private var notifications: NotificationsModel
-    @State private var tasks: ValueStore<TaskCounts>
+    @MadeOnce private var notifications: NotificationsModel
+    @MadeOnce private var tasks: ValueStore<TaskCounts>
 
     public init(model: FrameModel, @ViewBuilder page: () -> Page) {
         self.model = model
@@ -32,8 +32,8 @@ public struct IPadFrameView<Page: View>: View {
         let models = ScreenModels(frame: model)
         _models = State(initialValue: models)
         _askAi = State(initialValue: AiAskState(frame: model, feedback: models.feedback))
-        _notifications = State(initialValue: NotificationsModel(client: model.client, feedback: models.feedback))
-        _tasks = State(initialValue: model.client.watch(.tasksCounts(), snapshotKey: "tasks.counts"))
+        _notifications = MadeOnce(wrappedValue: NotificationsModel(client: model.client, feedback: models.feedback))
+        _tasks = MadeOnce(wrappedValue: model.client.watch(.tasksCounts(), snapshotKey: "tasks.counts"))
     }
 
     public var body: some View {

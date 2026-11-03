@@ -37,7 +37,7 @@ extension EnvironmentValues {
 }
 
 struct VaultScreen: View {
-    @State private var model: VaultModel
+    @MadeOnce private var model: VaultModel
     let path: String
     /// The frame the Vault's dialogs are presented on (FrameSheets), and its Touch ID.
     let frame: FrameModel
@@ -47,7 +47,7 @@ struct VaultScreen: View {
         self.path = path
         self.frame = frame
         touchId = frame.touchId
-        _model = State(initialValue: VaultModel(client: frame.client, feedback: ScreenFeedback(toast: { [weak frame] t in
+        _model = MadeOnce(wrappedValue: VaultModel(client: frame.client, feedback: ScreenFeedback(toast: { [weak frame] t in
             frame?.toast(t.message, tone: t.tone == .error ? .error : t.tone == .success ? .success : .info)
         }), section: VaultSection(path: path)))
     }

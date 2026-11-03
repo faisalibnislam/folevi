@@ -31,14 +31,14 @@ struct RebuildAllFoldersScreen: View {
     let menus: PhoneMenus
     let phone: PhoneModel
     let newFolder: (String?) -> Void
-    @State private var model: AllFoldersModel
+    @MadeOnce private var model: AllFoldersModel
 
     init(frame: PhoneFrameModel, menus: PhoneMenus, phone: PhoneModel, newFolder: @escaping (String?) -> Void) {
         self.frame = frame
         self.menus = menus
         self.phone = phone
         self.newFolder = newFolder
-        _model = State(initialValue: AllFoldersModel(client: phone.client))
+        _model = MadeOnce(wrappedValue: AllFoldersModel(client: phone.client))
     }
 
     var body: some View {
@@ -77,7 +77,7 @@ struct RebuildNewFolder: View {
     let menus: PhoneMenus
     let phone: PhoneModel
     let close: () -> Void
-    @State private var tree: ValueStore<FoldersTreeValue>
+    @MadeOnce private var tree: ValueStore<FoldersTreeValue>
 
     init(request: NewFolderRequest, frame: PhoneFrameModel, menus: PhoneMenus, phone: PhoneModel, close: @escaping () -> Void) {
         self.request = request
@@ -85,7 +85,7 @@ struct RebuildNewFolder: View {
         self.menus = menus
         self.phone = phone
         self.close = close
-        _tree = State(initialValue: phone.client.watch(.foldersTree(space: nil)))
+        _tree = MadeOnce(wrappedValue: phone.client.watch(.foldersTree(space: nil)))
     }
 
     var body: some View {

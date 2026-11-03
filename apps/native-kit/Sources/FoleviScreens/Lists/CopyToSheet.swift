@@ -32,14 +32,14 @@ struct CopyToSheet: View {
     let count: Int
     let onPick: (SpaceInfo, FolderTarget) -> Void
     let onCancel: () -> Void
-    @State private var model: CopyTargetModel
+    @MadeOnce private var model: CopyTargetModel
 
     init(client: EngineClient, spaces: [SpaceInfo], count: Int, onPick: @escaping (SpaceInfo, FolderTarget) -> Void, onCancel: @escaping () -> Void) {
         self.spaces = spaces
         self.count = count
         self.onPick = onPick
         self.onCancel = onCancel
-        _model = State(initialValue: CopyTargetModel(client: client, space: spaces.first))
+        _model = MadeOnce(wrappedValue: CopyTargetModel(client: client, space: spaces.first))
     }
 
     var body: some View {

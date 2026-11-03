@@ -28,13 +28,13 @@ import {
   Plus,
   Search,
   Share2,
-  Star,
   Trash2,
   Type,
   X,
 } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
+import { FoldbackClip } from "@/components/ui/FoldbackClip";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { COVER_ART, type CoverArt } from "@/lib/cover";
 import { cx } from "../ui";
@@ -244,7 +244,7 @@ export function MainSidebar({
 }) {
   const rows = [
     { icon: House, label: "Home" },
-    { icon: Star, label: "Starred" },
+    { icon: FoldbackClip, label: "Docked" },
     { icon: Inbox, label: "Drafts", count: 2 },
     { icon: Files, label: "All notes" },
     { icon: CheckSquare, label: "Tasks", count: 3 },

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { newPerson, showFolders } from "./helpers";
 
-test("folders, starring, archive, trash and restore", async ({ browser }) => {
+test("folders, docking, archive, trash and restore", async ({ browser }) => {
   const { page } = await newPerson(browser, "Organizer");
   await showFolders(page);
   await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Home" }).click();
@@ -14,13 +14,13 @@ test("folders, starring, archive, trash and restore", async ({ browser }) => {
   const nav = page.getByRole("navigation", { name: "Folio" });
   await expect(nav.getByRole("link", { name: "Letters" })).toBeVisible();
 
-  // Star + move via document menu
-  // Home shows recent notes, starred notes and recent folders; act on the Recent notes section.
+  // Dock + move via document menu
+  // Home shows recent notes, docked notes and recent folders; act on the Recent notes section.
   const recent = page.getByRole("region", { name: "Recent notes" });
   const card = recent.getByRole("listitem").filter({ hasText: "Field Notes: A Quiet Morning" });
   await card.hover();
   await card.getByRole("button", { name: /Actions for Field Notes/ }).click();
-  await page.getByRole("menuitem", { name: "Star" }).click();
+  await page.getByRole("menuitem", { name: "Dock" }).click();
   await expect(page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: /Field Notes: A Quiet Morning/ })).toBeVisible();
   await card.hover();
   await card.getByRole("button", { name: /Actions for Field Notes/ }).click();

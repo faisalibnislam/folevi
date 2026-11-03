@@ -109,7 +109,7 @@ public struct NoteCardModel: Hashable, Sendable, Identifiable {
         if showsFolder { parts.append(folderName.map { "in \($0)" } ?? "Draft") }
         parts.append("edited \(timeText)")
         if let first = NoteCardView.previewText(preview, excerpt: excerpt).split(separator: "\n").first { parts.append(String(first)) }
-        if starred { parts.append("starred") }
+        if starred { parts.append("docked") }
         return parts.joined(separator: ", ")
     }
 }
@@ -182,8 +182,7 @@ public struct NoteCardView: View {
             .overlay(shape.strokeBorder(Color.black.opacity(0.05), lineWidth: 1))
             .overlay(alignment: .topTrailing) {
                 if model.starred {
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 5.6 * cq))
+                    WebIconView(.foldbackClip, size: 7.5 * cq, strokeWidth: 2.4)
                         .foregroundStyle(ink.color)
                         .frame(width: 12 * cq, height: 12 * cq)
                         .background(UnevenRoundedRectangle(bottomLeadingRadius: FoleviTokens.Radius.chip, style: .continuous).fill(chip.color))

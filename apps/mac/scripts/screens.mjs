@@ -261,7 +261,7 @@ const AI_FIXTURE = `
 const FAKE_AI = { FOLEVI_FAKE_AI: "1" };
 /** The first starred card whose star corner is in the window (a carousel keeps some out of sight): its cover in
  *  the web frame, in points, with 6 pt round it, cut to the window (null when none is shown). */
-const STARRED_CARD = `for (const star of document.querySelectorAll('main [aria-label="Starred"]')) { const cover = star.parentElement?.parentElement; if (!cover) continue; const r = cover.getBoundingClientRect(); if (r.left < 0 || r.top < 0 || r.right + 6 > innerWidth || r.top + 60 > innerHeight) continue; const top = r.top - 6, bottom = Math.min(innerHeight, r.bottom + 6); return { x: r.left - 6, y: top, width: r.width + 12, height: bottom - top }; } return null;`;
+const STARRED_CARD = `for (const star of document.querySelectorAll('main [aria-label="Docked"]')) { const cover = star.parentElement?.parentElement; if (!cover) continue; const r = cover.getBoundingClientRect(); if (r.left < 0 || r.top < 0 || r.right + 6 > innerWidth || r.top + 60 > innerHeight) continue; const top = r.top - 6, bottom = Math.min(innerHeight, r.bottom + 6); return { x: r.left - 6, y: top, width: r.width + 12, height: bottom - top }; } return null;`;
 
 /** Cuts `rect` (points; the pictures are 2x) out of a picture, into `to`. */
 async function crop(browser, from, rect, to) {

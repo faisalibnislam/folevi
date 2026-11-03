@@ -317,7 +317,7 @@ struct RebuildNoteScreen: View {
         var entries: [PhoneMenuEntry] = []
         if let meta, meta.found, meta.space != nil {
             let starred = meta.starred
-            entries.append(PhoneMenuEntry(.item(starred ? "Unstar" : "Star", icon: starred ? .starOff : .star)) { model.star(noteId, !starred) })
+            entries.append(PhoneMenuEntry(.item(starred ? "Undock" : "Dock", icon: starred ? .foldbackClipOff : .foldbackClip)) { model.star(noteId, !starred) })
         }
         entries.append(page("Version history…", .rotateCcwClock, .history))
         entries.append(page(full ? "Find and replace…" : "Find in note…", .search, .find))

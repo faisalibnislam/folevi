@@ -4,6 +4,7 @@
 // window restoration, `navigate.request`, Home's rows (`HomeRow.route`) and folevi:// links all speak one
 // language with the web router (apps/web/src/lib/app/router.tsx `parseRoute`).
 import Foundation
+import FoleviDesign
 import FoleviEngine
 
 public enum FrameRoute: Hashable, Sendable {
@@ -135,7 +136,7 @@ public enum FrameRoute: Hashable, Sendable {
             switch v {
             case .all: return "All notes"
             case .unsorted: return "Drafts"
-            case .starred: return "Starred"
+            case .starred: return "Docked"
             case .archive: return "Archive"
             case .trash: return "Trash"
             case .templates: return "Templates"
@@ -173,7 +174,7 @@ public enum FrameRoute: Hashable, Sendable {
             switch v {
             case .all: return "doc.text"
             case .unsorted: return "tray"
-            case .starred: return "star"
+            case .starred: return FoleviGlyph.name(.foldbackClip)
             case .archive: return "archivebox"
             case .trash: return "trash"
             case .templates: return "square.on.square"

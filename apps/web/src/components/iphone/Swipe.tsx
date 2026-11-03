@@ -22,7 +22,7 @@ const SETTLE = springCss(SPRINGS.swipe);
 
 /**
  * A list row with iOS swipe actions: swipe left to show `trailing` (Archive, Delete…), right for `leading`
- * (Star, Done…). A long swipe runs the first action straight away. An open row closes on the next tap
+ * (Dock, Done…). A long swipe runs the first action straight away. An open row closes on the next tap
  * anywhere, and the row's own tap doesn't open it then. The actions are also in the row's long-press menu,
  * so nothing depends on swiping (VoiceOver users get them there).
  */

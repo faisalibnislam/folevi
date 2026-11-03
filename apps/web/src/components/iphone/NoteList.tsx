@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Archive, ArchiveRestore, Check, LayoutGrid, List, Star, StarOff, Trash2, Undo2, type LucideIcon } from "lucide-react";
+import { Archive, ArchiveRestore, Check, LayoutGrid, List, Trash2, Undo2, type LucideIcon } from "lucide-react";
+import { FoldbackClip, FoldbackClipOff } from "@/components/ui/FoldbackClip";
 import { AppLink } from "@/lib/app/router";
 import { ageText, formatRelative } from "@/lib/format";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
@@ -63,9 +64,9 @@ export interface IphoneNoteListProps {
 }
 
 /**
- * A list of notes in the iPhone app (All notes, Drafts, a folder or tag, Starred, Archive, Trash,
+ * A list of notes in the iPhone app (All notes, Drafts, a folder or tag, Docked, Archive, Trash,
  * Templates): a large title, a search field, the notes as two columns of cards or as rows, and Select for
- * acting on several at once (a bar of actions takes the tab bar's place). Rows swipe (right to star, left
+ * acting on several at once (a bar of actions takes the tab bar's place). Rows swipe (right to dock, left
  * to archive or delete); everything also has a long-press menu.
  */
 export function IphoneNoteList(props: IphoneNoteListProps) {
@@ -137,7 +138,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
     view === "trash"
       ? { leading: [{ label: "Restore", icon: <Undo2 />, tone: "#3f7d58", onAction: () => void notes.restore([d.id]) }], trailing: [] }
       : {
-          leading: [d.starred ? { label: "Unstar", icon: <StarOff />, tone: "#b07a12", onAction: () => void notes.star([d.id], false) } : { label: "Star", icon: <Star />, tone: "#c58a12", onAction: () => void notes.star([d.id], true) }],
+          leading: [d.starred ? { label: "Undock", icon: <FoldbackClipOff />, tone: "#b07a12", onAction: () => void notes.star([d.id], false) } : { label: "Dock", icon: <FoldbackClip />, tone: "#c58a12", onAction: () => void notes.star([d.id], true) }],
           trailing: [
             { label: "Trash", icon: <Trash2 />, tone: "#d6453d", danger: true, onAction: () => void notes.trash([d.id]) },
             d.archivedAt
@@ -232,7 +233,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
                 <span className="ui-row-sep flex min-h-16 min-w-0 flex-1 flex-col justify-center py-2.5">
                   <span className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate text-body leading-[22px] text-ink">{d.title || "Untitled"}</span>
-                    {d.starred ? <Star size={13} aria-label="Starred" className="flex-none fill-current text-faint" /> : null}
+                    {d.starred ? <FoldbackClip size={13} aria-label="Docked" className="flex-none text-faint" /> : null}
                   </span>
                   <span className="mt-0.5 truncate text-subheadline leading-5 text-muted">
                     {view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}

@@ -352,7 +352,7 @@ public struct WebNoteCard: View {
                 }
                 .frame(width: 20 * cq, height: 7 * cq, alignment: .bottom)
                 .offset(x: w / 2 - 10 * cq, y: -2.4 * cq)
-                .accessibilityLabel("Starred")
+                .accessibilityLabel("Docked")
             }
         }
         .frame(width: w, height: h, alignment: .topLeading)

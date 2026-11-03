@@ -164,9 +164,9 @@ public struct WebSidebar: View {
         let starred = home?.starred.rows ?? []
         return VStack(alignment: .leading, spacing: 2) {
             item(.home, icon: .house, title: "Home")
-            if caps?.ai ?? false { item(.web("/ai"), icon: .sparkles, title: "Work with Foli AI", glyph: AnyView(AiMarkGlyph(size: 16))) }
+            if caps?.ai ?? false { item(.web("/ai"), icon: .wandSparkles, title: "Work with Foli AI", glyph: AnyView(AiMarkGlyph(size: 16))) }
             ZStack(alignment: .trailing) {
-                item(.notes(.starred), icon: .star, title: "Starred")
+                item(.notes(.starred), icon: .foldbackClip, title: "Docked")
                 if !starred.isEmpty {
                     let t = style("starred.toggle")
                     Button { WebMotion.animate { starredOpen.toggle() } } label: {

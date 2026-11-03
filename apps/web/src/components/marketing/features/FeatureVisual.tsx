@@ -20,12 +20,12 @@ import {
   Pencil,
   Printer,
   Share2,
-  Star,
   Trash2,
   Undo2,
   Upload,
   X,
 } from "lucide-react";
+import { FoldbackClip } from "@/components/ui/FoldbackClip";
 import { MERMAID_SAMPLE } from "@/components/editor/insertCatalog";
 import { FlowchartStatic } from "@/components/editor/flowchart/render";
 import "@/components/editor/flowchart/flowchart.css";
@@ -498,7 +498,7 @@ function ExportPanels() {
     >
       <div aria-hidden="true" className="mk-app-pop mx-auto w-full max-w-[320px] rounded-panel p-1.5 text-[13px]">
         <ul className="space-y-0.5">
-          <MenuRow icon={<Star size={14} />} label="Star" />
+          <MenuRow icon={<FoldbackClip size={14} />} label="Dock" />
           <MenuRow icon={<Share2 size={14} />} label="Share…" />
           <MenuRow icon={<History size={14} />} label="Version history…" />
         </ul>

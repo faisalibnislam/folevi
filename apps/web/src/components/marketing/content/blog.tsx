@@ -469,7 +469,7 @@ const POSTS: BlogPost[] = [
           When the import finishes, Settings lists every file with a link to its new page, how many images were uploaded, and any warnings with the line they came from. A file that came in cleanly says “Imported without changes”. Open a few pages next to the originals and look at tables, nested lists and images first, since those are where formats differ most.
         </p>
         <p>
-          Imported pages start in Drafts. Select several at once and choose Move to folder to file them, then tag or star the ones you use most. If your export has more than 50 documents, import it one folder at a time.
+          Imported pages start in Drafts. Select several at once and choose Move to folder to file them, then tag or dock the ones you use most. If your export has more than 50 documents, import it one folder at a time.
         </p>
 
         <h2 id="from">Exporting from the app you use now</h2>

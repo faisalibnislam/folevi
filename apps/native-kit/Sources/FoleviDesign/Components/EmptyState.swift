@@ -22,6 +22,9 @@ public struct EmptyState: View {
                 // (`AiMarkGlyph.symbolName`: Foli AI's flower, in its colours.)
                 if systemImage == AiMarkGlyph.symbolName {
                     AiMarkGlyph(size: 30)
+                } else if let icon = FoleviGlyph.webIcon(systemImage) {
+                    WebIconView(icon, size: 30, strokeWidth: 1.5)
+                        .foregroundStyle(Folevi.color.inkFaint)
                 } else {
                     Image(systemName: systemImage)
                         .font(.system(size: 30, weight: .light))

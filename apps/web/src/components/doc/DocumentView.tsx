@@ -29,14 +29,13 @@ import {
   Presentation,
   ScanText,
   Search,
-  Star,
-  StarOff,
   Trash2,
   Undo2,
   Users,
   Waypoints,
   House as Home,
 } from "lucide-react";
+import { FoldbackClip, FoldbackClipOff } from "@/components/ui/FoldbackClip";
 import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, folderAncestors, rankForPosition, type DocumentStyle, type WireBlock } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { placesAvailable, usePlaces } from "@/lib/places";
@@ -2091,8 +2090,8 @@ function useDocumentActions({
       ]
     : [
         starred
-          ? { label: "Unstar", icon: <StarOff size={14} />, onSelect: () => void act(setStarred({ documentId, starred: false }), "Removed from Starred") }
-          : { label: "Star", icon: <Star size={14} />, onSelect: () => void act(setStarred({ documentId, starred: true }), "Starred") },
+          ? { label: "Undock", icon: <FoldbackClipOff size={14} />, onSelect: () => void act(setStarred({ documentId, starred: false }), "Removed from Docked") }
+          : { label: "Dock", icon: <FoldbackClip size={14} />, onSelect: () => void act(setStarred({ documentId, starred: true }), "Docked") },
         ...(onComments ? [{ label: "Comments", icon: <MessageSquare size={14} />, onSelect: onComments }] : []),
         ...(onInfo ? [{ label: "Info", icon: <Info size={14} />, onSelect: onInfo }] : []),
         ...(onRelated ? [{ label: "Related notes", icon: <Waypoints size={14} />, onSelect: onRelated }] : []),

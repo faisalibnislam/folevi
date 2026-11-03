@@ -2,7 +2,8 @@
 
 import { memo, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, Calendar, CheckSquare, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutGrid, LayoutList, LayoutTemplate, Lock, Pin, PinOff, Plus, SquareSplitHorizontal, Share2, Star, Trash2, Waypoints, X, XCircle } from "lucide-react";
+import { Archive, ArrowLeftToLine, CircleHelp, Settings, ArrowRightToLine, Calendar, CheckSquare, ChevronLeft, ChevronRight, FileDiff, FileText, Files, Folder, Hash, House, Inbox, Layers, LayoutGrid, LayoutList, LayoutTemplate, Lock, Pin, PinOff, Plus, SquareSplitHorizontal, Share2, Trash2, Waypoints, X, XCircle } from "lucide-react";
+import { FoldbackClip } from "@/components/ui/FoldbackClip";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { tabHolds, tabHref, useTabs, type DocTab } from "@/lib/app/tabs";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -37,7 +38,7 @@ const ARROW = "grid h-9 w-6 flex-none place-items-center rounded-control text-mu
 const VIEW_NAMES: Record<string, string> = {
   ai: "Foli AI",
   graph: "Graph",
-  starred: "Starred",
+  starred: "Docked",
   unsorted: "Drafts",
   notes: "All notes",
   tasks: "Tasks",
@@ -66,7 +67,7 @@ function ViewIcon({ kind }: { kind: string }) {
     case "graph":
       return <Waypoints size={14} aria-hidden className={c} />;
     case "starred":
-      return <Star size={14} aria-hidden className={c} />;
+      return <FoldbackClip size={14} aria-hidden className={c} />;
     case "unsorted":
       return <Inbox size={14} aria-hidden className={c} />;
     case "notes":

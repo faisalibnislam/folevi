@@ -7,6 +7,7 @@
 //   dialogs and panels (`note.menu`).
 #if os(macOS)
 import AppKit
+import FoleviDesign
 import FoleviEngine
 
 @MainActor
@@ -110,12 +111,12 @@ public enum NoteMenu {
         let canEdit = meta?.canEdit ?? true
         func add(_ title: String, _ symbol: String, enabled: Bool = true, _ run: @escaping @MainActor () -> Void) {
             let item = ClosureMenuItem(title: title, run: run)
-            item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+            item.image = FoleviGlyph.nsImage(symbol)
             item.isEnabled = enabled
             menu.addItem(item)
         }
         menu.autoenablesItems = false
-        add(starred ? "Unstar" : "Star", starred ? "star.slash" : "star") { model.star([id], !starred) }
+        add(starred ? "Undock" : "Dock", starred ? FoleviGlyph.name(.foldbackClipOff) : FoleviGlyph.name(.foldbackClip)) { model.star([id], !starred) }
         add("Move to…", "folder", enabled: canEdit) { model.noteMenu(.move) }
         add("Copy to…", "doc.on.doc") { model.noteMenu(.copyTo) }
         add("Duplicate", "plus.square.on.square") { model.noteMenu(.duplicate) }

@@ -253,7 +253,7 @@ final class TabItemView: NSView {
             icon.isHidden = true
             symbol.isHidden = false
             // (Catch me up wears Foli AI's flower, in its colours.)
-            symbol.image = tab.route == .catchUp ? AiMarkImage.nsImage(size: 15) : NSImage(systemSymbolName: tab.route.symbol, accessibilityDescription: nil)
+            symbol.image = tab.route == .catchUp ? AiMarkImage.nsImage(size: 15) : FoleviGlyph.nsImage(tab.route.symbol)
         }
         close.isHidden = tab.isHome || !(isActive || hovering) || (compact && !isActive)
         // Active: the content colour with a 1 pt edge; hover: a faint fill (polish 2.3, 2.4).

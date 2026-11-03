@@ -378,7 +378,7 @@ final class NoteViewController: UIViewController, PageViewOwner {
         var first: [UIMenuElement] = []
         if let meta, meta.found, meta.space != nil {
             let starred = meta.starred
-            first.append(UIAction(title: starred ? "Unstar" : "Star", image: UIImage(systemName: starred ? "star.slash" : "star")) { [weak self] _ in
+            first.append(UIAction(title: starred ? "Undock" : "Dock", image: (starred ? WebIcon.foldbackClipOff : .foldbackClip).uiImage()) { [weak self] _ in
                 guard let self else { return }
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 self.model.star(self.noteId, !starred)

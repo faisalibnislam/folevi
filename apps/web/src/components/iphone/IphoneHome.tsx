@@ -63,7 +63,7 @@ function RecentCard({ doc }: { doc: Summary }) {
   );
 }
 
-/** A note as a row (Starred), with its actions on a long press. */
+/** A note as a row (Docked), with its actions on a long press. */
 export function NoteRow({ doc }: { doc: Summary }) {
   const [ctx, setCtx] = useState<{ x: number; y: number } | null>(null);
   return (
@@ -85,7 +85,7 @@ export function NoteRow({ doc }: { doc: Summary }) {
 /**
  * Home in the iPhone app: the avatar (account and places) and notifications at the top, a large title, the
  * search field, recent notes as cards in a row, then All notes, Drafts, Shared with Me and Changes as rows,
- * Starred, Folders and Tags sections, and Templates, Archive and Trash at the end.
+ * Docked, Folders and Tags sections, and Templates, Archive and Trash at the end.
  */
 export function IphoneHome() {
   const { scope, workspace, outbox } = useAppState();
@@ -168,11 +168,11 @@ export function IphoneHome() {
         {reviews?.hasCards ? <ListRow href="/review" icon={<Layers />} label="Reviews" detail={waitingReviews || undefined} /> : null}
       </nav>
 
-      <HomeSection id="starred" title="Starred" href="/starred" empty={starred && !starred.page.length ? <EmptyBox>Star notes to keep them close</EmptyBox> : undefined}>
+      <HomeSection id="starred" title="Docked" href="/starred" empty={starred && !starred.page.length ? <EmptyBox>Dock notes to keep them close</EmptyBox> : undefined}>
         {(starred?.page ?? []).slice(0, SHOWN).map((d) => (
           <NoteRow key={d.id} doc={d} />
         ))}
-        {starred && starred.page.length > SHOWN ? <ListRow href="/starred" label={<span className="text-muted">See all starred</span>} /> : null}
+        {starred && starred.page.length > SHOWN ? <ListRow href="/starred" label={<span className="text-muted">See all docked</span>} /> : null}
       </HomeSection>
 
       <HomeSection

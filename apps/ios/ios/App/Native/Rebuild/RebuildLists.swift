@@ -81,8 +81,8 @@ struct RebuildNotesScreen: View {
         switch action {
         case .open, .editTemplate: .fileText
         case .openInNewTab: .externalLink
-        case .star: .star
-        case .unstar: .starOff
+        case .star: .foldbackClip
+        case .unstar: .foldbackClipOff
         case .move: .folderInput
         case .duplicate: .copy
         case .copyTo: .copyPlus

@@ -159,14 +159,14 @@ test("mouse: notes onto folders from a list, a folder page's chips, Home, search
   await expect(toast(page, "Moved to Drafts")).toBeVisible();
   await expect(palette).toBeHidden();
 
-  // A starred note in the sidebar onto a folder.
+  // A docked note in the sidebar onto a folder.
   await drafts(page).click();
   const draft = page.getByRole("main").locator("[data-card-id]").filter({ hasText: title }).first();
   await draft.click({ button: "right" });
-  await page.getByRole("menuitem", { name: /^Star/ }).click();
-  const starred = nav(page).getByRole("group", { name: "Starred pages" }).getByRole("link", { name: title });
-  await expect(starred).toBeVisible();
-  await drag(page, starred, row(page, "Shelf"), 0.5).then((x) => x.drop());
+  await page.getByRole("menuitem", { name: /^Dock/ }).click();
+  const docked = nav(page).getByRole("group", { name: "Docked pages" }).getByRole("link", { name: title });
+  await expect(docked).toBeVisible();
+  await drag(page, docked, row(page, "Shelf"), 0.5).then((x) => x.drop());
   await expect(toast(page, "Moved to Shelf")).toBeVisible();
 
   // Home's cards onto a folder.

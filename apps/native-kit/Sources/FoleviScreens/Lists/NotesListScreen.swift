@@ -391,7 +391,7 @@ public struct NotesListScreen: View {
         Button(role: model.isDestructive(action) && action != .deleteForever ? .destructive : nil) {
             Task { await model.run(action, on: row) }
         } label: {
-            Label(swipeTitle(action), systemImage: model.symbol(of: action))
+            Label { Text(swipeTitle(action)) } icon: { FoleviGlyph.image(model.symbol(of: action)) }
         }
         .tint(swipeTint(action))
     }
@@ -425,7 +425,7 @@ public struct NotesListScreen: View {
                 Button(role: model.isDestructive(action) ? .destructive : nil) {
                     perform(action, on: row)
                 } label: {
-                    Label(model.title(of: action), systemImage: model.symbol(of: action))
+                    Label { Text(model.title(of: action)) } icon: { FoleviGlyph.image(model.symbol(of: action)) }
                 }
             }
         }
@@ -442,7 +442,7 @@ public struct NotesListScreen: View {
                     model.selection = ids
                     Task { await model.runBulk(action) }
                 } label: {
-                    Label("\(action.title) \(notesText(rows.count))", systemImage: action.symbol)
+                    Label { Text("\(action.title) \(notesText(rows.count))") } icon: { FoleviGlyph.image(action.symbol) }
                 }
             }
         }
@@ -520,7 +520,7 @@ struct SelectionBar: View {
 
     private func barLabel(_ action: BulkAction) -> some View {
         VStack(spacing: 3) {
-            Image(systemName: action.symbol).font(.system(size: 19, weight: .regular))
+            FoleviGlyph.image(action.symbol, size: 22).font(.system(size: 19, weight: .regular))
             Text(action.title).font(FoleviFonts.font(.ui, size: 11, weight: .medium)).lineLimit(1)
         }
         .foregroundStyle(action.destructive ? Folevi.color.destructive : Folevi.color.heading)

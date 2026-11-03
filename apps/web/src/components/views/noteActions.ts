@@ -124,7 +124,7 @@ export function useNoteActions() {
         );
       },
       star: (ids: string[], starred: boolean) =>
-        perform(ids, { kind: "star", starred }, (n) => (starred ? (n === 1 ? "Starred" : `Starred ${notes(n)}`) : n === 1 ? "Removed from Starred" : `Unstarred ${notes(n)}`), (r) =>
+        perform(ids, { kind: "star", starred }, (n) => (starred ? (n === 1 ? "Docked" : `Docked ${notes(n)}`) : n === 1 ? "Removed from Docked" : `Undocked ${notes(n)}`), (r) =>
           quietly(r.done, { kind: "star", starred: !starred }),
         ),
       archive: (ids: string[], archived: boolean) =>

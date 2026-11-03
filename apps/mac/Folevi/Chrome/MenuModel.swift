@@ -218,7 +218,7 @@ enum MenuModel {
                 page("format.style", "Style…", window: true),
             ]),
             MenuSpec(id: "note", title: "Note", nodes: [
-                page("note.star", "Star", window: true),
+                page("note.star", "Dock", window: true),
                 page("note.archive", "Archive", window: true),
                 page("note.move", "Move to…", k("m", [.cmd, .shift]), window: true),
                 page("note.duplicate", "Duplicate", window: true),

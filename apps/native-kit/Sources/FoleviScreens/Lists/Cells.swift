@@ -159,7 +159,7 @@ struct NoteRowView: View {
                         .foregroundStyle(Folevi.color.ink)
                         .lineLimit(lines)
                     if starred {
-                        Image(systemName: "star.fill").font(.system(size: 11)).foregroundStyle(Folevi.color.inkFaint).accessibilityLabel("Starred")
+                        WebIconView(.foldbackClip, size: 12).foregroundStyle(Folevi.color.inkFaint).accessibilityLabel("Docked")
                     }
                 }
                 Text(subtitle)

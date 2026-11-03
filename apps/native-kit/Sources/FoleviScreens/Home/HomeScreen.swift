@@ -124,7 +124,7 @@ public struct HomeScreen: View {
             model: CardMapping.noteCard(row, starred: starred),
             onTap: { navigator.open(.note(id: row.id), $0) },
             accessibilityActions: [
-                (starred ? "Unstar" : "Star", { Task { await model.actions.star([row.id], !starred) } }),
+                (starred ? "Undock" : "Dock", { Task { await model.actions.star([row.id], !starred) } }),
                 ("Remove from recent", { Task { await model.actions.removeFromRecent([row.id]) } }),
                 ("Move to Trash", { Task { await model.actions.trash([row.id]) } }),
             ]
@@ -184,9 +184,9 @@ public struct HomeScreen: View {
 
     private var starred: some View {
         VStack(alignment: .leading, spacing: 4) {
-            SectionHeader("Starred", actionTitle: "See all") { navigator.open(.notes(.starred), nil) }
+            SectionHeader("Docked", actionTitle: "See all") { navigator.open(.notes(.starred), nil) }
             if model.value != nil && model.starred.isEmpty {
-                Text("Star notes to keep them close").foleviFont(.callout).foregroundStyle(Folevi.color.inkMuted).padding(.vertical, 10)
+                Text("Dock notes to keep them close").foleviFont(.callout).foregroundStyle(Folevi.color.inkMuted).padding(.vertical, 10)
             } else {
                 VStack(spacing: 0) {
                     ForEach(model.starred, id: \.id) { row in
@@ -201,7 +201,7 @@ public struct HomeScreen: View {
                     }
                     if model.moreStarred {
                         Button { navigator.open(.notes(.starred), nil) } label: {
-                            ListRow("See all starred", accessory: .chevron) { EmptyView() }
+                            ListRow("See all docked", accessory: .chevron) { EmptyView() }
                         }
                         .buttonStyle(RowPressStyle())
                     }
@@ -341,7 +341,7 @@ struct HomeNoteMenu: View {
     var body: some View {
         Button { navigator.open(.note(id: row.id), CardFrames.shared.source(for: row.id)) } label: { Label("Open", systemImage: "arrow.up.forward.square") }
         Divider()
-        Button { Task { await model.actions.star([row.id], !starred) } } label: { Label(starred ? "Unstar" : "Star", systemImage: starred ? "star.slash" : "star") }
+        Button { Task { await model.actions.star([row.id], !starred) } } label: { Label { Text(starred ? "Undock" : "Dock") } icon: { (starred ? WebIcon.foldbackClipOff : .foldbackClip).image() } }
         Button { Task { await model.actions.duplicate(row.id) } } label: { Label("Duplicate", systemImage: "plus.square.on.square") }
         Button { Task { await model.actions.archive([row.id], true) } } label: { Label("Archive", systemImage: "archivebox") }
         if recent {

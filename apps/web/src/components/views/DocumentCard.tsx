@@ -87,7 +87,7 @@ export const NOTE_CARD_ASPECT = "aspect-[25/27]";
  * A note in the grid, drawn as a binder page: a strip down the left carries the note's artwork (cover,
  * gradient or colour) with punched holes in the page colour, and the page itself shows the title (serif),
  * when it was created, its opening text (clamped with "…"), and a footer with the last edit and its
- * folder (or Draft). Starred notes get a corner tab. Everything scales with the card width.
+ * folder (or Draft). Docked notes get a corner tab. Everything scales with the card width.
  */
 export function NoteCardFace({
   title,
@@ -222,8 +222,8 @@ export function NoteCardFace({
       <span aria-hidden data-card="edge" className="note-card-r pointer-events-none absolute inset-0 z-10 rounded-l-tiny rounded-r-panel shadow-[inset_0_0_0_1px_rgb(0_0_0/0.05)]" />
       </div>
       {look === "clip" ? (
-        // A binder clip across the top: the starred note.
-        <span role="img" aria-label="Starred" className="pointer-events-none absolute left-1/2 top-[-2.4cqw] z-20 -translate-x-1/2">
+        // A binder clip across the top: the docked note.
+        <span role="img" aria-label="Docked" className="pointer-events-none absolute left-1/2 top-[-2.4cqw] z-20 -translate-x-1/2">
           <span aria-hidden className="absolute bottom-[4cqw] left-1/2 h-[6cqw] w-[13cqw] -translate-x-1/2 rounded-t-chip border-[0.9cqw] border-b-0 border-[color-mix(in_oklab,var(--color-heading)_45%,transparent)]" />
           <span aria-hidden className="block h-[7cqw] w-[20cqw] rounded-tiny bg-[#1e1d1a] shadow-[0_1px_2px_rgb(0_0_0/0.3)] dark:bg-[#5a5853]" />
         </span>

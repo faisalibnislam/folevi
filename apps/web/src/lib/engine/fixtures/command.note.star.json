@@ -1,7 +1,7 @@
 {
   "kind": "command",
   "name": "note.star",
-  "description": "Star two notes.",
+  "description": "Dock two notes.",
   "args": {
     "ids": [
       "doc_00001",

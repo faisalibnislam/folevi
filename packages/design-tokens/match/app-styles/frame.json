@@ -104,7 +104,7 @@
     },
     "frame.sidebar.starred.item": {
       "screen": "home",
-      "selector": "nav[aria-label='Folio'] [aria-label='Starred pages'] a"
+      "selector": "nav[aria-label='Folio'] [aria-label='Docked pages'] a"
     },
     "frame.sidebar.bottom": {
       "screen": "home",

@@ -5,7 +5,7 @@
 //   export's clean page), and which note File > Share would send (setShareTarget).
 // - The "New Folevi Note with Selection" service and Shortcuts' New Note: a note from text (its first line the title).
 // - Shortcuts' Add a Task: a task in the Inbox.
-// - Spotlight: the recent and starred notes of this place, whenever they change.
+// - Spotlight: the recent and docked notes of this place, whenever they change.
 // - Notes dragged out to Finder: each one's Markdown and attachments, made when it's dropped.
 // Rendered by Shell next to DesktopBridge; nothing in the Electron app (it has none of these) or a browser.
 import { useConvex, useMutation, useQuery } from "convex/react";
@@ -53,7 +53,7 @@ function Capabilities() {
   }, [bridge, docId, meta, title, link]);
   useEffect(() => () => bridge.setShareTarget?.(null), [bridge]);
 
-  // Spotlight: this place's recent and starred notes, once their changes settle.
+  // Spotlight: this place's recent and docked notes, once their changes settle.
   const feeds = Boolean(bridge.indexSpotlight);
   const recent = useQuery(api.documents.recentNotes, feeds ? { scope, limit: SPOTLIGHT_RECENT } : "skip");
   const starred = useQuery(api.documents.list, feeds ? { scope, view: "starred", paginationOpts: { numItems: SPOTLIGHT_STARRED, cursor: null } } : "skip");

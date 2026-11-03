@@ -367,7 +367,7 @@ struct PhoneAiDock: View {
                 if variant == .page {
                     Color.clear.webBox(look.pair("ai.composer").radius(21))
                 } else {
-                    PhoneComposerBox(style: look.s("ai.composer"), top: 21, bottom: max(21, PhoneSheetCorner.radius - dock.padding.left))
+                    PhoneComposerBox(style: look.s("ai.composer"), top: 21, bottom: max(21, PhoneSheetCorner.drawn - dock.padding.left))
                 }
             }
             .contentShape(Rectangle())

@@ -1,6 +1,17 @@
 {
   "releases": [
     {
+      "version": "1.2.25",
+      "build": 37,
+      "released": "2026-11-03T12:27:19+06:00",
+      "type": "patch",
+      "summary": "Sheets that match your iPhone's corners",
+      "improved": [
+        "Sheets on iPhone round their corners with the screen's, so their foot follows its curve; Foli AI's box inside matches"
+      ],
+      "tag": "v1.2.25"
+    },
+    {
       "version": "1.2.24",
       "build": 36,
       "released": "2026-11-03T10:03:29+06:00",

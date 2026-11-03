@@ -656,13 +656,15 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 .fb-ai-answer .fb-editor .fb-quote { font-size: 1em; }
 
 /* AI text being written: a soft blinking caret after the last block's text (components/ai/AiMarkdown.tsx). */
-.fb-ai-streaming .fb-ai-answer > .fb-editor:last-child > .fb:last-child::after {
+/* (An answer that ends in a list: its last item, inside the list's <ul>/<ol> and <li> wrappers, ReadOnlyBlocks.tsx.) */
+.fb-ai-streaming .fb-ai-answer > .fb-editor:last-child > .fb:last-child::after,
+.fb-ai-streaming .fb-ai-answer > .fb-editor:last-child > :is(ul, ol):last-child li > .fb:last-child:not(:is(li, ul, ol):not(:last-child) *)::after {
   content: ""; display: inline-block; width: 0.5em; height: 1em; margin-left: 2px; vertical-align: -0.12em;
   border-radius: var(--radius-tiny); background: color-mix(in oklab, #7c6cf0 70%, transparent);
   animation: fb-ai-caret 1s steps(2, start) infinite;
 }
 @keyframes fb-ai-caret { to { visibility: hidden; } }
-@media (prefers-reduced-motion: reduce) { .fb-ai-streaming .fb-ai-answer > .fb-editor:last-child > .fb:last-child::after { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .fb-ai-streaming .fb-ai-answer > .fb-editor:last-child :is(.fb:last-child)::after { animation: none; } }
 /* Inline citations in an AI answer ([2] links to its source): a small, quiet number. */
 .fb-ai-answer a.fb-link[href^="#cite-"] {
   display: inline-grid; place-items: center; min-width: 1.35em; height: 1.35em; margin: 0 1px; padding: 0 0.3em;

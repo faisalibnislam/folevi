@@ -1,6 +1,6 @@
 import { cloneElement, Fragment, isValidElement, type ReactElement } from "react";
 import { FileText, RefreshCw } from "lucide-react";
-import { flattenTree, liftTabs, tabGroupAt, tabName, sanitizeHref, type FlatEntry, type InlineNode, type WireBlock } from "@folevi/editor-schema";
+import { flattenTree, imageDescription, liftTabs, tabGroupAt, tabName, sanitizeHref, type FlatEntry, type InlineNode, type WireBlock } from "@folevi/editor-schema";
 import { columnGroupAt, columnShares, liftColumns } from "@folevi/editor-schema";
 import { formatCalendarDate } from "@/i18n";
 import "@/components/editor/columns/columns.css";
@@ -151,6 +151,76 @@ function marked(
   );
 }
 
+/** A drawn block, and whether it's a list item (bulleted, numbered or to-do) and at what depth. */
+interface Row {
+  key: string;
+  node: React.ReactNode;
+  depth: number;
+  list: "bulleted" | "numbered" | "todo" | null;
+  /** A numbered item's number. */
+  index?: number;
+}
+
+const LIST_TYPES = new Set(["bulleted", "numbered", "todo"]);
+
+/**
+ * List wrappers take no box (`display: contents`), so every line still lays out as a line of the note, and they
+ * carry the editor's class so the stylesheet's `.fb-editor > .fb` rules still reach the lines inside them. They
+ * only add what a screen reader needs: a real list, its length, and nesting.
+ */
+const LIST_WRAP: React.CSSProperties = { display: "contents" };
+
+/** Runs of list items as real <ul>/<ol>/<li>, a deeper run inside the item above it; other rows as they are. */
+function nestLists(rows: Row[]): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  let i = 0;
+  while (i < rows.length) {
+    const row = rows[i]!;
+    if (!row.list) {
+      out.push(row.node);
+      i++;
+      continue;
+    }
+    const [list, next] = listAt(rows, i);
+    out.push(list);
+    i = next;
+  }
+  return out;
+}
+
+/** The list that starts at `start` (items of its type at its depth, and what's nested under them), and where it ends. */
+function listAt(rows: Row[], start: number): [React.ReactNode, number] {
+  const first = rows[start]!;
+  const items: React.ReactNode[] = [];
+  let i = start;
+  while (i < rows.length && rows[i]!.list === first.list && rows[i]!.depth === first.depth) {
+    const row = rows[i++]!;
+    const nested: React.ReactNode[] = [];
+    while (i < rows.length && rows[i]!.list && rows[i]!.depth > first.depth) {
+      const [list, next] = listAt(rows, i);
+      nested.push(list);
+      i = next;
+    }
+    items.push(
+      <li key={row.key} className="fb-editor" style={LIST_WRAP}>
+        {row.node}
+        {nested}
+      </li>,
+    );
+  }
+  const list =
+    first.list === "numbered" ? (
+      <ol key={`list-${first.key}`} className="fb-editor" style={LIST_WRAP} start={first.index !== 1 ? first.index : undefined}>
+        {items}
+      </ol>
+    ) : (
+      <ul key={`list-${first.key}`} className="fb-editor" style={LIST_WRAP}>
+        {items}
+      </ul>
+    );
+  return [list, i];
+}
+
 /** Server-rendered read-only document body (public share pages). Uses the editor stylesheet classes. */
 export function ReadOnlyBlocks({
   blocks,
@@ -180,378 +250,387 @@ export function ReadOnlyBlocks({
   let hideBelow: number | null = null;
   // Past the end of a tabs block already drawn (its tabs are drawn inside it).
   let skipTo = -1;
+  const rows: Row[] = [];
+  flat.forEach(({ block, depth }, index) => {
+    if (index < skipTo) return;
+    if (hideBelow !== null && depth <= hideBelow) hideBelow = null;
+    if (hideBelow !== null) return;
+    const p = block.props as Record<string, unknown>;
+    const style = { ["--depth" as string]: depth } as React.CSSProperties;
+    // Format panel styling (decoration, colour, alignment, font, group, text style). See editor.css.
+    const fa: Record<string, string> = {};
+    for (const [prop, attr] of [
+      ["decoration", "data-decoration"],
+      ["color", "data-color"],
+      ["align", "data-align"],
+      ["font", "data-font"],
+      ["group", "data-group"],
+      ["textStyle", "data-text-style"],
+    ] as const) {
+      if (typeof p[prop] === "string") fa[attr] = p[prop] as string;
+    }
+    const change = changes?.get(block.id);
+    if (block.type === "numbered") {
+      counters.length = depth + 1;
+      // A removed item (version history) shows the number it had, without moving the ones after it on.
+      counters[depth] = (counters[depth] ?? 0) + 1;
+      if (change?.kind === "removed") counters[depth]! -= 1;
+    } else counters.length = depth;
+    const rendered = ((): React.ReactNode => {
+      switch (block.type) {
+        case "tabs": {
+          if (changes) return null;
+          const group = tabGroupAt(flat, index);
+          if (!group) return null;
+          skipTo = group.end;
+          // Each tab's blocks, inside the tabs block (which sits at its own indent).
+          const panels = group.tabs.map((t) => (
+            <ReadOnlyBlocks
+              key={t.block.id}
+              blocks={[]}
+              entries={flat.slice(t.index + 1, t.end).map((e) => ({ block: e.block, depth: Math.max(0, e.depth - depth - 2) }))}
+              fileUrls={fileUrls}
+              collections={collections}
+              anchors={anchors}
+            />
+          ));
+          return (
+            <ReadOnlyTabs
+              key={block.id}
+              id={block.id}
+              tabs={group.tabs.map((t) => ({ id: t.block.id, name: tabName(t.block) }))}
+              panels={panels}
+              style={{ marginLeft: `${depth * 1.6}em` }}
+            />
+          );
+        }
+        case "columns": {
+          if (changes) return null;
+          const group = columnGroupAt(flat, index);
+          if (!group) return null;
+          skipTo = group.end;
+          // Each column's blocks in a box of its own, as wide as its share (stacked on narrow screens).
+          const shares = columnShares(group.columns.map((c) => (c.block?.props as { width?: unknown } | undefined)?.width));
+          return (
+            <div key={block.id} className="fb-columns-static" style={style}>
+              {group.columns.map((c, k) => (
+                <div key={c.block?.id ?? `loose-${k}`} className="fb-column-static" style={{ flex: `${shares[k]} 1 0` }}>
+                  <ReadOnlyBlocks
+                    blocks={[]}
+                    entries={flat.slice(c.start, c.end).map((e) => ({ block: e.block, depth: Math.max(0, e.depth - depth - 2) }))}
+                    fileUrls={fileUrls}
+                    collections={collections}
+                    anchors={anchors}
+                  />
+                </div>
+              ))}
+            </div>
+          );
+        }
+        case "column":
+          return null;
+        case "tab":
+          // A tab outside a tabs block, or any tab in version history: its name, like a small heading.
+          return (
+            <h4 key={block.id} className="fb fb-heading fb-h3" style={style}>
+              {tabName(block)}
+            </h4>
+          );
+        case "heading": {
+          const level = Math.min(3, Number(p.level) || 1);
+          const Tag = (["h2", "h3", "h4"] as const)[level - 1]!;
+          return (
+            <Tag key={block.id} id={anchors ? `block-${block.id}` : undefined} className={`fb fb-heading fb-h${level}`} style={style} {...fa}>
+              <BlockText block={block} change={changes?.get(block.id)} />
+            </Tag>
+          );
+        }
+        case "paragraph":
+          return (
+            <p key={block.id} className="fb fb-paragraph" style={style} {...fa}>
+              <BlockText block={block} change={changes?.get(block.id)} />
+            </p>
+          );
+        case "bulleted":
+          return (
+            <div
+              key={block.id}
+              className="fb fb-bulleted"
+              data-depth={depth}
+              style={style}
+              {...fa}
+            >
+              <BlockText block={block} change={changes?.get(block.id)} />
+            </div>
+          );
+        case "numbered":
+          return (
+            <div
+              key={block.id}
+              className="fb fb-numbered"
+              data-index={change?.kind === "removed" ? counters[depth]! + 1 : counters[depth]}
+              style={style}
+              {...fa}
+            >
+              <BlockText block={block} change={changes?.get(block.id)} />
+            </div>
+          );
+        case "todo":
+          return (
+            <div
+              key={block.id}
+              className="fb fb-todo"
+              data-checked={p.checked ? "true" : "false"}
+              style={style}
+              {...fa}
+            >
+              <span
+                className="fb-check"
+                role="img"
+                aria-label={p.checked ? "Done" : "Not done"}
+              />
+              <div className="fb-content">
+                <BlockText block={block} change={changes?.get(block.id)} />
+              </div>
+            </div>
+          );
+        case "toggle":
+          // In version history everything shows: a change inside a closed toggle would otherwise be hidden.
+          if (p.collapsed && !changes) hideBelow = depth;
+          return (
+            <details key={block.id} className="fb" style={style} {...fa} open={!p.collapsed || Boolean(changes)}>
+              <summary className="font-medium">
+                <BlockText block={block} change={changes?.get(block.id)} />
+              </summary>
+            </details>
+          );
+        case "quote":
+          return (
+            <blockquote key={block.id} className="fb fb-quote" style={style} {...fa}>
+              <BlockText block={block} change={changes?.get(block.id)} />
+            </blockquote>
+          );
+        case "callout":
+          return (
+            <div
+              key={block.id}
+              role="note"
+              className={`fb fb-callout fb-tone-${String(p.tone ?? "note")}`}
+              style={style}
+              {...fa}
+            >
+              <span className="fb-callout-icon" aria-hidden>
+                {String(p.icon ?? "✳︎")}
+              </span>
+              <div className="fb-content">
+                <BlockText block={block} change={changes?.get(block.id)} />
+              </div>
+            </div>
+          );
+        case "code":
+          if (p.language === "mermaid" && String(p.code ?? "").trim()) {
+            return (
+              <figure
+                key={block.id}
+                className="fb-readonly-mermaid"
+                style={{ marginLeft: `${depth * 1.6}em` }}
+              >
+                <MermaidDiagram code={String(p.code)} label="Mermaid diagram" />
+                <details>
+                  <summary>Diagram source</summary>
+                  <pre>
+                    <code>{String(p.code)}</code>
+                  </pre>
+                </details>
+              </figure>
+            );
+          }
+          return (
+            <pre
+              key={block.id}
+              className="fb fb-code"
+              data-language={String(p.language)}
+              style={style}
+              {...fa}
+            >
+              <code>{String(p.code ?? "")}</code>
+            </pre>
+          );
+        case "divider":
+          return (
+            <div
+              key={block.id}
+              className="fb fb-divider"
+              data-style={p.style ? String(p.style) : undefined}
+              role="separator"
+            >
+              <hr />
+            </div>
+          );
+        case "pageBreak":
+          return (
+            <div
+              key={block.id}
+              className="fb fb-page-break"
+              role="separator"
+              aria-label="Page break"
+            >
+              <span className="fb-page-break-label" aria-hidden>
+                Page break
+              </span>
+            </div>
+          );
+        case "formula":
+          return (
+            <div
+              key={block.id}
+              className="fb-readonly-formula"
+              style={{ marginLeft: `${depth * 1.6}em` }}
+            >
+              <FormulaRender latex={String(p.latex ?? "")} />
+            </div>
+          );
+        case "whiteboard":
+          return (
+            <div
+              key={block.id}
+              className="fb-readonly-whiteboard"
+              style={{ marginLeft: `${depth * 1.6}em` }}
+            >
+              <WhiteboardStatic data={String(p.data ?? "")} height={Number(p.height)} />
+            </div>
+          );
+        case "mindmap":
+        case "stickies":
+        case "chart":
+        case "wireframe": {
+          const { name, Static } = VISUALS[block.type]!;
+          return (
+            <figure key={block.id} className="fb-readonly-visual" aria-label={name} style={{ marginLeft: `${depth * 1.6}em` }}>
+              <figcaption className="fb-readonly-visual-name">{name}</figcaption>
+              <Static data={String(p.data ?? "")} height={Number(p.height)} />
+            </figure>
+          );
+        }
+        case "flowchart":
+          return (
+            <div
+              key={block.id}
+              className="fb-readonly-flowchart"
+              style={{ marginLeft: `${depth * 1.6}em` }}
+            >
+              <FlowchartStatic data={String(p.data ?? "")} height={Number(p.height)} fileUrls={fileUrls} />
+            </div>
+          );
+        case "image": {
+          const src = p.fileId ? fileUrls[String(p.fileId)] : sanitizeHref(String(p.url ?? ""));
+          // Alt is the person's description only, never a file name. Without one the picture is skipped and
+          // the figure is named by its caption, or called "Image" when it has neither.
+          const alt = imageDescription(p.alt);
+          return src ? (
+            <figure
+              key={block.id}
+              className="my-3"
+              style={{ width: `${Math.round(Number(p.width ?? 1) * 100)}%` }}
+              aria-label={!alt && !p.caption ? "Image" : undefined}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt={alt}
+                className="w-full rounded-chip border border-line"
+              />
+              {p.caption ? (
+                <figcaption className="mt-1 text-center text-subheadline text-muted">
+                  {String(p.caption)}
+                </figcaption>
+              ) : null}
+            </figure>
+          ) : null;
+        }
+        case "file":
+          return (
+            <ReadOnlyFile
+              key={block.id}
+              href={fileUrls[String(p.fileId)] ?? null}
+              name={p.name ? String(p.name) : null}
+              size={Number(p.size) || null}
+              mimeType={p.mimeType ? String(p.mimeType) : null}
+            />
+          );
+        case "audio": {
+          const href = fileUrls[String(p.fileId)] ?? null;
+          return (
+            <AudioPlayer
+              key={block.id}
+              src={href}
+              download={href}
+              name={String(p.name ?? "Audio recording")}
+              size={Number(p.size) || null}
+              duration={Number(p.duration) || null}
+              className="my-3"
+            />
+          );
+        }
+        case "table":
+          // Formulas' results, column formats, the totals row and the saved sort and filter.
+          return <TableStatic key={block.id} props={p} />;
+        case "page":
+          return (
+            <p key={block.id} className="fb flex items-start gap-1.5 text-muted">
+              {/* A plain document glyph, as everywhere a page needs a marker (no emoji). */}
+              <FileText size={15} aria-hidden className="mt-[calc((1lh-15px)/2)] flex-none" />
+              <span>
+                {String(p.titleCache ?? "Nested page")} <span className="text-footnote">(not included in this shared page)</span>
+              </span>
+            </p>
+          );
+        case "collection":
+          return (
+            <ReadOnlyCollection key={block.id} data={collections?.[String(p.collectionId)]} />
+          );
+        case "synced":
+          // A synced block (version history): its content is whatever it shows now, in the note itself.
+          return (
+            <div key={block.id} className="fb fb-synced-static" style={style}>
+              <p className="flex items-center gap-1.5 text-footnote text-muted">
+                <RefreshCw size={12} aria-hidden /> Synced block <span className="text-faint">(shows its current content in the note)</span>
+              </p>
+            </div>
+          );
+        case "embed":
+          return (
+            // Edge to edge with the other media blocks (images, diagrams, collections), not inset like text.
+            <div key={block.id}>
+              <EmbedFrame url={String(p.url ?? "")} />
+            </div>
+          );
+        case "bookmark": {
+          const text = (v: unknown) => (typeof v === "string" && v ? v : null);
+          return (
+            <ReadOnlyBookmark
+              key={block.id}
+              href={sanitizeHref(String(p.url ?? "")) ?? null}
+              title={text(p.title)}
+              description={text(p.description)}
+              siteName={text(p.siteName)}
+              image={text(p.image)}
+              icon={text(p.icon)}
+            />
+          );
+        }
+        default:
+          return null;
+      }
+    })();
+    const node = marked(rendered, change, people);
+    if (node === null || node === undefined) return;
+    const list = LIST_TYPES.has(block.type) ? (block.type as Row["list"]) : null;
+    rows.push({ key: block.id, node, depth, list, index: block.type === "numbered" ? counters[depth] : undefined });
+  });
   return (
     <div className="fb-editor" style={{ paddingBottom: entries ? 0 : 48 }}>
-      {flat.map(({ block, depth }, index) => {
-        if (index < skipTo) return null;
-        if (hideBelow !== null && depth <= hideBelow) hideBelow = null;
-        if (hideBelow !== null) return null;
-        const p = block.props as Record<string, unknown>;
-        const style = { ["--depth" as string]: depth } as React.CSSProperties;
-        // Format panel styling (decoration, colour, alignment, font, group, text style). See editor.css.
-        const fa: Record<string, string> = {};
-        for (const [prop, attr] of [
-          ["decoration", "data-decoration"],
-          ["color", "data-color"],
-          ["align", "data-align"],
-          ["font", "data-font"],
-          ["group", "data-group"],
-          ["textStyle", "data-text-style"],
-        ] as const) {
-          if (typeof p[prop] === "string") fa[attr] = p[prop] as string;
-        }
-        const change = changes?.get(block.id);
-        if (block.type === "numbered") {
-          counters.length = depth + 1;
-          // A removed item (version history) shows the number it had, without moving the ones after it on.
-          counters[depth] = (counters[depth] ?? 0) + 1;
-          if (change?.kind === "removed") counters[depth]! -= 1;
-        } else counters.length = depth;
-        const rendered = ((): React.ReactNode => {
-          switch (block.type) {
-            case "tabs": {
-              if (changes) return null;
-              const group = tabGroupAt(flat, index);
-              if (!group) return null;
-              skipTo = group.end;
-              // Each tab's blocks, inside the tabs block (which sits at its own indent).
-              const panels = group.tabs.map((t) => (
-                <ReadOnlyBlocks
-                  key={t.block.id}
-                  blocks={[]}
-                  entries={flat.slice(t.index + 1, t.end).map((e) => ({ block: e.block, depth: Math.max(0, e.depth - depth - 2) }))}
-                  fileUrls={fileUrls}
-                  collections={collections}
-                  anchors={anchors}
-                />
-              ));
-              return (
-                <ReadOnlyTabs
-                  key={block.id}
-                  id={block.id}
-                  tabs={group.tabs.map((t) => ({ id: t.block.id, name: tabName(t.block) }))}
-                  panels={panels}
-                  style={{ marginLeft: `${depth * 1.6}em` }}
-                />
-              );
-            }
-            case "columns": {
-              if (changes) return null;
-              const group = columnGroupAt(flat, index);
-              if (!group) return null;
-              skipTo = group.end;
-              // Each column's blocks in a box of its own, as wide as its share (stacked on narrow screens).
-              const shares = columnShares(group.columns.map((c) => (c.block?.props as { width?: unknown } | undefined)?.width));
-              return (
-                <div key={block.id} className="fb-columns-static" style={style}>
-                  {group.columns.map((c, k) => (
-                    <div key={c.block?.id ?? `loose-${k}`} className="fb-column-static" style={{ flex: `${shares[k]} 1 0` }}>
-                      <ReadOnlyBlocks
-                        blocks={[]}
-                        entries={flat.slice(c.start, c.end).map((e) => ({ block: e.block, depth: Math.max(0, e.depth - depth - 2) }))}
-                        fileUrls={fileUrls}
-                        collections={collections}
-                        anchors={anchors}
-                      />
-                    </div>
-                  ))}
-                </div>
-              );
-            }
-            case "column":
-              return null;
-            case "tab":
-              // A tab outside a tabs block, or any tab in version history: its name, like a small heading.
-              return (
-                <h4 key={block.id} className="fb fb-heading fb-h3" style={style}>
-                  {tabName(block)}
-                </h4>
-              );
-            case "heading": {
-              const level = Math.min(3, Number(p.level) || 1);
-              const Tag = (["h2", "h3", "h4"] as const)[level - 1]!;
-              return (
-                <Tag key={block.id} id={anchors ? `block-${block.id}` : undefined} className={`fb fb-heading fb-h${level}`} style={style} {...fa}>
-                  <BlockText block={block} change={changes?.get(block.id)} />
-                </Tag>
-              );
-            }
-            case "paragraph":
-              return (
-                <p key={block.id} className="fb fb-paragraph" style={style} {...fa}>
-                  <BlockText block={block} change={changes?.get(block.id)} />
-                </p>
-              );
-            case "bulleted":
-              return (
-                <div
-                  key={block.id}
-                  className="fb fb-bulleted"
-                  data-depth={depth}
-                  style={style}
-                  {...fa}
-                >
-                  <BlockText block={block} change={changes?.get(block.id)} />
-                </div>
-              );
-            case "numbered":
-              return (
-                <div
-                  key={block.id}
-                  className="fb fb-numbered"
-                  data-index={change?.kind === "removed" ? counters[depth]! + 1 : counters[depth]}
-                  style={style}
-                  {...fa}
-                >
-                  <BlockText block={block} change={changes?.get(block.id)} />
-                </div>
-              );
-            case "todo":
-              return (
-                <div
-                  key={block.id}
-                  className="fb fb-todo"
-                  data-checked={p.checked ? "true" : "false"}
-                  style={style}
-                  {...fa}
-                >
-                  <span
-                    className="fb-check"
-                    role="img"
-                    aria-label={p.checked ? "Done" : "Not done"}
-                  />
-                  <div className="fb-content">
-                    <BlockText block={block} change={changes?.get(block.id)} />
-                  </div>
-                </div>
-              );
-            case "toggle":
-              // In version history everything shows: a change inside a closed toggle would otherwise be hidden.
-              if (p.collapsed && !changes) hideBelow = depth;
-              return (
-                <details key={block.id} className="fb" style={style} {...fa} open={!p.collapsed || Boolean(changes)}>
-                  <summary className="font-medium">
-                    <BlockText block={block} change={changes?.get(block.id)} />
-                  </summary>
-                </details>
-              );
-            case "quote":
-              return (
-                <blockquote key={block.id} className="fb fb-quote" style={style} {...fa}>
-                  <BlockText block={block} change={changes?.get(block.id)} />
-                </blockquote>
-              );
-            case "callout":
-              return (
-                <div
-                  key={block.id}
-                  role="note"
-                  className={`fb fb-callout fb-tone-${String(p.tone ?? "note")}`}
-                  style={style}
-                  {...fa}
-                >
-                  <span className="fb-callout-icon" aria-hidden>
-                    {String(p.icon ?? "✳︎")}
-                  </span>
-                  <div className="fb-content">
-                    <BlockText block={block} change={changes?.get(block.id)} />
-                  </div>
-                </div>
-              );
-            case "code":
-              if (p.language === "mermaid" && String(p.code ?? "").trim()) {
-                return (
-                  <figure
-                    key={block.id}
-                    className="fb-readonly-mermaid"
-                    style={{ marginLeft: `${depth * 1.6}em` }}
-                  >
-                    <MermaidDiagram code={String(p.code)} label="Mermaid diagram" />
-                    <details>
-                      <summary>Diagram source</summary>
-                      <pre>
-                        <code>{String(p.code)}</code>
-                      </pre>
-                    </details>
-                  </figure>
-                );
-              }
-              return (
-                <pre
-                  key={block.id}
-                  className="fb fb-code"
-                  data-language={String(p.language)}
-                  style={style}
-                  {...fa}
-                >
-                  <code>{String(p.code ?? "")}</code>
-                </pre>
-              );
-            case "divider":
-              return (
-                <div
-                  key={block.id}
-                  className="fb fb-divider"
-                  data-style={p.style ? String(p.style) : undefined}
-                  role="separator"
-                >
-                  <hr />
-                </div>
-              );
-            case "pageBreak":
-              return (
-                <div
-                  key={block.id}
-                  className="fb fb-page-break"
-                  role="separator"
-                  aria-label="Page break"
-                >
-                  <span className="fb-page-break-label" aria-hidden>
-                    Page break
-                  </span>
-                </div>
-              );
-            case "formula":
-              return (
-                <div
-                  key={block.id}
-                  className="fb-readonly-formula"
-                  style={{ marginLeft: `${depth * 1.6}em` }}
-                >
-                  <FormulaRender latex={String(p.latex ?? "")} />
-                </div>
-              );
-            case "whiteboard":
-              return (
-                <div
-                  key={block.id}
-                  className="fb-readonly-whiteboard"
-                  style={{ marginLeft: `${depth * 1.6}em` }}
-                >
-                  <WhiteboardStatic data={String(p.data ?? "")} height={Number(p.height)} />
-                </div>
-              );
-            case "mindmap":
-            case "stickies":
-            case "chart":
-            case "wireframe": {
-              const { name, Static } = VISUALS[block.type]!;
-              return (
-                <figure key={block.id} className="fb-readonly-visual" aria-label={name} style={{ marginLeft: `${depth * 1.6}em` }}>
-                  <figcaption className="fb-readonly-visual-name">{name}</figcaption>
-                  <Static data={String(p.data ?? "")} height={Number(p.height)} />
-                </figure>
-              );
-            }
-            case "flowchart":
-              return (
-                <div
-                  key={block.id}
-                  className="fb-readonly-flowchart"
-                  style={{ marginLeft: `${depth * 1.6}em` }}
-                >
-                  <FlowchartStatic data={String(p.data ?? "")} height={Number(p.height)} fileUrls={fileUrls} />
-                </div>
-              );
-            case "image": {
-              const src = p.fileId ? fileUrls[String(p.fileId)] : sanitizeHref(String(p.url ?? ""));
-              return src ? (
-                <figure
-                  key={block.id}
-                  className="my-3"
-                  style={{ width: `${Math.round(Number(p.width ?? 1) * 100)}%` }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={src}
-                    alt={String(p.alt ?? "")}
-                    className="w-full rounded-chip border border-line"
-                  />
-                  {p.caption ? (
-                    <figcaption className="mt-1 text-center text-subheadline text-muted">
-                      {String(p.caption)}
-                    </figcaption>
-                  ) : null}
-                </figure>
-              ) : null;
-            }
-            case "file":
-              return (
-                <ReadOnlyFile
-                  key={block.id}
-                  href={fileUrls[String(p.fileId)] ?? null}
-                  name={p.name ? String(p.name) : null}
-                  size={Number(p.size) || null}
-                  mimeType={p.mimeType ? String(p.mimeType) : null}
-                />
-              );
-            case "audio": {
-              const href = fileUrls[String(p.fileId)] ?? null;
-              return (
-                <AudioPlayer
-                  key={block.id}
-                  src={href}
-                  download={href}
-                  name={String(p.name ?? "Audio recording")}
-                  size={Number(p.size) || null}
-                  duration={Number(p.duration) || null}
-                  className="my-3"
-                />
-              );
-            }
-            case "table":
-              // Formulas' results, column formats, the totals row and the saved sort and filter.
-              return <TableStatic key={block.id} props={p} />;
-            case "page":
-              return (
-                <p key={block.id} className="fb flex items-start gap-1.5 text-muted">
-                  {/* A plain document glyph, as everywhere a page needs a marker (no emoji). */}
-                  <FileText size={15} aria-hidden className="mt-[calc((1lh-15px)/2)] flex-none" />
-                  <span>
-                    {String(p.titleCache ?? "Nested page")} <span className="text-footnote">(not included in this shared page)</span>
-                  </span>
-                </p>
-              );
-            case "collection":
-              return (
-                <ReadOnlyCollection key={block.id} data={collections?.[String(p.collectionId)]} />
-              );
-            case "synced":
-              // A synced block (version history): its content is whatever it shows now, in the note itself.
-              return (
-                <div key={block.id} className="fb fb-synced-static" style={style}>
-                  <p className="flex items-center gap-1.5 text-footnote text-muted">
-                    <RefreshCw size={12} aria-hidden /> Synced block <span className="text-faint">(shows its current content in the note)</span>
-                  </p>
-                </div>
-              );
-            case "embed":
-              return (
-                // Edge to edge with the other media blocks (images, diagrams, collections), not inset like text.
-                <div key={block.id}>
-                  <EmbedFrame url={String(p.url ?? "")} />
-                </div>
-              );
-            case "bookmark": {
-              const text = (v: unknown) => (typeof v === "string" && v ? v : null);
-              return (
-                <ReadOnlyBookmark
-                  key={block.id}
-                  href={sanitizeHref(String(p.url ?? "")) ?? null}
-                  title={text(p.title)}
-                  description={text(p.description)}
-                  siteName={text(p.siteName)}
-                  image={text(p.image)}
-                  icon={text(p.icon)}
-                />
-              );
-            }
-            default:
-              return null;
-          }
-        })();
-        return marked(rendered, changes?.get(block.id), people);
-      })}
+      {nestLists(rows)}
     </div>
   );
 }

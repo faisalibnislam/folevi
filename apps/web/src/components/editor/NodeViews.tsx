@@ -15,7 +15,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { CHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, sanitizeHref, type SyncState } from "@folevi/editor-schema";
+import { CHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, imageDescription, looksLikeFileName, sanitizeHref, type SyncState } from "@folevi/editor-schema";
 import { webAddressIn } from "./autolink";
 import { api } from "@/lib/convex/api";
 import { canCallHere } from "@/lib/mode";
@@ -241,6 +241,12 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
   const preview = useLocalPreview(a.fileId, upload?.uploadId, file?.url);
   const src = file?.url ?? (a.url ? sanitizeHref(a.url) : null) ?? preview;
   const width = a.width ?? 1;
+  // What the person wrote about the image. Older uploads carry their file's name as alt; that isn't a
+  // description, so it's neither read out nor shown in the Description field. Without a description the picture
+  // is skipped by screen readers: the block is already called "Image" and its caption is read with it.
+  const description = imageDescription(a.alt);
+  // The file name this image had as alt when it was opened: the field starts empty over it (and writing replaces it).
+  const [fileNameAlt] = useState(() => (a.alt && looksLikeFileName(a.alt) ? a.alt : null));
   const editable = useEditable(editor);
   // The note can turn read-only while a field is open: nothing is written then.
   const update = (attrs: Record<string, unknown>) => {
@@ -254,20 +260,20 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
           // float over it, centred, so nothing below moves and a small image's tools stay inside the page.
           <div className="relative mx-auto w-fit max-w-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt={a.alt || ""} className="block h-auto max-w-full rounded-chip border border-line bg-sunken" draggable={false} />
+            <img src={src} alt={description} className="block h-auto max-w-full rounded-chip border border-line bg-sunken" draggable={false} />
             {selected && editable ? (
               <div
                 className="ui-pop absolute bottom-2 left-1/2 z-20 flex w-max -translate-x-1/2 max-w-[min(32rem,calc(100vw-2rem))] flex-wrap items-center gap-2 px-2 py-1.5 text-footnote text-muted"
                 contentEditable={false}
               >
                 <label className="flex items-center gap-1">
-                  Alt text
+                  Description
                   <DraftInput
                     data-enter-focus=""
-                    value={a.alt ?? ""}
+                    value={a.alt === fileNameAlt ? "" : (a.alt ?? "")}
                     onCommit={(v) => update({ alt: v })}
                     onExit={() => selectBlock(editor, getPos)}
-                    placeholder="Describe the image"
+                    placeholder="What the image shows"
                     className="h-7 w-56 ui-input rounded-chip px-2 text-ink"
                   />
                 </label>

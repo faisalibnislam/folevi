@@ -9,6 +9,7 @@ export * from "./migrations";
 export * from "./tree";
 export * from "./markdown";
 export * from "./html";
+export * from "./imageAlt";
 export * from "./search";
 export * from "./synced";
 export * from "./fileText";

@@ -1,7 +1,9 @@
 // Folevi editor schema for Tiptap/ProseMirror. One node per canonical block type, all top-level and
 // flat, with `id` (stable block id) and `depth` (nesting) attributes. See convert.ts for the mapping.
 import { Extension, Mark, Node, mergeAttributes, type Attributes, type Editor } from "@tiptap/core";
-import { TextSelection } from "@tiptap/pm/state";
+import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import type { Node as PMNode } from "@tiptap/pm/model";
 import { CHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, normalizeLanguage, sanitizeHref, describeRepeat, repeatRule } from "@folevi/editor-schema";
 import { codeBlockNodeView, mermaidFocusPlugin } from "./codeView";
 import { haptic } from "@/lib/nativeApp";
@@ -98,7 +100,86 @@ export const Heading = Node.create({
   parseHTML: () => [1, 2, 3, 4, 5, 6].map((l) => ({ tag: `h${l}`, attrs: { level: Math.min(3, l) } })),
   renderHTML: ({ node, HTMLAttributes }) => [`h${Math.min(3, Number(node.attrs.level) || 1) + 1}`, mergeAttributes(HTMLAttributes, { "data-block": "heading", class: `fb fb-heading fb-h${node.attrs.level}` }), 0],
 });
-export const Bulleted = textBlock("bulleted", "div", {}, [{ tag: "li[data-list=bulleted]" }]);
+/**
+ * What a screen reader says before a bulleted line's text. List lines are flat blocks, not a <ul>, so nothing
+ * else says it's a list item: a numbered line's number is read from its CSS counter and a to-do's checkbox
+ * says checked or not, but a bullet is only a drawn dot.
+ */
+export function bulletSpeech(depth: number): string {
+  return depth > 0 ? `Bullet, level ${depth + 1}, ` : "Bullet, ";
+}
+
+const bulletSpeechKey = new PluginKey<DecorationSet>("bulletSpeech");
+
+/**
+ * The words, as a widget at the start of each bulleted line: a visually hidden, non-editable span that takes no
+ * room, so the caret, typing and selection are as before, and copying (which reads the document, not the
+ * page) leaves it out. A widget with a stable key keeps its element, so only lines a change touches are redone.
+ */
+function bulletSpeechMarks(doc: PMNode, from: number, to: number): Decoration[] {
+  const out: Decoration[] = [];
+  doc.nodesBetween(from, to, (node, pos) => {
+    if (node.type.name === "bulleted") {
+      const depth = Number(node.attrs.depth) || 0;
+      out.push(
+        Decoration.widget(
+          pos + 1,
+          () => {
+            const el = document.createElement("span");
+            el.className = "fb-speech";
+            el.contentEditable = "false";
+            el.textContent = bulletSpeech(depth);
+            el.style.cssText = "position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;pointer-events:none;user-select:none";
+            return el;
+          },
+          { side: -1, ignoreSelection: true, marks: [], key: `bullet-speech-${depth}` },
+        ),
+      );
+    }
+    return !node.isTextblock;
+  });
+  return out;
+}
+
+export const bulletSpeechPlugin = () =>
+  new Plugin<DecorationSet>({
+    key: bulletSpeechKey,
+    state: {
+      init: (_config, state) => DecorationSet.create(state.doc, bulletSpeechMarks(state.doc, 0, state.doc.content.size)),
+      apply(tr, set) {
+        if (!tr.docChanged) return set;
+        let next = set.map(tr.mapping, tr.doc);
+        // The blocks each step touched, in the new document: a line turned into a bullet, or moved a level.
+        const touched: [number, number][] = [];
+        tr.steps.forEach((step, i) => {
+          const rest = tr.mapping.slice(i + 1);
+          const map = tr.mapping.maps[i]!;
+          map.forEach((_a, _b, start, end) => touched.push([rest.map(start, -1), rest.map(end, 1)]));
+          // An attribute step (a depth change) moves nothing, so its map is empty.
+          const at = (step as { pos?: unknown }).pos;
+          if (typeof at === "number") touched.push([rest.map(at, -1), rest.map(at, 1) + 1]);
+        });
+        const size = tr.doc.content.size;
+        for (const [a, b] of touched) {
+          const from = Math.max(0, Math.min(a, size));
+          const to = Math.max(from, Math.min(b, size));
+          const $from = tr.doc.resolve(from);
+          const $to = tr.doc.resolve(to);
+          const start = $from.depth ? $from.before(1) : from;
+          const end = $to.depth ? $to.after(1) : to;
+          next = next.remove(next.find(start, end)).add(tr.doc, bulletSpeechMarks(tr.doc, start, end));
+        }
+        return next;
+      },
+    },
+    props: {
+      decorations: (state) => bulletSpeechKey.getState(state),
+    },
+  });
+
+export const Bulleted = textBlock("bulleted", "div", {}, [{ tag: "li[data-list=bulleted]" }]).extend({
+  addProseMirrorPlugins: () => [bulletSpeechPlugin()],
+});
 export const Numbered = textBlock("numbered", "div", { index: { default: 1, rendered: false } }, [{ tag: "li[data-list=numbered]" }]);
 export const Quote = textBlock("quote", "blockquote", {}, [{ tag: "blockquote" }]);
 

@@ -4,6 +4,7 @@ import { flattenTree } from "./tree";
 import { liftTabs, tabName } from "./tabs";
 import { columnsToHtml } from "./columns";
 import { sanitizeHref } from "./richtext";
+import { imageDescription } from "./imageAlt";
 import { whiteboardToSvg } from "./whiteboard";
 import { flowchartToSvg } from "./flowchartSvg";
 import { mindmapToHtml, parseMindmap } from "./mindmap";
@@ -103,7 +104,7 @@ pre{background:var(--code);padding:16px;border-radius:10px;overflow:auto}
 code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
 table{border-collapse:collapse;width:100%}td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}tr.total td{font-weight:600;border-top:2px solid var(--line)}
 img{max-width:100%;border-radius:10px}
-ul.todo{list-style:none;padding-left:0}ul.todo li::before{content:"☐ ";}ul.todo li.done::before{content:"☑ ";}
+ul.todo{list-style:none;padding-left:0}ul.todo input{margin:0 .4em 0 0;vertical-align:-.1em}
 ul.todo li.done{color:var(--muted);text-decoration:line-through}
 mark{background:#F7E7A6;color:inherit}
 .page-break{break-after:page;page-break-after:always;height:0;margin:32px 0;border-top:1px dashed var(--line)}
@@ -195,7 +196,9 @@ function htmlBody(blocks: readonly WireBlock[], opts: HtmlExportOptions): string
       }
       if (cur.li) parts.push("</li>");
       const cls = block.type === "todo" && p.checked ? ' class="done"' : "";
-      parts.push(`<li${cls}>${t}`);
+      // A to-do's box is a real (read-only) checkbox, so its state is announced, not just drawn.
+      const box = block.type === "todo" ? `<input type="checkbox" disabled${p.checked ? " checked" : ""}> ` : "";
+      parts.push(`<li${cls}>${box}${t}`);
       cur.li = true;
       continue;
     }
@@ -280,8 +283,12 @@ function htmlBody(blocks: readonly WireBlock[], opts: HtmlExportOptions): string
           ? opts.resolveFile?.(String(p.fileId))
           : sanitizeHref(String(p.url ?? ""));
         if (src) {
+          // Alt is the person's description only (never a file name). Without one the picture itself is
+          // skipped and the figure is named by its caption, or called "Image" when it has neither.
+          const alt = imageDescription(p.alt);
+          const label = !alt && !p.caption ? ' aria-label="Image"' : "";
           parts.push(
-            `<figure><img src="${escapeHtml(src)}" alt="${escapeHtml(String(p.alt ?? ""))}">${p.caption ? `<figcaption>${escapeHtml(String(p.caption))}</figcaption>` : ""}</figure>`,
+            `<figure${label}><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}">${p.caption ? `<figcaption>${escapeHtml(String(p.caption))}</figcaption>` : ""}</figure>`,
           );
         }
         break;

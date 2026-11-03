@@ -162,7 +162,7 @@ public struct WebShapeBox: View {
 
 extension WebComputedStyle {
     /// The shadow layers that paint something (the computed list starts with Tailwind's empty ring layers).
-    var visibleShadows: [ShadowLayer] { shadows.filter { $0.color.a > 0 } }
+    public var visibleShadows: [ShadowLayer] { shadows.filter { $0.color.a > 0 } }
 }
 
 // MARK: the iPhone's cards
@@ -373,11 +373,11 @@ public struct WebNoteCard: View {
         let createdStyle = WebTextStyle(size: 4.5 * cq, leading: 4.5 * cq * 1.3)
         let bodyStyle = WebTextStyle(size: 3.6 * cq, leading: 5 * cq)
         let text = NoteCardView.previewText(model.preview, excerpt: model.excerpt)
-        // A template's title is a typed label (the iPhone's 12/16, as globals.css sets [data-card="memo"]).
+        // A template's title is a typed label (the iPhone's 12/16, as globals.css sets [data-card="memo"], Caption 1).
         let memoStyle = phone
             ? WebTextStyle(family: .mono, size: 12, leading: 16, weight: 500, letterSpacing: 0.06 * 12)
             : WebTextStyle(family: .mono, size: 4 * cq, leading: 4 * cq * 1.3, weight: 500, letterSpacing: 0.06 * 4 * cq)
-        let memoPad = phone ? (h: CGFloat(7), v: CGFloat(3)) : (h: 2.4 * cq, v: 1.2 * cq)
+        let memoPad = phone ? (h: CGFloat(8), v: CGFloat(4)) : (h: 2.4 * cq, v: 1.2 * cq)
         return VStack(alignment: .leading, spacing: 0) {
             if look == .memo {
                 Text((model.title.isEmpty ? "Untitled" : model.title).uppercased())

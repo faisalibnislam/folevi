@@ -100,7 +100,7 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                             content
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, safe.top + 52)
+                        .padding(.top, safe.top + Self.barRoom)
                         .padding(.bottom, max(10, safe.bottom - 10) + 96)
                         .padding(.leading, safe.leading)
                         .padding(.trailing, safe.trailing)
@@ -117,7 +117,7 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                     .onChange(of: scrollToTop) { withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo("top", anchor: .top) } }
                 }
                 .ignoresSafeArea()
-                barFade(height: safe.top + 52)
+                barFade(height: safe.top + Self.barRoom)
                     .opacity(scrolled ? 1 : 0)
                     .animation(.easeOut(duration: 0.12), value: scrolled)
                 bar(top: safe.top, titleIn: titleIn)
@@ -160,6 +160,10 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
         .padding(.bottom, 6)
         .coordinateSpace(name: "phone-screen-content")
     }
+
+    /// The bar's room under the status bar: its 44 pt buttons 4 pt down, then 16 pt clear under them before the
+    /// hairline (it read cramped at 4).
+    static var barRoom: CGFloat { 64 }
 
     /// `.iphone-bar`: the screen's colour, solid, with a hairline at its foot.
     /// The screen's surface: the canvas (the grouped grey), with the tint mixed in.

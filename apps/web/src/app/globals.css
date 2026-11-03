@@ -785,8 +785,9 @@
 /* A note with a theme or a colour: the page edge to edge too, its cover band starting 12 pt under the bar's row
    (DocumentView's top padding), on the app's neutral colour, so it reads as a card with rounded top corners (the
    app's chrome stays neutral; the note carries its colour). No backdrop shows at its sides. */
-:root[data-iphone] [data-iphone-scroll][data-backdrop] > .fb-sheet { max-width: none !important; width: 100%; min-height: 100%; border-radius: 0; box-shadow: none; margin-inline: 0; }
-/* Its cover band's top corners round like the app's other cards, not the desktop page's small inset corner. */
+:root[data-iphone] [data-iphone-scroll][data-backdrop] > .fb-sheet { max-width: none !important; width: 100%; min-height: 100%; border-radius: var(--radius-container) var(--radius-container) 0 0; box-shadow: none; margin-inline: 0; }
+/* Its cover band's top corners round like the app's other cards, not the desktop page's small inset corner (the
+   page under it rounds the same, so its colour never shows at the corners). */
 :root[data-iphone] [data-iphone-scroll][data-backdrop] > .fb-sheet [data-note-cover] { border-top-left-radius: var(--radius-container); border-top-right-radius: var(--radius-container); }
 /* A task's own words head its Edit task card. */
 :root[data-iphone] .ui-task-title { font-size: var(--type-body); line-height: 1.35; font-weight: 500; color: var(--color-ink); }
@@ -903,7 +904,7 @@
 :root[data-iphone] .note-card-r { border-top-right-radius: var(--radius-container); border-bottom-right-radius: var(--radius-container); }
 :root[data-iphone] [data-card="created"] { display: none; }
 :root[data-iphone] [data-card="title"] { font-size: var(--type-body); line-height: 22px; font-weight: 600; letter-spacing: -0.005em; }
-:root[data-iphone] [data-card="memo"] { font-size: 12px; line-height: 16px; padding: 3px 7px; }
+:root[data-iphone] [data-card="memo"] { font-size: var(--type-caption-1); line-height: var(--type-caption-1-leading); padding: 4px 8px; }
 :root[data-iphone][data-theme="dark"] [data-card="edge"] { box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.08); }
 /* Folder tiles (FolderCardArt.tsx) on the phone: the name in Spectral 19/24 (19 so a 13-letter word such as
    "Brainstorming" fits the 142 px tile; longer ones end in "…"); in dark the folder's darker tone with light

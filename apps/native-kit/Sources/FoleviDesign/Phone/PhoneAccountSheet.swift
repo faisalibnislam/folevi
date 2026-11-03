@@ -67,7 +67,7 @@ public struct PhoneAccountSheetContent: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        VStack(alignment: .leading, spacing: 28) {
             PhoneGroupedSection("Places") {
                 ForEach(places) { p in
                     PhonePlaceRowView(row: p) { pick(.place(p.id)) }
@@ -95,7 +95,7 @@ public struct PhoneAccountSheetContent: View {
     }
 }
 
-/// An action row of the account sheet: 44 tall, its icon on a tile, the label in Body.
+/// An action row of the account sheet: 52 tall (44 read cramped), its icon on a tile, the label in Body.
 struct PhoneAccountActionRow: View {
     let label: String
     let icon: WebIcon
@@ -123,14 +123,14 @@ struct PhoneAccountActionRow: View {
             }
             .padding(.leading, 16)
             .padding(.trailing, 16)
-            .frame(minHeight: 44)
+            .frame(minHeight: 52)
         }
         .buttonStyle(PhoneRowPressStyle())
         .phoneSeparatorInset(58)
     }
 }
 
-/// A place's row: about 60 tall for an account or the library (its 36 pt picture, the name over the email), 44 for
+/// A place's row: about 68 tall for an account or the library (its 36 pt picture, the name over the email), 52 for
 /// a workspace under its account (64 in); one check column at the end marks where you are.
 public struct PhonePlaceRowView: View {
     let row: PhonePlaceRow
@@ -149,7 +149,7 @@ public struct PhonePlaceRowView: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 PhonePlaceMarkView(mark: row.mark, size: place ? 36 : 24)
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(row.label)
                         .webText(PhoneType.body(weight: place ? FoleviTokens.FontWeight.medium : nil))
                         .lineLimit(1)
@@ -161,7 +161,8 @@ public struct PhonePlaceRowView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if let detail = row.detail {
-                    Text(detail).webText(PhoneType.subheadline(leading: 20)).lineLimit(1).foregroundStyle(muted)
+                    // (Kept whole: the email gives way first.)
+                    Text(detail).webText(PhoneType.subheadline(leading: 20)).lineLimit(1).fixedSize().foregroundStyle(muted).layoutPriority(1)
                 }
                 if row.badge > 0 {
                     Text(row.badge > 99 ? "99+" : "\(row.badge)")
@@ -190,8 +191,8 @@ public struct PhonePlaceRowView: View {
             }
             .padding(.leading, row.sub ? 64 : 16)
             .padding(.trailing, 16)
-            .padding(.vertical, place ? 8 : 0)
-            .frame(minHeight: place ? 60 : 44)
+            .padding(.vertical, place ? 12 : 0)
+            .frame(minHeight: place ? 68 : 52)
         }
         .buttonStyle(PhoneRowPressStyle())
         .accessibilityAddTraits(row.checked == true ? .isSelected : [])

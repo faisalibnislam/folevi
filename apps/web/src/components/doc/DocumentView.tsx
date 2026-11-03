@@ -1153,12 +1153,19 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 )}
               </NoteFrame>
             </div>
+            {iphone ? (
+              // On the iPhone the note's suggestions and links close the page itself, on its own paper.
+              <div className="px-[28px] pb-10 [@media(orientation:landscape)]:px-16">
+                {aiOn && meta ? <NoteSuggestions documentId={documentId} editor={editor} readOnly={readOnly} onJump={(id) => editorRef.current?.focusBlock(id)} paper /> : null}
+                <Backlinks documentId={documentId} paper />
+              </div>
+            ) : null}
           </article>
           {/* Where the others' carets are, and ours for them, while someone else is in the note. */}
           {meta && online && caps.presence ? <LiveCarets editor={editor} documentId={documentId} sessionId={sessionId} present={others.map((p) => p.profileId)} /> : null}
           {/* Quiet suggestions (open questions, action items, related notes), found without a model call. */}
-          {aiOn && meta ? <NoteSuggestions documentId={documentId} editor={editor} readOnly={readOnly} onJump={(id) => editorRef.current?.focusBlock(id)} /> : null}
-          <Backlinks documentId={documentId} />
+          {aiOn && meta && !iphone ? <NoteSuggestions documentId={documentId} editor={editor} readOnly={readOnly} onJump={(id) => editorRef.current?.focusBlock(id)} /> : null}
+          {!iphone ? <Backlinks documentId={documentId} /> : null}
           {/* Synced content opened as a page: the note showing it opens instead (synced/SyncedRedirect.tsx). */}
           {meta?.document.kind === "synced" ? <SyncedRedirect sourceId={documentId} /> : null}
           {openThread && threads && caps.comments ? (
@@ -1927,30 +1934,65 @@ function ConflictBanner({ documentId, onResolvedAll }: { documentId: string; /**
   );
 }
 
-function Backlinks({ documentId }: { documentId: string }) {
+/** A note's links in a note's foot on the iPhone: a full-width row with the other note's title (and a line of it). */
+const PAPER_ROW =
+  "flex min-h-11 items-center gap-3 border-b border-[color-mix(in_oklab,var(--color-heading)_10%,transparent)] py-2.5 text-ink last:border-b-0 active:opacity-60";
+
+function Backlinks({ documentId, paper = false }: { documentId: string; paper?: boolean }) {
   const data = useQuery(api.documents.backlinks, { documentId });
   if (!data || (!data.linked.length && !data.unlinked.length)) return null;
+  if (paper) {
+    // On the note's own paper (the iPhone): plain lists in the theme's colours, each row a full-width target.
+    const group = (id: string, title: string, rows: { id: string; title: string; excerpt?: string }[]) => (
+      <section aria-labelledby={id} className="mt-8">
+        <h2 id={id} className="ui-caps pb-1 text-muted">{title}</h2>
+        <ul>
+          {rows.map((l) => (
+            <li key={l.id}>
+              <AppLink href={`/d/${l.id}`} className={PAPER_ROW}>
+                <FileText size={17} aria-hidden className="flex-none text-muted" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-body font-medium text-heading">{l.title || "Untitled"}</span>
+                  {l.excerpt ? <span className="block truncate text-footnote text-muted">{l.excerpt}</span> : null}
+                </span>
+                <ChevronRight size={16} aria-hidden className="flex-none text-muted" />
+              </AppLink>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+    return (
+      <>
+        {data.linked.length ? group("backlinks-title", "Linked from", data.linked) : null}
+        {data.unlinked.length ? group("mentions-title", "Mentioned in", data.unlinked) : null}
+      </>
+    );
+  }
   return (
     // A frosted card under the note (like Suggestions), so it reads on any theme's background.
     <section aria-labelledby="backlinks-title" className="ui-pop mx-auto mt-4 max-w-[calc(var(--editor-width)+8rem)] p-2">
-      <h2 id="backlinks-title" className="ui-caps px-1.5 pb-1 pt-1">
-        Linked from
-      </h2>
-      <ul className="mt-2 space-y-1">
-        {data.linked.map((l) => (
-          <li key={l.id}>
-            <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-chip px-2 py-1.5 text-ink hover:bg-[var(--glass-hover)]">
-              <FileText size={14} aria-hidden className="flex-none text-muted" />
-              <span className="font-medium">{l.title || "Untitled"}</span>
-              <span className="truncate text-footnote text-muted">{l.excerpt}</span>
-            </AppLink>
-          </li>
-        ))}
-        {!data.linked.length ? <li className="px-2 py-1 text-subheadline text-muted">No pages link here yet.</li> : null}
-      </ul>
+      {data.linked.length ? (
+        <>
+          <h2 id="backlinks-title" className="ui-caps px-1.5 pb-1 pt-1">
+            Linked from
+          </h2>
+          <ul className="mt-2 space-y-1">
+            {data.linked.map((l) => (
+              <li key={l.id}>
+                <AppLink href={`/d/${l.id}`} className="flex items-baseline gap-2 rounded-chip px-2 py-1.5 text-ink hover:bg-[var(--glass-hover)]">
+                  <FileText size={14} aria-hidden className="flex-none text-muted" />
+                  <span className="font-medium">{l.title || "Untitled"}</span>
+                  <span className="truncate text-footnote text-muted">{l.excerpt}</span>
+                </AppLink>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
       {data.unlinked.length ? (
         <>
-          <h3 className="ui-caps mt-3 px-1.5 pb-1">Unlinked mentions</h3>
+          <h3 id={data.linked.length ? undefined : "backlinks-title"} className={`ui-caps px-1.5 pb-1 ${data.linked.length ? "mt-3" : "pt-1"}`}>Mentioned in</h3>
           <ul className="mt-2 space-y-1">
             {data.unlinked.map((l) => (
               <li key={l.id}>

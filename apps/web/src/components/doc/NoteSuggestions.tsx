@@ -28,6 +28,9 @@ const KIND: Record<NoteSuggestion["kind"], { label: string; icon: React.ReactNod
 
 const CHIP_BUTTON =
   "grid h-6 w-6 flex-none place-items-center rounded-chip text-muted transition-colors hover:bg-[var(--glass-active)] hover:text-heading";
+/** On the note's paper (the iPhone): finger-sized, in the theme's colours. */
+const PAPER_BUTTON =
+  "grid h-8 w-8 flex-none place-items-center rounded-chip text-muted active:bg-[color-mix(in_oklab,var(--color-heading)_10%,transparent)]";
 
 /**
  * A note's suggestions as quiet chips (data in, actions out), so they can be shown and tested without a
@@ -41,6 +44,7 @@ export function SuggestionChips({
   onLink,
   onTask,
   onDismiss,
+  paper = false,
 }: {
   items: NoteSuggestion[];
   canEdit: boolean;
@@ -48,18 +52,22 @@ export function SuggestionChips({
   onLink: (s: NoteSuggestion) => void;
   onTask: (s: NoteSuggestion) => void;
   onDismiss: (s: NoteSuggestion) => void;
+  /** Drawn on the note's own paper (the iPhone's note foot) instead of a frosted card under it. */
+  paper?: boolean;
 }) {
   if (!items.length) return null;
+  const button = paper ? PAPER_BUTTON : CHIP_BUTTON;
+  const icon = paper ? 15 : 13;
   return (
     // A frosted card under the note, so it reads on any theme's background (light or dark). 8px inside its
     // 14px corners, so the 6px chips run parallel.
     <section
       aria-label="Suggestions"
-      className="relative mx-auto mt-4 w-full"
-      style={{ maxWidth: "calc(var(--editor-width) + 8rem)" }}
+      className={paper ? "relative mt-10 w-full" : "relative mx-auto mt-4 w-full"}
+      style={paper ? undefined : { maxWidth: "calc(var(--editor-width) + 8rem)" }}
     >
-      <div className="ui-pop p-2">
-        <h2 className="ui-caps px-1.5 pb-1.5 pt-1">Suggestions</h2>
+      <div className={paper ? "" : "ui-pop p-2"}>
+        <h2 className={paper ? "ui-caps pb-2.5 text-muted" : "ui-caps px-1.5 pb-1.5 pt-1"}>Suggestions</h2>
         <ul className="flex flex-wrap gap-1.5">
           {items.map((s) => {
             const kind = KIND[s.kind];
@@ -67,7 +75,11 @@ export function SuggestionChips({
               <li
                 key={s.key}
                 aria-label={`${kind.label}: ${s.label}`}
-                className="flex max-w-full items-center gap-0.5 rounded-chip bg-[var(--glass-hover)] py-0.5 pl-2.5 pr-1 text-subheadline text-ink"
+                className={
+                  paper
+                    ? "flex max-w-full items-center gap-0.5 rounded-control bg-[color-mix(in_oklab,var(--color-heading)_7%,transparent)] py-0.5 pl-3 pr-0.5 text-subheadline text-ink"
+                    : "flex max-w-full items-center gap-0.5 rounded-chip bg-[var(--glass-hover)] py-0.5 pl-2.5 pr-1 text-subheadline text-ink"
+                }
               >
                 <button
                   type="button"
@@ -85,9 +97,9 @@ export function SuggestionChips({
                     aria-label="Link it here"
                     title="Link it here"
                     onClick={() => onLink(s)}
-                    className={CHIP_BUTTON}
+                    className={button}
                   >
-                    <Link2 size={13} aria-hidden />
+                    <Link2 size={icon} aria-hidden />
                   </button>
                 ) : null}
                 {canEdit && s.kind === "action" ? (
@@ -96,9 +108,9 @@ export function SuggestionChips({
                     aria-label="Turn into a task"
                     title="Turn into a task"
                     onClick={() => onTask(s)}
-                    className={CHIP_BUTTON}
+                    className={button}
                   >
-                    <ListChecks size={13} aria-hidden />
+                    <ListChecks size={icon} aria-hidden />
                   </button>
                 ) : null}
                 <button
@@ -106,9 +118,9 @@ export function SuggestionChips({
                   aria-label="Dismiss"
                   title="Dismiss"
                   onClick={() => onDismiss(s)}
-                  className={CHIP_BUTTON}
+                  className={button}
                 >
-                  <X size={13} aria-hidden />
+                  <X size={icon} aria-hidden />
                 </button>
               </li>
             );
@@ -174,11 +186,13 @@ export function NoteSuggestions({
   editor,
   readOnly,
   onJump,
+  paper = false,
 }: {
   documentId: string;
   editor: Editor | null;
   readOnly: boolean;
   onJump: (blockId: string) => void;
+  paper?: boolean;
 }) {
   // The graph's suggestions come from the server; questions and action items are found here, in the note as
   // this device holds it, so the server query doesn't re-read the note on every save.
@@ -191,6 +205,9 @@ export function NoteSuggestions({
     useCallback(() => (engine ? patternSuggestions(suggestionLines(engine.documentBlocks(documentId))) : []), [engine, documentId]),
     sameHits,
   );
+  // A note already listed under the note (Linked from, Mentioned in) isn't suggested again (the same subscription
+  // as Backlinks', so no second read).
+  const links = useQuery(api.documents.backlinks, { documentId });
   const dismiss = useMutation(api.aiSuggestions.dismiss);
   const { navigate } = useAppRouter();
   const toast = useToast();
@@ -198,7 +215,8 @@ export function NoteSuggestions({
   const [gone, setGone] = useState<Set<string>>(() => new Set());
   if (!data?.on) return null;
   const dismissed = new Set(data.dismissed);
-  const items = [...data.items, ...patternItems(hits, dismissed)].filter((s) => !gone.has(s.key));
+  const listed = new Set([...(links?.linked ?? []), ...(links?.unlinked ?? [])].map((l) => l.id));
+  const items = [...data.items, ...patternItems(hits, dismissed)].filter((s) => !gone.has(s.key) && !("noteId" in s && s.noteId && listed.has(s.noteId)));
   const drop = (s: NoteSuggestion) => {
     setGone((g) => new Set(g).add(s.key));
     void dismiss({ documentId, key: s.key }).catch((e) => {
@@ -230,6 +248,7 @@ export function NoteSuggestions({
         }
       }}
       onDismiss={drop}
+      paper={paper}
     />
   );
 }

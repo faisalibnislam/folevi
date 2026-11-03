@@ -4,6 +4,22 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.24: Small update
+
+Released 2026-11-03 10:03:29+06:00 (build 36, tag v1.2.24)
+
+Smoother iPhone and iPad, and Foli AI everywhere
+
+### Improved
+
+- Scrolling and animations are smoother: a hidden screen no longer keeps the app busy while nothing moves
+- Foli AI's own flower and name wherever the assistant appears
+- A note's suggestions and links sit on the note's own page; roomier Account sheet; more room under the top bar
+
+### Fixed
+
+- A table cell saved as plain text no longer stops its note from opening
+
 ## Version 1.2.23: Small update
 
 Released 2026-11-03 07:40:43+06:00 (build 35, tag v1.2.23)

@@ -1,6 +1,22 @@
 {
   "releases": [
     {
+      "version": "1.2.24",
+      "build": 36,
+      "released": "2026-11-03T10:03:29+06:00",
+      "type": "patch",
+      "summary": "Smoother iPhone and iPad, and Foli AI everywhere",
+      "improved": [
+        "Scrolling and animations are smoother: a hidden screen no longer keeps the app busy while nothing moves",
+        "Foli AI's own flower and name wherever the assistant appears",
+        "A note's suggestions and links sit on the note's own page; roomier Account sheet; more room under the top bar"
+      ],
+      "fixed": [
+        "A table cell saved as plain text no longer stops its note from opening"
+      ],
+      "tag": "v1.2.24"
+    },
+    {
       "version": "1.2.23",
       "build": 35,
       "released": "2026-11-03T07:40:43+06:00",

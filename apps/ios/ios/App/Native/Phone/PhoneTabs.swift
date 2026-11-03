@@ -132,7 +132,9 @@ final class FloatingTabBar: UIView {
             tabButtons.append(b)
             tabs.row.addArrangedSubview(b)
         }
-        aiButton = GlassCapsule.button(symbol: "sparkle", label: "Foli AI", id: "tab-foli", size: 56, pointSize: 23) { [weak self] in self?.onFoliAI?() }
+        aiButton = GlassCapsule.button(symbol: "", label: "Foli AI", id: "tab-foli", size: 56, pointSize: 23) { [weak self] in self?.onFoliAI?() }
+        // (Foli AI's flower in its colours, as the web's tab bar draws it.)
+        aiButton.setImage(AiMarkImage.uiImage(size: 26), for: .normal)
         create.row.addArrangedSubview(aiButton)
         plus.showsMenuAsPrimaryAction = true
         plus.addAction(UIAction { [weak self] _ in

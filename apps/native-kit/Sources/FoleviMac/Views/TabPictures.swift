@@ -198,7 +198,9 @@ struct TabPicture: View {
             ZStack {
                 (WebStyles.vars["color-canvas"]?.resolve(scheme).color ?? .clear)
                 VStack(spacing: 8) {
-                    WebIconView(tab.map { WebTopBar.icon(for: $0.route) } ?? .house, size: 24)
+                    Group {
+                        if let t = tab, WebTopBar.wearsFlower(t.route) { AiMarkGlyph(size: 24) } else { WebIconView(tab.map { WebTopBar.icon(for: $0.route) } ?? .house, size: 24) }
+                    }
                         .frame(width: 48, height: 48)
                         .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous).fill(WebStyles.vars["glass-hover"]?.resolve(scheme).color ?? .clear))
                         .foregroundStyle(WebStyles.vars["color-ink-muted"]?.resolve(scheme).color ?? .gray)

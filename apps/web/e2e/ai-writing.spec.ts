@@ -80,7 +80,7 @@ test("Templates: generate a template with AI (refused without a model key, nothi
   test.setTimeout(120_000);
   const { page, context } = await newPerson(browser, "Template Maker");
   await page.goto(`${APP}/templates`);
-  await page.getByRole("button", { name: "Generate with AI" }).click();
+  await page.getByRole("button", { name: "Generate with Foli AI" }).click();
   const dialog = page.getByRole("dialog", { name: "Generate a template" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Weekly team meeting" }).click();

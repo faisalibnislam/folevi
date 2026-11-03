@@ -9,6 +9,7 @@
 import Foundation
 import Observation
 import FoleviEngine
+import FoleviDesign
 
 /// The sections, in the order the web's Settings lists them.
 public enum SettingsSection: String, CaseIterable, Identifiable, Hashable, Sendable {
@@ -41,7 +42,7 @@ public enum SettingsSection: String, CaseIterable, Identifiable, Hashable, Senda
         case .general: "gearshape"
         case .appearance: "paintpalette"
         case .notifications: "bell"
-        case .ai: "sparkles"
+        case .ai: AiMarkGlyph.symbolName
         case .security: "lock.shield"
         case .privacy: "hand.raised"
         case .thisDevice: "internaldrive"
@@ -374,9 +375,9 @@ public final class SettingsModel {
     /// The web's AiSection rows (label and what it does), in its order; `readImages` is the browser's, so the apps
     /// show "Read text on your devices" in its place.
     public static let aiPrefs: [(key: AiPrefKey, label: String, body: String)] = [
-        (.history, "Keep conversations", "Your AI conversations are saved so you can come back to them, rename, pin and search them. Only you can see them, unless you share one with your workspace."),
+        (.history, "Keep conversations", "Your Foli AI conversations are saved so you can come back to them, rename, pin and search them. Only you can see them, unless you share one with your workspace."),
         (.memory, "Memory", "Let Foli AI remember things you approve, like the tone you like or words you use. You'll see and edit everything it remembers."),
-        (.suggestions, "Suggestions", "Quiet hints at the end of a note, such as related notes, possible duplicates, open questions and action items. They're found without sending anything to AI."),
+        (.suggestions, "Suggestions", "Quiet hints at the end of a note, such as related notes, possible duplicates, open questions and action items. They're found without sending anything to Foli AI."),
         (.attachments, "Read attachments", "Let Foli AI read files you add to a question, such as PDFs, images, text and spreadsheets, and transcribe recordings when you ask. Files are only read when you send them."),
         (.webResearch, "Web research", "Let Foli AI search the web and read pages you link when you ask it to, with links to what it found. This also turns on Research. Searches go through Google Search."),
         (.digests, "Digests", "A daily or weekly summary of what changed in your notes, saved as a note in your Inbox. It uses your AI credits and is never emailed."),

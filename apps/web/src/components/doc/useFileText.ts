@@ -4,7 +4,7 @@
 // someone who can edit the note. Files just uploaded here are read from the bytes this device has; files
 // already in the note are read the first time an editor opens it. On a device with no recogniser of its own (a
 // browser), Foli AI can read the images: only when asked ("Make text in images searchable" in the note's
-// menu), or for images added here when the person turned on "Read images with Foli AI" in Settings > AI.
+// menu), or for images added here when the person turned on "Read images with Foli AI" in Settings > Foli AI.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAction, useConvex, useQuery } from "convex/react";
 import { parseWhiteboard, textFingerprint, type WireBlock } from "@folevi/editor-schema";
@@ -58,7 +58,7 @@ export function useFileText({ documentId, engine, canEdit, aiOn }: { documentId:
         if (f.mimeType === "application/pdf") fileTextQueue.add(client, { kind: "pdf", documentId: f.documentId, blockId: f.blockId, fileId: f.fileId, bytes: async () => f.blob });
         else if (f.kind === "image" && now.onDevice) fileTextQueue.add(client, { kind: "image", documentId: f.documentId, blockId: f.blockId, fileId: f.fileId, bytes: async () => f.blob });
         else if (f.kind === "image" && !now.onDevice && now.aiOn && now.prefs.readImages && !fileTextQueue.has(`foli:${f.fileId}`)) {
-          // Turned on in Settings > AI: an image added here is read by Foli AI (the server checks the setting).
+          // Turned on in Settings > Foli AI: an image added here is read by Foli AI (the server checks the setting).
           fileTextQueue.mark(`foli:${f.fileId}`);
           void readImage({ documentId: f.documentId, fileId: f.fileId, blockId: f.blockId, auto: true }).catch(() => undefined);
         }

@@ -593,7 +593,7 @@ struct AiMemoryCard: View {
         if memory.status == "saved" {
             HStack(spacing: 6) {
                 WebIconView(.check, size: 13)
-                Text("Saved to memory. You can change it in Settings > AI.").webText(.role(.subheadline))
+                Text("Saved to memory. You can change it in Settings > Foli AI.").webText(.role(.subheadline))
             }
             .foregroundStyle(look.muted)
         } else {

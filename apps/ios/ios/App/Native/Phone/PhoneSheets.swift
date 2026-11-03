@@ -65,7 +65,7 @@ struct FoliAISheet: View {
         VStack(spacing: 0) {
             SheetHeader(title: "Foli AI")
             Spacer()
-            EmptyState(systemImage: "sparkle", title: "Ask Foli AI", message: "The Foli AI chat arrives here with the next update. In a note, the Foli AI button asks about that note.")
+            EmptyState(systemImage: AiMarkGlyph.symbolName, title: "Ask Foli AI", message: "The Foli AI chat arrives here with the next update. In a note, the Foli AI button asks about that note.")
             Spacer()
         }
         .background(DS.color.canvas)

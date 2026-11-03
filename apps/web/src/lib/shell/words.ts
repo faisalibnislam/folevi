@@ -17,7 +17,7 @@ export interface DeviceWords {
   /** Where sign-in happens: "your browser" (Mac), "the sign-in sheet" (iOS) or "the sign-in page" (Android). */
   signInPlace: string;
   ios: boolean;
-  /** The model Foli AI runs on the device: "Apple Intelligence" on Apple's, "Gemini Nano" on Android. */
+  /** The model Foli AI runs on the device: "Apple Intelligence" on Apple's, "Android's on-device model" on Android. */
   onDeviceModel: string;
 }
 
@@ -30,7 +30,7 @@ export function deviceWords(): DeviceWords {
   if (s?.platform === "android") {
     // A tablet says so (deviceFamily from the shell); a foldable is a phone, folded or not.
     const noun = s.deviceFamily === "tablet" ? "tablet" : "phone";
-    return { here: `this ${noun}`, Here: `This ${noun}`, noun, settings: "the Settings app", files: "the Files app", signInPlace: "the sign-in page", ios: false, onDeviceModel: "Gemini Nano" };
+    return { here: `this ${noun}`, Here: `This ${noun}`, noun, settings: "the Settings app", files: "the Files app", signInPlace: "the sign-in page", ios: false, onDeviceModel: "Android's on-device model" };
   }
   // The native Mac app (apps/mac, WebKit) signs in to Dropbox and Google in a sign-in sheet; Electron in the browser.
   const sheet = typeof document !== "undefined" && document.documentElement?.getAttribute("data-mac-engine") === "webkit";

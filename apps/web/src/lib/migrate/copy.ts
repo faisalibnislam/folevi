@@ -351,7 +351,7 @@ export async function copyLibrary(o: CopyOptions): Promise<MigrationState> {
       try {
         await patiently(() => target.saveFileText(id, { ...ft, fileId }));
       } catch (error) {
-        // Refused there (Settings > AI turned reading images off, say): reported. Anything else stops the move.
+        // Refused there (Settings > Foli AI turned reading images off, say): reported. Anything else stops the move.
         if (!errorData(error).code) throw error;
         problem({ kind: "fileText", documentId: note.id, title: note.title, detail: errorText(error) });
       }

@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { APP, newPerson, pick } from "./helpers";
 
-// Foli AI routines on the dev backend (no model key needed, a trial account counts as Pro AI): Settings > AI
+// Foli AI routines on the dev backend (no model key needed, a trial account counts as Pro AI): Settings > Foli AI
 // shows each routine's estimate before it's on, turns the Morning brief on, and changes its monthly limit.
 
-test("routines in Settings > AI: the estimate, turning one on, and the monthly limit", async ({ browser }) => {
+test("routines in Settings > Foli AI: the estimate, turning one on, and the monthly limit", async ({ browser }) => {
   test.setTimeout(120_000);
   const { context, page } = await newPerson(browser, "Routine Person");
   await page.goto(`${APP}/settings/ai`);

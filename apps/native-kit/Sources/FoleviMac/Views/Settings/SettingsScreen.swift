@@ -23,7 +23,7 @@ public enum MacSettingsSection: String, CaseIterable, Sendable {
     var label: String {
         switch self {
         case .account: "Account"
-        case .ai: "AI"
+        case .ai: "Foli AI"
         case .billing: "Plan & billing"
         case .security: "Security"
         case .privacy: "Privacy"
@@ -54,10 +54,11 @@ public enum MacSettingsSection: String, CaseIterable, Sendable {
         }
     }
 
-    var icon: WebIcon {
+    /// The section's Folevi icon; none for Foli AI, which wears its flower.
+    var icon: WebIcon? {
         switch self {
         case .account: .userRound
-        case .ai: .sparkles
+        case .ai: nil
         case .billing, .workspaceBilling: .creditCard
         case .security: .shieldCheck
         case .privacy, .workspacePrivacy: .lockKeyhole
@@ -302,7 +303,7 @@ struct SettingsNav: View {
         }
     }
 
-    private func item(_ title: String, icon: WebIcon, active: Bool, action: @escaping () -> Void) -> some View {
+    private func item(_ title: String, icon: WebIcon?, active: Bool, action: @escaping () -> Void) -> some View {
         let pair = SettingsStyle.pair(active ? "nav.item.active" : "nav.item")
         let s = pair.resolve(scheme)
         let iconColor = SettingsStyle.pair(active ? "nav.item.active.icon" : "nav.item.icon").resolve(scheme).color.color
@@ -335,7 +336,8 @@ extension EnvironmentValues {
 
 private struct NavRowLabel: View {
     let title: String
-    let icon: WebIcon
+    /// Nil: Foli AI's flower, in its colours.
+    let icon: WebIcon?
     let style: WebComputedStyle
     let iconColor: Color
     let active: Bool
@@ -345,7 +347,11 @@ private struct NavRowLabel: View {
     var body: some View {
         let heading = SettingsColor.v("color-heading", scheme)
         HStack(spacing: style.gap) {
-            WebIconView(icon, size: 16).foregroundStyle(over && !active ? heading : iconColor)
+            if let icon {
+                WebIconView(icon, size: 16).foregroundStyle(over && !active ? heading : iconColor)
+            } else {
+                AiMarkGlyph(size: 16)
+            }
             Text(title).webText(style.text).lineLimit(1)
                 .foregroundStyle(over && !active ? heading : style.color.color)
             Spacer(minLength: 0)

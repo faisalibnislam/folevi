@@ -96,8 +96,8 @@ export function MainToolbar({
         </button>
       )}
       {onAi ? (
-        <button type="button" className="fc-btn fc-btn-text" aria-pressed={aiOpen} aria-expanded={aiOpen} onClick={onAi} title="Create or change the flowchart with AI">
-          <AiIcon size={14} className="fc-ai-mark" /> AI
+        <button type="button" className="fc-btn fc-btn-text" aria-pressed={aiOpen} aria-expanded={aiOpen} onClick={onAi} title="Create or change the flowchart with Foli AI">
+          <AiIcon size={14} className="fc-ai-mark" /> Foli AI
         </button>
       ) : null}
       {checkControl}

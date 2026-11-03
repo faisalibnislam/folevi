@@ -25,7 +25,7 @@ const SETTINGS: { key: PrefKey; label: string; body: string; on: string; off: st
   {
     key: "history",
     label: "Keep conversations",
-    body: "Your AI conversations are saved so you can come back to them, rename, pin and search them. Only you can see them, unless you share one with your workspace. When this is off, a conversation is deleted as soon as you close it. Conversations you already have stay until you delete them.",
+    body: "Your Foli AI conversations are saved so you can come back to them, rename, pin and search them. Only you can see them, unless you share one with your workspace. When this is off, a conversation is deleted as soon as you close it. Conversations you already have stay until you delete them.",
     on: "Conversations are kept",
     off: "New conversations aren't kept",
   },
@@ -39,7 +39,7 @@ const SETTINGS: { key: PrefKey; label: string; body: string; on: string; off: st
   {
     key: "suggestions",
     label: "Suggestions",
-    body: "Quiet hints at the end of a note, such as related notes, possible duplicates, open questions and action items. They're found without sending anything to AI.",
+    body: "Quiet hints at the end of a note, such as related notes, possible duplicates, open questions and action items. They're found without sending anything to Foli AI.",
     on: "Suggestions turned on",
     off: "Suggestions turned off",
   },
@@ -109,7 +109,7 @@ function PrefRow({ item, checked, disabled, onChange }: { item: (typeof SETTINGS
   );
 }
 
-/** Settings > AI: the assistant on or off, and how it works for you. The server enforces each one. */
+/** Settings > Foli AI: the assistant on or off, and how it works for you. The server enforces each one. */
 export function AiSection() {
   const { profile } = useAppState();
   const { personalCore: core } = useAiAccess();

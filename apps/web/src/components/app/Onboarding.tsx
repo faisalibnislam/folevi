@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
-import { ArrowLeft, ArrowRight, Check, Files, Link2, MessageSquareText, Monitor, Moon, Paintbrush, PenLine, Sparkles, Sun, SunMoon, Users, WifiOff, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Files, Link2, MessageSquareText, Monitor, Moon, Paintbrush, PenLine, Sun, SunMoon, Users, WifiOff, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
@@ -391,12 +391,13 @@ function IconTile({ icon: Icon }: { icon: LucideIcon }) {
   );
 }
 
-function FactList({ items }: { items: { icon: LucideIcon; title: string; body: ReactNode }[] }) {
+// ("ai": Foli AI's flower, in its colours.)
+function FactList({ items }: { items: { icon: LucideIcon | "ai"; title: string; body: ReactNode }[] }) {
   return (
     <ul className="space-y-4">
       {items.map((item, i) => (
         <li key={item.title} className="ob-rise flex gap-3.5" style={{ ["--i" as string]: i }}>
-          <IconTile icon={item.icon} />
+          {item.icon === "ai" ? <AiIconTile /> : <IconTile icon={item.icon} />}
           <div className="min-w-0 pt-0.5">
             <p className="text-body font-semibold text-heading">{item.title}</p>
             <p className="mt-0.5 text-body leading-relaxed text-muted">{item.body}</p>
@@ -570,7 +571,7 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
       <FactList
         items={[
           { icon: MessageSquareText, title: "Ask Foli AI", body: "Ask a question about your notes and get an answer with links to its sources." },
-          { icon: Sparkles, title: "Catch me up", body: "On Home, a short brief of your week: recent notes and what’s due." },
+          { icon: "ai", title: "Catch me up", body: "On Home, a short brief of your week: recent notes and what’s due." },
           { icon: PenLine, title: "Writing help", body: "Rewrite, shorten, fix or summarize the text you select, or press ⌘J in a note." },
         ]}
       />
@@ -578,7 +579,7 @@ function AiChoice({ on, onChange, entitlements }: { on: boolean; onChange: (next
         <div className="min-w-0 flex-1">
           <p className="text-body font-semibold text-heading">Foli AI {on ? "on" : "off"}</p>
           <p id={descId} className="mt-1 text-subheadline leading-relaxed text-muted">
-            When you use it, your request and the notes it needs are sent to Google Gemini. Nothing is sent while it’s off, and Foli AI's buttons are hidden.
+            When you use it, your request and the notes it needs are sent to Google. Nothing is sent while it’s off, and Foli AI's buttons are hidden.
           </p>
         </div>
         <Switch checked={on} onChange={onChange} label="Foli AI" describedBy={descId} />

@@ -34,7 +34,7 @@ export function nextLabel(at: number, timeZone: string, locale?: string): string
 }
 
 /**
- * Settings > AI: the digest's schedule (shown while digests are on). Each change saves at once; the server
+ * Settings > Foli AI: the digest's schedule (shown while digests are on). Each change saves at once; the server
  * works out when the next one is due in the person's time zone.
  */
 export function AiDigestCard() {

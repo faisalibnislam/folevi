@@ -96,7 +96,9 @@ final class KeyboardToolbar: UIView {
         add("indent", symbol: "increase.indent", label: "Indent", id: "kb-indent") { [weak self] in self?.onCommand?(.indent) }
         add("undo", symbol: "arrow.uturn.backward", label: "Undo", id: "kb-undo") { [weak self] in self?.onCommand?(.undo) }
         add("redo", symbol: "arrow.uturn.forward", label: "Redo", id: "kb-redo") { [weak self] in self?.onCommand?(.redo) }
-        aiButton = add("ai", symbol: "sparkle", label: "Foli AI", id: "kb-ai") { [weak self] in self?.onCommand?(.ai) }
+        aiButton = add("ai", label: "Foli AI", id: "kb-ai") { [weak self] in self?.onCommand?(.ai) }
+        // (Foli AI's flower in its colours.)
+        aiButton?.setImage(AiMarkImage.uiImage(size: 20), for: .normal)
     }
 
     @available(*, unavailable)

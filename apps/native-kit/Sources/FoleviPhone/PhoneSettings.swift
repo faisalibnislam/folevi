@@ -21,7 +21,7 @@ public enum PhoneSettingsSection: String, CaseIterable, Sendable {
     public var label: String {
         switch self {
         case .account: "Account"
-        case .ai: "AI"
+        case .ai: "Foli AI"
         case .billing, .workspaceBilling: "Plan & billing"
         case .security: "Security"
         case .privacy, .workspacePrivacy: "Privacy"
@@ -50,10 +50,14 @@ public enum PhoneSettingsSection: String, CaseIterable, Sendable {
         }
     }
 
-    var icon: WebIcon {
+    /// The row's tile: Foli AI's flower for Foli AI, a Folevi icon for the rest.
+    @MainActor var rowIcon: PhoneRowIcon { icon.map { PhoneRowIcon($0) } ?? .foliAI }
+
+    /// The section's Folevi icon; none for Foli AI, which wears its flower.
+    var icon: WebIcon? {
         switch self {
         case .account: .userRound
-        case .ai: .sparkles
+        case .ai: nil
         case .billing, .workspaceBilling: .creditCard
         case .security: .shieldCheck
         case .privacy, .workspacePrivacy: .lockKeyhole
@@ -146,7 +150,7 @@ public struct PhoneSettingsList: View {
             ForEach(Self.groups(model), id: \.label) { g in
                 PhoneSettingsGroup(g.label) {
                     ForEach(g.items, id: \.self) { s in
-                        PhoneSettingsRow(s.label, chevron: true, action: { model.open("/settings/\(s.rawValue)") }) { PhoneRowIcon(s.icon) }
+                        PhoneSettingsRow(s.label, chevron: true, action: { model.open("/settings/\(s.rawValue)") }) { s.rowIcon }
                     }
                 }
             }
@@ -329,7 +333,7 @@ struct PhoneLibrarySettings: View {
             }
         }
         PhoneSettingsGroup("Foli AI", footer: d.phone.aiFooter) {
-            PhoneSettingsRow("Model and keys", chevron: true, action: { model.open("/settings/ai") }) { PhoneRowIcon(.sparkles) }
+            PhoneSettingsRow("Model and keys", chevron: true, action: { model.open("/settings/ai") }) { PhoneRowIcon.foliAI }
         }
         PhoneSettingsGroup("Folevi account", footer: "Sign in to Folevi to share notes and work on them with other people. Your library comes with you into the account.") {
             PhoneSettingsRow("Sign in to Folevi", action: host.signIn) { PhoneRowIcon(.userRound) }
@@ -504,7 +508,7 @@ struct PhoneLocalAi: View {
 
     @ViewBuilder private func main(_ d: LocalAiData) -> some View {
         PhoneSettingsGroup(footer: d.phone.onText) {
-            PhoneSettingsSwitchRow("Foli AI", on: d.on, change: { on in Task { await model.perform(.settingsUpdate(aiEnabled: on), done: on ? "Foli AI turned on" : "Foli AI turned off") } }) { PhoneRowIcon(.sparkles) }
+            PhoneSettingsSwitchRow("Foli AI", on: d.on, change: { on in Task { await model.perform(.settingsUpdate(aiEnabled: on), done: on ? "Foli AI turned on" : "Foli AI turned off") } }) { PhoneRowIcon.foliAI }
         }
         if !d.hosted {
             PhoneSettingsGroup(d.onDevice.title) { PhoneSettingsText(text: d.phone.noHost, muted: true) }

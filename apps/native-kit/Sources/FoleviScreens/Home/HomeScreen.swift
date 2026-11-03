@@ -363,14 +363,11 @@ struct RowPressStyle: ButtonStyle {
     }
 }
 
-/// Foli AI's spark (the web's AiIcon in its violet).
+/// Foli AI's flower (the web's AiIcon), in its colours.
 struct FoliSpark: View {
     var size: CGFloat = 16
     var body: some View {
-        Image(systemName: "sparkles")
-            .font(.system(size: size, weight: .medium))
-            .foregroundStyle(LinearGradient(colors: [RGBA(124, 108, 240).color, RGBA(245, 138, 184).color], startPoint: .topLeading, endPoint: .bottomTrailing))
-            .accessibilityHidden(true)
+        AiMarkGlyph(size: size)
     }
 }
 

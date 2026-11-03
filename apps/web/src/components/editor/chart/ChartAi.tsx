@@ -6,7 +6,7 @@
 // reply (convex/chartAi.ts) and charges AI credits like Foli AI's other actions.
 import { useAction } from "convex/react";
 import { useState } from "react";
-import { ArrowUp, BarChart3, Lightbulb, ListChecks, Sparkles } from "lucide-react";
+import { ArrowUp, BarChart3, Lightbulb, ListChecks } from "lucide-react";
 import { CHART_KIND_LABEL, parseChart, type ChartData } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -73,7 +73,7 @@ function describe(r: Result, chart: ChartData): string {
 const ACTIONS: { task: Exclude<ChartAiTask, "title">; label: string; icon: React.ReactNode; busy: string }[] = [
   { task: "suggest", label: "Suggest a chart type", icon: <Lightbulb size={15} aria-hidden />, busy: "Looking at the data…" },
   { task: "explain", label: "Explain the data", icon: <ListChecks size={15} aria-hidden />, busy: "Reading the numbers…" },
-  { task: "tidy", label: "Tidy and style", icon: <Sparkles size={15} aria-hidden />, busy: "Tidying the chart…" },
+  { task: "tidy", label: "Tidy and style", icon: <AiIcon size={15} />, busy: "Tidying the chart…" },
 ];
 
 export function ChartAiPanel({ chart, data, documentId, onApply, onClose }: { chart: ChartData; data: string; documentId?: string; onApply: (next: ChartData) => void; onClose: () => void }) {
@@ -171,7 +171,7 @@ export function ChartAiPanel({ chart, data, documentId, onApply, onClose }: { ch
       ) : (
         <AiCreditsNote documentId={documentId} className="mx-1 mt-1" />
       )}
-      <p className="fb-chart-ai-foot">Foli AI can make mistakes. Sent to Google Gemini. Undo with ⌘Z.</p>
+      <p className="fb-chart-ai-foot">Foli AI can make mistakes. Sent to Google. Undo with ⌘Z.</p>
     </div>
   );
 }

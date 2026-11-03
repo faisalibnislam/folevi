@@ -142,7 +142,7 @@ export const ideas = action({
   },
 });
 
-/** Whether the person lets Foli AI read files and photos (Settings > AI). */
+/** Whether the person lets Foli AI read files and photos (Settings > Foli AI). */
 export const photoAllowed = internalQuery({
   args: {},
   handler: async (ctx): Promise<boolean> => aiPrefsOf(await requireProfile(ctx)).attachments,

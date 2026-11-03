@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { APP, newPerson, pick, waitForSaved } from "./helpers";
 
-// Memory, suggestions and digests on the dev backend (no model key needed, a trial account): Settings > AI
+// Memory, suggestions and digests on the dev backend (no model key needed, a trial account): Settings > Foli AI
 // adds, edits and deletes what the assistant remembers; a note shows an action item it found as a quiet
 // chip that can be dismissed for good; and the digest's schedule saves.
 
@@ -14,7 +14,7 @@ async function newPage(page: Page, title: string) {
   await page.keyboard.press("Enter");
 }
 
-test("memory in Settings > AI: add, edit and delete", async ({ browser }) => {
+test("memory in Settings > Foli AI: add, edit and delete", async ({ browser }) => {
   test.setTimeout(120_000);
   const { context, page } = await newPerson(browser, "Memory Person");
   await page.goto(`${APP}/settings/ai`);

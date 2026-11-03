@@ -1,4 +1,4 @@
-// The usage card (Settings > AI; billing.aiUsage, lib/ai/usage.ts): every request names its feature when it
+// The usage card (Settings > Foli AI; billing.aiUsage, lib/ai/usage.ts): every request names its feature when it
 // holds credits, and when it settles the credits are counted under that feature and day in the credit
 // account's period. A seat in a paid workspace shows the seat's own use. Gemini is a stubbed `fetch`.
 import { readdirSync, readFileSync } from "node:fs";

@@ -359,7 +359,7 @@ describe("whole-note translation", () => {
     expect(out.preview).toContain("## ES Plan");
     expect(out.preview).toContain("const keep = 'this code';");
     expect((original.blocks.find((b) => b.type === "heading")!.text as InlineNode[])[0]).toEqual({ type: "text", text: "Plan" });
-    // The version saved before replacing holds the note as it was ("Before AI changes").
+    // The version saved before replacing holds the note as it was ("Before Foli AI changes").
     const { versionId } = await a.as.mutation(api.aiStudy.versionBeforeReplace, { documentId: id });
     const versions = await t.run(async (ctx) => await ctx.db.query("documentSnapshots").collect());
     const saved = versions.find((v) => v.publicId === versionId)!;

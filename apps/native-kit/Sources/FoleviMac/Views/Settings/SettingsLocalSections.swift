@@ -91,7 +91,7 @@ struct LibrarySettings: View {
                 if let l = d.lock { lockCard(l) }
                 SettingsCard("Foli AI", description: d.ai.description) {
                     (Text("Choose the model and add your keys in ")
-                        + Text("Settings, under AI").foregroundColor(SettingsColor.v("color-ink", scheme)).underline()
+                        + Text("Settings, under Foli AI").foregroundColor(SettingsColor.v("color-ink", scheme)).underline()
                         + Text(d.ai.keysWhere))
                         .webText(SettingsStyle.pair("link.text").resolve(scheme).text)
                         .foregroundStyle(SettingsStyle.pair("link.text").resolve(scheme).color.color)

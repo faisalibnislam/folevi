@@ -1,6 +1,6 @@
 // The iPhone app in local mode (iOS polish WP5, docs/IOS_POLISH_PLAN.md §3 "Settings" and "Sign-in, first run"):
 // the first-launch screens drawn as the app's own (one card style, the suggested one captioned, text buttons),
-// then Settings > Library and Settings > AI as grouped lists: facts as label and value, actions as rows, the
+// then Settings > Library and Settings > Foli AI as grouped lists: facts as label and value, actions as rows, the
 // explanations as footers, headers in capitals, no web buttons, selects or form switches, and the app's version
 // at the bottom of Settings. A FakeShell (platform "ios") with a stand-in iOS bridge, at iPhone size. Local project:
 //   E2E_LOCAL_BASE_URL=http://localhost:3003 E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 \
@@ -84,7 +84,7 @@ test.describe("the iPhone app in local mode", { tag: "@local" }, () => {
     test.skip(backendMode !== "local", "local mode only");
   });
 
-  test("first launch, Settings > Library and Settings > AI are the app's own screens", async ({ browser }, testInfo) => {
+  test("first launch, Settings > Library and Settings > Foli AI are the app's own screens", async ({ browser }, testInfo) => {
     test.setTimeout(180_000);
     const context = await browser.newContext({ viewport: { width: 402, height: 874 }, userAgent: IPHONE_UA, hasTouch: true });
     await prepareContext(context, testInfo, { initialMode: "unset", configured: false, platform: "ios", libraryName: `iphone-${Date.now()}`, lockMethod: "faceID" });
@@ -149,11 +149,11 @@ test.describe("the iPhone app in local mode", { tag: "@local" }, () => {
     const lockCalls = (await page.evaluate(() => window.__foleviTestShellControl!.log.filter((c) => c.call === "lock.setSettings").map((c) => c.detail))) as unknown[];
     expect(lockCalls).toEqual([{ lock: true }, { lockAfter: 300 }]);
     await page.getByRole("button", { name: "Back", exact: true }).click();
-    // Model and keys goes to Settings > AI.
+    // Model and keys goes to Settings > Foli AI.
     await screen(page).getByRole("link", { name: "Model and keys" }).click();
-    await expect(screen(page).getByRole("heading", { level: 1, name: "AI" })).toBeVisible();
+    await expect(screen(page).getByRole("heading", { level: 1, name: "Foli AI" })).toBeVisible();
 
-    // Settings > AI: Foli AI on or off as a switch row, each key a row with its own screen.
+    // Settings > Foli AI: Foli AI on or off as a switch row, each key a row with its own screen.
     await nativeOnly(page);
     await expect(screen(page).getByRole("switch", { name: "Foli AI" })).toBeVisible();
     await expect(screen(page).getByRole("switch", { name: "Keep conversations" })).toBeVisible();

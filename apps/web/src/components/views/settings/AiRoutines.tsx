@@ -185,7 +185,7 @@ function RoutineRow({ routine: r, capChoices, timeZone }: { routine: Routine; ca
 }
 
 /**
- * Settings > AI: Foli AI routines (the Morning brief and Open loops), on Pro and Pro AI. Each shows what it
+ * Settings > Foli AI: Foli AI routines (the Morning brief and Open loops), on Pro and Pro AI. Each shows what it
  * would cost before it's turned on; each change saves at once, and the server works out when it's next due.
  */
 export function AiRoutinesCard() {

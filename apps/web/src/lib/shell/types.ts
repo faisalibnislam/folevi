@@ -186,7 +186,7 @@ export interface ShellAi {
   capabilities(): Promise<AiCaps>;
   /** Streams the answer: `onChunk` gets each new piece of text as it arrives; `done` has the whole text. */
   generate(req: AiRequest, onChunk: (text: string) => void): { done: Promise<AiResult>; cancel(): void };
-  /** Checks a stored key with one tiny request (Settings > AI, "Test"). Hosts without it leave it out. */
+  /** Checks a stored key with one tiny request (Settings > Foli AI, "Test"). Hosts without it leave it out. */
   testKey?(provider: AiKeyProvider): Promise<{ ok: true } | { ok: false; error: string }>;
 }
 

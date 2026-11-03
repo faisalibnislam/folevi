@@ -188,7 +188,7 @@ enum ShellAI {
         }
         let both = "\(code) \(message)"
         if status == 401 || status == 403 || both.range(of: "API_KEY_INVALID|API key not valid|invalid.api.key|authentication_error", options: [.regularExpression, .caseInsensitive]) != nil {
-            return ("The \(name) key was refused. Check it in Settings > AI.", "auth")
+            return ("The \(name) key was refused. Check it in Settings > Foli AI.", "auth")
         }
         if status == 429 {
             if both.range(of: "insufficient_quota|quota|billing|credit", options: [.regularExpression, .caseInsensitive]) != nil { return ("The \(name) account is out of credit or over its quota.", "rate") }
@@ -261,7 +261,7 @@ enum ShellAI {
             }
             if let blocked = (d["promptFeedback"] as? [String: Any])?["blockReason"] as? String, !blocked.isEmpty {
                 state.stop = "error"
-                state.error = "Gemini didn't answer this (\(blocked.lowercased()))."
+                state.error = "Google didn't answer this (\(blocked.lowercased()))."
                 return ""
             }
             let candidate = (d["candidates"] as? [[String: Any]])?.first ?? [:]
@@ -272,7 +272,7 @@ enum ShellAI {
             else if finish == "STOP" { state.stop = "end" }
             else if !finish.isEmpty && finish != "FINISH_REASON_UNSPECIFIED" {
                 state.stop = "error"
-                state.error = "Gemini stopped this answer (\(finish.lowercased().replacingOccurrences(of: "_", with: " ")))."
+                state.error = "Google stopped this answer (\(finish.lowercased().replacingOccurrences(of: "_", with: " ")))."
             }
             return text
         }
@@ -319,7 +319,7 @@ enum ShellAI {
         if req.provider == "on-device" { return await OnDeviceModel.generate(req, onChunk: onChunk) }
         let provider = req.provider
         let name = names[provider]!
-        guard let key = ShellSecrets.get("ai.\(provider)") else { return AiResult(text: "", stopReason: "error", error: "Add your \(name) key in Settings > AI first.", errorCode: "auth") }
+        guard let key = ShellSecrets.get("ai.\(provider)") else { return AiResult(text: "", stopReason: "error", error: "Add your \(name) key in Settings > Foli AI first.", errorCode: "auth") }
         var state = StreamState()
         do {
             let request = try buildRequest(provider, req, key: key)
@@ -373,7 +373,7 @@ enum ShellAI {
         }
     }
 
-    /// Checks a stored key with one tiny request (Settings > AI, "Test").
+    /// Checks a stored key with one tiny request (Settings > Foli AI, "Test").
     static func testKey(_ provider: String) async -> [String: Any] {
         guard keyProviders.contains(provider), let name = names[provider] else { return ["ok": false, "error": "Foli AI can't use that provider."] }
         guard let key = ShellSecrets.get("ai.\(provider)") else { return ["ok": false, "error": "Add your \(name) key first."] }

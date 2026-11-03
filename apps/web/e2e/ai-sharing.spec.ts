@@ -4,7 +4,7 @@ import { APP, createWorkspace, newPerson, switchTo } from "./helpers";
 // Sharing, export and usage (docs/AI_ASSISTANT.md milestone 9, part A), as far as it works without a model
 // key on the server: a refused question still makes a conversation, which its person shares with their
 // workspace; a second member finds it under "Shared with you", read-only; unsharing hides it again. The
-// conversation downloads as Markdown, and Settings > AI shows the usage card.
+// conversation downloads as Markdown, and Settings > Foli AI shows the usage card.
 test("a conversation shared with the workspace shows under Shared with you, read-only, until it's unshared", async ({ browser }) => {
   test.setTimeout(240_000);
   const owner = await newPerson(browser, "Sharing Owner");
@@ -75,7 +75,7 @@ test("a conversation shared with the workspace shows under Shared with you, read
   await expect(owner.page.getByText("Personal conversations can't be shared.")).toBeVisible();
   await owner.page.keyboard.press("Escape");
 
-  // Settings > AI: the usage card.
+  // Settings > Foli AI: the usage card.
   await owner.page.goto(`${APP}/settings/ai`);
   const usage = owner.page.getByRole("region", { name: "Usage" });
   await expect(usage).toBeVisible({ timeout: 30_000 });

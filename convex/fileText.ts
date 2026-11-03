@@ -5,7 +5,7 @@
 //
 //   fileText.forDocument  what this note already has (so a device reads each file once)
 //   fileText.save         text a device found, for a file or a whiteboard of a note the person can edit
-//   fileText.readImage    an image read by Foli AI (an explicit action, or the person's Settings > AI)
+//   fileText.readImage    an image read by Foli AI (an explicit action, or the person's Settings > Foli AI)
 //
 // The rows (`fileTexts`) live in the note's scope with their own search index; search.ts reads them for
 // people who can read the note only, and they go with the file, the whiteboard's block or the note
@@ -33,7 +33,7 @@ const HASH = /^[A-Za-z0-9]{1,128}$/;
 const FOLI_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_FOLI_IMAGE_BYTES = 12 * 1024 * 1024;
 /** Turned off: what the person sees. */
-export const READ_IMAGES_OFF = "Reading images with Foli AI is turned off in Settings > AI.";
+export const READ_IMAGES_OFF = "Reading images with Foli AI is turned off in Settings > Foli AI.";
 
 const fileByPublicId = async (ctx: QueryCtx, publicId: string) =>
   await ctx.db
@@ -139,13 +139,13 @@ export const save = mutation({
     if (args.source === "handwriting") {
       if (args.fileId) fail("invalid_argument", "Handwriting belongs to a drawing, not a file.");
       if (!args.hash || !HASH.test(args.hash)) fail("invalid_argument", "Say which drawing this is.");
-      if (!aiPrefsOf(profile).deviceText) fail("forbidden", "Reading handwriting is turned off in Settings > AI.");
+      if (!aiPrefsOf(profile).deviceText) fail("forbidden", "Reading handwriting is turned off in Settings > Foli AI.");
       await upsert(ctx, doc, { blockId: args.blockId, source: "handwriting", by: "device", text, hash: args.hash, createdBy: profile._id });
       return null;
     }
     if (!args.fileId) fail("invalid_argument", "Say which file this is.");
     const file = checkFile(await fileByPublicId(ctx, args.fileId), doc, args.source);
-    if (args.source === "image" && !aiPrefsOf(profile).deviceText) fail("forbidden", "Reading images on this device is turned off in Settings > AI.");
+    if (args.source === "image" && !aiPrefsOf(profile).deviceText) fail("forbidden", "Reading images on this device is turned off in Settings > Foli AI.");
     await upsert(ctx, doc, { fileId: file._id, blockId: args.blockId, source: args.source, by: args.source === "pdf" ? "pdf" : "device", text, pageStarts, hash: file.sha256, createdBy: profile._id });
     return null;
   },
@@ -221,7 +221,7 @@ export const saveFromFoli = internalMutation({
 /**
  * Foli AI reads the text in one of a note's images, so search finds it. An explicit action ("Make text in
  * images searchable" in the note's menu), or, with `auto`, an image just added on a device that can't read it
- * itself, only when the person turned on "Read images with Foli AI" in Settings > AI. Metered in AI credits
+ * itself, only when the person turned on "Read images with Foli AI" in Settings > Foli AI. Metered in AI credits
  * like any Foli AI request (AI off, Core, the hourly limit and running out are refused before anything is sent).
  */
 export const readImage = action({

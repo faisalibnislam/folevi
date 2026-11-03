@@ -143,7 +143,7 @@ export function TranscriptPreview({
           </button>
         </div>
       ) : null}
-      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">Foli AI can make mistakes. The recording is sent to Google Gemini.</p>
+      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">Foli AI can make mistakes. The recording is sent to Google.</p>
       <AiAnnouncer text={announce} />
     </div>
   );

@@ -107,7 +107,10 @@ struct SettingsRowLabel: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: symbol)
+            Group {
+                // (Foli AI's row wears its flower, in its colours.)
+                if symbol == AiMarkGlyph.symbolName { AiMarkGlyph(size: 16) } else { Image(systemName: symbol) }
+            }
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(Folevi.color.heading)
                 .frame(width: 28, height: 28)
@@ -376,7 +379,7 @@ struct AiSettingsSection: View {
             Section {
                 Toggle(isOn: Binding(get: { model.aiEnabled }, set: { on in Task { await model.setAiEnabled(on) } })) {
                     HStack(spacing: 10) {
-                        Image(systemName: "sparkles").foregroundStyle(Folevi.color.heading)
+                        AiMarkGlyph(size: 17)
                         label("Foli AI")
                     }
                 }

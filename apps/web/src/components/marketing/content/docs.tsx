@@ -418,7 +418,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     body: () => (
       <>
         <p>
-          Foli AI answers questions from the notes you can open, helps you write, and writes a short brief of your week. It runs on Google Gemini. It’s part of every plan except Core.
+          Foli AI answers questions from the notes you can open, helps you write, and writes a short brief of your week. It runs on Google’s AI models. It’s part of every plan except Core.
         </p>
         <h2 id="use">Where to find it</h2>
         <ul>
@@ -432,7 +432,7 @@ export const DOC_ARTICLES: DocArticle[] = [
             <strong>Writing</strong>: on an empty line, type <code>/</code> and pick an AI item, or press <code>⌘J</code>, to continue writing, summarize the note, make an outline, brainstorm ideas or find the action items (written as to-dos, so they appear in Tasks). On action items or a meeting summary, <strong>Add dates and people</strong> inserts the result and lets you check each to-do’s due date and who it’s for before they’re set. The AI panel in a note’s dock has the same tools, plus questions about the note.
           </li>
           <li>
-            <strong>Titles</strong>: select words in a title for Edit with AI, or let it suggest a title from the note. Untitled notes with some text offer Suggest a title.
+            <strong>Titles</strong>: select words in a title for Edit with Foli AI, or let it suggest a title from the note. Untitled notes with some text offer Suggest a title.
           </li>
           <li>
             <strong>Catch me up</strong>: on Home, a short brief of your week: recent notes and what’s due.

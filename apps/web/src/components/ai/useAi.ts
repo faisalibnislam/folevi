@@ -214,7 +214,7 @@ export function useAi() {
     (documentId: string, language: string, output: "note" | "replace") => translateAction({ scope, documentId, language, output }),
     [translateAction, scope],
   );
-  /** Saves a version of a note before its text is replaced (shows as "Before AI changes"). */
+  /** Saves a version of a note before its text is replaced (shows as "Before Foli AI changes"). */
   const versionBeforeReplace = useCallback((documentId: string) => versionMutation({ documentId }), [versionMutation]);
   return { ask, write, flowchart, saveDraft, translateNote, versionBeforeReplace };
 }

@@ -192,7 +192,7 @@ public struct PhoneAiThread: View {
     }
 }
 
-/// The sheet's welcome (ChatThread.tsx, `iphone`, floating): Suggestions, each a row with the sparkles, and a
+/// The sheet's welcome (ChatThread.tsx, `iphone`, floating): Suggestions, each a row with a speech bubble, and a
 /// line on how answers work.
 struct PhoneAiSuggestions: View {
     let model: FoliChatModel
@@ -207,7 +207,7 @@ struct PhoneAiSuggestions: View {
                 ForEach(model.suggestions, id: \.self) { s in
                     Button { model.send(s) } label: {
                         HStack(spacing: item.gap) {
-                            WebIconView(.sparkles, size: 18, strokeWidth: 1.8).foregroundStyle(look.s("ai.suggest.icon").color.color)
+                            WebIconView(.messageCircle, size: 18, strokeWidth: 1.8).foregroundStyle(look.s("ai.suggest.icon").color.color)
                             Text(s).webText(item.text).multilineTextAlignment(.leading).foregroundStyle(item.color.color)
                         }
                         .padding(item.padding.edgeInsets)
@@ -249,7 +249,7 @@ struct PhoneAiPageIntro: View {
                     bullet("What you ask, and the notes it needs, go straight from \(Self.device) to the model you chose, never through Folevi. Nothing is sent until you ask.", li)
                     bullet(settingsLine(prefix: "Choose the model in ", suffix: ".", look: look), li)
                 } else {
-                    bullet("What you ask, and the notes it needs, go to Google Gemini. Nothing is sent until you ask.", li)
+                    bullet("What you ask, and the notes it needs, go to Google. Nothing is sent until you ask.", li)
                     let credits = model.caps?.credits.flatMap { $0.included ? $0.available : nil }
                     bullet(settingsLine(prefix: "Each request uses AI credits\(credits.map { " (you have \($0.formatted()) AI \($0 == 1 ? "credit" : "credits") left)" } ?? ""). ", suffix: "", look: look), li)
                 }
@@ -291,7 +291,7 @@ struct PhoneAiPageIntro: View {
     static var device: String { UIDevice.current.userInterfaceIdiom == .pad ? "this iPad" : "this iPhone" }
 
     private func settingsLine(prefix: String, suffix: String, look: AiLook) -> AttributedString {
-        var link = AttributedString("AI settings")
+        var link = AttributedString("Foli AI settings")
         link.link = URL(string: "folevi-settings://ai")
         link.underlineStyle = .single
         link.foregroundColor = look.ink
@@ -317,6 +317,28 @@ struct PhoneAiPageIntro: View {
 
 // MARK: the composer
 
+/// The composer's box in the sheet: the web's fill, edge and shadow, 21 at the top and parallel to the sheet's corners at the foot.
+private struct PhoneComposerBox: View {
+    let style: WebComputedStyle
+    let top: CGFloat
+    let bottom: CGFloat
+
+    var body: some View {
+        let shape = UnevenRoundedRectangle(topLeadingRadius: top, bottomLeadingRadius: bottom, bottomTrailingRadius: bottom, topTrailingRadius: top, style: .continuous)
+        let shadow = style.visibleShadows.first { !$0.inset }
+        shape
+            .fill(style.background.color)
+            .shadow(color: (shadow?.color ?? RGBA(0, 0, 0, 0)).color, radius: (shadow?.blur ?? 0) / 2, x: shadow?.x ?? 0, y: shadow?.y ?? 0)
+            .overlay {
+                if style.borderWidth > 0, style.borderColor.a > 0 { shape.strokeBorder(style.borderColor.color, lineWidth: style.borderWidth) }
+            }
+            .overlay {
+                // Inset shadows (the web's 1 px edge) as a hairline inside.
+                if let edge = style.visibleShadows.first(where: { $0.inset }) { shape.strokeBorder(edge.color.color, lineWidth: max(0.5, edge.spread)) }
+            }
+    }
+}
+
 /// The dock (ChatThread.tsx, `iphone`): the composer, a white box with the sheet's corners, what Foli AI reads as
 /// chips at its top, the box for the question, Chat or Research when the web is on, Send; the footnote under it.
 struct PhoneAiDock: View {
@@ -339,8 +361,15 @@ struct PhoneAiDock: View {
                 bar(look: look)
             }
             .frame(maxWidth: .infinity)
-            // Concentric with what's inside: the controls sit 9 pt in and round at 12, so the box rounds at 21.
-            .webBox(look.pair("ai.composer").radius(21))
+            // Concentric with what's inside: the controls sit 9 pt in and round at 12, so the box rounds at 21. In
+            // the sheet its foot also runs parallel to the sheet's corners, the dock's inset in.
+            .background {
+                if variant == .page {
+                    Color.clear.webBox(look.pair("ai.composer").radius(21))
+                } else {
+                    PhoneComposerBox(style: look.s("ai.composer"), top: 21, bottom: max(21, PhoneSheetCorner.radius - dock.padding.left))
+                }
+            }
             .contentShape(Rectangle())
             .onTapGesture { focused.wrappedValue = true }
             footnote(look: look)
@@ -928,7 +957,7 @@ struct PhoneAiUnavailable: View {
         let device = PhoneAiPageIntro.device
         let copy: (String, String, Bool) = {
             switch reason {
-            case "off": return ("Foli AI is turned off", "You turned Foli AI off, so nothing is sent to AI. Turn it on again in Settings > AI.", true)
+            case "off": return ("Foli AI is turned off", "You turned Foli AI off, so nothing is sent to Foli AI. Turn it on again in Settings > Foli AI.", true)
             case "workspacePlan": return ("Foli AI isn't part of this workspace's plan", "A workspace owner or admin can change the plan.", false)
             case "setup": return ("Set up Foli AI on \(device)", "Turn on Apple Intelligence, or add your own OpenAI, Anthropic or Google key. Your notes go straight from \(device) to the model, never through Folevi.", true)
             default:
@@ -941,7 +970,7 @@ struct PhoneAiUnavailable: View {
             Text(copy.0).webText(.display(.title1)).foregroundStyle(look.heading).multilineTextAlignment(.center).padding(.top, 16)
             Text(copy.1).webText(.role(.body)).foregroundStyle(look.muted).multilineTextAlignment(.center).padding(.top, 8)
             if copy.2 {
-                WebButton("Open AI settings", variant: .secondary) { host.openSettings("ai") }.padding(.top, 24)
+                WebButton("Open Foli AI settings", variant: .secondary) { host.openSettings("ai") }.padding(.top, 24)
             }
         }
         .padding(.horizontal, 24)

@@ -123,7 +123,7 @@ export function AiView({ id }: { id: string | null }) {
 
   if (!ai.on) {
     return (
-      <ViewChrome title="AI" tabTitle="AI">
+      <ViewChrome title="Foli AI" tabTitle="Foli AI">
         {/* Turned off: how to turn it on. Not on the plan: what it includes, and Upgrade. */}
         <AiUnavailable ai={ai} headingLevel={1} />
       </ViewChrome>

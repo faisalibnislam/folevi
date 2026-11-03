@@ -22,7 +22,7 @@ import { useAiAccess, useNoteAi } from "./useAi";
 
 /**
  * Whether an audio block can offer Transcribe: an uploaded recording in a note, AI on where the note
- * lives, Settings > AI allowing recordings to be read, and a model that listens. The server checks again.
+ * lives, Settings > Foli AI allowing recordings to be read, and a model that listens. The server checks again.
  */
 export function useCanTranscribe(fileId: string | null): boolean {
   const env = useEditorEnvironment();
@@ -67,7 +67,7 @@ export function TranscribeConfirm({ minutes, credits, onConfirm, onCancel }: { m
           Cancel
         </button>
       </div>
-      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">The recording is sent to Google Gemini.</p>
+      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">The recording is sent to Google.</p>
     </div>
   );
 }

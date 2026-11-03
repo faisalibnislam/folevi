@@ -1,6 +1,6 @@
 // The models Foli AI can use in local mode (docs/LOCAL_MODE_PLAN.md §4.1, WP11): Apple's model on this device,
 // or the person's own OpenAI, Anthropic or Google key, called straight from the device and never through
-// Folevi. Each provider has a model the person picks (Settings > AI) and a small, quick one for the plumbing
+// Folevi. Each provider has a model the person picks (Settings > Foli AI) and a small, quick one for the plumbing
 // calls the server also sends to its fast model (search terms, titles, short rewrites).
 //
 // Model ids are the providers' current ones (checked against their documentation on 2026-10-20). A model the
@@ -90,9 +90,9 @@ export const PROVIDERS: Record<AiProviderId, ProviderInfo> = {
     label: "Google",
     secret: "ai.google",
     models: [
-      { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", note: "Balanced: smart and quick." },
-      { id: "gemini-4-argon", label: "Gemini 4 Argon", note: "The most capable, and the slowest." },
-      { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite", note: "The quickest and cheapest." },
+      { id: "gemini-3.8-flash", label: "Flash 3.8", note: "Balanced: smart and quick." },
+      { id: "gemini-4-argon", label: "Argon 4", note: "The most capable, and the slowest." },
+      { id: "gemini-3.5-flash-lite", label: "Flash-Lite 3.5", note: "The quickest and cheapest." },
     ],
     defaultModel: "gemini-3.8-flash",
     fastModel: "gemini-3.5-flash-lite",

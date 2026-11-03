@@ -104,7 +104,7 @@ describe("Foli AI on a sticky notes board", () => {
     ]);
     expect(bodies[0]).toContain('"inlineData"');
     expect(bodies[0]).toContain("aGVsbG8gd29ybGQ=");
-    // Only images, of a sane size, and only while Settings > AI lets Foli AI read files.
+    // Only images, of a sane size, and only while Settings > Foli AI lets Foli AI read files.
     const calls = fetchMock.mock.calls.length;
     await expect(a.as.action(api.stickiesAi.photo, { scope: a.scope, image: { mimeType: "image/gif", data: "aGk=" } })).rejects.toThrow(/JPEG, PNG or WebP/);
     await expect(a.as.action(api.stickiesAi.photo, { scope: a.scope, image: { mimeType: "image/png", data: "a".repeat(6_000_001) } })).rejects.toThrow(/too large/);

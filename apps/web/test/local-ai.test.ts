@@ -149,7 +149,7 @@ describe("the provider layer", () => {
     const { client } = await library(host);
     host.answer(() => ({ text: "", stopReason: "error", errorCode: "auth", error: "401" }));
     const e = await errorOf(client.action(api.ai.write, { scope: SCOPE, task: "improve", text: "Some words to improve here." }));
-    expect(e).toMatchObject({ code: "forbidden", message: "Your OpenAI key was refused. Check it in Settings > AI." });
+    expect(e).toMatchObject({ code: "forbidden", message: "Your OpenAI key was refused. Check it in Settings > Foli AI." });
     expect(JSON.stringify(e)).not.toContain("sk-test");
     const device = fakeHost({ onDevice: true });
     const lib2 = await library(device);

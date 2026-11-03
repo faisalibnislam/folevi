@@ -19,7 +19,7 @@ import { attachmentKind, checkAttachment, checkInlineBudget, MAX_ATTACHMENTS, ty
 
 type Ctx = QueryCtx | MutationCtx;
 
-export const ATTACHMENTS_OFF = "Reading attachments and recordings is turned off in Settings > AI.";
+export const ATTACHMENTS_OFF = "Reading attachments and recordings is turned off in Settings > Foli AI.";
 export const FILE_GONE = "One of the attached files isn't there anymore, or you can't open it.";
 /** A chat upload never sent is deleted after this long. */
 const UNSENT_TTL_MS = 24 * 60 * 60_000;

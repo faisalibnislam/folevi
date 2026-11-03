@@ -92,7 +92,7 @@ defineLocal(api.ai.write, "action", async (ctx, args) => {
   const text = (args.text ?? "").slice(0, MAX_TEXT);
   const instruction = (args.instruction ?? "").trim().slice(0, MAX_QUESTION);
   if ((needsSelection(task) || (textOrNote(task) && !args.documentId)) && !text.trim()) fail("invalid_argument", "Select some text first.");
-  if (needsInstruction(task) && !instruction) fail("invalid_argument", task === "page" || task === "template" ? "Describe what to write first." : "Tell the AI what to write.");
+  if (needsInstruction(task) && !instruction) fail("invalid_argument", task === "page" || task === "template" ? "Describe what to write first." : "Tell Foli AI what to write.");
   await read(ctx, (db) => requireAiProfile(db));
   const active = await localAi.active("write");
   const fast = usesFlashLite(task, text);

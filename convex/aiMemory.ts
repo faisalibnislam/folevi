@@ -1,12 +1,12 @@
 // Memory (docs/AI_ASSISTANT.md, "Memory, suggestions, digests"): what the assistant remembers about how
 // a person likes it to write (tone, language, length, terms, standing instructions).
 //
-// Only the person writes entries: in Settings > AI (add, edit, delete, clear all), or by clicking Save on a
+// Only the person writes entries: in Settings > Foli AI (add, edit, delete, clear all), or by clicking Save on a
 // preference a chat answer offered (`saveProposal`); an offer nobody saved is never stored as memory. An
 // entry in their Personal applies everywhere they use AI; one in a workspace only there. Entries are
 // private to the person, even in a shared workspace.
 //
-// While memory is on (Settings > AI), `forHold` gives every AI request the person's entries for where it
+// While memory is on (Settings > Foli AI), `forHold` gives every AI request the person's entries for where it
 // runs (convex/ai.ts metered, lib/ai/memory.ts). Off: nothing is added to prompts and chats offer nothing;
 // the entries stay listed (and can be deleted) until the person deletes them.
 //
@@ -167,7 +167,7 @@ export const saveProposal = mutation({
     const profile = await requireProfile(ctx);
     await assertWritable(ctx, profile);
     const { message, memory } = await proposalOf(ctx, profile, args.messageId);
-    if (!aiPrefsOf(profile).memory) fail("forbidden", "Memory is turned off in Settings > AI.");
+    if (!aiPrefsOf(profile).memory) fail("forbidden", "Memory is turned off in Settings > Foli AI.");
     if (memory.status === "saved") return null;
     await addEntry(ctx, profile, personalScope(profile._id), memory.kind, memory.text, "chat");
     await ctx.db.patch(message._id, { memory: { ...memory, status: "saved" } });

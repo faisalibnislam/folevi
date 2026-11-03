@@ -1,7 +1,7 @@
 // AI digests (docs/AI_ASSISTANT.md, "Memory, suggestions, digests"): an opt-in summary of what changed
 // in a person's notes, daily or weekly at an hour of their day, about their Personal or one workspace.
 //
-//   settings, save: Settings > AI. Off by default; turning it on (or changing the schedule) sets when it's
+//   settings, save: Settings > Foli AI. Off by default; turning it on (or changing the schedule) sets when it's
 //                   next due in the person's time zone (lib/ai/digest.ts nextDigestAt).
 //   due:            every 15 minutes, finds digests that are due, moves each on to its next time, and
 //                   starts a job per person (spread out).
@@ -75,7 +75,7 @@ const wantsDigests = (p: Doc<"profiles"> | null): p is Doc<"profiles"> => Boolea
 const frequencyLabel = (f: "daily" | "weekly") => (f === "weekly" ? "weekly" : "daily");
 
 // ---------------------------------------------------------------------------------------------------
-// Settings > AI
+// Settings > Foli AI
 // ---------------------------------------------------------------------------------------------------
 
 /** The person's digest: on or off, the schedule, where it's about, and when it's next due. */
@@ -181,7 +181,7 @@ type Skip = "off" | "plan" | "credits" | "access" | "busy" | "error";
 const SKIP_TITLES: Record<Exclude<Skip, "off" | "busy">, (f: string) => string> = {
   plan: (f) => `Your ${f} digest was skipped: AI isn't part of your plan.`,
   credits: (f) => `Your ${f} digest was skipped: you're out of AI credits.`,
-  access: (f) => `Your ${f} digest was skipped: you can't add pages where it's saved anymore. Pick another place in Settings > AI.`,
+  access: (f) => `Your ${f} digest was skipped: you can't add pages where it's saved anymore. Pick another place in Settings > Foli AI.`,
   error: (f) => `Your ${f} digest couldn't be written this time. It will try again next time.`,
 };
 

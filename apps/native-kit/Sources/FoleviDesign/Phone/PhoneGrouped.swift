@@ -101,8 +101,9 @@ public struct PhoneRowPressStyle: ButtonStyle {
 }
 
 /// RowIcon: an icon (17 pt, in the heading ink) on a 30 pt tile with the small radius, the ink at 7% (or `tone`).
+/// `.foliAI` puts Foli AI's flower on the tile instead, in its own colours.
 public struct PhoneRowIcon: View {
-    let icon: WebIcon
+    let icon: WebIcon?
     let tone: Color?
     let ink: Color?
     @Environment(\.colorScheme) private var scheme
@@ -113,12 +114,27 @@ public struct PhoneRowIcon: View {
         self.ink = ink
     }
 
+    private init(flowerOn tone: Color?) {
+        icon = nil
+        self.tone = tone
+        ink = nil
+    }
+
+    /// Foli AI's flower (ai/AiIcon.tsx) on the tile, as the web's RowIcon draws it.
+    public static var foliAI: PhoneRowIcon { PhoneRowIcon(flowerOn: nil) }
+
     public var body: some View {
-        WebIconView(icon, size: 17)
-            .foregroundStyle(ink ?? FoleviTokens.Chrome.heading.resolve(scheme).color)
-            .frame(width: 30, height: 30)
-            .background(tone ?? FoleviTokens.Chrome.ink.resolve(scheme).color.opacity(0.07), in: RoundedRectangle(cornerRadius: FoleviTokens.Radius.small, style: .circular))
-            .accessibilityHidden(true)
+        Group {
+            if let icon {
+                WebIconView(icon, size: 17)
+            } else {
+                AiMarkGlyph(size: 17)
+            }
+        }
+        .foregroundStyle(ink ?? FoleviTokens.Chrome.heading.resolve(scheme).color)
+        .frame(width: 30, height: 30)
+        .background(tone ?? FoleviTokens.Chrome.ink.resolve(scheme).color.opacity(0.07), in: RoundedRectangle(cornerRadius: FoleviTokens.Radius.small, style: .circular))
+        .accessibilityHidden(true)
     }
 }
 
@@ -176,7 +192,7 @@ public struct PhoneGroupedRow<Icon: View, Trailing: View>: View {
             if checked {
                 WebIconView(.check, size: 20, strokeWidth: 2.4)
                     .foregroundStyle(FoleviTokens.Chrome.heading.resolve(scheme).color)
-                    .accessibilityHidden(true)
+                .accessibilityHidden(true)
             }
             if chevron {
                 // RowChevron: 20 pt, an absolute 2.4 stroke, in the faint ink, 4 pt into the row's padding.

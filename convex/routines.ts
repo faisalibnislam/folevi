@@ -2,7 +2,7 @@
 // on Pro and Pro AI. Two kinds (lib/ai/routines.ts): the Morning brief (daily) and Open loops (weekly).
 // They follow the digest's pattern (convex/aiDigest.ts) and share its helpers.
 //
-//   list, save:  Settings > AI. Off by default; turning one on (or changing its schedule) sets when it's next
+//   list, save:  Settings > Foli AI. Off by default; turning one on (or changing its schedule) sets when it's next
 //                due in the person's time zone. `list` also shows the estimate before it's on: credits a run
 //                holds and the most a month could cost, and what it spent this month against its cap.
 //   runNow:      starts one at once (still within its plan and cap; a few an hour).
@@ -119,10 +119,10 @@ const perRun = (kind: RoutineKind) => estimateCredits(routinePlan(kind), provide
 
 const PLAN_REFUSAL = `${PLAN_NOTE} Upgrade in Settings > Plan & billing.`;
 const capMessage = (kind: RoutineKind, cap: number, period: string, locale?: string) =>
-  `Your ${ROUTINE_NAMES[kind]} is paused until ${nextPeriodLabel(period, locale)}: it reached its monthly limit of ${cap} credits. Raise the limit in Settings > AI.`;
+  `Your ${ROUTINE_NAMES[kind]} is paused until ${nextPeriodLabel(period, locale)}: it reached its monthly limit of ${cap} credits. Raise the limit in Settings > Foli AI.`;
 
 // ---------------------------------------------------------------------------------------------------
-// Settings > AI
+// Settings > Foli AI
 // ---------------------------------------------------------------------------------------------------
 
 /**
@@ -279,7 +279,7 @@ type Skip = "off" | "plan" | "credits" | "access" | "busy" | "error" | "cap";
 const SKIP_TITLES: Record<Exclude<Skip, "off" | "busy" | "cap">, (name: string) => string> = {
   plan: (n) => `Your ${n} was skipped: routines are part of Pro and Pro AI.`,
   credits: (n) => `Your ${n} was skipped: you're out of AI credits.`,
-  access: (n) => `Your ${n} was skipped: you can't add pages where it's saved anymore. Pick another place in Settings > AI.`,
+  access: (n) => `Your ${n} was skipped: you can't add pages where it's saved anymore. Pick another place in Settings > Foli AI.`,
   error: (n) => `Your ${n} couldn't be written this time. It will try again next time.`,
 };
 

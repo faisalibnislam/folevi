@@ -3,7 +3,7 @@
 import { AI_FOCUS_EVENT } from "./events";
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { ArrowDown, ArrowUp, Loader2, Sparkles } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader2, MessageCircle } from "lucide-react";
 import { useIphoneApp } from "@/lib/iphone";
 import { inIosApp } from "@/lib/nativeApp";
 import { KEYBOARD_EASE, onKeyboardFrame } from "@/lib/native/ui";
@@ -119,7 +119,7 @@ export function ChatThread({
   const jobs = useQuery(api.aiResearch.forConversation, conversationId && features.research ? { conversationId } : "skip");
   const caps = useQuery(api.aiChat.capabilities, {});
   const ai = useAiAccess();
-  // The web (the Web switch, Research) only when Settings > AI allows it, the plan has AI and the model can search.
+  // The web (the Web switch, Research) only when Settings > Foli AI allows it, the plan has AI and the model can search.
   const webAvailable = Boolean(ai.on && caps?.prefs.webResearch && caps.searchGrounding && features.web);
   // The last mode this person picked (the floating chat and the AI page), unless the surface sets one.
   const [mode, setMode] = useChatMode(initialMode);
@@ -186,7 +186,7 @@ export function ChatThread({
   const names: Record<string, string> = { ...initialNames, ...Object.fromEntries((conversation?.context.items ?? []).map((i) => [i.id, i.name])) };
   // The answer has started (its text streams separately, aiChat.streamText, so `live` says so first).
   const answering = Boolean(messages[messages.length - 1]?.text || messages[messages.length - 1]?.live);
-  // Files for the next message (the Attach control): only when Settings > AI allows reading them, not for Research.
+  // Files for the next message (the Attach control): only when Settings > Foli AI allows reading them, not for Research.
   const attachAvailable = Boolean(ai.on && caps && caps.prefs.attachments !== false && features.attachments) && mode !== "research";
   const attachments = useChatAttachments({ scope: conversation?.scope ?? scope, caps: caps ? { vision: caps.vision, audioIn: caps.audioIn } : undefined });
   const contextNotes = context.kind === "note" || context.kind === "notes" ? context.ids : [];
@@ -463,7 +463,7 @@ export function ChatThread({
 
   const footNotes = [
     webOn || mode === "research" ? "Web searches go through Google Search." : "",
-    attachAvailable && attachments.files.length ? "Attached files go to Google Gemini too." : "",
+    attachAvailable && attachments.files.length ? "Attached files go to Google too." : "",
     conversation?.ephemeral ? "History is off: this conversation is deleted when you close it." : "",
   ].filter(Boolean);
   const introCredits = useAiCredits({ skip: variant === "panel" || !empty });
@@ -495,7 +495,7 @@ export function ChatThread({
           {suggestions.map((s) => (
             <li key={s}>
               <button type="button" onClick={() => send(s)} className="flex min-h-11 w-full items-center gap-3 py-2 text-left text-callout text-ink outline-none active:opacity-60 focus-visible:underline">
-                <Sparkles size={18} strokeWidth={1.8} aria-hidden className="flex-none text-muted" />
+                <MessageCircle size={18} strokeWidth={1.8} aria-hidden className="flex-none text-muted" />
                 {s}
               </button>
             </li>

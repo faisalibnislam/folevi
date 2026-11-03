@@ -1182,7 +1182,7 @@ export default defineSchema({
 
   /**
    * Memory (convex/aiMemory.ts, lib/ai/memory.ts): preferences a person approved, added to their AI prompts
-   * while Settings > AI "Memory" is on. Private to `profileId`. An entry in their Personal applies
+   * while Settings > Foli AI "Memory" is on. Private to `profileId`. An entry in their Personal applies
    * everywhere they use AI; one in a workspace only there. Only ever written by the person (Settings, or
    * Save on a chat's suggestion). Deleted by them, or with the account or the workspace.
    */

@@ -50,7 +50,7 @@ export function editorExtensions({
         if (node.type.name === "callout") return "Callout";
         // (A phone has no ⌘J: its Foli AI button is in the note's bar. Nor does an iPad or other touch screen as a
         // rule: its keyboard bar has Foli AI.)
-        const ai = aiHint.current && !isIphoneApp() && !coarsePointer() ? ", ⌘J for AI" : "";
+        const ai = aiHint.current && !isIphoneApp() && !coarsePointer() ? ", ⌘J for Foli AI" : "";
         return pos === 0 && editor.state.doc.childCount === 1 ? (placeholder ?? `Start writing, or type / for blocks${ai}`) : `Type / for blocks${ai}, [[ to link a page`;
       },
       showOnlyCurrent: true,

@@ -254,7 +254,7 @@ function IphoneMemoryList({ on, items, max, workspaces, onAdd, onUpdate, onRemov
   );
 }
 
-/** Settings > AI: the Memory card, on the server's list. */
+/** Settings > Foli AI: the Memory card, on the server's list. */
 export function AiMemoryCard() {
   const { workspaces } = useAppState();
   const memory = useQuery(api.aiMemory.list, {});

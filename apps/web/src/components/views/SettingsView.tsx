@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AppWindowMac, Info, ArrowDownUp, Bell, Building2, CreditCard, HelpCircle, LifeBuoy, LockKeyhole, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, Shield, ShieldCheck, Smartphone, Sparkles, UserRound, UserRoundPlus, Users, type LucideIcon } from "lucide-react";
+import { useEffect, useState, type ComponentType } from "react";
+import { AppWindowMac, Info, ArrowDownUp, Bell, Building2, CreditCard, HelpCircle, LifeBuoy, LockKeyhole, MonitorSmartphone, Palette, Plug, Plus, RefreshCw, LibraryBig, Shield, ShieldCheck, Smartphone, UserRound, UserRoundPlus, Users } from "lucide-react";
+import { AiIcon } from "@/components/ai/AiIcon";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useAppState } from "@/lib/app/state";
 import { ViewChrome } from "@/components/app/Shell";
@@ -42,11 +43,12 @@ import { inMacApp } from "@/lib/desktop/mac";
 import { IosRow, IosSection, IosText, SettingsScreensHost, useSettingsScreens } from "@/components/iphone/SettingsKit";
 
 type Section = "account" | "ai" | "billing" | "security" | "privacy" | "devices" | "connected-apps" | "appearance" | "notifications" | "workspace" | "members" | "workspace-guests" | "workspace-billing" | "workspace-data" | "workspace-privacy" | "sync" | "library" | "data" | "desktop" | "this-device" | "about";
-type Item = { id: Section; label: string; icon: LucideIcon };
+// (A section's icon: a Lucide icon, or Foli AI's flower, which keeps its colours.)
+type Item = { id: Section; label: string; icon: ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }> };
 /** Things about you (your account and your Personal), the same whichever context is open. */
 const YOU: Item[] = [
   { id: "account", label: "Account", icon: UserRound },
-  { id: "ai", label: "AI", icon: Sparkles },
+  { id: "ai", label: "Foli AI", icon: AiIcon },
   { id: "billing", label: "Plan & billing", icon: CreditCard },
   { id: "security", label: "Security", icon: ShieldCheck },
   // End-to-end encryption (docs/E2EE_DESIGN.md §10.1).
@@ -83,7 +85,7 @@ const WORKSPACE_SECTIONS = new Set<Section>(WORKSPACE.map((i) => i.id));
 const ABOUT: Item = { id: "about", label: "About", icon: Info };
 /**
  * Sections only an account has (docs/LOCAL_MODE_PLAN.md §5.2): in local mode they're not listed, and opened by
- * address they show the "Sign in to Folevi" note. Settings > AI stays: in local mode it sets up Foli AI on the
+ * address they show the "Sign in to Folevi" note. Settings > Foli AI stays: in local mode it sets up Foli AI on the
  * device (Apple's model, the person's own keys; LocalAiSection, WP11).
  */
 const NEEDS: Partial<Record<Section, Capability>> = {

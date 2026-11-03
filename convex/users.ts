@@ -338,7 +338,7 @@ export const updateProfile = mutation({
     displayName: v.optional(v.string()),
     appearance: v.optional(vAppearance),
     aiEnabled: v.optional(v.boolean()),
-    /** Settings > AI (lib/ai/prefs.ts): only the settings given change. */
+    /** Settings > Foli AI (lib/ai/prefs.ts): only the settings given change. */
     aiPrefs: v.optional(vAiPrefsPatch),
     timeZone: v.optional(v.string()),
     notificationPrefs: v.optional(vNotificationPrefs),

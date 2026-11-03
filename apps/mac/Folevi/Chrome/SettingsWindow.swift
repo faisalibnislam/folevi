@@ -36,7 +36,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
     nonisolated static func sections(mode: String, ai: Bool) -> [Section] {
         let general = Section(id: "desktop", title: "General", icon: .settings)
         let appearance = Section(id: "appearance", title: "Appearance", icon: .palette)
-        let foli = Section(id: "ai", title: "Foli AI", icon: .sparkles)
+        // (Its icon stands in for the flower the toolbar draws; see the item.)
+        let foli = Section(id: "ai", title: "Foli AI", icon: .messageCircle)
         let data = Section(id: "data", title: "Import & Export", icon: .arrowDownUp)
         var out: [Section]
         if mode == "account" {
@@ -279,7 +280,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
         let item = NSToolbarItem(itemIdentifier: id)
         item.label = s.title
         item.paletteLabel = s.title
-        item.image = Self.image(s.icon, label: s.title)
+        // (Foli AI's item wears its flower, in its colours: not a template, so the toolbar leaves it untinted.)
+        item.image = s.id == "ai" ? AiMarkImage.nsImage(size: 20, canvas: 32, label: s.title) : Self.image(s.icon, label: s.title)
         item.target = self
         item.action = #selector(pick(_:))
         return item

@@ -405,9 +405,9 @@ struct AiUnavailableView: View {
     static func copy(_ reason: String, local: Bool, purchases: Bool) -> (title: String, body: String, link: (label: String, section: String)?) {
         switch reason {
         case "off":
-            return ("Foli AI is turned off", "You turned Foli AI off, so nothing is sent to AI. Turn it on again in Settings > AI.", ("Open AI settings", "ai"))
+            return ("Foli AI is turned off", "You turned Foli AI off, so nothing is sent to Foli AI. Turn it on again in Settings > Foli AI.", ("Open Foli AI settings", "ai"))
         case "setup":
-            return ("Set up Foli AI on this Mac", "Turn on Apple Intelligence, or add your own OpenAI, Anthropic or Google key. Your notes go straight from this Mac to the model, never through Folevi.", ("Open AI settings", "ai"))
+            return ("Set up Foli AI on this Mac", "Turn on Apple Intelligence, or add your own OpenAI, Anthropic or Google key. Your notes go straight from this Mac to the model, never through Folevi.", ("Open Foli AI settings", "ai"))
         case "workspacePlan":
             return ("Foli AI isn't part of this workspace's plan", "Plans with Foli AI include \(includes). A workspace owner or admin can change the plan.", purchases ? ("See plans", "billing") : nil)
         default:

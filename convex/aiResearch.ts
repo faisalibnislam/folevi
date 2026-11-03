@@ -13,7 +13,7 @@
 //       its credits are settled from what its calls really cost (metered), searches included.
 //   saveAsNote: the finished report, with its sources, becomes a note where the conversation lives.
 //
-// Web research must be on in Settings > AI (checked on the server), and AI must be part of the plan
+// Web research must be on in Settings > Foli AI (checked on the server), and AI must be part of the plan
 // (ai.begin: never in Core). Text from the web is untrusted data. Prompts, notes, pages and reports are
 // never logged; only events, counts and codes are.
 import { v } from "convex/values";
@@ -62,7 +62,7 @@ import { storedError } from "./aiChat";
 type Ctx = QueryCtx | MutationCtx;
 
 const GONE = "That research isn't there anymore.";
-const WEB_OFF = "Web research is turned off in Settings > AI.";
+const WEB_OFF = "Web research is turned off in Settings > Foli AI.";
 const vError = v.object({ code: v.string(), message: v.string(), action: v.optional(v.string()), reason: v.optional(v.string()) });
 const vUsage = v.object({ credits: v.number(), tokensIn: v.number(), tokensOut: v.number() });
 const vNote = v.object({ id: v.string(), title: v.string(), text: v.string() });

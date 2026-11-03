@@ -279,7 +279,7 @@ describe("the Morning brief", () => {
     expect(calls).toHaveLength(0);
     expect(await holds(t)).toBe(0);
     expect((await notificationsOf(t, p)).map((n) => n.title)).toEqual([
-      "Your Morning brief is paused until November 1: it reached its monthly limit of 30 credits. Raise the limit in Settings > AI.",
+      "Your Morning brief is paused until November 1: it reached its monthly limit of 30 credits. Raise the limit in Settings > Foli AI.",
     ]);
     await expect(p.as.mutation(api.routines.runNow, { kind: "morning" })).rejects.toThrow(/monthly limit of 30 credits/);
 

@@ -1,12 +1,13 @@
 "use client";
 
-// Settings > AI in local mode (WP11): Foli AI on or off, Apple's model on this Mac, the person's own OpenAI,
+// Settings > Foli AI in local mode (WP11): Foli AI on or off, Apple's model on this Mac, the person's own OpenAI,
 // Anthropic and Google keys (added, tested and removed here, kept in the Keychain and never shown again, not
 // even to this page), which model answers, and the settings that still mean something on a device
 // (conversations, memory). Requests go from this Mac straight to the provider; nothing goes through Folevi.
 import { useId, useState } from "react";
 import { useMutation } from "convex/react";
-import { Check, KeyRound, Laptop, Loader2, MessagesSquare, Smartphone, Sparkles } from "lucide-react";
+import { Check, KeyRound, Laptop, Loader2, MessagesSquare, Smartphone } from "lucide-react";
+import { AiIcon } from "@/components/ai/AiIcon";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useLocalAi } from "@/lib/mode";
@@ -365,7 +366,7 @@ function HistoryCard() {
   );
 }
 
-/** Settings > AI in local mode. */
+/** Settings > Foli AI in local mode. */
 export function LocalAiSection() {
   const state = useLocalAi();
   const host = localAiHost();
@@ -415,7 +416,7 @@ function IphoneLocalAi({ state, hosted }: { state: LocalAiState | null; hosted: 
     <>
       <IosSection footer={`Foli AI helps you write, answers from your notes and sums them up. It runs on ${deviceWords().onDeviceModel} on ${deviceWords().here}, or on your own key with OpenAI, Anthropic or Google, called straight from ${deviceWords().here}. Nothing goes through Folevi, and nothing is sent while it's off.`} label="Foli AI">
         <SwitchRow
-          icon={<RowIcon><Sparkles /></RowIcon>}
+          icon={<RowIcon><AiIcon /></RowIcon>}
           label="Foli AI"
           checked={on}
           onChange={(next) =>

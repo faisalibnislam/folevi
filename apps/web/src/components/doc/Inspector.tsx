@@ -818,7 +818,7 @@ function PageInfo({ documentId, meta, onHistory, disabled }: { documentId: strin
           {info?.activity.length === 0 ? <li className="text-muted">Versions are saved after a pause in editing.</li> : null}
           {info?.activity.map((a, i) => (
             <li key={i} className="text-muted">
-              <span className="text-ink">{a.by}</span> · {a.reason === "idle" ? "saved a version" : a.reason === "before_restore" ? "restored an earlier version" : a.reason === "ai_run" ? "saved a version before AI changes" : a.reason === "close" ? "saved on close" : "saved a version"} · {formatRelative(a.at)}
+              <span className="text-ink">{a.by}</span> · {a.reason === "idle" ? "saved a version" : a.reason === "before_restore" ? "restored an earlier version" : a.reason === "ai_run" ? "saved a version before Foli AI changes" : a.reason === "close" ? "saved on close" : "saved a version"} · {formatRelative(a.at)}
             </li>
           ))}
         </ul>

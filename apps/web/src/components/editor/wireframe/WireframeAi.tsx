@@ -173,7 +173,7 @@ export function WireframeAi({
           </ul>
         </>
       )}
-      <p className="wf-ai-foot">Foli AI can make mistakes. Sent to Google Gemini. Undo with ⌘Z.</p>
+      <p className="wf-ai-foot">Foli AI can make mistakes. Sent to Google. Undo with ⌘Z.</p>
     </div>
   );
 }

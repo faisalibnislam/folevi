@@ -432,7 +432,7 @@ export interface RecordingForModel extends FileForModel {
 }
 
 /**
- * A note's recording the person may have transcribed: they can read the note, AI and Settings > AI allow
+ * A note's recording the person may have transcribed: they can read the note, AI and Settings > Foli AI allow
  * it, the model listens, and it's within MAX_TRANSCRIBE_SECONDS. Its length is the one measured while
  * recording (on the note's audio block), or a guess from its size.
  */

@@ -291,7 +291,7 @@ export const COMPETITORS: Competitor[] = [
     ],
     suitsBetter: [
       { title: "You want native apps everywhere", body: <p>Craft has apps for Mac, iPhone, iPad, Vision Pro, Windows and Android. {PLATFORMS_HONEST}</p> },
-      { title: "You want AI that runs on your device", body: <p>Craft can use on-device models on Mac, iPad and iPhone at no charge, or your own OpenAI or Anthropic key. Folevi’s AI runs on Google Gemini through our servers and is metered in credits.</p> },
+      { title: "You want AI that runs on your device", body: <p>Craft can use on-device models on Mac, iPad and iPhone at no charge, or your own OpenAI or Anthropic key. Foli AI runs on Google’s AI models through our servers and is metered in credits.</p> },
       { title: "You publish documents as websites", body: <p>Craft publishes documents to the web with custom domains. Folevi has public links to single pages, with a password and expiry if you want them, and no custom domains.</p> },
       { title: "You edit the same paragraph as someone else", body: <p>Craft shows changes to collaborators as they happen. Folevi merges edits to different blocks, and shows a conflict when two people change the same block at once.</p> },
     ],

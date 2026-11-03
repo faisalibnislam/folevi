@@ -7,7 +7,7 @@
 // in the iPhone app the panel is one of the app's sheets.
 import { useAction, useQuery } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, FileText, ListChecks, NotebookText, TextSelect, WandSparkles, X, Network, ScrollText, PenLine } from "lucide-react";
+import { ArrowUp, FileText, ListChecks, NotebookText, TextSelect, X, Network, ScrollText, PenLine } from "lucide-react";
 import type { MindmapLayout } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -278,7 +278,7 @@ export function MindmapAi({
             }
           />
           <Action
-            icon={<WandSparkles size={15} aria-hidden />}
+            icon={<AiIcon size={15} />}
             label="Tidy with Foli AI"
             detail="Groups, merges and rewords ideas. Undo with ⌘Z."
             disabled={Boolean(busy)}
@@ -305,7 +305,7 @@ export function MindmapAi({
       ) : (
         <AiCreditsNote documentId={ai.documentId} className="mx-3 mb-2" />
       )}
-      <p className="mm-ai-foot">Foli AI can make mistakes. Uses AI credits; sent to Google Gemini.</p>
+      <p className="mm-ai-foot">Foli AI can make mistakes. Uses AI credits; sent to Google.</p>
     </div>
   );
 

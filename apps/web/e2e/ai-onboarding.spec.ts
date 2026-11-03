@@ -13,7 +13,7 @@ test("the AI page and the floating chat open on Meet Foli AI: what it does, wher
   const main = page.getByRole("main");
   await expect(main.getByRole("heading", { name: "Meet Foli AI", level: 2 })).toBeVisible({ timeout: 30_000 });
   await expect(main).toContainText("never changes a note without showing you the change first");
-  await expect(main).toContainText("Google Gemini");
+  await expect(main).toContainText("go to Google");
   await expect(main).toContainText("AI credits");
   await expect(main.getByText("Try asking")).toBeVisible();
   // Empty /ai: the conversation list says what goes there.
@@ -69,7 +69,7 @@ test("with AI off there's no card, and the AI page and the note's panel say how 
 
   await page.goto(`${APP}/ai`);
   await expect(page.getByRole("heading", { name: "Foli AI is turned off" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("link", { name: "Open AI settings" })).toHaveAttribute("href", /\/settings\/ai$/);
+  await expect(page.getByRole("link", { name: "Open Foli AI settings" })).toHaveAttribute("href", /\/settings\/ai$/);
   await expect(page.getByRole("heading", { name: "Meet Foli AI", level: 2 })).toHaveCount(0);
 
   // On again: Foli AI introduces itself.

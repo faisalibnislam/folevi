@@ -1,5 +1,5 @@
 // Web research (docs/AI_ASSISTANT.md milestone 6): Google Search grounding (the request and its citations),
-// answers from notes and the web, reading pasted links, the SSRF guard and size cap, Settings > AI and
+// answers from notes and the web, reading pasted links, the SSRF guard and size cap, Settings > Foli AI and
 // Core refusals (nothing fetched), deep research jobs (steps, cancel, credits held and settled, the report
 // saved as a note), and the agent's search_web. The network is a stubbed `fetch`: Gemini, the DNS
 // resolver, Google's grounding redirects and web pages.
@@ -237,7 +237,7 @@ describe("chat with the web", () => {
     expect(answer.webCitations).toEqual([{ n: 2, url: "https://ferries.example.com/timetable", title: "Ferry timetable", domain: "ferries.example.com" }]);
   });
 
-  test("Settings > AI web research off: the Web switch is refused, links aren't read, research is refused, the agent has no web tools", async () => {
+  test("Settings > Foli AI web research off: the Web switch is refused, links aren't read, research is refused, the agent has no web tools", async () => {
     const t = setup();
     const a = await person(t, "web-off@example.com");
     await a.as.mutation(api.users.updateProfile, { aiPrefs: { webResearch: false } });

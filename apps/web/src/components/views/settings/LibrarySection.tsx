@@ -5,7 +5,8 @@
 // to Folevi (WP12). Everything here talks to the host (shell().library, .cloud, .lock) or the library store's
 // controls (client.local.library); none of it reaches Folevi's servers.
 import { useCallback, useEffect, useId, useState } from "react";
-import { AlertTriangle, CloudDownload, Hourglass, KeyRound, Laptop, Loader2, LockKeyhole, Smartphone, Sparkles, UserRound } from "lucide-react";
+import { AlertTriangle, CloudDownload, Hourglass, KeyRound, Laptop, Loader2, LockKeyhole, Smartphone, UserRound } from "lucide-react";
+import { AiIcon } from "@/components/ai/AiIcon";
 import { useBackendMode } from "@/lib/mode";
 import { AppLink } from "@/lib/app/router";
 import { shell } from "@/lib/shell";
@@ -700,7 +701,7 @@ function LockCard() {
   );
 }
 
-// ---- Foli AI (WP11: set up in Settings > AI) and the account -------------------------------------------------------------------
+// ---- Foli AI (WP11: set up in Settings > Foli AI) and the account -------------------------------------------------------------------
 
 function AiKeysCard() {
   return (
@@ -708,7 +709,7 @@ function AiKeysCard() {
       <p className="text-subheadline text-muted" data-testid="library-ai-keys">
         Choose the model and add your keys in{" "}
         <AppLink href="/settings/ai" className="text-ink underline underline-offset-2">
-          Settings, under AI
+          Settings, under Foli AI
         </AppLink>
         . Keys stay {shell()?.platform === "android" ? "sealed by the Android Keystore" : "in the Keychain"} on {deviceWords().here}; Folevi never sees them.
       </p>
@@ -772,7 +773,7 @@ function IphoneLibrary({ info, status, onChanged, control }: { info: LibraryInfo
       {info && passphraseHere() ? <IphonePassphrase info={info} onChanged={onChanged} /> : null}
       <IphoneLock />
       <IosSection header="Foli AI" footer={`Foli AI runs on ${deviceWords().onDeviceModel} on ${deviceWords().here}, or on your own OpenAI, Anthropic or Google key. Keys stay ${shell()?.platform === "android" ? "sealed by the Android Keystore" : "in the Keychain"} on ${deviceWords().here}; Folevi never sees them.`}>
-        <IosRow icon={<RowIcon><Sparkles /></RowIcon>} label="Model and keys" href="/settings/ai" />
+        <IosRow icon={<RowIcon><AiIcon /></RowIcon>} label="Model and keys" href="/settings/ai" />
       </IosSection>
       <IphoneAccount />
       {shell()?.places ? <ForgetLibraryCard flush={control ? () => control.flush() : null} /> : null}

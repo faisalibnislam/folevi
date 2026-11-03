@@ -34,7 +34,9 @@ public enum PhoneFolderMenu {
         for (i, group) in FolderMenuItem.groups(for: folder, in: context).enumerated() {
             if i > 0 { entries.append(PhoneMenuEntry(.separator(i))) }
             for item in group {
-                entries.append(PhoneMenuEntry(.item(item.title, icon: icon(item), danger: item == .delete, checked: item == .lock && context.isLocked(folder.id))) {
+                // (Ask Foli AI wears the flower, as the web's AI items.)
+                let row: WebMenuItem = item == .askAI ? .ai(item.title) : .item(item.title, icon: icon(item), danger: item == .delete, checked: item == .lock && context.isLocked(folder.id))
+                entries.append(PhoneMenuEntry(row) {
                     run(item, folder: folder, anchor: anchor, context: context, actions: actions, dialogs: dialogs, menus: menus, hooks: hooks)
                 })
             }
@@ -72,7 +74,7 @@ public enum PhoneFolderMenu {
         }
     }
 
-    static func icon(_ item: FolderMenuItem) -> WebIcon {
+    static func icon(_ item: FolderMenuItem) -> WebIcon? {
         switch item {
         case .newNote: .filePlusCorner
         case .newFolderInside: .folderPlus
@@ -81,7 +83,7 @@ public enum PhoneFolderMenu {
         case .move: .folderInput
         case .movePlaces: .arrowRightLeft
         case .moveToTop: .arrowUpToLine
-        case .askAI: .sparkles
+        case .askAI: nil
         case .lock: .lock
         case .copyLink: .link
         case .invite: .userPlus

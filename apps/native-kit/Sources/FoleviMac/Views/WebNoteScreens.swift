@@ -827,7 +827,7 @@ struct WebNoteBrowser: View {
                     Button { model.startGenerating() } label: {
                         HStack(spacing: WebStyles.named("button.secondary.md").resolve(scheme).gap) {
                             WebAiMark(size: 14)
-                            Text("Generate with AI").webText(WebStyles.named("button.secondary.md").resolve(scheme).text).lineLimit(1).fixedSize()
+                            Text("Generate with Foli AI").webText(WebStyles.named("button.secondary.md").resolve(scheme).text).lineLimit(1).fixedSize()
                         }
                         .webElement(WebStyles.named("button.secondary.md"))
                     }

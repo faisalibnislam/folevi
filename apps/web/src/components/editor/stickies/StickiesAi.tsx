@@ -248,7 +248,7 @@ export function StickiesAi({
             </ul>
           </>
         )}
-        <p className="st-ai-foot">Foli AI can make mistakes. Sent to Google Gemini. Undo changes to the board with ⌘Z.</p>
+        <p className="st-ai-foot">Foli AI can make mistakes. Sent to Google. Undo changes to the board with ⌘Z.</p>
       </div>
     </Panel>
   );

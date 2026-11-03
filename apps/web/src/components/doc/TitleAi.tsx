@@ -58,7 +58,7 @@ export function TitleAiPill({ anchor, onOpen }: { anchor: HTMLElement | null; on
       style={{ top: pos.top, left: pos.left }}
       className="ui-pop fixed z-40 inline-flex items-center gap-1.5 rounded-chip px-3 py-1.5 text-subheadline font-medium text-ink hover:text-heading"
     >
-      <AiIcon size={14} aria-hidden className="text-[#7c6cf0]" /> Edit with AI
+      <AiIcon size={14} aria-hidden className="text-[#7c6cf0]" /> Edit with Foli AI
       <kbd className="ml-1 font-sans text-footnote text-faint">⌘J</kbd>
     </button>,
     document.body,
@@ -177,7 +177,7 @@ export function TitleAi({
             <ArrowUp size={15} aria-hidden />
           </button>
         ) : null}
-        <button type="button" aria-label="Close AI" title="Close (Esc)" onClick={onClose} className="grid h-7 w-7 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+        <button type="button" aria-label="Close Foli AI" title="Close (Esc)" onClick={onClose} className="grid h-7 w-7 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
           <X size={15} aria-hidden />
         </button>
       </form>
@@ -205,7 +205,7 @@ export function TitleAi({
           : null}
       </ul>
       {busy === "instruction" ? <p className="px-4 pb-2.5 text-subheadline text-muted">Working…</p> : null}
-      <p className="border-t border-line/60 px-4 py-2 text-footnote text-faint">Foli AI can make mistakes. Sent to Google Gemini.</p>
+      <p className="border-t border-line/60 px-4 py-2 text-footnote text-faint">Foli AI can make mistakes. Sent to Google.</p>
     </div>,
     document.body,
   );

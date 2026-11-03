@@ -12,7 +12,7 @@ import { Card } from "./Card";
 import { useIphoneLook } from "@/lib/iphone";
 import { ActionRow, IosSection } from "@/components/iphone/SettingsKit";
 
-// Settings > AI "Export all conversations": every conversation you keep, as Markdown files in a .zip, one
+// Settings > Foli AI "Export all conversations": every conversation you keep, as Markdown files in a .zip, one
 // folder per place (Personal, each workspace). The server hands them over a page at a time
 // (aiChat.exportAll, which leaves out history-off conversations); the zip is made here with fflate, the
 // way a note's export is (components/doc/export.ts).

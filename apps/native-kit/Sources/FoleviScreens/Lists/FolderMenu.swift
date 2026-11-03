@@ -97,7 +97,7 @@ public enum FolderMenuItem: Hashable, Sendable {
         case .move: "folder"
         case .movePlaces: "arrow.left.arrow.right"
         case .moveToTop: "arrow.uturn.up"
-        case .askAI: "sparkles"
+        case .askAI: "bubble.left"
         case .lock: "lock"
         case .copyLink: "link"
         case .invite: "person.badge.plus"
@@ -200,6 +200,11 @@ public struct FolderMenuItems: View {
                         }
                     } label: {
                         Label(item.title, systemImage: item.symbol)
+                    }
+                } else if item == .askAI {
+                    // (Foli AI's flower, in its colours.)
+                    Button { run(item) } label: {
+                        Label { Text(item.title) } icon: { AiMarkImage.image(size: 17) }
                     }
                 } else {
                     Button(role: item == .delete ? .destructive : nil) { run(item) } label: {

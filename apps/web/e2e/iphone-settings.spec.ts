@@ -160,7 +160,7 @@ test("the iPhone app's Settings: every section a native list, choices and edits 
   await page.getByRole("button", { name: "Back", exact: true }).click();
 
   // AI: memory added on its own screen, the kind a choice.
-  await page.locator("main:visible").getByRole("link", { name: "AI", exact: true }).click();
+  await page.locator("main:visible").getByRole("link", { name: "Foli AI", exact: true }).click();
   await row(page, /^Memories/).click();
   await expect(title(page, "Memories")).toBeVisible();
   await row(page, /^Kind: /).click();

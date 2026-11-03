@@ -85,7 +85,7 @@ public struct NotesListTrailingItems: View {
         case .newNote: Label("New note here", systemImage: "doc.badge.plus")
         case .newFolderInside: Label("New folder inside…", systemImage: "folder.badge.plus")
         case .newTemplate: Label("New template", systemImage: "plus")
-        case .generateTemplate: Label("Generate with Foli AI", systemImage: "sparkles")
+        case .generateTemplate: Label { Text("Generate with Foli AI") } icon: { AiMarkImage.image(size: 17) }
         case .emptyTrash: Label("Empty Trash", systemImage: "trash")
         case .refresh: Label("Refresh", systemImage: "arrow.clockwise")
         }

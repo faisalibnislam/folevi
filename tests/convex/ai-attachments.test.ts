@@ -285,16 +285,16 @@ describe("chat attachments", () => {
     expect(JSON.stringify(bodies[1]!.contents)).toContain('"functionResponse":{"name":"calculate","response":{"result":1550}');
   });
 
-  test("Settings > AI off: no uploads, nothing attached, no transcription, nothing sent; on again, earlier files come along with follow-ups", async () => {
+  test("Settings > Foli AI off: no uploads, nothing attached, no transcription, nothing sent; on again, earlier files come along with follow-ups", async () => {
     const t = setup();
     const a = await person(t, "attach-off@example.com");
     const { fetchMock, calls } = gemini();
     const txt = await attach(t, a, "notes.txt", enc.encode("Ferry at 9."), "text/plain");
     const { noteId, fileId: audio } = await noteWithFile(t, a, { filename: "memo.webm", bytes: WEBM, mimeType: "audio/webm", kind: "audio" });
     await a.as.mutation(api.users.updateProfile, { aiPrefs: { attachments: false } });
-    await expect(a.as.mutation(api.files.generateUploadUrl, { scope: a.scope, filename: "x.txt", size: 3, mimeType: "text/plain", kind: "attachment" })).rejects.toThrow(/turned off in Settings > AI/);
-    await expect(a.as.action(api.aiChat.send, { scope: a.scope, conversationId: ulid(), text: "Read", attachments: [txt] })).rejects.toThrow(/turned off in Settings > AI/);
-    await expect(a.as.action(api.aiAttachments.transcribe, { scope: a.scope, documentId: noteId, fileId: audio })).rejects.toThrow(/turned off in Settings > AI/);
+    await expect(a.as.mutation(api.files.generateUploadUrl, { scope: a.scope, filename: "x.txt", size: 3, mimeType: "text/plain", kind: "attachment" })).rejects.toThrow(/turned off in Settings > Foli AI/);
+    await expect(a.as.action(api.aiChat.send, { scope: a.scope, conversationId: ulid(), text: "Read", attachments: [txt] })).rejects.toThrow(/turned off in Settings > Foli AI/);
+    await expect(a.as.action(api.aiAttachments.transcribe, { scope: a.scope, documentId: noteId, fileId: audio })).rejects.toThrow(/turned off in Settings > Foli AI/);
     expect(fetchMock).not.toHaveBeenCalled();
     expect((await a.as.query(api.aiChat.capabilities, {})).prefs.attachments).toBe(false);
 
@@ -483,7 +483,7 @@ describe("long recordings", () => {
     const short = await a.as.query(api.aiAttachments.transcribeEstimate, { documentId: memoNote, fileId: memo });
     expect(short).toMatchObject({ minutes: 2, windows: 1, confirm: false });
     expect(short!.credits).toBeLessThan(long!.credits);
-    // Someone who can't open the note gets nothing; with Settings > AI off, nothing either.
+    // Someone who can't open the note gets nothing; with Settings > Foli AI off, nothing either.
     expect(await b.as.query(api.aiAttachments.transcribeEstimate, { documentId: noteId, fileId })).toBeNull();
     await a.as.mutation(api.users.updateProfile, { aiPrefs: { attachments: false } });
     expect(await a.as.query(api.aiAttachments.transcribeEstimate, { documentId: noteId, fileId })).toBeNull();

@@ -40,7 +40,7 @@ export function StudyMode({ editor, canMake, busy, onMake }: { editor: Editor | 
   // The fallback: every toggle in the note, for cards people wrote themselves.
   const useAll = others ? (
     <button type="button" aria-pressed={all} onClick={() => setAll((a) => !a)} className="ui-btn ui-btn-ghost h-8 px-2.5 text-callout">
-      {all ? "Only cards made by AI" : "Use all toggles"}
+      {all ? "Only cards made by Foli AI" : "Use all toggles"}
     </button>
   ) : null;
   const cards = useMemo(() => items.filter((i): i is Flashcard => i.kind === "card"), [items]);

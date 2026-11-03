@@ -140,7 +140,7 @@ export const credits = query({
 });
 
 /**
- * The usage card (Settings > AI): the credits that apply where the person is working (their seat in a paid
+ * The usage card (Settings > Foli AI): the credits that apply where the person is working (their seat in a paid
  * workspace, otherwise their Personal credits), this period's allowance, what's used and left, extra
  * credits, when it resets, and what was spent by feature and by day. Counts only.
  */

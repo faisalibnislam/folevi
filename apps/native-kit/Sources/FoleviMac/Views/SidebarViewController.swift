@@ -604,7 +604,8 @@ final class SidebarCell: NSTableCellView {
             glyph?.isHidden = false
         } else {
             glyph?.isHidden = true
-            icon.image = NSImage(systemSymbolName: node.symbol, accessibilityDescription: nil)
+            // (Catch me up wears Foli AI's flower, in its colours.)
+            if case .destination(.catchUp) = node.kind { icon.image = AiMarkImage.nsImage(size: 15) } else { icon.image = NSImage(systemSymbolName: node.symbol, accessibilityDescription: nil) }
             if node.kind == .tag, let c = node.colorId { icon.contentTintColor = Self.tagColor(c) } else { icon.contentTintColor = .secondaryLabelColor }
         }
         // Waiting to sync or failed (folders made or moved offline), as the web's row marks.

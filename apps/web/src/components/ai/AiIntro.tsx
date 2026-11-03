@@ -42,7 +42,7 @@ export function AiIntroBody({ place, credits, size = "sm" }: { place: AiIntroPla
           <li>
             Choose the model in{" "}
             <AppLink href="/settings/ai" className="text-ink underline underline-offset-2 hover:text-heading">
-              AI settings
+              Foli AI settings
             </AppLink>
             .
           </li>
@@ -55,11 +55,11 @@ export function AiIntroBody({ place, credits, size = "sm" }: { place: AiIntroPla
       <p className={`mt-1.5 ${text} leading-snug text-ink`}>{AI_INTRO[place].lead}</p>
       <ul className={`mt-2 list-disc space-y-1 pl-4 ${text} leading-snug text-muted`}>
         <li>Foli AI never changes a note without showing you the change first.</li>
-        <li>What you ask, and the notes it needs, go to Google Gemini. Nothing is sent until you ask.</li>
+        <li>What you ask, and the notes it needs, go to Google. Nothing is sent until you ask.</li>
         <li>
           Each request uses AI credits{typeof credits === "number" ? ` (you have ${creditCount(credits)} left)` : ""}.{" "}
           <AppLink href="/settings/ai" className="text-ink underline underline-offset-2 hover:text-heading">
-            AI settings
+            Foli AI settings
           </AppLink>
         </li>
       </ul>

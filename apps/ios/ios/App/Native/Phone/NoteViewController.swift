@@ -246,7 +246,10 @@ final class NoteViewController: UIViewController, PageViewOwner {
         leftBar.row.addArrangedSubview(GlassCapsule.button(symbol: "bubble.left", label: "Comments", id: "note-comments") { [weak self] in self?.togglePanel(.comments) })
         leftBar.row.addArrangedSubview(GlassCapsule.button(symbol: "paintbrush", label: "Style", id: "note-style") { [weak self] in self?.togglePanel(.style) })
         leftBar.row.addArrangedSubview(GlassCapsule.button(symbol: "textformat", label: "Format", id: "note-format") { [weak self] in self?.togglePanel(.format) })
-        rightBar.row.addArrangedSubview(GlassCapsule.button(symbol: "sparkle", label: "Foli AI", id: "note-ai", pointSize: 22) { [weak self] in self?.togglePanel(.ai) })
+        let ai = GlassCapsule.button(symbol: "", label: "Foli AI", id: "note-ai", pointSize: 22) { [weak self] in self?.togglePanel(.ai) }
+        // (Foli AI's flower in its colours.)
+        ai.setImage(AiMarkImage.uiImage(size: 24), for: .normal)
+        rightBar.row.addArrangedSubview(ai)
         let insert = GlassCapsule.plusButton(label: "Insert", id: "note-insert", target: 52, disc: 38)
         insert.addAction(UIAction { [weak self] _ in
             UIImpactFeedbackGenerator(style: .light).impactOccurred()

@@ -198,8 +198,8 @@ test.describe("local mode", { tag: "@local" }, () => {
     // Local mode's Settings opens on the library's own section (WP10b).
     await expect(sections.getByRole("link", { name: "Library" })).toHaveAttribute("aria-current", "page");
     for (const gone of ["Account", "Plan & billing", "Security", "Devices", "Connected apps", "Notifications"]) await expect(sections.getByRole("link", { name: gone, exact: true })).toHaveCount(0);
-    // Settings > AI stays: it sets Foli AI up on this Mac (WP11, e2e/local-ai.spec.ts).
-    await expect(sections.getByRole("link", { name: "AI", exact: true })).toHaveCount(1);
+    // Settings > Foli AI stays: it sets Foli AI up on this Mac (WP11, e2e/local-ai.spec.ts).
+    await expect(sections.getByRole("link", { name: "Foli AI", exact: true })).toHaveCount(1);
     await expect(page.getByRole("button", { name: "Create a workspace" })).toHaveCount(0);
     await sections.getByRole("link", { name: "Import & export" }).click();
     await expect(page.getByRole("heading", { name: "Import & export", level: 2 })).toBeVisible();

@@ -18,9 +18,16 @@ public struct EmptyState: View {
 
     public var body: some View {
         VStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: 30, weight: .light))
-                .foregroundStyle(Folevi.color.inkFaint)
+            Group {
+                // (`AiMarkGlyph.symbolName`: Foli AI's flower, in its colours.)
+                if systemImage == AiMarkGlyph.symbolName {
+                    AiMarkGlyph(size: 30)
+                } else {
+                    Image(systemName: systemImage)
+                        .font(.system(size: 30, weight: .light))
+                        .foregroundStyle(Folevi.color.inkFaint)
+                }
+            }
                 .frame(width: 60, height: 60)
                 .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous).fill(Folevi.color.surfaceSunken))
                 .accessibilityHidden(true)

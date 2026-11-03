@@ -80,8 +80,8 @@ test.describe("Flowchart Foli AI", () => {
     const preview = canvas.getByRole("region", { name: "Foli AI preview" });
 
     // Draw: the result is a preview first; Discard leaves the chart as it was.
-    await canvas.getByRole("button", { name: "Create with AI" }).click();
-    const panel = canvas.getByRole("dialog", { name: "Create a flowchart with AI" });
+    await canvas.getByRole("button", { name: "Create with Foli AI" }).click();
+    const panel = canvas.getByRole("dialog", { name: "Create a flowchart with Foli AI" });
     await panel.getByRole("textbox", { name: "Describe the process" }).fill("How a release gets approved");
     await page.keyboard.press("Enter");
     await expect(preview).toContainText("Foli AI's flowchart");
@@ -92,8 +92,8 @@ test.describe("Flowchart Foli AI", () => {
     await expect(preview).toHaveCount(0);
     await expect(nodes).toHaveCount(0);
     // Again, and Apply: one change, undone and redone in one step.
-    await canvas.getByRole("button", { name: "Create with AI" }).click();
-    await canvas.getByRole("dialog", { name: "Create a flowchart with AI" }).getByRole("textbox", { name: "Describe the process" }).fill("How a release gets approved");
+    await canvas.getByRole("button", { name: "Create with Foli AI" }).click();
+    await canvas.getByRole("dialog", { name: "Create a flowchart with Foli AI" }).getByRole("textbox", { name: "Describe the process" }).fill("How a release gets approved");
     await page.keyboard.press("Enter");
     await preview.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByRole("application", { name: "Flowchart, 4 shapes" })).toBeVisible();
@@ -183,8 +183,8 @@ test.describe("Flowchart Foli AI", () => {
     const canvas = page.getByRole("application", { name: /Flowchart/ });
     await scriptModel(page);
     const tools = page.getByRole("toolbar", { name: "Flowchart tools" });
-    await canvas.getByRole("button", { name: "Create with AI" }).click();
-    await canvas.getByRole("dialog", { name: "Create a flowchart with AI" }).getByRole("textbox", { name: "Describe the process" }).fill("Release");
+    await canvas.getByRole("button", { name: "Create with Foli AI" }).click();
+    await canvas.getByRole("dialog", { name: "Create a flowchart with Foli AI" }).getByRole("textbox", { name: "Describe the process" }).fill("Release");
     await page.keyboard.press("Enter");
     await canvas.getByRole("region", { name: "Foli AI preview" }).getByRole("button", { name: "Apply" }).click();
     await expect(page.getByRole("application", { name: "Flowchart, 4 shapes" })).toBeVisible();
@@ -302,8 +302,8 @@ test("screenshots: light, dark and phone width", async ({ browser }) => {
   await page.getByRole("option", { name: /Flowchart/ }).first().click();
   const canvas = page.getByRole("application", { name: /Flowchart/ });
   await scriptModel(page);
-  await canvas.getByRole("button", { name: "Create with AI" }).click();
-  await canvas.getByRole("dialog", { name: "Create a flowchart with AI" }).getByRole("textbox", { name: "Describe the process" }).fill("Release");
+  await canvas.getByRole("button", { name: "Create with Foli AI" }).click();
+  await canvas.getByRole("dialog", { name: "Create a flowchart with Foli AI" }).getByRole("textbox", { name: "Describe the process" }).fill("Release");
   await page.keyboard.press("Enter");
   await canvas.getByRole("region", { name: "Foli AI preview" }).getByRole("button", { name: "Apply" }).click();
   for (const [scheme, size] of [["light", { width: 1280, height: 860 }], ["dark", { width: 1280, height: 860 }], ["light", { width: 390, height: 844 }], ["dark", { width: 390, height: 844 }]] as const) {
@@ -315,7 +315,7 @@ test("screenshots: light, dark and phone width", async ({ browser }) => {
     await card.scrollIntoViewIfNeeded();
     // The Foli AI panel with a shape selected.
     await canvas.getByRole("button", { name: /^Decision: Approved\?/ }).click();
-    await page.getByRole("toolbar", { name: "Flowchart tools" }).getByRole("button", { name: "AI", exact: true }).click();
+    await page.getByRole("toolbar", { name: "Flowchart tools" }).getByRole("button", { name: "Foli AI", exact: true }).click();
     await page.waitForTimeout(300);
     await card.screenshot({ path: `${SHOTS}/panel-${tag}.png` });
     await page.keyboard.press("Escape");

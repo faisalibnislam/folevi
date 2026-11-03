@@ -167,7 +167,8 @@ public enum FrameRoute: Hashable, Sendable {
     public var symbol: String {
         switch self {
         case .home: return "house"
-        case .catchUp: return "sparkles"
+        // (Drawn as Foli AI's flower where it shows: the tab strip and the sidebar.)
+        case .catchUp: return "newspaper"
         case .notes(let v):
             switch v {
             case .all: return "doc.text"

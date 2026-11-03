@@ -87,7 +87,7 @@ describe("Meet Foli AI", () => {
     const { host } = render(createElement(AiIntroBody, { place: "note", credits: 42 }));
     expect(host.textContent).toContain(AI_INTRO.note.lead);
     expect(host.textContent).toContain("never changes a note without showing you the change first");
-    expect(host.textContent).toContain("Google Gemini");
+    expect(host.textContent).toContain("go to Google");
     expect(host.textContent).toContain("you have 42 AI credits left");
     for (const place of ["note", "folder", "personal", "workspace"] as const) expect(AI_INTRO[place].lead).toContain("Foli AI");
   });
@@ -96,8 +96,8 @@ describe("Meet Foli AI", () => {
 describe("empty and plan-gated states", () => {
   test("AI off says how to turn it on; Core says what's included with Upgrade; a workspace points at its plan", () => {
     const off = aiUnavailableCopy({ setting: false, context: "personal" });
-    expect(off.link).toEqual({ href: "/settings/ai", label: "Open AI settings" });
-    expect(off.body).toContain("Settings > AI");
+    expect(off.link).toEqual({ href: "/settings/ai", label: "Open Foli AI settings" });
+    expect(off.body).toContain("Settings > Foli AI");
     const core = aiUnavailableCopy({ setting: true, context: "personal" });
     expect(core.link).toEqual({ href: "/settings/billing", label: "Upgrade" });
     expect(core.body).toMatch(/Pro and Pro AI/);
@@ -267,11 +267,11 @@ describe("study mode reads the cards the AI made", () => {
     expect(host.textContent).toContain("This note has 2 toggles you could study as cards.");
     await act(async () => button(host, "Use all toggles")!.click());
     expect(host.querySelector('[aria-roledescription="flashcard"]')?.textContent).toContain("Packing");
-    expect(button(host, "Only cards made by AI")!.getAttribute("aria-pressed")).toBe("true");
+    expect(button(host, "Only cards made by Foli AI")!.getAttribute("aria-pressed")).toBe("true");
 
     // Cards the AI made are studied on their own; the hand-written ones only with "Use all toggles".
     insertAiMarkdown(e, CARDS, { kind: "end" });
-    await act(async () => button(host, "Only cards made by AI")!.click());
+    await act(async () => button(host, "Only cards made by Foli AI")!.click());
     expect(host.textContent).toContain("0 of 1 known");
     expect(button(host, "Use all toggles")).toBeTruthy();
     e.destroy();

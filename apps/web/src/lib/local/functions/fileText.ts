@@ -60,12 +60,12 @@ defineLocal(api.fileText.save, "mutation", async (ctx, args) => {
   if (args.source === "handwriting") {
     if (args.fileId) fail("invalid_argument", "Handwriting belongs to a drawing, not a file.");
     if (!args.hash || !HASH.test(args.hash)) fail("invalid_argument", "Say which drawing this is.");
-    if (!profile.aiPrefs.deviceText) fail("forbidden", "Reading handwriting is turned off in Settings > AI.");
+    if (!profile.aiPrefs.deviceText) fail("forbidden", "Reading handwriting is turned off in Settings > Foli AI.");
     row = { id: handwritingId(args.blockId), documentId: doc.id, blockId: args.blockId, fileId: null, source: "handwriting", by: "device", text, pageStarts: null, hash: args.hash };
   } else {
     if (!args.fileId) fail("invalid_argument", "Say which file this is.");
     const file = checkFile(await ctx.db.get("files", args.fileId), doc, args.source);
-    if (args.source === "image" && !profile.aiPrefs.deviceText) fail("forbidden", "Reading images on this device is turned off in Settings > AI.");
+    if (args.source === "image" && !profile.aiPrefs.deviceText) fail("forbidden", "Reading images on this device is turned off in Settings > Foli AI.");
     row = { id: file.id, documentId: doc.id, blockId: args.blockId, fileId: file.id, source: args.source, by: args.source === "pdf" ? "pdf" : "device", text, pageStarts, hash: file.sha256 };
   }
   // A file's text is one row wherever the file went (the server finds it by file); it moves with it.

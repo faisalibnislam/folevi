@@ -123,7 +123,7 @@ export const FEATURES: Feature[] = [
         title: "Titles",
         body: (
           <p>
-            Select words in a title and an <strong>Edit with AI</strong> button appears (or press <Kbd>⌘J</Kbd>). It can suggest a new title from what the note says, or improve, fix, shorten or change the tone of the one you have. An untitled note with some text in it offers <strong>Suggest a title</strong> on its own.
+            Select words in a title and an <strong>Edit with Foli AI</strong> button appears (or press <Kbd>⌘J</Kbd>). It can suggest a new title from what the note says, or improve, fix, shorten or change the tone of the one you have. An untitled note with some text in it offers <strong>Suggest a title</strong> on its own.
           </p>
         ),
       },
@@ -178,7 +178,7 @@ export const FEATURES: Feature[] = [
         title: "What happens to your notes",
         body: (
           <p>
-            When you use the AI, your request and the notes it needs go to Google Gemini. Google doesn’t use them to train its models, and neither does Folevi. You can turn Foli AI off in Settings; while it’s off, none of your notes are sent. On Core, the server refuses every AI request. More on the <Link href="/privacy#ai">Privacy</Link> page.
+            When you use the AI, your request and the notes it needs go to Google. Google doesn’t use them to train its models, and neither does Folevi. You can turn Foli AI off in Settings; while it’s off, none of your notes are sent. On Core, the server refuses every AI request. More on the <Link href="/privacy#ai">Privacy</Link> page.
           </p>
         ),
       },
@@ -188,7 +188,7 @@ export const FEATURES: Feature[] = [
       { q: "What is an AI credit?", a: "One cent of what the AI costs to run. Each request is charged for what it actually uses: a short rewrite is usually 1 credit, and a question to Foli AI or a new flowchart usually 3 to 5. A request needs a few credits free before it starts." },
       { q: "Can the AI see notes I don’t have access to?", a: "No. Foli AI answers from the open note or from notes it finds by searching the ones you can already read." },
       { q: "Can I turn the AI off?", a: "Yes. Turn Foli AI off in Settings at any time. While it’s off, none of your notes are sent to it." },
-      { q: "Does Folevi use my notes to train AI?", a: "No. Folevi doesn’t use your notes to train AI models, and Google doesn’t use requests to its paid Gemini API for training either." },
+      { q: "Does Folevi use my notes to train AI?", a: "No. Folevi doesn’t use your notes to train AI models, and Google doesn’t use requests to its paid AI service for training either." },
       { q: "How does AI work in a team workspace?", a: "In a paid workspace, each member has the plan’s AI credits there. In a free workspace, and as a guest, you use your own personal credits. In a Core workspace nobody can use AI." },
     ],
     related: ["flowcharts", "search", "tasks"],

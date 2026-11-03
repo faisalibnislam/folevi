@@ -1,4 +1,4 @@
-// AI usage by feature (docs/AI_ASSISTANT.md, "Credits and limits"): the usage card in Settings > AI.
+// AI usage by feature (docs/AI_ASSISTANT.md, "Credits and limits"): the usage card in Settings > Foli AI.
 //
 // Every request names its feature when it holds credits (ai.begin, holdFor); the hold keeps it, and when
 // the request settles its credits are added to the credit account's period row (aiCreditPeriods): per

@@ -340,7 +340,7 @@ struct AiIntroBody: View {
                     bullet("What you ask, and the notes it needs, go straight from this \(ThisDevice.noun) to the model you chose, never through Folevi. Nothing is sent until you ask.", li)
                     bullet(settingsLine(prefix: "Choose the model in ", suffix: ".", look: look), li)
                 } else {
-                    bullet("What you ask, and the notes it needs, go to Google Gemini. Nothing is sent until you ask.", li)
+                    bullet("What you ask, and the notes it needs, go to Google. Nothing is sent until you ask.", li)
                     let credits = model.caps?.credits.flatMap { $0.included ? $0.available : nil }
                     bullet(settingsLine(prefix: "Each request uses AI credits\(credits.map { " (you have \(AiCreditsNote.count($0)) left)" } ?? ""). ", suffix: "", look: look), li)
                 }
@@ -355,7 +355,7 @@ struct AiIntroBody: View {
     }
 
     private func settingsLine(prefix: String, suffix: String, look: AiLook) -> AttributedString {
-        var link = AttributedString("AI settings")
+        var link = AttributedString("Foli AI settings")
         link.link = URL(string: "folevi-settings://ai")
         link.underlineStyle = .single
         link.foregroundColor = look.ink

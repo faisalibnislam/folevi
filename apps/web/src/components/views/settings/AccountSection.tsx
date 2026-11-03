@@ -14,7 +14,7 @@ import { IdentityImageRows } from "@/components/iphone/IdentityImageRows";
 import { useIphoneLook } from "@/lib/iphone";
 import { ChoiceRow, IosRow, IosSection, SwitchRow, TextRow } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
-import { Sparkles } from "lucide-react";
+import { AiIcon } from "@/components/ai/AiIcon";
 import { Switch } from "@/components/ui/Switch";
 import { useAiAccess } from "@/components/ai/useAi";
 import { AppLink } from "@/lib/app/router";
@@ -167,10 +167,10 @@ export function AiSettingCard() {
         footer={
           core
             ? "Not included in Core. Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include Foli AI."
-            : "Foli AI answers from your notes, helps you write and sums notes up, powered by Google Gemini. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden."
+            : "Foli AI answers from your notes, helps you write and sums notes up, powered by Google. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden."
         }
       >
-        <SwitchRow label="Foli AI" icon={<RowIcon><Sparkles /></RowIcon>} checked={on && !core} disabled={core} onChange={turn} />
+        <SwitchRow label="Foli AI" icon={<RowIcon><AiIcon /></RowIcon>} checked={on && !core} disabled={core} onChange={turn} />
       </IosSection>
     );
   return (
@@ -187,7 +187,7 @@ export function AiSettingCard() {
               ) : null}
             </>
           ) : (
-            "Foli AI answers from your notes, helps you write and sums notes up, powered by Google Gemini. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden."
+            "Foli AI answers from your notes, helps you write and sums notes up, powered by Google. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden."
           )}
         </p>
         <Switch

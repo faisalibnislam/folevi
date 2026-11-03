@@ -50,10 +50,10 @@ async function expectNoAi(page: Page) {
   await page.keyboard.press("Meta+k");
   await expect(page.getByRole("option", { name: /Ask Foli AI/ })).toHaveCount(0);
   await page.keyboard.press("Escape");
-  // Templates: no "Generate with AI".
+  // Templates: no "Generate with Foli AI".
   await page.goto(`${APP}/templates`);
   await expect(page.getByRole("button", { name: "New template" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("button", { name: "Generate with AI" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Generate with Foli AI" })).toHaveCount(0);
 }
 
 test("Core hides every AI entry point in Personal, and the AI setting says it isn't included", async ({ browser }) => {

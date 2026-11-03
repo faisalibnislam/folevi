@@ -897,7 +897,7 @@ export function EditorMenus({
       ...(aiOn
         ? (
             [
-              ["ai", "Ask Foli AI…", "foli ai assistant write generate gemini ask"],
+              ["ai", "Ask Foli AI…", "foli ai assistant write generate ask"],
               ["ai-continue", "Foli AI: Continue writing", "ai continue write more next", { task: "continue" }],
               ["ai-summarize", "Foli AI: Summarize page", "ai summary summarize tldr note page", { task: "summarize" }],
               ["ai-actions", "Foli AI: Action items", "ai tasks todo action items follow ups find", { task: "actions" }],

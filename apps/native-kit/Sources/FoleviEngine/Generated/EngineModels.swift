@@ -4581,7 +4581,7 @@ public struct ChatCapabilities: Codable, Hashable, Sendable {
     /// Conversations are kept (Settings > Foli AI > History).
     public var history: Bool
     public var agent: Bool
-    /// Revision 16. Why Foli AI can't be used here (null when it can): "off" (turned off in Settings > AI), "plan" (not on the
+    /// Revision 16. Why Foli AI can't be used here (null when it can): "off" (turned off in Settings > Foli AI), "plan" (not on the
     /// person's plan), "workspacePlan" (not on this workspace's plan), "setup" (local mode: no model on this device
     /// yet). Open: show the message for an unknown one as "plan".
     public var unavailable: String?

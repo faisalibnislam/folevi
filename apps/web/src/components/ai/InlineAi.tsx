@@ -96,7 +96,7 @@ const SELECTION_ICONS: Partial<Record<AiTask, React.ReactNode>> = {
   continueText: <PenLine size={15} />,
   actionItemsText: <ListChecks size={15} />,
 };
-const GROUP_TITLE: Record<string, string> = { edit: "Edit", turn: "Turn into", use: "Use the text", write: "Write with AI", study: "Meetings and study", think: "Think it through" };
+const GROUP_TITLE: Record<string, string> = { edit: "Edit", turn: "Turn into", use: "Use the text", write: "Write with Foli AI", study: "Meetings and study", think: "Think it through" };
 
 const selection = (group: "edit" | "turn" | "use"): Suggestion[] =>
   SELECTION_ACTIONS.filter((a) => a.group === group && a.task !== "translate").map((a) => ({ id: a.task, label: a.label, icon: SELECTION_ICONS[a.task] ?? <Wand2 size={15} />, task: a.task, group }));
@@ -429,8 +429,8 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
   const placeholder =
     phase.kind === "result"
       ? isPage
-        ? "Tell AI what to change in the page… (⏎ to insert)"
-        : `Tell AI what to change… (⏎ to ${replaceable ? "replace" : "insert"})`
+        ? "Tell Foli AI what to change in the page… (⏎ to insert)"
+        : `Tell Foli AI what to change… (⏎ to ${replaceable ? "replace" : "insert"})`
       : phase.kind === "menu"
         ? phase.menu === "languages"
           ? "Translate to…"
@@ -552,7 +552,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
               <ArrowUp size={15} aria-hidden />
             </button>
           ) : null}
-          <button type="button" aria-label="Close AI" title="Close (Esc)" onClick={close} className="grid h-7 w-7 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
+          <button type="button" aria-label="Close Foli AI" title="Close (Esc)" onClick={close} className="grid h-7 w-7 flex-none place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
             <X size={15} aria-hidden />
           </button>
         </div>
@@ -658,7 +658,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
           </ul>
         ) : null
       ) : null}
-      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">Foli AI can make mistakes. Sent to Google Gemini.</p>
+      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">Foli AI can make mistakes. Sent to Google.</p>
       <AiAnnouncer text={announce} />
     </div>
   );

@@ -56,7 +56,7 @@ export function FlowchartAi({
     <div
       className="fc-ai ui-pop"
       role="dialog"
-      aria-label={mode === "create" ? "Create a flowchart with AI" : "Change the flowchart with AI"}
+      aria-label={mode === "create" ? "Create a flowchart with Foli AI" : "Change the flowchart with Foli AI"}
       onPointerDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
         e.stopPropagation();
@@ -103,7 +103,7 @@ export function FlowchartAi({
         <button type="submit" className="fc-ai-send" aria-label={mode === "create" ? "Create flowchart" : "Update flowchart"} disabled={Boolean(busy) || !text.trim()}>
           <ArrowUp size={15} aria-hidden />
         </button>
-        <button type="button" className="fc-btn" aria-label="Close AI" title="Close (Esc)" onClick={onClose}>
+        <button type="button" className="fc-btn" aria-label="Close Foli AI" title="Close (Esc)" onClick={onClose}>
           <X size={15} aria-hidden />
         </button>
       </form>
@@ -147,7 +147,7 @@ export function FlowchartAi({
           </ul>
         </>
       )}
-      <p className="fc-ai-foot">Foli AI can make mistakes. {local ? "Runs on this device or with your own key." : "Sent to Google Gemini."} You see every result before it goes in.</p>
+      <p className="fc-ai-foot">Foli AI can make mistakes. {local ? "Runs on this device or with your own key." : "Sent to Google."} You see every result before it goes in.</p>
     </div>
   );
 }

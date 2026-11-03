@@ -1,5 +1,5 @@
 // Memory, suggestions and digests on the web (docs/AI_ASSISTANT.md milestone 8, part A): the memory list
-// in Settings > AI, the save-memory card under a chat answer, a note's suggestion chips, and the editor
+// in Settings > Foli AI, the save-memory card under a chat answer, a note's suggestion chips, and the editor
 // changes the chips make (a line turned into a task, a [[ link added).
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { act } from "react";

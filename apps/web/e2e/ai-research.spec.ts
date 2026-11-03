@@ -39,7 +39,7 @@ test("the Web switch sends, Research starts and fails plainly without a key, and
   const list = page.getByRole("region", { name: "Research" });
   await expect(list.getByText("Compare ferry and train to the coast")).toBeVisible({ timeout: 30_000 });
 
-  // Settings > AI: web research off hides the switch and Research.
+  // Settings > Foli AI: web research off hides the switch and Research.
   await page.goto(`${APP}/settings/ai`);
   const setting = page.getByRole("switch", { name: "Web research" });
   await expect(setting).toBeVisible();

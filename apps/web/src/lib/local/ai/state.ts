@@ -2,7 +2,7 @@
 // (the Mac app's main process) says whether Apple's model can run and which of the person's keys are stored
 // (never the keys); the person's pick of provider and model is kept on this device. Each window keeps its own
 // copy, refreshed when it opens, when the window comes forward, when another window changes the pick, and
-// after Settings > AI changes a key. A change re-runs the local queries that read it (`ai:state`, volatile.ts)
+// after Settings > Foli AI changes a key. A change re-runs the local queries that read it (`ai:state`, volatile.ts)
 // and the interface (useLocalAi).
 import type { AiCaps, AiProviderId, ShellAi, ShellSecrets } from "@/lib/shell/types";
 import { shell } from "@/lib/shell";
@@ -26,7 +26,7 @@ export interface LocalAiState {
   /** This host can run Foli AI at all (the Mac app; not a plain browser). */
   host: boolean;
   caps: AiCaps | null;
-  /** What the person picked in Settings > AI (null: the best one available). */
+  /** What the person picked in Settings > Foli AI (null: the best one available). */
   choice: { provider: AiProviderId; model: string } | null;
   active: ActiveModel | null;
   features: AiFeatures;
@@ -173,7 +173,7 @@ export async function setLocalAiChoice(choice: LocalAiState["choice"]): Promise<
   return await refreshLocalAi();
 }
 
-/** The host's bridge, for Settings > AI (keys) and the provider layer. */
+/** The host's bridge, for Settings > Foli AI (keys) and the provider layer. */
 export function localAiHost(): LocalAiHost {
   return hostOf();
 }

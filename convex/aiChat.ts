@@ -8,7 +8,7 @@
 // citation matched when one did. Credits are held and settled like every AI request (ai.begin, metered),
 // and what an answer cost is stored on it. The first exchange names the conversation (the fast model).
 //
-// History off (Settings > AI): a conversation is `ephemeral`, deleted when its chat closes (`discard`)
+// History off (Settings > Foli AI): a conversation is `ephemeral`, deleted when its chat closes (`discard`)
 // and swept after a day. Account and workspace deletion remove conversations (maintenance.ts).
 //
 // Sharing a conversation with a workspace (read-only, for members who can open every note it uses) is in
@@ -392,7 +392,7 @@ export const exportMarkdown = query({
 });
 
 /**
- * Every conversation the person keeps, a page at a time, as Markdown files for Settings > AI's "Export
+ * Every conversation the person keeps, a page at a time, as Markdown files for Settings > Foli AI's "Export
  * all conversations" (the browser zips them). History-off conversations aren't kept, so they're left out,
  * and so are ones in places the person can no longer open. Each file goes in a folder for its place.
  */
@@ -644,7 +644,7 @@ export const post = internalMutation({
     }
     if (args.mode === "send") {
       if (messages.length >= MAX_MESSAGES) fail("limit_exceeded", "This conversation is full. Start a new one.");
-      // Each file is checked (access, kind, size, Settings > AI) before anything is sent (lib/ai/attachmentFiles.ts).
+      // Each file is checked (access, kind, size, Settings > Foli AI) before anything is sent (lib/ai/attachmentFiles.ts).
       const attachments = await claimAttachments(ctx, profile, c, args.attachments ?? []);
       await insertScoped(ctx, "aiMessages", scopeOfRow(c), { conversationId: c._id, profileId: profile._id, role: "user", text, ...(attachments.length ? { attachments } : {}), status: "done", createdAt: now, updatedAt: now });
     } else if (args.mode === "regenerate") {
@@ -813,8 +813,8 @@ export function storedError(e: unknown): { code: string; message: string; action
   return { code: "internal", message: "Something went wrong. Try again." };
 }
 
-/** Web research for one answer is refused: Settings > AI turned it off, or the model can't search. */
-const WEB_OFF = "Web research is turned off in Settings > AI.";
+/** Web research for one answer is refused: Settings > Foli AI turned it off, or the model can't search. */
+const WEB_OFF = "Web research is turned off in Settings > Foli AI.";
 const WEB_UNSUPPORTED = "The AI model in use can't search the web.";
 
 /**
@@ -1008,7 +1008,7 @@ export const sendSealed = action({
     let files: FileForModel[];
     try {
       files = providedFiles(args.provided);
-      if (files.length && !prefs.attachments) fail("forbidden", "Reading attachments and recordings is turned off in Settings > AI.");
+      if (files.length && !prefs.attachments) fail("forbidden", "Reading attachments and recordings is turned off in Settings > Foli AI.");
     } catch (e) {
       return { ...empty, error: storedError(e) };
     }

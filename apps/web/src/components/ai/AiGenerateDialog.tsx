@@ -99,7 +99,7 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
       onClose={onClose}
       size="lg"
       title={kind === "template" ? "Generate a template" : "Generate a note"}
-      description={`Describe it and AI writes the ${noun}. You'll see it before it's saved.`}
+      description={`Describe it and Foli AI writes the ${noun}. You'll see it before it's saved.`}
       footer={
         draft && !busy ? (
           <>
@@ -188,7 +188,7 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
           <div className="max-h-[46vh] overflow-y-auto rounded-control bg-[var(--glass-hover)] p-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
             <AiMarkdown markdown={draft.text} />
           </div>
-          <p className="text-footnote text-faint">Foli AI can make mistakes, so check it before you save. Sent to Google Gemini.</p>
+          <p className="text-footnote text-faint">Foli AI can make mistakes, so check it before you save. Sent to Google.</p>
         </section>
       )}
       {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-3 rounded-control bg-danger-soft px-3 py-2 text-subheadline text-danger" : "mt-3"} /> : null}

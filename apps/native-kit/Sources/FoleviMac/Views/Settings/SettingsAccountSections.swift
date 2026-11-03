@@ -120,7 +120,7 @@ struct AiSettingCard: View {
         let core = ai.map { !$0.included } ?? false
         SettingsCard("Foli AI") {
             HStack(alignment: .top, spacing: 24) {
-                SText(core ? "Not included in Core. Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include Foli AI." : "Foli AI answers from your notes, helps you write and sums notes up, powered by Google Gemini. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden.", "toggle.text")
+                SText(core ? "Not included in Core. Your notes stay yours: nothing is sent to an AI model. Pro and Pro AI include Foli AI." : "Foli AI answers from your notes, helps you write and sums notes up, powered by Google. When you use it, your request and the notes it needs are sent to Google; nothing is sent while it's off, and Foli AI's buttons are hidden.", "toggle.text")
                     .frame(maxWidth: 560, alignment: .leading)
                 Spacer(minLength: 0)
                 SettingsSwitch(isOn: (ai?.enabled ?? false) && !core, label: "Foli AI", disabled: core) { on in
@@ -139,7 +139,7 @@ struct AccountAiSettings: View {
     private struct Pref: Identifiable { var key: AiPrefKey, label: String, body: String, on: String, off: String; var id: String { key.rawValue } }
     private static let settings: [Pref] = [
         Pref(key: .memory, label: "Memory", body: "Let Foli AI remember things you approve, like the tone you like or words you use. You'll see and edit everything it remembers below.", on: "Memory turned on", off: "Memory turned off"),
-        Pref(key: .suggestions, label: "Suggestions", body: "Quiet hints at the end of a note, such as related notes, possible duplicates, open questions and action items. They're found without sending anything to AI.", on: "Suggestions turned on", off: "Suggestions turned off"),
+        Pref(key: .suggestions, label: "Suggestions", body: "Quiet hints at the end of a note, such as related notes, possible duplicates, open questions and action items. They're found without sending anything to Foli AI.", on: "Suggestions turned on", off: "Suggestions turned off"),
         Pref(key: .attachments, label: "Read attachments", body: "Let Foli AI read files you add to a question, such as PDFs, images, text and spreadsheets, and transcribe recordings when you ask. Files are only read when you send them.", on: "Attachments turned on", off: "Attachments turned off"),
         Pref(key: .webResearch, label: "Web research", body: "Let Foli AI search the web and read pages you link when you ask it to, with links to what it found. This also turns on Research. Searches go through Google Search.", on: "Web research turned on", off: "Web research turned off"),
         Pref(key: .digests, label: "Digests", body: "A daily or weekly summary of what changed in your notes, saved as a note in your Inbox. It uses your AI credits and is never emailed.", on: "Digests turned on", off: "Digests turned off"),
@@ -155,7 +155,7 @@ struct AccountAiSettings: View {
         VStack(alignment: .leading, spacing: 20) {
             AiSettingCard(model: model)
             SettingsCard("Conversations") {
-                SettingsPrefRow(label: "Keep conversations", body_: "Your AI conversations are saved so you can come back to them, rename, pin and search them. Only you can see them, unless you share one with your workspace. When this is off, a conversation is deleted as soon as you close it. Conversations you already have stay until you delete them.", isOn: ai?.history ?? true, disabled: core) { set(.history, $0, "Conversations are kept", "New conversations aren't kept") }
+                SettingsPrefRow(label: "Keep conversations", body_: "Your Foli AI conversations are saved so you can come back to them, rename, pin and search them. Only you can see them, unless you share one with your workspace. When this is off, a conversation is deleted as soon as you close it. Conversations you already have stay until you delete them.", isOn: ai?.history ?? true, disabled: core) { set(.history, $0, "Conversations are kept", "New conversations aren't kept") }
             }
             SettingsCard("How Foli AI works for you", description: "The server checks each of these wherever the feature runs.") {
                 SettingsDivided(Self.settings, gap: 14) { p in

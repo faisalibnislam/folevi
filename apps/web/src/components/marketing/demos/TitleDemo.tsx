@@ -94,7 +94,7 @@ export function TitleDemo() {
       </button>
       {phase.kind === "pill" ? (
         <span className="mk-app-pop mk-appear mt-2.5 inline-flex items-center gap-1.5 rounded-chip px-3 py-1.5 text-[13px] font-medium text-ink">
-          <AiIcon size={14} className="text-[var(--mk-violet)]" /> Edit with AI
+          <AiIcon size={14} className="text-[var(--mk-violet)]" /> Edit with Foli AI
           <kbd className="ml-1 font-sans text-[11px] text-faint">⌘J</kbd>
         </span>
       ) : null}

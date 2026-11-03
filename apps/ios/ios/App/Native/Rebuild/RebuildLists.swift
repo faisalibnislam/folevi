@@ -109,7 +109,7 @@ struct RebuildNotesScreen: View {
         for (sort, label) in model.sortOptions {
             entries.append(PhoneMenuEntry(.item(label, checked: model.sort == sort)) { model.sort = sort })
         }
-        // The list's own (DocumentBrowser.tsx `menu`): Empty Trash, New template, Generate with AI, New note here.
+        // The list's own (DocumentBrowser.tsx `menu`): Empty Trash, New template, Generate with Foli AI, New note here.
         var own: [PhoneMenuEntry] = []
         if model.isTrash && model.total > 0 {
             own.append(PhoneMenuEntry(.item("Empty Trash", icon: .trash, danger: true)) { model.confirmation = .emptyTrash(model.total) })
@@ -119,7 +119,7 @@ struct RebuildNotesScreen: View {
                 Task { if let id = await model.actions.createTemplate() { phone.router?.openNote(id, source: nil, focus: true) } }
             })
             if phone.aiOn {
-                own.append(PhoneMenuEntry(.item("Generate with AI", icon: .sparkles)) { model.startGenerating() })
+                own.append(PhoneMenuEntry(.ai("Generate with Foli AI")) { model.startGenerating() })
             }
         }
         if model.kind.view == .folder, let folderId = model.kind.folderId {

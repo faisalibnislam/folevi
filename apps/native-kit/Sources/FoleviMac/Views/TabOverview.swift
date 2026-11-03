@@ -148,7 +148,11 @@ public struct TabOverviewLayer: View {
                         .frame(width: 20, height: 20).foregroundStyle(color("color-ink-faint"))
                 }
                 HStack(spacing: 6) {
-                    WebIconView(e.tab.map { $0.isJoined ? .squareSplitHorizontal : WebTopBar.icon(for: $0.route) } ?? .house, size: 14).opacity(0.7)
+                    if let t = e.tab, !t.isJoined, WebTopBar.wearsFlower(t.route) {
+                        AiMarkGlyph(size: 14)
+                    } else {
+                        WebIconView(e.tab.map { $0.isJoined ? .squareSplitHorizontal : WebTopBar.icon(for: $0.route) } ?? .house, size: 14).opacity(0.7)
+                    }
                     TruncatingLabel(text: label(e), style: WebTextStyle(size: 13, leading: 18, weight: on ? 600 : 400))
                         .foregroundStyle(on ? color("color-heading") : color("color-ink"))
                 }

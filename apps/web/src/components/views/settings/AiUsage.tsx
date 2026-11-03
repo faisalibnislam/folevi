@@ -12,7 +12,7 @@ import { canPurchaseHere, withoutPurchaseHints } from "@/lib/nativeApp";
 import { useIphoneLook } from "@/lib/iphone";
 import { ChoiceRow, IosRow, IosSection, IosText, Subscreen } from "@/components/iphone/SettingsKit";
 
-// The usage card in Settings > AI (billing.aiUsage): your Personal credits, or your seat in a paid workspace
+// The usage card in Settings > Foli AI (billing.aiUsage): your Personal credits, or your seat in a paid workspace
 // (picked here), what's used and left this period, when they reset,
 // and what they went on, by feature and by day. The day chart is drawn here (SVG) with a table for
 // screen readers.
@@ -165,7 +165,7 @@ export function UsageSummary({ usage }: { usage: AiUsageData }) {
 }
 
 /**
- * Settings > AI: what Foli AI has used. Personal first (the same credits as Plan & billing); a seat in a paid
+ * Settings > Foli AI: what Foli AI has used. Personal first (the same credits as Plan & billing); a seat in a paid
  * workspace has credits of its own, so it can be picked here too.
  */
 export function AiUsageCard() {

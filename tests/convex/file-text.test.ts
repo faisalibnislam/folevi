@@ -2,7 +2,7 @@
 // PDF, image or whiteboard handwriting is kept beside the file and found by search with where it was ("in PDF,
 // page 3") and the block to open; only people who can read the note find it, only people who can edit it can
 // save it, it goes with the block, the file and the note, and comes with the export. Foli AI reads an image
-// only when asked (or turned on in Settings > AI), metered like any Foli AI request. Gemini is a stubbed fetch.
+// only when asked (or turned on in Settings > Foli AI), metered like any Foli AI request. Gemini is a stubbed fetch.
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -143,7 +143,7 @@ describe("text found in files", () => {
     await expect(a.as.mutation(api.fileText.save, { documentId, blockId: "no spaces", fileId: pdf, source: "pdf", text: "x" })).rejects.toThrow(/Unknown block/);
     await expect(a.as.mutation(api.fileText.save, { documentId, blockId: "b1", source: "handwriting", text: "x" })).rejects.toThrow(/Say which drawing/);
     await expect(a.as.mutation(api.fileText.save, { documentId, blockId: "b1", fileId: image, source: "image", text: "x", pageStarts: [0] })).rejects.toThrow(/Only a PDF/);
-    // Turned off in Settings > AI: the device's recogniser isn't used, and its text isn't taken.
+    // Turned off in Settings > Foli AI: the device's recogniser isn't used, and its text isn't taken.
     await a.as.mutation(api.users.updateProfile, { aiPrefs: { deviceText: false } });
     await expect(a.as.mutation(api.fileText.save, { documentId, blockId: "b1", fileId: image, source: "image", text: "x" })).rejects.toThrow(/turned off/);
     await expect(a.as.mutation(api.fileText.save, { documentId, blockId: "b1", source: "handwriting", text: "x", hash: "h1" })).rejects.toThrow(/turned off/);
@@ -264,7 +264,7 @@ describe("Foli AI reading images", () => {
     const b = await person(t, "file-text-foli-other@example.com");
     const { documentId, fileId, blockId } = await noteWithImage(t, a);
     const bodies = gemini("words");
-    // An image just added, read without being asked: refused while Settings > AI says no (the default).
+    // An image just added, read without being asked: refused while Settings > Foli AI says no (the default).
     await expect(a.as.action(api.fileText.readImage, { documentId, fileId, blockId, auto: true })).rejects.toThrow(/turned off/);
     await expect(b.as.action(api.fileText.readImage, { documentId, fileId, blockId })).rejects.toThrow();
     await a.as.mutation(api.users.updateProfile, { aiEnabled: false });

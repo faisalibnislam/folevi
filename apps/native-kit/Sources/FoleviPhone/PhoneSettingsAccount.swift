@@ -129,7 +129,7 @@ struct PhoneAccountSettings: View {
     private struct Pref { var key: AiPrefKey, label: String, body: String, on: String, off: String }
     private static let prefs: [Pref] = [
         Pref(key: .memory, label: "Memory", body: "Let Foli AI remember things you approve, like the tone you like or words you use.", on: "Memory turned on", off: "Memory turned off"),
-        Pref(key: .suggestions, label: "Suggestions", body: "Quiet hints at the end of a note, such as related notes, possible duplicates, open questions and action items. They're found without sending anything to AI.", on: "Suggestions turned on", off: "Suggestions turned off"),
+        Pref(key: .suggestions, label: "Suggestions", body: "Quiet hints at the end of a note, such as related notes, possible duplicates, open questions and action items. They're found without sending anything to Foli AI.", on: "Suggestions turned on", off: "Suggestions turned off"),
         Pref(key: .attachments, label: "Read attachments", body: "Let Foli AI read files you add to a question, such as PDFs, images, text and spreadsheets. Files are only read when you send them.", on: "Attachments turned on", off: "Attachments turned off"),
         Pref(key: .webResearch, label: "Web research", body: "Let Foli AI search the web and read pages you link when you ask it to, with links to what it found.", on: "Web research turned on", off: "Web research turned off"),
         Pref(key: .digests, label: "Digests", body: "A daily or weekly summary of what changed in your notes, saved as a note in your Inbox. It uses your AI credits and is never emailed.", on: "Digests turned on", off: "Digests turned off"),
@@ -155,9 +155,9 @@ struct PhoneAccountSettings: View {
             PhoneSettingsGroup(footer: core ? "Foli AI comes with Pro AI." : "Foli AI helps you write, answers from your notes and sums them up. Nothing is sent while it's off.") {
                 PhoneSettingsSwitchRow("Foli AI", on: a.enabled && !core, disabled: core, change: { on in
                     Task { await model.perform(.settingsUpdate(aiEnabled: on), done: on ? "Foli AI turned on" : "Foli AI turned off") }
-                }) { PhoneRowIcon(.sparkles) }
+                }) { PhoneRowIcon.foliAI }
             }
-            PhoneSettingsGroup(footer: "Your AI conversations are saved so you can come back to them, rename, pin and search them. When this is off, a conversation is deleted as soon as you close it.") {
+            PhoneSettingsGroup(footer: "Your Foli AI conversations are saved so you can come back to them, rename, pin and search them. When this is off, a conversation is deleted as soon as you close it.") {
                 PhoneSettingsSwitchRow("Keep conversations", on: a.history, change: { on in
                     Task { await model.perform(.settingsSetAiPref(key: .history, on: on), done: on ? "Conversations are kept" : "New conversations aren't kept") }
                 }) { PhoneRowIcon(.messagesSquare) }

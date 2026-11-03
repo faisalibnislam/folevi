@@ -40,7 +40,7 @@ const CONFLICT_TITLE = "Changed on another device";
 const conflictDetail = (c: { target: string; device: string }, when: string) =>
   `${when} · ${c.target === "doc.title" ? "The other title" : "The other version"}${c.device && c.device !== "This device" && c.device !== "Another device" ? `, from ${c.device}` : ""}`;
 
-const REASONS: Partial<Record<string, string>> = { before_restore: "Before a restore", import: "Imported", ai_run: "Before AI changes", mcp: "Before a connected app’s changes", api: "Before an API change" };
+const REASONS: Partial<Record<string, string>> = { before_restore: "Before a restore", import: "Imported", ai_run: "Before Foli AI changes", mcp: "Before a connected app’s changes", api: "Before an API change" };
 
 function dayLabel(ts: number, now = new Date()): string {
   const d = new Date(ts);

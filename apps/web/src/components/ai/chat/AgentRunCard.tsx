@@ -250,7 +250,7 @@ export function AgentRunCard({
           </ul>
           {readOnly ? null : changed ? (
             <div role="alert" className="mt-3 rounded-control bg-[var(--glass-active)] p-2.5 text-subheadline text-ink">
-              <p className="font-medium text-heading">Some of this changed after the AI&apos;s edits:</p>
+              <p className="font-medium text-heading">Some of this changed after Foli AI&apos;s edits:</p>
               <ul className="mt-1 list-disc pl-4">
                 {changed.map((c) => (
                   <li key={c.key}>{c.label}</li>

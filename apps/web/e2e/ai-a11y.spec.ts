@@ -4,7 +4,7 @@ import { APP, newPerson, openTool, settle, waitForSaved } from "./helpers";
 
 // Accessibility of every Foli AI surface (docs/AI_ASSISTANT.md milestone 9): axe over the AI page, the
 // floating chat, the note's AI sidebar (Write, Ask, Agent, Study), the inline composer (on a light page and
-// on a night page), the graph (graph and list), Related and Settings > AI, in light and dark; then the
+// on a night page), the graph (graph and list), Related and Settings > Foli AI, in light and dark; then the
 // keyboard: focus returns when panels close, the graph's arrow keys, and streaming answers that aren't read
 // out word by word. Without a model key (CI, local dev) the composer's request is refused, so its diff view
 // is scanned only when a key is set.
@@ -83,7 +83,7 @@ test("every Foli AI surface has no serious accessibility violations, light and d
     problems.push(...(await scan(page, `${scheme} graph list`)));
     await page.getByRole("group", { name: "View" }).getByRole("button", { name: "Graph" }).click();
 
-    // Settings > AI.
+    // Settings > Foli AI.
     await page.goto(`${APP}/settings/ai`);
     await expect(page.getByRole("switch", { name: "Web research" })).toBeVisible({ timeout: 30_000 });
     problems.push(...(await scan(page, `${scheme} settings/ai`)));

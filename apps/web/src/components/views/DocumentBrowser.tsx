@@ -490,7 +490,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         menu={[
           ...(view === "trash" && results.length ? [{ label: "Empty Trash", icon: <Trash2 size={18} />, danger: true, onSelect: () => setConfirmEmpty(true) }] : []),
           ...(view === "templates" ? [{ label: "New template", icon: <Plus size={18} />, onSelect: () => void createDocument({ folderId: null, kind: "template" }) }] : []),
-          ...(view === "templates" && aiOn && online ? [{ label: "Generate with AI", icon: <AiIcon size={18} />, onSelect: () => setGenerating(true) }] : []),
+          ...(view === "templates" && aiOn && online ? [{ label: "Generate with Foli AI", icon: <AiIcon size={18} />, onSelect: () => setGenerating(true) }] : []),
           ...(view === "folder" && folderId ? [{ label: "New note here", icon: <FilePlus2 size={18} />, onSelect: () => void createDocument({ folderId }) }] : []),
         ]}
         before={
@@ -610,7 +610,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           ) : null}
           {view === "templates" && aiOn && online ? (
             <Button variant="secondary" onClick={() => setGenerating(true)}>
-              <AiIcon size={14} aria-hidden className="text-[#7c6cf0]" /> Generate with AI
+              <AiIcon size={14} aria-hidden className="text-[#7c6cf0]" /> Generate with Foli AI
             </Button>
           ) : null}
           {view === "templates" ? (

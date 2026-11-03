@@ -15,7 +15,7 @@ export const AI_INCLUDES = "Answers from your notes with links, writing help, an
 
 export function aiUnavailableCopy(ai: Pick<AiAccess, "setting" | "context">): { title: string; body: string; link: { href: string; label: string } | null } {
   if (!ai.setting) {
-    return { title: "Foli AI is turned off", body: "You turned Foli AI off, so nothing is sent to AI. Turn it on again in Settings > AI.", link: { href: "/settings/ai", label: "Open AI settings" } };
+    return { title: "Foli AI is turned off", body: "You turned Foli AI off, so nothing is sent to Foli AI. Turn it on again in Settings > Foli AI.", link: { href: "/settings/ai", label: "Open Foli AI settings" } };
   }
   if (ai.context === "workspace") {
     return { title: "Foli AI isn't part of this workspace's plan", body: `Plans with Foli AI include ${AI_INCLUDES.charAt(0).toLowerCase()}${AI_INCLUDES.slice(1, -1)}. A workspace owner or admin can change the plan.`, link: { href: "/settings/billing", label: "See plans" } };
@@ -28,10 +28,10 @@ export function aiUnavailableCopy(ai: Pick<AiAccess, "setting" | "context">): { 
 
 /** The copy, without the way to plans in the iOS app (no buying there). */
 function shownCopy(ai: Pick<AiAccess, "setting" | "context">) {
-  // Local mode: no plans to talk about. Turned off, or no model on this device yet (WP11): Settings > AI sets it up.
+  // Local mode: no plans to talk about. Turned off, or no model on this device yet (WP11): Settings > Foli AI sets it up.
   if (currentBackendMode() === "local") {
     if (!ai.setting) return aiUnavailableCopy(ai);
-    return { title: "Set up Foli AI on this Mac", body: "Turn on Apple Intelligence, or add your own OpenAI, Anthropic or Google key. Your notes go straight from this Mac to the model, never through Folevi.", link: { href: "/settings/ai", label: "Open AI settings" } };
+    return { title: "Set up Foli AI on this Mac", body: "Turn on Apple Intelligence, or add your own OpenAI, Anthropic or Google key. Your notes go straight from this Mac to the model, never through Folevi.", link: { href: "/settings/ai", label: "Open Foli AI settings" } };
   }
   const copy = aiUnavailableCopy(ai);
   return copy.link?.href === "/settings/billing" && !canPurchaseHere() ? { ...copy, link: null } : copy;

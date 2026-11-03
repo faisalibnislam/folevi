@@ -94,7 +94,7 @@ describe("helpers", () => {
   });
 });
 
-describe("Settings > AI memory", () => {
+describe("Settings > Foli AI memory", () => {
   test("add, edit, delete and clear; private to the person; per workspace", async () => {
     const t = setup();
     const a = await person(t, "mem-crud@example.com");

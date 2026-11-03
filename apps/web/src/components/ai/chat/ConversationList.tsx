@@ -178,7 +178,7 @@ function ConversationRow({ row, active, onNavigate }: { row: Row; active: boolea
 }
 
 /**
- * Your AI conversations here (Personal or this workspace): search, pinned ones first, then the rest by
+ * Your Foli AI conversations here (Personal or this workspace): search, pinned ones first, then the rest by
  * when they were last used, and in a workspace those shared with you. Each of yours can be renamed,
  * pinned, shared with the workspace, exported (Markdown, or a note) or deleted.
  */

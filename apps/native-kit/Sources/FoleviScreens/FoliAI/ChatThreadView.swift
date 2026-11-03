@@ -264,7 +264,7 @@ struct FoliIntroView: View {
                 ForEach(model.suggestions, id: \.self) { s in
                     Button { model.send(s) } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: "sparkle").font(.system(size: 15, weight: .medium)).foregroundStyle(Folevi.color.inkMuted).accessibilityHidden(true)
+                            Image(systemName: "bubble.left").font(.system(size: 15, weight: .medium)).foregroundStyle(Folevi.color.inkMuted).accessibilityHidden(true)
                             Text(s).foleviFont(.body).foregroundStyle(Folevi.color.ink).multilineTextAlignment(.leading)
                             Spacer(minLength: 0)
                         }

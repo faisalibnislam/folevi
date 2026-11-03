@@ -201,7 +201,7 @@ const POSTS: BlogPost[] = [
 
         <h2 id="where">Where your notes go when AI is on</h2>
         <p>
-          On the plans with AI, your request and the notes it needs go to Google Gemini. Google doesn’t use requests to its paid Gemini API to train its models, and Folevi doesn’t train models on your notes. Folevi records how many requests and credits you used each day. It doesn’t keep your prompts, your notes or the answers in those records. More on the <Link href="/privacy#ai">Privacy</Link> page.
+          On the plans with AI, your request and the notes it needs go to Google. Google doesn’t use requests to its paid AI service to train its models, and Folevi doesn’t train models on your notes. Folevi records how many requests and credits you used each day. It doesn’t keep your prompts, your notes or the answers in those records. More on the <Link href="/privacy#ai">Privacy</Link> page.
         </p>
 
         <h2 id="why">Why we built it</h2>
@@ -232,10 +232,10 @@ const POSTS: BlogPost[] = [
 
         <h2 id="how">How a request becomes credits</h2>
         <p>
-          Folevi’s AI runs on Google Gemini, which charges by the token. A token is a short piece of a word, and Google charges for the tokens sent to the model and the tokens it writes back. After each request, Folevi reads the token counts Google reports, prices them at Google’s rates and rounds up to whole cents. A request that costs a third of a cent uses 1 credit. One that costs 2.1 cents uses 3.
+          Foli AI runs on Google’s AI models, which Google charges for by the token. A token is a short piece of a word, and Google charges for the tokens sent to the model and the tokens it writes back. After each request, Folevi reads the token counts Google reports, prices them at Google’s rates and rounds up to whole cents. A request that costs a third of a cent uses 1 credit. One that costs 2.1 cents uses 3.
         </p>
         <p>
-          Every request uses at least 1 credit. Short jobs, such as suggesting a title, fixing spelling or rewriting up to about 1,500 characters, go to a smaller, cheaper Gemini model, so they usually cost 1.
+          Every request uses at least 1 credit. Short jobs, such as suggesting a title, fixing spelling or rewriting up to about 1,500 characters, go to a smaller, cheaper model, so they usually cost 1.
         </p>
 
         <h2 id="costs">What things cost</h2>
@@ -290,7 +290,7 @@ const POSTS: BlogPost[] = [
           Before each request, Folevi sets aside a cautious estimate of what it could cost. If you don’t have enough credits left, the request is turned down before anything is sent, and a refused request costs nothing. The message tells you when your credits reset. On Pro and Pro AI it offers a pack, and on Free it offers an upgrade.
         </p>
         <p>
-          When a request finishes, Folevi charges what it really cost and releases the rest of the estimate. If the real cost turns out to be more than you had left, your balance goes to zero and the difference is never charged later. If a reply fails after Gemini has already answered, it is still charged, because Google charged us for it.
+          When a request finishes, Folevi charges what it really cost and releases the rest of the estimate. If the real cost turns out to be more than you had left, your balance goes to zero and the difference is never charged later. If a reply fails after the model has already answered, it is still charged, because Google charged us for it.
         </p>
 
         <h2 id="why">Why we count at all</h2>

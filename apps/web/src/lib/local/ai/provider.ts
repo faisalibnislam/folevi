@@ -30,14 +30,14 @@ const MIN_ANSWER_TOKENS = 256;
 /** What `withSafety` adds to every system prompt (at most), counted in each request's room for note text. */
 const SAFETY_CHARS = SAFETY_RULE.length + DECLINE_RULE.length + 3;
 
-// (Read once the page loads, when the host is known: Gemini Nano and "this phone" in the Android app.)
+// (Read once the page loads, when the host is known: Android's on-device model and "this phone" in the Android app.)
 const WORDS = deviceWords();
 export const NOT_SET_UP =
-  WORDS.onDeviceModel === "Gemini Nano"
-    ? "Foli AI isn't set up on this phone. Add your own key in Settings > AI."
-    : "Foli AI isn't set up on this device. Turn on Apple Intelligence, or add your own key in Settings > AI.";
-export const TOO_LONG_ON_DEVICE = `That's too long for Foli AI on ${WORDS.here}. Try a shorter selection, or add your own key in Settings > AI for longer notes.`;
-export const OFF_HERE = "Foli AI can't do that with the model on this device. Add your own key in Settings > AI to use it.";
+  WORDS.onDeviceModel === "Android's on-device model"
+    ? "Foli AI isn't set up on this phone. Add your own key in Settings > Foli AI."
+    : "Foli AI isn't set up on this device. Turn on Apple Intelligence, or add your own key in Settings > Foli AI.";
+export const TOO_LONG_ON_DEVICE = `That's too long for Foli AI on ${WORDS.here}. Try a shorter selection, or add your own key in Settings > Foli AI for longer notes.`;
+export const OFF_HERE = "Foli AI can't do that with the model on this device. Add your own key in Settings > Foli AI to use it.";
 
 export interface GenerateOptions {
   /** The whole text so far as it streams; returning false stops it (Stop). */
@@ -120,7 +120,7 @@ function failFor(result: AiResult, active: ActiveModel): never {
   const name = PROVIDERS[active.provider].label;
   switch (result.errorCode) {
     case "auth":
-      return fail("forbidden", `Your ${name} key was refused. Check it in Settings > AI.`, { reason: "ai_key" });
+      return fail("forbidden", `Your ${name} key was refused. Check it in Settings > Foli AI.`, { reason: "ai_key" });
     case "rate":
       return fail("rate_limited", `${name} asked Foli AI to slow down. Try again in a minute.`);
     case "context":

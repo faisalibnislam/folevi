@@ -1,5 +1,5 @@
 // Foli AI in local mode on the Mac (WP11), with the FakeShell's scripted model (e2e/fixtures/localShell.ts):
-// Settings > AI shows Apple Intelligence's state and the person's own keys (added, tested, removed, never shown
+// Settings > Foli AI shows Apple Intelligence's state and the person's own keys (added, tested, removed, never shown
 // again), the model can be picked, and once a model is there Foli AI appears and answers from the library,
 // streaming, with nothing sent to Folevi (the fixture's network guard fails the test otherwise). Local only:
 //   E2E_LOCAL_BASE_URL=http://localhost:3003 E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 \
@@ -15,7 +15,7 @@ async function openSettingsAi(page: Page) {
   await expect(page.getByRole("heading", { name: "Your own keys" })).toBeVisible({ timeout: 60_000 });
 }
 
-test("no model yet: Settings > AI explains, and Foli AI stays out of sight", { tag: "@local" }, async ({ page }) => {
+test("no model yet: Settings > Foli AI explains, and Foli AI stays out of sight", { tag: "@local" }, async ({ page }) => {
   await openSettingsAi(page);
   await expect(page.getByTestId("local-ai-on-device")).toHaveAttribute("data-status", "notEnabled");
   await expect(page.getByText("Turn on Apple Intelligence in System Settings")).toBeVisible();
@@ -95,9 +95,9 @@ test("Apple Intelligence on: Foli AI runs on this Mac with no key", { tag: "@loc
   await expect(page.getByTestId("local-ai-on-device")).toHaveAttribute("data-status", "available");
   await expect(page.getByText("Answering now: Apple Intelligence, on this Mac.")).toBeVisible();
   await expect(sidebar(page).getByRole("link", { name: "Work with Foli AI" })).toBeVisible();
-  // Library settings point to Settings > AI.
+  // Library settings point to Settings > Foli AI.
   await page.goto("/settings/library");
-  await page.getByTestId("library-ai-keys").getByRole("link", { name: "Settings, under AI" }).click();
+  await page.getByTestId("library-ai-keys").getByRole("link", { name: "Settings, under Foli AI" }).click();
   await expect(page.getByRole("heading", { name: "Your own keys" })).toBeVisible();
   await context.close();
 });

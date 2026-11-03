@@ -14,7 +14,7 @@ const STATUS: Record<string, string> = { running: "Running", done: "Ready", fail
 /**
  * Your research jobs here (the AI page's sidebar), latest first: each opens the conversation holding its
  * report. With none yet, a line on how to start one (only where Research is available: the web is on in
- * Settings > AI and the model can search).
+ * Settings > Foli AI and the model can search).
  */
 export function ResearchList({ activeId, onNavigate }: { activeId: string | null; onNavigate?: () => void }) {
   const { scope } = useAppState();

@@ -309,8 +309,8 @@ public struct WebTopBar: View {
                 joinedSections(t, panes, active: active)
             } else {
                 HStack(spacing: s.gap) {
-                    // (Foli AI's tab wears its flower, as the web's.)
-                    if t.route.tabKey == "view:ai" {
+                    // (Foli AI's tabs wear its flower, as the web's: its page and Catch me up.)
+                    if Self.wearsFlower(t.route) {
                         AiMarkGlyph(size: 14)
                     } else {
                         WebIconView(Self.icon(for: t.route), size: 14).opacity(style("frame.tab.icon").opacity)
@@ -499,6 +499,9 @@ public struct WebTopBar: View {
     }
 
     /// The web's ViewIcon for a tab's page.
+    /// Foli AI's page and Catch me up: their tabs wear Foli AI's flower in place of `icon(for:)`.
+    static func wearsFlower(_ route: FrameRoute) -> Bool { route.tabKey == "view:ai" || route == .catchUp }
+
     static func icon(for route: FrameRoute) -> WebIcon {
         switch route {
         case .home: return .house
@@ -519,7 +522,7 @@ public struct WebTopBar: View {
         case .calendar: return .calendar
         case .note: return .fileText
         case .search: return .search
-        case .catchUp: return .sparkles
+        case .catchUp: return .newspaper
         case .web(let path):
             if path.hasPrefix("/graph") { return .waypoints }
             if path.hasPrefix("/review") { return .layers }

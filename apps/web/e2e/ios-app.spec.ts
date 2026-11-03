@@ -69,7 +69,7 @@ test("inside the iOS app: no plans or purchases, Settings > This device, folevi:
   await expect(app.getByText(/Pro AI trial · \d+ days? left/)).toBeVisible();
   await expect(app.getByRole("button", { name: /Pro AI trial/ })).toHaveCount(0);
 
-  // Settings > AI and Devices offer nothing to buy either.
+  // Settings > Foli AI and Devices offer nothing to buy either.
   for (const section of ["ai", "devices", "account"]) {
     await app.goto(`${APP}/settings/${section}`);
     await expect(app.getByRole("navigation", { name: "Settings sections" })).toBeVisible({ timeout: 20_000 });

@@ -292,7 +292,7 @@ async function proposal(ctx: LocalMutationCtx, messageId: string) {
 defineLocal(api.aiMemory.saveProposal, "mutation", async (ctx, args) => {
   const p = await requireProfile(ctx);
   const { c, messages, m, memory } = await proposal(ctx, args.messageId);
-  if (!prefsOf(p).memory) fail("forbidden", "Memory is turned off in Settings > AI.");
+  if (!prefsOf(p).memory) fail("forbidden", "Memory is turned off in Settings > Foli AI.");
   if (memory.status === "saved") return null;
   await addEntry(ctx, memory.kind, memory.text, "chat");
   putMessages(

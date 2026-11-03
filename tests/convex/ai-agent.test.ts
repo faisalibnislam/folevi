@@ -116,7 +116,7 @@ describe("tools", () => {
     expect((await runTool(host, { name: "get_note", args: {} }, [])).response).toEqual({ error: "noteId is required." });
     expect((await runTool(host, { name: "get_note", args: { noteId: "N1" } }, [])).response).toEqual({ error: "That didn't work." });
     expect((await runTool(host, { name: "calculate", args: { expression: "6 * 7" } }, [])).response).toEqual({ result: 42 });
-    // Without the web (Settings > AI turned web research off), the web tools say so.
+    // Without the web (Settings > Foli AI turned web research off), the web tools say so.
     expect((await runTool(host, { name: "search_web", args: { query: "x" } }, [])).response.error).toMatch(/turned off/);
   });
 

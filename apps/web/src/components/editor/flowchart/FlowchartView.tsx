@@ -261,7 +261,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
               <p>{coarsePointer() ? "Double-tap" : "Double-click"} anywhere to add a shape, or pick one above.</p>
               {aiOn ? (
                 <button type="button" className="fc-btn fc-btn-text fc-empty-ai" onClick={() => ctrl.setAiOpen(true)} onPointerDown={(e) => e.stopPropagation()}>
-                  Create with AI
+                  Create with Foli AI
                 </button>
               ) : null}
             </div>

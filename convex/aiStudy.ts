@@ -94,7 +94,7 @@ export const saveTranslated = internalMutation({
 });
 
 /**
- * Saves a version of the note before its text is replaced by a translation ("Before AI changes" in its
+ * Saves a version of the note before its text is replaced by a translation ("Before Foli AI changes" in its
  * history, always a new version), so the whole note can be restored from there as well as undone.
  */
 export const versionBeforeReplace = mutation({

@@ -105,7 +105,7 @@ import { insertTabs } from "./tabs/tabsExtension";
 import { blockElements, type TriggerState } from "./plugins";
 import { insertColumns } from "./columns/columnsCommands";
 import { columnsBlockAt, columnsGripOnly, type SideDrop } from "./columns/columnsLayout";
-import { UnsplashDialog, unsplashCredit } from "./UnsplashDialog";
+import { UnsplashDialog, unsplashCredit, useStockPhotos } from "./UnsplashDialog";
 import { colorName, useNotePalette } from "./notePalette";
 import { useShowInTopLayer } from "@/components/ui/topLayer";
 import { AI_TOOL_SLASH_ITEMS, INLINE_AI_EVENT, openInlineAi, useAiEnabled, type InlineAiOpen } from "@/components/ai/useAi";
@@ -145,6 +145,8 @@ interface MenuItem {
   /** The slash menu's group (Text, Lists and tasks, Visuals, Media, Data and more, Foli AI). */
   group?: string;
   label: string;
+  /** One line under the label, where the name alone could be mistaken (Database, Simple table). */
+  description?: string;
   hint?: string;
   keywords: string;
   icon: React.ReactNode;
@@ -346,7 +348,14 @@ function ListMenu({ items, active, setActive, onRun, emptyLabel, listId, label }
           <span className="grid h-7 w-7 flex-none place-items-center rounded-chip bg-surface text-heading shadow-[var(--shadow-control)]" aria-hidden>
             {item.icon}
           </span>
-          <span className="min-w-0 flex-1 truncate">{item.label}</span>
+          {item.description ? (
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">{item.label}</span>
+              <span className="block truncate text-footnote text-muted">{item.description}</span>
+            </span>
+          ) : (
+            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+          )}
           {item.hint ? <span className="text-footnote text-faint">{keyLabel(item.hint)}</span> : null}
         </li>,
       ])}
@@ -826,7 +835,7 @@ export function EditorMenus({
   // ---------------------------------------------------------------- slash menu
   // Grouped like the Insert panel (doc/InsertPanel.tsx): Text, Lists and tasks, Visuals, Media, Data and more,
   // then Foli AI. With nothing typed, Suggested comes first (copies of a few items, `suggested:<id>`).
-  const stockPhotos = useCapabilities().stockPhotos;
+  const stockPhotos = useStockPhotos();
   const slashItems: MenuItem[] = useMemo(
     () => [
       { group: "Text", id: "p", label: "Text", keywords: "text paragraph plain", icon: <Text size={15} />, run: () => void turnInto(editor, "paragraph") },
@@ -851,7 +860,7 @@ export function EditorMenus({
       { group: "Visuals", id: "whiteboard", label: "Whiteboard", keywords: "whiteboard drawing sketch draw pen canvas", icon: <PenTool size={15} />, run: () => void insertBlockAfterCurrent(editor, "whiteboard", { data: "", height: WHITEBOARD_DEFAULT_HEIGHT }) },
       { group: "Visuals", id: "mermaid", label: "Mermaid diagram", keywords: "mermaid diagram flowchart chart graph sequence", icon: <Workflow size={15} />, run: () => void insertBlockAfterCurrent(editor, "code", { language: "mermaid" }, MERMAID_SAMPLE) },
       { group: "Media", id: "image", label: "Image", keywords: "image picture photo upload", icon: <ImageIcon size={15} />, run: special.image },
-      // Unsplash is searched through Folevi's servers: not in local mode.
+      // Unsplash is searched through Folevi's servers: not in local mode, nor where the server has no search set up.
       ...(stockPhotos ? [{ group: "Media", id: "unsplash", label: "Image from Unsplash", keywords: "image picture photo unsplash stock search", icon: <ImagePlus size={15} />, run: special.unsplash }] : []),
       { group: "Media", id: "file", label: "File", keywords: "file attachment upload pdf", icon: <Paperclip size={15} />, run: special.file },
       { group: "Media", id: "record", label: "Audio recording", keywords: "audio record recording voice memo microphone mic sound dictate", icon: <Mic size={15} />, run: special.record },
@@ -863,12 +872,21 @@ export function EditorMenus({
       {
         group: "Data and more",
         id: "table",
-        label: "Table",
-        keywords: "table grid spreadsheet",
+        label: "Simple table",
+        description: "Rows and columns of plain text",
+        keywords: "table quick table simple plain grid spreadsheet",
         icon: <Table2 size={15} />,
         run: () => focusInsideBlock(editor, insertBlockAfterCurrent(editor, "table", { headerRow: true, rows: emptyTableRows(3, 3) })),
       },
-      { group: "Data and more", id: "collection", label: "Collection", keywords: "collection database table", icon: <LayoutList size={15} />, run: special.collection },
+      {
+        group: "Data and more",
+        id: "collection",
+        label: "Database",
+        description: "Rows that are pages, with properties and views",
+        keywords: "database collection table records properties",
+        icon: <LayoutList size={15} />,
+        run: special.collection,
+      },
       { group: "Data and more", id: "gallery", label: "Gallery", keywords: "gallery collection database cards grid", icon: <LayoutGrid size={15} />, run: special.gallery },
       { group: "Data and more", id: "board", label: "Kanban", keywords: "kanban board collection database columns", icon: <Columns3 size={15} />, run: special.board },
       { group: "Data and more", id: "calendarView", label: "Calendar", keywords: "calendar collection database month dates", icon: <CalendarRange size={15} />, run: special.calendarView },
@@ -1186,6 +1204,10 @@ export function EditorMenus({
               naturalWidth: photo.width || null,
               naturalHeight: photo.height || null,
             });
+          }}
+          onUploadInstead={() => {
+            setUnsplashOpen(false);
+            void special.image();
           }}
         />
       ) : null}

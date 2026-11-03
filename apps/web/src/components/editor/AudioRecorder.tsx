@@ -78,12 +78,20 @@ type Phase =
   | { kind: "saving" }
   // Recording ended without Save (the microphone went away) or saving failed: the audio waits for Save.
   | { kind: "stopped"; file: File; seconds: number; message: string }
-  | { kind: "error"; message: string; settings?: boolean };
+  // `retry`: the source Try again starts over with (the microphone couldn't be used).
+  | { kind: "error"; message: string; settings?: boolean; retry?: RecordingSource };
+
+/** Where microphone access is asked for and turned back on: the apps ask through the system, a browser itself. */
+const inApp = () => Boolean(desktop()) || inIosApp();
 
 function micProblem(error: unknown): string {
   const name = error instanceof DOMException ? error.name : "";
   if (name === "NotAllowedError" || name === "SecurityError")
-    return "Folevi can’t use your microphone. Allow it in your browser’s site settings, then try again.";
+    return desktop()
+      ? "Folevi can’t use your microphone. Turn it on in System Settings, Privacy & Security, Microphone, then try again."
+      : inIosApp()
+        ? "Folevi can’t use your microphone. Turn it on in Settings, Folevi, Microphone, then try again."
+        : "Microphone access is blocked for this site. To turn it back on, click the icon at the left of the address bar, open its site settings and allow the microphone, then try again.";
   if (name === "NotFoundError" || name === "OverconstrainedError")
     return "No microphone was found. Connect one and try again.";
   if (name === "NotReadableError")
@@ -314,7 +322,7 @@ export function AudioRecorder({
       system?.getTracks().forEach((t) => t.stop());
       if (stale()) return;
       release();
-      setPhase({ kind: "error", message: micProblem(error) });
+      setPhase({ kind: "error", message: micProblem(error), retry: from });
     }
     // `now`, `release` and `store` only read refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -427,7 +435,9 @@ export function AudioRecorder({
               : phase.kind === "asking"
               ? source === "call"
                 ? "Waiting for the call’s sound…"
-                : "Waiting for the microphone…"
+                : inApp()
+                  ? "Allow microphone access when asked"
+                  : "Allow microphone access in your browser’s prompt"
               : phase.kind === "paused"
                 ? "Paused"
                 : phase.kind === "saving"
@@ -504,6 +514,16 @@ export function AudioRecorder({
                 type="button"
                 onClick={() => void begin("call")}
                 className="ui-btn ui-btn-ghost ml-auto h-9 px-3 text-callout"
+              >
+                Try again
+              </button>
+            </div>
+          ) : phase.retry ? (
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => void begin(phase.retry!)}
+                className="ui-btn ui-btn-secondary ml-auto h-9 px-3 text-callout"
               >
                 Try again
               </button>

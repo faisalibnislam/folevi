@@ -18,7 +18,7 @@ import { nativeApp } from "@/lib/nativeApp";
 import { useNativeDevice } from "@/lib/nativeDevice";
 import { useIphoneApp } from "@/lib/iphone";
 import { InsertPreview, type PreviewKind } from "./insertPreviews";
-import { useCapabilities } from "@/lib/mode";
+import { useStockPhotos } from "@/components/editor/UnsplashDialog";
 
 /** What an insert does: a plain block (optionally with text), or a special flow run by the editor. */
 export interface InsertAction {
@@ -34,6 +34,10 @@ export interface InsertAction {
 interface InsertItem extends InsertAction {
   preview: PreviewKind;
   keywords?: string;
+  /** One line shown as the tile's tooltip, where the name alone could be mistaken. */
+  description?: string;
+  /** The native apps' id when it isn't the label's (kept when a tile is renamed: kindOf). */
+  kind?: string;
 }
 
 const MAIN: InsertItem[] = [
@@ -70,7 +74,7 @@ const COLUMNS: InsertItem[] = [
 ];
 
 const COLLECTIONS: InsertItem[] = [
-  { label: "Table", special: "collection", preview: "table", keywords: "collection database table rows" },
+  { label: "Database", kind: "table", special: "collection", preview: "table", keywords: "collection database table rows records properties", description: "Rows that are pages, with properties and views" },
   { label: "Gallery", special: "gallery", preview: "gallery", keywords: "collection database cards grid" },
   { label: "Kanban", special: "board", preview: "kanban", keywords: "collection database board columns" },
   { label: "Calendar", special: "calendarView", preview: "monthGrid", keywords: "collection database calendar month dates" },
@@ -98,6 +102,9 @@ interface Tile {
   label: string;
   /** Accessible name when it should say more than the label (the divider styles). */
   name?: string;
+  /** The native apps' id when it isn't the label's. */
+  kind?: string;
+  description?: string;
   action: InsertAction;
   picture: React.ReactNode;
   keywords: string;
@@ -109,7 +116,7 @@ const tiles = (section: string, labels: string[]): Tile[] =>
   labels.map((label) => {
     const item = ITEMS.get(label);
     if (!item) throw new Error(`Insert: no item called ${label}`);
-    return { key: `${section}:${label}`, label, action: item, picture: <InsertPreview kind={item.preview} />, keywords: `${label} ${item.keywords ?? ""}` };
+    return { key: `${section}:${label}`, label, kind: item.kind, description: item.description, action: item, picture: <InsertPreview kind={item.preview} />, keywords: `${label} ${item.keywords ?? ""}` };
   });
 
 const SEPARATORS: Tile[] = [
@@ -131,17 +138,17 @@ const SEPARATORS: Tile[] = [
   { key: "separators:pageBreak", label: "Page break", action: { label: "Page break", type: "pageBreak" }, picture: <InsertPreview kind="pageBreak" />, keywords: "page break print pdf separator" },
 ];
 
-// The same groups as the slash menu (EditorMenus). Data and more ends with the table-size picker. Its Table is
-// a collection (as in Suggested), with the collection's other views after it; the picker adds a plain table.
+// The same groups as the slash menu (EditorMenus). Data and more ends with the table-size picker. Its Database is
+// a collection (as in Suggested), with the collection's other views after it; the picker adds a simple table.
 const DATA = "Data and more";
 const SECTIONS: { title: string; tiles: Tile[] }[] = [
-  { title: "Suggested", tiles: tiles("suggested", ["Text", "Page", "Card", "To-do", "Table", "Image"]) },
+  { title: "Suggested", tiles: tiles("suggested", ["Text", "Page", "Card", "To-do", "Database", "Image"]) },
   { title: "Text", tiles: tiles("text", ["Heading 1", "Heading 2", "Heading 3", "Quote", "Callout"]) },
   { title: "Lists and tasks", tiles: tiles("lists", ["Bulleted list", "Numbered list", "To-do", "Toggle", "Tabs"]) },
   { title: "Layout", tiles: tiles("layout", ["2 columns", "3 columns", "4 columns"]) },
   { title: "Visuals", tiles: tiles("visuals", ["Flowchart", "Mind map", "Chart", "Sticky notes", "Wireframe", "Whiteboard", "Mermaid diagram"]) },
   { title: "Media", tiles: tiles("media", ["Image", "Image from Unsplash", "File attachment", "Audio recording", "Bookmark", "Embed"]) },
-  { title: DATA, tiles: [...tiles("data", ["Table", "Gallery", "Kanban", "Calendar", "Page", "Card", "Synced block", "Date", "Code block", "TeX formula"]), ...SEPARATORS] },
+  { title: DATA, tiles: [...tiles("data", ["Database", "Gallery", "Kanban", "Calendar", "Page", "Card", "Synced block", "Date", "Code block", "TeX formula"]), ...SEPARATORS] },
 ];
 
 // Words starting with what's typed ("tab" finds Table, not "database"); a query with spaces matches as a phrase.
@@ -161,8 +168,12 @@ const TILE_HUE: Partial<Record<PreviewKind, string>> = {
   bookmark: "coral", embed: "coral",
 };
 
-/** An item's id for the native apps (`insert { kind }`, revision 21): its accessible name in lower case, hyphenated. */
-const kindOf = (t: { label: string; name?: string }) =>
+/**
+ * An item's id for the native apps (`insert { kind }`, revision 21): its accessible name in lower case, hyphenated,
+ * or the id it kept when renamed (Database is still "table").
+ */
+const kindOf = (t: { label: string; name?: string; kind?: string }) =>
+  t.kind ??
   (t.name ?? t.label)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -292,7 +303,7 @@ function TileButton({ tile, editor, disabled }: { tile: Tile; editor: Editor | n
       type="button"
       disabled={disabled}
       aria-label={tile.name ?? tile.label}
-      title={tile.label}
+      title={tile.description ?? tile.label}
       {...handlers}
       className={`group flex min-w-0 touch-none select-none flex-col items-center gap-1.5 rounded-control p-0.5 disabled:opacity-45 ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
     >
@@ -329,7 +340,7 @@ function TableSizePicker({ editor, disabled }: { editor: Editor | null; disabled
   return (
     <div>
       <p id={hintId} className="mb-2 px-1 text-footnote leading-snug text-muted">
-        Pick a size, then click to add the table.
+        Rows and columns of plain text. Pick a size, then click to add it.
       </p>
       <div
         role="group"
@@ -403,9 +414,9 @@ export function InsertPanel({ editor, disabled, onDone }: { editor: Editor | nul
   const query = q.trim().toLowerCase();
   const device = useNativeDevice();
   const scans = device && nativeApp()?.scanDocument ? tiles("media", device.scanner ? ["Scan document", "Scan from photos"] : ["Scan from photos"]) : [];
-  const showTable = matches(query, "table grid rows columns size");
-  // Unsplash is searched through Folevi's servers: not in local mode.
-  const stockPhotos = useCapabilities().stockPhotos;
+  const showTable = matches(query, "simple table quick table plain grid rows columns size");
+  // Unsplash is searched through Folevi's servers: not in local mode, nor where the server has no search set up.
+  const stockPhotos = useStockPhotos();
   // Search runs across every group; a group with nothing that matches goes.
   const phone = useIphoneApp();
   const sections = SECTIONS.map((s) => ({ ...s, tiles: [...s.tiles, ...(s.title === "Media" ? scans : [])].filter((t) => matches(query, t.keywords) && (stockPhotos || t.action.special !== "unsplash")) })).filter((s) => s.tiles.length || (s.title === DATA && showTable));
@@ -447,8 +458,8 @@ export function InsertPanel({ editor, disabled, onDone }: { editor: Editor | nul
             )
           ) : null}
           {s.title === DATA && showTable ? (
-            <div role="group" aria-label="Quick table" className={s.tiles.length ? "mt-4" : ""}>
-              <h4 className="mb-1.5 px-1 text-footnote font-medium text-ink">Quick table</h4>
+            <div role="group" aria-label="Simple table" className={s.tiles.length ? "mt-4" : ""}>
+              <h4 className="mb-1.5 px-1 text-footnote font-medium text-ink">Simple table</h4>
               <TableSizePicker editor={editor} disabled={d} />
             </div>
           ) : null}

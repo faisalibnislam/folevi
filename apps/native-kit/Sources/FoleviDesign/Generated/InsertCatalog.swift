@@ -11,7 +11,7 @@ public enum InsertCatalog {
             InsertTileSpec(kind: "page", label: "Page", name: nil, preview: "page", hue: nil, keywords: "Page nested subpage child link"),
             InsertTileSpec(kind: "card", label: "Card", name: nil, preview: "card", hue: nil, keywords: "Card page nested subpage child"),
             InsertTileSpec(kind: "to-do", label: "To-do", name: nil, preview: "todo", hue: "moss", keywords: "To-do todo task checkbox checklist"),
-            InsertTileSpec(kind: "table", label: "Table", name: nil, preview: "table", hue: "moss", keywords: "Table collection database table rows"),
+            InsertTileSpec(kind: "table", label: "Database", name: nil, preview: "table", hue: "moss", keywords: "Database collection database table rows records properties"),
             InsertTileSpec(kind: "image", label: "Image", name: nil, preview: "image", hue: "ember", keywords: "Image picture photo upload"),
         ]),
         InsertSectionSpec(title: "Text", tiles: [
@@ -51,7 +51,7 @@ public enum InsertCatalog {
             InsertTileSpec(kind: "embed", label: "Embed", name: nil, preview: "embed", hue: "coral", keywords: "Embed video youtube vimeo loom figma map google maps iframe"),
         ]),
         InsertSectionSpec(title: "Data and more", tiles: [
-            InsertTileSpec(kind: "table", label: "Table", name: nil, preview: "table", hue: "moss", keywords: "Table collection database table rows"),
+            InsertTileSpec(kind: "table", label: "Database", name: nil, preview: "table", hue: "moss", keywords: "Database collection database table rows records properties"),
             InsertTileSpec(kind: "gallery", label: "Gallery", name: nil, preview: "gallery", hue: "moss", keywords: "Gallery collection database cards grid"),
             InsertTileSpec(kind: "kanban", label: "Kanban", name: nil, preview: "kanban", hue: "moss", keywords: "Kanban collection database board columns"),
             InsertTileSpec(kind: "calendar", label: "Calendar", name: nil, preview: "monthGrid", hue: "moss", keywords: "Calendar collection database calendar month dates"),

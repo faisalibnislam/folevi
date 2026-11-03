@@ -126,7 +126,7 @@ test("a cell edited and a row added offline reach the server once", async ({ bro
   const url = page.url().split("?")[0]!;
   await page.keyboard.press("Enter");
   await page.keyboard.type("/collection");
-  await expect(page.getByRole("option", { name: /Collection/ })).toBeVisible();
+  await expect(page.getByRole("option", { name: /Database/ })).toBeVisible();
   await page.keyboard.press("Enter");
   const coll = page.getByRole("region", { name: /^Collection / });
   await expect(coll).toBeVisible();
@@ -180,7 +180,7 @@ test("reopened with no connection, the sidebar, comments and a collection read a
   await page.keyboard.press("ControlOrMeta+End");
   await page.keyboard.press("Enter");
   await page.keyboard.type("/collection");
-  await expect(page.getByRole("option", { name: /Collection/ })).toBeVisible();
+  await expect(page.getByRole("option", { name: /Database/ })).toBeVisible();
   await page.keyboard.press("Enter");
   const coll = page.getByRole("region", { name: /^Collection / });
   await coll.getByRole("button", { name: "New row" }).click();
@@ -222,7 +222,7 @@ test("a property with an option, a view and a read mark made offline reach the s
   await page.keyboard.press("ControlOrMeta+End");
   await page.keyboard.press("Enter");
   await page.keyboard.type("/collection");
-  await expect(page.getByRole("option", { name: /Collection/ })).toBeVisible();
+  await expect(page.getByRole("option", { name: /Database/ })).toBeVisible();
   await page.keyboard.press("Enter");
   const coll = page.getByRole("region", { name: /^Collection / });
   await coll.getByRole("button", { name: "New row" }).click();
@@ -299,7 +299,7 @@ test("a row added offline opens as a page, and what's typed there is saved after
   const url = page.url().split("?")[0]!;
   await page.keyboard.press("Enter");
   await page.keyboard.type("/collection");
-  await expect(page.getByRole("option", { name: /Collection/ })).toBeVisible();
+  await expect(page.getByRole("option", { name: /Database/ })).toBeVisible();
   await page.keyboard.press("Enter");
   const coll = page.getByRole("region", { name: /^Collection / });
   await expect(coll).toBeVisible();

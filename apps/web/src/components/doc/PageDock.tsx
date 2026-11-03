@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Paintbrush, Plus, Type } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
+import { setDockClearance } from "@/components/editor/scrollEdges";
 import type { InspectorTab } from "./Inspector";
+import "./page-dock.css";
 
 const DOCK: { id: InspectorTab; label: string; icon: React.ReactNode }[] = [
   { id: "ai", label: "Foli AI", icon: <AiIcon size={16} /> },
@@ -11,14 +14,75 @@ const DOCK: { id: InspectorTab; label: string; icon: React.ReactNode }[] = [
   { id: "style", label: "Style", icon: <Paintbrush size={16} /> },
 ];
 
+/** Space kept between the bar and the caret or field scrolled above it. */
+const DOCK_GAP = 12;
+
+/**
+ * Keeps what's being edited clear of the bar: works out how far the bar reaches up into the note's scroller
+ * (gap included) and gives that to the scroller (`--page-dock-clear`, its scroll padding, so a focused cell or
+ * field scrolls above the bar), to the editor (setDockClearance, its caret scroll margin) and to the room
+ * after the note (`--page-dock-room`, so its last line can scroll above the bar). page-dock.css uses them.
+ */
+function useDockClearance(ref: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const dock = ref.current;
+    let scroll: HTMLElement | null = null;
+    for (let a = dock?.parentElement ?? null, i = 0; a && !scroll && i < 4; a = a.parentElement, i++) scroll = a.querySelector<HTMLElement>(".fb-page");
+    if (!dock || !scroll) return;
+    const page = scroll;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const bar = dock.getBoundingClientRect();
+      const bottom = page.getBoundingClientRect().bottom;
+      const clear = bar.height && bottom > bar.top ? Math.ceil(bottom - bar.top + DOCK_GAP) : 0;
+      const padding = parseFloat(getComputedStyle(page).paddingBottom) || 0;
+      page.style.setProperty("--page-dock-clear", `${clear}px`);
+      page.style.setProperty("--page-dock-room", `${Math.max(0, Math.ceil(clear - padding))}px`);
+      setDockClearance(clear);
+    };
+    const later = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    page.setAttribute("data-page-dock", "");
+    measure();
+    const size = new ResizeObserver(later);
+    size.observe(dock);
+    size.observe(page);
+    // The scroller's own padding changes with its classes (a drawer open below it, the phone layout).
+    const classes = new MutationObserver(later);
+    classes.observe(page, { attributes: true, attributeFilter: ["class"] });
+    // The on-screen keyboard lifts the bar (--kb-inset) without resizing it.
+    const viewport = window.visualViewport;
+    window.addEventListener("resize", later);
+    viewport?.addEventListener("resize", later);
+    viewport?.addEventListener("scroll", later);
+    return () => {
+      cancelAnimationFrame(frame);
+      size.disconnect();
+      classes.disconnect();
+      window.removeEventListener("resize", later);
+      viewport?.removeEventListener("resize", later);
+      viewport?.removeEventListener("scroll", later);
+      page.removeAttribute("data-page-dock");
+      page.style.removeProperty("--page-dock-clear");
+      page.style.removeProperty("--page-dock-room");
+      setDockClearance(0);
+    };
+  }, [ref]);
+}
+
 /**
  * The floating bar at the bottom of the note: AI (the assistant on this note), Insert, Format and Style, then the
  * note's own actions. A tool opens in the right sidebar (a sheet above the bar on a phone); pressing it again,
  * Escape or × closes it. ⌘⌥I toggles the last tool.
  */
 export function PageDock({ tab, open, onPick, buttonRef, extra, ai = true }: { tab: InspectorTab; open: boolean; onPick: (t: InspectorTab) => void; buttonRef: (t: InspectorTab, el: HTMLButtonElement | null) => void; /** The page's own actions (comments, share, more), after a divider. */ extra?: React.ReactNode; /** Show the AI tool (off when the person turned the assistant off). */ ai?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useDockClearance(ref);
   return (
     <div
+      ref={ref}
       role="toolbar"
       aria-label="Page tools"
       // Lifted above the on-screen keyboard (--kb-inset, set by useKeyboardInset).

@@ -3,7 +3,7 @@
 import { DateField } from "@/components/ui/DateField";
 import { useQuery } from "convex/react";
 import type { AnchorHTMLAttributes } from "react";
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ArrowDownUp, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Columns3, Filter, GalleryHorizontalEnd, MoreHorizontal, Plus, Search, Settings2, SquareFunction, Table2, Trash2, FileText } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { localDate, ulid, type WireScope } from "@folevi/editor-schema";
@@ -207,6 +207,62 @@ function InlineText({ value, onCommit, label, placeholder, className, maxLength 
   );
 }
 
+/** How naming a new row ends: Enter (name it, then start another), blur (name it) or Escape on an empty one (remove it). */
+type FreshEnd = "next" | "save" | "drop";
+
+/**
+ * The row just made with "New": its card (or table cell) shows a title field with the caret in it instead of
+ * "Untitled", so it's named where it was made.
+ */
+const FreshRow = createContext<{ id: string; finish: (rowId: string, title: string, how: FreshEnd) => void } | null>(null);
+
+/**
+ * The title field of a row just made. Enter names it and starts another in the same place (an empty one is just
+ * left as it is); Escape on an empty one removes it (to Trash, as Delete does), with a title it names it; leaving it
+ * names it.
+ */
+function NewRowTitle({ rowId, className }: { rowId: string; className?: string }) {
+  const fresh = useContext(FreshRow);
+  const [text, setText] = useState("");
+  const ended = useRef(false);
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    // Nearest, so the note doesn't jump; the scroller's scroll padding keeps it above the page tools.
+    el.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, []);
+  const end = (how: FreshEnd) => {
+    if (ended.current) return;
+    ended.current = true;
+    fresh?.finish(rowId, text.trim(), how);
+  };
+  return (
+    <input
+      ref={ref}
+      aria-label="New row name"
+      value={text}
+      placeholder="Untitled"
+      maxLength={300}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => end("save")}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+          e.preventDefault();
+          e.stopPropagation();
+          end(text.trim() ? "next" : "save");
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          end(text.trim() ? "save" : "drop");
+        }
+      }}
+      className={`min-w-0 rounded-chip border border-line-strong bg-surface px-1 outline-none ${className ?? ""}`}
+    />
+  );
+}
+
 function ConfirmDialog({ open, title, body, confirmLabel, onCancel, onConfirm }: { open: boolean; title: string; body: ReactNode; confirmLabel: string; onCancel: () => void; onConfirm: () => Promise<void> }) {
   const [busy, setBusy] = useState(false);
   return (
@@ -246,9 +302,12 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
   const [viewId, setViewIdState] = useState<string | null>(() => storedView(collectionId) ?? initialViewId);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingFormula, setEditingFormula] = useState<string | null>(null);
-  const { rename, addRow, addView, updateProperty } = useCollectionMutations();
+  const { rename, addRow, addView, updateProperty, renameRow, deleteRow } = useCollectionMutations();
   const toast = useToast();
   const phone = useIphoneApp();
+  // The row just made with "New" (its id is made here, so it's known at once), and what it was made with, so
+  // Enter in its title starts the next one in the same column or day.
+  const [fresh, setFresh] = useState<{ id: string; values?: Record<string, unknown> } | null>(null);
 
   if (data === undefined) return <div className="h-40 animate-pulse ui-card rounded-control motion-reduce:animate-none" aria-busy />;
   if (data === null) return <p className="rounded-chip border border-dashed border-line p-4 text-subheadline text-muted">This collection is unavailable.</p>;
@@ -264,11 +323,25 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
 
   const add = async (values?: Record<string, unknown>) => {
     try {
-      await addRow({ collectionId, title: "", values });
+      const { id } = await addRow({ collectionId, title: "", values });
+      setFresh({ id, values });
     } catch (e) {
       toast.show(errorMessage(e), { tone: "error" });
     }
   };
+  const failed = (e: unknown) => toast.show(errorMessage(e), { tone: "error" });
+  const freshRow = fresh
+    ? {
+        id: fresh.id,
+        finish: (rowId: string, title: string, how: FreshEnd) => {
+          const values = fresh.id === rowId ? fresh.values : undefined;
+          setFresh((cur) => (cur?.id === rowId ? null : cur));
+          if (how === "drop") return void deleteRow({ collectionId, rowId }).catch(failed);
+          if (title) void renameRow({ collectionId, rowId, title }).catch(failed);
+          if (how === "next") void add(values);
+        },
+      }
+    : null;
   const addViewOf = (type: View["type"]) => {
     // What the server would refuse is said now, not once the view is sent.
     if (data.views.length >= 20) return toast.show("Up to 20 views per collection.", { tone: "error" });
@@ -283,21 +356,118 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
 
   if (phone) {
     return (
-      <PhoneCollection
-        data={data}
-        view={view}
-        rows={rows}
-        visible={visible}
-        canEdit={canEdit}
-        onView={(id) => {
-          feel("choose");
-          setViewId(id);
-        }}
-        onRename={(name) => void rename({ collectionId, name: name || "Collection" }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
-        onAdd={add}
-        onAddView={addViewOf}
-        onSettings={() => setSettingsOpen(true)}
-      >
+      <FreshRow.Provider value={freshRow}>
+        <PhoneCollection
+          data={data}
+          view={view}
+          rows={rows}
+          visible={visible}
+          canEdit={canEdit}
+          onView={(id) => {
+            feel("choose");
+            setViewId(id);
+          }}
+          onRename={(name) => void rename({ collectionId, name: name || "Collection" }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
+          onAdd={add}
+          onAddView={addViewOf}
+          onSettings={() => setSettingsOpen(true)}
+        >
+          {canEdit ? <ViewSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} data={data} view={view} onEditFormula={setEditingFormula} /> : null}
+          {canEdit && editingProp ? (
+            <FormulaEditor
+              open
+              onClose={() => setEditingFormula(null)}
+              property={editingProp}
+              properties={data.properties}
+              rows={rows}
+              people={data.people}
+              hostDocumentId={data.hostDocumentId}
+              typeLabel={typeLabel}
+              onSave={(change) => updateProperty({ collectionId, propertyId: editingProp.id, ...change }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
+            />
+          ) : null}
+        </PhoneCollection>
+      </FreshRow.Provider>
+    );
+  }
+
+  return (
+    <FreshRow.Provider value={freshRow}>
+      <section className="ui-card rounded-control" aria-label={`Collection ${data.name}`}>
+        <header className="flex flex-wrap items-center gap-1 border-b border-line px-3 py-2">
+          {canEdit ? (
+            <InlineText
+              value={data.name}
+              label="Collection name"
+              maxLength={80}
+              className="mr-2 w-44 text-subheadline font-semibold text-heading"
+              onCommit={(name) => void rename({ collectionId, name: name || "Collection" }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
+            />
+          ) : (
+            <h3 className="mr-2 text-subheadline font-semibold text-heading">{data.name}</h3>
+          )}
+          <div role="group" aria-label="Views" className="flex flex-wrap gap-1">
+            {data.views.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                aria-pressed={v.id === view.id}
+                onClick={() => setViewId(v.id)}
+                className={`inline-flex h-7 items-center gap-1.5 rounded-chip px-2.5 text-footnote ${v.id === view.id ? "bg-accent-soft text-accent-soft-ink" : "text-muted hover:bg-surface"}`}
+              >
+                <ViewIcon type={v.type} />
+                {v.name}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto flex items-center gap-1">
+            {view.config.filters.length ? (
+              <span className="ui-chip bg-accent-soft text-accent-soft-ink">
+                <Filter size={12} aria-hidden /> {t("collection.filters", { count: view.config.filters.length })}
+              </span>
+            ) : null}
+            <ExportMenu name={data.name} rows={rows} visible={visible} people={data.people} />
+            {canEdit ? (
+              <>
+                <button type="button" onClick={() => setSettingsOpen(true)} className="inline-flex h-7 items-center gap-1 rounded-chip px-2.5 text-footnote text-muted hover:bg-surface" aria-label="View settings: filter, sort, group, properties">
+                  <Settings2 size={13} aria-hidden /> View
+                </button>
+                <Select
+                  aria-label="Add view"
+                  value=""
+                  onChange={(e) => {
+                    const type = e.target.value as View["type"];
+                    if (type) addViewOf(type);
+                  }}
+                  className="h-7 ui-input rounded-chip px-3 text-footnote text-muted"
+                >
+                  <option value="">+ View</option>
+                  <option value="table">Table</option>
+                  <option value="board">Board</option>
+                  <option value="gallery">Gallery</option>
+                  <option value="calendar">Calendar</option>
+                </Select>
+              </>
+            ) : null}
+          </div>
+        </header>
+        <p className="sr-only" aria-live="polite">
+          {t("collection.rowsShown", { shown: rows.length, total: data.rows.length })}
+        </p>
+        {view.type === "table" ? (
+          <TableCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onEditFormula={setEditingFormula} />
+        ) : view.type === "board" ? (
+          <BoardCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onAdd={add} />
+        ) : view.type === "calendar" ? (
+          <CalendarCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onAdd={add} />
+        ) : (
+          <GalleryCollection data={data} view={view} rows={rows} visible={visible} />
+        )}
+        {canEdit && (view.type !== "board" || data.properties.some((p) => p.id === view.config.groupBy && p.type === "formula")) ? (
+          <button type="button" onClick={() => void add()} className="flex w-full items-center gap-1.5 border-t border-line px-3 py-2 text-left text-footnote text-muted hover:bg-surface">
+            <Plus size={13} aria-hidden /> New row
+          </button>
+        ) : null}
         {canEdit ? <ViewSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} data={data} view={view} onEditFormula={setEditingFormula} /> : null}
         {canEdit && editingProp ? (
           <FormulaEditor
@@ -312,101 +482,8 @@ export function CollectionEmbed({ collectionId, initialViewId, editable }: { col
             onSave={(change) => updateProperty({ collectionId, propertyId: editingProp.id, ...change }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
           />
         ) : null}
-      </PhoneCollection>
-    );
-  }
-
-  return (
-    <section className="ui-card rounded-control" aria-label={`Collection ${data.name}`}>
-      <header className="flex flex-wrap items-center gap-1 border-b border-line px-3 py-2">
-        {canEdit ? (
-          <InlineText
-            value={data.name}
-            label="Collection name"
-            maxLength={80}
-            className="mr-2 w-44 text-subheadline font-semibold text-heading"
-            onCommit={(name) => void rename({ collectionId, name: name || "Collection" }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
-          />
-        ) : (
-          <h3 className="mr-2 text-subheadline font-semibold text-heading">{data.name}</h3>
-        )}
-        <div role="group" aria-label="Views" className="flex flex-wrap gap-1">
-          {data.views.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              aria-pressed={v.id === view.id}
-              onClick={() => setViewId(v.id)}
-              className={`inline-flex h-7 items-center gap-1.5 rounded-chip px-2.5 text-footnote ${v.id === view.id ? "bg-accent-soft text-accent-soft-ink" : "text-muted hover:bg-surface"}`}
-            >
-              <ViewIcon type={v.type} />
-              {v.name}
-            </button>
-          ))}
-        </div>
-        <div className="ml-auto flex items-center gap-1">
-          {view.config.filters.length ? (
-            <span className="ui-chip bg-accent-soft text-accent-soft-ink">
-              <Filter size={12} aria-hidden /> {t("collection.filters", { count: view.config.filters.length })}
-            </span>
-          ) : null}
-          <ExportMenu name={data.name} rows={rows} visible={visible} people={data.people} />
-          {canEdit ? (
-            <>
-              <button type="button" onClick={() => setSettingsOpen(true)} className="inline-flex h-7 items-center gap-1 rounded-chip px-2.5 text-footnote text-muted hover:bg-surface" aria-label="View settings: filter, sort, group, properties">
-                <Settings2 size={13} aria-hidden /> View
-              </button>
-              <Select
-                aria-label="Add view"
-                value=""
-                onChange={(e) => {
-                  const type = e.target.value as View["type"];
-                  if (type) addViewOf(type);
-                }}
-                className="h-7 ui-input rounded-chip px-3 text-footnote text-muted"
-              >
-                <option value="">+ View</option>
-                <option value="table">Table</option>
-                <option value="board">Board</option>
-                <option value="gallery">Gallery</option>
-                <option value="calendar">Calendar</option>
-              </Select>
-            </>
-          ) : null}
-        </div>
-      </header>
-      <p className="sr-only" aria-live="polite">
-        {t("collection.rowsShown", { shown: rows.length, total: data.rows.length })}
-      </p>
-      {view.type === "table" ? (
-        <TableCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onEditFormula={setEditingFormula} />
-      ) : view.type === "board" ? (
-        <BoardCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onAdd={add} />
-      ) : view.type === "calendar" ? (
-        <CalendarCollection data={data} view={view} rows={rows} visible={visible} canEdit={canEdit} onAdd={add} />
-      ) : (
-        <GalleryCollection data={data} view={view} rows={rows} visible={visible} />
-      )}
-      {canEdit && (view.type !== "board" || data.properties.some((p) => p.id === view.config.groupBy && p.type === "formula")) ? (
-        <button type="button" onClick={() => void add()} className="flex w-full items-center gap-1.5 border-t border-line px-3 py-2 text-left text-footnote text-muted hover:bg-surface">
-          <Plus size={13} aria-hidden /> New row
-        </button>
-      ) : null}
-      {canEdit ? <ViewSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} data={data} view={view} onEditFormula={setEditingFormula} /> : null}
-      {canEdit && editingProp ? (
-        <FormulaEditor
-          open
-          onClose={() => setEditingFormula(null)}
-          property={editingProp}
-          properties={data.properties}
-          rows={rows}
-          people={data.people}
-          hostDocumentId={data.hostDocumentId}
-          typeLabel={typeLabel}
-          onSave={(change) => updateProperty({ collectionId, propertyId: editingProp.id, ...change }).catch((e) => toast.show(errorMessage(e), { tone: "error" }))}
-        />
-      ) : null}
-    </section>
+      </section>
+    </FreshRow.Provider>
   );
 }
 
@@ -492,6 +569,7 @@ function PhoneCollection({
   children?: ReactNode;
 }) {
   const exportItems = useExportItems({ name: data.name, rows, visible, people: data.people });
+  const freshId = useContext(FreshRow)?.id;
   const menu: MenuEntry[] = [
     ...(canEdit ? [{ label: "Filter, sort and properties…", icon: <Settings2 size={18} aria-hidden />, onSelect: onSettings }, "separator" as const] : []),
     { heading: "Export" },
@@ -543,6 +621,13 @@ function PhoneCollection({
           <ul className="iphone-collection-list">
             {rows.map((row) => {
               const shown = subtitle.filter((p) => !isEmptyValue(row.values[p.id]));
+              if (row.id === freshId)
+                return (
+                  <li key={row.id} className="flex min-h-16 items-center gap-3 px-4 py-2.5">
+                    <FileText size={20} strokeWidth={1.9} aria-hidden className="flex-none text-muted" />
+                    <NewRowTitle rowId={row.id} className="h-9 flex-1 text-body text-ink" />
+                  </li>
+                );
               return (
                 <li key={row.id}>
                   <RowLink row={row} className="flex min-h-16 items-center gap-3 px-4 py-2.5 outline-none active:bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)]">
@@ -575,25 +660,31 @@ function PhoneCollection({
         <ul className="grid grid-cols-2 gap-3 px-3 pb-3">
           {rows.map((row) => (
             <li key={row.id}>
-              <RowLink row={row} className="block overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-hairline)] outline-none transition-transform active:scale-[0.98]">
-                {view.config.cardPreview !== "none" ? (
-                  <GalleryCover cover={row.cover}>
-                    {view.config.cardPreview === "content" ? <p className="line-clamp-4 p-3 text-subheadline leading-[18px] text-muted">{row.excerpt}</p> : <div className="grid h-full place-items-center text-faint"><FileText size={26} aria-hidden /></div>}
-                  </GalleryCover>
-                ) : null}
-                <div className="px-3 py-2.5">
-                  <p className="line-clamp-2 text-subheadline font-semibold leading-5 text-heading">{row.title || "Untitled"}</p>
-                  {subtitle.length ? (
-                    <div className="mt-1 space-y-0.5 text-subheadline leading-[18px] text-muted">
-                      {subtitle.map((p) => (
-                        <div key={p.id} className="truncate">
-                          <CellDisplay prop={p} value={row.values[p.id]} people={data.people} inLink />
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
+              {row.id === freshId ? (
+                <div className="overflow-hidden rounded-container bg-[var(--color-surface-raised)] px-3 py-2.5 shadow-[var(--shadow-hairline)]">
+                  <NewRowTitle rowId={row.id} className="h-9 w-full text-subheadline font-semibold text-heading" />
                 </div>
-              </RowLink>
+              ) : (
+                <RowLink row={row} className="block overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-hairline)] outline-none transition-transform active:scale-[0.98]">
+                  {view.config.cardPreview !== "none" ? (
+                    <GalleryCover cover={row.cover}>
+                      {view.config.cardPreview === "content" ? <p className="line-clamp-4 p-3 text-subheadline leading-[18px] text-muted">{row.excerpt}</p> : <div className="grid h-full place-items-center text-faint"><FileText size={26} aria-hidden /></div>}
+                    </GalleryCover>
+                  ) : null}
+                  <div className="px-3 py-2.5">
+                    <p className="line-clamp-2 text-subheadline font-semibold leading-5 text-heading">{row.title || "Untitled"}</p>
+                    {subtitle.length ? (
+                      <div className="mt-1 space-y-0.5 text-subheadline leading-[18px] text-muted">
+                        {subtitle.map((p) => (
+                          <div key={p.id} className="truncate">
+                            <CellDisplay prop={p} value={row.values[p.id]} people={data.people} inLink />
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </RowLink>
+              )}
             </li>
           ))}
         </ul>
@@ -867,6 +958,7 @@ function TableCollection({ data, view, rows, visible, canEdit, onEditFormula }: 
   const { renameRow, deleteRow, updateView } = useCollectionMutations();
   const toast = useToast();
   const [confirm, setConfirm] = useState<Row | null>(null);
+  const freshId = useContext(FreshRow)?.id;
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-subheadline">
@@ -899,7 +991,9 @@ function TableCollection({ data, view, rows, visible, canEdit, onEditFormula }: 
               <td className="border-b border-line px-3 py-1.5">
                 <div className="flex items-center gap-1.5">
                   <FileText size={14} aria-hidden className="flex-none text-muted" />
-                  {canEdit ? (
+                  {canEdit && row.id === freshId ? (
+                    <NewRowTitle rowId={row.id} className="flex-1 font-medium" />
+                  ) : canEdit ? (
                     <InlineText
                       value={row.title}
                       label="Row name"
@@ -976,6 +1070,7 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
   const toast = useToast();
   const group = data.properties.find((p) => p.id === view.config.groupBy && p.type === "select");
   const [dragging, setDragging] = useState<string | null>(null);
+  const freshId = useContext(FreshRow)?.id;
   const formulaGroup = data.properties.find((p) => p.id === view.config.groupBy && p.type === "formula");
   if (formulaGroup) return <FormulaBoard data={data} group={formulaGroup} rows={rows} visible={visible} />;
   if (!group) return <p className="p-4 text-subheadline text-muted">Choose a single-select or formula property to group this board by (View settings).</p>;
@@ -1014,7 +1109,7 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
               {items.map((row) => (
                 <li
                   key={row.id}
-                  draggable={canEdit}
+                  draggable={canEdit && row.id !== freshId}
                   onDragStart={(e) => {
                     // Firefox only starts a drag that carries some data. Its own type, so dropping the card on
                     // the note around it doesn't paste anything there.
@@ -1024,9 +1119,13 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
                   }}
                   onDragEnd={() => setDragging(null)}
                   className="rounded-chip border border-line bg-raised p-2.5 text-subheadline shadow-[0_1px_0_var(--color-line)]">
-                  <RowLink row={row} className="font-medium hover:underline">
-                    {row.title || "Untitled"}
-                  </RowLink>
+                  {row.id === freshId ? (
+                    <NewRowTitle rowId={row.id} className="h-7 w-full font-medium" />
+                  ) : (
+                    <RowLink row={row} className="font-medium hover:underline">
+                      {row.title || "Untitled"}
+                    </RowLink>
+                  )}
                   <div className="mt-1 space-y-0.5 text-footnote text-muted">
                     {visible
                       .filter((p) => p.id !== group.id)
@@ -1118,6 +1217,7 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
   const today = useMemo(() => localDate(Date.now(), Intl.DateTimeFormat().resolvedOptions().timeZone), []);
   const [month, setMonth] = useState(() => today.slice(0, 7));
   const [dragging, setDragging] = useState<string | null>(null);
+  const freshId = useContext(FreshRow)?.id;
   const prop = data.properties.find((p) => p.id === view.config.dateBy && p.type === "date");
   if (!prop) return <p className="p-4 text-subheadline text-muted">Choose a date property to place rows on this calendar (View settings).</p>;
   const { byDate, undated } = rowsByDate(rows, prop.id);
@@ -1147,24 +1247,27 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
   const shownInChip = visible.filter((p) => p.id !== prop.id && p.type !== "relation");
   const chipTitle = (row: Row) =>
     [row.title || "Untitled", ...shownInChip.map((p) => [p.name, exportValue(p, row.values[p.id], { as: "markdown", people: data.people })] as const).filter(([, v]) => v).map(([n, v]) => `${n}: ${v}`)].join("\n");
-  const chip = (row: Row) => (
-    <RowLink
-      row={row}
-      draggable={canEdit}
-      onDragStart={(e) => {
-        // Only the row id travels, so a chip dropped on the note around it doesn't paste a link there.
-        e.dataTransfer.clearData();
-        e.dataTransfer.setData(ROW_TYPE, row.id);
-        e.dataTransfer.effectAllowed = "move";
-        setDragging(row.id);
-      }}
-      onDragEnd={() => setDragging(null)}
-      title={chipTitle(row)}
-      className={`block truncate rounded-tiny bg-accent-soft px-1 text-footnote leading-5 text-accent-soft-ink hover:underline ${canEdit ? "cursor-grab" : ""}`}
-    >
-      {row.title || "Untitled"}
-    </RowLink>
-  );
+  const chip = (row: Row) =>
+    row.id === freshId ? (
+      <NewRowTitle rowId={row.id} className="h-5 w-full rounded-tiny text-footnote leading-5" />
+    ) : (
+      <RowLink
+        row={row}
+        draggable={canEdit}
+        onDragStart={(e) => {
+          // Only the row id travels, so a chip dropped on the note around it doesn't paste a link there.
+          e.dataTransfer.clearData();
+          e.dataTransfer.setData(ROW_TYPE, row.id);
+          e.dataTransfer.effectAllowed = "move";
+          setDragging(row.id);
+        }}
+        onDragEnd={() => setDragging(null)}
+        title={chipTitle(row)}
+        className={`block truncate rounded-tiny bg-accent-soft px-1 text-footnote leading-5 text-accent-soft-ink hover:underline ${canEdit ? "cursor-grab" : ""}`}
+      >
+        {row.title || "Untitled"}
+      </RowLink>
+    );
   return (
     <div className="p-3">
       <div className="mb-2 flex items-center gap-1">
@@ -1219,7 +1322,7 @@ function CalendarCollection({ data, view, rows, visible, canEdit, onAdd }: { dat
                     ) : null}
                   </div>
                   <ul className="mt-0.5 space-y-0.5">
-                    {items.slice(0, 4).map((row) => (
+                    {(items.length > 4 && items.slice(4).some((r) => r.id === freshId) ? [...items.slice(0, 3), items.find((r) => r.id === freshId)!] : items.slice(0, 4)).map((row) => (
                       <li key={row.id}>{chip(row)}</li>
                     ))}
                     {items.length > 4 ? <li className="px-1 text-footnote text-muted">+{items.length - 4} more</li> : null}
@@ -1264,28 +1367,35 @@ function GalleryCover({ cover, children }: { cover: Row["cover"]; children: Reac
 }
 
 function GalleryCollection({ data, view, rows, visible }: { data: CollectionData; view: View; rows: Row[]; visible: Property[] }) {
+  const freshId = useContext(FreshRow)?.id;
   const size = view.config.cardSize === "small" ? "sm:grid-cols-3 lg:grid-cols-4" : view.config.cardSize === "large" ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3";
   return (
     <ul className={`grid grid-cols-1 gap-3 p-3 ${size}`}>
       {rows.map((row) => (
         <li key={row.id}>
-          <RowLink row={row} className="block overflow-hidden ui-card rounded-control transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]">
-            {view.config.cardPreview !== "none" ? (
-              <GalleryCover cover={row.cover}>
-                {view.config.cardPreview === "content" ? <p className="line-clamp-4 p-3 text-footnote text-muted">{row.excerpt}</p> : <div className="grid h-full place-items-center text-faint"><FileText size={28} aria-hidden /></div>}
-              </GalleryCover>
-            ) : null}
-            <div className="p-3">
-              <p className="font-medium">{row.title || "Untitled"}</p>
-              <div className="mt-1 space-y-0.5 text-footnote text-muted">
-                {visible.map((p) => (
-                  <div key={p.id}>
-                    <CellDisplay prop={p} value={row.values[p.id]} people={data.people} inLink />
-                  </div>
-                ))}
-              </div>
+          {row.id === freshId ? (
+            <div className="ui-card rounded-control p-3">
+              <NewRowTitle rowId={row.id} className="h-7 w-full font-medium" />
             </div>
-          </RowLink>
+          ) : (
+            <RowLink row={row} className="block overflow-hidden ui-card rounded-control transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[var(--shadow-pop)]">
+              {view.config.cardPreview !== "none" ? (
+                <GalleryCover cover={row.cover}>
+                  {view.config.cardPreview === "content" ? <p className="line-clamp-4 p-3 text-footnote text-muted">{row.excerpt}</p> : <div className="grid h-full place-items-center text-faint"><FileText size={28} aria-hidden /></div>}
+                </GalleryCover>
+              ) : null}
+              <div className="p-3">
+                <p className="font-medium">{row.title || "Untitled"}</p>
+                <div className="mt-1 space-y-0.5 text-footnote text-muted">
+                  {visible.map((p) => (
+                    <div key={p.id}>
+                      <CellDisplay prop={p} value={row.values[p.id]} people={data.people} inLink />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </RowLink>
+          )}
         </li>
       ))}
     </ul>

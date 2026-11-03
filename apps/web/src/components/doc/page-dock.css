@@ -1,0 +1,10 @@
+/* Room for the floating page tools (PageDock works the values out from where the bar is): a focused cell or
+   field scrolls clear of the bar, not under it, and the note's last line can scroll above it. */
+.fb-page[data-page-dock] {
+  scroll-padding-bottom: var(--page-dock-clear, 0px);
+}
+.fb-page[data-page-dock]::after {
+  content: "";
+  display: block;
+  height: var(--page-dock-room, 0px);
+}

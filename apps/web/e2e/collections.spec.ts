@@ -9,7 +9,7 @@ test("collections: inline names, typed filters (option and date pickers), persis
   await page.keyboard.press("Enter");
   await waitForSaved(page);
   await page.keyboard.type("/collection");
-  await expect(page.getByRole("option", { name: /Collection/ })).toBeVisible();
+  await expect(page.getByRole("option", { name: /Database/ })).toBeVisible();
   await page.keyboard.press("Enter");
 
   const coll = page.getByRole("region", { name: /^Collection / });

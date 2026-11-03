@@ -21,6 +21,7 @@ import { useClipboardImageFiles } from "./canvas/imageFiles";
 import { remoteTransaction } from "./remoteApply";
 import { PageLinkStatusWatcher } from "./PageLinkStatusWatcher";
 import { pasteAddress } from "./autolink";
+import { DOCK_SCROLL_MARGIN, DOCK_SCROLL_THRESHOLD } from "./scrollEdges";
 import { EditorMenus } from "./EditorMenus";
 import { insertBlockAfterCurrent, subtreeRange, moveSubtreeTo } from "./commands";
 import { applySideDrop } from "./columns/columnsCommands";
@@ -160,6 +161,7 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         "aria-label": label ?? "Document body",
         spellcheck: "true",
       },
+      scrollMargin: DOCK_SCROLL_MARGIN, scrollThreshold: DOCK_SCROLL_THRESHOLD, // the caret scrolls clear of the floating page tools
       handlePaste: (view, event, slice) => {
         prepareForPaste(view, slice);
         if (pasteIntoCode(view, event.clipboardData)) {
@@ -380,7 +382,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         }
         const blockId = ulid();
         const node = isImage
-          ? ed.schema.nodes.image!.create({ id: blockId, depth, alt: file.name.replace(/\.[^.]+$/, ""), caption: "" })
+          ? // No alt from the file's name ("IMG_2041" describes nothing): the person adds a description in the image's tools.
+            ed.schema.nodes.image!.create({ id: blockId, depth, alt: "", caption: "" })
           : ed.schema.nodes.file!.create({ id: blockId, depth, name: file.name, size: file.size, mimeType: file.type || "application/octet-stream" });
         // Register the upload before the block exists so its sync op is held until the upload finishes.
         await enqueueUpload(accountKey, engine, { documentId, blockId, file, kind: isImage ? "image" : "file" });

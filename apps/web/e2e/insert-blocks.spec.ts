@@ -32,24 +32,27 @@ test.describe("Insert panel", () => {
     const panel = await openInsert(page);
 
     // Craft-style tiles: a picture and a label, grouped into sections (an item can sit in two sections), the
-    // same groups as the slash menu.
+    // same groups as the slash menu. Image from Unsplash only where this server has photo search set up.
+    const stock = (await panel.getByRole("button", { name: "Image from Unsplash" }).count()) > 0;
     const tilesIn: Record<string, string[]> = {
-      Suggested: ["Text", "Page", "Card", "To-do", "Table", "Image"],
+      Suggested: ["Text", "Page", "Card", "To-do", "Database", "Image"],
       Text: ["Heading 1", "Heading 2", "Heading 3", "Quote", "Callout"],
       "Lists and tasks": ["Bulleted list", "Numbered list", "To-do", "Toggle", "Tabs"],
       Layout: ["2 columns", "3 columns", "4 columns"],
       Visuals: ["Flowchart", "Mind map", "Chart", "Sticky notes", "Wireframe", "Whiteboard", "Mermaid diagram"],
-      Media: ["Image", "Image from Unsplash", "File attachment", "Audio recording", "Bookmark", "Embed"],
-      "Data and more": ["Table", "Gallery", "Kanban", "Calendar", "Page", "Card", "Synced block", "Date", "Code block", "TeX formula", "Extra light", "Light", "Regular", "Strong", "Page break"],
+      Media: ["Image", ...(stock ? ["Image from Unsplash"] : []), "File attachment", "Audio recording", "Bookmark", "Embed"],
+      "Data and more": ["Database", "Gallery", "Kanban", "Calendar", "Page", "Card", "Synced block", "Date", "Code block", "TeX formula", "Extra light", "Light", "Regular", "Strong", "Page break"],
     };
     const headings = panel.locator("h3");
     await expect(headings).toHaveText(Object.keys(tilesIn));
     for (const [section, labels] of Object.entries(tilesIn)) {
       const group = panel.getByRole("group", { name: section, exact: true });
       await expect(group.getByRole("heading", { name: section, exact: true })).toBeVisible();
-      expect(await group.locator("button[title]").evaluateAll((els) => els.map((el) => el.getAttribute("title")))).toEqual(labels);
+      expect(await group.locator("button[title]").evaluateAll((els) => els.map((el) => el.lastElementChild?.textContent ?? ""))).toEqual(labels);
     }
-    await expect(panel.getByRole("group", { name: "Data and more", exact: true }).getByRole("heading", { name: "Quick table", exact: true })).toBeVisible();
+    // Database says what it is in its tooltip; the picker adds a simple table.
+    await expect(panel.getByRole("button", { name: "Database" }).first()).toHaveAttribute("title", "Rows that are pages, with properties and views");
+    await expect(panel.getByRole("group", { name: "Data and more", exact: true }).getByRole("heading", { name: "Simple table", exact: true })).toBeVisible();
     // Search narrows the list.
     await panel.getByRole("textbox", { name: "Search blocks" }).fill("mermaid");
     await expect(panel.getByRole("button", { name: "Mermaid diagram" })).toBeVisible();
@@ -127,11 +130,13 @@ test.describe("Insert panel", () => {
     await page.mouse.up();
     await expect(canvas.locator("path")).toHaveCount(1);
 
-    // Unsplash tile: opens the picker (search results, or an honest "not set up" message).
-    await panel.getByRole("button", { name: "Image from Unsplash" }).click();
-    const unsplash = page.getByRole("dialog", { name: "Image from Unsplash" });
-    await expect(unsplash.getByText(/Unsplash isn’t set up for this Folevi server yet|Photos from/)).toBeVisible({ timeout: 20_000 });
-    await unsplash.getByRole("button", { name: "Close" }).click();
+    // Unsplash tile, where the server has photo search: opens the picker.
+    if (stock) {
+      await panel.getByRole("button", { name: "Image from Unsplash" }).click();
+      const unsplash = page.getByRole("dialog", { name: "Image from Unsplash" });
+      await expect(unsplash.getByText(/Photo search isn’t available right now|Photos from/)).toBeVisible({ timeout: 20_000 });
+      await unsplash.getByRole("button", { name: "Close" }).click();
+    }
 
     await waitForSaved(page);
     await page.waitForTimeout(600);

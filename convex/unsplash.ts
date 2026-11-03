@@ -3,7 +3,7 @@
 // from images.unsplash.com and credited, and their download is reported to Unsplash. Both are required by
 // the Unsplash API guidelines (https://help.unsplash.com/en/articles/2511245-unsplash-api-guidelines).
 import { v } from "convex/values";
-import { action, internalMutation } from "./_generated/server";
+import { action, internalMutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { assertWritable, requireIdentity, requireProfile } from "./lib/auth";
 import { fail } from "./lib/errors";
@@ -29,6 +29,12 @@ export interface UnsplashPhoto {
 }
 
 export type UnsplashSearchResult = { configured: false } | { configured: true; photos: UnsplashPhoto[]; totalPages: number };
+
+/** Whether photo search is set up on this deployment (its access key is in the environment); never the key itself. */
+export const available = query({
+  args: {},
+  handler: async () => Boolean(process.env.UNSPLASH_ACCESS_KEY),
+});
 
 /** Counts one Unsplash request against the caller's hourly allowance. */
 export const consumeQuota = internalMutation({

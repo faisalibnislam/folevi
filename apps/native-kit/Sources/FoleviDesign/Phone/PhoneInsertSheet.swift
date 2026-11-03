@@ -394,8 +394,8 @@ struct QuickTablePicker: View {
         let ink = FoleviTokens.Chrome.ink.resolve(scheme).color
         let muted = FoleviTokens.Chrome.inkMuted.resolve(scheme).color
         VStack(alignment: .leading, spacing: 6) {
-            Text("Quick table").webText(WebTextStyle(size: WebTypeRole.footnote.metrics.size, leading: WebTypeRole.footnote.metrics.leading, weight: FoleviTokens.FontWeight.medium)).foregroundStyle(ink).padding(.horizontal, 4)
-            Text("Pick a size, then click to add the table.").webText(.role(.footnote)).foregroundStyle(muted).padding(.horizontal, 4)
+            Text("Simple table").webText(WebTextStyle(size: WebTypeRole.footnote.metrics.size, leading: WebTypeRole.footnote.metrics.leading, weight: FoleviTokens.FontWeight.medium)).foregroundStyle(ink).padding(.horizontal, 4)
+            Text("Rows and columns of plain text. Pick a size, then tap to add it.").webText(.role(.footnote)).foregroundStyle(muted).padding(.horizontal, 4)
             GeometryReader { geo in
                 let cw = (geo.size.width - 20 - 7 * 4) / 8
                 VStack(spacing: 4) {

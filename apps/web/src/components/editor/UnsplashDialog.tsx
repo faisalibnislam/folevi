@@ -1,12 +1,13 @@
 "use client";
 
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useEffect, useId, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/components/ui/Toast";
+import { useCapabilities } from "@/lib/mode";
 import type { UnsplashPhoto } from "../../../../../convex/unsplash";
 
 type State =
@@ -17,10 +18,30 @@ type State =
   | { kind: "results"; query: string; photos: UnsplashPhoto[]; page: number; totalPages: number };
 
 /**
+ * Whether Image from Unsplash is offered: searched through Folevi's servers (not in local mode), and only where
+ * this server has photo search set up (false until it answers).
+ */
+export function useStockPhotos(): boolean {
+  const capable = useCapabilities().stockPhotos;
+  return useQuery(api.unsplash.available, capable ? {} : "skip") === true && capable;
+}
+
+/**
  * Image from Unsplash: search, pick, and the photo is inserted hotlinked with a credit caption. The
  * search runs on the Folevi server (the access key never reaches the browser).
  */
-export function UnsplashDialog({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (photo: UnsplashPhoto) => void }) {
+export function UnsplashDialog({
+  open,
+  onClose,
+  onPick,
+  onUploadInstead,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPick: (photo: UnsplashPhoto) => void;
+  /** When search isn't available: closes the dialog and opens the usual image upload. */
+  onUploadInstead: () => void;
+}) {
   const search = useAction(api.unsplash.search);
   const track = useAction(api.unsplash.trackDownload);
   const [query, setQuery] = useState("");
@@ -65,8 +86,11 @@ export function UnsplashDialog({ open, onClose, onPick }: { open: boolean; onClo
     <Dialog open={open} onClose={onClose} title="Image from Unsplash" description="Free photos from Unsplash, credited to the photographer." size="lg">
       {state.kind === "unconfigured" ? (
         <div className="rounded-chip bg-sunken px-4 py-5 text-subheadline" role="status">
-          <p className="font-medium text-heading">Unsplash isn’t set up for this Folevi server yet</p>
-          <p className="mt-1 text-muted">An administrator can turn it on by adding an Unsplash access key (UNSPLASH_ACCESS_KEY) to the server’s settings.</p>
+          <p className="font-medium text-heading">Photo search isn’t available right now</p>
+          <p className="mt-1 text-muted">You can still add a picture from your device.</p>
+          <Button variant="primary" className="mt-3" onClick={onUploadInstead}>
+            Upload an image instead
+          </Button>
         </div>
       ) : (
         <>

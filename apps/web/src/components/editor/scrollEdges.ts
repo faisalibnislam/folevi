@@ -34,3 +34,36 @@ export function useScrollEdges(ref: RefObject<HTMLElement | null>) {
     };
   }, [ref]);
 }
+
+/** ProseMirror's own margin around the caret when it scrolls it into view. */
+const CARET_MARGIN = 5;
+let dockClearance = 0;
+
+/**
+ * How far the floating page tools (PageDock) reach up into the note's scroller, gap included, while they're
+ * shown (0 otherwise). PageDock keeps it up to date.
+ */
+export function setDockClearance(px: number) {
+  dockClearance = Math.max(0, px);
+}
+
+/**
+ * The editor's scrollMargin and scrollThreshold: a caret that would sit under the floating page tools counts
+ * as out of view and is scrolled up to just above them. Getters, so ProseMirror reads where the bar is now.
+ */
+export const DOCK_SCROLL_MARGIN = {
+  top: CARET_MARGIN,
+  left: CARET_MARGIN,
+  right: CARET_MARGIN,
+  get bottom() {
+    return CARET_MARGIN + dockClearance;
+  },
+};
+export const DOCK_SCROLL_THRESHOLD = {
+  top: 0,
+  left: 0,
+  right: 0,
+  get bottom() {
+    return dockClearance;
+  },
+};

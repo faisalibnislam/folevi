@@ -229,7 +229,7 @@ test.describe("local mode", { tag: "@local" }, () => {
     await newNote(page, "Local collection");
     await page.keyboard.press("Enter");
     await page.keyboard.type("/collection");
-    await expect(page.getByRole("option", { name: /Collection/ }).first()).toBeVisible();
+    await expect(page.getByRole("option", { name: /Database/ }).first()).toBeVisible();
     await page.keyboard.press("Enter");
     const coll = page.getByRole("region", { name: /^Collection / });
     await expect(coll).toBeVisible({ timeout: 20_000 });

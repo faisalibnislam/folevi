@@ -1,5 +1,5 @@
 // The small dialogs the frame opens from the sidebar and list screens, as the web draws them on the Mac:
-// a name prompt (ui/PromptDialog.tsx: New folder, Rename folder), a folder's colour (app/FolderColorDialog.tsx,
+// a name prompt (ui/PromptDialog.tsx: New folder, Rename folder, New workspace), a folder's colour (app/FolderColorDialog.tsx,
 // the palette's 25) and the folder picker (views/MoveToFolderDialog.tsx: Move to folder, Move folder).
 #if os(macOS) || os(iOS)
 #if os(macOS)
@@ -33,6 +33,17 @@ public enum FrameDialogs {
             frame.perform {
                 _ = try await frame.client.command(.folderRename(id: folder.id, name: name))
                 frame.toast("Renamed", tone: .success)
+            }
+        }
+    }
+
+    /// The account menu's New workspace…: its name, then the team workspace is made and shown
+    /// (app/NewWorkspaceDialog.tsx, `workspace.create`).
+    public static func newWorkspace(_ frame: FrameModel) {
+        prompt(frame, title: "New workspace", label: "Workspace name", confirm: "Create workspace") { name in
+            frame.perform {
+                _ = try await frame.client.command(.workspaceCreate(name: name))
+                frame.toast("Created \(name)", tone: .success)
             }
         }
     }

@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "workspace.create",
+  "description": "Make a team workspace and show it (revision 27).",
+  "args": {
+    "name": "Studio"
+  },
+  "result": {
+    "space": "ws_studio"
+  }
+}

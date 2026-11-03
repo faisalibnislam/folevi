@@ -228,7 +228,7 @@ enum FrameNavigation {
             case .openSettings(let section): frame.host?.frameOpenSettings(section: section)
             case .help: frame.host?.frameOpenHelp()
             case .switchPlace(let id, let ws): frame.host?.frameSwitchPlace(id, space: ws)
-            case .newWorkspace: frame.host?.frameOpenSettings(section: "workspace")
+            case .newWorkspace: FrameDialogs.newWorkspace(frame)
             case .signInAnotherAccount: frame.host?.frameSignInAnotherAccount()
             case .moveOrCopy: frame.host?.frameMoveOrCopy()
             case .signOut(let place): if let p = place ?? frame.session.value?.place { frame.host?.frameSignOutConfirmed(place: p) }

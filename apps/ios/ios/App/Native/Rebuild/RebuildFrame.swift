@@ -286,6 +286,8 @@ private struct RebuildRoot: View {
     @State private var notifications = false
     /// New folder's card, over everything.
     @State private var newFolder: NewFolderRequest?
+    /// New workspace's card, over everything (from the account sheet).
+    @State private var newWorkspace = false
     /// What sheets grow out of (phoneZoomSource / phoneSheet(zoomFrom:)).
     @Namespace private var zoom
 
@@ -354,6 +356,9 @@ private struct RebuildRoot: View {
                 // (Its Inside menu comes out over the card.)
                 PhoneMenuLayer(menus: menus)
             }
+            if newWorkspace {
+                RebuildNewWorkspace(phone: phone) { newWorkspace = false }
+            }
         }
         .overlay(alignment: .top) {
             ToastStack(model: phone)
@@ -386,7 +391,14 @@ private struct RebuildRoot: View {
         }
         .phoneSheet(isPresented: $account, size: .medium, snapToBlocks: true) {
             PhoneSheetPanel(title: "Account", close: { account = false }) {
-                RebuildAccountSheet(places: places) { action in accountAction(action) { account = false } }
+                RebuildAccountSheet(places: places) { action in
+                    if action == .place(RebuildAccount.newWorkspace) {
+                        account = false
+                        newWorkspace = true
+                    } else {
+                        accountAction(action) { account = false }
+                    }
+                }
             }
         }
         // Opened again: the checks follow where the engine says this is, not an earlier pick.

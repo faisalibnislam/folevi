@@ -206,4 +206,16 @@ export const ACCOUNT_COMMANDS = {
       return { noteId: null, space: r?.workspaceId ?? null, folderId: null };
     },
   },
+
+  "workspace.create": {
+    async run(deps, args) {
+      only(args, ["name"]);
+      const name = (text(args, "name", { max: 80 }) as string).trim();
+      if (!name) throw new BridgeError("invalid_args", "Give the workspace a name.");
+      // As the web's New workspace dialog: create it, then show it.
+      const r = (await deps.client.mutation(api.workspaces.createTeamWorkspace, { name })) as { id: string };
+      deps.setSpace(r.id);
+      return { space: r.id };
+    },
+  },
 } satisfies Partial<Record<CommandName, CommandDef>>;

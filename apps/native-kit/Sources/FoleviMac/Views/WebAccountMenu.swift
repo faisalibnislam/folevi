@@ -71,7 +71,7 @@ enum AccountMenuRows {
                     let plan = p.workspaces.first { $0.id == w.id }?.planName
                     out.append(AccountMenuRow(id: "ws:\(w.id)", kind: .sub, title: w.name, detail: plan, mark: .avatar(name: w.name, url: p.workspaces.first { $0.id == w.id }?.logoUrl, size: 20), checked: s.space == w.id) { model.switchSpace(w.id) })
                 }
-                out.append(AccountMenuRow(id: "ws:new", kind: .sub, title: "New workspace\u{2026}", mark: .plus) { host?.frameOpenSettings(section: "workspace-new") })
+                out.append(AccountMenuRow(id: "ws:new", kind: .sub, title: "New workspace\u{2026}", mark: .plus) { FrameDialogs.newWorkspace(model) })
                 continue
             }
             out.append(AccountMenuRow(id: "place:\(p.id)", kind: .place, title: name, detail: p.name.isEmpty ? nil : p.email, mark: .avatar(name: name, url: p.avatarUrl, size: 36), badge: p.unread, dot: p.reminders > 0) { host?.frameSwitchPlace(p.id, space: nil) })

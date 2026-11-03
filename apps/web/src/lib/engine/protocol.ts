@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 26;
+export const CONTRACT_REVISION = 27;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -1967,6 +1967,17 @@ export interface InvitePreview {
   name: string | null;
   roleLabel: string | null;
   emailMatches: boolean;
+}
+
+/** `workspace.create` (revision 27): a new team workspace, as the web's New workspace dialog makes it. */
+export interface WorkspaceCreateArgs {
+  /** Its name (trimmed; up to 80 characters). */
+  name: string;
+}
+
+/** The new workspace; the engine shows it right away (as `space.switch` would). */
+export interface WorkspaceCreateResult {
+  space: SpaceRef;
 }
 
 export interface InviteTokenAcceptResult {
@@ -4055,6 +4066,7 @@ export interface CommandMap {
   "comment.deleteThread": { args: ThreadIdArgs; result: OkResult };
   "account.signOut": { args: EmptyArgs; result: OkResult };
   "text.layout": { args: TextLayoutArgs; result: TextLayoutResult };
+  "workspace.create": { args: WorkspaceCreateArgs; result: WorkspaceCreateResult };
 }
 
 export interface EditorCommandMap {
@@ -4275,6 +4287,7 @@ const commandNames = [
   "comment.deleteThread",
   "account.signOut",
   "text.layout",
+  "workspace.create",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

@@ -4150,6 +4150,25 @@ public struct InvitePreview: Codable, Hashable, Sendable {
     }
 }
 
+/// `workspace.create` (revision 27): a new team workspace, as the web's New workspace dialog makes it.
+public struct WorkspaceCreateArgs: Codable, Hashable, Sendable {
+    /// Its name (trimmed; up to 80 characters).
+    public var name: String
+
+    public init(name: String) {
+        self.name = name
+    }
+}
+
+/// The new workspace; the engine shows it right away (as `space.switch` would).
+public struct WorkspaceCreateResult: Codable, Hashable, Sendable {
+    public var space: SpaceRef
+
+    public init(space: SpaceRef) {
+        self.space = space
+    }
+}
+
 public struct InviteTokenAcceptResult: Codable, Hashable, Sendable {
     /// The page to open (page invitations) or the workspace to show.
     public var noteId: String?

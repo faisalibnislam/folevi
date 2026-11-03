@@ -95,6 +95,14 @@ describe("sharing and invitations", () => {
     expect(await command("invite.acceptLink", { kind: "workspace", token: "t" })).toEqual({ noteId: null, space: "ws1", folderId: null });
   });
 
+  it("workspace.create makes a team workspace and shows it", async () => {
+    r.client.mutate = (name) => (name === "workspaces:createTeamWorkspace" ? { id: "ws7" } : null);
+    expect(await command("workspace.create", { name: "  Studio " })).toEqual({ space: "ws7" });
+    expect(r.client.mutations.at(-1)).toEqual({ name: "workspaces:createTeamWorkspace", args: { name: "Studio" } });
+    expect(r.spaceSwitches.at(-1)).toBe("ws7");
+    expect(await code({ kind: "command", place: PLACE, name: "workspace.create", args: { name: "   " } })).toBe("invalid_args");
+  });
+
   it("invite.preview for a workspace and an expired page invitation", async () => {
     r.client.answer("workspaces:previewInvite", { valid: true, workspaceName: "Studio", inviterName: "Sam", roleLabel: "Member", emailMatches: true, role: "member", memberAccess: "edit" });
     expect(await query("invite.preview", { kind: "workspace", token: "t" })).toEqual({ valid: true, kind: "workspace", inviterName: "Sam", name: "Studio", roleLabel: "Member", emailMatches: true });

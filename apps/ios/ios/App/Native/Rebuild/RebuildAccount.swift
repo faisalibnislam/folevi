@@ -8,6 +8,7 @@ import SwiftUI
 import UIKit
 import FoleviDesign
 import FoleviEngine
+import FoleviPhone
 import FoleviScreens
 
 extension PlacesModel {
@@ -49,6 +50,29 @@ enum RebuildAccount {
     static let newWorkspace = "new-workspace"
 }
 
+/// New workspace's card (app/NewWorkspaceDialog.tsx): a name, then the team workspace is made and shown
+/// (`workspace.create`).
+struct RebuildNewWorkspace: View {
+    let phone: PhoneModel
+    let close: () -> Void
+
+    var body: some View {
+        PhoneCardSheet(title: "New workspace", close: close) {
+            PhoneNameForm(label: "Workspace name", placeholder: "Workspace name", confirm: "Create workspace") { name in
+                Task { @MainActor in
+                    do {
+                        _ = try await phone.client.command(.workspaceCreate(name: name))
+                        close()
+                        phone.toast("Created \(name)", tone: .success)
+                    } catch {
+                        phone.toast(ScreenErrors.message(error), tone: .error)
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// The sheet's content, live: the rows follow the engine, a pick goes to `pick`.
 struct RebuildAccountSheet: View {
     let places: PlacesModel
@@ -64,8 +88,8 @@ extension RebuildFrameController {
     func account(_ action: PhoneAccountAction, places: PlacesModel, close: @escaping () -> Void) {
         switch action {
         case .place(RebuildAccount.newWorkspace):
+            // (The frame's root opens New workspace's card itself: RebuildNewWorkspace.)
             close()
-            model.toast("New workspaces come to the app with the next update.")
         case .place(let id):
             guard let item = places.items.first(where: { $0.id == id }) else { return }
             Task { @MainActor in

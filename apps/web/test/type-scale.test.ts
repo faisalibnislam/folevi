@@ -45,6 +45,7 @@ const NOTE_TYPOGRAPHY: Record<string, string[]> = {
 const INLINE_SIZES = new Set([
   "app/opengraph-image.tsx", // Open Graph image (rendered by next/og, no CSS)
   "components/marketing/og.tsx",
+  "app/s/[token]/cardImage.tsx", // a shared note's preview image (next/og)
   "components/marketing/home/Included.tsx", // an SVG picture
   "components/ui/Avatar.tsx", // initials proportional to the avatar
   "components/app/WorkspaceMenu.tsx",

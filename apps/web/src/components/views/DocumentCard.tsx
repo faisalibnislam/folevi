@@ -77,25 +77,8 @@ function useFitLines() {
 export const NOTE_CARD_LINK =
   "note-card-r block aspect-[25/27] rounded-l-tiny rounded-r-panel shadow-[-3px_10px_14px_-8px_rgb(20_20_30/0.16),-4px_18px_30px_-18px_rgb(20_20_30/0.14),0_2px_5px_rgb(20_20_30/0.03)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[-3px_12px_16px_-8px_rgb(20_20_30/0.18),-5px_24px_36px_-18px_rgb(20_20_30/0.18),0_3px_8px_rgb(20_20_30/0.04)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
-/**
- * How a note's card looks, chosen from what the note is (the first that fits): starred, a binder clip; pages
- * inside, sheets fanned behind; tabs, a tab divider; mostly attachments, a pocket; mostly a canvas, graph paper;
- * mostly a list, an index card; a template, a typed memo; anything else, a spiral-bound page. Its theme (spine
- * artwork, colours, fonts) shows in every look. `shape` is derived from its content (derive.ts deriveShape).
- */
-export type CardLook = "spiral" | "clip" | "stack" | "tabs" | "pocket" | "graph" | "index" | "memo";
-
-export function noteLook(note: { starred?: boolean; shape?: string | null; kind?: string }): CardLook {
-  if (note.starred) return "clip";
-  switch (note.shape) {
-    case "pages": return "stack";
-    case "tabs": return "tabs";
-    case "pocket": return "pocket";
-    case "canvas": return "graph";
-    case "list": return "index";
-  }
-  return note.kind === "template" ? "memo" : "spiral";
-}
+export { noteLook, type CardLook } from "@/lib/cardLook";
+import { noteLook } from "@/lib/cardLook";
 
 /** Aspect ratio of a note card (a portrait notebook), for placeholders that stand in for one. */
 export const NOTE_CARD_ASPECT = "aspect-[25/27]";

@@ -135,7 +135,7 @@ async function publicCollections(ctx: MutationCtx, doc: Doc<"documents">, blocks
  * Whether a page's scope still serves public links: an active workspace not scheduled for deletion, or a
  * Personal whose account is in good standing.
  */
-async function scopeIsOpen(ctx: MutationCtx, doc: Doc<"documents">): Promise<boolean> {
+async function scopeIsOpen(ctx: QueryCtx | MutationCtx, doc: Doc<"documents">): Promise<boolean> {
   if (doc.ownerProfileId) {
     const owner = await ctx.db.get(doc.ownerProfileId);
     return Boolean(owner && (owner.status === "active" || owner.status === "pending_deletion"));
@@ -853,6 +853,35 @@ export const revokePublicLink = mutation({
  * Resolves a public link for the share page. Called only by the Next.js server route, which proves
  * itself with FOLEVI_SERVER_SECRET and passes a client key (hashed IP) for rate limiting.
  */
+/**
+ * What a public link's preview shows in messages and on social sites (app/s/[token]/opengraph-image.tsx): the
+ * note's card (title, its first lines, its theme and look). Only for a link anyone can open as it is: none
+ * for a password-protected, expired or revoked link, nor an end-to-end encrypted note. A preview fetch is not a
+ * view, so this reads without counting one. Server only (the server secret).
+ */
+export const publicLinkCard = query({
+  args: { token: v.string(), serverSecret: v.string() },
+  handler: async (ctx, args) => {
+    const secret = process.env.FOLEVI_SERVER_SECRET;
+    if (!secret || args.serverSecret.length !== secret.length || !timingSafeEqualHex(args.serverSecret, secret)) {
+      fail("forbidden", "Not allowed.");
+    }
+    if (!(await isFeatureEnabled(ctx, "public_links"))) return null;
+    if (!/^[A-Za-z0-9_-]{20,100}$/.test(args.token)) return null;
+    const tokenHash = await sha256Hex(args.token);
+    const found = await ctx.db
+      .query("publicLinks")
+      .withIndex("by_token_hash", (q) => q.eq("tokenHash", tokenHash))
+      .unique();
+    if (!found || found.revokedAt || found.passwordHash) return null;
+    if (found.expiresAt !== undefined && found.expiresAt < Date.now()) return null;
+    const doc = await ctx.db.get(found.documentId);
+    if (!doc || doc.inTrash || isSealed(doc) || !(await scopeIsOpen(ctx, doc))) return null;
+    // (The derived preview and excerpt already show only labels every reader of the note may see.)
+    return { title: doc.title, excerpt: doc.excerpt.slice(0, 200), preview: doc.preview ?? null, cover: doc.cover, shape: doc.shape ?? null, kind: doc.kind };
+  },
+});
+
 export const openPublicLink = mutation({
   args: { token: v.string(), password: v.optional(v.string()), serverSecret: v.string(), clientKey: v.string() },
   handler: async (ctx, args) => {

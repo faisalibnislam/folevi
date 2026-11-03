@@ -18,6 +18,7 @@ import { formatDate, localeFromAcceptLanguage, tFor } from "@/i18n";
 import { currentRequestId, logEvent } from "@/lib/server/log";
 import { GRANT_COOKIE, GRANT_TTL_MS, openGrant, sealGrant } from "./grant";
 import { EncryptedShare } from "./EncryptedShare";
+import { loadCard } from "./card";
 import { sharePayload } from "@/lib/e2ee/sharePayload";
 import "@/components/editor/editor.css";
 import "@/components/editor/insert-blocks.css";
@@ -92,12 +93,19 @@ async function loadThemes() {
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
   const { token } = await params;
   const result = await load(token);
-  // Shared pages are never indexed and never leak their title into link previews unless the owner
-  // allowed indexing for this link (and it isn't password protected).
+  // Search engines index a shared page only when its owner allowed it for this link.
   if (result.status === "ok" && result.allowIndexing) {
     const title = result.document.title || "Untitled";
     const description = result.description || undefined;
     return { title, description, openGraph: { title, description, type: "article" }, robots: { index: true, follow: false } };
+  }
+  // A link anyone can open (no password, not end-to-end encrypted) shows its note in link previews (the
+  // title, first lines and its card, opengraph-image.tsx); others stay a plain "Shared page" (2026-11-03).
+  const card = await loadCard(token);
+  if (card) {
+    const title = card.title || "Untitled";
+    const description = card.excerpt || undefined;
+    return { title, description, openGraph: { title, description, type: "article", siteName: "Folevi" }, robots: { index: false, follow: false, nocache: true } };
   }
   return { title: "Shared page", robots: { index: false, follow: false, nocache: true } };
 }

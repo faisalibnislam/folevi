@@ -151,6 +151,7 @@ final class FrameController: FrameHost {
         }
         root = FrameRootViewController(model: model, pageView: view)
         model.host = self
+        model.floatingNotes = FloatingNotes.ids(place: place)
         if let tabs { model.restore(tabs) }
         if let start, start != "/", start != "/native" { model.open(FrameRoute(path: start)) }
         // The place's Settings > Appearance, as the page itself follows it: Light or Dark pins the window (its
@@ -306,6 +307,10 @@ final class FrameController: FrameHost {
     }
 
     func frameStateChanged() { WindowRestore.changed() }
+
+    var frameCanFloatNotes: Bool { true }
+
+    func frameFloatNote(_ id: String) { FloatingNotes.float(id, place: place) }
 
     /// The window's sidebar (menus: ⌘K focuses its search, View > Hide Sidebar).
     var sidebar: WebSidebarController { root.split.sidebar }

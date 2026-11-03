@@ -29,6 +29,15 @@ public protocol FrameHost: AnyObject {
     func frameOpenInNewWindow(_ route: FrameRoute)
     /// Tabs or the route changed (window restoration saves).
     func frameStateChanged()
+    /// Whether a note can float in its own small window (the Mac).
+    var frameCanFloatNotes: Bool { get }
+    /// Floats a note in its own small window, on top of other apps (the Mac), or brings its window forward.
+    func frameFloatNote(_ id: String)
+}
+
+public extension FrameHost {
+    var frameCanFloatNotes: Bool { false }
+    func frameFloatNote(_ id: String) {}
 }
 
 public struct FrameToast: Identifiable, Equatable, Sendable {
@@ -136,6 +145,12 @@ public final class FrameModel {
     /// Notifications (`notifications.list`): nil until the engine answers.
     public private(set) var notifications: NotificationsValue?
     public private(set) var notificationsUnavailable = false
+
+    /// The notes floating in their own windows (the Mac's Float Note): their tabs say so. The app keeps it current.
+    public var floatingNotes: Set<String> = []
+
+    /// Floats a note in its own small window (the tab's menu, Window > Float Note), or brings its window forward.
+    public func floatNote(_ id: String) { host?.frameFloatNote(id) }
 
     /// The sidebar is collapsed (⌘\, View > Hide Sidebar).
     public var sidebarCollapsed = false

@@ -215,6 +215,8 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
         case "view.actual-size": Zoom.set(1)
         case "view.zoom-in": Zoom.step(+1)
         case "view.zoom-out": Zoom.step(-1)
+        case "window.float-note":
+            if let frame = NativeFrame.controller(for: Chrome.keyMainView), let id = frame.model.route.noteId { frame.frameFloatNote(id) }
         case "debug.reload": Chrome.keyView?.reload()
         case "debug.reload-all": WindowManager.shared.allViews.forEach { $0.reload() }
         case "debug.support-folder": NSWorkspace.shared.activateFileViewerSelecting([Paths.supportFolder])
@@ -286,6 +288,7 @@ final class MainMenu: NSObject, NSMenuItemValidation, NSMenuDelegate {
             case "view.zoom-in": return Zoom.level < Zoom.levels.last!
             case "view.zoom-out": return Zoom.level > Zoom.levels.first!
             case "debug.reload": return Chrome.keyView != nil
+            case "window.float-note": return NativeFrame.controller(for: view)?.model.route.noteId != nil
             default: return true
             }
         case .system:

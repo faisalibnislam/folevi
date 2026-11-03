@@ -321,6 +321,7 @@ public struct WebTopBar: View {
                 // The title takes the tab's room up to its pin and × (no spacer: it would get the gap on both sides).
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            if !t.isJoined, let id = t.route.noteId, model.floatingNotes.contains(id) { floatingBadge(id, label: label) }
             if !t.isHome {
                 // (An iPad has no hover to show the pin on: it's there only on a pinned tab, and the tab's long-press
                 // menu pins one, so the title runs on up to the ×.)
@@ -400,6 +401,19 @@ public struct WebTopBar: View {
         .foleviTooltip(t.pinned ? "Unpin tab" : "Pin tab")
     }
 
+    /// A note floating in its own window (Float note) says so on its tab; clicking brings that window forward.
+    private func floatingBadge(_ id: String, label: String) -> some View {
+        Button { model.floatNote(id) } label: {
+            WebIconView(.appWindowMac, size: 11)
+                .frame(width: 20, height: 20)
+                .foregroundStyle(WebStyles.vars["color-ink-muted"]?.resolve(scheme).color ?? .gray)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(WebHoverRowStyle(radius: 4, hover: WebStyles.vars["glass-hover"], press: WebStyles.vars["mac-press"], selected: false))
+        .accessibilityLabel("Show \(label)'s floating window")
+        .foleviTooltip("Floating in its own window")
+    }
+
     private func closeButton(_ t: FrameTab, label: String, visible: Bool) -> some View {
         let close = style("frame.tab.close")
         return Button { model.closeTab(t.id) } label: {
@@ -466,6 +480,12 @@ public struct WebTopBar: View {
         ]
         if let n = t.panes?.count, n > 1 {
             out.append(WebMenuEntry(.item(n > 2 ? "Unjoin all notes" : "Unjoin notes", icon: .squareSplitHorizontal)) { model.unjoinTab(t.id) })
+        }
+        // A note's tab floats it in its own small window (the Mac), or brings that window forward.
+        if model.host?.frameCanFloatNotes == true, !t.isJoined, let id = t.route.noteId {
+            out.append(model.floatingNotes.contains(id)
+                ? WebMenuEntry(.item("Show floating note", icon: .appWindowMac)) { model.floatNote(id) }
+                : WebMenuEntry(.item("Float note", icon: .appWindowMac)) { model.floatNote(id) })
         }
         out += [
             .separator(1),

@@ -275,6 +275,7 @@ enum MenuModel {
             MenuSpec(id: "window", title: "Window", nodes: [
                 sys("window.minimize", "Minimize", "performMiniaturize:", k("m")),
                 sys("window.zoom", "Zoom", "performZoom:"),
+                app("window.float-note", "Float Note"),
                 .separator,
                 sys("window.front", "Bring All to Front", "arrangeInFront:"),
             ]),

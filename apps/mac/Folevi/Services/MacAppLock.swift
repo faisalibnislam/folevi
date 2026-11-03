@@ -231,15 +231,21 @@ final class MacAppLock {
         up = false
         for (_, c) in covers {
             c.view.removeFromSuperview()
-            if let main = WindowManager.shared.mains.first(where: { $0.window === c.window }) { c.window.makeFirstResponder(main.view) }
+            if let main = WindowManager.shared.mains.first(where: { $0.window === c.window }) {
+                c.window.makeFirstResponder(main.view)
+            } else if let floating = FloatingNotes.controller(for: c.window) {
+                c.window.makeFirstResponder(floating.view)
+            }
         }
         covers.removeAll()
     }
 
     private func attachAll() {
         guard up else { return }
-        for main in WindowManager.shared.mains {
-            guard let window = main.window, let content = window.contentView else { continue }
+        // The main windows and the floating notes.
+        let windows = WindowManager.shared.mains.compactMap(\.window) + FloatingNotes.windows
+        for window in windows {
+            guard let content = window.contentView else { continue }
             if let c = covers[ObjectIdentifier(window)], c.view.superview === content {
                 // Kept on top of whatever the window put over its page since.
                 if content.subviews.last !== c.view { content.addSubview(c.view, positioned: .above, relativeTo: nil) }
@@ -251,7 +257,7 @@ final class MacAppLock {
             window.makeFirstResponder(view)
             covers[ObjectIdentifier(window)] = (window, view)
         }
-        covers = covers.filter { entry in WindowManager.shared.mains.contains { $0.window === entry.value.window } }
+        covers = covers.filter { entry in windows.contains { $0 === entry.value.window } }
     }
 
     /// Debug and tests: whether the windows are covered.

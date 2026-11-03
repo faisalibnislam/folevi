@@ -52,7 +52,10 @@ enum Chrome {
         WindowManager.shared.quickAdd = { QuickAddPanel.shared.toggle() }
         WindowManager.viewMade.append { TitleBar.adopt($0) }
         WindowManager.shared.shouldClose = { WindowRestore.shouldClose($0) }
-        WindowManager.shared.openFirst = { WindowRestore.openFirstWindows() }
+        WindowManager.shared.openFirst = {
+            WindowRestore.openFirstWindows()
+            if NativeFrame.enabled { FloatingNotes.restore() }
+        }
         AppDelegate.beforeFirstWindow.insert({
             Notifications.shared.install()
             applySettings(DesktopSettings.current, previous: nil)

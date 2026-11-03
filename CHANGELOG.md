@@ -4,6 +4,16 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.22: Small update
+
+Released 2026-11-03 06:13:58+06:00 (build 34, tag v1.2.22)
+
+Note cards take a look from what the note is
+
+### Improved
+
+- Note cards take a stationery look from what the note is: a binder clip when starred, fanned sheets with pages inside, a tab divider, a pocket for attachments, graph paper for canvases, an index card for lists, a typed memo for templates, and a spiral page otherwise
+
 ## Version 1.2.21: Small update
 
 Released 2026-11-02 10:31:44+06:00 (build 33, tag v1.2.21)

@@ -179,6 +179,8 @@ public final class FrameModel {
     @ObservationIgnored private var tabMetaObserver: Task<Void, Never>?
 
     @ObservationIgnored private var eventsTask: Task<Void, Never>?
+    /// Follows the session's space, so the strip knows whose tabs it shows from the start.
+    @ObservationIgnored private var spaceObserver: Task<Void, Never>?
     @ObservationIgnored private var closeNoteTask: Task<Void, Never>?
     /// How long a note stays mounted in the Page View after a native screen comes in front (plan 2.4).
     @ObservationIgnored public var keepNoteMounted: Duration = .seconds(30)
@@ -196,6 +198,15 @@ public final class FrameModel {
             for await event in stream {
                 guard let self else { return }
                 self.handle(event)
+            }
+        }
+        spaceObserver = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                if let s = self.session.value?.space { self.entered(space: s) }
+                await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+                    withObservationTracking { _ = self.session.value?.space } onChange: { c.resume() }
+                }
             }
         }
         #if os(macOS) || os(iOS)
@@ -222,6 +233,7 @@ public final class FrameModel {
     /// Ends the model's work (the window closed).
     public func stop() {
         eventsTask?.cancel()
+        spaceObserver?.cancel()
         closeNoteTask?.cancel()
         tabMetaObserver?.cancel()
         tabMeta?.cancel()
@@ -398,6 +410,24 @@ public final class FrameModel {
         tabs.restore(saved)
         history = RouteHistory()
         history.push(tabs.activeRoute)
+        // Saved in another space than the one the engine is in now: that space's tabs come out.
+        if let s = session.value?.space { swapTabs(to: s) }
+        routeChanged()
+    }
+
+    /// The window shows a space (Personal or a workspace): its own tabs come out, the other's are put away, and
+    /// Back and Forward start again there. Floating notes stay as they are. Returns whether the strip changed.
+    @discardableResult
+    private func swapTabs(to space: String) -> Bool {
+        guard tabs.enter(space: space) else { return false }
+        history = RouteHistory()
+        history.push(tabs.activeRoute)
+        return true
+    }
+
+    private func entered(space: String) {
+        guard swapTabs(to: space) else { return }
+        shownNote = nil
         routeChanged()
     }
 
@@ -534,10 +564,11 @@ public final class FrameModel {
                 title = "Undo"
             }
             push(FrameToast(id: UUID(), message: e.message, tone: e.tone == .error ? .error : e.tone == .success ? .success : .info, actionTitle: title, action: action))
-        case .placeChanged:
-            // Another space: its notes, folders and tabs. The views follow on their own; tabs of the old space's
-            // notes stay (the web keeps tabs per space; native keeps them per window for now).
+        case .placeChanged(let e):
+            // Another space: its notes, folders and tabs. The views follow on their own; the strip swaps to that
+            // space's tabs (kept per window, as the web keeps them per space).
             shownNote = nil
+            swapTabs(to: e.space)
             routeChanged()
         case .syncStatus, .memoryRelieved, .unknown:
             break

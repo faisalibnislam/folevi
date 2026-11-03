@@ -9,6 +9,8 @@
 // - Closed tabs can be reopened (⇧⌘T), newest first.
 // - A pinned tab sits at the strip's start (after Home), half as wide, with no ×; closing others or all keeps it.
 // - Notes joined side by side (two or three) are one tab, `join:` and a key; a note sits in at most one tab.
+// - Each space (Personal, each workspace) has its own tabs, pinned ones too: switching puts the strip away and
+//   brings back the other space's (just Home the first time), as the web keeps them per space.
 //
 // Pure model (no AppKit): FoleviMacTests drives it directly.
 import Foundation
@@ -93,6 +95,16 @@ public final class TabsModel {
     public private(set) var closed: [FrameTab] = []
     /// Joined notes' titles (a joined tab is named from them: "A + B").
     public private(set) var paneTitles: [String: String] = [:]
+    /// The space the strip's tabs belong to (Personal or a workspace); nil until the engine says.
+    public private(set) var space: String?
+    /// The other spaces' tabs, put away while this window shows another space.
+    private var away: [String: Away] = [:]
+    private struct Away {
+        var saved: Saved
+        var closed: [FrameTab]
+    }
+    /// The most spaces whose tabs a window keeps.
+    static let maxSpaces = 50
 
     public init() {}
 
@@ -381,20 +393,56 @@ public final class TabsModel {
         return t.title.isEmpty ? "Untitled" : t.title
     }
 
+    // MARK: spaces
+
+    /// The window shows another space: this one's tabs (and its closed ones) are put away and that space's come
+    /// back, or only Home the first time. The first space named adopts the tabs as they are. Returns whether the
+    /// strip changed.
+    @discardableResult
+    public func enter(space new: String) -> Bool {
+        guard let old = space else { space = new; return false }
+        guard old != new else { return false }
+        away[old] = Away(saved: Saved(tabs: tabs.filter { !$0.isHome }, active: activeID), closed: closed)
+        let back = away.removeValue(forKey: new)
+        while away.count > Self.maxSpaces, let k = away.keys.first { away.removeValue(forKey: k) }
+        place(back?.saved ?? Saved(tabs: [], active: FrameTab.homeID))
+        closed = back?.closed ?? []
+        space = new
+        return true
+    }
+
     // MARK: restoration
 
     public struct Saved: Codable, Equatable, Sendable {
         public var tabs: [FrameTab]
         public var active: String
-        public init(tabs: [FrameTab], active: String) {
+        /// The space these tabs belong to (nil before spaces had their own tabs).
+        public var space: String?
+        /// The other spaces' tabs, by space (only on the window's own save).
+        public var spaces: [String: Saved]?
+        public init(tabs: [FrameTab], active: String, space: String? = nil, spaces: [String: Saved]? = nil) {
             self.tabs = tabs
             self.active = active
+            self.space = space
+            self.spaces = spaces
         }
     }
 
-    public var saved: Saved { Saved(tabs: tabs.filter { !$0.isHome }, active: activeID) }
+    public var saved: Saved {
+        Saved(tabs: tabs.filter { !$0.isHome }, active: activeID, space: space, spaces: away.isEmpty ? nil : away.mapValues(\.saved))
+    }
 
     public func restore(_ saved: Saved) {
+        place(saved)
+        space = saved.space
+        away = [:]
+        for (k, v) in (saved.spaces ?? [:]).prefix(Self.maxSpaces) where k != saved.space {
+            away[k] = Away(saved: Saved(tabs: v.tabs, active: v.active), closed: [])
+        }
+    }
+
+    /// Puts saved tabs on the strip (checked again when they come back: a hand-edited file can't break it).
+    private func place(_ saved: Saved) {
         var seen = Set<String>([FrameTab.homeID])
         var list = [FrameTab(route: .home)]
         for t in saved.tabs.prefix(Self.maxTabs) where !seen.contains(t.id) {

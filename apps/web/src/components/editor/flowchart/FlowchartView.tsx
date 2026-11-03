@@ -68,6 +68,7 @@ import { FlowchartReadOnly } from "./FlowchartReadOnly";
 import { MainToolbar, ZoomBar } from "./FlowchartChrome";
 import { FlowchartAi } from "./FlowchartAi";
 import { BlockExportMenu } from "../canvas/BlockExport";
+import { NarrowCanvasCover } from "../canvas/NarrowCanvasCover";
 import { PhoneCanvasCover } from "../canvas/PhoneCanvasCover";
 import { useFlowController } from "./controller/useFlowController";
 import { useFlowActions } from "./controller/useFlowActions";
@@ -319,6 +320,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
         <HeightHandle ctrl={ctrl} />
         {menu.element}
         <PhoneCanvasCover name="Flowchart" icon={<Workflow size={15} />} empty={!nodeCount} full={full} onOpen={() => ctrl.toggleFull(true)} onDone={() => ctrl.toggleFull(false)} />
+        <NarrowCanvasCover name="Flowchart" full={full} onOpen={() => ctrl.toggleFull(true)} onFit={() => ctrl.fitView()} />
       </div>
     </NodeViewWrapper>
   );

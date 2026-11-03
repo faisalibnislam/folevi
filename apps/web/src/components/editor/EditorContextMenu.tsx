@@ -73,6 +73,8 @@ import { liftController } from "@/lib/native/lift";
 import { feel } from "@/lib/native/ui";
 import { nativeApp } from "@/lib/nativeApp";
 import { inNestedNote } from "./synced/nested";
+import { insertBelowColumns } from "./columns/columnsCommands";
+import { rowOf } from "./columns/columnsModel";
 import { macTextActions, macTextServices, wordAround, type MacTextItems } from "@/lib/desktop/textMenu";
 
 /** Asks the selection toolbar to open its link field (the "Edit link…" item). */
@@ -744,6 +746,17 @@ function buildEntries({
         },
       })),
     });
+    // In a row of columns: a line below the whole row (Enter on an empty last line, or ↓ at the end, does it too).
+    if (rowOf(state.doc, target.index)) {
+      blockEntries.push({
+        label: "Insert below columns",
+        icon: <Plus size={14} />,
+        run: () => {
+          const now = live();
+          if (now) insertBelowColumns(editor, editor.state.doc.resolve(now.pos).index(0));
+        },
+      });
+    }
     blockEntries.push(
       ...(phone ? [] : ["separator" as const]),
       { label: "Duplicate", icon: <CopyPlus size={14} />, shortcut: "⌘D", run: () => duplicateBlocks(editor) },

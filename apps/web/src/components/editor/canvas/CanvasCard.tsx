@@ -12,6 +12,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 import { Expand, Shrink } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 import { BlockExportMenu } from "./BlockExport";
+import { NarrowCanvasCover } from "./NarrowCanvasCover";
 import { PhoneCanvasCover } from "./PhoneCanvasCover";
 import { ToolFold, type FoldTool } from "./ToolFold";
 import { useFullCanvas, type FullCanvas } from "./useFullCanvas";
@@ -155,6 +156,8 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
           </div>
         </div>
         <PhoneCanvasCover name={name} icon={icon} empty={blank} full={full} onOpen={() => toggleFull(true)} onDone={() => toggleFull(false)} />
+        {/* In a narrow column: a fitted picture and Open canvas (a chart reads fine there as it is). */}
+        {type === "chart" ? null : <NarrowCanvasCover name={name} full={full} onOpen={() => toggleFull(true)} onFit={() => onRefit?.(false)} />}
         {editable ? (
           <div
             className="fb-wb-resize"

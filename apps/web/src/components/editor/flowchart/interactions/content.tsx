@@ -321,7 +321,7 @@ export function useShapeContent(ctrl: FlowController, { actions }: { actions: Fl
         current={same(sel.map((n) => n.shape))}
         onPick={(s) => {
           if (panel.mode === "change") edit((n) => changeShape(n, s));
-          else actions.add(s, viewCenter(), false);
+          else actions.add(s, undefined, false);
         }}
         onDragOut={panel.mode === "add" ? onLibraryDrag : undefined}
         onClose={() => closePanel()}

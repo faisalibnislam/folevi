@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/Toast";
 import { haptic } from "@/lib/nativeApp";
 import { WB_COLOR_NAMES, clampHeight, strokeColor } from "./RichBlocks";
 import { useEditable } from "./useEditable";
+import { NarrowCanvasCover } from "./canvas/NarrowCanvasCover";
 import { PhoneCanvasCover } from "./canvas/PhoneCanvasCover";
 import { BlockExportMenu } from "./canvas/BlockExport";
 import { useFullCanvas } from "./canvas/useFullCanvas";
@@ -765,6 +766,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
         ) : null}
         {menu ? <ContextMenu at={menu.at} label="Stroke" host={menu.host} items={menuItems()} onClose={closeMenu} /> : null}
         <PhoneCanvasCover name="Whiteboard" icon={<PenLine size={15} />} empty={!count} full={full} onOpen={() => toggleFull(true)} onDone={() => toggleFull(false)} />
+        <NarrowCanvasCover name="Whiteboard" full={full} onOpen={() => toggleFull(true)} />
       </div>
     </NodeViewWrapper>
   );

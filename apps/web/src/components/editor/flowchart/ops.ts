@@ -18,6 +18,7 @@ import {
   type FlowNode,
   type FlowShape,
   type FlowSide,
+  type Pt,
   type Rect,
 } from "./schema";
 import { carryEdges } from "./connectors";
@@ -62,6 +63,51 @@ export function addNode(fc: FlowchartData, shape: FlowShape, at: { x: number; y:
   }
   const node: FlowNode = { id: flowId("n"), shape, x, y, w, h, text: "", color: "neutral", ...extra };
   return { doc: { ...fc, nodes: [...fc.nodes, node] }, id: node.id };
+}
+
+/** The gap the + arrows leave before the next shape (quickAddPosition): down a top-down flow, across a left-to-right one. */
+export const ADD_GAP: Record<FlowDirection, number> = { TD: 64, LR: 72 };
+
+/**
+ * The centre of a new `size` shape beside the shapes `ids`: one gap past them in the flow's direction
+ * (below in a top-down chart, to the right in a left-to-right one), centred on them across it. Null
+ * when none of them is in the chart.
+ */
+export function besideNodes(fc: FlowchartData, ids: readonly string[], size: { w: number; h: number }, direction: FlowDirection): Pt | null {
+  const box = boxOf(fc.nodes.filter((n) => ids.includes(n.id)));
+  if (!box) return null;
+  return direction === "LR" ? { x: box.x + box.w + ADD_GAP.LR + size.w / 2, y: box.y + box.h / 2 } : { x: box.x + box.w / 2, y: box.y + box.h + ADD_GAP.TD + size.h / 2 };
+}
+
+/**
+ * The top-left corner (on the grid) of a new `size` shape as near as it can be to centred on `at` without
+ * overlapping any shape, `margin` kept clear around each. Searched in widening rings of grid steps,
+ * nearest first; the snapped spot itself when nothing is clear that close.
+ */
+export function freeNodeSpot(fc: FlowchartData, at: Pt, size: { w: number; h: number }, margin = 16): Pt {
+  const x0 = snap(at.x - size.w / 2);
+  const y0 = snap(at.y - size.h / 2);
+  const step = FLOWCHART_GRID * 2;
+  const rings = 80;
+  const reach = rings * step + margin;
+  const near = fc.nodes.filter((n) => n.x < x0 + size.w + reach && n.x + n.w > x0 - reach && n.y < y0 + size.h + reach && n.y + n.h > y0 - reach);
+  const clear = (x: number, y: number) => !near.some((n) => x < n.x + n.w + margin && x + size.w + margin > n.x && y < n.y + n.h + margin && y + size.h + margin > n.y);
+  if (clear(x0, y0)) return { x: x0, y: y0 };
+  let best: Pt | null = null;
+  let bestD = Infinity;
+  // A ring's nearest spots are `ring` steps out, so once that passes the best found nothing nearer is left.
+  for (let ring = 1; ring <= rings && ring * step < bestD; ring++) {
+    for (let i = -ring; i <= ring; i++) {
+      for (const [dx, dy] of [[i, -ring], [i, ring], [-ring, i], [ring, i]] as const) {
+        const d = Math.hypot(dx, dy) * step;
+        if (d < bestD && clear(x0 + dx * step, y0 + dy * step)) {
+          best = { x: x0 + dx * step, y: y0 + dy * step };
+          bestD = d;
+        }
+      }
+    }
+  }
+  return best ?? { x: x0, y: y0 };
 }
 
 export function connect(fc: FlowchartData, from: string, to: string, fromSide?: FlowSide, toSide?: FlowSide): { doc: FlowchartData; id: string } | null {

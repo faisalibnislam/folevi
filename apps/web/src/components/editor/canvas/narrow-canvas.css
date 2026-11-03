@@ -1,0 +1,23 @@
+/* A visual block in a column too narrow to work in (canvas/NarrowCanvasCover.tsx): its tools, zoom, height
+   handle and empty-state hint step aside, the canvas is a picture nothing in it takes a click, and an Open canvas
+   capsule in the corner opens the block's full canvas. The same chrome the iPhone's cover hides (editor-phone.css). */
+.fb-canvas-card[data-narrow]:not([data-full]) { position: relative; }
+.fb-canvas-card[data-narrow]:not([data-full]) :is(.fb-vc-bar, .fb-wb-toolbar, [class^="fc-bar"], [class*=" fc-bar"], .wf-bar, .st-bar, .mm-bar, .wf-zoom, .st-zoom, .fc-zoom, .fb-chart-zoom-bar, .fb-wb-resize, .fc-resize, .st-resize, .fb-vc-empty, .fc-empty, .wf-empty, .st-hint, [role="toolbar"]) { display: none !important; }
+.fb-canvas-card[data-narrow]:not([data-full]) ~ .fb-wb-resize,
+.fb-atom > .fb-canvas-card[data-narrow]:not([data-full]) + .fb-wb-resize { display: none !important; }
+.fb-canvas-card[data-narrow]:not([data-full]) .fb-canvas-body { pointer-events: none; }
+/* The room the hidden toolbar kept at the top goes to the content. */
+.fb-canvas-card[data-narrow]:not([data-full]) :is(.fb-chart-body, .fb-vc-content) { top: 8px; }
+
+.fb-narrow-canvas { position: absolute; right: 8px; bottom: 8px; z-index: 6; }
+.fb-narrow-canvas[hidden] { display: none; }
+.fb-narrow-canvas-open {
+  display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 12px; border-radius: var(--radius-control);
+  background: var(--color-heading); color: var(--color-canvas); font: 600 var(--type-footnote)/1 var(--font-sans);
+  box-shadow: 0 6px 18px -8px rgb(0 0 0 / 0.35), 0 0 0 0.5px rgb(0 0 0 / 0.08);
+  transition: transform 160ms var(--motion-easing, ease);
+}
+.fb-narrow-canvas-open:active { transform: scale(0.96); }
+.fb-narrow-canvas-open:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .fb-narrow-canvas-open { transition: none; } }
+@media print { .fb-narrow-canvas { display: none; } }

@@ -7,7 +7,7 @@ import { TextSelection } from "@tiptap/pm/state";
 import { ALL_MARKS, ALL_NODES } from "@/components/editor/extensions";
 import { BlockIdentity, BlockKeymap } from "@/components/editor/plugins";
 import { ColumnBlock, ColumnsBlock, ColumnsExtension } from "@/components/editor/columns/columnsExtension";
-import { applySideDrop, insertColumns, setColumnShares } from "@/components/editor/columns/columnsCommands";
+import { applySideDrop, insertBelowColumns, insertColumns, setColumnShares } from "@/components/editor/columns/columnsCommands";
 import { columnsModel } from "@/components/editor/columns/columnsModel";
 import { changeDepth, moveSubtreeTo } from "@/components/editor/commands";
 import { docToBlocks } from "@/components/editor/convert";
@@ -33,6 +33,8 @@ function caret(e: Editor, text: string, at: "start" | "end" = "start") {
   e.view.dispatch(e.state.tr.setSelection(TextSelection.create(e.state.doc, pos)));
 }
 const key = (e: Editor, k: string) => e.commands.keyboardShortcut(k);
+/** A real key press (keyboardShortcut keeps only a handler's steps, not where it put the caret). */
+const press = (e: Editor, k: string) => e.view.someProp("handleKeyDown", (f) => f(e.view, new KeyboardEvent("keydown", { key: k })));
 
 describe("columns in the editor", () => {
   test("inserting a row puts the caret in its first column, in place of an empty line", () => {
@@ -149,6 +151,87 @@ describe("columns in the editor", () => {
     expect(blocks.filter((b) => b.type === "column").map((b) => b.props.width)).toEqual([0.5, 0.25, 0.25]);
     setColumnShares(e, 0, null);
     expect(columnsModel(e.state.doc).rows[0]!.shares).toEqual([1 / 3, 1 / 3, 1 / 3]);
+    e.destroy();
+  });
+  test("Enter on an empty last line of the last column leaves the row, as an empty list item leaves the list", () => {
+    const e = make([p("before"), row(), col(), p("a", 2), col(), p("b", 2), p("", 2)]);
+    let pos = 0;
+    e.state.doc.forEach((n, offset, i) => {
+      if (i === 6) pos = offset + 1;
+    });
+    e.view.dispatch(e.state.tr.setSelection(TextSelection.create(e.state.doc, pos)));
+    press(e, "Enter");
+    expect(lines(e)).toEqual(["paragraph:before@0", "columns@0", "column@1", "paragraph:a@2", "column@1", "paragraph:b@2", "paragraph@0"]);
+    expect(e.state.selection.$from.index(0)).toBe(6);
+    e.commands.insertContent("after");
+    expect(lines(e)[6]).toBe("paragraph:after@0");
+    // One undo puts the line back in the column.
+    e.commands.undo();
+    e.commands.undo();
+    expect(lines(e)).toEqual(["paragraph:before@0", "columns@0", "column@1", "paragraph:a@2", "column@1", "paragraph:b@2", "paragraph@2"]);
+    e.destroy();
+  });
+
+  test("Enter leaving the last column goes into an empty line already below the row, and keeps a column's only line", () => {
+    const e = make([row(), col(), p("a", 2), col(), p("", 2), p(""), p("z")]);
+    let pos = 0;
+    e.state.doc.forEach((n, offset, i) => {
+      if (i === 4) pos = offset + 1;
+    });
+    e.view.dispatch(e.state.tr.setSelection(TextSelection.create(e.state.doc, pos)));
+    press(e, "Enter");
+    expect(lines(e)).toEqual(["columns@0", "column@1", "paragraph:a@2", "column@1", "paragraph@2", "paragraph@0", "paragraph:z@0"]);
+    expect(e.state.selection.$from.index(0)).toBe(5);
+    e.destroy();
+  });
+
+  test("Enter on an empty last line of another column moves to the start of the next column", () => {
+    const e = make([row(), col(), p("a", 2), p("", 2), col(), p("b", 2), p("after")]);
+    let pos = 0;
+    e.state.doc.forEach((n, offset, i) => {
+      if (i === 3) pos = offset + 1;
+    });
+    e.view.dispatch(e.state.tr.setSelection(TextSelection.create(e.state.doc, pos)));
+    press(e, "Enter");
+    expect(lines(e)).toEqual(["columns@0", "column@1", "paragraph:a@2", "column@1", "paragraph:b@2", "paragraph:after@0"]);
+    expect(e.state.selection.$from.parent.textContent).toBe("b");
+    expect(e.state.selection.$from.parentOffset).toBe(0);
+    // A line with text still splits as usual.
+    caret(e, "a", "end");
+    press(e, "Enter");
+    expect(lines(e).slice(0, 4)).toEqual(["columns@0", "column@1", "paragraph:a@2", "paragraph@2"]);
+    e.destroy();
+  });
+
+  test("↓ on the last line of the last column goes below the row, making a line when the row ends the note", () => {
+    const e = make([row(), col(), p("a", 2), col(), p("b", 2)]);
+    e.view.endOfTextblock = () => true;
+    caret(e, "a", "end");
+    press(e, "ArrowDown");
+    // Not from another column (the browser moves within the row there).
+    expect(lines(e)).toHaveLength(5);
+    caret(e, "b", "end");
+    press(e, "ArrowDown");
+    expect(lines(e)).toEqual(["columns@0", "column@1", "paragraph:a@2", "column@1", "paragraph:b@2", "paragraph@0"]);
+    expect(e.state.selection.$from.index(0)).toBe(5);
+    // With a line already below the row: into it, nothing added.
+    const f = make([row(), col(), p("a", 2), col(), p("b", 2), p("next")]);
+    f.view.endOfTextblock = () => true;
+    caret(f, "b", "end");
+    press(f, "ArrowDown");
+    expect(lines(f)).toHaveLength(6);
+    expect(f.state.selection.$from.parent.textContent).toBe("next");
+    e.destroy();
+    f.destroy();
+  });
+
+  test("Insert below columns adds a line right after the row, from any line in it", () => {
+    const e = make([p("intro"), row(), col(), p("a", 2), col(), p("b", 2), p("after")]);
+    insertBelowColumns(e, 3);
+    expect(lines(e)).toEqual(["paragraph:intro@0", "columns@0", "column@1", "paragraph:a@2", "column@1", "paragraph:b@2", "paragraph@0", "paragraph:after@0"]);
+    expect(e.state.selection.$from.index(0)).toBe(6);
+    // Not from a line outside a row.
+    expect(insertBelowColumns(e, 0)).toBe(false);
     e.destroy();
   });
 });

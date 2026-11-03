@@ -1,7 +1,7 @@
 // Columns in the editor (packages/editor-schema/src/columns.ts): the row's line (it reserves the row's height
 // and holds the handles that resize the columns), each column's own line (never seen), the layout that puts
-// the columns side by side (columnsLayout.ts), the repair after local edits and the keys that keep typing
-// inside a column.
+// the columns side by side (columnsLayout.ts), the repair after local edits, the keys that keep typing
+// inside a column and the ones that leave it (Enter on an empty last line, ↓ at the end of the last column).
 import "./columns.css";
 import { Extension, Node, mergeAttributes, type Editor } from "@tiptap/core";
 import { NodeSelection, Plugin, PluginKey, Selection, TextSelection, type EditorState } from "@tiptap/pm/state";
@@ -12,7 +12,7 @@ import { blocksInSelection, turnInto } from "../commands";
 import { neighbourIndex } from "../blockSelectionState";
 import { COLUMN, ROW, baseDepth, columnsModel, rowOf } from "./columnsModel";
 import { ColumnsLayoutView, columnsLayoutOf, columnsSnapshot } from "./columnsLayout";
-import { repairColumns, setColumnShares } from "./columnsCommands";
+import { caretBelowRow, repairColumns, setColumnShares } from "./columnsCommands";
 import { haptic } from "@/lib/nativeApp";
 
 const lineAttrs = {
@@ -306,10 +306,43 @@ export const ColumnsExtension = Extension.create({
         return false;
       },
       Enter: () => {
-        const at = atColumnLevel(editor.state);
+        const { state } = editor;
+        const at = atColumnLevel(state);
+        if (!at || at.node.content.size) return false;
         // An empty list item at a column's own level ends the list (instead of outdenting out of the column).
-        if (!at || at.node.content.size || !LIST_LIKE.has(at.node.type.name)) return false;
-        return turnInto(editor, "paragraph");
+        if (LIST_LIKE.has(at.node.type.name)) return turnInto(editor, "paragraph");
+        // An empty last line in a column leaves it, as an empty list item leaves the list: into the next column,
+        // or from the last column out below the row. The empty line goes, unless it's all the column has.
+        if (at.node.type.name !== "paragraph" || at.index !== at.column.end - 1) return false;
+        const tr = state.tr;
+        if (at.index > at.column.start) tr.delete(at.pos, at.pos + at.node.nodeSize);
+        const k = at.row.columns.indexOf(at.column);
+        const next = at.row.columns[k + 1];
+        if (!next) caretBelowRow(tr, state.doc, at.row, true);
+        else {
+          const sel = Selection.findFrom(tr.doc.resolve(tr.mapping.map(at.starts[next.start]!)), 1);
+          if (sel) tr.setSelection(sel);
+        }
+        editor.view.dispatch(tr.scrollIntoView());
+        return true;
+      },
+      // ↓ on the last line of a row's last column goes below the row (a new line there when the row ends the note):
+      // the columns are placed side by side, so the browser's own move down can't find its way out.
+      ArrowDown: () => {
+        const { state, view } = editor;
+        const { selection } = state;
+        if (!selection.empty || !selection.$from.parent.isTextblock || selection.$from.depth < 1) return false;
+        const index = selection.$from.index(0);
+        const inRow = rowOf(state.doc, index);
+        if (!inRow || index !== inRow.row.end - 1 || !view.endOfTextblock("down")) return false;
+        const tr = state.tr;
+        if (inRow.row.end < state.doc.childCount) {
+          const sel = Selection.findFrom(state.doc.resolve(columnsModel(state.doc).starts[inRow.row.end]!), 1);
+          if (!sel) return false;
+          tr.setSelection(sel);
+        } else caretBelowRow(tr, state.doc, inRow.row, false);
+        view.dispatch(tr.scrollIntoView());
+        return true;
       },
       "Shift-Tab": () => {
         const { state } = editor;

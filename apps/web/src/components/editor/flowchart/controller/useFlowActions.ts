@@ -3,8 +3,9 @@
 // Commands shared by the toolbars, the keyboard, menus and Foli AI: each one is a whole edit (one undo
 // step) built from the pure edits in ops.ts.
 import { NodeSelection } from "@tiptap/pm/state";
-import { flowchartDirection, layoutFlowchart, type FlowShape, type Pt } from "../schema";
-import { NO_SELECTION, addNode, boxOf, chartFromDraft, deleteSelection, duplicate, moveNodes, snap, type FlowDraft } from "../ops";
+import { FLOWCHART_SHAPE_SIZE, flowchartDirection, layoutFlowchart, type FlowShape, type Pt } from "../schema";
+import { NO_SELECTION, addNode, besideNodes, boxOf, chartFromDraft, deleteSelection, duplicate, freeNodeSpot, moveNodes, snap, type FlowDraft } from "../ops";
+import { reveal } from "../interactions/quickAdd";
 import type { FlowController } from "./types";
 
 export type FlowActions = ReturnType<typeof useFlowActions>;
@@ -12,11 +13,20 @@ export type FlowActions = ReturnType<typeof useFlowActions>;
 export function useFlowActions(ctrl: FlowController) {
   const { docRef, commit, setSel, selRef, setEditing, setView, fitView, wrapRef } = ctrl;
 
-  /** Adds a shape (at the middle of the view by default) and, unless `edit` is false, starts writing in it. */
-  const add = (shape: FlowShape, at: Pt = ctrl.viewCenter(), edit = true) => {
-    const res = addNode(docRef.current, shape, at);
+  /**
+   * Adds a shape and, unless `edit` is false, starts writing in it. Without `at` it goes beside the selected
+   * shapes in the flow's direction, or at the middle of the view; either way, and at `at` (a drop, a
+   * double-click), it moves to the nearest spot that overlaps no other shape.
+   */
+  const add = (shape: FlowShape, at?: Pt, edit = true) => {
+    const fc = docRef.current;
+    const size = FLOWCHART_SHAPE_SIZE[shape];
+    const want = at ?? besideNodes(fc, selRef.current.nodes, size, flowchartDirection(fc)) ?? ctrl.viewCenter();
+    const spot = freeNodeSpot(fc, want, size);
+    const res = addNode(fc, shape, { x: spot.x + size.w / 2, y: spot.y + size.h / 2 });
     if (!res) return null;
     commit(res.doc);
+    reveal(ctrl, { ...spot, ...size });
     setSel({ nodes: [res.id], edges: [] });
     if (edit) setEditing({ kind: "node", id: res.id, before: res.doc });
     ctrl.focusCanvas();

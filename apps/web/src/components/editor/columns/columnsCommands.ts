@@ -8,7 +8,7 @@ import { closeHistory } from "@tiptap/pm/history";
 import { LIMITS, MIN_COLUMN_WIDTH, repairColumnLines, ulid } from "@folevi/editor-schema";
 import { blocksInSelection, normalizeDepths } from "../commands";
 import { TEXT_NODES } from "../convert";
-import { COLUMN, ROW, baseDepth, columnsModel, rowOf } from "./columnsModel";
+import { COLUMN, ROW, baseDepth, columnsModel, rowAt, rowOf, type ColumnRow } from "./columnsModel";
 import type { SideDrop } from "./columnsLayout";
 import { announce } from "@/lib/a11y/announce";
 
@@ -71,6 +71,28 @@ export function insertColumns(editor: Editor, count: number): boolean {
   editor.view.dispatch(closeHistory(tr).scrollIntoView());
   editor.view.focus();
   announce(`${n} columns`);
+  return true;
+}
+
+/**
+ * Puts the caret on the line just below a row (into an empty line of the row's own depth already there when
+ * `reuse`, else into a new one), on `tr` as it is after any edit made to it from `doc`.
+ */
+export function caretBelowRow(tr: Transaction, doc: PMNode, row: ColumnRow, reuse: boolean): Transaction {
+  const next = doc.maybeChild(row.end);
+  const at = tr.mapping.map(positionOf(doc, row.end));
+  if (reuse && next?.type.name === "paragraph" && next.content.size === 0 && depthOf(next) === row.depth) return tr.setSelection(TextSelection.create(tr.doc, at + 1));
+  tr.insert(at, tr.doc.type.schema.nodes.paragraph!.create({ id: ulid(), depth: row.depth }));
+  return tr.setSelection(TextSelection.create(tr.doc, at + 1));
+}
+
+/** A new empty line right after the row the line at `index` is in (or is), with the caret in it. */
+export function insertBelowColumns(editor: Editor, index: number): boolean {
+  const { state } = editor;
+  const row = rowOf(state.doc, index)?.row ?? rowAt(state.doc, index);
+  if (!row) return false;
+  editor.view.dispatch(caretBelowRow(state.tr, state.doc, row, false).scrollIntoView());
+  editor.view.focus();
   return true;
 }
 

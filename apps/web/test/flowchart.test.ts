@@ -168,6 +168,34 @@ describe("flowchart edits", () => {
     expect(ops.connect(fc, "b", "a", "top", "bottom")!.doc.edges[1]).toMatchObject({ from: "b", to: "a", fromSide: "top", toSide: "bottom" });
   });
 
+  test("a new shape goes beside the selection in the flow's direction, at the + arrows' gap", () => {
+    const fc = chart([node("a", 0, 0), node("b", 200, 0)]);
+    const size = { w: 160, h: 64 };
+    expect(ops.besideNodes(fc, ["a", "b"], size, "TD")).toEqual({ x: 180, y: 64 + ops.ADD_GAP.TD + 32 });
+    expect(ops.besideNodes(fc, ["a"], size, "LR")).toEqual({ x: 160 + ops.ADD_GAP.LR + 80, y: 32 });
+    expect(ops.besideNodes(fc, ["gone"], size, "TD")).toBeNull();
+    expect(ops.freeNodeSpot(fc, ops.besideNodes(fc, ["a"], size, "TD")!, size)).toEqual({ x: 0, y: 128 });
+  });
+
+  test("free spot: kept when clear, else the nearest grid spot that overlaps nothing (with the margin)", () => {
+    const size = { w: 160, h: 64 };
+    const overlaps = (fc: FlowchartData, p: { x: number; y: number }, m = 16) => fc.nodes.some((n) => p.x < n.x + n.w + m && p.x + size.w + m > n.x && p.y < n.y + n.h + m && p.y + size.h + m > n.y);
+    // An empty chart: centred on the point, snapped to the grid.
+    expect(ops.freeNodeSpot(chart([]), { x: 83, y: 35 }, size)).toEqual({ x: 0, y: 0 });
+    // A process then a decision at the same centre no longer stack.
+    const one = chart([node("a", -80, -32)]);
+    const p = ops.freeNodeSpot(one, { x: 0, y: 0 }, size);
+    expect(overlaps(one, p)).toBe(false);
+    expect([Math.abs(p.x % 8), Math.abs(p.y % 8)]).toEqual([0, 0]);
+    // Nearest: straight above or below (a short hop), not off to the side.
+    expect(p.x).toBe(-80);
+    expect(Math.abs(p.y + 32)).toBe(64 + 16);
+    // Hemmed in by a row of shapes: still clear of all of them.
+    const row = chart([node("a", -80, -32), node("b", -260, -32), node("c", 100, -32), node("d", -80, -132), node("e", -80, 68)]);
+    const q = ops.freeNodeSpot(row, { x: 0, y: 0 }, size);
+    expect(overlaps(row, q)).toBe(false);
+  });
+
   test("AI drafts are validated again, sized to their labels and laid out", () => {
     const current = chart([node("keep", 400, 400, { w: 240, h: 80, color: "blue" })]);
     const draft = {

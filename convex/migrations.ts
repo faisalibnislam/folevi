@@ -11,6 +11,7 @@ import { currentFolderColor, isFolderColor, randomFolderColor } from "./lib/fold
 import { startTrial } from "./lib/billing";
 import { hasValidScope, SCOPED_TABLES, sameScope, scopeOfRow, type ScopedTable } from "./lib/scope";
 import { isSealed } from "./lib/e2ee/state";
+import { nextSeq } from "./lib/seq";
 
 /** Fills in the card preview (documents.preview) for pages saved before previews existed. */
 export const backfillDocumentPreviews = internalMutation({
@@ -25,6 +26,32 @@ export const backfillDocumentPreviews = internalMutation({
       updated++;
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.backfillDocumentPreviews, { cursor: page.continueCursor });
+    return { updated, done: page.isDone };
+  },
+});
+
+/**
+ * Works out what kind of page each note is (documents.shape, derive.ts deriveShape: its card's look) for notes
+ * saved before shapes existed, and moves the note's change counter so devices pull it again. Sealed notes are
+ * left alone (devices derive what they show). Idempotent: notes with a shape are skipped.
+ *
+ *   npx convex run --deployment <prod> migrations:backfillNoteShapes
+ */
+export const backfillNoteShapes = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, args) => {
+    // Few per batch: each note's blocks are read in full.
+    const page = await ctx.db.query("documents").paginate({ numItems: 25, cursor: args.cursor ?? null });
+    let updated = 0;
+    for (const doc of page.page) {
+      if (doc.shape !== undefined || isSealed(doc)) continue;
+      await refreshDerived(ctx, doc);
+      // (A note whose workspace is gone keeps its counter.)
+      const seq = await nextSeq(ctx, scopeOfRow(doc)).catch(() => null);
+      if (seq !== null) await ctx.db.patch(doc._id, { seq });
+      updated++;
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.backfillNoteShapes, { cursor: page.continueCursor });
     return { updated, done: page.isDone };
   },
 });

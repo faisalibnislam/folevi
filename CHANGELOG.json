@@ -1,6 +1,17 @@
 {
   "releases": [
     {
+      "version": "1.2.23",
+      "build": 35,
+      "released": "2026-11-03T07:40:43+06:00",
+      "type": "patch",
+      "summary": "Float a note above every other window",
+      "added": [
+        "Mac: Float note, in a note tab's menu and Window > Float Note, pops the note into its own small window that stays on top of other apps until you turn its pin off; several notes can float at once and they come back after a relaunch"
+      ],
+      "tag": "v1.2.23"
+    },
+    {
       "version": "1.2.22",
       "build": 34,
       "released": "2026-11-03T06:13:58+06:00",

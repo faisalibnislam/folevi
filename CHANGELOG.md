@@ -4,6 +4,16 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.23: Small update
+
+Released 2026-11-03 07:40:43+06:00 (build 35, tag v1.2.23)
+
+Float a note above every other window
+
+### Added
+
+- Mac: Float note, in a note tab's menu and Window > Float Note, pops the note into its own small window that stays on top of other apps until you turn its pin off; several notes can float at once and they come back after a relaunch
+
 ## Version 1.2.22: Small update
 
 Released 2026-11-03 06:13:58+06:00 (build 34, tag v1.2.22)

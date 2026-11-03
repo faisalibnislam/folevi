@@ -4,6 +4,22 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.28: Small update
+
+Released 2026-11-03 20:27:49+06:00 (build 40, tag v1.2.28)
+
+Starred is now Docked, with a foldback clip icon
+
+### Improved
+
+- Starred is now called Docked everywhere, with Dock and Undock in menus and a new foldback clip icon
+- On iPhone a note's colour runs all the way to the bottom of the screen
+- Foli AI's message box has matching rounded corners top and bottom
+
+### Fixed
+
+- A table's Header row, Totals row and Foli AI buttons were cut off at the bottom
+
 ## Version 1.2.27: Small update
 
 Released 2026-11-03 17:40:15+06:00 (build 39, tag v1.2.27)

@@ -1,6 +1,27 @@
 {
   "releases": [
     {
+      "version": "1.2.27",
+      "build": 39,
+      "released": "2026-11-03T17:40:15+06:00",
+      "type": "patch",
+      "summary": "A smoother editor: leaving columns, canvases in narrow columns, and clearer insert names",
+      "improved": [
+        "Enter on an empty last line of the last column moves below the columns; Insert below columns in the block menu",
+        "Flowcharts, mind maps, whiteboards and wireframes in narrow columns show a preview with Open canvas",
+        "New flowchart shapes go beside the selected shape instead of on top of it",
+        "Table is now Database and Quick table is Simple table, each with a short description",
+        "New gallery, board, table and calendar cards start with the cursor in their title",
+        "The recorder asks you to allow the microphone, and explains how to turn it back on",
+        "Screen readers hear bullets as lists, and images get a Description separate from the caption"
+      ],
+      "fixed": [
+        "The bottom note bar no longer covers the line or table cell you're typing in",
+        "Image from Unsplash no longer shows when photo search isn't available"
+      ],
+      "tag": "v1.2.27"
+    },
+    {
       "version": "1.2.26",
       "build": 38,
       "released": "2026-11-03T14:10:29+06:00",

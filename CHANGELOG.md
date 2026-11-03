@@ -4,6 +4,27 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.27: Small update
+
+Released 2026-11-03 17:40:15+06:00 (build 39, tag v1.2.27)
+
+A smoother editor: leaving columns, canvases in narrow columns, and clearer insert names
+
+### Improved
+
+- Enter on an empty last line of the last column moves below the columns; Insert below columns in the block menu
+- Flowcharts, mind maps, whiteboards and wireframes in narrow columns show a preview with Open canvas
+- New flowchart shapes go beside the selected shape instead of on top of it
+- Table is now Database and Quick table is Simple table, each with a short description
+- New gallery, board, table and calendar cards start with the cursor in their title
+- The recorder asks you to allow the microphone, and explains how to turn it back on
+- Screen readers hear bullets as lists, and images get a Description separate from the caption
+
+### Fixed
+
+- The bottom note bar no longer covers the line or table cell you're typing in
+- Image from Unsplash no longer shows when photo search isn't available
+
 ## Version 1.2.26: Small update
 
 Released 2026-11-03 14:10:29+06:00 (build 38, tag v1.2.26)

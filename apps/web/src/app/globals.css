@@ -780,6 +780,11 @@
    above the home indicator (DocumentView, Screen leave room for them, plus 12 px); with the keyboard up only
    the writing bar is there (48 px, 6 px above the keyboard). */
 :root[data-iphone][data-iphone-keyboard] :is([data-iphone-scroll], main#main.overflow-y-auto) { padding-bottom: 66px; }
+/* In the iPhone app (native chrome mode) that room is the note's sheet's, not the page's: the note's colour runs
+   down under the app's bottom bar instead of stopping above it on the plain page colour. */
+:root[data-iphone] [data-iphone-scroll][data-native-chrome] { padding-bottom: 0; }
+:root[data-iphone] [data-iphone-scroll][data-native-chrome] > .fb-sheet { min-height: 100%; padding-bottom: calc(var(--native-inset-bottom, 0px) + 24px); }
+:root[data-iphone][data-iphone-keyboard] [data-iphone-scroll][data-native-chrome] > .fb-sheet { padding-bottom: 66px; }
 /* A note without artwork fills the screen like a sheet of paper (no card on a grey backdrop). */
 :root[data-iphone] [data-iphone-plain] > .fb-sheet { max-width: none !important; min-height: 100%; border-radius: 0; box-shadow: none; padding-top: calc(env(safe-area-inset-top) + 40px); }
 /* A note with a theme or a colour: the page edge to edge too, its cover band starting 12 pt under the bar's row

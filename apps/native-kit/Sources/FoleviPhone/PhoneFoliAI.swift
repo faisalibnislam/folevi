@@ -317,7 +317,7 @@ struct PhoneAiPageIntro: View {
 
 // MARK: the composer
 
-/// The composer's box in the sheet: the web's fill, edge and shadow, 21 at the top and parallel to the sheet's corners at the foot.
+/// The composer's box in the sheet: the web's fill, edge and shadow, rounded at `top` and `bottom`.
 private struct PhoneComposerBox: View {
     let style: WebComputedStyle
     let top: CGFloat
@@ -361,13 +361,13 @@ struct PhoneAiDock: View {
                 bar(look: look)
             }
             .frame(maxWidth: .infinity)
-            // Concentric with what's inside: the controls sit 9 pt in and round at 12, so the box rounds at 21. In
-            // the sheet its foot also runs parallel to the sheet's corners, the dock's inset in.
+            // Concentric with what's inside: the controls sit 9 pt in and round at 12, so the box rounds at 21, its
+            // foot too (Chat or Research and Send sit in those corners).
             .background {
                 if variant == .page {
                     Color.clear.webBox(look.pair("ai.composer").radius(21))
                 } else {
-                    PhoneComposerBox(style: look.s("ai.composer"), top: 21, bottom: max(21, PhoneSheetCorner.drawn - dock.padding.left))
+                    PhoneComposerBox(style: look.s("ai.composer"), top: 21, bottom: 21)
                 }
             }
             .contentShape(Rectangle())

@@ -677,6 +677,9 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 /* A block wider than the note (a table, a long formula) scrolls sideways inside itself, never the page;
    a soft fade on an edge says there's more that way (scrollEdges.ts marks it). */
 .fb-hscroll { overscroll-behavior-x: contain; --fade-start: 0px; --fade-end: 0px; }
+/* A table's tools sit inside its sideways scroller, which clips at its edges: room under them so their foot
+   (and a focus ring) isn't cut off. */
+.fb-table-block .fb-hscroll { padding-bottom: 4px; }
 .fb-hscroll[data-more-start] { --fade-start: 28px; }
 .fb-hscroll[data-more-end] { --fade-end: 28px; }
 .fb-hscroll:is([data-more-start], [data-more-end]) {

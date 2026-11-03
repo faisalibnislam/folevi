@@ -1044,13 +1044,15 @@ export function DocumentView({ documentId }: { documentId: string }) {
           ref={setScrollEl}
           data-iphone-scroll={iphone ? "" : undefined}
           data-iphone-plain={iphone && !pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "" : undefined}
+          data-native-chrome={iphone && nativeChromeMode ? "" : undefined}
           className={
             iphone
               ? nativeChromeMode
                 ? // Native chrome mode: the page runs under the native bars, as on the web's own phone layout, and
                   // keeps their room (--native-inset-*) inside, so the note's colour reaches the screen's edges
-                  // and what scrolls goes under the bars (Shell leaves the holder unpadded for a note).
-                  "fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(var(--native-inset-bottom,0px)+24px)] pt-[var(--native-inset-top,0px)]"
+                  // and what scrolls goes under the bars (Shell leaves the holder unpadded for a note). The room at
+                  // the foot is the sheet's own (globals.css), so its colour runs down under the bottom bar too.
+                  "fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pt-[var(--native-inset-top,0px)]"
                 : `fb-page relative h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(max(10px,env(safe-area-inset-bottom)-10px)+72px)] ${pageBackdrop(style, look?.cover ?? DEFAULT_COVER, coverImageUrl) ? "pt-[calc(env(safe-area-inset-top)+60px)]" : ""}`
               : `fb-page relative h-full overflow-y-auto rounded-panel px-3 pt-8 shadow-[var(--glass-edge),var(--glass-shadow)] ${inspectorOpen && drawerMode ? "pb-[min(700px,70vh)]" : "pb-28"} sm:px-8`
           }

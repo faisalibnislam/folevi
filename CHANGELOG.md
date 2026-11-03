@@ -4,6 +4,21 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.26: Small update
+
+Released 2026-11-03 14:10:29+06:00 (build 38, tag v1.2.26)
+
+New workspaces from the apps, and tabs for each workspace
+
+### Added
+
+- New workspace on the Mac, iPad and iPhone asks for a name, makes the workspace and opens it
+
+### Improved
+
+- Mac and iPad: each workspace keeps its own tabs, which come back when you switch back and after a relaunch
+- Shared links that anyone can open show the note's title, first lines and card in link previews
+
 ## Version 1.2.25: Small update
 
 Released 2026-11-03 12:27:19+06:00 (build 37, tag v1.2.25)

@@ -1,6 +1,21 @@
 {
   "releases": [
     {
+      "version": "1.2.26",
+      "build": 38,
+      "released": "2026-11-03T14:10:29+06:00",
+      "type": "patch",
+      "summary": "New workspaces from the apps, and tabs for each workspace",
+      "added": [
+        "New workspace on the Mac, iPad and iPhone asks for a name, makes the workspace and opens it"
+      ],
+      "improved": [
+        "Mac and iPad: each workspace keeps its own tabs, which come back when you switch back and after a relaunch",
+        "Shared links that anyone can open show the note's title, first lines and card in link previews"
+      ],
+      "tag": "v1.2.26"
+    },
+    {
       "version": "1.2.25",
       "build": 37,
       "released": "2026-11-03T12:27:19+06:00",

@@ -1,6 +1,20 @@
 {
   "releases": [
     {
+      "version": "1.2.30",
+      "build": 42,
+      "released": "2026-11-04T12:12:30+06:00",
+      "type": "patch",
+      "summary": "Docked is now Bookmarks",
+      "improved": [
+        "Docked is now Bookmarks, with Bookmark and Remove bookmark in menus, a bookmark icon, and a ribbon on bookmarked cards"
+      ],
+      "fixed": [
+        "Dropping a note on a folder card didn't move it on the Mac and iPad"
+      ],
+      "tag": "v1.2.30"
+    },
+    {
       "version": "1.2.29",
       "build": 41,
       "released": "2026-11-04T07:30:05+06:00",

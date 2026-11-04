@@ -4,6 +4,20 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.30: Small update
+
+Released 2026-11-04 12:12:30+06:00 (build 42, tag v1.2.30)
+
+Docked is now Bookmarks
+
+### Improved
+
+- Docked is now Bookmarks, with Bookmark and Remove bookmark in menus, a bookmark icon, and a ribbon on bookmarked cards
+
+### Fixed
+
+- Dropping a note on a folder card didn't move it on the Mac and iPad
+
 ## Version 1.2.29: Small update
 
 Released 2026-11-04 07:30:05+06:00 (build 41, tag v1.2.29)

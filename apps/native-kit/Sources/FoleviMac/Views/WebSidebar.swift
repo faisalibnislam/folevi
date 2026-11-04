@@ -171,7 +171,7 @@ public struct WebSidebar: View {
             item(.home, icon: .house, title: "Home")
             if caps?.ai ?? false { item(.web("/ai"), icon: .wandSparkles, title: "Work with Foli AI", glyph: AnyView(AiMarkGlyph(size: 16))) }
             ZStack(alignment: .trailing) {
-                item(.notes(.starred), icon: .foldbackClip, title: "Docked")
+                item(.notes(.starred), icon: .bookmark, title: "Bookmarks")
                 if !starred.isEmpty {
                     let t = style("starred.toggle")
                     Button { WebMotion.animate { starredOpen.toggle() } } label: {

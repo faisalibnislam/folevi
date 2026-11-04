@@ -49,7 +49,7 @@
       "kind": "event",
       "name": "toast",
       "data": {
-        "message": "Docked",
+        "message": "Bookmarked",
         "tone": "info",
         "undo": {
           "command": "note.star",

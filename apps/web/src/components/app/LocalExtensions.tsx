@@ -16,7 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 
 /** Changes settle this long before the app hears of them (typing in a note changes it many times a second). */
 const SETTLE_MS = 1500;
-/** How many notes Spotlight keeps: the recent and the docked ones (as the app does with an account). */
+/** How many notes Spotlight keeps: the recent and the bookmarked ones (as the app does with an account). */
 const SPOTLIGHT_RECENT = 30;
 const SPOTLIGHT_STARRED = 30;
 /** How many notes Shortcuts can pick from. */
@@ -53,7 +53,7 @@ export function widgetNote(n: ListedNote): NativeWidgetNote {
   return { id: n.id, title: n.title || "Untitled", place: { id: null, name: whereIs(n) }, updatedAt: new Date(n.updatedAt).toISOString() };
 }
 
-/** Spotlight's notes: the recent and the docked ones, once each (a docked note says so). */
+/** Spotlight's notes: the recent and the bookmarked ones, once each (a bookmarked note says so). */
 export function spotlightItems(recent: readonly ListedNote[], starred: readonly ListedNote[]): NativeSpotlightItem[] {
   const out = new Map<string, NativeSpotlightItem>();
   const add = (n: ListedNote, star: boolean) => {

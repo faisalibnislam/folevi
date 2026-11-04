@@ -48,7 +48,7 @@ function TabShortcuts() {
 
 /** The Note menu's commands, by the note's own menu items' words. */
 const NOTE_ITEMS: [MacMenuCommand, string[]][] = [
-  ["note.star", ["Dock", "Undock"]],
+  ["note.star", ["Bookmark", "Remove bookmark"]],
   ["note.archive", ["Archive", "Unarchive"]],
   ["note.move", ["Move…"]],
   ["note.duplicate", ["Duplicate"]],

@@ -188,7 +188,7 @@ func noteMenuEntries(_ row: NoteRow, list: NotesListModel, frame: FrameModel, re
     out.append(WebMenuEntry(.item(template ? "Edit template" : "Open", icon: .externalLink)) { frame.open(.note(row.id)) })
     out.append(WebMenuEntry(.item("Open in new tab", icon: .externalLink, id: "newtab")) { frame.open(.note(row.id), .newTab) })
     let starred = list.isStarred(row)
-    out.append(WebMenuEntry(.item(starred ? "Undock" : "Dock", icon: starred ? .foldbackClipOff : .foldbackClip)) { run(starred ? .unstar : .star) })
+    out.append(WebMenuEntry(.item(starred ? "Remove bookmark" : "Bookmark", icon: starred ? .bookmarkOff : .bookmark)) { run(starred ? .unstar : .star) })
     out.append(WebMenuEntry(.item("Duplicate", icon: .copy)) { run(.duplicate) })
     if !template { out.append(WebMenuEntry(.item("Move to folder…", icon: .folderInput)) { run(.move) }) }
     if !list.copyTargets.isEmpty { out.append(WebMenuEntry(.item("Copy to…", icon: .copyPlus)) { run(.copyTo) }) }
@@ -370,8 +370,8 @@ struct WebSelectionBar: View {
         switch a {
         case .move: .folderInput
         case .copy: .copyPlus
-        case .star: .foldbackClip
-        case .unstar: .foldbackClipOff
+        case .star: .bookmark
+        case .unstar: .bookmarkOff
         case .archive: .archive
         case .unarchive: .archiveRestore
         case .trash, .deleteForever: .trash
@@ -420,11 +420,11 @@ struct WebHomeScreen: View {
                             WebNoteCarousel(label: "Recent notes", rows: Array(home.recents.prefix(10)), width: inner, list: list, frame: frame, recent: true)
                         }
                     }
-                    section("Docked", icon: .foldbackClip, route: .notes(.starred), top: 36, count: nil) {
+                    section("Bookmarks", icon: .bookmark, route: .notes(.starred), top: 36, count: nil) {
                         if home.value != nil && home.starred.isEmpty {
-                            WebEmptyState(icon: nil, title: "Nothing docked yet", message: "Dock notes you come back to often and they’ll appear here.", page: false)
+                            WebEmptyState(icon: nil, title: "No bookmarks yet", message: "Bookmark notes you come back to often and they’ll appear here.", page: false)
                         } else {
-                            WebNoteCarousel(label: "Docked notes", rows: home.starred, width: inner, list: list, frame: frame, recent: false)
+                            WebNoteCarousel(label: "Bookmarked notes", rows: home.starred, width: inner, list: list, frame: frame, recent: false)
                         }
                     }
                     foldersSection(width: inner)
@@ -925,7 +925,7 @@ struct WebNoteBrowser: View {
         let e = model.empty
         let icon: WebIcon = switch model.kind.view {
         case .all: .files
-        case .starred: .foldbackClip
+        case .starred: .bookmark
         case .archive: .archive
         case .trash: .trash
         case .templates: .layoutTemplate

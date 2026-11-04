@@ -215,7 +215,7 @@ struct SidebarTests {
         let sections = SidebarModel.sections(session: demo.session, home: demo.homeValue, tree: FoldersTreeValue(space: "personal", folders: demo.folders, tags: demo.tags))
         #expect(sections.map(\.id) == [SidebarModel.topHeader, SidebarModel.foldersHeader, SidebarModel.tagsHeader, SidebarModel.moreHeader])
         let top = sections[0].children
-        #expect(top.map(\.title) == ["Home", "Catch me up", "All notes", "Drafts", "Shared with me", "Changes", "Docked"])
+        #expect(top.map(\.title) == ["Home", "Catch me up", "All notes", "Drafts", "Shared with me", "Changes", "Bookmarks"])
         #expect(top.first { $0.title == "All notes" }?.count == demo.homeValue.rows.first { $0.id == .notes }?.count)
         let folders = sections[1].children
         #expect(folders.map(\.title) == ["Work", "Trips", "Reading", "Recipes"])
@@ -232,7 +232,7 @@ struct SidebarTests {
         var home = demo.homeValue
         home.catchUp.available = false
         let top = SidebarModel.sections(session: s, home: home, tree: nil)[0].children.map(\.title)
-        #expect(top == ["Home", "All notes", "Drafts", "Docked"])
+        #expect(top == ["Home", "All notes", "Drafts", "Bookmarks"])
     }
 
     @Test func orphansShowAtTheTop() {

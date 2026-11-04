@@ -264,13 +264,13 @@ test("iPhone: a held card's finger slides onto its menu and lets go on an item t
   await expect(card).toBeVisible({ timeout: 30_000 });
   const b = (await card.boundingBox())!;
   const at = { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2) };
-  // Held still (the menu opens), then the finger slides down onto "Dock" and lets go there.
+  // Held still (the menu opens), then the finger slides down onto "Bookmark" and lets go there.
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [at] });
   await page.waitForTimeout(700);
   const menu = page.getByRole("menu").first();
   await expect(menu).toBeVisible();
-  const dock = menu.getByRole("menuitem", { name: "Dock" });
+  const dock = menu.getByRole("menuitem", { name: "Bookmark" });
   const sb = (await dock.boundingBox())!;
   const to = { x: Math.round(sb.x + sb.width / 2), y: Math.round(sb.y + sb.height / 2) };
   for (let i = 1; i <= 6; i++) {
@@ -283,11 +283,11 @@ test("iPhone: a held card's finger slides onto its menu and lets go on an item t
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await cdp.detach();
   await expect(page.getByRole("menu")).toHaveCount(0);
-  // Chosen: the note is docked (its menu now offers Undock).
+  // Chosen: the note is bookmarked (its menu now offers Remove bookmark).
   await page.waitForTimeout(600);
   const nb = (await card.boundingBox())!;
   await card.dispatchEvent("contextmenu", { bubbles: true, cancelable: true, clientX: nb.x + nb.width / 2, clientY: nb.y + nb.height / 2 });
-  await expect(page.getByRole("menu").first().getByRole("menuitem", { name: "Undock" })).toBeVisible();
+  await expect(page.getByRole("menu").first().getByRole("menuitem", { name: "Remove bookmark" })).toBeVisible();
   await context.close();
 });
 

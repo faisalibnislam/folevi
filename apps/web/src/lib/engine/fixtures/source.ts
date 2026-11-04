@@ -347,7 +347,7 @@ export const FIXTURES: Record<string, Fixture> = {
     batch: [
       { kind: "update", sub: "sync", rev: 4, value: SYNC_SAVED },
       { kind: "event", name: "sync.status", data: SYNC_SAVED },
-      { kind: "event", name: "toast", data: { message: "Docked", tone: "info", undo: { command: "note.star", args: { ids: ["doc_00001"], starred: false } }, action: null } },
+      { kind: "event", name: "toast", data: { message: "Bookmarked", tone: "info", undo: { command: "note.star", args: { ids: ["doc_00001"], starred: false } }, action: null } },
     ],
   },
 
@@ -1354,7 +1354,7 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.space.switch": command({ name: "space.switch", description: "Show the team workspace.", args: { space: "ws_studio" }, result: { space: "ws_studio" } }),
   "command.note.create": command({ name: "note.create", description: "A new note in a folder (works offline).", args: { folderId: "fld_trips", title: "" }, result: { id: "01JB7Z8K3Q4ABCDEF0123456789" } }),
   "command.note.create.template": command({ name: "note.create", description: "A new note from a built-in template, opened in the page at once.", args: { templateId: "builtin:meeting", open: true }, result: { id: "01JB7Z8K3Q4ABCDEF0123456790" } }),
-  "command.note.star": command({ name: "note.star", description: "Dock two notes.", args: { ids: ["doc_00001", "doc_00002"], starred: true }, result: { done: ["doc_00001", "doc_00002"], skipped: 0, queued: false } }),
+  "command.note.star": command({ name: "note.star", description: "Bookmark two notes.", args: { ids: ["doc_00001", "doc_00002"], starred: true }, result: { done: ["doc_00001", "doc_00002"], skipped: 0, queued: false } }),
   "command.note.move": command({ name: "note.move", description: "Move a note to Drafts while offline: queued.", args: { ids: ["doc_00001"], folderId: null }, result: { done: ["doc_00001"], skipped: 0, queued: true } }),
   "command.note.move.not-found": command({ name: "note.move", description: "A move into a folder that's gone.", args: { ids: ["doc_00001"], folderId: "fld_gone" }, error: { code: "not_found", message: "Folder not found." } }),
   "command.note.archive": command({ name: "note.archive", description: "Archive one note, one skipped (no permission).", args: { ids: ["doc_00001", "doc_00002"], archived: true }, result: { done: ["doc_00001"], skipped: 1, queued: false } }),

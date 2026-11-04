@@ -32,11 +32,11 @@ public struct CardPreviewLine: Hashable, Sendable {
     }
 }
 
-/// How a note's card looks (DocumentCard.tsx CardLook): starred, a binder clip; pages inside, sheets fanned behind;
+/// How a note's card looks (DocumentCard.tsx CardLook): bookmarked, a ribbon; pages inside, sheets fanned behind;
 /// tabs, a tab divider; mostly attachments, a pocket; mostly a canvas, graph paper; mostly a list, an index card; a
 /// template, a typed memo; anything else, a spiral-bound page.
 public enum NoteCardLook: String, Sendable, CaseIterable {
-    case spiral, clip, stack, tabs, pocket, graph, index, memo
+    case spiral, ribbon, stack, tabs, pocket, graph, index, memo
 }
 
 public struct NoteCardModel: Hashable, Sendable, Identifiable {
@@ -83,7 +83,7 @@ public struct NoteCardModel: Hashable, Sendable, Identifiable {
 
     /// The card's look (DocumentCard.tsx noteLook): the first that fits.
     public var look: NoteCardLook {
-        if starred { return .clip }
+        if starred { return .ribbon }
         switch shape {
         case "pages": return .stack
         case "tabs": return .tabs
@@ -109,7 +109,7 @@ public struct NoteCardModel: Hashable, Sendable, Identifiable {
         if showsFolder { parts.append(folderName.map { "in \($0)" } ?? "Draft") }
         parts.append("edited \(timeText)")
         if let first = NoteCardView.previewText(preview, excerpt: excerpt).split(separator: "\n").first { parts.append(String(first)) }
-        if starred { parts.append("docked") }
+        if starred { parts.append("bookmarked") }
         return parts.joined(separator: ", ")
     }
 }
@@ -182,7 +182,7 @@ public struct NoteCardView: View {
             .overlay(shape.strokeBorder(Color.black.opacity(0.05), lineWidth: 1))
             .overlay(alignment: .topTrailing) {
                 if model.starred {
-                    WebIconView(.foldbackClip, size: 7.5 * cq, strokeWidth: 2.4)
+                    WebIconView(.bookmark, size: 7.5 * cq, strokeWidth: 2.4)
                         .foregroundStyle(ink.color)
                         .frame(width: 12 * cq, height: 12 * cq)
                         .background(UnevenRoundedRectangle(bottomLeadingRadius: FoleviTokens.Radius.chip, style: .continuous).fill(chip.color))

@@ -77,7 +77,7 @@ struct AddTaskIntent: AppIntent {
 
 struct OpenNoteIntent: AppIntent {
     static let title: LocalizedStringResource = "Open Note"
-    static let description = IntentDescription("Opens one of your recent or docked notes in Folevi.")
+    static let description = IntentDescription("Opens one of your recent or bookmarked notes in Folevi.")
     static let openAppWhenRun = true
 
     @Parameter(title: "Note")

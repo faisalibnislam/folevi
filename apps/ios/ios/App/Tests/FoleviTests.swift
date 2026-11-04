@@ -414,7 +414,7 @@ final class SpotlightTests: XCTestCase {
         XCTAssertEqual(item.attributeSet.title, "Acme brief")
         XCTAssertEqual(item.attributeSet.contentDescription, "Kick-off on Monday.")
         XCTAssertEqual(item.attributeSet.containerDisplayName, "Work / Clients")
-        XCTAssertEqual(item.attributeSet.keywords, ["Personal", "Clients", "docked"])
+        XCTAssertEqual(item.attributeSet.keywords, ["Personal", "Clients", "bookmarked"])
     }
 }
 

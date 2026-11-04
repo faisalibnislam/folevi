@@ -83,8 +83,8 @@ struct RebuildHomeScreen: View {
 
     private static func title(_ action: NotesListModel.RowAction) -> String {
         switch action {
-        case .star: "Dock"
-        case .unstar: "Undock"
+        case .star: "Bookmark"
+        case .unstar: "Remove bookmark"
         case .move: "Move to folder…"
         case .duplicate: "Duplicate"
         case .archive: "Archive"

@@ -143,7 +143,7 @@ struct NoteActionsTests {
         engine.onCommand = { _, args in .object(["done": args["ids"]!, "skipped": .number(0), "queued": .bool(true)]) }
         let actions = NoteActions(client: engine.client(), feedback: log.feedback)
         await actions.star(["a"], true)
-        #expect(log.toasts.last?.message == "Docked")
+        #expect(log.toasts.last?.message == "Bookmarked")
         #expect(log.toasts.last?.actionTitle == nil)
     }
 }

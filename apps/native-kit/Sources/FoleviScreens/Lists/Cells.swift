@@ -159,7 +159,7 @@ struct NoteRowView: View {
                         .foregroundStyle(Folevi.color.ink)
                         .lineLimit(lines)
                     if starred {
-                        WebIconView(.foldbackClip, size: 12).foregroundStyle(Folevi.color.inkFaint).accessibilityLabel("Docked")
+                        WebIconView(.bookmark, size: 12).foregroundStyle(Folevi.color.inkFaint).accessibilityLabel("Bookmarked")
                     }
                 }
                 Text(subtitle)

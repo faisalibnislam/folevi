@@ -50,7 +50,7 @@ public final class NoteActions {
         await perform(ids, undoable: true, rollback: { for id in ids { self.starOverrides[id] = nil } }, settle: { for id in ids { self.starOverrides[id] = nil } }) {
             try await self.client.command(.noteStar(ids: ids, starred: starred))
         } message: { n in
-            starred ? (n == 1 ? "Docked" : "Docked \(notesText(n))") : (n == 1 ? "Removed from Docked" : "Undocked \(notesText(n))")
+            starred ? (n == 1 ? "Bookmarked" : "Bookmarked \(notesText(n))") : (n == 1 ? "Bookmark removed" : "Removed \(notesText(n)) from Bookmarks")
         } undo: { done in
             Task { await self.quietly { try await self.client.command(.noteStar(ids: done, starred: !starred)) } }
         }

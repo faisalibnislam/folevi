@@ -131,7 +131,7 @@ final class Spotlight {
         attributes.contentDescription = note.excerpt
         attributes.containerTitle = note.location
         attributes.containerDisplayName = note.location
-        attributes.keywords = [note.location] + (note.starred ? ["docked"] : [])
+        attributes.keywords = [note.location] + (note.starred ? ["bookmarked"] : [])
         if note.updatedAt > 0 { attributes.contentModificationDate = Date(timeIntervalSince1970: note.updatedAt / 1000) }
         let item = CSSearchableItem(uniqueIdentifier: identifier(place: place, id: note.id), domainIdentifier: domain(place), attributeSet: attributes)
         item.expirationDate = .distantFuture

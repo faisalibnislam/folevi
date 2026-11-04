@@ -720,7 +720,7 @@ export const FEATURES: Feature[] = [
       {
         id: "organize",
         title: "Drafts, folders and tags",
-        body: <p>New notes wait in Drafts until you file them. <Link href="/features/folders">Folders</Link> show the notes inside them, and pages can also be tagged and docked. Archive keeps finished pages out of the way, and Trash keeps deleted pages for 30 days.</p>,
+        body: <p>New notes wait in Drafts until you file them. <Link href="/features/folders">Folders</Link> show the notes inside them, and pages can also be tagged and bookmarked. Archive keeps finished pages out of the way, and Trash keeps deleted pages for 30 days.</p>,
       },
     ],
     faq: [

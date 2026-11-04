@@ -40,8 +40,8 @@ public enum BulkAction: String, CaseIterable, Sendable, Identifiable {
         switch self {
         case .move: "Move"
         case .copy: "Copy to"
-        case .star: "Dock"
-        case .unstar: "Undock"
+        case .star: "Bookmark"
+        case .unstar: "Remove bookmark"
         case .archive: "Archive"
         case .unarchive: "Unarchive"
         case .trash: "Trash"
@@ -54,8 +54,8 @@ public enum BulkAction: String, CaseIterable, Sendable, Identifiable {
         switch self {
         case .move: "folder"
         case .copy: "plus.square.on.square"
-        case .star: FoleviGlyph.name(.foldbackClip)
-        case .unstar: FoleviGlyph.name(.foldbackClipOff)
+        case .star: FoleviGlyph.name(.bookmark)
+        case .unstar: FoleviGlyph.name(.bookmarkOff)
         case .archive: "archivebox"
         case .unarchive: "tray.and.arrow.up"
         case .trash, .deleteForever: "trash"
@@ -186,7 +186,7 @@ public final class NotesListModel {
         switch kind.view {
         case .all: "All notes"
         case .unsorted: "Drafts"
-        case .starred: "Docked"
+        case .starred: "Bookmarks"
         case .archive: "Archive"
         case .trash: "Trash"
         case .templates: "Templates"
@@ -399,8 +399,8 @@ public final class NotesListModel {
         switch action {
         case .open: "Open"
         case .openInNewTab: "Open in new tab"
-        case .star: "Dock"
-        case .unstar: "Undock"
+        case .star: "Bookmark"
+        case .unstar: "Remove bookmark"
         case .move: "Move to folder…"
         case .duplicate: "Duplicate"
         case .copyTo: "Copy to…"
@@ -422,8 +422,8 @@ public final class NotesListModel {
         switch action {
         case .open, .editTemplate: "arrow.up.forward.square"
         case .openInNewTab: "plus.rectangle.on.rectangle"
-        case .star: FoleviGlyph.name(.foldbackClip)
-        case .unstar: FoleviGlyph.name(.foldbackClipOff)
+        case .star: FoleviGlyph.name(.bookmark)
+        case .unstar: FoleviGlyph.name(.bookmarkOff)
         case .move: "folder"
         case .duplicate: "plus.square.on.square"
         case .copyTo: "square.on.square.dashed"
@@ -640,7 +640,7 @@ public final class NotesListModel {
     public var empty: (symbol: String, title: String, message: String) {
         switch kind.view {
         case .all: ("doc.on.doc", "Nothing here yet", "Starting a document takes one keystroke.")
-        case .starred: (FoleviGlyph.name(.foldbackClip), "Nothing docked yet", "Dock a note to keep it close at hand.")
+        case .starred: (FoleviGlyph.name(.bookmark), "No bookmarks yet", "Bookmark a note to keep it close at hand.")
         case .archive: ("archivebox", "Archive is empty", "Archived notes rest here, out of your lists but never lost.")
         case .trash: ("trash", "Trash is empty", "Deleted notes stay here for 30 days.")
         case .templates: ("rectangle.on.rectangle", "No templates of your own yet", (builtIns?.value?.templates.isEmpty == false) ? "Save any note as a template from its menu, or start from a built-in one above." : "Save any document as a template from its menu.")

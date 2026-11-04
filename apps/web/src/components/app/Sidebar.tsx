@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { Archive, Calendar, CheckSquare, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
-import { FoldbackClip } from "@/components/ui/FoldbackClip";
+import { Bookmark } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter, type Route } from "@/lib/app/router";
@@ -84,7 +84,7 @@ function NavItem({
   dropFolderId?: string;
   /** The folder this row stands for, dragged by it (to reorder or nest it). */
   dragFolderId?: string;
-  /** The note this row stands for (Docked): dragged onto a folder, it moves there. */
+  /** The note this row stands for (Bookmarks): dragged onto a folder, it moves there. */
   dragNoteId?: string;
   /** Always fully encrypted: a small lock after the name (docs/E2EE_DESIGN.md §10.8). */
   locked?: boolean;
@@ -97,7 +97,7 @@ function NavItem({
     <AppLink
       href={href}
       onClick={() => {
-        // A note opened from the sidebar (e.g. Docked) gets its own tab.
+        // A note opened from the sidebar (e.g. Bookmarks) gets its own tab.
         if (href.startsWith("/d/")) openNextInNewTab();
         onNavigate?.();
       }}
@@ -528,13 +528,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           {aiOn ? <NavItem href="/ai" icon={<AiIcon size={16} />} label="Work with Foli AI" onNavigate={onNavigate} /> : null}
           {graph ? <NavItem href="/graph" icon={<Waypoints size={16} />} label="Graph" onNavigate={onNavigate} /> : null}
           <div className="group/starred relative">
-            <NavItem href="/starred" icon={<FoldbackClip size={16} />} label="Docked" onNavigate={onNavigate} />
+            <NavItem href="/starred" icon={<Bookmark size={16} />} label="Bookmarks" onNavigate={onNavigate} />
             {starred?.page.length ? (
               <button
                 type="button"
                 onClick={() => setStarredOpen(!starredOpen)}
                 aria-expanded={starredOpen}
-                aria-label={starredOpen ? "Collapse Docked" : "Expand Docked"}
+                aria-label={starredOpen ? "Collapse Bookmarks" : "Expand Bookmarks"}
                 className="absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
                 {starredOpen ? <ChevronDown size={12} aria-hidden /> : <ChevronRight size={12} aria-hidden />}
@@ -542,11 +542,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             ) : null}
           </div>
           {starred?.page.length && starredOpen ? (
-            <div className="space-y-0.5 pl-5" aria-label="Docked pages" role="group">
+            <div className="space-y-0.5 pl-5" aria-label="Bookmarked pages" role="group">
               {starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).map((d) => (
                 <NavItem key={d.id} href={`/d/${d.id}`} icon={<FileText size={15} />} label={d.title || "Untitled"} onNavigate={onNavigate} dragNoteId={canEdit ? d.id : undefined} locked={(d as { locked?: boolean }).locked === true} />
               ))}
-              <MoreLink href="/starred" count={starred.page.length - starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).length} noun="docked pages" onNavigate={onNavigate} exact={starred.isDone} />
+              <MoreLink href="/starred" count={starred.page.length - starred.page.filter((d, i) => i < SIDEBAR_LIMIT || (route.name === "doc" && route.id === d.id)).length} noun="bookmarked pages" onNavigate={onNavigate} exact={starred.isDone} />
             </div>
           ) : null}
           <NavItem href="/drafts" icon={<Inbox size={16} />} label="Drafts" count={drafts ?? undefined} onNavigate={onNavigate} dropFolderId="" />

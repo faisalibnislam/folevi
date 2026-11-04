@@ -98,7 +98,7 @@ public enum CardMapping {
         var parts = [row.title.isEmpty ? "Untitled" : row.title]
         if row.kind != "template" { parts.append(row.folder.map { "in \($0.name)" } ?? "Draft") }
         parts.append(inTrash ? timeText(row, inTrash: true).lowercased() : "edited \(AgeText.relative(Date(timeIntervalSince1970: row.updatedAt / 1000), now: ScreenClock.now()))")
-        if starred { parts.append("docked") }
+        if starred { parts.append("bookmarked") }
         if row.sync != .saved { parts.append("not synced") }
         return parts.joined(separator: ", ")
     }

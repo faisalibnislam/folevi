@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { CatchUp } from "@/components/ai/CatchUp";
 import { ArrowRight, ChevronLeft, ChevronRight, Clock3, Folder, Layers } from "lucide-react";
-import { FoldbackClip } from "@/components/ui/FoldbackClip";
+import { Bookmark } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -212,7 +212,7 @@ function TodaysReviews() {
 }
 
 /**
- * Home: recent notes and docked notes (the latest 10 each, in a sideways-scrolling row) and recent folders (two rows), each with
+ * Home: recent notes and bookmarked notes (the latest 10 each, in a sideways-scrolling row) and recent folders (two rows), each with
  * "See all". Rows are whole rows at any width.
  */
 export function HomeDashboard() {
@@ -243,8 +243,8 @@ export function HomeDashboard() {
           <NoteCarousel docs={recent} label="Recent notes" recent />
         </Section>
 
-        <Section shelf title="Docked" icon={<FoldbackClip size={17} strokeWidth={1.9} />} href="/starred" empty={starred && !starred.page.length ? <EmptyState size="inline" title="Nothing docked yet" body="Dock notes you come back to often and they’ll appear here." /> : undefined}>
-          <NoteCarousel docs={starred?.page} label="Docked notes" />
+        <Section shelf title="Bookmarks" icon={<Bookmark size={17} strokeWidth={1.9} />} href="/starred" empty={starred && !starred.page.length ? <EmptyState size="inline" title="No bookmarks yet" body="Bookmark notes you come back to often and they’ll appear here." /> : undefined}>
+          <NoteCarousel docs={starred?.page} label="Bookmarked notes" />
         </Section>
 
         <Section

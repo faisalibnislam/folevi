@@ -136,7 +136,7 @@ public enum FrameRoute: Hashable, Sendable {
             switch v {
             case .all: return "All notes"
             case .unsorted: return "Drafts"
-            case .starred: return "Docked"
+            case .starred: return "Bookmarks"
             case .archive: return "Archive"
             case .trash: return "Trash"
             case .templates: return "Templates"
@@ -174,7 +174,7 @@ public enum FrameRoute: Hashable, Sendable {
             switch v {
             case .all: return "doc.text"
             case .unsorted: return "tray"
-            case .starred: return FoleviGlyph.name(.foldbackClip)
+            case .starred: return FoleviGlyph.name(.bookmark)
             case .archive: return "archivebox"
             case .trash: return "trash"
             case .templates: return "square.on.square"

@@ -535,7 +535,7 @@ public struct WebTopBar: View {
         case .home: return .house
         case .notes(let v):
             switch v {
-            case .starred: return .foldbackClip
+            case .starred: return .bookmark
             case .unsorted: return .inbox
             case .templates: return .layoutTemplate
             case .archive: return .archive

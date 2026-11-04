@@ -72,18 +72,18 @@ test("a new note on a folder page lands in that folder with no page icon; folder
   await expect(page.getByRole("dialog", { name: /Color for/ }).getByRole("radio", { name: "Sage" })).toHaveAttribute("aria-checked", "true");
   await page.keyboard.press("Escape");
 
-  // Home: Recent notes, Docked and Recent folders, each with See all.
+  // Home: Recent notes, Bookmarks and Recent folders, each with See all.
   await nav.getByRole("link", { name: "Home" }).click();
   for (const [name, href] of [
     ["Recent notes", "/notes"],
-    ["Docked", "/starred"],
+    ["Bookmarks", "/starred"],
     ["Recent folders", "/folders"],
   ] as const) {
     const section = page.getByRole("region", { name });
     await expect(section).toBeVisible();
     await expect(section.getByRole("link", { name: /^See all/ })).toHaveAttribute("href", href);
   }
-  // Recent notes and Docked are single sideways rows of at most 10 notes, with arrows to scroll.
+  // Recent notes and Bookmarks are single sideways rows of at most 10 notes, with arrows to scroll.
   const recentList = page.getByRole("list", { name: "Recent notes" });
   await expect(recentList.getByRole("listitem").first()).toBeVisible();
   expect(await recentList.getByRole("listitem").count()).toBeLessThanOrEqual(10);

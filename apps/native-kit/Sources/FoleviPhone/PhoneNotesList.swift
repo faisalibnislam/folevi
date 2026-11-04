@@ -291,8 +291,8 @@ public struct PhoneNotesListScreen: View {
             return ([PhoneSwipeAction("Restore", icon: .undo2, tone: RGBA(0x3f, 0x7d, 0x58), action: run(.restore))], [])
         }
         let star = model.isStarred(row)
-            ? PhoneSwipeAction("Undock", icon: .foldbackClipOff, tone: RGBA(0xb0, 0x7a, 0x12), action: run(.unstar))
-            : PhoneSwipeAction("Dock", icon: .foldbackClip, tone: RGBA(0xc5, 0x8a, 0x12), action: run(.star))
+            ? PhoneSwipeAction("Remove bookmark", icon: .bookmarkOff, tone: RGBA(0xb0, 0x7a, 0x12), action: run(.unstar))
+            : PhoneSwipeAction("Bookmark", icon: .bookmark, tone: RGBA(0xc5, 0x8a, 0x12), action: run(.star))
         let archived = model.kind.view == .archive
         return ([star], [
             PhoneSwipeAction("Trash", icon: .trash, tone: RGBA(0xd6, 0x45, 0x3d), danger: true, action: run(.trash)),
@@ -407,7 +407,7 @@ public struct PhoneNotesListScreen: View {
     static func emptyIcon(_ view: NotesListView) -> WebIcon {
         switch view {
         case .all: .files
-        case .starred: .foldbackClip
+        case .starred: .bookmark
         case .archive: .archive
         case .trash: .trash
         case .templates: .layoutTemplate
@@ -446,8 +446,8 @@ struct PhoneNoteRow: View {
                     Text(row.title.isEmpty ? "Untitled" : row.title).webText(title.text).lineLimit(1)
                         .foregroundStyle(title.color.color)
                     if starred {
-                        WebIconView(.foldbackClip, size: 13).foregroundStyle(sub.color.color)
-                            .accessibilityLabel("Docked")
+                        WebIconView(.bookmark, size: 13).foregroundStyle(sub.color.color)
+                            .accessibilityLabel("Bookmarked")
                     }
                 }
                 Text(subtitle).webText(sub.text).lineLimit(1).foregroundStyle(sub.color.color)
@@ -593,8 +593,8 @@ struct PhoneSelectBar: View {
         switch a {
         case .move: .folderInput
         case .copy: .copyPlus
-        case .star: .foldbackClip
-        case .unstar: .foldbackClipOff
+        case .star: .bookmark
+        case .unstar: .bookmarkOff
         case .archive: .archive
         case .unarchive: .archiveRestore
         case .trash, .deleteForever: .trash

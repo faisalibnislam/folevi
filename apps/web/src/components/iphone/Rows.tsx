@@ -143,7 +143,7 @@ export function SearchField({ placeholder, onOpen, value, onChange, trailing }: 
 }
 
 /**
- * A whole screen with nothing in it (Archive, Docked, a folder): one centred block, an icon, a title and a
+ * A whole screen with nothing in it (Archive, Bookmarks, a folder): one centred block, an icon, a title and a
  * line of help, 280 points wide (§2.1).
  */
 export function ScreenEmpty({ icon: Icon, title, body, action }: { icon?: LucideIcon; title: ReactNode; body?: ReactNode; action?: ReactNode }) {

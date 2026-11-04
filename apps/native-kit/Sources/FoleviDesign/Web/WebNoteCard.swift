@@ -336,23 +336,15 @@ public struct WebNoteCard: View {
                     shape.stroke(Color.white.opacity(0.08), lineWidth: 1).clipShape(shape)
                 }
             }
-            if look == .clip {
-                // A binder clip across the top: the starred note.
-                ZStack(alignment: .bottom) {
-                    UnevenRoundedRectangle(topLeadingRadius: FoleviTokens.Radius.chip, topTrailingRadius: FoleviTokens.Radius.chip, style: .circular)
-                        .inset(by: 0.45 * cq)
-                        .stroke(appHeading.opacity(0.45).color, lineWidth: 0.9 * cq)
-                        .mask(Rectangle().padding(.bottom, 0.45 * cq))
-                        .frame(width: 13 * cq, height: 6 * cq)
-                        .offset(y: -4 * cq)
-                    RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular)
-                        .fill((scheme == .dark ? RGBA(90, 88, 83) : RGBA(30, 29, 26)).color)
-                        .shadow(color: .black.opacity(0.3), radius: 1, y: 1)
-                        .frame(width: 20 * cq, height: 7 * cq)
-                }
-                .frame(width: 20 * cq, height: 7 * cq, alignment: .bottom)
-                .offset(x: w / 2 - 10 * cq, y: -2.4 * cq)
-                .accessibilityLabel("Docked")
+            if look == .ribbon {
+                // A bookmark ribbon hanging over the top edge by the right corner (clear of the "…" button): the bookmarked note.
+                BookmarkRibbon()
+                    .fill((scheme == .dark ? RGBA(90, 88, 83) : RGBA(30, 29, 26)).color)
+                    .shadow(color: .black.opacity(0.3), radius: 0.75, y: 1)
+                    .frame(width: 7 * cq, height: 11.2 * cq)
+                    .offset(x: w - 10.5 * cq, y: -1.2 * cq)
+                    .accessibilityElement()
+                    .accessibilityLabel("Bookmarked")
             }
         }
         .frame(width: w, height: h, alignment: .topLeading)
@@ -1070,5 +1062,20 @@ public struct WebClampedText: View {
         }
         if start < s.length { out.append(s.substring(from: start).trimmingCharacters(in: .whitespaces)) }
         return out
+    }
+}
+
+/// A bookmark ribbon (DocumentCard.tsx's: a strip with a notch cut up into its foot), on a 10 by 16 grid.
+struct BookmarkRibbon: Shape {
+    func path(in rect: CGRect) -> Path {
+        let x = rect.width / 10, y = rect.height / 16
+        var p = Path()
+        p.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.minX + 10 * x, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.minX + 10 * x, y: rect.minY + 16 * y))
+        p.addLine(to: CGPoint(x: rect.minX + 5 * x, y: rect.minY + 12.4 * y))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY + 16 * y))
+        p.closeSubpath()
+        return p
     }
 }

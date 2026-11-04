@@ -42,6 +42,8 @@ public enum WebIcon: String, CaseIterable, Sendable {
     case blend = "blend"
     case bold = "bold"
     case bookOpen = "book-open"
+    case bookmark = "bookmark"
+    case bookmarkOff = "bookmark-off"
     case bookmarkPlus = "bookmark-plus"
     case brain = "brain"
     case briefcase = "briefcase"
@@ -134,8 +136,6 @@ public enum WebIcon: String, CaseIterable, Sendable {
     case flaskConical = "flask-conical"
     case focus = "focus"
     case foldVertical = "fold-vertical"
-    case foldbackClip = "foldback-clip"
-    case foldbackClipOff = "foldback-clip-off"
     case folder = "folder"
     case folderInput = "folder-input"
     case folderLock = "folder-lock"
@@ -375,6 +375,8 @@ public enum WebIcon: String, CaseIterable, Sendable {
         case .blend: [.circle(cx: 15, cy: 9, r: 7), .circle(cx: 9, cy: 15, r: 7)]
         case .bold: [.path("M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8")]
         case .bookOpen: [.path("M12 5v16"), .path("M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z")]
+        case .bookmark: [.path("M17 3a2 2 0 0 1 2 2v15a1 1 0 0 1-1.496.868l-4.512-2.578a2 2 0 0 0-1.984 0l-4.512 2.578A1 1 0 0 1 5 20V5a2 2 0 0 1 2-2z")]
+        case .bookmarkOff: [.path("M19 19v1a1 1 0 0 1-1.496.868l-4.512-2.578a2 2 0 0 0-1.984 0l-4.512 2.578A1 1 0 0 1 5 20V5"), .path("m2 2 20 20"), .path("M8.656 3H17a2 2 0 0 1 2 2v8.344")]
         case .bookmarkPlus: [.path("M12 7v6"), .path("M15 10H9"), .path("M17 3a2 2 0 0 1 2 2v15a1 1 0 0 1-1.496.868l-4.512-2.578a2 2 0 0 0-1.984 0l-4.512 2.578A1 1 0 0 1 5 20V5a2 2 0 0 1 2-2z")]
         case .brain: [.path("M12 18V5"), .path("M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"), .path("M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"), .path("M17.997 5.125a4 4 0 0 1 2.526 5.77"), .path("M18 18a4 4 0 0 0 2-7.464"), .path("M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"), .path("M6 18a4 4 0 0 1-2-7.464"), .path("M6.003 5.125a4 4 0 0 0-2.526 5.77")]
         case .briefcase: [.path("M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"), .rect(x: 2, y: 6, width: 20, height: 14, rx: 2, ry: 2)]
@@ -467,8 +469,6 @@ public enum WebIcon: String, CaseIterable, Sendable {
         case .flaskConical: [.path("M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"), .path("M6.453 15h11.094"), .path("M8.5 2h7")]
         case .focus: [.circle(cx: 12, cy: 12, r: 3), .path("M3 7V5a2 2 0 0 1 2-2h2"), .path("M17 3h2a2 2 0 0 1 2 2v2"), .path("M21 17v2a2 2 0 0 1-2 2h-2"), .path("M7 21H5a2 2 0 0 1-2-2v-2")]
         case .foldVertical: [.path("M12 22v-6"), .path("M12 8V2"), .path("M4 12H2"), .path("M10 12H8"), .path("M16 12h-2"), .path("M22 12h-2"), .path("m15 19-3-3-3 3"), .path("m15 5-3 3-3-3")]
-        case .foldbackClip: [.path("M6.5 13h11a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 17.5v-3A1.5 1.5 0 0 1 6.5 13z"), .path("M8.5 13v-2.5A3.5 3.5 0 0 1 12 7a3.5 3.5 0 0 1 3.5 3.5V13")]
-        case .foldbackClipOff: [.path("M11 13H6.5A1.5 1.5 0 0 0 5 14.5v3A1.5 1.5 0 0 0 6.5 19H17"), .path("M15 13h2.5a1.5 1.5 0 0 1 1.5 1.5V17"), .path("M8.5 13v-2.5"), .path("M10.25 7.47A3.5 3.5 0 0 1 15.5 10.5V13"), .path("m2 2 20 20")]
         case .folder: [.path("M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z")]
         case .folderInput: [.path("M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1"), .path("M2 13h10"), .path("m9 16 3-3-3-3")]
         case .folderLock: [.rect(x: 14, y: 17, width: 8, height: 5, rx: 1, ry: 1), .path("M10 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v2.5"), .path("M20 17v-2a2 2 0 1 0-4 0v2")]

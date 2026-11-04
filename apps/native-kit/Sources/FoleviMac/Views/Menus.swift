@@ -116,7 +116,7 @@ public enum NoteMenu {
             menu.addItem(item)
         }
         menu.autoenablesItems = false
-        add(starred ? "Undock" : "Dock", starred ? FoleviGlyph.name(.foldbackClipOff) : FoleviGlyph.name(.foldbackClip)) { model.star([id], !starred) }
+        add(starred ? "Remove bookmark" : "Bookmark", starred ? FoleviGlyph.name(.bookmarkOff) : FoleviGlyph.name(.bookmark)) { model.star([id], !starred) }
         add("Move to…", "folder", enabled: canEdit) { model.noteMenu(.move) }
         add("Copy to…", "doc.on.doc") { model.noteMenu(.copyTo) }
         add("Duplicate", "plus.square.on.square") { model.noteMenu(.duplicate) }

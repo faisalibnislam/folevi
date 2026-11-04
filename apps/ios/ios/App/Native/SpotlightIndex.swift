@@ -100,7 +100,7 @@ actor SpotlightIndex {
         attributes.contentDescription = String(note.excerpt.prefix(300))
         attributes.containerTitle = note.location
         attributes.containerDisplayName = note.location
-        attributes.keywords = [note.location] + (note.starred ? ["docked"] : [])
+        attributes.keywords = [note.location] + (note.starred ? ["bookmarked"] : [])
         attributes.contentModificationDate = Date(timeIntervalSince1970: note.updatedAt / 1000)
         let item = CSSearchableItem(uniqueIdentifier: note.id, domainIdentifier: domain, attributeSet: attributes)
         item.expirationDate = .distantFuture
@@ -121,7 +121,7 @@ actor SpotlightIndex {
         let location = note.folder?.path ?? note.place.name
         attributes.containerTitle = location
         attributes.containerDisplayName = location
-        attributes.keywords = [note.place.name, note.folder?.name].compactMap { $0 } + (starred ? ["docked"] : [])
+        attributes.keywords = [note.place.name, note.folder?.name].compactMap { $0 } + (starred ? ["bookmarked"] : [])
         attributes.contentModificationDate = DayFormat.instant(note.updatedAt)
         let item = CSSearchableItem(uniqueIdentifier: note.id, domainIdentifier: domain, attributeSet: attributes)
         item.expirationDate = .distantFuture

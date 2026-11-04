@@ -3,7 +3,6 @@
 // apps/web/src imports, copied as drawing data from the installed lucide-react (the same version the web
 // draws) into apps/native-kit/Sources/FoleviDesign/Generated/Icons.swift. FoleviDesign's `WebIconView` strokes
 // them the way lucide's SVGs do (24 pt grid, round caps and joins, the stroke width scaling with the size).
-// Folevi's own lucide-style icons (apps/web/src/components/ui/foldbackClipNodes.ts) are always included too.
 //
 //   pnpm icons:gen            write the Swift file
 //   pnpm icons:gen --check    fail if it is out of date (CI)
@@ -63,13 +62,6 @@ for (const fileName of used) {
   const mod = await import(pathToFileURL(join(lucideEsm, "icons", `${fileName}.mjs`)).href);
   if (!Array.isArray(mod.__iconData?.node)) throw new Error(`can't read lucide icon ${fileName}`);
   nodes.set(fileName, mod.__iconData.node);
-}
-// Folevi's own icons, from the same drawing data the web's components use (Node strips the file's types).
-const { foleviIconNodes } = await import(pathToFileURL(join(webSrc, "components/ui/foldbackClipNodes.ts")).href);
-for (const [fileName, node] of Object.entries(foleviIconNodes)) {
-  if (nodes.has(fileName)) throw new Error(`Folevi icon ${fileName} has a lucide icon's name`);
-  nodes.set(fileName, node);
-  used.add(fileName);
 }
 const iconNode = (fileName) => nodes.get(fileName);
 

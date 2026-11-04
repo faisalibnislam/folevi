@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Archive, ArrowUp, Asterisk, Bell, CheckSquare, Ellipsis, FileText, Files, House, Info, LayoutTemplate, MessageSquare, Paintbrush, PanelLeft, Plus, Search, Share2, Type, X } from "lucide-react";
-import { FoldbackClip } from "@/components/ui/FoldbackClip";
+import { Bookmark } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { FoleviLogo } from "@/components/brand/FoleviMark";
 import { TemplateTile } from "@/components/ui/TemplateIcon";
@@ -156,7 +156,7 @@ function Window({ scene, styleId, pages, ai, highlight, finished, name, compact,
 function Sidebar({ pages, note, name }: { pages: StarterPage[]; note: boolean; name: string }) {
   const rows = [
     { icon: House, label: "Home" },
-    { icon: FoldbackClip, label: "Docked" },
+    { icon: Bookmark, label: "Bookmarks" },
     { icon: Files, label: "All notes" },
     { icon: CheckSquare, label: "Tasks" },
     { icon: LayoutTemplate, label: "Templates" },

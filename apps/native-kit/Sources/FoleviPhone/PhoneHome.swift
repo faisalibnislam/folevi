@@ -124,16 +124,16 @@ public struct PhoneHomeContent: View {
     // MARK: Starred
 
     private var starred: some View {
-        PhoneHomeSection("Docked", open: { actions.open("/starred") }) {
+        PhoneHomeSection("Bookmarks", open: { actions.open("/starred") }) {
             if model.starred.isEmpty {
-                PhoneEmptyBox("Dock notes to keep them close")
+                PhoneEmptyBox("Bookmark notes to keep them close")
             } else {
                 VStack(spacing: 0) {
                     ForEach(model.starred.prefix(6), id: \.id) { row in
                         PhoneListRow(row.title.isEmpty ? "Untitled" : row.title, action: { actions.openNote(row.id) }, onLongPress: { actions.noteMenu(row, $0) }) { PhoneRowGlyph(.fileText) }
                     }
                     if model.moreStarred {
-                        PhoneListRow("See all docked", action: { actions.open("/starred") })
+                        PhoneListRow("See all bookmarks", action: { actions.open("/starred") })
                     }
                 }
             }

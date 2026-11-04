@@ -3,7 +3,7 @@
 // templates from the same paths as WebIconView, so the menu or row tints them as it does an SF Symbol.
 //
 // `FoleviGlyph` names them where an API carries a symbol's name as a string: "web:<icon>" (FoleviGlyph.name(.x))
-// is one of the web's icons, anything else an SF Symbol. Docked's foldback clip is drawn this way.
+// is one of the web's icons, anything else an SF Symbol. a bookmark is drawn this way.
 import SwiftUI
 #if canImport(UIKit)
 import UIKit

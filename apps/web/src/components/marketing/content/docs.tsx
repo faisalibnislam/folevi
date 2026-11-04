@@ -108,7 +108,7 @@ export const DOC_ARTICLES: DocArticle[] = [
           </li>
         </ol>
         <p>
-          Loose notes can live in <strong>Drafts</strong> until you decide where they belong. Pages can be nested inside other pages, filed in folders, tagged and docked. Folders can hold other folders, up to five levels deep: choose New folder inside from a folder’s menu, or drag one folder onto another in the sidebar.
+          Loose notes can live in <strong>Drafts</strong> until you decide where they belong. Pages can be nested inside other pages, filed in folders, tagged and bookmarked. Folders can hold other folders, up to five levels deep: choose New folder inside from a folder’s menu, or drag one folder onto another in the sidebar.
         </p>
         <h2 id="next">Where to go next</h2>
         <ul>
@@ -638,7 +638,7 @@ curl -X PATCH https://app.folevi.com/api/v1/tasks/TASK_ID \\
           head={["Endpoint", "What it does"]}
           rows={[
             ["GET /places", "Your Personal and the workspaces the token may use, with their ids."],
-            ["GET /notes", "Search with q, list recent notes, or your docked ones with starred=true. Filter with place; page with limit and cursor."],
+            ["GET /notes", "Search with q, list recent notes, or your bookmarked ones with starred=true. Filter with place; page with limit and cursor."],
             ["GET /notes/{id}", "One note: title, place, folder and its path, tags, link, dates and Markdown."],
             ["POST /notes", "Create a note: title, markdown, and optionally place, folderId or inInbox."],
             ["POST /notes/{id}/append", "Add markdown to the end of a note."],

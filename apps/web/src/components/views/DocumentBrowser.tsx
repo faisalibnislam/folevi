@@ -4,7 +4,7 @@ import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
-import { FoldbackClip, FoldbackClipOff } from "@/components/ui/FoldbackClip";
+import { Bookmark, BookmarkOff } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { useOpenedOnce } from "@/lib/hooks/useOpenedOnce";
 import { api } from "@/lib/convex/api";
@@ -66,7 +66,7 @@ type Sort = "updated" | "created" | "title" | "manual";
 
 const TITLES: Record<View, string> = {
   all: "Home",
-  starred: "Docked",
+  starred: "Bookmarks",
   archive: "Archive",
   trash: "Trash",
   templates: "Templates",
@@ -78,7 +78,7 @@ const TITLES: Record<View, string> = {
 // What an empty list says: a short heading and one line of help.
 const EMPTY: Record<View, { icon: LucideIcon; title: string; body?: string }> = {
   all: { icon: Files, title: "Nothing here yet", body: "Starting a document takes one keystroke." },
-  starred: { icon: FoldbackClip, title: "Nothing docked yet", body: "Dock a note to keep it close at hand." },
+  starred: { icon: Bookmark, title: "No bookmarks yet", body: "Bookmark a note to keep it close at hand." },
   archive: { icon: Archive, title: "Archive is empty", body: "Archived notes rest here, out of your lists but never lost." },
   trash: { icon: Trash2, title: "Trash is empty", body: "Deleted notes stay here for 30 days." },
   templates: { icon: LayoutTemplate, title: "No templates of your own yet", body: "Save any document as a template from its menu." },
@@ -147,7 +147,7 @@ type KeptRow = { kind?: string; parentDocumentId?: string | null; archivedAt?: n
 
 /**
  * Which notes kept on this device a view shows before (or without) the server's answer, as documents.list
- * filters them; null where the device can't tell (tags, docked notes, templates, a manual order) and it waits for the
+ * filters them; null where the device can't tell (tags, bookmarked notes, templates, a manual order) and it waits for the
  * server, unless offline (then the kept rows, as before).
  */
 function cachedViewFilter(view: View, sort: Sort, online: boolean): ((d: KeptRow) => boolean) | null {
@@ -315,8 +315,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               ]
             : []),
           selectedDocs.every((d) => d.starred)
-            ? { label: "Undock", icon: <FoldbackClipOff size={15} />, onClick: () => bulk((ids) => notes.star(ids, false)) }
-            : { label: "Dock", icon: <FoldbackClip size={15} />, onClick: () => bulk((ids) => notes.star(ids, true)) },
+            ? { label: "Remove bookmark", icon: <BookmarkOff size={15} />, onClick: () => bulk((ids) => notes.star(ids, false)) }
+            : { label: "Bookmark", icon: <Bookmark size={15} />, onClick: () => bulk((ids) => notes.star(ids, true)) },
           view === "archive"
             ? { label: "Unarchive", icon: <ArchiveRestore size={15} />, onClick: () => bulk((ids) => notes.archive(ids, false)) }
             : { label: "Archive", icon: <Archive size={15} />, onClick: () => bulk((ids) => notes.archive(ids, true)) },
@@ -883,8 +883,8 @@ function useDocMenu({ doc, view, arrange, select, recent }: DocMenuProps): { ite
                 ...(phone ? [] : [{ label: "Open in new tab", icon: <ExternalLink size={14} />, onSelect: () => window.open(`/d/${doc.id}`, "_blank", "noopener") }]),
               ]),
           doc.starred
-            ? { label: "Undock", icon: <FoldbackClipOff size={14} />, onSelect: () => void notes.star(ids, false) }
-            : { label: "Dock", icon: <FoldbackClip size={14} />, onSelect: () => void notes.star(ids, true) },
+            ? { label: "Remove bookmark", icon: <BookmarkOff size={14} />, onSelect: () => void notes.star(ids, false) }
+            : { label: "Bookmark", icon: <Bookmark size={14} />, onSelect: () => void notes.star(ids, true) },
           ...(phone && doc.kind !== "template" ? [{ label: "Move to folder…", icon: <FolderInput size={14} />, onSelect: () => setMoveOpen(true) }] : []),
           { label: "Duplicate", icon: <Copy size={14} />, onSelect: () => void duplicate({ documentId: doc.id }).then(() => toast.show("Duplicated"), (e) => toast.show(errorMessage(e), { tone: "error" })) },
           ...(!phone && doc.kind !== "template" ? [{ label: "Move to folder…", icon: <FolderInput size={14} />, onSelect: () => setMoveOpen(true) }] : []),

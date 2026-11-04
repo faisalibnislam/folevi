@@ -113,12 +113,14 @@ struct WebFolderCell: View {
     /// The folder this card sits in (nil: the top level), which its drag carries.
     var parentId: String? = nil
     @State private var hovered = false
-    @State private var targeted = false
+    /// Set while a note or folder is held over the card.
+    @State private var dropZone: FolderRules.Zone?
+    @State private var spring = SpringLoader()
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         ZStack {
-            if targeted {
+            if dropZone != nil {
                 RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular)
                     .fill(webVar("glass-active", scheme).color)
                     .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).strokeBorder(webVar("color-heading", scheme).color, lineWidth: 2))
@@ -148,15 +150,12 @@ struct WebFolderCell: View {
         .aspectRatio(WebFolderCard.aspect, contentMode: .fit)
         .onHover { hovered = $0 }
         .webContextMenu(menu)
-        .dropDestination(for: NoteDragItem.self) { items, _ in
-            drop(items)
-            return true
-        } isTargeted: { targeted = $0 }
-        .dropDestination(for: FolderDragItem.self) { items, _ in
-            guard let dropFolder, let item = items.first, item.id != card.id else { return false }
-            dropFolder(item)
-            return true
-        } isTargeted: { over in targeted = over && dropFolder != nil }
+        // Notes and folders through one target (FolderDrop): anywhere on the card is inside it.
+        .onDrop(of: dropFolder == nil ? [.foleviNoteRef] : [.foleviNoteRef, .foleviFolderRef], delegate: FolderDrop(
+            folderId: card.id, axis: .horizontal, length: 0, zone: $dropZone, spring: spring,
+            onNotes: { items in drop(items) },
+            onFolder: { item, _ in if item.id != card.id { dropFolder?(item) } }
+        ))
     }
 }
 

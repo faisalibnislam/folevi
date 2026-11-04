@@ -52,8 +52,10 @@ public final class SpringLoader {
     nonisolated(unsafe) public static var forceEnabled = false
 }
 
-struct FolderDrop: DropDelegate {
-    enum Axis { case horizontal, vertical }
+/// One drop target for both notes and folders. (Two SwiftUI drop destinations stacked on one view don't both
+/// work: the outer one takes every drag over it, so a note dropped on a card that also took folders went nowhere.)
+public struct FolderDrop: DropDelegate {
+    public enum Axis { case horizontal, vertical }
     let folderId: String
     let axis: Axis
     let length: CGFloat
@@ -63,24 +65,36 @@ struct FolderDrop: DropDelegate {
     var onNotes: ([NoteDragItem]) -> Void
     var onFolder: (FolderDragItem, FolderRules.Zone) -> Void
 
+    /// `length` 0: a folder dropped anywhere on it goes inside (no before or after).
+    public init(folderId: String, axis: Axis, length: CGFloat, zone: Binding<FolderRules.Zone?>, spring: SpringLoader, onSpring: (@MainActor () -> Void)? = nil, onNotes: @escaping ([NoteDragItem]) -> Void, onFolder: @escaping (FolderDragItem, FolderRules.Zone) -> Void) {
+        self.folderId = folderId
+        self.axis = axis
+        self.length = length
+        self._zone = zone
+        self.spring = spring
+        self.onSpring = onSpring
+        self.onNotes = onNotes
+        self.onFolder = onFolder
+    }
+
     private func zone(_ info: DropInfo) -> FolderRules.Zone {
         guard info.hasItemsConforming(to: [.foleviFolderRef]) else { return .inside }
         return FolderRules.zone(at: axis == .horizontal ? info.location.x : info.location.y, length: length)
     }
 
-    func dropEntered(info: DropInfo) {
+    public func dropEntered(info: DropInfo) {
         zone = zone(info)
         armSpring(info)
     }
 
-    func dropUpdated(info: DropInfo) -> DropProposal? {
+    public func dropUpdated(info: DropInfo) -> DropProposal? {
         let z = zone(info)
         zone = z
         if z == .inside { armSpring(info) } else { spring.cancel() }
         return DropProposal(operation: .move)
     }
 
-    func dropExited(info: DropInfo) {
+    public func dropExited(info: DropInfo) {
         zone = nil
         spring.cancel()
     }
@@ -90,7 +104,7 @@ struct FolderDrop: DropDelegate {
         spring.arm(folderId, open: onSpring)
     }
 
-    func performDrop(info: DropInfo) -> Bool {
+    public func performDrop(info: DropInfo) -> Bool {
         let at = zone(info)
         zone = nil
         spring.cancel()

@@ -48,6 +48,9 @@ public struct WebSidebar: View {
     @State private var accountAnchor: UIView?
     /// The folder row a dragged note or folder is over (iPad: the Mac's AppKit sidebar takes its own drops).
     @State private var dropTarget: String?
+    #if os(iOS)
+    @State private var spring = SpringLoader()
+    #endif
     /// `dropTarget` while a folder is over the Folders heading.
     private static let topLevel = "@top"
     #endif
@@ -303,17 +306,17 @@ public struct WebSidebar: View {
                     RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Folevi.color.heading, lineWidth: 2)
                 }
             }
-            .dropDestination(for: NoteDragItem.self) { items, _ in
-                let ids = items.flatMap(\.ids)
-                guard !ids.isEmpty else { return false }
-                model.move(notes: ids, to: f.id)
-                return true
-            } isTargeted: { over in dropTarget = over ? f.id : (dropTarget == f.id ? nil : dropTarget) }
-            .dropDestination(for: FolderDragItem.self) { items, _ in
-                guard let dragged = items.first, dragged.id != f.id else { return false }
-                model.move(folder: dragged.id, into: f.id, after: nil)
-                return true
-            } isTargeted: { over in dropTarget = over ? f.id : (dropTarget == f.id ? nil : dropTarget) }
+            // (One target for notes and folders: two stacked drop destinations only honour the outer one.)
+            .onDrop(of: [.foleviNoteRef, .foleviFolderRef], delegate: FolderDrop(
+                folderId: f.id, axis: .vertical, length: 0,
+                zone: Binding(get: { dropTarget == f.id ? .inside : nil }, set: { z in dropTarget = z != nil ? f.id : (dropTarget == f.id ? nil : dropTarget) }),
+                spring: spring,
+                onNotes: { items in
+                    let ids = items.flatMap(\.ids)
+                    if !ids.isEmpty { model.move(notes: ids, to: f.id) }
+                },
+                onFolder: { dragged, _ in if dragged.id != f.id { model.move(folder: dragged.id, into: f.id, after: nil) } }
+            ))
             .draggable(FolderDragItem(id: f.id, name: f.name, parentId: f.parentId))
             #endif
             if open {

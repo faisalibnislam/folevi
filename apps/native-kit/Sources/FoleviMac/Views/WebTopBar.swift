@@ -66,9 +66,17 @@ public struct WebTopBar: View {
                 if model.session.value?.capabilities.ai ?? false {
                     WebPillButton("Foli AI", action: { model.askAI() }) { AiMarkGlyph(size: 20) }
                 }
+                if let parent = newFolderParent {
+                    WebPillButton(parent == nil ? "New folder" : "New folder in this folder", action: { newFolder(in: parent) }) { WebIconView(.folderPlus, size: 20, strokeWidth: 2) }
+                }
                 WebPillButton("New note", action: { model.newNote() }) { WebIconView(.plus, size: 22, strokeWidth: 2.2) }
                 #endif
             } else {
+                if let parent = newFolderParent {
+                    WebButton("New folder", icon: .folderPlus, iconSize: 14, variant: .secondary, size: .sm) { newFolder(in: parent) }
+                        .foleviTooltip(parent == nil ? nil : "New folder in this folder")
+                        .fixedSize()
+                }
                 // The web's <Button size="sm"> with <Plus size={14} />, as the top bar measures it (its icon at 70%).
                 WebButton("New note", icon: .plus, iconSize: 14, iconOpacity: style("frame.topbar.new.icon").opacity, styleName: "frame.topbar.new", variant: .primary, size: .sm) { model.newNote() }
                     // The button says "New note": its tooltip is the shortcut alone (tooltips never repeat what shows).
@@ -92,6 +100,26 @@ public struct WebTopBar: View {
         // The bar moves the window, as the web's .ui-drag bars do (its buttons still take their clicks).
         .contentShape(Rectangle())
         .windowDrag()
+    }
+
+    /// Where the top bar's New folder makes one (the owner, 4 November 2026, "like Finder"): on the Folders page the
+    /// top level (`.some(nil)`), on a folder's page inside it; nil where there's no New folder (other pages, a
+    /// workspace this person can't edit, a folder already as deep as folders go).
+    private var newFolderParent: String?? {
+        if let s = model.session.value, s.spaces.first(where: { $0.id == s.space })?.canEdit == false { return nil }
+        switch model.route {
+        case .web(let path) where path == "/folders":
+            return .some(nil)
+        case .folder(let id):
+            let links = FolderRules.links(model.folders.value?.folders ?? [])
+            return FolderRules.canNest(links, in: id) ? .some(id) : nil
+        default:
+            return nil
+        }
+    }
+
+    private func newFolder(in parent: String?) {
+        FrameDialogs.newFolder(model, parent: parent.flatMap { id in model.folders.value?.folders.first { $0.id == id } }, open: parent == nil)
     }
 
     /// New note sits as far from the bar's right edge as from its top and bottom edges (the owner's ask, 1.1.04): the

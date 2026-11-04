@@ -57,8 +57,15 @@ public struct PhoneAllFoldersScreen: View {
             } else {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: grid.gap), GridItem(.flexible(), spacing: grid.gap)], spacing: 20) {
                     ForEach(shown, id: \.id) { f in
-                        PhonePressable(scale: 0.97, onTap: { open("/folders/\(f.id)") }, onLongPress: { folderMenu(f, $0) }) {
-                            WebFolderCard(model.cardModel(f))
+                        VStack(alignment: .leading, spacing: 6) {
+                            PhonePressable(scale: 0.97, onTap: { open("/folders/\(f.id)") }, onLongPress: { folderMenu(f, $0) }) {
+                                WebFolderCard(model.cardModel(f))
+                            }
+                            // A search finds folders at every level: a nested one says where it is.
+                            if let path = model.path(f) {
+                                Text("in \(path)").webText(.role(.footnote)).lineLimit(1).foregroundStyle(Folevi.color.inkMuted)
+                                    .accessibilityHidden(true)
+                            }
                         }
                     }
                 }

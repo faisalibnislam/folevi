@@ -21,10 +21,11 @@ public enum FrameDialogs {
         }
     }
 
-    /// The sidebar's New folder (or a folder's New folder inside…).
-    public static func newFolder(_ frame: FrameModel, parent: FolderNode? = nil) {
+    /// The sidebar's New folder (or a folder's New folder inside…). `open`: the new folder opens (the Folders
+    /// page's New folder, as on the web).
+    public static func newFolder(_ frame: FrameModel, parent: FolderNode? = nil, open: Bool = false) {
         prompt(frame, title: parent.map { "New folder in “\($0.name)”" } ?? "New folder", label: "Folder name", confirm: "Create folder") { name in
-            frame.newFolder(name: name, parent: parent?.id)
+            frame.newFolder(name: name, parent: parent?.id, open: open)
         }
     }
 

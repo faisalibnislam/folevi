@@ -674,8 +674,11 @@ public final class FrameModel {
         perform { _ = try await self.client.command(.settingsUpdate(appearance: a)) }
     }
 
-    public func newFolder(name: String = "New folder", parent: String? = nil) {
-        perform { _ = try await self.client.command(.folderCreate(name: name, parentId: parent)) }
+    public func newFolder(name: String = "New folder", parent: String? = nil, open: Bool = false) {
+        perform {
+            let made = try await self.client.command(.folderCreate(name: name, parentId: parent))
+            if open { self.open(.folder(made.id)) }
+        }
     }
 
     public func star(_ ids: [String], _ on: Bool) {

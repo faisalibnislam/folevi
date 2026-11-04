@@ -396,7 +396,7 @@
     },
     "notes.index.newFolder": {
       "screen": "folders",
-      "selector": "header button.ui-btn-primary, [data-view-actions] button"
+      "selector": "main#main button[data-new-folder]"
     },
     "notes.tags.content": {
       "screen": "tags",

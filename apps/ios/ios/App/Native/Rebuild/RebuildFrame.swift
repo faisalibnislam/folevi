@@ -330,7 +330,7 @@ private struct RebuildRoot: View {
             } else if case .search(let text) = route {
                 RebuildSearchScreen(text: text, frame: model, menus: menus, phone: phone)
             } else if let kind = NotesListKind(route: route) {
-                RebuildNotesScreen(kind: kind, frame: model, menus: menus, phone: phone) { selecting = $0 }
+                RebuildNotesScreen(kind: kind, frame: model, menus: menus, phone: phone, newFolder: { newFolder = NewFolderRequest(parent: $0) }) { selecting = $0 }
             } else {
                 PlaceholderScreen(model: model, route: route, desk: desk)
             }

@@ -13,12 +13,15 @@ struct RebuildNotesScreen: View {
     let phone: PhoneModel
     /// Select mode on or off (the frame hides its tab bar for the selection's bar).
     let selecting: (Bool) -> Void
+    /// New folder's card, inside the given folder.
+    let newFolder: (String) -> Void
     @MadeOnce private var model: NotesListModel
 
-    init(kind: NotesListKind, frame: PhoneFrameModel, menus: PhoneMenus, phone: PhoneModel, selecting: @escaping (Bool) -> Void) {
+    init(kind: NotesListKind, frame: PhoneFrameModel, menus: PhoneMenus, phone: PhoneModel, newFolder: @escaping (String) -> Void, selecting: @escaping (Bool) -> Void) {
         self.frame = frame
         self.menus = menus
         self.phone = phone
+        self.newFolder = newFolder
         self.selecting = selecting
         let feedback = ScreenFeedback(toast: { [weak phone] t in phone?.toast(t.message, tone: t.tone == .error ? .error : .info) })
         _model = MadeOnce(wrappedValue: NotesListModel(client: phone.client, kind: kind, feedback: feedback))
@@ -38,6 +41,11 @@ struct RebuildNotesScreen: View {
             selecting: selecting
         )
         a.newNote = { phone.newNote(folderId: model.kind.folderId) }
+        // A folder's page has New folder next to its "…" (the owner, 4 November 2026), while there's room for one
+        // more level and this person can edit.
+        if model.kind.view == .folder, let id = model.kind.folderId, model.canEdit, FolderRules.canNest(FolderRules.links(model.tree.value?.folders ?? []), in: id) {
+            a.newFolder = { newFolder(id) }
+        }
         a.closeMenu = { menus.close() }
         a.arrangeMenu = { row, frame, arrange in showRowMenu(row, from: frame, arrange: arrange) }
         return a

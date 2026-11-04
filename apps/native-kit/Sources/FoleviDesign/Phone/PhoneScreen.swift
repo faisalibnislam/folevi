@@ -205,8 +205,10 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // (Its buttons get their room first: Select, New folder and "…" on a folder's page are wider than half.)
                 HStack(spacing: 8) { trailing }
                     .frame(maxWidth: .infinity, alignment: .trailing)
+                    .layoutPriority(1)
             }
             .padding(.horizontal, 16)
         }

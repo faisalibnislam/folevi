@@ -48,6 +48,8 @@ public struct WebSidebar: View {
     @State private var accountAnchor: UIView?
     /// The folder row a dragged note or folder is over (iPad: the Mac's AppKit sidebar takes its own drops).
     @State private var dropTarget: String?
+    /// `dropTarget` while a folder is over the Folders heading.
+    private static let topLevel = "@top"
     #endif
 
     /// The first few starred notes, folders and tags; the rest are a click away on their own pages.
@@ -251,7 +253,7 @@ public struct WebSidebar: View {
         let roots = all.filter { $0.parentId == nil }
         return section("Folders", route: .web("/folders"), open: $foldersOpen, action: AnyView(
             WebIconButton(.folderPlus, label: "New folder") { FrameDialogs.newFolder(model) }
-        )) {
+        ), takesFolders: true) {
             if roots.isEmpty {
                 Text("No folders yet").webText(.role(.footnote)).foregroundStyle(Folevi.color.inkFaint).padding(.horizontal, 8).padding(.vertical, 4)
             }
@@ -399,7 +401,8 @@ public struct WebSidebar: View {
     }
 
     /// A section (the web's Section): a chevron, the caps title (a link to its page), an action; then its rows.
-    private func section<Rows: View>(_ title: String, route: FrameRoute, open: Binding<Bool>, action: AnyView?, @ViewBuilder rows: () -> Rows) -> some View {
+    /// `takesFolders`: a folder dropped on the heading goes to the top level (Folders, as on the Mac and the web).
+    private func section<Rows: View>(_ title: String, route: FrameRoute, open: Binding<Bool>, action: AnyView?, takesFolders: Bool = false, @ViewBuilder rows: () -> Rows) -> some View {
         let header = style("section.header")
         let chevron = style("section.chevron")
         let titleStyle = style("section.title")
@@ -429,6 +432,22 @@ public struct WebSidebar: View {
             }
             .padding(header.padding.edgeInsets)
             .frame(height: header.height)
+            #if os(iOS)
+            .background {
+                if takesFolders && dropTarget == Self.topLevel {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Folevi.color.heading, lineWidth: 2)
+                }
+            }
+            .dropDestination(for: FolderDragItem.self) { items, _ in
+                guard takesFolders, let dragged = items.first else { return false }
+                let roots = (model.folders.value?.folders ?? []).filter { $0.parentId == nil && $0.id != dragged.id }
+                model.move(folder: dragged.id, into: nil, after: roots.last?.id)
+                return true
+            } isTargeted: { over in
+                guard takesFolders else { return }
+                dropTarget = over ? Self.topLevel : (dropTarget == Self.topLevel ? nil : dropTarget)
+            }
+            #endif
             if open.wrappedValue {
                 VStack(alignment: .leading, spacing: 2) { rows() }
                     .padding(.top, 4)

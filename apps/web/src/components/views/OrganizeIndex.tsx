@@ -2,22 +2,19 @@
 
 import { useQuery } from "convex/react";
 import { useId, useMemo, useState } from "react";
-import { FolderPlus, Hash, LayoutGrid, Rows3, Search, X, FolderOpen } from "lucide-react";
+import { Hash, LayoutGrid, Rows3, Search, X, FolderOpen } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { FolderCard } from "./FolderCard";
 import { FolderMenu } from "@/components/app/FolderMenu";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
-import { useFolderActions } from "@/lib/app/folders";
 import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
 import { overlayFolderIndex } from "@/lib/sync/overlays";
-import { AppLink, useAppRouter } from "@/lib/app/router";
+import { AppLink } from "@/lib/app/router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { ageText } from "@/lib/format";
-import { Button } from "@/components/ui/Button";
-import { PromptDialog } from "@/components/ui/PromptDialog";
-import { useToast, errorMessage } from "@/components/ui/Toast";
+import { NewFolderButton } from "@/components/app/NewFolderButton";
 import { ViewChrome } from "@/components/app/Shell";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -63,19 +60,18 @@ function SortSelect<T extends string>({ value, onChange, options }: { value: T; 
   );
 }
 
-/** Every folder in the current context (Personal or a workspace), with search and sorting (the sidebar only lists the first few). */
+/**
+ * The folders of the current context (Personal or a workspace), as Finder shows a folder: the top-level ones, each
+ * nested folder inside its parent's page. A search looks through every level and says where each match is.
+ */
 export function FoldersIndex() {
   const { scope, canEdit, outbox } = useAppState();
   const served = useOfflineQuery(api.organization.index, { scope, only: "folders" });
   const waiting = useOutboxEntries(outbox);
   const data = useMemo(() => (served ? overlayFolderIndex(served, waiting, scope) : served), [served, waiting, scope]);
-  const folderActions = useFolderActions();
-  const { navigate } = useAppRouter();
-  const toast = useToast();
   const [q, setQ] = useState("");
   const [sort, setSort] = useLocalStorage<FolderSort>("folevi:folders-sort", "name");
   const [layout, setLayout] = useLocalStorage<"grid" | "list">("folevi:folders-layout", "grid");
-  const [creating, setCreating] = useState(false);
 
   // Where each nested folder is ("Work / Clients"), shown with its name.
   const names = useMemo(() => {
@@ -84,7 +80,10 @@ export function FoldersIndex() {
   }, [data]);
   const list = useMemo(() => {
     const needle = q.trim().toLocaleLowerCase();
-    const rows = (data?.folders ?? []).filter((f) => !needle || f.name.toLocaleLowerCase().includes(needle));
+    const all = data?.folders ?? [];
+    const ids = new Set(all.map((f) => f.id));
+    // (A folder whose parent isn't in the list counts as top level, as the sidebar's tree does.)
+    const rows = needle ? all.filter((f) => f.name.toLocaleLowerCase().includes(needle)) : all.filter((f) => !f.parentFolderId || !ids.has(f.parentFolderId));
     return rows.sort((a, b) => {
       switch (sort) {
         case "updated":
@@ -104,7 +103,7 @@ export function FoldersIndex() {
     return (
       <IphoneFolders
         folders={data ? list : undefined}
-        total={data?.folders.length ?? 0}
+        total={data ? list.length : 0}
         query={q}
         onQuery={setQ}
         where={names}
@@ -123,19 +122,12 @@ export function FoldersIndex() {
     <ViewChrome
       title={<h1 className="text-subheadline font-semibold">Folders</h1>}
       tabTitle="Folders"
-      actions={
-        canEdit ? (
-          <Button size="sm" variant="primary" onClick={() => setCreating(true)}>
-            <FolderPlus size={14} aria-hidden /> New folder
-          </Button>
-        ) : null
-      }
     >
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         <div className="flex flex-wrap items-center gap-3">
           <SearchField value={q} onChange={setQ} label="Search folders" />
           <p role="status" className="min-w-0 truncate text-subheadline text-muted">
-            {data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.folders.length} folders` : `${data.folders.length} ${data.folders.length === 1 ? "folder" : "folders"}`}
+            {data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.folders.length} folders` : `${list.length} ${list.length === 1 ? "folder" : "folders"}`}
           </p>
           <span className="flex-1" />
           <SortSelect<FolderSort>
@@ -156,6 +148,7 @@ export function FoldersIndex() {
               <Rows3 size={15} aria-hidden />
             </button>
           </div>
+          <NewFolderButton parentId={null} inPage />
         </div>
 
         {data && !list.length ? (
@@ -165,6 +158,12 @@ export function FoldersIndex() {
             {list.map((f) => (
               <li key={f.id}>
                 <FolderCard folder={f} parentName={f.parentFolderId ? names.get(f.id) || undefined : undefined} />
+                {/* A search finds folders at every level: a nested one says where it is. */}
+                {f.parentFolderId && names.get(f.id) ? (
+                  <p className="mt-2 truncate text-footnote text-muted" aria-hidden>
+                    in {names.get(f.id)}
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -187,22 +186,6 @@ export function FoldersIndex() {
           </ul>
         )}
       </div>
-      <PromptDialog
-        open={creating}
-        title="New folder"
-        label="Folder name"
-        confirmLabel="Create folder"
-        onClose={() => setCreating(false)}
-        onSubmit={async (name) => {
-          try {
-            const id = folderActions.create(name);
-            setCreating(false);
-            navigate(`/folders/${id}`);
-          } catch (e) {
-            toast.show(errorMessage(e), { tone: "error" });
-          }
-        }}
-      />
     </ViewChrome>
   );
 }

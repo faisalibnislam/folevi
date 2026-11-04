@@ -21,6 +21,7 @@ import { PillButton } from "@/components/iphone/Glass";
 import { useAiAccess } from "@/components/ai/useAi";
 import { TabPicture } from "./TabPreview";
 import { TabOverview, type OverviewEntry } from "./TabOverview";
+import { NewFolderButton } from "./NewFolderButton";
 
 /** How wide the strip's soft edges are when it scrolls (the open tab is kept clear of them). */
 const FADE = 28;
@@ -134,6 +135,8 @@ export function TabStrip() {
   // of its own that stays until it's closed, like a note's.
   const onHome = route.name === "documents";
   const inFolder = route.name === "folder";
+  // New folder shows next to New note on the Folders page (top level) and on a folder's page (inside it).
+  const folderParent = route.name === "folder" ? route.id : route.name === "folders" ? null : undefined;
 
   // Dragging a tab (with a mouse or pen; a finger scrolls the strip): it follows the pointer and trades
   // places with a neighbour once it passes that tab's middle, as tabs do in a browser.
@@ -553,14 +556,18 @@ export function TabStrip() {
               <AiIcon size={20} />
             </PillButton>
           ) : null}
+          {folderParent !== undefined ? <NewFolderButton key={folderParent ?? "top"} parentId={folderParent} pill /> : null}
           <PillButton label={inFolder ? "New note in this folder" : "New note"} onClick={() => void createDocument({})}>
             <Plus size={22} strokeWidth={2.2} aria-hidden />
           </PillButton>
         </>
       ) : (
+      <>
+      {folderParent !== undefined ? <NewFolderButton key={folderParent ?? "top"} parentId={folderParent} /> : null}
       <Button size="sm" variant="primary" title={inFolder ? "New note in this folder (⌘⌥N)" : "New note (⌘⌥N)"} onClick={() => void createDocument({})} className="h-9 flex-none rounded-control">
         <Plus size={14} aria-hidden /> New note
       </Button>
+      </>
       )}
     </div>
   );

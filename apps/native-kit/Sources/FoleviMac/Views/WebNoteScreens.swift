@@ -101,14 +101,17 @@ struct WebNoteCell: View {
     }
 }
 
-/// A folder card with its link, hover lift, the "…" menu over the cover on hover, a right-click menu and notes
-/// dropped on it moving inside.
+/// A folder card with its link, hover lift, the "…" menu over the cover on hover, a right-click menu, and notes or
+/// another folder dropped on it moving inside (a folder as in Finder: the card's own folder can't take itself).
 struct WebFolderCell: View {
     let card: FolderCardModel
     var labelScale: CGFloat = 1
     let menu: @MainActor () -> [WebMenuEntry]
     let open: @MainActor () -> Void
     let drop: @MainActor ([NoteDragItem]) -> Void
+    var dropFolder: (@MainActor (FolderDragItem) -> Void)? = nil
+    /// The folder this card sits in (nil: the top level), which its drag carries.
+    var parentId: String? = nil
     @State private var hovered = false
     @State private var targeted = false
     @Environment(\.colorScheme) private var scheme
@@ -125,7 +128,7 @@ struct WebFolderCell: View {
                 WebFolderCard(card, labelScale: labelScale, hovered: hovered)
             }
             .buttonStyle(PressDipButtonStyle())
-                .draggable(FolderDragItem(id: card.id, name: card.name, parentId: nil))
+                .draggable(FolderDragItem(id: card.id, name: card.name, parentId: parentId))
             GeometryReader { geo in
                 let m = WebStyles.named("notes.folder.menu")
                 let ms = m.resolve(scheme)
@@ -149,6 +152,11 @@ struct WebFolderCell: View {
             drop(items)
             return true
         } isTargeted: { targeted = $0 }
+        .dropDestination(for: FolderDragItem.self) { items, _ in
+            guard let dropFolder, let item = items.first, item.id != card.id else { return false }
+            dropFolder(item)
+            return true
+        } isTargeted: { over in targeted = over && dropFolder != nil }
     }
 }
 
@@ -596,7 +604,8 @@ struct WebHomeScreen: View {
                         let model = CardMapping.folderCard(f, parentName: f.path)
                         WebFolderCell(card: model, menu: {
                             folderMenuEntries(MenuFolder(f), context: FolderMenuContext(session: home.session.value, places: home.places.value, links: home.folderLinks, locks: home.locks.error == nil ? home.locks.value : nil), actions: home.actions, dialogs: home.dialogs, navigator: navigator, feedback: feedback, frame: frame)
-                        }, open: { frame.open(.folder(f.id)) }, drop: { items in Task { await home.dropNotes(items, on: f) } })
+                        }, open: { frame.open(.folder(f.id)) }, drop: { items in Task { await home.dropNotes(items, on: f) } },
+                           dropFolder: { item in Task { await home.dropFolder(item, on: f, zone: .inside) } }, parentId: f.parentId)
                         .frame(width: colW)
                     }
                 }
@@ -851,7 +860,8 @@ struct WebNoteBrowser: View {
                 WebFolderCell(card: card, labelScale: 234.0 / 152.0, menu: {
                     guard let f = model.menuFolder(card.id) else { return [] }
                     return folderMenuEntries(f, context: model.folderContext, actions: model.actions, dialogs: model.dialogs, navigator: navigator, feedback: feedback, frame: frame)
-                }, open: { frame.open(.folder(card.id)) }, drop: { items in Task { await model.dropNotes(items, into: card.id) } })
+                }, open: { frame.open(.folder(card.id)) }, drop: { items in Task { await model.dropNotes(items, into: card.id) } },
+                   dropFolder: { item in Task { await model.dropFolder(item, on: card.id, zone: .inside) } }, parentId: model.folder?.id)
                 .frame(width: 152)
             }
         }
@@ -1134,7 +1144,10 @@ struct WebFoldersIndex: View {
     private var list: [FolderCard] {
         let all = allFolders.value?.folders ?? []
         let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
-        let rows = all.filter { needle.isEmpty || $0.name.lowercased().contains(needle) }
+        // As Finder shows a folder: the top level only, each nested folder inside its parent's page. A search looks
+        // through every level (each match says where it is). A parent that isn't in the list reads as the top level.
+        let ids = Set(all.map(\.id))
+        let rows = needle.isEmpty ? all.filter { $0.parentId.map { !ids.contains($0) } ?? true } : all.filter { $0.name.lowercased().contains(needle) }
         return rows.sorted { a, b in
             switch sort {
             case .updated: return a.updatedAt > b.updatedAt
@@ -1149,6 +1162,7 @@ struct WebFoldersIndex: View {
         let content = notesStyle("index.content", scheme)
         let total = allFolders.value?.folders.count ?? 0
         let shown = list
+        let searching = !query.trimmingCharacters(in: .whitespaces).isEmpty
         GeometryReader { geo in
         let inner = min(1180, geo.size.width) - 64
         ScrollView(.vertical) {
@@ -1156,7 +1170,7 @@ struct WebFoldersIndex: View {
                 HStack(spacing: 12) {
                     WebIndexSearch(placeholder: "Search folders", text: $query, width: WebStyles.isPad ? 384 : min(384, max(160, (inner - 290) / 2)))
                         .layoutPriority(WebStyles.isPad ? 1 : 0)
-                    Text(allFolders.value == nil ? "Loading…" : !query.trimmingCharacters(in: .whitespaces).isEmpty ? "\(shown.count) of \(total) folders" : "\(total) \(total == 1 ? "folder" : "folders")")
+                    Text(allFolders.value == nil ? "Loading…" : searching ? "\(shown.count) of \(total) folders" : "\(shown.count) \(shown.count == 1 ? "folder" : "folders")")
                         .webText(notesStyle("index.status", scheme).text).lineLimit(1).foregroundStyle(notesStyle("index.status", scheme).color.color)
                         .fixedSize()
                     Spacer(minLength: 0)
@@ -1164,6 +1178,7 @@ struct WebFoldersIndex: View {
                         .fixedSize()
                     WebSegmented(options: [("grid", WebIcon.layoutGrid, "Grid"), ("list", .rows3, "List")], value: $layoutRaw, prefix: "index")
                         .fixedSize()
+                    newFolderButton
                 }
                 if allFolders.value != nil && shown.isEmpty {
                     WebEmptyState(icon: .folderOpen, title: query.isEmpty ? "No folders yet" : "No folders match “\(query.trimmingCharacters(in: .whitespaces))”", message: query.isEmpty ? "Create one to group related pages." : nil)
@@ -1173,7 +1188,15 @@ struct WebFoldersIndex: View {
                 } else {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 32, alignment: .top)], alignment: .leading, spacing: 40) {
                         ForEach(shown, id: \.id) { f in
-                            WebFolderCell(card: CardMapping.folderCard(f, parentName: f.path), menu: { menu(f) }, open: { frame.open(.folder(f.id)) }, drop: { items in Task { await home.dropNotes(items, on: f) } })
+                            VStack(alignment: .leading, spacing: 8) {
+                                WebFolderCell(card: CardMapping.folderCard(f, parentName: f.path), menu: { menu(f) }, open: { frame.open(.folder(f.id)) }, drop: { items in Task { await home.dropNotes(items, on: f) } },
+                                              dropFolder: { item in Task { await home.dropFolder(item, on: f, zone: .inside) } }, parentId: f.parentId)
+                                // A search finds folders at every level: a nested one says where it is.
+                                if let path = f.path {
+                                    Text("in \(path)").webText(.role(.footnote)).lineLimit(1).foregroundStyle(webVar("color-ink-muted", scheme).color)
+                                        .accessibilityHidden(true)
+                                }
+                            }
                         }
                     }
                     .padding(.top, 24)
@@ -1184,40 +1207,31 @@ struct WebFoldersIndex: View {
             .frame(maxWidth: 1180, alignment: .topLeading)
             .frame(maxWidth: .infinity)
         }
-        .safeAreaInset(edge: .top, spacing: 0) { actions }
         }
         .animation(WebMotion.change(WebMotion.viewSwitch), value: layoutRaw)
         .folderDialogs(home.dialogs, actions: home.actions, tree: home.tree.value?.folders ?? [])
         .accessibilityIdentifier("screen.folders")
     }
 
-    /// The view's own actions row (ViewChrome `actions`): New folder, top right.
-    @ViewBuilder private var actions: some View {
-        let b = WebStyles.named("notes.index.newFolder")
-        let bs = b.resolve(scheme)
-        let content = notesStyle("index.content", scheme)
-        HStack {
-            Spacer(minLength: 0)
-            if home.canEdit {
-                Button { home.dialogs.open(.newFolder(parent: nil)) } label: {
-                    HStack(spacing: bs.gap) {
-                        WebIconView(.folderPlus, size: 14)
-                        Text("New folder").webText(bs.text).lineLimit(1)
-                    }
-                    .foregroundStyle(bs.color.color)
-                    .padding(bs.padding.edgeInsets)
-                    .frame(height: bs.height)
-                    .webBox(b)
-                    .contentShape(Rectangle())
+    /// New folder in the search row (it scrolls with the page; the top bar has one too, next to New note).
+    @ViewBuilder private var newFolderButton: some View {
+        if home.canEdit {
+            let b = WebStyles.named("notes.index.newFolder")
+            let bs = b.resolve(scheme)
+            Button { home.dialogs.open(.newFolder(parent: nil)) } label: {
+                HStack(spacing: bs.gap) {
+                    WebIconView(.folderPlus, size: 14)
+                    Text("New folder").webText(bs.text).lineLimit(1)
                 }
-                .buttonStyle(.plain)
+                .foregroundStyle(bs.color.color)
+                .padding(bs.padding.edgeInsets)
+                .frame(height: bs.height)
+                .webBox(b)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .fixedSize()
         }
-        .padding(.horizontal, 32)
-        .frame(maxWidth: 1180 + 0)
-        // (Below the card's top and the glass bar's room: 8 + 56 on the Mac, 32 + 68 on the iPad.)
-        .frame(height: content.y - WebStyles.named("frame.content").light.y - ContentViewController.barHeight)
-        .frame(maxWidth: .infinity)
     }
 
     private func menu(_ f: FolderCard) -> [WebMenuEntry] {

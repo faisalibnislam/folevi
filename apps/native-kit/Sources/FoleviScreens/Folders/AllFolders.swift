@@ -72,10 +72,12 @@ public final class AllFoldersModel {
 
     private func card(_ id: String) -> FolderCard? { cards.value?.folders.first { $0.id == id } }
 
-    /// The folders shown in tiles and list: matching the search, sorted.
+    /// The folders shown in tiles and list, sorted: as Finder shows a folder, the top-level ones (each nested folder is
+    /// inside its parent's page); a search looks through every level and says where each match is.
     public var shown: [FolderNode] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        var out = q.isEmpty ? nodes : nodes.filter { $0.name.lowercased().contains(q) || (path($0)?.lowercased().contains(q) ?? false) }
+        let ids = Set(nodes.map(\.id))
+        var out = q.isEmpty ? nodes.filter { $0.parentId.map { !ids.contains($0) } ?? true } : nodes.filter { $0.name.lowercased().contains(q) || (path($0)?.lowercased().contains(q) ?? false) }
         switch sort {
         case .name:
             out.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }

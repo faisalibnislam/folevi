@@ -23,6 +23,8 @@ public struct PhoneNotesListActions {
     public var selecting: (Bool) -> Void
     /// A new note (in the folder on show), from the empty screen's New note.
     public var newNote: () -> Void = {}
+    /// A new folder inside the folder on show (the bar's New folder, next to its "…"); nil where there's none.
+    public var newFolder: (() -> Void)?
     /// Closes a note's long-press menu.
     public var closeMenu: () -> Void = {}
     /// A card's long-press menu with Rearrange (the Home Screen's Edit Home Screen): the closure it's given starts
@@ -89,6 +91,13 @@ public struct PhoneNotesListScreen: View {
                 HStack(spacing: 8) {
                     if model.selectable && model.total > 0 {
                         WebGlassTextButton("Select") { setSelecting(true) }
+                    }
+                    if let newFolder = actions.newFolder {
+                        WebGlassPill {
+                            WebPillButton("New folder in this folder", action: newFolder) {
+                                WebIconView(.folderPlus, size: 22, strokeWidth: 2)
+                            }
+                        }
                     }
                     WebGlassPill {
                         WebPillButton("\(model.title) options", action: { actions.menu(moreFrame) }) {
@@ -311,7 +320,12 @@ public struct PhoneNotesListScreen: View {
             } else {
                 PhoneScreenEmpty(icon: Self.emptyIcon(model.kind.view), title: model.empty.title, message: model.empty.message) {
                     if model.emptyOffersNewNote {
-                        WebButton("New note", icon: .plus, variant: .primary, action: actions.newNote)
+                        HStack(spacing: 8) {
+                            if let newFolder = actions.newFolder {
+                                WebButton("New folder", icon: .folderPlus, variant: .secondary, action: newFolder)
+                            }
+                            WebButton("New note", icon: .plus, variant: .primary, action: actions.newNote)
+                        }
                     }
                 }
             }

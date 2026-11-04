@@ -1,6 +1,19 @@
 {
   "releases": [
     {
+      "version": "1.2.29",
+      "build": 41,
+      "released": "2026-11-04T07:30:05+06:00",
+      "type": "patch",
+      "summary": "Folders work like Finder",
+      "improved": [
+        "Drag a folder onto another folder to put it inside, on the Mac and iPad as on the web",
+        "The Folders page shows only top-level folders; search still finds folders inside others and says where they are",
+        "New folder sits next to New note on the Folders page and on every folder's page"
+      ],
+      "tag": "v1.2.29"
+    },
+    {
       "version": "1.2.28",
       "build": 40,
       "released": "2026-11-03T20:27:49+06:00",

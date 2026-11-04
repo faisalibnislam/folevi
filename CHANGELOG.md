@@ -4,6 +4,18 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.29: Small update
+
+Released 2026-11-04 07:30:05+06:00 (build 41, tag v1.2.29)
+
+Folders work like Finder
+
+### Improved
+
+- Drag a folder onto another folder to put it inside, on the Mac and iPad as on the web
+- The Folders page shows only top-level folders; search still finds folders inside others and says where they are
+- New folder sits next to New note on the Folders page and on every folder's page
+
 ## Version 1.2.28: Small update
 
 Released 2026-11-03 20:27:49+06:00 (build 40, tag v1.2.28)

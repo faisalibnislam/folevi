@@ -1,0 +1,201 @@
+DESIGN AND ENGINEERING REVIEW
+Folevi UI and functional QA audit
+I found 24 issues in Folevi for Mac. Fix the sharing indicator, joined editor layout, and Quick Search input first. Each can give a user the wrong information or block the task they just started.
+Priority
+Count
+Meaning in this audit
+High
+3
+Misleading privacy feedback, unreadable editing, or lost input in a primary workflow.
+Medium
+13
+A feature gives an incomplete result, hides a control, or creates an accessibility barrier.
+Low
+8
+A visible inconsistency, unclear label, or layout detail with a simple workaround.
+Three fixes for the next build
+F01  Sharing  A workspace note initially shows a lock and says only its owner can open it. The Share dialog then confirms workspace access.
+F02  Joined notes  Opening Format on the third note can squeeze its text down to a few letters per line. At the smaller tested width, no legible note text remained in the visible strip.
+F04  Quick Search  Typing immediately after ⌘K can lose the beginning of a query. In one trial, only “56” survived from “cedarforest456”.
+How to read the evidence
+I tested the installed Mac app in the signed-in workspace using four QA notes. The screenshots show the actual app. Red outlines mark the relevant controls. Crops enlarge details. The larger and smaller main-window captures measured about 3840 × 1934 and 2998 × 1636 image pixels. These are capture dimensions, not macOS points.
+Folevi 1.2.32 on macOS 27.2. Light and Dark appearances tested. The final page lists successful flows, the test data left behind, and items that still need separate testing.
+Findings by screen
+Pages
+Screens and workflows
+2–4
+Sharing, folder location, joined notes and Quick Search
+5–8
+Templates, Calendar, Foli DNA and dark editor controls
+9–12
+Folder cards, Trash, task layout, export and Settings
+13–14
+Accessibility navigation, regression checks and coverage
+
+NOTE ACCESS AND LOCATION
+What the sidebar and toolbar tell the user
+F01   A workspace note briefly looks private
+HIGH   Open a workspace note from its folder. Maple and Northpoint both initially showed a lock. The control described itself as “Only you can open this.” It then changed to “Shared”. The dialog had Workspace selected. This tested the displayed access state with one account.
+Retest  Open a workspace note and a private note with a slow response. Show a neutral loading state until the app knows the access level. The first definite label must agree with the Share dialog.
+
+F13   A new folder note briefly says Drafts
+LOW   In the QA folder, choose New note. On two creations the sidebar initially said “In Drafts” while the folder already contained the new note. The correct folder name appeared afterward.
+Retest  Create a note inside a named folder and inspect the first visible editor frame. Show that folder immediately or wait to show its name.
+
+
+EDITOR LAYOUT
+Joined notes lose their editing space
+F02   Format can collapse a joined note
+HIGH   Join three notes and open Format on the third. The 2998-pixel capture shows a thin strip beside the panel. In the wider 3840-pixel capture, “QA 1105 Meeting” wraps into fragments, including single letters. Two joined notes with Style open showed the same problem at a milder level.
+Retest  Set a minimum writable width. When the available space falls below it, open tools as an overlay or collapse a secondary pane. Test two and three notes with Format, Style and Info.
+
+F03   The floating toolbar clips at the pane edge
+MEDIUM   With two notes side by side, open Style on the right. The toolbar crosses the tool panel, starts abruptly at Insert, and loses the Foli AI control visible before the panel opened.
+Retest  Keep the complete toolbar in bounds or move actions into an accessible overflow menu. Verify the first and last action at each supported split width.
+
+
+KEYBOARD AND ACCESSIBILITY
+Quick Search drops input and flattens results
+F04   Early keystrokes disappear after Command K
+HIGH   Press ⌘K and immediately type. Three consecutive rapid trials produced an empty field, “56”, and an empty field. From a focused note body, “violetbridge943” once became “ge943”. Waiting for the search field to gain focus preserved the whole query.
+Retest  Immediately type, paste, and use an input method after ⌘K from the editor and a list. Preserve the whole query each time and keep it out of the underlying note.
+
+F05   Search matches lack individual accessibility controls
+MEDIUM   Search for “QA 1105”. Four documents appeared visually. The macOS accessibility tree exposed the entire results area as one text item containing document titles, snippets, and the AI action. Individual result roles and actions were absent from that tree.
+Retest  Expose each result with its title, type, selected state and activation action. Test moving through the four matches and opening the third using VoiceOver.
+
+
+TEMPLATE GALLERY
+The count and floating button obscure the catalogue
+F08   The gallery says zero while offering 26 templates
+LOW   Open Templates in a workspace with zero custom templates. The page header said “0 templates”. The built-in gallery below it contained 26 selectable templates. Meeting Notes successfully created a note.
+Retest  Move the custom count to Your Templates, label it “0 custom templates”, or show separate built-in and custom totals.
+F09   Ask Foli AI covers template descriptions
+MEDIUM   At the smaller tested window size, open Templates with the Reading Notes card near the lower-right corner. The floating Ask Foli AI button covers part of its description. Scrolling changes which content sits behind the button.
+Retest  Reserve a clear area for the button or move it into a fixed toolbar. Scroll every row past the lower edge with short and long card descriptions.
+
+The cards themselves use a consistent icon gutter and title baseline. Those alignments can stay while the count and floating action are corrected.
+
+TASKS CREATED FROM NOTES
+A blank template checkbox reaches Calendar
+F06   An empty follow-up becomes an actual task
+MEDIUM   Create a note from Meeting Notes. Leave Follow-ups empty, then open Calendar. An “Untitled task” appeared under Unscheduled for that note. The note contained an empty checkbox. Quick add, by comparison, correctly required a task title.
+Retest  Keep empty template checkboxes out of Tasks and Calendar. Type a title into the placeholder and confirm one task appears, with the note as its source.
+F07   Calendar day cells announce the displayed month
+MEDIUM   Open Calendar in Month view for November 2026. The visible first row includes October 26 through November 1. The accessibility tree named each cell “November 2026” and exposed only the day number as child text. The weekday-header text also repeated the month name seven times.
+Retest  Give each day its full date, including the actual month for adjoining dates. Expose the seven weekday headings, the selected day and its task count.
+
+
+FOLI DNA
+The map opens away from the connected notes
+F11   The initial map can show only isolated dots
+MEDIUM   At the smaller window size, the map reported 47 notes in one session and 49 in another. It opened on a handful of unlabelled dots. In the 49-note case, zooming out three times and fitting the map brought the central group into view. The List view found all four QA note titles.
+Retest  Open and resize the map with a mix of linked and unlinked notes. Fit the visible notes after layout settles. Reopen the view and confirm the connected group is discoverable.
+F12   Labels overlap nodes and other labels
+MEDIUM   Zoom out on the connected group. Several titles cross node rings or sit on top of adjacent labels. This makes it hard to tell which title belongs to which dot.
+Retest  Suppress lower-priority labels when rectangles collide. Keep the selected or hovered title legible and visibly attached to its node.
+
+
+EDITOR DETAILS
+Dark checkboxes and duplicate suggestions
+F10   Unchecked boxes are hard to see in Dark mode
+MEDIUM   In a dark note, compare an unchecked checkbox with the page behind it. A sampled edge pixel was RGB 63, 62, 68 against RGB 28, 28, 30, about 1.6 to 1 contrast. The adjacent task text is much easier to see. Values are from the captured image.
+Retest  Raise the visible checkbox outline to at least 3 to 1 against the page. Check the unchecked, checked, focused and disabled states on each supported note background.
+
+Contrast reference   W3C guidance on non-text contrast
+F24   Two suggestion chips repeat the same note title
+LOW   Duplicate Cedar and reopen the two notes after suggestions load. The same note appears twice. The accessible descriptions distinguish “Related” from “Possible duplicate”, while the visible chips repeat the title and rely on small icons.
+Retest  Group both reasons under one note, or name each reason in the chip or its supporting text. A user should be able to distinguish the proposed actions before activating one.
+
+A consistent control size is only part of the fix
+The unchecked square has enough physical space to draw a clear outline. Increasing the outline contrast preserves the compact checklist. For suggestions, the missing information is the reason for the recommendation, so a clearer label helps more than a larger icon.
+
+FOLDERS AND RECOVERY
+Card metadata and Trash controls
+F14   A note card shows two unlabelled ages
+LOW   Open a folder in Grid view. Maple showed “24 mins ago” under its title and “3 mins ago” in its footer. Both can be valid dates, but the card gives no way to tell which one matches the Last edited sort.
+Retest  Show a single clearly labelled edited time on the card. If both dates are needed, label Created and Edited or put the secondary date in Info.
+F21   Archive and Trash row menus have no accessible names
+MEDIUM   In List view, a note appeared as static text followed by an unnamed button. The button opened the correct menu, including Unarchive or Restore, but its name gave no action or note title.
+Retest  Name the control “More actions for [note title]”. Verify that each note and its menu can be identified independently even when several notes share the same title.
+
+F22   Trash feedback sits on top of editor actions
+LOW   Move an open note to Trash. The Undo notification appears over the floating editor toolbar. The open note becomes read-only, with a generic permissions message in the accessibility text.
+Retest  Place feedback above the toolbar with a gap. Give the note a persistent “In Trash” status and a Restore action so the state remains clear after Undo disappears.
+
+
+TASK WORKSPACE
+The task header and validation need clearer alignment
+F15   Task controls use three unrelated horizontal anchors
+LOW   At the wide window size, “Today · 0 open” sits at the left edge, the tabs and filter are in a narrow central column, and Calendar and Add task sit at the far right. The large gaps separate controls that operate on the same list.
+Retest  Place the count and task actions on the same content grid as the filters and results. Compare the view at both tested window widths with an empty and a populated list.
+F16   A missing-title error appears below the destination
+LOW   Open Quick add task and submit it empty. Validation correctly prevents creation. “Write the task first” appears below Add to, several fields away from the empty title.
+Retest  Place the message beneath the title and associate it with the field for assistive technology. Keep focus in the title and clear the message once the title is valid.
+
+
+EXPORT AND HANDOFF
+HTML export drops a task deadline
+F17   The HTML copy omits a visible task due date
+MEDIUM   Create a task due November 6 in Maple and export the note. Markdown included “(due 2026-11-06)”. After a text replacement, the task still showed Nov 6 in Folevi. Its HTML export contained the updated label and checkbox, but no date in the text or markup.
+Retest  Export dated, undated and completed tasks to HTML. Preserve the checkbox status and show a readable due date for dated tasks. Compare the result with the source note.
+
+F23   PDF instructions refer to a browser on macOS
+LOW   The PDF format description says it uses the browser’s print window. Selecting Print to PDF in the installed Mac app opened the native macOS print sheet.
+Retest  Use platform-specific copy such as “Opens the Mac print dialog, where you can save a PDF.” Check that the description matches the next screen.
+Export controls that passed  The Markdown file preserved Bangla, emoji, paragraph order and checkbox state. The HTML file contained the expected title, body text and checkboxes. The native PDF print sheet opened and was cancelled.
+
+SETTINGS AND MAC COMMANDS
+Import and offline storage feedback
+F18   File menu Import gives no visible response
+MEDIUM   Choose File → Import from a note, then repeat from a folder. Neither attempt showed an import screen, picker or confirmation in the active window. File → Export opened its dialog. Settings → Import & Export → Choose files opened a native picker.
+Retest  Wire the menu command to a visible import destination and bring it to the front. State which workspace will receive the files. Verify from both a note and a folder.
+F19   Offline storage readings stay at an ellipsis
+MEDIUM   Open Settings → Offline & Sync. Connection showed Online with zero changes waiting. Notes kept and Space used both showed “…”. They still did so on a fresh inspection 62 seconds later. This prevented checking how much was available locally.
+Retest  Show a count and storage size, or an explicit unavailable state with retry. Check both a new installation and a populated workspace.
+
+
+
+NAVIGATION AND RETESTING
+Keep inactive editors out of accessibility navigation
+F20   A previous note remains in the active view’s accessibility tree
+MEDIUM   Open a QA note and switch to its folder, Archive, or Foli DNA. The native view was active, but the previous note’s title, body and editor controls were also exposed. In Foli DNA the graph search field retained keyboard focus when tested. The observed problem is the extra accessible content.
+Retest  Hide the inactive editor subtree when another view is shown, then restore it when its note becomes active. Verify the accessibility navigation order after switching between a note, a folder and Foli DNA.
+
+Regression checks for the next build
+Test
+Pass condition
+Open note on a delayed connection
+The first definite folder and sharing labels are correct.
+Two and three joined notes
+Both the text and all toolbar actions remain usable while each tools panel is open.
+Open search and type immediately
+Every character appears. Individual matches can be selected and opened with assistive technology.
+Create a template note with empty tasks
+Tasks and Calendar include only tasks that have content.
+Export a dated task
+The exported date matches the one shown in the original note.
+Navigate out of the editor
+Only the selected screen and its visible controls appear in the accessibility tree.
+
+SCOPE AND TEST DATA
+What was tested
+The audit used normal Mac app controls, keyboard shortcuts, exported files, screenshots, and the accessibility information Folevi exposed. It covers the paths exercised on this build.
+Area
+Verified in this run
+Writing and saving
+Created folder notes and a template note. Pasted Bangla and emoji. Undid and redid the paste. A final edit survived immediately closing and reopening its tab.
+Editing and organisation
+Inserted a slash-command checklist, checked an item, added a tag, bookmarked a note, duplicated it, moved a note into a folder, and used Grid, Compact cards and List.
+Finding and comparing
+Searched by title and body, used Find in page and Replace all, opened a named version, and joined, focused and separated note panes.
+Tasks and Calendar
+Created a dated task, found it in Upcoming, Week and Agenda, and checked Month view and empty-task validation.
+Recovery and export
+Archived and unarchived a copy, restored it from Trash, and checked its content and checkbox state. Inspected exported Markdown and HTML. Opened the PDF print sheet.
+Interface states
+Reviewed Home, the editor, folders, Bookmarks, Templates, Foli DNA, Tasks, Calendar, Archive, Trash, sharing, export and selected Settings. Checked Light and Dark and both main window sizes.
+Coverage limits
+A second account or device is needed for sharing enforcement, invitations, concurrent editing and sync conflicts. Offline editing after a network loss, Vault unlock, AI output, attachment upload, bulk import, full PDF output, first-run onboarding and long-session performance remain open. VoiceOver speech was not tested. The accessibility findings use the controls and names exposed by the app.
+Test data
+The four named test notes were moved to recoverable Trash and the QA folder was verified empty. The empty folder is named Folevi QA 1105. The two Markdown test exports are QA 1105 Maple.md and QA 1105 Cedar (copy).md in Downloads. The app was returned to Foli DNA with its search cleared and Dark selected.

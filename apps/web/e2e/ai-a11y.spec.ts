@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { APP, newPerson, openTool, settle, waitForSaved } from "./helpers";
+import { APP, newPerson, openTool, settle, waitForSaved, noteMenuItem } from "./helpers";
 
 // Accessibility of every Foli AI surface (docs/AI_ASSISTANT.md milestone 9): axe over the AI page, the
 // floating chat, the note's AI sidebar (Write, Ask, Agent, Study), the inline composer (on a light page and
@@ -69,7 +69,7 @@ test("every Foli AI surface has no serious accessibility violations, light and d
 
     // Related.
     await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
-    await page.getByRole("menuitem", { name: "Related notes" }).click();
+    await (await noteMenuItem(page, "Related notes")).click();
     await expect(page.getByRole("region", { name: "Related", exact: true })).toBeVisible();
     problems.push(...(await scan(page, `${scheme} Related`)));
     await page.keyboard.press("Escape");

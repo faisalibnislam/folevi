@@ -61,6 +61,7 @@ import { MoveToVaultDialog } from "@/components/vault/MoveToVaultDialog";
 import { Button } from "@/components/ui/Button";
 import { SyncedRedirect } from "@/components/editor/synced/SyncedRedirect";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
+import { flattenMenu, noteMenuEntries, type NoteMenuParts } from "./noteMenu";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome, useShell } from "@/components/app/Shell";
 import { setBlockHighlight } from "@/components/editor/blockHighlight";
@@ -811,7 +812,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // Plus following or muting this note's comment notifications.
   // End-to-end encryption: "Always fully encrypted" for a note of yours (docs/E2EE_DESIGN.md §10.8; nothing for Standard accounts).
   const lockItem = useLockMenuItem(meta?.isMember && inCurrentScope(meta.document, meta.isMember, scopeKey) ? { kind: "document", id: documentId, name: summary?.title ?? "", locked: (meta.document as { locked?: boolean }).locked } : null);
-  const actions: (MenuItem | "separator")[] = [...(noteNotify.length ? [...docActions, "separator" as const, ...noteNotify] : docActions), ...(lockItem ? ["separator" as const, lockItem] : [])];
+  // The "…" menu, grouped into submenus (noteMenu.tsx); Info → Actions and the Mac's menu bar take every item in one list.
+  // (Always fully encrypted, a setting that's on or off, shows its check at the end of its row.)
+  const actions = noteMenuEntries({ ...docActions, settings: [...noteNotify, ...(lockItem ? [{ ...lockItem, checkAt: "end" as const }] : [])] });
+  const flatActions = flattenMenu(actions);
+  // Folevi for Mac: the menu bar's Note menu does what these do.
+  useMacNoteCommands(flatActions);
   // Someone else's page (shared with them, on its own or through a folder) isn't in their folders or Drafts:
   // it's under Shared with Me.
   const guestHere = meta !== undefined && meta !== null && !meta.isMember;
@@ -1284,7 +1290,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               aiRun={aiRun}
               onAiTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)}
               onHistory={canEditPage ? () => setHistoryOpen(true) : undefined}
-              actions={actions}
+              actions={flatActions}
               readOnly={readOnly}
             />
           </ToolSheet>
@@ -1320,7 +1326,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
               aiRun={aiRun}
               onAiTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)}
               onHistory={canEditPage ? () => setHistoryOpen(true) : undefined}
-              actions={actions}
+              actions={flatActions}
               readOnly={readOnly}
               hideTabs
             />
@@ -1362,7 +1368,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                 aiRun={aiRun}
                 onAiTitle={(title) => engine?.updateDocument(documentId, { title }, meta?.document.revision ?? null)}
                 onHistory={canEditPage ? () => setHistoryOpen(true) : undefined}
-                actions={actions}
+                actions={flatActions}
                 readOnly={readOnly}
               />
             </div>
@@ -2106,7 +2112,7 @@ function useDocumentActions({
   canMove: boolean;
   /** "Make text in images searchable": Foli AI reads the note's images (useFileText), when there are any to read. */
   readImages?: { count: number; run: () => void; busy: boolean } | null;
-}): (MenuItem | "separator")[] {
+}): Omit<NoteMenuParts, "settings"> {
   const setStarred = useMutation(api.documents.setStarred);
   const setArchived = useMutation(api.documents.setArchived);
   const trash = useMutation(api.documents.moveToTrash);
@@ -2119,48 +2125,66 @@ function useDocumentActions({
   const elsewhere = placesAvailable() && places.places.some((p) => p.id !== places.current);
   const act = (p: Promise<unknown>, msg: string, undo?: () => void) =>
     p.then(() => toast.show(msg, undo ? { action: { label: "Undo", onClick: undo } } : undefined), (e) => toast.show(errorMessage(e), { tone: "error" }));
-  const items = inTrash
-    ? [
+  if (inTrash) {
+    return {
+      top: [
         { label: "Restore from Trash", icon: <Undo2 size={14} />, onSelect: () => void act(restore({ documentId }), "Restored") },
         { label: "Delete permanently…", icon: <Trash2 size={14} />, danger: true, onSelect: onDelete },
-      ]
-    : [
-        starred
-          ? { label: "Remove bookmark", icon: <BookmarkOff size={14} />, onSelect: () => void act(setStarred({ documentId, starred: false }), "Bookmark removed") }
-          : { label: "Bookmark", icon: <Bookmark size={14} />, onSelect: () => void act(setStarred({ documentId, starred: true }), "Bookmarked") },
-        ...(onComments ? [{ label: "Comments", icon: <MessageSquare size={14} />, onSelect: onComments }] : []),
-        ...(onInfo ? [{ label: "Info", icon: <Info size={14} />, onSelect: onInfo }] : []),
-        ...(onRelated ? [{ label: "Related notes", icon: <Waypoints size={14} />, onSelect: onRelated }] : []),
-        ...(onRelated ? [{ label: "Foli DNA of this note", icon: <Waypoints size={14} />, onSelect: () => navigate(`/graph?note=${documentId}`) }] : []),
-        ...(reviewCards !== undefined ? [{ label: reviewCards ? `Review ${cardCount(reviewCards)} in this note` : "Review this note’s cards", icon: <Layers size={14} />, onSelect: () => navigate(`/review?note=${documentId}`) }] : []),
-        ...(onHistory ? [{ label: "Version history…", icon: <History size={14} />, onSelect: onHistory }] : []),
-        ...(onToggleEditors ? [{ label: showingEditors ? "Hide editors" : "Show editors", icon: <Users size={14} />, onSelect: onToggleEditors }] : []),
-        ...(onFind ? [{ label: canManage ? "Find and replace…" : "Find in note…", icon: <Search size={14} />, shortcut: canManage ? "⌘⌥F" : "⌘F", onSelect: onFind }] : []),
-        { label: "Move…", icon: <FolderInput size={14} />, disabled: !canMove, onSelect: onMove },
-        { label: "Export…", icon: <Download size={14} />, onSelect: onExport },
-        ...(onPresent ? [{ label: "Present", icon: <Presentation size={14} />, shortcut: "⌘⌥P", onSelect: onPresent }] : []),
-        ...(readImages
-          ? [{ label: "Make text in images searchable", icon: <ScanText size={14} />, description: `Foli AI reads ${readImages.count === 1 ? "1 image" : `${readImages.count} images`}. Uses AI credits.`, disabled: readImages.busy, onSelect: readImages.run }]
-          : []),
-        "separator" as const,
-        { label: "Duplicate", icon: <Copy size={14} />, onSelect: () => void duplicate({ documentId }).then((d) => navigate(`/d/${d.id}`), (e) => toast.show(errorMessage(e), { tone: "error" })) },
-        ...(onCopyTo ? [{ label: "Copy to…", icon: <CopyPlus size={14} />, onSelect: onCopyTo }] : []),
-        ...(onMoveToVault ? [{ label: "Move to the Vault…", icon: <Lock size={14} />, onSelect: onMoveToVault }] : []),
-        ...(elsewhere ? [{ label: "Move to another place…", icon: <ArrowRightLeft size={14} />, onSelect: () => openMovePlaces({ folders: [], notes: [documentId] }) }] : []),
-        ...(kind !== "template" ? [{ label: "Save as template", icon: <LayoutTemplate size={14} />, onSelect: () => void act(duplicate({ documentId, asTemplate: true }), "Saved to Templates") }] : []),
-        archived
-          ? { label: "Unarchive", icon: <ArchiveRestore size={14} />, onSelect: () => void act(setArchived({ documentId, archived: false }), "Moved out of Archive") }
-          : { label: "Archive", icon: <Archive size={14} />, disabled: !canManage, onSelect: () => void act(setArchived({ documentId, archived: true }), "Archived", () => void setArchived({ documentId, archived: false })) },
-        {
-          label: "Move to Trash",
-          icon: <Trash2 size={14} />,
-          danger: true,
-          disabled: !canManage,
-          onSelect: () => void act(trash({ documentId }), "Moved to Trash", () => void restore({ documentId })),
-        },
-      ];
-  // Folevi for Mac: the menu bar's Note menu does what these do.
-  useMacNoteCommands(items);
-  return items;
+      ],
+      connections: [],
+      history: [],
+      moveCopy: [],
+      shareExport: [],
+      end: [],
+    };
+  }
+  const item = (on: unknown, it: MenuItem): MenuItem[] => (on ? [it] : []);
+  return {
+    top: [
+      starred
+        ? { label: "Remove bookmark", icon: <BookmarkOff size={14} />, onSelect: () => void act(setStarred({ documentId, starred: false }), "Bookmark removed") }
+        : { label: "Bookmark", icon: <Bookmark size={14} />, onSelect: () => void act(setStarred({ documentId, starred: true }), "Bookmarked") },
+      ...item(onComments, { label: "Comments", icon: <MessageSquare size={14} />, onSelect: () => onComments?.() }),
+      ...item(onInfo, { label: "Info", icon: <Info size={14} />, onSelect: () => onInfo?.() }),
+      ...item(onFind, { label: canManage ? "Find and replace…" : "Find in note…", icon: <Search size={14} />, shortcut: canManage ? "⌘⌥F" : "⌘F", onSelect: () => onFind?.() }),
+      // The note's own extras, where it has them: its flashcards to review, its images for Foli AI to read.
+      ...item(reviewCards !== undefined, { label: reviewCards ? `Review ${cardCount(reviewCards)} in this note` : "Review this note’s cards", icon: <Layers size={14} />, onSelect: () => navigate(`/review?note=${documentId}`) }),
+      ...(readImages
+        ? [{ label: "Make text in images searchable", icon: <ScanText size={14} />, description: `Foli AI reads ${readImages.count === 1 ? "1 image" : `${readImages.count} images`}. Uses AI credits.`, disabled: readImages.busy, onSelect: readImages.run }]
+        : []),
+    ],
+    connections: [
+      ...item(onRelated, { label: "Related notes", icon: <Waypoints size={14} />, onSelect: () => onRelated?.() }),
+      ...item(onRelated, { label: "Foli DNA", icon: <Waypoints size={14} />, onSelect: () => navigate(`/graph?note=${documentId}`) }),
+    ],
+    history: [
+      ...item(onHistory, { label: "Version history…", icon: <History size={14} />, onSelect: () => onHistory?.() }),
+      ...item(onToggleEditors, { label: showingEditors ? "Hide editors" : "Show editors", icon: <Users size={14} />, onSelect: () => onToggleEditors?.() }),
+    ],
+    moveCopy: [
+      { label: "Move…", icon: <FolderInput size={14} />, disabled: !canMove, onSelect: onMove },
+      ...item(onCopyTo, { label: "Copy to…", icon: <CopyPlus size={14} />, onSelect: () => onCopyTo?.() }),
+      { label: "Duplicate", icon: <Copy size={14} />, onSelect: () => void duplicate({ documentId }).then((d) => navigate(`/d/${d.id}`), (e) => toast.show(errorMessage(e), { tone: "error" })) },
+      ...item(elsewhere, { label: "Move to another place…", icon: <ArrowRightLeft size={14} />, onSelect: () => openMovePlaces({ folders: [], notes: [documentId] }) }),
+      ...item(onMoveToVault, { label: "Move to the Vault…", icon: <Lock size={14} />, onSelect: () => onMoveToVault?.() }),
+    ],
+    shareExport: [
+      { label: "Export…", icon: <Download size={14} />, onSelect: onExport },
+      ...item(onPresent, { label: "Present", icon: <Presentation size={14} />, shortcut: "⌘⌥P", onSelect: () => onPresent?.() }),
+      ...item(kind !== "template", { label: "Save as template", icon: <LayoutTemplate size={14} />, onSelect: () => void act(duplicate({ documentId, asTemplate: true }), "Saved to Templates") }),
+    ],
+    end: [
+      archived
+        ? { label: "Unarchive", icon: <ArchiveRestore size={14} />, onSelect: () => void act(setArchived({ documentId, archived: false }), "Moved out of Archive") }
+        : { label: "Archive", icon: <Archive size={14} />, disabled: !canManage, onSelect: () => void act(setArchived({ documentId, archived: true }), "Archived", () => void setArchived({ documentId, archived: false })) },
+      {
+        label: "Move to Trash",
+        icon: <Trash2 size={14} />,
+        danger: true,
+        disabled: !canManage,
+        onSelect: () => void act(trash({ documentId }), "Moved to Trash", () => void restore({ documentId })),
+      },
+    ],
+  };
 }
 

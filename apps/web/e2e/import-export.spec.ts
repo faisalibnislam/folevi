@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { strToU8, zipSync } from "fflate";
-import { newPerson, showFolders } from "./helpers";
+import { newPerson, showFolders, noteMenuItem } from "./helpers";
 
 test("import Markdown with a warning report, then export a page as Markdown", async ({ browser }) => {
   const { page } = await newPerson(browser, "Importer");
@@ -19,7 +19,7 @@ test("import Markdown with a warning report, then export a page as Markdown", as
 
   await page.getByRole("button", { name: "Document actions" }).click();
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("menuitem", { name: "Export…" }).click();
+  await (await noteMenuItem(page, "Export…")).click();
   await page.getByRole("dialog", { name: /^Export “/ }).getByRole("button", { name: "Export Markdown" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe("Garden log.md");

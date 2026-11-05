@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Check } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 import { keyLabel } from "@/lib/shortcuts";
 import { visibleBottom } from "@/lib/hooks/useVisualViewport";
 import { nativeApp } from "@/lib/nativeApp";
@@ -44,6 +44,14 @@ export interface MenuItem {
   row?: "place" | "sub";
   /** The second line is an email: it's cut in the middle, so the start and the domain both stay readable. */
   middle?: boolean;
+  /**
+   * A submenu: the row opens these to its side (pointing at it, → or Return, a tap) instead of doing something
+   * itself; ← or Escape goes back. (Its `onSelect` isn't called.)
+   */
+  submenu?: (MenuItem | "separator")[];
+  /** With `checked`: the check goes at the end of the row on every platform, so no column is kept for it before the
+   * icons (a setting that's on or off, in a menu of actions). */
+  checkAt?: "end";
 }
 
 /** An email (or any line) cut in the middle when it doesn't fit: the start shrinks, the end ("@domain") stays. */
@@ -106,6 +114,21 @@ const appMenus = () => typeof document !== "undefined" && document.documentEleme
 const macMenus = () => typeof document !== "undefined" && document.documentElement.getAttribute("data-desktop") === "mac";
 /** How far a pressed pointer moves before its release counts as choosing (a press and release in place is a click). */
 const PRESS_DRAG = 4;
+/** Pointing at a submenu's row opens it after this long; pointing at another row closes it after the longer wait
+ * (the pointer may only be passing over that row on its way into the submenu). */
+const SUBMENU_OPEN_MS = 100;
+const SUBMENU_CLOSE_MS = 250;
+
+/**
+ * Whether a menu keeps a column before its icons for checkmarks (the Mac and the apps put a check there): only when
+ * one of its items can be checked and wants its check there, not for a check shown at the end of its row.
+ */
+export function menuKeepsCheckColumn(items: MenuEntry[]): boolean {
+  return items.some((it) => it !== "separator" && !isHeading(it) && it.checked !== undefined && it.checkAt !== "end");
+}
+
+/** The element an event happened on, or the one holding the text node it happened on. */
+const elementOf = (t: EventTarget | null): Element | null => (t instanceof Element ? t : t instanceof Node ? t.parentElement : null);
 
 /**
  * Menu button following the WAI-ARIA menu pattern: arrow keys move, Enter/Space select, Escape closes
@@ -274,8 +297,23 @@ function MenuPanel({
   beside,
   press,
   variant,
+  tree,
+  level = 0,
+  focusFirst = true,
+  onDone,
+  onPointerIn,
 }: {
   id: string;
+  /** A submenu: the id of the menu it belongs to (all of its panels count as "inside" for clicks). */
+  tree?: string;
+  /** 0 for the menu, 1 for a submenu of it: placed beside its row (`anchor`), ← and Escape go back to that row. */
+  level?: number;
+  /** Put the keyboard on the first item as it opens (a submenu opened by pointing at its row leaves it there). */
+  focusFirst?: boolean;
+  /** Closes the whole menu (a submenu's `onClose` only goes back to its row); the menu's own is `onClose`. */
+  onDone?: (refocus?: boolean) => void;
+  /** The pointer came into this submenu (its row's menu stops counting down to close it). */
+  onPointerIn?: () => void;
   variant?: "switcher";
   label: string;
   items: MenuEntry[];
@@ -296,8 +334,38 @@ function MenuPanel({
   besideRef.current = beside;
   const [inApp] = useState(() => nativeApp() !== null);
   items = menuEntriesHere(items, inApp);
-  // A leading column for the checkmarks when any item can be checked (iOS puts them before the words).
-  const checks = items.some((it) => it !== "separator" && !isHeading(it) && it.checked !== undefined);
+  // A leading column for the checkmarks when any item can be checked there (iOS puts them before the words).
+  const checks = menuKeepsCheckColumn(items);
+  const treeId = tree ?? id;
+  const nested = level > 0;
+  const done = onDone ?? onClose;
+  const inTree = (el: Element | null) => el?.closest("[data-menu-tree]")?.getAttribute("data-menu-tree") === treeId;
+  // The submenu open from one of this menu's rows, if any (`focus`: opened from the keyboard or a tap, so its
+  // first item takes the keyboard; `n` makes it open afresh when → asks again for one the pointer opened).
+  const [sub, setSub] = useState<{ index: number; focus: boolean; n: number } | null>(null);
+  const subRef = useRef(sub);
+  subRef.current = sub;
+  const subTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const lastPointer = useRef<string>("mouse");
+  useEffect(() => () => clearTimeout(subTimer.current), []);
+  const rowEl = (i: number) => menuRef.current?.querySelector<HTMLElement>(`[data-index="${i}"]`) ?? null;
+  const openSub = (i: number, focus: boolean) => {
+    clearTimeout(subTimer.current);
+    setSub((s) => (s && s.index === i && !focus ? s : { index: i, focus, n: (s?.n ?? 0) + 1 }));
+  };
+  /** Back from the submenu to its row (with the keyboard there when `refocus`). */
+  const closeSub = (refocus?: boolean) => {
+    clearTimeout(subTimer.current);
+    const was = subRef.current;
+    setSub(null);
+    if (refocus && was) {
+      skipFocus.current = false;
+      setActive(was.index);
+      rowEl(was.index)?.focus();
+    }
+  };
+  // A submenu opened by pointing leaves the keyboard on its row until the pointer or the keyboard moves into it.
+  const skipFocus = useRef(!focusFirst);
   const actionable = items.map((it, i) => (it === "separator" || isHeading(it) || it.disabled ? -1 : i)).filter((i) => i >= 0);
   const [active, setActive] = useState(actionable[0] ?? 0);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -320,7 +388,7 @@ function MenuPanel({
   pressRef.current = press;
   useEffect(() => {
     const start = pressRef.current;
-    if (!mac || !start) return;
+    if (!mac || !start || nested) return;
     let moved = false;
     const onMove = (e: PointerEvent) => {
       if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > PRESS_DRAG) moved = true;
@@ -330,11 +398,12 @@ function MenuPanel({
       if (!moved) return;
       const under = document.elementFromPoint(e.clientX, e.clientY);
       const item = under instanceof Element ? under.closest<HTMLButtonElement>(".ui-menu-item") : null;
-      if (item && menuRef.current?.contains(item)) {
+      // (Over this menu or one of its submenus.)
+      if (item && inTreeRef.current(item)) {
         if (!item.disabled) item.click();
         return;
       }
-      if (!menuRef.current?.contains(under) && !ignore?.current?.contains(under)) onCloseRef.current(false);
+      if (!inTreeRef.current(under) && !ignore?.current?.contains(under)) onCloseRef.current(false);
     };
     const stopListening = () => {
       window.removeEventListener("pointermove", onMove, true);
@@ -343,15 +412,19 @@ function MenuPanel({
     window.addEventListener("pointermove", onMove, true);
     window.addEventListener("pointerup", onUp, true);
     return stopListening;
-  }, [mac, ignore]);
+  }, [mac, ignore, nested]);
 
+  // A click outside the menu (and its submenus) closes it. (A submenu leaves that to its menu.)
+  const inTreeRef = useRef(inTree);
+  inTreeRef.current = inTree;
   useEffect(() => {
+    if (nested) return;
     const onDown = (e: MouseEvent) => {
-      if (!menuRef.current?.contains(e.target as Node) && !ignore?.current?.contains(e.target as Node)) onCloseRef.current(false);
+      if (!inTreeRef.current(elementOf(e.target)) && !ignore?.current?.contains(e.target as Node)) onCloseRef.current(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
-  }, [ignore]);
+  }, [ignore, nested]);
 
   // Place the menu next to its anchor (then flip/shift once its size is known), and keep it there.
   useLayoutEffect(() => {
@@ -361,6 +434,23 @@ function MenuPanel({
       if (!a || !menu) return;
       const gap = a.width || a.height ? 8 : 2;
       const margin = 8;
+      // A submenu: beside its row, its first item level with the row, on the right where there's room (else the
+      // left), inside the window.
+      if (nested) {
+        const w = menu.offsetWidth;
+        const h = menu.offsetHeight;
+        const pad = parseFloat(getComputedStyle(menu).paddingTop) || 6;
+        const bottom = visibleBottom();
+        const safeTop = safeInsets().top;
+        let left = a.right + pad + 2;
+        const flip = left + w > window.innerWidth - margin;
+        if (flip) left = a.left - pad - 2 - w;
+        left = Math.min(Math.max(margin, left), window.innerWidth - w - margin);
+        const maxHeight = bottom - margin * 2 - safeTop;
+        const top = Math.max(margin + safeTop, Math.min(a.top - pad, bottom - Math.min(h, maxHeight) - margin));
+        setPos({ position: "fixed", left, top, maxHeight, margin: 0, right: "auto", bottom: "auto", transformOrigin: `${flip ? "right" : "left"} top` });
+        return;
+      }
       // Opened by holding something (lib/touchContextMenu.ts): never over what lifted (in the app it's the app's
       // picture, drawn above the page), below, above or beside it, on screen (WP0, lib/native/lift.ts).
       const held = heldLiftRect();
@@ -414,13 +504,14 @@ function MenuPanel({
       window.removeEventListener("scroll", place, true);
       window.visualViewport?.removeEventListener("resize", place);
     };
-  }, [host, align, side, fullWidth]);
+  }, [host, align, side, fullWidth, nested]);
 
   useEffect(() => {
-    if (pos) menuRef.current?.querySelector<HTMLElement>(`[data-index="${active}"]`)?.focus();
+    if (pos && !skipFocus.current) menuRef.current?.querySelector<HTMLElement>(`[data-index="${active}"]`)?.focus();
   }, [active, pos]);
   /** The keyboard moved to `i`: on the Mac that row is the highlighted one too. */
   const moveTo = (i: number) => {
+    skipFocus.current = false;
     setActive(i);
     if (mac) setLit(i);
   };
@@ -483,11 +574,28 @@ function MenuPanel({
       popover="manual"
       data-checks={checks || undefined}
       data-variant={variant}
+      data-menu-tree={treeId}
+      data-submenu={nested || undefined}
+      onPointerEnter={onPointerIn}
       style={pos ?? { position: "fixed", left: 0, top: 0, margin: 0, right: "auto", bottom: "auto", visibility: "hidden" }}
       className={`ui-pop z-[100] min-w-56 overflow-y-auto border-0 p-1.5 text-ink origin-top animate-[folio-pop_420ms_var(--spring-pop)] ${(menuClassName ?? "").replace(/(^|\s)w-full(?=\s|$)/g, " ")}`}
       onContextMenu={(e) => e.preventDefault()}
       onKeyDown={(e) => {
+        // Keys pressed in an open submenu are its own (React passes them on through its portal to this panel).
+        if (!menuRef.current?.contains(e.target as Node)) return;
         const at = actionable.indexOf(active);
+        const current = items[active];
+        if (e.key === "ArrowRight" && current && current !== "separator" && !isHeading(current) && current.submenu && !current.disabled) {
+          e.preventDefault();
+          openSub(active, true);
+          return;
+        }
+        if (nested && e.key === "ArrowLeft") {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose(true);
+          return;
+        }
         // (On the Mac the first arrow press lands on the first or last item when none is highlighted yet.)
         const from = mac && lit === null ? -1 : at;
         if (e.key === "ArrowDown") {
@@ -506,7 +614,9 @@ function MenuPanel({
           e.preventDefault();
           // Don't let Escape also clear a selection or close a panel behind the menu.
           e.stopPropagation();
-          onClose();
+          // (Escape in a submenu goes back to its row; Tab leaves the whole menu.)
+          if (nested && e.key === "Escape") onClose(true);
+          else done();
         } else if (mac && e.key.length === 1 && e.key !== " " && !e.metaKey && !e.ctrlKey && !e.altKey) {
           // Type-to-select (the Mac): the next item starting with what's typed; the same letter again moves on.
           e.preventDefault();
@@ -541,6 +651,9 @@ function MenuPanel({
             type="button"
             role={item.checked === undefined ? "menuitem" : item.multi ? "menuitemcheckbox" : "menuitemradio"}
             aria-checked={item.checked}
+            aria-haspopup={item.submenu ? "menu" : undefined}
+            aria-expanded={item.submenu ? sub?.index === i : undefined}
+            aria-controls={item.submenu && sub?.index === i ? `${id}-sub` : undefined}
             // The label names the item; the quieter lines are read as its description.
             aria-label={item.name ?? (item.description || item.detail ? item.label : undefined)}
             aria-description={[item.description, item.detail, item.badge ? `${item.badge} unread` : null, item.dot && !item.badge ? "something new" : null].filter(Boolean).join(" · ") || undefined}
@@ -559,9 +672,33 @@ function MenuPanel({
                 : undefined
             }
             onMouseLeave={mac ? () => setLit((l) => (l === i ? null : l)) : undefined}
-            onClick={() => {
+            onPointerDown={(e) => {
+              lastPointer.current = e.pointerType;
+            }}
+            // (The row with focus is the one the keys act on, however it got there: → opens its submenu.)
+            onFocus={() => {
+              if (active !== i) setActive(i);
+            }}
+            onPointerEnter={(e) => {
+              // Pointing (a mouse or trackpad, not a finger): a submenu's row opens it, another row closes the one open.
+              if (e.pointerType !== "mouse") return;
+              clearTimeout(subTimer.current);
+              if (item.submenu && !item.disabled) {
+                if (subRef.current?.index !== i) subTimer.current = setTimeout(() => openSub(i, false), subRef.current ? SUBMENU_CLOSE_MS : SUBMENU_OPEN_MS);
+              } else if (subRef.current) subTimer.current = setTimeout(() => setSub(null), SUBMENU_CLOSE_MS);
+            }}
+            onClick={(e) => {
+              if (item.submenu) {
+                // A tap on an open submenu's row closes it again; the keyboard (Return, Space) and a tap put the
+                // keyboard in it; a click keeps it open where pointing opened it.
+                const touch = lastPointer.current !== "mouse";
+                lastPointer.current = "mouse";
+                if (touch && subRef.current?.index === i) closeSub(false);
+                else openSub(i, e.detail === 0 || touch);
+                return;
+              }
               // Focus goes back to the menu button first, so a dialog the item opens returns it there when it closes.
-              onClose(true);
+              done(true);
               if (item.danger) feel("destructive");
               else if (item.checked !== undefined) feel("choose");
               item.onSelect();
@@ -569,8 +706,13 @@ function MenuPanel({
             // A row with a second line (a workspace and its plan) gets room to breathe.
             className={`ui-menu-item disabled:opacity-40 pointer-coarse:min-h-11 ${item.description ? "!gap-3 py-2" : ""} ${item.indent ? "!pl-8" : ""} ${item.danger ? "!text-danger" : ""}`}
           >
-            {/* The checkmark: at the end on the desktop; in the apps, in a column before the words (globals.css). */}
-            {checks ? (
+            {/* The checkmark: at the end on the desktop; in the apps, in a column before the words (globals.css); an
+                item that asks for it at the end has it there everywhere. */}
+            {item.checkAt === "end" ? (
+              <span data-menu-part="check-end" aria-hidden className="order-last flex-none text-heading">
+                {item.checked ? <Check size={14} strokeWidth={2.5} /> : null}
+              </span>
+            ) : checks ? (
               <span data-menu-part="check" aria-hidden className={item.checked ? "order-last flex-none text-heading" : "hidden"}>
                 {item.checked ? <Check size={14} strokeWidth={2.5} /> : null}
               </span>
@@ -597,9 +739,39 @@ function MenuPanel({
               <span data-menu-part="badge" aria-hidden className="h-2 w-2 flex-none rounded-tiny bg-coral" />
             ) : null}
             {item.shortcut ? <span data-menu-part="shortcut" className="text-footnote text-faint pointer-coarse:hidden">{keyLabel(item.shortcut)}</span> : null}
+            {item.submenu ? (
+              <span data-menu-part="chevron" aria-hidden className="flex-none text-muted">
+                <ChevronRight size={14} />
+              </span>
+            ) : null}
           </button>
         ),
       )}
+      {(() => {
+        // The open submenu, beside its row (its own panel, in the same place in the page as this one).
+        const parent = sub ? items[sub.index] : undefined;
+        if (!sub || !parent || parent === "separator" || isHeading(parent) || !parent.submenu) return null;
+        const at = sub.index;
+        return (
+          <MenuPanel
+            key={`sub-${at}-${sub.n}`}
+            id={`${id}-sub`}
+            label={parent.label}
+            items={parent.submenu}
+            host={host}
+            anchor={() => rowEl(at)?.getBoundingClientRect() ?? null}
+            align="start"
+            side="bottom"
+            variant={variant}
+            tree={treeId}
+            level={level + 1}
+            focusFirst={sub.focus}
+            onClose={(refocus) => closeSub(refocus)}
+            onDone={done}
+            onPointerIn={() => clearTimeout(subTimer.current)}
+          />
+        );
+      })()}
     </div>,
     host,
   );

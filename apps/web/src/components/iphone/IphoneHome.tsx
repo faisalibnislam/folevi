@@ -12,7 +12,7 @@ import { overlayFolderIndex } from "@/lib/sync/overlays";
 import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
 import { WaitingToSync, waitingOf } from "@/components/sync/WaitingToSync";
 import { AppLink, useAppRouter } from "@/lib/app/router";
-import { ageText } from "@/lib/format";
+import { editedText } from "@/lib/format";
 import { useMinute } from "@/lib/hooks/useMinute";
 import { ViewChrome, useShell } from "@/components/app/Shell";
 import { FolderCard } from "@/components/views/FolderCard";
@@ -51,7 +51,7 @@ function RecentCard({ doc }: { doc: Summary }) {
             cover={doc.cover}
             style={doc.style}
             createdAt={doc.createdAt}
-            time={ageText(doc.updatedAt)}
+            time={editedText(doc.updatedAt)}
             starred={doc.starred}
             folder={doc.homeFolder}
             extra={waitingOf(doc) ? <WaitingToSync state={waitingOf(doc)} /> : undefined}

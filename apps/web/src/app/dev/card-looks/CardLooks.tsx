@@ -47,7 +47,7 @@ export function CardLooks() {
                   cover={s.cover ?? DEFAULT_COVER}
                   style={DEFAULT_DOCUMENT_STYLE}
                   createdAt={Date.now() - 3 * DAY}
-                  time="2 days ago"
+                  time="Edited 2 days ago"
                   starred={s.starred}
                   folder={s.folder ? { id: s.folder, name: s.folder, color: null } : null}
                   showFolder={s.kind !== "template"}

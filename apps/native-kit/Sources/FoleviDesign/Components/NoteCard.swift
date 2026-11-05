@@ -107,7 +107,9 @@ public struct NoteCardModel: Hashable, Sendable, Identifiable {
     public var accessibilityText: String {
         var parts = [title.isEmpty ? "Untitled" : title]
         if showsFolder { parts.append(folderName.map { "in \($0)" } ?? "Draft") }
-        parts.append("edited \(timeText)")
+        // The footer time names itself ("Edited 5 mins ago", "Deleted 2 days ago"); a bare age is the last edit.
+        let named = timeText.hasPrefix("Edited ") || timeText.hasPrefix("Deleted ")
+        parts.append(named ? timeText.prefix(1).lowercased() + timeText.dropFirst() : "edited \(timeText)")
         if let first = NoteCardView.previewText(preview, excerpt: excerpt).split(separator: "\n").first { parts.append(String(first)) }
         if starred { parts.append("bookmarked") }
         return parts.joined(separator: ", ")

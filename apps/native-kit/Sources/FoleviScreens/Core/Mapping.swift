@@ -41,6 +41,16 @@ public enum CardMapping {
         return AgeText.age(Date(timeIntervalSince1970: row.updatedAt / 1000), now: now)
     }
 
+    /// A card's two times, each named (QA F14; the web's lib/format createdText and editedText): "Created 3 days
+    /// ago" under the title, "Edited 5 mins ago" in the footer (the time the Last edited sort uses), or "Deleted …".
+    public static func cardCreatedText(_ row: NoteRow, now: Date = ScreenClock.now()) -> String {
+        "Created \(AgeText.relative(Date(timeIntervalSince1970: row.createdAt / 1000), now: now))"
+    }
+
+    public static func cardTimeText(_ row: NoteRow, inTrash: Bool, now: Date = ScreenClock.now()) -> String {
+        inTrash ? timeText(row, inTrash: true, now: now) : "Edited \(AgeText.relative(Date(timeIntervalSince1970: row.updatedAt / 1000), now: now))"
+    }
+
     public static func noteCard(_ row: NoteRow, starred: Bool? = nil, inTrash: Bool = false, now: Date = ScreenClock.now()) -> NoteCardModel {
         NoteCardModel(
             id: row.id,
@@ -49,8 +59,8 @@ public enum CardMapping {
             preview: previewLines(row.preview),
             cover: cover(row.cover),
             fontType: fontType(row.style),
-            createdText: AgeText.age(Date(timeIntervalSince1970: row.createdAt / 1000), now: now),
-            timeText: timeText(row, inTrash: inTrash, now: now),
+            createdText: cardCreatedText(row, now: now),
+            timeText: cardTimeText(row, inTrash: inTrash, now: now),
             starred: starred ?? row.starred,
             folderName: row.folder?.name,
             folderColorId: row.folder?.color,

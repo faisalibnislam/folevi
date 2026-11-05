@@ -1733,7 +1733,7 @@ struct DnaInsightsView: View {
                     }
                 }
             }
-            .padding(.horizontal, 16).padding(.bottom, 32)
+            .padding(.horizontal, 16).padding(.bottom, max(32, AiAskOverlay.clearance))
         }
         .frame(width: wide ? nil : 280)
         .frame(maxWidth: wide ? .infinity : nil)
@@ -1810,7 +1810,7 @@ struct GraphListView: View {
                         VStack(alignment: .leading, spacing: 12) { ForEach(others, id: \.node.id) { row($0) } }
                     }
                 }
-                .padding(.horizontal, 24).padding(.bottom, 40)
+                .padding(.horizontal, 24).padding(.bottom, max(40, AiAskOverlay.clearance))
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }

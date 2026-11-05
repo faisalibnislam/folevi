@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink } from "@/lib/app/router";
-import { ageText } from "@/lib/format";
+import { editedText } from "@/lib/format";
 import { ViewChrome } from "@/components/app/Shell";
 import { NOTE_CARD_ASPECT, NOTE_CARD_LINK, NoteCardFace } from "./DocumentCard";
 import { FolderCard } from "./FolderCard";
@@ -96,7 +96,7 @@ function NoteCard({ d, recent }: { d: Summary; recent?: boolean }) {
           cover={d.cover}
           style={d.style}
           createdAt={d.createdAt}
-          time={ageText(d.updatedAt)}
+          time={editedText(d.updatedAt)}
           starred={d.starred}
           folder={d.homeFolder}
           extra={waitingOf(d) ? <WaitingToSync state={waitingOf(d)} /> : undefined}

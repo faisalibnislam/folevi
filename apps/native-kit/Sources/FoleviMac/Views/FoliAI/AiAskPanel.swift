@@ -59,6 +59,15 @@ struct AiAskOverlay: View {
         return c.y
     }
 
+    /// The room a scrolling page leaves under its last row so it scrolls clear of the floating button (the web's
+    /// --fab-clearance): the button's top above the card's bottom edge plus a 24 pt gap (100 pt, as the measured
+    /// pages' bottom padding), none on the iPad, which has no button. Pages pad their end by at least this.
+    static var clearance: CGFloat {
+        guard !WebStyles.isPad else { return 0 }
+        let fab = WebStyles.named("ai.fab").light
+        return 820 - fab.y - cardInset + 24
+    }
+
     private var shows: Bool {
         guard frame.session.value?.capabilities.ai ?? false else { return false }
         return !frame.route.isNote && frame.route.tabKey != "view:ai"

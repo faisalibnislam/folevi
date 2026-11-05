@@ -7,7 +7,7 @@ import { FolderGlyph } from "@/components/ui/FolderGlyph";
 
 import { accentVar, coverArtOf, coverArtThumbUrl, coverBackground, pageBackdrop, sheetProps, softVar } from "@/lib/cover";
 import { useCoverImage } from "@/lib/app/coverImage";
-import { ageText } from "@/lib/format";
+import { createdText } from "@/lib/format";
 import type { HomeFolder } from "./FolderBadge";
 // Page colours (data-sheet / data-text) come from the editor stylesheet, so thumbnails match the page.
 import "@/components/editor/editor.css";
@@ -110,7 +110,7 @@ export function NoteCardFace({
   cover: DocumentCover;
   style: DocumentStyle;
   createdAt: number;
-  /** The footer time, e.g. "1 hour ago" (edited) or "Deleted 2 days ago". */
+  /** The footer time, labelled: "Edited 1 hour ago" (lib/format editedText) or "Deleted 2 days ago". */
   time: string;
   starred?: boolean;
   folder?: HomeFolder | null;
@@ -181,8 +181,7 @@ export function NoteCardFace({
         )}
         {look === "index" ? <span aria-hidden className="mt-[2.4cqw] block h-[0.5cqw] bg-[#e88e8e]" /> : null}
         <p data-card="created" className="mt-[1cqw] truncate text-[4.5cqw] leading-[1.3] text-faint">
-          <span className="sr-only">Created </span>
-          {ageText(createdAt)}
+          {createdText(createdAt)}
         </p>
         <div
           ref={body.ref}

@@ -68,8 +68,8 @@ export function PhoneQuickAdd({ onClose, currentDoc, initialDue }: { onClose: ()
           maxLength={500}
           enterKeyHint="done"
           autoComplete="off"
-          aria-invalid={q.error ? true : undefined}
-          aria-describedby={q.parsed ? "qa-when" : undefined}
+          aria-invalid={q.titleError || q.error ? true : undefined}
+          aria-describedby={[q.titleError ? "qa-title-error" : null, q.parsed ? "qa-when" : null].filter(Boolean).join(" ") || undefined}
           className="min-h-11 min-w-0 flex-1 bg-transparent px-1 text-body leading-[22px] text-ink outline-none placeholder:text-faint"
         />
         {/* The round add button: 34 pt in the heading colour, in a 44 pt target; faint until there's a task. */}
@@ -104,6 +104,11 @@ export function PhoneQuickAdd({ onClose, currentDoc, initialDue }: { onClose: ()
             </span>
           ) : null}
         </div>
+      ) : null}
+      {q.titleError ? (
+        <p id="qa-title-error" role="alert" className="px-1 pb-1 text-subheadline leading-5 text-danger">
+          {q.titleError}
+        </p>
       ) : null}
       {q.error ? (
         <p role="alert" className="px-1 pb-1 text-subheadline leading-5 text-danger">

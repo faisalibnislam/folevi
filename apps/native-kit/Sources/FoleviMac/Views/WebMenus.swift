@@ -523,10 +523,22 @@ struct MenuHold: UIGestureRecognizerRepresentable {
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var start: CGPoint = .zero
         weak var menu: WebMenuWindow?
+        /// The finger being held: the hold begins only while it's still down (a view taken away mid-touch may never
+        /// tell its recognizer the finger lifted).
+        weak var touch: UITouch?
+
+        var stillDown: Bool {
+            guard let touch else { return false }
+            return touch.phase == .began || touch.phase == .stationary || touch.phase == .moved
+        }
 
         func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
         // (Only fingers: a pointer's click and hold is a drag or a selection there.)
-        func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool { touch.type == .direct }
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            guard touch.type == .direct else { return false }
+            self.touch = touch
+            return true
+        }
     }
 
     func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
@@ -546,6 +558,10 @@ struct MenuHold: UIGestureRecognizerRepresentable {
         let at = recognizer.location(in: window)
         switch recognizer.state {
         case .began:
+            guard context.coordinator.stillDown else {
+                recognizer.state = .cancelled
+                return
+            }
             context.coordinator.start = at
             if began(at, window) { context.coordinator.menu = WebMenuWindow.shown }
         case .changed:
@@ -567,6 +583,8 @@ struct SecondaryClick: UIGestureRecognizerRepresentable {
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+        // (Only a pointer's click: a finger's tap must never count as one, whatever button mask it reports.)
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool { touch.type == .indirectPointer }
     }
 
     func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }

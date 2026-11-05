@@ -135,8 +135,8 @@ export function TabStrip() {
   // of its own that stays until it's closed, like a note's.
   const onHome = route.name === "documents";
   const inFolder = route.name === "folder";
-  // New folder shows next to New note on the Folders page (top level) and on a folder's page (inside it).
-  const folderParent = route.name === "folder" ? route.id : route.name === "folders" ? null : undefined;
+  // New folder shows next to New note on a folder's page (inside it). The Folders page has its own, in its title row.
+  const folderParent = route.name === "folder" ? route.id : undefined;
 
   // Dragging a tab (with a mouse or pen; a finger scrolls the strip): it follows the pointer and trades
   // places with a neighbour once it passes that tab's middle, as tabs do in a browser.

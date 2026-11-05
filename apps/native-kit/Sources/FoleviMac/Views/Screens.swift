@@ -278,7 +278,7 @@ struct ScreenRoot: View {
             switch route {
             case .home: WebHomeScreen(frame: model, home: models.homeModel(), list: models.list(NotesListKind(.all)), allFolders: models.allFolderCards())
             case .notes(let v): WebNoteBrowser(frame: model, model: models.list(NotesListKind(v)))
-            case .folder(let id): WebNoteBrowser(frame: model, model: models.list(.folder(id)))
+            case .folder(let id): WebNoteBrowser(frame: model, model: models.list(.folder(id)), folderCards: models.allFolderCards())
             case .tag(let id): WebNoteBrowser(frame: model, model: models.list(.tag(id)))
             case .web("/folders"): WebFoldersIndex(frame: model, home: models.homeModel(), allFolders: models.allFolderCards())
             case .web("/tags"): WebTagsIndex(frame: model, tags: models.tagsIndex())

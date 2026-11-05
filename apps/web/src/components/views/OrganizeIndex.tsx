@@ -16,6 +16,7 @@ import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { ageText } from "@/lib/format";
 import { NewFolderButton } from "@/components/app/NewFolderButton";
 import { ViewChrome } from "@/components/app/Shell";
+import { ListPageHeader } from "./ListPageHeader";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useIphoneApp } from "@/lib/iphone";
@@ -165,16 +166,16 @@ export function FoldersIndex() {
       />
     );
   return (
-    <ViewChrome
-      title={<h1 className="text-subheadline font-semibold">Folders</h1>}
-      tabTitle="Folders"
-    >
+    // The page names itself in its title row (with the count and New folder); the top bar keeps only New note.
+    <ViewChrome title={null} tabTitle="Folders">
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
+        <ListPageHeader
+          title="Folders"
+          info={data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.folders.length} folders` : `${list.length} ${list.length === 1 ? "folder" : "folders"}`}
+          actions={<NewFolderButton parentId={null} inPage />}
+        />
         <div className="flex flex-wrap items-center gap-3">
           <SearchField value={q} onChange={setQ} label="Search folders" />
-          <p role="status" className="min-w-0 truncate text-subheadline text-muted">
-            {data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.folders.length} folders` : `${list.length} ${list.length === 1 ? "folder" : "folders"}`}
-          </p>
           <span className="flex-1" />
           <SortSelect<FolderSort>
             value={sort}
@@ -189,7 +190,6 @@ export function FoldersIndex() {
               <Rows3 size={15} aria-hidden />
             </button>
           </div>
-          <NewFolderButton parentId={null} inPage />
         </div>
 
         {data && !list.length ? (

@@ -59,8 +59,11 @@ test("a new note on a folder page starts in that folder; the tab strip shows the
   await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Recipes" }).click();
   const strip = page.getByRole("navigation", { name: "Open pages" });
   await expect(strip.locator('[aria-current="page"]')).toHaveText("Recipes");
+  // The folder's title row names it too.
+  await expect(page.getByRole("main").getByRole("heading", { name: "Recipes", level: 1 })).toBeVisible();
 
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  // The folder's own New note, in its title row (the top bar's makes one here too).
+  await page.getByRole("main").getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Soup");
   await waitForSaved(page);

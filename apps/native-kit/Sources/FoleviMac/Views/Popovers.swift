@@ -76,7 +76,7 @@ struct ToastStack: View {
             Text(verbatim: t.message).webText(text.text).fixedSize(horizontal: false, vertical: true)
             if let title = t.actionTitle {
                 Button { model.runToastAction(t) } label: {
-                    Text(verbatim: title).webText(text.text.weight(600)).lineLimit(1)
+                    Text(verbatim: title).webText(text.text.weight(600)).lineLimit(1).fixedSize()
                         .padding(.horizontal, 12).padding(.vertical, 4)
                         .background(Capsule().fill(ink.opacity(0.14)))
                 }

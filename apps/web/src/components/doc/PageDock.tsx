@@ -140,7 +140,7 @@ export function PageDock({ tab, open, onPick, buttonRef, extra, ai = true }: { t
       })}
       {extra ? (
         <>
-          <span aria-hidden className="mx-1 h-6 w-px bg-line" />
+          <span aria-hidden className="mx-1 h-6 w-px bg-black/10 dark:bg-white/20" />
           {extra}
         </>
       ) : null}

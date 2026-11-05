@@ -165,10 +165,10 @@ export function ThemeGallery({
       }
     >
       <div className="sticky -top-4 z-10 -mx-6 -mt-4 mb-4 flex flex-wrap items-center gap-3 bg-[var(--glass-pop)] px-6 pb-3 pt-4 backdrop-blur-[28px]">
-        <label className="relative min-w-[200px] flex-1">
+        <label className="relative flex min-w-[200px] flex-1 self-stretch">
           <span className="sr-only">Search themes</span>
           <Search size={15} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search themes" className="ui-input h-9 w-full rounded-control pl-9 pr-3 text-body" />
+          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search themes" className="ui-input h-full min-h-9 w-full rounded-control pl-9 pr-3 text-body" />
         </label>
         <div className="ui-seg ui-well" role="group" aria-label="Show themes that start in">
           {[{ id: "all" as const, name: "All" }, ...FONT_TYPES].map((f) => (

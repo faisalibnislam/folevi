@@ -102,14 +102,12 @@ public struct WebTopBar: View {
         .windowDrag()
     }
 
-    /// Where the top bar's New folder makes one (the owner, 4 November 2026, "like Finder"): on the Folders page the
-    /// top level (`.some(nil)`), on a folder's page inside it; nil where there's no New folder (other pages, a
-    /// workspace this person can't edit, a folder already as deep as folders go).
+    /// Where the top bar's New folder makes one (the owner, 4 November 2026, "like Finder"): on a folder's page inside
+    /// it; nil where there's no New folder (other pages, a workspace this person can't edit, a folder already as deep
+    /// as folders go). The Folders page has its own New folder in its title row (the owner, 6 November 2026: not twice).
     private var newFolderParent: String?? {
         if let s = model.session.value, s.spaces.first(where: { $0.id == s.space })?.canEdit == false { return nil }
         switch model.route {
-        case .web(let path) where path == "/folders":
-            return .some(nil)
         case .folder(let id):
             let links = FolderRules.links(model.folders.value?.folders ?? [])
             return FolderRules.canNest(links, in: id) ? .some(id) : nil

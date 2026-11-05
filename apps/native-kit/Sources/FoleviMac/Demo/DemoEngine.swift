@@ -185,6 +185,12 @@ public final class DemoEngine {
             let hits = notes.filter { !$0.inTrash && (text.isEmpty || $0.title.localizedCaseInsensitiveContains(text) || $0.excerpt.localizedCaseInsensitiveContains(text)) }
                 .map { SearchHit(id: $0.id, title: $0.title, icon: $0.icon, snippet: $0.excerpt, folder: $0.folder, updatedAt: $0.updatedAt, archived: $0.archived, kind: $0.kind, matchIn: "text") }
             return try .from(SearchValue(text: text, hits: hits, meaningAvailable: false))
+        case "folders.cards":
+            // Every folder (`all`) or one level's: counts, last change and previews from the scripted notes.
+            let a = try args.decode(FolderCardsArgs.self)
+            let parent: String? = if case .set(let p) = a.parentId { p } else { nil }
+            let shown = a.all == true ? folders : folders.filter { $0.parentId == parent }
+            return try .from(FolderCardsValue(folders: shown.map(folderCard)))
         case "notes.list":
             let a = try args.decode(NotesListArgs.self)
             let rows = list(a)
@@ -233,6 +239,20 @@ public final class DemoEngine {
         case .error: label = "Not saved"
         }
         return SyncStatusValue(state: syncState, label: label, pending: pending, conflicts: syncState == .conflict ? 1 : 0, online: online, authRequired: false, spaces: [SpaceSyncInfo(space: space, state: .ready, have: notes.count, total: notes.count)])
+    }
+
+    /// A folder's card as `folders.cards` answers: its notes, last change, previews and where it is.
+    func folderCard(_ f: FolderNode) -> FolderCard {
+        let inside = notes.filter { !$0.archived && !$0.inTrash && $0.kind != "template" && $0.folder?.id == f.id }.sorted { $0.updatedAt > $1.updatedAt }
+        var path: [String] = []
+        var at = f.parentId
+        while let id = at, let p = folders.first(where: { $0.id == id }), path.count < 16 {
+            path.insert(p.name, at: 0)
+            at = p.parentId
+        }
+        return FolderCard(id: f.id, name: f.name, color: f.color, parentId: f.parentId, noteCount: inside.count, childCount: folders.filter { $0.parentId == f.id }.count,
+                          updatedAt: inside.first?.updatedAt ?? 0, previews: inside.prefix(3).map { FolderPreview(title: $0.title, excerpt: $0.excerpt, cover: $0.cover) },
+                          encrypted: false, sync: f.sync, path: path.isEmpty ? nil : path.joined(separator: " / "))
     }
 
     public var homeValue: HomeValue {

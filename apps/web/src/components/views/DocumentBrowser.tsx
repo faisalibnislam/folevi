@@ -3,7 +3,7 @@
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, ChevronRight, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
 import { Bookmark, BookmarkOff } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { useOpenedOnce } from "@/lib/hooks/useOpenedOnce";
@@ -45,6 +45,9 @@ import { useIphoneApp } from "@/lib/iphone";
 import { IphoneNoteList } from "@/components/iphone/NoteList";
 import { useCapabilities } from "@/lib/mode";
 import { FolderShareDialog } from "@/components/app/FolderShareDialog";
+import { FolderMenu } from "@/components/app/FolderMenu";
+import { FolderGlyph } from "@/components/ui/FolderGlyph";
+import { ListPageHeader, SECTION_LABEL } from "./ListPageHeader";
 
 // Foli AI's "Generate a template" brings the read-only drawing of every block (its preview): it loads the first
 // time it's opened, not with every list (docs/IOS_PERFORMANCE.md, "Startup").
@@ -88,6 +91,9 @@ const EMPTY: Record<View, { icon: LucideIcon; title: string; body?: string }> = 
 };
 
 const PAGE_SIZE = 48;
+
+/** "drag to arrange" as a line of its own: "Drag to arrange". */
+const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function samePending(a: PendingDocument[], b: PendingDocument[]): boolean {
   return (
@@ -170,7 +176,7 @@ function cachedViewFilter(view: View, sort: Sort, online: boolean): ((d: KeptRow
 }
 
 function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
-  const { scope, scopeKey, profile, online, engine, outbox } = useAppState();
+  const { scope, scopeKey, profile, online, engine, outbox, canEdit } = useAppState();
   const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
   const [sort, setSort] = useLocalStorage<Sort>(`folevi:sort:${view}`, "updated");
   // A folder made on this device whose creation is still in the outbox (just made, or made offline) isn't on
@@ -193,7 +199,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const notes = useNoteActions();
   const [cached, setCached] = useState<Summary[] | null>(null);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
-  // A folder's Share dialog, from the folder page's toolbar (docs/SHARING.md).
+  // A folder's Share dialog, from the folder page's title row (docs/SHARING.md).
   const [sharingFolder, setSharingFolder] = useState(false);
   const caps = useCapabilities();
   const trashSummary = useQuery(api.documents.trashSummary, confirmEmpty ? { scope } : "skip");
@@ -395,16 +401,47 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
 
   // A folder inside other folders shows the way up (Work / Clients / Acme), and the folders inside it.
   const allFolders = org?.folders ?? [];
+  const folder = view === "folder" && folderId ? allFolders.find((f) => f.id === folderId) : undefined;
   const crumbs = view === "folder" && folderId ? folderAncestors(allFolders, folderId) : [];
   const subfolders = view === "folder" && folderId ? allFolders.filter((f) => f.parentFolderId === folderId) : [];
   // The folders inside, drawn as folder cards like All folders: their page counts, last change and previews come
-  // from the same index (and offline cache) All folders reads; until it's here, the tree's names and colours.
-  const servedIndex = useOfflineQuery(api.organization.index, subfolders.length ? { scope, only: "folders" } : "skip");
+  // from the same index (and offline cache) All folders reads; until it's here, the tree's names and colours. The
+  // folder's own last change (its title row's "edited Oct 22") comes from there too.
+  const servedIndex = useOfflineQuery(api.organization.index, view === "folder" && folderId ? { scope, only: "folders" } : "skip");
   const folderIndex = useMemo(() => (servedIndex ? overlayFolderIndex(servedIndex, queued, scope) : servedIndex), [servedIndex, queued, scope]);
   const subfolderCards: FolderSummary[] = subfolders.map(
     (f) => folderIndex?.folders.find((x) => x.id === f.id) ?? { id: f.id, name: f.name, color: f.color, parentFolderId: f.parentFolderId, updatedAt: 0, documentCount: 0 },
   );
   const heading = <h1 className="truncate text-subheadline font-semibold">{title}</h1>;
+  const folderEdited = folderId ? folderIndex?.folders.find((x) => x.id === folderId)?.updatedAt : undefined;
+  const countText = `${docs.length}${canLoadMore ? "+" : ""} ${docs.length === 1 ? "note" : "notes"}`;
+  // A folder's page: its title row (the folder's mark and name, the way up, its facts and actions) over the toolbar.
+  const folderHeader =
+    view === "folder" && folderId ? (
+      <ListPageHeader
+        title={title}
+        mark={<FolderGlyph color={folder?.color} size={30} />}
+        path={crumbs.length ? [{ label: "Folders", href: "/folders" }, ...crumbs.map((c) => ({ label: c.name, href: `/folders/${c.id}` }))] : undefined}
+        info={loading ? undefined : [countText, folderEdited ? `edited ${formatRelative(folderEdited)}` : null].filter(Boolean).join(" · ")}
+        actions={
+          <>
+            {caps.sharing ? (
+              <Button size="sm" variant="secondary" onClick={() => setSharingFolder(true)}>
+                <Share2 size={14} aria-hidden /> Share
+              </Button>
+            ) : null}
+            {folder ? (
+              <FolderMenu folder={folder} trigger={<MoreHorizontal size={15} aria-hidden />} triggerClassName="ui-btn ui-btn-secondary h-8 w-8 pointer-coarse:h-11 pointer-coarse:w-11" />
+            ) : null}
+            {canEdit ? (
+              <Button size="sm" variant="primary" data-folder-new-note="" onClick={() => void createDocument({ folderId })}>
+                <Plus size={14} aria-hidden /> New note
+              </Button>
+            ) : null}
+          </>
+        }
+      />
+    ) : null;
 
   const dialogs = (
     <>
@@ -532,23 +569,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
 
   return (
     <ViewChrome
-      title={
-        crumbs.length ? (
-          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-subheadline">
-            {crumbs.map((c) => (
-              <span key={c.id} className="flex min-w-0 items-center gap-0.5">
-                <AppLink href={`/folders/${c.id}`} className="min-w-0 max-w-[10rem] truncate rounded-chip px-1.5 py-0.5 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
-                  {c.name}
-                </AppLink>
-                <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
-              </span>
-            ))}
-            {heading}
-          </nav>
-        ) : (
-          heading
-        )
-      }
+      // A folder's page names itself in its title row (with the way up); the other lists in a hidden heading.
+      title={folderHeader ? null : heading}
       tabTitle={title}
       // A folder's page takes a faint wash of its colour.
       tint={view === "folder" ? folderHex(org?.folders.find((f) => f.id === folderId)?.color) : undefined}
@@ -561,11 +583,17 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       {/* The surface fills the scrolling area so a selection rectangle can start anywhere around the cards. */}
       <div className="min-h-full" onPointerDown={selection.onSurfacePointerDown}>
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
+        {folderHeader}
         <div className="mb-5 flex flex-wrap items-center gap-3">
-          <p role="status" className="mr-auto min-w-0 truncate text-subheadline text-muted">
+          {/* A folder's page says its count in its title row: here only how its list is shown. */}
+          <p role={folderHeader ? undefined : "status"} className="mr-auto min-w-0 truncate text-subheadline text-muted">
             {loading
-          ? undefined
-          : `${view === "templates" ? templatesCountText(builtIns?.length ?? 0, docs.length, canLoadMore) : `${docs.length}${canLoadMore ? "+" : ""} ${docs.length === 1 ? "note" : "notes"}`}${!online && cached ? " · saved on this device" : ""}${canArrange ? " · drag to arrange" : ""}`}
+              ? undefined
+              : sentence(
+                  [folderHeader ? null : view === "templates" ? templatesCountText(builtIns?.length ?? 0, docs.length, canLoadMore) : countText, !online && cached ? "saved on this device" : null, canArrange ? "drag to arrange" : null]
+                    .filter(Boolean)
+                    .join(" · "),
+                )}
           </p>
           <label className="flex items-center gap-2 text-subheadline text-muted">
             <span>Sort</span>
@@ -598,12 +626,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               </button>
             ))}
           </div>
-          {/* Page actions share the toolbar row (new notes come from the tab bar). */}
-          {view === "folder" && folderId && caps.sharing ? (
-            <Button variant="secondary" onClick={() => setSharingFolder(true)}>
-              <Share2 size={14} aria-hidden /> Share
-            </Button>
-          ) : null}
+          {/* Page actions share the toolbar row (a folder's sit in its title row). */}
           {view === "trash" && results.length ? (
             <Button variant="quiet" onClick={() => setConfirmEmpty(true)}>
               Empty Trash
@@ -627,19 +650,25 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         </div>
 
         {subfolderCards.length ? (
-          // A third smaller than All folders' cards: the page's own notes stay the main thing here.
-          <ul aria-label="Folders inside" className="mb-10 grid grid-cols-[repeat(auto-fill,152px)] gap-x-6 gap-y-8">
-            {subfolderCards.map((f) => (
-              <li key={f.id}>
-                <FolderCard folder={f} labelScale={SUBFOLDER_LABELS} />
-              </li>
-            ))}
-          </ul>
+          // A third smaller than All folders' cards: the page's own notes stay the main thing here. A section of its
+          // own, under a small heading as Built-in templates has.
+          <section aria-labelledby="subfolders-title">
+            <h2 id="subfolders-title" data-section-label="" className={SECTION_LABEL}>
+              Folders
+            </h2>
+            <ul aria-label="Folders inside" className="mb-10 grid grid-cols-[repeat(auto-fill,152px)] gap-x-6 gap-y-8">
+              {subfolderCards.map((f) => (
+                <li key={f.id}>
+                  <FolderCard folder={f} labelScale={SUBFOLDER_LABELS} />
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
 
         {view === "templates" && builtIns?.length ? (
           <section aria-labelledby="builtin-title" className="mb-10">
-            <h3 id="builtin-title" className="mb-3 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">
+            <h3 id="builtin-title" className={SECTION_LABEL}>
               Built-in templates
             </h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -659,7 +688,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                 </button>
               ))}
             </div>
-            <h3 className="mb-3 mt-8 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">Your templates</h3>
+            <h3 className={`${SECTION_LABEL} mt-8`}>Your templates</h3>
           </section>
         ) : null}
 

@@ -1,8 +1,8 @@
 "use client";
 
-// New folder, next to New note in the top bar on the Folders page and on every folder's page (the owner, 4 November
-// 2026: "like Finder"). On a folder's page it makes a subfolder there; on the Folders page, a top-level folder,
-// which then opens. `inPage` draws the same button in the Folders page's search row, which scrolls with the page.
+// New folder, next to New note in the top bar on every folder's page (the owner, 4 November 2026: "like Finder"),
+// where it makes a subfolder. On the Folders page it sits in the page's own title row instead (`inPage`; the owner,
+// 6 November 2026: not twice), where it makes a top-level folder, which then opens.
 import { useEffect, useState } from "react";
 import { FolderPlus } from "lucide-react";
 import { canNestFolderIn } from "@folevi/editor-schema";
@@ -14,7 +14,7 @@ import { PromptDialog } from "@/components/ui/PromptDialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { PillButton } from "@/components/iphone/Glass";
 
-/** Opens the top bar's New folder (the page's right-click menu asks for it). */
+/** Opens the page's New folder, the top bar's or the Folders page's own (the page's right-click menu asks for it). */
 export const NEW_FOLDER_EVENT = "folevi:new-folder";
 
 export function NewFolderButton({ parentId, pill = false, inPage = false }: { parentId: string | null; pill?: boolean; inPage?: boolean }) {
@@ -25,13 +25,12 @@ export function NewFolderButton({ parentId, pill = false, inPage = false }: { pa
   const { navigate } = useAppRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
-  // The top bar's button answers the right-click menu's New folder.
+  // The button answers the right-click menu's New folder (a page shows one: the top bar's or the Folders page's).
   useEffect(() => {
-    if (inPage) return;
     const show = () => setOpen(true);
     window.addEventListener(NEW_FOLDER_EVENT, show);
     return () => window.removeEventListener(NEW_FOLDER_EVENT, show);
-  }, [inPage]);
+  }, []);
   if (!canEdit) return null;
   const folders = tree?.folders ?? [];
   const parent = parentId ? folders.find((f) => f.id === parentId) : undefined;

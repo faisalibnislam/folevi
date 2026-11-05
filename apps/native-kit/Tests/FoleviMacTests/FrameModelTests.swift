@@ -76,9 +76,9 @@ struct TabsTests {
         t.show(.search("two"))
         #expect(t.tabs.count == 2)
         #expect(t.activeRoute == .search("two"))
-        t.show(.folder("f1"))
-        t.show(.folder("f2"))
-        #expect(t.tabs.map(\.id) == ["home", "view:search", "view:folder:f1", "view:folder:f2"])
+        t.show(.tag("t1"))
+        t.show(.tag("t2"))
+        #expect(t.tabs.map(\.id) == ["home", "view:search", "view:tag:t1", "view:tag:t2"])
     }
 
     @Test func twelveTabsAtMostDroppingTheOldest() {
@@ -156,9 +156,9 @@ struct TabsTests {
         let t = TabsModel()
         var bad = FrameTab(route: .note("x"))
         bad.id = "not-x"
-        t.restore(.init(tabs: [FrameTab(route: .note("a")), bad, FrameTab(route: .note("a")), FrameTab(route: .folder("f"))], active: "view:folder:f"))
-        #expect(t.tabs.map(\.id) == ["home", "a", "view:folder:f"])
-        #expect(t.activeID == "view:folder:f")
+        t.restore(.init(tabs: [FrameTab(route: .note("a")), bad, FrameTab(route: .note("a")), FrameTab(route: .tag("g"))], active: "view:tag:g"))
+        #expect(t.tabs.map(\.id) == ["home", "a", "view:tag:g"])
+        #expect(t.activeID == "view:tag:g")
         t.restore(.init(tabs: [], active: "gone"))
         #expect(t.activeID == "home")
     }
@@ -352,13 +352,22 @@ struct FrameModelTests {
 
     @Test func backAndForward() async {
         let (_, model) = await make()
+        // Each tab has its own: a folder tab goes back to the folder it showed before, in the same tab.
         model.open(.notes(.all))
+        model.open(.folder("fld_work"))
+        let tab = model.tabs.activeID
         model.open(.folder("fld_trips"))
+        #expect(model.tabs.activeID == tab)
         model.goBack()
-        #expect(model.route == .notes(.all))
+        #expect(model.route == .folder("fld_work"))
+        #expect(model.tabs.activeID == tab)
+        #expect(!model.history.canGoBack)
         model.goForward()
         #expect(model.route == .folder("fld_trips"))
         await eventually("folder tab named") { model.tabs.active.title == "Trips" }
+        // All notes' tab has nowhere to go back to.
+        model.selectTab(FrameRoute.notes(.all).tabKey)
+        #expect(!model.history.canGoBack)
     }
 
     @Test func commandsChangeTheLiveViews() async {

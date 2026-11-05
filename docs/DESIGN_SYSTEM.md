@@ -274,7 +274,10 @@ the bottom left, ~35% opacity in light, ~50% in dark), fixed behind content. No 
   sidebar) and moves to the start of the tab strip only while the sidebar is hidden.
 - **Tab strip** (48px, every view except phones): the tabs: a Home tab (house;
   shows the last list view's name while current) and one tab per open note (doc icon + title, close ×
-  on hover or when current, middle-click closes). Every tab is an outlined 6px rounded rectangle,
+  on hover or when current, middle-click closes). Folders open like Finder: a folder (or the Folders page)
+  shows in a folder tab that navigates instead of adding a tab (the one on screen, else the one used last;
+  a folder open in another tab switches there); ⌘-click, middle-click and "Open in new tab" add one behind.
+  Back and Forward are each tab's own (lib/app/tabs.tsx, the Mac's TabsModel). Every tab is an outlined 6px rounded rectangle,
   128–210px wide, shrinking evenly; closed tabs sit back (light grey fill, hairline, muted text) and the
   open tab comes forward (white, firm dark outline, soft shadow, semibold). A focus ring shows only for
   keyboard focus. **+** follows the last tab. When they overflow, the strip scrolls with soft edge fades and keeps the current tab in

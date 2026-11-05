@@ -221,22 +221,29 @@
 /* To-do */
 .fb-editor .fb-todo { display: flex; align-items: flex-start; gap: 0.55em; }
 .fb-editor .fb-todo > .fb-content { flex: 1; min-width: 0; }
-/* The hit area is 24×24 (WCAG 2.5.8); the visible box is drawn inside it. */
+/* The hit area is 24×24 (WCAG 2.5.8); the visible box is drawn inside it. Its outline keeps at least 3:1
+   against every note background in Light and Dark (WCAG 1.4.11; QA audit F10): --fb-check-edge, a mix of the
+   muted ink and the strong line (test/checkbox-contrast.test.ts checks it against the tokens). A checked box
+   keeps a darker edge of its fill, so a pale fill still stands out; a read-only one (disabled, or a page you
+   can only view) is drawn the same, not faded. */
+.fb-check { --fb-check-edge: color-mix(in srgb, var(--color-ink-muted) 75%, var(--color-line-strong)); }
 .fb-check {
   flex: none; position: relative; width: 24px; height: 24px; margin: calc(0.8em - 12px) -3px 0 -4px;
   display: grid; place-items: center; border-radius: var(--radius-chip); background: transparent;
 }
 .fb-check::before {
   content: ""; width: 18px; height: 18px; border-radius: var(--radius-tiny); box-sizing: border-box;
-  border: 1.5px solid var(--color-line-strong);
+  border: 1.5px solid var(--fb-check-edge);
   background: linear-gradient(180deg, var(--color-surface-raised), color-mix(in oklab, var(--color-surface-raised) 92%, var(--color-surface-sunken)));
   box-shadow: 0 1px 1px color-mix(in oklab, var(--color-heading) 8%, transparent);
   transition: background 140ms, border-color 140ms, box-shadow 140ms, transform 120ms; grid-area: 1 / 1;
 }
 .fb-check:hover::before { border-color: var(--color-moss); }
 .fb-check:active::before { transform: scale(0.92); }
+.fb-check:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 0; }
+.fb-check:disabled { opacity: 1; }
 .fb-todo[data-checked="true"] .fb-check::before {
-  border-color: transparent;
+  border-color: color-mix(in srgb, var(--color-moss) 80%, var(--color-ink));
   background: linear-gradient(180deg, color-mix(in oklab, var(--color-moss) 82%, white), var(--color-moss));
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 1px 2px color-mix(in oklab, var(--color-moss) 45%, transparent);
 }
@@ -623,6 +630,7 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
 /* Checkboxes */
 .fb-sheet[data-palette] .fb-check:hover::before { border-color: var(--pal-accent); }
 .fb-sheet[data-palette] .fb-todo[data-checked="true"] .fb-check::before {
+  border-color: color-mix(in srgb, var(--pal-accent) 80%, var(--color-ink));
   background: linear-gradient(180deg, color-mix(in oklab, var(--pal-accent) 82%, white), var(--pal-accent));
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 1px 2px color-mix(in oklab, var(--pal-accent) 45%, transparent);
 }

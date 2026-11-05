@@ -29,6 +29,7 @@ import {
   Presentation,
   ScanText,
   Search,
+  Share,
   Trash2,
   Undo2,
   Users,
@@ -123,6 +124,10 @@ import { useMacNoteCommands } from "@/components/app/MacCommands";
 import { useNoteViewState } from "@/lib/app/noteViewState";
 import { useLockMenuItem } from "@/components/e2ee/LockDialog";
 import { usePrimaryPane } from "@/lib/app/panes";
+import { noteFolderIdOf, shareIndicatorLabel, shareIndicatorOf } from "./noteStatus";
+import { TrashBanner } from "./TrashBanner";
+import { PANEL_DEFAULT, PANEL_MAX, PANEL_MIN, clampPanelWidth, toolsPanelOverlays } from "./panelLayout";
+import { useElementWidth } from "@/lib/hooks/useElementWidth";
 
 // Only a collection's row pages have properties; the collection code loads for those alone.
 // Presenting the note as slides (⌘⌥P, "Present" in its … menu): loaded the first time it's used.
@@ -209,7 +214,12 @@ export function DocumentView({ documentId }: { documentId: string }) {
     setInspectorOpen(true);
   }, [wantsRelated, canRelate, documentId, setInspectorTab, setInspectorOpen]);
   const [panelWidth, setPanelWidth] = useLocalStorage<number>("folevi:inspector-width", PANEL_DEFAULT);
-  const panelOverlays = useMediaQuery("(max-width: 1199px)");
+  const narrowWindow = useMediaQuery("(max-width: 1199px)");
+  // The note and its tools panel side by side: the panel slides over the note when the note would get too
+  // narrow to write in beside it (a joined note, a narrow window; QA audit F02).
+  const [noteRow, setNoteRow] = useState<HTMLDivElement | null>(null);
+  const noteRowWidth = useElementWidth(noteRow);
+  const panelOverlays = toolsPanelOverlays({ narrowWindow, rowWidth: noteRowWidth, panelWidth });
   // The comment thread floating under a block (threadId null: the block's latest open thread, or a new one).
   const [openThread, setOpenThread] = useState<{ blockId: string; threadId: string | null } | null>(null);
   // A thread to open inside the Comments panel (on the whole note or a deleted block).
@@ -528,9 +538,17 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // what's typed in it waits for the row to reach the server (the engine holds it; see Outbox.holds).
   const noMeta = !meta;
   const waitingRow = useOutboxSelect(outbox, useCallback((entries) => (noMeta ? waitingRowPage(entries, documentId) : undefined), [noMeta, documentId]), sameJson);
-  const org = useFolderTree((meta?.folder || movedTo) && meta?.isMember ? documentScope(meta.document) : "skip");
-  const folderId = movedTo !== undefined ? movedTo : (meta?.folder?.id ?? null);
-  const folder = folderId ? { id: folderId, name: org?.folders.find((f) => f.id === folderId)?.name ?? (meta?.folder?.id === folderId ? meta.folder.name : "Folder") } : null;
+  // A note made on this device (in a folder) names that folder at once, not Drafts until the server answers.
+  const created = pendingCreate?.kind === "document.create" ? pendingCreate.document : undefined;
+  const createdIn = created ? (created.folderId ?? null) : undefined;
+  const org = useFolderTree((meta?.folder || movedTo) && meta?.isMember ? documentScope(meta.document) : !meta && createdIn ? (created?.scope ?? (scopeKey === "personal" ? { kind: "personal" } : { kind: "workspace", workspaceId: scopeKey })) : "skip");
+  const knownFolderId = noteFolderIdOf({ movedTo, meta, createdIn });
+  const folderId = knownFolderId ?? null;
+  const folderName = folderId ? (org?.folders.find((f) => f.id === folderId)?.name ?? (meta?.folder?.id === folderId ? meta.folder.name : undefined)) : undefined;
+  const folder = folderId ? { id: folderId, name: folderName ?? "Folder" } : null;
+  // Nothing says where it is yet (still loading, or its folder's name isn't here yet): no place is shown
+  // rather than a guess like "Drafts" (QA audit F13).
+  const placeKnown = knownFolderId !== undefined && (!folderId || folderName !== undefined);
   const folderAbove = folder && org ? folderAncestors(org.folders, folder.id) : [];
   const shownAbove = folderAbove.slice(-2);
 
@@ -797,13 +815,20 @@ export function DocumentView({ documentId }: { documentId: string }) {
   // Someone else's page (shared with them, on its own or through a folder) isn't in their folders or Drafts:
   // it's under Shared with Me.
   const guestHere = meta !== undefined && meta !== null && !meta.isMember;
-  const trail: Crumb[] = [
+  const trail: Crumb[] = !placeKnown && !guestHere ? [] : [
     ...(guestHere ? [] : folderAbove.map((f) => ({ href: `/folders/${f.id}`, label: f.name }))),
     guestHere ? { href: "/shared", label: "Shared with Me" } : folder ? { href: `/folders/${folder.id}`, label: folder.name } : { href: "/drafts", label: "Drafts" },
     ...(meta?.breadcrumbs ?? []).map((b) => ({ href: `/d/${b.id}`, label: b.title || "Untitled", icon: null })),
   ];
   // Native chrome mode (the native apps): the note takes the native toolbar's and menus' commands (lib/engine).
   const duplicateNote = useMutation(api.documents.duplicate);
+  const restoreFromTrash = useMutation(api.documents.restoreFromTrash);
+  const restoreToast = useToast();
+  const restoreNote = () =>
+    void restoreFromTrash({ documentId }).then(
+      () => restoreToast.show("Restored"),
+      (e) => restoreToast.show(errorMessage(e), { tone: "error" }),
+    );
   useNativeNote({
     documentId,
     primary,
@@ -894,13 +919,10 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const pageTitle = summary?.title || localTitle || "Untitled";
   // Shared once anyone else can open it: a public link, people (or a pending invitation), the whole workspace, or
   // it's someone else's page you were given.
-  const shareState: "link" | "people" | null = !sharing
-    ? null
-    : sharing.links.some((l) => !l.expired)
-      ? "link"
-      : sharing.youAreGuest || sharing.people.some((p) => !p.isYou) || sharing.pendingInvites.length || (sharing.accessMode === "workspace" && meta?.document.workspaceId)
-        ? "people"
-        : null;
+  // Until the server says who can open it the button stays neutral (no lock): its first definite label must
+  // match the Share dialog (QA audit F01).
+  const shareIndicator = shareIndicatorOf(sharing, { sharingEnabled: caps.sharing, workspaceId: meta?.document.workspaceId });
+  const shareState: "link" | "people" | null = shareIndicator === "link" || shareIndicator === "people" ? shareIndicator : null;
   const others = presence ?? [];
   const pageGroup = (
     <div role="group" aria-label="Page" className="flex items-center gap-0.5">
@@ -917,12 +939,14 @@ export function DocumentView({ documentId }: { documentId: string }) {
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setShareOpen(true)}
-          title={shareState === "link" ? "Anyone with the link can view" : shareState === "people" ? "Shared with other people" : "Only you can open this"}
+          title={shareIndicatorLabel(shareIndicator)}
+          aria-busy={shareIndicator === "loading" || undefined}
+          data-share-state={shareIndicator}
           className={`inline-flex h-10 items-center gap-2 rounded-control px-3 text-body font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11 ${
             shareState ? "bg-accent-soft text-heading hover:bg-[color-mix(in_oklab,var(--color-accent-soft)_80%,var(--color-ink)_8%)]" : "text-ink hover:bg-accent-soft hover:text-heading"
           }`}
         >
-          {shareState === "link" ? <Link2 size={15} aria-hidden /> : shareState === "people" ? <Users size={15} aria-hidden /> : <Lock size={14} aria-hidden />}
+          {shareIndicator === "link" ? <Link2 size={15} aria-hidden /> : shareIndicator === "people" ? <Users size={15} aria-hidden /> : shareIndicator === "private" ? <Lock size={14} aria-hidden /> : <Share size={14} aria-hidden className="opacity-60" />}
           <span className="max-sm:sr-only">{shareState ? "Shared" : "Share"}</span>
         </button>
       ) : null}
@@ -981,6 +1005,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
               <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
             </Fragment>
           ))}
+          {placeKnown ? (
+          <>
           <AppLink href={folder ? `/folders/${folder.id}` : "/documents"} title={folder ? folder.name : "Home"} className="flex min-w-0 max-w-[12rem] items-center gap-1.5 truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
             {folder ? (
               <>
@@ -995,6 +1021,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
             )}
           </AppLink>
           <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
+          </>
+          ) : null}
           {meta?.breadcrumbs.map((b) => (
             <span key={b.id} className="flex min-w-0 items-center gap-0.5">
               <AppLink href={`/d/${b.id}`} title={b.title || "Untitled"} className="max-w-[12rem] truncate rounded-chip px-2 py-1 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
@@ -1040,7 +1068,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
       {/* The note floats on its backdrop in a rounded panel; the chrome (sidebars, inspector) sits flat behind.
           Inset like the tab strip above it (inset-x-1), so the page lines up with it. The iPad app's glass bar
           sits 8 points in from the card, so there the page does too, and its shadow keeps room inside the card. */}
-      <div className={`relative flex h-full min-h-0 ${iphone ? "" : isIpadApp() ? "px-2 pb-2" : "sm:px-1 sm:pb-1"}`}>
+      <div ref={setNoteRow} className={`relative flex h-full min-h-0 ${iphone ? "" : isIpadApp() ? "px-2 pb-2" : "sm:px-1 sm:pb-1"}`}>
         <div ref={noteRef} data-note-panel="" className={`relative min-w-0 flex-1 ${iphone ? "" : "px-1.5 pb-2 sm:px-0 sm:pb-0"}`}>
         {findBar && editor ? <FindBar editor={editor} withReplace={findBar.replace} focusKey={findBar.key} readOnly={readOnly} onClose={() => setFindBar(null)} /> : null}
 
@@ -1096,6 +1124,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
               onEnter={focusEditorStart}
               hasContent={Boolean(look?.excerpt?.trim())}
             />
+            {/* In Trash: says so for as long as it is (not only the Undo toast), with Restore (QA audit F22). */}
+            {meta?.inTrash ? <TrashBanner canRestore={meta.access === "write" || meta.access === "manage"} onRestore={restoreNote} /> : null}
             {conflictBlockIds.length ? (
               <ConflictBanner
                 documentId={documentId}
@@ -1139,6 +1169,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
                       engine={engine}
                       accountKey={profile.id}
                       editable={!readOnly}
+                      label={meta?.inTrash ? "Document body, in Trash: restore the note to edit it" : undefined}
                       decorations={decorations}
                       onFocusBlock={setFocusedBlock}
                       onCommentBlock={caps.comments ? (id) => openComments(id) : undefined}
@@ -1376,9 +1407,6 @@ export function DocumentView({ documentId }: { documentId: string }) {
 /** The same plain data (a waiting row's page: ids, a title, how it waits). */
 const sameJson = <T,>(a: T, b: T) => a === b || JSON.stringify(a) === JSON.stringify(b);
 
-const PANEL_MIN = 280;
-const PANEL_MAX = 520;
-const PANEL_DEFAULT = 280;
 
 /**
  * The right sidebar the page tools open in. On wide windows the note makes room for it; on narrower ones it
@@ -1386,7 +1414,7 @@ const PANEL_DEFAULT = 280;
  */
 function RightPanel({ width, onWidth, overlay, children }: { width: number; onWidth: (w: number) => void; overlay: boolean; children: React.ReactNode }) {
   const panel = useRef<HTMLElement>(null);
-  const w = Math.min(PANEL_MAX, Math.max(PANEL_MIN, Number.isFinite(width) ? width : PANEL_DEFAULT));
+  const w = clampPanelWidth(width);
   // The floating AI button and chat keep clear of it.
   useEffect(() => {
     const root = document.documentElement;

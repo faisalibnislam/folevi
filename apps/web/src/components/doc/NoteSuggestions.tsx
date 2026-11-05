@@ -26,6 +26,54 @@ const KIND: Record<NoteSuggestion["kind"], { label: string; icon: React.ReactNod
   duplicate: { label: "Possible duplicate", icon: <Copy size={13} aria-hidden /> },
 };
 
+/**
+ * One chip per suggestion, except that a note suggested for two reasons (related and a possible duplicate) is
+ * one chip naming both, not the same title twice told apart only by icons (QA audit F24). The first suggestion
+ * (in the order given) leads the chip; the others ride along, so dismissing the chip dismisses them all.
+ */
+export interface SuggestionChip {
+  lead: NoteSuggestion;
+  all: NoteSuggestion[];
+  /** The reason in words, shown on the chip for a suggested note ("Related", "Possible duplicate", or both). */
+  reason: string;
+}
+
+const NOTE_KINDS = new Set<NoteSuggestion["kind"]>(["connection", "duplicate"]);
+
+/** A note's reasons in words: the stronger one first ("Possible duplicate, also related"). */
+function reasonOf(kinds: NoteSuggestion["kind"][]): string {
+  const dup = kinds.includes("duplicate");
+  const rel = kinds.includes("connection");
+  if (dup && rel) return "Possible duplicate, also related";
+  return KIND[kinds[0]!].label;
+}
+
+export function groupSuggestions(items: NoteSuggestion[]): SuggestionChip[] {
+  const out: SuggestionChip[] = [];
+  const byNote = new Map<string, NoteSuggestion[]>();
+  for (const s of items) {
+    const noteId = NOTE_KINDS.has(s.kind) && "noteId" in s ? s.noteId : undefined;
+    if (!noteId) {
+      out.push({ lead: s, all: [s], reason: KIND[s.kind].label });
+      continue;
+    }
+    const group = byNote.get(noteId);
+    if (group) {
+      group.push(s);
+      continue;
+    }
+    const all = [s];
+    byNote.set(noteId, all);
+    out.push({ lead: s, all, reason: "" });
+  }
+  // A duplicate leads its chip (its link action is the same; its reason is the one to read first).
+  return out.map((c) => {
+    if (c.all.length === 1 && c.reason) return c;
+    const lead = c.all.find((x) => x.kind === "duplicate") ?? c.all[0]!;
+    return { lead, all: c.all, reason: reasonOf(c.all.map((x) => x.kind)) };
+  });
+}
+
 const CHIP_BUTTON =
   "grid h-6 w-6 flex-none place-items-center rounded-chip text-muted transition-colors hover:bg-[var(--glass-active)] hover:text-heading";
 /** On the note's paper (the iPhone): finger-sized, in the theme's colours. */
@@ -69,12 +117,16 @@ export function SuggestionChips({
       <div className={paper ? "" : "ui-pop p-2"}>
         <h2 className={paper ? "ui-caps pb-2.5 text-muted" : "ui-caps px-1.5 pb-1.5 pt-1"}>Suggestions</h2>
         <ul className="flex flex-wrap gap-1.5">
-          {items.map((s) => {
+          {groupSuggestions(items).map((chip) => {
+            const s = chip.lead;
             const kind = KIND[s.kind];
+            // A suggested note names its reason on the chip (two notes with the same title, or one note for
+            // two reasons, read apart before either is opened).
+            const aboutNote = NOTE_KINDS.has(s.kind);
             return (
               <li
                 key={s.key}
-                aria-label={`${kind.label}: ${s.label}`}
+                aria-label={`${chip.reason}: ${s.label}`}
                 className={
                   paper
                     ? "flex max-w-full items-center gap-0.5 rounded-control bg-[color-mix(in_oklab,var(--color-heading)_7%,transparent)] py-0.5 pl-3 pr-0.5 text-subheadline text-ink"
@@ -84,12 +136,13 @@ export function SuggestionChips({
                 <button
                   type="button"
                   onClick={() => onOpen(s)}
-                  title={s.reason ?? kind.label}
+                  title={chip.all.map((x) => ("reason" in x && x.reason) || "").find(Boolean) ?? chip.reason}
                   className="flex min-w-0 items-center gap-1.5 rounded-chip py-0.5 pr-1 text-left hover:text-heading"
                 >
                   <span className="flex-none text-muted">{kind.icon}</span>
-                  <span className="sr-only">{kind.label}: </span>
+                  {aboutNote ? null : <span className="sr-only">{chip.reason}: </span>}
                   <span className="truncate">{s.label}</span>
+                  {aboutNote ? <span className="flex-none text-footnote text-muted">{chip.reason}</span> : null}
                 </button>
                 {canEdit && (s.kind === "connection" || s.kind === "duplicate") ? (
                   <button
@@ -117,7 +170,7 @@ export function SuggestionChips({
                   type="button"
                   aria-label="Dismiss"
                   title="Dismiss"
-                  onClick={() => onDismiss(s)}
+                  onClick={() => chip.all.forEach((x) => onDismiss(x))}
                   className={button}
                 >
                   <X size={icon} aria-hidden />

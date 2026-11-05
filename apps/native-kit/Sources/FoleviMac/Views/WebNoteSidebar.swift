@@ -96,6 +96,11 @@ struct WebNoteSidebar: View {
     private func pair(_ id: String) -> WebStylePair { WebStyles.named("notetools.\(id)") }
     /// A CSS colour variable of the web app, in this appearance.
     private func v(_ name: String, _ fallback: Color = .clear) -> Color { WebStyles.vars[name]?.resolve(scheme).color ?? fallback }
+    /// An unchecked task's outline, as the web draws it (muted ink mixed into the strong line; QA audit F10).
+    private var checkboxEdge: Color {
+        guard let muted = WebStyles.vars["color-ink-muted"]?.resolve(scheme), let line = WebStyles.vars["color-line-strong"]?.resolve(scheme) else { return Folevi.color.checkboxEdge }
+        return muted.mix(line, 0.75).color
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -137,10 +142,16 @@ struct WebNoteSidebar: View {
         .padding(wrap.padding.edgeInsets)
     }
 
-    private var trail: [NoteToolsCrumb] {
-        if let t = tools?.trail, !t.isEmpty { return t }
-        // Before the note page has said: its folder from note.meta, or Drafts.
-        if let f = model.activeNote?.folder { return [NoteToolsCrumb(href: "/folders/\(f.id)", label: f.name)] }
+    private var trail: [NoteToolsCrumb] { Self.trail(tools: tools?.trail, meta: model.activeNote) }
+
+    /// Where the note lives, for the card's "In ..." line. The note page's trail once it has said (empty while
+    /// it doesn't know yet, e.g. a note just made in a folder before its name is here); before the page has said,
+    /// its folder from note.meta, or Drafts only once note.meta has found the note. Never a guess: a note made in
+    /// a folder must not flash "In Drafts" (QA audit F13).
+    static func trail(tools: [NoteToolsCrumb]?, meta: NoteMeta?) -> [NoteToolsCrumb] {
+        if let t = tools { return t }
+        guard let meta, meta.found else { return [] }
+        if let f = meta.folder { return [NoteToolsCrumb(href: "/folders/\(f.id)", label: f.name)] }
         return [NoteToolsCrumb(href: "/drafts", label: "Drafts")]
     }
 
@@ -168,7 +179,7 @@ struct WebNoteSidebar: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: link.height, alignment: .leading)
         .clipped()
     }
 
@@ -460,7 +471,7 @@ struct WebNoteSidebar: View {
             Button { if canEdit { model.editor(.taskToggle(blockId: t.id)) } } label: {
                 ZStack {
                     RoundedRectangle(cornerRadius: 6, style: .circular).fill(t.checked ? v("color-moss", Folevi.color.moss) : v("color-surface", Folevi.color.surface))
-                    RoundedRectangle(cornerRadius: 6, style: .circular).strokeBorder(t.checked ? v("color-moss", Folevi.color.moss) : v("color-line-strong", Folevi.color.lineStrong), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 6, style: .circular).strokeBorder(t.checked ? Folevi.color.checkboxCheckedEdge : checkboxEdge, lineWidth: 1)
                     if t.checked {
                         CheckMark().stroke(Color.white, style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round)).frame(width: 10, height: 10)
                     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Paintbrush, Plus, Type } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { setDockClearance } from "@/components/editor/scrollEdges";
@@ -13,6 +13,32 @@ const DOCK: { id: InspectorTab; label: string; icon: React.ReactNode }[] = [
   { id: "format", label: "Format", icon: <Type size={16} /> },
   { id: "style", label: "Style", icon: <Paintbrush size={16} /> },
 ];
+
+/** Below this width of the note it floats over, the bar shows icons only (each keeps its name as a tooltip). */
+export const DOCK_COMPACT_BELOW = 600;
+
+/** Whether the bar shows icons only over a note this wide (0: not measured yet, words shown). */
+export function dockCompact(noteWidth: number): boolean {
+  return noteWidth > 0 && noteWidth < DOCK_COMPACT_BELOW;
+}
+
+/**
+ * Icons only when the note the bar floats over is narrower than its words: measured on the note itself, so a
+ * tools panel open beside it counts (QA audit F03), not only the pane's or the window's width.
+ */
+function useDockCompact(ref: React.RefObject<HTMLDivElement | null>): boolean {
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const note = ref.current?.parentElement;
+    if (!note || typeof ResizeObserver === "undefined") return;
+    const measure = () => setCompact(dockCompact(note.clientWidth));
+    const ro = new ResizeObserver(measure);
+    ro.observe(note);
+    measure();
+    return () => ro.disconnect();
+  }, [ref]);
+  return compact;
+}
 
 /** Space kept between the bar and the caret or field scrolled above it. */
 const DOCK_GAP = 12;
@@ -80,13 +106,17 @@ function useDockClearance(ref: React.RefObject<HTMLDivElement | null>) {
 export function PageDock({ tab, open, onPick, buttonRef, extra, ai = true }: { tab: InspectorTab; open: boolean; onPick: (t: InspectorTab) => void; buttonRef: (t: InspectorTab, el: HTMLButtonElement | null) => void; /** The page's own actions (comments, share, more), after a divider. */ extra?: React.ReactNode; /** Show the AI tool (off when the person turned the assistant off). */ ai?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useDockClearance(ref);
+  const compact = useDockCompact(ref);
   return (
     <div
       ref={ref}
+      data-compact={compact ? "" : undefined}
       role="toolbar"
       aria-label="Page tools"
       // Lifted above the on-screen keyboard (--kb-inset, set by useKeyboardInset).
-      className="ui-pop absolute bottom-[calc(1.25rem+var(--kb-inset,0px))] left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 rounded-panel p-1"
+      // Never wider than the note it floats over: icons only when the words don't fit (globals.css, Page tools),
+      // and as a last resort it scrolls sideways, so its first and last actions stay in reach (QA audit F03).
+      className="ui-pop absolute bottom-[calc(1.25rem+var(--kb-inset,0px))] left-1/2 z-30 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-panel p-1 [scrollbar-width:none]"
     >
       {DOCK.filter((d) => ai || d.id !== "ai").map((d) => {
         const on = open && tab === d.id;

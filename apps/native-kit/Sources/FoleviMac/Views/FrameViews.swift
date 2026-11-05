@@ -324,7 +324,7 @@ public final class ContentViewController: NSViewController {
         glass.cornerRadius = WebStyles.named("frame.topbar").light.radius
         clip.addSubview(glass)
         clip.addSubview(topBar)
-        let toastView = NSHostingView(rootView: ToastStack(model: model))
+        let toastView = ToastHostingView(rootView: ToastStack(model: model))
         toastView.safeAreaRegions = []
         toastView.translatesAutoresizingMaskIntoConstraints = false
         let ask = NSHostingView(rootView: AiAskOverlay(frame: model, state: askAi))
@@ -644,6 +644,17 @@ final class HoverButton: NSButton {
 /// A hosting view that takes no clicks (the tab preview: the pointer stays with the strip under it).
 final class PassThroughHostingView<Content: View>: NSHostingView<Content> {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+/// The toasts' host: the room kept under them (above a note's floating page tools) lets clicks through to the
+/// tools, so a toast never blocks them.
+final class ToastHostingView: NSHostingView<ToastStack> {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let local = convert(point, from: superview)
+        let fromBottom = isFlipped ? bounds.height - local.y : local.y
+        if fromBottom < ToastStack.bottomInset(onNote: rootView.model.route.isNote) { return nil }
+        return super.hitTest(point)
+    }
 }
 
 /// The Tab Overview while it shows (drawn fresh each time, so it opens on the tab on screen with an empty search).

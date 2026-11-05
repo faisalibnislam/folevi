@@ -47,11 +47,19 @@ struct ToastStack: View {
             ForEach(model.toasts.suffix(4)) { t in toast(t) }
         }
         .frame(maxWidth: 448)
-        // 16 pt from the window's bottom (bottom-4), the content card ending its own margin above it.
-        .padding(.bottom, 16 - WebStyles.named("frame.content").light.y)
+        // 16 pt from the window's bottom (bottom-4), the content card ending its own margin above it; on a note,
+        // above its floating page tools with a gap (the web's .ui-toasts there), so Undo never covers them.
+        .padding(.bottom, Self.bottomInset(onNote: model.route.isNote))
         .foleviAnimation(value: model.toasts.map(\.id))
         .accessibilityIdentifier("toasts")
     }
+
+    /// How far above the card's bottom the toasts sit: 16 pt from the window's bottom, or on a note clear of its
+    /// floating page tools (their top about 80 pt up) with a gap: 96 pt, the web's 6rem (QA audit F22).
+    static func bottomInset(onNote: Bool) -> CGFloat {
+        (onNote ? noteDockClearance : 16) - WebStyles.named("frame.content").light.y
+    }
+    static let noteDockClearance: CGFloat = 96
 
     private func toast(_ t: FrameToast) -> some View {
         let pill = WebStyles.named("more.toast")

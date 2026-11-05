@@ -116,7 +116,7 @@ public struct Checkbox: View {
                 RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny + 1, style: .continuous)
                     .fill(isOn ? Folevi.color.moss : Folevi.color.surface)
                 RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny + 1, style: .continuous)
-                    .strokeBorder(isOn ? Color.clear : Folevi.color.lineStrong, lineWidth: 1.5)
+                    .strokeBorder(isOn ? Folevi.color.checkboxCheckedEdge : Folevi.color.checkboxEdge, lineWidth: 1.5)
                 if isOn { Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundStyle(.white) }
             }
             .frame(width: 20, height: 20)

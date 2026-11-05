@@ -106,7 +106,7 @@ export function DocumentSidebar({
               {title || "Untitled"}
             </p>
             <nav aria-label="Breadcrumb" className="mt-1">
-              <ol className="flex flex-wrap items-center gap-x-0.5 text-footnote leading-5 text-muted">
+              <ol className="flex min-h-5 flex-wrap items-center gap-x-0.5 text-footnote leading-5 text-muted">
                 {trail.map((c, i) => (
                   <li key={`${c.href}-${i}`} className="flex min-w-0 items-center gap-0.5">
                     {i > 0 ? <ChevronRight size={11} className="flex-none text-faint" aria-hidden /> : <span className="flex-none">In</span>}
@@ -241,7 +241,7 @@ function TasksPanel({ documentId, editor, readOnly, onJump }: { documentId: stri
                   title={checked ? "Mark as not done" : "Mark as done"}
                   disabled={readOnly || !editor}
                   onClick={() => toggle(b.id)}
-                  className={`mt-[3px] grid h-4 w-4 flex-none place-items-center rounded-chip border transition-colors ${checked ? "border-moss bg-moss text-white" : "border-line-strong bg-surface hover:border-moss"} disabled:cursor-default`}
+                  className={`mt-[3px] grid h-4 w-4 flex-none place-items-center rounded-chip border transition-colors ${checked ? "border-[color:color-mix(in_srgb,var(--color-moss)_80%,var(--color-ink))] bg-moss text-white" : "border-[color:color-mix(in_srgb,var(--color-ink-muted)_75%,var(--color-line-strong))] bg-surface hover:border-moss"} disabled:cursor-default`}
                 >
                   {checked ? (
                     <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" aria-hidden>

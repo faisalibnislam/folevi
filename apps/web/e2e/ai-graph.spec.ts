@@ -53,6 +53,14 @@ test("the graph shows notes and links, the list reads it as text, and a note lis
   await page.waitForURL(/\/graph$/);
   await expect(page.getByRole("application", { name: /Foli DNA of \d+ notes/ })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/The full Foli DNA, with topics, people and similar notes, is part of Pro/)).toBeVisible();
+  // The first time: three tips, then never again.
+  const tips = page.getByRole("dialog", { name: "Foli DNA tips" });
+  await expect(tips).toContainText("This is Foli DNA");
+  await tips.getByRole("button", { name: "Skip" }).click();
+  await expect(tips).toHaveCount(0);
+  // A fresh map hides the unlinked note and says so.
+  await expect(page.getByText("1 unlinked note hidden.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Key" })).toBeVisible();
   // No entity filters below Pro: the Show menu has only the map's own choices.
   await page.getByRole("button", { name: "Show", exact: true }).click();
   await expect(page.getByRole("menuitemcheckbox", { name: /^Unlinked notes/ })).toBeVisible();
@@ -80,17 +88,19 @@ test("the graph shows notes and links, the list reads it as text, and a note lis
   await page.getByRole("group", { name: "View" }).getByRole("button", { name: "Map" }).click();
   await expect(page.getByText("Around")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("application", { name: /Foli DNA of 2 notes/ })).toBeVisible();
-  await page.getByRole("button", { name: "Show everything" }).click();
+  await expect(page.getByRole("complementary", { name: "Connections" }).getByText("links to")).toBeVisible();
+  await page.getByRole("button", { name: "Whole map", exact: true }).click();
   await page.waitForURL(/\/graph$/);
   // Two linked notes make no cluster (three is the least): nothing is shaded behind the map.
   await expect(page.locator('svg circle[opacity="0.06"]')).toHaveCount(0);
-  // Insights: the unlinked note is listed; hiding unlinked notes leaves the two linked ones.
+  // Insights: the unlinked note is listed; it's hidden on a fresh map, and showing it adds it.
   await page.getByRole("button", { name: "Insights" }).click();
   const insights = page.getByRole("complementary", { name: "Insights" });
   await expect(insights.getByRole("link", { name: "Lonely thought" })).toBeVisible();
+  await expect(page.getByRole("application", { name: /Foli DNA of 2 notes/ })).toBeVisible();
   await page.getByRole("button", { name: "Show", exact: true }).click();
   await page.getByRole("menuitemcheckbox", { name: /^Unlinked notes/ }).click();
-  await expect(page.getByRole("application", { name: /Foli DNA of 2 notes/ })).toBeVisible();
+  await expect(page.getByRole("application", { name: /Foli DNA of 3 notes/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Show, 1 changed", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Show, 1 changed", exact: true }).click();
   await page.getByRole("menuitemcheckbox", { name: /^Unlinked notes/ }).click();

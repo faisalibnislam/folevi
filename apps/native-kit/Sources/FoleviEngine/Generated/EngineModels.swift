@@ -7312,12 +7312,16 @@ public struct GraphArgs: Codable, Hashable, Sendable {
     public var spacing: Double?
     /// Revision 28: how strongly everything is pulled to the middle (0.25 to 3, default 1).
     public var pull: Double?
+    /// Revision 30: a note (id) the map is opened around ("Foli DNA of this note"): it and the notes it links to, is
+    /// linked from and Foli AI relates it to are always in the map, however long ago they were edited.
+    public var center: String?
 
-    public init(space: SpaceRef? = nil, kinds: [String]? = nil, spacing: Double? = nil, pull: Double? = nil) {
+    public init(space: SpaceRef? = nil, kinds: [String]? = nil, spacing: Double? = nil, pull: Double? = nil, center: String? = nil) {
         self.space = space
         self.kinds = kinds
         self.spacing = spacing
         self.pull = pull
+        self.center = center
     }
 }
 

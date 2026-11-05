@@ -499,6 +499,36 @@ describe("what people see", () => {
     expect(g.edges.every((e) => ids.has(e.source) && ids.has(e.target))).toBe(true);
   });
 
+  test("Foli DNA of an older note: the note and its links are in the map even past the cap", async () => {
+    const t = setup();
+    stubAi();
+    const a = await person(t, "graph-center@example.com");
+    const target = await writeNote(a, PERSONAL, "Old target", ["Pricing ideas."]);
+    const source = await writeNote(a, PERSONAL, "Old source", [`[[${target.id}]]`]);
+    await drain(t);
+    // Then more notes than the map holds, all edited later.
+    await t.run(async (ctx) => {
+      const base = (await ctx.db.query("documents").withIndex("by_public_id", (q) => q.eq("publicId", target.id)).unique())!;
+      const { _id, _creationTime, ...rest } = base;
+      void _id;
+      void _creationTime;
+      for (let i = 0; i < GRAPH_LIMITS.notes + 5; i++) await ctx.db.insert("documents", { ...rest, publicId: ulid(), title: `Later ${i}`, updatedAt: base.updatedAt + 1000 + i });
+    });
+    // The bug: the whole map leaves the older note out, so "Foli DNA of this note" had nothing to show.
+    const everything = await a.as.query(api.aiGraph.graph, { scope: PERSONAL });
+    expect(everything.truncated).toBe(true);
+    expect(everything.nodes.some((n) => n.id === target.id)).toBe(false);
+    // Opened around it, the note, the note linking to it and the link are there.
+    const g = await a.as.query(api.aiGraph.graph, { scope: PERSONAL, center: target.id });
+    expect(g.nodes.filter((n) => n.kind === "note").length).toBeLessThanOrEqual(GRAPH_LIMITS.notes);
+    expect(g.nodes.map((n) => n.id)).toEqual(expect.arrayContaining([target.id, source.id]));
+    expect(g.edges).toContainEqual(expect.objectContaining({ source: source.id, target: target.id, kind: "link" }));
+    // A note from somewhere else (another person's) is never pulled in.
+    const b = await person(t, "graph-center-other@example.com");
+    const theirs = await b.as.query(api.aiGraph.graph, { scope: PERSONAL, center: target.id });
+    expect(theirs.nodes.some((n) => n.id === target.id)).toBe(false);
+  });
+
   test("the sweep reads notes indexed before the graph existed", async () => {
     const t = setup();
     const log = stubAi();

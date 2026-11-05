@@ -25,10 +25,13 @@ struct DnaFilter: Codable, Equatable {
     var editedSince: Double?
     var linksOnly: Bool?
     var hideOrphans: Bool?
+    /// Leaves out Foli AI's weaker lines between notes (similar, related, refers to); contradicts and replaces stay.
+    var hideAiLines: Bool?
 }
 
 struct DnaSettings: Codable, Equatable {
-    var filter = DnaFilter()
+    /// A fresh map is calmer: unlinked notes and Foli AI's weaker lines start hidden (the Show menu brings them back).
+    var filter = DnaFilter(hideOrphans: true, hideAiLines: true)
     var kinds: [String]?
     var colorBy = "kind"
     var arrows = false
@@ -81,6 +84,14 @@ final class GraphModel {
     var pins: [String: CGPoint] { didSet { savePins() } }
     /// A node the canvas glides to (search's Return, a hub in Insights).
     var glideTo: String?
+    /// The node whose panel is open (why it's connected, in words).
+    var panel: String?
+    /// On the map around a note: the neighbours whose own connections show too.
+    var expanded: Set<String> = []
+    /// The Key, open until it's folded; the first-time tips, until they're seen (both remembered on this device).
+    var legendOpen = UserDefaults.standard.object(forKey: "folevi.dna.key") as? Bool ?? true { didSet { UserDefaults.standard.set(legendOpen, forKey: "folevi.dna.key") } }
+    var tourDone = UserDefaults.standard.bool(forKey: "folevi.dna.tourDone") { didSet { UserDefaults.standard.set(tourDone, forKey: "folevi.dna.tourDone") } }
+    var tourStep = 0
     /// Opened from a route (`?note=`, `?depth=`, `?view=`).
     private var routeCenter: String?
     private var routeDepth: Int?
@@ -95,17 +106,30 @@ final class GraphModel {
         let saved = UserDefaults.standard.string(forKey: "folevi.dna.settings.\(client.place)").flatMap(DnaSettings.read) ?? DnaSettings()
         settings = saved
         pins = Self.readPins("folevi.dna.pins.\(client.place)")
-        store = client.watch(Self.args(saved))
+        store = client.watch(Self.args(saved, center: saved.center))
+        watched = saved.center
     }
 
-    private static func args(_ s: DnaSettings) -> Views.Graph {
+    /// The center goes along, so the note (and what it links to) is in the map however long ago it was edited:
+    /// it was left out, and the map around it showed nothing.
+    private static func args(_ s: DnaSettings, center: String?) -> Views.Graph {
         let kinds = s.kinds.flatMap { $0.isEmpty || $0.count == GraphMath.entityKinds.count ? nil : $0 }
-        return .graph(kinds: kinds, spacing: s.spacing == 1 ? nil : s.spacing, pull: s.pull == 1 ? nil : s.pull)
+        return .graph(kinds: kinds, spacing: s.spacing == 1 ? nil : s.spacing, pull: s.pull == 1 ? nil : s.pull, center: center)
+    }
+
+    @ObservationIgnored private var watched: String?
+    private func rewatch() {
+        guard watched != center else { return }
+        watched = center
+        store = client.watch(Self.args(settings, center: center))
     }
 
     private func settingsChanged(from old: DnaSettings) {
         UserDefaults.standard.set(settings.json, forKey: "folevi.dna.settings.\(client.place)")
-        if old.kinds != settings.kinds || old.spacing != settings.spacing || old.pull != settings.pull { store = client.watch(Self.args(settings)) }
+        if old.kinds != settings.kinds || old.spacing != settings.spacing || old.pull != settings.pull {
+            watched = center
+            store = client.watch(Self.args(settings, center: center))
+        } else { rewatch() }
     }
 
     private static func readPins(_ key: String) -> [String: CGPoint] {
@@ -127,18 +151,81 @@ final class GraphModel {
     /// The route's query: the note to center on, how far out, a saved view to apply.
     func apply(path: String) {
         let q = URLComponents(string: "https://x\(path)")?.queryItems ?? []
-        routeCenter = q.first { $0.name == "note" }?.value
+        let next = q.first { $0.name == "note" }?.value
+        if next != routeCenter {
+            expanded = []
+            panel = nil
+        }
+        routeCenter = next
         routeDepth = q.first { $0.name == "depth" }?.value.flatMap(Int.init).map { min(3, max(1, $0)) }
         if let view = q.first(where: { $0.name == "view" })?.value, view != appliedView, let v = value?.views.first(where: { $0.id == view }), let s = DnaSettings.read(v.settings) {
             appliedView = view
             settings = s
         }
+        rewatch()
     }
 
     func showEverything() {
         routeCenter = nil
         routeDepth = nil
         settings.center = nil
+        expanded = []
+        panel = nil
+        rewatch()
+    }
+
+    func toggleExpanded(_ id: String) {
+        var next = effectiveExpanded
+        if next.contains(id) { next.remove(id) } else { next.insert(id) }
+        expanded = next
+        routeDepth = 1
+    }
+
+    /// Foli AI's finds are on (not links only).
+    var ai: Bool { settings.filter.linksOnly != true }
+
+    @ObservationIgnored private var indexCache: (key: Int, ix: DnaAround.Index)?
+    /// Who is joined to whom in the whole map, and why (for the map around a note and the panel).
+    var index: DnaAround.Index {
+        guard let v = value else { return DnaAround.index([], []) }
+        var h = Hasher()
+        h.combine(v)
+        h.combine(ai)
+        let key = h.finalize()
+        if let c = indexCache, c.key == key { return c.ix }
+        let ix = DnaAround.index(v.nodes, ai ? v.edges : v.edges.filter { $0.kind == "link" }, suggested: ai ? v.suggested : [])
+        indexCache = (key, ix)
+        return ix
+    }
+
+    var names: DnaNames {
+        let tags = Dictionary(value?.tags.map { ($0.id, $0.name) } ?? [], uniquingKeysWith: { a, _ in a })
+        let folders = Dictionary(value?.folders.map { ($0.id, $0.name) } ?? [], uniquingKeysWith: { a, _ in a })
+        return DnaNames(tag: { tags[$0] }, folder: { folders[$0] })
+    }
+
+    /// `?depth=2` or more (older links, saved views): the neighbours' own connections show too, until changed.
+    private var effectiveExpanded: Set<String> {
+        guard expanded.isEmpty, depth >= 2, let c = center else { return expanded }
+        return Set(DnaAround.connections(index, c, ai: ai).filter { index.byId[$0.id]?.kind == "note" }.prefix(12).map(\.id))
+    }
+    var expandedNow: Set<String> { effectiveExpanded }
+
+    @ObservationIgnored private var aroundCache: (key: Int, map: DnaAround.Map?)?
+    /// The map around the center note: it, its connections one hop out, the expanded ones' too, each line saying why.
+    var around: DnaAround.Map? {
+        guard let c = center, value != nil else { return nil }
+        let ex = effectiveExpanded
+        var h = Hasher()
+        h.combine(c)
+        h.combine(ex)
+        h.combine(value)
+        h.combine(ai)
+        let key = h.finalize()
+        if let a = aroundCache, a.key == key { return a.map }
+        let m = DnaAround.map(index, center: c, expanded: ex, ai: ai, names: names)
+        aroundCache = (key, m)
+        return m
     }
 
     func setDepth(_ d: Int) {
@@ -147,15 +234,20 @@ final class GraphModel {
     }
 
     func center(on id: String) {
+        if routeCenter != id {
+            expanded = []
+            panel = nil
+        }
         routeCenter = id
+        rewatch()
     }
 
-    // The map as it's shown: filtered, then around the center note when there is one.
+    // The map as it's shown: around the center note when there is one (the whole map, not the filters: a filter
+    // hid the note itself and the map was empty), else filtered.
     var shown: (nodes: [GraphNode], edges: [GraphEdge]) {
         guard let v = value else { return ([], []) }
-        let f = DnaMath.filter(v.nodes, v.edges, settings.filter)
-        if let c = center { return DnaMath.local(f.nodes, f.edges, center: c, depth: depth) }
-        return f
+        if center != nil { return around.map { ($0.nodes, $0.edges) } ?? ([], []) }
+        return DnaMath.filter(v.nodes, v.edges, settings.filter)
     }
 
     var matches: Set<String> { GraphMath.match(shown.nodes, query) }
@@ -399,7 +491,7 @@ enum DnaMath {
             if let since = f.editedSince, (n.updatedAt ?? 0) < since { return false }
             return true
         }.map(\.id))
-        var kept = edges.filter { e in (f.linksOnly != true || e.kind == "link") && (notes.contains(e.source) || notes.contains(e.target)) }
+        var kept = edges.filter { e in (f.linksOnly != true || e.kind == "link") && !(f.hideAiLines == true && isWeakAiLine(e)) && (notes.contains(e.source) || notes.contains(e.target)) }
         var ids = notes
         if f.linksOnly != true {
             for e in kept {
@@ -415,6 +507,16 @@ enum DnaMath {
             kept = kept.filter { ids.contains($0.source) && ids.contains($0.target) }
         }
         return (nodes.filter { ids.contains($0.id) }, kept)
+    }
+
+    /// Foli AI's lines between notes that `hideAiLines` leaves out.
+    static func isWeakAiLine(_ e: GraphEdge) -> Bool { e.inferred && ["similar", "related", "references"].contains(e.kind) }
+
+    /// How many labels the map may show at a zoom (beyond those that must): fewer zoomed out.
+    static func labelBudget(_ k: CGFloat, _ count: Int) -> Int {
+        if k < 0.45 { return min(count, 12) }
+        if k < 0.8 { return min(count, 30) }
+        return count
     }
 
     static func steps(_ edges: [GraphEdge], from: String, depth: Int) -> [String: Int] {
@@ -579,6 +681,9 @@ struct GraphScreen: View {
             }
         }
         .accessibilityIdentifier("screen.graph")
+        // The width offered, not the content's: the wide header could hold the screen wider than a phone, so it
+        // never switched to the phone layout.
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
         .onGeometryChange(for: Bool.self) { $0.size.width < 600 } action: { compact = $0 }
         .onAppear { model.apply(path: path) }
         .onChange(of: path) { _, p in model.apply(path: p) }
@@ -649,7 +754,7 @@ struct GraphScreen: View {
         let muted = moreVar("color-ink-muted", scheme)
         if let v { filterBar(v).padding(.horizontal, inset).padding(.bottom, 8) }
         if model.layoutOpen { layoutPanel.padding(.horizontal, inset).padding(.bottom, 8) }
-        if let c = model.center.flatMap({ c in v?.nodes.first { $0.id == c } }) { aroundBar(c).padding(.horizontal, inset).padding(.bottom, 8) }
+        if model.center != nil, v != nil { aroundBar(model.center.flatMap { c in v?.nodes.first { $0.id == c } }).padding(.horizontal, inset).padding(.bottom, 8) }
         if let v, v.note != nil || v.truncated {
             VStack(alignment: .leading, spacing: 0) {
                 if let note = v.note { Text(verbatim: note).webText(.role(.subheadline)).foregroundStyle(muted) }
@@ -657,13 +762,18 @@ struct GraphScreen: View {
             }
             .padding(.horizontal, inset).padding(.bottom, 8)
         }
-        if let v, model.settings.colorBy != "kind" { legend(v).padding(.horizontal, inset).padding(.bottom, 8) }
     }
 
     @ViewBuilder private var content: some View {
         if let v = model.value {
             let shown = model.shown
-            if v.nodes.isEmpty {
+            if model.center != nil && model.around == nil {
+                VStack(spacing: 16) {
+                    MoreEmptyState(icon: .waypoints, title: "This note isn’t on this map", message: "It may be in another place (pick it in the sidebar’s account menu), in the Trash, or a template.")
+                    WebButton("Show the whole map") { whole() }
+                }
+                .frame(maxHeight: .infinity)
+            } else if v.nodes.isEmpty {
                 MoreEmptyState(icon: .waypoints, title: "No notes here yet", message: "Notes and the links between them show up here.").frame(maxHeight: .infinity)
             } else if shown.nodes.isEmpty {
                 MoreEmptyState(icon: nil, title: "Nothing matches these filters").frame(maxHeight: .infinity)
@@ -683,7 +793,9 @@ struct GraphScreen: View {
                 } else {
                     HStack(spacing: 0) {
                         GraphCanvasView(model: model, value: v, nodes: shown.nodes, edges: shown.edges, frame: frame, exporter: exporter)
-                        if model.insights { DnaInsightsView(model: model, value: v, nodes: shown.nodes, edges: shown.edges, frame: frame) }
+                        if let c = model.center, let a = model.around {
+                            DnaConnectionsList(center: c, connections: a.connections, ix: model.index, names: model.names, expanded: model.expandedNow, onToggle: { model.toggleExpanded($0) }, onOpen: { frame.open(.note($0)) }, onPick: { model.panel = $0 }, onWhole: { whole() })
+                        } else if model.insights { DnaInsightsView(model: model, value: v, nodes: shown.nodes, edges: shown.edges, frame: frame) }
                     }
                 }
             }
@@ -722,6 +834,7 @@ struct GraphScreen: View {
             }
             .disabled(span == nil || span?.start == span?.end)
             WebIconButton(.slidersHorizontal, label: "Layout", pressed: model.layoutOpen) { model.layoutOpen.toggle() }
+            WebIconButton(.circleQuestionMark, label: "Show the tips again") { model.tourStep = 0; model.tourDone = false }
             WebIconButton(.chartNetwork, label: "Insights", pressed: model.insights) { model.insights.toggle() }
             WebMenuButton(entries: { exportEntries }) { WebIconView(.download, size: 16).foregroundStyle(moreVar("color-ink-muted", scheme)).frame(width: 32, height: 32).contentShape(Rectangle()) }
                 .accessibilityLabel("Export")
@@ -747,6 +860,7 @@ struct GraphScreen: View {
         if v.full {
             out.append(.heading("Foli AI’s finds"))
             out.append(WebMenuEntry(.item("Show Foli AI’s finds", checked: f.linksOnly != true, id: "finds")) { model.settings.filter.linksOnly = f.linksOnly == true ? false : true })
+            out.append(WebMenuEntry(.item("Similar and related lines", checked: f.hideAiLines != true, description: "Foli AI’s weaker lines between notes", id: "ailines"), disabled: f.linksOnly == true) { model.settings.filter.hideAiLines = f.hideAiLines == true ? false : true })
             for k in GraphMath.entityKinds {
                 let on = model.kinds.contains(k)
                 out.append(WebMenuEntry(.item(GraphMath.filterLabel[k] ?? k, checked: on, swatch: moreVar(GraphMath.colorVar(k), scheme), id: "kind:\(k)"), disabled: f.linksOnly == true) {
@@ -770,7 +884,8 @@ struct GraphScreen: View {
         var n = 0
         if f.linksOnly == true { n += 1 }
         if model.kinds.count != GraphMath.entityKinds.count, f.linksOnly != true { n += 1 }
-        if f.hideOrphans == true { n += 1 }
+        if f.hideOrphans != true { n += 1 }
+        if f.hideAiLines != true { n += 1 }
         if !model.settings.clusters { n += 1 }
         if model.settings.arrows { n += 1 }
         if model.focusMode { n += 1 }
@@ -793,11 +908,14 @@ struct GraphScreen: View {
             HStack(spacing: 14) {
                 // On a phone the row scrolls: Show comes first so it's never off the end.
                 if compact { showMenu(v, orphanCount: orphanCount) }
+                // Around one note the filters don't apply (the map reads the whole of it).
+                if model.center == nil {
                 WebBareSelect(label: v.folders.first { $0.id == folderId }?.name ?? "All folders", options: [("", "All folders")] + v.folders.map { ($0.id, $0.name) }, selected: folderId) { id in model.settings.filter.folders = id.isEmpty ? [] : [id] }
                 WebBareSelect(label: v.tags.first { $0.id == tagId }.map { "#\($0.name)" } ?? "Any tag", options: [("", "Any tag")] + v.tags.map { ($0.id, "#\($0.name)") }, selected: tagId) { id in model.settings.filter.tags = id.isEmpty ? [] : [id] }
                 WebBareSelect(label: Self.edited.first { $0.id == editedId }?.title ?? "Edited any time", options: Self.edited.map { ($0.id, $0.title) }, selected: editedId) { id in
                     let days = Self.edited.first { $0.id == id }?.days ?? nil
                     model.settings.filter.editedSince = days.map { Date().timeIntervalSince1970 * 1000 - $0 * 86_400_000 }
+                }
                 }
                 WebBareSelect(label: colorTitles[model.settings.colorBy] ?? "Colour by kind", options: [("kind", "Colour by kind"), ("folder", "Colour by folder"), ("tag", "Colour by tag")], selected: model.settings.colorBy) { model.settings.colorBy = $0 }
                 if !compact { showMenu(v, orphanCount: orphanCount) }
@@ -877,35 +995,29 @@ struct GraphScreen: View {
         .accessibilityAdjustableAction { d in if d == .increment { more() } else { less() } }
     }
 
-    private func aroundBar(_ c: GraphNode) -> some View {
-        HStack(spacing: 8) {
-            Text(verbatim: "Around").webText(.role(.subheadline)).foregroundStyle(moreVar("color-ink-muted", scheme))
-            Button { frame.open(.note(c.id)) } label: {
-                Text(verbatim: c.label.isEmpty ? "Untitled" : c.label).webText(.role(.subheadline, weight: 500)).foregroundStyle(moreVar("color-heading", scheme))
-            }
-            .buttonStyle(.plain)
-            HStack(spacing: 0) {
-                ForEach(1...3, id: \.self) { d in segment(d == 1 ? "1 step" : "\(d) steps", on: model.depth == d) { model.setDepth(d) } }
-            }
-            .padding(2)
-            .webBox(WebStyles.named("input"))
-            WebButton("Show everything", variant: .quiet, size: .sm) { model.showEverything() }
-        }
+    /// Back to the whole map: the route goes too, so the tab and Back follow.
+    private func whole() {
+        model.showEverything()
+        frame.open(.web("/graph"))
     }
 
-    private func legend(_ v: GraphValue) -> some View {
-        let groups: [(String, String, Color)] = model.settings.colorBy == "folder" ? v.folders.map { ($0.id, $0.name, FolderColor.resolve($0.color).color.color) } : v.tags.map { ($0.id, "#\($0.name)", GraphMath.tagColor($0.color, scheme)) }
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                ForEach(Array(groups.prefix(16)), id: \.0) { g in
-                    HStack(spacing: 6) {
-                        RoundedRectangle(cornerRadius: 3, style: .circular).fill(g.2).frame(width: 10, height: 10)
-                        Text(verbatim: g.1).webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-muted", scheme))
-                    }
+    private func aroundBar(_ c: GraphNode?) -> some View {
+        let count = model.around?.connections.count
+        return HStack(spacing: 8) {
+            WebButton("Whole map", icon: .arrowLeft, size: .sm) { whole() }
+            Text(verbatim: "Around").webText(.role(.subheadline)).foregroundStyle(moreVar("color-ink-muted", scheme))
+            if let c {
+                Button { frame.open(.note(c.id)) } label: {
+                    Text(verbatim: c.label.isEmpty ? "Untitled" : c.label).webText(.role(.subheadline, weight: 500)).foregroundStyle(moreVar("color-heading", scheme)).lineLimit(1)
                 }
+                .buttonStyle(.plain)
+            } else {
+                Text(verbatim: "a note that isn’t here").webText(.role(.subheadline)).foregroundStyle(moreVar("color-heading", scheme))
+            }
+            if let count, !compact {
+                Text(verbatim: "\(count == 1 ? "1 connection" : "\(count) connections"), one step out. Click a note to see why.").webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-faint", scheme)).lineLimit(1)
             }
         }
-        .accessibilityLabel("Colours")
     }
 
     private var savePrompt: some View {
@@ -980,7 +1092,6 @@ struct GraphCanvasView: View {
     @State private var fitted = false
     @State private var size: CGSize = .zero
     @State private var hover: String?
-    @State private var selected: String?
     @State private var focusedNode: String?
     @State private var dragStart: GraphMath.Transform?
     @State private var dragNode: DragNode?
@@ -988,16 +1099,17 @@ struct GraphCanvasView: View {
     @State private var pinchStart: GraphMath.Transform?
     @State private var offer: Offer?
     @FocusState private var focused: Bool
+    @State private var narrowKey = false
 
     struct DragNode: Equatable { var id: String; var at: CGPoint }
     struct Offer: Equatable { var s: GraphSuggestion; var at: CGPoint }
 
     private var byId: [String: GraphNode] { Dictionary(nodes.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) }
 
-    /// Where a node is: dragged, pinned, or as laid out.
+    /// Where a node is: dragged, pinned, or as laid out. (Around one note the rings hold: pins are the whole map's.)
     private func at(_ id: String) -> CGPoint? {
         if let d = dragNode, d.id == id { return d.at }
-        if let p = model.pins[id] { return p }
+        if model.center == nil, let p = model.pins[id] { return p }
         return byId[id].map { CGPoint(x: $0.x, y: $0.y) }
     }
 
@@ -1034,14 +1146,15 @@ struct GraphCanvasView: View {
         let deg = GraphMath.degrees(edges)
         let large = nodes.count > GraphMath.large
         let labelled = GraphMath.top(nodes, deg, count: large ? 8 : GraphMath.alwaysLabelled)
-        let focus = hover ?? focusedNode ?? selected ?? model.center.flatMap { byId[$0] != nil ? $0 : nil }
+        let focus = hover ?? focusedNode ?? model.panel.flatMap { byId[$0] != nil ? $0 : nil } ?? model.center.flatMap { byId[$0] != nil ? $0 : nil }
         let near: Set<String>? = focus.map { model.focusMode ? DnaMath.within(edges, $0, 2) : Set([$0]).union(GraphMath.neighbours(edges, $0)) }
         let visible: Set<String>? = model.playAt.map { DnaMath.asOf(nodes, edges, $0) }
         let fresh: Set<String>? = model.sinceWeek ? DnaMath.newSince(nodes, edges, model.weekAgo) : nil
         let ids = Set(nodes.map(\.id))
-        let suggested = model.settings.filter.linksOnly == true ? [] : value.suggested.filter { ids.contains($0.source) && ids.contains($0.target) }
+        let suggested = model.settings.filter.linksOnly == true || model.center != nil ? [] : value.suggested.filter { ids.contains($0.source) && ids.contains($0.target) }
         let notes = nodes.filter { $0.kind == "note" }.count
-        let sparse: String? = notes < 3 ? "Foli DNA grows as you write. Notes show up here, and lines join the ones that link to each other." : edges.isEmpty ? "None of these notes link to each other yet. Type [[ in a note to link another one, and a line joins them here." : nil
+        let sparse: String? = model.around.map { $0.connections.isEmpty ? "This note isn’t connected to anything yet. Type [[ in it to link another note, and a line joins them here." : nil } ?? (notes < 3 ? "Foli DNA grows as you write. Notes show up here, and lines join the ones that link to each other." : edges.isEmpty ? "None of these notes link to each other yet. Type [[ in a note to link another one, and a line joins them here." : nil)
+        let hiddenOrphans = model.center == nil && model.settings.filter.hideOrphans == true ? DnaMath.orphans(value.nodes, value.edges).count : 0
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
                 Canvas { ctx, _ in
@@ -1057,7 +1170,9 @@ struct GraphCanvasView: View {
                     t = GraphMath.zoom(pinchStart!, g.magnification, around: g.startLocation)
                 }.onEnded { _ in pinchStart = nil })
                 .onTapGesture(count: 2, coordinateSpace: .local) { p in
-                    if let id = hit(p), model.pins[id] != nil { model.pins[id] = nil }
+                    // A double-click opens a note (a click says why it's connected); on a pinned one it unpins.
+                    guard let id = hit(p) else { return }
+                    if model.center == nil, model.pins[id] != nil { model.pins[id] = nil } else if byId[id]?.kind == "note" { frame.open(.note(id), commandHeld ? .newTab : .replace) }
                 }
                 .onTapGesture(coordinateSpace: .local) { p in tap(p, suggested: suggested) }
                 .onContinuousHover { phase in
@@ -1099,7 +1214,37 @@ struct GraphCanvasView: View {
                         .frame(maxWidth: .infinity).padding(.top, 12).allowsHitTesting(false)
                 }
                 if let id = hover ?? focusedNode, let n = byId[id], let p = at(id) { tooltip(n, GraphMath.screen(t, p)) }
-                if let id = selected, let n = byId[id] { entityCard(n) }
+                if model.panel == nil, hiddenOrphans > 0, !model.list {
+                    HStack(spacing: 4) {
+                        Text(verbatim: hiddenOrphans == 1 ? "1 unlinked note hidden." : "\(hiddenOrphans) unlinked notes hidden.").webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-muted", scheme))
+                        Button { model.settings.filter.hideOrphans = false } label: { Text(verbatim: "Show").webText(.role(.footnote)).underline().foregroundStyle(moreVar("color-heading", scheme)) }.buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 4)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .circular).fill(moreVar("glass-hover", scheme)))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(12)
+                }
+                if size.width >= 560 || model.panel == nil {
+                    // On a phone-wide map the Key starts folded (open, it covered half the map).
+                    DnaLegendCard(shows: legendShows(), open: size.width >= 560 ? model.legendOpen : narrowKey) { if size.width >= 560 { model.legendOpen.toggle() } else { narrowKey.toggle() } }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading).padding(12)
+                }
+                if let id = model.panel, model.index.byId[id] != nil {
+                    DnaPanelCard(
+                        id: id, ix: model.index, names: model.names, ai: model.ai, isCenter: id == model.center,
+                        expanded: model.around.map { a in a.nodes.contains { $0.id == id } && id != model.center && model.index.byId[id]?.kind == "note" } == true ? model.expandedNow.contains(id) : nil,
+                        onToggleExpand: { model.toggleExpanded(id) },
+                        onOpen: { frame.open(.note($0), commandHeld ? .newTab : .replace) },
+                        onCenter: { frame.open(.web("/graph?note=\($0)")) },
+                        onPick: { model.panel = $0 },
+                        onClose: { model.panel = nil }
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(12)
+                }
+                if !model.tourDone {
+                    DnaTourCard(step: model.tourStep, onStep: { model.tourStep = $0 }, onDone: { model.tourDone = true })
+                        .padding(.horizontal, 12)
+                        .frame(maxWidth: .infinity, alignment: .top).padding(.top, 12)
+                }
                 if let o = offer { offerCard(o.s, at: o.at) }
                 if !model.picked.isEmpty { selectionBar.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom).padding(12) }
                 zoomButtons.frame(maxWidth: .infinity, alignment: .topTrailing).padding(12)
@@ -1127,6 +1272,27 @@ struct GraphCanvasView: View {
         .focusEffectDisabled()
         .focused($focused)
         .onKeyPress(phases: .down) { press in key(press) }
+    }
+
+    /// What the Key lists: only what this map draws.
+    private func legendShows() -> DnaLegendShows {
+        let kinds = Set(nodes.map(\.kind)), edgeKinds = Set(edges.map(\.kind))
+        var out = DnaLegendShows()
+        out.kinds = (["note"] + GraphMath.entityKinds).filter { kinds.contains($0) }.map { ($0, GraphMath.kindLabel[$0] ?? $0) }
+        out.colorBy = model.settings.colorBy
+        if model.settings.colorBy == "folder" { out.groups = value.folders.map { ($0.name, FolderColor.resolve($0.color).color.color) } }
+        if model.settings.colorBy == "tag" { out.groups = value.tags.map { ("#\($0.name)", GraphMath.tagColor($0.color, scheme)) } }
+        out.arrows = model.settings.arrows
+        out.mentions = edgeKinds.contains("mention")
+        out.aiLines = edges.contains(where: DnaMath.isWeakAiLine)
+        out.contradicts = edgeKinds.contains("contradicts")
+        out.duplicates = edgeKinds.contains("supersedes") || !value.duplicates.isEmpty
+        out.suggested = edgeKinds.contains("suggested") || (model.center == nil && model.ai && !value.suggested.isEmpty)
+        out.shared = edgeKinds.contains("tag") || edgeKinds.contains("folder")
+        out.clusters = model.center == nil && model.settings.clusters && !value.clusters.isEmpty
+        out.bridges = model.center == nil && model.settings.clusters && nodes.contains(where: \.bridge)
+        out.fresh = model.sinceWeek
+        return out
     }
 
     private func nodeLabel(_ n: GraphNode, _ d: Int) -> String {
@@ -1169,7 +1335,7 @@ struct GraphCanvasView: View {
         // Clusters: a faint wash behind each; its name goes above it, drawn after the nodes (so no dot covers it) and
         // kept clear of the notes' labels.
         var names: [(text: GraphicsContext.ResolvedText, at: CGPoint, rect: CGRect, halo: GraphicsContext.ResolvedText)] = []
-        if model.settings.clusters {
+        if model.settings.clusters && model.center == nil {
             for c in value.clusters.prefix(12) {
                 let pts = nodes.filter { $0.cluster == c.id && shows($0.id) }.compactMap { at($0.id) }
                 guard let (mid, r) = GraphMath.clusterCircle(pts) else { continue }
@@ -1192,7 +1358,8 @@ struct GraphCanvasView: View {
             let on = near.map { $0.contains(e.source) && $0.contains(e.target) } ?? (!searching || (matches.contains(e.source) && matches.contains(e.target)))
             let dup = dups.contains([e.source, e.target].sorted().joined(separator: ":"))
             let arrow = model.settings.arrows && e.kind == "link"
-            let special = e.kind == "contradicts" || e.kind == "supersedes" || dup || (e.inferred && e.kind != "mention") || arrow
+            let shared = e.kind == "tag" || e.kind == "folder"
+            let special = e.kind == "contradicts" || e.kind == "supersedes" || dup || shared || (e.inferred && e.kind != "mention") || arrow
             if !special && on && near == nil {
                 quiet.move(to: a)
                 quiet.addLine(to: b)
@@ -1207,8 +1374,8 @@ struct GraphCanvasView: View {
             var p = Path()
             p.move(to: a)
             p.addLine(to: end)
-            let color = moreVar(e.kind == "contradicts" ? "color-coral" : e.kind == "supersedes" || dup ? "color-plum" : "color-line-strong", scheme)
-            let dash: [CGFloat] = dup ? [1, 3] : e.inferred && e.kind != "mention" ? [4, 3] : []
+            let color = moreVar(e.kind == "contradicts" ? "color-coral" : e.kind == "supersedes" || dup ? "color-plum" : e.kind == "suggested" ? "color-accent" : "color-line-strong", scheme)
+            let dash: [CGFloat] = dup || shared ? [1, 3] : e.kind == "suggested" ? [2, 4] : e.inferred && e.kind != "mention" ? [4, 3] : []
             ctx.stroke(p, with: .color(color.opacity(on ? (near != nil ? 0.9 : 0.45) : 0.07)), style: StrokeStyle(lineWidth: e.kind == "link" ? 1.2 : 1, dash: dash))
             if arrow {
                 let ang = atan2(end.y - a.y, end.x - a.x)
@@ -1221,6 +1388,19 @@ struct GraphCanvasView: View {
             }
         }
         ctx.stroke(quiet, with: .color(moreVar("color-line-strong", scheme).opacity(0.45)), lineWidth: 1.2)
+        // Around one note: each line says why, at its middle.
+        if let around = model.around, !large {
+            let small = WebFont.font(.sans, size: 10.5)
+            let halo = moreVar("color-canvas", scheme), muted = moreVar("color-ink-muted", scheme)
+            for e in edges {
+                guard let label = around.labels[DnaAround.pairKey(e.source, e.target)], !label.isEmpty, shows(e.source), shows(e.target), let a0 = at(e.source), let b0 = at(e.target) else { continue }
+                if let near, !(near.contains(e.source) && near.contains(e.target)) { continue }
+                let a = GraphMath.screen(t, a0), b = GraphMath.screen(t, b0)
+                let mid = CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + 4)
+                for (dx, dy) in [(-1.5, 0.0), (1.5, 0.0), (0.0, -1.5), (0.0, 1.5)] { ctx.draw(Text(verbatim: label).font(small).foregroundColor(halo), at: CGPoint(x: mid.x + dx, y: mid.y + dy), anchor: .bottom) }
+                ctx.draw(Text(verbatim: label).font(small).foregroundColor(muted), at: mid, anchor: .bottom)
+            }
+        }
         // Suggested links: dashed accent lines.
         for s in suggested where shows(s.source) && shows(s.target) {
             guard let a = at(s.source), let b = at(s.target) else { continue }
@@ -1231,7 +1411,7 @@ struct GraphCanvasView: View {
             ctx.stroke(p, with: .color(moreVar("color-accent", scheme).opacity(on ? 0.8 : 0.1)), style: StrokeStyle(lineWidth: 1.2, dash: [2, 4]))
         }
         let canvas = moreVar("color-canvas", scheme), heading = moreVar("color-heading", scheme), ink = moreVar("color-ink", scheme)
-        let dim: CGFloat = model.focusMode ? 0.06 : 0.25
+        let dim: CGFloat = model.focusMode ? 0.06 : 0.16
         let drawnNodes = nodes.filter { shows($0.id) }
         let bridges = model.settings.clusters ? GraphMath.shownBridges(drawnNodes, edges.filter { shows($0.source) && shows($0.target) }) : []
         let font = WebFont.font(.sans, size: 11.5)
@@ -1254,7 +1434,9 @@ struct GraphCanvasView: View {
                 blocked: names.map(\.rect),
                 center: { id in at(id).map { GraphMath.screen(t, $0) } },
                 radius: { id in GraphMath.drawn(GraphMath.radius(deg[id] ?? 0, entity: byId[id]?.kind != "note"), k) * k },
-                width: { id in byId[id].map { ctx.resolve(Text(verbatim: text($0)).font(font)).measure(in: CGSize(width: 600, height: 40)).width } ?? 0 }
+                width: { id in byId[id].map { ctx.resolve(Text(verbatim: text($0)).font(font)).measure(in: CGSize(width: 600, height: 40)).width } ?? 0 },
+                // Fewer labels zoomed out (they only crowded each other), every one with room zoomed in.
+                limit: always.count + DnaMath.labelBudget(k, order.count)
             )
         }
         for n in drawnNodes {
@@ -1270,8 +1452,8 @@ struct GraphCanvasView: View {
             let picked = model.picked.contains(n.id)
             let path = GraphMath.shape(n.kind, r, at: c) ?? Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
             layer.fill(path, with: .color(colorOf(n)))
-            layer.stroke(path, with: .color(n.id == selected || picked ? heading : canvas), lineWidth: picked ? 2.5 : 1.5)
-            if model.pins[n.id] != nil { layer.fill(Path(ellipseIn: CGRect(x: c.x - 2, y: c.y - r - 5, width: 4, height: 4)), with: .color(heading)) }
+            layer.stroke(path, with: .color(n.id == model.panel || picked ? heading : canvas), lineWidth: picked ? 2.5 : 1.5)
+            if model.center == nil, model.pins[n.id] != nil { layer.fill(Path(ellipseIn: CGRect(x: c.x - 2, y: c.y - r - 5, width: 4, height: 4)), with: .color(heading)) }
             if n.id == focusedNode {
                 layer.stroke(Path(ellipseIn: CGRect(x: c.x - r - 4, y: c.y - r - 4, width: (r + 4) * 2, height: (r + 4) * 2)), with: .color(moreVar("color-focus", scheme)), lineWidth: 2.5)
             }
@@ -1353,7 +1535,8 @@ struct GraphCanvasView: View {
     private var drag: some Gesture {
         DragGesture(minimumDistance: 5).onChanged { g in
             if dragStart == nil && dragNode == nil && box == nil {
-                if let id = hit(g.startLocation) {
+                // Around one note the rings stay as they are: a drag pans.
+                if model.center == nil, let id = hit(g.startLocation) {
                     dragNode = DragNode(id: id, at: GraphMath.world(t, g.location))
                     return
                 }
@@ -1397,7 +1580,7 @@ struct GraphCanvasView: View {
                     return
                 }
             }
-            selected = nil
+            model.panel = nil
             if !shiftHeld { model.picked = [] }
             return
         }
@@ -1405,7 +1588,7 @@ struct GraphCanvasView: View {
             if model.picked.contains(id) { model.picked.remove(id) } else { model.picked.insert(id) }
             return
         }
-        activate(id, newTab: commandHeld)
+        activate(id, newTab: commandHeld, pick: true)
     }
 
     private func hit(_ p: CGPoint) -> String? {
@@ -1422,9 +1605,10 @@ struct GraphCanvasView: View {
         return best?.0
     }
 
-    private func activate(_ id: String, newTab: Bool = false) {
+    /// A click (`pick`) says why a node is connected, in its panel; Return or a double-click opens a note.
+    private func activate(_ id: String, newTab: Bool = false, pick: Bool = false) {
         guard let n = byId[id] else { return }
-        if n.kind == "note" { frame.open(.note(n.id), newTab ? .newTab : .replace) } else { selected = selected == n.id ? nil : n.id }
+        if n.kind == "note" && (!pick || newTab) { frame.open(.note(n.id), newTab ? .newTab : .replace) } else { model.panel = n.id }
     }
 
     /// Moves the view to `id`, zoomed in enough to read.
@@ -1463,8 +1647,9 @@ struct GraphCanvasView: View {
         case "-": zoomBy(0.8)
         case "0": moved = false; refit()
         default:
-            if press.key == .return || press.key == .space, let id = focusedNode { activate(id, newTab: press.modifiers.contains(.command)); return .handled }
-            if press.key == .escape, selected != nil || !model.picked.isEmpty { selected = nil; model.picked = []; return .handled }
+            // Space says why it's connected; Return opens.
+            if press.key == .return || press.key == .space, let id = focusedNode { activate(id, newTab: press.modifiers.contains(.command), pick: press.key == .space); return .handled }
+            if press.key == .escape, model.panel != nil || !model.picked.isEmpty { model.panel = nil; model.picked = []; return .handled }
             return .ignored
         }
         return .handled
@@ -1479,7 +1664,7 @@ struct GraphCanvasView: View {
 
     private func tooltip(_ n: GraphNode, _ spot: CGPoint) -> some View {
         let keyboard = n.id == focusedNode && hover == nil
-        let what = n.kind == "note" ? (keyboard ? "Enter opens it" : model.pins[n.id] != nil ? "Click to open · double-click to unpin" : "Click to open · drag to pin") : "\(GraphMath.kindLabel[n.kind] ?? "Topic") · \(keyboard ? "Enter shows its notes" : "Click for its notes")"
+        let what = n.kind == "note" ? (keyboard ? "Enter opens it · Space says why it’s connected" : model.center == nil && model.pins[n.id] != nil ? "Click to see why it’s connected · double-click to unpin" : "Click to see why it’s connected · double-click to open") : "\(GraphMath.kindLabel[n.kind] ?? "Topic") · \(keyboard ? "Enter shows its notes" : "Click for its notes")"
         return VStack(alignment: .leading, spacing: 0) {
             Text(verbatim: n.label.isEmpty ? "Untitled" : n.label).webText(.role(.subheadline, weight: 500)).foregroundStyle(moreVar("color-heading", scheme))
             Text(verbatim: what).webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-muted", scheme))
@@ -1491,42 +1676,6 @@ struct GraphCanvasView: View {
         .alignmentGuide(.leading) { d in d.width / 2 - spot.x }
         .alignmentGuide(.top) { _ in -(spot.y + 16) }
         .allowsHitTesting(false)
-    }
-
-    private func entityCard(_ n: GraphNode) -> some View {
-        let notes = GraphMath.neighbours(edges, n.id).compactMap { byId[$0] }.filter { $0.kind == "note" }.sorted { $0.label.localizedCompare($1.label) == .orderedAscending }
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 8) {
-                KindGlyph(kind: n.kind).padding(.top, 6)
-                (Text(verbatim: n.label).font(WebFont.font(.sans, size: 16, weight: 600)).foregroundColor(moreVar("color-heading", scheme))
-                    + Text(verbatim: " \(GraphMath.kindLabel[n.kind] ?? "")").font(WebFont.font(.sans, size: 12)).foregroundColor(moreVar("color-ink-faint", scheme)))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                WebIconButton(.x, label: "Close") { selected = nil }
-            }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(notes, id: \.id) { note in
-                        Button { frame.open(.note(note.id)) } label: {
-                            HStack(spacing: 6) {
-                                WebIconView(.fileText, size: 13).foregroundStyle(moreVar("color-ink-muted", scheme))
-                                Text(verbatim: note.label.isEmpty ? "Untitled" : note.label).webText(.role(.subheadline)).lineLimit(1)
-                            }
-                            .padding(.horizontal, 6).padding(.vertical, 4)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            .frame(maxHeight: 192)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(12)
-        .frame(width: min(300, size.width - 24))
-        .webBox(WebStyles.named("menu.panel"))
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-        .padding(12)
     }
 
     private func offerCard(_ s: GraphSuggestion, at p: CGPoint) -> some View {

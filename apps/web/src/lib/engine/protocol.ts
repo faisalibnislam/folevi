@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 29;
+export const CONTRACT_REVISION = 30;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -3397,6 +3397,11 @@ export interface GraphArgs {
   spacing?: number;
   /** Revision 28: how strongly everything is pulled to the middle (0.25 to 3, default 1). */
   pull?: number;
+  /**
+   * Revision 30: a note (id) the map is opened around ("Foli DNA of this note"): it and the notes it links to, is
+   * linked from and Foli AI relates it to are always in the map, however long ago they were edited.
+   */
+  center?: string;
 }
 
 /** A node, placed by the web's own force layout (lib/graph/layout.ts Simulation, deterministic) in world units. */

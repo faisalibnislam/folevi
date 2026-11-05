@@ -21,6 +21,13 @@ defineLocal(api.aiGraph.graph, "query", async (ctx, args) => {
     .filter((d) => !d.inTrash && d.kind !== "template" && d.kind !== "collectionRow" && !d.pending)
     .sort((a, b) => b.updatedAt - a.updatedAt);
   const truncated = docs.length > NOTES;
+  // The note the map is opened around (`center`) and the notes it links to or is linked from come first, so an
+  // older note still has its map (as the server's aiGraph.graph).
+  const center = args.center ? docs.find((d) => d.id === args.center) : undefined;
+  if (center) {
+    const near = new Set([center.id, ...(center.links ?? []).map((l) => l.target), ...docs.filter((d) => (d.links ?? []).some((l) => l.target === center.id)).map((d) => d.id)]);
+    docs.sort((a, b) => Number(near.has(b.id)) - Number(near.has(a.id)) || (a.id === center.id ? -1 : b.id === center.id ? 1 : 0));
+  }
   const shown = docs.slice(0, NOTES);
   const ids = new Set(shown.map((d) => d.id));
   const edges: { source: string; target: string; kind: "link"; inferred: boolean; createdAt?: number }[] = [];

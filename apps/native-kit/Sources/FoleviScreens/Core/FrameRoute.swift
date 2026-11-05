@@ -88,6 +88,14 @@ public enum FrameRoute: Hashable, Sendable {
         case "settings":
             let screen = comps?.queryItems?.first { $0.name == "screen" }?.value
             self = .web((comps?.path ?? trimmed) + (screen.map { "?screen=\($0.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? $0)" } ?? ""))
+        // Foli DNA keeps the note it's opened around and a saved view (`/graph?note=<id>`, `?view=<id>`): they were
+        // dropped here, so "Foli DNA of this note" showed the whole map (or the last note's).
+        case "graph":
+            let keep = (comps?.queryItems ?? []).filter { ["note", "depth", "view"].contains($0.name) && !($0.value ?? "").isEmpty }
+            var c = URLComponents()
+            c.path = "/graph"
+            if !keep.isEmpty { c.queryItems = keep }
+            self = .web(c.string ?? "/graph")
         default: self = .web(comps?.path ?? trimmed)
         }
     }
@@ -121,6 +129,8 @@ public enum FrameRoute: Hashable, Sendable {
         case .search: return "view:search"
         // The Vault is one tab whichever section a link opened (as the web's route "vault").
         case .web(let p) where p == "/vault" || p.hasPrefix("/vault/"): return "view:vault"
+        // Foli DNA is one tab, whichever note it's around (the web's `view:graph`): the tab follows you.
+        case .web(let p) where p == "/graph" || p.hasPrefix("/graph?"): return "view:graph"
         // Foli AI is one tab: a new chat keeps its tab when it gets its address (/ai to /ai/<id>), as on the web.
         // Settings is one tab whichever section is open (it follows you between them).
         case .web(let p): return p == "/ai" || p.hasPrefix("/ai/") ? "view:ai" : p.hasPrefix("/settings") ? "view:settings" : "view:web:\(p)"

@@ -21,7 +21,9 @@ struct DnaSnapshotTests {
 
     init() {
         // A fresh map: no saved filters, pins or side panel from another run.
-        for k in ["folevi.dna.settings.acct:demo", "folevi.dna.pins.acct:demo", "folevi.graph.view", "folevi.dna.insights", "folevi.dna.focus"] { UserDefaults.standard.removeObject(forKey: k) }
+        for k in ["folevi.dna.settings.acct:demo", "folevi.dna.pins.acct:demo", "folevi.graph.view", "folevi.dna.insights", "folevi.dna.focus", "folevi.dna.key"] { UserDefaults.standard.removeObject(forKey: k) }
+        // The first-time tips seen (DnaAroundTests pictures them).
+        UserDefaults.standard.set(true, forKey: "folevi.dna.tourDone")
     }
 
     /// The red stand-in for the note page that waits behind the screens (a note's title and body).
@@ -58,7 +60,7 @@ struct DnaSnapshotTests {
                 defer { window.orderOut(nil) }
                 let graph = models.more.graphModel()
                 await eventually("graph \(name)", timeout: .seconds(8)) { graph.value != nil }
-                for _ in 0..<6 {
+                for _ in 0..<10 {
                     view.layoutSubtreeIfNeeded()
                     try? await Task.sleep(for: .milliseconds(150))
                 }

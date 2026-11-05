@@ -15,7 +15,7 @@ struct FoliAIMacTests {
         #expect(FrameRoute(path: "/ai").tabKey == "view:ai")
         #expect(FrameRoute(path: "/ai/01M5Z43CP97ENQ9KSQEP1YKAKQ").tabKey == "view:ai")
         #expect(FrameRoute(path: "/aide").tabKey == "view:web:/aide")
-        #expect(FrameRoute(path: "/graph").tabKey == "view:web:/graph")
+        #expect(FrameRoute(path: "/graph").tabKey == "view:graph")
     }
 
     @Test @MainActor func unavailableCopy() {

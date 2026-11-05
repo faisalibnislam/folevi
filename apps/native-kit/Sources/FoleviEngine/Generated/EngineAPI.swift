@@ -7,9 +7,9 @@ public enum EngineContract {
     /// The envelope's major version (`v` on every message to the engine).
     public static let protocolVersion = 1
     /// Bumps with every added view, command, editor command, event or field.
-    public static let revision = 29
+    public static let revision = 30
     /// FNV-1a of the names and revision; the engine's `hello` reply carries the same when this file is current.
-    public static let schemaHash = "bec85e5a"
+    public static let schemaHash = "4e9700b8"
     /// The `WKScriptMessageHandler` name the engine posts to.
     public static let messageHandler = "foleviEngine"
     /// The global the host calls (`__foleviEngine.handle(json)`).
@@ -935,7 +935,7 @@ public extension EngineViewSpec where Self == Views.NotesMoveCheck {
 }
 
 public extension EngineViewSpec where Self == Views.Graph {
-    static func graph(space: SpaceRef? = nil, kinds: [String]? = nil, spacing: Double? = nil, pull: Double? = nil) -> Self { Self(FoleviEngine.GraphArgs(space: space, kinds: kinds, spacing: spacing, pull: pull)) }
+    static func graph(space: SpaceRef? = nil, kinds: [String]? = nil, spacing: Double? = nil, pull: Double? = nil, center: String? = nil) -> Self { Self(FoleviEngine.GraphArgs(space: space, kinds: kinds, spacing: spacing, pull: pull, center: center)) }
 }
 
 public extension EngineViewSpec where Self == Views.Reviews {

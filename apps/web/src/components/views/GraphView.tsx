@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Bookmark, ChevronDown, Download, FileText, Focus, Maximize, Pause, Play, Search, SlidersHorizontal, Sparkles, Tag as TagIcon, Waypoints, X, ZoomIn, ZoomOut, FolderInput, ChartNetwork } from "lucide-react";
+import { ArrowLeft, Bookmark, ChevronDown, CircleHelp, Download, FileText, Focus, Maximize, Pause, Play, Search, SlidersHorizontal, Sparkles, Tag as TagIcon, Waypoints, X, ZoomIn, ZoomOut, FolderInput, ChartNetwork } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -52,6 +52,8 @@ import {
   filterGraph,
   groupOf,
   hubs as findHubs,
+  isWeakAiLine,
+  labelBudget,
   localGraph,
   newSince,
   orphans as findOrphans,
@@ -63,6 +65,8 @@ import {
   type DnaNode,
   type DnaSettings,
 } from "@/lib/graph/analysis";
+import { indexGraph, neighbourhood, type AroundEdge, type Names } from "@/lib/graph/neighbourhood";
+import { DnaConnections, DnaLegend, DnaNodePanel, DnaTour, TOUR_STEPS, type LegendShows } from "@/components/views/DnaGuide";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { canPurchaseHere } from "@/lib/nativeApp";
 
@@ -130,11 +134,14 @@ export function GraphView() {
   const [focusMode, setFocusMode] = useLocalStorage("folevi:dna-focus", false);
   const [sinceWeek, setSinceWeek] = useState(false);
   // How many of the Show menu's choices differ from a fresh map (shown on its button).
-  const changedShows = [settings.filter.linksOnly, !settings.filter.linksOnly && kinds.length !== ENTITY_KINDS.length, settings.filter.hideOrphans, !settings.clusters, settings.arrows, focusMode, sinceWeek].filter(Boolean).length;
+  const changedShows = [settings.filter.linksOnly, !settings.filter.linksOnly && kinds.length !== ENTITY_KINDS.length, !settings.filter.hideOrphans, !settings.filter.hideAiLines, !settings.clusters, settings.arrows, focusMode, sinceWeek].filter(Boolean).length;
   const [playAt, setPlayAt] = useState<number | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
-  const live = useQuery(api.aiGraph.graph, { scope, kinds: kinds.length === ENTITY_KINDS.length ? undefined : kinds });
+  // Around one note (`?note=`), else the saved center. The note is sent along so it (and what it links to) is in
+  // the map even when it wasn't edited lately: it was left out, and the map around it showed nothing.
+  const center = search.get("note") ?? settings.center ?? null;
+  const live = useQuery(api.aiGraph.graph, { scope, kinds: kinds.length === ENTITY_KINDS.length ? undefined : kinds, ...(center ? { center } : {}) });
   const savedViews = useQuery(api.graphViews.list, { scope });
   const saveView = useMutation(api.graphViews.save);
   const removeView = useMutation(api.graphViews.remove);
@@ -166,15 +173,52 @@ export function GraphView() {
     }
   }, [viewId, savedViews, setStored]);
 
-  // Around one note (`?note=`), else the saved center.
-  const center = search.get("note") ?? settings.center ?? null;
+  // `?depth=2` or more (older links, saved views): the neighbours' own connections show too.
   const depthParam = Number(search.get("depth"));
   const depth = depthParam >= 1 && depthParam <= 3 ? depthParam : (settings.depth ?? 1);
 
   const all = useMemo(() => ({ nodes: data?.nodes ?? [], edges: data?.edges ?? [] }), [data]);
   const filtered = useMemo(() => filterGraph(all.nodes, all.edges, settings.filter), [all, settings.filter]);
-  const shown = useMemo(() => (center ? localGraph(filtered.nodes, filtered.edges, center, depth) : filtered), [filtered, center, depth]);
+  // The map around one note: it in the middle, what it's connected to one hop out (and the neighbours expanded),
+  // each line saying why. It reads the whole map, not the filters (a filter hid the note itself, and the map was
+  // empty); only "Foli AI's finds" switched off still leaves those out.
+  const ai = !settings.filter.linksOnly;
+  const index = useMemo(() => indexGraph(all.nodes, ai ? all.edges : all.edges.filter((e) => e.kind === "link"), ai ? (data?.suggested ?? []) : []), [all, ai, data]);
+  const names = useMemo<Names>(() => {
+    const tagName = new Map((data?.tags ?? []).map((t) => [t.id, t.name]));
+    const folderName = new Map((data?.folders ?? []).map((f) => [f.id, f.name]));
+    return { tag: (id) => tagName.get(id), folder: (id) => folderName.get(id) };
+  }, [data]);
+  const [expanded, setExpanded] = useState<{ center: string | null; ids: Set<string> }>({ center: null, ids: new Set() });
+  const expandedIds = useMemo(() => {
+    if (expanded.center === center) return expanded.ids;
+    // A new note in the middle: nothing expanded, unless the link asked for more steps.
+    if (!center || depth < 2) return new Set<string>();
+    return new Set(neighbourhood(index, center, { ai })?.connections.filter((c) => index.byId.get(c.id)?.kind === "note").slice(0, 12).map((c) => c.id) ?? []);
+  }, [expanded, center, depth, index, ai]);
+  const toggleExpanded = (id: string) => {
+    const next = new Set(expandedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setExpanded({ center, ids: next });
+  };
+  const around = useMemo(() => (center ? neighbourhood(index, center, { expanded: expandedIds, ai, names }) : null), [center, index, expandedIds, ai, names]);
+  const shown = useMemo(() => (center ? (around ? { nodes: around.nodes, edges: around.edges as DnaEdge[] } : { nodes: [], edges: [] }) : filtered), [center, around, filtered]);
   const centerNode = center ? all.nodes.find((n) => n.id === center) : undefined;
+  // The node whose panel is open (why it's connected, in words).
+  const [panel, setPanel] = useState<string | null>(null);
+  const [panelFor, setPanelFor] = useState(center);
+  if (panelFor !== center) {
+    setPanelFor(center);
+    setPanel(null);
+  }
+  const panelId = panel && index.byId.has(panel) ? panel : null;
+  const whole = () => (set({ center: null }), navigate("/graph"));
+  const mapAround = (id: string) => navigate(`/graph?note=${id}`);
+  // The Key and the first-time tips (remembered on this device).
+  const [legendOpen, setLegendOpen] = useLocalStorage("folevi:dna-key", true);
+  const [tourDone, setTourDone] = useLocalStorage("folevi:dna-tour-done", false);
+  const [tourStep, setTourStep] = useState(0);
   const notes = shown.nodes.filter((n) => n.kind === "note").length;
   const matches = useMemo(() => matchNodes(shown.nodes, query), [shown.nodes, query]);
   const orphanList = useMemo(() => findOrphans(filterGraph(all.nodes, all.edges, { ...settings.filter, hideOrphans: false }).nodes, filterGraph(all.nodes, all.edges, { ...settings.filter, hideOrphans: false }).edges), [all, settings.filter]);
@@ -217,6 +261,28 @@ export function GraphView() {
     },
     [settings.colorBy, groups],
   );
+
+  // What the Key lists: only what this map draws.
+  const legendShows = useMemo<LegendShows>(() => {
+    const kindsHere = new Set(shown.nodes.map((n) => n.kind));
+    const edgeKinds = new Set(shown.edges.map((e) => e.kind));
+    return {
+      kinds: ["note", ...ENTITY_KINDS].filter((k) => kindsHere.has(k)).map((k) => ({ kind: k, label: KIND_LABEL[k] ?? k, color: KIND_COLOR[k] ?? KIND_COLOR.note! })),
+      groups,
+      colorBy: settings.colorBy,
+      arrows: settings.arrows,
+      mentions: edgeKinds.has("mention"),
+      aiLines: shown.edges.some((e) => isWeakAiLine(e)),
+      contradicts: edgeKinds.has("contradicts"),
+      duplicates: edgeKinds.has("supersedes") || duplicates.length > 0,
+      suggested: suggested.length > 0 || edgeKinds.has("suggested"),
+      shared: edgeKinds.has("tag") || edgeKinds.has("folder"),
+      clusters: Boolean(settings.clusters && !center && clusterInfo.clusters.length),
+      bridges: Boolean(settings.clusters && !center && bridgeSet.size),
+      fresh: Boolean(fresh?.nodes.size),
+      pins: false,
+    };
+  }, [shown, center, groups, settings.colorBy, settings.arrows, settings.clusters, duplicates, suggested, clusterInfo, bridgeSet, fresh]);
 
   const settingsJson = JSON.stringify({ ...settings, center: center ?? null, depth });
   const onSave = async (name: string) => {
@@ -305,6 +371,9 @@ export function GraphView() {
                 <IconButton ref={layoutBtn} label="Layout" aria-expanded={layoutOpen} onClick={() => setLayoutOpen((o) => !o)}>
                   <SlidersHorizontal size={15} aria-hidden />
                 </IconButton>
+                <IconButton label="Show the tips again" onClick={() => (setTourStep(0), setTourDone(false))}>
+                  <CircleHelp size={15} aria-hidden />
+                </IconButton>
                 <IconButton label="Insights" aria-pressed={insights} onClick={() => setInsights(!insights)}>
                   <ChartNetwork size={15} aria-hidden />
                 </IconButton>
@@ -347,6 +416,8 @@ export function GraphView() {
         </div>
         {data ? (
           <div role="toolbar" aria-label="Foli DNA filters" className="flex flex-none flex-wrap items-center gap-2 px-4 pb-2 sm:px-6">
+            {!center ? (
+            <>
             <Select aria-label="Folder" value={settings.filter.folders?.[0] ?? ""} onChange={(e) => setFilter({ folders: e.target.value ? [e.target.value] : [] })} className="h-8 text-subheadline">
               <option value="">All folders</option>
               {(data.folders ?? []).map((f) => (
@@ -378,6 +449,8 @@ export function GraphView() {
                 </option>
               ))}
             </Select>
+            </>
+            ) : null}
             <Select aria-label="Colour by" value={settings.colorBy} onChange={(e) => set({ colorBy: e.target.value as DnaSettings["colorBy"] })} className="h-8 text-subheadline">
               <option value="kind">Colour by kind</option>
               <option value="folder">Colour by folder</option>
@@ -398,6 +471,7 @@ export function GraphView() {
                   ? [
                       { heading: "Foli AI’s finds" },
                       { label: "Show Foli AI’s finds", checked: !settings.filter.linksOnly, multi: true, onSelect: () => setFilter({ linksOnly: !settings.filter.linksOnly }) },
+                      { label: "Similar and related lines", description: "Foli AI’s weaker lines between notes", checked: !settings.filter.hideAiLines, multi: true, disabled: Boolean(settings.filter.linksOnly), onSelect: () => setFilter({ hideAiLines: !settings.filter.hideAiLines }) },
                       ...ENTITY_KINDS.map((k) => {
                         const on = kinds.includes(k);
                         return { label: KIND_FILTER_LABEL[k], checked: on, multi: true, disabled: Boolean(settings.filter.linksOnly), onSelect: () => set({ kinds: on ? kinds.filter((x) => x !== k) : ENTITY_KINDS.filter((x) => x === k || kinds.includes(x)) }) };
@@ -430,22 +504,21 @@ export function GraphView() {
             </Button>
           </div>
         ) : null}
-        {centerNode ? (
+        {center && data ? (
           <div className="flex flex-none flex-wrap items-center gap-2 px-4 pb-2 text-subheadline sm:px-6">
-            <span className="text-muted">Around</span>
-            <AppLink href={`/d/${centerNode.id}`} className="font-medium text-heading underline-offset-2 hover:underline">
-              {centerNode.label || "Untitled"}
-            </AppLink>
-            <div role="group" aria-label="Depth" className="ui-seg ui-well">
-              {[1, 2, 3].map((d) => (
-                <button key={d} type="button" aria-pressed={depth === d} onClick={() => (set({ depth: d }), navigate(`/graph?note=${centerNode.id}&depth=${d}`))} className="!min-h-7 px-2.5 text-subheadline">
-                  {d === 1 ? "1 step" : `${d} steps`}
-                </button>
-              ))}
-            </div>
-            <Button variant="quiet" onClick={() => (set({ center: null }), navigate("/graph"))}>
-              Show everything
+            <Button variant="secondary" size="sm" onClick={whole}>
+              <ArrowLeft size={14} aria-hidden className="-ml-1 mr-1" />
+              Whole map
             </Button>
+            <span className="text-muted">Around</span>
+            {centerNode ? (
+              <AppLink href={`/d/${centerNode.id}`} className="font-medium text-heading underline-offset-2 hover:underline">
+                {centerNode.label || "Untitled"}
+              </AppLink>
+            ) : (
+              <span className="text-heading">a note that isn’t here</span>
+            )}
+            {around ? <span className="text-footnote text-faint">{around.connections.length === 1 ? "1 connection" : `${around.connections.length} connections`}, one step out. Click a note to see why.</span> : null}
           </div>
         ) : null}
         {data?.note || data?.truncated ? (
@@ -462,18 +535,16 @@ export function GraphView() {
             {data.truncated ? <span className="block">Showing the most recently edited notes.</span> : null}
           </p>
         ) : null}
-        {groups.length ? (
-          <ul aria-label="Colours" className="flex flex-none flex-wrap gap-x-3 gap-y-1 px-4 pb-2 text-footnote text-muted sm:px-6">
-            {groups.slice(0, 16).map((g) => (
-              <li key={g.id} className="inline-flex items-center gap-1.5">
-                <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-chip" style={{ background: g.color }} />
-                {g.name}
-              </li>
-            ))}
-          </ul>
-        ) : null}
         {!data ? (
           <p className="m-auto text-subheadline text-muted">Loading Foli DNA…</p>
+        ) : center && !around ? (
+          <EmptyState
+            icon={Waypoints}
+            title="This note isn’t on this map"
+            body="It may be in another place (pick it in the sidebar’s account menu), in the Trash, or a template."
+            action={<Button onClick={whole}>Show the whole map</Button>}
+            className="m-auto"
+          />
         ) : !all.nodes.length ? (
           <EmptyState icon={Waypoints} title="No notes here yet" body="Notes and the links between them show up here." className="m-auto" />
         ) : !shown.nodes.length ? (
@@ -490,9 +561,9 @@ export function GraphView() {
               onOpen={open}
               colorFor={colorFor}
               arrows={settings.arrows}
-              clusters={settings.clusters ? clusterInfo : undefined}
-              bridges={settings.clusters ? bridgeSet : undefined}
-              suggested={suggested}
+              clusters={settings.clusters && !center ? clusterInfo : undefined}
+              bridges={settings.clusters && !center ? bridgeSet : undefined}
+              suggested={center ? [] : suggested}
               duplicates={duplicates}
               visible={visible}
               fresh={fresh?.nodes ?? null}
@@ -503,8 +574,40 @@ export function GraphView() {
               center={center}
               exportRef={exportRef}
               playLabel={playAt !== null ? new Date(playAt).toLocaleDateString(undefined, { month: "short", year: "numeric" }) : null}
+              selected={panelId}
+              onSelect={setPanel}
+              sparse={
+                around
+                  ? around.connections.length
+                    ? null
+                    : "This note isn’t connected to anything yet. Type [[ in it to link another note, and a line joins them here."
+                  : undefined
+              }
+              hidden={!center && settings.filter.hideOrphans && orphanList.length ? { count: orphanList.length, show: () => setFilter({ hideOrphans: false }) } : null}
+              overlay={{
+                topCenter: !tourDone ? <DnaTour step={tourStep} onStep={setTourStep} onDone={() => setTourDone(true)} /> : null,
+                bottomLeft: <DnaLegend shows={legendShows} open={legendOpen} onToggle={() => setLegendOpen(!legendOpen)} />,
+                bottomRight: panelId ? (
+                  <DnaNodePanel
+                    key={panelId}
+                    id={panelId}
+                    index={index}
+                    names={names}
+                    ai={ai}
+                    isCenter={panelId === center}
+                    expand={around && around.nodes.some((n) => n.id === panelId) && panelId !== center && index.byId.get(panelId)?.kind === "note" ? { on: expandedIds.has(panelId), toggle: () => toggleExpanded(panelId) } : null}
+                    onOpen={open}
+                    onCenter={mapAround}
+                    onPick={setPanel}
+                    onClose={() => setPanel(null)}
+                  />
+                ) : null,
+              }}
             />
-            {insights ? (
+            {around && center ? (
+              <DnaConnections center={center} connections={around.connections} index={index} names={names} expanded={expandedIds} onToggle={toggleExpanded} onPick={setPanel} onWhole={whole} />
+            ) : null}
+            {insights && !center ? (
               <DnaInsights
                 hubs={hubList}
                 clusters={clusterInfo.clusters}
@@ -515,7 +618,7 @@ export function GraphView() {
                 byId={new Map(all.nodes.map((n) => [n.id, n]))}
                 scope={scope}
                 full={Boolean(data.full)}
-                onCenter={(id) => navigate(`/graph?note=${id}&depth=${depth}`)}
+                onCenter={mapAround}
                 onClose={() => setInsights(false)}
               />
             ) : null}
@@ -862,6 +965,11 @@ export function GraphCanvas({
   exportRef,
   playLabel = null,
   compact = false,
+  selected: selectedProp,
+  onSelect,
+  sparse: sparseProp,
+  hidden = null,
+  overlay,
 }: {
   nodes: GraphNodeData[];
   edges: GraphEdgeData[];
@@ -887,6 +995,18 @@ export function GraphCanvas({
   playLabel?: string | null;
   /** The Inspector's small map: no zoom buttons, tips or selection. */
   compact?: boolean;
+  /**
+   * The node whose panel is open, when the page shows one (why it's connected): a click picks a node, a
+   * double-click (or Enter) opens a note. Without it a click opens a note and an entity lists its notes here.
+   */
+  selected?: string | null;
+  onSelect?: (id: string | null) => void;
+  /** What to say when the map has hardly anything in it (null: nothing; left out: the usual words). */
+  sparse?: string | null;
+  /** Unlinked notes left off the map, and how to bring them back. */
+  hidden?: { count: number; show: () => void } | null;
+  /** Cards over the map: the tips at the top, the Key bottom left, a panel bottom right. */
+  overlay?: { topCenter?: React.ReactNode; bottomLeft?: React.ReactNode; bottomRight?: React.ReactNode };
 }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -896,7 +1016,15 @@ export function GraphCanvas({
   const [focused, setFocused] = useState<string | null>(null);
   const [ring, setRing] = useState(false);
   const [stop, setStop] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [ownSelected, setOwnSelected] = useState<string | null>(null);
+  const selected = onSelect ? (selectedProp ?? null) : ownSelected;
+  const setSelected = useCallback(
+    (v: string | null | ((cur: string | null) => string | null)) => {
+      if (!onSelect) return setOwnSelected(v);
+      onSelect(typeof v === "function" ? v(selectedProp ?? null) : v);
+    },
+    [onSelect, selectedProp],
+  );
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const [offer, setOffer] = useState<{ source: string; target: string; entities: string[]; x: number; y: number } | null>(null);
@@ -1082,9 +1210,16 @@ export function GraphCanvas({
     }
     pointers.current.set(e.pointerId, now);
   };
-  /** A note opens; an entity shows (or hides) the notes that mention it. */
-  const activate = (id: string, newTab = false) => {
+  /**
+   * A note opens; an entity shows (or hides) the notes that mention it. Where the page shows a panel, a click
+   * (`pick`) opens it for that node instead, and Enter or a double-click opens the note.
+   */
+  const activate = (id: string, newTab = false, pick = false) => {
     const n = byId.get(id);
+    if (onSelect && n && (pick || n.kind !== "note") && !newTab) {
+      setSelected(id);
+      return;
+    }
     if (n?.kind === "note") {
       if (newTab) onOpen(n.id, true);
       else onOpen(n.id);
@@ -1130,11 +1265,16 @@ export function GraphCanvas({
       });
       return;
     }
-    activate(p.node, p.meta);
+    activate(p.node, p.meta, true);
   };
   const onDoubleClick = (e: React.MouseEvent) => {
     const id = (e.target as Element).closest?.("[data-node]")?.getAttribute("data-node");
-    if (!id || !pins.has(id)) return;
+    if (!id) return;
+    // A double-click opens a note (where a click shows its panel); on a pinned note it unpins it.
+    if (!pins.has(id)) {
+      if (onSelect && byId.get(id)?.kind === "note") onOpen(id, e.metaKey || e.ctrlKey);
+      return;
+    }
     const next = new Map(pins);
     next.delete(id);
     setPins(next);
@@ -1180,7 +1320,8 @@ export function GraphCanvas({
       setT((cur) => ({ ...cur, x: cur.x + dx, y: cur.y + dy }));
     } else if ((e.key === "Enter" || e.key === " ") && on) {
       e.preventDefault();
-      activate(on, e.metaKey || e.ctrlKey);
+      // Space shows why it's connected (where the page has that panel); Enter opens.
+      activate(on, e.metaKey || e.ctrlKey, e.key === " ");
     } else if (e.key === "+" || e.key === "=") zoomBy(1.25);
     else if (e.key === "-") zoomBy(0.8);
     else if (e.key === "0") refit();
@@ -1197,7 +1338,7 @@ export function GraphCanvas({
   // search's matches.
   const focus = hover ?? focused ?? selected ?? (center && byId.has(center) ? center : null);
   const near = useMemo(() => (focus ? (focusMode ? within(edges, focus, 2) : new Set([focus, ...neighbours(edges, focus)])) : null), [focus, edges, focusMode]);
-  const dimTo = focusMode ? 0.06 : 0.25;
+  const dimTo = focusMode ? 0.06 : 0.16;
   // The map's one Tab stop: the last node focused, else the best-connected one.
   const tabStop = stop && byId.has(stop) ? stop : ([...labelled][0] ?? nodes[0]?.id ?? null);
   const k = t.k;
@@ -1215,12 +1356,13 @@ export function GraphCanvas({
       if (!a || !b || !shows(e.source) || !shows(e.target)) return;
       const on = near ? near.has(e.source) && near.has(e.target) : !searching || (matches.has(e.source) && matches.has(e.target));
       const dup = dupKeys.has([e.source, e.target].sort().join(":"));
-      const special = e.kind === "contradicts" || e.kind === "supersedes" || dup || (e.inferred && e.kind !== "mention") || (arrows && e.kind === "link");
+      const shared = e.kind === "tag" || e.kind === "folder";
+      const special = e.kind === "contradicts" || e.kind === "supersedes" || dup || shared || (e.inferred && e.kind !== "mention") || (arrows && e.kind === "link");
       if (!special && on && !near) {
         quiet.push(`M${a.x.toFixed(1)} ${a.y.toFixed(1)}L${b.x.toFixed(1)} ${b.y.toFixed(1)}`);
         return;
       }
-      const stroke = e.kind === "contradicts" ? "var(--color-coral)" : e.kind === "supersedes" || dup ? "var(--color-plum)" : "var(--color-line-strong)";
+      const stroke = e.kind === "contradicts" ? "var(--color-coral)" : e.kind === "supersedes" || dup ? "var(--color-plum)" : e.kind === "suggested" ? "var(--color-accent)" : "var(--color-line-strong)";
       // An arrow ends at the target's edge, not its middle.
       let x2 = b.x;
       let y2 = b.y;
@@ -1239,7 +1381,7 @@ export function GraphCanvas({
           y2={y2}
           stroke={stroke}
           strokeWidth={e.kind === "link" ? 1.2 : 1}
-          strokeDasharray={dup ? "1 3" : e.inferred && e.kind !== "mention" ? "4 3" : undefined}
+          strokeDasharray={dup || shared ? "1 3" : e.kind === "suggested" ? "2 4" : e.inferred && e.kind !== "mention" ? "4 3" : undefined}
           vectorEffect="non-scaling-stroke"
           markerEnd={arrows && e.kind === "link" ? "url(#dna-arrow)" : undefined}
           opacity={on ? (near ? 0.9 : 0.45) : 0.07}
@@ -1254,6 +1396,23 @@ export function GraphCanvas({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edges, at, near, searching, matches, arrows, dupKeys, visible, deg, byId, k]);
+
+  // The map around a note: each line says why, at its middle (lit ones only when something is highlighted).
+  const edgeLabelLayer = useMemo(() => {
+    if (large) return null;
+    return edges.map((e, i) => {
+      const text = (e as Partial<AroundEdge>).label;
+      const a = at(e.source);
+      const b = at(e.target);
+      if (!text || !a || !b) return null;
+      if (near && !(near.has(e.source) && near.has(e.target))) return null;
+      return (
+        <text key={i} aria-hidden x={(a.x + b.x) / 2} y={(a.y + b.y) / 2 + 3.5 / k} textAnchor="middle" fontSize={10.5 / k} fill="var(--color-ink-muted)" style={{ paintOrder: "stroke", stroke: "var(--color-canvas)", strokeWidth: 3 / k }}>
+          {text}
+        </text>
+      );
+    });
+  }, [edges, at, near, k, large]);
 
   // Suggested links: dashed accent lines, each a wide invisible line that takes clicks.
   const suggestLayer = useMemo(
@@ -1330,6 +1489,8 @@ export function GraphCanvas({
     const blocked = compact ? [] : clusterShapes.map((c) => ({ x: (c.x - c.name.length * 3.6 / kk) * kk + x, y: (c.y - c.r) * kk + y - 22, w: c.name.length * 7.2, h: 16 }));
     return labelPlan(order, {
       always,
+      // Fewer labels zoomed out (they only crowded each other), every one with room zoomed in.
+      limit: always.size + labelBudget(kk, order.length),
       // Hubs may sit beside another dot only while the map is near full size (on a phone their labels collided).
       preferred: kk >= 0.7 ? labelled : undefined,
       bounds: size.w > 0 && size.h > 0 ? { x: 4, y: 4, w: size.w - 8, h: size.h - 8 } : undefined,
@@ -1428,7 +1589,7 @@ export function GraphCanvas({
   const noteCount = nodes.filter((n) => n.kind === "note").length;
   const laidOut = positions.size > 0;
   // A map with hardly anything in it: say how it fills up.
-  const sparse = compact ? null : noteCount < 3 ? "Foli DNA grows as you write. Notes show up here, and lines join the ones that link to each other." : !edges.length ? "None of these notes link to each other yet. Type [[ in a note to link another one, and a line joins them here." : null;
+  const sparse = compact ? null : sparseProp !== undefined ? sparseProp : noteCount < 3 ? "Foli DNA grows as you write. Notes show up here, and lines join the ones that link to each other." : !edges.length ? "None of these notes link to each other yet. Type [[ in a note to link another one, and a line joins them here." : null;
   const closePicked = () => {
     const id = selected;
     setSelected(null);
@@ -1440,7 +1601,7 @@ export function GraphCanvas({
         ref={wrap}
         role="application"
         aria-roledescription="graph"
-        aria-label={`Foli DNA of ${noteCount} notes and ${nodes.length - noteCount} people, projects and topics. Arrow keys move between them, Enter opens a note or shows an entity's notes, Shift and the arrow keys pan, plus and minus zoom, 0 fits. The List view shows the same map as text.`}
+        aria-label={`Foli DNA of ${noteCount} notes and ${nodes.length - noteCount} people, projects and topics. Arrow keys move between them, Enter opens a note or shows an entity's notes${onSelect ? ", Space says why a note is connected" : ""}, Shift and the arrow keys pan, plus and minus zoom, 0 fits. The List view shows the same map as text.`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -1459,6 +1620,7 @@ export function GraphCanvas({
             {clusterLayer}
             <g aria-hidden>{edgeLayer}</g>
             {suggestLayer}
+            {edgeLabelLayer}
             {nodeLayer}
             {clusterNames}
           </g>
@@ -1480,12 +1642,24 @@ export function GraphCanvas({
         <div role="tooltip" className="ui-pop pointer-events-none absolute z-10 max-w-[240px] -translate-x-1/2 rounded-control px-2.5 py-1.5 text-subheadline" style={{ left: tipAt.x, top: tipAt.y + 16 }}>
           <span className="font-medium text-heading">{tip.label || "Untitled"}</span>
           <span className="block text-footnote text-muted">
-            {tip.kind === "note" ? (tipId === focused && !hover ? "Enter opens it" : pins.has(tip.id) ? "Click to open · double-click to unpin" : "Click to open · drag to pin") : `${KIND_LABEL[tip.kind]} · ${tipId === focused && !hover ? "Enter shows its notes" : "Click for its notes"}`}
+            {tip.kind === "note"
+              ? tipId === focused && !hover
+                ? onSelect
+                  ? "Enter opens it · Space says why it’s connected"
+                  : "Enter opens it"
+                : onSelect
+                  ? pins.has(tip.id)
+                    ? "Click to see why it’s connected · double-click to unpin"
+                    : "Click to see why it’s connected · double-click to open"
+                  : pins.has(tip.id)
+                    ? "Click to open · double-click to unpin"
+                    : "Click to open · drag to pin"
+              : `${KIND_LABEL[tip.kind]} · ${tipId === focused && !hover ? "Enter shows its notes" : "Click for its notes"}`}
           </span>
         </div>
       ) : null}
       {offer ? <LinkOffer offer={offer} byId={byId} onDone={() => setOffer(null)} /> : null}
-      {entityPicked ? (
+      {entityPicked && !onSelect ? (
         <section aria-label={entityPicked.label} className="ui-pop absolute bottom-3 left-3 z-10 w-[min(300px,calc(100%-24px))] rounded-panel p-3">
           <div className="flex items-start gap-2">
             <span className="mt-1">
@@ -1510,6 +1684,17 @@ export function GraphCanvas({
           </ul>
         </section>
       ) : null}
+      {hidden && laidOut && !overlay?.bottomRight ? (
+        <p className="absolute bottom-3 right-3 z-10 whitespace-nowrap rounded-control bg-[var(--glass-hover)] px-3 py-1 text-footnote text-muted">
+          {hidden.count === 1 ? "1 unlinked note hidden." : `${hidden.count} unlinked notes hidden.`}{" "}
+          <button type="button" onClick={hidden.show} className="text-heading underline underline-offset-2">
+            Show
+          </button>
+        </p>
+      ) : null}
+      {overlay?.topCenter ? <div className="pointer-events-none absolute inset-x-0 top-3 z-30 flex justify-center px-3">{overlay.topCenter}</div> : null}
+      {overlay?.bottomLeft && laidOut ? <div className="pointer-events-none absolute bottom-3 left-3 z-10">{overlay.bottomLeft}</div> : null}
+      {overlay?.bottomRight ? <div className="pointer-events-none absolute bottom-3 right-3 z-20">{overlay.bottomRight}</div> : null}
       {picked.size && !compact ? <SelectionBar ids={[...picked]} byId={byId} onClear={() => setPicked(new Set())} /> : null}
       {!compact ? (
         <div role="group" aria-label="Zoom" className="ui-pop absolute right-3 top-3 z-10 flex flex-col gap-0.5 rounded-panel p-1">
@@ -1635,7 +1820,8 @@ function SelectionBar({ ids, byId, onClear }: { ids: string[]; byId: Map<string,
 export function DnaMini({ documentId }: { documentId: string }) {
   const { scope } = useAppState();
   const { navigate } = useAppRouter();
-  const live = useQuery(api.aiGraph.graph, { scope }) as GraphData | undefined;
+  // The note goes along, so it is in the map however long ago it was edited.
+  const live = useQuery(api.aiGraph.graph, { scope, center: documentId }) as GraphData | undefined;
   const around = useMemo(() => (live ? localGraph(live.nodes, live.edges, documentId, 1) : null), [live, documentId]);
   if (!live) return <p className="text-footnote text-muted">Loading Foli DNA…</p>;
   if (!around?.nodes.length) return <p className="text-footnote text-muted">This note isn’t in Foli DNA yet. Link it to another note with [[ and it shows here.</p>;
@@ -1648,7 +1834,7 @@ export function DnaMini({ documentId }: { documentId: string }) {
         <span>
           {around.nodes.length - 1} {around.nodes.length - 1 === 1 ? "connection" : "connections"}
         </span>
-        <AppLink href={`/graph?note=${documentId}&depth=2`} className="text-heading underline-offset-2 hover:underline">
+        <AppLink href={`/graph?note=${documentId}`} className="text-heading underline-offset-2 hover:underline">
           Open in Foli DNA
         </AppLink>
       </p>

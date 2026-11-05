@@ -307,6 +307,37 @@ export async function linkedNotes(ctx: QueryCtx, doc: Doc<"documents">): Promise
   return out;
 }
 
+/**
+ * The note a map is opened around (when it's in `scope` and live) and the notes it links to, is linked from and
+ * Foli AI relates it to, the note first. Empty when it isn't here.
+ */
+async function centerNotes(ctx: QueryCtx, publicId: string, scope: Scope): Promise<Doc<"documents">[]> {
+  const doc = await getDocumentByPublicId(ctx, publicId);
+  const here = (d: Doc<"documents">) => hasValidScope(d) && !d.inTrash && d.deletedAt === undefined && d.kind !== "collectionRow" && scopeKey(scopeOfRow(d)) === scopeKey(scope);
+  if (!doc || !here(doc)) return [];
+  const out = new Map<Id<"documents">, Doc<"documents">>([[doc._id, doc]]);
+  for (const [id, l] of await linkedNotes(ctx, doc)) out.set(id, l.doc);
+  for (const r of await ctx.db
+    .query("aiRelations")
+    .withIndex("by_source", (q) => q.eq("sourceDocumentId", doc._id))
+    .take(60)) {
+    if (r.toDocumentId && !out.has(r.toDocumentId)) {
+      const t = await ctx.db.get(r.toDocumentId);
+      if (t) out.set(t._id, t);
+    }
+  }
+  for (const r of await ctx.db
+    .query("aiRelations")
+    .withIndex("by_to_document", (q) => q.eq("toDocumentId", doc._id))
+    .take(60)) {
+    if (!out.has(r.sourceDocumentId)) {
+      const t = await ctx.db.get(r.sourceDocumentId);
+      if (t) out.set(t._id, t);
+    }
+  }
+  return [...out.values()].filter(here);
+}
+
 /** Other notes that mention this note's entities, with the names they share. */
 export async function sharedEntityNotes(ctx: QueryCtx, doc: Doc<"documents">): Promise<Map<Id<"documents">, string[]>> {
   const out = new Map<Id<"documents">, string[]>();
@@ -589,7 +620,9 @@ export type GraphEdgeKind = "link" | "mention" | StoredRelationKind;
  * by `kinds`) and inferred relations. Capped (GRAPH_LIMITS); `truncated` says something was left out.
  */
 export const graph = query({
-  args: { scope: vScopeArg, kinds: v.optional(v.array(vEntityKind)) },
+  // `center`: a note (public id) the map is opened around ("Foli DNA of this note"). It and the notes it links
+  // to, is linked from and Foli AI relates it to are always in the map, however long ago they were edited.
+  args: { scope: vScopeArg, kinds: v.optional(v.array(vEntityKind)), center: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const profile = await requireProfile(ctx);
     const { scope } = await resolveScope(ctx, profile, args.scope);
@@ -624,7 +657,12 @@ export const graph = query({
     if (recent.length === GRAPH_LIMITS.noteScan) truncated = true;
     const byId = new Map<Id<"documents">, Doc<"documents">>();
     const byPublic = new Map<string, Doc<"documents">>();
-    for (const d of recent) {
+    // The note the map is opened around comes first, with its neighbours: it was left out (an empty map) when it
+    // wasn't among the most recently edited notes.
+    const around = args.center ? await centerNotes(ctx, args.center, scope) : [];
+    const centerLinks = around.length ? await linkedNotes(ctx, around[0]!) : new Map<Id<"documents">, { out: boolean; in: boolean; doc: Doc<"documents"> }>();
+    for (const d of [...around, ...recent]) {
+      if (byId.has(d._id)) continue;
       if (d.kind === "collectionRow" || !(await openable(reader, d))) continue;
       if (byId.size >= GRAPH_LIMITS.notes) {
         truncated = true;
@@ -664,6 +702,22 @@ export const graph = query({
       const t = tagPublic.get(dt.tagId);
       if (t) noteNode.get(d.publicId)!.tagIds!.push(t.id);
     }
+    // The center's notes' tags, even past the scan.
+    for (const d of around) {
+      if (!byId.has(d._id)) continue;
+      const node = noteNode.get(d.publicId)!;
+      for (const dt of await ctx.db
+        .query("documentTags")
+        .withIndex("by_document", (q) => q.eq("documentId", d._id))
+        .take(50)) {
+        if (!tagPublic.has(dt.tagId)) {
+          const t = await ctx.db.get(dt.tagId);
+          tagPublic.set(dt.tagId, t ? { id: t.publicId, name: t.name || "Locked tag", color: t.color ?? null } : null);
+        }
+        const t = tagPublic.get(dt.tagId);
+        if (t && !node.tagIds!.includes(t.id)) node.tagIds!.push(t.id);
+      }
+    }
     const tags = [...tagPublic.values()].filter((t): t is NonNullable<typeof t> => t !== null).sort((a, b) => a.name.localeCompare(b.name));
     folders.sort((a, b) => a.name.localeCompare(b.name));
     const suggested: { source: string; target: string; entities: string[] }[] = [];
@@ -679,6 +733,13 @@ export const graph = query({
       const s = byId.get(l.sourceDocumentId);
       const t = byPublic.get(l.targetPublicId);
       if (s && t) addEdge(s.publicId, t.publicId, "link", false, l._creationTime);
+    }
+    // The center's own links, even past the scan.
+    for (const [, l] of centerLinks) {
+      const c = around[0]!;
+      if (!byId.has(l.doc._id)) continue;
+      if (l.out) addEdge(c.publicId, l.doc.publicId, "link", false);
+      if (l.in) addEdge(l.doc.publicId, c.publicId, "link", false);
     }
 
     if (full) {

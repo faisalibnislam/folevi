@@ -2114,6 +2114,8 @@ function useDocumentActions({
   const duplicate = useMutation(api.documents.duplicate);
   const toast = useToast();
   const { navigate } = useAppRouter();
+  // Foli DNA of this note, wherever the map is (a library on this device has it without Related notes).
+  const canDna = useCanCall(api.aiGraph.graph);
   // Several places (docs/MULTI_ACCOUNT_PLAN.md §7.3): another account, or the library on this device.
   const places = usePlaces();
   const elsewhere = placesAvailable() && places.places.some((p) => p.id !== places.current);
@@ -2131,7 +2133,7 @@ function useDocumentActions({
         ...(onComments ? [{ label: "Comments", icon: <MessageSquare size={14} />, onSelect: onComments }] : []),
         ...(onInfo ? [{ label: "Info", icon: <Info size={14} />, onSelect: onInfo }] : []),
         ...(onRelated ? [{ label: "Related notes", icon: <Waypoints size={14} />, onSelect: onRelated }] : []),
-        ...(onRelated ? [{ label: "Foli DNA of this note", icon: <Waypoints size={14} />, onSelect: () => navigate(`/graph?note=${documentId}`) }] : []),
+        ...(canDna && kind !== "template" ? [{ label: "Foli DNA of this note", icon: <Waypoints size={14} />, onSelect: () => navigate(`/graph?note=${documentId}`) }] : []),
         ...(reviewCards !== undefined ? [{ label: reviewCards ? `Review ${cardCount(reviewCards)} in this note` : "Review this note’s cards", icon: <Layers size={14} />, onSelect: () => navigate(`/review?note=${documentId}`) }] : []),
         ...(onHistory ? [{ label: "Version history…", icon: <History size={14} />, onSelect: onHistory }] : []),
         ...(onToggleEditors ? [{ label: showingEditors ? "Hide editors" : "Show editors", icon: <Users size={14} />, onSelect: onToggleEditors }] : []),

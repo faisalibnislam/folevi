@@ -98,3 +98,24 @@ Recommended order (as it was): top to bottom.
   rules (`lib/graph/analysis.ts` labelPlan, fitPoints, clusterCircle, shortLabel; labels worked out on the view at
   rest, measured in the page's font), draws cluster names over the nodes, and has the same two rows and Show menu
   (`GraphView.tsx`). Tests: `test/foli-dna.test.ts` and the Show menu in `e2e/ai-graph.spec.ts`.
+
+## The owner's report of 6 November 2026: "Foli DNA of this note" and "hard to understand"
+- Bug: "Foli DNA of this note" showed an empty map or the whole one. Three causes: the map holds the 500 most recently
+  edited notes, so an older note wasn't in it (now `aiGraph.graph { center }` always includes the note and the notes
+  it links to, is linked from and Foli AI relates it to; the engine's `graph` view passes it, revision 30); the map
+  around a note read the filtered map, so a folder, tag or date filter or hidden unlinked notes could leave the note
+  itself out (it now reads the whole map); and on the Mac, iPad and iPhone the route lost its query
+  (`FrameRoute(path: "/graph?note=…")` became `/graph`), so the screen never knew the note. A library on this device
+  also never offered the item (it was tied to Related notes); it now follows whether Foli DNA is there.
+- The map around a note (`lib/graph/neighbourhood.ts`, `DnaGuide.swift` DnaAround): the note in the middle, one hop
+  out, each line labelled with why (links to, links here, mentions, similar or related, could link, #tag, same
+  folder; up to 8 notes per shared tag or folder), a Connections list beside it (one click opens a note, + shows
+  that note's own connections), and Whole map to go back. The filters and clusters don't apply there.
+- The Key (bottom left, folded on phones, remembered): dot colours, sizes and line styles, only what the map draws.
+- First-time tips: three, remembered once seen or skipped; the ? button shows them again.
+- A click on a note opens a panel saying in words why it's connected ("Links to 3 notes, linked from 2 and shares
+  the tag #pricing with 4."), with those notes listed; double-click or Enter opens the note (Space shows the panel).
+- Calmer by default: unlinked notes and Foli AI's weaker lines (similar, related, refers to) start hidden, with a
+  "N unlinked notes hidden. Show" note; fewer labels when zoomed out; the rest fade more on hover.
+- Tests: `test/foli-dna-around.test.ts`, `tests/convex/ai-graph.test.ts` (an older note past the cap),
+  `e2e/foli-dna-local.spec.ts` (local mode), `DnaAroundTests.swift` (route, map, words, pictures).

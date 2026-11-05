@@ -32,7 +32,15 @@ export interface DnaFilter {
   linksOnly?: boolean;
   /** Leave out notes with no connections. */
   hideOrphans?: boolean;
+  /**
+   * Leave out Foli AI's weaker lines between two notes (similar, related, refers to): the map was too busy with
+   * them. Contradicts and replaces stay (they ask for something to be done), and so do mentions.
+   */
+  hideAiLines?: boolean;
 }
+
+/** Foli AI's lines between notes that `hideAiLines` leaves out. */
+export const isWeakAiLine = (e: { kind: string; inferred: boolean }) => e.inferred && (e.kind === "similar" || e.kind === "related" || e.kind === "references");
 
 /**
  * The graph with a filter applied: notes that pass it, the entities still joined to one of them, and the edges
@@ -47,7 +55,7 @@ export function filterGraph<N extends DnaNode, E extends DnaEdge>(nodes: readonl
     (!tags || (n.tagIds ?? []).some((t) => tags.has(t))) &&
     (f.editedSince == null || (n.updatedAt ?? 0) >= f.editedSince);
   const notes = new Set(nodes.filter((n) => n.kind === "note" && notePass(n)).map((n) => n.id));
-  let kept = edges.filter((e) => (!f.linksOnly || isWritten(e)) && (notes.has(e.source) || notes.has(e.target)));
+  let kept = edges.filter((e) => (!f.linksOnly || isWritten(e)) && !(f.hideAiLines && isWeakAiLine(e)) && (notes.has(e.source) || notes.has(e.target)));
   const entities = new Set<string>();
   if (!f.linksOnly) {
     for (const e of kept) {
@@ -275,7 +283,8 @@ export interface DnaSettings {
   depth?: number;
 }
 
-export const DEFAULT_SETTINGS: DnaSettings = { filter: {}, colorBy: "kind", arrows: false, clusters: true, spacing: 1, pull: 1, center: null, depth: 1 };
+/** A fresh map is calmer: notes with no links and Foli AI's weaker lines start hidden (the Show menu brings them back). */
+export const DEFAULT_SETTINGS: DnaSettings = { filter: { hideOrphans: true, hideAiLines: true }, colorBy: "kind", arrows: false, clusters: true, spacing: 1, pull: 1, center: null, depth: 1 };
 
 /** Settings read back from storage (or a saved view), anything unknown or out of range dropped. */
 export function cleanSettings(raw: unknown): DnaSettings {
@@ -290,6 +299,7 @@ export function cleanSettings(raw: unknown): DnaSettings {
       editedSince: typeof f.editedSince === "number" ? f.editedSince : null,
       linksOnly: f.linksOnly === true,
       hideOrphans: f.hideOrphans === true,
+      hideAiLines: f.hideAiLines === true,
     },
     kinds: strs(r.kinds),
     colorBy: r.colorBy === "folder" || r.colorBy === "tag" ? r.colorBy : "kind",
@@ -375,6 +385,16 @@ export function fitPoints(points: Iterable<Point>, clusterPoints: readonly (read
     if (c) out.push({ x: c.x - c.r, y: c.y - c.r - 22 }, { x: c.x + c.r, y: c.y + c.r });
   }
   return out;
+}
+
+/**
+ * How many labels the map may show at a zoom (beyond the ones that must show): fewer when zoomed out, where they
+ * only crowded each other; every one that has room once zoomed in to read.
+ */
+export function labelBudget(k: number, count: number): number {
+  if (k < 0.45) return Math.min(count, 12);
+  if (k < 0.8) return Math.min(count, 30);
+  return count;
 }
 
 export type Box = { x: number; y: number; w: number; h: number };

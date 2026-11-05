@@ -15,12 +15,14 @@ type Args = Record<string, unknown>;
 const ENTITY_KINDS = ["person", "project", "organization", "topic", "decision"] as const;
 
 export function parseGraphArgs(args: Args): Args {
-  only(args, ["space", "kinds", "spacing", "pull"]);
+  only(args, ["space", "kinds", "spacing", "pull", "center"]);
   const out: Args = {};
   if (args.spacing !== undefined) out.spacing = num(args, "spacing", { min: 0.5, max: 2 });
   if (args.pull !== undefined) out.pull = num(args, "pull", { min: 0.25, max: 3 });
   const space = optionalId(args, "space");
   if (space !== undefined) out.space = space;
+  const center = optionalId(args, "center");
+  if (center !== undefined) out.center = center;
   if (args.kinds !== undefined) {
     if (!Array.isArray(args.kinds) || args.kinds.some((k) => typeof k !== "string" || !(ENTITY_KINDS as readonly string[]).includes(k))) throw new BridgeError("invalid_args", "kinds: people, projects, organizations, topics or decisions.");
     out.kinds = [...new Set(args.kinds as string[])];
@@ -97,7 +99,8 @@ const graph: ValueViewDef = {
   create: (ctx, args) => {
     const space = requireSpace(ctx.deps(), args.space as string | undefined);
     const kinds = args.kinds as string[] | undefined;
-    const src = source<GraphData>(ctx, api.aiGraph.graph, { scope: space.scope, kinds: kinds && kinds.length < ENTITY_KINDS.length ? kinds : undefined }, space.scope);
+    const center = args.center as string | undefined;
+    const src = source<GraphData>(ctx, api.aiGraph.graph, { scope: space.scope, kinds: kinds && kinds.length < ENTITY_KINDS.length ? kinds : undefined, ...(center ? { center } : {}) }, space.scope);
     const saved = source<ViewsData>(ctx, api.graphViews.list, { scope: space.scope }, space.scope);
     const spacing = (args.spacing as number | undefined) ?? 1;
     const pull = (args.pull as number | undefined) ?? 1;

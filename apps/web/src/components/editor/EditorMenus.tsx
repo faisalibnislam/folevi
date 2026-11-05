@@ -166,6 +166,10 @@ export function requestSpecialInsert(editor: Editor, kind: SpecialInsert, placeh
 }
 
 type Anchor = { left: number; top: number; bottom: number };
+/** How far down a popover opened from the text may reach up to: just under the tab strip (4px inset + 44px + 8px). */
+const TOP_BAR_CLEARANCE = 56;
+/** The least gap between a popover and the window's sides. */
+const EDGE_INSET = 12;
 
 function Popover({
   anchor,
@@ -239,17 +243,19 @@ function Popover({
     // Above the on-screen keyboard, where there is one; in the iPhone app, clear of the app's own bars too.
     const room = phoneRoom();
     const bottom = room ? room.bottom : visibleBottom();
-    const ceiling = room ? room.top : 8;
+    // Never over the window's top bar (the tab strip, 48px with its inset) on the desktop.
+    const ceiling = room ? room.top : TOP_BAR_CLEARANCE;
     const w = room && dock ? window.innerWidth - 16 : width;
-    if (side.current === null) side.current = below + h > bottom - 8 && at.top - h - 6 >= ceiling ? "above" : room && bottom - below - 8 < at.top - 6 - ceiling ? "above" : "below";
-    // A list that scrolls fits the room under the line instead of sliding up over it (a phone with its
-    // keyboard up has little room below), or over it on a phone when there's more room there.
+    // It never covers the line it was opened from: below the line when it fits there, else above it when it fits
+    // there, else on the side with more room, held shorter (scrolling) to fit that side.
     const roomBelow = bottom - below - 8;
     const roomAbove = at.top - 6 - ceiling;
-    const shrink = side.current === "below" && h > roomBelow && roomBelow >= 150;
-    const shrinkAbove = Boolean(room) && side.current === "above" && h > roomAbove;
-    const top = side.current === "above" ? Math.max(ceiling, at.top - (shrinkAbove ? roomAbove : h) - 6) : shrink ? below : Math.min(below, Math.max(ceiling, bottom - h - 8));
-    setPos({ left: Math.max(8, Math.min(room && dock ? 8 : at.left, window.innerWidth - w - 8)), top, width: w, maxHeight: shrink ? roomBelow : shrinkAbove ? roomAbove : undefined });
+    if (side.current === null) side.current = h <= roomBelow ? "below" : h <= roomAbove ? "above" : roomBelow >= roomAbove ? "below" : "above";
+    const shrink = side.current === "below" && h > roomBelow;
+    const shrinkAbove = side.current === "above" && h > roomAbove;
+    const top = side.current === "above" ? Math.max(ceiling, at.top - (shrinkAbove ? roomAbove : h) - 6) : below;
+    // At least 12px from the window's sides (lined up with what opened it when that's further in).
+    setPos({ left: Math.max(EDGE_INSET, Math.min(room && dock ? 8 : at.left, window.innerWidth - w - EDGE_INSET)), top, width: w, maxHeight: shrink ? roomBelow : shrinkAbove ? roomAbove : undefined });
   }, [at, width, dock, children, ref]);
   if (!anchor) return null;
   return (
@@ -981,9 +987,10 @@ export function EditorMenus({
             .sort((a, b) => slashRank(a) - slashRank(b))
             .map((i) => ({ ...i, group: undefined }))
         : [
+            // (Not the ones in the group right under Suggested: "Text" twice, one above the other, read as a repeat.)
             ...SLASH_SUGGESTED.flatMap((id) => {
               const item = slashItems.find((i) => i.id === id);
-              return item ? [{ ...item, id: `suggested:${id}`, group: "Suggested" }] : [];
+              return item && item.group !== slashItems[0]?.group ? [{ ...item, id: `suggested:${id}`, group: "Suggested" }] : [];
             }),
             ...slashItems,
           ]

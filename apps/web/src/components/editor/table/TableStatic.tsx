@@ -30,7 +30,8 @@ export function StaticCell({ cell, shown }: { cell: InlineNode[]; shown: Evaluat
 
 /** Cell classes shared by the editor and read-only pages. */
 export function cellClass(shown: EvaluatedCell | undefined, header: boolean, total: boolean): string {
-  return `${shown?.numeric && !header ? "fb-cell-number" : ""} ${shown?.error ? "fb-cell-has-error" : ""} ${total ? "fb-cell-total" : ""}`;
+  // Numbers line up on the right; dates (numbers to the formulas) read as text, on the left like the rest.
+  return `${shown?.numeric && shown.kind !== "date" && !header ? "fb-cell-number" : ""} ${shown?.error ? "fb-cell-has-error" : ""} ${total ? "fb-cell-total" : ""}`;
 }
 
 /** A table read-only (shared pages, version previews): results of formulas, formats, and its saved view. */

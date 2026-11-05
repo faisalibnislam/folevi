@@ -305,12 +305,12 @@ function TileButton({ tile, editor, disabled }: { tile: Tile; editor: Editor | n
       aria-label={tile.name ?? tile.label}
       title={tile.description ?? tile.label}
       {...handlers}
-      className={`group flex min-w-0 touch-none select-none flex-col items-center gap-1.5 rounded-control p-0.5 disabled:opacity-45 ${disabled ? "" : "cursor-grab active:cursor-grabbing"}`}
+      className={`group flex min-w-0 touch-none select-none flex-col items-center gap-1.5 rounded-control p-0.5 disabled:opacity-45 ${disabled ? "" : "cursor-pointer active:cursor-grabbing"}`}
     >
       <span className={`${PICTURE} ${disabled ? "" : PICTURE_LIVE}`} aria-hidden>
         {tile.picture}
       </span>
-      <span className={`line-clamp-2 w-full break-words px-0.5 text-center text-footnote font-medium leading-tight text-muted ${disabled ? "" : "group-hover:text-ink"}`}>
+      <span className={`line-clamp-2 min-h-[2lh] w-full break-words px-0.5 text-center text-footnote font-medium leading-tight text-muted ${disabled ? "" : "group-hover:text-ink"}`}>
         {tile.label}
       </span>
     </button>

@@ -85,6 +85,9 @@ const TONES: Record<string, string> = {
   coral: "bg-sunken text-heading",
 };
 
+/** Why Groups and Decorations are off: they apply to text blocks only (not a table cell, an image or code). */
+const BLOCK_OFF_HINT = "Put the cursor in text, a list or a quote to use these.";
+
 export function FormatPanel({ editor, disabled }: { editor: Editor | null; disabled: boolean }) {
   const palette = useNotePalette();
   const [, force] = useState(0);
@@ -317,6 +320,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
             Card <PanelTop size={15} aria-hidden />
           </button>
         </div>
+        {blockOff && !disabled ? <p className="mt-1.5 px-1 text-footnote text-muted">{BLOCK_OFF_HINT}</p> : null}
       </section>
 
       <section className="space-y-1.5" aria-label="Text and block formatting">
@@ -387,6 +391,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
             <span className="rounded-chip bg-[var(--glass-active)] px-3 py-1 shadow-[inset_0_0_0_1px_var(--glass-border)]">Block</span>
           </button>
         </div>
+        {blockOff && !disabled ? <p className="mt-1.5 px-1 text-footnote text-muted">{BLOCK_OFF_HINT}</p> : null}
       </section>
 
       <details className="group rounded-chip bg-sunken/50 px-2.5 py-2">

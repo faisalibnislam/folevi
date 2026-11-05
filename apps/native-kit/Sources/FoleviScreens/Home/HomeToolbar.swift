@@ -42,7 +42,7 @@ public struct HomeTrailingPill: View {
                 }
                 Button { navigator.open(.allFolders, nil) } label: { Label("All folders", systemImage: "folder") }
                 if model.graphOn {
-                    Button { navigator.open(.graph, nil) } label: { Label("Graph", systemImage: "point.3.connected.trianglepath.dotted") }
+                    Button { navigator.open(.graph, nil) } label: { Label("Foli DNA", systemImage: "point.3.connected.trianglepath.dotted") }
                 }
                 #if os(macOS)
                 Divider()

@@ -52,12 +52,14 @@ final class PaletteModel {
     #endif
 
     private var actions: [Item] {
-        [
+        var all: [Item] = [
             .action(id: "new", label: "New document", hint: "⌘⌥N", icon: .plus, ai: false) { [frame] in frame.newNote() },
             .action(id: "tasks", label: "Go to Tasks · Today", hint: nil, icon: .squareCheckBig, ai: false) { [frame] in frame.open(.tasks(.today)) },
             .action(id: "calendar", label: "Go to Calendar", hint: nil, icon: .calendarDays, ai: false) { [frame] in frame.open(.calendar(nil)) },
             .action(id: "review", label: "Go to Reviews", hint: nil, icon: .layers, ai: false) { [frame] in frame.open(.web("/review")) },
             .action(id: "changes", label: "Go to Changes", hint: nil, icon: .fileDiff, ai: false) { [frame] in frame.open(.changes) },
+            // Foli DNA (/graph), where this place has it (the web's palette).
+            .action(id: "graph", label: "Go to Foli DNA", hint: nil, icon: .waypoints, ai: false) { [frame] in frame.open(.web("/graph")) },
             .action(id: "all", label: "Go to Home", hint: nil, icon: .house, ai: false) { [frame] in frame.open(.home) },
             .action(id: "trash", label: "Open Trash", hint: nil, icon: .trash, ai: false) { [frame] in frame.open(.notes(.trash)) },
             .action(id: "settings", label: "Open Settings", hint: nil, icon: .settings, ai: false) { [frame] in frame.host?.frameOpenSettings(section: "account") },
@@ -65,6 +67,8 @@ final class PaletteModel {
                 Task { _ = try? await frame.client.command(.settingsUpdate(appearance: dark ? .light : .dark)) }
             },
         ]
+        if frame.session.value?.capabilities.graph != true { all.removeAll { $0.id == "a:graph" } }
+        return all
     }
 
     var items: [Item] {

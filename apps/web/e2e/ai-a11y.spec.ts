@@ -76,12 +76,12 @@ test("every Foli AI surface has no serious accessibility violations, light and d
 
     // The graph, then its list.
     await page.goto(`${APP}/graph`);
-    await expect(page.getByRole("application", { name: /Graph of \d+ notes/ })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("application", { name: /Foli DNA of \d+ notes/ })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("button", { name: /Harbour plans, note/ })).toBeVisible({ timeout: 30_000 });
     problems.push(...(await scan(page, `${scheme} graph`)));
     await page.getByRole("group", { name: "View" }).getByRole("button", { name: "List" }).click();
     problems.push(...(await scan(page, `${scheme} graph list`)));
-    await page.getByRole("group", { name: "View" }).getByRole("button", { name: "Graph" }).click();
+    await page.getByRole("group", { name: "View" }).getByRole("button", { name: "Map" }).click();
 
     // Settings > Foli AI.
     await page.goto(`${APP}/settings/ai`);
@@ -166,7 +166,7 @@ test("keyboard: focus comes back when panels close, the graph moves node to node
 
   // The graph: Tab reaches one node, arrow keys move between nodes, Enter opens a note.
   await page.goto(`${APP}/graph`);
-  const graph = page.getByRole("application", { name: /Graph of \d+ notes/ });
+  const graph = page.getByRole("application", { name: /Foli DNA of \d+ notes/ });
   await expect(graph).toBeVisible({ timeout: 30_000 });
   const nodes = graph.getByRole("button");
   await expect(nodes.first()).toBeVisible({ timeout: 30_000 });

@@ -31,7 +31,7 @@ export const MAC_MENU_COMMANDS = [
   "format.bulleted-list", "format.numbered-list", "format.checklist", "format.indent", "format.outdent", "format.move-up", "format.move-down", "format.duplicate", "format.style",
   "note.star", "note.archive", "note.move", "note.duplicate", "note.copy-link", "note.history", "note.lock", "note.trash",
   "view.sidebar", "view.inspector", "view.focus", "view.cards", "view.list", "view.appearance-light", "view.appearance-dark", "view.appearance-system",
-  "go.back", "go.forward", "go.home", "go.today", "go.calendar", "go.inbox", "go.search", "go.ask-ai", "go.next-tab", "go.previous-tab",
+  "go.back", "go.forward", "go.home", "go.today", "go.calendar", "go.inbox", "go.dna", "go.search", "go.ask-ai", "go.next-tab", "go.previous-tab",
   "go.tab-1", "go.tab-2", "go.tab-3", "go.tab-4", "go.tab-5", "go.tab-6", "go.tab-7", "go.tab-8", "go.tab-9",
   "help.help", "help.shortcuts", "help.whats-new", "help.feedback",
 ] as const;

@@ -1,4 +1,4 @@
-// Graph (apps/web/src/components/views/GraphView.tsx as Folevi for Mac shows it): the space's notes and the
+// Foli DNA, route /graph (apps/web/src/components/views/GraphView.tsx as Folevi for Mac and iPad shows it): the space's notes and the
 // links between them, and where the plan has them, people, projects, organizations, topics and decisions.
 // Positions come from the bridge's `graph` view, laid out by the web's own force layout (lib/graph/layout.ts),
 // so the picture is the web's; drawn here with the web's maths (fit, zoom around a point, radii, shapes).
@@ -134,7 +134,7 @@ struct GraphScreen: View {
         Group {
             if !model.available {
                 VStack(spacing: 0) {
-                    MoreEmptyState(icon: .waypoints, title: "The graph isn’t available here yet", message: "It isn’t part of a library on your devices yet. Links between notes still work everywhere.")
+                    MoreEmptyState(icon: .waypoints, title: "Foli DNA isn’t available here yet", message: "It isn’t part of a library on your devices yet. Links between notes still work everywhere.")
                     Spacer(minLength: 0)
                 }
             } else {
@@ -154,7 +154,7 @@ struct GraphScreen: View {
                 segmented
                 HStack(spacing: 6) {
                     WebIconView(.search, size: 14).foregroundStyle(faint)
-                    TextField("Find in the graph", text: Bindable(model).query).textFieldStyle(.plain).webText(.role(.subheadline))
+                    TextField("Find in Foli DNA", text: Bindable(model).query).textFieldStyle(.plain).webText(.role(.subheadline))
                 }
                 .padding(.horizontal, 10)
                 .frame(minWidth: 160, maxWidth: 320)
@@ -176,7 +176,7 @@ struct GraphScreen: View {
                 .padding(.horizontal, 24).padding(.bottom, 8)
             }
             if v == nil {
-                Text(verbatim: "Loading the graph…").webText(.role(.subheadline)).foregroundStyle(muted).frame(maxWidth: .infinity, maxHeight: .infinity)
+                Text(verbatim: "Loading Foli DNA…").webText(.role(.subheadline)).foregroundStyle(muted).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if nodes.isEmpty {
                 MoreEmptyState(icon: .waypoints, title: "No notes here yet", message: "Notes and the links between them show up here.").frame(maxHeight: .infinity)
             } else if model.list {
@@ -189,7 +189,7 @@ struct GraphScreen: View {
 
     private var segmented: some View {
         HStack(spacing: 0) {
-            segment("Graph", on: !model.list) { model.list = false }
+            segment("Map", on: !model.list) { model.list = false }
             segment("List", on: model.list) { model.list = true }
         }
         .padding(2)
@@ -268,7 +268,7 @@ struct GraphCanvasView: View {
         let focus = hover ?? focusedNode ?? selected
         let near: Set<String>? = focus.map { Set([$0]).union(GraphMath.neighbours(value.edges, $0)) }
         let notes = value.nodes.filter { $0.kind == "note" }.count
-        let sparse = notes < 3 ? "Your graph grows as you write. Notes show up here, and lines join the ones that link to each other." : value.edges.isEmpty ? "None of these notes link to each other yet. Type [[ in a note to link another one, and a line joins them here." : nil
+        let sparse = notes < 3 ? "Foli DNA grows as you write. Notes show up here, and lines join the ones that link to each other." : value.edges.isEmpty ? "None of these notes link to each other yet. Type [[ in a note to link another one, and a line joins them here." : nil
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
                 Canvas { ctx, _ in
@@ -568,6 +568,34 @@ struct GraphListView: View {
         }
     }
 
+    /// "Linked: Packing list   Mentions: Sam (person)", with the notes as links (handled by the row's openURL).
+    private func connections(_ e: Entry, muted: Color, faint: Color, ink: Color) -> AttributedString {
+        var out = AttributedString()
+        for (i, (c, edge)) in e.connections.prefix(24).enumerated() {
+            if i > 0 { out += AttributedString("   ") }
+            var label = AttributedString("\(GraphMath.edgeLabel[edge] ?? "Related"): ")
+            label.foregroundColor = faint
+            out += label
+            var name = AttributedString(c.label.isEmpty ? "Untitled" : c.label)
+            if c.kind == "note" {
+                name.foregroundColor = ink
+                var parts = URLComponents()
+                parts.scheme = "folevi-graph-note"
+                parts.host = c.id
+                name.link = parts.url
+            } else {
+                name.foregroundColor = muted
+            }
+            out += name
+            if c.kind != "note" {
+                var kind = AttributedString(" (\((GraphMath.kindLabel[c.kind] ?? "").lowercased()))")
+                kind.foregroundColor = faint
+                out += kind
+            }
+        }
+        return out
+    }
+
     private func row(_ e: Entry) -> some View {
         let heading = moreVar("color-heading", scheme), muted = moreVar("color-ink-muted", scheme), faint = moreVar("color-ink-faint", scheme)
         return VStack(alignment: .leading, spacing: 4) {
@@ -589,10 +617,14 @@ struct GraphListView: View {
             if e.connections.isEmpty {
                 Text(verbatim: "Not connected yet").webText(.role(.subheadline)).foregroundStyle(faint)
             } else {
-                let text = e.connections.prefix(24).map { c, edge in
-                    "\(GraphMath.edgeLabel[edge] ?? "Related"): \(c.label.isEmpty ? "Untitled" : c.label)\(c.kind == "note" ? "" : " (\((GraphMath.kindLabel[c.kind] ?? "").lowercased()))")"
-                }.joined(separator: "   ")
-                Text(verbatim: text).webText(.role(.subheadline)).foregroundStyle(muted)
+                // Each connected note is a link to it, as the web's list (AppLink); entities are plain text.
+                Text(connections(e, muted: muted, faint: faint, ink: moreVar("color-ink", scheme))).webText(.role(.subheadline))
+                    .tint(moreVar("color-ink", scheme))
+                    .environment(\.openURL, OpenURLAction { url in
+                        guard url.scheme == "folevi-graph-note" else { return .systemAction }
+                        open(url.host() ?? url.lastPathComponent)
+                        return .handled
+                    })
             }
         }
     }

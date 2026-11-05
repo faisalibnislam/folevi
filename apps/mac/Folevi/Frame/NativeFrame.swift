@@ -386,6 +386,7 @@ enum FrameCommands {
         case "go.today": m.open(.tasks(.today))
         case "go.inbox": m.open(.tasks(.inbox))
         case "go.calendar": m.open(.calendar(nil))
+        case "go.dna": m.open(.web("/graph"))
         case "go.ask-ai":
             m.askAI()
         case "go.next-tab": m.nextTab(1)
@@ -412,6 +413,7 @@ enum FrameCommands {
         case "go.forward": return frame.model.history.canGoForward
         case "file.reopen-closed-tab": return !frame.model.tabs.closed.isEmpty
         case "go.ask-ai": return frame.model.session.value?.capabilities.ai != false
+        case "go.dna": return frame.model.session.value?.capabilities.graph != false
         default: return nil
         }
     }

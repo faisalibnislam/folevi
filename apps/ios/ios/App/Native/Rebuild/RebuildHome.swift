@@ -100,7 +100,7 @@ struct RebuildHomeScreen: View {
             PhoneMenuEntry(.item("All folders", icon: .files)) { frame.open(FrameRoute(path: "/folders")) },
         ]
         if graph && home.graphOn {
-            entries.append(PhoneMenuEntry(.item("Graph", icon: .waypoints)) { frame.open(FrameRoute(path: "/graph")) })
+            entries.append(PhoneMenuEntry(.item("Foli DNA", icon: .waypoints)) { frame.open(FrameRoute(path: "/graph")) })
         }
         menus.show(entries, from: anchor, side: .bottom, align: .end)
     }

@@ -254,14 +254,14 @@ function OpenInbox() {
 function Graph() {
   if (useCanCall(api.aiGraph.graph)) {
     return (
-      <Suspense fallback={<ViewChrome title="Graph">{null}</ViewChrome>}>
+      <Suspense fallback={<ViewChrome title="Foli DNA">{null}</ViewChrome>}>
         <GraphView />
       </Suspense>
     );
   }
   return (
-    <ViewChrome title="Graph">
-      <EmptyState icon={Waypoints} title="The graph isn’t available here yet" body="It isn’t part of a library on your devices yet. Links between notes still work everywhere." />
+    <ViewChrome title="Foli DNA">
+      <EmptyState icon={Waypoints} title="Foli DNA isn’t available here yet" body="It isn’t part of a library on your devices yet. Links between notes still work everywhere." />
     </ViewChrome>
   );
 }

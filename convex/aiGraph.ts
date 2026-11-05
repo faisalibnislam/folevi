@@ -71,7 +71,7 @@ const SWEEP_PAGE = 50;
 const SWEEP_STEP_MS = 60_000;
 
 /** What people see where the plan doesn't include the graph (explicit links still show). */
-export const PRO_NOTE = "The full graph, with topics, people and similar notes, is part of Pro.";
+export const PRO_NOTE = "The full Foli DNA, with topics, people and similar notes, is part of Pro.";
 export const AI_OFF_NOTE = "AI is off, so only links show here.";
 
 const vEntityKind = v.union(...ENTITY_KINDS.map((k) => v.literal(k)));

@@ -49,9 +49,9 @@ test("the graph shows notes and links, the list reads it as text, and a note lis
 
   // The graph page, from the sidebar (a note's sidebar lists its pages, so from Home).
   await page.getByRole("link", { name: "Home", exact: true }).first().click();
-  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Graph", exact: true }).click();
+  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Foli DNA", exact: true }).click();
   await page.waitForURL(/\/graph$/);
-  await expect(page.getByRole("application", { name: /Graph of \d+ notes/ })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("application", { name: /Foli DNA of \d+ notes/ })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/The full graph, with topics, people and similar notes, is part of Pro/)).toBeVisible();
   // No entity filters below Pro.
   await expect(page.getByRole("group", { name: "Show" })).toHaveCount(0);
@@ -62,11 +62,11 @@ test("the graph shows notes and links, the list reads it as text, and a note lis
   await page.getByRole("group", { name: "View" }).getByRole("button", { name: "List" }).click();
   await expect(page.getByRole("list", { name: "Connected to Trip planning" }).getByRole("link", { name: "Packing list" })).toBeVisible();
   await expect(page.getByRole("list", { name: "Connected to Packing list" }).getByRole("link", { name: "Trip planning" })).toBeVisible();
-  await page.getByRole("searchbox", { name: "Find in the graph" }).fill("packing");
+  await page.getByRole("searchbox", { name: "Find in Foli DNA" }).fill("packing");
   await expect(page.getByRole("main").getByRole("link", { name: "Trip planning", exact: true })).toHaveCount(1);
   await expect(page.getByText(/1 found/)).toBeVisible();
   // A note in the list opens it.
-  await page.getByRole("searchbox", { name: "Find in the graph" }).fill("");
+  await page.getByRole("searchbox", { name: "Find in Foli DNA" }).fill("");
   await page.getByRole("main").getByRole("link", { name: "Trip planning", exact: true }).first().click();
   await page.waitForURL(new RegExp(`${source}$`));
 

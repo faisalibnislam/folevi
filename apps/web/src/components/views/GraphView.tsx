@@ -76,12 +76,12 @@ export function GraphView() {
   const matches = useMemo(() => matchNodes(nodes, query), [nodes, query]);
 
   return (
-    <ViewChrome title="Graph" tabTitle="Graph">
+    <ViewChrome title="Foli DNA" tabTitle="Foli DNA">
       <div className="flex h-full min-h-0 flex-col">
         <div className="flex flex-none flex-wrap items-center gap-2 px-4 pb-2 pt-1 sm:px-6">
           <div role="group" aria-label="View" className="ui-seg ui-well">
             <button type="button" aria-pressed={view === "graph"} onClick={() => setView("graph")} className="!min-h-8 px-3 text-subheadline">
-              Graph
+              Map
             </button>
             <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")} className="!min-h-8 px-3 text-subheadline">
               List
@@ -89,7 +89,7 @@ export function GraphView() {
           </div>
           <label className="ui-input flex h-8 min-w-[10rem] flex-1 items-center gap-1.5 rounded-chip px-2.5 sm:max-w-xs">
             <Search size={14} aria-hidden className="flex-none text-faint" />
-            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find in the graph" aria-label="Find in the graph" className="min-w-0 flex-1 bg-transparent text-subheadline outline-none" />
+            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find in Foli DNA" aria-label="Find in Foli DNA" className="min-w-0 flex-1 bg-transparent text-subheadline outline-none" />
           </label>
           {data?.full ? (
             <div role="group" aria-label="Show" className="flex flex-wrap items-center gap-1">
@@ -129,7 +129,7 @@ export function GraphView() {
           </p>
         ) : null}
         {!data ? (
-          <p className="m-auto text-subheadline text-muted">Loading the graph…</p>
+          <p className="m-auto text-subheadline text-muted">Loading Foli DNA…</p>
         ) : !nodes.length ? (
           <EmptyState icon={Waypoints} title="No notes here yet" body="Notes and the links between them show up here." className="m-auto" />
         ) : view === "list" ? (
@@ -536,7 +536,7 @@ export function GraphCanvas({ nodes, edges, matches, searching, onOpen }: { node
   const noteCount = nodes.filter((n) => n.kind === "note").length;
   const laidOut = positions.size > 0;
   // A graph with hardly anything in it: say how it fills up.
-  const sparse = noteCount < 3 ? "Your graph grows as you write. Notes show up here, and lines join the ones that link to each other." : !edges.length ? "None of these notes link to each other yet. Type [[ in a note to link another one, and a line joins them here." : null;
+  const sparse = noteCount < 3 ? "Foli DNA grows as you write. Notes show up here, and lines join the ones that link to each other." : !edges.length ? "None of these notes link to each other yet. Type [[ in a note to link another one, and a line joins them here." : null;
   const closePicked = () => {
     const id = selected;
     setSelected(null);
@@ -549,7 +549,7 @@ export function GraphCanvas({ nodes, edges, matches, searching, onOpen }: { node
         ref={wrap}
         role="application"
         aria-roledescription="graph"
-        aria-label={`Graph of ${noteCount} notes and ${nodes.length - noteCount} people, projects and topics. Arrow keys move between them, Enter opens a note or shows an entity's notes, Shift and the arrow keys pan, plus and minus zoom, 0 fits. The List view shows the same graph as text.`}
+        aria-label={`Foli DNA of ${noteCount} notes and ${nodes.length - noteCount} people, projects and topics. Arrow keys move between them, Enter opens a note or shows an entity's notes, Shift and the arrow keys pan, plus and minus zoom, 0 fits. The List view shows the same map as text.`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -566,7 +566,7 @@ export function GraphCanvas({ nodes, edges, matches, searching, onOpen }: { node
       </div>
       {!laidOut ? (
         <p role="status" className="pointer-events-none absolute inset-0 m-auto h-fit text-center text-subheadline text-muted">
-          Laying out the graph…
+          Laying out Foli DNA…
         </p>
       ) : null}
       {laidOut && sparse ? <p className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(340px,calc(100%-80px))] rounded-control bg-[var(--glass-hover)] px-3 py-2 text-subheadline leading-snug text-muted">{sparse}</p> : null}

@@ -134,7 +134,7 @@ export function IphoneHome() {
             more={[
               { label: "New folder", icon: <FolderPlus size={18} />, onSelect: openNewFolder },
               { label: "All folders", icon: <Files size={18} />, onSelect: () => navigate("/folders") },
-              ...(graph ? [{ label: "Graph", icon: <Waypoints size={18} />, onSelect: () => navigate("/graph") }] : []),
+              ...(graph ? [{ label: "Foli DNA", icon: <Waypoints size={18} />, onSelect: () => navigate("/graph") }] : []),
             ]}
           />
         ),

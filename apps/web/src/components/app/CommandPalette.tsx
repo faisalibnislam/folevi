@@ -4,9 +4,10 @@ import { useAction, useQuery } from "convex/react";
 import { useLocalSearch } from "@/lib/hooks/useLocalNotes";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ArrowRight, CalendarDays, CheckSquare, FileDiff, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2 } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckSquare, FileDiff, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2, Waypoints } from "lucide-react";
 import { fileTextLabel, flattenFolders, type FileTextSource } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
+import { useCanCall } from "@/lib/mode";
 import { useFolderTree } from "@/lib/app/folders";
 import { startPointerDrag } from "@/lib/app/dragSession";
 import { openNextInNewTab } from "@/lib/app/tabs";
@@ -107,6 +108,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const { openAsk } = useShell();
   const aiOn = useAiEnabled();
+  // Foli DNA (/graph), where this backend has it (Sidebar.tsx).
+  const graph = useCanCall(api.aiGraph.graph);
   const actions: Item[] = useMemo(
     () => [
       { kind: "action", id: "new", label: "New document", hint: "⌘⌥N", icon: <Plus size={16} />, run: () => void createDocument({}) },
@@ -114,6 +117,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       { kind: "action", id: "calendar", label: "Go to Calendar", icon: <CalendarDays size={16} />, run: () => navigate("/calendar") },
       { kind: "action", id: "review", label: "Go to Reviews", icon: <Layers size={16} />, run: () => navigate("/review") },
       { kind: "action", id: "changes", label: "Go to Changes", icon: <FileDiff size={16} />, run: () => navigate("/changes") },
+      ...(graph ? [{ kind: "action" as const, id: "graph", label: "Go to Foli DNA", icon: <Waypoints size={16} />, run: () => navigate("/graph") }] : []),
       { kind: "action", id: "all", label: "Go to Home", icon: <Home size={16} />, run: () => navigate("/documents") },
       { kind: "action", id: "trash", label: "Open Trash", icon: <Trash2 size={16} />, run: () => navigate("/trash") },
       { kind: "action", id: "settings", label: "Open Settings", icon: <Settings size={16} />, run: () => navigate("/settings/account") },
@@ -125,7 +129,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         run: () => setAppearance(appearance === "dark" ? "light" : "dark"),
       },
     ],
-    [createDocument, navigate, appearance, setAppearance],
+    [createDocument, navigate, appearance, setAppearance, graph],
   );
 
   const q = query.trim().toLowerCase();

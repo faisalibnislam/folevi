@@ -157,7 +157,7 @@ public enum FrameRoute: Hashable, Sendable {
         case .web(let p):
             if p.hasPrefix("/settings") { return "Settings" }
             if p.hasPrefix("/help") { return "Help" }
-            if p.hasPrefix("/graph") { return "Graph" }
+            if p.hasPrefix("/graph") { return "Foli DNA" }
             if p.hasPrefix("/review") { return "Reviews" }
             if p.hasPrefix("/shared/") { return "Shared folder" }
             return "Folevi"

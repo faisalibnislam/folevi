@@ -170,6 +170,8 @@ public struct WebSidebar: View {
         return VStack(alignment: .leading, spacing: 2) {
             item(.home, icon: .house, title: "Home")
             if caps?.ai ?? false { item(.web("/ai"), icon: .wandSparkles, title: "Work with Foli AI", glyph: AnyView(AiMarkGlyph(size: 16))) }
+            // Foli DNA (/graph), where this place has it (Sidebar.tsx: after Foli AI).
+            if caps?.graph ?? false { item(.web("/graph"), icon: .waypoints, title: "Foli DNA") }
             ZStack(alignment: .trailing) {
                 item(.notes(.starred), icon: .bookmark, title: "Bookmarks")
                 if !starred.isEmpty {

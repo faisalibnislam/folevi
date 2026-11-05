@@ -300,7 +300,7 @@ export default function FoliPage() {
           <Extra icon={<Lightbulb size={17} />} title="Suggestions under a note" />
           <Extra icon={<Brain size={17} />} title="Memory you control" />
           <Extra icon={<Mail size={17} />} title="Daily or weekly digests" />
-          <Extra icon={<Network size={17} />} title="A graph of your notes" plans="Pro, Pro AI and paid teams" />
+          <Extra icon={<Network size={17} />} title="Foli DNA, a map of your notes" plans="Pro, Pro AI and paid teams" />
           <Extra icon={<Search size={17} />} title="Search by meaning" plans="Pro, Pro AI and paid teams" />
         </ul>
       </Card>

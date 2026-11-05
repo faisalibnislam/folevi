@@ -140,7 +140,7 @@ final class HomeScreenController: HostedScreen<AnyView> {
             Task { await self.home.refresh() }
         })
         if home.graphOn {
-            items.append(UIAction(title: "Graph", image: UIImage(systemName: "point.3.connected.trianglepath.dotted")) { [weak self] _ in self?.actions.open(.graph) })
+            items.append(UIAction(title: "Foli DNA", image: UIImage(systemName: "point.3.connected.trianglepath.dotted")) { [weak self] _ in self?.actions.open(.graph) })
         }
         return items
     }

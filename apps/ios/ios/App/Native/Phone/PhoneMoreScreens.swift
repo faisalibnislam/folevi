@@ -77,7 +77,7 @@ extension PhoneFrameController {
         case .settingsPrivacy: "Privacy"
         case .settingsDeleteAccount: "Delete account"
         case .reviews: "Reviews"
-        case .graph: "Graph"
+        case .graph: "Foli DNA"
         }
     }
 

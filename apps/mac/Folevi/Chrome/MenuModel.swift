@@ -262,6 +262,7 @@ enum MenuModel {
                 page("go.today", "Today’s Tasks", k("t", [.cmd, .opt])),
                 page("go.calendar", "Calendar", k("c", [.cmd, .opt])),
                 page("go.inbox", "Inbox"),
+                page("go.dna", "Foli DNA"),
                 // ⌘K is Open Quickly (the same palette).
                 page("go.search", "Search…"),
                 page("go.ask-ai", "Ask Foli AI", k("j")),

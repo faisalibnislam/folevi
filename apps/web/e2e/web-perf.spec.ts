@@ -576,7 +576,7 @@ test.describe("the website's speed", { tag: "@web-perf" }, () => {
     for (const [label, name, until] of [
       ["Tasks", "Tasks", shown("main h1", "Tasks")],
       ["Calendar", "Calendar", shown("main [data-date]")],
-      ["Graph", "Graph", shown("main canvas, main svg")],
+      ["Foli DNA", "Foli DNA", shown("main canvas, main svg")],
       ["Home", "Home", shown("main a[href^='/d/']")],
     ] as const) {
       await clearNames(page);

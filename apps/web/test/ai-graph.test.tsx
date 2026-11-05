@@ -179,7 +179,7 @@ describe("the Related list", () => {
   test("quiet when there's nothing, with the plan note below Pro", () => {
     const { host, unmount } = render(
       <RelatedList
-        related={{ full: false, note: "The full graph, with topics, people and similar notes, is part of Pro.", items: [] }}
+        related={{ full: false, note: "The full Foli DNA, with topics, people and similar notes, is part of Pro.", items: [] }}
         duplicates={{ full: false, note: null, items: [] }}
         contradictions={{ full: false, note: null, items: [] }}
         onOpen={() => undefined}

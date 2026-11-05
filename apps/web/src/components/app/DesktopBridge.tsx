@@ -278,6 +278,8 @@ function useMenuCommands(): (id: string) => void {
           return () => navigate("/calendar");
         case "go.inbox":
           return () => navigate("/inbox");
+        case "go.dna":
+          return () => navigate("/graph");
         case "go.ask-ai":
           return ai ? () => shell.openAsk() : null;
         case "go.next-tab":

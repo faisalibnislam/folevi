@@ -526,7 +526,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div className="mt-3 space-y-0.5">
           <NavItem href="/documents" icon={<Home size={16} />} label="Home" onNavigate={onNavigate} />
           {aiOn ? <NavItem href="/ai" icon={<AiIcon size={16} />} label="Work with Foli AI" onNavigate={onNavigate} /> : null}
-          {graph ? <NavItem href="/graph" icon={<Waypoints size={16} />} label="Graph" onNavigate={onNavigate} /> : null}
+          {graph ? <NavItem href="/graph" icon={<Waypoints size={16} />} label="Foli DNA" onNavigate={onNavigate} /> : null}
           <div className="group/starred relative">
             <NavItem href="/starred" icon={<Bookmark size={16} />} label="Bookmarks" onNavigate={onNavigate} />
             {starred?.page.length ? (

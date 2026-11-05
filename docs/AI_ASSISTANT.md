@@ -155,7 +155,8 @@ As built (milestone 5):
 Derived per note in the background for eligible scopes: entities (people, projects, organizations, topics,
 decisions) and relations (links, references, related, contradicts, supersedes), with the note and block they came
 from. Explicit links come from `documentLinks`; inferred ones are marked as inferred. Rebuilt when a note changes;
-removed with it. A graph view page shows notes and entities the person can open.
+removed with it. The Foli DNA page (route `/graph`; called Graph until November 2026) shows notes and entities the
+person can open, natively drawn on the Mac and iPad (FoleviMac `GraphScreen.swift`) from the engine's `graph` view.
 
 ### Memory, suggestions, digests
 
@@ -319,7 +320,7 @@ As built (milestone 9, part B). The assistant is called Foli AI in the interface
   colours) takes the app's own colours (`.ui-app-colors` in globals.css), so the inline composer and the
   transcript preview keep their contrast on any note theme. `e2e/ai-a11y.spec.ts` runs axe over every AI
   surface in light and dark.
-- Graph: nodes are sized by connections, never drawn under 4.5 px and hit within 12 px, the 12
+- Foli DNA (the graph page): nodes are sized by connections, never drawn under 4.5 px and hit within 12 px, the 12
   best-connected are labelled (others on hover, focus, search or zoom), entities have a shape per kind
   (people diamonds, projects squares, organizations hexagons, topics triangles, decisions pentagons), edges
   are quiet until a node is highlighted. The layout runs a few milliseconds per frame, at most 300 steps,

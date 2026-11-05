@@ -272,7 +272,7 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         case .shared: nav.pushViewController(SharedScreenController(model: SharedListModel(client: model.client, feedback: feedback), navigator: navigator, feedback: feedback), animated: true)
         case .changes: nav.pushViewController(ChangesScreenController(model: ChangesModel(client: model.client, feedback: feedback), navigator: navigator, feedback: feedback), animated: true)
         case .reviews: nav.pushViewController(PageScreenController(page: .reviews, title: "Reviews", model: model, pageHost: pageHost), animated: true)
-        case .graph: nav.pushViewController(PageScreenController(page: .graph, title: "Graph", model: model, pageHost: pageHost), animated: true)
+        case .graph: nav.pushViewController(PageScreenController(page: .graph, title: "Foli DNA", model: model, pageHost: pageHost), animated: true)
         case .search: openSearch("")
         case .notifications: presentNotifications(from: nil)
         case .places: presentAccount(from: nil)

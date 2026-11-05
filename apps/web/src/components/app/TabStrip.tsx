@@ -38,7 +38,7 @@ const ARROW = "grid h-9 w-6 flex-none place-items-center rounded-control text-mu
 /** A view's tab name until the view names it (the same names as the sidebar). */
 const VIEW_NAMES: Record<string, string> = {
   ai: "Foli AI",
-  graph: "Graph",
+  graph: "Foli DNA",
   starred: "Bookmarks",
   unsorted: "Drafts",
   notes: "All notes",

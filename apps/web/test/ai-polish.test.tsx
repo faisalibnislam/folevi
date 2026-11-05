@@ -116,7 +116,7 @@ describe("empty and plan-gated states", () => {
   test("a graph with few notes, or none linked, says how it grows", () => {
     const notes = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `n${i}`, kind: "note", label: `Note ${i}` }));
     const few = render(createElement(GraphCanvas, { nodes: notes(2), edges: [], matches: new Set<string>(), searching: false, onOpen: vi.fn() }));
-    expect(few.host.textContent).toContain("Your graph grows as you write");
+    expect(few.host.textContent).toContain("Foli DNA grows as you write");
     const unlinked = render(createElement(GraphCanvas, { nodes: notes(4), edges: [], matches: new Set<string>(), searching: false, onOpen: vi.fn() }));
     expect(unlinked.host.textContent).toContain("Type [[ in a note to link another one");
   });

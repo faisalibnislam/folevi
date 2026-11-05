@@ -15,10 +15,10 @@ test("Back and Forward work like a browser's, across tabs, and are greyed out wi
   await expect(page).toHaveURL(/\/d\//);
   const note = page.url();
   await page.getByRole("link", { name: "Home", exact: true }).first().click();
-  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Graph", exact: true }).click();
+  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Foli DNA", exact: true }).click();
   await expect(page).toHaveURL(/\/graph$/);
   const strip = page.getByRole("navigation", { name: "Open pages" });
-  await expect(strip.getByRole("link", { name: "Graph" })).toBeVisible();
+  await expect(strip.getByRole("link", { name: "Foli DNA" })).toBeVisible();
   await expect(strip.getByRole("link", { name: /Trip Sketch/ })).toBeVisible();
 
   // Back: Home, then the note (its tab); Forward: Home again.

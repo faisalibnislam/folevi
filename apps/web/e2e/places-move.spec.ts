@@ -5,7 +5,7 @@
 //   E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 npx playwright test e2e/places-move.spec.ts --project account
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { APP, completeOnboarding, confirmEmail, PASSWORD, showFolders, switcher, uniqueEmail, waitForSaved } from "./helpers";
+import { APP, completeOnboarding, confirmEmail, PASSWORD, showFolders, switcher, uniqueEmail, waitForSaved, noteMenuItem } from "./helpers";
 
 async function openSwitcher(page: Page) {
   await showFolders(page);
@@ -53,7 +53,7 @@ test("move a note to the other account from its menu, then a takeout from one ac
   // Ben moves a note into Ana's Personal from the note's own menu.
   await makeNote(page, "Ferry times", "The 7:40 from the harbour.");
   await page.getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Move to another place…" }).click();
+  await (await noteMenuItem(page, "Move to another place…")).click();
   const dialog = page.getByRole("dialog", { name: "Move or copy notes" });
   await expect(dialog.getByRole("combobox", { name: "To" })).toHaveText(new RegExp(`${ana.name}: Personal`));
   await expect(dialog.getByRole("combobox", { name: "What" })).toHaveText(/Folders and notes I pick/);

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { completeOnboarding, createAccount, newPerson, pick, showFolders, uniqueEmail, waitForSaved, openShare } from "./helpers";
+import { completeOnboarding, createAccount, newPerson, pick, showFolders, uniqueEmail, waitForSaved, openShare, noteMenuItem } from "./helpers";
 import { folderLink, nav, newFolder } from "./folderDragHelpers";
 
 // Folder sharing (docs/SHARING.md): a folder shared with someone reaches every note in it, notes added later
@@ -89,7 +89,7 @@ test("share a folder: later notes follow, the note says where access comes from,
   await owner.page.goto(laterUrl);
   const moveOut = async () => {
     await owner.page.getByRole("button", { name: "Document actions" }).click();
-    await owner.page.getByRole("menuitem", { name: "Move…" }).click();
+    await (await noteMenuItem(owner.page, "Move…")).click();
     await owner.page.getByRole("dialog", { name: /^Move “/ }).getByRole("option", { name: /No folder \(Drafts\)/ }).click();
     const warning = owner.page.getByRole("dialog", { name: "Move and stop sharing?" });
     await expect(warning).toContainText("Folder Friend will no longer see this note");

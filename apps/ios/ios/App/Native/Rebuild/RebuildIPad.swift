@@ -240,7 +240,14 @@ extension RebuildFrameController {
         guard let shortcut = FoleviShortcut.matching(command) else { return }
         switch shortcut.input {
         case "n": wide ? desk.newNote() : model.newNote()
-        case "k": wide ? CommandPalette.show(desk) : frame.open(FrameRoute(path: "/search"))
+        case "k":
+            if wide {
+                CommandPalette.show(desk)
+            } else {
+                // What's typed before the search field has the focus waits for it, out of the note (F04).
+                EarlyKeys.start(in: view.window)
+                frame.open(FrameRoute(path: "/search"))
+            }
         case "a": openLink(DeepLink.tasksURL)
         case "j": wide ? desk.askAI() : RebuildFrame.ai.ask()  // (the phone: the sheet, as the web's openAsk)
         case "t": openLink(DeepLink.todayURL)

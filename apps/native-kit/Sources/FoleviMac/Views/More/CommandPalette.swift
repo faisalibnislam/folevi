@@ -20,6 +20,8 @@ final class PaletteModel {
     var search: SearchModel
     let recent: ValueStore<RecentViewedValue>
     var active = 0
+    /// Keys typed after ⌘K before the field had the focus (EarlyKeys), handed to it once it has.
+    @ObservationIgnored var early: EarlyKeys?
 
     enum Item: Identifiable {
         case note(id: String, title: String, snippet: String?, updatedAt: Double?, blockId: String?, meaning: Bool)
@@ -34,6 +36,23 @@ final class PaletteModel {
 
         var isNote: Bool { if case .note = self { true } else { false } }
         var isMeaning: Bool { if case .note(_, _, _, _, _, let m) = self { m } else { false } }
+
+        /// What VoiceOver says for the result (F05): its title, then what it is.
+        var accessibilityName: String {
+            switch self {
+            case .note(_, let title, _, _, _, let meaning): "\(title.isEmpty ? "Untitled" : title), \(meaning ? "document found by meaning" : "document")"
+            case .action(_, let label, _, _, _, _): "\(label), command"
+            }
+        }
+
+        /// The snippet, or when it was edited, or the command's shortcut, after the name.
+        var accessibilityDetail: String {
+            switch self {
+            case .note(_, _, let snippet, let updatedAt, _, _):
+                if let snippet { snippet } else if let updatedAt { "Edited \(AgeText.relative(Date(timeIntervalSince1970: updatedAt / 1000)))" } else { "" }
+            case .action(_, _, let hint, _, _, _): hint.map { "Shortcut \($0)" } ?? ""
+            }
+        }
     }
 
     init(frame: FrameModel) {
@@ -117,6 +136,8 @@ public enum CommandPalette {
         FrameSheets.present(frame, top: top) { close in
             CommandPaletteView(model: model, close: close)
         }
+        // What's typed from now on waits for the field's focus, never reaching the note underneath (F04).
+        if let window = FrameSheets.window(for: frame) { model.early = EarlyKeys.start(in: window) }
     }
 }
 
@@ -147,9 +168,19 @@ struct CommandPaletteView: View {
                                 .id(item.id)
                                 .onHover { if $0 { model.active = i } }
                                 .onTapGesture { choose(item) }
+                                // Each result on its own for VoiceOver (F05): its title and kind, whether it's
+                                // the selected one, and opening it.
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(item.accessibilityName)
+                                .accessibilityValue(item.accessibilityDetail)
+                                .accessibilityAddTraits(i == model.active ? [.isButton, .isSelected] : .isButton)
+                                .accessibilityIdentifier("palette.result.\(i)")
+                                .accessibilityAction { choose(item) }
                         }
                     }
                     .padding(list.padding.edgeInsets)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel("Results")
                 }
                 .frame(maxHeight: (FrameSheets.window(for: model.frame)?.contentView?.bounds.height ?? 820) * 0.55)
                 .fixedSize(horizontal: false, vertical: true)
@@ -160,7 +191,13 @@ struct CommandPaletteView: View {
         .task {
             try? await Task.sleep(for: .milliseconds(60))
             fieldFocused = true
+            #if os(macOS)
+            await model.early?.settle { [model] text in model.search.text += text }
+            #else
+            await model.early?.settle { [model] text in model.search.text = text + model.search.text }
+            #endif
         }
+        .onDisappear { model.early?.cancel() }
         .onChange(of: model.search.text) { _, _ in model.active = 0 }
         .accessibilityIdentifier("sheet.palette")
     }
@@ -253,6 +290,8 @@ struct CommandPaletteView: View {
         Text(verbatim: title.uppercased()).webText(style.text).lineLimit(1).foregroundStyle(style.color.color)
             .padding(style.padding.edgeInsets)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityLabel(title)
+            .accessibilityAddTraits(.isHeader)
     }
 
     private func row(_ item: PaletteModel.Item, selected: Bool) -> some View {

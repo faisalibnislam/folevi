@@ -83,6 +83,17 @@ public struct PhoneSearchScreen: View {
             focused = !Self.noKeyboard
             if viewed == nil { viewed = model.client.watch(.recentViewed(limit: 8)) }
         }
+        .task {
+            // Typed on a keyboard after ⌘K, before the field had the focus (F04): it goes first in the field.
+            #if os(iOS)
+            await EarlyKeys.current?.settle { [model] text in model.text = text + model.text }
+            #endif
+        }
+        .onDisappear {
+            #if os(iOS)
+            EarlyKeys.current?.cancel()
+            #endif
+        }
         .onSubmit { model.remember() }
     }
 
@@ -208,6 +219,9 @@ public struct PhoneSearchScreen: View {
             model.remember()
             openNote(hit.id)
         }
+        // Its title and what it is, then the snippet (F05).
+        .accessibilityLabel("\(hit.title.isEmpty ? "Untitled" : hit.title), \(hit.matchIn == "meaning" ? "note found by meaning" : "note")")
+        .accessibilityValue(hit.snippet.split(whereSeparator: \.isWhitespace).joined(separator: " "))
     }
 
     private func recentRow(_ row: RecentViewedRow) -> some View {
@@ -218,6 +232,8 @@ public struct PhoneSearchScreen: View {
             }
             .padding(.vertical, 10)
         } action: { openNote(row.id) }
+        .accessibilityLabel("\(row.title.isEmpty ? "Untitled" : row.title), note")
+        .accessibilityValue("Edited \(Self.relative(row.updatedAt))")
     }
 
     private func actionRow(_ a: PhoneSearchAction) -> some View {

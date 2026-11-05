@@ -2,7 +2,7 @@
 
 import { useAction, useQuery } from "convex/react";
 import { useLocalSearch } from "@/lib/hooks/useLocalNotes";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { ArrowRight, CalendarDays, CheckSquare, FileDiff, FileText, House as Home, Layers, Moon, Plus, Search, Settings, Sun, Trash2, Waypoints } from "lucide-react";
 import { fileTextLabel, flattenFolders, type FileTextSource } from "@folevi/editor-schema";
@@ -87,13 +87,17 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     };
   }, [open, meaningOn, allPlaces, slow, scope, byMeaning]);
 
-  useEffect(() => {
+  // Opened in the same pass as the ⌘K that asked for it, the field focused before the next key arrives: every
+  // key typed right after ⌘K lands in the search, none in the note underneath (QA audit F04).
+  const inputRef = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
     const d = dialogRef.current;
     if (!d) return;
     if (open && !d.open) {
       setQuery("");
       setActive(0);
       d.showModal();
+      inputRef.current?.focus();
     }
     if (!open && d.open) d.close();
   }, [open]);
@@ -213,6 +217,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             <span className={iphone ? "flex h-11 min-w-0 flex-1 items-center gap-2 rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_6.5%,transparent)] px-3" : "contents"}>
             <Search size={iphone ? 19 : 18} className={iphone ? "flex-none text-faint" : "text-heading"} aria-hidden />
             <input
+              ref={inputRef}
               autoFocus
               role="combobox"
               aria-expanded
@@ -331,6 +336,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                       id={`${listId}-${i}`}
                       role="option"
                       aria-selected={selected}
+                      aria-label={paletteOptionLabel(item)}
+                      aria-description={paletteOptionDetail(item)}
                       className={cls}
                       onMouseEnter={() => setActive(i)}
                       onClick={() => run(item)}
@@ -381,6 +388,21 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       ) : null}
     </dialog>
   );
+}
+
+/** A result's name for assistive tech (QA audit F05): its title, then what it is. */
+export function paletteOptionLabel(item: { kind: "action"; label: string } | { kind: "doc"; title: string; meaning?: boolean }): string {
+  if (item.kind === "action") return `${item.label}, command`;
+  return `${item.title || "Untitled"}, ${item.meaning ? "document found by meaning" : "document"}`;
+}
+
+/** What follows the name: the snippet, the place, or when it was edited; a command's shortcut. */
+export function paletteOptionDetail(item: { kind: "action"; hint?: string } | { kind: "doc"; snippet?: string; updatedAt?: number; place?: string }): string | undefined {
+  if (item.kind === "action") return item.hint ? `Shortcut ${item.hint}` : undefined;
+  const place = item.place ? `${item.place}, ` : "";
+  if (item.snippet) return place + item.snippet;
+  if (item.updatedAt) return `${place}Edited ${formatRelative(item.updatedAt)}`;
+  return item.place;
 }
 
 function FragmentWithHeader({ header, children }: { header: React.ReactNode; children: React.ReactNode }) {

@@ -20,6 +20,8 @@ public enum FrameSheets {
         let onClose: (() -> Void)?
         /// (The iPad's hosting controller, kept while its view shows.)
         var keep: AnyObject?
+        /// The window's resize notifications (the backdrop drawn again).
+        var observers: [Any] = []
         init(host: NSView, monitor: Any?, onClose: (() -> Void)?) {
             self.host = host
             self.monitor = monitor
@@ -45,7 +47,8 @@ public enum FrameSheets {
 
     /// Shows `content` as the frame's dialog (replacing one already shown): in the middle of the window (the owner,
     /// 5 November 2026), or attached at `top` (the command palette, a popover at `leading`).
-    static func present<Content: View>(_ model: FrameModel, top: CGFloat? = nil, leading: CGFloat? = nil, onClose: (() -> Void)? = nil, @ViewBuilder content: (_ close: @escaping @MainActor () -> Void) -> Content) {
+    /// `scrim`: the window behind dims (the command palette: it stands apart from the sidebar's labels, MAC-45).
+    static func present<Content: View>(_ model: FrameModel, top: CGFloat? = nil, leading: CGFloat? = nil, scrim: Bool = false, onClose: (() -> Void)? = nil, @ViewBuilder content: (_ close: @escaping @MainActor () -> Void) -> Content) {
         dismiss(model, notify: false)
         #if os(macOS)
         guard let window = window(for: model), let root = window.contentView else { return }
@@ -55,10 +58,11 @@ public enum FrameSheets {
         #endif
         let key = ObjectIdentifier(model)
         let close: @MainActor () -> Void = { [weak model] in if let model { FrameSheets.dismiss(model) } }
-        let layer = SheetLayer(top: top, leading: leading, close: close, content: content(close))
-            .environment(\.sheetBackdrop, SheetBackdropImage(image: blurredSnapshot(of: root)))
+        let backdrop = SheetBackdropImage(image: blurredSnapshot(of: root))
+        let layer = SheetLayer(top: top, leading: leading, scrim: scrim, close: close, content: content(close))
+            .environment(\.sheetBackdrop, backdrop)
         #if os(macOS)
-        let host = SheetHostingView(rootView: AnyView(layer))
+        let host = SheetHostingView(rootView: AnyView(layer.macClickThrough()))
         host.safeAreaRegions = []
         host.frame = root.bounds
         host.autoresizingMask = [.width, .height]
@@ -66,7 +70,19 @@ public enum FrameSheets {
         // The dialog takes the keys (its field gets the focus, as `autoFocus` gives it).
         window.makeFirstResponder(host)
         let keep: AnyObject? = nil
+        // The window resized under the dialog (a zoom, the end of a live resize, full screen): the frost is drawn again
+        // from the window as it now is, without the dialog (MAC-44).
+        let resized: @MainActor () -> Void = { [weak host, weak root, weak window] in
+            guard let host, let root, window?.inLiveResize == false else { return }
+            host.isHidden = true
+            backdrop.box.image = blurredSnapshot(of: root)
+            host.isHidden = false
+        }
+        let observers = [NSWindow.didResizeNotification, NSWindow.didEndLiveResizeNotification].map { name in
+            NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { _ in MainActor.assumeIsolated { resized() } }
+        }
         #else
+        let observers: [Any] = []
         let controller = UIHostingController(rootView: AnyView(layer))
         controller.safeAreaRegions = []
         controller.view.backgroundColor = .clear
@@ -88,6 +104,7 @@ public enum FrameSheets {
         }
         let entry = Shown(host: host, monitor: monitor, onClose: onClose)
         entry.keep = keep
+        entry.observers = observers
         shown[key] = entry
     }
 
@@ -96,6 +113,7 @@ public enum FrameSheets {
         for (key, s) in shown {
             shown[key] = nil
             if let m = s.monitor { NSEvent.removeMonitor(m) }
+            s.observers.forEach(NotificationCenter.default.removeObserver)
             s.host.removeFromSuperview()
         }
     }
@@ -151,6 +169,7 @@ public enum FrameSheets {
     static func dismiss(_ model: FrameModel, notify: Bool = true) {
         let key = ObjectIdentifier(model)
         guard let s = shown.removeValue(forKey: key) else { return }
+        s.observers.forEach(NotificationCenter.default.removeObserver)
         if let m = s.monitor { NSEvent.removeMonitor(m) }
         fadeAway(s.host)
         if notify { s.onClose?() }
@@ -175,7 +194,7 @@ public enum FrameSheets {
 
 #if os(macOS)
 /// Takes every click over the window while a dialog shows (the page behind is inert, as under a modal <dialog>).
-final class SheetHostingView: NSHostingView<AnyView> {
+final class SheetHostingView: ClickThroughHostingView<AnyView> {
     /// Going away: no longer takes clicks.
     var fading = false
     override func hitTest(_ point: NSPoint) -> NSView? { fading ? nil : (super.hitTest(point) ?? self) }
@@ -189,15 +208,23 @@ private struct SheetLayer<Content: View>: View {
     let top: CGFloat?
     /// A popover's left edge (nil: centred, as a dialog).
     let leading: CGFloat?
+    /// A dimmed backdrop (MAC-45); clear otherwise, as the web's Mac dialogs are.
+    var scrim = false
     let close: @MainActor () -> Void
     let content: Content
+    @Environment(\.colorScheme) private var scheme
+    @State private var dimmed = false
+
+    /// The palette's scrim: the window behind a step back, stronger in the dark (the sidebar's light labels).
+    static func scrimOpacity(_ scheme: ColorScheme) -> Double { scheme == .dark ? 0.32 : 0.1 }
 
     var body: some View {
         let alignment: Alignment = leading != nil ? .topLeading : top == nil ? .center : .top
         ZStack(alignment: alignment) {
-            Color.black.opacity(0.0001)
+            Color.black.opacity(scrim && dimmed ? Self.scrimOpacity(scheme) : 0.0001)
                 .contentShape(Rectangle())
                 .onTapGesture { close() }
+                .onAppear { withAnimation(.easeOut(duration: WebMotion.sheetIn)) { dimmed = true } }
             // A dialog drops in from above (`mac-sheet-in`), a popover rises (`mac-pop-in`).
             Group {
                 if leading == nil { content.webSheetIn() } else { content.webPopIn() }
@@ -208,7 +235,18 @@ private struct SheetLayer<Content: View>: View {
     }
 }
 
-struct SheetBackdropImage: @unchecked Sendable { let image: NSImage? }
+/// The blurred window behind a dialog. It's redrawn when the window changes size under the dialog, so the frost
+/// still lines up with and covers the window (MAC-44).
+struct SheetBackdropImage: @unchecked Sendable {
+    @Observable final class Box: @unchecked Sendable {
+        var image: NSImage?
+        init(_ image: NSImage?) { self.image = image }
+    }
+
+    let box: Box
+    init(image: NSImage?) { box = Box(image) }
+    var image: NSImage? { box.image }
+}
 
 private struct SheetBackdropKey: EnvironmentKey {
     static let defaultValue = SheetBackdropImage(image: nil)
@@ -274,24 +312,19 @@ struct WebSheetDialog<Body: View, Footer: View>: View {
         let header = moreStyle("more.dialog.header", scheme)
         let t = moreStyle("more.dialog.title", scheme)
         let b = moreStyle("more.dialog.body", scheme)
-        let x = WebStyles.named("more.dialog.close")
-        let xs = x.resolve(scheme)
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: header.gap) {
                 VStack(alignment: .leading, spacing: 4) {
-                    // (One line: a Spectral line box is taller than its leading in SwiftUI's multi-line layout.)
-                    Text(verbatim: title).webText(t.text).lineLimit(1).foregroundStyle(t.color.color)
+                    // (One line: a Spectral line box is taller than its leading in SwiftUI's multi-line layout. Cut in
+                    // the middle, so a long name inside it loses its middle and the question keeps its end, its "?"
+                    // included: MAC-11.)
+                    Text(verbatim: title).webText(t.text).lineLimit(1).truncationMode(.middle).foregroundStyle(t.color.color)
                     if let description {
                         WebPrettyText(description, style: .role(.subheadline)).foregroundStyle(moreVar("color-ink-muted", scheme))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Button(action: close) {
-                    WebIconView(.x, size: 16).foregroundStyle(xs.color.color).frame(width: xs.width, height: xs.height).contentShape(Rectangle())
-                }
-                .buttonStyle(.webPlain)
-                .foleviTooltip("Close")
-                .accessibilityLabel("Close")
+                WebSheetCloseButton(action: close)
             }
             .padding(header.padding.edgeInsets)
             content()
@@ -330,6 +363,8 @@ func webFocused(_ pair: WebStylePair) -> WebStylePair {
 }
 
 /// A dialog's button: `ui-btn` secondary or primary at the Mac's 28 pt (more.prompt.cancel / submit).
+/// Keys (MAC-09): Return presses a primary button and Escape the secondary (Cancel); a destructive button never
+/// answers Return (it takes a click, as the web's and the Settings confirmations: MAC-03).
 struct WebSheetButton: View {
     let title: String
     var primary = false
@@ -337,6 +372,13 @@ struct WebSheetButton: View {
     var enabled = true
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
+
+    enum Key: Equatable { case defaultAction, cancelAction, none }
+
+    /// Which key presses a dialog button.
+    nonisolated static func key(primary: Bool, danger: Bool) -> Key {
+        danger ? .none : primary ? .defaultAction : .cancelAction
+    }
 
     var body: some View {
         let style = danger ? WebStyles.named("button.danger.md") : WebStyles.named(primary ? "more.prompt.submit" : "more.prompt.cancel")
@@ -349,7 +391,42 @@ struct WebSheetButton: View {
                 .webBox(style)
         }
         .buttonStyle(.webPlain)
+        .modifier(DialogKey(key: Self.key(primary: primary, danger: danger)))
+        .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)
+    }
+
+    private struct DialogKey: ViewModifier {
+        let key: Key
+        func body(content: Content) -> some View {
+            switch key {
+            case .defaultAction: content.keyboardShortcut(.defaultAction)
+            case .cancelAction: content.keyboardShortcut(.cancelAction)
+            case .none: content
+            }
+        }
+    }
+}
+
+/// A dialog's Close (ui/Dialog.tsx's IconButton): the muted ×, the glass hover and heading ink under the pointer,
+/// the Mac's press fill. One for the frame's dialogs and the planner's (MAC-10).
+struct WebSheetCloseButton: View {
+    let action: @MainActor () -> Void
+    @Environment(\.colorScheme) private var scheme
+    @State private var over = false
+
+    var body: some View {
+        let xs = WebStyles.named("more.dialog.close").resolve(scheme)
+        Button(action: action) {
+            WebIconView(.x, size: 16)
+                .foregroundStyle(over ? moreVar("color-heading", scheme) : xs.color.color)
+                .frame(width: xs.width, height: xs.height)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(WebHoverRowStyle(radius: xs.radius, hover: WebStyles.vars["glass-hover"], press: WebStyles.vars["mac-press"], selected: false))
+        .onHover { over = $0 }
+        .foleviTooltip("Close")
+        .accessibilityLabel("Close")
     }
 }
 #endif

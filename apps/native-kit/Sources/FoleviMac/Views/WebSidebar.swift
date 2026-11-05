@@ -49,10 +49,8 @@ public struct WebSidebar: View {
     @AppStorage("folevi.sidebar.folders-all") private var allFoldersShown = false
     /// Each folder's last change, for Recent (watched only while the sidebar is sorted by it).
     @State private var folderChanges: ValueStore<FolderCardsValue>?
-    #if os(iOS)
-    /// The account row, for the account menu's place on the iPad.
-    @State private var accountAnchor: UIView?
-    #endif
+    /// The account row, for the account menu's place (on the Mac it opens 8 pt above it: MAC-38).
+    @State private var accountAnchor: NSView?
     /// The folder row a dragged note or folder is over, and where on it (a folder: the line above, inside, the line
     /// below), on the iPad and the Mac alike.
     @State private var dropTarget: String?
@@ -620,11 +618,7 @@ public struct WebSidebar: View {
         let name = model.accountName.isEmpty ? "You" : model.accountName
         let foot = accountFoot(name)
         return Button {
-            #if os(macOS)
-            actions.account(NSApp.keyWindow?.contentView?.hitTest(NSEvent.mouseLocation(in: NSApp.keyWindow)))
-            #else
             actions.account(accountAnchor)
-            #endif
         } label: {
             HStack(spacing: a.gap) {
                 WebAvatar(name: foot.markName, url: foot.markUrl, size: 28)
@@ -638,6 +632,7 @@ public struct WebSidebar: View {
             .padding(a.padding.edgeInsets)
             .frame(maxWidth: .infinity, minHeight: a.height, maxHeight: a.height)
             .contentShape(Rectangle())
+            .background(MenuAnchor { accountAnchor = $0 })
         }
         .buttonStyle(WebHoverRowStyle(radius: a.radius, hover: WebStyles.vars["mac-hover"], press: WebStyles.vars["mac-press"], selected: false))
         .padding(bottom.padding.edgeInsets)

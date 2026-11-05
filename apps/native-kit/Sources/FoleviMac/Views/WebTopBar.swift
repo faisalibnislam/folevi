@@ -100,6 +100,8 @@ public struct WebTopBar: View {
         // The bar moves the window, as the web's .ui-drag bars do (its buttons still take their clicks).
         .contentShape(Rectangle())
         .windowDrag()
+        // A tab or button clicked in an inactive window acts at once (MAC-05).
+        .macClickThrough()
     }
 
     /// Where the top bar's New folder makes one (the owner, 4 November 2026, "like Finder"): on a folder's page inside
@@ -446,11 +448,12 @@ public struct WebTopBar: View {
             WebIconView(.x, size: 12)
                 .frame(width: close.width, height: close.height)
                 .foregroundStyle(close.color.color)
-                // (A finger needs more than the Mac's 20-point ×: on an iPad it takes taps 10 points round it, the
-                // tab keeping its size.)
-                .padding(WebStyles.isPad ? 10 : 0)
+                // (The × is drawn 16 points square; it takes clicks 4 points round it on the Mac (24 points: a near
+                // miss no longer selects the tab instead, MAC-34) and taps 10 points round it on an iPad, the tab
+                // keeping its size.)
+                .padding(WebStyles.isPad ? 10 : 4)
                 .contentShape(Rectangle())
-                .padding(WebStyles.isPad ? -10 : 0)
+                .padding(WebStyles.isPad ? -10 : -4)
         }
         .buttonStyle(WebHoverRowStyle(radius: close.radius, hover: WebStyles.vars["glass-hover"], press: WebStyles.vars["mac-press"], selected: false))
         .opacity(visible ? 1 : 0)
@@ -590,7 +593,9 @@ private struct TabDrag: ViewModifier {
                         guard dragging?.id == id else { return }
                         withAnimation(.easeOut(duration: 0.15)) { dragging = nil }
                     },
-                including: enabled ? .all : .subviews
+                // (Home, which doesn't move, still holds its drag: a drag on a tab never moves the window, as dragging
+                // any other tab doesn't, MAC-63.)
+                including: .all
             )
     }
 }

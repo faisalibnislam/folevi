@@ -52,7 +52,12 @@ struct ToastStack: View {
         .padding(.bottom, Self.bottomInset(onNote: model.route.isNote))
         .foleviAnimation(value: model.toasts.map(\.id))
         .accessibilityIdentifier("toasts")
+        .macClickThrough()
     }
+
+    /// The pill's widest (the web's `max-w-md`): its padding inside it, so a long message wraps rather than pushing the
+    /// pill past its edges (MAC-36).
+    static let maxWidth: CGFloat = 448
 
     /// How far above the card's bottom the toasts sit: 16 pt from the window's bottom, or on a note clear of its
     /// floating page tools (their top about 80 pt up) with a gap: 96 pt, the web's 6rem (QA audit F22).
@@ -74,6 +79,7 @@ struct ToastStack: View {
         }
         return HStack(spacing: p.gap) {
             Text(verbatim: t.message).webText(text.text).fixedSize(horizontal: false, vertical: true)
+                .layoutPriority(1)
             if let title = t.actionTitle {
                 Button { model.runToastAction(t) } label: {
                     Text(verbatim: title).webText(text.text.weight(600)).lineLimit(1).fixedSize()
@@ -89,8 +95,10 @@ struct ToastStack: View {
             .accessibilityLabel("Dismiss")
         }
         .foregroundStyle(ink)
+        // (The width is held before the padding, so the padding stays inside the 448 pt pill: MAC-36.)
+        .frame(maxWidth: Self.maxWidth - p.padding.left - p.padding.right)
+        .fixedSize(horizontal: false, vertical: true)
         .padding(p.padding.edgeInsets)
-        .frame(maxWidth: 448)
         .background(RoundedRectangle(cornerRadius: p.radius, style: .circular).fill(fill))
         .webBox(WebStylePair(light: Self.clear(pill.light), dark: Self.clear(pill.dark)))
         .transition(.move(edge: .bottom).combined(with: .opacity))

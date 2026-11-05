@@ -81,7 +81,12 @@ struct MoreScreen: View {
         case "graph": GraphScreen(model: more.graphModel(), frame: model, path: path)
         case "review": ReviewScreen(model: more.reviewModel(), frame: model)
         case "shared" where head.count > 1: SharedFolderScreen(model: more.sharedFolder(head[1].removingPercentEncoding ?? head[1]), frame: model)
-        default: Placeholder(symbol: "globe", title: "Not here yet", message: "\(path) doesn't have a screen in the Mac app yet.")
+        // Folevi's empty state, in plain words with a way back, never the raw path (MAC-65).
+        default:
+            WebEmptyState(icon: .circleQuestionMark, title: "This page isn't here", message: "It may have moved, or it isn't in the Mac app yet.") {
+                WebButton("Go to Home", icon: .house, iconSize: 14, variant: .secondary, size: .sm) { model.open(.home, .replace) }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }

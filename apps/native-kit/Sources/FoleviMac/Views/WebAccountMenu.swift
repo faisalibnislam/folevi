@@ -295,7 +295,7 @@ public final class AccountMenuWindow: NSPanel {
         hasShadow = false
         level = .popUpMenu
         isReleasedWhenClosed = false
-        let host = NSHostingView(rootView: AccountMenuPanel(state: state) { [weak self] r in self?.pick(r) }.padding(EdgeInsets(top: Self.margin, leading: Self.leading, bottom: Self.margin, trailing: Self.margin)))
+        let host = ClickThroughHostingView(rootView: AccountMenuPanel(state: state) { [weak self] r in self?.pick(r) }.padding(EdgeInsets(top: Self.margin, leading: Self.leading, bottom: Self.margin, trailing: Self.margin)))
         host.safeAreaRegions = []
         contentView = host
         setContentSize(host.fittingSize)
@@ -306,15 +306,22 @@ public final class AccountMenuWindow: NSPanel {
     /// Opens the menu for `model` in `window`, its bottom-left corner where the web puts it (8 pt above the
     /// account button, at its left edge).
     @discardableResult
-    public static func show(model: FrameModel, in window: NSWindow) -> AccountMenuWindow {
+    public static func show(model: FrameModel, in window: NSWindow, anchor: NSView? = nil) -> AccountMenuWindow {
         current?.close()
         let menu = AccountMenuWindow(rows: AccountMenuRows.build(model: model))
-        let m = WebStyles.named("acct.menu").light
-        let trigger = WebStyles.named("acct.trigger").light
-        // (Web coordinates from the top of a 820 pt window; the foot of the sidebar is pinned to the bottom.)
-        _ = trigger
-        let bottomInset = 820 - (m.y + m.height)
-        let local = NSPoint(x: m.x, y: bottomInset)
+        let local: NSPoint
+        if let anchor, anchor.window === window {
+            // From the account button where it really is (MAC-38): the web's gap above it and its offset from its left
+            // edge, whatever moved the sidebar's foot (an update or sync banner, the window's height).
+            let a = anchor.convert(anchor.bounds, to: nil)
+            menu.triggerRect = a
+            local = placement(trigger: a)
+        } else {
+            // (No button to go by: web coordinates from the top of a 820 pt window, the sidebar's foot pinned to the
+            // bottom.)
+            let m = WebStyles.named("acct.menu").light
+            local = NSPoint(x: m.x, y: 820 - (m.y + m.height))
+        }
         let screen = window.convertPoint(toScreen: local)
         var frame = menu.frame
         frame.origin = NSPoint(x: screen.x - leading, y: screen.y - margin)
@@ -329,10 +336,27 @@ public final class AccountMenuWindow: NSPanel {
 
     public static var shown: AccountMenuWindow? { current?.isVisible == true ? current : nil }
 
+    /// The account button's frame in its window (bottom-left origin), when it opened from it.
+    private var triggerRect: NSRect = .zero
+
+    /// Where the menu's bottom-left corner goes for a button at `a` (window coordinates, bottom-left origin): as far
+    /// above it and from its left edge as the web measures (acct.menu over acct.trigger).
+    static func placement(trigger a: NSRect) -> NSPoint {
+        let m = WebStyles.named("acct.menu").light
+        let t = WebStyles.named("acct.trigger").light
+        let gap = t.y - (m.y + m.height)
+        return NSPoint(x: a.minX + (m.x - t.x), y: a.maxY + gap)
+    }
+
     private func watch() {
         monitors.append(NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
-            guard let self else { return event }
-            if event.window !== self { self.close() }
+            guard let self, event.window !== self else { return event }
+            // As a Folevi menu's (WebMenuWindow): on its own button a click only closes it (MAC-08); anywhere else
+            // the window under it is made key first so the click acts at once (MAC-06).
+            let decision = WebMenuWindow.outsideClick(at: event.locationInWindow, inParent: event.window != nil && event.window === self.parent, left: event.type == .leftMouseDown, trigger: self.triggerRect)
+            self.close()
+            if decision == .closeAndSwallow { return nil }
+            OutsideClicks.prepare(event)
             return event
         } as Any)
         monitors.append(NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -368,6 +392,7 @@ public final class AccountMenuWindow: NSPanel {
         closing = true
         monitors.forEach(NSEvent.removeMonitor)
         monitors.removeAll()
+        handKeyBack()
         fadeAway { [weak self] in
             guard let self else { return }
             self.parent?.removeChildWindow(self)

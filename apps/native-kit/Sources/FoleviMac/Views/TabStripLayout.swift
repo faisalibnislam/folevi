@@ -9,7 +9,14 @@ import SwiftUI
 public enum TabStripMath {
     /// The soft edge on a side with more tabs (FADE).
     public static let fade: CGFloat = 28
+    /// The least a tab shrinks to before the list scrolls. The web's is 172; the Mac's window is often narrower than a
+    /// browser's, and at 172 a 920 pt window showed one tab and faded fragments of its neighbours ("1…", "gs"): at 96
+    /// every tab keeps its icon and the start of its title (MAC-35). The iPad keeps the web's.
+    #if os(macOS)
+    public static let minTab: CGFloat = 96
+    #else
     public static let minTab: CGFloat = 172
+    #endif
     public static let maxTab: CGFloat = 284
 
     public struct Sizes: Equatable {
@@ -33,7 +40,12 @@ public enum TabStripMath {
         /// A note's or a view's tab: `min-w-[172px] flex-[0_1_284px]`.
         public static let tab = Flex(basis: maxTab, min: minTab)
         /// Joined notes' tab, as wide as two: `min-w-[240px] flex-[0_1_460px]`.
-        public static let joined = Flex(basis: 460, min: 240)
+        public static let joined = Flex(basis: 460, min: joinedMin)
+        #if os(macOS)
+        static let joinedMin: CGFloat = 160
+        #else
+        static let joinedMin: CGFloat = 240
+        #endif
     }
 
     /// `fixed[i]` is a tab's own width (Home, a pinned tab) or nil for one that shrinks; `available` is the room

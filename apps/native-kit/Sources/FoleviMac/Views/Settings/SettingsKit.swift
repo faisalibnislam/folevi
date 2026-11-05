@@ -441,13 +441,22 @@ final class SettingsDialogWindow: NSPanel {
         panel.hasShadow = false
         panel.isReleasedWhenClosed = false
         panel.onClose = onClose
-        let host = NSHostingView(rootView: content().webSheetIn().padding(margin).environment(\.colorScheme, window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light))
+        // Over the whole Settings window: the dialog in the middle on a clear backdrop that takes every click, as the
+        // frame's dialogs (FrameSheets): a click beside the dialog closes it, and the window behind stays inert
+        // meanwhile (MAC-10). Every part of it takes an inactive window's first click (MAC-05).
+        let f = window.frame
+        let host = ClickThroughHostingView(rootView: ZStack {
+            Color.black.opacity(0.0001)
+                .contentShape(Rectangle())
+                .onTapGesture { [weak panel] in panel?.dismiss() }
+            content().webSheetIn().padding(margin)
+        }
+        .frame(width: f.width, height: f.height)
+        .macClickThrough()
+        .environment(\.colorScheme, window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light))
         host.safeAreaRegions = []
         panel.contentView = host
-        let size = host.fittingSize
-        let f = window.frame
-        // A little above the middle, as `m-auto` in the window's height puts it.
-        panel.setFrame(NSRect(x: f.midX - size.width / 2, y: f.midY - size.height / 2, width: size.width, height: size.height), display: false)
+        panel.setFrame(f, display: false)
         panel.appearance = window.appearance
         window.addChildWindow(panel, ordered: .above)
         panel.makeKeyAndOrderFront(nil)
@@ -486,19 +495,44 @@ final class SettingsDialogWindow: NSPanel {
     }
 }
 
-/// A confirmation as the Mac app asks it (ui/Dialog.tsx with `confirm`: the system's alert).
+/// A confirmation as the Mac app asks it: Folevi's own dialog (ui/Dialog.tsx with `confirm`), never the system's
+/// alert (MAC-03). Cancel answers Return and Escape; a destructive action takes a click (a non-destructive one is the
+/// default and answers Return).
 @MainActor
 func settingsConfirm(_ title: String, message: String?, confirm: String, destructive: Bool = true, in window: NSWindow?, then run: @escaping () -> Void) {
-    let alert = NSAlert()
-    alert.messageText = title
-    if let message { alert.informativeText = message }
-    let yes = alert.addButton(withTitle: confirm)
-    yes.hasDestructiveAction = destructive
-    alert.addButton(withTitle: "Cancel")
-    if let window {
-        alert.beginSheetModal(for: window) { r in if r == .alertFirstButtonReturn { run() } }
-    } else if alert.runModal() == .alertFirstButtonReturn {
-        run()
+    guard let window = window ?? NSApp.keyWindow ?? NSApp.mainWindow else { return }
+    SettingsDialogWindow.show(over: window) {
+        SettingsConfirmDialog(title: title, message: message, confirm: confirm, destructive: destructive, run: run)
+    }
+}
+
+/// settingsConfirm's dialog: the title, what will happen, Cancel and the action.
+struct SettingsConfirmDialog: View {
+    let title: String
+    let message: String?
+    let confirm: String
+    let destructive: Bool
+    let run: () -> Void
+
+    var body: some View {
+        SettingsDialogView(title: title, description: message, width: 384, close: { SettingsDialogWindow.closeCurrent() }) {
+            EmptyView()
+        } footer: {
+            if destructive {
+                WebButton("Cancel") { SettingsDialogWindow.closeCurrent() }.keyboardShortcut(.defaultAction)
+                WebButton(confirm, variant: .danger) {
+                    SettingsDialogWindow.closeCurrent()
+                    run()
+                }
+            } else {
+                WebButton("Cancel") { SettingsDialogWindow.closeCurrent() }.keyboardShortcut(.cancelAction)
+                WebButton(confirm, variant: .primary) {
+                    SettingsDialogWindow.closeCurrent()
+                    run()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
     }
 }
 #else

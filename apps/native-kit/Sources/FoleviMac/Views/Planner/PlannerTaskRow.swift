@@ -143,7 +143,10 @@ struct TaskBox: View {
                 }
             }
             .frame(width: s.width, height: s.height)
+            // (Drawn 18 points square, it takes clicks 4 points round it: 26 points, MAC-34.)
+            .padding(4)
             .contentShape(Rectangle())
+            .padding(-4)
             // Done: the fill eases in and the tick settles (the web's `transition-colors`, 150 ms).
             .animation(WebMotion.reduced ? nil : .easeOut(duration: 0.15), value: status)
         }

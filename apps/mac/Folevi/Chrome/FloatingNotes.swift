@@ -172,7 +172,7 @@ final class FloatingNoteController: NSWindowController, NSWindowDelegate, FrameH
         panel.contentView = content
         state.barHeight = max(28, panel.frame.height - panel.contentLayoutRect.height)
         if let zoom = panel.standardWindowButton(.zoomButton) { state.buttonsWidth = zoom.frame.maxX + 4 }
-        let bar = NSHostingView(rootView: FloatingNoteBar(model: model, state: state) { [weak self] in self?.toggleOnTop() })
+        let bar = ClickThroughHostingView(rootView: FloatingNoteBar(model: model, state: state) { [weak self] in self?.toggleOnTop() }.macClickThrough())
         bar.safeAreaRegions = []
         bar.sizingOptions = []
         bar.translatesAutoresizingMaskIntoConstraints = false

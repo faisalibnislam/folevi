@@ -238,6 +238,7 @@ struct FolderPickerView: View {
     var create: (@MainActor (String) -> Void)? = nil
     @State private var query = ""
     @State private var active = 0
+    @State private var pointer = PointerMoves()
     /// Naming a new folder: the field is its name, and Return makes it.
     @State private var naming = false
     @FocusState private var focused: Bool
@@ -326,14 +327,20 @@ struct FolderPickerView: View {
                         Text(verbatim: "Back to folders").webText(.role(.subheadline)).foregroundStyle(moreVar("color-heading", scheme))
                             .padding(.horizontal, 8).padding(.vertical, 4).contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.webPlain)
                 }
                 .padding(.horizontal, 8).padding(.vertical, 8)
             } else {
+            // The highlighted row is kept in view as the arrows move it (MAC-13), and only a real move of the pointer
+            // takes the highlight to the row under it (MAC-12).
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(Array(opts.enumerated()), id: \.element.key) { n, o in
-                        row(o, highlighted: n == cur).onHover { if $0 { active = n } }.onTapGesture { choose(o) }
+                        row(o, highlighted: n == cur)
+                            .id(o.key)
+                            .onHover { if $0, pointer.moved() { active = n } }
+                            .onTapGesture { choose(o) }
                     }
                     if !opts.contains(where: { !$0.isNew }) {
                         Text(verbatim: "No folders match “\(query.trimmingCharacters(in: .whitespaces))”.").webText(.role(.subheadline)).foregroundStyle(moreVar("color-ink-muted", scheme)).padding(.horizontal, 8).padding(.vertical, 12)
@@ -342,6 +349,10 @@ struct FolderPickerView: View {
             }
             .frame(maxHeight: 360)
             .fixedSize(horizontal: false, vertical: true)
+            .onChange(of: cur) { _, n in
+                if opts.indices.contains(n) { proxy.scrollTo(opts[n].key) }
+            }
+            }
             }
         }
         .task {

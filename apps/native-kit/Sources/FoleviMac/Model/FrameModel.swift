@@ -113,6 +113,8 @@ public final class FrameModel {
     /// Back and Forward of the tab on screen (each tab keeps its own).
     public var history: RouteHistory { tabs.active.history }
     @ObservationIgnored public weak var host: (any FrameHost)?
+    /// Where a search route goes instead of a tab (the Mac's window: its command palette, MAC-61); nil: a tab.
+    @ObservationIgnored public var searchInPalette: (@MainActor (String) -> Void)?
 
     // Live values (the engine's views).
     public let session: ValueStore<SessionValue>
@@ -290,6 +292,9 @@ public final class FrameModel {
     /// Every caller gets the tab rules here: the sidebar, folder cards, the Folders page, a folder page's path,
     /// links from the page (`navigate.request`).
     public func open(_ route: FrameRoute, _ opening: TabsModel.Opening = .newTab, title: String? = nil, icon: String? = nil) {
+        // The Mac searches in its command palette, the query filled in (a folevi://search link, /search?q=): not the
+        // iPhone's search screen in a tab (MAC-61).
+        if case .search(let q) = route, let searchInPalette { return searchInPalette(q) }
         let shown = tabs.show(route, opening)
         // (A folder tab's id is its own; a joined note's name goes to its pane.)
         if let title { tabs.setTitle(title, icon: icon, for: shown.isFolderBrowsing ? tabs.activeID : shown.tabKey) }

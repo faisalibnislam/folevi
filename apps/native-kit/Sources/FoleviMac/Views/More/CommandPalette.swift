@@ -20,6 +20,8 @@ final class PaletteModel {
     var search: SearchModel
     let recent: ValueStore<RecentViewedValue>
     var active = 0
+    /// Where the pointer was, for hover (MAC-12).
+    @ObservationIgnored let pointer = PointerMoves()
     /// Keys typed after ⌘K before the field had the focus (EarlyKeys), handed to it once it has.
     @ObservationIgnored var early: EarlyKeys?
 
@@ -129,11 +131,13 @@ final class PaletteModel {
 /// Opens ⌘K in a frame's window.
 @MainActor
 public enum CommandPalette {
-    public static func show(_ frame: FrameModel) {
+    /// `query`: already typed (a search link: MAC-61).
+    public static func show(_ frame: FrameModel, query: String = "") {
         let model = PaletteModel(frame: frame)
+        if !query.isEmpty { model.search.text = query }
         // 12vh of the window, as `mt-[12vh]` puts it.
         let top = (FrameSheets.window(for: frame)?.contentView?.bounds.height ?? 820) * 0.12
-        FrameSheets.present(frame, top: top) { close in
+        FrameSheets.present(frame, top: top, scrim: true) { close in
             CommandPaletteView(model: model, close: close)
         }
         // What's typed from now on waits for the field's focus, never reaching the note underneath (F04).
@@ -166,7 +170,9 @@ struct CommandPaletteView: View {
                             if item.isMeaning, !(i > 0 && items[i - 1].isMeaning) { caps("By meaning", style: s("heading")) }
                             row(item, selected: i == model.active)
                                 .id(item.id)
-                                .onHover { if $0 { model.active = i } }
+                                // (Only a real move of the pointer: a row the arrow keys scroll under a still
+                                // pointer doesn't take the highlight back, MAC-12.)
+                                .onHover { if $0, model.pointer.moved() { model.active = i } }
                                 .onTapGesture { choose(item) }
                                 // Each result on its own for VoiceOver (F05): its title and kind, whether it's
                                 // the selected one, and opening it.

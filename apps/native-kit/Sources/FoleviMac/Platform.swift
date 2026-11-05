@@ -136,6 +136,36 @@ extension View {
     }
 }
 
+/// Whether the pointer itself moved since a list last asked: a row that slides under a still pointer (the list
+/// scrolled by the arrow keys) gets a hover too, and must not take the keyboard's highlight away (MAC-12; the web's
+/// palette does the same). Starts where the pointer is, so a list opening under the pointer doesn't move its
+/// highlight either.
+@MainActor
+final class PointerMoves {
+    #if os(macOS)
+    private var last: NSPoint = NSEvent.mouseLocation
+    #endif
+
+    /// True when the pointer is somewhere else than the last time this answered true (always on the iPad).
+    func moved() -> Bool {
+        #if os(macOS)
+        let p = NSEvent.mouseLocation
+        guard p != last else { return false }
+        last = p
+        #endif
+        return true
+    }
+
+    #if os(macOS)
+    /// Tests: as if the pointer were at `p`.
+    func moved(to p: NSPoint) -> Bool {
+        guard p != last else { return false }
+        last = p
+        return true
+    }
+    #endif
+}
+
 #if os(macOS)
 /// A window bar's double click (the frame's top bar and the sidebar's: they draw under the hidden title bar, so the
 /// system's own double click never reaches them).

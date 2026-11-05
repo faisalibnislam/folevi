@@ -104,7 +104,7 @@ public final class WebMenuWindow: NSPanel {
         hasShadow = false
         level = .popUpMenu
         isReleasedWhenClosed = false
-        let host = NSHostingView(rootView: WebMenuContent(state: state, width: width, select: select) { [weak self] e in self?.pick(e) }.padding(Self.margin))
+        let host = ClickThroughHostingView(rootView: WebMenuContent(state: state, width: width, select: select) { [weak self] e in self?.pick(e) }.padding(Self.margin).macClickThrough())
         host.safeAreaRegions = []
         contentView = host
         setContentSize(host.fittingSize)

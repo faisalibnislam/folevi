@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Bookmark, Download, FileText, Focus, Maximize, Pause, Play, Search, SlidersHorizontal, Sparkles, Tag as TagIcon, Waypoints, X, ZoomIn, ZoomOut, FolderInput, ChartNetwork } from "lucide-react";
+import { Bookmark, ChevronDown, Download, FileText, Focus, Maximize, Pause, Play, Search, SlidersHorizontal, Sparkles, Tag as TagIcon, Waypoints, X, ZoomIn, ZoomOut, FolderInput, ChartNetwork } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -42,6 +42,10 @@ import {
 import {
   asOf,
   bridges as findBridges,
+  clusterCircle,
+  fitPoints,
+  labelPlan,
+  shortLabel,
   cleanSettings,
   clusters as findClusters,
   DEFAULT_SETTINGS,
@@ -125,6 +129,8 @@ export function GraphView() {
   const [insights, setInsights] = useLocalStorage("folevi:dna-insights", false);
   const [focusMode, setFocusMode] = useLocalStorage("folevi:dna-focus", false);
   const [sinceWeek, setSinceWeek] = useState(false);
+  // How many of the Show menu's choices differ from a fresh map (shown on its button).
+  const changedShows = [settings.filter.linksOnly, !settings.filter.linksOnly && kinds.length !== ENTITY_KINDS.length, settings.filter.hideOrphans, !settings.clusters, settings.arrows, focusMode, sinceWeek].filter(Boolean).length;
   const [playAt, setPlayAt] = useState<number | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
@@ -284,28 +290,60 @@ export function GraphView() {
               className="min-w-0 flex-1 bg-transparent text-subheadline outline-none"
             />
           </label>
-          {data?.full ? (
-            <div role="group" aria-label="Show" className="flex flex-wrap items-center gap-1">
-              {ENTITY_KINDS.map((k) => {
-                const on = kinds.includes(k);
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => set({ kinds: on ? kinds.filter((x) => x !== k) : ENTITY_KINDS.filter((x) => x === k || kinds.includes(x)) })}
-                    className={`ui-chip transition-colors ${on ? "bg-sunken text-heading" : "text-faint hover:text-ink"}`}
-                  >
-                    <KindGlyph kind={k} muted={!on} />
-                    {KIND_FILTER_LABEL[k]}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
           <p className="ml-auto text-footnote tabular-nums text-faint" aria-live="polite">
             {data ? `${notes} ${notes === 1 ? "note" : "notes"}${shown.nodes.length > notes ? `, ${shown.nodes.length - notes} more` : ""}${query.trim() ? ` · ${matches.size} found` : ""}` : null}
           </p>
+          {data ? (
+              <div className="flex items-center gap-0.5">
+                <IconButton
+                  label={playAt === null ? "Play how it grew" : "Stop"}
+                  disabled={!span || span.end === span.start}
+                  onClick={() => setPlayAt((at) => (at === null && span ? span.start : null))}
+                >
+                  {playAt === null ? <Play size={15} aria-hidden /> : <Pause size={15} aria-hidden />}
+                </IconButton>
+                <IconButton ref={layoutBtn} label="Layout" aria-expanded={layoutOpen} onClick={() => setLayoutOpen((o) => !o)}>
+                  <SlidersHorizontal size={15} aria-hidden />
+                </IconButton>
+                <IconButton label="Insights" aria-pressed={insights} onClick={() => setInsights(!insights)}>
+                  <ChartNetwork size={15} aria-hidden />
+                </IconButton>
+                <MenuButton
+                  label="Export"
+                  trigger={<Download size={15} aria-hidden />}
+                  items={[
+                    { label: "Save as PNG", onSelect: exportPng },
+                    { label: "Save as SVG", onSelect: exportSvg },
+                    { label: "Copy as Markdown", onSelect: () => void copyMarkdown() },
+                  ]}
+                />
+                <MenuButton
+                  label="Saved views"
+                  trigger={<Bookmark size={15} aria-hidden />}
+                  items={[
+                    { label: "Save this view…", onSelect: () => setSaveOpen(true) },
+                    ...(savedViews ?? []).map((v) => ({
+                      label: v.name,
+                      onSelect: () => {
+                        appliedView.current = null;
+                        navigate(`/graph?view=${v.id}`);
+                      },
+                    })),
+                    ...(savedViews?.length
+                      ? [
+                          {
+                            label: "Remove a view…",
+                            onSelect: () => {
+                              const v = savedViews.find((x) => x.id === viewId) ?? savedViews[0]!;
+                              void removeView({ id: v.id }).then(() => toast.show(`Removed “${v.name}”`));
+                            },
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+              </div>
+          ) : null}
         </div>
         {data ? (
           <div role="toolbar" aria-label="Foli DNA filters" className="flex flex-none flex-wrap items-center gap-2 px-4 pb-2 sm:px-6">
@@ -345,63 +383,36 @@ export function GraphView() {
               <option value="folder">Colour by folder</option>
               <option value="tag">Colour by tag</option>
             </Select>
-            {data.full ? (
-              <Toggle on={!settings.filter.linksOnly} onChange={(on) => setFilter({ linksOnly: !on })} label="Foli AI’s finds" />
-            ) : null}
-            <Toggle on={!settings.filter.hideOrphans} onChange={(on) => setFilter({ hideOrphans: !on })} label={`Unlinked notes${orphanList.length ? ` (${orphanList.length})` : ""}`} />
-            <Toggle on={settings.clusters} onChange={(on) => set({ clusters: on })} label="Clusters" />
-            <Toggle on={settings.arrows} onChange={(on) => set({ arrows: on })} label="Arrows" />
-            <Toggle on={focusMode} onChange={setFocusMode} label="Focus" />
-            <Toggle on={sinceWeek} onChange={setSinceWeek} label="New this week" />
-            <div className="ml-auto flex items-center gap-1">
-              <IconButton
-                label={playAt === null ? "Play how it grew" : "Stop"}
-                disabled={!span || span.end === span.start}
-                onClick={() => setPlayAt((at) => (at === null && span ? span.start : null))}
-              >
-                {playAt === null ? <Play size={15} aria-hidden /> : <Pause size={15} aria-hidden />}
-              </IconButton>
-              <IconButton ref={layoutBtn} label="Layout" aria-expanded={layoutOpen} onClick={() => setLayoutOpen((o) => !o)}>
-                <SlidersHorizontal size={15} aria-hidden />
-              </IconButton>
-              <IconButton label="Insights" aria-pressed={insights} onClick={() => setInsights(!insights)}>
-                <ChartNetwork size={15} aria-hidden />
-              </IconButton>
-              <MenuButton
-                label="Export"
-                trigger={<Download size={15} aria-hidden />}
-                items={[
-                  { label: "Save as PNG", onSelect: exportPng },
-                  { label: "Save as SVG", onSelect: exportSvg },
-                  { label: "Copy as Markdown", onSelect: () => void copyMarkdown() },
-                ]}
-              />
-              <MenuButton
-                label="Saved views"
-                trigger={<span className="px-1 text-subheadline">Views</span>}
-                items={[
-                  { label: "Save this view…", onSelect: () => setSaveOpen(true) },
-                  ...(savedViews ?? []).map((v) => ({
-                    label: v.name,
-                    onSelect: () => {
-                      appliedView.current = null;
-                      navigate(`/graph?view=${v.id}`);
-                    },
-                  })),
-                  ...(savedViews?.length
-                    ? [
-                        {
-                          label: "Remove a view…",
-                          onSelect: () => {
-                            const v = savedViews.find((x) => x.id === viewId) ?? savedViews[0]!;
-                            void removeView({ id: v.id }).then(() => toast.show(`Removed “${v.name}”`));
-                          },
-                        },
-                      ]
-                    : []),
-                ]}
-              />
-            </div>
+            <MenuButton
+              label={changedShows ? `Show, ${changedShows} changed` : "Show"}
+              align="start"
+              triggerClassName="h-8 px-1 text-subheadline"
+              trigger={
+                <span className="flex items-center gap-1">
+                  {changedShows ? `Show · ${changedShows} changed` : "Show"}
+                  <ChevronDown size={14} aria-hidden className="text-faint" />
+                </span>
+              }
+              items={[
+                ...(data.full
+                  ? [
+                      { heading: "Foli AI’s finds" },
+                      { label: "Show Foli AI’s finds", checked: !settings.filter.linksOnly, multi: true, onSelect: () => setFilter({ linksOnly: !settings.filter.linksOnly }) },
+                      ...ENTITY_KINDS.map((k) => {
+                        const on = kinds.includes(k);
+                        return { label: KIND_FILTER_LABEL[k], checked: on, multi: true, disabled: Boolean(settings.filter.linksOnly), onSelect: () => set({ kinds: on ? kinds.filter((x) => x !== k) : ENTITY_KINDS.filter((x) => x === k || kinds.includes(x)) }) };
+                      }),
+                      "separator" as const,
+                    ]
+                  : []),
+                { heading: "On the map" },
+                { label: `Unlinked notes${orphanList.length ? ` (${orphanList.length})` : ""}`, checked: !settings.filter.hideOrphans, multi: true, onSelect: () => setFilter({ hideOrphans: !settings.filter.hideOrphans }) },
+                { label: "Clusters", checked: settings.clusters, multi: true, onSelect: () => set({ clusters: !settings.clusters }) },
+                { label: "Arrows", checked: settings.arrows, multi: true, onSelect: () => set({ arrows: !settings.arrows }) },
+                { label: "Focus", description: "Dim notes more than two steps away", checked: focusMode, multi: true, onSelect: () => setFocusMode(!focusMode) },
+                { label: "New this week", checked: sinceWeek, multi: true, onSelect: () => setSinceWeek(!sinceWeek) },
+              ]}
+            />
           </div>
         ) : null}
         {layoutOpen ? (
@@ -513,15 +524,6 @@ export function GraphView() {
       </div>
       <PromptDialog open={saveOpen} title="Save this view" label="Name" initial={centerNode ? `Around ${centerNode.label}` : ""} onClose={() => setSaveOpen(false)} onSubmit={(name) => (setSaveOpen(false), onSave(name))} />
     </ViewChrome>
-  );
-}
-
-/** A small on/off chip for the filter bar. */
-function Toggle({ on, onChange, label }: { on: boolean; onChange: (on: boolean) => void; label: string }) {
-  return (
-    <button type="button" aria-pressed={on} onClick={() => onChange(!on)} className={`ui-chip transition-colors ${on ? "bg-sunken text-heading" : "text-faint hover:text-ink"}`}>
-      {label}
-    </button>
   );
 }
 
@@ -772,6 +774,22 @@ export function GraphList({ nodes, edges, query }: { nodes: GraphNodeData[]; edg
 
 /** Labels always shown for the best-connected nodes (the rest on hover, focus, search, or when zoomed in). */
 export const ALWAYS_LABELLED = 12;
+
+/** How wide a node's label is on screen, in pixels (11.5px in the page's font), measured once per text. */
+const widths = new Map<string, number>();
+let measurer: CanvasRenderingContext2D | null | undefined;
+function labelWidth(text: string): number {
+  const known = widths.get(text);
+  if (known !== undefined) return known;
+  if (measurer === undefined) {
+    // (No canvas in tests' jsdom: the estimate stands in.)
+    measurer = typeof document === "undefined" || /jsdom/i.test(navigator.userAgent) ? null : document.createElement("canvas").getContext("2d");
+    if (measurer) measurer.font = `11.5px ${getComputedStyle(document.body).fontFamily}`;
+  }
+  const w = measurer ? measurer.measureText(text).width : text.length * 6.2;
+  widths.set(text, w);
+  return w;
+}
 /** Layout work per frame: the rest waits for the next one, so the page never stalls while it settles. */
 const FRAME_BUDGET_MS = 8;
 
@@ -909,10 +927,14 @@ export function GraphCanvas({
   const pinShape = useMemo(() => [...pins.entries()].map(([id, p]) => `${id}@${p.x.toFixed(0)},${p.y.toFixed(0)}`).join(";"), [pins]);
 
   /** Shows all of the map (with room for the biggest nodes). */
+  const clustersRef = useRef(clusters);
+  clustersRef.current = clusters;
   const fitTo = useCallback((points: ReadonlyMap<string, Point>) => {
     const { w, h } = sizeRef.current;
     if (!w || !h) return;
-    const b = boundsOf(points.values());
+    // The clusters' washes and names too: they ran under the filter bar.
+    const groups = (clustersRef.current?.clusters ?? []).slice(0, 12).map((c) => c.members.map((m) => points.get(m)).filter((p): p is Point => Boolean(p)));
+    const b = boundsOf(fitPoints(points.values(), groups));
     setT(fitTransform(b && { minX: b.minX - 20, minY: b.minY - 20, maxX: b.maxX + 20, maxY: b.maxY + 20 }, w, h, 36));
   }, []);
 
@@ -953,10 +975,11 @@ export function GraphCanvas({
     return () => window.removeEventListener("folevi:dna-unpin", unpin);
   }, [pinKey]);
 
-  // Size known or changed: fit, unless the person has moved the view.
+  // Size known or changed, or clusters shown or hidden: fit, unless the person has moved the view.
+  const hasClusters = Boolean(clusters);
   useEffect(() => {
     if (!moved.current) fitTo(placed.current);
-  }, [size.w, size.h, fitTo]);
+  }, [size.w, size.h, fitTo, hasClusters]);
 
   /** Moves the view to `id` smoothly (instantly with reduced motion), zoomed in enough to read. */
   const glideTo = useCallback((id: string) => {
@@ -1267,28 +1290,56 @@ export function GraphCanvas({
     [suggested, at, near, visible, compact],
   );
 
-  // Clusters: a faint wash behind each, and its name above it.
-  const clusterLayer = useMemo(() => {
-    if (!clusters) return null;
-    return clusters.clusters.slice(0, 12).map((c) => {
-      const pts = c.members.map((m) => at(m)).filter((p): p is Point => Boolean(p));
-      if (pts.length < 3) return null;
-      const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
-      const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
-      const r = Math.max(...pts.map((p) => Math.hypot(p.x - cx, p.y - cy))) + 28;
-      const tint = CLUSTER_TINTS[c.id % CLUSTER_TINTS.length];
-      return (
-        <g key={c.id} aria-hidden>
-          <circle cx={cx} cy={cy} r={r} fill={tint} opacity={0.06} />
-          {!compact ? (
-            <text x={cx} y={cy - r - 6 / k} textAnchor="middle" fontSize={12 / k} fontWeight={600} fill={tint} opacity={0.9} style={{ paintOrder: "stroke", stroke: "var(--color-canvas)", strokeWidth: 3 / k }}>
-              {c.name}
-            </text>
-          ) : null}
-        </g>
-      );
+  // Clusters: a faint wash behind each; its name above it is drawn after the nodes (so no dot covers it) and kept
+  // clear of the notes' labels.
+  const clusterShapes = useMemo(() => {
+    if (!clusters) return [];
+    return clusters.clusters.slice(0, 12).flatMap((c) => {
+      const circle = clusterCircle(c.members.map((m) => at(m)).filter((p): p is Point => Boolean(p)));
+      return circle ? [{ id: c.id, name: c.name, ...circle, tint: CLUSTER_TINTS[c.id % CLUSTER_TINTS.length] }] : [];
     });
-  }, [clusters, at, k, compact]);
+  }, [clusters, at]);
+  const clusterLayer = clusterShapes.map((c) => <circle key={c.id} aria-hidden cx={c.x} cy={c.y} r={c.r} fill={c.tint} opacity={0.06} />);
+  const clusterNames = compact
+    ? null
+    : clusterShapes.map((c) => (
+        <text key={c.id} aria-hidden x={c.x} y={c.y - c.r - 6 / k} textAnchor="middle" fontSize={12 / k} fontWeight={600} fill={c.tint} opacity={0.9} style={{ paintOrder: "stroke", stroke: "var(--color-canvas)", strokeWidth: 3 / k }}>
+          {c.name}
+        </text>
+      ));
+
+  // Which nodes are labelled: every one whose label has room (it was the 12 best-connected, and most notes were
+  // bare dots). Worked out in screen pixels on the view as it rests (not on every frame of a pan).
+  const [restT, setRestT] = useState(t);
+  useEffect(() => {
+    const id = setTimeout(() => setRestT(t), 120);
+    return () => clearTimeout(id);
+  }, [t]);
+  const labels = useMemo(() => {
+    const always = new Set<string>([...(near ?? []), ...(searching ? matches : []), ...(center ? [center] : [])]);
+    if (large) return new Set([...labelled, ...always]);
+    const { x, y, k: kk } = restT;
+    const screen = (id: string) => {
+      const p = at(id);
+      return p ? { x: p.x * kk + x, y: p.y * kk + y } : null;
+    };
+    const order = nodes
+      .filter((n) => shows(n.id))
+      .sort((a, b) => (deg.get(b.id) ?? 0) - (deg.get(a.id) ?? 0) || a.label.localeCompare(b.label))
+      .map((n) => n.id);
+    const blocked = compact ? [] : clusterShapes.map((c) => ({ x: (c.x - c.name.length * 3.6 / kk) * kk + x, y: (c.y - c.r) * kk + y - 22, w: c.name.length * 7.2, h: 16 }));
+    return labelPlan(order, {
+      always,
+      // Hubs may sit beside another dot only while the map is near full size (on a phone their labels collided).
+      preferred: kk >= 0.7 ? labelled : undefined,
+      bounds: size.w > 0 && size.h > 0 ? { x: 4, y: 4, w: size.w - 8, h: size.h - 8 } : undefined,
+      blocked,
+      center: screen,
+      radius: (id) => drawnRadius(radiusFor(deg.get(id) ?? 0, byId.get(id)?.kind !== "note"), kk) * kk,
+      width: (id) => labelWidth(shortLabel(byId.get(id)?.label ?? "")),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restT, size.w, size.h, nodes, deg, at, near, searching, matches, center, labelled, large, clusterShapes, compact, visible, byId]);
 
   // Nodes depend on the zoom (their minimum size and label size), not on panning.
   const nodeLayer = useMemo(
@@ -1300,7 +1351,7 @@ export function GraphCanvas({
         const d = deg.get(n.id) ?? 0;
         const r = drawnRadius(radiusFor(d, entity), k);
         const on = near ? near.has(n.id) : searching ? matches.has(n.id) : true;
-        const showLabel = on && (k >= 1.3 || labelled.has(n.id) || (near?.has(n.id) ?? false) || (searching && matches.has(n.id)) || n.id === center);
+        const showLabel = on && labels.has(n.id);
         const path = shapePath(n.kind, r);
         const isPicked = picked.has(n.id);
         const outline = n.id === selected || isPicked ? "var(--color-heading)" : "var(--color-canvas)";
@@ -1349,14 +1400,14 @@ export function GraphCanvas({
             {pins.has(n.id) ? <circle r={2 / k} cy={-r - 3 / k} fill="var(--color-heading)" /> : null}
             {showLabel && n.id !== hover && n.id !== focused ? (
               <text y={r + 12 / k} textAnchor="middle" fontSize={11.5 / k} fill="var(--color-ink)" style={{ paintOrder: "stroke", stroke: "var(--color-canvas)", strokeWidth: 3 / k }}>
-                {(n.label || "Untitled").slice(0, 40)}
+                {shortLabel(n.label)}
               </text>
             ) : null}
           </g>
         );
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [nodes, at, deg, k, near, searching, matches, labelled, selected, tabStop, hover, focused, ring, colorFor, picked, fresh, bridges, pins, visible, dimTo, large, center],
+    [nodes, at, deg, k, near, searching, matches, labels, selected, tabStop, hover, focused, ring, colorFor, picked, fresh, bridges, pins, visible, dimTo, large, center],
   );
 
   // The hovered or focused node's name and what it does, next to it.
@@ -1409,6 +1460,7 @@ export function GraphCanvas({
             <g aria-hidden>{edgeLayer}</g>
             {suggestLayer}
             {nodeLayer}
+            {clusterNames}
           </g>
           {box ? <rect x={Math.min(box.x0, box.x1)} y={Math.min(box.y0, box.y1)} width={Math.abs(box.x1 - box.x0)} height={Math.abs(box.y1 - box.y0)} fill="var(--color-accent)" opacity={0.08} stroke="var(--color-accent)" /> : null}
         </svg>

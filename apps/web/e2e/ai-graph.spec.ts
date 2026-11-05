@@ -53,8 +53,11 @@ test("the graph shows notes and links, the list reads it as text, and a note lis
   await page.waitForURL(/\/graph$/);
   await expect(page.getByRole("application", { name: /Foli DNA of \d+ notes/ })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/The full Foli DNA, with topics, people and similar notes, is part of Pro/)).toBeVisible();
-  // No entity filters below Pro.
-  await expect(page.getByRole("group", { name: "Show" })).toHaveCount(0);
+  // No entity filters below Pro: the Show menu has only the map's own choices.
+  await page.getByRole("button", { name: "Show", exact: true }).click();
+  await expect(page.getByRole("menuitemcheckbox", { name: /^Unlinked notes/ })).toBeVisible();
+  await expect(page.getByRole("menuitemcheckbox", { name: "People" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Zoom in" }).click();
   await page.getByRole("button", { name: "Fit to screen" }).click();
 
@@ -85,9 +88,12 @@ test("the graph shows notes and links, the list reads it as text, and a note lis
   await page.getByRole("button", { name: "Insights" }).click();
   const insights = page.getByRole("complementary", { name: "Insights" });
   await expect(insights.getByRole("link", { name: "Lonely thought" })).toBeVisible();
-  await page.getByRole("button", { name: /^Unlinked notes/ }).click();
+  await page.getByRole("button", { name: "Show", exact: true }).click();
+  await page.getByRole("menuitemcheckbox", { name: /^Unlinked notes/ }).click();
   await expect(page.getByRole("application", { name: /Foli DNA of 2 notes/ })).toBeVisible();
-  await page.getByRole("button", { name: /^Unlinked notes/ }).click();
+  await expect(page.getByRole("button", { name: "Show, 1 changed", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Show, 1 changed", exact: true }).click();
+  await page.getByRole("menuitemcheckbox", { name: /^Unlinked notes/ }).click();
   // A saved view shows in the sidebar under Foli DNA.
   await page.getByRole("button", { name: "Saved views" }).click();
   await page.getByRole("menuitem", { name: "Save this view…" }).click();

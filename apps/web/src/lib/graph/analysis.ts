@@ -348,3 +348,91 @@ export function toSvg(nodes: readonly GraphNodeData[], edges: readonly GraphEdge
 
 /** Matches a saved view's name against what's typed (the sidebar's filter). */
 export const nameMatches = (name: string, q: string) => foldText(name).includes(foldText(q));
+
+// --- Labels and fitting (the owner's report on 1.2.32, 5 November 2026: most notes were bare dots, a cluster's
+// name ran under the filter bar, the map sat to one side). The Mac, iPad and iPhone map uses the same rules
+// (GraphScreen.swift GraphMath.labelPlan, extent).
+
+/** A node's label on the map: at most 40 characters, cut with an ellipsis. */
+export function shortLabel(label: string): string {
+  const l = label || "Untitled";
+  return l.length > 40 ? `${l.slice(0, 39).trimEnd()}…` : l;
+}
+
+/** A cluster's wash: its members' middle and the farthest of them plus a margin. */
+export function clusterCircle(points: readonly Point[]): { x: number; y: number; r: number } | null {
+  if (points.length < MIN_CLUSTER) return null;
+  const x = points.reduce((s, p) => s + p.x, 0) / points.length;
+  const y = points.reduce((s, p) => s + p.y, 0) / points.length;
+  return { x, y, r: Math.max(...points.map((p) => Math.hypot(p.x - x, p.y - y))) + 28 };
+}
+
+/** What the map fits to: every node, and each cluster's wash with room for its name above it. */
+export function fitPoints(points: Iterable<Point>, clusterPoints: readonly (readonly Point[])[]): Point[] {
+  const out = [...points];
+  for (const pts of clusterPoints) {
+    const c = clusterCircle(pts);
+    if (c) out.push({ x: c.x - c.r, y: c.y - c.r - 22 }, { x: c.x + c.r, y: c.y + c.r });
+  }
+  return out;
+}
+
+export type Box = { x: number; y: number; w: number; h: number };
+const meets = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+/**
+ * Which nodes get a label, in screen pixels: first the ones that must (`always`: the one in the middle, what's
+ * searched for, what's near the pointer), then, in `order` (best-connected first), every other one whose label has
+ * room: inside `bounds`, clear of placed labels and `blocked` room (the clusters' names), and of other dots unless
+ * it's `preferred` (a hub). A label sits centred under its node.
+ */
+export function labelPlan(
+  order: readonly string[],
+  opts: {
+    always?: ReadonlySet<string>;
+    preferred?: ReadonlySet<string>;
+    bounds?: Box;
+    blocked?: readonly Box[];
+    center: (id: string) => Point | null | undefined;
+    radius: (id: string) => number;
+    width: (id: string) => number;
+    limit?: number;
+  },
+): Set<string> {
+  const H = 14;
+  const rect = (id: string): Box | null => {
+    const c = opts.center(id);
+    if (!c) return null;
+    const w = opts.width(id);
+    return { x: c.x - w / 2, y: c.y + opts.radius(id) + 12 - H + 2, w, h: H };
+  };
+  const discs = order.flatMap((id) => {
+    const c = opts.center(id);
+    return c ? [{ id, c, r: opts.radius(id) }] : [];
+  });
+  const placed: Box[] = [...(opts.blocked ?? [])];
+  const out = new Set<string>();
+  const always = opts.always ?? new Set<string>();
+  for (const id of order) {
+    if (!always.has(id)) continue;
+    const r = rect(id);
+    if (r) {
+      placed.push(r);
+      out.add(id);
+    }
+  }
+  const limit = opts.limit ?? Infinity;
+  for (const id of order) {
+    if (always.has(id) || out.size >= limit) continue;
+    const r = rect(id);
+    if (!r) continue;
+    const room = { x: r.x - 3, y: r.y - 1, w: r.w + 6, h: r.h + 2 };
+    const b = opts.bounds;
+    if (b && (r.x < b.x || r.y < b.y || r.x + r.w > b.x + b.w || r.y + r.h > b.y + b.h)) continue;
+    if (placed.some((p) => meets(p, room))) continue;
+    if (!opts.preferred?.has(id) && discs.some((d) => d.id !== id && d.c.x >= room.x - d.r && d.c.x <= room.x + room.w + d.r && d.c.y >= room.y - d.r && d.c.y <= room.y + room.h + d.r)) continue;
+    placed.push(r);
+    out.add(id);
+  }
+  return out;
+}

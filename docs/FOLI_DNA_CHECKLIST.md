@@ -94,3 +94,7 @@ Recommended order (as it was): top to bottom.
 - Tests: `apps/native-kit/Tests/FoleviMacTests/DnaSnapshotTests.swift`, on the scripted engine's map
   (`Demo/DemoGraph.swift`, 44 notes like the report's): Mac, iPad and iPhone sizes, light and dark, a red stand-in
   note behind that must not show, and checks of labels, fit and bridges. Rendered on the Mac.
+- The web had the same label rule, a fit that left out the clusters and the same crowded bar: it now uses the same
+  rules (`lib/graph/analysis.ts` labelPlan, fitPoints, clusterCircle, shortLabel; labels worked out on the view at
+  rest, measured in the page's font), draws cluster names over the nodes, and has the same two rows and Show menu
+  (`GraphView.tsx`). Tests: `test/foli-dna.test.ts` and the Show menu in `e2e/ai-graph.spec.ts`.

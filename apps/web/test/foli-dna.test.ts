@@ -1,7 +1,7 @@
 // Foli DNA's analysis (lib/graph/analysis.ts): filters, the view around a note, clusters, bridges, hubs, time and
 // the Markdown and SVG exports. The same results drive the web page and, through the engine, the native apps.
 import { describe, expect, it } from "vitest";
-import { asOf, bridges, cleanSettings, clusters, filterGraph, hubs, localGraph, newSince, orphans, stepsFrom, timeSpan, toMarkdown, toSvg, within } from "@/lib/graph/analysis";
+import { asOf, bridges, cleanSettings, clusters, filterGraph, hubs, localGraph, newSince, orphans, stepsFrom, timeSpan, toMarkdown, toSvg, within, clusterCircle, fitPoints, labelPlan, shortLabel } from "@/lib/graph/analysis";
 import { Simulation } from "@/lib/graph/layout";
 
 const note = (id: string, extra: Record<string, unknown> = {}) => ({ id, kind: "note", label: id.toUpperCase(), ...extra });
@@ -105,5 +105,42 @@ describe("settings, export and layout", () => {
     const sim = new Simulation(["a", "b", "c"], [link("a", "b"), link("b", "c")], { pinned: new Map([["a", { x: 300, y: -200 }]]) });
     sim.run(400);
     expect(sim.positions().get("a")).toEqual({ x: 300, y: -200 });
+  });
+});
+
+describe("labels and fitting (the 1.2.32 report: bare dots, a cluster name under the bar)", () => {
+  // Twenty dots in a row 40px apart, with labels about 60px wide: every other one has room.
+  const ids = Array.from({ length: 20 }, (_, i) => `n${i}`);
+  const center = (id: string) => ({ x: 20 + Number(id.slice(1)) * 40, y: 50 });
+  const base = { center, radius: () => 5, width: () => 60 };
+  it("labels every node whose label has room, and no two overlap", () => {
+    const got = labelPlan(ids, base);
+    expect(got.size).toBe(10);
+    const xs = [...got].map((id) => center(id).x).sort((a, b) => a - b);
+    for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeGreaterThanOrEqual(60);
+  });
+  it("what must be labelled is, the map's edges and blocked room are kept clear", () => {
+    expect(labelPlan(ids, { ...base, width: () => 2000, always: new Set(["n7"]) })).toEqual(new Set(["n7"]));
+    const inside = labelPlan(ids, { ...base, bounds: { x: 0, y: 0, w: 300, h: 100 } });
+    expect([...inside].every((id) => center(id).x + 30 <= 300 && center(id).x - 30 >= 0)).toBe(true);
+    expect(labelPlan(ids, { ...base, blocked: [{ x: 0, y: 0, w: 900, h: 100 }] }).size).toBe(0);
+  });
+  it("a hub may sit beside another dot; others may not", () => {
+    const two = ["hub", "dot"];
+    const c = (id: string) => (id === "hub" ? { x: 100, y: 50 } : { x: 120, y: 66 });
+    expect(labelPlan(two, { center: c, radius: () => 5, width: () => 60 }).has("hub")).toBe(false);
+    expect(labelPlan(two, { center: c, radius: () => 5, width: () => 60, preferred: new Set(["hub"]) }).has("hub")).toBe(true);
+  });
+  it("the fit takes in each cluster's wash and the room for its name", () => {
+    const pts = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 0, y: 10 }];
+    const c = clusterCircle(pts)!;
+    expect(c.r).toBeGreaterThan(28);
+    const all = fitPoints(pts, [pts]);
+    expect(Math.min(...all.map((p) => p.y))).toBeLessThan(c.y - c.r - 20);
+    expect(clusterCircle(pts.slice(0, 2))).toBeNull();
+  });
+  it("long titles are cut with an ellipsis", () => {
+    expect(shortLabel("Mebel, The complete feature roadmap for a professional AI-powered furniture design app")).toBe("Mebel, The complete feature roadmap for…");
+    expect(shortLabel("")).toBe("Untitled");
   });
 });

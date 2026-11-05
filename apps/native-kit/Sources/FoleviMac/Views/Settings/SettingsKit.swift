@@ -690,7 +690,7 @@ final class SettingsDialogWindow: NSPanel {
         let f = window.frame
         let dialogRect = NSRect(x: f.midX - size.width / 2, y: f.midY - size.height / 2, width: size.width, height: size.height)
         let frame = f.union(dialogRect)
-        let host = NSHostingView(rootView: SettingsDialogBackdrop(dialog: dialog, size: size, offset: CGSize(width: dialogRect.midX - frame.midX, height: frame.midY - dialogRect.midY)))
+        let host = ClickThroughHostingView(rootView: SettingsDialogBackdrop(dialog: dialog, size: size, offset: CGSize(width: dialogRect.midX - frame.midX, height: frame.midY - dialogRect.midY)))
         host.safeAreaRegions = []
         panel.contentView = host
         panel.setFrame(frame, display: false)
@@ -751,11 +751,13 @@ private struct SettingsDialogBackdrop<Dialog: View>: View {
             dialog.frame(width: size.width, height: size.height).offset(offset)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .macClickThrough()
     }
 }
 
-/// A confirmation in Folevi's dialog (ui/Dialog.tsx with `confirm`, MAC-03): the title, what will happen, Cancel and
-/// the action. Cancel is the default (Return) and Escape closes it; the action, destructive or not, takes a click.
+/// A confirmation as the Mac app asks it: Folevi's own dialog (ui/Dialog.tsx with `confirm`), never the system's
+/// alert (MAC-03). Cancel answers Return and Escape; a destructive action takes a click (a non-destructive one is the
+/// default and answers Return).
 @MainActor
 func settingsConfirm(_ title: String, message: String?, confirm: String, destructive: Bool = true, in window: NSWindow?, then run: @escaping () -> Void) {
     guard let window = window ?? NSApp.keyWindow ?? NSApp.mainWindow else { return }
@@ -764,7 +766,7 @@ func settingsConfirm(_ title: String, message: String?, confirm: String, destruc
     }
 }
 
-/// The confirmation's dialog.
+/// settingsConfirm's dialog: the title, what will happen, Cancel and the action.
 struct SettingsConfirmDialog: View {
     let title: String
     let message: String?
@@ -776,11 +778,19 @@ struct SettingsConfirmDialog: View {
         SettingsDialogView(title: title, description: message, width: 384, close: { SettingsDialogWindow.closeCurrent() }) {
             EmptyView()
         } footer: {
-            WebButton("Cancel") { SettingsDialogWindow.closeCurrent() }
+            if destructive {
+                WebButton("Cancel") { SettingsDialogWindow.closeCurrent() }.keyboardShortcut(.defaultAction)
+                WebButton(confirm, variant: .danger) {
+                    SettingsDialogWindow.closeCurrent()
+                    run()
+                }
+            } else {
+                WebButton("Cancel") { SettingsDialogWindow.closeCurrent() }.keyboardShortcut(.cancelAction)
+                WebButton(confirm, variant: .primary) {
+                    SettingsDialogWindow.closeCurrent()
+                    run()
+                }
                 .keyboardShortcut(.defaultAction)
-            WebButton(confirm, variant: destructive ? .danger : .primary) {
-                SettingsDialogWindow.closeCurrent()
-                run()
             }
         }
     }

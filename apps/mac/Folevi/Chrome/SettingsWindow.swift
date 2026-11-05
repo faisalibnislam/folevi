@@ -111,7 +111,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         window.delegate = self
         // The list on the left, a hairline, the pane on the right.
         let content = NSView(frame: NSRect(origin: .zero, size: size))
-        let sidebar = NSHostingView(rootView: SettingsList(state: list) { SettingsWindow.shared.go(to: $0) })
+        let sidebar = ClickThroughHostingView(rootView: SettingsList(state: list) { SettingsWindow.shared.go(to: $0) }.macClickThrough())
         sidebar.translatesAutoresizingMaskIntoConstraints = false
         let pane = NSView()
         pane.translatesAutoresizingMaskIntoConstraints = false
@@ -238,9 +238,9 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
             let root = AnyView(SettingsScreen(model: macModel!, section: section, windowed: true)
                 .frame(maxWidth: .infinity, maxHeight: .infinity))
             if let native {
-                native.rootView = root
+                native.rootView = AnyView(root.macClickThrough())
             } else {
-                let host = NSHostingView(rootView: root)
+                let host = ClickThroughHostingView(rootView: AnyView(root.macClickThrough()))
                 host.frame = content.bounds
                 host.autoresizingMask = [.width, .height]
                 content.addSubview(host)
@@ -270,9 +270,9 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         guard let model = nativeModel else { return }
         let root = AnyView(SettingsSectionScreen(model: model, section: section).frame(maxWidth: .infinity, maxHeight: .infinity))
         if let native {
-            native.rootView = root
+            native.rootView = AnyView(root.macClickThrough())
         } else {
-            let host = NSHostingView(rootView: root)
+            let host = ClickThroughHostingView(rootView: AnyView(root.macClickThrough()))
             host.frame = content.bounds
             host.autoresizingMask = [.width, .height]
             content.addSubview(host)

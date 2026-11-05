@@ -11,6 +11,15 @@ import UIKit
 import SwiftUI
 import FoleviDesign
 
+/// Which button's menu is open, so that button keeps its open look while the pointer is in the menu (the web keeps
+/// a menu's trigger in its active fill, MAC-43). Set by the Mac's WebMenuWindow; observed by WebMenuButton and
+/// RowMoreButton.
+@MainActor @Observable
+final class WebMenuTrigger {
+    static let shared = WebMenuTrigger()
+    var open: ObjectIdentifier?
+}
+
 /// What a menu row does when picked.
 public struct WebMenuEntry: Identifiable {
     public var item: WebMenuItem
@@ -39,6 +48,9 @@ final class WebMenuState {
 
     var selectable: [WebMenuEntry] { entries.filter { $0.item.kind == .item && !$0.disabled } }
 
+    /// The rows as the panel draws them: a disabled entry's row is drawn disabled (faded, no hover, no click: MAC-01).
+    var panelItems: [WebMenuItem] { entries.map { $0.item.disabled($0.disabled || $0.item.disabled) } }
+
     func move(_ step: Int) {
         let list = selectable
         guard !list.isEmpty else { return }
@@ -54,7 +66,7 @@ struct WebMenuContent: View {
     let pick: (WebMenuEntry) -> Void
 
     var body: some View {
-        WebMenuPanel(state.entries.map(\.item), width: width, highlighted: state.highlighted, select: select, onSelect: { item in
+        WebMenuPanel(state.panelItems, width: width, highlighted: state.highlighted, select: select, onSelect: { item in
             if let e = state.entries.first(where: { $0.id == item.id }), !e.disabled { pick(e) }
         }, onHover: { state.highlighted = $0 })
         .background {
@@ -75,6 +87,10 @@ public final class WebMenuWindow: NSPanel {
     private static weak var current: WebMenuWindow?
     private var monitors: [Any] = []
     private let state: WebMenuState
+    /// The button it opened from (nil: a right click), and its frame in the parent window: a click on it closes the
+    /// menu and stops there, rather than opening it again (MAC-08).
+    private weak var trigger: NSView?
+    private var triggerRect: NSRect = .zero
     /// Room around the panel for its shadow (the web's --shadow-pop reaches ~30 pt).
     static let margin: CGFloat = 32
 
@@ -88,7 +104,7 @@ public final class WebMenuWindow: NSPanel {
         hasShadow = false
         level = .popUpMenu
         isReleasedWhenClosed = false
-        let host = NSHostingView(rootView: WebMenuContent(state: state, width: width, select: select) { [weak self] e in self?.pick(e) }.padding(Self.margin))
+        let host = ClickThroughHostingView(rootView: WebMenuContent(state: state, width: width, select: select) { [weak self] e in self?.pick(e) }.padding(Self.margin).macClickThrough())
         host.safeAreaRegions = []
         contentView = host
         setContentSize(host.fittingSize)
@@ -113,7 +129,31 @@ public final class WebMenuWindow: NSPanel {
     @discardableResult
     public static func show(_ entries: [WebMenuEntry], width: CGFloat = 200, below view: NSView, align: Align = .end, side: Side = .bottom) -> WebMenuWindow? {
         guard let window = view.window else { return nil }
-        return show(entries, width: width, anchor: view.convert(view.bounds, to: nil), align: align, side: side, in: window)
+        let menu = show(entries, width: width, anchor: view.convert(view.bounds, to: nil), align: align, side: side, in: window)
+        menu.openedFrom(view)
+        return menu
+    }
+
+    /// Remembers the button it opened from (MAC-08, MAC-43).
+    private func openedFrom(_ view: NSView) {
+        trigger = view
+        triggerRect = view.convert(view.bounds, to: nil)
+        WebMenuTrigger.shared.open = ObjectIdentifier(view)
+    }
+
+    /// Whether `view` opened the menu on screen (its trigger keeps its open look meanwhile).
+    static func isOpen(from view: NSView?) -> Bool {
+        guard let view, let m = shown, !m.closing else { return false }
+        return m.trigger === view
+    }
+
+    /// What a mouse down outside the panel does (MAC-06, MAC-08): it always closes the menu; on the menu's own button
+    /// it stops there (the button would open it again); anywhere else it goes on to what's under it, its window made
+    /// key first so the one click acts.
+    enum OutsideClick: Equatable { case closeAndPass, closeAndSwallow }
+
+    nonisolated static func outsideClick(at point: NSPoint, inParent: Bool, left: Bool, trigger: NSRect) -> OutsideClick {
+        inParent && left && trigger.width > 0 && trigger.height > 0 && trigger.contains(point) ? .closeAndSwallow : .closeAndPass
     }
 
     /// A select's list (ui/Select.tsx) under its trigger: at least as wide as it (180 at least), 6 below it, lined up
@@ -122,7 +162,9 @@ public final class WebMenuWindow: NSPanel {
     public static func showSelect(_ entries: [WebMenuEntry], below view: NSView) -> WebMenuWindow? {
         guard let window = view.window else { return nil }
         let a = view.convert(view.bounds, to: nil)
-        return show(entries, width: max(a.width, 180), anchor: a, align: .start, in: window, select: true, gap: 6)
+        let menu = show(entries, width: max(a.width, 180), anchor: a, align: .start, in: window, select: true, gap: 6)
+        menu.openedFrom(view)
+        return menu
     }
 
     /// ui/Menu.tsx `place()`: the gap is 8 from a button and 2 from a point, the menu stays 8 inside the window, and
@@ -193,8 +235,11 @@ public final class WebMenuWindow: NSPanel {
 
     private func watch() {
         monitors.append(NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
-            guard let self else { return event }
-            if event.window !== self { self.close() }
+            guard let self, event.window !== self else { return event }
+            let decision = Self.outsideClick(at: event.locationInWindow, inParent: event.window != nil && event.window === self.parent, left: event.type == .leftMouseDown, trigger: self.triggerRect)
+            self.close()
+            if decision == .closeAndSwallow { return nil }
+            OutsideClicks.prepare(event)
             return event
         } as Any)
         monitors.append(NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -231,6 +276,10 @@ public final class WebMenuWindow: NSPanel {
         closing = true
         monitors.forEach(NSEvent.removeMonitor)
         monitors.removeAll()
+        if let t = trigger, WebMenuTrigger.shared.open == ObjectIdentifier(t) { WebMenuTrigger.shared.open = nil }
+        // The window under it takes the keys again at once, not after the fade: a click there during the fade acts
+        // the first time (MAC-06).
+        handKeyBack()
         fadeAway { [weak self] in
             guard let self else { return }
             self.parent?.removeChildWindow(self)
@@ -239,6 +288,26 @@ public final class WebMenuWindow: NSPanel {
     }
 
     private func closeNow() { super.close() }
+}
+
+/// Clicks outside Folevi's floating panels (menus, popovers): MAC-06.
+@MainActor
+enum OutsideClicks {
+    /// A mouse down that closed a menu or popover goes on to the window under it. That window is made key here, before
+    /// AppKit hands it the click: while the panel had the keys the window wasn't key, and a click on a window that isn't
+    /// key only makes it key. Now the one click both closes the panel and acts.
+    static func prepare(_ event: NSEvent) {
+        guard let w = event.window, w.isVisible, !w.isKeyWindow, w.canBecomeKey, !(w is WebMenuWindow) else { return }
+        w.makeKey()
+    }
+}
+
+extension NSWindow {
+    /// A floating panel closing gives the keys back to the window it floats over, if it had them.
+    func handKeyBack() {
+        guard isKeyWindow, let p = parent, p.isVisible, p.canBecomeKey else { return }
+        p.makeKey()
+    }
 }
 
 // MARK: right-click menus
@@ -494,18 +563,34 @@ public struct RowMoreButton: View {
     }
 
     public var body: some View {
-        let ink = WebStyles.vars[hover ? "color-heading" : "color-ink-muted"]?.resolve(scheme).color ?? .secondary
-        let soft = WebStyles.vars["color-accent-soft"]?.resolve(scheme).color ?? .clear
         WebMenuButton(entries: entries) {
-            WebIconView(.ellipsis, size: iconSize)
-                .foregroundStyle(ink)
-                .frame(width: size, height: size)
-                .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(hover ? soft : .clear))
-                .contentShape(Rectangle())
+            RowMoreFace(hover: hover, shown: shown, size: size, iconSize: iconSize)
         }
         .onHover { hover = $0 }
-        .opacity(shown || hover ? 1 : 0)
         .accessibilityLabel(label)
+    }
+}
+
+/// The "…" itself: muted, in the heading colour on the accent's soft fill under the pointer and while its menu is
+/// open (it stays shown then, though the pointer has left its row for the menu: MAC-43).
+private struct RowMoreFace: View {
+    let hover: Bool
+    let shown: Bool
+    let size: CGFloat
+    let iconSize: CGFloat
+    @Environment(\.webMenuOpen) private var open
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let hot = hover || open
+        let ink = WebStyles.vars[hot ? "color-heading" : "color-ink-muted"]?.resolve(scheme).color ?? .secondary
+        let soft = WebStyles.vars["color-accent-soft"]?.resolve(scheme).color ?? .clear
+        WebIconView(.ellipsis, size: iconSize)
+            .foregroundStyle(ink)
+            .frame(width: size, height: size)
+            .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(hot ? soft : .clear))
+            .contentShape(Rectangle())
+            .opacity(shown || hot ? 1 : 0)
     }
 }
 
@@ -542,14 +627,40 @@ public struct WebMenuButton<Label: View>: View {
     }
 
     public var body: some View {
+        // While its menu is open the button keeps an open look: the glass hover fill behind it (a select's well
+        // covers it with its own box) and `webMenuOpen` for a label that draws its own (MAC-43).
+        let open = anchor.map { WebMenuTrigger.shared.open == ObjectIdentifier($0) } ?? false
         Button {
             if let anchor {
                 if select { WebMenuWindow.showSelect(entries(), below: anchor) } else { WebMenuWindow.show(entries(), width: width, below: anchor, align: align, side: side) }
             }
         } label: {
-            label.background(MenuAnchor { anchor = $0 })
+            label
+                .environment(\.webMenuOpen, open)
+                .background(MenuAnchor { anchor = $0 })
+                .background {
+                    if open, !select { WebMenuOpenFill() }
+                }
         }
+        #if os(macOS)
+        .buttonStyle(.webPlain)
+        #else
         .buttonStyle(.plain)
+        #endif
     }
+}
+
+/// A menu button's fill while its menu is open: the glass hover at the chip radius.
+struct WebMenuOpenFill: View {
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular)
+            .fill(WebStyles.vars["glass-hover"]?.resolve(scheme).color ?? .clear)
+    }
+}
+
+extension EnvironmentValues {
+    /// The menu this label's button opens is on screen (MAC-43).
+    @Entry var webMenuOpen = false
 }
 #endif

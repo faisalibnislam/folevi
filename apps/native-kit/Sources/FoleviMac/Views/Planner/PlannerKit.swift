@@ -207,10 +207,10 @@ struct WebSeg: View {
     }
 }
 
-/// No system highlight.
+/// No system highlight; pressed, the one press answer (PressDip: darker on the Mac, MAC-07) rather than a fade.
 struct PlainPress: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.contentShape(Rectangle()).opacity(configuration.isPressed ? 0.85 : 1)
+        configuration.label.contentShape(Rectangle()).pressDip(configuration.isPressed)
     }
 }
 
@@ -397,23 +397,26 @@ final class PlannerPanel: NSPanel {
         hasShadow = false
         level = .floating
         isReleasedWhenClosed = false
-        let host = NSHostingView(rootView: content)
+        let host = ClickThroughHostingView(rootView: content.macClickThrough())
         host.safeAreaRegions = []
         contentView = host
     }
 
     override var canBecomeKey: Bool { true }
 
-    /// A dialog: the whole window, the dialog centred across it and `top` points from the window's top.
+    /// A dialog: the whole window, the dialog in its middle as the frame's dialogs are (FrameSheets, the owner, 5
+    /// November 2026), on the same frosted backdrop (the window behind, blurred) with the same Close button (MAC-10).
+    /// `top`: attached that far from the window's top instead.
     @discardableResult
-    static func dialog<V: View>(in window: NSWindow, top: CGFloat = 56, @ViewBuilder _ content: (_ close: @escaping @MainActor () -> Void) -> V) -> PlannerPanel {
+    static func dialog<V: View>(in window: NSWindow, top: CGFloat? = nil, @ViewBuilder _ content: (_ close: @escaping @MainActor () -> Void) -> V) -> PlannerPanel {
         var panel: PlannerPanel?
         let close: @MainActor () -> Void = { panel?.close() }
-        let view = ZStack(alignment: .top) {
+        let view = ZStack(alignment: top == nil ? .center : .top) {
             Color.black.opacity(0.001).onTapGesture { close() }
-            content(close).webSheetIn().padding(.top, top)
+            content(close).webSheetIn().padding(.top, top ?? 0)
         }
-        .frame(width: window.frame.width, height: window.contentLayoutRect.height + (window.frame.height - window.contentLayoutRect.height), alignment: .top)
+        .frame(width: window.frame.width, height: window.frame.height, alignment: top == nil ? .center : .top)
+        .environment(\.sheetBackdrop, SheetBackdropImage(image: window.contentView.flatMap { FrameSheets.blurredSnapshot(of: $0) }))
         .environment(\.colorScheme, window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light)
         let p = PlannerPanel(content: AnyView(view), frame: window.frame)
         panel = p
@@ -458,6 +461,8 @@ final class PlannerPanel: NSPanel {
             }
             if event.window is WebMenuWindow { return event }
             self.close()
+            // The window under the click takes the keys before the click reaches it, so it acts at once (MAC-06).
+            OutsideClicks.prepare(event)
             return event
         } as Any)
         monitors.append(NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -616,18 +621,16 @@ struct PlannerDialog<Content: View>: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                PlannerIconButton(icon: .x, label: "Close", style: "dialog.close", action: close)
+                WebSheetCloseButton(action: close)
             }
             .padding(header.padding.edgeInsets)
             content()
                 .padding(body.padding.edgeInsets)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(width: p.width)
         .foregroundStyle(p.color.color)
-        .background(WebMaterial(radius: p.radius))
-        .webBox(panel)
-        .clipShape(RoundedRectangle(cornerRadius: p.radius, style: .circular).inset(by: -40))
+        // The frame's dialogs' panel: the same frosted glass, edge and shadow as WebSheetDialog (MAC-10).
+        .modifier(WebSheetPanel(style: panel, width: p.width))
     }
 }
 

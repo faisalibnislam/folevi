@@ -61,8 +61,8 @@ struct TabStripTests {
         #expect(Self.strip(4, active: 3, available: 700).sizes.widths == s.widths)
         #expect(s.visible == 700)
         #expect(abs(s.content - 700) < 0.01)
-        // Never below 172: then it scrolls.
-        let (many, _) = Self.strip(8, active: 1, available: 900)
+        // Never below the least (96 on the Mac): then it scrolls.
+        let (many, _) = Self.strip(14, active: 1, available: 900)
         #expect(many.widths.dropFirst().allSatisfy { $0 == TabStripMath.minTab })
         #expect(many.visible == 900)
         #expect(many.content > 900)

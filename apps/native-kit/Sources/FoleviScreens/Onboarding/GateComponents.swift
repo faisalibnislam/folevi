@@ -204,14 +204,19 @@ struct ChoiceCard<Icon: View>: View {
     }
 }
 
-/// Shrinks a little while pressed (the web's active:scale-[0.985]); not under Reduce Motion.
+/// Shrinks a little while pressed (the web's active:scale-[0.985]); not under Reduce Motion. On the Mac it darkens
+/// instead and never scales (globals.css: `scale: none` on Mac buttons; MAC-07).
 struct PressScale: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
+        #if os(macOS)
+        configuration.label.pressDip(configuration.isPressed)
+        #else
         configuration.label
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
             .opacity(configuration.isPressed ? 0.92 : 1)
             .animation(.folevi(0.12), value: configuration.isPressed)
+        #endif
     }
 }
 

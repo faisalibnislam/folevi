@@ -622,7 +622,7 @@ struct VaultTotp: View {
                 Text("Not a 2FA secret Folevi can read.").webText(VS.style("vault.row.detail", scheme).text).foregroundStyle(VS.color("warning", scheme))
             } else {
                 Text(code.map { "\($0.prefix(3)) \($0.dropFirst(3))" } ?? "··· ···")
-                    .font(.system(size: 17, design: .monospaced))
+                    .font(WebFont.font(.mono, size: 17))
                     .tracking(2)
                     .foregroundStyle(VS.style("vault.gate.title", scheme).color.color)
                 Text(code == nil ? "" : "\(seconds)s").webText(VS.style("vault.row.detail", scheme).text).foregroundStyle(VS.style("vault.row.detail", scheme).color.color)

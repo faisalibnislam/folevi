@@ -489,7 +489,7 @@ private struct VaultGateView: View {
                         Text("Vault recovery key").webText(VS.style("vault.gate.label", scheme).text).foregroundStyle(VS.style("vault.gate.label", scheme).color.color)
                         TextField("", text: $recovery)
                             .textFieldStyle(.plain)
-                            .font(.system(size: 14, design: .monospaced))
+                            .font(WebFont.font(.mono, size: 14))
                             .padding(VS.style("vault.gate.input", scheme).padding.edgeInsets)
                             .frame(height: 40)
                             .webBox(VS.pair("vault.gate.input"))
@@ -628,7 +628,7 @@ private struct EncryptionStep: View {
                 Text(recovery ? "Recovery key" : "Encryption passphrase").webText(l.text).foregroundStyle(l.color.color)
                 Group {
                     if recovery {
-                        TextField("XXXX-XXXX-XXXX-…", text: $secret).font(.system(size: input.fontSize, design: .monospaced))
+                        TextField("XXXX-XXXX-XXXX-…", text: $secret).font(WebFont.font(.mono, size: input.fontSize))
                     } else {
                         SecureField("", text: $secret).webText(input.text)
                     }
@@ -660,7 +660,7 @@ private struct EncryptionStep: View {
             case .compare?:
                 GateText("Check that your other device shows this code:")
                 Text(value?.approvalCode ?? "")
-                    .font(.system(size: 22, weight: .semibold, design: .monospaced))
+                    .font(WebFont.font(.mono, size: 22, weight: 600))
                     .foregroundStyle(VS.style("vault.gate.title", scheme).color.color)
                     .textSelection(.enabled)
             default: GateText("Open Folevi on a device you've already unlocked. It will ask you to approve this one.")
@@ -803,7 +803,7 @@ private struct RecoveryKeyCard: View {
         GateCard(icon: .keyRound, title: "Save your Vault recovery key") {
             GateText("If you forget your passcode, this key opens the Vault. Folevi can't. Keep it somewhere safe, away from this device.")
             Text(key)
-                .font(.system(size: 15, weight: .medium, design: .monospaced))
+                .font(WebFont.font(.mono, size: 15, weight: 500))
                 .foregroundStyle(VS.style("vault.gate.title", scheme).color.color)
                 .textSelection(.enabled)
                 .padding(12)

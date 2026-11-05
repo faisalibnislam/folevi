@@ -345,7 +345,7 @@ struct CatchUpScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Catch me up").font(FoleviFonts.font(.display, size: 28, weight: .semibold)).foregroundStyle(Folevi.color.heading)
+                Text("Catch me up").webText(.display(.title1)).foregroundStyle(Folevi.color.heading)
                 let card = model.home.value?.catchUp
                 if card?.state == .running {
                     CatchUpCardView(phase: .running, onRefresh: {}, onClose: {}, onSource: { _ in })

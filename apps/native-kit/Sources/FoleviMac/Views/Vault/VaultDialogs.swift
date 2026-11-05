@@ -53,21 +53,26 @@ private struct DialogField: View {
     /// A text area's rows (`rows={4}` for a field, 3 for Notes): 18 pt lines and 8 pt padding above and below.
     var rows = 4
     @Environment(\.colorScheme) private var scheme
+    @FocusState private var focused: Bool
 
     var body: some View {
         let l = VS.style("vault.gate.label", scheme)
+        // A focused field shows the web's focus ring (`.ui-input:focus`), the text areas too (MAC-40).
+        let box = focused ? webFocused(VS.pair("vault.gate.input")) : VS.pair("vault.gate.input")
         VStack(alignment: .leading, spacing: 4) {
             Text(label).webText(l.text).foregroundStyle(l.color.color)
             if multiline {
                 TextEditor(text: $text)
-                    .font(mono ? .system(size: 13, design: .monospaced) : .custom("Instrument Sans", size: 13))
+                    .font(mono ? WebFont.font(.mono, size: 13) : .custom("Instrument Sans", size: 13))
                     .scrollContentBackground(.hidden)
+                    .focused($focused)
                     .padding(6)
                     .frame(height: CGFloat(rows) * 18 + 16)
-                    .webBox(VS.pair("vault.gate.input"))
+                    .webBox(box)
             } else if mono {
-                TextField("", text: $text).textFieldStyle(.plain).font(.system(size: 13, design: .monospaced))
-                    .padding(.horizontal, 12).frame(height: 36).webBox(VS.pair("vault.gate.input"))
+                TextField("", text: $text).textFieldStyle(.plain).font(WebFont.font(.mono, size: 13))
+                    .focused($focused)
+                    .padding(.horizontal, 12).frame(height: 36).webBox(box)
             } else {
                 WebTextField(text: $text)
             }
@@ -414,15 +419,20 @@ private struct NoteDialog: View {
     @State private var text = ""
     @State private var busy = false
     @Environment(\.colorScheme) private var scheme
+    @FocusState private var focused: Bool
 
     var body: some View {
         WebDialog(row.title, width: 640, close: { model.dialog = nil }) {
             if note != nil {
+                // In the input's box, with the focus ring while it's being written in (MAC-40).
                 TextEditor(text: $text)
                     .font(.custom("Instrument Sans", size: 15))
                     .scrollContentBackground(.hidden)
                     .disabled(note?.canChange != true)
+                    .focused($focused)
+                    .padding(6)
                     .frame(minHeight: 260, maxHeight: 420)
+                    .webBox(focused ? webFocused(VS.pair("vault.gate.input")) : VS.pair("vault.gate.input"))
             } else {
                 RoundedRectangle(cornerRadius: 6).fill(VS.color("surface", scheme)).frame(height: 160)
             }

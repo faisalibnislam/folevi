@@ -55,6 +55,42 @@ private func run(_ frame: FrameModel, _ ok: String?, _ work: @escaping @MainActo
     }
 }
 
+/// Runs a sharing command, toasting what happened; true when it went through.
+@MainActor
+private func attempt(_ frame: FrameModel, _ ok: String?, _ work: @escaping @MainActor () async throws -> Void) async -> Bool {
+    do {
+        try await work()
+        if let ok { frame.toast(ok, tone: .success) }
+        return true
+    } catch {
+        frame.toast(ScreenErrors.message(error), tone: .error)
+        return false
+    }
+}
+
+/// A button whose command is in flight: disabled, saying so (`busyTitle`), so a second click can't send it twice
+/// (MAC-15: a second public link, a second Save).
+private struct BusyButton: View {
+    let title: String
+    var busyTitle: String?
+    var icon: WebIcon?
+    var variant: WebButtonVariant = .secondary
+    let work: @MainActor () async -> Void
+    @State private var busy = false
+
+    var body: some View {
+        WebButton(busy ? (busyTitle ?? title) : title, icon: icon, variant: variant, size: .sm) {
+            guard !busy else { return }
+            busy = true
+            Task {
+                await work()
+                busy = false
+            }
+        }
+        .disabled(busy)
+    }
+}
+
 private let roles: [(id: String, title: String)] = [("viewer", "Can view"), ("commenter", "Can comment"), ("editor", "Can edit")]
 
 /// The add-people row: an email field, a role and Share.
@@ -64,6 +100,7 @@ private struct InviteRow: View {
     @State private var email = ""
     @State private var role = "viewer"
     @State private var sending = false
+    @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -73,9 +110,10 @@ private struct InviteRow: View {
             HStack(spacing: 8) {
                 ZStack(alignment: .leading) {
                     if email.isEmpty { Text(verbatim: "name@example.com").webText(i.text).lineLimit(1).foregroundStyle(i.color.color.opacity(0.5)) }
-                    TextField("", text: $email).textFieldStyle(.plain).webText(i.text).lineLimit(1).offset(x: -1.125, y: 1.035).onSubmit(submit).accessibilityLabel("Email address")
+                    TextField("", text: $email).textFieldStyle(.plain).webText(i.text).lineLimit(1).offset(x: -1.125, y: 1.035).focused($focused).onSubmit(submit).accessibilityLabel("Email address")
                 }
-                .padding(i.padding.edgeInsets).frame(height: i.height).foregroundStyle(i.color.color).webBox(input)
+                // The focus ring as the dialogs' other fields show it (MAC-37).
+                .padding(i.padding.edgeInsets).frame(height: i.height).foregroundStyle(i.color.color).webBox(focused ? webFocused(input) : input)
                 WebBareSelect(label: roles.first { $0.id == role }?.title ?? "Can view", options: roles.map { ($0.id, $0.title) }, selected: role) { role = $0 }
                     .padding(.horizontal, 10).webBox(input)
                 WebSheetButton(title: "Share", primary: true, enabled: !sending && email.contains("@"), action: submit)
@@ -113,12 +151,18 @@ private struct PersonRow: View {
     let guest: Bool
     let role: String
     let canChange: Bool
-    let setRole: @MainActor (String) -> Void
-    let remove: @MainActor () -> Void
+    /// Each true when the command went through.
+    let setRole: @MainActor (String) async -> Bool
+    let remove: @MainActor () async -> Bool
     var leave: (@MainActor () -> Void)? = nil
+    /// The role just picked, shown at once until the server's answer says it (MAC-14: the select kept the old role
+    /// until the round trip ended, so the first pick looked ignored); dropped if the change failed.
+    @State private var pendingRole: String?
+    @State private var removing = false
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
+        let role = pendingRole ?? self.role
         let muted = moreVar("color-ink-muted", scheme)
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 0) {
@@ -134,14 +178,30 @@ private struct PersonRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             if canChange {
-                WebBareSelect(label: Roles.label(role), options: roles.map { ($0.id, $0.title) }, selected: role, onSelect: setRole)
-                WebIconButton(.trash, label: "Remove \(name)", action: remove)
+                WebBareSelect(label: Roles.label(role), options: roles.map { ($0.id, $0.title) }, selected: role) { r in
+                    guard r != role else { return }
+                    pendingRole = r
+                    Task { if await !setRole(r) { pendingRole = nil } }
+                }
+                // (Removing: the button waits for the answer, so a second click doesn't send it again: MAC-15.)
+                WebIconButton(.trash, label: "Remove \(name)") {
+                    guard !removing else { return }
+                    removing = true
+                    Task {
+                        _ = await remove()
+                        removing = false
+                    }
+                }
+                .disabled(removing)
+                .opacity(removing ? 0.4 : 1)
             } else {
                 Text(verbatim: Roles.label(role)).webText(.role(.footnote)).foregroundStyle(muted)
             }
             if let leave { WebButton("Leave", variant: .quiet, size: .sm, action: leave) }
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
+        // The server has it: its answer shows from here on (another device's change too).
+        .onChange(of: self.role) { _, now in if now == pendingRole { pendingRole = nil } }
     }
 }
 
@@ -220,8 +280,8 @@ struct PageShareSheet: View {
                     ForEach(Array(d.people.enumerated()), id: \.element.profileId) { i, p in
                         if i > 0 { Separator() }
                         PersonRow(name: p.name, email: p.email, isYou: p.isYou, guest: p.guest, role: p.role, canChange: p.canChange,
-                                  setRole: { r in run(frame, "Access changed") { _ = try await frame.client.command(.sharingSetRole(noteId: noteId, profileId: p.profileId, role: ShareRoleArgs.Role(rawValue: r) ?? .viewer)) } },
-                                  remove: { run(frame, "Removed") { _ = try await frame.client.command(.sharingRevoke(noteId: noteId, profileId: p.profileId)) } })
+                                  setRole: { r in await attempt(frame, "Access changed") { _ = try await frame.client.command(.sharingSetRole(noteId: noteId, profileId: p.profileId, role: ShareRoleArgs.Role(rawValue: r) ?? .viewer)) } },
+                                  remove: { await attempt(frame, "Removed") { _ = try await frame.client.command(.sharingRevoke(noteId: noteId, profileId: p.profileId)) } })
                     }
                 }
                 if !d.invites.isEmpty {
@@ -229,7 +289,7 @@ struct PageShareSheet: View {
                     BorderedList {
                         ForEach(Array(d.invites.enumerated()), id: \.element.id) { i, inv in
                             if i > 0 { Separator() }
-                            inviteRow(inv) { run(frame, "Invitation revoked") { _ = try await frame.client.command(.sharingCancelInvite(inviteId: inv.id)) } }
+                            inviteRow(inv) { _ = await attempt(frame, "Invitation revoked") { _ = try await frame.client.command(.sharingCancelInvite(inviteId: inv.id)) } }
                         }
                     }
                 }
@@ -266,7 +326,7 @@ struct PageShareSheet: View {
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(on ? moreVar("color-accent", scheme) : moreVar("color-line", scheme), lineWidth: 1))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .disabled(!d.canManage)
         .opacity(d.canManage ? 1 : 0.6)
     }
@@ -304,14 +364,14 @@ struct PageShareSheet: View {
                             .webText(.role(.footnote)).foregroundStyle(muted)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    WebButton("Revoke", variant: .quiet, size: .sm) { run(frame, "Link revoked") { _ = try await frame.client.command(.publicLinkRevoke(linkId: l.id)) } }
+                    BusyButton(title: "Revoke", busyTitle: "Revoking…", variant: .quiet) { _ = await attempt(frame, "Link revoked") { _ = try await frame.client.command(.publicLinkRevoke(linkId: l.id)) } }
                 }
                 .padding(.horizontal, 12).padding(.vertical, 8)
                 .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(moreVar("color-line", scheme), lineWidth: 1))
             }
             if d.publicLinksAvailable {
-                WebButton("Create public link", icon: .link2, size: .sm) {
-                    run(frame, nil) {
+                BusyButton(title: "Create public link", busyTitle: "Creating…", icon: .link2) {
+                    _ = await attempt(frame, nil) {
                         let r = try await frame.client.command(.publicLinkCreate(noteId: noteId))
                         freshLink = r.url
                     }
@@ -320,11 +380,11 @@ struct PageShareSheet: View {
         }
     }
 
-    private func inviteRow(_ i: ShareInvite, revoke: @escaping @MainActor () -> Void) -> some View {
+    private func inviteRow(_ i: ShareInvite, revoke: @escaping @MainActor () async -> Void) -> some View {
         HStack(spacing: 12) {
             Text(verbatim: i.email).webText(.role(.subheadline)).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
             Text(verbatim: "\(Roles.label(i.role)) · \(i.expired ? "expired" : "waiting to accept")").webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-muted", scheme))
-            WebButton("Revoke", variant: .quiet, size: .sm, action: revoke)
+            BusyButton(title: "Revoke", busyTitle: "Revoking…", variant: .quiet, work: revoke)
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
     }
@@ -390,8 +450,8 @@ struct FolderShareSheet: View {
             }
         }
         return PersonRow(name: p.name, email: p.email, isYou: p.isYou, guest: p.guest, role: p.role, canChange: p.canChange,
-                         setRole: { r in run(frame, "Access changed") { _ = try await frame.client.command(.folderSharingSetRole(folderId: folderId, profileId: p.profileId, role: FolderShareRoleArgs.Role(rawValue: r) ?? .viewer)) } },
-                         remove: { run(frame, "Removed") { _ = try await frame.client.command(.folderSharingRevoke(folderId: folderId, profileId: p.profileId)) } },
+                         setRole: { r in await attempt(frame, "Access changed") { _ = try await frame.client.command(.folderSharingSetRole(folderId: folderId, profileId: p.profileId, role: FolderShareRoleArgs.Role(rawValue: r) ?? .viewer)) } },
+                         remove: { await attempt(frame, "Removed") { _ = try await frame.client.command(.folderSharingRevoke(folderId: folderId, profileId: p.profileId)) } },
                          leave: leave)
     }
 
@@ -442,7 +502,7 @@ struct FolderShareSheet: View {
                             HStack(spacing: 12) {
                                 Text(verbatim: inv.email).webText(.role(.subheadline)).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
                                 Text(verbatim: "\(Roles.label(inv.role)) · \(inv.expired ? "expired" : "waiting to accept")").webText(.role(.footnote)).foregroundStyle(muted)
-                                WebButton("Revoke", variant: .quiet, size: .sm) { run(frame, "Invitation revoked") { _ = try await frame.client.command(.folderSharingCancelInvite(inviteId: inv.id)) } }
+                                BusyButton(title: "Revoke", busyTitle: "Revoking…", variant: .quiet) { _ = await attempt(frame, "Invitation revoked") { _ = try await frame.client.command(.folderSharingCancelInvite(inviteId: inv.id)) } }
                             }
                             .padding(.horizontal, 12).padding(.vertical, 8)
                         }
@@ -450,7 +510,7 @@ struct FolderShareSheet: View {
                 }
             }
             if d.youAreGuest {
-                Button { close(); frame.open(.web("/shared/\(folderId)")) } label: { Text(verbatim: "Open the shared folder").underline().webText(.role(.footnote)).foregroundStyle(muted) }.buttonStyle(.plain)
+                Button { close(); frame.open(.web("/shared/\(folderId)")) } label: { Text(verbatim: "Open the shared folder").underline().webText(.role(.footnote)).foregroundStyle(muted) }.buttonStyle(.webPlain)
             } else {
                 Text(verbatim: "Public links are for single notes: share a note to make one.").webText(.role(.footnote)).foregroundStyle(muted)
             }

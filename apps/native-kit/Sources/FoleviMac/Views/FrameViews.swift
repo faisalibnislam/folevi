@@ -78,7 +78,7 @@ public final class FrameRootViewController: NSViewController {
         if on && native {
             if gateShown { leaveWebGate() }
             if gateHost == nil {
-                let host = NSHostingView(rootView: AnyView(WebGateScreen(model: gateModel)))
+                let host = ClickThroughHostingView(rootView: AnyView(WebGateScreen(model: gateModel).macClickThrough()))
                 host.safeAreaRegions = []
                 host.frame = view.bounds
                 host.autoresizingMask = [.width, .height]
@@ -212,7 +212,7 @@ public final class WebSidebarController: NSViewController {
         actions.notifications = { [weak self] anchor in self?.showNotifications(anchor) }
         actions.account = { [weak self] anchor in self?.showAccount(anchor) }
         actions.sync = { [weak self] anchor in self?.showSync(anchor) }
-        let host = NSHostingView(rootView: WebSidebar(model: model, tasks: tasks, actions: actions).defaultAppStorage(Self.defaults))
+        let host = ClickThroughHostingView(rootView: WebSidebar(model: model, tasks: tasks, actions: actions).defaultAppStorage(Self.defaults).macClickThrough())
         host.sizingOptions = []
         host.safeAreaRegions = []
         view = host
@@ -228,6 +228,12 @@ public final class WebSidebarController: NSViewController {
         super.viewDidAppear()
         FrameSheets.attach(model, window: view.window)
         AppContextMenu.attach(model, window: view.window)
+        // A search link opens ⌘K with its query, not a search tab (MAC-61).
+        model.searchInPalette = { [weak self] q in
+            guard let self else { return }
+            FrameSheets.attach(self.model, window: self.view.window)
+            CommandPalette.show(self.model, query: q)
+        }
     }
 
     /// The bell: the web's notifications panel, in glass under the sidebar's top bar.
@@ -243,7 +249,7 @@ public final class WebSidebarController: NSViewController {
         // Folevi's own menu (WebAccountMenu.swift), opening up from the account button as the web's does.
         guard let window = view.window else { return }
         if AccountMenuWindow.shown != nil { AccountMenuWindow.shown?.close(); return }
-        AccountMenuWindow.show(model: model, in: window)
+        AccountMenuWindow.show(model: model, in: window, anchor: anchor)
     }
 
     private func show(_ content: AnyView, from anchor: NSView?) {
@@ -275,13 +281,13 @@ public final class ContentViewController: NSViewController {
     private let clip = CardClipView()
     /// What's under the bar, blurred (the web's ui-glass backdrop-filter), behind the bar's own tint.
     private let glass = GlassBackdrop()
-    private var screen: NSHostingView<ScreenRoot>?
+    private var screen: NSHostingView<ClickThrough<ScreenRoot>>?
     private lazy var models = ScreenModels(frame: model)
     private var toasts: NSHostingView<ToastStack>?
     private var toastCentre: NSLayoutConstraint?
     /// Ask Foli AI's floating button and chat (FoliAI/AiAskPanel.swift), over everything but a note.
     private lazy var askAi = AiAskState(frame: model, feedback: models.feedback)
-    private var askAiView: NSHostingView<AiAskOverlay>?
+    private var askAiView: NSHostingView<ClickThrough<AiAskOverlay>>?
     private var observers: [Observer] = []
     private var overviewView: NSView?
     private var shownRoute: FrameRoute?
@@ -291,7 +297,7 @@ public final class ContentViewController: NSViewController {
     init(model: FrameModel, pageView: NSView) {
         self.model = model
         self.pageView = pageView
-        topBar = NSHostingView(rootView: WebTopBar(model: model))
+        topBar = ClickThroughHostingView(rootView: WebTopBar(model: model))
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -327,7 +333,7 @@ public final class ContentViewController: NSViewController {
         let toastView = ToastHostingView(rootView: ToastStack(model: model))
         toastView.safeAreaRegions = []
         toastView.translatesAutoresizingMaskIntoConstraints = false
-        let ask = NSHostingView(rootView: AiAskOverlay(frame: model, state: askAi))
+        let ask = ClickThroughHostingView(rootView: ClickThrough(AiAskOverlay(frame: model, state: askAi)))
         ask.safeAreaRegions = []
         ask.sizingOptions = [.intrinsicContentSize]
         ask.translatesAutoresizingMaskIntoConstraints = false
@@ -341,7 +347,7 @@ public final class ContentViewController: NSViewController {
         previewLayer.safeAreaRegions = []
         previewLayer.translatesAutoresizingMaskIntoConstraints = false
         clip.addSubview(previewLayer)
-        let overview = NSHostingView(rootView: TabOverviewHost(model: model))
+        let overview = ClickThroughHostingView(rootView: TabOverviewHost(model: model).macClickThrough())
         overview.safeAreaRegions = []
         overview.translatesAutoresizingMaskIntoConstraints = false
         overview.isHidden = true
@@ -380,6 +386,10 @@ public final class ContentViewController: NSViewController {
             ask.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
             toastView.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
             toastView.widthAnchor.constraint(lessThanOrEqualTo: clip.widthAnchor, constant: -40),
+            // Centred on the window where it fits, but never past the card's edges (the card clips it: a long toast in a
+            // narrow window lost its left edge and padding under the sidebar, MAC-36).
+            toastView.leadingAnchor.constraint(greaterThanOrEqualTo: clip.leadingAnchor, constant: 20),
+            toastView.trailingAnchor.constraint(lessThanOrEqualTo: clip.trailingAnchor, constant: -20),
         ])
         toastCentre = toastView.centerXAnchor.constraint(equalTo: clip.centerXAnchor)
         toastCentre?.isActive = true
@@ -468,10 +478,10 @@ public final class ContentViewController: NSViewController {
             body.isHidden = false
             if changed { models.prepare(route) }
             if let s = screen {
-                if changed { s.rootView = ScreenRoot(model: model, models: models, route: route) }
+                if changed { s.rootView = ClickThrough(ScreenRoot(model: model, models: models, route: route)) }
                 s.isHidden = false
             } else {
-                let s = NSHostingView(rootView: ScreenRoot(model: model, models: models, route: route))
+                let s = ClickThroughHostingView(rootView: ClickThrough(ScreenRoot(model: model, models: models, route: route)))
                 s.safeAreaRegions = []
                 s.frame = body.bounds
                 s.autoresizingMask = [.width, .height]
@@ -499,7 +509,7 @@ public final class ContentViewController: NSViewController {
         guard !route.isNote, let s = screen else { return }
         models.keep(only: Set(model.tabs.tabs.map(\.route)).subtracting([route]))
         models.prepare(route)
-        s.rootView = ScreenRoot(model: model, models: models, route: route)
+        s.rootView = ClickThrough(ScreenRoot(model: model, models: models, route: route))
     }
 
     /// The note's page shows: the native screen goes, and stops drawing behind the note (its screen is emptied, so
@@ -510,7 +520,7 @@ public final class ContentViewController: NSViewController {
         guard model.route.isNote, !body.isHidden else { return }
         body.isHidden = true
         screen?.isHidden = true
-        screen?.rootView = ScreenRoot(model: model, models: models, route: model.route)
+        screen?.rootView = ClickThrough(ScreenRoot(model: model, models: models, route: model.route))
         syncPageAccessibility()
     }
 
@@ -646,9 +656,27 @@ final class PassThroughHostingView<Content: View>: NSHostingView<Content> {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
+/// A hosting view whose first click acts (MAC-05). By default a click on a window that isn't key (another Folevi
+/// window or a floating note was in front, Quick Add was open, another app was active) only brings the window forward:
+/// the sidebar row, tab or button under the pointer did nothing until a second click. AppKit asks the view under the
+/// click `acceptsFirstMouse(for:)` and passes that click on to it only when it says yes; this one does. Its SwiftUI
+/// content says so too (`macClickThrough()`, SwiftUI's `allowsWindowActivationEvents`), for the clicks that land on
+/// SwiftUI's own AppKit views inside it (a scroll view's, a text field's). Every part of the window's frame is hosted
+/// in one: the sidebar, the top bar, the screens, the toasts, Ask Foli AI, dialogs and the gate.
+public class ClickThroughHostingView<Content: View>: NSHostingView<Content> {
+    override public func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
+/// A root view that takes the first click of an inactive window (macClickThrough), for hosts typed by their root.
+struct ClickThrough<Content: View>: View {
+    let content: Content
+    init(_ content: Content) { self.content = content }
+    var body: some View { content.macClickThrough() }
+}
+
 /// The toasts' host: the room kept under them (above a note's floating page tools) lets clicks through to the
 /// tools, so a toast never blocks them.
-final class ToastHostingView: NSHostingView<ToastStack> {
+final class ToastHostingView: ClickThroughHostingView<ToastStack> {
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = convert(point, from: superview)
         let fromBottom = isFlipped ? bounds.height - local.y : local.y

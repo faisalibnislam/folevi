@@ -150,7 +150,7 @@ struct TabPinJoinTests {
     }
 
     @Test func tabsOfEachKindShareTheRoomByTheirBasis() {
-        // Home (36), a pinned tab (86), joined notes (460, down to 240) and two tabs (284, down to 172).
+        // Home (36), a pinned tab (86), joined notes (460, down to their least) and two tabs (284, down to theirs).
         let items: [TabStripMath.Item] = [.fixed(36), .fixed(86), .flex(.joined), .flex(.tab), .flex(.tab)]
         let gap: CGFloat = 6, pad: CGFloat = 8
         let natural = pad + 36 + 86 + 460 + 284 * 2 + gap * 4
@@ -162,7 +162,7 @@ struct TabPinJoinTests {
         #expect(abs(s.visible - (natural - 200)) < 0.01 && abs(s.content - s.visible) < 0.01)
         // Far short: every tab at its minimum, then the list scrolls.
         let tight = TabStripMath.sizes(items: items, gap: gap, padding: pad, available: 400)
-        #expect(tight.widths == [36, 86, 240, 172, 172])
+        #expect(tight.widths == [36, 86, TabStripMath.Flex.joined.min, TabStripMath.minTab, TabStripMath.minTab])
         #expect(tight.content > tight.visible)
     }
 }

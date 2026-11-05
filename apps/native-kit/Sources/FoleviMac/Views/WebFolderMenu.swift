@@ -188,17 +188,19 @@ struct EditTagSheet: View {
         WebSheetDialog(title: "Edit tag", close: close) {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Name").webText(label).foregroundStyle(moreVar("color-ink", scheme))
+                // The dialogs' one input (more.prompt.input): its text, padding and height, as the name prompt's (MAC-37).
                 TextField("", text: $name)
                     .textFieldStyle(.plain)
-                    .webText(.role(.callout))
+                    .webText(i.text)
+                    .offset(x: -1.125, y: 1.035)
                     .focused($focused)
                     .onSubmit(save)
                     .onChange(of: name) { _, v in
                         problem = nil
                         if v.count > 40 { name = String(v.prefix(40)) }
                     }
-                    .padding(.horizontal, 12)
-                    .frame(height: 40)
+                    .padding(i.padding.edgeInsets)
+                    .frame(height: i.height)
                     .foregroundStyle(i.color.color)
                     .webBox(input)
                     .padding(.top, 8)
@@ -216,7 +218,7 @@ struct EditTagSheet: View {
                             .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(color == c.id ? moreVar("color-accent-soft", scheme) : .clear))
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.webPlain)
                         .accessibilityAddTraits(color == c.id ? .isSelected : [])
                     }
                 }
@@ -227,7 +229,8 @@ struct EditTagSheet: View {
                 HStack(spacing: 8) {
                     Spacer(minLength: 0)
                     WebSheetButton(title: "Cancel", action: close)
-                    WebSheetButton(title: "Save", primary: true, action: save)
+                    // (While it saves: "Saving…", and no second Save, MAC-15.)
+                    WebSheetButton(title: saving ? "Saving…" : "Save", primary: true, enabled: !saving, action: save)
                 }
                 .padding(.top, 20)
             }
@@ -238,16 +241,21 @@ struct EditTagSheet: View {
         }
     }
 
+    @State private var saving = false
+
     private func save() {
+        guard !saving else { return }
         let n = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        saving = true
         Task { @MainActor in
             do {
                 _ = try await frame.client.command(.tagUpdate(id: id, name: n, color: color))
                 close()
                 frame.toast("Tag updated", tone: .success)
             } catch {
-                problem = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                problem = (error as? any LocalizedError)?.errorDescription ?? error.localizedDescription
             }
+            saving = false
         }
     }
 }

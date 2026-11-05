@@ -111,16 +111,65 @@ public struct WebIconButton: View {
         Button(action: action) {
             WebIconView(icon, size: 16)
                 .frame(width: s.width, height: s.height)
-                .foregroundStyle(s.color.color)
                 .webBox(style)
         }
-        .buttonStyle(WebPressStyle())
+        .buttonStyle(WebIconButtonStyle(radius: s.radius, ink: s.color, pressedLook: pressed))
         .foleviTooltip(label)
         .accessibilityLabel(label)
     }
 }
 
-/// No system highlight: the web shows its own hover and press states.
+/// The quiet icon button's states (globals.css `.ui-btn-quiet`): under the pointer the glass hover fill at its radius
+/// and the icon in the heading colour; pressed, `--mac-press` on the Mac (a dip on iPhone and iPad); a disabled one
+/// takes no hover (MAC-16).
+struct WebIconButtonStyle: ButtonStyle {
+    let radius: CGFloat
+    let ink: RGBA
+    /// `aria-pressed`: its own fill already, so no hover over it.
+    var pressedLook = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        Body(label: configuration.label, pressed: configuration.isPressed, radius: radius, ink: ink, pressedLook: pressedLook)
+    }
+
+    struct Body<L: View>: View {
+        let label: L
+        let pressed: Bool
+        let radius: CGFloat
+        let ink: RGBA
+        let pressedLook: Bool
+        @State private var over = false
+        @Environment(\.colorScheme) private var scheme
+        @Environment(\.isEnabled) private var enabled
+
+        var body: some View {
+            let hot = over && enabled && !pressedLook
+            let heading = WebStyles.vars["color-heading"]?.resolve(scheme).color ?? ink.color
+            label
+                .foregroundStyle(hot ? heading : ink.color)
+                .background {
+                    #if os(macOS)
+                    if pressed, enabled, let fill = WebStyles.vars["mac-press"] {
+                        RoundedRectangle(cornerRadius: radius, style: .circular).fill(fill.resolve(scheme).color)
+                    } else if hot, let fill = WebStyles.vars["glass-hover"] {
+                        RoundedRectangle(cornerRadius: radius, style: .circular).fill(fill.resolve(scheme).color)
+                    }
+                    #else
+                    if hot, let fill = WebStyles.vars["glass-hover"] {
+                        RoundedRectangle(cornerRadius: radius, style: .circular).fill(fill.resolve(scheme).color)
+                    }
+                    #endif
+                }
+                .contentShape(Rectangle())
+                #if !os(macOS)
+                .pressDip(pressed, scale: 0.94)
+                #endif
+                .onHover { over = $0 }
+        }
+    }
+}
+
+/// No system highlight: the web shows its own hover and press states (pressed: darker on the Mac, a dip elsewhere).
 struct WebPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.contentShape(Rectangle()).pressDip(configuration.isPressed, scale: 0.94)
@@ -219,6 +268,15 @@ public struct WebMenuItem: Identifiable, Sendable {
     public var checkable = false
     /// A colour square in the icon's place (the tag menu's "Color: Moss").
     public var swatch: Color?
+    /// Shown but not offered (`disabled` on the web's MenuItem): 40% on the Mac, no hover fill, takes no click.
+    public var disabled = false
+
+    /// The same row, offered or not.
+    public func disabled(_ off: Bool) -> WebMenuItem {
+        var item = self
+        item.disabled = off
+        return item
+    }
 
     public static func item(_ title: String, icon: WebIcon? = nil, shortcut: String? = nil, danger: Bool = false, checked: Bool? = nil, description: String? = nil, detail: String? = nil, swatch: Color? = nil, id: String? = nil) -> WebMenuItem {
         WebMenuItem(id: id ?? title, kind: .item, title: title, icon: icon, shortcut: shortcut, danger: danger, checked: checked ?? false, description: description, detail: detail, checkable: checked != nil, swatch: swatch)
@@ -346,7 +404,7 @@ public struct WebMenuPanel: View {
         case .item where select:
             selectRow(item)
         case .item:
-            let on = current == item.id
+            let on = current == item.id && !item.disabled
             // (A destructive row keeps its red words and takes the soft hover fill under them.)
             let styleId = item.danger ? "menu.item.danger" : on ? "menu.item.highlighted" : "menu.item"
             let style = WebStyles.named(styleId)
@@ -425,9 +483,15 @@ public struct WebMenuPanel: View {
                 }
             }
             .buttonStyle(WebPressStyle())
-            .onHover { hover(item.id, $0) }
+            // A disabled row (MAC-01): faded, never highlighted, takes no click (the menu stays open, as the web's).
+            .disabled(item.disabled)
+            .opacity(item.disabled ? Self.disabledOpacity : 1)
+            .onHover { hover(item.id, $0 && !item.disabled) }
         }
     }
+
+    /// `.ui-menu-item:disabled`: 0.4 on the Mac, 0.35 in the iPhone's and iPad's menus.
+    static var disabledOpacity: CGFloat { ios ? 0.35 : 0.4 }
 }
 
 extension WebMenuPanel {
@@ -440,7 +504,7 @@ extension WebMenuPanel {
         let heading = WebStyles.vars["color-heading"]?.resolve(scheme).color ?? .primary
         let ink = WebStyles.vars["color-ink"]?.resolve(scheme).color ?? .primary
         let hoverFill = WebStyles.vars["glass-hover"]?.resolve(scheme).color ?? .clear
-        let active = current == item.id
+        let active = current == item.id && !item.disabled
         Button { onSelect(item) } label: {
             HStack(spacing: 8) {
                 Text(item.title).webText(item.checked ? base.text.weight(600) : base.text).lineLimit(1).truncationMode(.tail)
@@ -457,7 +521,9 @@ extension WebMenuPanel {
             .contentShape(Rectangle())
         }
         .buttonStyle(WebPressStyle())
-        .onHover { self.hover(item.id, $0) }
+        .disabled(item.disabled)
+        .opacity(item.disabled ? Self.disabledOpacity : 1)
+        .onHover { self.hover(item.id, $0 && !item.disabled) }
     }
 }
 
@@ -498,7 +564,9 @@ public struct WebDialog<Body: View, Footer: View>: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(title).webText(t.text).foregroundStyle(t.color.color).lineLimit(1)
+                    // (One line, cut in the middle: a long name inside the title loses its middle, never the end of the
+                    // question, MAC-11.)
+                    Text(title).webText(t.text).foregroundStyle(t.color.color).lineLimit(1).truncationMode(.middle)
                     if let description {
                         Text(description).webText(d.text).foregroundStyle(d.color.color).padding(.top, 4)
                     }

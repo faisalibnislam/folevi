@@ -40,6 +40,13 @@ final class FoleviWebView: WKWebView {
         if mouseDownHook?(self, event) == true { return }
         super.mouseDown(with: event)
     }
+
+    /// A click on a window that isn't key (a floating note or another window was in front) acts at once: it places the
+    /// caret, presses the page's button or follows the link, as well as bringing the window forward (MAC-05).
+    /// WKWebView's own answer is yes only over a selection being dragged. The hidden runner takes no clicks anyway.
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        role == .runner ? super.acceptsFirstMouse(for: event) : true
+    }
 }
 
 /// What the page starts with, written into the bridge script (Electron read it with sendSync).

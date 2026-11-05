@@ -104,14 +104,14 @@ public struct TabOverviewLayer: View {
                 WebIconView(.search, size: 14).foregroundStyle(color("color-ink-faint"))
                 TextField("Search tabs", text: $query)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 13))
+                    .webText(.role(.body))
                     .focused($searching)
                     .accessibilityLabel("Search tabs")
                 if !query.isEmpty {
                     Button { query = "" } label: {
                         WebIconView(.x, size: 12).frame(width: 20, height: 20).foregroundStyle(color("color-ink-faint")).contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.webPlain)
                     .accessibilityLabel("Clear search")
                 }
             }
@@ -161,11 +161,15 @@ public struct TabOverviewLayer: View {
             }
             .padding(.horizontal, 12)
             .frame(height: 40)
+            // The header (icon and title) opens the tab too: the whole card is one target, the × keeping its own click
+            // (MAC-33).
+            .contentShape(Rectangle())
+            .onTapGesture { open(e) }
             Rectangle().fill(color("color-line")).frame(height: 1)
             Button { open(e) } label: {
                 TabPicture(tab: e.tab, model: model).aspectRatio(16 / 10, contentMode: .fit).contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.webPlain)
             .accessibilityLabel("Open \(label(e))")
         }
         .background(color("color-surface-raised"))
@@ -191,7 +195,7 @@ public struct TabOverviewLayer: View {
                 .overlay { if sel == index { shape.strokeBorder(color("color-focus"), lineWidth: 2) } }
                 .contentShape(shape)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .accessibilityLabel("New note")
         .onHover { if $0 { sel = index } }
     }

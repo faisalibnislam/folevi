@@ -1062,8 +1062,10 @@ export function GraphCanvas({
   /** A note opens; an entity shows (or hides) the notes that mention it. */
   const activate = (id: string, newTab = false) => {
     const n = byId.get(id);
-    if (n?.kind === "note") (newTab ? onOpen(n.id, true) : onOpen(n.id));
-    else if (n) setSelected((cur) => (cur === n.id ? null : n.id));
+    if (n?.kind === "note") {
+      if (newTab) onOpen(n.id, true);
+      else onOpen(n.id);
+    } else if (n) setSelected((cur) => (cur === n.id ? null : n.id));
   };
   const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
     pointers.current.delete(e.pointerId);

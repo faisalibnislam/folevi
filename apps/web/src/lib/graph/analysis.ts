@@ -100,7 +100,10 @@ export function stepsFrom(edges: readonly { source: string; target: string }[], 
   let ring = [from];
   for (let d = 1; d <= depth && ring.length; d++) {
     const next: string[] = [];
-    for (const id of ring) for (const n of adj.get(id) ?? []) if (!out.has(n)) (out.set(n, d), next.push(n));
+    for (const id of ring) for (const n of adj.get(id) ?? []) if (!out.has(n)) {
+      out.set(n, d);
+      next.push(n);
+    }
     ring = next;
   }
   return out;
@@ -161,10 +164,16 @@ export function clusters(nodes: readonly GraphNodeData[], edges: readonly GraphE
         let bestGain = gain(own);
         for (const c of [...links.keys()].sort()) {
           const g = gain(c);
-          if (g > bestGain + 1e-9) (best = c), (bestGain = g);
+          if (g > bestGain + 1e-9) {
+            best = c;
+            bestGain = g;
+          }
         }
         tot.set(best, (tot.get(best) ?? 0) + ki);
-        if (best !== own) (label.set(id, best), (moved = true));
+        if (best !== own) {
+          label.set(id, best);
+          moved = true;
+        }
       }
       if (!moved) break;
     }

@@ -6,8 +6,10 @@
 // - The "New Folevi Note with Selection" service and Shortcuts' New Note: a note from text (its first line the title).
 // - Shortcuts' Add a Task: a task in the Inbox.
 // - Spotlight: every note of this place, archived ones too, with its whole text (locked and encrypted notes never):
-//   a full look at the start, when "Show notes in Spotlight" changes and every few minutes, and the recent and
-//   bookmarked notes as soon as they change. Only notes whose stamp differs from what Spotlight holds are sent.
+//   a full look at the start, when "Show notes in Spotlight" changes, when the app asks (Spotlight lost its index)
+//   and every few minutes, and the recent and bookmarked notes as soon as they change. Only notes whose stamp
+//   differs from what Spotlight holds are sent. A note among those that became locked or encrypted, or left the
+//   lists for the Trash or for good, comes out at once (not only at the next full look).
 // - Notes dragged out to Finder: each one's Markdown and attachments, made when it's dropped.
 // Rendered by Shell next to DesktopBridge; nothing in the Electron app (it has none of these) or a browser.
 import { useConvex, useMutation, useQuery, type ConvexReactClient } from "convex/react";
@@ -18,7 +20,7 @@ import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { useBackendMode } from "@/lib/mode";
 import { APP_URL } from "@/lib/env";
-import { asCapabilityCommand, macDesktop, noteFromText, setNoteFileSource, type DesktopSpotlightItem, type MacCapabilities, type MacCapabilityCommand } from "@/lib/desktop/capabilities";
+import { asCapabilityCommand, macDesktop, noteFromText, setNoteFileSource, spotlightGone, spotlightLeft, type DesktopSpotlightItem, type MacCapabilities, type MacCapabilityCommand } from "@/lib/desktop/capabilities";
 import { desktopChanged } from "@/lib/engine/viewsSettings";
 // Export (Markdown, PDF, zips) loads when a note is first shared, printed or dragged out.
 const exporting = () => import("@/components/doc/export");
@@ -61,13 +63,20 @@ async function everyNote(client: ConvexReactClient, scope: WireScope): Promise<S
 
 /**
  * Sends Spotlight the notes among `rows` whose stamp differs from what it holds, with their text, 50 at a time; with
- * `whole` (every note of the place), the notes it holds that aren't among them come out.
+ * `whole` (every note of the place), the notes it holds that aren't among them come out. Otherwise the notes it
+ * holds that can't be in it any more come out: sealed ones among `rows`, and those among `left` (notes that just
+ * left the lists the quick look watches) with no text to give now (trashed, locked, deleted).
  */
-async function feedSpotlight(client: ConvexReactClient, bridge: MacCapabilities, rows: SpotlightRow[], whole: boolean) {
+async function feedSpotlight(client: ConvexReactClient, bridge: MacCapabilities, rows: SpotlightRow[], whole: boolean, left: readonly string[] = []) {
   const state = await bridge.spotlightState?.();
   if (!state?.enabled) return;
   const latest = new Map<string, SpotlightRow>();
-  for (const r of rows) if (!r.n.sealed) latest.set(r.n.id, r);
+  // Locked and end-to-end encrypted notes: never in Spotlight, title included.
+  const sealed = new Set<string>();
+  for (const r of rows) {
+    if (r.n.sealed) sealed.add(r.n.id);
+    else latest.set(r.n.id, r);
+  }
   const changed = [...latest.values()].filter((r) => state.known[r.n.id] !== spotlightStamp(r));
   // Notes with no text to give (locked, end-to-end encrypted, gone): never kept.
   const refused = new Set<string>();
@@ -82,7 +91,18 @@ async function feedSpotlight(client: ConvexReactClient, bridge: MacCapabilities,
     }
     if (items.length) await bridge.indexSpotlight?.(items);
   }
-  if (whole) await bridge.indexSpotlight?.([], [...latest.keys()].filter((id) => !refused.has(id)));
+  if (whole) {
+    await bridge.indexSpotlight?.([], [...latest.keys()].filter((id) => !refused.has(id)));
+    return;
+  }
+  const held = (id: string) => Object.prototype.hasOwnProperty.call(state.known, id);
+  const gone = spotlightGone(state.known, sealed, refused);
+  const unsure = left.filter((id) => held(id) && !latest.has(id) && !sealed.has(id));
+  for (let i = 0; i < unsure.length; i += SPOTLIGHT_BATCH) {
+    const texts = await client.query(api.documents.spotlightText, { ids: unsure.slice(i, i + SPOTLIGHT_BATCH) });
+    for (const t of texts) if (t.text == null) gone.push(t.id);
+  }
+  if (gone.length) await bridge.indexSpotlight?.([], undefined, gone);
 }
 
 export function DesktopCapabilities() {
@@ -116,12 +136,12 @@ function Capabilities() {
   const recent = useQuery(api.documents.recentNotes, feeds ? { scope, limit: SPOTLIGHT_RECENT } : "skip");
   const starred = useQuery(api.documents.list, feeds ? { scope, view: "starred", paginationOpts: { numItems: SPOTLIGHT_STARRED, cursor: null } } : "skip");
   const spotlightTurn = useRef<Promise<void>>(Promise.resolve());
-  const look = useRef<(rows: SpotlightRow[] | null) => void>(() => undefined);
-  look.current = (rows) => {
+  const look = useRef<(rows: SpotlightRow[] | null, left?: string[]) => void>(() => undefined);
+  look.current = (rows, left) => {
     spotlightTurn.current = spotlightTurn.current
       .then(async () => {
         const all = rows ?? (await everyNote(client, scope));
-        if (all) await feedSpotlight(client, bridge, all, rows === null);
+        if (all) await feedSpotlight(client, bridge, all, rows === null, left);
       })
       .catch(() => undefined); // Offline, or Spotlight isn't there: the next look tries again.
   };
@@ -136,10 +156,20 @@ function Capabilities() {
       unsubscribe();
     };
   }, [feeds, scope]);
+  // The notes the last quick look saw: one that leaves the lists may have gone to the Trash or been deleted.
+  const watched = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    watched.current = new Set();
+  }, [scope]);
   useEffect(() => {
     if (!recent || !starred) return;
     const rows = [...(recent as ListedNote[]).map((n) => ({ n, archived: false })), ...(starred.page as ListedNote[]).map((n) => ({ n, archived: false }))];
-    const timer = setTimeout(() => look.current(rows), SETTLE_MS);
+    const timer = setTimeout(() => {
+      const now = new Set(rows.map((r) => r.n.id));
+      const left = spotlightLeft(watched.current, now);
+      watched.current = now;
+      look.current(rows, left);
+    }, SETTLE_MS);
     return () => clearTimeout(timer);
   }, [recent, starred]);
 
@@ -181,6 +211,10 @@ function Capabilities() {
             now.toast.show(errorMessage(e), { tone: "error" });
             return { ok: false, message: errorMessage(e) };
           }
+        }
+        case "spotlight-look": {
+          look.current(null);
+          return { ok: true };
         }
         case "add-task": {
           try {

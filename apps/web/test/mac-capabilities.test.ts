@@ -1,7 +1,7 @@
 // The native Mac app's capabilities on the page (lib/desktop/capabilities.ts, lib/callCapture.ts): which app
 // commands the page answers, a note from text, and a call recorded by the app shaped like a MediaRecorder.
 import { describe, expect, test, vi } from "vitest";
-import { asCapabilityCommand, noteFromText, type NativeCallRecorder } from "@/lib/desktop/capabilities";
+import { asCapabilityCommand, noteFromText, spotlightGone, spotlightLeft, type NativeCallRecorder } from "@/lib/desktop/capabilities";
 import { CALL_PERMISSION, NativeCallRecording, callRecordingAvailable, nativeCallProblem, nativeCallRecorder } from "@/lib/callCapture";
 
 describe("the app's commands", () => {
@@ -13,6 +13,21 @@ describe("the app's commands", () => {
     expect(asCapabilityCommand({ type: "print" })).toBeNull();
     expect(asCapabilityCommand({ type: "navigate", path: "/" })).toBeNull();
     expect(asCapabilityCommand(null)).toBeNull();
+    expect(asCapabilityCommand({ type: "spotlight-look", id: "a1" })).toEqual({ type: "spotlight-look", id: "a1" });
+    expect(asCapabilityCommand({ type: "spotlight-look" })).toBeNull();
+  });
+
+  test("Spotlight: notes that can't be in it any more come out, only those it holds", () => {
+    const known = { a: "1", b: "2", c: "3" };
+    expect(spotlightGone(known, ["a", "x"], ["b", "a"]).sort()).toEqual(["a", "b"]);
+    expect(spotlightGone(known, [], [])).toEqual([]);
+    // A key Object.prototype has is not a note Spotlight holds.
+    expect(spotlightGone(known, ["toString"], [])).toEqual([]);
+  });
+
+  test("Spotlight: the notes that left the recent and bookmarked lists", () => {
+    expect(spotlightLeft(new Set(["a", "b", "c"]), new Set(["b", "d"]))).toEqual(["a", "c"]);
+    expect(spotlightLeft(new Set(), new Set(["a"]))).toEqual([]);
   });
 
   test("a note from text: the first line is its title", () => {

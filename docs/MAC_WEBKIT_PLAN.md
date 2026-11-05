@@ -700,9 +700,11 @@ the owner's support folder or Keychain items).
     `setShareTarget`), File > Print (`Chrome.print`), hooked in `ChromeHooks.swift`.
   - Services: `ServicesProvider.swift` and `NSServices` in Info.plist ("New Folevi Note with Selection", "New
     Folevi Dev Note with Selection" in Debug; plain text, RTF): the page makes the note (first line the title).
-  - Spotlight: `Spotlight.swift`. Each place's page hands over its recent and starred notes (both modes; the Mac
-    has no REST token of its own), a domain per place, pruned when a place goes; a result opens the note in its
-    place (`Places.switchTo`) through `application(_:continue:)`.
+  - Spotlight: `Spotlight.swift`. Each place's page hands over every note with its text, archived ones too, never
+    locked or encrypted ones (both modes; the Mac has no REST token of its own), a domain per place, removed when
+    the place is signed out of or forgotten; notes locked, trashed or deleted come out on the next quick look; an
+    index version and CSSearchableIndexDelegate make the pages send everything again; a result opens the note in
+    its place (`Places.switchTo`) through `application(_:continue:)`, after launch when it opened the app.
   - Shortcuts: `Intents.swift`: New Note (with text), Add a Task (with a due date) and Open Note (from the notes
     Spotlight holds), with phrases; they go through the open place's page as the menus do.
   - Also `Clipboard.swift` (`foleviDesktop.clipboard` for WM4's menus) and `QuickLook.swift` (attachments'

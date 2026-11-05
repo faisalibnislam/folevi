@@ -220,6 +220,38 @@ final class CapabilitiesTests: XCTestCase {
         XCTAssertEqual(kept.text, "")
     }
 
+    func testSpotlightTakesOutWhatKeepLeavesAndWhatThePageNames() {
+        let held: Set<String> = ["a", "b", "c", "d"]
+        // A full look: what `keep` doesn't name comes out.
+        XCTAssertEqual(Spotlight.leaving(held: held, adding: [], keep: ["a", "b"], remove: []), ["c", "d"])
+        // A quick look: only the notes named (locked, trashed), held or not.
+        XCTAssertEqual(Spotlight.leaving(held: held, adding: ["a"], keep: nil, remove: ["b", "z"]), ["b", "z"])
+        // A note going in now never comes out in the same call.
+        XCTAssertEqual(Spotlight.leaving(held: held, adding: ["c"], keep: ["a"], remove: ["c"]), ["b", "d"])
+        XCTAssertEqual(Spotlight.leaving(held: held, adding: [], keep: nil, remove: []), [])
+    }
+
+    func testSpotlightResultsOpenInTheirPlace() {
+        let here = Spotlight.identifier(place: "library", id: "01ABC")
+        XCTAssertEqual(Spotlight.destination(of: here, current: "library"), .here(path: "/d/01ABC"))
+        XCTAssertEqual(Spotlight.destination(of: here, current: "acct:u1"), .otherPlace(place: "library", path: "/d/01ABC"))
+        // No place open: the notes indexed without one ("default").
+        XCTAssertEqual(Spotlight.destination(of: Spotlight.identifier(place: "default", id: "x"), current: nil), .here(path: "/d/x"))
+        XCTAssertNil(Spotlight.destination(of: Spotlight.identifier(place: "library", id: "../etc"), current: "library"))
+        XCTAssertNil(Spotlight.destination(of: "01ABC", current: "library"))
+    }
+
+    func testSpotlightEntryWithoutAFolderHasNoEmptyKeyword() {
+        let note = Spotlight.Note(id: "a", title: "", excerpt: "", text: "Hello", location: "", starred: true, updatedAt: 1700000000000)
+        let item = Spotlight.item(note, place: "library")
+        XCTAssertEqual(item.attributeSet.keywords, ["bookmarked"])
+        XCTAssertEqual(item.attributeSet.title, "Untitled")
+        XCTAssertEqual(item.domainIdentifier, Spotlight.domain("library"))
+        XCTAssertEqual(item.uniqueIdentifier, Spotlight.identifier(place: "library", id: "a"))
+        XCTAssertEqual(item.attributeSet.contentModificationDate, Date(timeIntervalSince1970: 1700000000))
+        XCTAssertGreaterThanOrEqual(Spotlight.indexVersion, 2)
+    }
+
     func testShowNotesInSpotlightIsOnUnlessTurnedOff() {
         XCTAssertTrue(DesktopSettings.defaults.spotlight)
         XCTAssertFalse(DesktopSettings.clean(["spotlight": false], base: .defaults).spotlight)

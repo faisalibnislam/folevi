@@ -31,8 +31,8 @@ test("menus, panels and editor popups are never clipped or covered", async ({ br
   await page.goto("/documents");
   const card = page.locator('[aria-label="Recent notes"] li').first();
   await card.hover();
-  await card.getByRole("button", { name: /^Actions for/ }).click();
-  await expectOnTop(page, page.getByRole("menu", { name: /^Actions for/ }), "note card menu");
+  await card.getByRole("button", { name: /^More actions for/ }).click();
+  await expectOnTop(page, page.getByRole("menu", { name: /^More actions for/ }), "note card menu");
   await page.keyboard.press("Escape");
 
   // Folder card menu.

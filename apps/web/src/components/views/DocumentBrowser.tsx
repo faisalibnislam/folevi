@@ -918,7 +918,7 @@ export function DocMenu(props: DocMenuProps) {
   const { items, dialogs } = useDocMenu(props);
   return (
     <>
-      <MenuButton label={`Actions for ${props.doc.title || "Untitled"}`} trigger={<MoreHorizontal size={16} aria-hidden />} items={items} />
+      <MenuButton label={`More actions for ${props.doc.title || "Untitled"}`} trigger={<MoreHorizontal size={16} aria-hidden />} items={items} />
       {dialogs}
     </>
   );
@@ -933,7 +933,7 @@ export function NoteContextMenu({ at, onDone, ...props }: DocMenuProps & { at: {
   }, [menuOpen, dialogOpen, onDone]);
   return (
     <>
-      {menuOpen ? <ContextMenu at={at} label={`Actions for ${props.doc.title || "Untitled"}`} items={items} onClose={() => setMenuOpen(false)} /> : null}
+      {menuOpen ? <ContextMenu at={at} label={`More actions for ${props.doc.title || "Untitled"}`} items={items} onClose={() => setMenuOpen(false)} /> : null}
       {dialogs}
     </>
   );

@@ -59,7 +59,7 @@ struct WebNoteCell: View {
             GeometryReader { geo in
                 HStack(spacing: 4) {
                     if let useTemplate { WebButton("Use", icon: .filePlusCorner, variant: .secondary, size: .sm, action: useTemplate) }
-                    WebCardMenuButton(label: "Actions for \(card.title.isEmpty ? "Untitled" : card.title)", entries: menu)
+                    WebCardMenuButton(label: moreActionsLabel(card.title), entries: menu)
                 }
                 .fixedSize()
                 // Clear of a bookmarked card's ribbon (DocumentCard.tsx: right 11cqw + 4px).
@@ -114,8 +114,12 @@ struct WebCardMenuButton: View {
                 .contentShape(Rectangle())
         }
         .foleviTooltip(label)
+        .accessibilityLabel(label)
     }
 }
+
+/// A note's "…" button, named for VoiceOver and its tooltip after the note (QA audit F21).
+func moreActionsLabel(_ title: String) -> String { "More actions for \(title.isEmpty ? "Untitled" : title)" }
 
 /// A folder card with its link, hover lift, the "…" menu over the cover on hover, a right-click menu, and notes or
 /// another folder dropped on it moving inside (a folder as in Finder: the card's own folder can't take itself).
@@ -1053,6 +1057,7 @@ struct WebNoteListRow: View {
         let on = model.selection.contains(row.id)
         HStack(spacing: r.gap) {
             Text("⋮⋮").webText(handle.text).lineLimit(1).foregroundStyle(handle.color.color).opacity(hovered ? 1 : 0)
+                .accessibilityHidden(true)
             if on {
                 WebIconView(.check, size: 11, strokeWidth: 3)
                     .foregroundStyle(webVar("color-canvas", scheme).color)
@@ -1087,7 +1092,8 @@ struct WebNoteListRow: View {
                     .frame(width: 32, height: 32)
                     .contentShape(Rectangle())
             }
-            .foleviTooltip("Actions for \(row.title.isEmpty ? "Untitled" : row.title)")
+            .foleviTooltip(moreActionsLabel(row.title))
+            .accessibilityLabel(moreActionsLabel(row.title))
         }
         .padding(r.padding.edgeInsets)
         .frame(height: r.height)
@@ -1100,6 +1106,12 @@ struct WebNoteListRow: View {
         .onHover { hovered = $0 }
         .draggable(model.dragItem(for: row))
         .webContextMenu { noteMenuEntries(row, list: model, frame: frame) }
+        // Each row is a group named for its note and when it changed, so notes of the same title (and their menu
+        // buttons) can be told apart (F21). Its own action opens the note.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(row.title.isEmpty ? "Untitled" : row.title), \(CardMapping.timeText(row, inTrash: model.isTrash))")
+        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityAction(named: "Open") { frame.open(.note(row.id)) }
     }
 }
 

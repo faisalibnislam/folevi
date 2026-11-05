@@ -39,6 +39,22 @@ export const scenarios = [
     },
   }),
   scenario({
+    name: "folders: the sidebar's own order, apart from their rank",
+    async run(b, k) {
+      const first = k.name((await b.mutation(api.organization.createFolder, { scope: b.scope, name: "First" })).id, "first");
+      const second = k.name((await b.mutation(api.organization.createFolder, { scope: b.scope, name: "Second" })).id, "second");
+      const none = await b.query(api.sidebarOrder.get, { scope: b.scope });
+      await b.mutation(api.sidebarOrder.set, { scope: b.scope, folderIds: [second, first, second] });
+      const saved = await b.query(api.sidebarOrder.get, { scope: b.scope });
+      const mine = new Set([first, second]);
+      const rank = (await b.query(api.organization.sidebar, { scope: b.scope })).folders.filter((f: { id: string }) => mine.has(f.id)).map((f: { id: string }) => f.id);
+      const badId = await attempt(b.mutation(api.sidebarOrder.set, { scope: b.scope, folderIds: ["not an id!"] }));
+      await b.mutation(api.sidebarOrder.set, { scope: b.scope, folderIds: null });
+      const forgotten = await b.query(api.sidebarOrder.get, { scope: b.scope });
+      return { none, saved, rank, badId, forgotten };
+    },
+  }),
+  scenario({
     name: "tags: create, rename, tag a note, list by tag",
     async run(b, k) {
       const garden = k.name((await b.mutation(api.organization.createTag, { scope: b.scope, name: "garden" })).id, "garden");

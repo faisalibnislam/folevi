@@ -69,6 +69,16 @@ function overlayFolders<T extends SidebarFolder>(list: T[], entries: readonly Ou
   return folders;
 }
 
+/**
+ * The sidebar's own folder order of `scope` (sidebarOrder.get) with the waiting changes to it applied: the last one
+ * saved on this device wins. Null: none saved (rank order); undefined: no answer yet and nothing waiting.
+ */
+export function overlaySidebarOrder(data: readonly string[] | null | undefined, entries: readonly OutboxEntry[], scope: WireScope): readonly string[] | null | undefined {
+  let order = data;
+  for (const e of entries) if (is(e, "sidebarOrder.set") && sameScope(e.args.scope as WireScope, scope)) order = e.args.folderIds;
+  return order;
+}
+
 /** The folder each note is in once the waiting moves land (only the notes they move). */
 export function pendingNoteFolders(entries: readonly OutboxEntry[]): Map<string, string | null> {
   const out = new Map<string, string | null>();

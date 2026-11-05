@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "folder.setSidebarOrder",
+  "description": "Back to rank order.",
+  "args": {
+    "ids": null
+  },
+  "result": {
+    "ok": true
+  }
+}

@@ -966,13 +966,27 @@ public struct FolderNode: Codable, Hashable, Sendable {
 /// `folders.tree`: every folder (nested) and tag of a space, with what's waiting to sync laid over it.
 public struct FoldersTreeValue: Codable, Hashable, Sendable {
     public var space: SpaceRef
+    /// In rank order (the Folders page's manual order), depth first.
     public var folders: [FolderNode]
     public var tags: [TagRow]
+    /// Revision 29: this person's own order of the folders in the sidebar (synced with the account, one per space), or
+    /// null when none is saved. Sort each level by a folder's place in it; folders it doesn't name come after the ones
+    /// it does, in rank order (web lib/app/sidebarFolderSort.ts applySidebarOrder). Change it with `folder.setSidebarOrder`.
+    public var sidebarOrder: [String]?
 
-    public init(space: SpaceRef, folders: [FolderNode], tags: [TagRow]) {
+    public init(space: SpaceRef, folders: [FolderNode], tags: [TagRow], sidebarOrder: [String]? = nil) {
         self.space = space
         self.folders = folders
         self.tags = tags
+        self.sidebarOrder = sidebarOrder
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.space, forKey: .space)
+        try container.encode(self.folders, forKey: .folders)
+        try container.encode(self.tags, forKey: .tags)
+        try container.encode(self.sidebarOrder, forKey: .sidebarOrder)
     }
 }
 
@@ -2436,6 +2450,26 @@ public struct FolderIdArgs: Codable, Hashable, Sendable {
 
     public init(id: String) {
         self.id = id
+    }
+}
+
+/// `folder.setSidebarOrder` (revision 29): saves this person's own sidebar order of a space's folders (every folder id,
+/// depth first, in the order the sidebar shows them), or null to go back to rank order. Only the sidebar changes: the
+/// folders' rank and the Folders page don't. Through the outbox, like the other folder commands.
+public struct FolderSidebarOrderArgs: Codable, Hashable, Sendable {
+    public var ids: [String]?
+    /// The space whose sidebar it is (default: the one shown).
+    public var space: SpaceRef?
+
+    public init(ids: [String]? = nil, space: SpaceRef? = nil) {
+        self.ids = ids
+        self.space = space
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.ids, forKey: .ids)
+        try container.encodeIfPresent(self.space, forKey: .space)
     }
 }
 

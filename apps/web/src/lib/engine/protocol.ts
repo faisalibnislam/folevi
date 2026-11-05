@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 28;
+export const CONTRACT_REVISION = 29;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -632,8 +632,15 @@ export interface FolderNode {
 /** `folders.tree`: every folder (nested) and tag of a space, with what's waiting to sync laid over it. */
 export interface FoldersTreeValue {
   space: SpaceRef;
+  /** In rank order (the Folders page's manual order), depth first. */
   folders: FolderNode[];
   tags: TagRow[];
+  /**
+   * Revision 29: this person's own order of the folders in the sidebar (synced with the account, one per space), or
+   * null when none is saved. Sort each level by a folder's place in it; folders it doesn't name come after the ones
+   * it does, in rank order (web lib/app/sidebarFolderSort.ts applySidebarOrder). Change it with `folder.setSidebarOrder`.
+   */
+  sidebarOrder: string[] | null;
 }
 
 /** The global sync state (docs/SYNC_PROTOCOL.md, components/app/SyncStatus.tsx). */
@@ -1256,6 +1263,17 @@ export interface FolderMoveArgs {
 
 export interface FolderIdArgs {
   id: string;
+}
+
+/**
+ * `folder.setSidebarOrder` (revision 29): saves this person's own sidebar order of a space's folders (every folder id,
+ * depth first, in the order the sidebar shows them), or null to go back to rank order. Only the sidebar changes: the
+ * folders' rank and the Folders page don't. Through the outbox, like the other folder commands.
+ */
+export interface FolderSidebarOrderArgs {
+  ids: string[] | null;
+  /** The space whose sidebar it is (default: the one shown). */
+  space?: SpaceRef;
 }
 
 export interface TrashSummaryValue {
@@ -4054,6 +4072,7 @@ export interface CommandMap {
   "folder.rename": { args: FolderRenameArgs; result: OkResult };
   "folder.setColor": { args: FolderSetColorArgs; result: OkResult };
   "folder.move": { args: FolderMoveArgs; result: OkResult };
+  "folder.setSidebarOrder": { args: FolderSidebarOrderArgs; result: OkResult };
   "folder.delete": { args: FolderIdArgs; result: OkResult };
   "tag.update": { args: TagUpdateArgs; result: OkResult };
   "tag.delete": { args: TagIdArgs; result: OkResult };
@@ -4405,6 +4424,7 @@ const commandNames = [
   "account.signOut",
   "text.layout",
   "workspace.create",
+  "folder.setSidebarOrder",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

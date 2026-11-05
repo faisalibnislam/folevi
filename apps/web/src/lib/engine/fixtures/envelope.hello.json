@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "0be43da5"
+        "schemaHash": "bec85e5a"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 28,
+        "revision": 29,
         "build": "dev",
-        "schemaHash": "0be43da5",
+        "schemaHash": "bec85e5a",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -252,7 +252,8 @@
           "comment.deleteThread",
           "account.signOut",
           "text.layout",
-          "workspace.create"
+          "workspace.create",
+          "folder.setSidebarOrder"
         ],
         "editorCommands": [
           "note.prepare",

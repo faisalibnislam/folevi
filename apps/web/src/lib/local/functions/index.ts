@@ -5,6 +5,7 @@ import "./blocks";
 import "./documents";
 import "./documents.history";
 import "./organization";
+import "./sidebarOrder";
 import "./users";
 import "./settings";
 import "./themes";

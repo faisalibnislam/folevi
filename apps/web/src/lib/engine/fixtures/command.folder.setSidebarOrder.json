@@ -1,0 +1,17 @@
+{
+  "kind": "command",
+  "name": "folder.setSidebarOrder",
+  "description": "The sidebar's own order: Work above Trips (the folders' rank is untouched).",
+  "args": {
+    "ids": [
+      "fld_work",
+      "fld_trips",
+      "fld_japan",
+      "fld_kyoto",
+      "fld_iceland"
+    ]
+  },
+  "result": {
+    "ok": true
+  }
+}

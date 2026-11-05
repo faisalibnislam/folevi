@@ -5,7 +5,7 @@
 import type { FunctionReference } from "convex/server";
 import type { WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
-import { overlayFolderIndex, overlaySidebar, pendingNoteFolders, type FolderIndexData, type SidebarData } from "@/lib/sync/overlays";
+import { overlayFolderIndex, overlaySidebar, overlaySidebarOrder, pendingNoteFolders, type FolderIndexData, type SidebarData } from "@/lib/sync/overlays";
 import type { OutboxEntry } from "@/lib/sync/outbox";
 import type { EngineDeps, EngineSpace, ViewContext } from "./context";
 import { spaceOf } from "./context";
@@ -336,11 +336,13 @@ const home: ValueViewDef = {
 // folders.tree
 // ---------------------------------------------------------------------------------------------------------------
 
-export function foldersTreeValue(space: EngineSpace, sidebar: SidebarData | undefined, index: FolderIndexData | undefined, entries: readonly OutboxEntry[], marks: SyncMarks, locked: boolean): FoldersTreeValue {
-  if (locked || !sidebar) return { space: space.id, folders: [], tags: [] };
+export function foldersTreeValue(space: EngineSpace, sidebar: SidebarData | undefined, index: FolderIndexData | undefined, entries: readonly OutboxEntry[], marks: SyncMarks, locked: boolean, sidebarOrder?: readonly string[] | null): FoldersTreeValue {
+  if (locked || !sidebar) return { space: space.id, folders: [], tags: [], sidebarOrder: null };
   const tree = overlaySidebar(sidebar, entries, space.scope);
   const counts = index ? new Map(overlayFolderIndex(index, entries, space.scope).folders.map((f) => [f.id, f.documentCount])) : null;
-  return { space: space.id, folders: folderTree(tree.folders, counts, marks), tags: tagRows(tree.tags) };
+  // The person's own sidebar order, with a change still waiting on this device in place.
+  const order = overlaySidebarOrder(sidebarOrder, entries, space.scope) ?? null;
+  return { space: space.id, folders: folderTree(tree.folders, counts, marks), tags: tagRows(tree.tags), sidebarOrder: order ? [...order] : null };
 }
 
 const foldersTree: ValueViewDef = {
@@ -351,14 +353,15 @@ const foldersTree: ValueViewDef = {
     const space = requireSpace(deps, args.space as string | undefined);
     const sidebar = source<SidebarData>(ctx, api.organization.sidebar, { scope: space.scope }, space.scope);
     const index = source<FolderIndexData>(ctx, api.organization.index, { scope: space.scope, only: "folders" }, space.scope);
+    const order = source<string[] | null>(ctx, api.sidebarOrder.get, { scope: space.scope }, space.scope);
     return {
-      signals: [sidebar, index, outboxSignal(ctx), engineSignal(ctx), deps.e2eeSignal],
+      signals: [sidebar, index, order, outboxSignal(ctx), engineSignal(ctx), deps.e2eeSignal],
       compute: () => {
         const d = ctx.deps();
         const s = sidebar.snapshot();
         if (s.error && !s.value) return { value: undefined, stale: false, error: s.error };
         const i = index.snapshot();
-        return { value: foldersTreeValue(space, s.value, i.value, entriesOf(d), marksOf(d), d.spaceStatus(space.scope).locked), stale: s.stale, error: null };
+        return { value: foldersTreeValue(space, s.value, i.value, entriesOf(d), marksOf(d), d.spaceStatus(space.scope).locked, order.snapshot().value), stale: s.stale, error: null };
       },
     };
   },

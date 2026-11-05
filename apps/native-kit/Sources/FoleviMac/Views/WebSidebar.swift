@@ -52,14 +52,14 @@ public struct WebSidebar: View {
     #if os(iOS)
     /// The account row, for the account menu's place on the iPad.
     @State private var accountAnchor: UIView?
-    /// The folder row a dragged note or folder is over (iPad: the Mac's AppKit sidebar takes its own drops).
-    @State private var dropTarget: String?
-    #if os(iOS)
-    @State private var spring = SpringLoader()
     #endif
+    /// The folder row a dragged note or folder is over, and where on it (a folder: the line above, inside, the line
+    /// below), on the iPad and the Mac alike.
+    @State private var dropTarget: String?
+    @State private var dropZone: FolderRules.Zone?
+    @State private var spring = SpringLoader()
     /// `dropTarget` while a folder is over the Folders heading.
     private static let topLevel = "@top"
-    #endif
 
     /// The first few starred notes, folders and tags; the rest are a click away on their own pages.
     static let limit = 5
@@ -265,9 +265,8 @@ public struct WebSidebar: View {
 
     private var foldersSection: some View {
         let sort = SidebarFolderSort(rawValue: folderSortRaw) ?? .manual
-        var changed: [String: Double] = [:]
-        for c in folderChanges?.value?.folders ?? [] { changed[c.id] = c.updatedAt }
-        let all = SidebarFolderSort.sorted(model.folders.value?.folders ?? [], by: sort, changed: changed)
+        // The folders in the sidebar's own order (synced with the account; none saved: rank order), then sorted.
+        let all = shownFolders
         let roots = all.filter { $0.parentId == nil }
         // The first five top-level folders (and the one you're in); Show more lists them all, here.
         let activeRoot = activeRootId(all)
@@ -293,7 +292,7 @@ public struct WebSidebar: View {
                 Text("No folders yet").webText(.role(.footnote)).foregroundStyle(Folevi.color.inkFaint).padding(.horizontal, 8).padding(.vertical, 4)
             }
             ForEach(shown, id: \.id) { f in
-                folder(f, all: all)
+                folder(f, all: all, sort: sort)
             }
             if shown.count < roots.count {
                 toggleLink("Show more") { WebMotion.animate { allFoldersShown = true } }
@@ -304,6 +303,14 @@ public struct WebSidebar: View {
         .task(id: sort) {
             if sort == .recent, folderChanges == nil { folderChanges = model.client.watch(.foldersCards(all: true)) }
         }
+    }
+
+    /// The folders as the sidebar lists them: its own order, then sorted by the sort chosen.
+    private var shownFolders: [FolderNode] {
+        let sort = SidebarFolderSort(rawValue: folderSortRaw) ?? .manual
+        var changed: [String: Double] = [:]
+        for c in folderChanges?.value?.folders ?? [] { changed[c.id] = c.updatedAt }
+        return SidebarFolderSort.sorted(SidebarFolderSort.applying(model.folders.value?.sidebarOrder, to: model.folders.value?.folders ?? []), by: sort, changed: changed)
     }
 
     /// The top-level folder the open folder is in (or is), kept listed when the rest are folded away.
@@ -318,7 +325,7 @@ public struct WebSidebar: View {
         return cur?.id
     }
 
-    private func folder(_ f: FolderNode, all: [FolderNode]) -> AnyView {
+    private func folder(_ f: FolderNode, all: [FolderNode], sort: SidebarFolderSort) -> AnyView {
         let children = all.filter { $0.parentId == f.id }
         let closed = Set(closedFolders.split(separator: ",").map(String.init))
         // The open folder's own ancestors are always open (Sidebar.tsx activePath).
@@ -348,30 +355,85 @@ public struct WebSidebar: View {
             }
             .padding(.leading, CGFloat(f.depth) * 14)
             .webContextMenu { folderMenu(f) }
-            #if os(iOS)
-            // Drop notes (one or a selection) or a folder on a folder to move them into it, as on the Mac and the web.
-            .background {
-                if dropTarget == f.id {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Folevi.color.heading, lineWidth: 2)
+            // Drop notes (one or a selection) on a folder to move them into it; a folder goes on the line above or
+            // below it (the sidebar's own order) or inside it, as on the web (lib/app/sidebarFolderSort.ts).
+            .overlay {
+                if dropTarget == f.id, let zone = dropZone {
+                    switch zone {
+                    case .inside:
+                        RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Folevi.color.heading, lineWidth: 2)
+                    case .before, .after:
+                        Capsule().fill(Folevi.color.heading).frame(height: 2)
+                            .frame(maxHeight: .infinity, alignment: zone == .before ? .top : .bottom)
+                            .padding(.leading, toggle.width)
+                            .allowsHitTesting(false)
+                    }
                 }
             }
             // (One target for notes and folders: two stacked drop destinations only honour the outer one.)
             .onDrop(of: [.foleviNoteRef, .foleviFolderRef], delegate: FolderDrop(
-                folderId: f.id, axis: .vertical, length: 0,
-                zone: Binding(get: { dropTarget == f.id ? .inside : nil }, set: { z in dropTarget = z != nil ? f.id : (dropTarget == f.id ? nil : dropTarget) }),
+                folderId: f.id, axis: .vertical, length: canEdit ? style("item").height : 0,
+                zone: Binding(get: { dropTarget == f.id ? dropZone : nil }, set: { z in
+                    if let z {
+                        dropTarget = f.id
+                        dropZone = z
+                    } else if dropTarget == f.id {
+                        dropTarget = nil
+                        dropZone = nil
+                    }
+                }),
                 spring: spring,
+                onSpring: children.isEmpty || open ? nil : { WebMotion.animate { closedFolders = closed.subtracting([f.id]).sorted().joined(separator: ",") } },
                 onNotes: { items in
                     let ids = items.flatMap(\.ids)
                     if !ids.isEmpty { model.move(notes: ids, to: f.id) }
                 },
-                onFolder: { dragged, _ in if dragged.id != f.id { model.move(folder: dragged.id, into: f.id, after: nil) } }
+                onFolder: { dragged, zone in dropFolder(dragged, on: f.id, zone: zone, shown: all, sort: sort) }
             ))
             .draggable(FolderDragItem(id: f.id, name: f.name, parentId: f.parentId))
-            #endif
             if open {
-                ForEach(children, id: \.id) { c in folder(c, all: all).transition(.opacity) }
+                ForEach(children, id: \.id) { c in folder(c, all: all, sort: sort).transition(.opacity) }
             }
         })
+    }
+
+    /// A folder dropped on the sidebar's tree (`target` nil: the Folders heading, the top level). Between two rows it
+    /// moves in the sidebar's own order (sorted by Name or Recent, the order shown becomes it, and the sort Manual);
+    /// onto a folder, or between rows of another level, it really moves there too, last by rank among its new
+    /// siblings (SidebarFolderSort.planDrop, the web's Sidebar.tsx). One Undo puts it all back.
+    private func dropFolder(_ dragged: FolderDragItem, on target: String?, zone: FolderRules.Zone, shown all: [FolderNode], sort: SidebarFolderSort) {
+        guard canEdit else { return }
+        let rank = model.folders.value?.folders ?? []
+        let order = model.folders.value?.sidebarOrder
+        let closed = Set(closedFolders.split(separator: ",").map(String.init))
+        let targetOpen = target.map { t in (!closed.contains(t) || activePath(all).contains(t)) && all.contains { $0.parentId == t } } ?? false
+        let nest = target == nil || zone == .inside
+        switch SidebarFolderSort.resolveDrop(all, dragged: dragged.id, target: target, zone: nest ? .inside : zone, targetOpen: targetOpen) {
+        case .refused(let problem):
+            if !(problem == .selfTarget && target == dragged.id) { model.toast(FolderRules.message(problem), tone: .error) }
+        case .move(let place, let changed):
+            guard changed else { return }
+            let plan = SidebarFolderSort.planDrop(rank: rank, order: order, shown: all, sort: sort, id: dragged.id, place: place, nest: nest)
+            guard plan.move != nil || plan.order != nil else { return }
+            let was = FolderRules.place(FolderRules.links(rank), dragged.id)
+            let id = dragged.id
+            let model = self.model
+            if let m = plan.move { model.move(folder: id, into: m.parentId, after: m.afterId) }
+            if let next = plan.order { model.perform { _ = try await model.client.command(.folderSetSidebarOrder(ids: next)) } }
+            if plan.adopt { folderSortRaw = SidebarFolderSort.manual.rawValue }
+            if let parent = place.parentId, closed.contains(parent) {
+                WebMotion.animate { closedFolders = closed.subtracting([parent]).sorted().joined(separator: ",") }
+            }
+            let name = rank.first { $0.id == id }?.name ?? dragged.name
+            let whereTo = place.parentId.map { p in rank.first { $0.id == p }?.name ?? "the folder" } ?? "the top level"
+            let message = place.parentId == was?.parentId ? "Moved “\(name)”" : "Moved “\(name)” to \(whereTo)"
+            let movedBack = plan.move != nil ? was : nil
+            let reorder = plan.order != nil
+            model.toast(message, actionTitle: "Undo") {
+                if let back = movedBack { model.move(folder: id, into: back.parentId, after: back.afterId) }
+                if reorder { model.perform { _ = try await model.client.command(.folderSetSidebarOrder(ids: order)) } }
+            }
+        }
     }
 
     /// The folder on screen and the folders it's in (Sidebar.tsx folderAncestors), open whatever was closed.
@@ -484,7 +546,6 @@ public struct WebSidebar: View {
             }
             .padding(header.padding.edgeInsets)
             .frame(height: header.height)
-            #if os(iOS)
             .background {
                 if takesFolders && dropTarget == Self.topLevel {
                     RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Folevi.color.heading, lineWidth: 2)
@@ -492,14 +553,12 @@ public struct WebSidebar: View {
             }
             .dropDestination(for: FolderDragItem.self) { items, _ in
                 guard takesFolders, let dragged = items.first else { return false }
-                let roots = (model.folders.value?.folders ?? []).filter { $0.parentId == nil && $0.id != dragged.id }
-                model.move(folder: dragged.id, into: nil, after: roots.last?.id)
+                dropFolder(dragged, on: nil, zone: .inside, shown: shownFolders, sort: SidebarFolderSort(rawValue: folderSortRaw) ?? .manual)
                 return true
             } isTargeted: { over in
                 guard takesFolders else { return }
                 dropTarget = over ? Self.topLevel : (dropTarget == Self.topLevel ? nil : dropTarget)
             }
-            #endif
             if open.wrappedValue {
                 VStack(alignment: .leading, spacing: 2) { rows() }
                     .padding(.top, 4)

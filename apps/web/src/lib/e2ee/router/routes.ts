@@ -73,6 +73,8 @@ export const E2EE_ROUTES: Record<string, Route> = {
   ...each(pass, "organization", "deleteFolder deleteTag moveFolder setFolderColor"),
   // Foli DNA's saved views: names and settings only, no note content.
   ...each(pass, "graphViews", "list remove save"),
+  // The sidebar's own folder order: folder ids only (the server has those already, as for moveFolder).
+  ...each(pass, "sidebarOrder", "get set"),
   ...each(pass, "notifications", "markRead markUnread noteSubscription remove setNoteSubscription unreadCount"),
   "blocks:rebalance": pass,
   // Sealed per op by the router itself (client.ts pushSealed, §6.6), not through a route.

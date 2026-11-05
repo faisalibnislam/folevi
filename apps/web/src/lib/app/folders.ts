@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useMemo, type DragEvent } from "react";
-import { MAX_FOLDER_DEPTH, folderMoveProblem, ulid, type FolderLink, type FolderMoveProblem, type WireScope } from "@folevi/editor-schema";
+import { MAX_FOLDER_DEPTH, folderMoveProblem, scopeIdKey, ulid, type FolderLink, type FolderMoveProblem, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { useCachedQuery, useOutboxEntriesOf } from "@/lib/sync/queryCache";
-import { overlaySidebar, type SidebarData } from "@/lib/sync/overlays";
+import { overlaySidebar, overlaySidebarOrder, type SidebarData } from "@/lib/sync/overlays";
 import type { Outbox } from "@/lib/sync/outbox";
 import { useAppState } from "./state";
 import { beginDrag, dragState, endDrag } from "./dragSession";
@@ -87,6 +87,18 @@ export function useFolderTreeState(scope: WireScope | "skip"): { data: SidebarDa
 }
 
 /**
+ * This person's own order of the folders in the sidebar of `scope` (sidebarOrder.get, lib/app/sidebarFolderSort.ts),
+ * as last seen on this device while there's no connection, with a change still waiting to be sent in place. Null:
+ * none saved (rank order); undefined: not known yet.
+ */
+export function useSidebarOrder(scope: WireScope | "skip"): readonly string[] | null | undefined {
+  const { outbox } = useAppState();
+  const { data } = useCachedQuery(api.sidebarOrder.get, scope === "skip" ? "skip" : { scope });
+  const entries = useOutboxEntriesOf(outbox, "sidebarOrder.");
+  return useMemo(() => (scope === "skip" ? undefined : overlaySidebarOrder(data, entries, scope)), [data, entries, scope]);
+}
+
+/**
  * Folder changes, through the outbox: shown at once everywhere the tree is, kept on this device, and sent
  * in order when there's a connection. A folder made here has its id from the start, so notes can be
  * filed in it and folders made inside it before the server has it.
@@ -119,6 +131,13 @@ export function useFolderActions() {
           { folderId, parentFolderId, ...(afterFolderId !== undefined ? { afterFolderId } : {}) },
           { keys: [`folder:${folderId}`, ...(parentFolderId ? [`folder:${parentFolderId}`] : [])], label: "Move folder" },
         );
+      },
+      /**
+       * Saves this person's own sidebar order of `where`'s folders (null: back to rank order). Only the sidebar
+       * changes: the folders' rank, and so the Folders page, stay as they are.
+       */
+      setSidebarOrder(folderIds: readonly string[] | null, where: WireScope = scope) {
+        requireOutbox(outbox).enqueue("sidebarOrder.set", { scope: where, folderIds: folderIds ? [...folderIds] : null }, { keys: [`sidebarOrder:${scopeIdKey(where)}`], label: "Sidebar folder order" });
       },
       remove(folderId: string, name: string) {
         requireOutbox(outbox).enqueue("organization.deleteFolder", { folderId }, { keys: [`folder:${folderId}`], label: `Delete folder “${name}”` });

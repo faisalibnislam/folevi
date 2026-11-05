@@ -1,6 +1,6 @@
 // Revision 4's commands (docs/NATIVE_APP_PLAN.md sections 5.4 to 5.6): more note actions, folders through the
 // outbox, Trash, Changes and proposals, notifications and invitations. The same paths the web's own controls use.
-import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, folderMoveProblem, ulid } from "@folevi/editor-schema";
+import { DEFAULT_COVER, DEFAULT_DOCUMENT_STYLE, folderMoveProblem, scopeIdKey, ulid } from "@folevi/editor-schema";
 import type { FunctionReference } from "convex/server";
 import { api } from "@/lib/convex/api";
 import { requireOutbox } from "@/lib/app/folders";
@@ -171,6 +171,20 @@ export const MORE_COMMANDS = {
         if (problem) throw new BridgeError(MOVE_CODES[problem], MOVE_WORDS[problem]);
       }
       outbox.enqueue("organization.moveFolder", { folderId, parentFolderId: parentId, afterFolderId: afterId }, { keys: [`folder:${folderId}`, ...(parentId ? [`folder:${parentId}`] : [])], label: "Move folder" });
+      await outbox.persisted();
+      return { ok: true };
+    },
+  },
+
+  "folder.setSidebarOrder": {
+    // The person's own sidebar order (lib/app/sidebarFolderSort.ts): the folders' rank isn't touched.
+    async run(deps, args) {
+      only(args, ["ids", "space"]);
+      if (args.ids === undefined) throw new BridgeError("invalid_args", "ids must be a list of folder ids or null.");
+      const folderIds = args.ids === null ? null : ids(args, "ids", 5000);
+      const space = spaceArg(deps, args);
+      const outbox = requireOutbox(deps.app.outbox);
+      outbox.enqueue("sidebarOrder.set", { scope: space.scope, folderIds }, { keys: [`sidebarOrder:${scopeIdKey(space.scope)}`], label: "Sidebar folder order" });
       await outbox.persisted();
       return { ok: true };
     },

@@ -3212,5 +3212,16 @@ export default defineSchema({
   })
     .index("by_profile_scope", ["profileId", "scopeKey"])
     .index("by_public_id", ["publicId"]),
-});
 
+  /**
+   * One person's own order of a place's folders in the sidebar (convex/sidebarOrder.ts), apart from the folders'
+   * rank. Folder public ids; the apps list folders it doesn't name after those it does, in rank order.
+   */
+  sidebarOrders: defineTable({
+    profileId: v.id("profiles"),
+    /** lib/scope.ts scopeKey(scope). */
+    scopeKey: v.string(),
+    folderIds: v.array(v.string()),
+    updatedAt: v.number(),
+  }).index("by_profile_scope", ["profileId", "scopeKey"]),
+});

@@ -26,12 +26,13 @@ import { openNextInNewTab } from "@/lib/app/tabs";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { useMinute } from "@/lib/hooks/useMinute";
 import { startNoteDrag } from "@/lib/app/noteDrag";
-import { endFolderDrag, startFolderDrag, useFolderActions, useOpenFolders, useFolderTree } from "@/lib/app/folders";
+import { endFolderDrag, startFolderDrag, useFolderActions, useOpenFolders, useFolderTree, useSidebarOrder } from "@/lib/app/folders";
 import { useDragPayload, useDropHint } from "@/lib/app/dragSession";
 import { FloatingDropRefusal } from "./FolderDropLayer";
 import { flattenFolders, folderAncestors } from "@folevi/editor-schema";
 import { useOfflineQuery } from "@/lib/sync/queryCache";
-import { adoptMoves, setSidebarShownOrder, SIDEBAR_FOLDER_SORTS, sortSidebarFolders, type SidebarFolderSort } from "@/lib/app/sidebarFolderSort";
+import { applySidebarOrder, planSidebarDrop, setSidebarTreeDrops, SIDEBAR_FOLDER_SORTS, sortSidebarFolders, type SidebarFolderSort } from "@/lib/app/sidebarFolderSort";
+import { folderPlace } from "@/lib/app/folderDrop";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { useBackendMode, useCanCall, useCapabilities } from "@/lib/mode";
@@ -461,27 +462,39 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   // Folders and notes marked Always fully encrypted (the lists carry `locked` once the account has encryption).
   const isLockedFolder = (f: object) => (f as { locked?: boolean }).locked === true;
 
-  const manualFolders = org?.folders ?? [];
-  // The sidebar's own order (Manual, Name or Recent), kept on this device (lib/app/sidebarFolderSort.ts).
+  // The folders in rank order (the Folders page's), and this person's own order of them here (synced with the
+  // account; none saved: rank order). Manual is that order; Name and Recent sort it (lib/app/sidebarFolderSort.ts).
+  const rankFolders = useMemo(() => org?.folders ?? [], [org]);
+  const sidebarOrder = useSidebarOrder(scope);
+  const manualFolders = useMemo(() => applySidebarOrder(rankFolders, sidebarOrder), [rankFolders, sidebarOrder]);
   const [folderSort, setFolderSort] = useLocalStorage<SidebarFolderSort>("folevi:sidebar-folders-sort", "manual");
   const folderIndex = useOfflineQuery(api.organization.index, folderSort === "recent" ? { scope, only: "folders" } : "skip");
   const changed = useMemo(() => new Map((folderIndex?.folders ?? []).map((f) => [f.id, f.updatedAt])), [folderIndex]);
   const folders = useMemo(() => sortSidebarFolders(manualFolders, folderSort, changed), [manualFolders, folderSort, changed]);
-  // While it's sorted by Name or Recent, a drag to a new spot first makes this order the manual one.
+  // A folder dropped on the tree (FolderDropLayer): between two rows it moves in the sidebar's own order (a drag
+  // while sorted by Name or Recent first makes the order shown the sidebar's, and switches to Manual); onto a
+  // folder, or between rows of another level, it really moves there too (last by rank among its new siblings).
   useEffect(() => {
-    if (folderSort === "manual") {
-      setSidebarShownOrder(null);
-      return;
-    }
-    setSidebarShownOrder({
+    setSidebarTreeDrops({
       folders,
-      adopt: () => {
-        for (const m of adoptMoves(manualFolders, folders)) folderActions.move(m.id, m.parentFolderId, m.afterFolderId);
-        setFolderSort("manual");
+      drop: (id, place, nest) => {
+        const plan = planSidebarDrop({ rank: rankFolders, order: sidebarOrder, shown: folders, sort: folderSort, id, place, nest });
+        const wasRank = folderPlace(rankFolders, id);
+        const wasOrder = sidebarOrder ?? null;
+        if (!plan.move && !plan.order) return null;
+        if (plan.move) folderActions.move(id, plan.move.parentFolderId, plan.move.afterFolderId);
+        if (plan.order) folderActions.setSidebarOrder(plan.order, scope);
+        const wasSort = folderSort;
+        if (plan.adopt) setFolderSort("manual");
+        return () => {
+          if (plan.move && wasRank) folderActions.move(id, wasRank.parentFolderId, wasRank.afterFolderId);
+          if (plan.order) folderActions.setSidebarOrder(wasOrder ? [...wasOrder] : null, scope);
+          if (plan.adopt) setFolderSort(wasSort);
+        };
       },
     });
-    return () => setSidebarShownOrder(null);
-  }, [folderSort, folders, manualFolders, folderActions, setFolderSort]);
+    return () => setSidebarTreeDrops(null);
+  }, [folders, rankFolders, sidebarOrder, folderSort, folderActions, setFolderSort, scope]);
   // The folder tree: each folder followed by what's inside it.
   const tree = flattenFolders(folders);
   const roots = tree.filter((e) => e.depth === 0).map((e) => e.folder);

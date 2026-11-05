@@ -1,7 +1,7 @@
 "use client";
 
 // Dropping notes and folders on folders, wherever they show: the sidebar's tree (into a folder, or on a line
-// between two to reorder; a folder dragged out of its parent onto a line at another level, or onto "Move to the
+// between two to reorder the sidebar's own order, lib/app/sidebarFolderSort.ts; a folder dragged out of its parent onto a line at another level, or onto "Move to the
 // top level", leaves it), Drafts, the folder cards of the Folders page and the folder chips of a folder's page.
 // Targets only carry data attributes; this layer reads the pointer for all of them, once per window:
 //   data-drop-folder="<id>"  a folder ("" is Drafts, which takes notes; "@top" the top level, which takes folders)
@@ -23,7 +23,7 @@ import { useAppState } from "@/lib/app/state";
 import { useFolderActions, useFolderTree, useOpenFolders } from "@/lib/app/folders";
 import { POINTER_DRAG_EVENT, beginDrag, dragState, endDrag, reorderList, setDropHint, type DragPayload, type DropHint, type PointerDragDetail } from "@/lib/app/dragSession";
 import { folderPlace, resolveFolderDrop, zoneAt, type FolderPlace } from "@/lib/app/folderDrop";
-import { sidebarShownOrder } from "@/lib/app/sidebarFolderSort";
+import { sidebarTreeDrops, type SidebarTreeDrops } from "@/lib/app/sidebarFolderSort";
 import { FOLDER_MIME } from "@/lib/app/folders";
 import { NOTE_MIME, draggedNoteIds, previewOf } from "@/lib/app/noteDrag";
 import { HOLD_MOVE_EVENT, type HoldMoveDetail } from "@/lib/touchContextMenu";
@@ -116,6 +116,38 @@ export function FolderDropLayer() {
       });
     };
 
+    /** A folder dropped on the sidebar's tree: its own order, and a real move when the parent changes. */
+    const placeInSidebar = (tree: SidebarTreeDrops, id: string, to: FolderPlace, nest: boolean) => {
+      const { folders, toast, setFolderOpen } = live.current;
+      const folder = folders.find((f) => f.id === id);
+      const was = folderPlace(folders, id);
+      if (!folder || !was) return;
+      let undo: (() => void) | null;
+      try {
+        undo = tree.drop(id, to, nest);
+      } catch (e) {
+        toast.show(errorMessage(e), { tone: "error" });
+        return;
+      }
+      if (!undo) return;
+      if (to.parentFolderId) setFolderOpen(to.parentFolderId, true);
+      const where = to.parentFolderId ? (folders.find((f) => f.id === to.parentFolderId)?.name ?? "the folder") : "the top level";
+      const message = to.parentFolderId === was.parentFolderId ? `Moved “${folder.name}”` : `Moved “${folder.name}” to ${where}`;
+      const back = undo;
+      toast.show(message, {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            try {
+              back();
+            } catch (e) {
+              live.current.toast.show(errorMessage(e), { tone: "error" });
+            }
+          },
+        },
+      });
+    };
+
     /** What dropping here would do (null: nothing; `run` unset: refused, and the target says why). */
     const intentAt = (el: Element | null, x: number, y: number, payload: DragPayload | null, types?: readonly string[]): Intent | null => {
       if (!live.current.canEdit) return null;
@@ -157,10 +189,10 @@ export function FolderDropLayer() {
       const { folders } = live.current;
       const rect = target.getBoundingClientRect();
       const zone = key !== "@top" && target.hasAttribute("data-drop-tree") ? zoneAt(y, rect.top, rect.height) : "inside";
-      // A sidebar row while the sidebar is sorted by Name or Recent: the drop is placed in the order it shows,
-      // which becomes the manual one if the folder moves to a new spot (lib/app/sidebarFolderSort.ts).
-      const shownOrder = target.hasAttribute("data-drop-tree") ? sidebarShownOrder() : null;
-      const drop = resolveFolderDrop(shownOrder?.folders ?? folders, payload.id, key === "@top" ? null : key, zone, target.dataset.dropOpen === "1");
+      // The sidebar's tree (its rows and its top level): the drop is placed in the order it shows, and between two
+      // rows changes the sidebar's own order, not the folders' rank (lib/app/sidebarFolderSort.ts).
+      const tree = target.hasAttribute("data-drop-tree") || key === "@top" ? sidebarTreeDrops() : null;
+      const drop = resolveFolderDrop(tree?.folders ?? folders, payload.id, key === "@top" ? null : key, zone, target.dataset.dropOpen === "1");
       // (Over its own row it simply isn't taken; anywhere else the target says why.)
       if (!drop.ok) return drop.problem === "self" && key === payload.id ? null : { hint: { key: shown, zone: "inside", refused: refusalText(drop.problem) }, target };
       if (!drop.changed) return null;
@@ -168,8 +200,8 @@ export function FolderDropLayer() {
         hint: { key: shown, zone },
         target,
         run: () => {
-          if (shownOrder && zone !== "inside") shownOrder.adopt();
-          moveFolder(payload.id, drop);
+          if (tree) placeInSidebar(tree, payload.id, drop, zone === "inside");
+          else moveFolder(payload.id, drop);
         },
       };
     };

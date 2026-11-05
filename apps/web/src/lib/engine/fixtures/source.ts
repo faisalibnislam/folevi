@@ -492,6 +492,8 @@ export const FIXTURES: Record<string, Fixture> = {
         { id: "fld_work", name: "Work", color: null, parentId: null, depth: 0, rank: "a1", childCount: 0, noteCount: 7, encrypted: false, sync: "saved", locked: true },
       ],
       tags: [{ id: "tag_ideas", name: "ideas", color: "marigold" }],
+      // The sidebar lists Work first and Iceland before Japan; Kyoto isn't named, so it keeps its rank place.
+      sidebarOrder: ["fld_work", "fld_trips", "fld_iceland", "fld_japan"],
     },
   }),
   "view.sync.status": view({ name: "sync.status", description: "Everything saved.", args: {}, value: SYNC_SAVED }),
@@ -786,6 +788,8 @@ export const FIXTURES: Record<string, Fixture> = {
   "command.folder.rename": command({ name: "folder.rename", description: "Rename a folder.", args: { id: "fld_trips", name: "Travel" }, result: { ok: true } }),
   "command.folder.setColor": command({ name: "folder.setColor", description: "A folder's colour back to the default.", args: { id: "fld_trips", color: null }, result: { ok: true } }),
   "command.folder.move": command({ name: "folder.move", description: "Nest a folder, first among its new siblings.", args: { id: "fld_iceland", parentId: "fld_japan", afterId: null }, result: { ok: true } }),
+  "command.folder.setSidebarOrder": command({ name: "folder.setSidebarOrder", description: "The sidebar's own order: Work above Trips (the folders' rank is untouched).", args: { ids: ["fld_work", "fld_trips", "fld_japan", "fld_kyoto", "fld_iceland"] }, result: { ok: true } }),
+  "command.folder.setSidebarOrder.reset": command({ name: "folder.setSidebarOrder", description: "Back to rank order.", args: { ids: null }, result: { ok: true } }),
   "command.folder.move.descendant": command({ name: "folder.move", description: "A folder can't go inside its own subfolder.", args: { id: "fld_trips", parentId: "fld_kyoto", afterId: null }, error: { code: "folder_descendant", message: "A folder can't go inside one of its subfolders." } }),
   "command.folder.delete": command({ name: "folder.delete", description: "Delete a folder (its notes go to Drafts, subfolders up a level).", args: { id: "fld_work" }, result: { ok: true } }),
   "command.tag.update": command({ name: "tag.update", description: "Rename a tag and change its colour.", args: { id: "tag_travel", name: "Trips", color: "moss" }, result: { ok: true } }),

@@ -19,6 +19,7 @@ export const OUTBOX_MUTATIONS = {
   "organization.moveFolder": { ref: api.organization.moveFolder },
   "organization.setFolderColor": { ref: api.organization.setFolderColor },
   "organization.deleteFolder": { ref: api.organization.deleteFolder, done: ["not_found"] },
+  "sidebarOrder.set": { ref: api.sidebarOrder.set },
   "documents.bulkUpdate": { ref: api.documents.bulkUpdate },
   "documents.move": { ref: api.documents.move },
   "comments.create": { ref: api.comments.create },

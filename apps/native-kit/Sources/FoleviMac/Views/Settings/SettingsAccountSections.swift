@@ -94,9 +94,9 @@ struct AccountSettingsView: View {
 
     private func avatar(_ a: AccountSettings?) -> some View {
         ZStack {
-            Circle().fill(SettingsColor.v("glass-hover", scheme))
+            RoundedRectangle(cornerRadius: 12, style: .circular).fill(SettingsColor.v("glass-hover", scheme))
             if let url = a?.avatarUrl.flatMap(URL.init(string:)) {
-                AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Color.clear }.clipShape(Circle())
+                AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Color.clear }.clipShape(RoundedRectangle(cornerRadius: 12, style: .circular))
             } else {
                 Text(String((a?.name ?? "?").prefix(1)).uppercased()).webText(.role(.title3)).foregroundStyle(SettingsColor.v("color-heading", scheme))
             }

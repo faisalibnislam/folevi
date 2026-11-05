@@ -16,6 +16,23 @@ import FoleviScreens
 
 enum AiVariant { case page, floating }
 
+/// Whether the thread follows the answer as it streams (MAC-30). Only you scrolling up stops it: an answer that
+/// grows by a tall chunk in one go (a table, a code block) moves the end away without anyone scrolling, and that
+/// must not. Reaching the end again follows again.
+enum AiFollow {
+    struct Reading: Equatable {
+        var offset: CGFloat
+        var atEnd: Bool
+    }
+
+    static func following(_ was: Bool, old: Reading, new: Reading) -> Bool {
+        if new.atEnd { return true }
+        // Scrolled up (the top moved back): you're reading.
+        if new.offset < old.offset - 1 { return false }
+        return was
+    }
+}
+
 /// The window's facts the chat needs from the frame: the session (mode, place, purchases) and what to open.
 @MainActor
 struct AiHost {
@@ -40,6 +57,8 @@ struct AiThreadView: View {
     @Environment(\.colorScheme) private var scheme
     @State private var following = true
     @State private var behind = false
+    /// The thread is scrolled to its end (no fade over the dock then).
+    @State private var atEnd = true
     @FocusState private var focused: Bool
 
     private var page: Bool { variant == .page }
@@ -57,8 +76,8 @@ struct AiThreadView: View {
                         }
                         .padding(.horizontal, 12).frame(height: 32)
                         .foregroundStyle(look.heading)
-                        .background(Capsule().fill(look.color("color-surface-raised")).shadow(color: .black.opacity(0.25), radius: 7, y: 4))
-                        .overlay(Capsule().strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
+                        .background(RoundedRectangle(cornerRadius: 10, style: .circular).fill(look.color("color-surface-raised")).shadow(color: .black.opacity(0.25), radius: 7, y: 4))
+                        .overlay(RoundedRectangle(cornerRadius: 10, style: .circular).strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
                     }
                     .buttonStyle(.plain)
                     .padding(.bottom, 12)
@@ -96,13 +115,25 @@ struct AiThreadView: View {
             // A new chat reads from its top (the welcome); a conversation from its end.
             .defaultScrollAnchor(.top, for: .alignment)
             .defaultScrollAnchor(model.isEmpty ? .top : .bottom, for: .initialOffset)
-            // While the welcome shows, the box under it settling its height keeps the top where it is.
-            .defaultScrollAnchor(model.isEmpty ? .top : .bottom, for: .sizeChanges)
-            .onScrollGeometryChange(for: Bool.self) { g in
-                g.contentSize.height - g.contentOffset.y - g.containerSize.height < 56
-            } action: { _, atEnd in
-                following = atEnd
-                if atEnd { behind = false }
+            // While the welcome shows, the box under it settling its height keeps the top where it is; while the
+            // answer is followed, its growth keeps the end in view (the one mechanism that follows it, MAC-30), and
+            // once you've scrolled up to read, what you read stays put.
+            .defaultScrollAnchor(model.isEmpty || !following ? .top : .bottom, for: .sizeChanges)
+            .onScrollGeometryChange(for: AiFollow.Reading.self) { g in
+                AiFollow.Reading(offset: g.contentOffset.y, atEnd: g.contentSize.height - g.contentOffset.y - g.containerSize.height < 56)
+            } action: { old, new in
+                following = AiFollow.following(following, old: old, new: new)
+                atEnd = new.atEnd
+                if new.atEnd { behind = false }
+                // (A chunk taller than the anchor kept up with: catch up, without animating each tick.)
+                if following, !model.isEmpty, !new.atEnd, new.offset >= old.offset { proxy.scrollTo("end", anchor: .bottom) }
+            }
+            // The page's welcome (and anything long) fades where it runs under the dock, not cut mid-line (MAC-60).
+            .mask {
+                VStack(spacing: 0) {
+                    Color.black
+                    LinearGradient(colors: [.black, .black.opacity(atEnd ? 1 : 0)], startPoint: .top, endPoint: .bottom).frame(height: 28)
+                }
             }
             .onChange(of: model.messages.count + (model.shownPending == nil ? 0 : 1)) { _, _ in
                 guard !model.isEmpty else { return }
@@ -111,7 +142,8 @@ struct AiThreadView: View {
                 withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo("end", anchor: .bottom) }
             }
             .onChange(of: streamLength) { _, _ in
-                if following { proxy.scrollTo("end", anchor: .bottom) } else { behind = true }
+                // Following: the bottom anchor keeps the end in view. Reading higher up: offer the way back.
+                if !following { behind = true }
             }
             .onAppear {
                 scrollProxy = proxy
@@ -130,7 +162,7 @@ struct AiThreadView: View {
     private func content(look: AiLook) -> some View {
         if model.isLoading {
             HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
+                WebSpinner()
                 Text("Loading the conversation…").webText(.role(.subheadline)).foregroundStyle(look.muted)
             }
             .padding(.horizontal, 4)
@@ -161,7 +193,7 @@ struct AiThreadView: View {
         if let p = model.shownPending {
             AiUserMessage(text: p.text)
             HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
+                WebSpinner()
                 Text("Thinking…").webText(.role(.subheadline)).foregroundStyle(look.muted)
             }
             .padding(.horizontal, 4)

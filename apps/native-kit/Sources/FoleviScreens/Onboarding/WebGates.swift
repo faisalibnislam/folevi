@@ -1117,14 +1117,15 @@ public struct GatePressStyle: ButtonStyle {
     public func makeBody(configuration: Configuration) -> some View { configuration.label.contentShape(Rectangle()) }
 }
 
-/// A checkbox: the system's on the Mac; on the iPhone and iPad (which have none) a 18 pt box with a tick, as the
-/// web draws its native checkbox there.
+/// A checkbox: an 18 pt box with a tick, as the web draws its own (WebCheckboxStyle on the Mac; the iPhone and
+/// iPad draw it here).
 struct GateCheckboxStyle: ToggleStyle {
     @Environment(\.colorScheme) private var scheme
 
     func makeBody(configuration: Configuration) -> some View {
         #if os(macOS)
-        Toggle(configuration).toggleStyle(.checkbox)
+        // Folevi's own checkbox on the Mac too (MAC-25), never the system's blue one.
+        Toggle(configuration).toggleStyle(WebCheckboxStyle())
         #else
         Button { configuration.isOn.toggle() } label: {
             HStack(alignment: .top, spacing: 8) {

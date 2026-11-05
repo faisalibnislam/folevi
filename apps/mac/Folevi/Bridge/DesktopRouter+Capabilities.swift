@@ -194,7 +194,8 @@ enum Capabilities {
         let place = router.context.place() ?? "default"
         let items = (o["items"] as? [[String: Any]] ?? []).prefix(50).compactMap(Spotlight.Note.init)
         let keep = (o["keep"] as? [Any]).map { Set($0.prefix(50_000).compactMap { $0 as? String }) }
-        await Spotlight.shared.update(place: place, with: Array(items), keep: keep)
+        let remove = Set((o["remove"] as? [Any] ?? []).prefix(50_000).compactMap { $0 as? String })
+        await Spotlight.shared.update(place: place, with: Array(items), keep: keep, remove: remove)
         return [:]
     }
 

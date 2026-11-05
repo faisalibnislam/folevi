@@ -264,6 +264,8 @@ final class Places {
         await ShellAuth.shared.signOut(userId: user)
         E2eeKeys.forget(userId: user)
         closeRunner(id)
+        // Its notes leave Spotlight now, whether or not it was the open place.
+        await Spotlight.shared.forget(place: id)
         let wasOpen = ShellPlaces.state.current == id
         var after = ShellPlaces.removeAccount(id)
         if next == ShellPlaces.library {
@@ -285,6 +287,7 @@ final class Places {
         ShellPlaces.setLibrary(false)
         ShellNotify.cancelAll()
         closeRunner(ShellPlaces.library)
+        await Spotlight.shared.forget(place: ShellPlaces.library)
         if wasOpen { switchTo(ShellPlaces.state.accounts.first?.id, later: true) }
     }
 

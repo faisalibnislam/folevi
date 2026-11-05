@@ -42,6 +42,18 @@ export interface DesktopSpotlightItem {
   stamp: string;
 }
 
+/** Of the notes found sealed or with no text to give, the ones Spotlight holds (they come out). */
+export function spotlightGone(known: Record<string, string>, sealed: Iterable<string>, refused: Iterable<string>): string[] {
+  const out = new Set<string>();
+  for (const id of [...sealed, ...refused]) if (Object.prototype.hasOwnProperty.call(known, id)) out.add(id);
+  return [...out];
+}
+
+/** The notes in `before` that aren't in `now` (they left the recent or bookmarked lists). */
+export function spotlightLeft(before: ReadonlySet<string>, now: ReadonlySet<string>): string[] {
+  return [...before].filter((id) => !now.has(id));
+}
+
 export interface MacCapabilities {
   /** Records a call natively (WebKit's getDisplayMedia has no system sound). */
   recordCall?: NativeCallRecorder;
@@ -60,9 +72,9 @@ export interface MacCapabilities {
   setShareTarget?(target: { title: string; url?: string } | null): void;
   /**
    * Spotlight: these notes of this place go in (at most 50 at a time); with `keep` (every note of the place), any
-   * other note of it comes out.
+   * other note of it comes out; the notes in `remove` (locked, encrypted, trashed or deleted since) come out too.
    */
-  indexSpotlight?(items: DesktopSpotlightItem[], keep?: string[]): Promise<void>;
+  indexSpotlight?(items: DesktopSpotlightItem[], keep?: string[], remove?: string[]): Promise<void>;
   /** Whether Settings' "Show notes in Spotlight" is on, and each note's stamp Spotlight holds for this place. */
   spotlightState?(): Promise<{ enabled: boolean; known: Record<string, string> } | null>;
   /** The clipboard for Folevi's own menus (no "Paste" bubble). */
@@ -88,9 +100,11 @@ export type MacCapabilityCommand =
   | { type: "share"; id: string }
   | { type: "print"; id: string }
   | { type: "new-note-with-text"; id: string; text: string }
-  | { type: "add-task"; id: string; text: string; dueDate?: string };
+  | { type: "add-task"; id: string; text: string; dueDate?: string }
+  /** Spotlight lost what it held (the system asked for every note again): look at every note of the place now. */
+  | { type: "spotlight-look"; id: string };
 
-const COMMANDS = new Set(["share", "print", "new-note-with-text", "add-task"]);
+const COMMANDS = new Set(["share", "print", "new-note-with-text", "add-task", "spotlight-look"]);
 
 /** The capability commands among the app's commands (the menus' and links' go to DesktopBridge). */
 export function asCapabilityCommand(command: unknown): MacCapabilityCommand | null {

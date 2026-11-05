@@ -48,6 +48,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var launched = false
     private var pendingLinks: [URL] = []
+    /// What came before launch finished (a Spotlight result that opened the app), done once the first windows are up.
+    private var afterLaunch: [() -> Void] = []
+
+    /// Runs `work` now when launch is done, else once the first windows are up (a Spotlight result or a Shortcut
+    /// that opened the app must not open a window before the places, the migration and the lock have run).
+    static func whenLaunched(_ work: @escaping () -> Void) {
+        guard let delegate = NSApp.delegate as? AppDelegate, !delegate.launched else { return work() }
+        delegate.afterLaunch.append(work)
+    }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Native text drawn as the web draws it (no font smoothing), before any window shows text
@@ -94,6 +103,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if let openFirst = WindowManager.shared.openFirst { openFirst() } else { WindowManager.shared.openMain() }
                 first.forEach(self.open)
             }
+            let waiting = self.afterLaunch
+            self.afterLaunch = []
+            waiting.forEach { $0() }
             NSApp.activate()
             // WM3: updates (Sparkle), release builds only.
             Updater.shared.start()

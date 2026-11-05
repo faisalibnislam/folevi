@@ -336,12 +336,20 @@ the bottom left, ~35% opacity in light, ~50% in dark), fixed behind content. No 
   right after it in muted 12.5px text (e.g. "48 notes", "12 templates", "52 folders", "3 pages · across all
   workspaces", "Today · 4 open", "September 2026"; a "+" when more are still loading), announced as a status. Sort and layout controls sit
   right-aligned at the top of the content. **Except a folder's page and the Folders page** (the owner, 6 November
-  2026): each has a title row over its toolbar (`ListPageHeader`, native `WebListPageHeader`): the name in the
-  display serif at Title 1 (a folder's after its colour mark), a nested folder's way up above it ("Folders › Work ›",
-  each step a link), the facts under it ("5 notes · edited Oct 22", "7 folders"), and the page's actions at the right
-  (a folder's Share, its "…" menu and New note; the Folders page's New folder, which the top bar then doesn't show).
-  A folder's subfolders sit under a small "Folders" section heading. The title row, the toolbar and the cards share
-  the same left and right edges.
+  2026, "A. One compact row"): each has ONE title row and no toolbar under it (`ListPageHeader`, native
+  `WebListPageHeader`). Left to right: a folder's glyph (the sidebar's `FolderGlyph`, 22 px), a nested folder's way
+  up as quiet links in muted text ("Work ›", each step opens that folder; no "Folders ›" step), the name in the
+  display serif (Title 1 on the desktop and Mac, Title 2 in the iOS scale), the count in muted body text ("5 notes",
+  "7 folders", "1 of 14 folders" while searching), flexible space, then the controls: the Folders page's search
+  (its width follows the window's, up to 300 px), Sort as one compact control (the sort icon, the current choice and
+  a chevron, `RowSort` / `WebRowSort`; "Sort" is its name and tooltip, no label), the view switch, and the page's
+  actions: a folder's Share and "…" as icon-only buttons (tooltips "Share" and "More"), the Folders page's New folder
+  as its one primary button (the top bar's New folder isn't shown there). Every control is one height (32 px; 44 on
+  touch in the web, 36 pt on the iPad) and sits level with the name. A folder's page has no New note of its own: the
+  top bar's makes the note in the open folder; no "Drag to arrange" hint either. On a narrow window the controls wrap
+  onto a line of their own under the name, which truncates before anything overlaps. A folder's subfolders sit under
+  a small "Folders" section heading. The title row and the cards share the same left and right edges. Phone layouts
+  keep their own chrome.
 - **Home** is a dashboard: *Recent notes* and *Starred* are single sideways-scrolling rows on the page
   itself (no tray), with white fades at an edge while there is more to scroll that way of the latest
   10 notes (snap scrolling, hidden scrollbar, round arrow buttons at either end that appear only when
@@ -453,7 +461,7 @@ text to `ink`. Axe runs in the e2e suite in both themes.
 - **No view title bar.** A view's name is in its tab (and a visually hidden h1 for screen readers). What
   used to sit in the bar stays only when it's real content, as a plain row with no box: e.g. Tasks'
   "Today · 88 open" + Calendar / Add task, Calendar's month + layout, Templates' New template, a note's
-  breadcrumb when its sidebar is hidden, and on phones the drawer toggle and save state. List views have no New note button of their own (Templates keeps "New template"; a folder's page has one in its title row). Counts ("48 notes",
+  breadcrumb when its sidebar is hidden, and on phones the drawer toggle and save state. List views have no New note button of their own (Templates keeps "New template"; on a folder's page the top bar's New note makes the note in that folder). Counts ("48 notes",
   "52 folders") sit at the start of the row with Sort and view options, not in the bar.
 - **Save state** is a small cloud icon in the sidebar's top bar (logo · save state · notifications ·
   sidebar menu; the same row in the app sidebar and a note's sidebar); on phones it sits in the view bar.

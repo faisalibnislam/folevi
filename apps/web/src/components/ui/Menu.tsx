@@ -124,8 +124,11 @@ export function MenuButton({
   menuClassName,
   variant,
   clear = false,
+  tooltip,
 }: {
   label: string;
+  /** The trigger's tooltip when it should say less than its label (a title row's "…": "More"). */
+  tooltip?: string;
   trigger: ReactNode;
   items: MenuEntry[];
   /** "switcher": the account menu's look (places, then actions; components/app/accountMenu.css). */
@@ -170,7 +173,7 @@ export function MenuButton({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
-        title={label}
+        title={tooltip ?? label}
         onPointerDown={(e) => {
           if (!macMenus() || e.pointerType !== "mouse" || e.button !== 0 || e.ctrlKey || open) return;
           pressed.current = true;

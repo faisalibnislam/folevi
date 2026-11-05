@@ -636,6 +636,7 @@ struct SidebarMenuButton: View {
                 .contentShape(Rectangle())
         }
         .foleviTooltip("Sidebar")
+        .accessibilityLabel("Sidebar")
     }
 
     private var entries: [WebMenuEntry] {

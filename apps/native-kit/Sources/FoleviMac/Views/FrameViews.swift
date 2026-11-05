@@ -272,7 +272,7 @@ public final class ContentViewController: NSViewController {
     private let body = NSView()
     /// The card's clipped inside: the Page View and the native screens (`body`) fill it, under the glass bar, as the
     /// web's main does (they leave the bar's room at their top and scroll behind it).
-    private let clip = NSView()
+    private let clip = CardClipView()
     /// What's under the bar, blurred (the web's ui-glass backdrop-filter), behind the bar's own tint.
     private let glass = GlassBackdrop()
     private var screen: NSHostingView<ScreenRoot>?
@@ -484,6 +484,7 @@ public final class ContentViewController: NSViewController {
             }
         }
         shownRoute = route
+        syncPageAccessibility()
         models.keep(only: Set(model.tabs.tabs.map(\.route)))
         let title = route.isNote ? (model.activeNote?.title.nonEmpty ?? model.tabs.active.title) : model.tabs.active.title
         if view.window?.title != title { view.window?.title = title }
@@ -510,7 +511,20 @@ public final class ContentViewController: NSViewController {
         body.isHidden = true
         screen?.isHidden = true
         screen?.rootView = ScreenRoot(model: model, models: models, route: model.route)
+        syncPageAccessibility()
     }
+
+    /// While a native screen covers it, the note's page (its title, body and editor controls) is out of the
+    /// accessibility tree: VoiceOver reads only the view in front (QA audit F20). It comes back with the note.
+    private func syncPageAccessibility() {
+        let hide = !body.isHidden
+        guard (clip.hiddenChild != nil) != hide else { return }
+        clip.hiddenChild = hide ? pageView : nil
+        NSAccessibility.post(element: clip, notification: .layoutChanged)
+    }
+
+    /// Whether the note's page is in the accessibility tree now (tests).
+    public var pageIsAccessible: Bool { clip.hiddenChild == nil }
 
     /// View > As Cards / As List for the note list on screen (nil: no list on screen).
     public var listShowsCards: Bool? {
@@ -523,6 +537,32 @@ public final class ContentViewController: NSViewController {
 
     /// Whether a native screen covers the Page View now (tests).
     public var showsNativeScreen: Bool { screen.map { !$0.isHidden } ?? false }
+}
+
+/// The content card's clipped inside. A child it hides (the note's page while a native screen covers it) and
+/// everything in that child are left out of its accessibility children.
+final class CardClipView: NSView {
+    weak var hiddenChild: NSView?
+
+    override func accessibilityChildren() -> [Any]? {
+        guard let all = super.accessibilityChildren(), let hidden = hiddenChild else { return super.accessibilityChildren() }
+        return all.filter { !Self.element($0, isInside: hidden) }
+    }
+
+    /// Whether an accessibility element is `view` or inside it (a web view's page is an element of its own, not a
+    /// subview, so this follows the parents too).
+    static func element(_ element: Any, isInside view: NSView) -> Bool {
+        if let v = element as? NSView { return v === view || v.isDescendant(of: view) }
+        // (A control stands for itself by its cell.)
+        if let v = (element as? NSCell)?.controlView { return v === view || v.isDescendant(of: view) }
+        var parent = (element as? (any NSAccessibilityProtocol))?.accessibilityParent()
+        for _ in 0..<12 {
+            guard let p = parent else { return false }
+            if let v = p as? NSView { return v === view || v.isDescendant(of: view) }
+            parent = (p as? (any NSAccessibilityProtocol))?.accessibilityParent()
+        }
+        return false
+    }
 }
 
 /// The tab strip's backdrop: whatever scrolls under it, blurred and saturated as the web's ui-glass

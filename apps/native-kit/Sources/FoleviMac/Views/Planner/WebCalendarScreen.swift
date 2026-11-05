@@ -238,9 +238,15 @@ struct WebCalendarScreen: View {
                 let wd = PS("cal.weekdays").resolve(scheme)
                 HStack(spacing: 0) {
                     ForEach(0..<7, id: \.self) { i in
-                        StyledText(PlannerDates.format(TaskDates.add("2024-01-01", days: i), "EEE"), "cal.weekday").frame(maxWidth: .infinity).padding(.vertical, 8)
+                        let day = TaskDates.add("2024-01-01", days: i)
+                        StyledText(PlannerDates.format(day, "EEE"), "cal.weekday").frame(maxWidth: .infinity).padding(.vertical, 8)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(PlannerDates.format(day, "EEEE"))
+                            .accessibilityAddTraits(.isHeader)
                     }
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Weekdays")
                 .frame(height: wd.height - 1)
                 .background(wd.background.color)
                 Rectangle().fill(line).frame(height: 1)
@@ -261,6 +267,9 @@ struct WebCalendarScreen: View {
             .focused($gridFocused)
             .focusEffectDisabled()
             .onKeyPress(phases: .down) { press in arrows(press, week: 7) }
+            // The grid is one element holding the days: its name is the month's, theirs their own (a label on a
+            // plain stack would name every day in it after the month, F07).
+            .accessibilityElement(children: .contain)
             .accessibilityLabel(PlannerDates.format("\(state.month)-01", "MMMMyyyy"))
             .topAligned()
             aside(byDate: byDate, events: events).frame(width: 300).topAligned()
@@ -476,8 +485,21 @@ struct MonthCell: View {
             dropTask(providers) { id in reschedule(id) }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(PlannerDates.long(day)), \(items.isEmpty ? "no tasks" : items.count == 1 ? "1 task" : "\(items.count) tasks")")
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityLabel(Self.accessibilityName(day: day, today: today, tasks: items.count, events: events.count))
+        #if os(macOS)
+        .accessibilityValue(selected ? "Selected" : "")
+        #endif
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { state.selected = day }
+        .accessibilityIdentifier("calendar-cell-\(day)")
+    }
+
+    /// A day as VoiceOver names it (F07): its full date, its own month and year even when it's from the month
+    /// before or after, whether it's today, and what's on it.
+    static func accessibilityName(day: String, today: String, tasks: Int, events: Int) -> String {
+        var out = "\(day == today ? "Today, " : "")\(PlannerDates.format(day, "EEEEMMMMdyyyy")), \(tasks == 0 ? "no tasks" : tasks == 1 ? "1 task" : "\(tasks) tasks")"
+        if events > 0 { out += events == 1 ? ", 1 event" : ", \(events) events" }
+        return out
     }
 
     private func reschedule(_ id: String) {

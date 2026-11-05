@@ -45,10 +45,29 @@ enum NativeFrame {
         WebSidebarController.defaults = Paths.defaults
         // FOLEVI_WEB_GATES=1: every gate is the page's own screen, full window (the fallback).
         FrameRootViewController.nativeGates = env["FOLEVI_WEB_GATES"] != "1"
+        installSearchShortcut()
         #if DEBUG
         installEval()
         installMoreEval()
         #endif
+    }
+
+    /// Open Quickly (⌘K) while the page has the keys runs at once. A web view hands a shortcut to its page first and
+    /// only then, a moment later, to the menu: what was typed meanwhile went into the note, and the palette's field
+    /// missed it (QA audit F04). From here the palette's EarlyKeys holds the typing until its field has the focus.
+    private static func installSearchShortcut() {
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
+            guard let window = e.window,
+                  let main = WindowManager.shared.mains.first(where: { $0.window === window }),
+                  let frame = main.frame,
+                  let responder = window.firstResponder as? NSView,
+                  responder === main.view || responder.isDescendant(of: main.view),
+                  let item = MainMenu.shared.itemsById["file.open-quickly"], item.isEnabled,
+                  EarlyKeys.matches(characters: e.charactersIgnoringModifiers, modifiers: e.modifierFlags, key: item.keyEquivalent, mask: item.keyEquivalentModifierMask)
+            else { return e }
+            frame.sidebar.focusSearch()
+            return nil
+        }
     }
 
     /// The window controllers that have a frame, by their page (Events, menus and Navigation find them here).

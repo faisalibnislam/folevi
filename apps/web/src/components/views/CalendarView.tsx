@@ -263,8 +263,8 @@ export function CalendarView({ month }: { month: string | null }) {
           <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
             <div ref={gridRef} role="grid" aria-label={monthLabel} className="overflow-hidden ui-card rounded-control">
               <div role="row" className="grid grid-cols-7 border-b border-line bg-surface text-center text-footnote font-medium text-muted">
-                {weekdays.map((w) => (
-                  <div key={w} role="columnheader" className="py-2">
+                {weekdays.map((w, i) => (
+                  <div key={w} role="columnheader" aria-label={formatCalendarDate(`2024-01-0${1 + i}`, { weekday: "long" })} className="py-2">
                     {w}
                   </div>
                 ))}
@@ -286,7 +286,9 @@ export function CalendarView({ month }: { month: string | null }) {
                         tabIndex={selected === date ? 0 : -1}
                         data-date={date}
                         aria-label={
-                          t("calendar.day.label", { date: formatCalendarDate(date, { weekday: "long", month: "long", day: "numeric" }), count: items.length }) +
+                          // The full date, its own month and year for days of the months either side (F07).
+                          (isToday ? "Today, " : "") +
+                          t("calendar.day.label", { date: formatCalendarDate(date, { weekday: "long", month: "long", day: "numeric", year: "numeric" }), count: items.length }) +
                           (evs.length ? `, ${evs.length === 1 ? "1 event" : `${evs.length} events`}` : "")
                         }
                         onClick={() => setSelected(date)}

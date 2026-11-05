@@ -28,27 +28,27 @@
    "fontWeight": 400,
    "gap": 8,
    "gradient": null,
-   "height": 44,
+   "height": 32,
    "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "margin": [
     0,
-    12,
     0,
-    12
+    16,
+    0
    ],
    "opacity": 1,
    "padding": [
     0,
-    20,
     0,
-    20
+    0,
+    0
    ],
    "radius": 0,
    "shadows": [],
-   "width": 984,
-   "x": 276,
-   "y": 64
+   "width": 704,
+   "x": 416,
+   "y": 76
   },
   "planner.header.add": {
    "backdropBlur": 0,
@@ -137,8 +137,8 @@
     }
    ],
    "width": 98.14,
-   "x": 1141.86,
-   "y": 72
+   "x": 1021.86,
+   "y": 78
   },
   "planner.header.calendar": {
    "backdropBlur": 0,
@@ -227,8 +227,8 @@
     }
    ],
    "width": 98.98,
-   "x": 1036.88,
-   "y": 72
+   "x": 914.88,
+   "y": 78
   },
   "planner.header.calendar.label": {
    "backdropBlur": 0,
@@ -277,8 +277,8 @@
    "radius": 0,
    "shadows": [],
    "width": 54.98,
-   "x": 1068.88,
-   "y": 77
+   "x": 946.88,
+   "y": 83
   },
   "planner.header.subtitle": {
    "backdropBlur": 0,
@@ -327,8 +327,8 @@
    "radius": 0,
    "shadows": [],
    "width": 81.81,
-   "x": 296,
-   "y": 77
+   "x": 416,
+   "y": 83
   },
   "planner.tasks.card": {
    "backdropBlur": 0,
@@ -431,7 +431,7 @@
    ],
    "width": 704,
    "x": 416,
-   "y": 236
+   "y": 240
   },
   "planner.tasks.check": {
    "backdropBlur": 0,
@@ -481,7 +481,7 @@
    "shadows": [],
    "width": 18,
    "x": 432,
-   "y": 248
+   "y": 252
   },
   "planner.tasks.content": {
    "backdropBlur": 0,
@@ -511,7 +511,7 @@
    "fontWeight": 400,
    "gap": 0,
    "gradient": null,
-   "height": 400.67,
+   "height": 448.67,
    "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "margin": [
@@ -531,7 +531,7 @@
    "shadows": [],
    "width": 768,
    "x": 384,
-   "y": 108
+   "y": 64
   },
   "planner.tasks.due": {
    "backdropBlur": 0,
@@ -581,7 +581,7 @@
    "shadows": [],
    "width": 107.91,
    "x": 956.09,
-   "y": 248
+   "y": 252
   },
   "planner.tasks.edit": {
    "backdropBlur": 0,
@@ -631,7 +631,7 @@
    "shadows": [],
    "width": 28,
    "x": 1076,
-   "y": 244
+   "y": 248
   },
   "planner.tasks.filter": {
    "backdropBlur": 0,
@@ -708,7 +708,7 @@
    ],
    "width": 704,
    "x": 416,
-   "y": 176
+   "y": 180
   },
   "planner.tasks.meta": {
    "backdropBlur": 0,
@@ -758,7 +758,7 @@
    "shadows": [],
    "width": 482.09,
    "x": 462,
-   "y": 266.89
+   "y": 270.89
   },
   "planner.tasks.meta.link": {
    "backdropBlur": 0,
@@ -808,7 +808,7 @@
    "shadows": [],
    "width": 46.22,
    "x": 462,
-   "y": 266.89
+   "y": 270.89
   },
   "planner.tasks.meta.link.icon": {
    "backdropBlur": 0,
@@ -858,7 +858,7 @@
    "shadows": [],
    "width": 12,
    "x": 462,
-   "y": 268.89
+   "y": 272.89
   },
   "planner.tasks.row": {
    "backdropBlur": 0,
@@ -908,7 +908,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 236
+   "y": 240
   },
   "planner.tasks.row.second": {
    "backdropBlur": 0,
@@ -958,7 +958,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 293.89
+   "y": 297.89
   },
   "planner.tasks.section": {
    "backdropBlur": 0,
@@ -1008,7 +1008,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 236
+   "y": 240
   },
   "planner.tasks.seg": {
    "backdropBlur": 0,
@@ -1072,7 +1072,7 @@
    ],
    "width": 704,
    "x": 416,
-   "y": 120
+   "y": 124
   },
   "planner.tasks.seg.count": {
    "backdropBlur": 0,
@@ -1122,7 +1122,7 @@
    "shadows": [],
    "width": 18.52,
    "x": 487.47,
-   "y": 131
+   "y": 135
   },
   "planner.tasks.seg.count.active": {
    "backdropBlur": 0,
@@ -1172,7 +1172,7 @@
    "shadows": [],
    "width": 18.52,
    "x": 605.14,
-   "y": 131
+   "y": 135
   },
   "planner.tasks.seg.item": {
    "backdropBlur": 0,
@@ -1222,7 +1222,7 @@
    "shadows": [],
    "width": 114.33,
    "x": 420,
-   "y": 124
+   "y": 128
   },
   "planner.tasks.seg.item.active": {
    "backdropBlur": 0,
@@ -1312,7 +1312,7 @@
    ],
    "width": 114.33,
    "x": 536.33,
-   "y": 124
+   "y": 128
   },
   "planner.tasks.title": {
    "backdropBlur": 0,
@@ -1362,7 +1362,7 @@
    "shadows": [],
    "width": 482.09,
    "x": 462,
-   "y": 246
+   "y": 250
   },
   "var:color-accent": {
    "color": [
@@ -1596,7 +1596,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 236
+   "y": 240
   },
   "planner.tasks.group.second": {
    "backdropBlur": 0,
@@ -1646,7 +1646,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 340.89
+   "y": 344.89
   },
   "planner.tasks.group.title": {
    "backdropBlur": 0,
@@ -1696,7 +1696,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 236
+   "y": 240
   },
   "planner.tasks.check.done": {
    "backdropBlur": 0,
@@ -1828,7 +1828,7 @@
    ],
    "width": 18,
    "x": 432,
-   "y": 248
+   "y": 252
   },
   "planner.tasks.row.completed": {
    "backdropBlur": 0,
@@ -1878,7 +1878,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 236
+   "y": 240
   },
   "planner.tasks.title.done": {
    "backdropBlur": 0,
@@ -1928,7 +1928,7 @@
    "shadows": [],
    "width": 602,
    "x": 462,
-   "y": 246
+   "y": 250
   },
   "planner.dialog": {
    "backdropBlur": 24,
@@ -8289,7 +8289,7 @@
    "shadows": [],
    "width": 448,
    "x": 544,
-   "y": 212
+   "y": 216
   },
   "planner.empty.icon": {
    "backdropBlur": 0,
@@ -8339,7 +8339,7 @@
    "shadows": [],
    "width": 44,
    "x": 746,
-   "y": 276
+   "y": 280
   },
   "planner.empty.title": {
    "backdropBlur": 0,
@@ -8389,7 +8389,7 @@
    "shadows": [],
    "width": 271.38,
    "x": 632.31,
-   "y": 336
+   "y": 340
   }
  },
  "dark": {
@@ -8421,27 +8421,27 @@
    "fontWeight": 400,
    "gap": 8,
    "gradient": null,
-   "height": 44,
+   "height": 32,
    "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "margin": [
     0,
-    12,
     0,
-    12
+    16,
+    0
    ],
    "opacity": 1,
    "padding": [
     0,
-    20,
     0,
-    20
+    0,
+    0
    ],
    "radius": 0,
    "shadows": [],
-   "width": 984,
-   "x": 276,
-   "y": 64
+   "width": 704,
+   "x": 416,
+   "y": 76
   },
   "planner.header.add": {
    "backdropBlur": 0,
@@ -8530,8 +8530,8 @@
     }
    ],
    "width": 98.14,
-   "x": 1141.86,
-   "y": 72
+   "x": 1021.86,
+   "y": 78
   },
   "planner.header.calendar": {
    "backdropBlur": 0,
@@ -8620,8 +8620,8 @@
     }
    ],
    "width": 98.98,
-   "x": 1036.88,
-   "y": 72
+   "x": 914.88,
+   "y": 78
   },
   "planner.header.calendar.label": {
    "backdropBlur": 0,
@@ -8670,8 +8670,8 @@
    "radius": 0,
    "shadows": [],
    "width": 54.98,
-   "x": 1068.88,
-   "y": 77
+   "x": 946.88,
+   "y": 83
   },
   "planner.header.subtitle": {
    "backdropBlur": 0,
@@ -8720,8 +8720,8 @@
    "radius": 0,
    "shadows": [],
    "width": 81.81,
-   "x": 296,
-   "y": 77
+   "x": 416,
+   "y": 83
   },
   "planner.tasks.card": {
    "backdropBlur": 0,
@@ -8811,7 +8811,7 @@
    ],
    "width": 704,
    "x": 416,
-   "y": 236
+   "y": 240
   },
   "planner.tasks.check": {
    "backdropBlur": 0,
@@ -8861,7 +8861,7 @@
    "shadows": [],
    "width": 18,
    "x": 432,
-   "y": 248
+   "y": 252
   },
   "planner.tasks.content": {
    "backdropBlur": 0,
@@ -8891,7 +8891,7 @@
    "fontWeight": 400,
    "gap": 0,
    "gradient": null,
-   "height": 400.67,
+   "height": 448.67,
    "letterSpacing": -0.096,
    "lineHeight": 24.799999,
    "margin": [
@@ -8911,7 +8911,7 @@
    "shadows": [],
    "width": 768,
    "x": 384,
-   "y": 108
+   "y": 64
   },
   "planner.tasks.due": {
    "backdropBlur": 0,
@@ -8961,7 +8961,7 @@
    "shadows": [],
    "width": 107.91,
    "x": 956.09,
-   "y": 248
+   "y": 252
   },
   "planner.tasks.edit": {
    "backdropBlur": 0,
@@ -9011,7 +9011,7 @@
    "shadows": [],
    "width": 28,
    "x": 1076,
-   "y": 244
+   "y": 248
   },
   "planner.tasks.filter": {
    "backdropBlur": 0,
@@ -9088,7 +9088,7 @@
    ],
    "width": 704,
    "x": 416,
-   "y": 176
+   "y": 180
   },
   "planner.tasks.meta": {
    "backdropBlur": 0,
@@ -9138,7 +9138,7 @@
    "shadows": [],
    "width": 482.09,
    "x": 462,
-   "y": 266.89
+   "y": 270.89
   },
   "planner.tasks.meta.link": {
    "backdropBlur": 0,
@@ -9188,7 +9188,7 @@
    "shadows": [],
    "width": 46.22,
    "x": 462,
-   "y": 266.89
+   "y": 270.89
   },
   "planner.tasks.meta.link.icon": {
    "backdropBlur": 0,
@@ -9238,7 +9238,7 @@
    "shadows": [],
    "width": 12,
    "x": 462,
-   "y": 268.89
+   "y": 272.89
   },
   "planner.tasks.row": {
    "backdropBlur": 0,
@@ -9288,7 +9288,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 236
+   "y": 240
   },
   "planner.tasks.row.second": {
    "backdropBlur": 0,
@@ -9338,7 +9338,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 293.89
+   "y": 297.89
   },
   "planner.tasks.section": {
    "backdropBlur": 0,
@@ -9388,7 +9388,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 236
+   "y": 240
   },
   "planner.tasks.seg": {
    "backdropBlur": 0,
@@ -9452,7 +9452,7 @@
    ],
    "width": 704,
    "x": 416,
-   "y": 120
+   "y": 124
   },
   "planner.tasks.seg.count": {
    "backdropBlur": 0,
@@ -9502,7 +9502,7 @@
    "shadows": [],
    "width": 18.52,
    "x": 487.47,
-   "y": 131
+   "y": 135
   },
   "planner.tasks.seg.count.active": {
    "backdropBlur": 0,
@@ -9552,7 +9552,7 @@
    "shadows": [],
    "width": 18.52,
    "x": 605.14,
-   "y": 131
+   "y": 135
   },
   "planner.tasks.seg.item": {
    "backdropBlur": 0,
@@ -9602,7 +9602,7 @@
    "shadows": [],
    "width": 114.33,
    "x": 420,
-   "y": 124
+   "y": 128
   },
   "planner.tasks.seg.item.active": {
    "backdropBlur": 0,
@@ -9692,7 +9692,7 @@
    ],
    "width": 114.33,
    "x": 536.33,
-   "y": 124
+   "y": 128
   },
   "planner.tasks.title": {
    "backdropBlur": 0,
@@ -9742,7 +9742,7 @@
    "shadows": [],
    "width": 482.09,
    "x": 462,
-   "y": 246
+   "y": 250
   },
   "var:color-accent": {
    "color": [
@@ -9976,7 +9976,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 236
+   "y": 240
   },
   "planner.tasks.group.second": {
    "backdropBlur": 0,
@@ -10026,7 +10026,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 340.89
+   "y": 344.89
   },
   "planner.tasks.group.title": {
    "backdropBlur": 0,
@@ -10076,7 +10076,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 236
+   "y": 240
   },
   "planner.tasks.check.done": {
    "backdropBlur": 0,
@@ -10208,7 +10208,7 @@
    ],
    "width": 18,
    "x": 432,
-   "y": 248
+   "y": 252
   },
   "planner.tasks.row.completed": {
    "backdropBlur": 0,
@@ -10258,7 +10258,7 @@
    "shadows": [],
    "width": 704,
    "x": 416,
-   "y": 236
+   "y": 240
   },
   "planner.tasks.title.done": {
    "backdropBlur": 0,
@@ -10308,7 +10308,7 @@
    "shadows": [],
    "width": 602,
    "x": 462,
-   "y": 246
+   "y": 250
   },
   "planner.dialog": {
    "backdropBlur": 24,
@@ -16630,7 +16630,7 @@
    "shadows": [],
    "width": 448,
    "x": 544,
-   "y": 212
+   "y": 216
   },
   "planner.empty.icon": {
    "backdropBlur": 0,
@@ -16680,7 +16680,7 @@
    "shadows": [],
    "width": 44,
    "x": 746,
-   "y": 276
+   "y": 280
   },
   "planner.empty.title": {
    "backdropBlur": 0,
@@ -16730,7 +16730,7 @@
    "shadows": [],
    "width": 271.38,
    "x": 632.31,
-   "y": 336
+   "y": 340
   }
  }
 }

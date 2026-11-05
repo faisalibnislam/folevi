@@ -67,8 +67,10 @@ struct WebTasksScreen: View {
         let content = PS("tasks.content").resolve(scheme)
         ScrollView {
             VStack(spacing: 0) {
-                header(count: loading ? nil : shown.count)
                 VStack(alignment: .leading, spacing: 0) {
+                    // The count and the actions on the list's own column (QA F15), lined up with the views, the
+                    // filter and the tasks at any window width.
+                    header(count: loading ? nil : shown.count)
                     seg
                     PlannerField(placeholder: "Filter by task or page", text: $model.filter, style: "tasks.filter", focused: $filterFocused)
                         .padding(.top, 16)
@@ -126,15 +128,14 @@ struct WebTasksScreen: View {
         return HStack(spacing: h.gap) {
             StyledText(count.map { "\(label) · \($0) \(model.view == .completed ? "done" : "open")" } ?? label, "header.subtitle")
                 .accessibilityAddTraits(.updatesFrequently)
+                .lineLimit(1)
             Spacer(minLength: 0)
-            HStack(spacing: 6) {
-                PlannerButton("Calendar", icon: .calendarDays, style: "header.calendar") { frame.open(.calendar(nil)) }
-                PlannerButton("Add task", icon: .plus, style: "header.add", hover: nil) { frame.showQuickAdd(in: tasks.window) }
-                    .foleviTooltip("(⌘N)")
-            }
+            PlannerButton("Calendar", icon: .calendarDays, style: "header.calendar") { frame.open(.calendar(nil)) }
+            PlannerButton("Add task", icon: .plus, style: "header.add", hover: nil) { frame.showQuickAdd(in: tasks.window) }
+                .foleviTooltip("(⌘N)")
         }
         .padding(h.padding.edgeInsets)
-        .frame(height: h.height)
+        .frame(minHeight: h.height)
         .padding(h.margin.edgeInsets)
     }
 

@@ -48,6 +48,26 @@ export function ageText(ts: number, now = Date.now()): string {
   return out.charAt(0).toUpperCase() + out.slice(1);
 }
 
+/**
+ * A note card's two times, each named so they can't be confused: "Created 3 days ago" under the title, "Edited
+ * 5 mins ago" in the footer (the time the Last edited sort uses).
+ */
+export function createdText(ts: number, now = Date.now()): string {
+  return `Created ${formatRelative(ts, now)}`;
+}
+export function editedText(ts: number, now = Date.now()): string {
+  return `Edited ${formatRelative(ts, now)}`;
+}
+
+/**
+ * The Templates page's count: the built-in gallery and your own templates apart, so an empty "Your templates"
+ * doesn't read as "0 templates" over a gallery of 26. `more` marks a count still loading ("3+").
+ */
+export function templatesCountText(builtIn: number, custom: number, more = false): string {
+  const own = `${custom}${more ? "+" : ""} custom ${custom === 1 && !more ? "template" : "templates"}`;
+  return builtIn > 0 ? `${builtIn} built-in · ${own}` : own;
+}
+
 export function formatDate(date: string, opts: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric" }): string {
   const [y, m, d] = date.split("-").map(Number) as [number, number, number];
   return localeDate(new Date(Date.UTC(y, m - 1, d)), { ...opts, timeZone: "UTC" });

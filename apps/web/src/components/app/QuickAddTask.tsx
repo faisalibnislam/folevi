@@ -2,7 +2,7 @@
 
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useId, useMemo, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Inbox, X, FileText, CalendarDays } from "lucide-react";
 import { naturalDateLabel, parseNaturalDate, useNaturalDatesReady } from "@/lib/nlDate";
 import { describeRepeat, parseRepeatPhrase, repeatProps, stepOccurrence, type RepeatRule } from "@folevi/editor-schema";
@@ -20,6 +20,9 @@ import { quickAddOnDevice } from "@/lib/quickAddOffline";
 import { useIphoneApp } from "@/lib/iphone";
 import { Sheet } from "@/components/iphone/Sheet";
 import { PhoneQuickAdd } from "@/components/iphone/QuickAddSheet";
+
+/** What Quick add says when it's submitted without a task (the same words as the server's and the Mac app's). */
+export const QUICK_ADD_TITLE_MISSING = "Write the task first.";
 
 export type Priority = "none" | "low" | "medium" | "high";
 export type Target = { id: string; title: string; icon: string | null } | null;
@@ -62,6 +65,12 @@ export function useQuickAdd({ onClose, currentDoc, onAdded, initialDue }: { onCl
   const [target, setTarget] = useState<Target | undefined>(undefined); // undefined = not chosen yet
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // An empty title, submitted: said under the title field (not with the other errors), until the title has words.
+  const [missingTitle, setMissingTitle] = useState(false);
+  const titleError = missingTitle && !title.trim() ? QUICK_ADD_TITLE_MISSING : null;
+  useEffect(() => {
+    if (title.trim()) setMissingTitle(false);
+  }, [title]);
   // A date written in the task ("call Sam tomorrow 3pm") sets the due date, unless one was picked by hand
   // or the person said to keep those words as text.
   const [keptAsText, setKeptAsText] = useState<string | null>(null);
@@ -92,7 +101,7 @@ export function useQuickAdd({ onClose, currentDoc, onAdded, initialDue }: { onCl
   const submit = async () => {
     if (busy) return;
     if (!title.trim()) {
-      setError("Write the task first.");
+      setMissingTitle(true);
       return;
     }
     setBusy(true);
@@ -123,17 +132,21 @@ export function useQuickAdd({ onClose, currentDoc, onAdded, initialDue }: { onCl
     }
   };
 
-  return { scope, today, title, setTitle, due, setDue, time, setTime, priority, setPriority, setTarget, effective, busy, error, setError, repeat, parsed, setKeptAsText, setRepeatKept, submit };
+  return { scope, today, title, setTitle, due, setDue, time, setTime, priority, setPriority, setTarget, effective, busy, error, setError, titleError, repeat, parsed, setKeptAsText, setRepeatKept, submit };
 }
 
 /** The form itself: in the dialog above, and alone in the Mac app's Quick Add window (`onAdded` says where it went). */
 export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onClose: () => void; currentDoc?: string; onAdded?: (added: { documentId: string; where: string }) => void; initialDue?: string }) {
-  const { scope, today, title, setTitle, due, setDue, time, setTime, priority, setPriority, setTarget, effective, busy, error, setError, repeat, parsed, setKeptAsText, setRepeatKept, submit } = useQuickAdd({ onClose, currentDoc, onAdded, initialDue });
+  const { scope, today, title, setTitle, due, setDue, time, setTime, priority, setPriority, setTarget, effective, busy, error, setError, titleError, repeat, parsed, setKeptAsText, setRepeatKept, submit } = useQuickAdd({ onClose, currentDoc, onAdded, initialDue });
+  const titleRef = useRef<HTMLInputElement>(null);
+  const describedBy = [titleError ? "qa-title-error" : null, parsed ? "qa-when" : null].filter(Boolean).join(" ") || undefined;
 
   return (
     <form
       onSubmit={async (e) => {
         e.preventDefault();
+        // An empty title keeps (or takes back) the focus, so the message under it is where the person is.
+        if (!title.trim()) titleRef.current?.focus();
         await submit();
       }}
     >
@@ -142,6 +155,7 @@ export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onC
       </label>
       <input
         id="qa-title"
+        ref={titleRef}
         autoFocus
         value={title}
         onChange={(e) => {
@@ -150,10 +164,15 @@ export function QuickAddForm({ onClose, currentDoc, onAdded, initialDue }: { onC
         }}
         placeholder="What needs doing?"
         maxLength={500}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={parsed ? "qa-when" : undefined}
+        aria-invalid={titleError || error ? true : undefined}
+        aria-describedby={describedBy}
         className="h-11 w-full ui-input rounded-chip px-3 text-body outline-none"
       />
+      {titleError ? (
+        <p id="qa-title-error" role="alert" className="mt-2 text-subheadline text-danger">
+          {titleError}
+        </p>
+      ) : null}
       {repeat ? (
         <p className="mt-2 flex items-center gap-2 text-subheadline text-muted">
           <span className="ui-chip bg-accent-soft text-accent-soft-ink">

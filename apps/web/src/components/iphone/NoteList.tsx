@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Archive, ArchiveRestore, Check, LayoutGrid, List, Trash2, Undo2, type LucideIcon } from "lucide-react";
 import { Bookmark, BookmarkOff } from "lucide-react";
 import { AppLink } from "@/lib/app/router";
-import { ageText, formatRelative } from "@/lib/format";
+import { ageText, editedText, formatRelative } from "@/lib/format";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import type { MenuEntry } from "@/components/ui/Menu";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
@@ -206,7 +206,7 @@ export function IphoneNoteList(props: IphoneNoteListProps) {
                     cover={d.cover}
                     style={d.style}
                     createdAt={d.createdAt}
-                    time={view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}
+                    time={view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : editedText(d.updatedAt)}
                     starred={d.starred}
                     folder={d.homeFolder}
                     showFolder={d.kind !== "template"}

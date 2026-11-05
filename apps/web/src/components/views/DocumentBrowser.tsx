@@ -24,7 +24,7 @@ import { useToast, errorMessage } from "@/components/ui/Toast";
 import { ViewChrome } from "@/components/app/Shell";
 import { folderHex } from "@/lib/folderColors";
 import { useCreateDocument } from "@/components/app/useCreateDocument";
-import { ageText, formatRelative } from "@/lib/format";
+import { ageText, editedText, formatRelative, templatesCountText } from "@/lib/format";
 import { t } from "@/i18n";
 import { localDb } from "@/lib/sync/db";
 import { TemplateTile } from "@/components/ui/TemplateIcon";
@@ -565,7 +565,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           <p role="status" className="mr-auto min-w-0 truncate text-subheadline text-muted">
             {loading
           ? undefined
-          : `${docs.length}${canLoadMore ? "+" : ""} ${view === "templates" ? (docs.length === 1 ? "template" : "templates") : docs.length === 1 ? "note" : "notes"}${!online && cached ? " · saved on this device" : ""}${canArrange ? " · drag to arrange" : ""}`}
+          : `${view === "templates" ? templatesCountText(builtIns?.length ?? 0, docs.length, canLoadMore) : `${docs.length}${canLoadMore ? "+" : ""} ${docs.length === 1 ? "note" : "notes"}`}${!online && cached ? " · saved on this device" : ""}${canArrange ? " · drag to arrange" : ""}`}
           </p>
           <label className="flex items-center gap-2 text-subheadline text-muted">
             <span>Sort</span>
@@ -750,7 +750,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                         cover={d.cover}
                         style={d.style}
                         createdAt={d.createdAt}
-                        time={view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}
+                        time={view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : editedText(d.updatedAt)}
                         starred={d.starred}
                         folder={d.homeFolder}
                         showFolder={d.kind !== "template"}

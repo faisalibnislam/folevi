@@ -431,4 +431,24 @@ struct RoutesAndMappingTests {
         deleted.deletedAt = row.updatedAt + 86_400_000
         #expect(CardMapping.timeText(deleted, inTrash: true, now: now) == "Deleted 1 day ago", "Trash reads deletedAt")
     }
+
+    /// QA F14: a card's two times are named, so the footer can be told apart from the created age.
+    @Test func cardTimesAreLabelled() throws {
+        var row = try makeRows(1)[0].decode(NoteRow.self)
+        row.createdAt = row.updatedAt - 3 * 86_400_000
+        let now = Date(timeIntervalSince1970: row.updatedAt / 1000 + 5 * 60)
+        let card = CardMapping.noteCard(row, now: now)
+        #expect(card.createdText == "Created 3 days ago")
+        #expect(card.timeText == "Edited 5 mins ago")
+        #expect(card.accessibilityText.contains("edited 5 mins ago"))
+        #expect(!card.accessibilityText.contains("edited Edited"))
+        #expect(CardMapping.noteCard(row, inTrash: true, now: now).timeText.hasPrefix("Deleted "))
+    }
+
+    /// QA F08: the Templates page counts built-in and custom templates apart.
+    @Test func templatesCountSeparatesBuiltIns() {
+        #expect(NotesListModel.templatesCountText(builtIn: 26, custom: 0) == "26 built-in · 0 custom templates")
+        #expect(NotesListModel.templatesCountText(builtIn: 26, custom: 1) == "26 built-in · 1 custom template")
+        #expect(NotesListModel.templatesCountText(builtIn: 0, custom: 2) == "2 custom templates")
+    }
 }

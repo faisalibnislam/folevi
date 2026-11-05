@@ -821,8 +821,9 @@ struct WebNoteBrowser: View {
 
     private var statusText: String {
         let n = model.isFiltering ? model.slots.count : model.total
-        let noun = model.kind.view == .templates ? (n == 1 ? "template" : "templates") : (n == 1 ? "note" : "notes")
-        return "\(n) \(noun)\(model.canArrange ? " · drag to arrange" : "")"
+        // Templates: the built-in gallery and your own apart (QA F08: not "0 templates" over 26 built-in ones).
+        let count = model.kind.view == .templates ? NotesListModel.templatesCountText(builtIn: builtIns.count, custom: n) : "\(n) \(n == 1 ? "note" : "notes")"
+        return "\(count)\(model.canArrange ? " · drag to arrange" : "")"
     }
 
     private var toolbar: some View {

@@ -227,15 +227,25 @@ struct QuickAddDialog: View {
     @State private var keepText = false
     @State private var busy = false
     @State private var error: String?
+    @State private var titleError: String?
     @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var scheme
+
+    static let titleMissing = "Write the task first."
 
     var body: some View {
         let fields = PS("quick.fields").resolve(scheme)
         PlannerDialog(title: "Quick add task", description: "Press Enter to add. Tasks without a page go to your Inbox page.", close: close) {
             VStack(alignment: .leading, spacing: 0) {
-                PlannerField(placeholder: "What needs doing?", text: $title, style: "quick.input", focused: $focused) { submit() }
-                    .onChange(of: title) { _, _ in error = nil; keepText = false }
+                PlannerField(placeholder: "What needs doing?", text: $title, style: "quick.input", focused: $focused, hint: titleError) { submit() }
+                    .onChange(of: title) { _, new in
+                        error = nil
+                        keepText = false
+                        if !new.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { titleError = nil }
+                    }
+                // An empty title is said under the title (QA F16), not with the other errors below Add to.
+                DialogError(text: titleError).padding(.top, titleError == nil ? 0 : 8)
+                    .accessibilityIdentifier("quick-add-title-error")
                 if let r = repeatLabel {
                     chip(icon: .repeat, text: r) { keepText = true }.padding(.top, 8)
                 }
@@ -319,7 +329,10 @@ struct QuickAddDialog: View {
         guard !busy else { return }
         let text = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else {
-            error = "Write the task first."
+            titleError = Self.titleMissing
+            // Focus stays in (or goes back to) the title, and VoiceOver hears why nothing was added.
+            focused = true
+            AccessibilityNotification.Announcement(Self.titleMissing).post()
             return
         }
         busy = true

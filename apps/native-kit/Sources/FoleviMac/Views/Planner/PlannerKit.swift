@@ -341,6 +341,8 @@ struct PlannerField: View {
     @Binding var text: String
     var style = "tasks.filter"
     var focused: FocusState<Bool>.Binding?
+    /// What assistive technology reads with the field after its value (the web's aria-describedby), e.g. its error.
+    var hint: String?
     var onSubmit: () -> Void = {}
     @Environment(\.colorScheme) private var scheme
 
@@ -358,6 +360,7 @@ struct PlannerField: View {
                 // AppKit's field editor sits 1.125 pt right of and 1 pt above where CSS puts an input's text.
                 .offset(x: -1.125, y: 1.035)
                 .onSubmit(onSubmit)
+                .accessibilityHint(hint ?? "")
         }
         .padding(s.padding.edgeInsets)
         .frame(height: s.height)

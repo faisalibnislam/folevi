@@ -656,4 +656,11 @@ public final class NotesListModel {
     public var emptyOffersNewNote: Bool { (kind.view == .all || kind.view == .folder) && canEdit }
 
     public var filterEmptyTitle: String { "No notes match “\(filter.trimmingCharacters(in: .whitespacesAndNewlines))”" }
+
+    /// The Templates page's count (the web's lib/format templatesCountText): the built-in gallery and your own
+    /// templates apart, so an empty "Your templates" doesn't read as "0 templates" over a gallery of 26.
+    nonisolated public static func templatesCountText(builtIn: Int, custom: Int) -> String {
+        let own = "\(custom) custom \(custom == 1 ? "template" : "templates")"
+        return builtIn > 0 ? "\(builtIn) built-in · \(own)" : own
+    }
 }

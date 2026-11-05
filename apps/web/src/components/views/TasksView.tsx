@@ -373,20 +373,22 @@ export function TasksView({ view }: { view: View }) {
   return (
     <ViewChrome
       title={<h1 className="text-subheadline font-semibold">Tasks</h1>}
-      subtitle={`${meta.label}${tasks === undefined ? "" : ` · ${shown.length} ${view === "completed" ? "done" : "open"}`}`}
       tabTitle={`Tasks · ${meta.label}`}
-      actions={
-        <>
+    >
+      <div className="mx-auto max-w-3xl px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
+        {/* The view's count and its actions sit on the list's own column, lined up with the views, the filter and
+            the tasks under them at any window width (not at the window's far edges). */}
+        <header className="mb-4 flex min-h-8 flex-wrap items-center gap-2">
+          <span role="status" className="mr-auto min-w-0 truncate text-subheadline text-muted">
+            {`${meta.label}${tasks === undefined ? "" : ` · ${shown.length} ${view === "completed" ? "done" : "open"}`}`}
+          </span>
           <AppLink href="/calendar" title="Calendar" className="ui-btn ui-btn-secondary h-8 gap-1.5 px-3 text-callout pointer-coarse:h-11">
             <CalendarDays size={14} aria-hidden /> <span className="max-md:sr-only">Calendar</span>
           </AppLink>
           <Button size="sm" variant="primary" title="Add task (⌘⇧A)" onClick={() => openQuickAdd()}>
             <Plus size={14} aria-hidden /> Add task
           </Button>
-        </>
-      }
-    >
-      <div className="mx-auto max-w-3xl px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
+        </header>
         <nav aria-label="Task views" className="ui-seg ui-well flex-wrap sm:flex-nowrap" title="Every task lives in a note. Open its page to see the context it was written in.">
           {VIEWS.map((v) => {
             const count = counts && v.id !== "completed" ? counts[v.id as keyof typeof counts] : undefined;

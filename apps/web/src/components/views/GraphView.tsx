@@ -572,7 +572,7 @@ function DnaInsights({
     </section>
   );
   return (
-    <aside aria-label="Insights" className="w-72 flex-none overflow-y-auto border-l border-line px-4 pb-8 pt-1 text-subheadline">
+    <aside aria-label="Insights" className="w-72 flex-none overflow-y-auto border-l border-line px-4 pb-[max(2rem,var(--fab-clearance))] pt-1 text-subheadline">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-body font-semibold text-heading">Insights</h2>
         <IconButton label="Close Insights" onClick={onClose} className="!h-7 !w-7">
@@ -730,7 +730,7 @@ export function GraphList({ nodes, edges, query }: { nodes: GraphNodeData[]; edg
       <p className="mt-1 text-subheadline text-faint">Not connected yet</p>
     );
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-10 sm:px-6">
+    <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[max(2.5rem,var(--fab-clearance))] sm:px-6">
       <section aria-labelledby="graph-list-notes">
         <h2 id="graph-list-notes" className="ui-caps mb-2 mt-2">
           Notes

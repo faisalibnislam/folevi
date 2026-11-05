@@ -29,6 +29,6 @@ describe("PDF export copy", () => {
   });
 
   test("no em dashes", () => {
-    for (const p of ["mac", "ios", "browser"] as const) expect(Object.values(pdfCopy(p)).join(" ")).not.toContain("—");
+    for (const p of ["mac", "ios", "browser"] as const) expect(Object.values(pdfCopy(p)).join(" ")).not.toContain(String.fromCharCode(0x2014));
   });
 });

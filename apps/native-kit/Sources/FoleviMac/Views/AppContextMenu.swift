@@ -8,6 +8,7 @@
 import AppKit
 import WebKit
 import FoleviDesign
+import FoleviScreens
 
 @MainActor
 enum AppContextMenu {
@@ -164,9 +165,28 @@ enum AppContextMenu {
 
     // MARK: anywhere
 
+    /// Where New folder makes one from here: the top level on the Folders page (`.some(nil)`), inside the folder on a
+    /// folder's page while there's room; nil elsewhere, or in a workspace this person can't edit.
+    private static func newFolderPlace(_ model: FrameModel) -> String?? {
+        if let s = model.session.value, s.spaces.first(where: { $0.id == s.space })?.canEdit == false { return nil }
+        switch model.route {
+        case .web(let path) where path == "/folders": return .some(nil)
+        case .folder(let id): return FolderRules.canNest(FolderRules.links(model.folders.value?.folders ?? []), in: id) ? .some(id) : nil
+        default: return nil
+        }
+    }
+
     private static func anywhereEntries(_ model: FrameModel, window: NSWindow) -> [WebMenuEntry] {
         var out: [WebMenuEntry] = [
             WebMenuEntry(.item("New note", icon: .filePlusCorner, shortcut: "⌘⌥N")) { model.newNote() },
+        ]
+        // On the Folders page and a folder's page, New folder too (as the top bar has it): inside the folder shown.
+        if let place = newFolderPlace(model) {
+            out.append(WebMenuEntry(.item("New folder", icon: .folderPlus)) {
+                FrameDialogs.newFolder(model, parent: place.flatMap { id in model.folders.value?.folders.first { $0.id == id } }, open: place == nil)
+            })
+        }
+        out += [
             WebMenuEntry(.item("Search or jump to…", icon: .search, shortcut: "⌘K")) {
                 FrameSheets.attach(model, window: window)
                 CommandPalette.show(model)

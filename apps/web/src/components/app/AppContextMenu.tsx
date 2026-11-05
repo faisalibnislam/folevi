@@ -7,7 +7,7 @@
 // - selected text: copy it, or ask AI about it;
 // - anywhere else: a new note, search, Ask AI, and back / forward / reload.
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, ClipboardPaste, Copy, ExternalLink, FilePlus2, Link2, RotateCw, Scissors, Search, Share, TextSelect } from "lucide-react";
+import { ArrowLeft, ArrowRight, ClipboardPaste, Copy, ExternalLink, FilePlus2, FolderPlus, Link2, RotateCw, Scissors, Search, Share, TextSelect } from "lucide-react";
 import { ContextMenu, type MenuItem } from "@/components/ui/Menu";
 import { useToast } from "@/components/ui/Toast";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -17,6 +17,8 @@ import { modKey } from "@/lib/hooks/useEngine";
 import { installTouchContextMenu } from "@/lib/touchContextMenu";
 import { useShell } from "./Shell";
 import { useCreateDocument } from "./useCreateDocument";
+import { NEW_FOLDER_EVENT } from "./NewFolderButton";
+import { useAppState } from "@/lib/app/state";
 import { macTextActions, readClipboardText, wordAround, type MacTextAction } from "@/lib/desktop/textMenu";
 
 type Field = HTMLInputElement | HTMLTextAreaElement;
@@ -31,7 +33,10 @@ function textField(el: Element | null): Field | null {
 export function AppContextMenu() {
   const [menu, setMenu] = useState<{ at: { x: number; y: number }; items: (MenuItem | "separator")[]; label: string; host?: HTMLElement; id?: number } | null>(null);
   const { openPalette, openAsk } = useShell();
-  const { navigate } = useAppRouter();
+  const { navigate, route } = useAppRouter();
+  const { canEdit } = useAppState();
+  // On the Folders page and a folder's page, New folder too (the top bar's, which opens its dialog).
+  const folderPage = canEdit && (route.name === "folders" || route.name === "folder");
   const createDocument = useCreateDocument();
   const aiOn = useAiEnabled();
   const toast = useToast();
@@ -170,6 +175,7 @@ export function AppContextMenu() {
       // Anywhere.
       items.push(
         { label: "New note", icon: <FilePlus2 size={14} />, shortcut: "⌘⌥N", onSelect: () => void createDocument({}) },
+        ...(folderPage ? [{ label: "New folder", icon: <FolderPlus size={14} />, onSelect: () => void window.dispatchEvent(new Event(NEW_FOLDER_EVENT)) }] : []),
         { label: "Search or jump to…", icon: <Search size={14} />, shortcut: "⌘K", onSelect: () => openPalette() },
         ...(aiOn ? [{ label: "Ask Foli AI", icon: <AiIcon size={14} />, shortcut: "⌘J", onSelect: () => openAsk() }] : []),
         "separator",
@@ -184,7 +190,7 @@ export function AppContextMenu() {
     };
     document.addEventListener("contextmenu", onContext);
     return () => document.removeEventListener("contextmenu", onContext);
-  }, [openPalette, openAsk, navigate, createDocument, aiOn, toast]);
+  }, [openPalette, openAsk, navigate, createDocument, aiOn, toast, folderPage]);
 
   return menu ? <ContextMenu at={menu.at} label={menu.label} items={menu.items} host={menu.host} onClose={() => setMenu(null)} /> : null;
 }

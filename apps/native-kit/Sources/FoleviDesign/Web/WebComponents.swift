@@ -20,14 +20,17 @@ public struct WebButton: View {
     let iconSize: CGFloat
     let iconOpacity: CGFloat
     let styleName: String?
+    /// A height of its own (the top bar's buttons take the tabs' height).
+    let height: CGFloat?
     let action: () -> Void
     @Environment(\.isEnabled) private var enabled
 
     /// `iconSize`: the icon's size where the web gives it one (`<Upload size={14} />`); 15 otherwise.
     /// `styleName`: the button's own measured style where it has one (the top bar's New note), and `iconOpacity`
     /// its icon's.
-    public init(_ title: String, icon: WebIcon? = nil, iconSize: CGFloat = 15, iconOpacity: CGFloat = 1, styleName: String? = nil, variant: WebButtonVariant = .secondary, size: WebButtonSize = .md, action: @escaping () -> Void = {}) {
+    public init(_ title: String, icon: WebIcon? = nil, iconSize: CGFloat = 15, iconOpacity: CGFloat = 1, styleName: String? = nil, variant: WebButtonVariant = .secondary, size: WebButtonSize = .md, height: CGFloat? = nil, action: @escaping () -> Void = {}) {
         self.title = title
+        self.height = height
         self.icon = icon
         self.iconSize = iconSize
         self.iconOpacity = iconOpacity
@@ -37,8 +40,17 @@ public struct WebButton: View {
         self.action = action
     }
 
+    /// Its measured style, at `height` when it has one.
+    private var style: WebStylePair {
+        let base = WebStyles.named(styleName ?? "button.\(variant.rawValue).\(size == .sm && icon != nil ? "sm" : size.rawValue)")
+        guard let height else { return base }
+        var light = base.light, dark = base.dark
+        light.height = height
+        dark.height = height
+        return WebStylePair(light: light, dark: dark)
+    }
+
     public var body: some View {
-        let style = WebStyles.named(styleName ?? "button.\(variant.rawValue).\(size == .sm && icon != nil ? "sm" : size.rawValue)")
         Button(action: action) {
             WebButtonLabel(title: title, icon: icon, style: style, iconSize: iconSize, iconOpacity: iconOpacity)
         }
@@ -238,14 +250,33 @@ public struct WebMenuPanel: View {
     /// every row keeping the check's room, the soft glass hover, at least `width` (no 200 floor).
     let select: Bool
     let onSelect: (WebMenuItem) -> Void
+    /// The row the pointer is on (nil when it leaves them all), for a menu that keeps its own highlight (the
+    /// keyboard's too). Without it the panel keeps the pointer's row itself.
+    let onHover: ((String?) -> Void)?
+    @State private var pointerRow: String?
     @Environment(\.colorScheme) private var scheme
 
-    public init(_ items: [WebMenuItem], width: CGFloat = 200, highlighted: String? = nil, select: Bool = false, onSelect: @escaping (WebMenuItem) -> Void = { _ in }) {
+    public init(_ items: [WebMenuItem], width: CGFloat = 200, highlighted: String? = nil, select: Bool = false, onSelect: @escaping (WebMenuItem) -> Void = { _ in }, onHover: ((String?) -> Void)? = nil) {
         self.items = items
         self.width = width
         self.highlighted = highlighted
         self.select = select
+        self.onHover = onHover
         self.onSelect = onSelect
+    }
+
+    /// The row drawn highlighted: under the pointer (with a Mac mouse or an iPad's pointer) or chosen by the keyboard.
+    private var current: String? { onHover == nil ? (pointerRow ?? highlighted) : highlighted }
+
+    /// The pointer came onto a row or left it.
+    private func hover(_ id: String, _ over: Bool) {
+        if over {
+            pointerRow = id
+            onHover?(id)
+        } else if pointerRow == id {
+            pointerRow = nil
+            onHover?(nil)
+        }
     }
 
     private var checks: Bool { items.contains { $0.checkable } }
@@ -315,7 +346,9 @@ public struct WebMenuPanel: View {
         case .item where select:
             selectRow(item)
         case .item:
-            let styleId = item.danger ? "menu.item.danger" : highlighted == item.id ? "menu.item.highlighted" : "menu.item"
+            let on = current == item.id
+            // (A destructive row keeps its red words and takes the soft hover fill under them.)
+            let styleId = item.danger ? "menu.item.danger" : on ? "menu.item.highlighted" : "menu.item"
             let style = WebStyles.named(styleId)
             let s = style.resolve(scheme)
             let icon = WebStyles.named("menu.item.icon").resolve(scheme)
@@ -379,6 +412,12 @@ public struct WebMenuPanel: View {
                 .frame(maxWidth: .infinity, minHeight: s.height, maxHeight: item.description == nil ? s.height : nil, alignment: .leading)
                 .foregroundStyle(s.color.color)
                 .webBox(style)
+                .background {
+                    if item.danger && on {
+                        RoundedRectangle(cornerRadius: WebStyles.named("menu.item.highlighted").resolve(scheme).radius, style: .circular)
+                            .fill(WebStyles.named("menu.item.highlighted").resolve(scheme).background.color)
+                    }
+                }
                 .overlay(alignment: .top) {
                     if Self.ios, followsItem(item) {
                         Rectangle().fill(hairline).frame(height: 0.5)
@@ -386,6 +425,7 @@ public struct WebMenuPanel: View {
                 }
             }
             .buttonStyle(WebPressStyle())
+            .onHover { hover(item.id, $0) }
         }
     }
 }
@@ -399,8 +439,8 @@ extension WebMenuPanel {
         let base = WebStyles.named("menu.item").resolve(scheme)
         let heading = WebStyles.vars["color-heading"]?.resolve(scheme).color ?? .primary
         let ink = WebStyles.vars["color-ink"]?.resolve(scheme).color ?? .primary
-        let hover = WebStyles.vars["glass-hover"]?.resolve(scheme).color ?? .clear
-        let active = highlighted == item.id
+        let hoverFill = WebStyles.vars["glass-hover"]?.resolve(scheme).color ?? .clear
+        let active = current == item.id
         Button { onSelect(item) } label: {
             HStack(spacing: 8) {
                 Text(item.title).webText(item.checked ? base.text.weight(600) : base.text).lineLimit(1).truncationMode(.tail)
@@ -413,10 +453,11 @@ extension WebMenuPanel {
             .padding(EdgeInsets(top: 3, leading: 8, bottom: 3, trailing: 8))
             .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
             .foregroundStyle(active || item.checked ? heading : ink)
-            .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular).fill(active ? hover : .clear))
+            .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular).fill(active ? hoverFill : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(WebPressStyle())
+        .onHover { self.hover(item.id, $0) }
     }
 }
 

@@ -54,9 +54,9 @@ struct WebMenuContent: View {
     let pick: (WebMenuEntry) -> Void
 
     var body: some View {
-        WebMenuPanel(state.entries.map(\.item), width: width, highlighted: state.highlighted, select: select) { item in
+        WebMenuPanel(state.entries.map(\.item), width: width, highlighted: state.highlighted, select: select, onSelect: { item in
             if let e = state.entries.first(where: { $0.id == item.id }), !e.disabled { pick(e) }
-        }
+        }, onHover: { state.highlighted = $0 })
         .background {
             if let image = state.backdrop {
                 Image(platformImage: image).resizable().clipShape(RoundedRectangle(cornerRadius: WebStyles.named("menu.panel").light.radius, style: .circular))

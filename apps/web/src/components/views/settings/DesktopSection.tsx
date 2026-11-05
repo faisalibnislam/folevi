@@ -34,6 +34,9 @@ export function DesktopSection() {
         <div className="max-w-xl divide-y divide-line/70">
           <Row label="Open at login" hint="Folevi starts quietly when you log in, so Quick Add is always ready." checked={settings.openAtLogin} onChange={(openAtLogin) => save({ openAtLogin })} />
           <Row label="Menu bar icon" hint="Quick Add, a new note, recent notes and the save state from the menu bar." checked={settings.menuBarIcon} onChange={(menuBarIcon) => save({ menuBarIcon })} />
+          {settings.spotlight !== undefined ? (
+            <Row label="Show notes in Spotlight" hint="Find any note by its words from Spotlight, archived ones too. Locked and encrypted notes are never added." checked={settings.spotlight} onChange={(spotlight) => save({ spotlight })} />
+          ) : null}
           <Row
             label="Mac notifications"
             hint="Comments, mentions and reminders appear as Mac notifications while Folevi isn't the app in front. The Dock icon shows how many are unread."

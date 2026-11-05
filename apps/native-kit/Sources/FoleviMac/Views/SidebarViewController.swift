@@ -458,11 +458,14 @@ extension SidebarViewController: NSOutlineViewDataSource, NSOutlineViewDelegate 
     public func outlineView(_ outlineView: NSOutlineView, validateDrop info: any NSDraggingInfo, proposedItem item: Any?, proposedChildIndex index: Int) -> NSDragOperation {
         let pb = info.draggingPasteboard
         let target = item as? SidebarItem
+        // Move when the drag offers it (a row of this outline); a card's SwiftUI drag offers only copy, and asking it
+        // for move would refuse the drop. Either way the note or folder moves.
+        let op: NSDragOperation = info.draggingSourceOperationMask.contains(.move) ? .move : .copy
         if let folder = pb.pasteboardItems?.first.flatMap(FrameDrag.folderId) {
-            return SidebarDrop.folder(folder, onto: target?.node, parentIsFolders: target?.id == SidebarModel.foldersHeader, index: index, tree: FolderTree(model.folders.value?.folders ?? [])) == nil ? [] : .move
+            return SidebarDrop.folder(folder, onto: target?.node, parentIsFolders: target?.id == SidebarModel.foldersHeader, index: index, tree: FolderTree(model.folders.value?.folders ?? [])) == nil ? [] : op
         }
         if pb.pasteboardItems?.contains(where: { !FrameDrag.noteIds($0).isEmpty }) == true {
-            return SidebarDrop.notesTarget(target?.node, index: index) == nil ? [] : .move
+            return SidebarDrop.notesTarget(target?.node, index: index) == nil ? [] : op
         }
         return []
     }

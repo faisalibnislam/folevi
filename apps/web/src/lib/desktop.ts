@@ -7,6 +7,8 @@ export interface DesktopSettings {
   openAtLogin: boolean;
   menuBarIcon: boolean;
   notifications: boolean;
+  /** Every note in Spotlight (the native Mac app only; Electron's settings have no such key). */
+  spotlight?: boolean;
 }
 
 export type DesktopCommand =

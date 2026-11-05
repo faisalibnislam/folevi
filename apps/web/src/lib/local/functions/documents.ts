@@ -719,3 +719,15 @@ defineLocal(api.documents.duplicate, "mutation", async (ctx, args) => {
   await copyCollectionsInto(ctx, copy.id);
   return toSummary((await ctx.db.get("documents", copy.id)) ?? copy, profile.id);
 });
+
+/** The Mac app's Spotlight index (convex/documents.ts spotlightText): each named note's whole text; null when it's gone or in the Trash. */
+defineLocal(api.documents.spotlightText, "query", async (ctx, args) => {
+  await requireProfile(ctx);
+  if (args.ids.length > 50) fail("invalid_argument", "At most 50 notes at a time.");
+  const out: { id: string; text: string | null }[] = [];
+  for (const id of new Set(args.ids)) {
+    const doc = await ctx.db.get("documents", id);
+    out.push({ id, text: doc && !doc.inTrash ? doc.searchText.slice(0, 50_000) : null });
+  }
+  return out;
+});

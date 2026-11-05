@@ -3,7 +3,7 @@
 // New folder, next to New note in the top bar on the Folders page and on every folder's page (the owner, 4 November
 // 2026: "like Finder"). On a folder's page it makes a subfolder there; on the Folders page, a top-level folder,
 // which then opens. `inPage` draws the same button in the Folders page's search row, which scrolls with the page.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FolderPlus } from "lucide-react";
 import { canNestFolderIn } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
@@ -14,6 +14,9 @@ import { PromptDialog } from "@/components/ui/PromptDialog";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { PillButton } from "@/components/iphone/Glass";
 
+/** Opens the top bar's New folder (the page's right-click menu asks for it). */
+export const NEW_FOLDER_EVENT = "folevi:new-folder";
+
 export function NewFolderButton({ parentId, pill = false, inPage = false }: { parentId: string | null; pill?: boolean; inPage?: boolean }) {
   const { canEdit, scope } = useAppState();
   const tree = useFolderTree(canEdit ? scope : "skip");
@@ -22,6 +25,13 @@ export function NewFolderButton({ parentId, pill = false, inPage = false }: { pa
   const { navigate } = useAppRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
+  // The top bar's button answers the right-click menu's New folder.
+  useEffect(() => {
+    if (inPage) return;
+    const show = () => setOpen(true);
+    window.addEventListener(NEW_FOLDER_EVENT, show);
+    return () => window.removeEventListener(NEW_FOLDER_EVENT, show);
+  }, [inPage]);
   if (!canEdit) return null;
   const folders = tree?.folders ?? [];
   const parent = parentId ? folders.find((f) => f.id === parentId) : undefined;

@@ -31,10 +31,15 @@ export interface DesktopSpotlightItem {
   id: string;
   title: string;
   excerpt: string;
+  /** Its whole text (what Spotlight finds it by). */
+  text: string;
   location: string;
   starred: boolean;
+  archived: boolean;
   /** Milliseconds since 1970. */
   updatedAt: number;
+  /** What it was made from (spotlightState hands it back): a note whose stamp differs is sent again. */
+  stamp: string;
 }
 
 export interface MacCapabilities {
@@ -53,8 +58,13 @@ export interface MacCapabilities {
   share?(item: { title?: string; text?: string; url?: string; fileName?: string; rect?: { x: number; y: number; width: number; height: number }; x?: number; y?: number }): Promise<boolean>;
   /** What File > Share sends from this window now: the open note, or null. */
   setShareTarget?(target: { title: string; url?: string } | null): void;
-  /** Spotlight holds exactly these notes of this place afterwards. */
-  indexSpotlight?(items: DesktopSpotlightItem[]): Promise<void>;
+  /**
+   * Spotlight: these notes of this place go in (at most 50 at a time); with `keep` (every note of the place), any
+   * other note of it comes out.
+   */
+  indexSpotlight?(items: DesktopSpotlightItem[], keep?: string[]): Promise<void>;
+  /** Whether Settings' "Show notes in Spotlight" is on, and each note's stamp Spotlight holds for this place. */
+  spotlightState?(): Promise<{ enabled: boolean; known: Record<string, string> } | null>;
   /** The clipboard for Folevi's own menus (no "Paste" bubble). */
   clipboard?: {
     read(): Promise<{ text?: string; html?: string; image?: Uint8Array } | null>;

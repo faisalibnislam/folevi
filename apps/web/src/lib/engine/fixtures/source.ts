@@ -945,7 +945,7 @@ export const FIXTURES: Record<string, Fixture> = {
     name: "settings.query",
     description: "Settings > Desktop app on the Mac: the Mac app's own settings, worded as the web shows them.",
     args: { key: "desktop" },
-    value: { data: { bridge: true, loaded: true, settings: { quickAddShortcut: "Alt+Space", shortcutLabel: "⌥Space", defaultShortcut: "Alt+Space", defaultLabel: "⌥Space", error: null, openAtLogin: true, menuBarIcon: true, notifications: false } } },
+    value: { data: { bridge: true, loaded: true, settings: { quickAddShortcut: "Alt+Space", shortcutLabel: "⌥Space", defaultShortcut: "Alt+Space", defaultLabel: "⌥Space", error: null, openAtLogin: true, menuBarIcon: true, notifications: false, spotlight: true } } },
   }),
   "command.settings.run.lock": command({ name: "settings.run", description: "Settings > Library: ask for Touch ID again after 5 minutes.", args: { key: "library.lock", args: { lockAfter: 300 } }, result: { data: { ok: true } } }),
   "command.settings.update": command({ name: "settings.update", description: "Change the name and appearance.", args: { name: "Faisal Islam", appearance: "light" }, result: { ok: true } }),

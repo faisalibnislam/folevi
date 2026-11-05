@@ -384,6 +384,32 @@ function sorter(sort: ListSort) {
 }
 
 /** Document metadata, breadcrumbs and the caller's access. Blocks are a separate subscription (blocks.list). */
+/** Notes one spotlightText call reads. */
+export const SPOTLIGHT_TEXT_MAX = 50;
+/** The most of a note's text Spotlight is given. */
+export const SPOTLIGHT_TEXT_CHARS = 50_000;
+
+/**
+ * The Mac app's Spotlight index: each named note's whole text (its search text, title included), for notes the
+ * caller can open. `text` is null for a note that's gone, in the Trash, or locked or end-to-end encrypted (those
+ * never go into Spotlight).
+ */
+export const spotlightText = query({
+  args: { ids: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    if (args.ids.length > SPOTLIGHT_TEXT_MAX) fail("invalid_argument", `At most ${SPOTLIGHT_TEXT_MAX} notes at a time.`);
+    const profile = await requireProfile(ctx);
+    const out: { id: string; text: string | null }[] = [];
+    for (const id of new Set(args.ids)) {
+      const doc = await getDocumentByPublicId(ctx, id);
+      const open = doc && !doc.inTrash && !doc.deletedAt && accessAtLeast(await documentAccess(ctx, profile, doc), "read");
+      const sealed = doc && (doc.sealedAt !== undefined || sealedFieldsOf(doc) !== undefined || doc.locked === true || doc.lockedVia !== undefined);
+      out.push({ id, text: open && !sealed ? doc.searchText.slice(0, SPOTLIGHT_TEXT_CHARS) : null });
+    }
+    return out;
+  },
+});
+
 export const get = query({
   args: { documentId: v.string() },
   handler: async (ctx, args) => {

@@ -65,7 +65,9 @@ struct LocalAiData: Decodable {
 }
 
 struct DesktopData: Decodable {
-    struct Settings: Decodable { var quickAddShortcut: String, shortcutLabel: String, defaultShortcut: String, defaultLabel: String, error: String?, openAtLogin: Bool, menuBarIcon: Bool, notifications: Bool }
+    struct Settings: Decodable { var quickAddShortcut: String, shortcutLabel: String, defaultShortcut: String, defaultLabel: String, error: String?, openAtLogin: Bool, menuBarIcon: Bool, notifications: Bool
+        /// Nil where the app has no Spotlight (a page without the Mac's bridge for it).
+        var spotlight: Bool? }
     var bridge: Bool, loaded: Bool
     var settings: Settings?
 }
@@ -805,7 +807,7 @@ struct DesktopSettingsView: View {
             Row(id: "openAtLogin", label: "Open at login", hint: "Folevi starts quietly when you log in, so Quick Add is always ready.", on: s.openAtLogin),
             Row(id: "menuBarIcon", label: "Menu bar icon", hint: "Quick Add, a new note, recent notes and the save state from the menu bar.", on: s.menuBarIcon),
             Row(id: "notifications", label: "Mac notifications", hint: "Comments, mentions and reminders appear as Mac notifications while Folevi isn't the app in front. The Dock icon shows how many are unread.", on: s.notifications),
-        ]
+        ] + (s.spotlight.map { [Row(id: "spotlight", label: "Show notes in Spotlight", hint: "Find any note by its words from Spotlight, archived ones too. Locked and encrypted notes are never added.", on: $0)] } ?? [])
     }
 
     private func set(_ key: String, _ value: JSONValue) {

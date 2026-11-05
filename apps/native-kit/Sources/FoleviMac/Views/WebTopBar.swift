@@ -73,12 +73,12 @@ public struct WebTopBar: View {
                 #endif
             } else {
                 if let parent = newFolderParent {
-                    WebButton("New folder", icon: .folderPlus, iconSize: 14, variant: .secondary, size: .sm) { newFolder(in: parent) }
+                    WebButton("New folder", icon: .folderPlus, iconSize: 14, variant: .secondary, size: .sm, height: style("frame.tab").height) { newFolder(in: parent) }
                         .foleviTooltip(parent == nil ? nil : "New folder in this folder")
                         .fixedSize()
                 }
                 // The web's <Button size="sm"> with <Plus size={14} />, as the top bar measures it (its icon at 70%).
-                WebButton("New note", icon: .plus, iconSize: 14, iconOpacity: style("frame.topbar.new.icon").opacity, styleName: "frame.topbar.new", variant: .primary, size: .sm) { model.newNote() }
+                WebButton("New note", icon: .plus, iconSize: 14, iconOpacity: style("frame.topbar.new.icon").opacity, styleName: "frame.topbar.new", variant: .primary, size: .sm, height: style("frame.tab").height) { model.newNote() }
                     // The button says "New note": its tooltip is the shortcut alone (tooltips never repeat what shows).
                     .foleviTooltip("(⌘⌥N)")
                     .fixedSize()
@@ -125,7 +125,7 @@ public struct WebTopBar: View {
     /// New note sits as far from the bar's right edge as from its top and bottom edges (the owner's ask, 1.1.04): the
     /// room the bar leaves round the button's height.
     private var newNoteInset: CGFloat {
-        (style("frame.topbar").height - style("frame.topbar.new").height) / 2
+        (style("frame.topbar").height - style("frame.tab").height) / 2
     }
 
     /// Home, pinned; the arrows while the tabs overflow; then the tabs, the only part that scrolls.

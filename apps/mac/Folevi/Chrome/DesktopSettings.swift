@@ -1,7 +1,7 @@
 // The Mac app's own settings (Settings > General, today's "Desktop app" section): Quick Add's shortcut, opening at
-// login, the menu bar icon and Mac notifications. Electron kept them in settings.json (the Electron Mac app's settings.ts);
+// login, the menu bar icon, Mac notifications and Spotlight. Electron kept them in settings.json (the Electron Mac app's settings.ts);
 // here they live in the build's defaults (Paths.defaults: a FOLEVI_USER_DATA run has its own). The page sees and
-// changes the same four keys (`pageSettings`), never the mode.
+// changes the same five keys (`pageSettings`), never the mode.
 import Foundation
 
 struct DesktopSettings: Equatable {
@@ -11,6 +11,8 @@ struct DesktopSettings: Equatable {
     var menuBarIcon = true
     /// Comments, mentions and reminders as Mac notifications.
     var notifications = true
+    /// Every note in Spotlight (Spotlight.swift); off takes them out.
+    var spotlight = true
 
     static let defaults = DesktopSettings()
     private static let key = "folevi.desktop.settings"
@@ -21,9 +23,9 @@ struct DesktopSettings: Equatable {
         set { Paths.defaults.set(newValue.page, forKey: key) }
     }
 
-    /// What the page reads (foleviDesktop.getSettings): the four keys.
+    /// What the page reads (foleviDesktop.getSettings): the five keys.
     var page: [String: Any] {
-        ["quickAddShortcut": quickAddShortcut, "openAtLogin": openAtLogin, "menuBarIcon": menuBarIcon, "notifications": notifications]
+        ["quickAddShortcut": quickAddShortcut, "openAtLogin": openAtLogin, "menuBarIcon": menuBarIcon, "notifications": notifications, "spotlight": spotlight]
     }
 
     /// Known keys of the right type only; anything else keeps `base`'s value (Electron's cleanSettings).
@@ -33,6 +35,7 @@ struct DesktopSettings: Equatable {
         if let b = raw["openAtLogin"] as? Bool { out.openAtLogin = b }
         if let b = raw["menuBarIcon"] as? Bool { out.menuBarIcon = b }
         if let b = raw["notifications"] as? Bool { out.notifications = b }
+        if let b = raw["spotlight"] as? Bool { out.spotlight = b }
         return out
     }
 

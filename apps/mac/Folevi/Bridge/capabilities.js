@@ -155,11 +155,23 @@
       fire("setShareTarget", { target: t });
     };
 
-  /** Spotlight holds exactly these notes of this page's place afterwards. */
-  if (has.indexSpotlight)
-    desktop.indexSpotlight = function (items) {
-      return quietly(desk("indexSpotlight", { items: plain(Array.isArray(items) ? items.slice(0, 200) : []) })).then(function () {});
+  /**
+   * Spotlight: these notes of this page's place go in (at most 50 at a time, each with its whole text); with `keep`,
+   * every note of the place, any other note of it Spotlight holds comes out.
+   */
+  if (has.indexSpotlight) {
+    desktop.indexSpotlight = function (items, keep) {
+      var o = { items: plain(Array.isArray(items) ? items.slice(0, 50) : []) };
+      if (Array.isArray(keep)) o.keep = plain(keep.slice(0, 50000));
+      return quietly(desk("indexSpotlight", o)).then(function () {});
     };
+    /** Whether "Show notes in Spotlight" is on, and the version of each note of this place Spotlight holds. */
+    desktop.spotlightState = function () {
+      return quietly(desk("spotlightState")).then(function (r) {
+        return r && typeof r === "object" ? { enabled: r.enabled !== false, known: r.known && typeof r.known === "object" ? r.known : {} } : null;
+      });
+    };
+  }
 
   /** The clipboard for Folevi's own menus (no "Paste" bubble): text, HTML and a PNG image (bytes). */
   if (has.clipboard)

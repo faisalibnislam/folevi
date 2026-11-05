@@ -54,9 +54,9 @@ public struct WebCornersShape: Shape {
     }
 
     /// The note card's outline: square-ish at the spine, rounded on the open edge.
-    public static let noteCard = WebCornersShape(topLeft: FoleviTokens.Radius.tiny, topRight: FoleviTokens.Radius.panel, bottomRight: FoleviTokens.Radius.panel, bottomLeft: FoleviTokens.Radius.tiny)
+    public static let noteCard = WebCornersShape(topLeft: FoleviTokens.Radius.tiny, topRight: FoleviTokens.Radius.small, bottomRight: FoleviTokens.Radius.small, bottomLeft: FoleviTokens.Radius.tiny)
     /// On the iPhone the open edge rounds by the container radius (18).
-    public static let phoneNoteCard = WebCornersShape(topLeft: FoleviTokens.Radius.tiny, topRight: FoleviTokens.Radius.container, bottomRight: FoleviTokens.Radius.container, bottomLeft: FoleviTokens.Radius.tiny)
+    public static let phoneNoteCard = WebCornersShape(topLeft: FoleviTokens.Radius.tiny, topRight: FoleviTokens.Radius.small, bottomRight: FoleviTokens.Radius.small, bottomLeft: FoleviTokens.Radius.tiny)
 
     public func grown(_ d: CGFloat) -> WebCornersShape {
         var s = self
@@ -532,9 +532,9 @@ public struct WebNoteCard: View {
 
     /// NOTE_CARD_LINK's hover shadow.
     static let hoverShadows: [ShadowLayer] = [
-        ShadowLayer(x: -3, y: 12, blur: 16, spread: -8, color: RGBA(20, 20, 30, 0.18)),
-        ShadowLayer(x: -5, y: 24, blur: 36, spread: -18, color: RGBA(20, 20, 30, 0.18)),
-        ShadowLayer(x: 0, y: 3, blur: 8, spread: 0, color: RGBA(20, 20, 30, 0.04)),
+        ShadowLayer(x: -3, y: 12, blur: 16, spread: -8, color: RGBA(20, 20, 30, 0.09)),
+        ShadowLayer(x: -5, y: 24, blur: 36, spread: -18, color: RGBA(20, 20, 30, 0.09)),
+        ShadowLayer(x: 0, y: 3, blur: 8, spread: 0, color: RGBA(20, 20, 30, 0.02)),
     ]
 }
 
@@ -690,10 +690,12 @@ public struct WebFolderCard: View {
         let tabShape = WebCornersShape(topLeft: FoleviTokens.Radius.control, topRight: FoleviTokens.Radius.control, bottomRight: 0, bottomLeft: 0)
         let bodyShape = WebCornersShape(topLeft: 0, topRight: FoleviTokens.Radius.panel, bottomRight: FoleviTokens.Radius.panel, bottomLeft: FoleviTokens.Radius.panel)
         let frontH = h * 0.54
+        // (FolderCardArt's BACK_SHADOW, softened by half on 5 November 2026, and its outline.)
+        let backShadows = back.visibleShadows.filter(\.inset) + Self.folderBackShadows
         let backLayer = ZStack(alignment: .topLeading) {
-            WebShapeBox(shape: tabShape, fill: backTone.color, shadows: back.visibleShadows)
+            WebShapeBox(shape: tabShape, fill: backTone.color, shadows: backShadows)
                 .frame(width: w * 0.44, height: h * 0.09)
-            WebShapeBox(shape: bodyShape, fill: backTone.color, shadows: back.visibleShadows)
+            WebShapeBox(shape: bodyShape, fill: backTone.color, shadows: backShadows)
                 .frame(width: w, height: h * 0.95)
                 .padding(.top, h * 0.05)
         }
@@ -706,26 +708,12 @@ public struct WebFolderCard: View {
         return ZStack(alignment: .topLeading) {
             backLayer
             notes
-            front(w: w, h: h, frontH: frontH, cq: cq, base: base) {
-                // backdrop-filter: blur(9px) saturate(1.3): what's behind the front cover, blurred.
-                ZStack(alignment: .topLeading) {
-                    backLayer
-                    notes
-                }
-                .frame(width: w, height: h, alignment: .topLeading)
-                .saturation(1.3)
-                .blur(radius: 9, opaque: false)
-                .offset(y: -h * 0.46)
-                .frame(width: w, height: frontH, alignment: .topLeading)
-            }
-            .offset(y: h * 0.46)
+            front(w: w, h: h, frontH: frontH, cq: cq, base: base)
+                .offset(y: h * 0.46)
         }
         .frame(width: w, height: h, alignment: .topLeading)
-        // The whole card in one picture too: the front's frosted backdrop (a second copy of the back and the papers,
-        // saturated and blurred) and its shadows were blurred again on every frame while Home or Folders scrolled
-        // (2026-10-31: Folders' p95 frame 33 to 19 ms, Home's 30 to 8 ms). Real window captures, light and dark, show
-        // the front as the web draws it; the app's own snapshots (screens.mjs) never drew the live blur at all, which
-        // is why flattening the front once looked like a change.
+        // The whole card in one picture too: its shadows were blurred again on every frame while Home or Folders
+        // scrolled (2026-10-31: Folders' p95 frame 33 to 19 ms, Home's 30 to 8 ms).
         .flattened()
         .offset(y: hovered ? -4 : 0)
         .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2), value: hovered)
@@ -754,7 +742,14 @@ public struct WebFolderCard: View {
         .frame(width: w, height: h, alignment: .topLeading)
     }
 
-    private func front<B: View>(w: CGFloat, h: CGFloat, frontH: CGFloat, cq: CGFloat, base: RGBA, @ViewBuilder backdrop: () -> B) -> some View {
+    /// The back's soft shadow (FolderCardArt's BACK_SHADOW).
+    static let folderBackShadows: [ShadowLayer] = [
+        ShadowLayer(x: 0, y: 4, blur: 8, spread: 0, color: RGBA(20, 20, 30, 0.05)),
+        ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(20, 20, 30, 0.04)),
+    ]
+
+    /// The front cover, flat in the folder's colour (FolderCardArt's data-fc="front": no frosted glass since 5 November 2026).
+    private func front(w: CGFloat, h: CGFloat, frontH: CGFloat, cq: CGFloat, base: RGBA) -> some View {
         let f = s("front")
         let shape = WebCornersShape(topLeft: f.radius, topRight: f.radius, bottomRight: f.radius, bottomLeft: f.radius)
         let k = labelScale
@@ -762,19 +757,14 @@ public struct WebFolderCard: View {
         let ageSize = min(24, max(11, 5.6 * cq * k))
         let nameSize = min(40, max(16, 9.4 * cq * k))
         return ZStack(alignment: .topLeading) {
-            WebShapeBox(shape: shape, fill: nil, shadows: f.visibleShadows.filter { !$0.inset })
-                .frame(width: w, height: frontH)
-            backdrop().clipShape(shape)
             if phoneDark {
-                let deep = base.oklabMix(RGBA(18, 19, 24), 0.46)
-                shape.fill(LinearGradient(colors: [deep.opacity(0.72).color, deep.opacity(0.94).color], startPoint: .top, endPoint: .bottom))
-                // inset 0 1px 0 white 12%, inset 0 0 0 0.5px white 8%.
-                shape.stroke(Color.white.opacity(0.08), lineWidth: 1).clipShape(shape)
-                shape.stroke(Color.white.opacity(0.12), lineWidth: 2).clipShape(shape).mask(alignment: .top) { Rectangle().frame(height: 1) }
-            } else {
-                shape.fill(LinearGradient(colors: [base.opacity(0.62).color, base.opacity(0.86).color], startPoint: .top, endPoint: .bottom))
+                // background: the colour 46% into #121318; inset 0 0 0 0.5px white 8%, 0 -2px 6px -4px black 30%.
+                WebShapeBox(shape: shape, fill: base.oklabMix(RGBA(18, 19, 24), 0.46).color, shadows: [ShadowLayer(x: 0, y: -2, blur: 6, spread: -4, color: RGBA(0, 0, 0, 0.3))])
                     .frame(width: w, height: frontH)
-                WebShapeBox(shape: shape, fill: nil, shadows: f.visibleShadows.filter(\.inset))
+                shape.stroke(Color.white.opacity(0.08), lineWidth: 1).clipShape(shape)
+            } else {
+                // inset 0 0 0 1px black 6%, 0 -2px 6px -4px black 12%.
+                WebShapeBox(shape: shape, fill: base.color, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06), inset: true), ShadowLayer(x: 0, y: -2, blur: 6, spread: -4, color: RGBA(0, 0, 0, 0.12))])
                     .frame(width: w, height: frontH)
             }
             // The words in a box of the cover's own size: a line taller or wider than its place mustn't grow the

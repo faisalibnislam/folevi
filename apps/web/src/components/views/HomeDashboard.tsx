@@ -102,7 +102,7 @@ function NoteCard({ d, recent }: { d: Summary; recent?: boolean }) {
           extra={waitingOf(d) ? <WaitingToSync state={waitingOf(d)} /> : undefined}
         />
       </AppLink>
-      <div data-card-menu="" className={`absolute right-2 top-2 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100`}>
+      <div data-card-menu="" className={`absolute top-2 ${d.starred ? "right-[calc(11cqw+4px)]" : "right-2"} opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100`}>
         <div className="ui-raised rounded-chip">
           <DocMenu doc={d} view="all" recent={recent} />
         </div>
@@ -144,7 +144,7 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
     return (
       <div className="flex gap-8 overflow-hidden pb-7 pt-2" role="status" aria-busy aria-label="Loading">
         {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} style={{ width: CARD_WIDTH }} className={`${NOTE_CARD_ASPECT} flex-none animate-pulse rounded-l-tiny rounded-r-panel bg-sunken motion-reduce:animate-none`} />
+          <div key={i} style={{ width: CARD_WIDTH }} className={`${NOTE_CARD_ASPECT} flex-none animate-pulse rounded-l-tiny rounded-r-small bg-sunken motion-reduce:animate-none`} />
         ))}
       </div>
     );

@@ -29,15 +29,15 @@ export const FOLDER_CARD_FRAME =
  * and blur it again on every new screen (docs/IOS_PERFORMANCE.md). The body is drawn after the tab, so the tab's
  * shadow never falls on it; the front cover sits inside the back, so the outline is the same.
  */
-const BACK_SHADOW = "0 8px 14px rgb(20 20 30 / 0.1), 0 1px 2px rgb(20 20 30 / 0.06)";
-/** Where the folder's "…" menu appears on hover, over the front cover. */
+const BACK_SHADOW = "0 4px 8px rgb(20 20 30 / 0.05), 0 1px 2px rgb(20 20 30 / 0.04)";
+/** Where the folder's "…" menu appears on hover, over the front cover: the same raised chip as a note card's "…". */
 export const FOLDER_CARD_MENU =
-  "absolute left-1/2 top-[70%] z-10 -translate-x-1/2 -translate-y-1/2 rounded-chip bg-white/90 text-[#17171a] opacity-0 shadow-[0_1px_3px_rgb(0_0_0/0.18)] transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100";
+  "ui-raised absolute left-1/2 top-[70%] z-10 -translate-x-1/2 -translate-y-1/2 rounded-chip opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100";
 
 /** The "…" button's look inside FOLDER_CARD_MENU, for pictures of the card (the app uses its MenuButton). */
 export function FolderCardMenuLook() {
   return (
-    <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-chip text-[#17171a]/75">
+    <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-chip text-muted">
       <MoreHorizontal size={16} aria-hidden />
     </span>
   );
@@ -74,7 +74,7 @@ function FolderNote({ note, index }: { note: FolderPreview; index: number }) {
 
 /**
  * The drawing: a tinted back with a tab, up to three of the notes inside (faint and soft, fanned), and a
- * frosted-glass front cover in the folder's colour that the notes show through. Count, last update and
+ * flat front cover in the folder's colour (no frosted glass, the owner, 5 November 2026) in front of them. Count, last update and
  * name sit on the front. Goes inside an element with FOLDER_CARD_FRAME, inside one with FOLDER_CARD_BOX.
  */
 export function FolderCardArt({ name, color, count, age, previews = [] }: { name: string; color: string | null; count: number; age: string; previews?: FolderPreview[] }) {
@@ -94,14 +94,12 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
           <div className="absolute left-[12%] top-[12%] h-[60%] w-[76%] rounded-chip bg-white/60" />
         )}
       </div>
-      {/* frosted front cover, with the count, last update and name on it. They're its children, not siblings
-          after it: on an iPhone's GPU a later sibling of a backdrop-filtered layer can be drawn under it and only
-          show while the card is pressed; a child is always drawn over its own backdrop. */}
+      {/* flat front cover, with the count, last update and name on it */}
       <div
         aria-hidden
         data-fc="front"
-        className="absolute inset-x-0 bottom-0 top-[46%] rounded-panel shadow-[inset_0_1px_0_rgb(255_255_255/0.75),inset_0_0_0_1px_rgb(0_0_0/0.08),0_-6px_16px_-10px_rgb(0_0_0/0.25)] [-webkit-backdrop-filter:blur(9px)_saturate(1.3)] [backdrop-filter:blur(9px)_saturate(1.3)]"
-        style={{ background: `linear-gradient(180deg, color-mix(in oklab, ${base} 62%, transparent), color-mix(in oklab, ${base} 86%, transparent))`, ["--fc" as string]: base }}
+        className="absolute inset-x-0 bottom-0 top-[46%] rounded-panel shadow-[inset_0_0_0_1px_rgb(0_0_0/0.06),0_-2px_6px_-4px_rgb(0_0_0/0.12)]"
+        style={{ background: base, ["--fc" as string]: base }}
       >
         {/* page count */}
         <span

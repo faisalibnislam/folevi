@@ -43,6 +43,7 @@ enum Capabilities {
             "share": share,
             "setShareTarget": setShareTarget,
             "indexSpotlight": indexSpotlight,
+            "spotlightState": { router, _ in Spotlight.shared.state(place: router.context.place() ?? "default") },
             "clipboardRead": { _, _ in Clipboard.read() },
             "clipboardWrite": { _, o in try Clipboard.write(o); return [:] },
             "quickLook": quickLook,
@@ -191,8 +192,9 @@ enum Capabilities {
 
     private static func indexSpotlight(_ router: DesktopRouter, _ o: [String: Any]) async throws -> [String: Any] {
         let place = router.context.place() ?? "default"
-        let items = (o["items"] as? [[String: Any]] ?? []).prefix(200).compactMap(Spotlight.Note.init)
-        await Spotlight.shared.replace(place: place, with: Array(items))
+        let items = (o["items"] as? [[String: Any]] ?? []).prefix(50).compactMap(Spotlight.Note.init)
+        let keep = (o["keep"] as? [Any]).map { Set($0.prefix(50_000).compactMap { $0 as? String }) }
+        await Spotlight.shared.update(place: place, with: Array(items), keep: keep)
         return [:]
     }
 

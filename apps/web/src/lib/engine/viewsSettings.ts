@@ -331,7 +331,8 @@ export function localAiValue(deps: EngineDeps, state: LocalAiState) {
 // ---- the Mac app's own settings (Settings > Desktop app) -------------------------------------------------------
 
 let desktopState: { settings: DesktopSettings; error: string | null } | null = null;
-const desktopChanged = new Emitter();
+/** The Mac app's settings changed (DesktopCapabilities' Spotlight feed looks again when they do). */
+export const desktopChanged = new Emitter();
 function readDesktop() {
   void desktop()
     ?.getSettings()
@@ -357,6 +358,7 @@ export function desktopValue(state: { settings: DesktopSettings; error: string |
       openAtLogin: s.openAtLogin,
       menuBarIcon: s.menuBarIcon,
       notifications: s.notifications,
+      spotlight: s.spotlight ?? null,
     },
   };
 }
@@ -618,7 +620,7 @@ async function runKey(deps: EngineDeps, key: SettingsRunKey, a: Args): Promise<u
       if (!bridge) throw new BridgeError("unavailable", "These settings are for the Folevi Mac app.");
       const patch: Partial<DesktopSettings> = {};
       if (typeof a.quickAddShortcut === "string") patch.quickAddShortcut = a.quickAddShortcut;
-      for (const k of ["openAtLogin", "menuBarIcon", "notifications"] as const) if (typeof a[k] === "boolean") patch[k] = a[k] as boolean;
+      for (const k of ["openAtLogin", "menuBarIcon", "notifications", "spotlight"] as const) if (typeof a[k] === "boolean") patch[k] = a[k] as boolean;
       const next = await bridge.setSettings(patch);
       if (next) {
         desktopState = next;

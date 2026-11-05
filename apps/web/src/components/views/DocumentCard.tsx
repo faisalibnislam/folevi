@@ -70,12 +70,12 @@ function useFitLines() {
 
 /**
  * Classes for the link that wraps a NoteCardFace in a grid (shape, shadow, hover lift, focus ring). The card
- * is a notebook: portrait, square-ish at the spine and rounded on the open edge, with a soft shadow falling
+ * is a notebook: portrait, square-ish at the spine and rounded on the open edge, with a soft shadow (halved, the owner, 5 November 2026) falling
  * down and a little to the left. The close layer reaches under the spine too, so that corner never shows a
  * pale gap.
  */
 export const NOTE_CARD_LINK =
-  "note-card-r block aspect-[25/27] rounded-l-tiny rounded-r-panel shadow-[-3px_10px_14px_-8px_rgb(20_20_30/0.16),-4px_18px_30px_-18px_rgb(20_20_30/0.14),0_2px_5px_rgb(20_20_30/0.03)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[-3px_12px_16px_-8px_rgb(20_20_30/0.18),-5px_24px_36px_-18px_rgb(20_20_30/0.18),0_3px_8px_rgb(20_20_30/0.04)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
+  "note-card-r block aspect-[25/27] rounded-l-tiny rounded-r-small shadow-[-3px_10px_14px_-8px_rgb(20_20_30/0.08),-4px_18px_30px_-18px_rgb(20_20_30/0.07),0_2px_5px_rgb(20_20_30/0.015)] outline-none transition-[transform,box-shadow] duration-200 ease-[var(--ease-folio)] hover:-translate-y-0.5 hover:shadow-[-3px_12px_16px_-8px_rgb(20_20_30/0.09),-5px_24px_36px_-18px_rgb(20_20_30/0.09),0_3px_8px_rgb(20_20_30/0.02)] focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas";
 
 export { noteLook, type CardLook } from "@/lib/cardLook";
 import { noteLook } from "@/lib/cardLook";
@@ -139,8 +139,8 @@ export function NoteCardFace({
     <div className="relative h-full w-full [container-type:inline-size]">
       {look === "stack" ? (
         <>
-          <span aria-hidden className="note-card-r absolute inset-[2%_0_0_3%] rotate-[5deg] rounded-l-tiny rounded-r-panel shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08),0_4px_10px_-6px_rgb(20_20_30/0.25)]" style={{ background: tint(16) }} />
-          <span aria-hidden className="note-card-r absolute inset-[1%_3%_1%_0] -rotate-[3.5deg] rounded-l-tiny rounded-r-panel shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08),0_4px_10px_-6px_rgb(20_20_30/0.25)]" style={{ background: tint(9) }} />
+          <span aria-hidden className="note-card-r absolute inset-[2%_0_0_3%] rotate-[5deg] rounded-l-tiny rounded-r-small shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08),0_4px_10px_-6px_rgb(20_20_30/0.25)]" style={{ background: tint(16) }} />
+          <span aria-hidden className="note-card-r absolute inset-[1%_3%_1%_0] -rotate-[3.5deg] rounded-l-tiny rounded-r-small shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08),0_4px_10px_-6px_rgb(20_20_30/0.25)]" style={{ background: tint(9) }} />
         </>
       ) : null}
       {look === "tabs" ? (
@@ -151,11 +151,11 @@ export function NoteCardFace({
         </span>
       ) : null}
       {/* the page block, peeking out past the cover's open edge and bottom */}
-      <span aria-hidden className="note-card-r absolute bottom-0 left-0 right-0 top-[1.4%] rounded-l-tiny rounded-r-panel bg-[color-mix(in_oklab,var(--color-heading)_13%,var(--color-canvas))]" />
+      <span aria-hidden className="note-card-r absolute bottom-0 left-0 right-0 top-[1.4%] rounded-l-tiny rounded-r-small bg-[color-mix(in_oklab,var(--color-heading)_13%,var(--color-canvas))]" />
       {/* the cover */}
       <div
         {...sheet}
-        className="note-card-r fb-sheet absolute bottom-[1cqw] left-0 right-[1cqw] top-0 flex overflow-hidden rounded-l-tiny rounded-r-panel bg-surface text-ink"
+        className="note-card-r fb-sheet absolute bottom-[1cqw] left-0 right-[1cqw] top-0 flex overflow-hidden rounded-l-tiny rounded-r-small bg-surface text-ink"
       >
       {/* the spine, in the note's theme */}
       <div aria-hidden className="relative w-[6%] flex-none shadow-[inset_-1px_0_0_rgb(0_0_0/0.06)]" style={{ background: strip }} />
@@ -219,7 +219,7 @@ export function NoteCardFace({
         </div>
       </div>
       {/* A 1px, 5% black outline drawn above the spine and cover so it runs round the whole cover. */}
-      <span aria-hidden data-card="edge" className="note-card-r pointer-events-none absolute inset-0 z-10 rounded-l-tiny rounded-r-panel shadow-[inset_0_0_0_1px_rgb(0_0_0/0.05)]" />
+      <span aria-hidden data-card="edge" className="note-card-r pointer-events-none absolute inset-0 z-10 rounded-l-tiny rounded-r-small shadow-[inset_0_0_0_1px_rgb(0_0_0/0.05)]" />
       </div>
       {look === "ribbon" ? (
         // A bookmark ribbon hanging over the top edge by the right corner (clear of the "…" button): the bookmarked note.

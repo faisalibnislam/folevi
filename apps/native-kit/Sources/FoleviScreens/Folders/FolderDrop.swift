@@ -3,6 +3,7 @@
 // 0.6 s on the iPad and the Mac, the folder opens under the drag (spring-loaded), so a note can travel down
 // nested folders in one drag.
 import SwiftUI
+import UniformTypeIdentifiers
 import FoleviEngine
 #if canImport(UIKit)
 import UIKit
@@ -82,6 +83,17 @@ public struct FolderDrop: DropDelegate {
         return FolderRules.zone(at: axis == .horizontal ? info.location.x : info.location.y, length: length)
     }
 
+    /// What the drop asks of the drag. On the Mac a SwiftUI `.draggable` source offers only copy: asking for move
+    /// there made AppKit refuse every drop while the card still lit up (1.2.29 and 1.2.30). It moves the note or
+    /// folder either way.
+    static var operation: DropOperation {
+        #if os(macOS)
+        .copy
+        #else
+        .move
+        #endif
+    }
+
     public func dropEntered(info: DropInfo) {
         zone = zone(info)
         armSpring(info)
@@ -91,7 +103,7 @@ public struct FolderDrop: DropDelegate {
         let z = zone(info)
         zone = z
         if z == .inside { armSpring(info) } else { spring.cancel() }
-        return DropProposal(operation: .move)
+        return DropProposal(operation: Self.operation)
     }
 
     public func dropExited(info: DropInfo) {
@@ -108,9 +120,11 @@ public struct FolderDrop: DropDelegate {
         let at = zone(info)
         zone = nil
         spring.cancel()
+        // Read as the JSON data CodableRepresentation writes (as the Mac's sidebar reads its drags): loadTransferable
+        // came back empty for in-app drags on the Mac, so a note or folder dropped on a card went nowhere (1.2.30).
         if let provider = info.itemProviders(for: [.foleviFolderRef]).first {
-            _ = provider.loadTransferable(type: FolderDragItem.self) { result in
-                guard case .success(let item) = result else { return }
+            _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.foleviFolderRef.identifier) { data, _ in
+                guard let data, let item = try? JSONDecoder().decode(FolderDragItem.self, from: data) else { return }
                 Task { @MainActor in onFolder(item, at) }
             }
             return true
@@ -119,8 +133,9 @@ public struct FolderDrop: DropDelegate {
         guard !notes.isEmpty else { return false }
         let collector = DropCollector(expected: notes.count) { items in onNotes(items) }
         for provider in notes {
-            _ = provider.loadTransferable(type: NoteDragItem.self) { result in
-                Task { @MainActor in collector.add(try? result.get()) }
+            _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.foleviNoteRef.identifier) { data, _ in
+                let item = data.flatMap { try? JSONDecoder().decode(NoteDragItem.self, from: $0) }
+                Task { @MainActor in collector.add(item) }
             }
         }
         return true

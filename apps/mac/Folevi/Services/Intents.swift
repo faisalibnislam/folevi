@@ -39,7 +39,8 @@ struct NoteQuery: EntityStringQuery {
     }
 
     func suggestedEntities() async throws -> [NoteEntity] {
-        await all()
+        // (Spotlight holds every note now: suggest the most recently edited.)
+        Array(await all().prefix(30))
     }
 }
 

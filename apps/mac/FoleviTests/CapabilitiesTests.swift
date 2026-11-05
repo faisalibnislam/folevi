@@ -206,6 +206,26 @@ final class CapabilitiesTests: XCTestCase {
         XCTAssertEqual(long?.title.count, 300)
     }
 
+    func testSpotlightIndexesTheWholeTextAndKeepsALightRecord() throws {
+        let note = try XCTUnwrap(Spotlight.Note(["id": "01ABC", "title": "Trip", "excerpt": "Ferry", "text": "Trip Ferry on Friday " + String(repeating: "x", count: 60_000), "location": "Personal", "starred": false, "archived": true, "updatedAt": 1700000000000, "stamp": "1700000000000|0|1|Personal|Trip"]))
+        XCTAssertEqual(note.text.count, 50_000)
+        XCTAssertTrue(note.archived)
+        let item = Spotlight.item(note, place: "library")
+        XCTAssertTrue(item.attributeSet.textContent?.hasPrefix("Trip Ferry on Friday") == true)
+        XCTAssertEqual(item.attributeSet.keywords, ["Personal", "archived"])
+        // What's kept between launches: no text, the stamp the page compares with.
+        let kept = try XCTUnwrap(Spotlight.Note(id: note.id, record: note.record))
+        XCTAssertEqual(kept.stamp, note.stamp)
+        XCTAssertEqual(kept.title, "Trip")
+        XCTAssertEqual(kept.text, "")
+    }
+
+    func testShowNotesInSpotlightIsOnUnlessTurnedOff() {
+        XCTAssertTrue(DesktopSettings.defaults.spotlight)
+        XCTAssertFalse(DesktopSettings.clean(["spotlight": false], base: .defaults).spotlight)
+        XCTAssertEqual(DesktopSettings.defaults.page["spotlight"] as? Bool, true)
+    }
+
     @MainActor
     func testClipboardRoundTrip() throws {
         let board = NSPasteboard(name: NSPasteboard.Name("com.folevi.mac.tests.\(UUID().uuidString)"))

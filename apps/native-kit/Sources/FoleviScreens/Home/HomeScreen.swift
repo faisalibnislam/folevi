@@ -388,7 +388,7 @@ enum TagColors {
 /// A drop on a section header (folders to the top level).
 struct SectionDrop: DropDelegate {
     var onFolder: (FolderDragItem) -> Void
-    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: FolderDrop.operation) }
     func performDrop(info: DropInfo) -> Bool {
         guard let provider = info.itemProviders(for: [.foleviFolderRef]).first else { return false }
         _ = provider.loadTransferable(type: FolderDragItem.self) { result in

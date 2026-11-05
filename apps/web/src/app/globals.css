@@ -906,7 +906,7 @@
 :root[data-input="key"]:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-menu-item:focus-visible { background: color-mix(in oklab, var(--color-ink) 10%, transparent); }
 /* Note cards (components/views/DocumentCard.tsx) on the phone: 18-point corners on the open edge, one date (the
    footer's), the title in Spectral 17/22, two lines; in dark a faint edge so they don't sink into the canvas. */
-:root[data-iphone] .note-card-r { border-top-right-radius: var(--radius-container); border-bottom-right-radius: var(--radius-container); }
+:root[data-iphone] .note-card-r { border-top-right-radius: var(--radius-small); border-bottom-right-radius: var(--radius-small); }
 :root[data-iphone] [data-card="created"] { display: none; }
 :root[data-iphone] [data-card="title"] { font-size: var(--type-body); line-height: 22px; font-weight: 600; letter-spacing: -0.005em; }
 :root[data-iphone] [data-card="memo"] { font-size: var(--type-caption-1); line-height: var(--type-caption-1-leading); padding: 4px 8px; }
@@ -917,8 +917,8 @@
 :root[data-iphone] [data-fc="name"] { font-size: var(--type-title-3); line-height: 24px; }
 :root[data-iphone][data-theme="dark"] [data-fc="back"] { background: color-mix(in oklab, var(--fc) 38%, #23252c) !important; }
 :root[data-iphone][data-theme="dark"] [data-fc="front"] {
-  background: linear-gradient(180deg, color-mix(in oklab, color-mix(in oklab, var(--fc) 46%, #121318) 72%, transparent), color-mix(in oklab, color-mix(in oklab, var(--fc) 46%, #121318) 94%, transparent)) !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), inset 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 -6px 16px -10px rgb(0 0 0 / 0.6) !important;
+  background: color-mix(in oklab, var(--fc) 46%, #121318) !important;
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 -2px 6px -4px rgb(0 0 0 / 0.3) !important;
 }
 :root[data-iphone][data-theme="dark"] [data-fc="name"] { color: #f6f6f8 !important; }
 :root[data-iphone][data-theme="dark"] [data-fc="age"] { color: color-mix(in oklab, var(--fc) 22%, #dcdee5) !important; }
@@ -1139,9 +1139,9 @@
 /* §2.6 Popovers fade in and rise 4 points over 120 ms; §3.14 dialogs are sheets: attached under the top bar,
    480 wide, 14 corners, no dim behind them, sliding 8 points down as they fade in (180 ms ease-out). */
 :root[data-desktop="mac"] [role="dialog"][popover].ui-pop { animation: mac-pop-in 420ms var(--spring-pop); transform-origin: top; }
-:root[data-desktop="mac"] dialog.ui-pop { margin: 56px auto auto; border-radius: var(--radius-panel); box-shadow: inset 0 0 0 0.5px var(--mac-pop-edge), var(--mac-sheet-shadow); }
+:root[data-desktop="mac"] dialog.ui-pop { margin: auto; border-radius: var(--radius-panel); box-shadow: inset 0 0 0 0.5px var(--mac-pop-edge), var(--mac-sheet-shadow); }
 :root[data-desktop="mac"] dialog.ui-pop.max-w-lg { max-width: 480px; }
-:root[data-desktop="mac"] dialog.ui-pop[open] { animation: mac-sheet-in 480ms var(--spring-pop); transform-origin: top; }
+:root[data-desktop="mac"] dialog.ui-pop[open] { animation: mac-sheet-in 480ms var(--spring-pop); transform-origin: center; }
 :root[data-desktop="mac"] dialog.ui-pop > div { max-height: calc(100dvh - 76px); }
 :root[data-desktop="mac"] dialog.ui-pop > div > header h2 { font-size: var(--type-title-3); }
 /* §3.14 The command palette isn't a sheet: it keeps its place, 640 wide, its rows 36 tall. */

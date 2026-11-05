@@ -1,9 +1,11 @@
-// Folevi's notes in Spotlight on the Mac (as the iPhone and iPad app's SpotlightIndex.swift does): the recent and
-// starred ones of each place, with their title, the start of their text and where they are. The page of each place
-// hands them over whenever they change (foleviDesktop.indexSpotlight, in both modes: the Mac has no REST token of
-// its own to fetch them with), and only notes that changed since are written again. Choosing a result opens the
-// note in the place it's from. Each place keeps its own domain, so forgetting a place removes just its notes; a
-// FOLEVI_USER_DATA run keeps its own, apart from the Debug app's.
+// Folevi's notes in Spotlight on the Mac: every note of each place, archived ones too, found by any word of their
+// text (the owner, 5 November 2026), with their title, the start of their text and where they are. Locked and
+// end-to-end encrypted notes never go in. The page of each place hands them over (foleviDesktop.indexSpotlight, in
+// both modes: the Mac has no REST token of its own to fetch them with): it asks what Spotlight holds
+// (spotlightState: each note's stamp), sends only the notes whose stamp changed, at most 50 at a time, and then the
+// ids of every note of the place (`keep`), so notes gone from it come out. Choosing a result opens the note in the
+// place it's from. Each place keeps its own domain, so forgetting a place removes just its notes; a FOLEVI_USER_DATA
+// run keeps its own, apart from the Debug app's. Settings' "Show notes in Spotlight" off takes them all out.
 import AppKit
 import CoreSpotlight
 import UniformTypeIdentifiers
@@ -16,33 +18,49 @@ final class Spotlight {
         let id: String
         let title: String
         let excerpt: String
+        /// Its whole text, what Spotlight finds it by (empty in the light copies kept for Shortcuts).
+        let text: String
         let location: String
         let starred: Bool
+        let archived: Bool
         /// Milliseconds since 1970.
         let updatedAt: Double
+        /// What the page made it from: one whose stamp changed is sent again.
+        let stamp: String
 
-        init(id: String, title: String, excerpt: String, location: String, starred: Bool, updatedAt: Double) {
+        init(id: String, title: String, excerpt: String, text: String = "", location: String, starred: Bool, archived: Bool = false, updatedAt: Double, stamp: String = "") {
             self.id = id
             self.title = title
             self.excerpt = excerpt
+            self.text = text
             self.location = location
             self.starred = starred
+            self.archived = archived
             self.updatedAt = updatedAt
+            self.stamp = stamp
         }
 
-        /// From the page: { id, title, excerpt, location, starred, updatedAt }, checked.
+        /// From the page: { id, title, excerpt, text, location, starred, archived, updatedAt, stamp }, checked.
         init?(_ d: [String: Any]) {
             guard let id = d["id"] as? String, id.range(of: "^[A-Za-z0-9_-]{1,64}$", options: .regularExpression) != nil else { return nil }
             self.id = id
             title = String((d["title"] as? String ?? "").prefix(300))
             excerpt = String((d["excerpt"] as? String ?? "").prefix(300))
+            text = String((d["text"] as? String ?? "").prefix(50_000))
             location = String((d["location"] as? String ?? "").prefix(200))
             starred = d["starred"] as? Bool ?? false
+            archived = d["archived"] as? Bool ?? false
             updatedAt = (d["updatedAt"] as? NSNumber)?.doubleValue ?? 0
+            stamp = String((d["stamp"] as? String ?? "").prefix(600))
         }
 
-        /// What decides whether Spotlight's copy is out of date.
-        var version: String { "\(Int64(updatedAt))\(starred ? "*" : "")|\(title)|\(location)|\(excerpt.count)" }
+        /// What's kept of it between launches (Shortcuts' Open Note picks from these).
+        var record: [String: Any] { ["s": stamp, "t": title, "l": location, "b": starred, "u": updatedAt] }
+
+        init?(id: String, record: Any) {
+            guard let r = record as? [String: Any] else { return nil }
+            self.init(id: id, title: r["t"] as? String ?? "", excerpt: "", location: r["l"] as? String ?? "", starred: r["b"] as? Bool ?? false, updatedAt: (r["u"] as? NSNumber)?.doubleValue ?? 0, stamp: r["s"] as? String ?? "")
+        }
     }
 
     static let domain = "com.folevi.notes"
@@ -51,8 +69,16 @@ final class Spotlight {
     var openInPlace: ((_ place: String, _ path: String) -> Void)?
 
     private let index = CSSearchableIndex.default()
-    /// The notes each place last handed over (Shortcuts' Open Note picks from them too).
-    private(set) var notes: [String: [Note]] = [:]
+
+    /// The notes Spotlight holds for each place, newest first (Shortcuts' Open Note picks from them).
+    var notes: [String: [Note]] {
+        Dictionary(uniqueKeysWithValues: indexedPlaces.map { place in
+            (place, records(place).compactMap { Note(id: $0.key, record: $0.value) }.sorted { $0.updatedAt > $1.updatedAt })
+        })
+    }
+
+    /// Settings' "Show notes in Spotlight".
+    var enabled: Bool { DesktopSettings.current.spotlight }
 
     func install() {
         // A note from another place opens in that place (WM1 switches every window to it).
@@ -95,32 +121,45 @@ final class Spotlight {
 
     private func indexedKey(_ place: String) -> String { "spotlight.indexed.\(place)" }
 
-    /// Spotlight holds exactly these notes of the place afterwards (only the changed ones are written).
-    func replace(place: String, with list: [Note]) async {
-        notes[place] = list
-        var known = Paths.defaults.dictionary(forKey: indexedKey(place)) as? [String: String] ?? [:]
-        let wanted = Dictionary(list.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-        var items: [CSSearchableItem] = []
-        for note in wanted.values where known[note.id] != note.version {
-            items.append(Self.item(note, place: place))
-            known[note.id] = note.version
-        }
-        let gone = known.keys.filter { wanted[$0] == nil }
+    /// What Spotlight holds for a place: each note's record (a note from before stamps reads as stale).
+    private func records(_ place: String) -> [String: Any] {
+        Paths.defaults.dictionary(forKey: indexedKey(place)) ?? [:]
+    }
+
+    /// For the page (spotlightState): whether the setting is on, and the stamp of each note held for the place.
+    func state(place: String) -> [String: Any] {
+        guard enabled else { return ["enabled": false, "known": [String: String]()] }
+        var known: [String: String] = [:]
+        for (id, r) in records(place) { known[id] = (r as? [String: Any])?["s"] as? String ?? "" }
+        return ["enabled": true, "known": known]
+    }
+
+    /// These notes of the place go into Spotlight; with `keep` (every note of the place), the others it holds come out.
+    func update(place: String, with list: [Note], keep: Set<String>?) async {
+        guard enabled else { return }
+        var held = records(place)
+        let items = list.map { Self.item($0, place: place) }
+        let gone = keep.map { keep in held.keys.filter { !keep.contains($0) } } ?? []
         do {
             if !items.isEmpty { try await index.indexSearchableItems(items) }
             if !gone.isEmpty { try await index.deleteSearchableItems(withIdentifiers: gone.map { Self.identifier(place: place, id: $0) }) }
-            for id in gone { known[id] = nil }
-            Paths.defaults.set(known, forKey: indexedKey(place))
+            for note in list { held[note.id] = note.record }
+            for id in gone { held[id] = nil }
+            Paths.defaults.set(held, forKey: indexedKey(place))
         } catch {
-            // Spotlight isn't there right now: the page hands them over again after its next change.
+            // Spotlight isn't there right now: the page hands them over again on its next look.
         }
     }
 
     /// A place signed out or forgotten (WM1): its notes leave Spotlight.
     func forget(place: String) async {
-        notes[place] = nil
         try? await index.deleteSearchableItems(withDomainIdentifiers: [Self.domain(place)])
         Paths.defaults.removeObject(forKey: indexedKey(place))
+    }
+
+    /// "Show notes in Spotlight" turned off: every place's notes leave Spotlight.
+    func forgetAll() async {
+        for place in indexedPlaces { await forget(place: place) }
     }
 
     static func item(_ note: Note, place: String) -> CSSearchableItem {
@@ -129,9 +168,10 @@ final class Spotlight {
         attributes.title = title
         attributes.displayName = title
         attributes.contentDescription = note.excerpt
+        attributes.textContent = note.text
         attributes.containerTitle = note.location
         attributes.containerDisplayName = note.location
-        attributes.keywords = [note.location] + (note.starred ? ["bookmarked"] : [])
+        attributes.keywords = [note.location] + (note.starred ? ["bookmarked"] : []) + (note.archived ? ["archived"] : [])
         if note.updatedAt > 0 { attributes.contentModificationDate = Date(timeIntervalSince1970: note.updatedAt / 1000) }
         let item = CSSearchableItem(uniqueIdentifier: identifier(place: place, id: note.id), domainIdentifier: domain(place), attributeSet: attributes)
         item.expirationDate = .distantFuture
@@ -154,7 +194,7 @@ final class Spotlight {
 
     #if DEBUG
     func indexedForTests() -> [String: Any] {
-        notes.mapValues { $0.map { ["id": $0.id, "title": $0.title, "location": $0.location, "starred": $0.starred] } }
+        notes.mapValues { $0.map { ["id": $0.id, "title": $0.title, "location": $0.location, "starred": $0.starred, "stamp": $0.stamp] } }
     }
     #endif
 }

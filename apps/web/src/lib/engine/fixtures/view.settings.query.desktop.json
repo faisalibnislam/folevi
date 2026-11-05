@@ -17,7 +17,8 @@
         "error": null,
         "openAtLogin": true,
         "menuBarIcon": true,
-        "notifications": false
+        "notifications": false,
+        "spotlight": true
       }
     }
   }

@@ -147,7 +147,7 @@ public struct NoteCardView: View {
         let canvas = FoleviTokens.Chrome.canvas.resolve(scheme)
         let heading = FoleviTokens.Chrome.heading.resolve(scheme)
         let chip = FoleviTokens.Chrome.line.resolve(scheme).opacity(0.75)
-        let shape = UnevenRoundedRectangle(topLeadingRadius: 4, bottomLeadingRadius: 4, bottomTrailingRadius: FoleviTokens.Radius.panel, topTrailingRadius: FoleviTokens.Radius.panel, style: .continuous)
+        let shape = UnevenRoundedRectangle(topLeadingRadius: 4, bottomLeadingRadius: 4, bottomTrailingRadius: FoleviTokens.Radius.small, topTrailingRadius: FoleviTokens.Radius.small, style: .continuous)
         let faceWidth = width * 0.94 - cq - 13 * cq
         return ZStack(alignment: .topLeading) {
             // The page block, peeking out past the cover's open edge and bottom.
@@ -186,14 +186,14 @@ public struct NoteCardView: View {
                         .foregroundStyle(ink.color)
                         .frame(width: 12 * cq, height: 12 * cq)
                         .background(UnevenRoundedRectangle(bottomLeadingRadius: FoleviTokens.Radius.chip, style: .continuous).fill(chip.color))
-                        .clipShape(UnevenRoundedRectangle(topTrailingRadius: FoleviTokens.Radius.panel, style: .continuous))
+                        .clipShape(UnevenRoundedRectangle(topTrailingRadius: FoleviTokens.Radius.small, style: .continuous))
                 }
             }
             .padding(.trailing, cq)
             .padding(.bottom, cq)
         }
-        .shadow(color: RGBA(20, 20, 30, 0.16).color, radius: 7, x: -3, y: 6)
-        .shadow(color: RGBA(20, 20, 30, 0.10).color, radius: 14, x: -4, y: 12)
+        .shadow(color: RGBA(20, 20, 30, 0.08).color, radius: 7, x: -3, y: 6)
+        .shadow(color: RGBA(20, 20, 30, 0.05).color, radius: 14, x: -4, y: 12)
         .shadow(color: RGBA(20, 20, 30, 0.03).color, radius: 2.5, x: 0, y: 2)
     }
 

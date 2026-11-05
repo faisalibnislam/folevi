@@ -43,8 +43,9 @@ public enum FrameSheets {
     /// Whether a dialog is on screen in this frame's window (tests, the eval hook).
     public static func isShowing(_ model: FrameModel) -> Bool { shown[ObjectIdentifier(model)] != nil }
 
-    /// Shows `content` as the frame's dialog (replacing one already shown). `top` is where it attaches.
-    static func present<Content: View>(_ model: FrameModel, top: CGFloat = 56, leading: CGFloat? = nil, onClose: (() -> Void)? = nil, @ViewBuilder content: (_ close: @escaping @MainActor () -> Void) -> Content) {
+    /// Shows `content` as the frame's dialog (replacing one already shown): in the middle of the window (the owner,
+    /// 5 November 2026), or attached at `top` (the command palette, a popover at `leading`).
+    static func present<Content: View>(_ model: FrameModel, top: CGFloat? = nil, leading: CGFloat? = nil, onClose: (() -> Void)? = nil, @ViewBuilder content: (_ close: @escaping @MainActor () -> Void) -> Content) {
         dismiss(model, notify: false)
         #if os(macOS)
         guard let window = window(for: model), let root = window.contentView else { return }
@@ -184,14 +185,16 @@ final class SheetHostingView: NSHostingView<AnyView> {
 #endif
 
 private struct SheetLayer<Content: View>: View {
-    let top: CGFloat
+    /// Where it attaches from the top; nil: in the middle of the window, both ways.
+    let top: CGFloat?
     /// A popover's left edge (nil: centred, as a dialog).
     let leading: CGFloat?
     let close: @MainActor () -> Void
     let content: Content
 
     var body: some View {
-        ZStack(alignment: leading == nil ? .top : .topLeading) {
+        let alignment: Alignment = leading != nil ? .topLeading : top == nil ? .center : .top
+        ZStack(alignment: alignment) {
             Color.black.opacity(0.0001)
                 .contentShape(Rectangle())
                 .onTapGesture { close() }
@@ -199,9 +202,9 @@ private struct SheetLayer<Content: View>: View {
             Group {
                 if leading == nil { content.webSheetIn() } else { content.webPopIn() }
             }
-            .padding(.top, top).padding(.leading, leading ?? 0)
+            .padding(.top, top ?? 0).padding(.leading, leading ?? 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: leading == nil ? .top : .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
     }
 }
 

@@ -108,6 +108,8 @@ enum Chrome {
             }
         }
         if let previous, next.openAtLogin != previous.openAtLogin { LoginItem.apply(next.openAtLogin) }
+        // "Show notes in Spotlight" off: every note comes out (on again: the page sends them all on its next look).
+        if let previous, previous.spotlight, !next.spotlight { Task { await Spotlight.shared.forgetAll() } }
         DesktopSettings.current = next
         refresh()
     }

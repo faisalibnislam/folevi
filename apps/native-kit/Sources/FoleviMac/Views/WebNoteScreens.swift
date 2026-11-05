@@ -54,17 +54,19 @@ struct WebNoteCell: View {
             }
             .buttonStyle(PressDipButtonStyle())
             .draggable(drag)
-            if hovered {
-                GeometryReader { geo in
-                    HStack(spacing: 4) {
-                        if let useTemplate { WebButton("Use", icon: .filePlusCorner, variant: .secondary, size: .sm, action: useTemplate) }
-                        cardMenu
-                    }
-                    .padding(.top, 8)
-                    .padding(.trailing, card.starred && !compact ? geo.size.width * 0.12 + 8 : 8)
-                    .frame(maxWidth: .infinity, alignment: .topTrailing)
+            // Always there (shown on hover), placed as the folder card's is: a "…" put in only on hover let the click
+            // through to the card, which opened the note.
+            GeometryReader { geo in
+                HStack(spacing: 4) {
+                    if let useTemplate { WebButton("Use", icon: .filePlusCorner, variant: .secondary, size: .sm, action: useTemplate) }
+                    WebCardMenuButton(label: "Actions for \(card.title.isEmpty ? "Untitled" : card.title)", entries: menu)
                 }
+                .fixedSize()
+                // Clear of a bookmarked card's ribbon (DocumentCard.tsx: right 11cqw + 4px).
+                .position(x: geo.size.width - (card.starred && !compact ? geo.size.width * 0.11 + 4 : 8) - Self.menuWidth(useTemplate != nil) / 2, y: 8 + WebCardMenuButton.size / 2)
             }
+            .opacity(hovered ? 1 : 0)
+            .allowsHitTesting(hovered)
             if selected {
                 RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip + 4, style: .circular)
                     .strokeBorder(webVar("color-heading", scheme).color, lineWidth: 2)
@@ -87,17 +89,31 @@ struct WebNoteCell: View {
         .webContextMenu(menu)
     }
 
-    private var cardMenu: some View {
+    /// The width of the "…" (and Use, for a template) row, to place it by its right edge.
+    private static func menuWidth(_ withUse: Bool) -> CGFloat { WebCardMenuButton.size + (withUse ? 64 : 0) }
+}
+
+/// A card's "…" (a note's and a folder's alike, the owner, 5 November 2026: they look the same): a raised chip
+/// (`.ui-raised rounded-chip`) with the ellipsis, opening the card's menu.
+struct WebCardMenuButton: View {
+    let label: String
+    let entries: @MainActor () -> [WebMenuEntry]
+    @Environment(\.colorScheme) private var scheme
+
+    static var size: CGFloat { WebStyles.named("notes.card.menu").light.height }
+
+    var body: some View {
         let raised = WebStyles.named("notes.card.menu")
         let r = raised.resolve(scheme)
         let button = notesStyle("card.menu.button", scheme)
-        return WebMenuButton(width: 200, entries: menu) {
+        WebMenuButton(width: 200, entries: entries) {
             WebIconView(.ellipsis, size: 16)
                 .foregroundStyle(button.color.color)
                 .frame(width: r.width, height: r.height)
                 .webBox(raised)
+                .contentShape(Rectangle())
         }
-        .foleviTooltip("Actions for \(card.title.isEmpty ? "Untitled" : card.title)")
+        .foleviTooltip(label)
     }
 }
 
@@ -132,19 +148,9 @@ struct WebFolderCell: View {
             .buttonStyle(PressDipButtonStyle())
                 .draggable(FolderDragItem(id: card.id, name: card.name, parentId: parentId))
             GeometryReader { geo in
-                let m = WebStyles.named("notes.folder.menu")
-                let ms = m.resolve(scheme)
-                let b = notesStyle("folder.menu.button", scheme)
-                WebMenuButton(width: 240, entries: menu) {
-                    WebIconView(.ellipsis, size: 16)
-                        .foregroundStyle(b.color.color)
-                        .frame(width: ms.width, height: ms.height)
-                        .background(RoundedRectangle(cornerRadius: ms.radius, style: .circular).fill(ms.background.color))
-                        .shadow(color: .black.opacity(0.18), radius: 1.5, y: 1)
-                }
-                .foleviTooltip("Folder options for \(card.name)")
-                .position(x: geo.size.width / 2, y: geo.size.height * 0.7 + (hovered ? -4 : 0))
-                .opacity(hovered ? 1 : 0)
+                WebCardMenuButton(label: "Folder options for \(card.name)", entries: menu)
+                    .position(x: geo.size.width / 2, y: geo.size.height * 0.7 + (hovered ? -4 : 0))
+                    .opacity(hovered ? 1 : 0)
             }
         }
         .aspectRatio(WebFolderCard.aspect, contentMode: .fit)

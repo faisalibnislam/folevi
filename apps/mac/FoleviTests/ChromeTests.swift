@@ -24,7 +24,7 @@ final class ChromeTests: XCTestCase {
         XCTAssertFalse(next.openAtLogin)
         XCTAssertTrue(next.menuBarIcon, "a value of the wrong type is ignored")
         XCTAssertFalse(next.notifications)
-        XCTAssertEqual(Set(next.page.keys), ["quickAddShortcut", "openAtLogin", "menuBarIcon", "notifications"])
+        XCTAssertEqual(Set(next.page.keys), ["quickAddShortcut", "openAtLogin", "menuBarIcon", "notifications", "spotlight"])
     }
 
     func testHotKeyFromAnAccelerator() {

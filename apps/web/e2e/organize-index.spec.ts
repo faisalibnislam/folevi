@@ -22,13 +22,16 @@ test("the sidebar lists a few folders and tags; All folders / All tags pages sea
   await expect(list.getByRole("listitem").nth(11)).toBeVisible();
   const total = await list.getByRole("listitem").count();
   expect(total).toBeGreaterThanOrEqual(12);
-  // The title row: the page's name, its count, and New folder (the top bar keeps only New note here).
+  // One title row: the page's name, its count, the search, Sort, the view switch and New folder (the top bar keeps
+  // only New note here).
   const header = page.getByRole("main").locator("header[data-page-header]");
   await expect(header.getByRole("heading", { name: "Folders", level: 1 })).toBeVisible();
   await expect(header.getByRole("status")).toHaveText(`${total} folders`);
   // (The sidebar's Folders heading keeps its icon button.)
   await expect(page.getByRole("button", { name: "New folder", exact: true }).filter({ hasText: "New folder" })).toHaveCount(1);
   await expect(header.getByRole("button", { name: "New folder", exact: true })).toBeVisible();
+  await expect(header.getByLabel("Search folders")).toBeVisible();
+  await expect(header.getByRole("combobox", { name: "Sort" })).toBeVisible();
   await page.getByLabel("Search folders").fill("garden");
   await expect(list.getByRole("listitem")).toHaveCount(1);
   await expect(page.getByRole("status").filter({ hasText: /^1 of \d+ folders$/ })).toBeVisible();
@@ -36,12 +39,16 @@ test("the sidebar lists a few folders and tags; All folders / All tags pages sea
   await pick(page.getByRole("combobox", { name: "Sort" }), "Name");
   await list.getByRole("link").first().click({ position: { x: 24, y: 24 } }); // the folder, not its centred "…" menu
   await expect(page).toHaveURL(/\/folders\/[0-9A-Z]{26}$/);
-  // A folder's page has its own title row: its name, "N notes · edited …", Share, its menu and New note.
+  // A folder's page has one title row: its name, "N notes", Sort, the view switch, Share and its menu. No New note of
+  // its own (the top bar's makes the note in this folder), and no second toolbar row.
   const folderHeader = page.getByRole("main").locator("header[data-page-header]");
   await expect(folderHeader.getByRole("heading", { level: 1 })).toBeVisible();
-  await expect(folderHeader.getByRole("status")).toHaveText(/^\d+\+? notes?( · edited .+)?$/);
+  await expect(folderHeader.getByRole("status")).toHaveText(/^\d+\+? notes?$/);
+  await expect(folderHeader.getByRole("combobox", { name: "Sort" })).toBeVisible();
+  await expect(folderHeader.getByRole("radiogroup", { name: "Layout" })).toBeVisible();
   await expect(folderHeader.getByRole("button", { name: /^Folder options for / })).toBeVisible();
-  await expect(folderHeader.getByRole("button", { name: "New note", exact: true })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("button", { name: "New note", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("main").getByRole("combobox", { name: "Sort" })).toHaveCount(1);
 
   // Tags: the same, from "+N more".
   await nav.getByRole("link", { name: /^\+\d+ more tags$/ }).click();
@@ -66,8 +73,8 @@ test("a new note on a folder page lands in that folder with no page icon; folder
 
   // A new note made on a folder page starts in that folder (so Drafts doesn't grow); notes have no emoji icon.
   await nav.getByRole("link", { name: "Projects" }).click();
-  // (The folder's own New note, in its title row; the top bar has one too.)
-  await page.getByRole("main").getByRole("button", { name: "New note", exact: true }).click();
+  // (The top bar's New note: on a folder's page it makes the note in that folder.)
+  await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}/);
   await expect(page.getByRole("textbox", { name: "Title" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Page icon|Add page icon/ })).toHaveCount(0);

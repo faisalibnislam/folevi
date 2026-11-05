@@ -1,10 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { newPerson, waitForSaved } from "./helpers";
+import { newPerson, waitForSaved, noteMenuItem } from "./helpers";
 
 async function openHistory(page: Page) {
   await page.getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Version history…" }).click();
+  await (await noteMenuItem(page, "Version history…")).click();
   const history = page.getByRole("dialog", { name: "Version history" });
   await expect(history).toBeVisible();
   return history;
@@ -78,7 +78,7 @@ test("version history: name a version, see what changed and who changed it, rest
 
   // Show editors: each line marked with who last edited it.
   await page.getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Show editors" }).click();
+  await (await noteMenuItem(page, "Show editors")).click();
   await expect(page.getByRole("status").filter({ hasText: "Each line shows who last edited it." })).toContainText("History Keeper");
   // The marks are one stylesheet keyed by block id (a decoration on every line slowed typing in long notes).
   await expect(body).toHaveClass(/fb-show-editors/);

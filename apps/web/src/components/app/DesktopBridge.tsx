@@ -18,7 +18,7 @@ import { useAppState } from "@/lib/app/state";
 import { useAppRouter } from "@/lib/app/router";
 import { useEngineStatus } from "@/lib/hooks/useEngine";
 import { desktop, hasMenuCommand, MAC_MENU_COMMANDS, runMenuCommand, watchMenuCommands, type DesktopCommand, type MacMenuCommand } from "@/lib/desktop";
-import { openNextInNewTab, tabHref, tabPage, useTabs, type DocTab } from "@/lib/app/tabs";
+import { openNextInNewTab, tabHref, tabPage, useBackForward, useTabs, type DocTab } from "@/lib/app/tabs";
 import { useAiAccess } from "@/components/ai/useAi";
 import { useCommentActions } from "@/components/doc/commentActions";
 import { textToCommentBody } from "@/components/doc/MentionInput";
@@ -189,7 +189,9 @@ function Bridge() {
  */
 function useMenuCommands(): (id: string) => void {
   const bridge = desktop()!;
-  const { route, pathname, navigate, back, forward } = useAppRouter();
+  const { route, pathname, navigate } = useAppRouter();
+  // (The tab on screen's own Back and Forward.)
+  const { back, forward } = useBackForward();
   const shell = useShell();
   const { tabs, close, homeHref } = useTabs();
   const createDocument = useCreateDocument();

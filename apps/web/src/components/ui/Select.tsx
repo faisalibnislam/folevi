@@ -57,6 +57,7 @@ export function Select({
   id,
   name,
   title,
+  leading,
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledBy,
   "aria-describedby": ariaDescribedBy,
@@ -71,6 +72,8 @@ export function Select({
   id?: string;
   name?: string;
   title?: string;
+  /** Drawn before the chosen option's name (a title row's Sort shows its icon there). */
+  leading?: ReactNode;
   "aria-label"?: string;
   "aria-labelledby"?: string;
   "aria-describedby"?: string;
@@ -244,7 +247,8 @@ export function Select({
         }}
         className={`inline-flex min-w-0 items-center justify-between gap-1.5 text-left disabled:cursor-default disabled:opacity-50 ${className}`}
       >
-        <span className="min-w-0 truncate">{selected?.label ?? ""}</span>
+        {leading}
+        <span className={`min-w-0 truncate ${leading ? "flex-1" : ""}`}>{selected?.label ?? ""}</span>
         <ChevronDown size={14} aria-hidden className={`flex-none opacity-60 transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
       </button>
       {name ? <input type="hidden" name={name} value={current} /> : null}

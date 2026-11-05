@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { newPerson, openShare, waitForSaved } from "./helpers";
+import { newPerson, openShare, waitForSaved, noteMenuItem } from "./helpers";
 
 // Presenting a note as slides: dividers and page breaks start slides (else top-level headings), arrow keys,
 // Space and clicks move, Esc leaves, a slide counter, ⌘⌥P and "Present" in the note's … menu; shared pages
@@ -30,7 +30,7 @@ test("present a note: slides at dividers and page breaks, keys and clicks move, 
 
   // From the note's … menu.
   await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Present" }).click();
+  await (await noteMenuItem(page, "Present")).click();
   await expect(deck(page)).toBeVisible();
   await expect(deck(page)).toHaveAttribute("aria-label", "Presenting Team update");
   await expect(counter(page)).toHaveText("1 / 3");

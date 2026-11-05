@@ -273,6 +273,43 @@ export function seedDemo(email: string, counts: { notes: number; folders: number
   });
 }
 
+/** Where the note's "…" menu keeps its items (components/doc/noteMenu.tsx): the submenu each is in. */
+const NOTE_MENU_GROUPS: Record<string, string> = {
+  "Related notes": "Connections",
+  "Foli DNA": "Connections",
+  "Version history…": "History",
+  "Show editors": "History",
+  "Hide editors": "History",
+  "Move…": "Move and copy",
+  "Copy to…": "Move and copy",
+  Duplicate: "Move and copy",
+  "Move to another place…": "Move and copy",
+  "Move to the Vault…": "Move and copy",
+  "Export…": "Share and export",
+  Present: "Share and export",
+  "Save as template": "Share and export",
+  "Mute comment notifications": "Note settings",
+  "Unmute comment notifications": "Note settings",
+  "Follow comments": "Note settings",
+  "Unfollow comments": "Note settings",
+  "Always fully encrypted": "Note settings",
+};
+
+/**
+ * An item of the note's "…" menu, which is open: its submenu opened first when it's in one (a submenu with only
+ * that item available shows it in the menu itself).
+ */
+export async function noteMenuItem(page: Page, name: string, role: "menuitem" | "menuitemcheckbox" = "menuitem"): Promise<Locator> {
+  const menu = page.getByRole("menu", { name: "Document actions" });
+  await expect(menu).toBeVisible();
+  const group = NOTE_MENU_GROUPS[name];
+  if (group) {
+    const row = menu.getByRole("menuitem", { name: group, exact: true });
+    if ((await row.count()) && (await row.getAttribute("aria-expanded")) !== "true") await row.click();
+  }
+  return page.getByRole(role, { name, exact: true });
+}
+
 /** Opens a page tool (Insert, Format, Style, Info) from the dock at the bottom of the note; returns its panel. */
 export async function openTool(page: Page, name: "Insert" | "Format" | "Style" | "Info") {
   // Insert, Format and Style are on the floating bar; Info is in the page's "…" menu. Each opens in the right sidebar.

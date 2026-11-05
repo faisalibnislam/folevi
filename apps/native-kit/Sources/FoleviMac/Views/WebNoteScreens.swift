@@ -297,11 +297,14 @@ struct WebSegmented<T: Hashable>: View {
     let options: [(T, WebIcon, String)]
     @Binding var value: T
     let prefix: String
+    /// A title row's height (2 pt around the segments) in place of the toolbar's.
+    var height: CGFloat? = nil
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let seg = WebStyles.named("notes.\(prefix).seg")
         let s = seg.resolve(scheme)
+        let inset: CGFloat? = height == nil ? nil : 2
         HStack(spacing: s.gap) {
             ForEach(options, id: \.0) { option in
                 let on = option.0 == value
@@ -310,7 +313,7 @@ struct WebSegmented<T: Hashable>: View {
                 Button { value = option.0 } label: {
                     WebIconView(option.1, size: 15)
                         .foregroundStyle(bs.color.color)
-                        .frame(width: bs.width, height: bs.height)
+                        .frame(width: bs.width, height: height.map { $0 - 2 * (inset ?? 0) } ?? bs.height)
                         .webBox(b)
                         .contentShape(Rectangle())
                 }
@@ -320,8 +323,8 @@ struct WebSegmented<T: Hashable>: View {
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
-        .padding(s.padding.edgeInsets)
-        .frame(height: s.height)
+        .padding(inset.map { EdgeInsets(top: $0, leading: $0, bottom: $0, trailing: $0) } ?? s.padding.edgeInsets)
+        .frame(height: height ?? s.height)
         .webBox(seg)
         // The chosen segment eases across, as a macOS segmented control's does.
         .animation(WebMotion.change(WebMotion.viewSwitch), value: value)
@@ -364,6 +367,38 @@ extension WebSortSelect {
         .foregroundStyle(s.color.color)
         .webBox(style)
         .fixedSize()
+    }
+}
+
+/// Sort as one compact control in a title row (ListPageHeader.tsx's RowSort): the sort icon, the current choice and
+/// a chevron, opening the sort menu with the choice checked. No "Sort" label: it's the control's name and tooltip.
+struct WebRowSort<T: Hashable>: View {
+    let options: [(T, String)]
+    @Binding var value: T
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let style = WebStyles.named("notes.toolbar.select")
+        let s = style.resolve(scheme)
+        let chevron = WebStyles.named("select.trigger.chevron").resolve(scheme)
+        WebMenuButton(select: true, entries: {
+            options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == value)) { value = o.0 } }
+        }) {
+            HStack(spacing: s.gap) {
+                WebIconView(.arrowDownUp, size: 14).foregroundStyle(webVar("color-ink-muted", scheme).color)
+                Text(options.first { $0.0 == value }?.1 ?? "").webText(notesStyle("toolbar.select.label", scheme).text).lineLimit(1)
+                WebIconView(.chevronDown, size: 14).opacity(chevron.opacity)
+            }
+            .padding(.leading, 10)
+            .padding(.trailing, 8)
+            .frame(height: WebListPageHeaderMetrics.controlHeight)
+            .foregroundStyle(s.color.color)
+            .webBox(style)
+            .fixedSize()
+        }
+        .foleviTooltip("Sort")
+        .accessibilityLabel("Sort")
+        .accessibilityValue(options.first { $0.0 == value }?.1 ?? "")
     }
 }
 
@@ -768,8 +803,6 @@ struct WebNoteBrowser: View {
     let frame: FrameModel
     @Bindable var model: NotesListModel
     let builtIns: [BuiltInTemplate]
-    /// Every folder's card (count, last change): a folder's page reads its own last change from there.
-    let folderCards: ValueStore<FolderCardsValue>?
     @AppStorage private var layoutRaw: String
     @Environment(\.colorScheme) private var scheme
     @Environment(\.screenNavigator) private var navigator
@@ -778,10 +811,9 @@ struct WebNoteBrowser: View {
     /// The content column's width inside the scroll view (the toolbar spans it).
     @State private var columnWidth: CGFloat = 0
 
-    init(frame: FrameModel, model: NotesListModel, folderCards: ValueStore<FolderCardsValue>? = nil) {
+    init(frame: FrameModel, model: NotesListModel) {
         self.frame = frame
         self.model = model
-        self.folderCards = folderCards
         self.builtIns = model.builtIns?.value?.templates ?? []
         let view = model.kind.view
         _layoutRaw = AppStorage(wrappedValue: (view == .trash || view == .archive) ? WebNotesLayout.list.rawValue : WebNotesLayout.grid.rawValue, "folevi.web.layout.\(view.rawValue)")
@@ -798,9 +830,11 @@ struct WebNoteBrowser: View {
             ZStack(alignment: .bottom) {
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 0) {
-                        if model.kind.view == .folder { folderHeader }
-                        toolbar
-                            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { columnWidth = $0 }
+                        // A folder's page: one compact title row with Sort and the view switch, no toolbar under it.
+                        Group {
+                            if model.kind.view == .folder { folderHeader } else { toolbar }
+                        }
+                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { columnWidth = $0 }
                         if !model.subfolders.isEmpty { subfolders }
                         if model.kind.view == .templates, !builtIns.isEmpty { builtInTemplates(width: inner) }
                         if model.isLoading {
@@ -872,8 +906,6 @@ struct WebNoteBrowser: View {
     }
 
     private var statusText: String {
-        // A folder's page says its count in its title row: here only how its list is shown.
-        if model.kind.view == .folder { return model.canArrange ? "Drag to arrange" : "" }
         let n = model.isFiltering ? model.slots.count : model.total
         // Templates: the built-in gallery and your own apart (QA F08: not "0 templates" over 26 built-in ones).
         let count = model.kind.view == .templates ? NotesListModel.templatesCountText(builtIn: builtIns.count, custom: n) : countText
@@ -882,31 +914,22 @@ struct WebNoteBrowser: View {
 
     // MARK: a folder's title row (components/views/ListPageHeader.tsx)
 
-    /// The folder's colour mark and name, the way up when it's nested, "5 notes · edited Oct 22", and Share, its
-    /// menu and New note.
+    /// One compact row (the owner, 6 November 2026, "A. One compact row"): the folder's glyph, the way up when it's
+    /// nested, its name and count, then Sort, the view switch, Share and its "…" menu. No New note of its own: the
+    /// top bar's makes the note in the open folder (FrameModel.newNote).
     private var folderHeader: some View {
-        let folder = model.folder
         let id = model.kind.folderId ?? ""
-        // (0: no notes inside to date it by.)
-        let edited = (folderCards?.value?.folders.first { $0.id == id }?.updatedAt).flatMap { $0 > 0 ? $0 : nil }
-        let info = model.isLoading ? "" : [countText, edited.map { "edited \(AgeText.relative(Date(timeIntervalSince1970: $0 / 1000)))" }].compactMap { $0 }.joined(separator: " · ")
-        let path: [WebPageStep] = model.ancestors.isEmpty ? [] : [WebPageStep(id: "folders", label: "Folders") { frame.open(.web("/folders")) }]
-            + model.ancestors.map { a in WebPageStep(id: a.id, label: a.name) { frame.open(.folder(a.id)) } }
-        return WebListPageHeader(title: model.title, mark: .some(folder?.color), info: info, path: path) {
+        let path = model.ancestors.map { a in WebPageStep(id: a.id, label: a.name) { frame.open(.folder(a.id)) } }
+        return WebListPageHeader(title: model.title, mark: .some(model.folder?.color), count: model.isLoading ? "" : countText, path: path) {
+            WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
+            WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.compact, .rows3, "Compact cards"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar", height: WebListPageHeaderMetrics.controlHeight)
             if frame.session.value?.capabilities.sharing ?? false {
-                WebButton("Share", icon: .share2, iconSize: 14, variant: .secondary, size: .sm) {
-                    FrameDialogs.folderShare(frame, folderId: id, name: model.title)
-                }
-                .fixedSize()
+                WebRowIconButton(icon: .share2, label: "Share") { FrameDialogs.folderShare(frame, folderId: id, name: model.title) }
             }
             if let f = model.menuFolder(id) {
                 WebPageMenuButton(label: "Folder options for \(model.title)") {
                     folderMenuEntries(f, context: model.folderContext, actions: model.actions, dialogs: model.dialogs, navigator: navigator, feedback: feedback, frame: frame)
                 }
-            }
-            if model.canEdit {
-                WebButton("New note", icon: .plus, iconSize: 14, variant: .primary, size: .sm) { frame.newNote(in: id) }
-                    .fixedSize()
             }
         }
     }
@@ -1356,23 +1379,19 @@ struct WebFoldersIndex: View {
         let inner = min(1180, geo.size.width) - 64
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 0) {
-                // The title row: the page's name, its count, and New folder (the top bar keeps only New note here).
-                WebListPageHeader(title: "Folders", info: allFolders.value == nil ? "Loading…" : searching ? "\(shown.count) of \(total) folders" : "\(shown.count) \(shown.count == 1 ? "folder" : "folders")") {
+                // One compact title row (the owner, 6 November 2026): Folders and its count, then the search, Sort, the
+                // view switch and New folder (the top bar keeps only New note here).
+                WebListPageHeader(title: "Folders", count: allFolders.value == nil ? "Loading…" : searching ? "\(shown.count) of \(total) folders" : "\(shown.count) \(shown.count == 1 ? "folder" : "folders")") {
+                    // (Its width follows the window's, up to 300: the web's clamp(10rem, 26vw, 300px).)
+                    WebIndexSearch(placeholder: "Search folders", text: $query, width: min(300, max(160, geo.size.width * 0.26)), height: WebListPageHeaderMetrics.controlHeight)
+                    WebRowSort(options: FoldersSort.options, value: Binding(get: { sort }, set: { sortRaw = $0.rawValue }))
+                    WebSegmented(options: [("grid", WebIcon.layoutGrid, "Grid"), ("list", .rows3, "List")], value: $layoutRaw, prefix: "index", height: WebListPageHeaderMetrics.controlHeight)
                     newFolderButton
-                }
-                HStack(spacing: 12) {
-                    WebIndexSearch(placeholder: "Search folders", text: $query, width: WebStyles.isPad ? 384 : min(384, max(160, (inner - 200) / 2)))
-                        .layoutPriority(WebStyles.isPad ? 1 : 0)
-                    Spacer(minLength: 0)
-                    WebSortSelect(options: FoldersSort.options, value: Binding(get: { sort }, set: { sortRaw = $0.rawValue }))
-                        .fixedSize()
-                    WebSegmented(options: [("grid", WebIcon.layoutGrid, "Grid"), ("list", .rows3, "List")], value: $layoutRaw, prefix: "index")
-                        .fixedSize()
                 }
                 if allFolders.value != nil && shown.isEmpty {
                     WebEmptyState(icon: .folderOpen, title: query.isEmpty ? "No folders yet" : "No folders match “\(query.trimmingCharacters(in: .whitespaces))”", message: query.isEmpty ? "Create one to group related pages." : nil)
                 } else if layoutRaw == "list" {
-                    folderList(shown).padding(.top, 24)
+                    folderList(shown)
                         .transition(.opacity)
                 } else {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 32, alignment: .top)], alignment: .leading, spacing: 40) {
@@ -1404,7 +1423,6 @@ struct WebFoldersIndex: View {
                             }
                         }
                     }
-                    .padding(.top, 24)
                     .transition(.opacity)
                 }
             }
@@ -1418,7 +1436,8 @@ struct WebFoldersIndex: View {
         .accessibilityIdentifier("screen.folders")
     }
 
-    /// New folder in the title row (it scrolls with the page; the top bar has none here, only New note).
+    /// New folder at the end of the title row, as tall as the row's other controls (it scrolls with the page; the top
+    /// bar has none here, only New note).
     @ViewBuilder private var newFolderButton: some View {
         if home.canEdit {
             let b = WebStyles.named("notes.index.newFolder")
@@ -1430,7 +1449,7 @@ struct WebFoldersIndex: View {
                 }
                 .foregroundStyle(bs.color.color)
                 .padding(bs.padding.edgeInsets)
-                .frame(height: bs.height)
+                .frame(height: WebListPageHeaderMetrics.controlHeight)
                 .webBox(b)
                 .contentShape(Rectangle())
             }
@@ -1473,78 +1492,125 @@ struct WebFoldersIndex: View {
     }
 }
 
+/// The heights a title row's controls share (ListPageHeader.tsx's ROW_CONTROL): 32 pt on the Mac, 36 on the iPad.
+enum WebListPageHeaderMetrics {
+    @MainActor static var controlHeight: CGFloat { WebStyles.isPad ? 36 : 32 }
+}
+
 /// The title row of a folder's page and the Folders page (components/views/ListPageHeader.tsx; the owner, 6 November
-/// 2026): the page's name in the display serif at Title 1 (a folder's after its colour mark), the way up over a nested
-/// folder's name (each step a link), a quiet line of facts under it ("5 notes · edited Oct 22"), and the page's
-/// actions at the right. It shares the content column's edges with the toolbar and the cards under it.
-struct WebListPageHeader<Actions: View>: View {
+/// 2026, "A. One compact row"): one line with the folder's glyph, the way up for a nested folder ("Work ›", each step
+/// a link), the page's name in the display serif, its count in muted text, and the page's controls at the right
+/// (Sort, the view switch, the page's actions), all one height and level with the name. The cards start right under
+/// it, on the same edges. When the window is too narrow for the whole name and the controls on one line, the controls
+/// move to a line of their own under it; the name truncates before anything overlaps.
+struct WebListPageHeader<Controls: View>: View {
     let title: String
-    /// The folder's colour (`.some(nil)`: the default colour); nil for no mark.
+    /// The folder's colour (`.some(nil)`: the default colour); nil for no glyph.
     var mark: String?? = nil
-    let info: String
+    let count: String
     var path: [WebPageStep] = []
-    @ViewBuilder let actions: () -> Actions
+    @ViewBuilder let controls: () -> Controls
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        // (`items-center`: the actions sit level with the middle of the name and its facts.)
-        HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 0) {
-                if !path.isEmpty { pathRow.padding(.bottom, 4) }
-                HStack(spacing: 12) {
-                    if let mark { FolderGlyph(colorId: mark, size: 30) }
-                    Text(title).webText(.display(.title1)).lineLimit(1).truncationMode(.tail)
-                        .foregroundStyle(webVar("color-heading", scheme).color)
-                        .accessibilityAddTraits(.isHeader)
-                }
-                if !info.isEmpty {
-                    Text(info).webText(.role(.subheadline)).lineLimit(1)
-                        .foregroundStyle(webVar("color-ink-muted", scheme).color)
-                        .padding(.top, 4)
-                }
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 16) {
+                name
+                Spacer(minLength: 0)
+                controlRow
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            HStack(spacing: 8) { actions() }
-                .fixedSize()
+            VStack(alignment: .leading, spacing: 12) {
+                name
+                controlRow
+            }
         }
-        .padding(.bottom, 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 24)
         .accessibilityElement(children: .contain)
     }
 
-    /// "Folders › Work › Clients ›": small muted links, each opening that level.
-    private var pathRow: some View {
+    /// The glyph, the way up, the name and the count.
+    private var name: some View {
+        HStack(alignment: .center, spacing: 10) {
+            if let mark { FolderGlyph(colorId: mark, size: 22) }
+            if !path.isEmpty { pathSteps }
+            // Title 1 on the Mac (24), Title 2 in the iPad's iOS scale (22): the size of a folder card's name.
+            Text(title).webText(.display(WebStyles.isPad ? .title2 : .title1)).lineLimit(1).truncationMode(.tail)
+                .foregroundStyle(webVar("color-heading", scheme).color)
+                .accessibilityAddTraits(.isHeader)
+                .layoutPriority(1)
+            if !count.isEmpty {
+                Text(count).webText(.role(.body)).lineLimit(1).fixedSize()
+                    .foregroundStyle(webVar("color-ink-muted", scheme).color)
+            }
+        }
+        .frame(height: max(WebListPageHeaderMetrics.controlHeight, 30))
+    }
+
+    private var controlRow: some View {
+        HStack(spacing: 8) { controls() }
+            .fixedSize()
+    }
+
+    /// "Work › Clients ›": quiet links in muted text before the name, each opening that level.
+    private var pathSteps: some View {
         HStack(spacing: 2) {
             ForEach(path) { step in
                 Button(action: step.open) {
-                    Text(step.label).webText(.role(.footnote)).lineLimit(1)
+                    Text(step.label).webText(.role(.body)).lineLimit(1)
                         .foregroundStyle(webVar("color-ink-muted", scheme).color)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, 4)
                         .padding(.vertical, 2)
                         .frame(maxWidth: 192, alignment: .leading)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(WebHoverRowStyle(radius: FoleviTokens.Radius.chip, hover: WebStyles.vars["color-accent-soft"], press: nil, selected: false))
                 .accessibilityAddTraits(.isLink)
-                WebIconView(.chevronRight, size: 12).foregroundStyle(webVar("color-ink-faint", scheme).color)
+                WebIconView(.chevronRight, size: 13).foregroundStyle(webVar("color-ink-faint", scheme).color)
                     .accessibilityHidden(true)
             }
         }
         // (Each step as wide as its name, up to 192: the web's `max-w-[12rem]`.)
         .fixedSize()
-        .padding(.leading, -6)
+        .padding(.trailing, -4)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Breadcrumb")
     }
 }
 
-/// A step of the way up over a nested folder's name ("Folders › Work").
+/// A step of the way up before a nested folder's name ("Work ›").
 struct WebPageStep: Identifiable {
     let id: String
     let label: String
     let open: () -> Void
 }
 
-/// The "…" in a title row's actions: a secondary button's square, opening the page's menu.
+/// An icon-only button in a title row (Share): a secondary button's square at the row's height, with the app's own
+/// tooltip and an accessible label.
+struct WebRowIconButton: View {
+    let icon: WebIcon
+    let label: String
+    let action: () -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let style = WebStyles.named("button.secondary.sm")
+        let h = WebListPageHeaderMetrics.controlHeight
+        Button(action: action) {
+            WebIconView(icon, size: 15)
+                .foregroundStyle(style.resolve(scheme).color.color)
+                .frame(width: h, height: h)
+                .webBox(style)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foleviTooltip(label)
+        .accessibilityLabel(label)
+    }
+}
+
+/// The "…" at the end of a title row: a secondary button's square, opening the page's menu. Its tooltip says "More";
+/// its accessible label names the folder.
 struct WebPageMenuButton: View {
     let label: String
     let entries: @MainActor () -> [WebMenuEntry]
@@ -1553,14 +1619,15 @@ struct WebPageMenuButton: View {
     var body: some View {
         let style = WebStyles.named("button.secondary.sm")
         let s = style.resolve(scheme)
+        let h = WebListPageHeaderMetrics.controlHeight
         WebMenuButton(width: 220, entries: entries) {
             WebIconView(.ellipsis, size: 15)
                 .foregroundStyle(s.color.color)
-                .frame(width: s.height, height: s.height)
+                .frame(width: h, height: h)
                 .webBox(style)
                 .contentShape(Rectangle())
         }
-        .foleviTooltip(label)
+        .foleviTooltip("More")
         .accessibilityLabel(label)
     }
 }
@@ -1571,6 +1638,8 @@ struct WebIndexSearch: View {
     @Binding var text: String
     /// `flex-1 max-w-sm` next to a spacer that shares the row: half of what the row leaves, at most 384.
     var width: CGFloat = 327
+    /// A title row's height in place of the search row's.
+    var height: CGFloat? = nil
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -1584,7 +1653,7 @@ struct WebIndexSearch: View {
                 .offset(x: -1.125, y: 1.035)
         }
         .padding(s.padding.edgeInsets)
-        .frame(height: s.height)
+        .frame(height: height ?? s.height)
         // (On the iPad the row's touch-sized controls leave the field what's over: `min-w-0`, down to its icon.)
         .frame(minWidth: WebStyles.isPad ? 0 : width, maxWidth: width)
         .foregroundStyle(s.color.color)

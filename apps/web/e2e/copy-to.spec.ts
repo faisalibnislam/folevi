@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createWorkspace, newPerson, pick, switcher, switchTo, waitForSaved } from "./helpers";
+import { createWorkspace, newPerson, pick, switcher, switchTo, waitForSaved, noteMenuItem } from "./helpers";
 
 test("copy a Personal note to a workspace and open the copy there", async ({ browser }) => {
   const { page } = await newPerson(browser, "Copier");
@@ -15,7 +15,7 @@ test("copy a Personal note to a workspace and open the copy there", async ({ bro
   await waitForSaved(page);
 
   await page.getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Copy to…" }).click();
+  await (await noteMenuItem(page, "Copy to…")).click();
   const dialog = page.getByRole("dialog", { name: "Copy “Trip plan”" });
   // Another place is picked to start with; Personal is where the note is now.
   const place = dialog.getByRole("combobox", { name: "Copy to" });

@@ -1,6 +1,23 @@
 {
   "releases": [
     {
+      "version": "1.2.32",
+      "build": 44,
+      "released": "2026-11-05T11:27:09+06:00",
+      "type": "patch",
+      "summary": "Graph is now Foli DNA, on the web, Mac, iPhone and iPad, with a view around one note, filters, colours, saved views and more.",
+      "added": [
+        "Foli DNA of one note, from the note's menu and the Inspector, with a live panel that follows the open note",
+        "Filters by folder, tag and date edited, colours by folder or tag, and saved views in the sidebar",
+        "Foli DNA on published pages, off until turned on per link"
+      ],
+      "improved": [
+        "Graph is renamed Foli DNA everywhere, with Go to Foli DNA in the command palette and the Mac's Go menu",
+        "Bigger spaces draw smoothly, up to 500 notes"
+      ],
+      "tag": "v1.2.32"
+    },
+    {
       "version": "1.2.31",
       "build": 43,
       "released": "2026-11-05T09:47:07+06:00",

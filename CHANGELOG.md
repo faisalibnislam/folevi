@@ -4,6 +4,23 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.32: Small update
+
+Released 2026-11-05 11:27:09+06:00 (build 44, tag v1.2.32)
+
+Graph is now Foli DNA, on the web, Mac, iPhone and iPad, with a view around one note, filters, colours, saved views and more.
+
+### Added
+
+- Foli DNA of one note, from the note's menu and the Inspector, with a live panel that follows the open note
+- Filters by folder, tag and date edited, colours by folder or tag, and saved views in the sidebar
+- Foli DNA on published pages, off until turned on per link
+
+### Improved
+
+- Graph is renamed Foli DNA everywhere, with Go to Foli DNA in the command palette and the Mac's Go menu
+- Bigger spaces draw smoothly, up to 500 notes
+
 ## Version 1.2.31: Small update
 
 Released 2026-11-05 09:47:07+06:00 (build 43, tag v1.2.31)

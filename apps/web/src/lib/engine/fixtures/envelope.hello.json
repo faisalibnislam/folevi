@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "6e0e2001"
+        "schemaHash": "0be43da5"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 27,
+        "revision": 28,
         "build": "dev",
-        "schemaHash": "6e0e2001",
+        "schemaHash": "0be43da5",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -84,6 +84,7 @@
           "notes.moveCheck",
           "settings.query",
           "graph",
+          "graph.views",
           "reviews",
           "recent.viewed",
           "vault.summary",
@@ -197,6 +198,10 @@
           "folderSharing.cancelInvite",
           "folderInvite.accept",
           "review.rate",
+          "graph.link",
+          "graph.saveView",
+          "graph.removeView",
+          "graph.tag",
           "review.setNewPerDay",
           "settings.run",
           "vault.setUp",

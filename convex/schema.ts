@@ -1601,6 +1601,8 @@ export default defineSchema({
     allowIndexing: v.boolean(),
     /** How the public page looks (lib/validators.ts vPublishTheme); unset is the note's own style. */
     theme: v.optional(vPublishTheme),
+    /** The page shows a small Foli DNA of the note's own links (titles as `sharedLabels` allows them). */
+    showDna: v.optional(v.boolean()),
     createdBy: v.id("profiles"),
     createdAt: v.number(),
     revokedAt: v.optional(v.number()),
@@ -3193,5 +3195,22 @@ export default defineSchema({
   })
     .index("by_vault_seq", ["vaultPublicId", "seq"])
     .index("by_expires", ["expiresAt"]),
+
+  /**
+   * Foli DNA's saved views (convex/graphViews.ts): a person's named filters, colours and zoom for one place's map,
+   * listed in the sidebar under Foli DNA. `settings` is JSON (lib/graph/analysis.ts cleanSettings reads it back).
+   */
+  graphViews: defineTable({
+    profileId: v.id("profiles"),
+    /** lib/scope.ts scopeKey: "personal:<profile>" or "workspace:<id>". */
+    scopeKey: v.string(),
+    publicId: v.string(),
+    name: v.string(),
+    settings: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_profile_scope", ["profileId", "scopeKey"])
+    .index("by_public_id", ["publicId"]),
 });
 

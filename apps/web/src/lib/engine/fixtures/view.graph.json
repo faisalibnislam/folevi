@@ -15,7 +15,15 @@
         "label": "Kyoto in November",
         "x": 11.071539775662156,
         "y": 104.97443796377159,
-        "degree": 2
+        "degree": 2,
+        "folderId": "fld_trips",
+        "tagIds": [
+          "tag_travel"
+        ],
+        "createdAt": 1792000000000,
+        "updatedAt": 1792828800000,
+        "cluster": 0,
+        "bridge": false
       },
       {
         "id": "doc_00002",
@@ -23,7 +31,13 @@
         "label": "Packing list",
         "x": -142.31885019548514,
         "y": 65.54745821909779,
-        "degree": 1
+        "degree": 1,
+        "folderId": "fld_trips",
+        "tagIds": [],
+        "createdAt": 1792100000000,
+        "updatedAt": 1792700000000,
+        "cluster": 0,
+        "bridge": false
       },
       {
         "id": "doc_00003",
@@ -31,7 +45,13 @@
         "label": "Reading list",
         "x": -5.007690876489969,
         "y": -328.82016909139975,
-        "degree": 0
+        "degree": 0,
+        "folderId": null,
+        "tagIds": [],
+        "createdAt": 1791000000000,
+        "updatedAt": 1791500000000,
+        "cluster": null,
+        "bridge": false
       },
       {
         "id": "ent_sam",
@@ -39,7 +59,13 @@
         "label": "Sam",
         "x": 149.676180571302,
         "y": 170.2795460614471,
-        "degree": 1
+        "degree": 1,
+        "folderId": null,
+        "tagIds": [],
+        "createdAt": null,
+        "updatedAt": null,
+        "cluster": 0,
+        "bridge": false
       }
     ],
     "edges": [
@@ -47,13 +73,54 @@
         "source": "doc_00001",
         "target": "doc_00002",
         "kind": "link",
-        "inferred": false
+        "inferred": false,
+        "createdAt": 1792200000000
       },
       {
         "source": "doc_00001",
         "target": "ent_sam",
         "kind": "mention",
-        "inferred": true
+        "inferred": true,
+        "createdAt": null
+      }
+    ],
+    "folders": [
+      {
+        "id": "fld_trips",
+        "name": "Trips",
+        "color": "blue"
+      }
+    ],
+    "tags": [
+      {
+        "id": "tag_travel",
+        "name": "travel",
+        "color": "green"
+      }
+    ],
+    "clusters": [
+      {
+        "id": 0,
+        "name": "Sam",
+        "size": 3
+      }
+    ],
+    "suggested": [
+      {
+        "source": "doc_00002",
+        "target": "doc_00003",
+        "entities": [
+          "Sam",
+          "Kyoto"
+        ]
+      }
+    ],
+    "duplicates": [],
+    "views": [
+      {
+        "id": "gv_1",
+        "name": "Trips only",
+        "settings": "{\"filter\":{\"folders\":[\"fld_trips\"]},\"colorBy\":\"folder\"}"
       }
     ]
   }

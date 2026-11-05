@@ -68,6 +68,7 @@ import type * as fileText from "../fileText.js";
 import type * as files from "../files.js";
 import type * as flowchartAi from "../flowchartAi.js";
 import type * as folderSharing from "../folderSharing.js";
+import type * as graphViews from "../graphViews.js";
 import type * as http from "../http.js";
 import type * as identity from "../identity.js";
 import type * as imports from "../imports.js";
@@ -310,6 +311,7 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   flowchartAi: typeof flowchartAi;
   folderSharing: typeof folderSharing;
+  graphViews: typeof graphViews;
   http: typeof http;
   identity: typeof identity;
   imports: typeof imports;

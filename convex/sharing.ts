@@ -355,6 +355,7 @@ export const get = query({
             hasPassword: Boolean(l.passwordHash),
             allowIndexing: l.allowIndexing,
             theme: l.theme ?? ("note" as const),
+            showDna: l.showDna === true,
             viewCount: l.viewCount,
             createdAt: l.createdAt,
             // An encrypted link (the key is in the link) or a published readable copy (docs/E2EE_DESIGN.md §9).
@@ -824,6 +825,25 @@ export const setPublicLinkTheme = mutation({
   },
 });
 
+/** Shows or hides the small Foli DNA (the note's own links) on a public link's page. */
+export const setPublicLinkDna = mutation({
+  args: { linkId: v.string(), showDna: v.boolean() },
+  handler: async (ctx, args) => {
+    const profile = await requireProfile(ctx);
+    await assertWritable(ctx, profile);
+    const link = await ctx.db
+      .query("publicLinks")
+      .withIndex("by_public_id", (q) => q.eq("publicId", args.linkId))
+      .unique();
+    if (!link || link.revokedAt) fail("not_found", "Link not found.");
+    const doc = await ctx.db.get(link.documentId);
+    if (!doc) fail("not_found", "Link not found.");
+    await requireDocument(ctx, profile, doc.publicId, "manage");
+    await ctx.db.patch(link._id, { showDna: args.showDna ? true : undefined });
+    return null;
+  },
+});
+
 export const revokePublicLink = mutation({
   args: { linkId: v.string() },
   handler: async (ctx, args) => {
@@ -965,6 +985,7 @@ export const openPublicLink = mutation({
       collections,
       allowIndexing: found.allowIndexing,
       theme: found.theme ?? ("note" as const),
+      showDna: found.showDna === true,
       // For search engines and link previews, only when the owner let search engines find the page.
       description: found.allowIndexing ? doc.excerpt.slice(0, 200) : null,
     };

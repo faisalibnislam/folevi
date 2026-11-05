@@ -126,6 +126,7 @@ public enum NoteMenu {
         add("Present", "play.rectangle") { model.noteMenu(.present) }
         add("Print…", "printer") { model.noteMenu(.print) }
         add("Find in Note…", "magnifyingglass") { model.noteMenu(.find) }
+        if model.session.value?.capabilities.graph == true { add("Foli DNA of This Note", "point.3.connected.trianglepath.dotted") { model.open(.web("/graph?note=\(id)")) } }
         menu.addItem(.separator())
         add("Open in New Window", "macwindow.badge.plus") { model.host?.frameOpenInNewWindow(.note(id)) }
         menu.addItem(.separator())

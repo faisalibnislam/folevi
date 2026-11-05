@@ -34,6 +34,7 @@ import { mermaidToFlowchart, serializeFlowchart, WHITEBOARD_COLORS } from "@fole
 import { GALLERY_TEMPLATES } from "../content/templates";
 import type { FeatureVisual as VisualKey } from "../content/features";
 import { ConnectDemo } from "../demos/ConnectDemo";
+import { DnaDemo } from "../demos/DnaDemo";
 import { AskDemo } from "../demos/AskDemo";
 import { AudioDemo } from "../demos/AudioDemo";
 import { SlashDemo } from "../home/SlashDemo";
@@ -90,6 +91,7 @@ export function coverPicture(visual: VisualKey, art: string): { width: number; n
     offline: [640, <SyncStatuses key="offline" />],
     tasks: [780, <ReturnDemo key="tasks" />],
     linked: [820, <ConnectDemo key="linked" />],
+    dna: [720, <DnaDemo key="dna" />],
     folders: [1000, <FoldersPageReplica key="folders" />],
     flowchart: [820, <FlowchartDemo key="flowchart" />],
     whiteboard: [760, <WhiteboardPicture key="whiteboard" art={art} />],
@@ -144,6 +146,12 @@ function Visual({ visual, art }: { visual: VisualKey; art: string }) {
       return (
         <div className="mx-auto max-w-[860px]">
           <ConnectDemo />
+        </div>
+      );
+    case "dna":
+      return (
+        <div className="mx-auto max-w-[860px]">
+          <DnaDemo />
         </div>
       );
     case "flowchart":

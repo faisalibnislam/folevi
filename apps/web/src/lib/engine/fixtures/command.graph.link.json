@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "graph.link",
+  "description": "Link a suggested note from Foli DNA (revision 28): Related: [[Reading list]] goes at the end of Packing list.",
+  "args": {
+    "noteId": "doc_00002",
+    "targetId": "doc_00003"
+  },
+  "result": {
+    "ok": true
+  }
+}

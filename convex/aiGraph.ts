@@ -578,7 +578,7 @@ export const linkNote = mutation({
 // ---------------------------------------------------------------------------------------------------
 
 /** What the graph view gets at most (the view stays readable and the payload small). */
-export const GRAPH_LIMITS = { notes: 300, entities: 150, edges: 1_500, noteScan: 600, linkScan: 2_000, mentionScan: 3_000, relationScan: 2_000 } as const;
+export const GRAPH_LIMITS = { notes: 500, entities: 200, edges: 2_500, noteScan: 900, linkScan: 3_000, mentionScan: 4_000, relationScan: 3_000, tagScan: 5_000, suggested: 40, duplicates: 30 } as const;
 
 export type GraphNodeKind = "note" | EntityKind;
 export type GraphEdgeKind = "link" | "mention" | StoredRelationKind;
@@ -597,10 +597,11 @@ export const graph = query({
     const { full, note } = await fullGraph(ctx, profile, scope);
     let truncated = false;
 
-    const nodes: { id: string; kind: GraphNodeKind; label: string; icon: string | null }[] = [];
-    const edges: { source: string; target: string; kind: GraphEdgeKind; inferred: boolean }[] = [];
+    // Foli DNA's filters and time read a note's folder, tags and dates; links carry when they were made.
+    const nodes: { id: string; kind: GraphNodeKind; label: string; icon: string | null; folderId?: string | null; tagIds?: string[]; createdAt?: number; updatedAt?: number }[] = [];
+    const edges: { source: string; target: string; kind: GraphEdgeKind; inferred: boolean; createdAt?: number }[] = [];
     const edgeKeys = new Set<string>();
-    const addEdge = (source: string, target: string, kind: GraphEdgeKind, inferred: boolean) => {
+    const addEdge = (source: string, target: string, kind: GraphEdgeKind, inferred: boolean, createdAt?: number) => {
       if (source === target) return;
       const key = kind === "mention" || kind === "supersedes" ? `${kind}:${source}:${target}` : `${kind}:${[source, target].sort().join(":")}`;
       if (edgeKeys.has(key)) return;
@@ -609,7 +610,7 @@ export const graph = query({
         return;
       }
       edgeKeys.add(key);
-      edges.push({ source, target, kind, inferred });
+      edges.push(createdAt === undefined ? { source, target, kind, inferred } : { source, target, kind, inferred, createdAt });
     };
 
     // Notes.
@@ -631,8 +632,42 @@ export const graph = query({
       }
       byId.set(d._id, d);
       byPublic.set(d.publicId, d);
-      nodes.push({ id: d.publicId, kind: "note", label: d.title || "Untitled", icon: d.icon ?? null });
+      nodes.push({ id: d.publicId, kind: "note", label: d.title || "Untitled", icon: d.icon ?? null, folderId: null, tagIds: [], createdAt: d.createdAt, updatedAt: d.updatedAt });
     }
+    const noteNode = new Map(nodes.map((n) => [n.id, n]));
+
+    // Folders and tags of the notes shown (for the filters, the colours and their legend).
+    const folderIds = new Set<Id<"folders">>();
+    for (const d of byId.values()) if (d.folderId) folderIds.add(d.folderId);
+    const folders: { id: string; name: string; color: string | null }[] = [];
+    const folderPublic = new Map<Id<"folders">, string>();
+    for (const fid of folderIds) {
+      const f = await ctx.db.get(fid);
+      if (!f || f.deletedAt !== undefined) continue;
+      folderPublic.set(fid, f.publicId);
+      folders.push({ id: f.publicId, name: f.name || "Locked folder", color: f.color ?? null });
+    }
+    for (const d of byId.values()) if (d.folderId && folderPublic.has(d.folderId)) noteNode.get(d.publicId)!.folderId = folderPublic.get(d.folderId)!;
+    const docTags = await (
+      scope.kind === "personal"
+        ? ctx.db.query("documentTags").withIndex("by_owner", (q) => q.eq("ownerProfileId", scope.profileId))
+        : ctx.db.query("documentTags").withIndex("by_workspace", (q) => q.eq("workspaceId", scope.workspaceId))
+    ).take(GRAPH_LIMITS.tagScan);
+    const tagPublic = new Map<Id<"tags">, { id: string; name: string; color: string | null } | null>();
+    for (const dt of docTags) {
+      const d = byId.get(dt.documentId);
+      if (!d) continue;
+      if (!tagPublic.has(dt.tagId)) {
+        const t = await ctx.db.get(dt.tagId);
+        tagPublic.set(dt.tagId, t ? { id: t.publicId, name: t.name || "Locked tag", color: t.color ?? null } : null);
+      }
+      const t = tagPublic.get(dt.tagId);
+      if (t) noteNode.get(d.publicId)!.tagIds!.push(t.id);
+    }
+    const tags = [...tagPublic.values()].filter((t): t is NonNullable<typeof t> => t !== null).sort((a, b) => a.name.localeCompare(b.name));
+    folders.sort((a, b) => a.name.localeCompare(b.name));
+    const suggested: { source: string; target: string; entities: string[] }[] = [];
+    const duplicates: { a: string; b: string; score: number }[] = [];
 
     // Explicit links (never stored twice: read from documentLinks).
     const links = await (
@@ -643,7 +678,7 @@ export const graph = query({
     for (const l of links) {
       const s = byId.get(l.sourceDocumentId);
       const t = byPublic.get(l.targetPublicId);
-      if (s && t) addEdge(s.publicId, t.publicId, "link", false);
+      if (s && t) addEdge(s.publicId, t.publicId, "link", false, l._creationTime);
     }
 
     if (full) {
@@ -670,6 +705,26 @@ export const graph = query({
         nodes.push({ id, kind: e.kind, label: e.name, icon: null });
         for (const d of docs) addEdge(id, byId.get(d)!.publicId, "mention", true);
       }
+      // Missing connections: notes that mention two or more of the same entities but aren't linked either way.
+      const linked = new Set(edges.filter((e) => e.kind === "link").map((e) => [e.source, e.target].sort().join(":")));
+      const shared = new Map<string, { a: string; b: string; names: string[] }>();
+      const nameOf = new Map(nodes.filter((n) => n.kind !== "note").map((n) => [n.id, n.label]));
+      for (const [entityId, docs] of notesOf) {
+        const key = entityKey.get(entityId);
+        if (!key) continue;
+        const pubs = [...new Set(docs.map((d) => byId.get(d)!.publicId))].sort().slice(0, 30);
+        for (let i = 0; i < pubs.length; i++)
+          for (let j = i + 1; j < pubs.length; j++) {
+            const k = `${pubs[i]}:${pubs[j]}`;
+            if (linked.has(k)) continue;
+            const cur = shared.get(k) ?? { a: pubs[i]!, b: pubs[j]!, names: [] };
+            cur.names.push(nameOf.get(key) ?? "");
+            shared.set(k, cur);
+          }
+      }
+      for (const s of [...shared.values()].filter((x) => x.names.length >= 2).sort((x, y) => y.names.length - x.names.length || (x.a + x.b).localeCompare(y.a + y.b)).slice(0, GRAPH_LIMITS.suggested)) {
+        suggested.push({ source: s.a, target: s.b, entities: s.names.slice(0, 5) });
+      }
       // Inferred relations between notes shown, and between entities shown.
       const relations = await (
         scope.kind === "personal"
@@ -681,6 +736,9 @@ export const graph = query({
           const s = byId.get(r.sourceDocumentId);
           const t = byId.get(r.toDocumentId);
           if (s && t && (r.kind !== "similar" || (r.score ?? 0) >= SIMILAR_MIN)) addEdge(s.publicId, t.publicId, r.kind, true);
+          if (s && t && r.kind === "similar" && duplicates.length < GRAPH_LIMITS.duplicates && likelyDuplicate(r.score ?? 0, s.title, t.title) && !duplicates.some((x) => [x.a, x.b].sort().join(":") === [s.publicId, t.publicId].sort().join(":"))) {
+            duplicates.push({ a: s.publicId, b: t.publicId, score: Math.round((r.score ?? 0) * 100) / 100 });
+          }
         } else if (r.fromEntityId && r.toEntityId) {
           const s = entityKey.get(r.fromEntityId);
           const t = entityKey.get(r.toEntityId);
@@ -690,7 +748,7 @@ export const graph = query({
       }
     }
     // `upgrade`: the plan is why (not the person's AI switch), so the view can point at plans.
-    return { full, note, upgrade: note === PRO_NOTE, nodes, edges, truncated };
+    return { full, note, upgrade: note === PRO_NOTE, nodes, edges, truncated, folders, tags, suggested, duplicates };
   },
 });
 

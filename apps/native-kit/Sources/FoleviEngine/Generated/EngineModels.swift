@@ -7274,10 +7274,16 @@ public struct GraphArgs: Codable, Hashable, Sendable {
     public var space: SpaceRef?
     /// "person", "project", "organization", "topic", "decision"; left out: all of them.
     public var kinds: [String]?
+    /// Revision 28: Foli DNA's layout controls. How far apart nodes settle (0.5 to 2, default 1).
+    public var spacing: Double?
+    /// Revision 28: how strongly everything is pulled to the middle (0.25 to 3, default 1).
+    public var pull: Double?
 
-    public init(space: SpaceRef? = nil, kinds: [String]? = nil) {
+    public init(space: SpaceRef? = nil, kinds: [String]? = nil, spacing: Double? = nil, pull: Double? = nil) {
         self.space = space
         self.kinds = kinds
+        self.spacing = spacing
+        self.pull = pull
     }
 }
 
@@ -7291,14 +7297,47 @@ public struct GraphNode: Codable, Hashable, Sendable {
     public var y: Double
     /// How many edges it has.
     public var degree: Int
+    /// Revision 28: a note's folder (public id), or null (entities: null).
+    public var folderId: String?
+    /// Revision 28: a note's tags (public ids).
+    public var tagIds: [String]
+    /// Revision 28: when the note was made and last edited (ms), or null (entities).
+    public var createdAt: Double?
+    public var updatedAt: Double?
+    /// Revision 28: its cluster (GraphCluster.id), or null when it's in none.
+    public var cluster: Int?
+    /// Revision 28: it joins two or more clusters.
+    public var bridge: Bool
 
-    public init(id: String, kind: String, label: String, x: Double, y: Double, degree: Int) {
+    public init(id: String, kind: String, label: String, x: Double, y: Double, degree: Int, folderId: String? = nil, tagIds: [String], createdAt: Double? = nil, updatedAt: Double? = nil, cluster: Int? = nil, bridge: Bool) {
         self.id = id
         self.kind = kind
         self.label = label
         self.x = x
         self.y = y
         self.degree = degree
+        self.folderId = folderId
+        self.tagIds = tagIds
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.cluster = cluster
+        self.bridge = bridge
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.label, forKey: .label)
+        try container.encode(self.x, forKey: .x)
+        try container.encode(self.y, forKey: .y)
+        try container.encode(self.degree, forKey: .degree)
+        try container.encode(self.folderId, forKey: .folderId)
+        try container.encode(self.tagIds, forKey: .tagIds)
+        try container.encode(self.createdAt, forKey: .createdAt)
+        try container.encode(self.updatedAt, forKey: .updatedAt)
+        try container.encode(self.cluster, forKey: .cluster)
+        try container.encode(self.bridge, forKey: .bridge)
     }
 }
 
@@ -7308,12 +7347,99 @@ public struct GraphEdge: Codable, Hashable, Sendable {
     /// "link", "mention", "similar", "related", "references", "contradicts", "supersedes" (open).
     public var kind: String
     public var inferred: Bool
+    /// Revision 28: when a link was made (ms), or null. A link points from `source` to `target`.
+    public var createdAt: Double?
 
-    public init(source: String, target: String, kind: String, inferred: Bool) {
+    public init(source: String, target: String, kind: String, inferred: Bool, createdAt: Double? = nil) {
         self.source = source
         self.target = target
         self.kind = kind
         self.inferred = inferred
+        self.createdAt = createdAt
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.source, forKey: .source)
+        try container.encode(self.target, forKey: .target)
+        try container.encode(self.kind, forKey: .kind)
+        try container.encode(self.inferred, forKey: .inferred)
+        try container.encode(self.createdAt, forKey: .createdAt)
+    }
+}
+
+/// Revision 28: a folder or tag of the notes shown (Foli DNA's filters, colours and legend).
+public struct GraphGroup: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    /// A folder or tag colour name, or null for the default.
+    public var color: String?
+
+    public init(id: String, name: String, color: String? = nil) {
+        self.id = id
+        self.name = name
+        self.color = color
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.id, forKey: .id)
+        try container.encode(self.name, forKey: .name)
+        try container.encode(self.color, forKey: .color)
+    }
+}
+
+/// Revision 28: a group of closely joined nodes, named by what they share. Biggest first.
+public struct GraphCluster: Codable, Hashable, Sendable {
+    public var id: Int
+    public var name: String
+    public var size: Int
+
+    public init(id: Int, name: String, size: Int) {
+        self.id = id
+        self.name = name
+        self.size = size
+    }
+}
+
+/// Revision 28: two notes that mention the same things but aren't linked (a suggested link).
+public struct GraphSuggestion: Codable, Hashable, Sendable {
+    public var source: String
+    public var target: String
+    /// What they both mention.
+    public var entities: [String]
+
+    public init(source: String, target: String, entities: [String]) {
+        self.source = source
+        self.target = target
+        self.entities = entities
+    }
+}
+
+/// Revision 28: two notes that are likely the same.
+public struct GraphDuplicate: Codable, Hashable, Sendable {
+    public var a: String
+    public var b: String
+    /// How alike they are, 0 to 100.
+    public var percent: Int
+
+    public init(a: String, b: String, percent: Int) {
+        self.a = a
+        self.b = b
+        self.percent = percent
+    }
+}
+
+/// Revision 28: a saved Foli DNA view; `settings` is JSON (lib/graph/analysis.ts DnaSettings).
+public struct GraphSavedView: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    public var settings: String
+
+    public init(id: String, name: String, settings: String) {
+        self.id = id
+        self.name = name
+        self.settings = settings
     }
 }
 
@@ -7328,14 +7454,28 @@ public struct GraphValue: Codable, Hashable, Sendable {
     public var truncated: Bool
     public var nodes: [GraphNode]
     public var edges: [GraphEdge]
+    /// Revision 28: the folders and tags of the notes shown, by name.
+    public var folders: [GraphGroup]
+    public var tags: [GraphGroup]
+    public var clusters: [GraphCluster]
+    public var suggested: [GraphSuggestion]
+    public var duplicates: [GraphDuplicate]
+    /// Revision 28: this person's saved views here, most recently changed first.
+    public var views: [GraphSavedView]
 
-    public init(full: Bool, note: String? = nil, upgrade: Bool, truncated: Bool, nodes: [GraphNode], edges: [GraphEdge]) {
+    public init(full: Bool, note: String? = nil, upgrade: Bool, truncated: Bool, nodes: [GraphNode], edges: [GraphEdge], folders: [GraphGroup], tags: [GraphGroup], clusters: [GraphCluster], suggested: [GraphSuggestion], duplicates: [GraphDuplicate], views: [GraphSavedView]) {
         self.full = full
         self.note = note
         self.upgrade = upgrade
         self.truncated = truncated
         self.nodes = nodes
         self.edges = edges
+        self.folders = folders
+        self.tags = tags
+        self.clusters = clusters
+        self.suggested = suggested
+        self.duplicates = duplicates
+        self.views = views
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -7346,6 +7486,95 @@ public struct GraphValue: Codable, Hashable, Sendable {
         try container.encode(self.truncated, forKey: .truncated)
         try container.encode(self.nodes, forKey: .nodes)
         try container.encode(self.edges, forKey: .edges)
+        try container.encode(self.folders, forKey: .folders)
+        try container.encode(self.tags, forKey: .tags)
+        try container.encode(self.clusters, forKey: .clusters)
+        try container.encode(self.suggested, forKey: .suggested)
+        try container.encode(self.duplicates, forKey: .duplicates)
+        try container.encode(self.views, forKey: .views)
+    }
+}
+
+/// Revision 28: `graph.link { noteId, targetId }`: adds "Related: [[target]]" to the end of the note (aiGraph.linkNote).
+public struct GraphLinkArgs: Codable, Hashable, Sendable {
+    public var noteId: String
+    public var targetId: String
+
+    public init(noteId: String, targetId: String) {
+        self.noteId = noteId
+        self.targetId = targetId
+    }
+}
+
+/// Revision 28: `graph.saveView { space?, id?, name, settings }`: saves (or, with `id`, updates) a Foli DNA view.
+public struct GraphSaveViewArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+    public var id: String?
+    public var name: String
+    public var settings: String
+
+    public init(space: SpaceRef? = nil, id: String? = nil, name: String, settings: String) {
+        self.space = space
+        self.id = id
+        self.name = name
+        self.settings = settings
+    }
+}
+
+public struct GraphSaveViewResult: Codable, Hashable, Sendable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+}
+
+/// Revision 28: `graph.views { space? }`: this person's saved Foli DNA views here (the sidebar lists them).
+public struct GraphViewsValue: Codable, Hashable, Sendable {
+    public var views: [GraphSavedView]
+
+    public init(views: [GraphSavedView]) {
+        self.views = views
+    }
+}
+
+/// Revision 28: a note picked on Foli DNA and the tags it has now.
+public struct GraphTagNote: Codable, Hashable, Sendable {
+    public var id: String
+    public var tagIds: [String]
+
+    public init(id: String, tagIds: [String]) {
+        self.id = id
+        self.tagIds = tagIds
+    }
+}
+
+/// Revision 28: `graph.tag { notes, tagId }`: adds a tag to notes picked on the map (organization.setDocumentTags).
+public struct GraphTagArgs: Codable, Hashable, Sendable {
+    public var notes: [GraphTagNote]
+    public var tagId: String
+
+    public init(notes: [GraphTagNote], tagId: String) {
+        self.notes = notes
+        self.tagId = tagId
+    }
+}
+
+/// How many notes got the tag.
+public struct GraphTagResult: Codable, Hashable, Sendable {
+    public var tagged: Int
+
+    public init(tagged: Int) {
+        self.tagged = tagged
+    }
+}
+
+/// Revision 28: `graph.removeView { id }`.
+public struct GraphViewIdArgs: Codable, Hashable, Sendable {
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
     }
 }
 

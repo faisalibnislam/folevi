@@ -213,7 +213,6 @@ export const LOCAL_HIDDEN: Readonly<Record<string, Capability>> = {
  */
 export const LOCAL_PLANNED: Readonly<Record<string, "L1" | "L2" | "L3" | "L4">> = {
   "bookmarks:preview": "L3",
-  "aiGraph:graph": "L3",
   "aiGraph:related": "L3",
   // Foli AI's agent comes later, and only with the person's own key (WP11 ported the rest of L4: lib/local/ai).
   "aiAgent:*": "L4",

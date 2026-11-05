@@ -57,6 +57,10 @@ export interface SimulationOptions {
   linkDistance?: number;
   /** How strongly nodes push each other apart. */
   repulsion?: number;
+  /** How strongly everything is pulled to the middle (1: the default). */
+  pull?: number;
+  /** Nodes held where they were put (Foli DNA's pinned nodes): they push and pull, but don't move. */
+  pinned?: ReadonlyMap<string, Point>;
 }
 
 /**
@@ -75,15 +79,20 @@ export class Simulation {
   private readonly maxTicks: number;
   private readonly linkDistance: number;
   private readonly repulsion: number;
+  private readonly pull: number;
+  private readonly fixed = new Set<number>();
 
   constructor(ids: readonly string[], edges: readonly LayoutEdge[], opts: SimulationOptions = {}) {
     this.maxTicks = opts.maxTicks ?? LAYOUT_MAX_TICKS;
     this.linkDistance = opts.linkDistance ?? 70;
     this.repulsion = opts.repulsion ?? 900;
+    this.pull = opts.pull ?? 1;
     let kept = 0;
     this.nodes = ids.map((id, i) => {
       this.index.set(id, i);
-      const before = opts.previous?.get(id);
+      const pin = opts.pinned?.get(id);
+      if (pin) this.fixed.add(i);
+      const before = pin ?? opts.previous?.get(id);
       if (before) kept++;
       const p = before ?? seedPosition(id, i);
       return { id, x: p.x, y: p.y, vx: 0, vy: 0 };
@@ -142,9 +151,15 @@ export class Simulation {
       q.vy -= dy * f;
     }
     // A light pull to the middle, then move (with friction, and a speed limit so nothing flies off).
-    for (const p of n) {
-      p.vx -= p.x * 0.01 * a;
-      p.vy -= p.y * 0.01 * a;
+    for (let i = 0; i < n.length; i++) {
+      const p = n[i]!;
+      if (this.fixed.has(i)) {
+        p.vx = 0;
+        p.vy = 0;
+        continue;
+      }
+      p.vx -= p.x * 0.01 * this.pull * a;
+      p.vy -= p.y * 0.01 * this.pull * a;
       p.vx *= 0.6;
       p.vy *= 0.6;
       const speed = Math.hypot(p.vx, p.vy);

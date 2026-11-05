@@ -13,7 +13,7 @@ import { Kbd } from "../ui";
  * text. FAQ answers are plain sentences because they also feed the FAQPage structured data.
  */
 
-export type FeatureVisual = "ai" | "audio" | "slash" | "search" | "calendar" | "comments" | "versions" | "offline" | "tasks" | "linked" | "folders" | "flowchart" | "whiteboard" | "styles" | "sharing" | "workspaces" | "templates" | "export" | "security";
+export type FeatureVisual = "ai" | "audio" | "slash" | "search" | "calendar" | "comments" | "versions" | "offline" | "tasks" | "linked" | "dna" | "folders" | "flowchart" | "whiteboard" | "styles" | "sharing" | "workspaces" | "templates" | "export" | "security";
 
 export type Feature = {
   slug: string;
@@ -729,7 +729,62 @@ export const FEATURES: Feature[] = [
       { q: "Can a page have sub-pages?", a: "Yes. A sub-page sits inside its parent page and shows there as a link or as a card." },
       { q: "What does search look through?", a: "Titles, text, code, captions, table cells, attachment names and tags, in the space you’re in. It only returns pages you can open." },
     ],
-    related: ["search", "folders", "blocks"],
+    related: ["foli-dna", "search", "folders"],
+  },
+  {
+    // components/views/GraphView.tsx (Foli DNA, route /graph), lib/graph/analysis.ts, convex/aiGraph.ts graph and
+    // convex/graphViews.ts; the Mac and iPad draw it natively (FoleviMac GraphScreen.swift).
+    slug: "foli-dna",
+    name: "Foli DNA",
+    summary: "A living map of your notes and how they connect.",
+    title: "Foli DNA, a map of your notes",
+    description: "Foli DNA draws your notes and the links between them as a map, with clusters, suggested links, filters by folder, tag and date, a view around any note, and a time-lapse of how it grew.",
+    h1: "Foli DNA: see how your notes connect",
+    intro:
+      "Every [[link]] you write becomes a line on the map. Foli DNA shows the notes you write about most, the groups they fall into, and the notes that should probably be linked but aren’t yet.",
+    plans: "Every plan, including Free. People, projects, topics, clusters named by what they share, and suggested links come with Pro, Pro AI and paid teams.",
+    updated: "2026-11-05",
+    art: "art-42",
+    visual: "dna",
+    sections: [
+      {
+        id: "map",
+        title: "The map of your notes",
+        body: <p>Notes are dots, links are lines, and the best-connected notes are labelled. Drag to move around, pinch or scroll to zoom, and click a note to open it. Hold ⌘ to open it in a new tab. The List view shows the same map as text.</p>,
+      },
+      {
+        id: "around",
+        title: "Around one note",
+        body: <p>Choose Foli DNA of this note from a note’s menu to see what it links to and what links to it, one, two or three steps out. A small live map of the open note also sits in the Inspector, next to Related notes.</p>,
+      },
+      {
+        id: "filters",
+        title: "Filters, colours and clusters",
+        body: <p>Show one folder or tag, or only notes edited this week or month. Colour notes by folder or tag, hide notes with no links, and let clusters shade the groups your notes fall into. Notes that join two clusters get a dashed ring.</p>,
+      },
+      {
+        id: "act",
+        title: "Do something with it",
+        body: <p>A dashed line suggests a link between notes that mention the same people or projects: click it and Foli DNA adds the link. Shift-click or Shift-drag to pick several notes, then move, bookmark or tag them, or ask Foli AI what connects them. Insights lists hubs, clusters, unlinked notes, likely duplicates and contradictions.</p>,
+      },
+      {
+        id: "time",
+        title: "Watch it grow",
+        body: <p>Play the time-lapse to see your notes appear in the order you wrote them, or light up what’s new this week.</p>,
+      },
+      {
+        id: "keep",
+        title: "Saved views, export and sharing",
+        body: <p>Save a view with its filters and colours and it shows in the sidebar under Foli DNA. Save the map as a PNG or SVG, or copy it as a Markdown list. A published page can show a small Foli DNA of the pages it links to, and only ones its readers can open.</p>,
+      },
+    ],
+    faq: [
+      { q: "What is Foli DNA?", a: "A map of your notes and the links between them, with clusters, suggested links and a time-lapse. It was called Graph before November 2026." },
+      { q: "Does it work without an account?", a: "Yes. In a library on your Mac, Foli DNA shows your notes and the links between them. People, projects, topics and suggested links need Foli AI on a Pro plan." },
+      { q: "Can I see the map around one note?", a: "Yes. Choose Foli DNA of this note from the note’s menu, then pick one, two or three steps." },
+      { q: "Is it on the Mac, iPad and iPhone?", a: "Yes. The Mac and iPad draw it natively, and the iPhone has its own screen." },
+    ],
+    related: ["linked-notes", "search", "folders"],
   },
   {
     // components/app/Sidebar.tsx, FolderMenu.tsx, views/OrganizeIndex.tsx, DocumentBrowser.tsx,

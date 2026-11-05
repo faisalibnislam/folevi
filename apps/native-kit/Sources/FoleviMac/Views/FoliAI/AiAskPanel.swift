@@ -93,6 +93,12 @@ struct AiAskOverlay: View {
             state.model.reopen(about: .folder(id: about.id, name: about.name))
             frame.askAbout = nil
         }
+        .onChange(of: frame.askQuestion, initial: true) { _, question in
+            guard let question else { return }
+            state.model.newChat()
+            state.model.draft = question
+            frame.askQuestion = nil
+        }
     }
 
     private func close() {

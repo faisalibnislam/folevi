@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "name": "graph.saveView",
+  "description": "Save a Foli DNA view (revision 28).",
+  "args": {
+    "name": "Trips only",
+    "settings": "{\"filter\":{\"folders\":[\"fld_trips\"]},\"colorBy\":\"folder\"}"
+  },
+  "result": {
+    "id": "gv_1"
+  }
+}

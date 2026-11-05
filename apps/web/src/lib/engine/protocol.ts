@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 27;
+export const CONTRACT_REVISION = 28;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -3375,6 +3375,10 @@ export interface GraphArgs {
   space?: SpaceRef;
   /** "person", "project", "organization", "topic", "decision"; left out: all of them. */
   kinds?: string[];
+  /** Revision 28: Foli DNA's layout controls. How far apart nodes settle (0.5 to 2, default 1). */
+  spacing?: number;
+  /** Revision 28: how strongly everything is pulled to the middle (0.25 to 3, default 1). */
+  pull?: number;
 }
 
 /** A node, placed by the web's own force layout (lib/graph/layout.ts Simulation, deterministic) in world units. */
@@ -3387,6 +3391,17 @@ export interface GraphNode {
   y: number;
   /** How many edges it has. */
   degree: number;
+  /** Revision 28: a note's folder (public id), or null (entities: null). */
+  folderId: string | null;
+  /** Revision 28: a note's tags (public ids). */
+  tagIds: string[];
+  /** Revision 28: when the note was made and last edited (ms), or null (entities). */
+  createdAt: number | null;
+  updatedAt: number | null;
+  /** Revision 28: its cluster (GraphCluster.id), or null when it's in none. */
+  cluster: number | null;
+  /** Revision 28: it joins two or more clusters. */
+  bridge: boolean;
 }
 
 export interface GraphEdge {
@@ -3395,6 +3410,46 @@ export interface GraphEdge {
   /** "link", "mention", "similar", "related", "references", "contradicts", "supersedes" (open). */
   kind: string;
   inferred: boolean;
+  /** Revision 28: when a link was made (ms), or null. A link points from `source` to `target`. */
+  createdAt: number | null;
+}
+
+/** Revision 28: a folder or tag of the notes shown (Foli DNA's filters, colours and legend). */
+export interface GraphGroup {
+  id: string;
+  name: string;
+  /** A folder or tag colour name, or null for the default. */
+  color: string | null;
+}
+
+/** Revision 28: a group of closely joined nodes, named by what they share. Biggest first. */
+export interface GraphCluster {
+  id: number;
+  name: string;
+  size: number;
+}
+
+/** Revision 28: two notes that mention the same things but aren't linked (a suggested link). */
+export interface GraphSuggestion {
+  source: string;
+  target: string;
+  /** What they both mention. */
+  entities: string[];
+}
+
+/** Revision 28: two notes that are likely the same. */
+export interface GraphDuplicate {
+  a: string;
+  b: string;
+  /** How alike they are, 0 to 100. */
+  percent: number;
+}
+
+/** Revision 28: a saved Foli DNA view; `settings` is JSON (lib/graph/analysis.ts DnaSettings). */
+export interface GraphSavedView {
+  id: string;
+  name: string;
+  settings: string;
 }
 
 export interface GraphValue {
@@ -3408,6 +3463,59 @@ export interface GraphValue {
   truncated: boolean;
   nodes: GraphNode[];
   edges: GraphEdge[];
+  /** Revision 28: the folders and tags of the notes shown, by name. */
+  folders: GraphGroup[];
+  tags: GraphGroup[];
+  clusters: GraphCluster[];
+  suggested: GraphSuggestion[];
+  duplicates: GraphDuplicate[];
+  /** Revision 28: this person's saved views here, most recently changed first. */
+  views: GraphSavedView[];
+}
+
+/** Revision 28: `graph.link { noteId, targetId }`: adds "Related: [[target]]" to the end of the note (aiGraph.linkNote). */
+export interface GraphLinkArgs {
+  noteId: string;
+  targetId: string;
+}
+
+/** Revision 28: `graph.saveView { space?, id?, name, settings }`: saves (or, with `id`, updates) a Foli DNA view. */
+export interface GraphSaveViewArgs {
+  space?: SpaceRef;
+  id?: string;
+  name: string;
+  settings: string;
+}
+
+export interface GraphSaveViewResult {
+  id: string;
+}
+
+/** Revision 28: `graph.views { space? }`: this person's saved Foli DNA views here (the sidebar lists them). */
+export interface GraphViewsValue {
+  views: GraphSavedView[];
+}
+
+/** Revision 28: a note picked on Foli DNA and the tags it has now. */
+export interface GraphTagNote {
+  id: string;
+  tagIds: string[];
+}
+
+/** Revision 28: `graph.tag { notes, tagId }`: adds a tag to notes picked on the map (organization.setDocumentTags). */
+export interface GraphTagArgs {
+  notes: GraphTagNote[];
+  tagId: string;
+}
+
+/** How many notes got the tag. */
+export interface GraphTagResult {
+  tagged: number;
+}
+
+/** Revision 28: `graph.removeView { id }`. */
+export interface GraphViewIdArgs {
+  id: string;
 }
 
 /** `reviews { noteId?, space? }`: the cards due now. Neither: everywhere; `space`: one space; `noteId`: one note. */
@@ -3864,6 +3972,7 @@ export interface ViewMap {
   graph: { args: GraphArgs; value: GraphValue };
   reviews: { args: ReviewsArgs; value: ReviewsValue };
   "recent.viewed": { args: RecentViewedArgs; value: RecentViewedValue };
+  "graph.views": { args: SpaceArgs; value: GraphViewsValue };
   "settings.query": { args: SettingsQueryArgs; value: SettingsQueryValue };
   "vault.summary": { args: SpaceArgs; value: VaultSummaryValue };
   "vault.items": { args: VaultItemsArgs; value: VaultItemsValue };
@@ -4016,6 +4125,10 @@ export interface CommandMap {
   "folderSharing.cancelInvite": { args: FolderInviteIdArgs; result: OkResult };
   "folderInvite.accept": { args: FolderInviteIdArgs; result: FolderInviteAcceptResult };
   "review.rate": { args: ReviewRateArgs; result: OkResult };
+  "graph.link": { args: GraphLinkArgs; result: OkResult };
+  "graph.saveView": { args: GraphSaveViewArgs; result: GraphSaveViewResult };
+  "graph.removeView": { args: GraphViewIdArgs; result: OkResult };
+  "graph.tag": { args: GraphTagArgs; result: GraphTagResult };
   "review.setNewPerDay": { args: ReviewNewPerDayArgs; result: OkResult };
   "settings.run": { args: SettingsRunArgs; result: SettingsRunResult };
   "vault.setUp": { args: VaultSetUpArgs; result: VaultRecoveryResult };
@@ -4138,7 +4251,7 @@ export type EventData<N extends EventName> = EventMap[N];
 // clauses below fail type checking when a name is missing from or extra to its map.
 type Exhaustive<Keys extends string, List extends readonly string[]> = [Exclude<Keys, List[number]>] extends [never] ? ([Exclude<List[number], Keys>] extends [never] ? List : never) : never;
 
-const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "settings.query", "graph", "reviews", "recent.viewed", "vault.summary", "vault.items", "vault.folders", "vault.health", "vault.activity", "vault.people", "vault.shares", "e2ee.state", "note.style", "tags.index"] as const;
+const viewNames = ["session", "places.list", "home", "folders.tree", "sync.status", "note.meta", "trash.summary", "templates.builtIn", "folders.cards", "shared.list", "changes", "notifications.list", "search", "tasks.list", "tasks.counts", "tasks.range", "calendars.events", "calendars.list", "members", "task.parse", "account.details", "settings.account", "settings.general", "settings.appearance", "settings.notifications", "settings.ai", "settings.security", "sharing.get", "invite.preview", "ai.conversations", "ai.conversation", "ai.stream", "ai.capabilities", "places.move.preview", "notes.meta", "ai.research", "calendar.feed", "tasks.unscheduled", "files.urls", "recent", "device.storage", "support.topics", "changes.diff", "folderSharing.get", "shared.folders", "sharedFolder.open", "notes.moveCheck", "settings.query", "graph", "graph.views", "reviews", "recent.viewed", "vault.summary", "vault.items", "vault.folders", "vault.health", "vault.activity", "vault.people", "vault.shares", "e2ee.state", "note.style", "tags.index"] as const;
 const listViewNames = ["notes.list"] as const;
 const commandNames = [
   "space.switch",
@@ -4237,6 +4350,10 @@ const commandNames = [
   "folderSharing.cancelInvite",
   "folderInvite.accept",
   "review.rate",
+  "graph.link",
+  "graph.saveView",
+  "graph.removeView",
+  "graph.tag",
   "review.setNewPerDay",
   "settings.run",
   "vault.setUp",

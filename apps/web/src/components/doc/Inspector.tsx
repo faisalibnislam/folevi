@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { flattenFolders, type DocumentStyle } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
+import { useCanCall } from "@/lib/mode";
 import { requireOutbox, useFolderTree } from "@/lib/app/folders";
 import { useOutboxEntries } from "@/lib/sync/queryCache";
 import { pendingNoteFolders } from "@/lib/sync/overlays";
@@ -47,6 +48,8 @@ import { useRadioGroup } from "@/lib/a11y/radioGroup";
 import { useAiAccess, type AiRunDetail } from "@/components/ai/useAi";
 import { AiUnavailable } from "@/components/ai/AiUnavailable";
 import { RelatedPanel } from "./RelatedPanel";
+// Foli DNA's small map loads with the Related tab, never with the note.
+const DnaMini = lazy(() => import("@/components/views/GraphView").then((m) => ({ default: m.DnaMini })));
 import { useIphoneApp } from "@/lib/iphone";
 import { feel } from "@/lib/native/ui";
 
@@ -111,6 +114,7 @@ export function Inspector({
   sheet?: boolean;
 }) {
   const baseId = useId();
+  const canDna = useCanCall(api.aiGraph.graph);
   const aiAccess = useAiAccess(meta?.document);
   const aiOn = aiAccess.on;
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -202,6 +206,14 @@ export function Inspector({
         {tab === "info" ? <InfoPanel documentId={documentId} meta={meta} onHistory={onHistory} actions={actions} disabled={readOnly} /> : null}
         {tab === "comments" ? <CommentsOverview documentId={documentId} onOpenThread={onOpenThread} focusThreadId={focusThreadId} /> : null}
         {/* Related notes, likely duplicates and contradictions (the knowledge graph; links only below Pro). */}
+        {tab === "related" && canDna ? (
+          <section aria-label="Foli DNA" className="mb-4">
+            <h3 className="ui-caps mb-2">Foli DNA</h3>
+            <Suspense fallback={null}>
+              <DnaMini documentId={documentId} />
+            </Suspense>
+          </section>
+        ) : null}
         {tab === "related" ? <RelatedPanel documentId={documentId} canEdit={!readOnly} /> : null}
       </div>
       {bare && !toEdge ? <div aria-hidden className="ui-blur-bottom" /> : null}

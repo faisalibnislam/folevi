@@ -324,7 +324,10 @@ describe("extraction", () => {
     const g = await core.as.query(api.aiGraph.graph, { scope: PERSONAL });
     expect(g).toMatchObject({ full: false, note: PRO_NOTE });
     expect(g.nodes.every((n) => n.kind === "note")).toBe(true);
-    expect(g.edges).toEqual([{ source: notes[3], target: notes[2], kind: "link", inferred: false }]);
+    // A link carries when it was made (Foli DNA's time-lapse); no suggestions or duplicates below Pro.
+    expect(g.edges).toEqual([{ source: notes[3], target: notes[2], kind: "link", inferred: false, createdAt: expect.any(Number) }]);
+    expect(g).toMatchObject({ suggested: [], duplicates: [] });
+    expect(g.nodes.every((n) => typeof n.createdAt === "number" && Array.isArray(n.tagIds))).toBe(true);
     const rel = await core.as.query(api.aiGraph.related, { documentId: notes[2]! });
     expect(rel).toMatchObject({ full: false, note: PRO_NOTE, items: [{ id: notes[3], reasons: ["Links here"], linked: true }] });
     expect(await core.as.query(api.aiGraph.duplicates, { scope: PERSONAL })).toEqual({ full: false, note: PRO_NOTE, items: [] });

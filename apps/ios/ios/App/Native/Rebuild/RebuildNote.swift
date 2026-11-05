@@ -320,6 +320,10 @@ struct RebuildNoteScreen: View {
             entries.append(PhoneMenuEntry(.item(starred ? "Remove bookmark" : "Bookmark", icon: starred ? .bookmarkOff : .bookmark)) { model.star(noteId, !starred) })
         }
         entries.append(page("Version history…", .rotateCcwClock, .history))
+        // Foli DNA around this note (the web menu's "Foli DNA of this note").
+        if model.session.value?.capabilities.graph == true {
+            entries.append(PhoneMenuEntry(.item("Foli DNA of this note", icon: .waypoints)) { [frame, noteId] in frame.open(FrameRoute(path: "/graph?note=\(noteId)")) })
+        }
         entries.append(page(full ? "Find and replace…" : "Find in note…", .search, .find))
         if full { entries.append(page("Move…", .folderInput, .move)) }
         entries.append(page("Export…", .download, .export))

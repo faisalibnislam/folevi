@@ -1,0 +1,15 @@
+{
+  "kind": "view",
+  "name": "graph.views",
+  "description": "One saved Foli DNA view, for the sidebar (revision 28).",
+  "args": {},
+  "value": {
+    "views": [
+      {
+        "id": "gv_1",
+        "name": "Trips only",
+        "settings": "{\"filter\":{\"folders\":[\"fld_trips\"]},\"colorBy\":\"folder\"}"
+      }
+    ]
+  }
+}

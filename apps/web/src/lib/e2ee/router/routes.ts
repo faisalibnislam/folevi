@@ -69,8 +69,10 @@ export const E2EE_ROUTES: Record<string, Route> = {
   // Content modules are listed function by function, so a new function there has to be classified.
   ...each(pass, "documents", "bulkUpdate emptyTrash hideFromRecent move moveToTrash recordView reorder restoreFromTrash setArchived setStarred showInRecent purgeSnapshots seenMark"),
   ...each(pass, "comments", "deleteThread markThreadRead markThreadUnread mentionable react remove setResolved unreadCount"),
-  ...each(pass, "sharing", "acceptPageInvite createPublicLink declinePageInvite grant revoke revokePageInvite revokePublicLink setAccessMode setPublicLinkTheme"),
+  ...each(pass, "sharing", "acceptPageInvite createPublicLink declinePageInvite grant revoke revokePageInvite revokePublicLink setAccessMode setPublicLinkDna setPublicLinkTheme"),
   ...each(pass, "organization", "deleteFolder deleteTag moveFolder setFolderColor"),
+  // Foli DNA's saved views: names and settings only, no note content.
+  ...each(pass, "graphViews", "list remove save"),
   ...each(pass, "notifications", "markRead markUnread noteSubscription remove setNoteSubscription unreadCount"),
   "blocks:rebalance": pass,
   // Sealed per op by the router itself (client.ts pushSealed, §6.6), not through a route.

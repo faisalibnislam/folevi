@@ -791,6 +791,15 @@ public final class FrameModel {
         askAiOpen = true
     }
 
+    /// A question the floating chat opens with, ready to send (Foli DNA's "Ask Foli AI" about notes or a cluster).
+    public var askQuestion: String?
+
+    /// The floating chat, a new conversation with `question` typed in its box (the web's openAsk(question)).
+    public func askAI(question: String) {
+        askQuestion = question
+        askAiOpen = true
+    }
+
     /// Asks the AI page's box to take the keys.
     public static let focusAiComposer = Notification.Name("FoleviAiFocusComposer")
 

@@ -428,7 +428,7 @@ export const COMPETITORS: Competitor[] = [
     ],
     suitsBetter: [
       { title: "You want your notes as files you own", body: <p>Obsidian’s vault is a folder of Markdown files on your computer. Folevi stores notes in its own format and exports them as Markdown, HTML or PDF, or everything as a ZIP.</p> },
-      { title: "You want to shape the app", body: <p>Obsidian has thousands of community plugins and themes, a graph view and Canvas. Folevi has no plugins.</p> },
+      { title: "You want to shape the app", body: <p>Obsidian has thousands of community plugins and themes, and Canvas. Folevi has no plugins.</p> },
       { title: "You need desktop and mobile apps, or Linux", body: <p>Obsidian has apps for Mac, Windows, Linux, iOS and Android. {PLATFORMS_HONEST}</p> },
       { title: "You want end-to-end encrypted sync", body: <p>Obsidian Sync is end-to-end encrypted by default. Folevi encrypts data in transit and at rest, and isn’t end-to-end encrypted.</p> },
     ],

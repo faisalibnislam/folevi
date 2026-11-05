@@ -52,8 +52,11 @@ describe("graph", () => {
     r.client.answer("aiGraph:graph", { full: true, note: null, upgrade: false, truncated: false, nodes: NODES, edges: EDGES });
     const v = (await query("graph")) as GraphValue;
     const placed = layOut(NODES, EDGES);
-    expect(v.nodes).toEqual(NODES.map((x) => ({ ...x, x: placed.get(x.id)!.x, y: placed.get(x.id)!.y, degree: x.id === "n1" ? 2 : 1 })));
-    expect(v.edges).toEqual(EDGES);
+    expect(v.nodes).toEqual(NODES.map((x) => ({ ...x, x: placed.get(x.id)!.x, y: placed.get(x.id)!.y, degree: x.id === "n1" ? 2 : 1, folderId: null, tagIds: [], createdAt: null, updatedAt: null, cluster: 0, bridge: false })));
+    expect(v.edges).toEqual(EDGES.map((e) => ({ ...e, createdAt: null })));
+    // Revision 28: no folders, tags, suggestions or saved views here; the three nodes are one cluster, named by the
+    // person they share.
+    expect(v).toMatchObject({ folders: [], tags: [], clusters: [{ id: 0, name: "Sam", size: 3 }], suggested: [], duplicates: [], views: [] });
     expect(v).toMatchObject({ full: true, note: null, upgrade: false, truncated: false });
     // The same graph lays out the same way every time.
     expect(layOut(NODES, EDGES)).toEqual(placed);

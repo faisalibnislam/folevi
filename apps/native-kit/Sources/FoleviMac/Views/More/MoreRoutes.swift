@@ -74,10 +74,11 @@ struct MoreScreen: View {
     let path: String
 
     var body: some View {
-        let head = path.split(separator: "/").map(String.init)
+        // The path's own parts, without its query (Foli DNA's `/graph?note=…`).
+        let head = (path.split(separator: "?").first.map(String.init) ?? path).split(separator: "/").map(String.init)
         switch head.first {
         case "help": HelpScreen(model: model)
-        case "graph": GraphScreen(model: more.graphModel(), frame: model)
+        case "graph": GraphScreen(model: more.graphModel(), frame: model, path: path)
         case "review": ReviewScreen(model: more.reviewModel(), frame: model)
         case "shared" where head.count > 1: SharedFolderScreen(model: more.sharedFolder(head[1].removingPercentEncoding ?? head[1]), frame: model)
         default: Placeholder(symbol: "globe", title: "Not here yet", message: "\(path) doesn't have a screen in the Mac app yet.")

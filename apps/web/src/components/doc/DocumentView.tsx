@@ -200,6 +200,14 @@ export function DocumentView({ documentId }: { documentId: string }) {
   sidebarModeRef.current = { mode: docSidebarMode, set: setDocSidebarMode };
   // The tools panel (right sidebar) keeps what it showed and its width from note to note.
   const [inspectorTab, setInspectorTab] = useLocalStorage<InspectorTab>("folevi:inspector-tab", "format");
+  // Foli DNA opens a note on its Related notes (a likely duplicate, a suggested link): `?panel=related`.
+  const { search: pageSearch } = useAppRouter();
+  const wantsRelated = pageSearch.get("panel") === "related";
+  useEffect(() => {
+    if (!wantsRelated || !canRelate) return;
+    setInspectorTab("related");
+    setInspectorOpen(true);
+  }, [wantsRelated, canRelate, documentId, setInspectorTab, setInspectorOpen]);
   const [panelWidth, setPanelWidth] = useLocalStorage<number>("folevi:inspector-width", PANEL_DEFAULT);
   const panelOverlays = useMediaQuery("(max-width: 1199px)");
   // The comment thread floating under a block (threadId null: the block's latest open thread, or a new one).
@@ -2095,6 +2103,7 @@ function useDocumentActions({
         ...(onComments ? [{ label: "Comments", icon: <MessageSquare size={14} />, onSelect: onComments }] : []),
         ...(onInfo ? [{ label: "Info", icon: <Info size={14} />, onSelect: onInfo }] : []),
         ...(onRelated ? [{ label: "Related notes", icon: <Waypoints size={14} />, onSelect: onRelated }] : []),
+        ...(onRelated ? [{ label: "Foli DNA of this note", icon: <Waypoints size={14} />, onSelect: () => navigate(`/graph?note=${documentId}`) }] : []),
         ...(reviewCards !== undefined ? [{ label: reviewCards ? `Review ${cardCount(reviewCards)} in this note` : "Review this note’s cards", icon: <Layers size={14} />, onSelect: () => navigate(`/review?note=${documentId}`) }] : []),
         ...(onHistory ? [{ label: "Version history…", icon: <History size={14} />, onSelect: onHistory }] : []),
         ...(onToggleEditors ? [{ label: showingEditors ? "Hide editors" : "Show editors", icon: <Users size={14} />, onSelect: onToggleEditors }] : []),

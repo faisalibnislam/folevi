@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "name": "graph.removeView",
+  "description": "Remove a saved Foli DNA view (revision 28).",
+  "args": {
+    "id": "gv_1"
+  },
+  "result": {
+    "ok": true
+  }
+}

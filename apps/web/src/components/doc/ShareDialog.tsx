@@ -32,6 +32,7 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
   const createLink = useMutation(api.sharing.createPublicLink);
   const revokeLink = useMutation(api.sharing.revokePublicLink);
   const setLinkTheme = useMutation(api.sharing.setPublicLinkTheme);
+  const setLinkDna = useMutation(api.sharing.setPublicLinkDna);
   const unpublish = useMutation(api.e2ee.links.unpublish);
   const toast = useToast();
   const [email, setEmail] = useState("");
@@ -251,6 +252,19 @@ export function ShareDialog({ open, onClose, documentId, title, personal = false
                         </option>
                       ))}
                     </Select>
+                    {!sealed ? (
+                      <button
+                        type="button"
+                        aria-pressed={(l as { showDna?: boolean }).showDna === true}
+                        onClick={() => {
+                          const on = (l as { showDna?: boolean }).showDna !== true;
+                          void run(setLinkDna({ linkId: l.id, showDna: on }), on ? "The page shows its Foli DNA" : "Foli DNA hidden on the page");
+                        }}
+                        className={`ui-chip h-8 text-footnote ${(l as { showDna?: boolean }).showDna ? "bg-sunken text-heading" : "text-faint hover:text-ink"}`}
+                      >
+                        Foli DNA
+                      </button>
+                    ) : null}
                     <Button size="sm" variant="quiet" className="text-danger" onClick={() => void run(sealed ? revokeEncryptedLink(documentId, l.id) : revokeLink({ linkId: l.id }), "Link revoked")}>
                       Revoke
                     </Button>

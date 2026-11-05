@@ -171,7 +171,11 @@ public struct WebSidebar: View {
             item(.home, icon: .house, title: "Home")
             if caps?.ai ?? false { item(.web("/ai"), icon: .wandSparkles, title: "Work with Foli AI", glyph: AnyView(AiMarkGlyph(size: 16))) }
             // Foli DNA (/graph), where this place has it (Sidebar.tsx: after Foli AI).
-            if caps?.graph ?? false { item(.web("/graph"), icon: .waypoints, title: "Foli DNA") }
+            if caps?.graph ?? false {
+                item(.web("/graph"), icon: .waypoints, title: "Foli DNA")
+                // Its saved views, under it (Sidebar.tsx).
+                DnaSidebarViews(model: model) { v in AnyView(item(.web("/graph?view=\(v.id)"), icon: .waypoints, iconSize: 15, title: v.name)) }
+            }
             ZStack(alignment: .trailing) {
                 item(.notes(.starred), icon: .bookmark, title: "Bookmarks")
                 if !starred.isEmpty {
@@ -655,4 +659,25 @@ struct DisclosureChevron: View {
             .rotationEffect(.degrees(open ? 90 : 0))
     }
 }
+/// Foli DNA's saved views in the sidebar, under Foli DNA (the `graph.views` view, small: it doesn't load the map).
+private struct DnaSidebarViews: View {
+    @State private var store: ValueStore<GraphViewsValue>
+    let row: (GraphSavedView) -> AnyView
+
+    init(model: FrameModel, row: @escaping (GraphSavedView) -> AnyView) {
+        _store = State(initialValue: model.client.watch(.graphViews()))
+        self.row = row
+    }
+
+    var body: some View {
+        let views = store.value?.views ?? []
+        if !views.isEmpty {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(views.prefix(WebSidebar.limit), id: \.id) { v in row(v) }
+            }
+            .padding(.leading, 20)
+        }
+    }
+}
+
 #endif

@@ -18,6 +18,7 @@ import { formatDate, localeFromAcceptLanguage, tFor } from "@/i18n";
 import { currentRequestId, logEvent } from "@/lib/server/log";
 import { GRANT_COOKIE, GRANT_TTL_MS, openGrant, sealGrant } from "./grant";
 import { EncryptedShare } from "./EncryptedShare";
+import { PublishedDna } from "./PublishedDna";
 import { loadCard } from "./card";
 import { sharePayload } from "@/lib/e2ee/sharePayload";
 import "@/components/editor/editor.css";
@@ -244,6 +245,7 @@ export default async function SharedPage({ params }: { params: Promise<{ token: 
           </details>
         ) : null}
         <ReadOnlyBlocks blocks={blocks} fileUrls={fileUrls} collections={collections} anchors={toc.length > 0} />
+        {(result as { showDna?: boolean }).showDna ? <PublishedDna title={document.title} blocks={blocks as never} /> : null}
       </div>
     </article>
   );

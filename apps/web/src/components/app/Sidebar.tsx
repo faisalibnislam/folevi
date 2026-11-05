@@ -429,6 +429,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const caps = useCapabilities();
   // The graph comes to local mode later (lib/local/registry.ts LOCAL_PLANNED).
   const graph = useCanCall(api.aiGraph.graph);
+  // Foli DNA's saved views, listed under it.
+  const dnaViews = useQuery(api.graphViews.list, graph ? { scope } : "skip");
   const mode = useBackendMode();
   const canVault = useCanCall(api.vault.get);
   const changes = useQuery(api.changes.list, !caps.changes ? "skip" : route.name === "doc" ? { exclude: route.id } : {});
@@ -527,6 +529,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <NavItem href="/documents" icon={<Home size={16} />} label="Home" onNavigate={onNavigate} />
           {aiOn ? <NavItem href="/ai" icon={<AiIcon size={16} />} label="Work with Foli AI" onNavigate={onNavigate} /> : null}
           {graph ? <NavItem href="/graph" icon={<Waypoints size={16} />} label="Foli DNA" onNavigate={onNavigate} /> : null}
+          {graph && dnaViews?.length ? (
+            <div className="space-y-0.5 pl-5" aria-label="Saved Foli DNA views" role="group">
+              {dnaViews.slice(0, SIDEBAR_LIMIT).map((v) => (
+                <NavItem key={v.id} href={`/graph?view=${v.id}`} icon={<Waypoints size={14} />} label={v.name} onNavigate={onNavigate} />
+              ))}
+            </div>
+          ) : null}
           <div className="group/starred relative">
             <NavItem href="/starred" icon={<Bookmark size={16} />} label="Bookmarks" onNavigate={onNavigate} />
             {starred?.page.length ? (

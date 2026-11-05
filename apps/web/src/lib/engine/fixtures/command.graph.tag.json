@@ -1,0 +1,23 @@
+{
+  "kind": "command",
+  "name": "graph.tag",
+  "description": "Tag two notes picked on Foli DNA (revision 28); one already has the tag.",
+  "args": {
+    "notes": [
+      {
+        "id": "doc_00001",
+        "tagIds": [
+          "tag_travel"
+        ]
+      },
+      {
+        "id": "doc_00002",
+        "tagIds": []
+      }
+    ],
+    "tagId": "tag_travel"
+  },
+  "result": {
+    "tagged": 1
+  }
+}

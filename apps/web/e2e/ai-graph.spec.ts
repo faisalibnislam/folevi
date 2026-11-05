@@ -52,7 +52,7 @@ test("the graph shows notes and links, the list reads it as text, and a note lis
   await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Foli DNA", exact: true }).click();
   await page.waitForURL(/\/graph$/);
   await expect(page.getByRole("application", { name: /Foli DNA of \d+ notes/ })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText(/The full graph, with topics, people and similar notes, is part of Pro/)).toBeVisible();
+  await expect(page.getByText(/The full Foli DNA, with topics, people and similar notes, is part of Pro/)).toBeVisible();
   // No entity filters below Pro.
   await expect(page.getByRole("group", { name: "Show" })).toHaveCount(0);
   await page.getByRole("button", { name: "Zoom in" }).click();
@@ -69,6 +69,31 @@ test("the graph shows notes and links, the list reads it as text, and a note lis
   await page.getByRole("searchbox", { name: "Find in Foli DNA" }).fill("");
   await page.getByRole("main").getByRole("link", { name: "Trip planning", exact: true }).first().click();
   await page.waitForURL(new RegExp(`${source}$`));
+
+  // Foli DNA of this note, from its menu: the map around it, one step out, and back to everything.
+  await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
+  await page.getByRole("menuitem", { name: "Foli DNA of this note" }).click();
+  await page.waitForURL(/\/graph\?note=/);
+  await page.getByRole("group", { name: "View" }).getByRole("button", { name: "Map" }).click();
+  await expect(page.getByText("Around")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("application", { name: /Foli DNA of 2 notes/ })).toBeVisible();
+  await page.getByRole("button", { name: "Show everything" }).click();
+  await page.waitForURL(/\/graph$/);
+  // Two linked notes make no cluster (three is the least): nothing is shaded behind the map.
+  await expect(page.locator('svg circle[opacity="0.06"]')).toHaveCount(0);
+  // Insights: the unlinked note is listed; hiding unlinked notes leaves the two linked ones.
+  await page.getByRole("button", { name: "Insights" }).click();
+  const insights = page.getByRole("complementary", { name: "Insights" });
+  await expect(insights.getByRole("link", { name: "Lonely thought" })).toBeVisible();
+  await page.getByRole("button", { name: /^Unlinked notes/ }).click();
+  await expect(page.getByRole("application", { name: /Foli DNA of 2 notes/ })).toBeVisible();
+  await page.getByRole("button", { name: /^Unlinked notes/ }).click();
+  // A saved view shows in the sidebar under Foli DNA.
+  await page.getByRole("button", { name: "Saved views" }).click();
+  await page.getByRole("menuitem", { name: "Save this view…" }).click();
+  await page.getByRole("textbox", { name: "Name" }).fill("Everything");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("group", { name: "Saved Foli DNA views" }).getByRole("link", { name: "Everything" })).toBeVisible({ timeout: 20_000 });
 
   // Narrow widths: the graph page still works.
   await page.setViewportSize({ width: 390, height: 800 });

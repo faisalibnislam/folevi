@@ -51,6 +51,14 @@ public struct Palette: Sendable {
     public var glassPop: Color { FoleviTokens.Glass.pop.color }
     public var glassBorder: Color { FoleviTokens.Glass.border.color }
     public var glassHover: Color { FoleviTokens.Glass.hover.color }
+
+    /// A checkbox's outline, unchecked: the muted ink mixed into the strong line (the web's --fb-check-edge,
+    /// editor.css), at least 3:1 against every page in Light and Dark (WCAG 1.4.11; QA audit F10).
+    public var checkboxEdge: Color { Palette.checkboxEdge.color }
+    public static let checkboxEdge = ColorPair(light: C.inkMuted.light.mix(C.lineStrong.light, 0.75), dark: C.inkMuted.dark.mix(C.lineStrong.dark, 0.75))
+    /// A checked checkbox's outline: its moss fill darkened with the ink, so a pale fill still stands out.
+    public var checkboxCheckedEdge: Color { Palette.checkboxCheckedEdge.color }
+    public static let checkboxCheckedEdge = ColorPair(light: C.moss.light.mix(C.ink.light, 0.8), dark: C.moss.dark.mix(C.ink.dark, 0.8))
 }
 
 public extension Animation {

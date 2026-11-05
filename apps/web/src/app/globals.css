@@ -775,6 +775,9 @@
 :root[data-iphone] [role="listbox"].ui-pop { background: var(--liquid-fill-strong); }
 /* Toasts float above the tab bar. */
 :root[data-iphone] .ui-toasts { bottom: calc(env(safe-area-inset-bottom) + 80px); }
+/* A note's floating page tools (PageDock) stay uncovered: toasts (Undo after Move to Trash, ...) sit above them
+   with a gap (QA audit F22). The bar's top is about 5rem up; the native Mac app keeps the same room (ToastStack). */
+:root:not([data-iphone]):has([role="toolbar"][aria-label="Page tools"]) .ui-toasts { bottom: calc(6rem + var(--kb-inset, 0px)); }
 :root[data-iphone][data-iphone-keyboard] .ui-toasts { bottom: 64px; }
 /* The end of a note (or a screen) clears the bars and no more: the tab bar or the note's bars sit 60 px tall
    above the home indicator (DocumentView, Screen leave room for them, plus 12 px); with the keyboard up only
@@ -1117,12 +1120,15 @@
    overlap it on a narrow window. */
 [data-pane-rest] [role="toolbar"][aria-label="Page tools"] { display: none; }
 /* A note narrower than its page tools' words (joined, or a narrow window): icons only, like the phone's bar
-   (each keeps its name as a tooltip). */
+   (each keeps its name as a tooltip). Also when a tools panel beside the note leaves it too little room: the bar
+   measures the note it floats over and says so (data-compact, PageDock; QA audit F03). */
 [data-pane] { container-type: inline-size; }
 @container (max-width: 599px) {
   [role="toolbar"][aria-label="Page tools"] button > span:not([aria-hidden]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   [role="toolbar"][aria-label="Page tools"] button { padding-inline: 10px; }
 }
+[role="toolbar"][aria-label="Page tools"][data-compact] button > span:not([aria-hidden]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+[role="toolbar"][aria-label="Page tools"][data-compact] button { padding-inline: 10px; }
 
 /* Folevi's one tooltip, on every page (the app, the website, the Mac app): never the browser's own. */
 [data-mac-tooltip] {

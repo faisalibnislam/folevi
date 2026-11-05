@@ -8,6 +8,7 @@
 // person's own key, as on the Mac. Sizes and colours are the web's, measured on the iPhone (phone.json, phone.ai.*).
 #if os(iOS)
 import SwiftUI
+import UIKit
 import FoleviDesign
 import FoleviEngine
 import FoleviScreens
@@ -802,7 +803,9 @@ public struct PhoneAiPage: View {
                 Button {
                     menus.show(PhoneAiMenus.conversation(model: model, id: id, title: title, local: host.local), from: moreFrame, side: .bottom, align: .end)
                 } label: {
-                    WebIconView(.ellipsis, size: 16).frame(width: 32, height: 32).foregroundStyle(look.muted).contentShape(Rectangle())
+                    // (Drawn 32, taking a finger's 44: IPHONE-09.)
+                    WebIconView(.ellipsis, size: 16).frame(width: 32, height: 32).foregroundStyle(look.muted)
+                        .contentShape(Rectangle().inset(by: -6))
                 }
                 .buttonStyle(PhonePressFade())
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
@@ -827,6 +830,8 @@ struct PhoneAiDrawer: View {
     @Environment(\.colorScheme) private var scheme
     @State private var renaming: ChatConversationRow?
     @State private var name = ""
+    @State private var rowFrames: [String: CGRect] = [:]
+    @State private var heldRow: String?
 
     var body: some View {
         let look = AiLook(scheme: scheme, phone: true)
@@ -917,7 +922,11 @@ struct PhoneAiDrawer: View {
 
     private func row(_ r: ChatConversationRow, look: AiLook) -> some View {
         let active = r.id == model.conversationId
-        return Button { open(r.id) } label: {
+        return Button {
+            // (The lift of a finger that held the row for its menu isn't also a tap that opens it.)
+            if heldRow == r.id { heldRow = nil; return }
+            open(r.id)
+        } label: {
             HStack(spacing: 8) {
                 Text(r.title.isEmpty ? "New chat" : r.title)
                     .webText(.role(.body, weight: active ? 600 : 400))
@@ -932,16 +941,29 @@ struct PhoneAiDrawer: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PhonePressFade())
-        .contextMenu {
-            Button("Rename", systemImage: "pencil") { name = r.title; renaming = r }
-            Button(r.pinned ? "Unpin" : "Pin", systemImage: r.pinned ? "pin.slash" : "pin") { model.pin(r.id, !r.pinned) }
-            Button("Copy as Markdown", systemImage: "doc.on.clipboard") {
-                Task { if let md = await PhoneAiMenus.markdown(model: model, id: r.id, title: r.title) { AiPasteboard.copy(md) } }
-            }
-            Button("Save as note", systemImage: "doc.badge.plus") { model.saveAsNote(conversationId: r.id) }
-            Button("Delete…", systemImage: "trash", role: .destructive) { delete(r) }
-        }
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { rowFrames[r.id] = $0 }
+        // Held: Folevi's own menu with its icons, as every other menu in the app (IPHONE-09: the system's context
+        // menu with SF Symbols).
+        .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in
+            heldRow = r.id
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            menus.show(rowMenu(r), from: rowFrames[r.id] ?? .zero, side: .bottom, align: .start)
+        })
+        .accessibilityAction(named: "More actions") { menus.show(rowMenu(r), from: rowFrames[r.id] ?? .zero, side: .bottom, align: .start) }
         .accessibilityAddTraits(active ? [.isSelected, .isButton] : .isButton)
+    }
+
+    private func rowMenu(_ r: ChatConversationRow) -> [PhoneMenuEntry] {
+        [
+            PhoneMenuEntry(.item("Rename", icon: .pencil)) { name = r.title; renaming = r },
+            PhoneMenuEntry(.item(r.pinned ? "Unpin" : "Pin", icon: r.pinned ? .pinOff : .pin)) { model.pin(r.id, !r.pinned) },
+            PhoneMenuEntry(.item("Copy as Markdown", icon: .clipboardCopy)) {
+                Task { if let md = await PhoneAiMenus.markdown(model: model, id: r.id, title: r.title) { AiPasteboard.copy(md) } }
+            },
+            PhoneMenuEntry(.item("Save as note", icon: .filePlusCorner)) { model.saveAsNote(conversationId: r.id) },
+            PhoneMenuEntry(.separator()),
+            PhoneMenuEntry(.item("Delete…", icon: .trash, danger: true)) { delete(r) },
+        ]
     }
 }
 

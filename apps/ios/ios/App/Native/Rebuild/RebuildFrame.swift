@@ -390,7 +390,8 @@ private struct RebuildRoot: View {
             RebuildNotificationsSheet(frame: model, menus: menus, phone: phone) { notifications = false }
         }
         .phoneSheet(isPresented: $account, size: .medium, snapToBlocks: true) {
-            PhoneSheetPanel(title: "Account", close: { account = false }) {
+            // (A library with no account at all is "Your library", not an "Account": IPHONE-22.)
+            PhoneSheetPanel(title: places.hasAccount ? "Account" : "Your library", close: { account = false }) {
                 RebuildAccountSheet(places: places) { action in
                     if action == .place(RebuildAccount.newWorkspace) {
                         account = false

@@ -9,6 +9,11 @@ import UIKit
 
 private func ps(_ id: String, _ scheme: ColorScheme) -> WebComputedStyle { WebStyles.named(id).resolve(scheme) }
 
+/// A held card's or row's press, as UIKit's scroll views show one: only after the finger has stayed this long.
+public enum PhonePress {
+    public static let delay: TimeInterval = 0.08
+}
+
 /// ListRow: 52 tall at least, 20 in from the left and 16 from the right, the icon in a 28 column, 12 to the label.
 public struct PhoneListRow<Icon: View>: View {
     let label: String
@@ -20,6 +25,7 @@ public struct PhoneListRow<Icon: View>: View {
     let onLongPress: ((CGRect) -> Void)?
     @Environment(\.colorScheme) private var scheme
     @State private var pressed = false
+    @State private var pressGeneration = 0
     @State private var frame: CGRect = .zero
 
     public init(_ label: String, detail: String? = nil, chevron: Bool = true, action: @escaping () -> Void, onLongPress: ((CGRect) -> Void)? = nil, @ViewBuilder icon: () -> Icon) {
@@ -63,6 +69,10 @@ public struct PhoneListRow<Icon: View>: View {
         .padding(.leading, row.padding.left)
         .padding(.trailing, row.padding.right)
         .contentShape(Rectangle())
+        #if os(iOS)
+        // (An iPad's pointer lights the row under it: IPAD-21.)
+        .hoverEffect(.highlight)
+        #endif
         if let onLongPress {
             // A Button can't also be held, so a row with a menu takes the tap and the hold itself, with the same
             // press fill.
@@ -76,7 +86,16 @@ public struct PhoneListRow<Icon: View>: View {
                     #endif
                     let at = frame
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { onLongPress(at) }
-                } onPressingChanged: { pressed = $0 }
+                } onPressingChanged: { down in
+                    // (Shown only once the finger has stayed 80 ms: a touch that becomes a scroll never flashes the
+                    // row. IPHONE-03.)
+                    pressGeneration += 1
+                    guard down else { pressed = false; return }
+                    let generation = pressGeneration
+                    DispatchQueue.main.asyncAfter(deadline: .now() + PhonePress.delay) {
+                        if generation == pressGeneration { pressed = true }
+                    }
+                }
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction(named: "More actions") { onLongPress(frame) }
         } else {
@@ -273,6 +292,10 @@ public struct PhoneSearchField: View {
             .padding(.horizontal, box.padding.left)
             .frame(height: box.height)
             .background(RoundedRectangle(cornerRadius: box.radius, style: .continuous).fill(box.background.color))
+            // The whole box is the field (IPHONE-02): a tap above or below the text line, or on the magnifier, focuses
+            // it as a tap on the text does.
+            .contentShape(RoundedRectangle(cornerRadius: box.radius, style: .continuous))
+            .onTapGesture { focused = true }
             if focused || !text.isEmpty {
                 Button("Cancel") {
                     text = ""

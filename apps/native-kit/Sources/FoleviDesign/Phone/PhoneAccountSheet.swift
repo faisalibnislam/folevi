@@ -55,14 +55,17 @@ public struct PhoneAccountSheetContent: View {
     let severalPlaces: Bool
     let otherPlaces: Bool
     let signOutLabel: String
+    /// Whether the device has a Folevi account at all (a library alone: "Sign in to Folevi…").
+    let hasAccount: Bool
     let pick: (PhoneAccountAction) -> Void
     @Environment(\.colorScheme) private var scheme
 
-    public init(places: [PhonePlaceRow], severalPlaces: Bool, otherPlaces: Bool, signOutLabel: String, pick: @escaping (PhoneAccountAction) -> Void) {
+    public init(places: [PhonePlaceRow], severalPlaces: Bool, otherPlaces: Bool, signOutLabel: String, hasAccount: Bool = true, pick: @escaping (PhoneAccountAction) -> Void) {
         self.places = places
         self.severalPlaces = severalPlaces
         self.otherPlaces = otherPlaces
         self.signOutLabel = signOutLabel
+        self.hasAccount = hasAccount
         self.pick = pick
     }
 
@@ -77,7 +80,7 @@ public struct PhoneAccountSheetContent: View {
             PhoneGroupedSection {
                 PhoneAccountActionRow("Settings", icon: .settings) { pick(.settings) }
                 if severalPlaces {
-                    PhoneAccountActionRow("Sign in to another account…", icon: .logIn) { pick(.signInAnother) }
+                    PhoneAccountActionRow(hasAccount ? "Sign in to another account…" : "Sign in to Folevi…", icon: .logIn) { pick(.signInAnother) }
                 }
                 if otherPlaces {
                     PhoneAccountActionRow("Move or copy notes…", icon: .arrowRightLeft) { pick(.movePlaces) }

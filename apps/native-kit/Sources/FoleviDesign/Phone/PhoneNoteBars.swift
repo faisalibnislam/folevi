@@ -47,7 +47,8 @@ public struct PhoneNotePlaceChip: View {
                     switch place {
                     case .parent: WebIconView(.fileText, size: 14).foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
                     case .folder(_, let color): FolderGlyph(colorId: color, size: 15)
-                    case .drafts: FolderGlyph(colorId: nil, size: 15)
+                    // (Drafts' tray, as Home's Drafts row: a folder glyph with no colour read as a stray swatch.)
+                    case .drafts: WebIconView(.inbox, size: 14).foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
                     case .shared: WebIconView(.users, size: 14).foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
                     }
                 }

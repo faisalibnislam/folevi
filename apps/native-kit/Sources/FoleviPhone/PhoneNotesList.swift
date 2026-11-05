@@ -203,30 +203,25 @@ public struct PhoneNotesListScreen: View {
         }
     }
 
-    /// Held (and, outside arranging, held for the menu's time), a card follows the finger; let go, it takes its place.
-    private func arrangeGesture(_ row: NoteRow) -> some Gesture {
-        LongPressGesture(minimumDuration: arranging ? 0.15 : 0.45)
-            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.grid)))
-            .onChanged { value in
-                guard case .second(true, let d?) = value else { return }
-                if drag == nil {
-                    // Held for the menu, it stays a menu until the finger moves off.
-                    guard arranging || hypot(d.translation.width, d.translation.height) > 10, let f = frames[row.id] else { return }
-                    actions.closeMenu()
-                    #if canImport(UIKit)
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    #endif
-                    order = order ?? model.slots.map(\.id)
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                        arranging = true
-                        drag = CardDrag(id: row.id, grab: CGSize(width: d.startLocation.x - f.minX, height: d.startLocation.y - f.minY), location: d.location)
-                    }
-                    return
-                }
-                drag?.location = d.location
-                makeRoom()
+    /// While arranging, a card held still for 0.2 s follows the finger; let go, it takes its place. A UIKit hold
+    /// (CardHold, as the Folders list uses): a touch that starts moving sooner stays the scroll's (IPHONE-06: a
+    /// SwiftUI long press sequenced before a drag grabbed a card from a scroll that rested 0.15 s).
+    private func arrangeMoved(_ row: NoteRow, start: CGPoint, now: CGPoint) {
+        if drag == nil {
+            guard let f = frames[row.id] else { return }
+            actions.closeMenu()
+            #if canImport(UIKit)
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            #endif
+            order = order ?? model.slots.map(\.id)
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                arranging = true
+                drag = CardDrag(id: row.id, grab: CGSize(width: start.x - f.minX, height: start.y - f.minY), location: now)
             }
-            .onEnded { _ in drop() }
+            return
+        }
+        drag?.location = now
+        makeRoom()
     }
 
     /// The card under the held one's middle gives up its place.
@@ -351,7 +346,7 @@ public struct PhoneNotesListScreen: View {
                             .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.grid)) } action: { frames[row.id] = $0 }
                             // (Only while arranging: a drag on the cards at other times keeps iOS's swipe from the screen's edge from
                             // going Back.)
-                            .simultaneousGesture(arrangeGesture(row), including: arrangeable && arranging ? .all : .subviews)
+                            .gesture(CardHold(enabled: arrangeable && arranging, duration: 0.2, space: Self.grid, onMove: { start, now in arrangeMoved(row, start: start, now: now) }, onEnd: drop))
                             .accessibilityAddTraits(model.selection.contains(row.id) ? .isSelected : [])
                             .accessibilityActions {
                                 if arrangeable {
@@ -471,6 +466,8 @@ struct PhonePressable<Content: View>: View {
     let onLongPress: ((CGRect) -> Void)?
     @ViewBuilder let content: () -> Content
     @State private var pressed = false
+    /// Counts touches down and up, so a press shown late belongs to the touch still down.
+    @State private var pressGeneration = 0
     @State private var frame: CGRect = .zero
     @Environment(\.colorScheme) private var scheme
 
@@ -481,6 +478,8 @@ struct PhonePressable<Content: View>: View {
             }
             .scaleEffect(pressed ? scale : 1)
             .animation(.easeOut(duration: pressed ? 0 : 0.15), value: pressed)
+            // (An iPad's pointer: a row lights up under it, a card lifts. IPAD-21.)
+            .hoverEffect(highlight ? .highlight : .lift)
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
             .onTapGesture(perform: onTap)
             .onLongPressGesture(minimumDuration: 0.45) {
@@ -491,7 +490,16 @@ struct PhonePressable<Content: View>: View {
                 // (A moment later: a menu opened in the same update as the press ending can be lost.)
                 let at = frame
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { onLongPress(at) }
-            } onPressingChanged: { pressed = $0 }
+            } onPressingChanged: { down in
+                // (As UIKit's scroll views delay a touch: the press shows only once the finger has stayed 80 ms, so
+                // a touch that turns into a scroll never dips the card or flashes the row. IPHONE-03.)
+                pressGeneration += 1
+                guard down else { pressed = false; return }
+                let generation = pressGeneration
+                DispatchQueue.main.asyncAfter(deadline: .now() + PhonePress.delay) {
+                    if generation == pressGeneration { pressed = true }
+                }
+            }
             .accessibilityAddTraits(.isButton)
             .accessibilityAction(named: "More actions") { onLongPress?(frame) }
     }

@@ -293,10 +293,11 @@ extension WebStylePair {
         return WebStylePair(light: up(light), dark: up(dark))
     }
 
-    /// Ids naming a control: `button.*`, or a part called input, field, submit, cancel, button, btn, select or
-    /// trigger ("more.prompt.input", "more.prompt.cancel").
+    /// Ids naming a control: `button.*`, or a part called input, field, submit, cancel, button, btn, select, trigger
+    /// or seeAll ("more.prompt.input", "more.prompt.cancel", Home's "notes.section.seeAll"). The iPad's own measured
+    /// styles go through this too (IPAD-08: Sort, Catch me up and See all were 36, 40 and 28 tall under a finger).
     static func isControl(_ id: String) -> Bool {
         if id.hasPrefix("button.") { return true }
-        return id.split(separator: ".").contains { ["input", "field", "submit", "cancel", "button", "btn", "select", "trigger"].contains($0) }
+        return id.split(separator: ".").contains { ["input", "field", "submit", "cancel", "button", "btn", "select", "trigger", "seeAll"].contains($0) }
     }
 }

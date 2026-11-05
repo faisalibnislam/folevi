@@ -153,8 +153,9 @@ public struct PhoneAllFoldersScreen: View {
     /// the hold began and `now` where the finger is, in the grid's space.
     private func holdMoved(_ f: FolderNode, start: CGPoint, now: CGPoint) {
         if drag == nil {
-            // Held for the menu, it stays a menu until the finger moves off.
-            guard hypot(now.x - start.x, now.y - start.y) > 10, let frame = frames[f.id] else { return }
+            // Held for the menu, it stays a menu until the finger moves well off (20 pt: a slightly shaky hold kept
+            // losing its menu to a drag at 10, IPHONE-07).
+            guard hypot(now.x - start.x, now.y - start.y) > CardHold.dragAfterMenu, let frame = frames[f.id] else { return }
             closeMenu()
             #if canImport(UIKit)
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -410,8 +411,13 @@ struct PhoneSwatchPressStyle: ButtonStyle {
 /// more than 10 pt, so the scroll view keeps every touch that starts moving sooner. Once it has begun it reports
 /// where the finger is until it lifts.
 struct CardHold: UIGestureRecognizerRepresentable {
+    /// How far a finger held for a card's menu moves before the hold becomes a drag of the card.
+    static let dragAfterMenu: CGFloat = 20
+
     /// Off for someone who can't edit (the card's own long press still opens its menu).
     let enabled: Bool
+    /// How long the finger rests before the hold begins (shorter while the cards are being arranged).
+    var duration: TimeInterval = 0.45
     let space: String
     let onMove: (_ start: CGPoint, _ now: CGPoint) -> Void
     let onEnd: () -> Void
@@ -424,7 +430,7 @@ struct CardHold: UIGestureRecognizerRepresentable {
 
     func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
         let hold = UILongPressGestureRecognizer()
-        hold.minimumPressDuration = 0.45
+        hold.minimumPressDuration = duration
         hold.allowableMovement = 10
         hold.cancelsTouchesInView = false
         hold.isEnabled = enabled
@@ -433,6 +439,7 @@ struct CardHold: UIGestureRecognizerRepresentable {
 
     func updateUIGestureRecognizer(_ recognizer: UILongPressGestureRecognizer, context: Context) {
         recognizer.isEnabled = enabled
+        recognizer.minimumPressDuration = duration
     }
 
     func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {

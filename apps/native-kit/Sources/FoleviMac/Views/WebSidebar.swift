@@ -207,6 +207,7 @@ public struct WebSidebar: View {
                             .frame(width: t.width, height: t.height)
                             .foregroundStyle(t.color.color)
                             .contentShape(Rectangle())
+                            .fingerTarget(width: t.width, height: t.height)
                     }
                     .buttonStyle(.webPlain)
                     .padding(.trailing, 4)
@@ -318,6 +319,7 @@ public struct WebSidebar: View {
                         .frame(width: 28, height: 28)
                         .foregroundStyle(Folevi.color.inkMuted)
                         .contentShape(Rectangle())
+                        .fingerTarget(width: 28, height: 28)
                 }
                 .foleviTooltip("Sort folders")
                 .accessibilityLabel("Sort folders")
@@ -736,6 +738,7 @@ struct SidebarMenuButton: View {
                 .frame(width: 32, height: 32)
                 .foregroundStyle(Folevi.color.inkMuted)
                 .contentShape(Rectangle())
+                .fingerTarget(width: 32, height: 32)
         }
         .foleviTooltip("Sidebar")
         .accessibilityLabel("Sidebar")
@@ -774,6 +777,7 @@ struct SidebarToggleButton: View {
                 .frame(width: 40, height: 40)
                 .foregroundStyle(Folevi.color.inkMuted)
                 .contentShape(Rectangle())
+                .fingerTarget(width: 40, height: 40)
         }
         .buttonStyle(.webPlain)
         .accessibilityLabel(model.sidebarOverlayShown ? "Hide sidebar" : "Show sidebar")
@@ -789,6 +793,7 @@ struct SyncDot: View {
             Circle().fill(Folevi.color.success).frame(width: 6, height: 6).offset(x: 1, y: 1)
         }
         .frame(width: 28, height: 28)
+        .fingerTarget(width: 28, height: 28)
         .foleviTooltip("Saved")
     }
 }

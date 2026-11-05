@@ -303,7 +303,9 @@ struct DnaTourCard: View {
         .webBox(WebStyles.named("menu.panel"))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Foli DNA tips")
+        #if os(macOS)
         .onExitCommand { onDone() }
+        #endif
     }
 }
 

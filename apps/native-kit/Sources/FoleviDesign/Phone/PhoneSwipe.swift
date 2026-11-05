@@ -104,6 +104,11 @@ public struct PhoneSwipeRow<Content: View>: View {
                 Color.clear.contentShape(Rectangle())
                     .padding(offset > 0 ? .leading : .trailing, abs(offset))
                     .onTapGesture { settle(0) }
+            } else if let open = state.open, open != id {
+                // Another row is open: a tap here closes that one first, as iOS's lists do, instead of opening this
+                // note (IPHONE-05). A scroll still scrolls.
+                Color.clear.contentShape(Rectangle())
+                    .onTapGesture { state.open = nil }
             }
         }
     }
@@ -196,10 +201,20 @@ private struct PhoneSideways: UIGestureRecognizerRepresentable {
     }
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        /// How near the screen's leading edge a rightward swipe is the navigation's back swipe, not the row's.
+        static let backSwipeEdge: CGFloat = 24
+
         func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
             guard let pan = g as? UIPanGestureRecognizer else { return false }
             let v = pan.velocity(in: pan.view)
+            // A rightward swipe from the screen's edge goes Back (IPHONE-04: it used to open the row's Bookmark).
+            let startX = pan.location(in: nil).x - pan.translation(in: nil).x
+            if v.x > 0, startX < Self.backSwipeEdge { return false }
             return abs(v.x) > abs(v.y) * 1.2
+        }
+
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldRequireFailureOf other: UIGestureRecognizer) -> Bool {
+            other is UIScreenEdgePanGestureRecognizer
         }
     }
 }

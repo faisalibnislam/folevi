@@ -126,6 +126,9 @@ public struct PhoneSearchScreen: View {
             .padding(.horizontal, 12)
             .frame(height: 44)
             .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .continuous).fill(ink.opacity(0.065).color))
+            // (The whole box takes the tap, not only the text line.)
+            .contentShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .continuous))
+            .onTapGesture { focused = true }
             Button("Cancel", action: close)
                 .webText(body17)
                 .foregroundStyle(FoleviTokens.Chrome.heading.resolve(scheme).color)
@@ -204,14 +207,17 @@ public struct PhoneSearchScreen: View {
     }
 
     private func noteRow(_ hit: SearchHit) -> some View {
-        row(icon: AnyView(WebIconView(.fileText, size: 22, strokeWidth: 1.8)), minHeight: 64) {
+        row(icon: AnyView(WebIconView(.fileText, size: 22, strokeWidth: 1.8)), minHeight: 64, iconTop: hit.snippet.isEmpty ? nil : 10 + (body17.leading - 22) / 2) {
             // (The snippet 2 below the title: `mt-0.5`.)
             VStack(alignment: .leading, spacing: 2) {
                 PhoneHighlighted(text: hit.title.isEmpty ? "Untitled" : hit.title, query: model.answeredText, style: body17, color: ink).lineLimit(1)
                 if !hit.snippet.isEmpty {
                     // (The place only when searching all of them; the snippet's line breaks collapse, as in a span.)
                     let place = model.scope == .everywhere ? hit.spaceName.map { "\($0) · " } ?? "" : ""
+                    // (Two lines at most, ending in an ellipsis: IPHONE-17, one hit took five.)
                     PhoneHighlighted(text: place + hit.snippet.split(whereSeparator: \.isWhitespace).joined(separator: " "), query: model.answeredText, style: sub15, color: muted)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
                 }
             }
             .padding(.vertical, 10)
@@ -246,10 +252,11 @@ public struct PhoneSearchScreen: View {
     }
 
     /// A result row: 20 in, the icon in a 28 column, 12 to the text; the hairline from the text to the edge.
-    private func row<Content: View>(icon: AnyView, minHeight: CGFloat, @ViewBuilder content: () -> Content, action: @escaping () -> Void) -> some View {
+    /// `iconTop`: the icon lined up with the first line (a note's title) instead of the middle of a taller row.
+    private func row<Content: View>(icon: AnyView, minHeight: CGFloat, iconTop: CGFloat? = nil, @ViewBuilder content: () -> Content, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                icon.frame(width: 28).foregroundStyle(muted.color)
+            HStack(alignment: iconTop == nil ? .center : .top, spacing: 12) {
+                icon.frame(width: 28).foregroundStyle(muted.color).padding(.top, iconTop ?? 0)
                 content()
                     .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
                     .overlay(alignment: .bottom) { PhoneRowHairlineView() }

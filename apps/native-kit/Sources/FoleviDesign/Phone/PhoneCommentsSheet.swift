@@ -346,15 +346,17 @@ public struct PhoneCommentsSheetContent: View {
     }
 
     private func menuButton(_ t: PhoneCommentsState.Thread) -> some View {
-        Button {} label: {
+        // One button, 44 pt to a finger (IPHONE-08: a 28 pt hit area with a second tap recognizer on it); it takes
+        // the same 40 pt in the row as before.
+        Button { showMenu(t) } label: {
             WebIconView(.ellipsis, size: 15)
                 .foregroundStyle(c(FoleviTokens.Chrome.inkMuted))
-                .frame(width: 28, height: 28)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frames[t.id] = $0 }
-        .simultaneousGesture(TapGesture().onEnded { showMenu(t) })
-        .padding(6)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global).insetBy(dx: 8, dy: 8) } action: { frames[t.id] = $0 }
+        .padding(-2)
         .accessibilityLabel("Thread actions")
     }
 

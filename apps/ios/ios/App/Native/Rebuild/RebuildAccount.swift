@@ -79,7 +79,7 @@ struct RebuildAccountSheet: View {
     let pick: (PhoneAccountAction) -> Void
 
     var body: some View {
-        PhoneAccountSheetContent(places: places.sheetRows, severalPlaces: places.offersAnotherAccount, otherPlaces: places.offersMove, signOutLabel: places.signOutTitle, pick: pick)
+        PhoneAccountSheetContent(places: places.sheetRows, severalPlaces: places.offersAnotherAccount, otherPlaces: places.offersMove, signOutLabel: places.signOutTitle, hasAccount: places.hasAccount, pick: pick)
     }
 }
 

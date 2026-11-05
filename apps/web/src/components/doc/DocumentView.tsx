@@ -96,7 +96,7 @@ import { ExportDialog } from "./ExportDialog";
 import { FindBar } from "./FindBar";
 import { useNoteActions } from "@/components/views/noteActions";
 import { PageDock } from "./PageDock";
-import { isIpadApp, isIphoneApp, useIphoneApp } from "@/lib/iphone";
+import { isIpadApp, isIphoneApp, useIpadNativeWide, useIphoneApp } from "@/lib/iphone";
 import { NoteBars } from "@/components/iphone/NoteBars";
 import { nativeChrome } from "@/lib/nativeApp";
 import { useNativeNote } from "@/lib/engine/editorCommands";
@@ -196,6 +196,8 @@ export function DocumentView({ documentId }: { documentId: string }) {
   primaryRef.current = primary;
   // The iPhone app: the note fills the screen under a glass bar, its tools in floating bars and sheets.
   const iphone = useIphoneApp();
+  // The native iPad's wide layout: its frame draws no note tools, so the page keeps the floating dock (IPAD-11).
+  const ipadNativeWide = useIpadNativeWide();
   const sidebarOpenRef = useRef(sidebarOpen);
   sidebarOpenRef.current = sidebarOpen;
   const toggleSidebarRef = useRef(toggleSidebar);
@@ -1235,7 +1237,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         </div>
         {/* The floating bar: AI, Insert, Format and Style, then the note's people, Share and its "…" menu. A tool opens
             in the right sidebar (on a phone, a sheet above the bar); AI opens the assistant on this note. */}
-        {nativeChromeMode && !macNativeFrame ? null : iphone ? (
+        {nativeChromeMode && !macNativeFrame && !ipadNativeWide ? null : iphone ? (
           <NoteBars
             editor={editor}
             ai={aiOn}

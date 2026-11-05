@@ -5,6 +5,9 @@
 // web's own components. A tile inserts below the current line (`insert { kind }`).
 import CoreText
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public struct InsertTileSpec: Sendable, Identifiable, Equatable {
     public let kind: String
@@ -166,6 +169,7 @@ public struct PhoneInsertSheetContent: View {
     /// The match harness's sample: only these sections, without the search field.
     var sampleTitles: [String]?
     @State private var query = ""
+    @FocusState private var searchFocused: Bool
     @Environment(\.colorScheme) private var scheme
 
     /// `scanner`: the device can scan (adds Scan document and Scan from photos to Media); `stockPhotos`: Unsplash is
@@ -207,11 +211,15 @@ public struct PhoneInsertSheetContent: View {
                     .foregroundStyle(FoleviTokens.Chrome.ink.resolve(scheme).color)
                     .textFieldStyle(.plain)
                     .submitLabel(.search)
+                    .focused($searchFocused)
                     .accessibilityLabel("Search blocks")
             }
             .padding(.horizontal, 12)
             .frame(height: 40)
             .background(FoleviTokens.Chrome.ink.resolve(scheme).color.opacity(0.07), in: RoundedRectangle(cornerRadius: FoleviTokens.Radius.control, style: .circular))
+            // (The whole box takes the tap, not only the text line: IPHONE-02.)
+            .contentShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.control, style: .circular))
+            .onTapGesture { searchFocused = true }
             .padding(.top, 2)
             .padding(.bottom, 8)
             }
@@ -384,24 +392,44 @@ private struct TilePressStyle: ButtonStyle {
     }
 }
 
-/// Quick table: 5 rows of 8 cells; a touch lights rows by columns from the top left, letting go adds that table.
+/// Quick table: 5 rows of 8 cells. A tap on a cell adds a table of that size; a finger held still on the grid (0.3 s)
+/// lights rows by columns from the top left as it moves, and letting go adds that table (letting go off the grid adds
+/// nothing). A swipe that starts on the grid scrolls the sheet and adds nothing (IPHONE-01: a scroll's end used to
+/// add a table).
 struct QuickTablePicker: View {
     let pick: (Int, Int) -> Void
     @State private var lit: (r: Int, c: Int)?
+    /// When a hold last ended: the tap that may follow the same lift is not a second pick.
+    @State private var heldUntil = Date.distantPast
     @Environment(\.colorScheme) private var scheme
+
+    static let rows = 5
+    static let columns = 8
+
+    /// The cell under `p` in a grid `width` wide (its 10 pt padding and 4 pt gaps), or nil off the grid (`slack`
+    /// points round it still count, for a finger that drifts past the edge).
+    static func cell(at p: CGPoint, width: CGFloat, slack: CGFloat = 0) -> (r: Int, c: Int)? {
+        let cw = (width - 20 - CGFloat(columns - 1) * 4) / CGFloat(columns)
+        let ch = cw * 0.7
+        let height = 20 + CGFloat(rows) * ch + CGFloat(rows - 1) * 4
+        guard p.x >= -slack, p.y >= -slack, p.x <= width + slack, p.y <= height + slack else { return nil }
+        let c = min(columns, max(1, Int((p.x - 10) / (cw + 4)) + 1))
+        let r = min(rows, max(1, Int((p.y - 10) / (ch + 4)) + 1))
+        return (r, c)
+    }
 
     var body: some View {
         let ink = FoleviTokens.Chrome.ink.resolve(scheme).color
         let muted = FoleviTokens.Chrome.inkMuted.resolve(scheme).color
         VStack(alignment: .leading, spacing: 6) {
             Text("Simple table").webText(WebTextStyle(size: WebTypeRole.footnote.metrics.size, leading: WebTypeRole.footnote.metrics.leading, weight: FoleviTokens.FontWeight.medium)).foregroundStyle(ink).padding(.horizontal, 4)
-            Text("Rows and columns of plain text. Pick a size, then tap to add it.").webText(.role(.footnote)).foregroundStyle(muted).padding(.horizontal, 4)
+            Text("Rows and columns of plain text. Tap a size to add it, or hold and slide to pick one.").webText(.role(.footnote)).foregroundStyle(muted).padding(.horizontal, 4)
             GeometryReader { geo in
                 let cw = (geo.size.width - 20 - 7 * 4) / 8
                 VStack(spacing: 4) {
-                    ForEach(1...5, id: \.self) { r in
+                    ForEach(1...Self.rows, id: \.self) { r in
                         HStack(spacing: 4) {
-                            ForEach(1...8, id: \.self) { c in
+                            ForEach(1...Self.columns, id: \.self) { c in
                                 let on = lit.map { r <= $0.r && c <= $0.c } ?? false
                                 RoundedRectangle(cornerRadius: 3)
                                     .fill(on ? FoleviTokens.Chrome.heading.resolve(scheme).color.opacity(0.85) : ink.opacity(0.08))
@@ -417,20 +445,61 @@ struct QuickTablePicker: View {
                 .padding(10)
                 .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.control).fill(FoleviTokens.Chrome.surfaceRaised.resolve(scheme).color).overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.control).strokeBorder(FoleviTokens.Chrome.line.resolve(scheme).color)))
                 .contentShape(Rectangle())
-                .gesture(DragGesture(minimumDistance: 0).onChanged { v in
-                    let c = min(8, max(1, Int((v.location.x - 10) / (cw + 4)) + 1))
-                    let r = min(5, max(1, Int((v.location.y - 10) / (cw * 0.7 + 4)) + 1))
-                    lit = (r, c)
-                }.onEnded { _ in
-                    if let l = lit { pick(l.r, l.c) }
+                .coordinateSpace(.named(Self.space))
+                // A tap: that size at once.
+                .onTapGesture(coordinateSpace: .named(Self.space)) { p in
+                    guard lit == nil, Date().timeIntervalSince(heldUntil) > 0.4 else { return }
+                    if let at = Self.cell(at: p, width: geo.size.width) { pick(at.r, at.c) }
+                }
+                #if os(iOS)
+                // A hold, then a slide: the size under the finger, added when it lets go on the grid.
+                .gesture(QuickTableHold(space: Self.space) { p in
+                    lit = p.flatMap { Self.cell(at: $0, width: geo.size.width, slack: 24) }
+                } ended: { p in
+                    heldUntil = Date()
+                    if let p, let at = Self.cell(at: p, width: geo.size.width, slack: 24) { pick(at.r, at.c) }
                     lit = nil
                 })
+                #endif
             }
             .aspectRatio(8 / 5 * 1.25, contentMode: .fit)
             Text(lit.map { "\($0.r) × \($0.c)" } ?? " ").webText(WebTextStyle(size: WebTypeRole.footnote.metrics.size, leading: WebTypeRole.footnote.metrics.leading, weight: FoleviTokens.FontWeight.medium)).monospacedDigit().foregroundStyle(muted).frame(maxWidth: .infinity)
         }
     }
+
+    private static let space = "quickTableGrid"
 }
+
+#if os(iOS)
+/// The table grid's hold-and-slide as a UIKit long press: it begins only once the finger has rested 0.3 s without
+/// moving more than 10 pt, so a touch that starts moving sooner stays the sheet's scroll. Then it follows the finger
+/// (`moved`) until it lifts (`ended` with where; nil when the system took the touch away).
+struct QuickTableHold: UIGestureRecognizerRepresentable {
+    let space: String
+    let moved: (CGPoint?) -> Void
+    let ended: (CGPoint?) -> Void
+
+    func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
+        let hold = UILongPressGestureRecognizer()
+        hold.minimumPressDuration = 0.3
+        hold.allowableMovement = 10
+        return hold
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+        let at = context.converter.location(in: .named(space))
+        switch recognizer.state {
+        case .began:
+            UISelectionFeedbackGenerator().selectionChanged()
+            moved(at)
+        case .changed: moved(at)
+        case .ended: ended(at)
+        case .cancelled, .failed: ended(nil)
+        default: break
+        }
+    }
+}
+#endif
 
 extension PhoneInsertSheetContent {
     /// The match harness's sample: these sections' tiles as the sheet draws them.

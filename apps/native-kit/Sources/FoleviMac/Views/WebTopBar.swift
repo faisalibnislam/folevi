@@ -166,8 +166,9 @@ public struct WebTopBar: View {
     private var overviewButton: some View {
         let s = style("frame.topbar.back")
         return Button { model.overviewShown.toggle() } label: {
+            // (On the iPad as wide as Back and Forward, a finger's size: IPAD-06.)
             WebIconView(.layoutGrid, size: 15)
-                .frame(width: 32, height: s.height)
+                .frame(width: WebStyles.isPad ? s.width : 32, height: s.height)
                 .foregroundStyle(s.color.color)
                 .contentShape(Rectangle())
         }
@@ -210,6 +211,7 @@ public struct WebTopBar: View {
                 .frame(width: 24, height: 36)
                 .foregroundStyle(style("frame.topbar.back").color.color)
                 .contentShape(Rectangle())
+                .fingerTarget(width: 24, height: 36)
         }
         .buttonStyle(WebHoverRowStyle(radius: style("frame.topbar.back").radius, hover: WebStyles.vars["color-accent-soft"], press: WebStyles.vars["mac-press"], selected: false))
         .opacity(enabled ? 1 : 0.3)

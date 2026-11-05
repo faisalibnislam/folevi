@@ -123,6 +123,7 @@ public struct PhoneSettingsHost {
 public struct PhoneSettingsList: View {
     let model: PhoneSettingsModel
     let host: PhoneSettingsHost
+    @Environment(\.colorScheme) private var scheme
 
     public init(model: PhoneSettingsModel, host: PhoneSettingsHost) {
         self.model = model
@@ -161,7 +162,12 @@ public struct PhoneSettingsList: View {
             }
             PhoneSettingsGroup("Support") {
                 PhoneSettingsRow("Help", chevron: true, action: { model.open("/help") }) { PhoneRowIcon(.circleQuestionMark) }
-                PhoneSettingsRow("Contact support", action: host.contactSupport) { PhoneRowIcon(.lifeBuoy) }
+                // (It leaves the app, a form or an email: the arrow says so, where its neighbours have chevrons. IPHONE-19.)
+                PhoneSettingsRow("Contact support", action: host.contactSupport) { PhoneRowIcon(.lifeBuoy) } trailing: {
+                    WebIconView(.arrowUpRight, size: 18, strokeWidth: 2.2)
+                        .foregroundStyle(FoleviTokens.Chrome.inkFaint.resolve(scheme).color)
+                        .padding(.trailing, -4)
+                }
                 PhoneSettingsRow("About", chevron: true, action: { model.open("/settings/about") }) { PhoneRowIcon(.info) }
             }
         }

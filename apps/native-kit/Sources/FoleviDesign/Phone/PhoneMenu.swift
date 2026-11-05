@@ -76,6 +76,7 @@ public struct PhoneMenuLayer: View {
     @State private var grown = false
     @State private var leaving = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var scheme
 
     public init(menus: PhoneMenus) { self.menus = menus }
 
@@ -108,6 +109,15 @@ public struct PhoneMenuLayer: View {
                         e.action()
                     }
                     .fixedSize()
+                    // In dark mode a half-point light edge, so the panel doesn't melt into the near-black canvas
+                    // (IPHONE-25).
+                    .overlay {
+                        if scheme == .dark {
+                            RoundedRectangle(cornerRadius: WebStyles.named("menu.panel").resolve(scheme).radius, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5)
+                                .allowsHitTesting(false)
+                        }
+                    }
                     .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
                     .scaleEffect(reduceMotion ? 1 : leaving ? 0.9 : grown ? 1 : 0.5, anchor: spot.anchorPoint)
                     .opacity(leaving ? 0 : grown ? 1 : 0)

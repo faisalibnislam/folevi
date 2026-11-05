@@ -68,7 +68,12 @@ struct DataSettings: View {
             ForEach(results, id: \.key) { r in
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 8) {
-                        Button { if let id = r.id { model.frame.open(.note(id)) } } label: { SText(r.name, "dd", weight: 500) }.buttonStyle(.plain).disabled(r.id == nil)
+                        // A note that was made opens from its name, which reads as a link (MAC-56).
+                        if let id = r.id {
+                            SettingsLink(r.name, style: "dd", weight: 500) { model.frame.open(.note(id)) }
+                        } else {
+                            SText(r.name, "dd", weight: 500)
+                        }
                         if let e = r.error { SText(e, "dd", color: SettingsColor.v("color-danger", scheme)) }
                     }
                     if let n = r.images, n > 0 { SText(n == 1 ? "1 image uploaded" : "\(n) images uploaded", "progress") }

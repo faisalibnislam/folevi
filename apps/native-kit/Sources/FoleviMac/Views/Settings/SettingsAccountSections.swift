@@ -11,23 +11,22 @@ import SwiftUI
 import FoleviDesign
 import FoleviEngine
 
-/// A row with a title, a muted sentence and a switch (AiSection.tsx PrefRow).
+/// A row with a title, a muted sentence and a switch (AiSection.tsx PrefRow): the whole row flips it.
 struct SettingsPrefRow: View {
     let label: String
     let body_: String
     let isOn: Bool
     var disabled = false
-    let onChange: (Bool) -> Void
+    let save: (Bool) async -> Bool
 
     var body: some View {
-        HStack(alignment: .top, spacing: 24) {
+        SettingsToggleRow(isOn: isOn, label: label, disabled: disabled, alignment: .top, spacing: 24, switchTop: 2, save: save) {
             VStack(alignment: .leading, spacing: 2) {
                 SText(label, "ai.title")
                 SText(body_, "ai.text")
             }
             .frame(maxWidth: 560, alignment: .leading)
             Spacer(minLength: 0)
-            SettingsSwitch(isOn: isOn, label: label, disabled: disabled, onChange: onChange).padding(.top, 2)
         }
     }
 }
@@ -73,9 +72,16 @@ struct AccountSettingsView: View {
                                 .webBox(WebStyles.named("frame.sidebar.search"))
                         }
                         SettingsLabelled(label: "Time zone", hint: "Used for Today, the calendar and reminders.") {
-                            SettingsSelect(options: TimeZone.knownTimeZoneIdentifiers.map { .init(value: $0, label: $0) }, value: a?.timeZone ?? TimeZone.current.identifier) { z in
-                                Task { await model.perform(.settingsUpdate(timeZone: z), done: "Saved") }
+                            #if os(macOS)
+                            // A searchable picker by readable name and offset (MAC-28).
+                            SettingsTimeZoneSelect(value: a?.timeZone ?? TimeZone.current.identifier) { z in
+                                await model.perform(.settingsUpdate(timeZone: z), done: "Saved") != nil
                             }
+                            #else
+                            SettingsSelect(options: TimeZone.knownTimeZoneIdentifiers.map { .init(value: $0, label: $0) }, value: a?.timeZone ?? TimeZone.current.identifier, save: { z in
+                                await model.perform(.settingsUpdate(timeZone: z), done: "Saved") != nil
+                            })
+                            #endif
                         }
                         WebButton("Save", variant: .primary) { save() }
                     }
@@ -124,7 +130,7 @@ struct AiSettingCard: View {
                     .frame(maxWidth: 560, alignment: .leading)
                 Spacer(minLength: 0)
                 SettingsSwitch(isOn: (ai?.enabled ?? false) && !core, label: "Foli AI", disabled: core) { on in
-                    Task { await model.perform(.settingsUpdate(aiEnabled: on), done: on ? "Foli AI turned on" : "Foli AI turned off") }
+                    await model.perform(.settingsUpdate(aiEnabled: on), done: on ? "Foli AI turned on" : "Foli AI turned off") != nil
                 }
             }
         }
@@ -155,16 +161,16 @@ struct AccountAiSettings: View {
         VStack(alignment: .leading, spacing: 20) {
             AiSettingCard(model: model)
             SettingsCard("Conversations") {
-                SettingsPrefRow(label: "Keep conversations", body_: "Your Foli AI conversations are saved so you can come back to them, rename, pin and search them. Only you can see them, unless you share one with your workspace. When this is off, a conversation is deleted as soon as you close it. Conversations you already have stay until you delete them.", isOn: ai?.history ?? true, disabled: core) { set(.history, $0, "Conversations are kept", "New conversations aren't kept") }
+                SettingsPrefRow(label: "Keep conversations", body_: "Your Foli AI conversations are saved so you can come back to them, rename, pin and search them. Only you can see them, unless you share one with your workspace. When this is off, a conversation is deleted as soon as you close it. Conversations you already have stay until you delete them.", isOn: ai?.history ?? true, disabled: core) { await set(.history, $0, "Conversations are kept", "New conversations aren't kept") }
             }
             SettingsCard("How Foli AI works for you", description: "The server checks each of these wherever the feature runs.") {
                 SettingsDivided(Self.settings, gap: 14) { p in
-                    SettingsPrefRow(label: p.label, body_: p.body, isOn: value(ai, p.key), disabled: core) { set(p.key, $0, p.on, p.off) }
+                    SettingsPrefRow(label: p.label, body_: p.body, isOn: value(ai, p.key), disabled: core) { await set(p.key, $0, p.on, p.off) }
                 }
             }
             SettingsCard("Search in images", description: "So search finds the words in your images and handwriting, like the words in your PDFs.") {
                 SettingsDivided(Self.images, gap: 14) { p in
-                    SettingsPrefRow(label: p.label, body_: p.body, isOn: value(ai, p.key), disabled: p.key == .readImages && core) { set(p.key, $0, p.on, p.off) }
+                    SettingsPrefRow(label: p.label, body_: p.body, isOn: value(ai, p.key), disabled: p.key == .readImages && core) { await set(p.key, $0, p.on, p.off) }
                 }
             }
             MemoryCard(model: model)
@@ -185,8 +191,8 @@ struct AccountAiSettings: View {
         }
     }
 
-    private func set(_ k: AiPrefKey, _ on: Bool, _ yes: String, _ no: String) {
-        Task { await model.perform(.settingsSetAiPref(key: k, on: on), done: on ? yes : no) }
+    private func set(_ k: AiPrefKey, _ on: Bool, _ yes: String, _ no: String) async -> Bool {
+        await model.perform(.settingsSetAiPref(key: k, on: on), done: on ? yes : no) != nil
     }
 }
 
@@ -215,8 +221,9 @@ struct NotificationSettingsView: View {
                                 SText(t.hint, "row.hint")
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            SettingsSwitch(isOn: t.inApp, label: "\(t.label) in the app") { on in Task { await model.perform(.settingsSetNotificationTopic(topic: t.id, inApp: on), done: "Saved") } }.frame(width: 72)
-                            SettingsSwitch(isOn: t.email, label: "\(t.label) by email") { on in Task { await model.perform(.settingsSetNotificationTopic(topic: t.id, email: on), done: "Saved") } }.frame(width: 72)
+                            // (No "Saved" toast for each switch: it shows the change itself, and a failure says so.)
+                            SettingsSwitch(isOn: t.inApp, label: "\(t.label) in the app") { on in await model.perform(.settingsSetNotificationTopic(topic: t.id, inApp: on)) != nil }.frame(width: 72)
+                            SettingsSwitch(isOn: t.email, label: "\(t.label) by email") { on in await model.perform(.settingsSetNotificationTopic(topic: t.id, email: on)) != nil }.frame(width: 72)
                         }
                     }
                     .padding(.top, 12)
@@ -233,9 +240,9 @@ struct NotificationSettingsView: View {
                         SText("The daily digest lists what you haven’t read yet, by page title only, once a day.", "row.hint")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    SettingsSelect(options: [.init(value: "off", label: "As they happen"), .init(value: "daily", label: "In a daily digest")], value: n?.digest ?? "off", width: 176) { v in
-                        Task { await model.perform(.settingsSetNotificationEmails(digest: NotificationEmailsArgs.Digest(rawValue: v)), done: "Saved") }
-                    }
+                    SettingsSelect(options: [.init(value: "off", label: "As they happen"), .init(value: "daily", label: "In a daily digest")], value: n?.digest ?? "off", width: 176, save: { v in
+                        await model.perform(.settingsSetNotificationEmails(digest: NotificationEmailsArgs.Digest(rawValue: v)), done: "Saved") != nil
+                    })
                 }
                 .settingsRowWidth(576, alignment: .center)
             }
@@ -368,7 +375,7 @@ struct SyncSettingsView: View {
                         }
                     }
                     SettingsSwitchRow(label: "Keep all notes on this \(ThisDevice.noun)", hint: "Every note and its attachments stay on this \(ThisDevice.noun), so all of them open offline.", isOn: s?.keepAll ?? false, disabled: s?.available == false) { on in
-                        Task { await model.perform(.deviceKeepAll(on: on), done: "Saved") }
+                        await model.perform(.deviceKeepAll(on: on)) != nil
                     }
                     .settingsRowWidth(576, alignment: .center)
                     SettingsButtons {

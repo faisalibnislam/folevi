@@ -190,38 +190,246 @@ struct SMuted: View {
     var body: some View { SText(text, "muted") }
 }
 
-/// `ui/Switch.tsx`: 40 x 24, the knob 20 x 20 sliding 16 pt.
-struct SettingsSwitch: View {
+/// A setting's value while a change is on its way (MAC-04): the control shows the chosen value at once, keeps
+/// showing it until the stored value arrives, and goes back to the stored one when the change fails.
+struct SettingsPending<Value: Equatable>: Equatable {
+    private(set) var value: Value?
+
+    /// What the control shows: the chosen value while it's on its way, else the stored one.
+    func shown(_ stored: Value) -> Value { value ?? stored }
+
+    /// A change starts.
+    mutating func begin(_ v: Value) { value = v }
+
+    /// The change's answer: a failure rolls back; a success settles once the stored value says so.
+    mutating func finish(ok: Bool, stored: Value) {
+        if !ok || value == stored { value = nil }
+    }
+
+    /// The stored value changed (the change arrived, or someone else's did): it wins.
+    mutating func stored(_ v: Value) { value = nil }
+}
+
+/// The switch's picture (ui/Switch.tsx: 40 x 24, the knob 20 x 20 sliding 16 pt), a shade deeper while the
+/// pointer is over it.
+struct SettingsSwitchKnob: View {
     let isOn: Bool
-    let label: String
-    var disabled = false
-    let onChange: (Bool) -> Void
+    var over = false
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let track = SettingsStyle.pair(isOn ? "switch.on" : "switch.off")
         let knob = SettingsStyle.pair(isOn ? "switch.on.knob" : "switch.off.knob")
         let t = track.resolve(scheme), k = knob.resolve(scheme)
-        Button { onChange(!isOn) } label: {
-            ZStack(alignment: .leading) {
-                Color.clear.frame(width: t.width, height: t.height).webBox(track)
-                Color.clear.frame(width: k.width, height: k.height).webBox(knob)
-                    .offset(x: k.x - t.x)
+        ZStack(alignment: .leading) {
+            Color.clear.frame(width: t.width, height: t.height).webBox(track)
+            if over {
+                // The hover: the press fill over an off track, a faint lift over an on one (the knob stays).
+                RoundedRectangle(cornerRadius: t.radius, style: .circular)
+                    .fill(isOn ? SettingsColor.v("glass-active", scheme).opacity(0.18) : SettingsColor.v("mac-press", scheme))
+                    .frame(width: t.width, height: t.height)
             }
-            .frame(width: t.width, height: t.height)
-            .contentShape(Rectangle())
-            .animation(.easeOut(duration: 0.15), value: isOn)
+            Color.clear.frame(width: k.width, height: k.height).webBox(knob)
+                .offset(x: k.x - t.x)
         }
-        .buttonStyle(.plain)
+        .frame(width: t.width, height: t.height)
+        .animation(.easeOut(duration: 0.15), value: isOn)
+    }
+}
+
+/// No system press dimming: the switch and its row draw their own hover.
+struct SettingsNoHighlight: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { configuration.label.contentShape(Rectangle()) }
+}
+
+/// Flips a switch optimistically: shows the new value at once, saves it, and rolls back if saving fails (the
+/// model's error toast says why).
+@MainActor
+func settingsFlip(_ shown: Bool, stored: @escaping @MainActor () -> Bool, pending: Binding<SettingsPending<Bool>>, save: @escaping (Bool) async -> Bool) {
+    let next = !shown
+    pending.wrappedValue.begin(next)
+    Task { @MainActor in
+        let ok = await save(next)
+        // (Only the change still showing settles: a later click owns the switch now.)
+        guard pending.wrappedValue.value == next else { return }
+        pending.wrappedValue.finish(ok: ok, stored: stored())
+    }
+}
+
+/// A button over a filled box (a theme tile, the shortcut field): the hover and press fills lie over the box, as
+/// its own fill would hide them underneath. No system dimming.
+struct SettingsHoverOverlayStyle: ButtonStyle {
+    let radius: CGFloat
+    var enabled = true
+
+    func makeBody(configuration: Configuration) -> some View {
+        Fill(label: configuration.label, pressed: configuration.isPressed, radius: radius, enabled: enabled)
+    }
+
+    private struct Fill<L: View>: View {
+        let label: L
+        let pressed: Bool
+        let radius: CGFloat
+        let enabled: Bool
+        @State private var over = false
+        @Environment(\.colorScheme) private var scheme
+
+        var body: some View {
+            label
+                .overlay {
+                    if enabled, pressed || over {
+                        RoundedRectangle(cornerRadius: radius, style: .circular)
+                            .fill(SettingsColor.v(pressed ? "mac-press" : "mac-hover", scheme))
+                            .allowsHitTesting(false)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onHover { over = $0 }
+        }
+    }
+}
+
+/// A link inside Settings' text (MAC-55, MAC-56): only its words take the click; underlined faintly, fully
+/// under the pointer, in the heading colour then.
+struct SettingsLink: View {
+    let title: String
+    let style: String
+    var weight: CGFloat?
+    let action: () -> Void
+    @State private var over = false
+    @Environment(\.colorScheme) private var scheme
+
+    init(_ title: String, style: String, weight: CGFloat? = nil, action: @escaping () -> Void) {
+        self.title = title
+        self.style = style
+        self.weight = weight
+        self.action = action
+    }
+
+    var body: some View {
+        let s = SettingsStyle.pair(style).resolve(scheme)
+        let color = over ? SettingsColor.v("color-heading", scheme) : s.color.color
+        Button(action: action) {
+            Text(title).webText(weight.map { s.text.weight($0) } ?? s.text)
+                .foregroundStyle(color)
+                .underline(true, color: color.opacity(over ? 1 : 0.4))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .buttonStyle(SettingsNoHighlight())
+        .onHover { over = $0 }
+        .accessibilityAddTraits(.isLink)
+    }
+}
+
+/// A sentence with a link in it, wrapping as one paragraph: only the link's words open it (MAC-55). The link is
+/// the ink colour, underlined (heading colour while the pointer is on it).
+struct SettingsLinkedText: View {
+    let before: String
+    let link: String
+    let after: String
+    let style: String
+    let action: () -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    static let target = URL(string: "folevi-settings-link:open")!
+
+    var body: some View {
+        let s = SettingsStyle.pair(style).resolve(scheme)
+        var text = AttributedString(before)
+        var l = AttributedString(link)
+        l.link = Self.target
+        l.foregroundColor = SettingsColor.v("color-ink", scheme)
+        l.underlineStyle = .single
+        text += l
+        text += AttributedString(after)
+        return Text(text)
+            .webText(s.text)
+            .foregroundStyle(s.color.color)
+            .tint(SettingsColor.v("color-ink", scheme))
+            .fixedSize(horizontal: false, vertical: true)
+            .environment(\.openURL, OpenURLAction { url in
+                guard url == Self.target else { return .systemAction }
+                action()
+                return .handled
+            })
+    }
+}
+
+/// `ui/Switch.tsx` whose change goes to the engine. `save` answers whether the change was made.
+struct SettingsSwitch: View {
+    let isOn: Bool
+    let label: String
+    var disabled = false
+    let save: (Bool) async -> Bool
+    @State private var pending = SettingsPending<Bool>()
+    @State private var over = false
+
+    init(isOn: Bool, label: String, disabled: Bool = false, save: @escaping (Bool) async -> Bool) {
+        self.isOn = isOn
+        self.label = label
+        self.disabled = disabled
+        self.save = save
+    }
+
+    var body: some View {
+        let shown = pending.shown(isOn)
+        Button { settingsFlip(shown, stored: { isOn }, pending: $pending, save: save) } label: {
+            SettingsSwitchKnob(isOn: shown, over: over && !disabled)
+        }
+        .buttonStyle(SettingsNoHighlight())
+        .onHover { over = $0 }
         .disabled(disabled)
         .opacity(disabled ? 0.5 : 1)
+        .onChange(of: isOn) { _, v in pending.stored(v) }
         .accessibilityLabel(label)
-        .accessibilityValue(isOn ? "On" : "Off")
+        .accessibilityValue(shown ? "On" : "Off")
         .accessibilityAddTraits(.isToggle)
     }
 }
 
-/// `ui/Select.tsx` as an input well: the chosen label and a chevron; a Folevi menu of the choices.
+/// A row whose words and switch are one control (MAC-27): a click anywhere on it flips the switch, and the row
+/// shows the hover fill under the pointer.
+struct SettingsToggleRow<Words: View>: View {
+    let isOn: Bool
+    let label: String
+    var disabled = false
+    var alignment: VerticalAlignment = .center
+    var spacing: CGFloat
+    var switchTop: CGFloat = 0
+    let save: (Bool) async -> Bool
+    @ViewBuilder let words: Words
+    @State private var pending = SettingsPending<Bool>()
+    @State private var over = false
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let shown = pending.shown(isOn)
+        Button { settingsFlip(shown, stored: { isOn }, pending: $pending, save: save) } label: {
+            HStack(alignment: alignment, spacing: spacing) {
+                words
+                SettingsSwitchKnob(isOn: shown, over: over && !disabled).padding(.top, switchTop)
+            }
+            .background {
+                // The fill reaches a little past the words, so the row reads as one target without moving them.
+                if over && !disabled {
+                    RoundedRectangle(cornerRadius: 8, style: .circular).fill(SettingsColor.v("mac-hover", scheme)).padding(-6)
+                }
+            }
+        }
+        .buttonStyle(SettingsNoHighlight())
+        .onHover { over = $0 }
+        .disabled(disabled)
+        .opacity(disabled ? 0.5 : 1)
+        .onChange(of: isOn) { _, v in pending.stored(v) }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(shown ? "On" : "Off")
+        .accessibilityAddTraits([.isToggle, .isButton])
+    }
+}
+
+/// `ui/Select.tsx` as an input well: the chosen label and a chevron; a Folevi menu of the choices. A choice that
+/// is saved shows at once and goes back if saving it fails.
 struct SettingsSelect: View {
     struct Option: Hashable {
         var value: String
@@ -233,17 +441,34 @@ struct SettingsSelect: View {
     var width: CGFloat?
     var style = "select"
     var disabled = false
-    let onChange: (String) -> Void
+    let save: (String) async -> Bool
+    @State private var pending = SettingsPending<String>()
     @Environment(\.colorScheme) private var scheme
+
+    /// A choice kept on the page (a form's own state): it changes at once.
+    init(options: [Option], value: String, width: CGFloat? = nil, style: String = "select", disabled: Bool = false, onChange: @escaping (String) -> Void) {
+        self.init(options: options, value: value, width: width, style: style, disabled: disabled, save: { v in onChange(v); return true })
+    }
+
+    /// A choice saved to the engine: `save` answers whether it was.
+    init(options: [Option], value: String, width: CGFloat? = nil, style: String = "select", disabled: Bool = false, save: @escaping (String) async -> Bool) {
+        self.options = options
+        self.value = value
+        self.width = width
+        self.style = style
+        self.disabled = disabled
+        self.save = save
+    }
 
     var body: some View {
         let pair = SettingsStyle.pair(style)
         let s = pair.resolve(scheme)
         let label = SettingsStyle.pair("select.label").resolve(scheme)
         let chevron = SettingsStyle.pair("select.chevron").resolve(scheme)
-        let current = options.first { $0.value == value }?.label ?? value
+        let chosen = pending.shown(value)
+        let current = options.first { $0.value == chosen }?.label ?? chosen
         WebMenuButton(select: true, entries: {
-            options.map { o in WebMenuEntry(.item(o.label, checked: o.value == value, id: o.value)) { onChange(o.value) } }
+            options.map { o in WebMenuEntry(.item(o.label, checked: o.value == chosen, id: o.value)) { choose(o.value) } }
         }) {
             HStack(spacing: s.gap) {
                 Text(current).webText(label.text).lineLimit(1).truncationMode(.tail)
@@ -259,16 +484,29 @@ struct SettingsSelect: View {
         }
         .disabled(disabled)
         .opacity(disabled ? 0.5 : 1)
+        .onChange(of: value) { _, v in pending.stored(v) }
+    }
+
+    private func choose(_ v: String) {
+        guard v != pending.shown(value) else { return }
+        pending.begin(v)
+        Task { @MainActor in
+            let ok = await save(v)
+            guard pending.value == v else { return }
+            pending.finish(ok: ok, stored: value)
+        }
     }
 }
 
-/// `.ui-input h-9 rounded-chip px-3 text-callout`: a one-line field (secure for keys and passphrases).
+/// `.ui-input h-9 rounded-chip px-3 text-callout`: a one-line field (secure for keys and passphrases), with the
+/// input's focus ring while it has the cursor (MAC-26). A click anywhere in the well puts the cursor in it.
 struct SettingsField: View {
     let placeholder: String
     @Binding var text: String
     var secure = false
     var height: CGFloat?
     var onSubmit: () -> Void = {}
+    @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -282,34 +520,36 @@ struct SettingsField: View {
             }
         }
         .textFieldStyle(.plain)
+        .focused($focused)
         .webText(s.text)
         .lineLimit(1)
-        .offset(x: -1.125, y: 1.035)
         .onSubmit(onSubmit)
         .padding(s.padding.edgeInsets)
         .frame(height: height ?? s.height)
         .frame(maxWidth: .infinity)
         .foregroundStyle(s.color.color)
-        .webBox(pair)
+        .webBox(focused ? webFocused(pair) : pair)
+        .contentShape(Rectangle())
+        .onTapGesture { focused = true }
+        .animation(.easeOut(duration: 0.12), value: focused)
     }
 }
 
-/// A row with a label, a hint and a switch (Settings > Desktop app's rows).
+/// A row with a label, a hint and a switch (Settings > Desktop app's rows): the whole row flips it.
 struct SettingsSwitchRow: View {
     let label: String
     let hint: String
     let isOn: Bool
     var disabled = false
-    let onChange: (Bool) -> Void
+    let save: (Bool) async -> Bool
 
     var body: some View {
-        HStack(alignment: .center, spacing: SettingsStyle.pair("row").light.gap) {
+        SettingsToggleRow(isOn: isOn, label: label, disabled: disabled, spacing: SettingsStyle.pair("row").light.gap, save: save) {
             VStack(alignment: .leading, spacing: 0) {
                 SText(label, "row.label")
                 SText(hint, "row.hint")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            SettingsSwitch(isOn: isOn, label: label, disabled: disabled, onChange: onChange)
         }
     }
 }
@@ -374,7 +614,7 @@ struct SettingsButtons<Content: View>: View {
 // MARK: dialogs
 
 /// ui/Dialog.tsx on the Mac: a panel over the window (no dimming: the web's backdrop is transparent), title, an
-/// optional description, the body and a footer of buttons; Escape and ⌘. close it, Return presses the default.
+/// optional description, the body and a footer of buttons; Escape and ⌘. close it, Return presses the default (Cancel, in a confirmation).
 struct SettingsDialogView<Body: View, Footer: View>: View {
     let title: String
     let description: String?
@@ -423,7 +663,9 @@ struct SettingsDialogView<Body: View, Footer: View>: View {
 }
 
 #if os(macOS)
-/// A borderless panel over a window holding one dialog (one at a time), centred on the window.
+/// A borderless panel over a window holding one dialog (one at a time), centred on the window. It covers the whole
+/// window with a clear backdrop that takes every click (MAC-23), as the Mac's other dialogs do (FrameSheets): the
+/// Settings behind stay put until it closes, the panel stays the key window, and Escape and ⌘. close it.
 @MainActor
 final class SettingsDialogWindow: NSPanel {
     private static weak var current: SettingsDialogWindow?
@@ -441,18 +683,22 @@ final class SettingsDialogWindow: NSPanel {
         panel.hasShadow = false
         panel.isReleasedWhenClosed = false
         panel.onClose = onClose
-        let host = NSHostingView(rootView: content().webSheetIn().padding(margin).environment(\.colorScheme, window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light))
+        let scheme: ColorScheme = window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light
+        let dialog = content().webSheetIn().padding(margin).environment(\.colorScheme, scheme)
+        // The dialog's own size, then a panel over the whole window (and past it, should the dialog be taller).
+        let size = NSHostingView(rootView: dialog).fittingSize
+        let f = window.frame
+        let dialogRect = NSRect(x: f.midX - size.width / 2, y: f.midY - size.height / 2, width: size.width, height: size.height)
+        let frame = f.union(dialogRect)
+        let host = NSHostingView(rootView: SettingsDialogBackdrop(dialog: dialog, size: size, offset: CGSize(width: dialogRect.midX - frame.midX, height: frame.midY - dialogRect.midY)))
         host.safeAreaRegions = []
         panel.contentView = host
-        let size = host.fittingSize
-        let f = window.frame
-        // A little above the middle, as `m-auto` in the window's height puts it.
-        panel.setFrame(NSRect(x: f.midX - size.width / 2, y: f.midY - size.height / 2, width: size.width, height: size.height), display: false)
+        panel.setFrame(frame, display: false)
         panel.appearance = window.appearance
         window.addChildWindow(panel, ordered: .above)
         panel.makeKeyAndOrderFront(nil)
-        panel.monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak panel] e in
-            guard let panel, panel.isKeyWindow else { return e }
+        panel.monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak panel, weak window] e in
+            guard let panel, e.window === panel || e.window === window else { return e }
             if e.keyCode == 53 || (e.modifierFlags.contains(.command) && e.charactersIgnoringModifiers == ".") {
                 panel.dismiss()
                 return nil
@@ -464,6 +710,9 @@ final class SettingsDialogWindow: NSPanel {
     }
 
     static func closeCurrent() { current?.dismiss() }
+
+    /// Whether a dialog shows (tests).
+    static var isShowing: Bool { current != nil && current?.closing == false }
 
     override var canBecomeKey: Bool { true }
 
@@ -486,22 +735,58 @@ final class SettingsDialogWindow: NSPanel {
     }
 }
 
-/// A confirmation as the Mac app asks it (ui/Dialog.tsx with `confirm`: the system's alert).
+/// The panel's content: a clear backdrop over the window that takes the clicks (nothing behind reacts), and the
+/// dialog over the window's middle.
+private struct SettingsDialogBackdrop<Dialog: View>: View {
+    let dialog: Dialog
+    let size: CGSize
+    let offset: CGSize
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.0001)
+                .contentShape(Rectangle())
+                .onTapGesture {}
+                .accessibilityHidden(true)
+            dialog.frame(width: size.width, height: size.height).offset(offset)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// A confirmation in Folevi's dialog (ui/Dialog.tsx with `confirm`, MAC-03): the title, what will happen, Cancel and
+/// the action. Cancel is the default (Return) and Escape closes it; the action, destructive or not, takes a click.
 @MainActor
 func settingsConfirm(_ title: String, message: String?, confirm: String, destructive: Bool = true, in window: NSWindow?, then run: @escaping () -> Void) {
-    let alert = NSAlert()
-    alert.messageText = title
-    if let message { alert.informativeText = message }
-    let yes = alert.addButton(withTitle: confirm)
-    yes.hasDestructiveAction = destructive
-    alert.addButton(withTitle: "Cancel")
-    if let window {
-        alert.beginSheetModal(for: window) { r in if r == .alertFirstButtonReturn { run() } }
-    } else if alert.runModal() == .alertFirstButtonReturn {
-        run()
+    guard let window = window ?? NSApp.keyWindow ?? NSApp.mainWindow else { return }
+    SettingsDialogWindow.show(over: window) {
+        SettingsConfirmDialog(title: title, message: message, confirm: confirm, destructive: destructive, run: run)
+    }
+}
+
+/// The confirmation's dialog.
+struct SettingsConfirmDialog: View {
+    let title: String
+    let message: String?
+    let confirm: String
+    var destructive = true
+    let run: () -> Void
+
+    var body: some View {
+        SettingsDialogView(title: title, description: message, width: 384, close: { SettingsDialogWindow.closeCurrent() }) {
+            EmptyView()
+        } footer: {
+            WebButton("Cancel") { SettingsDialogWindow.closeCurrent() }
+                .keyboardShortcut(.defaultAction)
+            WebButton(confirm, variant: destructive ? .danger : .primary) {
+                SettingsDialogWindow.closeCurrent()
+                run()
+            }
+        }
     }
 }
 #else
+
 /// One dialog over the window (one at a time), centred, in a layer that takes every touch while it shows.
 @MainActor
 final class SettingsDialogWindow {

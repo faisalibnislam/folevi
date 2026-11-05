@@ -51,7 +51,7 @@ struct AiPageScreen: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .overlay { if let d = deleting { deleteDialog(d) } }
+        .onChange(of: deleting?.id) { _, _ in if let d = deleting { deleteDialog(d) } }
         .onAppear {
             if history == nil { history = FoliHistoryModel(client: frame.client) }
             sync()
@@ -94,21 +94,26 @@ struct AiPageScreen: View {
         .frame(height: h.height)
     }
 
-    private func deleteDialog(_ row: ChatConversationRow) -> some View {
-        ZStack {
-            Color.black.opacity(0.0001).onTapGesture { deleting = nil }
-            WebDialog("Delete this conversation?", description: "“\(row.title)” and everything in it will be gone for good.", width: 384, close: { deleting = nil }) {
+    /// Delete this conversation? as the Mac's other dialogs show (MAC-29): over the whole window, which takes no
+    /// clicks meanwhile, in the frosted dialog. Cancel is the default (Return), Escape closes it, and Delete, which
+    /// can't be undone, takes a click.
+    private func deleteDialog(_ row: ChatConversationRow) {
+        let model = model
+        let frame = frame
+        FrameSheets.present(frame, onClose: { deleting = nil }) { close in
+            WebSheetDialog(title: "Delete this conversation?", description: "“\(row.title)” and everything in it will be gone for good.", close: close) {
                 EmptyView()
             } footer: {
-                WebButton("Cancel") { deleting = nil }.keyboardShortcut(.cancelAction)
-                WebButton("Delete", variant: .danger) {
-                    let id = row.id
-                    deleting = nil
-                    let active = id == model.conversationId
-                    model.remove(id)
-                    if active { frame.open(.web("/ai")) }
+                WebSheetFooter {
+                    WebSheetButton(title: "Cancel", action: close)
+                        .keyboardShortcut(.defaultAction)
+                    WebSheetButton(title: "Delete", danger: true) {
+                        close()
+                        let active = row.id == model.conversationId
+                        model.remove(row.id)
+                        if active { frame.open(.web("/ai")) }
+                    }
                 }
-                .keyboardShortcut(.defaultAction)
             }
         }
     }
@@ -359,12 +364,14 @@ struct AiConversationRowView: View {
                         .foregroundStyle(active || over ? look.heading : look.ink.opacity(0.9))
                         .frame(maxWidth: .infinity, alignment: .leading)
                     if row.shared { WebIconView(.users, size: 12).foregroundStyle(look.faint).foleviTooltip("Shared with the workspace") }
-                    if !over {
-                        Text(AiAge.text(row.lastMessageAt)).webText(look.text("ai.row.age")).lineLimit(1).foregroundStyle(look.faint)
-                    }
+                    // The date and the "…" button share one slot, always as wide as the button (MAC-59): the date
+                    // fades out and the button in, and the title never re-truncates or moves under the pointer.
+                    Text(AiAge.text(row.lastMessageAt)).webText(look.text("ai.row.age")).lineLimit(1).foregroundStyle(look.faint)
+                        .opacity(over ? 0 : 1)
+                        .frame(minWidth: Self.slot(more) - (s.padding.right - 4), alignment: .trailing)
                 }
                 .padding(.leading, s.padding.left)
-                .padding(.trailing, over ? 36 : s.padding.right)
+                .padding(.trailing, s.padding.right)
                 .frame(height: s.height)
                 .background {
                     if active {
@@ -377,19 +384,26 @@ struct AiConversationRowView: View {
             }
             .buttonStyle(.plain)
             .webContextMenu(menu)
-            if over {
-                WebMenuButton(width: 240, entries: menu) {
-                    WebIconView(.ellipsis, size: 14).frame(width: more.width, height: more.height).foregroundStyle(more.color.color).contentShape(Rectangle())
-                }
-                .buttonStyle(AiHoverStyle(radius: more.radius, hover: "glass-active"))
-                .padding(.trailing, 4)
-                .accessibilityLabel("Options for \(row.title)")
+            .accessibilityLabel(row.title.isEmpty ? "New chat" : row.title)
+            .accessibilityValue(AiAge.text(row.lastMessageAt))
+            .accessibilityAddTraits(active ? [.isSelected] : [])
+            // (Always there for VoiceOver, its own element; drawn only under the pointer.)
+            WebMenuButton(width: 240, entries: menu) {
+                WebIconView(.ellipsis, size: 14).frame(width: more.width, height: more.height).foregroundStyle(more.color.color).contentShape(Rectangle())
             }
+            .buttonStyle(AiHoverStyle(radius: more.radius, hover: "glass-active"))
+            .padding(.trailing, 4)
+            .opacity(over ? 1 : 0)
+            .allowsHitTesting(over)
+            .accessibilityLabel("Options for \(row.title)")
         }
+        .animation(.easeOut(duration: 0.12), value: over)
         .onHover { over = $0 }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(active ? [.isSelected, .isButton] : .isButton)
+        .accessibilityElement(children: .contain)
     }
+
+    /// The trailing slot: the "…" button and its 4 pt from the edge.
+    static func slot(_ more: WebComputedStyle) -> CGFloat { more.width + 4 }
 }
 
 /// Foli AI can't be used here (AiUnavailable.tsx): why, and where to change it. Never a price or a plan in

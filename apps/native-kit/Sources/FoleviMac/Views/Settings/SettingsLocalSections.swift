@@ -92,14 +92,10 @@ struct LibrarySettings: View {
                 if let p = d.passphrase { passphraseCard(p) }
                 if let l = d.lock { lockCard(l) }
                 SettingsCard("Foli AI", description: d.ai.description) {
-                    (Text("Choose the model and add your keys in ")
-                        + Text("Settings, under Foli AI").foregroundColor(SettingsColor.v("color-ink", scheme)).underline()
-                        + Text(d.ai.keysWhere))
-                        .webText(SettingsStyle.pair("link.text").resolve(scheme).text)
-                        .foregroundStyle(SettingsStyle.pair("link.text").resolve(scheme).color.color)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .onTapGesture { model.frame.open(.web("/settings/ai")) }
-                        .accessibilityAddTraits(.isLink)
+                    // Only the link opens Foli AI's settings (MAC-55); the rest of the sentence is text.
+                    SettingsLinkedText(before: "Choose the model and add your keys in ", link: "Settings, under Foli AI", after: d.ai.keysWhere, style: "link.text") {
+                        model.frame.open(.web("/settings/ai"))
+                    }
                 }
                 SettingsCard("Folevi account", description: "Sign in to Folevi to share notes and work on them with other people. Your library comes with you into the account.") {
                     WebButton("Sign in to Folevi…") { model.frame.host?.frameSignInAnotherAccount() }
@@ -131,7 +127,7 @@ struct LibrarySettings: View {
         return VStack(alignment: .leading, spacing: 12) {
             if model.busy.contains("library.cloudConnect") {
                 HStack(spacing: 12) {
-                    ProgressView().controlSize(.small)
+                    WebSpinner()
                     SText(c.signInWait, "dd").frame(maxWidth: .infinity, alignment: .leading)
                     WebButton("Cancel", size: .sm) { Task { await model.run(.libraryCloudCancel, quiet: true) } }
                 }
@@ -213,12 +209,13 @@ struct LibrarySettings: View {
             SettingsButtons {
                 if p.encrypted {
                     WebButton("Change passphrase…") { passphrase(.change, min: p.min) }
+                    // The quiet button in the danger colour, with the quiet button's hover and press fills (MAC-56).
                     Button { passphrase(.remove, min: p.min) } label: {
                         Text("Remove passphrase…").webText(WebStyles.named("button.quiet.md").resolve(scheme).text)
                             .foregroundStyle(SettingsColor.v("color-danger", scheme))
                             .webElement(WebStyles.named("button.quiet.md"))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(WebHoverRowStyle(radius: WebStyles.named("button.quiet.md").resolve(scheme).radius, hover: WebStyles.vars["mac-hover"], press: WebStyles.vars["mac-press"], selected: false))
                 } else {
                     WebButton("Encrypt with a passphrase…") { passphrase(.set, min: p.min) }
                 }
@@ -238,7 +235,7 @@ struct LibrarySettings: View {
                     SText(l.label, "lock.label")
                     Spacer(minLength: 16)
                     SettingsSwitch(isOn: l.on, label: l.label, disabled: l.unavailable || model.busy.contains("library.lock")) { on in
-                        Task { await model.run(.libraryLock, ["lock": .bool(on)], quiet: false) }
+                        await model.run(.libraryLock, ["lock": .bool(on)], quiet: false) != nil
                     }
                 }
                 .frame(height: SettingsStyle.pair("lock.row").light.height)
@@ -246,9 +243,9 @@ struct LibrarySettings: View {
                     HStack {
                         SText("Ask again when you come back", "lock.label")
                         Spacer(minLength: 12)
-                        SettingsSelect(options: l.choices.map { .init(value: String($0.value), label: $0.label) }, value: String(l.after), width: 192) { v in
-                            Task { await model.run(.libraryLock, ["lockAfter": .number(Double(v) ?? 0)]) }
-                        }
+                        SettingsSelect(options: l.choices.map { .init(value: String($0.value), label: $0.label) }, value: String(l.after), width: 192, save: { v in
+                            await model.run(.libraryLock, ["lockAfter": .number(Double(v) ?? 0)]) != nil
+                        })
                     }
                 }
             }
@@ -318,13 +315,14 @@ private struct MoveLibraryDialog: View {
                                 SMuted(c.detail)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            if busy == c.kind { ProgressView().controlSize(.small) }
+                            if busy == c.kind { WebSpinner() }
                         }
                         .padding(14)
                         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SettingsColor.v("color-line", scheme)))
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    // Each place is a choice with a hover and press fill (MAC-56).
+                    .buttonStyle(WebHoverRowStyle(radius: 10, hover: WebStyles.vars["mac-hover"], press: WebStyles.vars["mac-press"], selected: false))
                     .disabled(busy != nil)
                 }
             }
@@ -370,7 +368,8 @@ private struct PassphraseDialog: View {
                     labelled(kind == .change ? "New passphrase" : "Passphrase") { SettingsField(placeholder: "", text: $passphrase, secure: true, height: 40) }
                     labelled("Type it again") { SettingsField(placeholder: "", text: $confirm, secure: true, height: 40) }
                     SMuted("Use at least \(min) characters. A few unrelated words are easy to remember and hard to guess.")
-                    Toggle("I understand Folevi can't recover a lost passphrase", isOn: $understood).checkboxStyle()
+                    Toggle("I understand Folevi can't recover a lost passphrase", isOn: $understood)
+                        .toggleStyle(WebCheckboxStyle())
                         .webText(.role(.body))
                 }
                 if let problem { Text(problem).webText(.role(.body)).foregroundStyle(SettingsColor.v("color-danger", scheme)) }
@@ -428,13 +427,13 @@ struct LocalAiSettings: View {
         if let d = store.data(LocalAiData.self) {
             VStack(alignment: .leading, spacing: SettingsStyle.pair("card").light.margin.bottom) {
                 toggleCard("Foli AI", text: d.onText, isOn: d.on, label: "Foli AI") { on in
-                    Task { await model.mutate("users.updateProfile", ["aiEnabled": .bool(on)], done: on ? "Foli AI turned on" : "Foli AI turned off") }
+                    await model.mutate("users.updateProfile", ["aiEnabled": .bool(on)], done: on ? "Foli AI turned on" : "Foli AI turned off") != nil
                 }
                 if !d.hosted {
                     SettingsCard("On this device") { SMuted("Foli AI in a library on your devices needs Folevi for Mac: it runs on Apple Intelligence there, or on your own key.") }
                 } else {
                     if !d.loaded {
-                        HStack(spacing: 8) { ProgressView().controlSize(.mini); SMuted(d.checking) }
+                        HStack(spacing: 8) { WebSpinner(size: 13); SMuted(d.checking) }
                     }
                     onDeviceCard(d.onDevice)
                     SettingsCard("Your own keys", description: d.keysDescription) {
@@ -442,7 +441,7 @@ struct LocalAiSettings: View {
                     }
                     modelCard(d.model)
                     toggleCard("Conversations", text: d.historyText, isOn: d.history, label: "Keep conversations") { on in
-                        Task { await model.mutate("users.updateProfile", ["aiPrefs": .object(["history": .bool(on)])], done: on ? "Conversations are kept" : "New conversations aren't kept") }
+                        await model.mutate("users.updateProfile", ["aiPrefs": .object(["history": .bool(on)])], done: on ? "Conversations are kept" : "New conversations aren't kept") != nil
                     }
                     if d.memory { MemoryCard(model: model) }
                 }
@@ -452,12 +451,12 @@ struct LocalAiSettings: View {
         }
     }
 
-    private func toggleCard(_ title: String, text: String, isOn: Bool, label: String, onChange: @escaping (Bool) -> Void) -> some View {
+    private func toggleCard(_ title: String, text: String, isOn: Bool, label: String, save: @escaping (Bool) async -> Bool) -> some View {
         SettingsCard(title) {
             HStack(alignment: .top, spacing: SettingsStyle.pair("toggle.row").light.gap) {
                 SText(text, "toggle.text").frame(maxWidth: 65 * 8.6, alignment: .leading)
                 Spacer(minLength: 0)
-                SettingsSwitch(isOn: isOn, label: label, onChange: onChange)
+                SettingsSwitch(isOn: isOn, label: label, save: save)
             }
         }
     }
@@ -487,16 +486,16 @@ struct LocalAiSettings: View {
             } else {
                 VStack(alignment: .leading, spacing: SettingsStyle.pair("model.grid").light.gap) {
                     field("Provider") {
-                        SettingsSelect(options: m.providers.map { .init(value: $0.value, label: $0.label) }, value: m.provider) { v in
-                            Task { await model.run(.localAiSetChoice, ["provider": .string(v)]) }
-                        }
+                        SettingsSelect(options: m.providers.map { .init(value: $0.value, label: $0.label) }, value: m.provider, save: { v in
+                            await model.run(.localAiSetChoice, ["provider": .string(v)]) != nil
+                        })
                     }
                     if let label = m.modelLabel, let current = m.model {
                         VStack(alignment: .leading, spacing: 4) {
                             field(label) {
-                                SettingsSelect(options: m.models.map { .init(value: $0.value, label: $0.label) }, value: current) { v in
-                                    Task { await model.run(.localAiSetChoice, ["provider": .string(m.provider == "auto" ? (providerOf(current, m) ?? "auto") : m.provider), "model": .string(v)]) }
-                                }
+                                SettingsSelect(options: m.models.map { .init(value: $0.value, label: $0.label) }, value: current, save: { v in
+                                    await model.run(.localAiSetChoice, ["provider": .string(m.provider == "auto" ? (providerOf(current, m) ?? "auto") : m.provider), "model": .string(v)]) != nil
+                                })
                             }
                             SText(m.note, "row.hint")
                         }
@@ -560,7 +559,7 @@ private struct KeyRow: View {
                         WebButton("Cancel", variant: .ghost, size: .sm) { adding = false; value = ""; result = nil }
                     }
                     if let url = key.keyUrl.flatMap(URL.init(string:)) {
-                        Button { NSWorkspace.shared.open(url) } label: { SText("Get a key from \(key.label)", "muted").underline() }.buttonStyle(.plain)
+                        SettingsLink("Get a key from \(key.label)", style: "muted") { NSWorkspace.shared.open(url) }
                     }
                 }
                 .padding(.top, 12)
@@ -710,13 +709,17 @@ struct MemoryCard: View {
 
 struct AppearanceSettingsView: View {
     let model: MacSettingsModel
-    @State private var zoom: Double?
+    @State private var zoom = SettingsPending<Double>()
+    /// The theme chosen while the change is on its way (MAC-04): the tile shows it at once.
+    @State private var theme = SettingsPending<String>()
     @Environment(\.colorScheme) private var scheme
     @Environment(\.settingsWindowed) private var windowed
 
     var body: some View {
         let a = model.appearance.value
-        let current = a?.appearance.rawValue ?? model.session?.appearance.rawValue ?? "system"
+        let stored = a?.appearance.rawValue ?? model.session?.appearance.rawValue ?? "system"
+        let current = theme.shown(stored)
+        let storedZoom = a?.editorZoom ?? 1
         VStack(alignment: .leading, spacing: SettingsStyle.pair("card").light.margin.bottom) {
             SettingsCard("Theme", description: "Dark mode is designed, not inverted: document colors are softened and code stays readable.") {
                 HStack(spacing: SettingsStyle.pair("theme.grid").light.gap) {
@@ -729,19 +732,37 @@ struct AppearanceSettingsView: View {
                 .accessibilityLabel("Theme")
             }
             SettingsCard("Editor text size") {
-                // As the web's: Smaller, the range (0.85 to 1.35 in 0.05 steps) and Larger, at most 448 wide.
-                let value = Binding<Double>(get: { zoom ?? a?.editorZoom ?? 1 }, set: { zoom = $0 })
-                HStack(spacing: 12) {
-                    Text("Smaller").webText(.role(.subheadline)).foregroundStyle(Folevi.color.ink)
-                    Slider(value: value, in: 0.85...1.35, step: 0.05) { editing in
-                        if !editing, let z = zoom { Task { await model.perform(.settingsUpdate(editorZoom: z)) } }
+                // As the web's: Smaller, the range (0.85 to 1.35 in 0.05 steps) and Larger, at most 448 wide; Folevi's
+                // own slider (MAC-24), the size it gives and a line of text at that size, live while it moves.
+                let shownZoom = zoom.shown(storedZoom)
+                let value = Binding<Double>(get: { zoom.shown(storedZoom) }, set: { zoom.begin($0) })
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        Text("Smaller").webText(.role(.subheadline)).foregroundStyle(SettingsColor.v("color-ink", scheme))
+                        WebSlider(value: value, in: 0.85...1.35, step: 0.05, label: "Editor text size") { z in saveZoom(z, stored: storedZoom) }
+                        Text("Larger").webText(.role(.subheadline)).foregroundStyle(SettingsColor.v("color-ink", scheme))
+                        Text("\(Int((shownZoom * 100).rounded()))%").webText(.role(.subheadline, weight: 500)).monospacedDigit()
+                            .foregroundStyle(SettingsColor.v("color-heading", scheme))
+                            .frame(width: 44, alignment: .trailing)
                     }
-                    .tint(WebStyles.vars["color-accent"]?.resolve(scheme).color ?? .accentColor)
-                    .accessibilityLabel("Editor text size")
-                    Text("Larger").webText(.role(.subheadline)).foregroundStyle(Folevi.color.ink)
+                    Text("Notes read like this.")
+                        .webText(WebTextStyle(size: 16 * shownZoom, leading: 26 * shownZoom, weight: 400))
+                        .foregroundStyle(SettingsColor.v("color-ink", scheme))
+                        .lineLimit(1)
+                        .accessibilityHidden(true)
                 }
                 .frame(maxWidth: 448, alignment: .leading)
+                .onChange(of: storedZoom) { _, v in if zoom.value == v { zoom.stored(v) } }
             }
+        }
+        .onChange(of: stored) { _, v in theme.stored(v) }
+    }
+
+    private func saveZoom(_ z: Double, stored: Double) {
+        Task { @MainActor in
+            let ok = await model.perform(.settingsUpdate(editorZoom: z)) != nil
+            guard zoom.value == z else { return }
+            zoom.finish(ok: ok, stored: model.appearance.value?.editorZoom ?? stored)
         }
     }
 
@@ -750,7 +771,13 @@ struct AppearanceSettingsView: View {
         let pair = SettingsStyle.pair(on ? "theme.tile.on" : "theme.tile")
         let s = pair.resolve(scheme)
         return Button {
-            Task { await model.perform(.settingsUpdate(appearance: SettingsUpdateArgs.Appearance(rawValue: value))) }
+            guard !on else { return }
+            theme.begin(value)
+            Task { @MainActor in
+                let ok = await model.perform(.settingsUpdate(appearance: SettingsUpdateArgs.Appearance(rawValue: value))) != nil
+                guard theme.value == value else { return }
+                theme.finish(ok: ok, stored: model.appearance.value?.appearance.rawValue ?? model.session?.appearance.rawValue ?? "system")
+            }
         } label: {
             VStack(spacing: s.gap) {
                 WebIconView(icon, size: 18)
@@ -763,7 +790,7 @@ struct AppearanceSettingsView: View {
             .webBox(pair)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SettingsHoverOverlayStyle(radius: s.radius, enabled: !on))
         .accessibilityAddTraits(on ? [.isSelected] : [])
     }
 }
@@ -790,7 +817,7 @@ struct DesktopSettingsView: View {
                 }
                 SettingsCard("On this Mac") {
                     SettingsDivided(rows(s), gap: 12, line: "row") { r in
-                        SettingsSwitchRow(label: r.label, hint: r.hint, isOn: r.on) { on in set(r.id, .bool(on)) }
+                        SettingsSwitchRow(label: r.label, hint: r.hint, isOn: r.on) { on in await save(r.id, .bool(on)) }
                     }
                     .settingsRowWidth(SettingsStyle.pair("rows").light.width)
                 }
@@ -811,7 +838,16 @@ struct DesktopSettingsView: View {
     }
 
     private func set(_ key: String, _ value: JSONValue) {
-        Task { await model.run(.desktopSet, [key: value], quiet: true) }
+        Task { await save(key, value) }
+    }
+
+    /// Saves one of the app's settings; a failure says so (the switch that asked goes back).
+    private func save(_ key: String, _ value: JSONValue) async -> Bool {
+        guard await model.run(.desktopSet, [key: value], quiet: true) != nil else {
+            model.frame.toast("That setting couldn't be changed. Try again.", tone: .error)
+            return false
+        }
+        return true
     }
 
     private func shortcut(_ s: DesktopData.Settings) -> some View {
@@ -832,7 +868,8 @@ struct DesktopSettingsView: View {
                         .overlay(RoundedRectangle(cornerRadius: f.radius).strokeBorder(SettingsColor.v("color-focus", scheme), lineWidth: recording ? 2 : 0))
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                // The field shows the hover fill and takes no system dimming (MAC-56).
+                .buttonStyle(SettingsHoverOverlayStyle(radius: f.radius, enabled: !recording))
                 .accessibilityLabel(recording ? "Press the new shortcut" : "Quick Add shortcut: \(s.shortcutLabel). Change")
                 if !s.quickAddShortcut.isEmpty { WebButton("Turn off") { set("quickAddShortcut", .string("")) } }
                 if s.quickAddShortcut != s.defaultShortcut { WebButton("Use \(s.defaultLabel)") { set("quickAddShortcut", .string(s.defaultShortcut)) } }

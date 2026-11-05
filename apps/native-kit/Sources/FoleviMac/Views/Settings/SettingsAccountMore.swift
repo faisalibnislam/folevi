@@ -211,7 +211,7 @@ private struct ConnectedAppsSettings: View {
                         SettingsDivided(rows(list), gap: 10, line: "row") { r in
                             HStack(spacing: 12) {
                                 SText(r.j["url"].string ?? r.j["name"].string ?? "Webhook", "row.label", lines: 1).frame(maxWidth: .infinity, alignment: .leading)
-                                SettingsSwitch(isOn: r.j["enabled"].bool ?? true, label: "Enabled") { on in Task { await model.mutate("webhooks.setEnabled", ["webhookId": .string(r.id), "enabled": .bool(on)], done: "Saved") } }
+                                SettingsSwitch(isOn: r.j["enabled"].bool ?? true, label: "Enabled") { on in await model.mutate("webhooks.setEnabled", ["webhookId": .string(r.id), "enabled": .bool(on)]) != nil }
                                 WebButton("Send test", size: .sm) { Task { await model.mutate("webhooks.sendTest", ["webhookId": .string(r.id)], done: "Test sent") } }
                                 WebButton("Remove", variant: .ghost, size: .sm) { Task { await model.mutate("webhooks.remove", ["webhookId": .string(r.id)], done: "Removed") } }
                             }

@@ -1,6 +1,24 @@
 {
   "releases": [
     {
+      "version": "1.2.31",
+      "build": 43,
+      "released": "2026-11-05T09:47:07+06:00",
+      "type": "patch",
+      "summary": "Every note in Spotlight on the Mac, and a polish pass",
+      "improved": [
+        "On the Mac, Spotlight finds every note, archived ones too, by any word in it (Settings has a switch to turn it off)",
+        "Note cards have lighter shadows and less rounded corners, and folders are flat",
+        "Menus highlight the row under the pointer on the Mac and iPad, and dialogs open in the middle of the window",
+        "New folder is in the right-click menu on folder pages, and the note and folder … buttons look the same"
+      ],
+      "fixed": [
+        "Dragging a note or folder onto a folder didn't move it on the Mac and iPad",
+        "The … on a note card opened the note instead of its menu"
+      ],
+      "tag": "v1.2.31"
+    },
+    {
       "version": "1.2.30",
       "build": 42,
       "released": "2026-11-04T12:12:30+06:00",

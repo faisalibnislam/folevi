@@ -4,6 +4,24 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.31: Small update
+
+Released 2026-11-05 09:47:07+06:00 (build 43, tag v1.2.31)
+
+Every note in Spotlight on the Mac, and a polish pass
+
+### Improved
+
+- On the Mac, Spotlight finds every note, archived ones too, by any word in it (Settings has a switch to turn it off)
+- Note cards have lighter shadows and less rounded corners, and folders are flat
+- Menus highlight the row under the pointer on the Mac and iPad, and dialogs open in the middle of the window
+- New folder is in the right-click menu on folder pages, and the note and folder … buttons look the same
+
+### Fixed
+
+- Dragging a note or folder onto a folder didn't move it on the Mac and iPad
+- The … on a note card opened the note instead of its menu
+
 ## Version 1.2.30: Small update
 
 Released 2026-11-04 12:12:30+06:00 (build 42, tag v1.2.30)

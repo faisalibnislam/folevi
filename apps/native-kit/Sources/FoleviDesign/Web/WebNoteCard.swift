@@ -339,7 +339,7 @@ public struct WebNoteCard: View {
             if look == .ribbon {
                 // A bookmark ribbon hanging over the top edge by the right corner (clear of the "…" button): the bookmarked note.
                 BookmarkRibbon()
-                    .fill((scheme == .dark ? RGBA(90, 88, 83) : RGBA(30, 29, 26)).color)
+                    .fill((scheme == .dark ? RGBA(214, 211, 204) : RGBA(30, 29, 26)).color)
                     .shadow(color: .black.opacity(0.3), radius: 0.75, y: 1)
                     .frame(width: 7 * cq, height: 11.2 * cq)
                     .offset(x: w - 10.5 * cq, y: -1.2 * cq)
@@ -685,7 +685,7 @@ public struct WebFolderCard: View {
     private func drawing(w: CGFloat, h: CGFloat) -> some View {
         let cq = w / 100
         let base = FolderColor.resolve(model.colorId).color
-        let backTone = phoneDark ? base.oklabMix(RGBA(35, 37, 44), 0.38) : base.oklabMix(Self.grey, 0.8)
+        let backTone = phoneDark ? base.oklabMix(RGBA(35, 37, 44), 0.38) : base.oklabMix(Self.grey, 0.8).oklabMix(RGBA(255, 255, 255), 0.7)
         let back = s("back")
         let tabShape = WebCornersShape(topLeft: FoleviTokens.Radius.control, topRight: FoleviTokens.Radius.control, bottomRight: 0, bottomLeft: 0)
         let bodyShape = WebCornersShape(topLeft: 0, topRight: FoleviTokens.Radius.panel, bottomRight: FoleviTokens.Radius.panel, bottomLeft: FoleviTokens.Radius.panel)
@@ -777,7 +777,7 @@ public struct WebFolderCard: View {
                     .foregroundStyle((phoneDark ? RGBA(246, 246, 248) : RGBA(17, 17, 20)).color)
                     .padding(.horizontal, 2.2 * cq * k)
                     .padding(.vertical, 1.3 * cq * k)
-                    .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular).fill((phoneDark ? base.oklabMix(RGBA(12, 13, 16), 0.34) : base.oklabMix(Self.grey, 0.55)).color))
+                    .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular).fill(RGBA(255, 255, 255, 0.3).color))
                     // (webText's top guide, moved down by the padding, would otherwise line the age and the name
                     // up with it in this ZStack: both were drawn 1.3 cq low.)
                     .alignmentGuide(.top) { _ in 0 }

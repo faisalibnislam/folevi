@@ -223,7 +223,7 @@ export function NoteCardFace({
       </div>
       {look === "ribbon" ? (
         // A bookmark ribbon hanging over the top edge by the right corner (clear of the "…" button): the bookmarked note.
-        <svg role="img" aria-label="Bookmarked" viewBox="0 0 10 16" className="pointer-events-none absolute right-[3.5cqw] top-[-1.2cqw] z-20 h-[11.2cqw] w-[7cqw] text-[#1e1d1a] drop-shadow-[0_1px_1.5px_rgb(0_0_0/0.3)] dark:text-[#5a5853]">
+        <svg role="img" aria-label="Bookmarked" viewBox="0 0 10 16" className="pointer-events-none absolute right-[3.5cqw] top-[-1.2cqw] z-20 h-[11.2cqw] w-[7cqw] text-[#1e1d1a] drop-shadow-[0_1px_1.5px_rgb(0_0_0/0.3)] dark:text-[#d6d3cc]">
           <path d="M0 0H10V16L5 12.4L0 16Z" fill="currentColor" />
         </svg>
       ) : null}

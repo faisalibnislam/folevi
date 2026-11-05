@@ -65,7 +65,7 @@ public struct FolderCardView: View {
         let cq = w / 100
         let base = FolderColor.resolve(model.colorId).color
         let grey = RGBA(142, 148, 163)
-        let back = base.mix(grey, 0.8)
+        let back = base.oklabMix(grey, 0.8).oklabMix(RGBA(255, 255, 255), 0.7)
         let edge = Color.black.opacity(0.08)
         let panel = FoleviTokens.Radius.panel
         let frontHeight = h * 0.54
@@ -103,7 +103,7 @@ public struct FolderCardView: View {
                     .foregroundStyle(RGBA(17, 17, 20).color)
                     .padding(.horizontal, 2.2 * cq)
                     .padding(.vertical, 1.3 * cq)
-                    .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .continuous).fill(base.mix(grey, 0.55).color))
+                    .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .continuous).fill(RGBA(255, 255, 255, 0.3).color))
                     .offset(x: w * 0.07, y: frontHeight * 0.0926)
                 Text(model.ageText)
                     .font(FoleviFonts.font(.display, size: min(24, max(11, 5.6 * cq))))

@@ -922,7 +922,7 @@
 }
 :root[data-iphone][data-theme="dark"] [data-fc="name"] { color: #f6f6f8 !important; }
 :root[data-iphone][data-theme="dark"] [data-fc="age"] { color: color-mix(in oklab, var(--fc) 22%, #dcdee5) !important; }
-:root[data-iphone][data-theme="dark"] [data-fc="count"] { background: color-mix(in oklab, var(--fc) 34%, #0c0d10) !important; color: #f6f6f8 !important; }
+:root[data-iphone][data-theme="dark"] [data-fc="count"] { background: rgb(255 255 255 / 0.3) !important; color: #f6f6f8 !important; }
 /* The iPad app: a card's or folder's "…" stays out of sight on touch, as on the iPhone (a long press or a
    right-click opens the same menu), and out of sight takes no taps (a finger or Pencil tapping the middle of a
    folder's cover opens the folder). With a trackpad or mouse attached, hovering shows it and it can be clicked;

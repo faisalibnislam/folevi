@@ -79,7 +79,8 @@ function FolderNote({ note, index }: { note: FolderPreview; index: number }) {
  */
 export function FolderCardArt({ name, color, count, age, previews = [] }: { name: string; color: string | null; count: number; age: string; previews?: FolderPreview[] }) {
   const base = folderHex(color);
-  const backTone = `color-mix(in oklab, ${base} 80%, #8e94a3)`;
+  // 30% lighter than the folder's greyed colour (the owner, 5 November 2026), so the front reads first.
+  const backTone = `color-mix(in oklab, color-mix(in oklab, ${base} 80%, #8e94a3) 70%, #ffffff)`;
   const shown = previews.slice(0, 3);
   return (
     <>
@@ -105,7 +106,7 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
         <span
           data-fc="count"
           className="absolute left-[7%] top-[9.26%] inline-flex items-center rounded-tiny px-[calc(2.2cqw*var(--fc-text,1))] py-[calc(1.3cqw*var(--fc-text,1))] font-serif text-[clamp(12px,calc(5.4cqw*var(--fc-text,1)),22px)] font-semibold leading-none tabular-nums text-[#111114]"
-          style={{ background: `color-mix(in oklab, ${base} 55%, #8e94a3)` }}
+          style={{ background: "rgb(255 255 255 / 0.3)" }}
         >
           {count.toLocaleString()}
         </span>

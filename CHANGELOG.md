@@ -4,6 +4,29 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.35: Small update
+
+Released 2026-11-06 02:47:02+06:00 (build 47, tag v1.2.35)
+
+Folder page headers, a sidebar order of your own, folders in new tabs, a new Mac Settings window and Spotlight fixes
+
+### Added
+
+- Folder pages show the folder's name, note count and last edit at the top, with Share, a menu and New note beside it; nested folders show their path.
+- The sidebar keeps its own folder order, synced with your account: drag folders there to arrange them without changing the Folders page.
+- Open in new tab in a folder's menu, and Cmd-click or middle-click a folder, to open it in a tab behind the one you're on.
+
+### Improved
+
+- Mac Settings lists its sections down the left and always fits the screen.
+- The Folders page has a title with the folder count; subfolders sit under their own heading.
+
+### Fixed
+
+- Mac: Spotlight results open the right note even when Folevi was closed or the note is in another account, and locked or trashed notes leave Spotlight at once.
+- Mac: Undo in a toast is no longer cut off.
+- The theme gallery's search field is as tall as the buttons beside it, and the note toolbar's divider is light in dark mode.
+
 ## Version 1.2.34: Small update
 
 Released 2026-11-06 00:32:50+06:00 (build 46, tag v1.2.34)

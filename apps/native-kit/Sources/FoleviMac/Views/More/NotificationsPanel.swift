@@ -49,7 +49,7 @@ struct NotificationsPanel: View {
                     }
                     .foregroundStyle(muted).padding(.horizontal, 8).frame(height: 28).contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.webPlain)
                 .disabled(model.unread == 0)
                 .opacity(model.unread == 0 ? 0.4 : 1)
                 WebIconButton(.settings, label: "Notification settings") {
@@ -115,7 +115,7 @@ struct NotificationsPanel: View {
                 .background(RoundedRectangle(cornerRadius: 6).fill(on ? moreVar("color-surface", scheme) : .clear))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
     }
 
     /// Who did what, where (the note's name emphasised).
@@ -220,7 +220,7 @@ struct NotificationsPanel: View {
                 .foregroundStyle(s.color.color)
                 .webBox(style)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
     }
 
     private func accept(_ n: NotificationRow) {
@@ -269,7 +269,7 @@ private struct HoverFill<Content: View>: View {
                 .background(RoundedRectangle(cornerRadius: 10).fill(hovering ? moreVar("glass-hover", scheme) : .clear))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .onHover { hovering = $0 }
     }
 }

@@ -1145,6 +1145,11 @@ struct GateCheckboxStyle: ToggleStyle {
 /// A choice card pressed on the iPhone: it shrinks to 98.5% (150 ms).
 struct ChoicePress: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
+        // (The Mac darkens instead and never scales: MAC-07.)
+        #if os(macOS)
+        configuration.label.pressDip(configuration.isPressed)
+        #else
         configuration.label.scaleEffect(configuration.isPressed ? 0.985 : 1).animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+        #endif
     }
 }

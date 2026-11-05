@@ -113,15 +113,76 @@ final class NSApplicationShim {
 import SwiftUI
 
 extension View {
-    /// Dragging the bar moves the window (the Mac); the iPad's windows are moved by the system.
+    /// Dragging the bar moves the window (the Mac); the iPad's windows are moved by the system. A double click on the
+    /// bar's empty room does what System Settings says a title bar's does: zoom (the default), minimise or nothing
+    /// (MAC-63; WindowTitleBar).
     func windowDrag() -> some View {
         #if os(macOS)
         gesture(WindowDragGesture())
+            .background(WindowTitleBar.DoubleClick())
+        #else
+        self
+        #endif
+    }
+
+    /// The first click on an inactive Mac window acts on this view as well as bringing the window forward (MAC-05;
+    /// ClickThroughHostingView). Nothing on the iPad.
+    public func macClickThrough() -> some View {
+        #if os(macOS)
+        allowsWindowActivationEvents(true)
         #else
         self
         #endif
     }
 }
+
+#if os(macOS)
+/// A window bar's double click (the frame's top bar and the sidebar's: they draw under the hidden title bar, so the
+/// system's own double click never reaches them).
+public enum WindowTitleBar {
+    public enum Action: String, Sendable { case zoom, minimize, none }
+
+    /// System Settings > Desktop & Dock > "Double-click a window's title bar to" (`AppleActionOnDoubleClick`; older
+    /// systems' `AppleMiniaturizeOnDoubleClick`).
+    public nonisolated static func action(_ value: String?, legacyMinimize: Bool?) -> Action {
+        switch value {
+        case "Minimize": return .minimize
+        case "None": return .none
+        case "Maximize", "Fill": return .zoom
+        default: return legacyMinimize == true ? .minimize : .zoom
+        }
+    }
+
+    @MainActor static func doubleClick(_ window: NSWindow) {
+        let global = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain) ?? [:]
+        switch action(global["AppleActionOnDoubleClick"] as? String, legacyMinimize: global["AppleMiniaturizeOnDoubleClick"] as? Bool) {
+        case .minimize: window.performMiniaturize(nil)
+        case .none: break
+        case .zoom: window.performZoom(nil)
+        }
+    }
+
+    /// Behind a bar: takes only the second click of a double click on the bar's empty room (every other click goes
+    /// on to the bar's window drag and its buttons, which sit above it).
+    struct DoubleClick: NSViewRepresentable {
+        final class View: NSView {
+            /// Tests: hit-test as for a double click whatever the current event.
+            nonisolated(unsafe) static var testing = false
+            override func hitTest(_ point: NSPoint) -> NSView? {
+                guard Self.testing || NSApp.currentEvent.map({ $0.type == .leftMouseDown && $0.clickCount == 2 }) == true else { return nil }
+                return super.hitTest(point)
+            }
+            override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+            override func mouseDown(with event: NSEvent) {
+                if event.clickCount == 2, let w = window { WindowTitleBar.doubleClick(w) }
+            }
+        }
+
+        func makeNSView(context: Context) -> View { View() }
+        func updateNSView(_ v: View, context: Context) {}
+    }
+}
+#endif
 
 extension Image {
     /// An AppKit or UIKit image.

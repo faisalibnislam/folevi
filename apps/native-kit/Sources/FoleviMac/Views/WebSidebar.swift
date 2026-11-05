@@ -129,7 +129,7 @@ public struct WebSidebar: View {
                 Button { model.open(.home, .replace) } label: {
                     WebFoleviLogo(height: 26, color: Folevi.color.heading).padding(4)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.webPlain)
                 .accessibilityLabel("Folevi")
             }
             Spacer(minLength: 0)
@@ -163,7 +163,7 @@ public struct WebSidebar: View {
             .webBox(s)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
     }
 
     // MARK: destinations
@@ -192,7 +192,7 @@ public struct WebSidebar: View {
                             .foregroundStyle(t.color.color)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.webPlain)
                     .padding(.trailing, 4)
                 }
             }
@@ -220,10 +220,10 @@ public struct WebSidebar: View {
     }
 
     /// One row (the web's NavItem): icon, label, an optional count; the page's own row is selected.
-    private func item(_ route: FrameRoute, icon: WebIcon, iconSize: CGFloat = 18, title: String, count: Int? = nil, newTab: Bool = false, glyph: AnyView? = nil) -> some View {
-        // (A place's every view: Tasks on any of its lists, the Calendar on any day, Foli AI, Settings and the Vault
-        // on any section, as Sidebar.tsx isActive.)
-        let selected = model.route == route || (!route.isNote && model.route.tabKey == route.tabKey)
+    /// `inRow`: the row around it (a folder's or a tag's, with its chevron and "…") draws the hover and selected fills
+    /// across all of it (rowFill), so this draws only its press (MAC-31).
+    private func item(_ route: FrameRoute, icon: WebIcon, iconSize: CGFloat = 18, title: String, count: Int? = nil, newTab: Bool = false, glyph: AnyView? = nil, inRow: Bool = false) -> some View {
+        let selected = isSelected(route)
         let base = WebStyles.named(selected ? "frame.sidebar.item.active" : "frame.sidebar.item")
         let s = base.resolve(scheme)
         let selectedFill = (WebStyles.vars[active == .inactive ? "mac-selected-inactive" : "mac-selected"] ?? FoleviTokens.Chrome.surfaceSunken).resolve(scheme)
@@ -256,10 +256,29 @@ public struct WebSidebar: View {
             }
             .padding(s.padding.edgeInsets)
             .frame(maxWidth: .infinity, minHeight: s.height, maxHeight: s.height)
-            .background(RoundedRectangle(cornerRadius: s.radius, style: .circular).fill(selected ? selectedFill.color : .clear))
+            .background(RoundedRectangle(cornerRadius: s.radius, style: .circular).fill(selected && !inRow ? selectedFill.color : .clear))
             .contentShape(Rectangle())
         }
-        .buttonStyle(WebHoverRowStyle(radius: s.radius, hover: WebStyles.vars["mac-hover"], press: WebStyles.vars["mac-press"], selected: selected))
+        .buttonStyle(WebHoverRowStyle(radius: s.radius, hover: inRow ? nil : WebStyles.vars["mac-hover"], press: WebStyles.vars["mac-press"], selected: selected && !inRow))
+    }
+
+    /// The page's own row (a place's every view: Tasks on any of its lists, the Calendar on any day, Foli AI, Settings
+    /// and the Vault on any section, as Sidebar.tsx isActive).
+    private func isSelected(_ route: FrameRoute) -> Bool {
+        model.route == route || (!route.isNote && model.route.tabKey == route.tabKey)
+    }
+
+    /// A folder's or a tag's row fill (MAC-31): the selected pill or the hover fill across the whole row, its chevron
+    /// and "…" inside it, as the web's row draws them.
+    @ViewBuilder
+    private func rowFill(selected: Bool, hovered: Bool) -> some View {
+        let s = style(selected ? "item.active" : "item")
+        if selected {
+            let fill = (WebStyles.vars[active == .inactive ? "mac-selected-inactive" : "mac-selected"] ?? FoleviTokens.Chrome.surfaceSunken).resolve(scheme)
+            RoundedRectangle(cornerRadius: s.radius, style: .circular).fill(fill.color)
+        } else if hovered, let hover = WebStyles.vars["mac-hover"] {
+            RoundedRectangle(cornerRadius: s.radius, style: .circular).fill(hover.resolve(scheme).color)
+        }
     }
 
     // MARK: folders
@@ -290,7 +309,7 @@ public struct WebSidebar: View {
             }
         ), takesFolders: true) {
             if roots.isEmpty {
-                Text("No folders yet").webText(.role(.footnote)).foregroundStyle(Folevi.color.inkFaint).padding(.horizontal, 8).padding(.vertical, 4)
+                Text("No folders yet").webText(.role(.footnote)).foregroundStyle(Folevi.color.inkMuted).padding(.horizontal, 8).padding(.vertical, 4)
             }
             ForEach(shown, id: \.id) { f in
                 folder(f, all: all, sort: sort)
@@ -345,15 +364,16 @@ public struct WebSidebar: View {
                     } label: {
                         DisclosureChevron(open: open)
                             .frame(width: toggle.width, height: toggle.height)
-                            .foregroundStyle(toggle.color.color)
+                            .foregroundStyle(hovered ? Folevi.color.heading : toggle.color.color)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.webPlain)
                 }
-                item(.folder(f.id), icon: .folder, title: f.name, glyph: AnyView(FolderGlyph(colorId: f.color, size: 18)))
+                item(.folder(f.id), icon: .folder, title: f.name, glyph: AnyView(FolderGlyph(colorId: f.color, size: 18)), inRow: true)
                     .onMiddleClick { model.openInBackground(.folder(f.id), title: f.name) }
                 RowMoreButton(label: "Folder options for \(f.name)", shown: hovered) { folderMenu(f) }
             }
+            .background(rowFill(selected: isSelected(.folder(f.id)), hovered: hovered))
             }
             .padding(.leading, CGFloat(f.depth) * 14)
             .webContextMenu { folderMenu(f) }
@@ -484,15 +504,16 @@ public struct WebSidebar: View {
         let tags = model.folders.value?.tags ?? model.home.value?.tags ?? []
         return section("Tags", route: .web("/tags"), open: $tagsOpen, action: nil) {
             if tags.isEmpty {
-                Text("Tag documents from the inspector").webText(.role(.footnote)).foregroundStyle(Folevi.color.inkFaint).padding(.horizontal, 8).padding(.vertical, 4)
+                Text("Tag documents from the inspector").webText(.role(.footnote)).foregroundStyle(Folevi.color.inkMuted).padding(.horizontal, 8).padding(.vertical, 4)
             }
             ForEach(Array(tags.prefix(Self.limit)), id: \.id) { t in
                 if canEdit {
                     HoverReveal { hovered in
                         HStack(spacing: 0) {
-                            item(.tag(t.id), icon: .hash, iconSize: 15, title: t.name, glyph: AnyView(WebIconView(.hash, size: 15).foregroundStyle(Self.tagColor(t.color))))
+                            item(.tag(t.id), icon: .hash, iconSize: 15, title: t.name, glyph: AnyView(WebIconView(.hash, size: 15).foregroundStyle(Self.tagColor(t.color))), inRow: true)
                             RowMoreButton(label: "Tag options for \(t.name)", shown: hovered) { tagMenu(t) }
                         }
+                        .background(rowFill(selected: isSelected(.tag(t.id)), hovered: hovered))
                     }
                     .webContextMenu { tagMenu(t) }
                 } else {
@@ -531,7 +552,7 @@ public struct WebSidebar: View {
                         .foregroundStyle(chevron.color.color)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.webPlain)
                 Button { model.open(route, .replace) } label: {
                     Text(title.uppercased())
                         .webText(titleStyle.text)
@@ -543,7 +564,7 @@ public struct WebSidebar: View {
                         .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular).fill(here ? (WebStyles.vars["glass-hover"]?.resolve(scheme).color ?? .clear) : .clear))
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.webPlain)
                 if let action { action }
             }
             .padding(header.padding.edgeInsets)
@@ -654,8 +675,13 @@ struct WebHoverRowStyle: ButtonStyle {
     let selected: Bool
 
     func makeBody(configuration: Configuration) -> some View {
+        // The Mac: the press fill alone (pressed rows darken, never scale: MAC-07); a touch dips as well.
+        #if os(macOS)
+        HoverFill(label: configuration.label, pressed: configuration.isPressed, radius: radius, hover: hover, press: press, selected: selected)
+        #else
         HoverFill(label: configuration.label, pressed: configuration.isPressed, radius: radius, hover: hover, press: press, selected: selected)
             .pressDip(configuration.isPressed, scale: 0.97)
+        #endif
     }
 
     struct HoverFill<L: View>: View {
@@ -734,7 +760,7 @@ struct SidebarToggleButton: View {
                 .foregroundStyle(Folevi.color.inkMuted)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .accessibilityLabel(model.sidebarOverlayShown ? "Hide sidebar" : "Show sidebar")
     }
 }

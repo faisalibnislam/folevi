@@ -80,12 +80,12 @@ struct ToastStack: View {
                         .padding(.horizontal, 12).padding(.vertical, 4)
                         .background(Capsule().fill(ink.opacity(0.14)))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.webPlain)
             }
             Button { model.dismissToast(t.id) } label: {
                 WebIconView(.x, size: 14).opacity(close.opacity).frame(width: close.width, height: close.height).contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.webPlain)
             .accessibilityLabel("Dismiss")
         }
         .foregroundStyle(ink)

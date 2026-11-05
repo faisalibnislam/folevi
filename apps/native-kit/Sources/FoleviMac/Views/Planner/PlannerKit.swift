@@ -207,10 +207,10 @@ struct WebSeg: View {
     }
 }
 
-/// No system highlight.
+/// No system highlight; pressed, the one press answer (PressDip: darker on the Mac, MAC-07) rather than a fade.
 struct PlainPress: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.contentShape(Rectangle()).opacity(configuration.isPressed ? 0.85 : 1)
+        configuration.label.contentShape(Rectangle()).pressDip(configuration.isPressed)
     }
 }
 

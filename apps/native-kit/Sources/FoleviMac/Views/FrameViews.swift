@@ -646,9 +646,20 @@ final class PassThroughHostingView<Content: View>: NSHostingView<Content> {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
+/// A hosting view whose first click acts (MAC-05). By default a click on a window that isn't key (another Folevi
+/// window or a floating note was in front, Quick Add was open, another app was active) only brings the window forward:
+/// the sidebar row, tab or button under the pointer did nothing until a second click. AppKit asks the view under the
+/// click `acceptsFirstMouse(for:)` and passes that click on to it only when it says yes; this one does. Its SwiftUI
+/// content says so too (`macClickThrough()`, SwiftUI's `allowsWindowActivationEvents`), for the clicks that land on
+/// SwiftUI's own AppKit views inside it (a scroll view's, a text field's). Every part of the window's frame is hosted
+/// in one: the sidebar, the top bar, the screens, the toasts, Ask Foli AI, dialogs and the gate.
+public class ClickThroughHostingView<Content: View>: NSHostingView<Content> {
+    override public func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 /// The toasts' host: the room kept under them (above a note's floating page tools) lets clicks through to the
 /// tools, so a toast never blocks them.
-final class ToastHostingView: NSHostingView<ToastStack> {
+final class ToastHostingView: ClickThroughHostingView<ToastStack> {
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = convert(point, from: superview)
         let fromBottom = isFlipped ? bounds.height - local.y : local.y

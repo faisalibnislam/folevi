@@ -216,7 +216,7 @@ struct EditTagSheet: View {
                             .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(color == c.id ? moreVar("color-accent-soft", scheme) : .clear))
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.webPlain)
                         .accessibilityAddTraits(color == c.id ? .isSelected : [])
                     }
                 }

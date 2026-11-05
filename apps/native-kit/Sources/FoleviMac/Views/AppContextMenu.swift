@@ -115,14 +115,26 @@ enum AppContextMenu {
             if !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 let at = event.locationInWindow
                 out.append(.separator(4))
+                // The Mac's sharing services in a Folevi menu where the right click was (MAC-41: the system's picker
+                // was the one OS menu left in this menu).
                 out.append(WebMenuEntry(.item("Share…", icon: .share)) {
-                    guard let host = text.window?.contentView else { return }
-                    let p = host.convert(at, from: nil)
-                    NSSharingServicePicker(items: [s]).show(relativeTo: NSRect(origin: p, size: .init(width: 1, height: 1)), of: host, preferredEdge: .maxY)
+                    guard let window = text.window else { return }
+                    let services = shareEntries(for: s)
+                    if !services.isEmpty { WebMenuWindow.show(services, at: at, in: window) }
                 })
             }
         }
         return out
+    }
+
+    /// The sharing services that take this text (Mail, Messages, Notes, AirDrop…), each a row of a Folevi menu.
+    static func shareEntries(for text: String) -> [WebMenuEntry] {
+        // (`sharingServices(forItems:)` is deprecated in favour of the system's picker menu, which is what this
+        // replaces; it still lists the same services.)
+        let services = NSSharingService.sharingServices(forItems: [text])
+        return services.enumerated().map { i, service in
+            WebMenuEntry(.item(service.menuItemTitle, id: "share-\(i)")) { service.perform(withItems: [text]) }
+        }
     }
 
     /// The system's Look Up panel for a range of the text, at its first line's baseline.
@@ -176,7 +188,7 @@ enum AppContextMenu {
         }
     }
 
-    private static func anywhereEntries(_ model: FrameModel, window: NSWindow) -> [WebMenuEntry] {
+    static func anywhereEntries(_ model: FrameModel, window: NSWindow) -> [WebMenuEntry] {
         var out: [WebMenuEntry] = [
             WebMenuEntry(.item("New note", icon: .filePlusCorner, shortcut: "⌘⌥N")) { model.newNote() },
         ]
@@ -197,8 +209,9 @@ enum AppContextMenu {
         }
         out += [
             .separator(1),
-            WebMenuEntry(.item("Back", icon: .arrowLeft)) { model.goBack() },
-            WebMenuEntry(.item("Forward", icon: .arrowRight)) { model.goForward() },
+            // (Offered only where there's somewhere to go, as the top bar's arrows: MAC-42.)
+            WebMenuEntry(.item("Back", icon: .arrowLeft), disabled: !model.history.canGoBack) { model.goBack() },
+            WebMenuEntry(.item("Forward", icon: .arrowRight), disabled: !model.history.canGoForward) { model.goForward() },
             WebMenuEntry(.item("Reload", icon: .rotateCw)) { model.reloadScreen() },
         ]
         return out

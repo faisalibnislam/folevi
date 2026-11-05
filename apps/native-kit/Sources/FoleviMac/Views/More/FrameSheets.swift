@@ -289,7 +289,7 @@ struct WebSheetDialog<Body: View, Footer: View>: View {
                 Button(action: close) {
                     WebIconView(.x, size: 16).foregroundStyle(xs.color.color).frame(width: xs.width, height: xs.height).contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.webPlain)
                 .foleviTooltip("Close")
                 .accessibilityLabel("Close")
             }
@@ -348,7 +348,7 @@ struct WebSheetButton: View {
                 .foregroundStyle(s.color.color)
                 .webBox(style)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .opacity(enabled ? 1 : 0.4)
     }
 }

@@ -90,6 +90,7 @@ public enum FoleviSpring {
 public struct PressDip: ViewModifier {
     let pressed: Bool
     let scale: CGFloat
+    @Environment(\.colorScheme) private var scheme
 
     public init(pressed: Bool, scale: CGFloat = 0.96) {
         self.pressed = pressed
@@ -97,23 +98,52 @@ public struct PressDip: ViewModifier {
     }
 
     public func body(content: Content) -> some View {
+        #if os(macOS)
+        // The Mac (globals.css §2.4): "pressed controls darken, never scale or lift (a Mac button doesn't move)". The
+        // darkening comes at once and fades out over 120 ms, as the web's press fills do. A scale also pulled a control's
+        // edge in under the pointer, so a click that started near a row's edge could end outside it (MAC-07).
+        content
+            .brightness(pressed ? Self.macPressBrightness(scheme) : 0)
+            .animation(pressed ? nil : .easeOut(duration: WebMotion.fadeOut), value: pressed)
+        #else
         content
             .scaleEffect(pressed && !WebMotion.reduced ? scale : 1)
             .animation(FoleviSpring.press, value: pressed)
+        #endif
     }
+
+    /// How much a pressed control darkens on the Mac (the web's primary button: about 4% darker); in the dark it
+    /// lightens a touch, as `--mac-press` does there (white at 10%).
+    public static func macPressBrightness(_ scheme: ColorScheme) -> Double { scheme == .dark ? 0.06 : -0.05 }
 }
 
 public extension View {
-    /// Dips to `scale` while `pressed` (a ButtonStyle's isPressed), springing back on release.
+    /// Dips to `scale` while `pressed` (a ButtonStyle's isPressed), springing back on release; on the Mac it darkens
+    /// instead and never scales.
     func pressDip(_ pressed: Bool, scale: CGFloat = 0.96) -> some View { modifier(PressDip(pressed: pressed, scale: scale)) }
 }
 
-/// A plain button (no system highlight) that dips while pressed: for cards and tiles, so a tap feels physical and
-/// scrolling and dragging still work as they do for any button.
+/// A plain button (no system highlight) that dips while pressed (darkens on the Mac): for cards and tiles, so a tap
+/// feels physical and scrolling and dragging still work as they do for any button.
 public struct PressDipButtonStyle: ButtonStyle {
     let scale: CGFloat
     public init(scale: CGFloat = 0.97) { self.scale = scale }
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label.contentShape(Rectangle()).pressDip(configuration.isPressed, scale: scale)
     }
+}
+
+/// Folevi's plain button on every platform: no system highlight, the whole label takes the click, and the one press
+/// answer (PressDip: darkens on the Mac, dips on iPhone and iPad). Use it in place of `.buttonStyle(.plain)`, whose
+/// own pressed dimming is another, different press feedback on the Mac (MAC-07).
+public struct WebPlainButtonStyle: ButtonStyle {
+    public init() {}
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label.contentShape(Rectangle()).pressDip(configuration.isPressed)
+    }
+}
+
+public extension ButtonStyle where Self == WebPlainButtonStyle {
+    /// `.buttonStyle(.webPlain)`: Folevi's plain button (WebPlainButtonStyle).
+    static var webPlain: WebPlainButtonStyle { WebPlainButtonStyle() }
 }

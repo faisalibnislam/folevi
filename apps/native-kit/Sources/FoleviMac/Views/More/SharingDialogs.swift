@@ -252,7 +252,7 @@ struct PageShareSheet: View {
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(on ? moreVar("color-accent", scheme) : moreVar("color-line", scheme), lineWidth: 1))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .disabled(!d.canManage)
         .opacity(d.canManage ? 1 : 0.6)
     }
@@ -436,7 +436,7 @@ struct FolderShareSheet: View {
                 }
             }
             if d.youAreGuest {
-                Button { close(); frame.open(.web("/shared/\(folderId)")) } label: { Text(verbatim: "Open the shared folder").underline().webText(.role(.footnote)).foregroundStyle(muted) }.buttonStyle(.plain)
+                Button { close(); frame.open(.web("/shared/\(folderId)")) } label: { Text(verbatim: "Open the shared folder").underline().webText(.role(.footnote)).foregroundStyle(muted) }.buttonStyle(.webPlain)
             } else {
                 Text(verbatim: "Public links are for single notes: share a note to make one.").webText(.role(.footnote)).foregroundStyle(muted)
             }

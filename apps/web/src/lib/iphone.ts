@@ -93,6 +93,29 @@ export function useIpadLayout(): boolean {
 }
 
 /**
+ * Whether this page is the note page of the native iPad app's wide layout (native chrome mode, `ipados`, a window
+ * wide enough for the sidebar). Its native frame draws the window, sidebar and tabs but no note tools, so the page
+ * keeps the web's floating dock (Insert, Format, Style, Comments, Share and the note's "…"), as Folevi for Mac does.
+ * Under 700 pt the iPad shows the phone's layout, whose native bars carry those tools instead.
+ */
+export function isIpadNativeWide(): boolean {
+  if (typeof window === "undefined" || nativeChrome()?.platform !== "ipados") return false;
+  return !(typeof window.matchMedia === "function" && window.matchMedia(IPAD_COMPACT).matches);
+}
+
+const followIpadNativeWidth = (changed: () => void) => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function" || nativeChrome()?.platform !== "ipados") return () => undefined;
+  const mq = window.matchMedia(IPAD_COMPACT);
+  mq.addEventListener("change", changed);
+  return () => mq.removeEventListener("change", changed);
+};
+
+/** The same, for rendering: it follows the window's width. */
+export function useIpadNativeWide(): boolean {
+  return useSyncExternalStore(followIpadNativeWidth, isIpadNativeWide, () => false);
+}
+
+/**
  * Settings on the iPad draws its sections as the iPhone's grouped lists (iOS polish WP5): inside it, this says so.
  * Only the settings sections read it (useIphoneLook), so dialogs, menus and the shell keep the iPad's own.
  */

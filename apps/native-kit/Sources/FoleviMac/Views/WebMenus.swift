@@ -319,12 +319,37 @@ struct MenuAnchor: NSViewRepresentable {
 }
 
 #else
-/// The iPad's menu: the same panel in a layer over the window (a tap outside closes it), one at a time.
+/// The layer an iPad menu sits in, over the whole window. A touch (or a click, a scroll) anywhere outside the panel
+/// closes the menu and goes on to what's under it, as iPadOS's own menus do: the button under the finger answers the
+/// same tap, a scroll scrolls. The window changing size (a rotation, Split View, Stage Manager) closes it too.
+final class WebMenuLayerView: UIView {
+    /// The panel's frame in the layer (its shadow's room left out).
+    var panel: () -> CGRect = { .zero }
+    var outside: () -> Void = {}
+    private var placedSize: CGSize?
+
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        if panel().contains(point) { return super.hitTest(point, with: event) }
+        // (A pointer only hovering asks too: that leaves the menu up.)
+        if let type = event?.type, type == .touches || type == .scroll || type == .transform { outside() }
+        return nil
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard bounds.size != .zero else { return }
+        if let placed = placedSize, placed != bounds.size { outside() }
+        placedSize = bounds.size
+    }
+}
+
+/// The iPad's menu: the same panel in a layer over the window (a touch outside closes it and goes through), one at
+/// a time.
 @MainActor
 public final class WebMenuWindow {
     private static var current: WebMenuWindow?
     private let state: WebMenuState
-    private let layer = UIView()
+    private let layer = WebMenuLayerView()
     private let host: UIHostingController<AnyView>
     static let margin: CGFloat = 32
 
@@ -335,16 +360,18 @@ public final class WebMenuWindow {
         host.view.backgroundColor = .clear
         host.safeAreaRegions = []
         layer.backgroundColor = .clear
-        layer.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapped)))
-    }
-
-    @objc private func tapped(_ g: UITapGestureRecognizer) {
-        if !host.view.frame.insetBy(dx: Self.margin, dy: Self.margin).contains(g.location(in: layer)) { close() }
+        layer.panel = { [weak self] in
+            guard let self else { return .zero }
+            return self.host.view.frame.insetBy(dx: Self.margin, dy: Self.margin)
+        }
+        layer.outside = { [weak self] in
+            MainActor.assumeIsolated { self?.close() }
+        }
     }
 
     /// Opens the menu with its top-left corner at `point` (in `window`'s coordinates), kept on screen.
     @discardableResult
-    public static func show(_ entries: [WebMenuEntry], width: CGFloat = 224, at point: CGPoint, in window: UIWindow) -> WebMenuWindow {
+    public static func show(_ entries: [WebMenuEntry], width: CGFloat = 224, at point: CGPoint, in window: UIWindow, growFrom: CGPoint? = nil) -> WebMenuWindow {
         current?.close()
         let menu = WebMenuWindow(entries: entries, width: width)
         menu.layer.frame = window.bounds
@@ -360,7 +387,7 @@ public final class WebMenuWindow {
         window.addSubview(menu.layer)
         current = menu
         // (After any placing under or over a view: it grows out of the point it was opened from.)
-        DispatchQueue.main.async { MainActor.assumeIsolated { menu.growIn(from: point) } }
+        DispatchQueue.main.async { MainActor.assumeIsolated { menu.growIn(from: growFrom ?? point) } }
         return menu
     }
 
@@ -409,6 +436,24 @@ public final class WebMenuWindow {
         show(entries, width: max(view.bounds.width, 160), below: view)
     }
 
+    /// Opens the menu beside a finger held on the screen (`point`, the window's coordinates): below the finger's
+    /// 44-point spot, its left edge at the finger, or above the spot when there's more room there, so neither the
+    /// finger nor the menu hides the other.
+    @discardableResult
+    public static func show(_ entries: [WebMenuEntry], width: CGFloat = 224, besideFinger point: CGPoint, in window: UIWindow) -> WebMenuWindow {
+        let spot = CGRect(x: point.x - 22, y: point.y - 22, width: 44, height: 44)
+        let menu = show(entries, width: width, at: CGPoint(x: point.x, y: spot.maxY), in: window, growFrom: point)
+        let f = menu.host.view.frame
+        let h = f.height - margin * 2
+        let safe = window.bounds.inset(by: window.safeAreaInsets)
+        let below = safe.maxY - spot.maxY - 8
+        let above = spot.minY - safe.minY - 8
+        var y = below >= h || below >= above ? spot.maxY : spot.minY - h
+        y = min(max(y, safe.minY + 8), safe.maxY - h - 8)
+        menu.host.view.frame.origin.y = y - margin
+        return menu
+    }
+
     /// The menu on screen, if any.
     public static var shown: WebMenuWindow? { current }
 
@@ -442,21 +487,101 @@ struct MenuAnchor: UIViewRepresentable {
     func updateUIView(_ v: UIView, context: Context) {}
 }
 
-/// A long press opens a Folevi menu where the view is (the iPad's right click; a pointer's secondary click too).
+/// The iPad's right click: a Folevi menu from a finger held still on the view (0.45 s), or from a pointer's
+/// secondary click (a two-finger click on a trackpad, a mouse's right button) at the pointer.
+///
+/// Both are UIKit recognizers that run beside everything else on the view (its Button's tap, a scroll, the drag
+/// `.draggable` adds), so the hold is never lost to the drag's lift (IPAD-01, IPAD-09): the menu opens first, and a
+/// finger that then moves on carries the item away as a drag, closing the menu (iPadOS's own context menus do the
+/// same). A finger that moves before the hold has begun is a scroll and opens nothing.
 struct ContextCatcher: ViewModifier {
     let entries: @MainActor () -> [WebMenuEntry]
-    @State private var anchor: UIView?
 
     func body(content: Content) -> some View {
         content
-            .background(MenuAnchor { anchor = $0 })
-            .onLongPressGesture(minimumDuration: 0.45) {
-                guard let anchor, let window = anchor.window else { return }
+            .gesture(MenuHold { point, window in
+                let list = entries()
+                guard !list.isEmpty else { return false }
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                WebMenuWindow.show(list, besideFinger: point, in: window)
+                return true
+            })
+            .gesture(SecondaryClick { point, window in
                 let list = entries()
                 guard !list.isEmpty else { return }
-                let r = anchor.convert(anchor.bounds, to: window)
-                WebMenuWindow.show(list, at: CGPoint(x: r.midX, y: r.midY), in: window)
+                WebMenuWindow.show(list, at: point, in: window)
+            })
+    }
+}
+
+/// A held finger (0.45 s, within 10 pt), recognized alongside the view's other gestures. `began` gets the finger's
+/// place in the window and says whether it opened a menu; that menu closes again if the finger then travels on (a
+/// drag of the item, or a scroll that started late).
+struct MenuHold: UIGestureRecognizerRepresentable {
+    let began: @MainActor (CGPoint, UIWindow) -> Bool
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var start: CGPoint = .zero
+        weak var menu: WebMenuWindow?
+
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+        // (Only fingers: a pointer's click and hold is a drag or a selection there.)
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool { touch.type == .direct }
+    }
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
+        let hold = UILongPressGestureRecognizer()
+        hold.minimumPressDuration = 0.45
+        hold.allowableMovement = 10
+        hold.cancelsTouchesInView = false
+        hold.delaysTouchesEnded = false
+        hold.delegate = context.coordinator
+        return hold
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+        guard let window = recognizer.view?.window else { return }
+        let at = recognizer.location(in: window)
+        switch recognizer.state {
+        case .began:
+            context.coordinator.start = at
+            if began(at, window) { context.coordinator.menu = WebMenuWindow.shown }
+        case .changed:
+            // The finger travels on with the menu up: it's carrying the item (or scrolling) now.
+            if let menu = context.coordinator.menu, hypot(at.x - context.coordinator.start.x, at.y - context.coordinator.start.y) > 16 {
+                menu.close()
+                context.coordinator.menu = nil
             }
+        default:
+            context.coordinator.menu = nil
+        }
+    }
+}
+
+/// A pointer's secondary click (a two-finger click on a trackpad, a mouse's right button, Control-click), with the
+/// pointer's place in the window.
+struct SecondaryClick: UIGestureRecognizerRepresentable {
+    let clicked: @MainActor (CGPoint, UIWindow) -> Void
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+    }
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UITapGestureRecognizer {
+        let click = UITapGestureRecognizer()
+        click.buttonMaskRequired = .secondary
+        click.cancelsTouchesInView = false
+        click.delegate = context.coordinator
+        return click
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UITapGestureRecognizer, context: Context) {
+        guard recognizer.state == .ended, let window = recognizer.view?.window else { return }
+        clicked(recognizer.location(in: window), window)
     }
 }
 
@@ -504,9 +629,24 @@ public struct RowMoreButton: View {
                 .contentShape(Rectangle())
         }
         .onHover { hover = $0 }
-        .opacity(shown || hover ? 1 : 0)
+        .opacity(shown || hover || TouchReveal.always ? 1 : 0)
+        #if os(iOS)
+        // (A finger can't hover: on the iPad it's always shown. A "…" hidden but still taking taps opened an unseen
+        // menu from the right of the row instead of the row.)
+        .allowsHitTesting(shown || hover || TouchReveal.always)
+        #endif
         .accessibilityLabel(label)
     }
+}
+
+/// Controls the Mac shows only while the pointer is over their row or card (a "…"): on the iPad always shown, as the
+/// web shows them to a finger (`pointer-coarse:opacity-100`), since a finger can't hover.
+enum TouchReveal {
+    #if os(iOS)
+    static let always = true
+    #else
+    static let always = false
+    #endif
 }
 
 /// Hands its content whether the pointer is over it (a row that shows its "…" on hover).

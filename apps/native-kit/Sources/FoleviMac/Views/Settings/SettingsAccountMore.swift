@@ -90,13 +90,18 @@ private struct BillingSettings: View {
                         ("Storage", "\(bytes(b["storageUsedBytes"].number)) of \(b["storageLimitBytes"].number.map { bytes($0) } ?? "unlimited")", nil),
                         ("Devices", d?.devicesActive.map { n in d?.deviceLimit.map { "\(n) of \($0)" } ?? "\(n)" } ?? "…", nil),
                     ])
+                    #if os(iOS)
+                    // No buying in the iPad app (App Store 3.1.1, docs/IOS.md): the plan as it is, as the iPhone shows it.
+                    SText("Plans are changed on the web, at folevi.com.", "row.hint")
+                    #else
                     SettingsButtons {
                         if d?.plan?.paid == true { WebButton("Manage billing…") { Task { await openURL("billing.portal") } } }
                         WebButton("See plans…", variant: d?.plan?.paid == true ? .secondary : .primary) { if let u = URL(string: "https://folevi.com/settings/billing") { model.frame.host?.frameOpenExternal(u) } }
                     }
+                    #endif
                 }
             }
-            if !b["payments"].array.isEmpty {
+            if !b["payments"].array.isEmpty, !Self.inIosApp {
                 SettingsCard("Billing history") {
                     SettingsDivided(rows(b["payments"].array), gap: 10, line: "row") { r in
                         HStack {
@@ -108,6 +113,12 @@ private struct BillingSettings: View {
             }
         }
     }
+
+    #if os(iOS)
+    static let inIosApp = true
+    #else
+    static let inIosApp = false
+    #endif
 
     private func openURL(_ fn: String) async {
         if let r = await model.mutate(fn, [:], action: true), let s = J(r)["url"].string, let u = URL(string: s) { NSWorkspace.shared.open(u) }
@@ -133,9 +144,13 @@ private struct WorkspaceBillingSettings: View {
             SettingsCard("Workspace plan") {
                 VStack(alignment: .leading, spacing: 16) {
                     SettingsTerms(rows: [("Plan", s["planName"].string ?? s["plan"]["name"].string ?? "…", nil), ("Members", s["seats"]["billable"].number.map { "\(Int($0)) billable seats" } ?? "…", nil)])
+                    #if os(iOS)
+                    SText("Plans are changed on the web, at folevi.com.", "row.hint")
+                    #else
                     WebButton("Manage billing…") {
                         Task { if let r = await model.mutate("workspaceBilling.portal", ["workspaceId": .string(w.id)], action: true), let u = J(r)["url"].string.flatMap(URL.init(string:)) { NSWorkspace.shared.open(u) } }
                     }
+                    #endif
                 }
             }
         }

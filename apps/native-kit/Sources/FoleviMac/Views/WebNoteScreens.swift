@@ -53,6 +53,10 @@ struct WebNoteCell: View {
                 .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2), value: hovered)
             }
             .buttonStyle(PressDipButtonStyle())
+            #if os(iOS)
+            // (The lifted card keeps its own shape, not a square white plate behind it.)
+            .contentShape(.dragPreview, WebCornersShape.noteCard)
+            #endif
             .draggable(drag)
             // Always there (shown on hover), placed as the folder card's is: a "…" put in only on hover let the click
             // through to the card, which opened the note.
@@ -65,8 +69,8 @@ struct WebNoteCell: View {
                 // Clear of a bookmarked card's ribbon (DocumentCard.tsx: right 11cqw + 4px).
                 .position(x: geo.size.width - (card.starred && !compact ? geo.size.width * 0.11 + 4 : 8) - Self.menuWidth(useTemplate != nil) / 2, y: 8 + WebCardMenuButton.size / 2)
             }
-            .opacity(hovered ? 1 : 0)
-            .allowsHitTesting(hovered)
+            .opacity(hovered || TouchReveal.always ? 1 : 0)
+            .allowsHitTesting(hovered || TouchReveal.always)
             if selected {
                 RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip + 4, style: .circular)
                     .strokeBorder(webVar("color-heading", scheme).color, lineWidth: 2)
@@ -162,7 +166,8 @@ struct WebFolderCell: View {
             GeometryReader { geo in
                 WebCardMenuButton(label: "Folder options for \(card.name)", entries: menu)
                     .position(x: geo.size.width / 2, y: geo.size.height * 0.7 + (hovered ? -4 : 0))
-                    .opacity(hovered ? 1 : 0)
+                    .opacity(hovered || TouchReveal.always ? 1 : 0)
+                    .allowsHitTesting(hovered || TouchReveal.always)
             }
         }
         .aspectRatio(WebFolderCard.aspect, contentMode: .fit)
@@ -218,7 +223,10 @@ func noteMenuEntries(_ row: NoteRow, list: NotesListModel, frame: FrameModel, re
             Task { if let id = await list.actions.create(folderId: nil, templateId: row.id, title: row.title) { frame.open(.note(id)) } }
         })
     }
-    out.append(WebMenuEntry(.item(template ? "Edit template" : "Open", icon: .externalLink)) { frame.open(.note(row.id)) })
+    // (The iPad has no Open: a tap on the card opens it, and the menu comes from a finger already on the card.)
+    if template || !TouchReveal.always {
+        out.append(WebMenuEntry(.item(template ? "Edit template" : "Open", icon: .externalLink)) { frame.open(.note(row.id)) })
+    }
     out.append(WebMenuEntry(.item("Open in new tab", icon: .externalLink, id: "newtab")) { frame.open(.note(row.id), .newTab) })
     let starred = list.isStarred(row)
     out.append(WebMenuEntry(.item(starred ? "Remove bookmark" : "Bookmark", icon: starred ? .bookmarkOff : .bookmark)) { run(starred ? .unstar : .star) })
@@ -721,6 +729,8 @@ struct WebNoteCarousel: View {
         }
         .frame(width: width, height: height)
         .opacity(hovered ? 1 : 0)
+        // (Hidden, they'd still take a tap at the row's ends: on the iPad the finger scrolls the row instead.)
+        .allowsHitTesting(hovered)
     }
 
     private func arrow(_ icon: WebIcon, style: WebStylePair, size: CGFloat, label: String, action: @escaping () -> Void) -> some View {

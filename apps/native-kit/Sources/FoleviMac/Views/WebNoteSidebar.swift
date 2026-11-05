@@ -87,6 +87,8 @@ struct WebNoteSidebar: View {
     let noteId: String
     @AppStorage("folevi.noteSidebar.tab") private var tabRaw = NoteToolTab.contents.rawValue
     @State private var find = NoteFindModel()
+    /// The Find field has the keyboard (its well shows the focus ring).
+    @State private var findFocused = false
     @Environment(\.colorScheme) private var scheme
 
     private var tab: NoteToolTab { NoteToolTab(rawValue: tabRaw) ?? .contents }
@@ -590,10 +592,11 @@ struct WebNoteSidebar: View {
                 FindField(text: $find.query, style: f.text, color: f.color.color, placeholderColor: v("color-ink-faint"),
                           onChange: { find.search(model) },
                           onSubmit: { back in find.step(model, by: back ? -1 : 1) },
-                          onEscape: { find.clear(model) })
+                          onEscape: { find.clear(model) },
+                          onFocus: { findFocused = $0 })
                     .padding(f.padding.edgeInsets)
                     .frame(height: f.height)
-                    .webBox(field)
+                    .webBox(findFocused ? webFocused(field) : field)
                 WebIconView(.search, size: 14).frame(width: 14, height: 14).foregroundStyle(icon.color.color)
                     .padding(.leading, icon.x - f.x)
                     .allowsHitTesting(false)
@@ -705,7 +708,8 @@ private struct CommentsList: View {
                 Text(t.anchor).webText(.role(.footnote)).lineLimit(1).foregroundStyle(v("color-ink-faint", .secondary))
                 HStack(spacing: 8) {
                     Text(String(t.author.prefix(1)).uppercased())
-                        .font(WebFont.font(.sans, size: 9, weight: 600))
+                        // Caption 2 (11), the smallest desktop size (MAC-53), not 9.
+                        .font(WebFont.font(.sans, size: 11, weight: 600))
                         .foregroundStyle(v("color-canvas", .white))
                         .frame(width: 20, height: 20)
                         .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(v("color-heading", .primary)))
@@ -799,8 +803,10 @@ private struct TabHoverStyle: ButtonStyle {
         let on: Bool
         let hover: Color
         @State private var over = false
+        // One view whatever the pointer does (MAC-51): switching between two branches rebuilt the label and its
+        // hover tracking on every move, which could make the colour flicker or stick.
         var body: some View {
-            if over, !on { label.foregroundStyle(hover).onHover { over = $0 } } else { label.onHover { over = $0 } }
+            label.foregroundStyle(over && !on ? AnyShapeStyle(hover) : AnyShapeStyle(.foreground)).onHover { over = $0 }
         }
     }
 }
@@ -829,6 +835,8 @@ private struct FindField: NSViewRepresentable {
     let onChange: () -> Void
     let onSubmit: (_ back: Bool) -> Void
     let onEscape: () -> Void
+    /// The field takes or gives up the keyboard (the well draws its focus ring meanwhile, MAC-52).
+    var onFocus: (Bool) -> Void = { _ in }
 
     func makeNSView(context: Context) -> NSTextField {
         let f = NSTextField()
@@ -866,14 +874,32 @@ private struct FindField: NSViewRepresentable {
             parent.onChange()
         }
 
+        func controlTextDidBeginEditing(_ n: Notification) { parent.onFocus(true) }
+        func controlTextDidEndEditing(_ n: Notification) { parent.onFocus(false) }
+
+        /// The note's page view in this window (the web view the editor draws in), to give the keyboard back to.
+        private static func page(in view: NSView?) -> NSView? {
+            guard let view else { return nil }
+            if String(describing: type(of: view)).contains("WKWebView") { return view }
+            for sub in view.subviews { if let p = page(in: sub) { return p } }
+            return nil
+        }
+
         func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
             if selector == #selector(NSResponder.insertNewline(_:)) {
                 parent.onSubmit(NSEvent.modifierFlags.contains(.shift))
                 return true
             }
-            if selector == #selector(NSResponder.cancelOperation(_:)), !parent.text.isEmpty {
-                parent.onEscape()
-                return true
+            if selector == #selector(NSResponder.cancelOperation(_:)) {
+                if !parent.text.isEmpty {
+                    parent.onEscape()
+                    return true
+                }
+                // Escape in an empty field gives the keyboard back to the page (MAC-52).
+                if let window = control.window, let page = Self.page(in: window.contentView) {
+                    window.makeFirstResponder(page)
+                    return true
+                }
             }
             return false
         }
@@ -889,6 +915,7 @@ private struct FindField: View {
     let onChange: () -> Void
     let onSubmit: (_ back: Bool) -> Void
     let onEscape: () -> Void
+    var onFocus: (Bool) -> Void = { _ in }
     @FocusState private var focused: Bool
 
     var body: some View {

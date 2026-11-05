@@ -151,8 +151,8 @@ struct ReviewScreen: View {
             .padding(.bottom, 12)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(moreVar("glass-active", scheme))
-                    Capsule().fill(heading).frame(width: total > 0 ? geo.size.width * CGFloat(model.reviewed) / CGFloat(total) : 0)
+                    RoundedRectangle(cornerRadius: 2, style: .circular).fill(moreVar("glass-active", scheme))
+                    RoundedRectangle(cornerRadius: 2, style: .circular).fill(heading).frame(width: total > 0 ? geo.size.width * CGFloat(model.reviewed) / CGFloat(total) : 0)
                 }
             }
             .frame(height: 6)

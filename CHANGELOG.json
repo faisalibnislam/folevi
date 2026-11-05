@@ -1,6 +1,32 @@
 {
   "releases": [
     {
+      "version": "1.2.33",
+      "build": 45,
+      "released": "2026-11-05T14:20:04+06:00",
+      "type": "patch",
+      "summary": "Foli DNA works properly on every device, folders are easier to organise, and 22 fixes from a full QA audit.",
+      "added": [
+        "Folders page sort: Manual, Name or Recent, with Home Screen style dragging to put folders in order",
+        "Sidebar folders show the first five with Show more, and have their own sort"
+      ],
+      "improved": [
+        "Foli DNA: the map fits the window, labels every note with room, and no longer shows another note behind it",
+        "Lighter folder cards with a clearer page count, and a brighter bookmark ribbon in dark mode",
+        "Accessibility: search results, calendar days, row menus and dark checkboxes work properly with VoiceOver",
+        "Joined notes stay readable with Format, Style or Info open, and the editor toolbar always fits"
+      ],
+      "fixed": [
+        "Typing straight after Command K no longer loses letters",
+        "A workspace note no longer briefly shows as private",
+        "Empty template checkboxes no longer become Untitled tasks",
+        "HTML export keeps task due dates",
+        "File > Import on the Mac opens Import and Export",
+        "Offline storage figures no longer stay at ..."
+      ],
+      "tag": "v1.2.33"
+    },
+    {
       "version": "1.2.32",
       "build": 44,
       "released": "2026-11-05T11:27:09+06:00",

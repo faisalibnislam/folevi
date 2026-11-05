@@ -4,6 +4,33 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.33: Small update
+
+Released 2026-11-05 14:20:04+06:00 (build 45, tag v1.2.33)
+
+Foli DNA works properly on every device, folders are easier to organise, and 22 fixes from a full QA audit.
+
+### Added
+
+- Folders page sort: Manual, Name or Recent, with Home Screen style dragging to put folders in order
+- Sidebar folders show the first five with Show more, and have their own sort
+
+### Improved
+
+- Foli DNA: the map fits the window, labels every note with room, and no longer shows another note behind it
+- Lighter folder cards with a clearer page count, and a brighter bookmark ribbon in dark mode
+- Accessibility: search results, calendar days, row menus and dark checkboxes work properly with VoiceOver
+- Joined notes stay readable with Format, Style or Info open, and the editor toolbar always fits
+
+### Fixed
+
+- Typing straight after Command K no longer loses letters
+- A workspace note no longer briefly shows as private
+- Empty template checkboxes no longer become Untitled tasks
+- HTML export keeps task due dates
+- File > Import on the Mac opens Import and Export
+- Offline storage figures no longer stay at ...
+
 ## Version 1.2.32: Small update
 
 Released 2026-11-05 11:27:09+06:00 (build 44, tag v1.2.32)

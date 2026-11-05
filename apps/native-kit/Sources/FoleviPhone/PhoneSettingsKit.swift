@@ -33,6 +33,15 @@ public final class PhoneSettingsModel {
     @ObservationIgnored public private(set) lazy var security: ValueStore<SecuritySettings> = client.watch(.settingsSecurity)
     @ObservationIgnored public private(set) lazy var general: ValueStore<GeneralSettings> = client.watch(.settingsGeneral)
     @ObservationIgnored public private(set) lazy var storage: ValueStore<DeviceStorageValue> = client.watch(.deviceStorage)
+    /// Moves on each Retry of Offline & sync's readings: the screen reads the new store.
+    public private(set) var storageGeneration = 0
+
+    /// Measures this device's copy again (Offline & sync's Retry, QA F19): watching the view again measures anew.
+    public func remeasureStorage() {
+        storage.cancel()
+        storage = client.watch(.deviceStorage)
+        storageGeneration += 1
+    }
     /// Keys of commands running now ("library.syncNow").
     public var busy: Set<String> = []
     /// This app's version ("1.2.07").

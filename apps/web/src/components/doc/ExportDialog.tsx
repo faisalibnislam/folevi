@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { errorMessage, useToast } from "@/components/ui/Toast";
 import { useRadioGroup } from "@/lib/a11y/radioGroup";
 import { desktop } from "@/lib/desktop";
+import { inMacApp } from "@/lib/desktop/mac";
+import { inIosApp } from "@/lib/nativeApp";
 import { exportHtml, exportMarkdown, exportPdf, markdownNow, type ExportReport } from "./export";
 
 // Export a note: one dialog (like Share) instead of three menu items. Pick a format, see what happens to
@@ -19,8 +21,30 @@ type Format = "markdown" | "html" | "pdf";
 const FORMATS: { id: Format; label: string; ext: string; desc: string; icon: ReactNode; run: typeof exportMarkdown }[] = [
   { id: "markdown", label: "Markdown", ext: ".md", desc: "Plain text with formatting. Opens in any notes app or editor.", icon: <FileText size={18} />, run: exportMarkdown },
   { id: "html", label: "Web page", ext: ".html", desc: "Looks like the note, opens in any browser.", icon: <FileCode size={18} />, run: exportHtml },
-  { id: "pdf", label: "PDF", ext: ".pdf", desc: "For printing or sending. Uses your browser's print window.", icon: <Printer size={18} />, run: exportPdf },
+  { id: "pdf", label: "PDF", ext: ".pdf", desc: "", icon: <Printer size={18} />, run: exportPdf },
 ];
+
+export type PrintPlatform = "mac" | "ios" | "browser";
+
+/** Where the PDF's print screen comes from: the Mac app and the iPhone and iPad app open their own, not a browser's. */
+export function printPlatform(): PrintPlatform {
+  return inMacApp() ? "mac" : inIosApp() ? "ios" : "browser";
+}
+
+/**
+ * What the PDF choice says it does, and what to do once the print screen is up (QA F23): the Mac app opens the
+ * Mac print dialog, the iPhone and iPad app the system's print options, a browser its own print window.
+ */
+export function pdfCopy(platform: PrintPlatform): { desc: string; ready: string } {
+  switch (platform) {
+    case "mac":
+      return { desc: "For printing or sending. Opens the Mac print dialog, where you can save a PDF.", ready: "Ready to print. To save a PDF, choose Save as PDF from the PDF menu in the print dialog." };
+    case "ios":
+      return { desc: "For printing or sending. Opens the print options, where you can save or share a PDF.", ready: "Ready to print. To save a PDF, use the share button in the print options." };
+    default:
+      return { desc: "For printing or sending. Uses your browser's print window.", ready: "Ready to print. Choose Save as PDF in the print window." };
+  }
+}
 
 const LAST_KEY = "folevi:export-format";
 
@@ -49,6 +73,7 @@ export function ExportDialog({ open, onClose, title, blocks }: { open: boolean; 
   // Attachments, and for the page the images in flowchart shapes too.
   const files = open ? (format === "html" ? blocksFileIds(blocks()).length : blocks().filter((b) => typeof (b.props as { fileId?: unknown }).fileId === "string").length) : 0;
   const chosen = FORMATS.find((f) => f.id === format)!;
+  const pdf = pdfCopy(printPlatform());
   // In the Mac app, the Markdown file can also be dragged straight to Finder or another app.
   const bridge = open ? desktop() : null;
   const canDrag = Boolean(bridge?.dragFile) && format === "markdown";
@@ -68,7 +93,7 @@ export function ExportDialog({ open, onClose, title, blocks }: { open: boolean; 
       const r: ExportReport = await chosen.run(client, title, blocks());
       onClose();
       const n = r.missingAssets.length;
-      if (!n) toast.show(format === "pdf" ? "Ready to print. Choose Save as PDF in the print window." : `${chosen.label} export ready`);
+      if (!n) toast.show(format === "pdf" ? pdf.ready : `${chosen.label} export ready`);
       else
         toast.show(
           `${chosen.label} export ready, but ${n === 1 ? `“${r.missingAssets[0]}” couldn’t be included` : `${n} attachments couldn’t be included`} (not available or not uploaded yet).`,
@@ -127,7 +152,7 @@ export function ExportDialog({ open, onClose, title, blocks }: { open: boolean; 
                     <span className="font-medium text-heading">{f.label}</span>
                     <span className="text-footnote text-faint">{f.ext}</span>
                   </span>
-                  <span className="mt-0.5 block text-footnote leading-snug text-muted">{f.desc}</span>
+                  <span className="mt-0.5 block text-footnote leading-snug text-muted">{f.id === "pdf" ? pdf.desc : f.desc}</span>
                 </span>
               </button>
             );

@@ -1,8 +1,7 @@
 // Revision 10's view (R13.3, plan 11.8): Settings > This device, the copy of this place's notes kept on this
 // device (lib/sync/deviceCopy.ts, run by components/app/DeviceCopyRunner.tsx): whether all notes are kept, each
 // space's progress, what it takes, and what's free.
-import { localDb } from "@/lib/sync/db";
-import { keptFilesUsage, storageBudget } from "@/lib/sync/deviceFiles";
+import { measureDeviceUsage, type DeviceUsage } from "@/lib/sync/deviceUsage";
 import { deviceCopyOf, keepAllNotes, onDeviceCopies, onKeepAllNotes } from "@/lib/sync/deviceCopyHost";
 import { scopeIdKey } from "@folevi/editor-schema";
 import type { EngineDeps, ViewContext } from "./context";
@@ -17,17 +16,13 @@ export function waitingCount(deps: EngineDeps): number {
   return (s ? s.pending.length + s.inflight.length : 0) + (deps.app.outbox?.entries.length ?? 0);
 }
 
-type Usage = { notes: number; files: { count: number; bytes: number }; used: number | null; free: number | null; budget: number };
-
-async function measure(accountKey: string): Promise<Usage | null> {
-  try {
-    const db = await localDb(accountKey);
-    const [notes, files, est, budget] = await Promise.all([db.count("blocks"), keptFilesUsage(accountKey), navigator.storage?.estimate?.().catch(() => undefined), storageBudget()]);
-    return { notes, files, used: est?.usage ?? null, free: est?.quota !== undefined ? Math.max(0, est.quota - (est.usage ?? 0)) : null, budget };
-  } catch {
-    return null;
-  }
-}
+/**
+ * Measures with every reading on its own and time-limited (lib/sync/deviceUsage.ts, QA F19): before, one storage
+ * estimate that never answered in the apps' WebKit held back Notes kept and Space used, which stayed "…" for
+ * good. Now the view is never stale for more than a few seconds; a reading it couldn't get is null, which the
+ * apps show as "Unavailable" with Retry (watching the view again measures again).
+ */
+const measure = (accountKey: string): Promise<DeviceUsage> => measureDeviceUsage(accountKey);
 
 /** The copy's handle for this account and its changes, as a signal (the copy starts and stops with the app). */
 function copySignal(accountKey: string): Signal {
@@ -58,7 +53,7 @@ const deviceStorage: ValueViewDef = {
   create: (ctx: ViewContext) => {
     const accountKey = ctx.deps().app.accountKey;
     const copy = copySignal(accountKey);
-    let usage: Usage | null = null;
+    let usage: DeviceUsage | null = null;
     // Measured at least once (a failed measure leaves the numbers unknown, not loading forever).
     let measuredOnce = false;
     const measured = new Emitter();
@@ -104,8 +99,8 @@ const deviceStorage: ValueViewDef = {
           available: Boolean(handle),
           spaces,
           notesKept: usage?.notes ?? null,
-          attachmentsKept: usage?.files.count ?? null,
-          attachmentsBytes: usage?.files.bytes ?? null,
+          attachmentsKept: usage?.files?.count ?? null,
+          attachmentsBytes: usage?.files?.bytes ?? null,
           usedBytes: usage?.used ?? null,
           freeBytes: usage?.free ?? null,
           attachmentLimitBytes: usage?.budget ?? null,

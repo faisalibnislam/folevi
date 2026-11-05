@@ -81,7 +81,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
         let ai = view.flatMap { Chrome.states[ObjectIdentifier($0)]?.ai } ?? (Chrome.keyMainView.flatMap { Chrome.states[ObjectIdentifier($0)]?.ai } ?? true)
         sections = Self.sections(mode: mode, ai: ai)
         if let section { current = section }
-        if !sections.contains(where: { $0.id == current }) { current = sections.first?.id ?? "desktop" }
+        if !sections.contains(where: { $0.id == Self.toolbarID(current) }) { current = sections.first?.id ?? "desktop" }
         rebuildToolbar()
         if view == nil || view?.place != place {
             load(place: place)
@@ -131,10 +131,22 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
 
     nonisolated static func path(_ section: String) -> String { "/settings/\(section)?window=1" }
 
+    /// The toolbar item a section is under: a workspace's Import & Export (File > Import in a workspace) is
+    /// under Import & Export. Pure (ChromeTests).
+    nonisolated static func toolbarID(_ section: String) -> String { section == "workspace-data" ? "data" : section }
+
+    /// File > Import's section (QA F18): Import & Export for the space open in the window, so the files go where
+    /// the person is working and the card names it ("Import into Personal", or "Import into <workspace>").
+    /// Pure (ChromeTests).
+    nonisolated static func importSection(session: SessionValue?) -> String {
+        guard let s = session, s.spaces.first(where: { $0.id == s.space })?.kind == .workspace else { return "data" }
+        return "workspace-data"
+    }
+
     private func go(to section: String) {
         current = section
-        window?.toolbar?.selectedItemIdentifier = NSToolbarItem.Identifier(section)
-        window?.title = sections.first { $0.id == section }?.title ?? "Settings"
+        window?.toolbar?.selectedItemIdentifier = NSToolbarItem.Identifier(Self.toolbarID(section))
+        window?.title = sections.first { $0.id == Self.toolbarID(section) }?.title ?? "Settings"
         updateNative()
         guard let view else { return }
         if view.url.map(WindowRestore.restorablePath) == Self.path(section) { return }
@@ -148,8 +160,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
         guard parts.first == "settings", parts.count >= 2 else { return }
         let id = String(parts[1])
         current = id
-        if sections.contains(where: { $0.id == id }) { window?.toolbar?.selectedItemIdentifier = NSToolbarItem.Identifier(id) }
-        window?.title = sections.first { $0.id == id }?.title ?? "Settings"
+        if sections.contains(where: { $0.id == Self.toolbarID(id) }) { window?.toolbar?.selectedItemIdentifier = NSToolbarItem.Identifier(Self.toolbarID(id)) }
+        window?.title = sections.first { $0.id == Self.toolbarID(id) }?.title ?? "Settings"
     }
 
     /// The page said whether Foli AI is on: its item comes or goes.
@@ -165,8 +177,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate, NSToolbarDelegate {
         guard let toolbar = window?.toolbar else { return }
         while !toolbar.items.isEmpty { toolbar.removeItem(at: 0) }
         for (i, s) in sections.enumerated() { toolbar.insertItem(withItemIdentifier: NSToolbarItem.Identifier(s.id), at: i) }
-        toolbar.selectedItemIdentifier = NSToolbarItem.Identifier(current)
-        window?.title = sections.first { $0.id == current }?.title ?? "Settings"
+        toolbar.selectedItemIdentifier = NSToolbarItem.Identifier(Self.toolbarID(current))
+        window?.title = sections.first { $0.id == Self.toolbarID(current) }?.title ?? "Settings"
     }
 
     @objc private func pick(_ sender: NSToolbarItem) {

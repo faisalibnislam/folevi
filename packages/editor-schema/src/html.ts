@@ -105,7 +105,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
 table{border-collapse:collapse;width:100%}td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}tr.total td{font-weight:600;border-top:2px solid var(--line)}
 img{max-width:100%;border-radius:10px}
 ul.todo{list-style:none;padding-left:0}ul.todo input{margin:0 .4em 0 0;vertical-align:-.1em}
-ul.todo li.done{color:var(--muted);text-decoration:line-through}
+ul.todo li.done{color:var(--muted);text-decoration:line-through}ul.todo .due{color:var(--muted);font-size:.875em;margin-left:.35em;white-space:nowrap}
 mark{background:#F7E7A6;color:inherit}
 .page-break{break-after:page;page-break-after:always;height:0;margin:32px 0;border-top:1px dashed var(--line)}
 .formula{margin:16px 0;text-align:center;overflow-x:auto}.formula pre{text-align:left}
@@ -120,6 +120,30 @@ hr.divider-regular{border:0;border-top:1px solid var(--line)}hr.divider-strong{b
 @media print{body{background:#fff;color:#000}main{margin:0 auto}.page-break{border:0;margin:0}}
 @media print{.columns{display:flex}.column+.column{margin-top:0}}
 `;
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const TIME = /^\d{2}:\d{2}$/;
+
+/**
+ * A to-do's due date as people read it ("Nov 6, 2026", and its time when it has one: "Nov 6, 2026, 15:00"),
+ * the calendar date as written (no time zone shift). Null for anything that isn't a YYYY-MM-DD date.
+ */
+export function readableDueDate(dueDate: unknown, dueTime?: unknown): string | null {
+  if (typeof dueDate !== "string") return null;
+  const m = DATE.exec(dueDate);
+  const month = m ? MONTHS[Number(m[2]) - 1] : undefined;
+  if (!m || !month) return null;
+  return `${month} ${Number(m[3])}, ${m[1]}${typeof dueTime === "string" && TIME.test(dueTime) ? `, ${dueTime}` : ""}`;
+}
+
+/** A to-do's due date after its text (a <time> that carries the date for machines), or nothing without one. */
+function dueHtml(p: Record<string, unknown>): string {
+  const label = readableDueDate(p.dueDate, p.dueTime);
+  if (!label) return "";
+  const stamp = typeof p.dueTime === "string" && TIME.test(p.dueTime) ? `${p.dueDate as string}T${p.dueTime}` : (p.dueDate as string);
+  return ` <time class="due" datetime="${escapeHtml(stamp)}">Due ${escapeHtml(label)}</time>`;
+}
 
 export function blocksToHtml(
   blocks: readonly WireBlock[],
@@ -198,7 +222,7 @@ function htmlBody(blocks: readonly WireBlock[], opts: HtmlExportOptions): string
       const cls = block.type === "todo" && p.checked ? ' class="done"' : "";
       // A to-do's box is a real (read-only) checkbox, so its state is announced, not just drawn.
       const box = block.type === "todo" ? `<input type="checkbox" disabled${p.checked ? " checked" : ""}> ` : "";
-      parts.push(`<li${cls}>${box}${t}`);
+      parts.push(`<li${cls}>${box}${t}${block.type === "todo" ? dueHtml(p) : ""}`);
       cur.li = true;
       continue;
     }

@@ -106,6 +106,15 @@ public final class MacSettingsModel {
     @ObservationIgnored private(set) lazy var security: ValueStore<SecuritySettings> = client.watch(.settingsSecurity)
     @ObservationIgnored private(set) lazy var general: ValueStore<GeneralSettings> = client.watch(.settingsGeneral)
     @ObservationIgnored private(set) lazy var storage: ValueStore<DeviceStorageValue> = client.watch(.deviceStorage)
+    /// Moves on each Retry of Offline & sync's readings: the section reads the new store.
+    private(set) var storageGeneration = 0
+
+    /// Measures this device's copy again (Offline & sync's Retry, QA F19): watching the view again measures anew.
+    func remeasureStorage() {
+        storage.cancel()
+        storage = client.watch(.deviceStorage)
+        storageGeneration += 1
+    }
     /// Keys of commands running now ("library.syncNow").
     var busy: Set<String> = []
     @ObservationIgnored private(set) lazy var lineBreaks = SettingsLineBreaks(client: client)

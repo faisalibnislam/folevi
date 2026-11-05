@@ -72,11 +72,13 @@ export async function mirrorCopy(store: LocalReader, doc: LocalDocument, purpose
   const text = await noteMarkdown(store, doc, LIMITS.textChars, { title: false });
   if (purpose === "ai") return { title, text };
   const blocks = ((await store.list("blocks", doc.id)) as LocalBlock[]).filter((b) => b.deletedAt === null && b.type === "todo");
-  const tasks = blocks.slice(0, LIMITS.tasks).map((b) => {
+  // A to-do with no words isn't a task (QA F06, editor-schema projectTask): it stays out of the apps' mirror.
+  const named = blocks.map((b) => ({ b, text: inlineText(b.text).slice(0, LIMITS.taskChars) })).filter((x) => x.text.trim().length > 0);
+  const tasks = named.slice(0, LIMITS.tasks).map(({ b, text }) => {
     const p = b.props as { checked?: unknown; dueDate?: unknown; dueTime?: unknown };
     return {
       blockId: b.id,
-      text: inlineText(b.text).slice(0, LIMITS.taskChars),
+      text,
       done: p.checked === true,
       ...(typeof p.dueDate === "string" ? { due: p.dueDate } : {}),
       ...(typeof p.dueDate === "string" && typeof p.dueTime === "string" ? { dueTime: p.dueTime } : {}),

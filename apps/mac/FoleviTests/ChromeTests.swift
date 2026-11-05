@@ -145,6 +145,15 @@ final class ChromeTests: XCTestCase {
         XCTAssertEqual(SettingsWindow.path("appearance"), "/settings/appearance?window=1")
     }
 
+    /// File > Import (QA F18) opens Import & Export for the open space, under the Import & Export item.
+    func testFileImportOpensImportAndExport() {
+        XCTAssertEqual(SettingsWindow.importSection(session: nil), "data")
+        XCTAssertEqual(SettingsWindow.toolbarID("workspace-data"), "data")
+        XCTAssertEqual(SettingsWindow.toolbarID("sync"), "sync")
+        XCTAssertTrue(SettingsWindow.sections(mode: "account", ai: true).contains { $0.id == SettingsWindow.toolbarID("workspace-data") })
+        XCTAssertTrue(SettingsWindow.sections(mode: "local", ai: true).contains { $0.id == SettingsWindow.importSection(session: nil) })
+    }
+
     func testTextMenuWords() {
         XCTAssertEqual(TextMenu.word(" teh, "), "teh")
         XCTAssertEqual(TextMenu.word("don’t"), "don’t")

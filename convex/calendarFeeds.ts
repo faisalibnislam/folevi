@@ -9,7 +9,7 @@ import { requireProfile } from "./lib/auth";
 import { randomToken, sha256Hex } from "./lib/crypto";
 import { appUrl } from "./lib/notify";
 import { buildCalendar, type FeedTask } from "./lib/ical";
-import { addDays, localDate } from "@folevi/editor-schema";
+import { addDays, hasTaskTitle, localDate } from "@folevi/editor-schema";
 import { isLocked, isSealed, spaceE2ee, switchesOf } from "./lib/e2ee/state";
 import { personalScope } from "./lib/scope";
 
@@ -100,7 +100,8 @@ export const render = internalQuery({
     const tasks: FeedTask[] = [];
     const titles = new Map<string, { title: string; publicId: string } | null>();
     for (const t of rows) {
-      if (t.documentInTrash || !t.dueDate) continue;
+      // (An empty checkbox isn't a task, QA F06: a row left from before that goes with migrations.dropEmptyTasks.)
+      if (t.documentInTrash || !t.dueDate || !hasTaskTitle(t.title)) continue;
       let doc = titles.get(t.documentId);
       if (doc === undefined) {
         const d = await ctx.db.get(t.documentId);
@@ -126,7 +127,7 @@ export const render = internalQuery({
         const d = await ctx.db.get(m.documentId);
         if (!d || d.inTrash || d.deletedAt !== undefined || (await isLocked(ctx, d))) continue;
         for (const t of m.tasks) {
-          if (t.done || !t.due || t.due < from || t.due > to) continue;
+          if (t.done || !t.due || t.due < from || t.due > to || !hasTaskTitle(t.text)) continue;
           tasks.push({ uid: `${t.blockId}@folevi.com`, title: t.text || "Untitled task", dueDate: t.due, ...(t.dueTime ? { dueTime: t.dueTime } : {}), url: `${appUrl()}/d/${d.publicId}#block-${t.blockId}`, note: m.title, updatedAt: m.updatedAt });
         }
       }

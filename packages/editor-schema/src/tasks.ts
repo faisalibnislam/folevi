@@ -22,14 +22,25 @@ export interface TaskProjection {
   repeat: string | null;
 }
 
-/** Derives the task index row from its canonical todo block. The block stays the source of truth. */
+/** Whether a task title has words (an empty checkbox, such as a template's blank Follow-ups line, has none). */
+export function hasTaskTitle(title: string): boolean {
+  return title.trim().length > 0;
+}
+
+/**
+ * Derives the task index row from its canonical todo block. The block stays the source of truth. A to-do with
+ * no words is no task (QA F06): a blank checkbox from a template stays out of Tasks and Calendar until a title
+ * is typed into it, which makes it exactly one task with its note as the source.
+ */
 export function projectTask(block: WireBlock, documentId: string): TaskProjection | null {
   if (block.type !== "todo") return null;
+  const title = plainText(block.text).slice(0, 500);
+  if (!hasTaskTitle(title)) return null;
   const p = block.props as unknown as TodoProps;
   return {
     blockId: block.id,
     documentId,
-    title: plainText(block.text).slice(0, 500),
+    title,
     status: p.canceled ? "canceled" : p.checked ? "done" : "open",
     dueDate: p.dueDate ?? null,
     dueTime: p.dueTime ?? null,

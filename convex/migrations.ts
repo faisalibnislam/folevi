@@ -6,7 +6,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { liveBlocks, refreshDerived, syncTaskProjection } from "./lib/documents";
 import { studyKindOf, syncStudyCard } from "./lib/study";
-import { randomNoteEmoji, randomNoteCover } from "@folevi/editor-schema";
+import { hasTaskTitle, randomNoteEmoji, randomNoteCover } from "@folevi/editor-schema";
 import { currentFolderColor, isFolderColor, randomFolderColor } from "./lib/folderColors";
 import { startTrial } from "./lib/billing";
 import { hasValidScope, SCOPED_TABLES, sameScope, scopeOfRow, type ScopedTable } from "./lib/scope";
@@ -211,6 +211,41 @@ export const backfillStudyCards = internalMutation({
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.backfillStudyCards, { cursor: page.continueCursor });
     return { cards, done: page.isDone };
+  },
+});
+
+/**
+ * Empty checkboxes stopped being tasks (QA F06, editor-schema projectTask): a template's blank Follow-ups line
+ * made an "Untitled task" in Tasks and Calendar. The lists already skip such rows; this removes the rows left
+ * from before, for every person, by projecting each one again from its block (the block stays as it is, so a
+ * to-do that has words by now keeps its task and gets its title). Only rows with an empty title are touched.
+ * Idempotent; batched and continues itself.
+ *
+ *   npx convex run --deployment <prod> migrations:dropEmptyTasks
+ */
+export const dropEmptyTasks = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, args): Promise<{ dropped: number; refreshed: number; done: boolean }> => {
+    const page = await ctx.db.query("tasks").paginate({ cursor: args.cursor ?? null, numItems: 500 });
+    let dropped = 0;
+    let refreshed = 0;
+    for (const task of page.page) {
+      if (hasTaskTitle(task.title)) continue;
+      const row = await ctx.db.get(task.blockDocId);
+      const doc = row ? await ctx.db.get(row.documentId) : null;
+      if (row && doc && row.blockId === task.blockId) {
+        // Deletes the row when the to-do is still empty (or sealed, deleted, in a template); updates it otherwise.
+        await syncTaskProjection(ctx, row, doc, task.createdBy);
+        if (await ctx.db.get(task._id)) refreshed++;
+        else dropped++;
+      } else {
+        // Its block or note is gone: nothing would show it.
+        await ctx.db.delete(task._id);
+        dropped++;
+      }
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.dropEmptyTasks, { cursor: page.continueCursor });
+    return { dropped, refreshed, done: page.isDone };
   },
 });
 

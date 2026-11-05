@@ -320,12 +320,17 @@ struct PhoneAccountSettings: View {
     // MARK: Offline & sync
 
     @ViewBuilder private var sync: some View {
+        // (Read so a Retry, which replaces the store, draws the new one.)
+        let _ = model.storageGeneration
         let s = model.devices
         PhoneSettingsGroup("This iPhone", footer: "Folevi keeps your recent notes and every unsent change on this iPhone, so you can keep writing offline and nothing is lost.") {
             PhoneSettingsRow("Connection", value: model.session.value?.online == false ? "Offline" : "Online")
             PhoneSettingsRow("Changes waiting to sync", value: "\(s.value?.waiting ?? 0)")
-            PhoneSettingsRow("Notes kept", value: s.value?.notesKept.map(String.init) ?? "…")
-            PhoneSettingsRow("Space used", value: s.value?.usedBytes.map { bytes(Double($0)) } ?? "…")
+            PhoneSettingsRow("Notes kept", value: s.notesKeptText)
+            PhoneSettingsRow("Space used", value: s.spaceUsedText)
+            if s.canRetryReadings {
+                PhoneSettingsRow("Retry reading storage", action: { model.remeasureStorage() })
+            }
         }
         PhoneSettingsGroup(footer: "Every note and its attachments stay on this iPhone, so all of them open offline.") {
             PhoneSettingsSwitchRow("Keep all notes on this iPhone", on: s.value?.keepAll ?? false, disabled: s.value?.available == false, change: { on in

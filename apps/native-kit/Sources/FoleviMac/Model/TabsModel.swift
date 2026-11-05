@@ -151,10 +151,22 @@ public final class TabsModel {
         return route
     }
 
+    /// Adds a route's tab behind the one on screen ("Open in new tab", a ⌘-click or middle-click on a folder), as a
+    /// browser opens a background tab; the tab on screen stays. A route that has a tab already keeps it. True when
+    /// a tab was added.
+    @discardableResult
+    public func addInBackground(_ route: FrameRoute) -> Bool {
+        let key = route.tabKey
+        guard !tabs.contains(where: { $0.holds(key) }) else { return false }
+        tabs.append(FrameTab(route: route))
+        trim(keeping: key, alsoKeeping: activeID)
+        return true
+    }
+
     /// Keeps the strip bounded: drops the oldest tabs other than `keeping` (Home never goes).
-    private func trim(keeping key: String) {
+    private func trim(keeping key: String, alsoKeeping other: String? = nil) {
         while tabs.count - 1 > Self.maxTabs {
-            guard let i = tabs.firstIndex(where: { !$0.isHome && !$0.pinned && $0.id != key }) else { break }
+            guard let i = tabs.firstIndex(where: { !$0.isHome && !$0.pinned && $0.id != key && $0.id != other }) else { break }
             tabs.remove(at: i)
         }
     }

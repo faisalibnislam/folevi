@@ -22,7 +22,7 @@ import { NotificationsButton } from "./NotificationsButton";
 import { SidebarMenu } from "./SidebarMenu";
 import { SyncStatus } from "./SyncStatus";
 import { WorkspaceMenu } from "./WorkspaceMenu";
-import { openNextInNewTab } from "@/lib/app/tabs";
+import { openNextInNewTab, useFolderTabClicks } from "@/lib/app/tabs";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { useMinute } from "@/lib/hooks/useMinute";
 import { startNoteDrag } from "@/lib/app/noteDrag";
@@ -77,6 +77,7 @@ function NavItem({
   dragFolderId,
   dragNoteId,
   locked,
+  tabFolder,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -91,19 +92,27 @@ function NavItem({
   dragNoteId?: string;
   /** Always fully encrypted: a small lock after the name (docs/E2EE_DESIGN.md §10.8). */
   locked?: boolean;
+  /** The folder this row opens: ⌘-click or middle-click opens it in a tab behind (useFolderTabClicks). */
+  tabFolder?: { id: string; name: string };
 }) {
   const { route } = useAppRouter();
+  const tabClicks = useFolderTabClicks(tabFolder ?? { id: "", name: "" });
   const active = isActive(route, href);
   const hint = useDropHint(dropFolderId ?? "\u0000");
   const over = hint !== null && !hint.refused;
   return (
     <AppLink
       href={href}
-      onClick={() => {
+      onClick={(e) => {
+        if (tabFolder) {
+          tabClicks.onClick(e);
+          if (e.defaultPrevented) return;
+        }
         // A note opened from the sidebar (e.g. Bookmarks) gets its own tab.
         if (href.startsWith("/d/")) openNextInNewTab();
         onNavigate?.();
       }}
+      onAuxClick={tabFolder ? tabClicks.onAuxClick : undefined}
       aria-current={active ? "page" : undefined}
       {...(dropFolderId !== undefined ? { "data-drop-folder": dropFolderId, "data-drop-name": label } : {})}
       draggable={dragFolderId || dragNoteId ? true : undefined}
@@ -533,7 +542,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <span className="w-5 flex-none" />
           )}
           <div className="min-w-0 flex-1">
-            <NavItem href={`/folders/${f.id}`} icon={<FolderGlyph color={f.color} size={18} />} label={f.name} onNavigate={onNavigate} dragFolderId={canEdit ? f.id : undefined} locked={isLockedFolder(f)} />
+            <NavItem href={`/folders/${f.id}`} icon={<FolderGlyph color={f.color} size={18} />} label={f.name} onNavigate={onNavigate} dragFolderId={canEdit ? f.id : undefined} locked={isLockedFolder(f)} tabFolder={f} />
           </div>
           <FolderMenu folder={f} className={FOLDER_MENU_REVEAL} />
         </FolderRow>

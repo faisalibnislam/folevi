@@ -1,10 +1,11 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
 import { useAppRouter } from "./router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { cameFromHistory } from "./historyNav";
 import { emitNoteEvent, nativePanes, onNativePanes, setNativePanes } from "@/lib/engine/noteHost";
+import { requestNavigation } from "@/lib/engine/navigation";
 
 /**
  * An open note in the tab strip. A tab is a top-level page (`id`); its nested pages open inside it, and
@@ -85,6 +86,11 @@ interface TabsValue {
    * details loaded, so switching to them shows the note at once.
    */
   warm: string[];
+  /**
+   * Opens a folder in a tab of its own without going there ("Open in new tab", or a ⌘-click or middle-click on a
+   * folder): the tab joins the strip behind the one on screen. A folder that has a tab already keeps it.
+   */
+  openInBackground: (folder: { id: string; name: string }) => void;
 }
 
 const MAX_TABS = 12;
@@ -398,9 +404,23 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
       .join(",");
   })();
   const warm = useMemo(() => (warmKey ? warmKey.split(",") : []), [warmKey]);
+  const openInBackground = useCallback(
+    (folder: { id: string; name: string }) => {
+      const key = `view:folder:${folder.id}`;
+      setTabs((cur) => {
+        if (cur.some((t) => t.id === key)) return cur;
+        let next: DocTab[] = [...cur, { id: key, title: folder.name, view: { kind: "folder", path: `/folders/${folder.id}` } }];
+        // Bounded as ever, never dropping the new tab or the one on screen.
+        const droppable = (x: DocTab) => x.id !== key && !x.pinned && !isShown(x);
+        while (next.length > MAX_TABS && next.some(droppable)) next = next.filter((_, j) => j !== next.findIndex(droppable));
+        return next;
+      });
+    },
+    [setTabs, isShown],
+  );
   const value = useMemo(
-    () => ({ tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm }),
-    [tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm],
+    () => ({ tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground }),
+    [tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground],
   );
 
   // The pages placed (useDocTab), placed again with each change to the tabs: a page names its tab before the tab
@@ -458,6 +478,8 @@ export function NativeTabsProvider({ children }: { accountKey?: string; workspac
       tabs,
       view: null,
       setView: noop,
+      // Native owns the strip: it opens the folder's tab.
+      openInBackground: (folder) => void requestNavigation(`/folders/${folder.id}`, { newTab: true }),
       homeHref: "/documents",
       close: noop,
       closeMany: noop,
@@ -492,6 +514,37 @@ export function NativeTabsProvider({ children }: { accountKey?: string; workspac
       <TabsContext.Provider value={value}>{children}</TabsContext.Provider>
     </TabsActionsContext.Provider>
   );
+}
+
+/**
+ * A folder link's ⌘-click (Ctrl-click) and middle-click: the folder's tab opens behind the one on screen, as a
+ * browser opens a link in a background tab. Spread on the link; a plain click goes on as before.
+ */
+export function useFolderTabClicks(folder: { id: string; name: string }): FolderTabClicks {
+  return folderTabClicks(useContext(TabsContext)?.openInBackground, folder);
+}
+
+type FolderTabClicks = { onClick: (e: MouseEvent) => void; onAuxClick: (e: MouseEvent) => void };
+
+/** The tabs' openInBackground (undefined outside tabs), for a list that spreads folderTabClicks on its rows. */
+export function useOpenInBackground(): TabsValue["openInBackground"] | undefined {
+  return useContext(TabsContext)?.openInBackground;
+}
+
+/** useFolderTabClicks without the hook, for rows drawn in a loop. */
+export function folderTabClicks(open: TabsValue["openInBackground"] | undefined, folder: { id: string; name: string }): FolderTabClicks {
+  return {
+    onClick: (e) => {
+      if (!open || !(e.metaKey || e.ctrlKey)) return;
+      e.preventDefault();
+      open(folder);
+    },
+    onAuxClick: (e) => {
+      if (!open || e.button !== 1) return;
+      e.preventDefault();
+      open(folder);
+    },
+  };
 }
 
 export function useTabs(): TabsValue {

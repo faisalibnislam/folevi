@@ -231,7 +231,8 @@ public struct WebSidebar: View {
         let iconBox = style("item.icon").height
         let countStyle = style("item.count")
         return Button {
-            model.open(route, newTab ? .newTab : .replace)
+            // A folder ⌘-clicked opens in a tab behind this one (FolderTabClicks).
+            if case .folder = route, FolderTabClicks.commandHeld { model.openInBackground(route, title: title) } else { model.open(route, newTab ? .newTab : .replace) }
         } label: {
             HStack(spacing: s.gap) {
                 Group {
@@ -350,6 +351,7 @@ public struct WebSidebar: View {
                     .buttonStyle(.plain)
                 }
                 item(.folder(f.id), icon: .folder, title: f.name, glyph: AnyView(FolderGlyph(colorId: f.color, size: 18)))
+                    .onMiddleClick { model.openInBackground(.folder(f.id), title: f.name) }
                 RowMoreButton(label: "Folder options for \(f.name)", shown: hovered) { folderMenu(f) }
             }
             }

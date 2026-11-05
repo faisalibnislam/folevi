@@ -636,8 +636,9 @@ struct WebHomeScreen: View {
                         let model = CardMapping.folderCard(f, parentName: f.path)
                         WebFolderCell(card: model, menu: {
                             folderMenuEntries(MenuFolder(f), context: FolderMenuContext(session: home.session.value, places: home.places.value, links: home.folderLinks, locks: home.locks.error == nil ? home.locks.value : nil), actions: home.actions, dialogs: home.dialogs, navigator: navigator, feedback: feedback, frame: frame)
-                        }, open: { frame.open(.folder(f.id)) }, drop: { items in Task { await home.dropNotes(items, on: f) } },
+                        }, open: { frame.openFolder(f.id, name: f.name) }, drop: { items in Task { await home.dropNotes(items, on: f) } },
                            dropFolder: { item in Task { await home.dropFolder(item, on: f, zone: .inside) } }, parentId: f.parentId)
+                        .onMiddleClick { frame.openInBackground(.folder(f.id), title: f.name) }
                         .frame(width: colW)
                     }
                 }
@@ -893,8 +894,9 @@ struct WebNoteBrowser: View {
                 WebFolderCell(card: card, labelScale: 234.0 / 152.0, menu: {
                     guard let f = model.menuFolder(card.id) else { return [] }
                     return folderMenuEntries(f, context: model.folderContext, actions: model.actions, dialogs: model.dialogs, navigator: navigator, feedback: feedback, frame: frame)
-                }, open: { frame.open(.folder(card.id)) }, drop: { items in Task { await model.dropNotes(items, into: card.id) } },
+                }, open: { frame.openFolder(card.id, name: card.name) }, drop: { items in Task { await model.dropNotes(items, into: card.id) } },
                    dropFolder: { item in Task { await model.dropFolder(item, on: card.id, zone: .inside) } }, parentId: model.folder?.id)
+                .onMiddleClick { frame.openInBackground(.folder(card.id), title: card.name) }
                 .frame(width: 152)
             }
         }
@@ -1316,11 +1318,12 @@ struct WebFoldersIndex: View {
                         ForEach(Array(cells(shown).enumerated()), id: \.element?.id) { _, cell in
                             if let f = cell {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    WebFolderCell(card: CardMapping.folderCard(f, parentName: f.path), menu: { menu(f) }, open: { frame.open(.folder(f.id)) }, drop: { items in Task { await home.dropNotes(items, on: f) } },
+                                    WebFolderCell(card: CardMapping.folderCard(f, parentName: f.path), menu: { menu(f) }, open: { frame.openFolder(f.id, name: f.name) }, drop: { items in Task { await home.dropNotes(items, on: f) } },
                                                   dropFolder: { item in
                                                       finishDrag()
                                                       Task { await home.dropFolder(item, on: f, zone: .inside) }
                                                   }, parentId: f.parentId, reorder: reorder(f, in: shown))
+                                    .onMiddleClick { frame.openInBackground(.folder(f.id), title: f.name) }
                                     // A search finds folders at every level: a nested one says where it is.
                                     if let path = f.path {
                                         Text("in \(path)").webText(.role(.footnote)).lineLimit(1).foregroundStyle(webVar("color-ink-muted", scheme).color)
@@ -1383,7 +1386,7 @@ struct WebFoldersIndex: View {
         VStack(spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.id) { i, f in
                 if i > 0 { Rectangle().fill(webVar("color-line", scheme).color).frame(height: 1) }
-                Button { frame.open(.folder(f.id)) } label: {
+                Button { frame.openFolder(f.id, name: f.name) } label: {
                     HStack(spacing: 12) {
                         FolderGlyph(colorId: f.color, size: 24)
                         HStack(spacing: 8) {
@@ -1401,6 +1404,7 @@ struct WebFoldersIndex: View {
                 }
                 .buttonStyle(WebHoverRowStyle(radius: 0, hover: WebStyles.vars["color-accent-soft"], press: nil, selected: false))
                 .webContextMenu { menu(f) }
+                .onMiddleClick { frame.openInBackground(.folder(f.id), title: f.name) }
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular))

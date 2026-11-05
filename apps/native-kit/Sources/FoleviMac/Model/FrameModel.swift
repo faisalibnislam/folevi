@@ -289,6 +289,12 @@ public final class FrameModel {
         routeChanged()
     }
 
+    /// Adds a route's tab without going there (TabsModel.addInBackground), named `title` until the engine names it.
+    public func openInBackground(_ route: FrameRoute, title: String? = nil) {
+        guard tabs.addInBackground(route) else { return }
+        if let title { tabs.setTitle(title, for: route.tabKey) }
+    }
+
     public func goBack() {
         guard let r = history.back() else { return }
         open(r, .history)

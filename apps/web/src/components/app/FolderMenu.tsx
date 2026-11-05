@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { AiIcon } from "@/components/ai/AiIcon";
-import { ArrowRightLeft, FilePlus2, FolderInput, FolderPlus, Link2, MoreHorizontal, Palette, PencilLine, Share2, Trash2, Undo2, UserPlus } from "lucide-react";
+import { AppWindow, ArrowRightLeft, FilePlus2, FolderInput, FolderPlus, Link2, MoreHorizontal, Palette, PencilLine, Share2, Trash2, Undo2, UserPlus } from "lucide-react";
 import { useCapabilities } from "@/lib/mode";
 import { useOpenedOnce } from "@/lib/hooks/useOpenedOnce";
 import { FolderShareDialog } from "./FolderShareDialog";
@@ -22,6 +22,7 @@ import { FolderColorDialog } from "./FolderColorDialog";
 import { useCreateDocument } from "./useCreateDocument";
 import { InviteDialog } from "./InviteDialog";
 import { useShell } from "./Shell";
+import { useTabs } from "@/lib/app/tabs";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { useLockMenuItem } from "@/components/e2ee/LockDialog";
 
@@ -52,7 +53,8 @@ export function FolderMenu({
   cardMenu?: boolean;
 }) {
   const { canEdit, canManage: managesWorkspace, workspace, scope } = useAppState();
-  const { openAsk } = useShell();
+  const { openAsk, isNarrow } = useShell();
+  const { openInBackground } = useTabs();
   const aiOn = useAiEnabled();
   const createDocument = useCreateDocument();
   const folderActions = useFolderActions();
@@ -90,6 +92,8 @@ export function FolderMenu({
   const places = usePlaces();
   const elsewhere = placesAvailable() && places.places.some((p) => p.id !== places.current);
   const items: (MenuItem | "separator")[] = [
+    // First, on its own (the tab strip shows from tablet width up): the folder's tab, behind the one on screen.
+    ...(isNarrow ? [] : [{ label: "Open in new tab", icon: <AppWindow size={14} />, onSelect: () => openInBackground({ id: folder.id, name: folder.name }) }, "separator" as const]),
     ...(canEdit
       ? [
           { label: "New note in folder", icon: <FilePlus2 size={14} />, onSelect: () => void createDocument({ folderId: folder.id }) },

@@ -20,6 +20,9 @@ enum WebFolderMenu {
     static func entries(_ folder: MenuFolder, context: FolderMenuContext, frame: FrameModel) -> [WebMenuEntry] {
         var out: [WebMenuEntry] = []
         let node = frame.folders.value?.folders.first { $0.id == folder.id }
+        // First, on its own: the folder's tab, behind the one on screen (the web's FolderMenu does the same).
+        out.append(WebMenuEntry(.item("Open in new tab", icon: .appWindow, id: "newtab")) { frame.openInBackground(.folder(folder.id), title: folder.name) })
+        out.append(.separator(3))
         if context.canEdit {
             out.append(WebMenuEntry(.item("New note in folder", icon: .filePlusCorner)) { frame.newNote(in: folder.id) })
             if FolderRules.canNest(context.links, in: folder.id) || !context.links.contains(where: { $0.id == folder.id }) {

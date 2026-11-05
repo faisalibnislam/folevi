@@ -12,6 +12,7 @@ import { useAppState } from "@/lib/app/state";
 import { useOfflineQuery, useOutboxEntries } from "@/lib/sync/queryCache";
 import { overlayFolderIndex } from "@/lib/sync/overlays";
 import { AppLink } from "@/lib/app/router";
+import { folderTabClicks, useOpenInBackground } from "@/lib/app/tabs";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { ageText } from "@/lib/format";
 import { NewFolderButton } from "@/components/app/NewFolderButton";
@@ -121,6 +122,7 @@ function SortSelect<T extends string>({ value, onChange, options }: { value: T; 
  */
 export function FoldersIndex() {
   const { scope, canEdit, outbox } = useAppState();
+  const openInBackground = useOpenInBackground();
   const served = useOfflineQuery(api.organization.index, { scope, only: "folders" });
   const waiting = useOutboxEntries(outbox);
   // In their own order (by rank) before the waiting changes go on, so a move made here lands where it's dropped.
@@ -216,7 +218,7 @@ export function FoldersIndex() {
           <ul className="ui-card mt-6 divide-y divide-line overflow-hidden rounded-chip" aria-label="Folders">
             {list.map((f) => (
               <li key={f.id} data-ctx-host="" className="group relative">
-                <AppLink href={`/folders/${f.id}`} className="flex items-center gap-3 py-2.5 pl-4 pr-14 hover:bg-accent-soft/50 focus-visible:bg-accent-soft/60 focus-visible:outline-none">
+                <AppLink href={`/folders/${f.id}`} {...folderTabClicks(openInBackground, f)} className="flex items-center gap-3 py-2.5 pl-4 pr-14 hover:bg-accent-soft/50 focus-visible:bg-accent-soft/60 focus-visible:outline-none">
                   <FolderGlyph color={f.color} size={24} />
                   <span className="min-w-0 flex-1 truncate font-medium">
                     {f.name}

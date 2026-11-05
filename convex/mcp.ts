@@ -12,7 +12,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { blocksToMarkdown, folderPath, localDate, markdownToBlocks, rankBetween, rankSequence, repeatProps, taskViews, LIMITS, SCHEMA_VERSION, ulid, type RepeatRule, type SyncOp, type WireBlock } from "@folevi/editor-schema";
+import { blocksToMarkdown, folderPath, hasTaskTitle, localDate, markdownToBlocks, rankBetween, rankSequence, repeatProps, taskViews, LIMITS, SCHEMA_VERSION, ulid, type RepeatRule, type SyncOp, type WireBlock } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, membership, PageReader, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { liveBlocks, toWireBlock } from "./lib/documents";
@@ -254,6 +254,8 @@ export async function sealedTasks(ctx: QueryCtx, profile: Doc<"profiles">, scope
     if (!doc || doc.inTrash || doc.deletedAt !== undefined || !isSealed(doc) || (await isLocked(ctx, doc))) continue;
     if (!accessAtLeast(await documentAccess(ctx, profile, doc), "read")) continue;
     for (const t of m.tasks ?? []) {
+      // (An empty checkbox isn't a task, QA F06; older mirrors may still list one.)
+      if (!hasTaskTitle(t.text)) continue;
       const status = t.done ? "done" : "open";
       const views = taskViews({ status, dueDate: t.due ?? null, assigneeId: null }, today, profile._id, { personal: scope.kind === "personal" });
       if (view === "completed" ? !t.done : !views.includes(view)) continue;

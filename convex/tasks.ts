@@ -3,7 +3,7 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { inboxDocumentId, localDate, nextOccurrence, rankBetween, repeatProps, repeatRule, SCHEMA_VERSION, scopeIdKey, taskViews, ulid, type WireBlock } from "@folevi/editor-schema";
+import { hasTaskTitle, inboxDocumentId, localDate, nextOccurrence, rankBetween, repeatProps, repeatRule, SCHEMA_VERSION, scopeIdKey, taskViews, ulid, type WireBlock } from "@folevi/editor-schema";
 import { accessAtLeast, assertWritable, documentAccess, getDocumentByPublicId, PageReader, requireProfile, resolveScope } from "./lib/auth";
 import { fail } from "./lib/errors";
 import { liveBlocks, toWireBlock } from "./lib/documents";
@@ -47,6 +47,9 @@ async function present(ctx: QueryCtx, profile: Doc<"profiles">, tasks: Doc<"task
   const readable = new Map<string, boolean>();
   const out = [];
   for (const t of tasks) {
+    // A row left from an empty checkbox (before those stopped being tasks, QA F06) isn't one; the row goes
+    // the next time its block is saved, or with migrations.dropEmptyTasks.
+    if (!hasTaskTitle(t.title)) continue;
     if (!docs.has(t.documentId)) docs.set(t.documentId, await ctx.db.get(t.documentId));
     const d = docs.get(t.documentId);
     // A sealed note's to-dos are projected on the device (docs/E2EE_DESIGN.md §5.7).
@@ -134,7 +137,7 @@ export const counts = query({
     const all = await reader.opensAllInScope();
     const open: Doc<"tasks">[] = [];
     for (const t of await tasksByDue(ctx, scope, "open").take(1000)) {
-      if (!t.documentInTrash && (all || (await reader.canOpenId(t.documentId)))) open.push(t);
+      if (!t.documentInTrash && hasTaskTitle(t.title) && (all ||(await reader.canOpenId(t.documentId)))) open.push(t);
     }
     const c = { inbox: 0, today: 0, upcoming: 0, all: 0, mine: 0 };
     // In your own Personal unassigned tasks are yours.

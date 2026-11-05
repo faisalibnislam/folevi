@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { newPerson, showFolders, waitForSaved } from "./helpers";
+import { newPerson, showFolders, waitForSaved, noteMenuItem } from "./helpers";
 
 test("a folder inside a folder: make it, file a note in it, and it's all still there after a reload", async ({ browser }) => {
   const { page } = await newPerson(browser, "Nester");
@@ -25,7 +25,7 @@ test("a folder inside a folder: make it, file a note in it, and it's all still t
   await page.getByRole("textbox", { name: "Title" }).fill("Kickoff notes");
   await waitForSaved(page);
   await page.getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Move…" }).click();
+  await (await noteMenuItem(page, "Move…")).click();
   const picker = page.getByRole("dialog", { name: /^Move “/ });
   await expect(picker.getByRole("option", { name: /^Clients\b.*in Work/ })).toBeVisible();
   await picker.getByRole("option", { name: /^Clients/ }).click();

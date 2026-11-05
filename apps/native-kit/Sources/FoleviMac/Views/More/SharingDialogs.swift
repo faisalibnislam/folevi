@@ -168,6 +168,9 @@ struct PageShareSheet: View {
     let store: ValueStore<SharingValue>
     let close: @MainActor () -> Void
     @State private var freshLink: String?
+    /// The access just picked, shown at once until the note's sharing says it (one click is enough; the
+    /// highlight used to wait for the server, so a first click looked like it did nothing).
+    @State private var pendingMode: String?
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -198,6 +201,8 @@ struct PageShareSheet: View {
                         mode(d, "workspace", "Workspace", "Everyone in this workspace, by their role", .users)
                         mode(d, "restricted", "Only invited people", "Owners, admins, the creator and people added below", .lock)
                     }
+                    // The server has it: its answer shows from here on (another device's change too).
+                    .onChange(of: d.accessMode) { _, now in if now == pendingMode { pendingMode = nil } }
                 }
             }
             VStack(alignment: .leading, spacing: 8) {
@@ -235,9 +240,18 @@ struct PageShareSheet: View {
     }
 
     private func mode(_ d: SharingValue, _ id: String, _ label: String, _ desc: String, _ icon: WebIcon) -> some View {
-        let on = d.accessMode == id
+        let on = (pendingMode ?? d.accessMode) == id
         return Button {
-            run(frame, nil) { _ = try await frame.client.command(.sharingSetAccessMode(noteId: noteId, mode: AccessModeArgs.Mode(rawValue: id) ?? .workspace)) }
+            guard (pendingMode ?? d.accessMode) != id else { return }
+            pendingMode = id
+            Task {
+                do {
+                    _ = try await frame.client.command(.sharingSetAccessMode(noteId: noteId, mode: AccessModeArgs.Mode(rawValue: id) ?? .workspace))
+                } catch {
+                    frame.toast(ScreenErrors.message(error), tone: .error)
+                    pendingMode = nil
+                }
+            }
         } label: {
             HStack(alignment: .top, spacing: 8) {
                 WebIconView(icon, size: 16).foregroundStyle(moreVar("color-ink-muted", scheme)).padding(.top, 2)

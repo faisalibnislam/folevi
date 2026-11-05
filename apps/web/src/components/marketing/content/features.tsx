@@ -755,7 +755,7 @@ export const FEATURES: Feature[] = [
       {
         id: "around",
         title: "Around one note",
-        body: <p>Choose Foli DNA of this note from a note’s menu to see what it links to and what links to it, one, two or three steps out. A small live map of the open note also sits in the Inspector, next to Related notes.</p>,
+        body: <p>In a note’s menu, choose Connections, then Foli DNA, to see what it links to and what links to it, one, two or three steps out. A small live map of the open note also sits in the Inspector, next to Related notes.</p>,
       },
       {
         id: "filters",
@@ -781,7 +781,7 @@ export const FEATURES: Feature[] = [
     faq: [
       { q: "What is Foli DNA?", a: "A map of your notes and the links between them, with clusters, suggested links and a time-lapse. It was called Graph before November 2026." },
       { q: "Does it work without an account?", a: "Yes. In a library on your Mac, Foli DNA shows your notes and the links between them. People, projects, topics and suggested links need Foli AI on a Pro plan." },
-      { q: "Can I see the map around one note?", a: "Yes. Choose Foli DNA of this note from the note’s menu, then pick one, two or three steps." },
+      { q: "Can I see the map around one note?", a: "Yes. In the note’s menu, choose Connections, then Foli DNA, and pick one, two or three steps." },
       { q: "Is it on the Mac, iPad and iPhone?", a: "Yes. The Mac and iPad draw it natively, and the iPhone has its own screen." },
     ],
     related: ["linked-notes", "search", "folders"],

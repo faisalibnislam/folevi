@@ -1,53 +1,85 @@
 "use client";
 
 import { Fragment, type ReactNode } from "react";
-import { ChevronRight } from "lucide-react";
+import { ArrowDownUp, ChevronRight } from "lucide-react";
 import { AppLink } from "@/lib/app/router";
+import { Select } from "@/components/ui/Select";
 
-/** A step of the small path over a nested folder's name ("Folders › Work › Clients"). */
+/** A step of the way up before a nested folder's name ("Work ›"). */
 export interface PathStep {
   label: string;
   href: string;
 }
 
 /**
- * The title row of a folder's page and the Folders page (the owner, 6 November 2026): the page's name in the display
- * serif at a page title's size (a folder's with its colour mark), a quiet line of facts under it ("5 notes · edited
- * Oct 22"), and the page's actions at the right. A nested folder shows the way up above its name, each step a link.
- * It shares the content column's edges with the toolbar and the cards under it.
+ * The height every control in a title row shares (32 px, 44 on touch), level with the middle of the page's name:
+ * the compact Sort, the view switch (with ROW_SEG), the search field and the buttons.
  */
-export function ListPageHeader({ title, mark, info, path, actions }: { title: string; mark?: ReactNode; info?: ReactNode; path?: PathStep[]; actions?: ReactNode }) {
+export const ROW_CONTROL = "h-8 pointer-coarse:h-11";
+/** The view switch at the row's height: 2 px around 28 px segments (36 px segments and 4 px on touch). */
+export const ROW_SEG = "ui-seg ui-well p-0.5 pointer-coarse:p-1 pointer-coarse:[&>*]:min-h-9";
+/** An icon-only button in a title row (Share, the folder's "…"). */
+export const ROW_ICON_BUTTON = "ui-btn ui-btn-secondary h-8 w-8 flex-none pointer-coarse:h-11 pointer-coarse:w-11";
+
+/**
+ * The title row of a folder's page and the Folders page (the owner, 6 November 2026, "A. One compact row"): one line
+ * with the folder's glyph, the way up for a nested folder ("Work ›", each step a link), the page's name in the
+ * display serif, its count in muted text, and the page's controls at the right (Sort, the view switch, the page's
+ * actions). The cards start right under it, on the same left and right edges. On a narrow window the controls wrap
+ * onto a line of their own under the name; the name truncates before anything overlaps.
+ */
+export function ListPageHeader({ title, mark, count, path, controls }: { title: string; mark?: ReactNode; count?: ReactNode; path?: PathStep[]; controls?: ReactNode }) {
   return (
-    <header data-page-header="" className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-3">
-      {/* (On a narrow window the actions wrap under the name rather than squeeze it.) */}
-      <div className="min-w-[min(100%,18rem)] flex-1">
+    <header data-page-header="" className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-3">
+      <div className="flex min-w-0 flex-[1_1_18rem] items-center gap-2.5">
+        {mark}
         {path?.length ? (
-          <nav aria-label="Breadcrumb" className="-ml-1.5 mb-1 flex min-w-0 items-center gap-0.5 text-footnote">
-            {path.map((step, i) => (
+          <nav aria-label="Breadcrumb" className="-mr-1 flex min-w-0 flex-shrink-[2] items-center gap-0.5 text-body">
+            {path.map((step) => (
               <Fragment key={step.href}>
-                {i > 0 ? <ChevronRight size={12} className="flex-none text-faint" aria-hidden /> : null}
-                <AppLink href={step.href} className="min-w-0 max-w-[12rem] truncate rounded-chip px-1.5 py-0.5 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
+                <AppLink href={step.href} className="min-w-0 max-w-[12rem] truncate rounded-chip px-1 py-0.5 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
                   {step.label}
                 </AppLink>
+                <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
               </Fragment>
             ))}
-            <ChevronRight size={12} className="flex-none text-faint" aria-hidden />
           </nav>
         ) : null}
-        <div className="flex min-w-0 items-center gap-3">
-          {mark}
-          <h1 data-page-title="" className="ui-display min-w-0 truncate text-title-1">
-            {title}
-          </h1>
-        </div>
-        {info ? (
-          <p role="status" data-page-info="" className="mt-1 min-w-0 truncate text-subheadline text-muted">
-            {info}
+        {/* Title 1 on the desktop (24), Title 2 in the apps' iOS scale (22): the size of a folder card's name. */}
+        <h1 data-page-title="" className="ui-display min-w-0 truncate text-title-1 [:root[data-native]_&]:text-title-2">
+          {title}
+        </h1>
+        {count ? (
+          <p role="status" data-page-count="" className="flex-none whitespace-nowrap text-body text-muted">
+            {count}
           </p>
         ) : null}
       </div>
-      {actions ? <div className="flex flex-none items-center gap-2">{actions}</div> : null}
+      {controls ? <div className="flex flex-none flex-wrap items-center gap-2">{controls}</div> : null}
     </header>
+  );
+}
+
+/**
+ * Sort as one compact control in a title row: the sort icon, the current choice and a chevron, opening the sort
+ * menu (no separate "Sort" label; it's the control's name, and its tooltip).
+ */
+export function RowSort<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: readonly (readonly [T, string])[] }) {
+  return (
+    <Select
+      aria-label="Sort"
+      title="Sort"
+      value={value}
+      onChange={(e) => onChange(e.target.value as T)}
+      leading={<ArrowDownUp size={14} aria-hidden className="flex-none text-muted" />}
+      className={`ui-input ${ROW_CONTROL} flex-none rounded-chip pl-2.5 pr-2 text-callout text-ink`}
+    >
+      {options.map(([v, label]) => (
+        <option key={v} value={v}>
+          {label}
+        </option>
+      ))}
+    </Select>
   );
 }
 

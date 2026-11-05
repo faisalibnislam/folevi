@@ -23,12 +23,40 @@ public struct NoteRef: Codable, Hashable, Sendable {
     }
 }
 
+/// One folder a selection's drag carries along with its notes.
+public struct FolderRef: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    /// Its parent now (nil: the top level).
+    public var parentId: String?
+    public init(id: String, name: String, parentId: String?) {
+        self.id = id
+        self.name = name
+        self.parentId = parentId
+    }
+}
+
 /// A dragged note, or a whole selection: dragging a selected note in Select mode (or with several selected on
-/// the Mac) carries every selected note that's loaded.
+/// the Mac) carries every selected note that's loaded, and (a folder's page, ListSelection) the selected folders.
 public struct NoteDragItem: Codable, Hashable, Sendable, Transferable {
     public var notes: [NoteRef]
-    public init(notes: [NoteRef]) { self.notes = notes }
-    public init(id: String, title: String, folderId: String?) { self.notes = [NoteRef(id: id, title: title, folderId: folderId)] }
+    /// Folders of the same selection (dropped on a folder, they go inside it too).
+    public var folders: [FolderRef]
+    public init(notes: [NoteRef], folders: [FolderRef] = []) {
+        self.notes = notes
+        self.folders = folders
+    }
+    public init(id: String, title: String, folderId: String?) {
+        self.notes = [NoteRef(id: id, title: title, folderId: folderId)]
+        self.folders = []
+    }
+
+    // (A drag from an older build carries no folders.)
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        notes = try c.decode([NoteRef].self, forKey: .notes)
+        folders = try c.decodeIfPresent([FolderRef].self, forKey: .folders) ?? []
+    }
 
     public var ids: [String] { notes.map(\.id) }
     /// Each note's folder now, for Undo.

@@ -779,6 +779,9 @@
    with a gap (QA audit F22). The bar's top is about 5rem up; the native Mac app keeps the same room (ToastStack). */
 :root:not([data-iphone]):has([role="toolbar"][aria-label="Page tools"]) .ui-toasts { bottom: calc(6rem + var(--kb-inset, 0px)); }
 :root[data-iphone][data-iphone-keyboard] .ui-toasts { bottom: 64px; }
+/* A list's floating selection bar (SelectionBar.tsx, multi-select) stays uncovered too: Undo after moving the
+   selection sits above it. */
+:root:not([data-iphone]):has([data-selection-bar]) .ui-toasts { bottom: 5rem; }
 /* The end of a note (or a screen) clears the bars and no more: the tab bar or the note's bars sit 60 px tall
    above the home indicator (DocumentView, Screen leave room for them, plus 12 px); with the keyboard up only
    the writing bar is there (48 px, 6 px above the keyboard). */

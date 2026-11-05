@@ -8,6 +8,7 @@ import { folderMoveMessage, useFolderTree } from "@/lib/app/folders";
 import { Dialog } from "@/components/ui/Dialog";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import type { FolderTarget } from "./noteActions";
+import { selectionNoun } from "@/lib/app/multiSelect";
 
 interface Option {
   id: string | null;
@@ -33,6 +34,7 @@ export function MoveToFolderDialog({
   count = 1,
   noteTitle,
   currentFolderId,
+  folderIds,
 }: {
   open: boolean;
   onClose: () => void;
@@ -43,11 +45,17 @@ export function MoveToFolderDialog({
   noteTitle?: string;
   /** Where the notes are now: a folder id, null for Drafts, undefined when mixed/unknown. */
   currentFolderId?: string | null;
+  /**
+   * Folders moving too (a multi-selection): they can't go inside themselves, and with notes there's no Drafts or
+   * top level to pick (notes go to Drafts, folders to the top level: one place has to suit both).
+   */
+  folderIds?: string[];
 }) {
-  const what = count === 1 ? `“${noteTitle?.trim() || "Untitled"}”` : `${count.toLocaleString()} notes`;
+  const folders = folderIds?.length ?? 0;
+  const what = folders ? selectionNoun(count, folders) : count === 1 ? `“${noteTitle?.trim() || "Untitled"}”` : `${count.toLocaleString()} notes`;
   return (
     <Dialog open={open} onClose={onClose} title="Move to folder" description={`Choose where ${what} should live.`} size="sm">
-      <FolderPicker open={open} onClose={onClose} onPick={onPick} currentFolderId={currentFolderId} />
+      <FolderPicker open={open} onClose={onClose} onPick={onPick} currentFolderId={currentFolderId} movingFolderIds={folders ? folderIds : undefined} notesToo={count > 0} />
     </Dialog>
   );
 }
@@ -62,6 +70,8 @@ export function FolderPicker({
   onPick,
   currentFolderId,
   movingFolderId,
+  movingFolderIds,
+  notesToo = false,
   scope: scopeOverride,
   closeOnPick = true,
 }: {
@@ -71,6 +81,10 @@ export function FolderPicker({
   currentFolderId?: string | null;
   /** Picking a new place for this folder: the first choice is the top level, and it can't go inside itself. */
   movingFolderId?: string;
+  /** Picking a new place for several folders (a multi-selection): none can go inside itself. */
+  movingFolderIds?: string[];
+  /** Notes move along with `movingFolderIds`: neither Drafts nor the top level suits both, so neither is offered. */
+  notesToo?: boolean;
   /** Whose folders to list (default: the current Personal or workspace). */
   scope?: WireScope;
   /** Close once a folder is picked (a picker inside a bigger form keeps it open). */
@@ -91,14 +105,16 @@ export function FolderPicker({
     }
   }, [open]);
 
+  const moving = useMemo(() => movingFolderIds ?? (movingFolderId ? [movingFolderId] : []), [movingFolderIds, movingFolderId]);
+  const topLevel = moving.length > 0;
   const options = useMemo<Option[]>(() => {
     const folders = org?.folders ?? [];
     const all: Option[] = [
-      movingFolderId
-        ? { id: null, name: "Top level", color: null, path: null, depth: 0 }
-        : { id: null, name: "No folder (Drafts)", color: null, path: null, depth: 0 },
+      ...(topLevel && notesToo
+        ? []
+        : [topLevel ? { id: null, name: "Top level", color: null, path: null, depth: 0 } : { id: null, name: "No folder (Drafts)", color: null, path: null, depth: 0 }]),
       ...flattenFolders(folders).map(({ folder: f, depth }) => {
-        const problem = movingFolderId ? folderMoveProblem(folders, movingFolderId, f.id) : null;
+        const problem = moving.map((id) => folderMoveProblem(folders, id, f.id)).find(Boolean) ?? null;
         return {
           id: f.id,
           name: f.name,
@@ -111,8 +127,8 @@ export function FolderPicker({
     ];
     const needle = q.trim().toLocaleLowerCase();
     if (!needle) return all;
-    return all.filter((o) => o.name.toLocaleLowerCase().includes(needle) || (o.id === null && (movingFolderId ? "top level" : "drafts").includes(needle)));
-  }, [org, q, movingFolderId]);
+    return all.filter((o) => o.name.toLocaleLowerCase().includes(needle) || (o.id === null && (topLevel ? "top level" : "drafts").includes(needle)));
+  }, [org, q, moving, topLevel, notesToo]);
 
   const current = Math.min(active, Math.max(0, options.length - 1));
   const isCurrent = (o: Option) => currentFolderId !== undefined && o.id === currentFolderId;
@@ -127,7 +143,7 @@ export function FolderPicker({
   const pick = (o: Option | undefined) => {
     if (!o || unavailable(o)) return;
     if (closeOnPick) onClose();
-    onPick({ id: o.id, name: o.id ? o.name : movingFolderId ? "the top level" : "Drafts" });
+    onPick({ id: o.id, name: o.id ? o.name : topLevel ? "the top level" : "Drafts" });
   };
 
   return (
@@ -193,7 +209,7 @@ export function FolderPicker({
             >
               {o.id ? (
                 <FolderGlyph color={o.color} size={17} />
-              ) : movingFolderId ? (
+              ) : topLevel ? (
                 <CornerLeftUp size={15} className="flex-none text-muted" aria-hidden />
               ) : (
                 <Inbox size={15} className="flex-none text-muted" aria-hidden />

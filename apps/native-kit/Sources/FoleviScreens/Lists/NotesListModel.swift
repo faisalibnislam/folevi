@@ -31,15 +31,19 @@ public struct NoteSlot: Identifiable, Hashable, Sendable {
     public var id: String { row?.id ?? "#\(index)" }
 }
 
-/// What can be done to several notes at once (the selection bar), in the web's order.
+/// What can be done to several notes (and, on the Mac and iPad, folders) at once (the selection bar), in the web's
+/// order. Which a selection offers: ListSelection.actions.
 public enum BulkAction: String, CaseIterable, Sendable, Identifiable {
-    case move, copy, star, unstar, archive, unarchive, trash, restore, deleteForever
+    case openTabs, move, copy, star, unstar, color, archive, unarchive, trash, restore, deleteForever, deleteFolders
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
+        case .openTabs: "Open in new tabs"
         case .move: "Move"
         case .copy: "Copy to"
+        case .color: "Change color"
+        case .deleteFolders: "Delete folders"
         case .star: "Bookmark"
         case .unstar: "Remove bookmark"
         case .archive: "Archive"
@@ -52,8 +56,11 @@ public enum BulkAction: String, CaseIterable, Sendable, Identifiable {
 
     public var symbol: String {
         switch self {
+        case .openTabs: "plus.rectangle.on.rectangle"
         case .move: "folder"
         case .copy: "plus.square.on.square"
+        case .color: "paintpalette"
+        case .deleteFolders: "trash"
         case .star: FoleviGlyph.name(.bookmark)
         case .unstar: FoleviGlyph.name(.bookmarkOff)
         case .archive: "archivebox"
@@ -63,17 +70,20 @@ public enum BulkAction: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
-    public var destructive: Bool { self == .trash || self == .deleteForever }
+    public var destructive: Bool { self == .trash || self == .deleteForever || self == .deleteFolders }
 }
 
 /// What a confirmation asks before a destructive step.
 public enum ListConfirmation: Identifiable, Hashable, Sendable {
     case deleteForever([String])
     case emptyTrash(Int)
+    /// Deleting selected folders (their notes go to Drafts).
+    case deleteFolders([String])
     public var id: String {
         switch self {
         case .deleteForever(let ids): "delete:\(ids.joined(separator: ","))"
         case .emptyTrash(let n): "empty:\(n)"
+        case .deleteFolders(let ids): "folders:\(ids.joined(separator: ","))"
         }
     }
 }
@@ -126,7 +136,12 @@ public final class NotesListModel {
     public var selecting = false {
         didSet { if !selecting { selection.removeAll() } }
     }
+    /// The selected notes and (on a folder's page) folders: Finder-style multi-select (ListSelection).
     public var selection: Set<String> = []
+    /// Where a ⇧-click range starts (the last item ⌘-clicked).
+    public var selectionAnchor: String?
+    /// Folders the colour sheet is open for (a selection's Change color).
+    public var coloring: [String]?
     /// Notes the move sheet is open for.
     public var moving: [String]?
     /// Notes the Copy to sheet is open for.
@@ -262,7 +277,19 @@ public final class NotesListModel {
     public func dragItem(for row: NoteRow) -> NoteDragItem {
         let many = selection.contains(row.id) && selection.count > 1
         let rows = many ? loadedRows.filter { selection.contains($0.id) } : [row]
-        return NoteDragItem(notes: rows.map { NoteRef(id: $0.id, title: $0.title, folderId: $0.folder?.id) })
+        return NoteDragItem(notes: rows.map { NoteRef(id: $0.id, title: $0.title, folderId: $0.folder?.id) }, folders: many ? selectedFolderRefs : [])
+    }
+
+    /// What dragging a subfolder card carries when it's part of a selection of several: the whole selection (nil:
+    /// just the folder, its own drag).
+    public func selectionDragItem(forFolder id: String) -> NoteDragItem? {
+        guard selection.contains(id), selection.count > 1 else { return nil }
+        let rows = loadedRows.filter { selection.contains($0.id) }
+        return NoteDragItem(notes: rows.map { NoteRef(id: $0.id, title: $0.title, folderId: $0.folder?.id) }, folders: selectedFolderRefs)
+    }
+
+    private var selectedFolderRefs: [FolderRef] {
+        subfolders.filter { selection.contains($0.id) }.map { FolderRef(id: $0.id, name: $0.name, parentId: kind.folderId) }
     }
 
     public var loadedRows: [NoteRow] { store.rows.filter { !actions.isHidden($0.id) } }
@@ -346,6 +373,11 @@ public final class NotesListModel {
     /// Notes dropped on a subfolder card move into it (and leave this folder's list).
     public func dropNotes(_ items: [NoteDragItem], into folderId: String) async {
         guard let target = menuFolder(folderId) else { return }
+        if items.contains(where: { !$0.folders.isEmpty }) {
+            selection.removeAll()
+            await FolderDrops.dropItems(items, into: FolderTarget(id: target.id, name: target.name), links: folderLinks, actions: actions, leavesList: kind.view == .folder || kind.view == .unsorted)
+            return
+        }
         let notes = items.flatMap(\.notes)
         var from: [String: String?] = [:]
         for n in notes { from[n.id] = n.folderId }
@@ -483,11 +515,37 @@ public final class NotesListModel {
     // MARK: Select mode
 
     public var selectedIds: [String] {
-        // In list order, so moves and Undo keep it.
+        // In list order, so moves and Undo keep it (the selected notes only: a folder's page selects its folders too).
         let order = store.state.order
         let picked = order.filter { selection.contains($0) }
-        return picked + selection.subtracting(picked).sorted()
+        return picked + selection.subtracting(picked).subtracting(subfolders.map(\.id)).sorted()
     }
+
+    /// The selected folders (a folder's page), in the order they show.
+    public var selectedFolderIds: [String] { subfolders.map(\.id).filter { selection.contains($0) } }
+
+    /// Everything that can be selected here, as shown: a folder's subfolders first, then the loaded notes.
+    public var selectableOrder: [String] {
+        guard selectable else { return [] }
+        return subfolders.map(\.id) + slots.compactMap(\.row?.id)
+    }
+
+    /// A ⌘-click (`range` false) or ⇧-click (`range` true) on an item.
+    public func select(_ id: String, range: Bool) {
+        var s = ListSelection(picked: selection, anchor: selectionAnchor)
+        if range { s.extend(to: id, in: selectableOrder) } else { s.toggle(id) }
+        selection = s.picked
+        selectionAnchor = s.anchor
+    }
+
+    /// ⌘A: every item shown.
+    public func selectAll() {
+        selection = Set(selectableOrder)
+        selectionAnchor = selectableOrder.first
+    }
+
+    /// "1 folder and 3 notes" (a right-click menu's name).
+    public var selectionNoun: String { ListSelection.noun(notes: selectedIds.count, folders: selectedFolderIds.count) }
 
     public var allSelected: Bool {
         let shown = slots.compactMap(\.row?.id)
@@ -500,20 +558,24 @@ public final class NotesListModel {
 
     public func toggle(_ id: String) {
         if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
+        selectionAnchor = id
     }
 
-    public var bulkActions: [BulkAction] {
-        if isTrash { return [.restore, .deleteForever] }
+    /// The selection bar's actions without tabs (the iPhone).
+    public var bulkActions: [BulkAction] { bulkActions(tabs: false) }
+
+    /// The selection bar's actions: only those every selected item can take (ListSelection.actions). `tabs`: there's
+    /// a tab strip to open tabs in (the Mac and iPad).
+    public func bulkActions(tabs: Bool) -> [BulkAction] {
         let rows = loadedRows.filter { selection.contains($0.id) }
-        let allStarred = !rows.isEmpty && rows.allSatisfy { actions.isStarred($0) }
-        let allArchived = !rows.isEmpty && rows.allSatisfy(\.archived)
-        var out: [BulkAction] = []
-        if canEdit { out.append(.move) }
-        if !copyTargets.isEmpty { out.append(.copy) }
-        out.append(allStarred ? .unstar : .star)
-        out.append(allArchived ? .unarchive : .archive)
-        out.append(.trash)
-        return out
+        var items = rows.map { SelectedItem(.note, starred: actions.isStarred($0), archived: $0.archived, template: $0.kind == "template") }
+        items += selectedFolderIds.map { _ in SelectedItem.folder }
+        // (Notes selected but not loaded yet count as plain notes.)
+        let unloaded = selectedIds.count - rows.count
+        if unloaded > 0 { items += Array(repeating: SelectedItem(.note), count: unloaded) }
+        // (Select mode with nothing picked yet, the iPhone's: the bar shows what notes take.)
+        if items.isEmpty { items = [SelectedItem(.note)] }
+        return ListSelection.actions(items, trash: isTrash, canEdit: canEdit, canCopy: !copyTargets.isEmpty, tabs: tabs)
     }
 
     public var selectionStatus: String {
@@ -522,8 +584,18 @@ public final class NotesListModel {
 
     public func runBulk(_ action: BulkAction, copyTo space: SpaceInfo? = nil) async {
         let ids = selectedIds
-        guard !ids.isEmpty else { return }
+        let folders = selectedFolderIds
+        guard !ids.isEmpty || !folders.isEmpty else { return }
         switch action {
+        case .openTabs:
+            // The host opens the tabs (it has the tab strip): see the Mac's WebSelectionBar.
+            return
+        case .color:
+            coloring = folders
+            return
+        case .deleteFolders:
+            confirmation = .deleteFolders(folders)
+            return
         case .move:
             moving = ids
             return
@@ -553,9 +625,27 @@ public final class NotesListModel {
         await actions.move(ids, to: target, from: from, leavesList: leaves)
     }
 
+    /// Moves the selection's notes and folders into `target` (nil: notes to Drafts, folders to the top level): one
+    /// toast with one Undo for all of it.
+    public func moveItems(notes ids: [String], folders: [String], to target: FolderTarget) async {
+        moving = nil
+        selecting = false
+        selection.removeAll()
+        var from: [String: String?] = [:]
+        for row in store.rows where ids.contains(row.id) { from[row.id] = row.folder?.id }
+        let notes = ids.map { id in NoteRef(id: id, title: "", folderId: from[id] ?? nil) }
+        let refs = folders.map { FolderRef(id: $0, name: "", parentId: kind.folderId) }
+        let leaves = (kind.view == .folder && target.id != kind.folderId) || (kind.view == .unsorted && target.id != nil)
+        await FolderDrops.dropItems([NoteDragItem(notes: notes, folders: refs)], into: target, links: folderLinks, actions: actions, leavesList: leaves)
+    }
+
     public func confirm(_ c: ListConfirmation) async {
         confirmation = nil
         switch c {
+        case .deleteFolders(let ids):
+            selection.removeAll()
+            for id in ids { await actions.deleteFolder(id, quietly: true) }
+            actions.feedback.toast(ScreenToast(ids.count == 1 ? "Folder deleted" : "Deleted \(ListSelection.noun(notes: 0, folders: ids.count))", tone: .success))
         case .deleteForever(let ids):
             selecting = false
             await actions.deleteForever(ids)
@@ -570,6 +660,11 @@ public final class NotesListModel {
             return (ids.count == 1 ? "Delete permanently?" : "Delete \(notesText(ids.count)) permanently?",
                     "They’ll be deleted for everyone, with their nested pages, attachments and version history. This can’t be undone. Notes you don’t have permission to delete stay in Trash.",
                     "Delete permanently")
+        case .deleteFolders(let ids):
+            let name = ids.count == 1 ? subfolders.first { $0.id == ids[0] }.map { "“\($0.name)”" } : nil
+            return ("Delete \(name ?? ListSelection.noun(notes: 0, folders: ids.count))?",
+                    "The folders are removed. Their notes are kept and move to Drafts; folders inside them move up a level, with everything inside.",
+                    "Delete folders")
         case .emptyTrash(let n):
             return ("Empty Trash?",
                     "\(notesText(n)) will be deleted for everyone, with their nested pages, attachments and version history. This can’t be undone.",

@@ -151,8 +151,8 @@ public final class TabsModel {
         return route
     }
 
-    /// Adds a route's tab behind the one on screen ("Open in new tab", a ⌘-click or middle-click on a folder), as a
-    /// browser opens a background tab; the tab on screen stays. A route that has a tab already keeps it. True when
+    /// Adds a route's tab behind the one on screen ("Open in new tab", a middle-click on a folder, a sidebar ⌘-click,
+    /// a selection's Open in new tabs), as a browser opens a background tab; the tab on screen stays. A route that has a tab already keeps it. True when
     /// a tab was added.
     @discardableResult
     public func addInBackground(_ route: FrameRoute) -> Bool {

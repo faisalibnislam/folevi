@@ -107,15 +107,18 @@ public final class NoteActions {
     }
 
     /// Moves notes into a folder (or Drafts). `from` gives each note's folder now, for Undo; `leavesList` hides
-    /// them from a folder's or Drafts' screen.
-    public func move(_ ids: [String], to folder: FolderTarget, from: [String: String?] = [:], leavesList: Bool = false) async {
+    /// them from a folder's or Drafts' screen. `also`: folders of the same selection, moved already: the toast counts
+    /// them too ("Moved 2 folders and 3 notes to Work") and its Undo puts them back with the notes.
+    public func move(_ ids: [String], to folder: FolderTarget, from: [String: String?] = [:], leavesList: Bool = false, also: (folders: Int, undo: @MainActor () -> Void)? = nil) async {
         guard !ids.isEmpty else { return }
         hide(ids, leavesList)
         await perform(ids, undoable: !from.isEmpty, rollback: { self.unhide(ids) }, settle: { self.unhide(ids) }) {
             try await self.client.command(.noteMove(ids: ids, folderId: folder.id))
         } message: { n in
-            n == 1 ? "Moved to \(folder.name)" : "Moved \(notesText(n)) to \(folder.name)"
+            if let also, also.folders > 0 { return "Moved \(ListSelection.noun(notes: n, folders: also.folders)) to \(folder.name)" }
+            return n == 1 ? "Moved to \(folder.name)" : "Moved \(notesText(n)) to \(folder.name)"
         } undo: { done in
+            also?.undo()
             // Each note goes back to the folder it came from.
             var byFolder: [String?: [String]] = [:]
             for id in done { byFolder[from[id] ?? nil, default: []].append(id) }
@@ -269,9 +272,10 @@ public final class NoteActions {
         }
     }
 
-    public func deleteFolder(_ id: String) async {
-        feedback.haptic(.warning)
-        await folderCommand(.folderDelete(id: id), "Folder deleted")
+    /// Deletes a folder (its notes go to Drafts). `quietly`: no toast of its own (a selection's says how many went).
+    public func deleteFolder(_ id: String, quietly: Bool = false) async {
+        if !quietly { feedback.haptic(.warning) }
+        await folderCommand(.folderDelete(id: id), quietly ? nil : "Folder deleted")
     }
 
     // MARK: Plumbing

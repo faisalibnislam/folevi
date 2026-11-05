@@ -71,6 +71,53 @@ public enum FrameDialogs {
         }
     }
 
+    /// Move to folder for a multi-selection (ListSelection): notes, folders or both. Folders can't go inside
+    /// themselves; with notes and folders together neither Drafts nor the top level is offered (one place has to
+    /// suit both). The caller moves them (`pick`).
+    static func moveItems(_ frame: FrameModel, notes: [String], folders: [String], title: String?, currentFolderId: String??, pick: @escaping @MainActor (FolderTarget) -> Void) {
+        let what = folders.isEmpty && notes.count == 1
+            ? "“\((title ?? "").trimmingCharacters(in: .whitespaces).isEmpty ? "Untitled" : title!)”"
+            : ListSelection.noun(notes: notes.count, folders: folders.count)
+        FrameSheets.present(frame) { close in
+            WebSheetDialog(title: "Move to folder", description: "Choose where \(what) should live.", close: close) {
+                FolderPickerView(folders: frame.folders.value?.folders ?? [], current: currentFolderId, moving: nil, movingIds: folders, notesToo: !notes.isEmpty) { target in
+                    close()
+                    pick(target)
+                }
+            }
+        }
+    }
+
+    /// Delete folders… for a selection's folders (their notes go to Drafts), after asking.
+    static func deleteFolders(_ frame: FrameModel, _ folders: [(id: String, name: String)], done: @escaping @MainActor () -> Void = {}) {
+        guard !folders.isEmpty else { return }
+        let title = folders.count == 1 ? "Delete “\(folders[0].name)”?" : "Delete \(ListSelection.noun(notes: 0, folders: folders.count))?"
+        FrameSheets.present(frame) { close in
+            DeleteFoldersSheet(title: title, close: close) {
+                close()
+                done()
+                frame.perform {
+                    for f in folders { _ = try await frame.client.command(.folderDelete(id: f.id)) }
+                    frame.toast(folders.count == 1 ? "Folder deleted" : "Deleted \(ListSelection.noun(notes: 0, folders: folders.count))", tone: .success)
+                }
+            }
+        }
+    }
+
+    /// Change color for a selection's folders: one colour for all of them.
+    public static func folderColors(_ frame: FrameModel, _ folders: [FolderNode]) {
+        guard let first = folders.first else { return }
+        if folders.count == 1 { return folderColor(frame, first) }
+        FrameSheets.present(frame) { close in
+            FolderColorSheet(folder: first, title: "Color for \(folders.count.formatted()) folders", current: folders.allSatisfy({ FolderColor.resolve($0.color).id == FolderColor.resolve(first.color).id }) ? FolderColor.resolve(first.color).id : nil, close: close) { id in
+                frame.perform {
+                    for f in folders { _ = try await frame.client.command(.folderSetColor(id: f.id, color: id)) }
+                    frame.toast("Changed the color of \(folders.count.formatted()) folders", tone: .success)
+                }
+            }
+        }
+    }
+
     /// Move to folder for notes (one or many): Drafts or a folder.
     public static func moveNotes(_ frame: FrameModel, ids: [String], title: String?, currentFolderId: String??) {
         let what = ids.count == 1 ? "“\((title ?? "").trimmingCharacters(in: .whitespaces).isEmpty ? "Untitled" : title!)”" : "\(ids.count.formatted()) notes"
@@ -155,17 +202,40 @@ struct PromptSheet: View {
     }
 }
 
+/// Asking before a selection's folders are deleted (the web's useSelectionActions delete dialog).
+struct DeleteFoldersSheet: View {
+    let title: String
+    let close: @MainActor () -> Void
+    let confirm: @MainActor () -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let actions = moreStyle("more.prompt.actions", scheme)
+        WebSheetDialog(title: title, description: "The folders are removed. Their notes are kept and move to Drafts; folders inside them move up a level, with everything inside.", close: close) {
+            HStack(spacing: actions.gap) {
+                Spacer(minLength: 0)
+                WebSheetButton(title: "Cancel", action: close)
+                WebSheetButton(title: "Delete folders", danger: true, action: confirm)
+            }
+            .padding(.top, actions.margin.top)
+        }
+    }
+}
+
 /// A folder's colour: the 25 in a 5 x 5 grid, the current one ringed and checked.
 struct FolderColorSheet: View {
     let folder: FolderNode
+    /// Several folders at once: the sheet's title, and the colour they share (nil: none marked).
+    var title: String? = nil
+    var current: String?? = nil
     let close: @MainActor () -> Void
     let pick: @MainActor (String) -> Void
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let current = FolderColor.resolve(folder.color).id
+        let current = self.current ?? FolderColor.resolve(folder.color).id
         let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 5)
-        WebSheetDialog(title: "Color for “\(folder.name)”", close: close) {
+        WebSheetDialog(title: title ?? "Color for “\(folder.name)”", close: close) {
             LazyVGrid(columns: columns, spacing: 10) {
                 ForEach(FoleviTokens.folderColors) { c in
                     let on = c.id == current
@@ -209,6 +279,10 @@ struct FolderPickerView: View {
     /// Where the notes are now: .some(nil) Drafts, nil unknown.
     let current: String??
     let moving: FolderNode?
+    /// Several folders moving (a multi-selection): none can go inside itself.
+    var movingIds: [String] = []
+    /// Notes move along with `movingIds`: neither Drafts nor the top level suits both, so neither is offered.
+    var notesToo = false
     let pick: @MainActor (FolderTarget) -> Void
     @State private var query = ""
     @State private var active = 0
@@ -225,8 +299,11 @@ struct FolderPickerView: View {
         var key: String { id ?? "none" }
     }
 
+    /// Folders are moving (one, or a selection's): the first choice is the top level.
+    private var topLevel: Bool { moving != nil || !movingIds.isEmpty }
+
     private var options: [Option] {
-        var all = [Option(id: nil, name: moving == nil ? "No folder (Drafts)" : "Top level", color: nil, path: nil, depth: 0, blocked: false)]
+        var all = topLevel && notesToo ? [] : [Option(id: nil, name: topLevel ? "Top level" : "No folder (Drafts)", color: nil, path: nil, depth: 0, blocked: false)]
         let byId = Dictionary(folders.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         func ancestors(_ f: FolderNode) -> [String] {
             var out: [String] = []
@@ -242,14 +319,15 @@ struct FolderPickerView: View {
         func walk(_ parent: String?, _ d: Int) {
             for f in folders where f.parentId == parent {
                 let a = ancestors(f)
-                all.append(Option(id: f.id, name: f.name, color: f.color, path: a.isEmpty ? nil : a.joined(separator: " / "), depth: d, blocked: moving.map { inside(f, $0) } ?? false))
+                let blocked = (moving.map { inside(f, $0) } ?? false) || movingIds.contains { m in byId[m].map { inside(f, $0) } ?? false }
+                all.append(Option(id: f.id, name: f.name, color: f.color, path: a.isEmpty ? nil : a.joined(separator: " / "), depth: d, blocked: blocked))
                 walk(f.id, d + 1)
             }
         }
         walk(nil, 0)
         let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !needle.isEmpty else { return all }
-        return all.filter { $0.name.lowercased().contains(needle) || ($0.id == nil && (moving == nil ? "drafts" : "top level").contains(needle)) }
+        return all.filter { $0.name.lowercased().contains(needle) || ($0.id == nil && (topLevel ? "top level" : "drafts").contains(needle)) }
     }
 
     private func isCurrent(_ o: Option) -> Bool { if let c = current { return o.id == c } else { return false } }
@@ -308,7 +386,7 @@ struct FolderPickerView: View {
             if o.id != nil {
                 FolderGlyph(colorId: o.color, size: 17)
             } else {
-                WebIconView(moving == nil ? .inbox : .cornerLeftUp, size: 15).foregroundStyle(moreVar("color-ink-muted", scheme))
+                WebIconView(topLevel ? .cornerLeftUp : .inbox, size: 15).foregroundStyle(moreVar("color-ink-muted", scheme))
             }
             (Text(verbatim: o.name) + (searching && o.path != nil ? Text(verbatim: "  in \(o.path!)").font(WebFont.font(.sans, size: 12)).foregroundColor(moreVar("color-ink-faint", scheme)) : Text(verbatim: "")))
                 .webText(s.text).lineLimit(1)
@@ -332,7 +410,7 @@ struct FolderPickerView: View {
 
     private func choose(_ o: Option) {
         guard !unavailable(o) else { return }
-        pick(FolderTarget(id: o.id, name: o.id == nil ? (moving == nil ? "Drafts" : "the top level") : o.name))
+        pick(FolderTarget(id: o.id, name: o.id == nil ? (topLevel ? "the top level" : "Drafts") : o.name))
     }
 }
 #endif

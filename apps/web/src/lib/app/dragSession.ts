@@ -7,7 +7,11 @@
 import { useSyncExternalStore } from "react";
 import type { DropZone } from "./folderDrop";
 
-export type DragPayload = { kind: "notes"; ids: string[] } | { kind: "folder"; id: string };
+/**
+ * What's dragged: notes, one folder, or a selection with folders in it ("items": a multi-select of folders, or of
+ * folders and notes, dragged together onto a folder).
+ */
+export type DragPayload = { kind: "notes"; ids: string[] } | { kind: "folder"; id: string } | { kind: "items"; notes: string[]; folders: string[] };
 
 /** Where the drag would land: a folder row's line or inside (`key` is the folder id, "" Drafts, "@top" the top level). */
 export interface DropHint {

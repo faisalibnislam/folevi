@@ -215,6 +215,37 @@ public struct FolderTreeView: View {
 }
 
 extension FolderDrops {
+    /// A multi-selection's folders and notes (a drag, or Move to folder) into `target` (nil id: notes to Drafts,
+    /// folders to the top level): folders that can't go there stay and are reported; one toast with one Undo for
+    /// everything that moved (ListSelection.planFolderMoves).
+    @MainActor
+    static func dropItems(_ items: [NoteDragItem], into target: FolderTarget, links: [FolderRules.Link], actions: NoteActions, leavesList: Bool = false) async {
+        let notes = items.flatMap(\.notes)
+        let folderIds = items.flatMap(\.folders).map(\.id)
+        let plan = ListSelection.planFolderMoves(links, ids: folderIds, into: target.id)
+        let was = plan.move.compactMap { id in FolderRules.place(links, id).map { (id: id, place: $0) } }
+        if !plan.move.isEmpty {
+            await actions.moveFolders(plan.move.map { (id: $0, place: FolderRules.Place(parentId: target.id, afterId: nil)) }, message: nil)
+        }
+        if let first = plan.refused.first {
+            actions.feedback.haptic(.error)
+            actions.feedback.toast(ScreenToast("\(ListSelection.noun(notes: 0, folders: plan.refused.count)) couldn’t move. \(FolderRules.message(first.problem))", tone: .error))
+        }
+        let undo: @MainActor () -> Void = {
+            Task { await actions.moveFolders(was.reversed().map { (id: $0.id, place: $0.place) }, message: nil) }
+        }
+        if !notes.isEmpty {
+            var from: [String: String?] = [:]
+            for n in notes { from[n.id] = n.folderId }
+            await actions.move(notes.map(\.id), to: target, from: from, leavesList: leavesList, also: was.isEmpty ? nil : (folders: was.count, undo: undo))
+        } else if !was.isEmpty {
+            let name = target.id == nil ? "the top level" : target.name
+            actions.feedback.toast(ScreenToast("Moved \(ListSelection.noun(notes: 0, folders: was.count)) to \(name)", tone: .success, actionTitle: "Undo", action: undo))
+        }
+    }
+}
+
+extension FolderDrops {
     @MainActor
     static func dropNotes(_ items: [NoteDragItem], into node: FolderNode, actions: NoteActions) async {
         let notes = items.flatMap(\.notes)

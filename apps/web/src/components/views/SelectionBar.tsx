@@ -1,7 +1,30 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { X } from "lucide-react";
+import type { CSSProperties, ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { Check, X } from "lucide-react";
+
+/** The selection rectangle being drawn (useCardSelection's `marquee`), in <body>: the glass panel's backdrop filter would otherwise offset a fixed element inside it. */
+export function SelectionMarquee({ rect }: { rect: CSSProperties | null }) {
+  if (!rect || typeof document === "undefined") return null;
+  return createPortal(
+    <div
+      aria-hidden
+      className="pointer-events-none fixed z-40 rounded-tiny"
+      style={{ ...rect, background: "color-mix(in oklab, var(--color-heading) 7%, transparent)", boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 45%, transparent)" }}
+    />,
+    document.body,
+  );
+}
+
+/** The check on a selected card's corner (the card also gets a ring, or a folder card a wash). */
+export function SelectedCheck() {
+  return (
+    <span aria-hidden className="pointer-events-none absolute -left-2 -top-2 z-10 grid h-6 w-6 place-items-center rounded-chip bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.2)]">
+      <Check size={14} strokeWidth={3} />
+    </span>
+  );
+}
 
 export interface SelectionAction {
   label: string;
@@ -11,16 +34,17 @@ export interface SelectionAction {
 }
 
 /**
- * The floating bar shown while notes are selected: how many, the actions for them, "Select all" and a
+ * The floating bar shown while notes and folders are selected (Finder-style multi-select): how many, the actions for them, "Select all" and a
  * way out (× or Escape). A toolbar: Tab reaches it, arrow keys aren't needed with so few buttons.
  */
-export function SelectionBar({ count, total, actions, onSelectAll, onClear }: { count: number; total: number; actions: SelectionAction[]; onSelectAll: () => void; onClear: () => void }) {
+export function SelectionBar({ count, total, actions, onSelectAll, onClear, label = "Selected notes" }: { count: number; total: number; actions: SelectionAction[]; onSelectAll: () => void; onClear: () => void; label?: string }) {
   const btn =
     "inline-flex h-9 items-center gap-1.5 rounded-chip px-2.5 text-subheadline font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus";
   return (
     <div
       role="toolbar"
-      aria-label="Selected notes"
+      aria-label={label}
+      data-selection-bar=""
       data-no-marquee=""
       className="ui-pop absolute bottom-5 left-1/2 z-30 flex max-w-[calc(100%-24px)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-panel p-1.5 animate-[folio-rise_160ms_var(--ease-folio)] motion-reduce:animate-none [scrollbar-width:none]"
     >

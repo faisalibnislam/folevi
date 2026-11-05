@@ -710,6 +710,22 @@ public final class FrameModel {
         perform { _ = try await self.client.command(.noteMove(ids: ids, folderId: folderId)) }
     }
 
+    /// A multi-selection's folders and notes dropped on a sidebar folder (ListSelection): the folders that can go
+    /// there and every note move inside it, with one toast saying what went.
+    public func move(items: [NoteDragItem], to folderId: String, name: String) {
+        let notes = items.flatMap(\.ids)
+        let plan = ListSelection.planFolderMoves(FolderRules.links(folders.value?.folders ?? []), ids: items.flatMap(\.folders).map(\.id), into: folderId)
+        if let refused = plan.refused.first {
+            toast("\(ListSelection.noun(notes: 0, folders: plan.refused.count)) couldn’t move. \(FolderRules.message(refused.problem))", tone: .error)
+        }
+        guard !plan.move.isEmpty || !notes.isEmpty else { return }
+        perform {
+            for id in plan.move { _ = try await self.client.command(.folderMove(id: id, parentId: folderId, afterId: nil)) }
+            if !notes.isEmpty { _ = try await self.client.command(.noteMove(ids: notes, folderId: folderId)) }
+            self.toast("Moved \(ListSelection.noun(notes: notes.count, folders: plan.move.count)) to \(name)", tone: .success)
+        }
+    }
+
     /// Nests, un-nests or reorders a folder (refused here first by the web's rules, so a drag never offers a move
     /// the engine would refuse).
     public func move(folder id: String, into parent: String?, after: String?) {

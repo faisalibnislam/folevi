@@ -387,6 +387,8 @@ public struct WebSidebar: View {
                 spring: spring,
                 onSpring: children.isEmpty || open ? nil : { WebMotion.animate { closedFolders = closed.subtracting([f.id]).sorted().joined(separator: ",") } },
                 onNotes: { items in
+                    // (A multi-selection with folders in it: they go inside too.)
+                    if items.contains(where: { !$0.folders.isEmpty }) { return model.move(items: items, to: f.id, name: f.name) }
                     let ids = items.flatMap(\.ids)
                     if !ids.isEmpty { model.move(notes: ids, to: f.id) }
                 },

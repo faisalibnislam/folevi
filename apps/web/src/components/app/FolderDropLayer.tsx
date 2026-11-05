@@ -15,7 +15,8 @@
 // A mouse drags the browser's own way (HTML5 drag and drop: in the Mac app the same drag also drops notes in
 // Finder), except from search results, which this layer carries itself (startPointerDrag). A finger presses and holds (the menu opens as on iOS) and then moves: the menu gives way and what was
 // held follows the finger (lib/touchContextMenu.ts sends the move). Every move goes through the outbox, so it
-// shows at once, syncs (account, local library and encrypted spaces alike) and has one Undo in its toast.
+// shows at once, syncs (account, local library and encrypted spaces alike) and has one Undo in its toast. A
+// multi-selection holding folders (lib/app/noteDrag.ts startItemsDrag) drops the same way, all of it at once.
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { MAX_FOLDER_DEPTH } from "@folevi/editor-schema";
@@ -25,7 +26,9 @@ import { POINTER_DRAG_EVENT, beginDrag, dragState, endDrag, reorderList, setDrop
 import { folderPlace, resolveFolderDrop, zoneAt, type FolderPlace } from "@/lib/app/folderDrop";
 import { sidebarTreeDrops, type SidebarTreeDrops } from "@/lib/app/sidebarFolderSort";
 import { FOLDER_MIME } from "@/lib/app/folders";
-import { NOTE_MIME, draggedNoteIds, previewOf } from "@/lib/app/noteDrag";
+import { ITEMS_MIME, NOTE_MIME, draggedNoteIds, previewOf } from "@/lib/app/noteDrag";
+import { planFolderMoves, selectionNoun } from "@/lib/app/multiSelect";
+import { useMoveItems } from "@/components/views/moveItems";
 import { HOLD_MOVE_EVENT, type HoldMoveDetail } from "@/lib/touchContextMenu";
 import { haptic } from "@/lib/nativeApp";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -78,8 +81,9 @@ export function FolderDropLayer() {
   const [, setFolderOpen] = useOpenFolders();
 
   // The listeners are added once; what they need is read from here at the time.
-  const live = useRef({ folders: tree?.folders ?? [], canEdit, notes, actions, toast, setFolderOpen });
-  live.current = { folders: tree?.folders ?? [], canEdit, notes, actions, toast, setFolderOpen };
+  const moveItems = useMoveItems();
+  const live = useRef({ folders: tree?.folders ?? [], canEdit, notes, actions, toast, setFolderOpen, moveItems });
+  live.current = { folders: tree?.folders ?? [], canEdit, notes, actions, toast, setFolderOpen, moveItems };
 
   useEffect(() => {
     let point: { x: number; y: number } | null = null;
@@ -171,6 +175,17 @@ export function FolderDropLayer() {
       const key = target.dataset.dropFolder ?? "";
       const shown = target.dataset.dropKey ?? key;
       const name = target.dataset.dropName || (key ? "the folder" : "Drafts");
+      // A selection with folders in it (folders, or folders and notes): everything goes inside the folder. Notes have
+      // no top level and folders no Drafts, so a selection holding both goes into folders only.
+      if (payload?.kind === "items") {
+        if (key === "@top" ? payload.notes.length > 0 : payload.folders.includes(key)) return null;
+        if (key === "" && payload.folders.length) return { hint: { key: shown, zone: "inside", refused: "Folders can’t go in Drafts" }, target };
+        const plan = planFolderMoves(live.current.folders, payload.folders, key === "@top" ? null : key);
+        if (plan.refused.length) return { hint: { key: shown, zone: "inside", refused: refusalText(plan.refused[0]!.problem) }, target };
+        if (!plan.move.length && !payload.notes.length) return null;
+        const items = { notes: payload.notes, folders: payload.folders };
+        return { hint: { key: shown, zone: "inside" }, target, run: () => void live.current.moveItems(items, { id: key === "@top" || key === "" ? null : key, name: key === "@top" ? "the top level" : name }) };
+      }
       const notesDragged = payload ? payload.kind === "notes" : !!types?.includes(NOTE_MIME);
       if (notesDragged) {
         if (key === "@top") return null;
@@ -324,14 +339,14 @@ export function FolderDropLayer() {
       }
       source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, composed: true, dataTransfer: transfer, clientX: startX, clientY: startY }));
       const payload = dragState().payload;
-      if (!payload || !(transfer.types.includes(NOTE_MIME) || transfer.types.includes(FOLDER_MIME))) {
+      if (!payload || !(transfer.types.includes(NOTE_MIME) || transfer.types.includes(FOLDER_MIME) || transfer.types.includes(ITEMS_MIME))) {
         endDrag();
         return;
       }
       e.preventDefault();
       // The held menu gives way.
       document.querySelector<HTMLElement>('[role="menu"]')?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
-      const face = payload.kind === "notes" ? previewOf(source) : (source.closest<HTMLElement>("[data-drop-folder]") ?? source);
+      const face = payload.kind === "folder" ? (source.closest<HTMLElement>("[data-drop-folder]") ?? source) : previewOf(source);
       carry(payload, face, startX, startY);
       haptic("medium");
       follow(x, y);
@@ -340,7 +355,7 @@ export function FolderDropLayer() {
     const carry = (payload: DragPayload, face: HTMLElement | null, x: number, y: number) => {
       beginDrag(payload, true);
       ghost?.el.remove();
-      ghost = face ? lift(face, x, y, payload.kind === "notes" ? payload.ids.length : 1) : null;
+      ghost = face ? lift(face, x, y, payload.kind === "notes" ? `${payload.ids.length} notes` : payload.kind === "items" ? selectionNoun(payload.notes.length, payload.folders.length) : null, payload.kind === "notes" ? payload.ids.length : payload.kind === "items" ? payload.notes.length + payload.folders.length : 1) : null;
     };
     // A mouse drag the browser couldn't carry (search results sit in a modal): the pointer's moves carry it.
     const onPointerDrag = (e: Event) => {
@@ -421,7 +436,7 @@ export function FolderDropLayer() {
 }
 
 /** The picture a finger carries: a copy of what it held, lifted off the page, with a count when several go. */
-function lift(face: HTMLElement, x: number, y: number, count: number): { el: HTMLElement; dx: number; dy: number } {
+function lift(face: HTMLElement, x: number, y: number, badgeText: string | null, count: number): { el: HTMLElement; dx: number; dy: number } {
   const box = face.getBoundingClientRect();
   const el = face.cloneNode(true) as HTMLElement;
   el.removeAttribute("id");
@@ -450,7 +465,7 @@ function lift(face: HTMLElement, x: number, y: number, count: number): { el: HTM
   if (box.height > 60) el.style.borderRadius = "var(--radius-panel)";
   if (count > 1) {
     const badge = document.createElement("span");
-    badge.textContent = `${count} notes`;
+    badge.textContent = badgeText ?? `${count}`;
     Object.assign(badge.style, {
       position: "absolute",
       top: "8px",

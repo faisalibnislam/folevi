@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { useCallback, useId, useMemo, useState } from "react";
-import { Hash, LayoutGrid, Rows3, Search, X, FolderOpen } from "lucide-react";
+import { Check, Hash, LayoutGrid, Rows3, Search, X, FolderOpen } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { FolderCard, type FolderSummary } from "./FolderCard";
@@ -22,7 +22,12 @@ import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useIphoneApp } from "@/lib/iphone";
 import { IphoneFolders, IphoneTags } from "@/components/iphone/Organize";
-import { useFolderActions } from "@/lib/app/folders";
+import { endFolderDrag, startFolderDrag, useFolderActions } from "@/lib/app/folders";
+import { startItemsDrag } from "@/lib/app/noteDrag";
+import { ContextMenu } from "@/components/ui/Menu";
+import { SelectionBar, SelectionMarquee } from "./SelectionBar";
+import { useCardSelection } from "./useCardSelection";
+import { useSelectionActions, type SelectionEntry } from "./useSelectionActions";
 import { folderPlace } from "@/lib/app/folderDrop";
 import { FOLDER_SORTS, byFolderRank, folderSortOf, orderMoves, reorderIds, sortFolders, type FolderSort, type OrderMove } from "@/lib/app/folderOrder";
 import { useToast, errorMessage } from "@/components/ui/Toast";
@@ -152,6 +157,26 @@ export function FoldersIndex() {
   const reorder = useFolderCardOrder({ list, all: data?.folders ?? [], sort, setSort, enabled: canEdit && !searching && data !== undefined });
 
   const iphone = useIphoneApp();
+  // Finder-style multi-select of the folders shown (lib/app/multiSelect.ts): ⌘-click, ⇧-click, a rectangle drawn
+  // from empty space, ⌘A; a middle-click still opens a folder's tab behind this one.
+  const ids = useMemo(() => list.map((f) => f.id), [list]);
+  const selection = useCardSelection(ids, !iphone);
+  const entries = useMemo<SelectionEntry[]>(
+    () => list.filter((f) => selection.selected.has(f.id)).map((f) => ({ kind: "folder", id: f.id, name: f.name, color: f.color, parentFolderId: f.parentFolderId ?? null })),
+    [list, selection.selected],
+  );
+  const selectionActions = useSelectionActions({ entries, clear: selection.clear });
+  const [selectionCtx, setSelectionCtx] = useState<{ x: number; y: number } | null>(null);
+  /** A right-click on a folder of a selection of several: the selection's menu (else the folder's own). */
+  const selectionMenuAt = (e: React.MouseEvent, id: string) => {
+    if (!selection.selected.has(id) || selection.selectedIds.length < 2) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectionCtx({ x: e.clientX, y: e.clientY });
+  };
+  const dragSelection = (id: string) => (selection.selected.has(id) && selection.selectedIds.length > 1 ? (e: React.DragEvent) => startItemsDrag(e, { notes: [], folders: selection.selectedIds }) : undefined);
+  const itemProps = (id: string) => ({ "data-card-id": id, onClickCapture: selection.onCardClick(id), onContextMenu: (e: React.MouseEvent) => selectionMenuAt(e, id) });
+
   if (iphone)
     return (
       <IphoneFolders
@@ -169,7 +194,17 @@ export function FoldersIndex() {
     );
   return (
     // The page names itself in its title row (with the count and New folder); the top bar keeps only New note.
-    <ViewChrome title={null} tabTitle="Folders">
+    <ViewChrome
+      title={null}
+      tabTitle="Folders"
+      overlay={
+        selection.selectedIds.length ? (
+          <SelectionBar count={selection.selectedIds.length} total={ids.length} actions={selectionActions.barActions} onSelectAll={selection.selectAll} onClear={selection.clear} label={selectionActions.label} />
+        ) : null
+      }
+    >
+      {/* The surface fills the scrolling area so a selection rectangle can start anywhere around the cards. */}
+      <div className="min-h-full" onPointerDown={selection.onSurfacePointerDown}>
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         <ListPageHeader
           title="Folders"
@@ -202,8 +237,8 @@ export function FoldersIndex() {
               typeof f === "string" ? (
                 <ReorderGap key={f} id={f} />
               ) : (
-                <li key={f.id} data-reorder-id={f.id} className={reorder.dragged === f.id ? "opacity-40" : undefined}>
-                  <FolderCard folder={f} parentName={f.parentFolderId ? names.get(f.id) || undefined : undefined} />
+                <li key={f.id} data-reorder-id={f.id} {...itemProps(f.id)} className={reorder.dragged === f.id ? "opacity-40" : undefined}>
+                  <FolderCard folder={f} parentName={f.parentFolderId ? names.get(f.id) || undefined : undefined} selected={selection.selected.has(f.id)} dragSelection={dragSelection(f.id)} />
                   {/* A search finds folders at every level: a nested one says where it is. */}
                   {f.parentFolderId && names.get(f.id) ? (
                     <p className="mt-2 truncate text-footnote text-muted" aria-hidden>
@@ -216,10 +251,28 @@ export function FoldersIndex() {
           </ul>
         ) : (
           <ul className="ui-card mt-6 divide-y divide-line overflow-hidden rounded-chip" aria-label="Folders">
-            {list.map((f) => (
-              <li key={f.id} data-ctx-host="" className="group relative">
-                <AppLink href={`/folders/${f.id}`} {...folderTabClicks(openInBackground, f)} className="flex items-center gap-3 py-2.5 pl-4 pr-14 hover:bg-accent-soft/50 focus-visible:bg-accent-soft/60 focus-visible:outline-none">
-                  <FolderGlyph color={f.color} size={24} />
+            {list.map((f) => {
+              const on = selection.selected.has(f.id);
+              return (
+              <li key={f.id} data-ctx-host="" {...itemProps(f.id)} className={`group relative ${on ? "bg-[var(--glass-active)]" : ""}`}>
+                <AppLink
+                  href={`/folders/${f.id}`}
+                  {...folderTabClicks(openInBackground, f)}
+                  draggable={canEdit ? true : undefined}
+                  onDragStart={canEdit ? (e) => (dragSelection(f.id) ?? ((ev: React.DragEvent) => startFolderDrag(ev, f.id)))(e) : undefined}
+                  onDragEnd={canEdit ? endFolderDrag : undefined}
+                  aria-label={on ? `${f.name}, selected` : undefined}
+                  className="flex items-center gap-3 py-2.5 pl-4 pr-14 hover:bg-accent-soft/50 focus-visible:bg-accent-soft/60 focus-visible:outline-none"
+                >
+                  {on ? (
+                    <span className="grid h-6 w-6 flex-none place-items-center">
+                      <span className="grid h-4 w-4 place-items-center rounded-tiny bg-heading text-canvas">
+                        <Check size={11} strokeWidth={3} aria-hidden />
+                      </span>
+                    </span>
+                  ) : (
+                    <FolderGlyph color={f.color} size={24} />
+                  )}
                   <span className="min-w-0 flex-1 truncate font-medium">
                     {f.name}
                     {f.parentFolderId ? <span className="ml-2 text-footnote font-normal text-muted">in {names.get(f.id) || "a folder"}</span> : null}
@@ -229,10 +282,15 @@ export function FoldersIndex() {
                 </AppLink>
                 <FolderMenu folder={f} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100" />
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </div>
+      </div>
+      <SelectionMarquee rect={selection.marquee} />
+      {selectionCtx ? <ContextMenu key={selectionCtx.x + selectionCtx.y} at={selectionCtx} label={`${selectionActions.noun} selected`} items={selectionActions.menuItems} onClose={() => setSelectionCtx(null)} /> : null}
+      {selectionActions.dialogs}
     </ViewChrome>
   );
 }

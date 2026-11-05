@@ -101,11 +101,23 @@ public enum FrameRoute: Hashable, Sendable {
     /// Search (it covers the whole screen, the tab bar too).
     public var isSearch: Bool { if case .search = self { true } else { false } }
 
+    /// Folder browsing: a folder, or the Folders page. On the Mac's tab strip these show in a folder tab that
+    /// navigates (Finder style, TabsModel) instead of each getting a tab of its own.
+    public var isFolderBrowsing: Bool {
+        switch self {
+        case .folder: return true
+        case .web(let p): return p == "/folders"
+        default: return false
+        }
+    }
+
     /// Home's tab, the pinned first one (the Mac's and the iPad's tab strip).
     public static let homeTabKey = "home"
 
-    /// The tab a route lives in (web tabs.tsx `viewKey`): a note's own id; one tab per view kind; one per folder
-    /// or tag. Home is the pinned first tab.
+    /// The page a route shows, as the tab strip knows it (web tabs.tsx `viewKey`): a note's own id; one per view
+    /// kind; one per folder or tag. A tab shows one page at a time and a page is in at most one tab. Most tabs are
+    /// named by their page's key; a folder tab has an id of its own (`folders:`), since it moves between folders.
+    /// Home is the pinned first tab.
     public var tabKey: String {
         switch self {
         case .home: return Self.homeTabKey

@@ -66,7 +66,7 @@ import {
   type DnaSettings,
 } from "@/lib/graph/analysis";
 import { indexGraph, neighbourhood, type AroundEdge, type Names } from "@/lib/graph/neighbourhood";
-import { DnaConnections, DnaLegend, DnaNodePanel, DnaTour, TOUR_STEPS, type LegendShows } from "@/components/views/DnaGuide";
+import { DnaConnections, DnaLegend, DnaNodePanel, DnaTour, type LegendShows } from "@/components/views/DnaGuide";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { canPurchaseHere } from "@/lib/nativeApp";
 
@@ -229,7 +229,7 @@ export function GraphView() {
     const ids = new Set(shown.nodes.map((n) => n.id));
     return settings.filter.linksOnly ? [] : (data?.suggested ?? []).filter((s) => ids.has(s.source) && ids.has(s.target));
   }, [data, shown.nodes, settings.filter.linksOnly]);
-  const duplicates = data?.duplicates ?? [];
+  const duplicates = useMemo(() => data?.duplicates ?? [], [data]);
   const span = useMemo(() => timeSpan(shown.nodes), [shown.nodes]);
   // The time-lapse and "since last week" only change what's lit, never where things are.
   const visible = useMemo(() => (playAt === null ? null : new Set(asOf(shown.nodes, shown.edges, playAt).nodes.map((n) => n.id))), [playAt, shown]);
@@ -1138,7 +1138,7 @@ export function GraphCanvas({
     };
     window.addEventListener("folevi:dna-zoom-to", onZoomTo);
     return () => window.removeEventListener("folevi:dna-zoom-to", onZoomTo);
-  }, [glideTo, byId]);
+  }, [glideTo, byId, setSelected]);
 
   // The export menu reads the map as drawn now.
   useEffect(() => {

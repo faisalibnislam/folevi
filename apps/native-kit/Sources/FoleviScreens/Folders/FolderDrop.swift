@@ -65,9 +65,12 @@ public struct FolderDrop: DropDelegate {
     var onSpring: (@MainActor () -> Void)?
     var onNotes: ([NoteDragItem]) -> Void
     var onFolder: (FolderDragItem, FolderRules.Zone) -> Void
+    /// Where over it a dragged folder is held, as it changes (nil once it leaves): the Folders page opens a gap from it.
+    var onZone: (@MainActor (FolderRules.Zone?) -> Void)?
 
     /// `length` 0: a folder dropped anywhere on it goes inside (no before or after).
-    public init(folderId: String, axis: Axis, length: CGFloat, zone: Binding<FolderRules.Zone?>, spring: SpringLoader, onSpring: (@MainActor () -> Void)? = nil, onNotes: @escaping ([NoteDragItem]) -> Void, onFolder: @escaping (FolderDragItem, FolderRules.Zone) -> Void) {
+    public init(folderId: String, axis: Axis, length: CGFloat, zone: Binding<FolderRules.Zone?>, spring: SpringLoader, onSpring: (@MainActor () -> Void)? = nil, onNotes: @escaping ([NoteDragItem]) -> Void, onFolder: @escaping (FolderDragItem, FolderRules.Zone) -> Void, onZone: (@MainActor (FolderRules.Zone?) -> Void)? = nil) {
+        self.onZone = onZone
         self.folderId = folderId
         self.axis = axis
         self.length = length
@@ -97,10 +100,12 @@ public struct FolderDrop: DropDelegate {
     public func dropEntered(info: DropInfo) {
         zone = zone(info)
         armSpring(info)
+        if info.hasItemsConforming(to: [.foleviFolderRef]) { onZone?(zone(info)) }
     }
 
     public func dropUpdated(info: DropInfo) -> DropProposal? {
         let z = zone(info)
+        if zone != z, info.hasItemsConforming(to: [.foleviFolderRef]) { onZone?(z) }
         zone = z
         if z == .inside { armSpring(info) } else { spring.cancel() }
         return DropProposal(operation: Self.operation)
@@ -109,6 +114,7 @@ public struct FolderDrop: DropDelegate {
     public func dropExited(info: DropInfo) {
         zone = nil
         spring.cancel()
+        onZone?(nil)
     }
 
     private func armSpring(_ info: DropInfo) {
@@ -120,6 +126,7 @@ public struct FolderDrop: DropDelegate {
         let at = zone(info)
         zone = nil
         spring.cancel()
+        onZone?(nil)
         // Read as the JSON data CodableRepresentation writes (as the Mac's sidebar reads its drags): loadTransferable
         // came back empty for in-app drags on the Mac, so a note or folder dropped on a card went nowhere (1.2.30).
         if let provider = info.itemProviders(for: [.foleviFolderRef]).first {
@@ -137,6 +144,33 @@ public struct FolderDrop: DropDelegate {
                 let item = data.flatMap { try? JSONDecoder().decode(NoteDragItem.self, from: $0) }
                 Task { @MainActor in collector.add(item) }
             }
+        }
+        return true
+    }
+}
+
+/// The gap the Folders page opens among its cards while a folder is held between them: a folder dropped there goes
+/// in that spot (FolderOrder). Only folders are taken.
+public struct FolderGapDrop: DropDelegate {
+    var onHover: @MainActor (Bool) -> Void
+    var onFolder: @MainActor (FolderDragItem) -> Void
+
+    public init(onHover: @escaping @MainActor (Bool) -> Void, onFolder: @escaping @MainActor (FolderDragItem) -> Void) {
+        self.onHover = onHover
+        self.onFolder = onFolder
+    }
+
+    public func validateDrop(info: DropInfo) -> Bool { info.hasItemsConforming(to: [.foleviFolderRef]) }
+    public func dropEntered(info: DropInfo) { onHover(true) }
+    public func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: FolderDrop.operation) }
+    public func dropExited(info: DropInfo) { onHover(false) }
+
+    public func performDrop(info: DropInfo) -> Bool {
+        onHover(false)
+        guard let provider = info.itemProviders(for: [.foleviFolderRef]).first else { return false }
+        _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.foleviFolderRef.identifier) { data, _ in
+            guard let data, let item = try? JSONDecoder().decode(FolderDragItem.self, from: data) else { return }
+            Task { @MainActor in onFolder(item) }
         }
         return true
     }

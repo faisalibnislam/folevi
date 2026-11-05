@@ -1,9 +1,14 @@
 // Folders on the iPhone, as the web draws them: every folder (apps/web/src/components/iphone/Organize.tsx
-// IphoneFolders: search, the folder cards two to a row or rows, View as and Sort), and New folder
+// IphoneFolders: search, the folder cards two to a row or rows, View as and Sort), cards put in order by dragging
+// as icons on the Home Screen (held, then moved: over another card's middle it goes inside that folder, over its
+// left or right quarter the others make room), and New folder
 // (iphone/NewFolderSheet.tsx: a card in the middle of the screen, over the keyboard: the title, the colour, where
 // it goes, Create).
 #if os(iOS)
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 import FoleviDesign
 import FoleviEngine
 import FoleviScreens
@@ -15,9 +20,28 @@ public struct PhoneAllFoldersScreen: View {
     let menu: (CGRect) -> Void
     /// A folder card's menu (its long press), from the card.
     public var folderMenu: (FolderNode, CGRect) -> Void = { _, _ in }
+    /// Closes a card's long-press menu (a held card moved off it is dragged instead).
+    public var closeMenu: () -> Void = {}
     let scrollToTop: Int
     @State private var moreFrame: CGRect = .zero
+    /// The card held and dragged about, the order on show while it is (the cards' ids), and the card it would go
+    /// inside if let go now.
+    @State private var drag: CardDrag?
+    @State private var order: [String]?
+    @State private var nest: String?
+    /// Each card's frame in the grid, laid out (not where a drag has it).
+    @State private var frames: [String: CGRect] = [:]
     @Environment(\.colorScheme) private var scheme
+
+    private struct CardDrag: Equatable {
+        var id: String
+        /// Where the finger took hold of the card, from its corner.
+        var grab: CGSize
+        var location: CGPoint
+    }
+
+    private static let grid = "phone.folders.grid"
+    private var slide: Animation? { WebMotion.reduced ? nil : .spring(response: 0.32, dampingFraction: 0.82) }
 
     public init(model: AllFoldersModel, open: @escaping (String) -> Void, back: @escaping () -> Void, menu: @escaping (CGRect) -> Void, scrollToTop: Int = 0) {
         self.model = model
@@ -55,11 +79,22 @@ public struct PhoneAllFoldersScreen: View {
                 }
                 .padding(.top, 8)
             } else {
+                let draggable = model.canEdit
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: grid.gap), GridItem(.flexible(), spacing: grid.gap)], spacing: 20) {
-                    ForEach(shown, id: \.id) { f in
+                    ForEach(arranged(shown), id: \.id) { f in
+                        let held = drag?.id == f.id
                         VStack(alignment: .leading, spacing: 6) {
-                            PhonePressable(scale: 0.97, onTap: { open("/folders/\(f.id)") }, onLongPress: { folderMenu(f, $0) }) {
+                            PhonePressable(scale: 0.97, onTap: { if drag == nil { open("/folders/\(f.id)") } }, onLongPress: { folderMenu(f, $0) }) {
                                 WebFolderCard(model.cardModel(f))
+                                    .background {
+                                        // Held over its middle: the folder it would go inside lights up.
+                                        if nest == f.id {
+                                            RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .continuous)
+                                                .fill((WebStyles.vars["glass-active"]?.resolve(scheme) ?? RGBA(0, 0, 0, 0.06)).color)
+                                                .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .continuous).strokeBorder(FoleviTokens.Chrome.heading.resolve(scheme).color, lineWidth: 2))
+                                                .padding(-6)
+                                        }
+                                    }
                             }
                             // A search finds folders at every level: a nested one says where it is.
                             if let path = model.path(f) {
@@ -67,15 +102,134 @@ public struct PhoneAllFoldersScreen: View {
                                     .accessibilityHidden(true)
                             }
                         }
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.grid)) } action: { frames[f.id] = $0 }
+                        .scaleEffect(held ? 1.06 : 1)
+                        .shadow(color: .black.opacity(held ? 0.22 : 0), radius: held ? 18 : 0, y: held ? 10 : 0)
+                        .offset(liftOffset(f.id))
+                        .zIndex(held ? 1 : 0)
+                        .simultaneousGesture(dragGesture(f), including: draggable ? .all : .subviews)
+                        .accessibilityActions {
+                            if model.canReorder, let i = shown.firstIndex(where: { $0.id == f.id }) {
+                                if i > 0 { Button("Move earlier") { Task { await model.dropFolder(item(f.id), gap: i - 1) } } }
+                                if i < shown.count - 1 { Button("Move later") { Task { await model.dropFolder(item(f.id), gap: i + 1) } } }
+                            }
+                        }
                     }
                 }
+                .coordinateSpace(name: Self.grid)
                 .padding(grid.padding.edgeInsets)
                 .environment(\.webPhoneCards, true)
             }
         }
+        // (The finger moves the card, not the list, while one is held.)
+        .scrollDisabled(drag != nil)
         .refreshable { await model.refresh() }
         .onAppear { model.setVisible(true) }
-        .onDisappear { model.setVisible(false) }
+        .onDisappear {
+            model.setVisible(false)
+            drag = nil
+            nest = nil
+        }
+    }
+
+    /// The cards in the order on show: the list's, or the one a drag is making.
+    private func arranged(_ shown: [FolderNode]) -> [FolderNode] {
+        guard let order else { return shown }
+        let byId = Dictionary(shown.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let out = order.compactMap { byId[$0] }
+        return out.count == shown.count ? out : shown
+    }
+
+    private func item(_ id: String) -> FolderDragItem {
+        let node = model.nodes.first { $0.id == id }
+        return FolderDragItem(id: id, name: node?.name ?? "Folder", parentId: node?.parentId)
+    }
+
+    /// Held for the menu's time, then moved off it, a card follows the finger; let go, it lands.
+    private func dragGesture(_ f: FolderNode) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.45)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.grid)))
+            .onChanged { value in
+                guard case .second(true, let d?) = value else { return }
+                if drag == nil {
+                    // Held for the menu, it stays a menu until the finger moves off.
+                    guard hypot(d.translation.width, d.translation.height) > 10, let frame = frames[f.id] else { return }
+                    closeMenu()
+                    #if canImport(UIKit)
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    #endif
+                    order = order ?? model.shown.map(\.id)
+                    withAnimation(slide) { drag = CardDrag(id: f.id, grab: CGSize(width: d.startLocation.x - frame.minX, height: d.startLocation.y - frame.minY), location: d.location) }
+                    return
+                }
+                drag?.location = d.location
+                follow()
+            }
+            .onEnded { _ in letGo() }
+    }
+
+    /// The card under the held one's middle: over its middle the held folder would go inside it; over its left or
+    /// right quarter it gives up its place (not while searching).
+    private func follow() {
+        guard let drag, var next = order, let f = frames[drag.id], let from = next.firstIndex(of: drag.id) else { return }
+        let mid = CGPoint(x: drag.location.x - drag.grab.width + f.width / 2, y: drag.location.y - drag.grab.height + f.height / 2)
+        guard let target = next.first(where: { $0 != drag.id && frames[$0]?.contains(mid) == true }), let box = frames[target] else {
+            if nest != nil { nest = nil }
+            return
+        }
+        let zone = FolderRules.zone(at: mid.x - box.minX, length: box.width)
+        if zone == .inside {
+            if nest != target {
+                nest = target
+                #if canImport(UIKit)
+                UISelectionFeedbackGenerator().selectionChanged()
+                #endif
+            }
+            return
+        }
+        nest = nil
+        guard model.canReorder else { return }
+        next.remove(at: from)
+        guard let at = next.firstIndex(of: target) else { return }
+        next.insert(drag.id, at: zone == .before ? at : at + 1)
+        guard next != order else { return }
+        #if canImport(UIKit)
+        UISelectionFeedbackGenerator().selectionChanged()
+        #endif
+        withAnimation(slide) { order = next }
+    }
+
+    /// Let go: inside the folder it's over, or in the place the others made for it (in Name or Recent that order
+    /// becomes the manual one).
+    private func letGo() {
+        guard let held = drag else { return }
+        let into = nest
+        withAnimation(slide) {
+            drag = nil
+            nest = nil
+        }
+        if let into {
+            order = nil
+            Task { await model.dropFolder(item(held.id), into: into) }
+            return
+        }
+        let ids = model.shown.map(\.id)
+        guard let next = order, let gap = next.firstIndex(of: held.id), next != ids else {
+            withAnimation(slide) { order = nil }
+            return
+        }
+        Task {
+            await model.dropFolder(item(held.id), gap: gap)
+            // (Normally the list's new order has replaced this one already.)
+            try? await Task.sleep(for: .seconds(1))
+            if drag == nil { order = nil }
+        }
+    }
+
+    /// Where a held card is drawn: under the finger, from its laid-out place.
+    private func liftOffset(_ id: String) -> CGSize {
+        guard let drag, drag.id == id, let f = frames[id] else { return .zero }
+        return CGSize(width: drag.location.x - drag.grab.width - f.minX, height: drag.location.y - drag.grab.height - f.minY)
     }
 }
 

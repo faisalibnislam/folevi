@@ -281,8 +281,8 @@ public final class TabsModel {
         for i in closed.indices { closed[i].history.forget(route, fallback: closed[i].route) }
     }
 
-    /// Adds a route's tab behind the one on screen ("Open in new tab", a ⌘-click or middle-click on a folder), as a
-    /// browser opens a background tab; the tab on screen stays. A page that has a tab already keeps it (a page is
+    /// Adds a route's tab behind the one on screen ("Open in new tab", a middle-click on a folder, a sidebar ⌘-click,
+    /// a selection's Open in new tabs), as a browser opens a background tab; the tab on screen stays. A page that has a tab already keeps it (a page is
     /// in one tab at a time; a plain click then switches to it). The new tab's id, or nil when none was added.
     @discardableResult
     public func addInBackground(_ route: FrameRoute) -> String? {

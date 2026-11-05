@@ -3,6 +3,7 @@
 import type { DragEvent } from "react";
 import { dragNotesOut } from "@/lib/desktop/capabilities";
 import { beginDrag } from "./dragSession";
+import { selectionNoun } from "./multiSelect";
 
 /** One dragged note (also what list reordering reads). */
 export const NOTE_MIME = "application/x-folevi-document";
@@ -24,14 +25,37 @@ export function startNoteDrag(e: DragEvent, ids: string[], titleOf?: (id: string
   beginDrag({ kind: "notes", ids });
   // The native Mac app: dropped in Finder, Mail or another app, the notes become Markdown files.
   dragNotesOut(ids, titleOf);
+  setDragPicture(e, ids.length > 1 ? `${ids.length} notes` : null);
+}
+
+/** A multi-selection with folders in it (folders, or folders and notes), dragged together onto a folder. */
+export const ITEMS_MIME = "application/x-folevi-items";
+
+/**
+ * Starts dragging a selection that holds folders (from any of its cards or rows): dropped on a folder, every
+ * folder and note goes inside it (components/app/FolderDropLayer.tsx). The pointer carries the card held, with a
+ * count ("2 folders and 3 notes").
+ */
+export function startItemsDrag(e: DragEvent, items: { notes: string[]; folders: string[] }, titleOf?: (id: string) => string | null | undefined) {
+  const total = items.notes.length + items.folders.length;
+  if (!total) return;
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData(ITEMS_MIME, JSON.stringify(items));
+  beginDrag({ kind: "items", notes: items.notes, folders: items.folders });
+  if (items.notes.length) dragNotesOut(items.notes, titleOf);
+  setDragPicture(e, total > 1 ? selectionNoun(items.notes.length, items.folders.length) : null);
+}
+
+/** The drag's picture: the card or row it starts from, with `badgeText` (a count) painted in its corner. */
+function setDragPicture(e: DragEvent, badgeText: string | null) {
   const image = previewOf(e.currentTarget);
   if (!image) return;
   const box = image.getBoundingClientRect();
   let undo = () => {};
-  if (ids.length > 1) {
+  if (badgeText) {
     // A count in the corner, painted into the drag image and removed straight after.
     const badge = document.createElement("span");
-    badge.textContent = `${ids.length} notes`;
+    badge.textContent = badgeText;
     const dark = document.documentElement.dataset.theme === "dark" || (document.documentElement.dataset.theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     Object.assign(badge.style, {
       position: "absolute",

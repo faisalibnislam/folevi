@@ -134,15 +134,25 @@ interface TabsValue {
    */
   warm: string[];
   /**
-   * Opens a folder in a tab of its own without going there ("Open in new tab", or a ⌘-click or middle-click on a
-   * folder): the tab joins the strip behind the one on screen. A folder that has a tab already keeps it.
+   * Opens a folder in a tab of its own without going there ("Open in new tab", a middle-click on a folder, or a
+   * ⌘-click on a sidebar folder): the tab joins the strip behind the one on screen. A folder that has a tab already
+   * keeps it. (In lists ⌘-click selects instead: lib/app/multiSelect.ts.)
    */
   openInBackground: (folder: { id: string; name: string }) => void;
+  /** Opens several notes and folders in tabs behind the one on screen (a multi-selection's "Open in new tabs"). */
+  openManyInBackground: (items: BackgroundTabItem[]) => void;
   /**
    * The tab on screen's own Back and Forward (Finder style); Home has none. Null where no tab is on screen
    * (Settings, Help…): the browser's history goes on there.
    */
   tabHistory: BackForwardValue | null;
+}
+
+/** A note or folder to open in a background tab. */
+export interface BackgroundTabItem {
+  kind: "note" | "folder";
+  id: string;
+  name: string;
 }
 
 const MAX_TABS = 12;
@@ -541,25 +551,36 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
       .join(",");
   })();
   const warm = useMemo(() => (warmKey ? warmKey.split(",") : []), [warmKey]);
-  const openInBackground = useCallback(
-    (folder: { id: string; name: string }) => {
-      const path = `/folders/${folder.id}`;
+  const openManyInBackground = useCallback(
+    (items: BackgroundTabItem[]) => {
       setTabs((cur) => {
-        // A folder is in one tab at a time: one that has a tab keeps it (a plain click switches to it).
-        if (cur.some((t) => t.view?.path === path)) return cur;
-        const key = newFolderTabId();
-        let next: DocTab[] = [...cur, { id: key, title: folder.name, view: { kind: "folder", path } }];
-        // Bounded as ever, never dropping the new tab or the one on screen.
-        const droppable = (x: DocTab) => x.id !== key && !x.pinned && !isShown(x);
+        // At most a strip's worth: more would only push each other out. A folder or note that has a tab keeps it
+        // (a folder is in one tab at a time).
+        const adding: DocTab[] = [];
+        for (const it of items.slice(0, MAX_TABS)) {
+          if (it.kind === "folder") {
+            const path = `/folders/${it.id}`;
+            if (cur.some((t) => t.view?.path === path) || adding.some((t) => t.view?.path === path)) continue;
+            adding.push({ id: newFolderTabId(), title: it.name, view: { kind: "folder", path } });
+          } else if (!cur.some((t) => tabHolds(t, it.id)) && !adding.some((t) => t.id === it.id)) {
+            adding.push({ id: it.id, at: it.id, title: it.name });
+          }
+        }
+        if (!adding.length) return cur;
+        const keep = new Set(adding.map((t) => t.id));
+        let next: DocTab[] = [...cur, ...adding];
+        // Bounded as ever, never dropping the new tabs or the one on screen.
+        const droppable = (x: DocTab) => !keep.has(x.id) && !x.pinned && !isShown(x);
         while (next.length > MAX_TABS && next.some(droppable)) next = next.filter((_, j) => j !== next.findIndex(droppable));
         return next;
       });
     },
     [setTabs, isShown],
   );
+  const openInBackground = useCallback((folder: { id: string; name: string }) => openManyInBackground([{ kind: "folder", ...folder }]), [openManyInBackground]);
   const value = useMemo(
-    () => ({ tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground, tabHistory }),
-    [tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground, tabHistory],
+    () => ({ tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground, openManyInBackground, tabHistory }),
+    [tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground, openManyInBackground, tabHistory],
   );
 
   // The pages placed (useDocTab), placed again with each change to the tabs: a page names its tab before the tab
@@ -619,6 +640,9 @@ export function NativeTabsProvider({ children }: { accountKey?: string; workspac
       setView: noop,
       // Native owns the strip: it opens the folder's tab.
       openInBackground: (folder) => void requestNavigation(`/folders/${folder.id}`, { newTab: true }),
+      openManyInBackground: (items) => {
+        for (const it of items) requestNavigation(it.kind === "folder" ? `/folders/${it.id}` : `/d/${it.id}`, { newTab: true });
+      },
       homeHref: "/documents",
       close: noop,
       closeMany: noop,
@@ -658,8 +682,10 @@ export function NativeTabsProvider({ children }: { accountKey?: string; workspac
 }
 
 /**
- * A folder link's ⌘-click (Ctrl-click) and middle-click: the folder's tab opens behind the one on screen, as a
- * browser opens a link in a background tab. Spread on the link; a plain click goes on as before.
+ * A folder link's middle-click, and its ⌘-click (Ctrl-click) where the list doesn't select (the sidebar, Home): the
+ * folder's tab opens behind the one on screen, as a browser opens a link in a background tab. Spread on the link;
+ * a plain click goes on as before. In a list that selects (a folder's page, the Folders page, useCardSelection
+ * catches the click first), ⌘-click selects the folder and only the middle-click opens its tab.
  */
 export function useFolderTabClicks(folder: { id: string; name: string }): FolderTabClicks {
   return folderTabClicks(useContext(TabsContext)?.openInBackground, folder);

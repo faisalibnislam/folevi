@@ -434,6 +434,33 @@ Pointer-driven, not the platform's image-drag:
 6. Keyboard: ⌥⇧↑/↓ move the current block; the grip is also a button that opens block options.
 7. Reduce Motion: no tilt/scale/glide; the drop line jumps; the glow is replaced by a static tint.
 
+## Multi-select (lists, both clients)
+
+Folders and notes are picked the way Finder picks files, on a folder's page (its folders and notes are one list,
+folders first), the Folders page and every note list (All notes, Drafts, Bookmarks, a tag, Archive, Trash). Rules:
+`apps/web/src/lib/app/multiSelect.ts` (web) and `FoleviScreens/Lists/ListSelection.swift` (Mac and iPad), with
+tests on both sides.
+- **A plain click opens the item, as ever, even while others are selected (web, Mac and iPad alike).** ⌘-click (Ctrl-click on Windows and Linux) adds or removes one item;
+  ⇧-click selects the run from the last item clicked; ⌘A selects every item shown (not while typing); Escape, the
+  bar's ×, or a click on empty space clears. On the web, dragging from empty space draws a selection rectangle
+  (the page scrolls near its edges); a drag that starts on a card moves it, so the two never meet.
+- **⌘-click selects, it no longer opens a background tab** in these lists. A middle-click on a folder still opens
+  its tab behind the one on screen, and in the sidebar and on Home (no selection there) ⌘-click still does.
+- **Look:** a selected note card gets a 2 px `heading` ring offset from the card; a folder card the drop target's
+  wash (`glass-active` with a 2 px `heading` inner line); a list row the `glass-active` fill. Cards also get a
+  small `heading` check in their top-left corner; rows swap their icon for a check.
+- **Floating bar** at the bottom of the content area (`SelectionBar`, a toolbar named "Selected notes", "Selected
+  folders" or "Selected items"): "N selected", Select all (while not everything is), the actions, and a × to clear.
+  Toasts rise above it.
+- **Actions** (the bar and a right-click on a selected item show the same ones; a right-click on an item outside
+  the selection acts on that item alone): only those every selected item can take. Notes: Open in new tabs, Move
+  to folder, Copy to (with somewhere to copy), Bookmark or Remove bookmark, Add tag, Archive or Unarchive, Move to
+  Trash (Trash: Restore and Delete permanently). Folders: Open in new tabs, Move to folder, Change color, Delete
+  folders (their notes go to Drafts). Folders and notes together: Open in new tabs and Move to folder (no Drafts or
+  top level to pick then). Move, Trash and Archive show one toast with Undo for the whole selection.
+- **Drag:** dragging any selected item carries the whole selection onto a folder (a card or a sidebar row) with a
+  count on the picture ("2 folders and 3 notes"); folders refuse Drafts, and a folder can't go into itself.
+
 ## Motion
 
 140–220ms for UI, 320ms page transitions, `cubic-bezier(0.2, 0.7, 0.2, 1)`, no bounce. All motion is

@@ -1,5 +1,6 @@
-// "Open in new tab" on a folder (its menu, a ⌘-click or a middle-click): a folder tab joins the strip behind the
-// one on screen, a folder already in a tab keeps it, and the strip stays bounded without dropping the tab on screen.
+// "Open in new tab" on a folder (its menu, a middle-click, or a ⌘-click where the list doesn't multi-select): a
+// folder tab joins the strip behind the one on screen, a folder already in a tab keeps it, and the strip stays bounded
+// without dropping the tab on screen.
 #if os(macOS) || os(iOS)
 import Testing
 @testable import FoleviMac

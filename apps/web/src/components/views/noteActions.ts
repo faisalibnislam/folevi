@@ -9,6 +9,7 @@ import { requireOutbox } from "@/lib/app/folders";
 import { useCapabilities } from "@/lib/mode";
 import { moveWarning } from "@/lib/app/folderSharing";
 import { confirmMoveWarning } from "@/components/app/MoveWarning";
+import { selectionNoun } from "@/lib/app/multiSelect";
 
 /** The server takes at most this many notes per bulk call (documents.MAX_BULK); bigger sets go in turns. */
 const CHUNK = 50;
@@ -100,7 +101,11 @@ export function useNoteActions() {
 
   return useMemo(
     () => ({
-      moveTo: async (ids: string[], folder: FolderTarget) => {
+      /**
+       * Moves notes into `folder`. `also`: folders of the same selection, moved already: the toast counts them too
+       * ("Moved 2 folders and 3 notes to Work") and its Undo puts them back with the notes.
+       */
+      moveTo: async (ids: string[], folder: FolderTarget, also?: { folders: number; undo: () => void }) => {
         // A move that changes who sees the notes through a shared folder asks first (docs/SHARING.md).
         // Offline, or when the check can't be had, the move goes ahead as before.
         if (sharing && online && ids.length) {
@@ -111,8 +116,9 @@ export function useNoteActions() {
         return perform(
           ids,
           { kind: "move", folderId: folder.id },
-          (n) => (n === 1 ? `Moved to ${folder.name}` : `Moved ${notes(n)} to ${folder.name}`),
+          (n) => (also?.folders ? `Moved ${selectionNoun(n, also.folders)} to ${folder.name}` : n === 1 ? `Moved to ${folder.name}` : `Moved ${notes(n)} to ${folder.name}`),
           (r) => {
+            also?.undo();
             // Each note goes back to the folder it came from.
             const byFolder = new Map<string | null, string[]>();
             for (const id of r.done) {

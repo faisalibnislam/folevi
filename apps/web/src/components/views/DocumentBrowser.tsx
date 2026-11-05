@@ -2,7 +2,6 @@
 
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Check, CheckSquare, Copy, CopyPlus, EyeOff, FilePlus2, ExternalLink, FolderInput, LayoutGrid, List, MoreHorizontal, Plus, Rows3, Trash2, Undo2, FileText, Files, FolderOpen, Hash, Inbox, LayoutTemplate, Share2, type LucideIcon } from "lucide-react";
 import { Bookmark, BookmarkOff } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
@@ -15,7 +14,7 @@ import { overlayFolderIndex, pendingNoteFolders } from "@/lib/sync/overlays";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
 import { useEngineSelector, useLocalStorage } from "@/lib/hooks/useEngine";
-import { startNoteDrag, NOTE_MIME } from "@/lib/app/noteDrag";
+import { startItemsDrag, startNoteDrag, NOTE_MIME } from "@/lib/app/noteDrag";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ContextMenu, MenuButton, type MenuItem } from "@/components/ui/Menu";
@@ -36,8 +35,9 @@ import { useNotesWithLocal } from "@/lib/hooks/useLocalNotes";
 import { Select } from "@/components/ui/Select";
 import { MoveToFolderDialog } from "./MoveToFolderDialog";
 import { CopyToDialog, useCanCopyElsewhere } from "./CopyToDialog";
-import { SelectionBar, type SelectionAction } from "./SelectionBar";
+import { SelectedCheck, SelectionBar, SelectionMarquee } from "./SelectionBar";
 import { useCardSelection } from "./useCardSelection";
+import { useSelectionActions, type SelectionEntry } from "./useSelectionActions";
 import { useNoteActions } from "./noteActions";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -202,7 +202,6 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const createDocument = useCreateDocument();
   const emptyTrash = useMutation(api.documents.emptyTrash);
   const toast = useToast();
-  const notes = useNoteActions();
   const [cached, setCached] = useState<Summary[] | null>(null);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
   // A folder's Share dialog, from the folder page's title row (docs/SHARING.md).
@@ -211,10 +210,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const trashSummary = useQuery(api.documents.trashSummary, confirmEmpty ? { scope } : "skip");
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [ctx, setCtx] = useState<{ doc: Summary; at: { x: number; y: number } } | null>(null);
-  const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
-  const [bulkCopy, setBulkCopy] = useState<{ ids: string[]; title?: string } | null>(null);
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const canCopy = useCanCopyElsewhere();
+  // A right-click on an item of a selection of several: the selection's menu.
+  const [selectionCtx, setSelectionCtx] = useState<{ x: number; y: number } | null>(null);
   const reorder = useMutation(api.documents.reorder);
   const iphone = useIphoneApp();
 
@@ -294,46 +291,54 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const pendingDocs = useEngineSelector(engine, pendingByDocument, samePending);
   const unsynced = useMemo(() => new Set(pendingDocs.filter((p) => p.changes > 0 || p.uploads > 0).map((p) => p.documentId)), [pendingDocs]);
 
-  // Multi-select (templates have their own actions and aren't selectable).
+  // A folder inside other folders shows the way up (Work / Clients / Acme), and the folders inside it.
+  const allFolders = useMemo(() => org?.folders ?? [], [org]);
+  const folder = view === "folder" && folderId ? allFolders.find((f) => f.id === folderId) : undefined;
+  const crumbs = view === "folder" && folderId ? folderAncestors(allFolders, folderId) : [];
+  const subfolders = useMemo(() => (view === "folder" && folderId ? allFolders.filter((f) => f.parentFolderId === folderId) : []), [view, folderId, allFolders]);
+
+  // Finder-style multi-select (lib/app/multiSelect.ts): on a folder's page its folders and notes are one list,
+  // folders first as they show. (Templates have their own actions and aren't selectable; the phone layout selects
+  // its notes in its own way.)
   const selectable = view !== "templates";
-  const docIds = useMemo(() => docs.map((d) => d.id), [docs]);
-  const selection = useCardSelection(docIds, selectable);
-  const selectedDocs = useMemo(() => docs.filter((d) => selection.selected.has(d.id)), [docs, selection.selected]);
-  const sharedFolder = selectedDocs.length && selectedDocs.every((d) => d.folderId === selectedDocs[0]!.folderId) ? selectedDocs[0]!.folderId : undefined;
-  const bulk = (run: (ids: string[]) => Promise<unknown>) => {
-    const ids = selection.selectedIds;
-    selection.clear();
-    void run(ids);
+  const subfolderIds = useMemo(() => (iphone ? [] : subfolders.map((f) => f.id)), [iphone, subfolders]);
+  const itemIds = useMemo(() => [...subfolderIds, ...docs.map((d) => d.id)], [subfolderIds, docs]);
+  const selection = useCardSelection(itemIds, selectable);
+  const selectedEntries = useMemo<SelectionEntry[]>(() => {
+    const out: SelectionEntry[] = [];
+    for (const id of selection.selectedIds) {
+      const f = subfolders.find((x) => x.id === id);
+      if (f) {
+        out.push({ kind: "folder", id, name: f.name, color: f.color, parentFolderId: f.parentFolderId ?? null });
+        continue;
+      }
+      const d = docs.find((x) => x.id === id);
+      if (d) out.push({ kind: "note", id, name: d.title || "Untitled", starred: d.starred, archived: Boolean(d.archivedAt), template: d.kind === "template", folderId: d.folderId ?? null, tagIds: d.tags.map((t) => t.id) });
+    }
+    return out;
+  }, [selection.selectedIds, subfolders, docs]);
+  const selectionActions = useSelectionActions({ entries: selectedEntries, trash: view === "trash", clear: selection.clear });
+  const bulkActions = selectionActions.barActions;
+  /** Dragging an item of the selection takes the whole selection along (with folders in it, as "items"). */
+  const dragSelection = (e: React.DragEvent, id: string, title?: string) => {
+    const picked = selection.selected.has(id) ? selectedEntries : [];
+    const folders = picked.filter((x) => x.kind === "folder").map((x) => x.id);
+    if (!folders.length) {
+      const ids = picked.length ? picked.map((x) => x.id) : [id];
+      startNoteDrag(e, ids, (n) => (n === id ? title : docs.find((x) => x.id === n)?.title));
+      return;
+    }
+    startItemsDrag(e, { notes: picked.filter((x) => x.kind === "note").map((x) => x.id), folders }, (n) => docs.find((x) => x.id === n)?.title);
   };
-  const bulkActions: SelectionAction[] =
-    view === "trash"
-      ? [
-          { label: "Restore", icon: <Undo2 size={15} />, onClick: () => bulk((ids) => notes.restore(ids)) },
-          { label: "Delete permanently…", icon: <Trash2 size={15} />, danger: true, onClick: () => setBulkDeleteOpen(true) },
-        ]
-      : [
-          { label: "Move to folder…", icon: <FolderInput size={15} />, onClick: () => setBulkMoveOpen(true) },
-          ...(canCopy
-            ? [
-                {
-                  label: "Copy to…",
-                  icon: <CopyPlus size={15} />,
-                  onClick: () => {
-                    // The dialog keeps the notes it was opened for; the selection is done with.
-                    setBulkCopy({ ids: selection.selectedIds, title: selectedDocs[0]?.title });
-                    selection.clear();
-                  },
-                },
-              ]
-            : []),
-          selectedDocs.every((d) => d.starred)
-            ? { label: "Remove bookmark", icon: <BookmarkOff size={15} />, onClick: () => bulk((ids) => notes.star(ids, false)) }
-            : { label: "Bookmark", icon: <Bookmark size={15} />, onClick: () => bulk((ids) => notes.star(ids, true)) },
-          view === "archive"
-            ? { label: "Unarchive", icon: <ArchiveRestore size={15} />, onClick: () => bulk((ids) => notes.archive(ids, false)) }
-            : { label: "Archive", icon: <Archive size={15} />, onClick: () => bulk((ids) => notes.archive(ids, true)) },
-          { label: "Move to Trash", icon: <Trash2 size={15} />, danger: true, onClick: () => bulk((ids) => notes.trash(ids)) },
-        ];
+  /** A right-click on an item: with several selected and it among them, the selection's menu; else its own. */
+  const selectionMenuAt = (e: React.MouseEvent, id: string): boolean => {
+    if (!selection.selected.has(id) || selection.selectedIds.length < 2) return false;
+    e.preventDefault();
+    e.stopPropagation();
+    setCtx(null);
+    setSelectionCtx(contextPoint(e));
+    return true;
+  };
 
   /** Moves `dragged` onto `target`'s slot: after it when moving down, before it when moving up. */
   const place = (dragged: string, target: string) => {
@@ -372,12 +377,13 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     "data-card-id": d.id,
     onClickCapture: selection.onCardClick(d.id),
     onContextMenu: (e: React.MouseEvent) => {
+      if (selectionMenuAt(e, d.id)) return;
       e.preventDefault();
       setCtx({ doc: d, at: contextPoint(e) });
     },
     draggable: view !== "trash",
     // Dragging a selected card takes the whole selection along.
-    onDragStart: (e: React.DragEvent) => startNoteDrag(e, selection.selected.has(d.id) ? selection.selectedIds : [d.id], (id) => (id === d.id ? d.title : docs.find((x) => x.id === id)?.title)),
+    onDragStart: (e: React.DragEvent) => dragSelection(e, d.id, d.title),
     ...dropProps(d),
   });
   const menuProps = (d: Summary) => ({
@@ -405,11 +411,6 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       }`
     : "Counting the notes in Trash…";
 
-  // A folder inside other folders shows the way up (Work / Clients / Acme), and the folders inside it.
-  const allFolders = org?.folders ?? [];
-  const folder = view === "folder" && folderId ? allFolders.find((f) => f.id === folderId) : undefined;
-  const crumbs = view === "folder" && folderId ? folderAncestors(allFolders, folderId) : [];
-  const subfolders = view === "folder" && folderId ? allFolders.filter((f) => f.parentFolderId === folderId) : [];
   // The folders inside, drawn as folder cards like All folders: their page counts, last change and previews come
   // from the same index (and offline cache) All folders reads; until it's here, the tree's names and colours.
   const servedIndex = useOfflineQuery(api.organization.index, subfolders.length ? { scope, only: "folders" } : "skip");
@@ -463,37 +464,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
   const dialogs = (
     <>
       {sharingFolder && folderId ? <FolderShareDialog open onClose={() => setSharingFolder(false)} folderId={folderId} name={org?.folders.find((f) => f.id === folderId)?.name ?? ""} /> : null}
-      <MoveToFolderDialog
-        open={bulkMoveOpen}
-        onClose={() => setBulkMoveOpen(false)}
-        count={selectedDocs.length}
-        noteTitle={selectedDocs[0]?.title}
-        currentFolderId={sharedFolder}
-        onPick={(folder) => bulk((ids) => notes.moveTo(ids, folder))}
-      />
-      <CopyToDialog open={bulkCopy !== null} onClose={() => setBulkCopy(null)} documentIds={bulkCopy?.ids ?? []} noteTitle={bulkCopy?.title} />
-      <Dialog
-        open={bulkDeleteOpen}
-        onClose={() => setBulkDeleteOpen(false)}
-        title={`Delete ${selectedDocs.length === 1 ? "1 note" : `${selectedDocs.length} notes`} permanently?`}
-        description="They’ll be deleted for everyone, with their nested pages, attachments and version history. This can’t be undone. Notes you don’t have permission to delete stay in Trash."
-        size="sm"
-        confirm={{ label: "Delete permanently", destructive: true, onConfirm: () => bulk((ids) => notes.deleteForever(ids)) }}
-        footer={
-          <>
-            <Button onClick={() => setBulkDeleteOpen(false)}>Cancel</Button>
-            <Button
-              variant="danger"
-              onClick={() => {
-                setBulkDeleteOpen(false);
-                bulk((ids) => notes.deleteForever(ids));
-              }}
-            >
-              Delete permanently
-            </Button>
-          </>
-        }
-      />
+      {selectionActions.dialogs}
       <Dialog
         // In the apps it's the system's alert, which can't change once shown: it's asked when the count is in.
         open={confirmEmpty && (!nativeAlert || trashSummary !== undefined)}
@@ -593,7 +564,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       tint={view === "folder" ? folderHex(org?.folders.find((f) => f.id === folderId)?.color) : undefined}
       overlay={
         selection.selectedIds.length ? (
-          <SelectionBar count={selection.selectedIds.length} total={docs.length} actions={bulkActions} onSelectAll={selection.selectAll} onClear={selection.clear} />
+          <SelectionBar count={selection.selectedIds.length} total={itemIds.length} actions={bulkActions} onSelectAll={selection.selectAll} onClear={selection.clear} label={selectionActions.label} />
         ) : null
       }
     >
@@ -654,11 +625,14 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               Folders
             </h2>
             <ul aria-label="Folders inside" className="mb-10 grid grid-cols-[repeat(auto-fill,152px)] gap-x-6 gap-y-8">
-              {subfolderCards.map((f) => (
-                <li key={f.id}>
-                  <FolderCard folder={f} labelScale={SUBFOLDER_LABELS} />
-                </li>
-              ))}
+              {subfolderCards.map((f) => {
+                const on = selection.selected.has(f.id);
+                return (
+                  <li key={f.id} data-card-id={f.id} onClickCapture={selection.onCardClick(f.id)} onContextMenu={(e) => selectionMenuAt(e, f.id)}>
+                    <FolderCard folder={f} labelScale={SUBFOLDER_LABELS} selected={on} dragSelection={on && selection.selectedIds.length > 1 ? (e) => dragSelection(e, f.id) : undefined} />
+                  </li>
+                );
+              })}
             </ul>
           </section>
         ) : null}
@@ -785,7 +759,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                       {on ? <span className="sr-only">Selected</span> : null}
                     </AppLink>
                   )}
-                  {on ? <SelectedMark /> : null}
+                  {on ? <SelectedCheck /> : null}
                   <div data-card-menu="" className={`absolute top-2 flex items-center gap-1 ${d.starred && layout !== "compact" ? "right-[calc(11cqw+4px)]" : "right-2"} opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100`}>
                     {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} raised /> : null}
                     <div className="ui-raised rounded-chip">
@@ -804,18 +778,9 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         ) : null}
       </div>
       </div>
-      {/* In <body>: the glass panel's backdrop filter would otherwise offset a fixed element inside it. */}
-      {selection.marquee
-        ? createPortal(
-            <div
-              aria-hidden
-              className="pointer-events-none fixed z-40 rounded-tiny"
-              style={{ ...selection.marquee, background: "color-mix(in oklab, var(--color-heading) 7%, transparent)", boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--color-heading) 45%, transparent)" }}
-            />,
-            document.body,
-          )
-        : null}
+      <SelectionMarquee rect={selection.marquee} />
       {ctx ? <NoteContextMenu key={ctx.doc.id + ctx.at.x + ctx.at.y} at={ctx.at} onDone={() => setCtx(null)} {...menuProps(ctx.doc)} /> : null}
+      {selectionCtx ? <ContextMenu key={selectionCtx.x + selectionCtx.y} at={selectionCtx} label={`${selectionActions.noun} selected`} items={selectionActions.menuItems} onClose={() => setSelectionCtx(null)} /> : null}
       {dialogs}
     </ViewChrome>
   );
@@ -823,15 +788,6 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
 
 /** A subfolder card is 152 px wide, about two thirds of All folders' (~234 px): its labels stay that card's size. */
 const SUBFOLDER_LABELS = 234 / 152;
-
-/** The check on a selected card (the card also gets a ring). */
-function SelectedMark() {
-  return (
-    <span aria-hidden className="pointer-events-none absolute -left-2 -top-2 z-10 grid h-6 w-6 place-items-center rounded-chip bg-heading text-canvas shadow-[0_2px_6px_rgb(0_0_0/0.2)]">
-      <Check size={14} strokeWidth={3} />
-    </span>
-  );
-}
 
 function DocDragHandle({ ids }: { ids: string[] }) {
   return (

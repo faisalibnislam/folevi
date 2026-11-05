@@ -1,6 +1,7 @@
 // Opening a folder in a tab behind the one on screen, as a browser opens a background tab (the owner, 6 November
-// 2026): "Open in new tab" in a folder's menu, a ⌘-click or a middle-click on a folder in the sidebar or the
-// Folders page (the web's lib/app/tabs.tsx useFolderTabClicks).
+// 2026): "Open in new tab" in a folder's menu, a middle-click on a folder anywhere, and a ⌘-click in the sidebar and
+// on Home (the web's lib/app/tabs.tsx useFolderTabClicks). On a folder's page and the Folders page a ⌘-click selects
+// the folder instead (multi-select, ListSelection) and only the middle-click opens its tab.
 #if os(macOS)
 import AppKit
 #endif
@@ -9,7 +10,8 @@ import FoleviScreens
 
 @MainActor
 extension FrameModel {
-    /// A folder clicked: a ⌘-click adds its tab behind the one on screen; a plain click shows it.
+    /// A folder clicked where the list doesn't select (the sidebar, Home): a ⌘-click adds its tab behind the one on
+    /// screen; a plain click shows it.
     func openFolder(_ id: String, name: String) {
         if FolderTabClicks.commandHeld { openInBackground(.folder(id), title: name) } else { open(.folder(id), title: name) }
     }

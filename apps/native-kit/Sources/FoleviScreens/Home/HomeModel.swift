@@ -222,10 +222,22 @@ public final class HomeModel {
 
     /// Notes dropped on a folder card move into it.
     public func dropNotes(_ items: [NoteDragItem], on folder: FolderCard) async {
+        // A multi-selection with folders in it (a folder's page, the Folders page): all of it goes inside.
+        if items.contains(where: { !$0.folders.isEmpty }) {
+            await FolderDrops.dropItems(items, into: FolderTarget(id: folder.id, name: folder.name), links: folderLinks, actions: actions)
+            return
+        }
         let notes = items.flatMap(\.notes)
         var from: [String: String?] = [:]
         for n in notes { from[n.id] = n.folderId }
         await actions.move(notes.map(\.id), to: FolderTarget(id: folder.id, name: folder.name), from: from)
+    }
+
+    /// A selection of folders (the Folders page's Move to folder) into `target` (nil id: the top level), with one
+    /// toast and Undo.
+    public func moveFolders(_ ids: [String], to target: FolderTarget) async {
+        let refs = ids.map { FolderRef(id: $0, name: "", parentId: nil) }
+        await FolderDrops.dropItems([NoteDragItem(notes: [], folders: refs)], into: target, links: folderLinks, actions: actions)
     }
 
     /// A folder dropped on a folder card: before, inside or after it (by where on the card), or on the section

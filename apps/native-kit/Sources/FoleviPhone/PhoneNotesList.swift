@@ -597,7 +597,9 @@ struct PhoneSelectBar: View {
         case .unstar: .bookmarkOff
         case .archive: .archive
         case .unarchive: .archiveRestore
-        case .trash, .deleteForever: .trash
+        case .trash, .deleteForever, .deleteFolders: .trash
+        case .openTabs: .appWindow
+        case .color: .palette
         case .restore: .undo2
         }
     }

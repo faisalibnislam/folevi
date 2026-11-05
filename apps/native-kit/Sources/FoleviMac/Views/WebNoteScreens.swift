@@ -40,7 +40,7 @@ struct WebNoteCell: View {
             // (A button, so the card dips while pressed and springs back: FoleviSpring.press.)
             Button {
                 let flags = NSEvent.modifierFlags
-                if let select, flags.contains(.command) { select(false) } else if let select, flags.contains(.shift) { select(true) } else { open() }
+                if let select, let click = ListSelection.click(command: flags.contains(.command), shift: flags.contains(.shift), option: flags.contains(.option)) { select(click == .range) } else { open() }
             } label: {
                 Group {
                     if compact {
@@ -72,16 +72,7 @@ struct WebNoteCell: View {
                     .strokeBorder(webVar("color-heading", scheme).color, lineWidth: 2)
                     .padding(-6)
                     .allowsHitTesting(false)
-                ZStack {
-                    Circle().fill(Color.clear)
-                    RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular).fill(webVar("color-heading", scheme).color)
-                        .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
-                    WebIconView(.check, size: 14, strokeWidth: 3).foregroundStyle(webVar("color-canvas", scheme).color)
-                }
-                .frame(width: 24, height: 24)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .offset(x: -8, y: -8)
-                .allowsHitTesting(false)
+                WebSelectedCheck().offset(x: -8, y: -8)
             }
         }
         .aspectRatio(compact ? nil : WebNoteCard.aspect, contentMode: .fit)
@@ -91,6 +82,23 @@ struct WebNoteCell: View {
 
     /// The width of the "…" (and Use, for a template) row, to place it by its right edge.
     private static func menuWidth(_ withUse: Bool) -> CGFloat { WebCardMenuButton.size + (withUse ? 64 : 0) }
+}
+
+/// The check in a selected card's top-left corner (SelectionBar.tsx SelectedCheck).
+struct WebSelectedCheck: View {
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular).fill(webVar("color-heading", scheme).color)
+                .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
+            WebIconView(.check, size: 14, strokeWidth: 3).foregroundStyle(webVar("color-canvas", scheme).color)
+        }
+        .frame(width: 24, height: 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
 }
 
 /// A card's "…" (a note's and a folder's alike, the owner, 5 November 2026: they look the same): a raised chip
@@ -135,6 +143,12 @@ struct WebFolderCell: View {
     /// Cards that can be put in order (the Folders page): a folder held over the card's left or right quarter goes
     /// before or after it, over the middle inside it.
     var reorder: FolderCardReorder? = nil
+    /// Picked in a multi-selection (ListSelection): the drop target's wash and a check in the corner.
+    var selected = false
+    /// ⌘-click (`range` false) or ⇧-click (`range` true) selects instead of opening (a list that multi-selects).
+    var select: (@MainActor (_ range: Bool) -> Void)? = nil
+    /// Set while the card is part of a selection of several: its drag carries the whole selection.
+    var selectionDrag: NoteDragItem? = nil
     @State private var hovered = false
     @State private var width: CGFloat = 0
     /// Set while a note or folder is held over the card.
@@ -144,21 +158,31 @@ struct WebFolderCell: View {
 
     var body: some View {
         ZStack {
-            if dropZone == .inside || (dropZone != nil && reorder == nil) {
+            if dropZone == .inside || (dropZone != nil && reorder == nil) || selected {
                 RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular)
                     .fill(webVar("glass-active", scheme).color)
                     .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).strokeBorder(webVar("color-heading", scheme).color, lineWidth: 2))
                     .padding(-8)
             }
-            Button(action: open) {
-                WebFolderCard(card, labelScale: labelScale, hovered: hovered)
+            Group {
+                let button = Button {
+                    let flags = NSEvent.modifierFlags
+                    if let select, let click = ListSelection.click(command: flags.contains(.command), shift: flags.contains(.shift), option: flags.contains(.option)) { select(click == .range) } else { open() }
+                } label: {
+                    WebFolderCard(card, labelScale: labelScale, hovered: hovered)
+                }
+                .buttonStyle(PressDipButtonStyle())
+                if let selectionDrag {
+                    button.draggable(selectionDrag)
+                } else {
+                    button.draggable({
+                        // (Read when the drag begins: the page knows which card is in the air.)
+                        reorder?.began()
+                        return FolderDragItem(id: card.id, name: card.name, parentId: parentId)
+                    }())
+                }
             }
-            .buttonStyle(PressDipButtonStyle())
-                .draggable({
-                    // (Read when the drag begins: the page knows which card is in the air.)
-                    reorder?.began()
-                    return FolderDragItem(id: card.id, name: card.name, parentId: parentId)
-                }())
+            if selected { WebSelectedCheck().offset(x: -8, y: -8) }
             GeometryReader { geo in
                 WebCardMenuButton(label: "Folder options for \(card.name)", entries: menu)
                     .position(x: geo.size.width / 2, y: geo.size.height * 0.7 + (hovered ? -4 : 0))
@@ -166,6 +190,7 @@ struct WebFolderCell: View {
             }
         }
         .aspectRatio(WebFolderCard.aspect, contentMode: .fit)
+        .accessibilityAddTraits(selected ? .isSelected : [])
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .onHover { hovered = $0 }
         .webContextMenu(menu)
@@ -394,60 +419,45 @@ struct WebRowSort<T: Hashable>: View {
     }
 }
 
-/// The floating bar while notes are selected (SelectionBar.tsx).
+/// The floating bar while notes and folders are selected (SelectionBar.tsx, Finder-style multi-select): how many,
+/// Select all while not everything is, the actions every selected item can take (ListSelection.actions), and ×.
 struct WebSelectionBar: View {
-    let model: NotesListModel
+    let count: Int
+    let total: Int
+    let actions: [BulkAction]
+    var label = "Selected notes"
+    let run: @MainActor (BulkAction) -> Void
+    let selectAll: @MainActor () -> Void
+    let clear: @MainActor () -> Void
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let count = model.selection.count
-        let total = model.slots.count
         HStack(spacing: 2) {
             Text("\(count.formatted()) selected").webText(.role(.subheadline, weight: 600)).lineLimit(1).foregroundStyle(webVar("color-heading", scheme).color).padding(.horizontal, 10)
             if count < total {
-                barButton("Select all", icon: nil, muted: true) { model.selection = Set(model.slots.compactMap(\.row?.id)) }
+                barButton("Select all", icon: nil, muted: true, action: selectAll)
             }
             divider
-            ForEach(model.bulkActions) { a in
-                barButton(title(a), icon: icon(a), danger: a.destructive) { Task { await model.runBulk(a) } }
+            ForEach(actions) { a in
+                barButton(bulkTitle(a), icon: bulkIcon(a), danger: a.destructive) { run(a) }
             }
             divider
-            barButton(nil, icon: .x, muted: true) { model.selection.removeAll() }
+            barButton(nil, icon: .x, muted: true, action: clear)
                 .foleviTooltip("Clear selection (Esc)")
+                .accessibilityLabel("Clear selection")
         }
         .padding(6)
         .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).fill(WebStyles.named("menu.panel").resolve(scheme).background.color))
         .webBox(WebStyles.named("menu.panel"))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(label)
     }
 
     private var divider: some View {
         Rectangle().fill(webVar("color-line", scheme).color).frame(width: 1, height: 24).padding(.horizontal, 4)
     }
 
-    private func title(_ a: BulkAction) -> String {
-        switch a {
-        case .move: "Move to folder…"
-        case .copy: "Copy to…"
-        case .trash: "Move to Trash"
-        case .deleteForever: "Delete permanently…"
-        default: a.title
-        }
-    }
-
-    private func icon(_ a: BulkAction) -> WebIcon {
-        switch a {
-        case .move: .folderInput
-        case .copy: .copyPlus
-        case .star: .bookmark
-        case .unstar: .bookmarkOff
-        case .archive: .archive
-        case .unarchive: .archiveRestore
-        case .trash, .deleteForever: .trash
-        case .restore: .undo2
-        }
-    }
-
-    private func barButton(_ title: String?, icon: WebIcon?, muted: Bool = false, danger: Bool = false, action: @escaping () -> Void) -> some View {
+    private func barButton(_ title: String?, icon: WebIcon?, muted: Bool = false, danger: Bool = false, action: @escaping @MainActor () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 6) {
                 if let icon { WebIconView(icon, size: 15) }
@@ -460,6 +470,48 @@ struct WebSelectionBar: View {
         }
         .buttonStyle(WebHoverRowStyle(radius: FoleviTokens.Radius.chip, hover: danger ? WebStyles.vars["color-danger-soft"] : WebStyles.vars["color-accent-soft"], press: nil, selected: false))
     }
+}
+
+/// A selection action's words in the bar and the right-click menu (the web's useSelectionActions LABELS).
+func bulkTitle(_ a: BulkAction) -> String {
+    switch a {
+    case .openTabs: "Open in new tabs"
+    case .move: "Move to folder…"
+    case .copy: "Copy to…"
+    case .color: "Change color…"
+    case .trash: "Move to Trash"
+    case .deleteForever: "Delete permanently…"
+    case .deleteFolders: "Delete folders…"
+    default: a.title
+    }
+}
+
+func bulkIcon(_ a: BulkAction) -> WebIcon {
+    switch a {
+    case .openTabs: .appWindow
+    case .move: .folderInput
+    case .copy: .copyPlus
+    case .star: .bookmark
+    case .unstar: .bookmarkOff
+    case .color: .palette
+    case .archive: .archive
+    case .unarchive: .archiveRestore
+    case .trash, .deleteForever, .deleteFolders: .trash
+    case .restore: .undo2
+    }
+}
+
+/// The right-click menu on an item of a selection of several: the bar's actions, then Clear selection.
+@MainActor
+func selectionMenuEntries(_ actions: [BulkAction], run: @escaping @MainActor (BulkAction) -> Void, clear: @escaping @MainActor () -> Void) -> [WebMenuEntry] {
+    var out: [WebMenuEntry] = []
+    for (i, a) in actions.enumerated() {
+        if a.destructive { out.append(.separator(i)) }
+        out.append(WebMenuEntry(.item(bulkTitle(a), icon: bulkIcon(a), danger: a.destructive)) { run(a) })
+    }
+    out.append(.separator(100))
+    out.append(WebMenuEntry(.item("Clear selection", icon: .x)) { clear() })
+    return out
 }
 
 // MARK: Home
@@ -851,7 +903,7 @@ struct WebNoteBrowser: View {
                     .onTapGesture { if !model.selection.isEmpty { model.selection.removeAll() } }
                 }
                 if !model.selection.isEmpty {
-                    WebSelectionBar(model: model)
+                    WebSelectionBar(count: model.selection.count, total: model.selectableOrder.count, actions: model.bulkActions(tabs: true), label: selectionLabel, run: runBulk, selectAll: { model.selectAll() }, clear: { model.selection.removeAll() })
                         .padding(.bottom, 20)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
@@ -868,7 +920,7 @@ struct WebNoteBrowser: View {
         }
         .onKeyPress(characters: ["a"], phases: .down) { press in
             guard press.modifiers.contains(.command), model.selectable else { return .ignored }
-            model.selection = Set(model.slots.compactMap(\.row?.id))
+            model.selectAll()
             return .handled
         }
         .animation(.easeOut(duration: 0.16), value: model.selection.isEmpty)
@@ -879,6 +931,49 @@ struct WebNoteBrowser: View {
         }
         .onDisappear { model.setVisible(false) }
         .accessibilityIdentifier("screen.list.\(model.kind.view.rawValue)")
+    }
+
+    // MARK: multi-select (ListSelection)
+
+    private var selectionLabel: String {
+        let folders = model.selectedFolderIds.count
+        return folders == 0 ? "Selected notes" : folders == model.selection.count ? "Selected folders" : "Selected items"
+    }
+
+    /// A selection action from the bar or the right-click menu. Tabs, Move and colour are the window's (its tab strip
+    /// and dialogs); the rest the list's.
+    private func runBulk(_ a: BulkAction) {
+        let folders = model.selectedFolderIds
+        let notes = model.selectedIds
+        switch a {
+        case .openTabs:
+            for id in folders { frame.openInBackground(.folder(id), title: model.subfolders.first { $0.id == id }?.name) }
+            for id in notes { frame.openInBackground(.note(id), title: model.loadedRows.first { $0.id == id }?.title) }
+            let n = folders.count + notes.count
+            frame.toast(n == 1 ? "Opened in a new tab" : "Opened \(n.formatted()) new tabs", tone: .success)
+        case .move:
+            let rows = model.loadedRows.filter { notes.contains($0.id) }
+            let shared: String?? = folders.isEmpty && !rows.isEmpty && rows.allSatisfy({ $0.folder?.id == rows[0].folder?.id }) ? .some(rows[0].folder?.id) : nil
+            FrameDialogs.moveItems(frame, notes: notes, folders: folders, title: rows.first?.title, currentFolderId: shared) { target in
+                Task { await model.moveItems(notes: notes, folders: folders, to: FoleviScreens.FolderTarget(id: target.id, name: target.name)) }
+            }
+        case .color:
+            let nodes = (model.tree.value?.folders ?? []).filter { folders.contains($0.id) }
+            FrameDialogs.folderColors(frame, nodes)
+        case .deleteFolders:
+            let named = folders.map { id in (id: id, name: model.subfolders.first { $0.id == id }?.name ?? "Folder") }
+            FrameDialogs.deleteFolders(frame, named) { model.selection.removeAll() }
+        default:
+            Task { await model.runBulk(a) }
+        }
+    }
+
+    /// The right-click menu of an item: the selection's when it's one of several selected, else its own.
+    private func menu(for id: String, own: @escaping @MainActor () -> [WebMenuEntry]) -> @MainActor () -> [WebMenuEntry] {
+        {
+            guard model.selection.contains(id), model.selection.count > 1 else { return own() }
+            return selectionMenuEntries(model.bulkActions(tabs: true), run: runBulk, clear: { model.selection.removeAll() })
+        }
     }
 
     /// A folder's page takes a faint wash of its colour (`.ui-view-tint`).
@@ -964,11 +1059,14 @@ struct WebNoteBrowser: View {
             caps("Folders").accessibilityAddTraits(.isHeader)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 152, maximum: 152), spacing: grid.gap, alignment: .top)], alignment: .leading, spacing: 32) {
                 ForEach(model.subfolders, id: \.id) { card in
-                    WebFolderCell(card: card, labelScale: 234.0 / 152.0, menu: {
+                    WebFolderCell(card: card, labelScale: 234.0 / 152.0, menu: menu(for: card.id) {
                         guard let f = model.menuFolder(card.id) else { return [] }
                         return folderMenuEntries(f, context: model.folderContext, actions: model.actions, dialogs: model.dialogs, navigator: navigator, feedback: feedback, frame: frame)
-                    }, open: { frame.openFolder(card.id, name: card.name) }, drop: { items in Task { await model.dropNotes(items, into: card.id) } },
-                       dropFolder: { item in Task { await model.dropFolder(item, on: card.id, zone: .inside) } }, parentId: model.folder?.id)
+                    }, open: { frame.open(.folder(card.id), title: card.name) }, drop: { items in Task { await model.dropNotes(items, into: card.id) } },
+                       dropFolder: { item in Task { await model.dropFolder(item, on: card.id, zone: .inside) } }, parentId: model.folder?.id,
+                       selected: model.selection.contains(card.id),
+                       select: model.selectable ? { range in model.select(card.id, range: range) } : nil,
+                       selectionDrag: model.selectionDragItem(forFolder: card.id))
                     .onMiddleClick { frame.openInBackground(.folder(card.id), title: card.name) }
                     .frame(width: 152)
                 }
@@ -1093,24 +1191,16 @@ struct WebNoteBrowser: View {
             selected: model.selection.contains(row.id),
             compact: compact,
             unsynced: row.sync != .saved,
-            menu: { noteMenuEntries(row, list: model, frame: frame) },
+            menu: menu(for: row.id) { noteMenuEntries(row, list: model, frame: frame) },
             open: {
-                if model.selection.isEmpty { frame.open(.note(row.id)) } else { model.toggle(row.id) }
+                // A plain click opens, with or without a selection (as on the web); ⌘/⇧-click select.
+                frame.open(.note(row.id))
             },
-            select: model.selectable ? { range in range ? selectRange(to: row.id) : model.toggle(row.id) } : nil,
+            select: model.selectable ? { range in model.select(row.id, range: range) } : nil,
             useTemplate: row.kind == "template" && !model.isTrash ? {
                 Task { if let id = await model.actions.create(folderId: nil, templateId: row.id, title: row.title) { frame.open(.note(id)) } }
             } : nil
         )
-    }
-
-    private func selectRange(to id: String) {
-        let ids = model.slots.compactMap(\.row?.id)
-        guard let anchor = ids.firstIndex(where: { model.selection.contains($0) }), let end = ids.firstIndex(of: id) else {
-            model.toggle(id)
-            return
-        }
-        for i in min(anchor, end)...max(anchor, end) { model.selection.insert(ids[i]) }
     }
 
     // MARK: list
@@ -1124,7 +1214,7 @@ struct WebNoteBrowser: View {
                 VStack(spacing: 0) {
                     if i > 0 { Rectangle().fill(webVar("color-line", scheme).color).frame(height: 1) }
                     if let row = slot.row {
-                        WebNoteListRow(row: row, model: model, frame: frame, selectRange: { selectRange(to: row.id) })
+                        WebNoteListRow(row: row, model: model, frame: frame, menu: menu(for: row.id) { noteMenuEntries(row, list: model, frame: frame) })
                     } else {
                         Color.clear.frame(height: notesStyle("list.row", scheme).height)
                     }
@@ -1143,7 +1233,8 @@ struct WebNoteListRow: View {
     let row: NoteRow
     let model: NotesListModel
     let frame: FrameModel
-    let selectRange: () -> Void
+    /// Its right-click menu (the selection's when it's one of several selected).
+    let menu: @MainActor () -> [WebMenuEntry]
     @State private var hovered = false
     @Environment(\.colorScheme) private var scheme
 
@@ -1201,11 +1292,11 @@ struct WebNoteListRow: View {
         .contentShape(Rectangle())
         .onTapGesture {
             let flags = NSEvent.modifierFlags
-            if model.selectable && flags.contains(.command) { model.toggle(row.id) } else if model.selectable && flags.contains(.shift) { selectRange() } else if !model.selection.isEmpty { model.toggle(row.id) } else { frame.open(.note(row.id)) }
+            if model.selectable, let click = ListSelection.click(command: flags.contains(.command), shift: flags.contains(.shift), option: flags.contains(.option)) { model.select(row.id, range: click == .range) } else { frame.open(.note(row.id)) }
         }
         .onHover { hovered = $0 }
         .draggable(model.dragItem(for: row))
-        .webContextMenu { noteMenuEntries(row, list: model, frame: frame) }
+        .webContextMenu(menu)
         // Each row is a group named for its note and when it changed, so notes of the same title (and their menu
         // buttons) can be told apart (F21). Its own action opens the note.
         .accessibilityElement(children: .contain)
@@ -1256,6 +1347,9 @@ struct WebFoldersIndex: View {
     @State private var gap: Int?
     @State private var gapHold = 0
     @State private var dragging: String?
+    /// Finder-style multi-select of the folders shown (ListSelection).
+    @State private var selection = ListSelection()
+    @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var scheme
     @Environment(\.screenNavigator) private var navigator
     @Environment(\.screenFeedback) private var feedback
@@ -1352,6 +1446,53 @@ struct WebFoldersIndex: View {
         Task { await FolderOrder.drop(item.id, name: item.name, gap: to, shown: ids, manual: manual, links: home.folderLinks, sort: current, setSort: { sortRaw = $0.rawValue }, actions: home.actions) }
     }
 
+    // MARK: multi-select
+
+    /// The selected folders still shown, in order.
+    private func picked(_ shown: [FolderCard]) -> [FolderCard] { shown.filter { selection.contains($0.id) } }
+
+    private func actions(_ shown: [FolderCard]) -> [BulkAction] {
+        ListSelection.actions(picked(shown).map { _ in SelectedItem.folder }, canEdit: home.canEdit, tabs: true)
+    }
+
+    private func select(_ id: String, range: Bool, shown: [FolderCard]) {
+        if range { selection.extend(to: id, in: shown.map(\.id)) } else { selection.toggle(id) }
+    }
+
+    private func run(_ a: BulkAction, shown: [FolderCard]) {
+        let folders = picked(shown)
+        switch a {
+        case .openTabs:
+            for f in folders { frame.openInBackground(.folder(f.id), title: f.name) }
+            frame.toast(folders.count == 1 ? "Opened in a new tab" : "Opened \(folders.count.formatted()) new tabs", tone: .success)
+        case .move:
+            let ids = folders.map(\.id)
+            FrameDialogs.moveItems(frame, notes: [], folders: ids, title: nil, currentFolderId: nil) { target in
+                selection.clear()
+                Task { await home.moveFolders(ids, to: FoleviScreens.FolderTarget(id: target.id, name: target.name)) }
+            }
+        case .color:
+            let ids = Set(folders.map(\.id))
+            FrameDialogs.folderColors(frame, (home.tree.value?.folders ?? []).filter { ids.contains($0.id) })
+        case .deleteFolders:
+            FrameDialogs.deleteFolders(frame, folders.map { (id: $0.id, name: $0.name) }) { selection.clear() }
+        default:
+            break
+        }
+    }
+
+    /// The right-click menu of a card or row: the selection's when it's one of several selected, else its own.
+    private func menu(_ f: FolderCard, shown: [FolderCard]) -> [WebMenuEntry] {
+        guard selection.contains(f.id), selection.count > 1 else { return menu(f) }
+        return selectionMenuEntries(actions(shown), run: { run($0, shown: shown) }, clear: { selection.clear() })
+    }
+
+    /// Dragging a card of a selection of several carries them all (onto a folder: they go inside it).
+    private func selectionDrag(_ f: FolderCard, shown: [FolderCard]) -> NoteDragItem? {
+        guard selection.contains(f.id), selection.count > 1 else { return nil }
+        return NoteDragItem(notes: [], folders: picked(shown).map { FolderRef(id: $0.id, name: $0.name, parentId: $0.parentId) })
+    }
+
     private func finishDrag() {
         gapHold += 1
         withAnimation(slide) {
@@ -1367,6 +1508,7 @@ struct WebFoldersIndex: View {
         let searching = !query.trimmingCharacters(in: .whitespaces).isEmpty
         GeometryReader { geo in
         let inner = min(1180, geo.size.width) - 64
+        ZStack(alignment: .bottom) {
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 0) {
                 // One compact title row (the owner, 6 November 2026): Folders and its count, then the search, Sort, the
@@ -1388,11 +1530,17 @@ struct WebFoldersIndex: View {
                         ForEach(Array(cells(shown).enumerated()), id: \.element?.id) { _, cell in
                             if let f = cell {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    WebFolderCell(card: CardMapping.folderCard(f, parentName: f.path), menu: { menu(f) }, open: { frame.openFolder(f.id, name: f.name) }, drop: { items in Task { await home.dropNotes(items, on: f) } },
+                                    WebFolderCell(card: CardMapping.folderCard(f, parentName: f.path), menu: { menu(f, shown: shown) }, open: { frame.open(.folder(f.id), title: f.name) }, drop: { items in
+                                                      selection.clear()
+                                                      Task { await home.dropNotes(items, on: f) }
+                                                  },
                                                   dropFolder: { item in
                                                       finishDrag()
                                                       Task { await home.dropFolder(item, on: f, zone: .inside) }
-                                                  }, parentId: f.parentId, reorder: reorder(f, in: shown))
+                                                  }, parentId: f.parentId, reorder: reorder(f, in: shown),
+                                                  selected: selection.contains(f.id),
+                                                  select: { range in select(f.id, range: range, shown: shown) },
+                                                  selectionDrag: selectionDrag(f, shown: shown))
                                     .onMiddleClick { frame.openInBackground(.folder(f.id), title: f.name) }
                                     // A search finds folders at every level: a nested one says where it is.
                                     if let path = f.path {
@@ -1419,7 +1567,31 @@ struct WebFoldersIndex: View {
             .padding(content.padding.edgeInsets)
             .frame(maxWidth: 1180, alignment: .topLeading)
             .frame(maxWidth: .infinity)
+            // A click on empty space clears the selection.
+            .contentShape(Rectangle())
+            .onTapGesture { if !selection.isEmpty { selection.clear() } }
         }
+        if !picked(shown).isEmpty {
+            WebSelectionBar(count: picked(shown).count, total: shown.count, actions: actions(shown), label: "Selected folders", run: { run($0, shown: shown) }, selectAll: { selection.selectAll(shown.map(\.id)) }, clear: { selection.clear() })
+                .padding(.bottom, 20)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+        }
+        }
+        .animation(.easeOut(duration: 0.16), value: selection.isEmpty)
+        .focusable()
+        .focusEffectDisabled()
+        .focused($focused)
+        .onAppear { focused = true }
+        .onKeyPress(.escape) {
+            guard !selection.isEmpty else { return .ignored }
+            selection.clear()
+            return .handled
+        }
+        .onKeyPress(characters: ["a"], phases: .down) { press in
+            guard press.modifiers.contains(.command) else { return .ignored }
+            selection.selectAll(list.map(\.id))
+            return .handled
         }
         .animation(WebMotion.change(WebMotion.viewSwitch), value: layoutRaw)
         .folderDialogs(home.dialogs, actions: home.actions, tree: home.tree.value?.folders ?? [])
@@ -1456,9 +1628,21 @@ struct WebFoldersIndex: View {
         VStack(spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.id) { i, f in
                 if i > 0 { Rectangle().fill(webVar("color-line", scheme).color).frame(height: 1) }
-                Button { frame.openFolder(f.id, name: f.name) } label: {
+                let on = selection.contains(f.id)
+                Button {
+                    let flags = NSEvent.modifierFlags
+                    if let click = ListSelection.click(command: flags.contains(.command), shift: flags.contains(.shift), option: flags.contains(.option)) { select(f.id, range: click == .range, shown: rows) } else { frame.open(.folder(f.id), title: f.name) }
+                } label: {
                     HStack(spacing: 12) {
-                        FolderGlyph(colorId: f.color, size: 24)
+                        if on {
+                            WebIconView(.check, size: 11, strokeWidth: 3)
+                                .foregroundStyle(webVar("color-canvas", scheme).color)
+                                .frame(width: 16, height: 16)
+                                .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular).fill(webVar("color-heading", scheme).color))
+                                .frame(width: 24, height: 24)
+                        } else {
+                            FolderGlyph(colorId: f.color, size: 24)
+                        }
                         HStack(spacing: 8) {
                             Text(f.name).webText(.role(.body, weight: 500)).lineLimit(1).foregroundStyle(webVar("color-ink", scheme).color)
                             if let path = f.path { Text("in \(path)").webText(.role(.footnote)).lineLimit(1).foregroundStyle(webVar("color-ink-muted", scheme).color) }
@@ -1473,7 +1657,9 @@ struct WebFoldersIndex: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(WebHoverRowStyle(radius: 0, hover: WebStyles.vars["color-accent-soft"], press: nil, selected: false))
-                .webContextMenu { menu(f) }
+                .background(on ? webVar("glass-active", scheme).color : .clear)
+                .accessibilityAddTraits(on ? .isSelected : [])
+                .webContextMenu { menu(f, shown: rows) }
                 .onMiddleClick { frame.openInBackground(.folder(f.id), title: f.name) }
             }
         }

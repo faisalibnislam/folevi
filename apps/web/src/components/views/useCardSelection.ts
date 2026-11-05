@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { NO_SELECTION, clickIntent, selectAll as allOf, selectRange as rangeTo, selectedInOrder, toggleSelection, type Selection } from "@/lib/app/multiSelect";
+import { isMac } from "@/lib/hooks/useEngine";
 
 /** Where a marquee may not start: anything you can click, type in or drag, and the cards themselves. */
 const NOT_EMPTY_SPACE = 'a, button, input, select, textarea, label, [role="menu"], [role="radiogroup"], [contenteditable="true"], [draggable="true"], [data-card-id], [data-no-marquee]';
@@ -17,61 +19,43 @@ function blockingLayerOpen() {
 }
 
 /**
- * Multi-select for a grid or list of note cards (each marked `data-card-id`):
+ * Finder-style multi-select for a grid or list of cards and rows, notes and folders alike (each marked
+ * `data-card-id`; the rules are lib/app/multiSelect.ts's):
+ * - a plain click opens the item, as ever;
+ * - ⌘-click (Ctrl-click off the Mac) toggles an item, ⇧-click selects the range from the last one clicked;
  * - click-and-drag on empty space draws a selection rectangle that selects the cards it touches (with ⌘/Ctrl
- *   or Shift held it adds to the selection); the page scrolls when the pointer nears its edge;
- * - ⌘/Ctrl-click toggles a card, Shift-click selects the range from the last one;
- * - ⌘/Ctrl+A selects every card shown, Escape (or a click on empty space) clears.
- * `ids` are the cards in display order. Keyboard users select from a card's menu ("Select").
+ *   or Shift held it adds to the selection); the page scrolls when the pointer nears its edge. It never starts on
+ *   a card (dragging a card moves it, or the whole selection, to a folder);
+ * - ⌘A (Ctrl+A) selects every item shown, Escape (or a click on empty space) clears.
+ * `ids` are the items in display order. Keyboard users select from an item's menu ("Select").
  */
 export function useCardSelection(ids: string[], enabled = true) {
-  const [picked, setPicked] = useState<Set<string>>(() => new Set());
+  const [sel, setSel] = useState<Selection>(NO_SELECTION);
+  const picked = sel.picked;
+  const setPicked = useCallback((p: Set<string>) => setSel((s) => ({ picked: p, anchor: s.anchor })), []);
   const [marquee, setMarquee] = useState<CSSProperties | null>(null);
-  const anchor = useRef<string | null>(null);
   const idsRef = useRef(ids);
   idsRef.current = ids;
 
-  // Only cards still on screen count (a moved or trashed note drops out of the selection).
-  const selectedIds = useMemo(() => ids.filter((id) => picked.has(id)), [ids, picked]);
+  // Only items still on screen count (a moved or trashed note drops out of the selection).
+  const selectedIds = useMemo(() => selectedInOrder(sel, ids), [ids, sel]);
   const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
 
-  const clear = useCallback(() => {
-    setPicked(new Set());
-    anchor.current = null;
-  }, []);
-  const selectAll = useCallback(() => setPicked(new Set(idsRef.current)), []);
-  const toggle = useCallback((id: string) => {
-    anchor.current = id;
-    setPicked((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-  const selectRange = useCallback((id: string) => {
-    const list = idsRef.current;
-    const from = anchor.current ? list.indexOf(anchor.current) : -1;
-    const to = list.indexOf(id);
-    if (to < 0) return;
-    const [a, b] = from < 0 ? [to, to] : from < to ? [from, to] : [to, from];
-    setPicked((prev) => new Set([...prev, ...list.slice(a, b + 1)]));
-    if (from < 0) anchor.current = id;
-  }, []);
+  const clear = useCallback(() => setSel(NO_SELECTION), []);
+  const selectAll = useCallback(() => setSel(allOf(idsRef.current)), []);
+  const toggle = useCallback((id: string) => setSel((s) => toggleSelection(s, id)), []);
+  const selectRange = useCallback((id: string) => setSel((s) => rangeTo(s, idsRef.current, id)), []);
 
-  /** For a card's onClickCapture: modifier clicks select instead of opening the note. */
+  /** For an item's onClickCapture: modifier clicks select instead of opening it (or a folder's background tab). */
   const onCardClick = useCallback(
     (id: string) => (e: ReactMouseEvent) => {
-      if (!enabled || e.button !== 0) return;
-      if (e.metaKey || e.ctrlKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        toggle(id);
-      } else if (e.shiftKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        selectRange(id);
-      }
+      if (!enabled) return;
+      const intent = clickIntent(e, isMac());
+      if (!intent) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (intent === "toggle") toggle(id);
+      else selectRange(id);
     },
     [enabled, toggle, selectRange],
   );
@@ -185,8 +169,10 @@ export function useCardSelection(ids: string[], enabled = true) {
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
     },
-    [enabled, picked, clear],
+    [enabled, picked, clear, setPicked],
   );
 
   return { selectedIds, selected, clear, selectAll, toggle, onCardClick, onSurfacePointerDown, marquee };
 }
+
+export type CardSelection = ReturnType<typeof useCardSelection>;

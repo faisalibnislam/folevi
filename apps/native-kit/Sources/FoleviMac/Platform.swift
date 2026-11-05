@@ -3,6 +3,7 @@
 // geometry and view names, as their UIKit counterparts, so the shared views read the same on both.
 #if os(iOS)
 import UIKit
+import GameController
 import FoleviDesign
 
 public typealias NSPoint = CGPoint
@@ -59,7 +60,18 @@ final class NSEvent {
     var scrollingDeltaX: CGFloat = 0
     var scrollingDeltaY: CGFloat = 0
     var hasPreciseScrollingDeltas = true
-    static var modifierFlags: ModifierFlags { [] }
+    /// The modifier keys held on the iPad's hardware keyboard now (GameController's view of it), so a ⌘-click or
+    /// ⇧-click with a pointer selects as on the Mac (multi-select, ListSelection). Without a keyboard: none.
+    static var modifierFlags: ModifierFlags {
+        guard let keys = GCKeyboard.coalesced?.keyboardInput else { return [] }
+        func down(_ a: GCKeyCode, _ b: GCKeyCode) -> Bool { (keys.button(forKeyCode: a)?.isPressed ?? false) || (keys.button(forKeyCode: b)?.isPressed ?? false) }
+        var flags: ModifierFlags = []
+        if down(.leftGUI, .rightGUI) { flags.insert(.command) }
+        if down(.leftShift, .rightShift) { flags.insert(.shift) }
+        if down(.leftAlt, .rightAlt) { flags.insert(.option) }
+        if down(.leftControl, .rightControl) { flags.insert(.control) }
+        return flags
+    }
     static var mouseLocation: CGPoint { .zero }
     static func addLocalMonitorForEvents(matching mask: EventTypeMask, handler: @escaping (NSEvent) -> NSEvent?) -> Any? { nil }
     static func removeMonitor(_ monitor: Any) {}

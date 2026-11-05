@@ -107,7 +107,11 @@ public struct PhoneAllFoldersScreen: View {
                         .shadow(color: .black.opacity(held ? 0.22 : 0), radius: held ? 18 : 0, y: held ? 10 : 0)
                         .offset(liftOffset(f.id))
                         .zIndex(held ? 1 : 0)
-                        .simultaneousGesture(dragGesture(f), including: draggable ? .all : .subviews)
+                        // (A UIKit hold, not a SwiftUI drag: a finger that moves before the hold is up scrolls the
+                        // list. A SwiftUI DragGesture on every card took each touch, and only the scroll bar scrolled.)
+                        #if canImport(UIKit)
+                        .gesture(CardHold(enabled: draggable, space: Self.grid, onMove: { start, now in holdMoved(f, start: start, now: now) }, onEnd: letGo))
+                        #endif
                         .accessibilityActions {
                             if model.canReorder, let i = shown.firstIndex(where: { $0.id == f.id }) {
                                 if i > 0 { Button("Move earlier") { Task { await model.dropFolder(item(f.id), gap: i - 1) } } }
@@ -145,27 +149,22 @@ public struct PhoneAllFoldersScreen: View {
         return FolderDragItem(id: id, name: node?.name ?? "Folder", parentId: node?.parentId)
     }
 
-    /// Held for the menu's time, then moved off it, a card follows the finger; let go, it lands.
-    private func dragGesture(_ f: FolderNode) -> some Gesture {
-        LongPressGesture(minimumDuration: 0.45)
-            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.grid)))
-            .onChanged { value in
-                guard case .second(true, let d?) = value else { return }
-                if drag == nil {
-                    // Held for the menu, it stays a menu until the finger moves off.
-                    guard hypot(d.translation.width, d.translation.height) > 10, let frame = frames[f.id] else { return }
-                    closeMenu()
-                    #if canImport(UIKit)
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    #endif
-                    order = order ?? model.shown.map(\.id)
-                    withAnimation(slide) { drag = CardDrag(id: f.id, grab: CGSize(width: d.startLocation.x - frame.minX, height: d.startLocation.y - frame.minY), location: d.location) }
-                    return
-                }
-                drag?.location = d.location
-                follow()
-            }
-            .onEnded { _ in letGo() }
+    /// Held for the menu's time, then moved off it, a card follows the finger; let go, it lands. `start` is where
+    /// the hold began and `now` where the finger is, in the grid's space.
+    private func holdMoved(_ f: FolderNode, start: CGPoint, now: CGPoint) {
+        if drag == nil {
+            // Held for the menu, it stays a menu until the finger moves off.
+            guard hypot(now.x - start.x, now.y - start.y) > 10, let frame = frames[f.id] else { return }
+            closeMenu()
+            #if canImport(UIKit)
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            #endif
+            order = order ?? model.shown.map(\.id)
+            withAnimation(slide) { drag = CardDrag(id: f.id, grab: CGSize(width: start.x - frame.minX, height: start.y - frame.minY), location: now) }
+            return
+        }
+        drag?.location = now
+        follow()
     }
 
     /// The card under the held one's middle: over its middle the held folder would go inside it; over its left or
@@ -402,6 +401,53 @@ public struct PhoneNewFolderForm: View {
 struct PhoneSwatchPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.scaleEffect(configuration.isPressed ? 0.9 : 1).animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+#endif
+
+#if canImport(UIKit)
+/// A card's hold-then-drag as a UIKit long press: it only begins once the finger has rested 0.45 s without moving
+/// more than 10 pt, so the scroll view keeps every touch that starts moving sooner. Once it has begun it reports
+/// where the finger is until it lifts.
+struct CardHold: UIGestureRecognizerRepresentable {
+    /// Off for someone who can't edit (the card's own long press still opens its menu).
+    let enabled: Bool
+    let space: String
+    let onMove: (_ start: CGPoint, _ now: CGPoint) -> Void
+    let onEnd: () -> Void
+
+    final class Coordinator {
+        var start: CGPoint = .zero
+    }
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
+        let hold = UILongPressGestureRecognizer()
+        hold.minimumPressDuration = 0.45
+        hold.allowableMovement = 10
+        hold.cancelsTouchesInView = false
+        hold.isEnabled = enabled
+        return hold
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+        recognizer.isEnabled = enabled
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+        let at = context.converter.location(in: .named(space))
+        switch recognizer.state {
+        case .began:
+            context.coordinator.start = at
+            onMove(at, at)
+        case .changed:
+            onMove(context.coordinator.start, at)
+        case .ended, .cancelled, .failed:
+            onEnd()
+        default:
+            break
+        }
     }
 }
 #endif

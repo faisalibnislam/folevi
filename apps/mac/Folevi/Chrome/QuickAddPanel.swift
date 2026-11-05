@@ -407,7 +407,13 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
     // MARK: NSWindowDelegate
 
     /// A click elsewhere puts it away, like Spotlight.
+    /// (Not when its own popover or menu took the keys: the due date's calendar and the time list are Folevi panels
+    /// over it, MAC-02. The new key window is known once this notification has gone round.)
     func windowDidResignKey(_ notification: Notification) {
-        hide()
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if let key = NSApp.keyWindow, key === self.panel || key.parent === self.panel { return }
+            self.hide()
+        }
     }
 }

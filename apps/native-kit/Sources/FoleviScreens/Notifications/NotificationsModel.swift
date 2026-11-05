@@ -142,10 +142,15 @@ public final class NotificationsModel {
         return nil
     }
 
-    /// A tap: marks it read and says where to go.
+    /// A tap: says where to go at once and marks it read in the background (its dot goes at once, `shownRead`). It
+    /// used to wait for the server's answer before opening anything, so on a slow network the tap looked ignored
+    /// (MAC-32).
     public func tap(_ r: NotificationRow) async -> ScreenIntent? {
         let target = intent(for: r)
-        if !row(r).read { await setRead(r, true) }
+        if !row(r).read {
+            shownRead[r.id] = true
+            Task { await setRead(r, true) }
+        }
         return target
     }
 

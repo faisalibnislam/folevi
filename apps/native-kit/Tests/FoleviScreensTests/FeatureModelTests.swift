@@ -598,6 +598,10 @@ struct NotificationsModelTests {
         #expect(await model.accept(page) == .openNote(id: "doc_shared", blockId: nil))
         let comment = model.rows[0]
         #expect(await model.tap(comment) == .openRoute("/d/doc_00002#comment-th_1"))
+        // The tap opens at once and marks it read in the background (MAC-32): read straight away on screen, the
+        // command a moment later.
+        #expect(model.row(comment).read)
+        await eventually("marked read") { engine.commands(named: "notification.markRead").last?["ids"] == .array([.string("n1")]) }
         #expect(engine.commands(named: "notification.markRead").last?["ids"] == .array([.string("n1")]))
     }
 

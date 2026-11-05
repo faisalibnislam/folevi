@@ -49,6 +49,8 @@ public struct WebSidebar: View {
     @AppStorage("folevi.sidebar.folders-all") private var allFoldersShown = false
     /// Each folder's last change, for Recent (watched only while the sidebar is sorted by it).
     @State private var folderChanges: ValueStore<FolderCardsValue>?
+    /// The list goes on under the account button (MAC-64).
+    @State private var moreBelow = false
     /// The account row, for the account menu's place (on the Mac it opens 8 pt above it: MAC-38).
     @State private var accountAnchor: NSView?
     /// The folder row a dragged note or folder is over, and where on it (a folder: the line above, inside, the line
@@ -114,6 +116,22 @@ public struct WebSidebar: View {
                 .padding(.bottom, list.padding.bottom)
             }
             .scrollIndicators(.never)
+            // More below the account button: the list fades out over its last 28 points and a hairline marks the edge,
+            // so a short window doesn't look as if its folders were missing (MAC-64).
+            .onScrollGeometryChange(for: Bool.self) { g in
+                g.contentOffset.y + g.containerSize.height < g.contentSize.height - 1
+            } action: { _, more in moreBelow = more }
+            .mask {
+                VStack(spacing: 0) {
+                    Color.black
+                    LinearGradient(colors: [.black, moreBelow ? .black.opacity(0.15) : .black], startPoint: .top, endPoint: .bottom).frame(height: 28)
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if moreBelow {
+                    Rectangle().fill(Folevi.color.line).frame(height: 1).padding(.horizontal, list.padding.left).allowsHitTesting(false)
+                }
+            }
     }
 
     // MARK: the top bar

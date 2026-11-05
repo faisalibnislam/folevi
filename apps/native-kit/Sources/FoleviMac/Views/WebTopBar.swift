@@ -351,10 +351,14 @@ public struct WebTopBar: View {
             }
             if !t.isJoined, let id = t.route.noteId, model.floatingNotes.contains(id) { floatingBadge(id, label: label) }
             if !t.isHome {
+                // A narrow tab (the strip shrunk it toward its least, MAC-35) keeps the pin's and the ×'s room only
+                // while they show, so its title has the room: the pin under the pointer, the × on the open tab or under
+                // the pointer.
+                let narrow = (tabFrames[t.id]?.width ?? .infinity) < 150
                 // (An iPad has no hover to show the pin on: it's there only on a pinned tab, and the tab's long-press
                 // menu pins one, so the title runs on up to the ×.)
-                if !WebStyles.isPad || t.pinned { pinButton(t, label: label, hovered: hovered) }
-                if !t.pinned { closeButton(t, label: label, visible: active || hovered) }
+                if (!WebStyles.isPad || t.pinned) && (!narrow || hovered || t.pinned) { pinButton(t, label: label, hovered: hovered) }
+                if !t.pinned && (!narrow || active || hovered) { closeButton(t, label: label, visible: active || hovered) }
             }
         }
         .foregroundStyle(s.color.color)

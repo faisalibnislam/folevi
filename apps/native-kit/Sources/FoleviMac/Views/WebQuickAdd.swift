@@ -680,12 +680,12 @@ private struct RemoveButton: View {
 /// components/ui/DateField: a 160 pt input with the calendar icon and the day ("No date"); the calendar in a popover.
 private struct QuickAddDateField: View {
     @Bindable var model: QuickAddModel
-    @State private var open = false
+    @State private var anchor = PlannerAnchor()
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let date = model.dueDate ?? model.effectiveDueDate
-        Button { open.toggle() } label: {
+        Button { open(date) } label: {
             HStack(spacing: 8) {
                 WebIconView(.calendarDays, size: 14).foregroundStyle(qaColor("color-ink-muted", scheme).color)
                 Text(date.map { WebQuickAddPanel.dayLabel($0, today: model.session.value?.today) } ?? "No date")
@@ -697,14 +697,22 @@ private struct QuickAddDateField: View {
             .frame(width: 160, height: 32)
             .webBox(WebStyles.named("input"))
             .contentShape(Rectangle())
+            .plannerAnchor(anchor)
         }
         .buttonStyle(PlainPress())
         .accessibilityLabel("Due date: \(date ?? "No date")")
-        .popover(isPresented: $open, arrowEdge: .bottom) {
-            DatePicker("", selection: Binding(get: { Self.day(date) ?? Date() }, set: { model.dueDate = Self.ymd($0); open = false }), displayedComponents: .date)
-                .datePickerStyle(.graphical)
-                .labelsHidden()
-                .padding(12)
+    }
+
+    /// The planner's own calendar in a Folevi popover, as Edit task's (MAC-02: it was the system's popover and date
+    /// picker).
+    private func open(_ date: String?) {
+        guard let v = anchor.view else { return }
+        let model = model
+        PlannerPanel.popover(below: v) { close in
+            CalendarPopover(value: date ?? "", clearable: false) { picked in
+                if !picked.isEmpty { model.dueDate = picked }
+                close()
+            }
         }
     }
 
@@ -727,12 +735,12 @@ private struct QuickAddDateField: View {
 /// components/ui/TimeField: a 112 pt input with the time ("All day"); hours and minutes in a popover.
 private struct QuickAddTimeField: View {
     @Bindable var model: QuickAddModel
-    @State private var open = false
+    @State private var anchor = PlannerAnchor()
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let time = model.dueDate != nil ? model.dueTime : model.effectiveDueTime
-        Button { open.toggle() } label: {
+        Button { open(time) } label: {
             HStack(spacing: 8) {
                 WebIconView(.clock, size: 14).foregroundStyle(qaColor("color-ink-muted", scheme).color)
                 Text(time.map(WebQuickAddPanel.clock) ?? "All day")
@@ -744,22 +752,25 @@ private struct QuickAddTimeField: View {
             .frame(width: 112, height: 32)
             .webBox(WebStyles.named("input"))
             .contentShape(Rectangle())
+            .plannerAnchor(anchor)
         }
         .buttonStyle(PlainPress())
         .accessibilityLabel("Due time: \(time ?? "All day")")
-        .popover(isPresented: $open, arrowEdge: .bottom) {
-            VStack(alignment: .leading, spacing: 8) {
-                DatePicker("", selection: Binding(get: { Self.time(time) }, set: { set(Self.hhmm($0)) }), displayedComponents: .hourAndMinute)
-                    #if os(macOS)
-                    .datePickerStyle(.stepperField)
-                    #endif
-                    .labelsHidden()
-                WebButton("All day", variant: .secondary, size: .sm) {
-                    set(nil)
-                    open = false
-                }
+    }
+
+    /// The planner's time list (every quarter hour, "All day" first) in a Folevi popover, as Edit task's (MAC-02: it
+    /// was the system's popover and stepper field).
+    private func open(_ time: String?) {
+        guard let v = anchor.view else { return }
+        var times = PlannerTimeField.times
+        if let time, !times.contains(time) { times = (times + [time]).sorted() }
+        let options = [("", "All day")] + times.map { ($0, WebQuickAddPanel.clock($0)) }
+        let width = max(v.bounds.width, 160)
+        PlannerPanel.popover(below: v) { close in
+            OptionList(options: options, selected: time ?? "", width: width) { id in
+                set(id.isEmpty ? nil : id)
+                close()
             }
-            .padding(12)
         }
     }
 

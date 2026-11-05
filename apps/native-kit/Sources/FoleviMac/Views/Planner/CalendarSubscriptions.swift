@@ -136,6 +136,8 @@ struct SubscriptionRow: View {
     @State private var confirming = false
     @State private var name = ""
     @State private var color = "moss"
+    /// The Show switch's new value until the server says it (MAC-39).
+    @State private var pendingVisible: Bool?
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -149,7 +151,13 @@ struct SubscriptionRow: View {
                     Text(status.isEmpty ? host : "\(host) · \(status)").webText(.role(.footnote)).lineLimit(1).foregroundStyle(PV("color-ink-faint").c(scheme)).foleviTooltip(host)
                 }
                 Spacer(minLength: 0)
-                FoleviSwitch("Show \(cal.name)", on: cal.visible) { v in run(.calendarUpdate(id: cal.id, visible: v)) }
+                // Flips at once (the server's answer used to come first, so a click looked ignored), back if the change
+                // fails; Settings' switch, the one switch of the Mac's popovers and panes (MAC-39).
+                SettingsSwitch(isOn: pendingVisible ?? cal.visible, label: "Show \(cal.name)") { v in
+                    pendingVisible = v
+                    run(.calendarUpdate(id: cal.id, visible: v), failed: { pendingVisible = nil })
+                }
+                .onChange(of: cal.visible) { _, now in if now == pendingVisible { pendingVisible = nil } }
                 PlannerButton(editing ? "Close" : "Edit", style: "edit.clear") {
                     editing.toggle()
                     confirming = false
@@ -195,12 +203,15 @@ struct SubscriptionRow: View {
         .padding(.horizontal, 16).padding(.vertical, 10)
     }
 
-    private func run<C: EngineCommandSpec>(_ c: C, then: @escaping () -> Void = {}) {
+    private func run<C: EngineCommandSpec>(_ c: C, failed: @escaping () -> Void = {}, then: @escaping () -> Void = {}) {
         Task {
             do {
                 _ = try await client.command(c)
                 then()
-            } catch { frame.toast(ScreenErrors.message(error), tone: .error) }
+            } catch {
+                failed()
+                frame.toast(ScreenErrors.message(error), tone: .error)
+            }
         }
     }
 }

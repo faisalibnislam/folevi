@@ -1,6 +1,17 @@
 {
   "releases": [
     {
+      "version": "1.2.34",
+      "build": 46,
+      "released": "2026-11-06T00:32:50+06:00",
+      "type": "patch",
+      "summary": "Folders on iPhone scroll again",
+      "fixed": [
+        "On iPhone, the Folders list scrolls again when you swipe on the folder cards. Hold a card still to move it."
+      ],
+      "tag": "v1.2.34"
+    },
+    {
       "version": "1.2.33",
       "build": 45,
       "released": "2026-11-05T14:20:04+06:00",

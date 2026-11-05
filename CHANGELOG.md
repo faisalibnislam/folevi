@@ -4,6 +4,16 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.34: Small update
+
+Released 2026-11-06 00:32:50+06:00 (build 46, tag v1.2.34)
+
+Folders on iPhone scroll again
+
+### Fixed
+
+- On iPhone, the Folders list scrolls again when you swipe on the folder cards. Hold a card still to move it.
+
 ## Version 1.2.33: Small update
 
 Released 2026-11-05 14:20:04+06:00 (build 45, tag v1.2.33)

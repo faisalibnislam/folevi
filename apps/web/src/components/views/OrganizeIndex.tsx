@@ -1,11 +1,11 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { useId, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import { Hash, LayoutGrid, Rows3, Search, X, FolderOpen } from "lucide-react";
 import { folderAncestors } from "@folevi/editor-schema";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
-import { FolderCard } from "./FolderCard";
+import { FolderCard, type FolderSummary } from "./FolderCard";
 import { FolderMenu } from "@/components/app/FolderMenu";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -20,8 +20,12 @@ import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useIphoneApp } from "@/lib/iphone";
 import { IphoneFolders, IphoneTags } from "@/components/iphone/Organize";
+import { useFolderActions } from "@/lib/app/folders";
+import { folderPlace } from "@/lib/app/folderDrop";
+import { FOLDER_SORTS, byFolderRank, folderSortOf, orderMoves, reorderIds, sortFolders, type FolderSort, type OrderMove } from "@/lib/app/folderOrder";
+import { useToast, errorMessage } from "@/components/ui/Toast";
+import { ReorderGap, reorderedCards, useFolderReorder, type FolderReorder } from "./useFolderReorder";
 
-type FolderSort = "name" | "updated" | "count" | "created";
 type TagSort = "name" | "count" | "created";
 
 const tagColor = (color: string) => `var(--color-${color === "muted" ? "ink-muted" : color})`;
@@ -43,6 +47,57 @@ function SearchField({ value, onChange, label }: { value: string; onChange: (v: 
       ) : null}
     </div>
   );
+}
+
+/**
+ * The Folders page's cards put in order by dragging (useFolderReorder): the folder goes in the gap it's dropped in.
+ * `list` is the cards on show (in `sort`'s order), `all` every folder in manual order. In Name or Recent the order
+ * on screen, with the move, becomes the manual order (the folders take new ranks) and the page switches to Manual.
+ */
+function useFolderCardOrder<T extends FolderSummary>({ list, all, sort, setSort, enabled }: { list: T[]; all: readonly T[]; sort: FolderSort; setSort: (s: FolderSort) => void; enabled: boolean }): FolderReorder {
+  const actions = useFolderActions();
+  const toast = useToast();
+  const ids = useMemo(() => list.map((f) => f.id), [list]);
+  const commit = useCallback(
+    (draggedId: string, gap: number) => {
+      const shown = new Set(ids);
+      const manual = all.filter((f) => shown.has(f.id)).map((f) => f.id);
+      const target = reorderIds(ids, draggedId, gap);
+      const moves = orderMoves(manual, target);
+      if (!moves.length && sort === "manual") return;
+      // A folder dragged in from the sidebar (a nested one) comes up to the top level; Undo puts it back.
+      const outside = !shown.has(draggedId);
+      const was = outside ? folderPlace(all, draggedId) : null;
+      const name = all.find((f) => f.id === draggedId)?.name ?? "the folder";
+      const send = (list: OrderMove[]) => {
+        for (const m of list) actions.move(m.id, null, m.afterId);
+      };
+      try {
+        send(moves);
+      } catch (e) {
+        toast.show(errorMessage(e), { tone: "error" });
+        return;
+      }
+      const before = sort;
+      if (sort !== "manual") setSort("manual");
+      toast.show(sort === "manual" ? `Moved “${name}”` : `Moved “${name}”. Folders are now in manual order.`, {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            try {
+              if (was) actions.move(draggedId, was.parentFolderId, was.afterFolderId);
+              send(orderMoves(target.filter((id) => !outside || id !== draggedId), manual));
+              if (before !== "manual") setSort(before);
+            } catch (e) {
+              toast.show(errorMessage(e), { tone: "error" });
+            }
+          },
+        },
+      });
+    },
+    [ids, all, sort, setSort, actions, toast],
+  );
+  return useFolderReorder({ key: "folders", ids, enabled, commit });
 }
 
 function SortSelect<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: [T, string][] }) {
@@ -68,9 +123,11 @@ export function FoldersIndex() {
   const { scope, canEdit, outbox } = useAppState();
   const served = useOfflineQuery(api.organization.index, { scope, only: "folders" });
   const waiting = useOutboxEntries(outbox);
-  const data = useMemo(() => (served ? overlayFolderIndex(served, waiting, scope) : served), [served, waiting, scope]);
+  // In their own order (by rank) before the waiting changes go on, so a move made here lands where it's dropped.
+  const data = useMemo(() => (served ? overlayFolderIndex({ ...served, folders: byFolderRank(served.folders) }, waiting, scope) : served), [served, waiting, scope]);
   const [q, setQ] = useState("");
-  const [sort, setSort] = useLocalStorage<FolderSort>("folevi:folders-sort", "name");
+  const [saved, setSort] = useLocalStorage<string>("folevi:folders-sort", "manual");
+  const sort = folderSortOf(saved);
   const [layout, setLayout] = useLocalStorage<"grid" | "list">("folevi:folders-layout", "grid");
 
   // Where each nested folder is ("Work / Clients"), shown with its name.
@@ -78,25 +135,18 @@ export function FoldersIndex() {
     const folders = data?.folders ?? [];
     return new Map(folders.map((f) => [f.id, folderAncestors(folders, f.id).map((a) => a.name).join(" / ")]));
   }, [data]);
+  const searching = q.trim() !== "";
   const list = useMemo(() => {
     const needle = q.trim().toLocaleLowerCase();
     const all = data?.folders ?? [];
     const ids = new Set(all.map((f) => f.id));
     // (A folder whose parent isn't in the list counts as top level, as the sidebar's tree does.)
     const rows = needle ? all.filter((f) => f.name.toLocaleLowerCase().includes(needle)) : all.filter((f) => !f.parentFolderId || !ids.has(f.parentFolderId));
-    return rows.sort((a, b) => {
-      switch (sort) {
-        case "updated":
-          return b.updatedAt - a.updatedAt;
-        case "count":
-          return b.documentCount - a.documentCount || a.name.localeCompare(b.name);
-        case "created":
-          return b.createdAt - a.createdAt;
-        default:
-          return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-      }
-    });
+    return sortFolders(rows, sort);
   }, [data, q, sort]);
+
+  // Dragging a card between others puts it there (not while searching: a folder still goes inside a card).
+  const reorder = useFolderCardOrder({ list, all: data?.folders ?? [], sort, setSort, enabled: canEdit && !searching && data !== undefined });
 
   const iphone = useIphoneApp();
   if (iphone)
@@ -110,12 +160,8 @@ export function FoldersIndex() {
         sort={sort}
         onSort={setSort}
         canEdit={canEdit}
-        sorts={[
-          ["name", "Name"],
-          ["updated", "Last updated"],
-          ["count", "Most notes"],
-          ["created", "Newest"],
-        ]}
+        sorts={FOLDER_SORTS}
+        reorder={reorder}
       />
     );
   return (
@@ -133,12 +179,7 @@ export function FoldersIndex() {
           <SortSelect<FolderSort>
             value={sort}
             onChange={setSort}
-            options={[
-              ["name", "Name"],
-              ["updated", "Last updated"],
-              ["count", "Most pages"],
-              ["created", "Newest"],
-            ]}
+            options={FOLDER_SORTS}
           />
           <div className="ui-seg ui-well" role="group" aria-label="Layout">
             <button type="button" aria-pressed={layout === "grid"} aria-label="Grid" title="Grid" onClick={() => setLayout("grid")}>
@@ -154,18 +195,22 @@ export function FoldersIndex() {
         {data && !list.length ? (
           <EmptyState icon={FolderOpen} title={q.trim() ? `No folders match “${q.trim()}”` : "No folders yet"} body={q.trim() ? undefined : "Create one to group related pages."} />
         ) : layout === "grid" ? (
-          <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-x-8 gap-y-10" aria-label="Folders">
-            {list.map((f) => (
-              <li key={f.id}>
-                <FolderCard folder={f} parentName={f.parentFolderId ? names.get(f.id) || undefined : undefined} />
-                {/* A search finds folders at every level: a nested one says where it is. */}
-                {f.parentFolderId && names.get(f.id) ? (
-                  <p className="mt-2 truncate text-footnote text-muted" aria-hidden>
-                    in {names.get(f.id)}
-                  </p>
-                ) : null}
-              </li>
-            ))}
+          <ul {...reorder.listProps} className="relative mt-6 grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-x-8 gap-y-10" aria-label="Folders">
+            {reorderedCards(list, reorder).map((f) =>
+              typeof f === "string" ? (
+                <ReorderGap key={f} id={f} />
+              ) : (
+                <li key={f.id} data-reorder-id={f.id} className={reorder.dragged === f.id ? "opacity-40" : undefined}>
+                  <FolderCard folder={f} parentName={f.parentFolderId ? names.get(f.id) || undefined : undefined} />
+                  {/* A search finds folders at every level: a nested one says where it is. */}
+                  {f.parentFolderId && names.get(f.id) ? (
+                    <p className="mt-2 truncate text-footnote text-muted" aria-hidden>
+                      in {names.get(f.id)}
+                    </p>
+                  ) : null}
+                </li>
+              ),
+            )}
           </ul>
         ) : (
           <ul className="ui-card mt-6 divide-y divide-line overflow-hidden rounded-chip" aria-label="Folders">

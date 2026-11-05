@@ -15,6 +15,8 @@ export interface DropHint {
   zone: DropZone;
   /** Why it can't go there (the row shows it refused). */
   refused?: string;
+  /** A gap between cards (a reorderable list's, `key` "reorder:<list>"): where among the others it would land. */
+  index?: number;
 }
 
 interface State {
@@ -49,8 +51,33 @@ export function endDrag() {
 
 export function setDropHint(hint: DropHint | null) {
   const h = state.hint;
-  if (h === hint || (h && hint && h.key === hint.key && h.zone === hint.zone && h.refused === hint.refused)) return;
+  if (h === hint || (h && hint && h.key === hint.key && h.zone === hint.zone && h.refused === hint.refused && h.index === hint.index)) return;
   set({ hint });
+}
+
+/**
+ * A list whose cards a dragged folder can be put between (the Folders page's grid, `data-reorder-list="<key>"`):
+ * the drop layer asks it where over it the drag is, and has it make the move.
+ */
+export interface ReorderList {
+  /** The gap the folder would go in (an index among the other cards), "inside" a card's middle, or null: nothing here. */
+  spotAt(el: Element, x: number, y: number, draggedId: string): { gap: number; changes: boolean } | "inside" | null;
+  /** Puts the folder in that gap. */
+  commit(draggedId: string, gap: number): void;
+}
+
+const reorderLists = new Map<string, ReorderList>();
+
+/** Makes a list reorderable while it's on screen (returns what takes it off). */
+export function registerReorderList(key: string, list: ReorderList): () => void {
+  reorderLists.set(key, list);
+  return () => {
+    if (reorderLists.get(key) === list) reorderLists.delete(key);
+  };
+}
+
+export function reorderList(key: string): ReorderList | undefined {
+  return reorderLists.get(key);
 }
 
 /** Asks the drop layer to carry `payload` itself from (x, y), showing a copy of `face` (see State.custom). */

@@ -11,6 +11,7 @@
 //   data-drop-open="1"       the row's subfolders show under it; data-drop-closed="1": it has some, hidden
 //   data-drop-expand         hovering here while dragging presses it (the folder list's "+N more")
 //   data-drag-scroll         a list that scrolls when the pointer nears its top or bottom edge
+//   data-reorder-list="<k>"  cards a folder can be put between (lib/app/dragSession.ts registerReorderList)
 // A mouse drags the browser's own way (HTML5 drag and drop: in the Mac app the same drag also drops notes in
 // Finder), except from search results, which this layer carries itself (startPointerDrag). A finger presses and holds (the menu opens as on iOS) and then moves: the menu gives way and what was
 // held follows the finger (lib/touchContextMenu.ts sends the move). Every move goes through the outbox, so it
@@ -20,7 +21,7 @@ import { createPortal } from "react-dom";
 import { MAX_FOLDER_DEPTH } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
 import { useFolderActions, useFolderTree, useOpenFolders } from "@/lib/app/folders";
-import { POINTER_DRAG_EVENT, beginDrag, dragState, endDrag, setDropHint, type DragPayload, type DropHint, type PointerDragDetail } from "@/lib/app/dragSession";
+import { POINTER_DRAG_EVENT, beginDrag, dragState, endDrag, reorderList, setDropHint, type DragPayload, type DropHint, type PointerDragDetail } from "@/lib/app/dragSession";
 import { folderPlace, resolveFolderDrop, zoneAt, type FolderPlace } from "@/lib/app/folderDrop";
 import { FOLDER_MIME } from "@/lib/app/folders";
 import { NOTE_MIME, draggedNoteIds, previewOf } from "@/lib/app/noteDrag";
@@ -117,6 +118,21 @@ export function FolderDropLayer() {
     /** What dropping here would do (null: nothing; `run` unset: refused, and the target says why). */
     const intentAt = (el: Element | null, x: number, y: number, payload: DragPayload | null, types?: readonly string[]): Intent | null => {
       if (!live.current.canEdit) return null;
+      // A folder held between the cards of a reorderable list (the Folders page) goes in that gap; over a card's
+      // middle it goes inside that folder, as below.
+      if (payload?.kind === "folder" && el) {
+        const host = el.closest<HTMLElement>("[data-reorder-list]");
+        const list = host ? reorderList(host.dataset.reorderList ?? "") : undefined;
+        if (host && list) {
+          const spot = list.spotAt(el, x, y, payload.id);
+          if (spot === null) return null;
+          if (spot !== "inside") {
+            const id = payload.id;
+            // (Back in its own place it changes nothing, but is still taken, so the card settles there.)
+            return { hint: { key: `reorder:${host.dataset.reorderList}`, zone: "before", index: spot.gap }, target: host, run: spot.changes ? () => list.commit(id, spot.gap) : () => {} };
+          }
+        }
+      }
       const target = el?.closest<HTMLElement>("[data-drop-folder]");
       if (!target) return null;
       const key = target.dataset.dropFolder ?? "";

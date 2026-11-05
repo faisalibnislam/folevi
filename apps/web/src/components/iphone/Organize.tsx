@@ -6,6 +6,7 @@ import type { MenuEntry } from "@/components/ui/Menu";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import { ViewChrome } from "@/components/app/Shell";
 import { FolderCard, type FolderSummary } from "@/components/views/FolderCard";
+import { ReorderGap, reorderedCards, type FolderReorder } from "@/components/views/useFolderReorder";
 import { GlassPill } from "./Glass";
 import { MoreMenu } from "./RootBar";
 import { ListRow, ScreenEmpty, SearchField } from "./Rows";
@@ -26,6 +27,7 @@ export function IphoneFolders<S extends string>({
   sorts,
   onSort,
   canEdit,
+  reorder,
 }: {
   folders: FolderSummary[] | undefined;
   total: number;
@@ -37,6 +39,8 @@ export function IphoneFolders<S extends string>({
   sorts: [S, string][];
   onSort: (s: S) => void;
   canEdit: boolean;
+  /** The cards put in order by dragging (views/useFolderReorder.tsx). */
+  reorder?: FolderReorder;
 }) {
   const [layout, setLayout] = useLocalStorage<"tiles" | "list">("folevi:iphone-folders-layout", "tiles");
   const { openNewFolder } = useIphoneActions();
@@ -71,12 +75,16 @@ export function IphoneFolders<S extends string>({
       {folders && !folders.length ? (
         <ScreenEmpty icon={FolderOpen} title={query.trim() ? `No folders match “${query.trim()}”` : "No folders yet"} body={query.trim() ? undefined : "Folders keep related notes together."} />
       ) : layout === "tiles" ? (
-        <ul data-iphone-tappable="" className="grid grid-cols-2 gap-x-3.5 gap-y-5 px-4 pt-4 [@media(orientation:landscape)]:grid-cols-4" aria-label="Folders">
-          {(folders ?? []).map((f) => (
-            <li key={f.id}>
-              <FolderCard folder={f} parentName={where.get(f.id) || undefined} />
-            </li>
-          ))}
+        <ul {...reorder?.listProps} data-iphone-tappable="" className="relative grid grid-cols-2 gap-x-3.5 gap-y-5 px-4 pt-4 [@media(orientation:landscape)]:grid-cols-4" aria-label="Folders">
+          {(reorder ? reorderedCards(folders ?? [], reorder) : (folders ?? [])).map((f) =>
+            typeof f === "string" ? (
+              <ReorderGap key={f} id={f} />
+            ) : (
+              <li key={f.id} data-reorder-id={f.id} className={reorder?.dragged === f.id ? "opacity-40" : undefined}>
+                <FolderCard folder={f} parentName={where.get(f.id) || undefined} />
+              </li>
+            ),
+          )}
         </ul>
       ) : (
         <ul data-iphone-tappable="" className="pt-2" aria-label="Folders">

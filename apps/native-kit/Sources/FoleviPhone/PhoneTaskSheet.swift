@@ -17,6 +17,9 @@ public struct PhoneTaskSheet: View {
     let close: () -> Void
     let openNote: (TaskRow) -> Void
     @State private var picking: Picking?
+    /// The sheet's own menus (it sits above the frame's menu layer).
+    @State private var menus = PhoneMenus()
+    @State private var rowFrames: [String: CGRect] = [:]
     @Environment(\.colorScheme) private var scheme
 
     enum Picking { case date, time }
@@ -35,6 +38,7 @@ public struct PhoneTaskSheet: View {
         PhoneSheetPanel(title: "Task", close: close) {
             content.padding(.bottom, 12)
         }
+        .overlay { PhoneMenuLayer(menus: menus) }
     }
 
     private var content: some View {
@@ -203,45 +207,39 @@ public struct PhoneTaskSheet: View {
 
     private static let priorities: [(TaskUpdateArgs.Priority, String)] = [(.none, "None"), (.low, "Low"), (.medium, "Medium"), (.high, "High")]
 
+    /// Priority and Assignee open Folevi's own menu from their row, with a check by the current choice (IPHONE-10:
+    /// they were the system's pop-up menus), and show the same ">" as Date and Time.
     private func priorityRow(_ t: TaskRow) -> some View {
         let current = TaskUpdateArgs.Priority(rawValue: t.priority ?? "none") ?? .none
-        return Menu {
-            Picker("Priority", selection: Binding(get: { current }, set: { p in
-                guard p != current else { return }
-                host.edits.feedback.haptic(.selection)
-                save(TaskPatchArgs(id: t.id, priority: p))
-            })) {
-                ForEach(Self.priorities, id: \.0) { Text($0.1).tag($0.0) }
-            }
-            .pickerStyle(.inline)
-        } label: {
-            PhoneSheetRowLabel(icon: .flag, label: "Priority", value: Self.priorities.first { $0.0 == current }?.1 ?? "None", chevron: true)
+        return PhoneSheetRow(icon: .flag, label: "Priority", value: Self.priorities.first { $0.0 == current }?.1 ?? "None", chevron: false) {
+            menus.show(Self.priorities.map { p in
+                PhoneMenuEntry(.item(p.1, checked: p.0 == current, id: "priority:\(p.0.rawValue)")) {
+                    guard p.0 != current else { return }
+                    host.edits.feedback.haptic(.selection)
+                    save(TaskPatchArgs(id: t.id, priority: p.0))
+                }
+            }, from: rowFrames["priority"] ?? .zero, side: .bottom, align: .end)
         }
-        .menuStyle(.button)
-        .buttonStyle(PhoneRowPressStyle())
-        .menuIndicator(.hidden)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { rowFrames["priority"] = $0 }
     }
 
     private func assigneeRow(_ t: TaskRow) -> some View {
         let people = host.assignees
         let name = t.assigneeId.map { id in people.first { $0.id == id }?.name ?? t.assigneeName ?? "Someone" } ?? "Nobody"
-        return Menu {
-            Picker("Assignee", selection: Binding(get: { t.assigneeId ?? "" }, set: { id in
+        return PhoneSheetRow(icon: .userRound, label: "Assignee", value: name, chevron: false) {
+            let pick = { (id: String) in
                 guard id != (t.assigneeId ?? "") else { return }
                 host.edits.feedback.haptic(.selection)
                 save(TaskPatchArgs(id: t.id, assigneeId: id.isEmpty ? .clear : .set(id)))
-            })) {
-                Text("Nobody").tag("")
-                Divider()
-                ForEach(people, id: \.id) { m in Text(m.isYou ? "\(m.name) (you)" : m.name).tag(m.id) }
             }
-            .pickerStyle(.inline)
-        } label: {
-            PhoneSheetRowLabel(icon: .userRound, label: "Assignee", value: name, chevron: true)
+            var entries = [PhoneMenuEntry(.item("Nobody", checked: t.assigneeId == nil, id: "assignee:")) { pick("") }]
+            if !people.isEmpty { entries.append(PhoneMenuEntry(.separator(0))) }
+            for m in people {
+                entries.append(PhoneMenuEntry(.item(m.isYou ? "\(m.name) (you)" : m.name, checked: m.id == t.assigneeId, id: "assignee:\(m.id)")) { pick(m.id) })
+            }
+            menus.show(entries, from: rowFrames["assignee"] ?? .zero, side: .bottom, align: .end)
         }
-        .menuStyle(.button)
-        .buttonStyle(PhoneRowPressStyle())
-        .menuIndicator(.hidden)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { rowFrames["assignee"] = $0 }
     }
 
     // MARK: Saving

@@ -478,6 +478,8 @@ struct PhonePressable<Content: View>: View {
             }
             .scaleEffect(pressed ? scale : 1)
             .animation(.easeOut(duration: pressed ? 0 : 0.15), value: pressed)
+            // (An iPad's pointer: a row lights up under it, a card lifts. IPAD-21.)
+            .hoverEffect(highlight ? .highlight : .lift)
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
             .onTapGesture(perform: onTap)
             .onLongPressGesture(minimumDuration: 0.45) {

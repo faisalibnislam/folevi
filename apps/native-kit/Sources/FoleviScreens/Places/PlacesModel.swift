@@ -142,6 +142,9 @@ public final class PlacesModel {
 
     /// Several places on this device: offer "Sign in to another account" (every account mode device can).
     public var offersAnotherAccount: Bool { true }
+    /// Whether this device has any Folevi account (open or not): a library alone has none, so its sheet offers
+    /// "Sign in to Folevi…", not "another account" (IPHONE-22).
+    public var hasAccount: Bool { !isLocal || (places.value?.places.contains { $0.kind == .account } ?? false) }
     /// Moving or copying needs another place to go to.
     public var offersMove: Bool { (places.value?.places.count ?? 1) > 1 }
     public var canCreateWorkspace: Bool { !isLocal && (session.value?.capabilities.workspaces ?? true) }

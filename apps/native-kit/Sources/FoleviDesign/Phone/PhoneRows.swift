@@ -69,6 +69,10 @@ public struct PhoneListRow<Icon: View>: View {
         .padding(.leading, row.padding.left)
         .padding(.trailing, row.padding.right)
         .contentShape(Rectangle())
+        #if os(iOS)
+        // (An iPad's pointer lights the row under it: IPAD-21.)
+        .hoverEffect(.highlight)
+        #endif
         if let onLongPress {
             // A Button can't also be held, so a row with a menu takes the tap and the hold itself, with the same
             // press fill.

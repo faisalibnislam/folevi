@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { APP, createWorkspace, newPerson, settle, showFolders, signIn, type Account } from "./helpers";
+import { APP, createWorkspace, newPerson, settle, showFolders, signIn, noteMenuItem, type Account } from "./helpers";
 import { PASSPHRASE, migrationDone, trustedPage, unlockWithPassphrase } from "./e2ee-helpers";
 
 // The end-to-end encryption screens (docs/E2EE_DESIGN.md §10) against the real keys, router, migration and
@@ -465,7 +465,7 @@ test("screenshots of every screen, light and dark, desktop and phone", async ({ 
       await page.keyboard.press("Escape");
       await page.keyboard.press("Escape");
       await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
-      await page.getByRole("menuitemcheckbox", { name: "Always fully encrypted" }).click();
+      await (await noteMenuItem(page, "Always fully encrypted", "menuitemcheckbox")).click();
       await shoot(page)("26-lock-note");
       await mine.close();
     }

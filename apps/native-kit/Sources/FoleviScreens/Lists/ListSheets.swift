@@ -35,12 +35,23 @@ struct NotesListSheets: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .sheet(item: Binding { model.moving.map { Request(ids: $0) } } set: { if $0 == nil { model.moving = nil } }) { request in
+            // A host with its own dialogs takes Move and Copy (the Mac's Folevi dialogs, never the system's).
+            .onChange(of: model.moving) { _, ids in
+                guard let ids, let present = model.presentMove else { return }
+                model.moving = nil
+                present(ids)
+            }
+            .onChange(of: model.copying) { _, ids in
+                guard let ids, let present = model.presentCopy else { return }
+                model.copying = nil
+                present(ids)
+            }
+            .sheet(item: Binding { model.presentMove == nil ? model.moving.map { Request(ids: $0) } : nil } set: { if $0 == nil { model.moving = nil } }) { request in
                 MoveNotesSheet(count: request.ids.count, targets: model.moveTargets) { target in
                     Task { await model.move(request.ids, to: target) }
                 } onCancel: { model.moving = nil }
             }
-            .sheet(item: Binding { model.copying.map { Request(ids: $0) } } set: { if $0 == nil { model.copying = nil } }) { request in
+            .sheet(item: Binding { model.presentCopy == nil ? model.copying.map { Request(ids: $0) } : nil } set: { if $0 == nil { model.copying = nil } }) { request in
                 CopyToSheet(client: model.client, spaces: model.copyTargets, count: request.ids.count) { space, folder in
                     model.copying = nil
                     model.selecting = false

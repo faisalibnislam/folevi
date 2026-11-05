@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { APP, newPerson, waitForSaved } from "./helpers";
+import { APP, newPerson, waitForSaved, noteMenuItem } from "./helpers";
 
 // The knowledge graph on the dev backend (no model key, a trial account): the graph shows notes and their
 // explicit links with a plain note that the full graph is part of Pro, the List view reads the same graph
@@ -17,7 +17,7 @@ async function newPage(page: Page, title: string) {
 
 async function openRelated(page: Page) {
   await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Related notes" }).click();
+  await (await noteMenuItem(page, "Related notes")).click();
   const panel = page.getByRole("region", { name: "Related", exact: true });
   await expect(panel).toBeVisible();
   return panel;
@@ -81,9 +81,9 @@ test("the graph shows notes and links, the list reads it as text, and a note lis
   await page.getByRole("main").getByRole("link", { name: "Trip planning", exact: true }).first().click();
   await page.waitForURL(new RegExp(`${source}$`));
 
-  // Foli DNA of this note, from its menu: the map around it, one step out, and back to everything.
+  // Foli DNA (Connections in its menu): the map around it, one step out, and back to everything.
   await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Foli DNA of this note" }).click();
+  await (await noteMenuItem(page, "Foli DNA")).click();
   await page.waitForURL(/\/graph\?note=/);
   await page.getByRole("group", { name: "View" }).getByRole("button", { name: "Map" }).click();
   await expect(page.getByText("Around")).toBeVisible({ timeout: 20_000 });

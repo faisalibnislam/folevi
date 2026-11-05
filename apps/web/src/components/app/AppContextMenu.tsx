@@ -6,13 +6,14 @@
 // - a link: open it, here or in a new browser tab, or copy its address;
 // - selected text: copy it, or ask AI about it;
 // - anywhere else: a new note, search, Ask AI, and back / forward / reload.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ClipboardPaste, Copy, ExternalLink, FilePlus2, FolderPlus, Link2, RotateCw, Scissors, Search, Share, TextSelect } from "lucide-react";
 import { ContextMenu, type MenuItem } from "@/components/ui/Menu";
 import { useToast } from "@/components/ui/Toast";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { useAppRouter } from "@/lib/app/router";
+import { useBackForward } from "@/lib/app/tabs";
 import { modKey } from "@/lib/hooks/useEngine";
 import { installTouchContextMenu } from "@/lib/touchContextMenu";
 import { useShell } from "./Shell";
@@ -40,6 +41,12 @@ export function AppContextMenu() {
   const createDocument = useCreateDocument();
   const aiOn = useAiEnabled();
   const toast = useToast();
+  // Back and Forward: the tab on screen's own (read when the menu's item runs).
+  const bf = useBackForward();
+  const backForward = useRef(bf);
+  useEffect(() => {
+    backForward.current = bf;
+  }, [bf]);
 
   // Press and hold on iPhone and iPad opens these menus too (Safari there sends no right-click).
   useEffect(() => installTouchContextMenu(), []);
@@ -179,8 +186,8 @@ export function AppContextMenu() {
         { label: "Search or jump to…", icon: <Search size={14} />, shortcut: "⌘K", onSelect: () => openPalette() },
         ...(aiOn ? [{ label: "Ask Foli AI", icon: <AiIcon size={14} />, shortcut: "⌘J", onSelect: () => openAsk() }] : []),
         "separator",
-        { label: "Back", icon: <ArrowLeft size={14} />, onSelect: () => history.back() },
-        { label: "Forward", icon: <ArrowRight size={14} />, onSelect: () => history.forward() },
+        { label: "Back", icon: <ArrowLeft size={14} />, onSelect: () => backForward.current.back() },
+        { label: "Forward", icon: <ArrowRight size={14} />, onSelect: () => backForward.current.forward?.() },
         { label: "Reload", icon: <RotateCw size={14} />, onSelect: () => location.reload() },
       );
       e.preventDefault();

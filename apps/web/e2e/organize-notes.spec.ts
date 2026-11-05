@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { APP, newPerson, showFolders, waitForSaved } from "./helpers";
+import { APP, newPerson, showFolders, waitForSaved, noteMenuItem } from "./helpers";
 
 const mod = process.platform === "darwin" ? "Meta" : "Control";
 
@@ -45,7 +45,7 @@ test("note menu: move to folder, and find & replace inside the note", async ({ b
 
   // Move to folder from the page's "…" menu.
   await page.getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Move…" }).click();
+  await (await noteMenuItem(page, "Move…")).click();
   const picker = page.getByRole("dialog", { name: /^Move “/ });
   await picker.getByRole("combobox").fill("gui");
   await page.keyboard.press("Enter");
@@ -62,8 +62,8 @@ test("a new note on a folder page starts in that folder; the tab strip shows the
   // The folder's title row names it too.
   await expect(page.getByRole("main").getByRole("heading", { name: "Recipes", level: 1 })).toBeVisible();
 
-  // The folder's own New note, in its title row (the top bar's makes one here too).
-  await page.getByRole("main").getByRole("button", { name: "New note", exact: true }).click();
+  // The top bar's New note makes the note in the open folder (the page has none of its own).
+  await page.getByRole("button", { name: "New note", exact: true }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Soup");
   await waitForSaved(page);

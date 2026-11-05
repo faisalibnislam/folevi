@@ -6,6 +6,7 @@
 // DNA_SHOTS=<folder> also saves screenshots of each, light and dark.
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures/localShell";
+import { noteMenuItem } from "./helpers";
 
 async function newNote(page: Page, title: string) {
   await page.getByRole("button", { name: "New note", exact: true }).first().click();
@@ -79,10 +80,10 @@ test.describe("Foli DNA of this note", { tag: "@local" }, () => {
     await expect(page.getByRole("application", { name: /Foli DNA of \d+ notes/ })).toBeVisible({ timeout: 60_000 });
     await expect(tips).toHaveCount(0);
 
-    // From the note's ••• menu (the bug: this showed an empty or whole map).
+    // From the note's ••• menu, Connections > Foli DNA (the bug: this showed an empty or whole map).
     await page.goto(pricing);
     await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
-    await page.getByRole("menuitem", { name: /Foli DNA/ }).first().click();
+    await (await noteMenuItem(page, "Foli DNA")).click();
     await page.waitForURL(/\/graph\?note=/);
     expect(new URL(page.url()).searchParams.get("note")).toBe(pricing.replace("/d/", ""));
     await expect(page.getByRole("application", { name: /Foli DNA of 4 notes/ })).toBeVisible({ timeout: 30_000 });

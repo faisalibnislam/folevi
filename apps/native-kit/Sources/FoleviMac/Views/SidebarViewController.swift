@@ -367,7 +367,7 @@ public final class SidebarViewController: NSViewController {
         switch item.node.kind {
         case .folder:
             guard let id = item.node.folderId else { return nil }
-            menu.addItem(ClosureMenuItem(title: "Open in New Tab") { [weak self] in self?.model.open(.folder(id), title: item.node.title) })
+            menu.addItem(ClosureMenuItem(title: "Open in New Tab") { [weak self] in self?.model.openInBackground(.folder(id), title: item.node.title) })
             menu.addItem(ClosureMenuItem(title: "Open in New Window") { [weak self] in self?.model.host?.frameOpenInNewWindow(.folder(id)) })
             menu.addItem(.separator())
             menu.addItem(ClosureMenuItem(title: "New Note Here") { [weak self] in self?.model.newNote(in: id) })

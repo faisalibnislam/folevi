@@ -6,14 +6,14 @@ import FoleviEngine
 
 @MainActor
 @Observable
-final class CopyTargetModel {
+public final class CopyTargetModel {
     let client: EngineClient
-    var space: SpaceInfo? {
+    public var space: SpaceInfo? {
         didSet { if space?.id != oldValue?.id { watch() } }
     }
     private(set) var tree: ValueStore<FoldersTreeValue>?
 
-    init(client: EngineClient, space: SpaceInfo?) {
+    public init(client: EngineClient, space: SpaceInfo?) {
         self.client = client
         self.space = space
         watch()
@@ -23,8 +23,8 @@ final class CopyTargetModel {
         tree = space.map { client.watch(.foldersTree(space: $0.id)) }
     }
 
-    var folders: [FolderNode] { tree?.value?.folders ?? [] }
-    var loading: Bool { tree != nil && tree?.value == nil && tree?.error == nil }
+    public var folders: [FolderNode] { tree?.value?.folders ?? [] }
+    public var loading: Bool { tree != nil && tree?.value == nil && tree?.error == nil }
 }
 
 struct CopyToSheet: View {

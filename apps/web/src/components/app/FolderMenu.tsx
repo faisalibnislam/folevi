@@ -46,12 +46,15 @@ export function FolderMenu({
   className,
   cardMenu = false,
   triggerClassName,
+  tooltip,
 }: {
   folder: MenuFolder;
   trigger?: ReactNode;
   className?: string;
   /** The trigger's own look (a folder page's title row draws it as a button). */
   triggerClassName?: string;
+  /** The trigger's tooltip when not its label (a folder page's title row: "More"). */
+  tooltip?: string;
   /** The "…" on a folder card: on the iPad, out of sight on touch as a note card's is (globals.css [data-card-menu]). */
   cardMenu?: boolean;
 }) {
@@ -194,7 +197,7 @@ export function FolderMenu({
 
   return (
     <div className={className} data-card-menu={cardMenu ? "" : undefined}>
-      <MenuButton label={`Folder options for ${folder.name}`} trigger={trigger ?? <MoreHorizontal size={14} aria-hidden />} triggerClassName={triggerClassName} items={items} />
+      <MenuButton label={`Folder options for ${folder.name}`} trigger={trigger ?? <MoreHorizontal size={14} aria-hidden />} triggerClassName={triggerClassName} tooltip={tooltip} items={items} />
       {typeof document === "undefined" ? null : createPortal(dialogs, document.body)}
     </div>
   );

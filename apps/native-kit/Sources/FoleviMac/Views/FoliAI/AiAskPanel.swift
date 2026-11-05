@@ -70,7 +70,8 @@ struct AiAskOverlay: View {
 
     private var shows: Bool {
         guard frame.session.value?.capabilities.ai ?? false else { return false }
-        return !frame.route.isNote && frame.route.tabKey != "view:ai"
+        // Not over Settings either (MAC-21): it sat over the cards there, and Settings has its own Foli AI section.
+        return !frame.route.isNote && frame.route.tabKey != "view:ai" && frame.route.tabKey != "view:settings"
     }
 
     var body: some View {
@@ -146,7 +147,7 @@ struct AiLauncher: View {
                 Color.clear.webBox(WebStyles.named("ai.fab"))
                 if over { RoundedRectangle(cornerRadius: s.radius).fill(Color(red: 0x1c / 255, green: 0x1c / 255, blue: 0x1f / 255)) }
             }
-            .offset(y: over && !reduceMotion ? -2 : 0)
+            // (No lift on hover, MAC-58: nothing moves under the pointer on the Mac, and the click area stays put.)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

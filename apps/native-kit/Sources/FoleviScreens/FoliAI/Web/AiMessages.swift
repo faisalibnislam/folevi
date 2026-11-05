@@ -643,8 +643,11 @@ struct AiAgentRunCard: View {
                     Text((preview ? "Proposed changes" : (Self.done[run.status] ?? "Changes")).uppercased()).webText(.caps).foregroundStyle(look.faint)
                     Spacer()
                     if preview, run.operations.count > 1 {
-                        Button(all ? "Select none" : "Select all") { unticked = all ? Set(run.operations.map(\.id)) : [] }
-                            .buttonStyle(.plain).font(WebFont.font(.sans, size: 12)).foregroundStyle(look.muted).disabled(busy)
+                        // A small ghost button with the hover fill (MAC-25), not bare text.
+                        Button { unticked = all ? Set(run.operations.map(\.id)) : [] } label: {
+                            Text(all ? "Select none" : "Select all").font(WebFont.font(.sans, size: 12)).padding(.horizontal, 6).frame(height: 22)
+                        }
+                        .buttonStyle(AiHoverStyle(radius: 6)).foregroundStyle(look.muted).disabled(busy)
                     }
                 }
                 .padding(.bottom, 6)
@@ -655,7 +658,7 @@ struct AiAgentRunCard: View {
                             Text(op.summary).webText(.role(.subheadline)).foregroundStyle(look.ink)
                         }
                         #if os(macOS)
-                        .toggleStyle(.checkbox)
+                        .toggleStyle(WebCheckboxStyle())
                         #endif
                         .disabled(busy)
                         .padding(.vertical, 6)
@@ -716,7 +719,7 @@ struct AiResearchProgress: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 HStack(spacing: 8) {
-                    ProgressView().controlSize(.mini)
+                    WebSpinner(size: 13)
                     Text("Researching…").webText(.role(.subheadline, weight: 500)).foregroundStyle(look.heading)
                 }
                 Spacer()

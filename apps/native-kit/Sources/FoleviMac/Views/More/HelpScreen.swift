@@ -88,15 +88,24 @@ struct HelpScreen: View {
         let h2 = s("h2"), intro = s("intro"), link = s("link")
         let words = "The full guide lives at folevi.com/docs. Questions or problems? Contact support below, or write to support@folevi.com. Security reports: security@folevi.com."
         var text = AttributedString(WebPrettyWrap.lines(words, style: intro.text, width: intro.width).joined(separator: "\n"))
+        // Only the link's words open the guide (MAC-55), as links in a sentence do; the addresses open mail.
         if let r = text.range(of: "folevi.com/docs") {
             text[r].foregroundColor = link.color.color
             text[r].underlineStyle = .single
+            text[r].link = URL(string: "https://folevi.com/docs")
+        }
+        for address in ["support@folevi.com", "security@folevi.com"] {
+            if let r = text.range(of: address) { text[r].link = URL(string: "mailto:\(address)") }
         }
         return VStack(alignment: .leading, spacing: 0) {
             Text("Help").webText(h2.text).lineLimit(1).foregroundStyle(h2.color.color)
             Text(text).webText(intro.text).foregroundStyle(intro.color.color)
+                .tint(link.color.color)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .onTapGesture { open("https://folevi.com/docs") }
+                .environment(\.openURL, OpenURLAction { url in
+                    open(url.absoluteString)
+                    return .handled
+                })
         }
     }
 

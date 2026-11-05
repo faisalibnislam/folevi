@@ -78,7 +78,7 @@ struct ToastStack: View {
                 Button { model.runToastAction(t) } label: {
                     Text(verbatim: title).webText(text.text.weight(600)).lineLimit(1).fixedSize()
                         .padding(.horizontal, 12).padding(.vertical, 4)
-                        .background(Capsule().fill(ink.opacity(0.14)))
+                        .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(ink.opacity(0.14)))
                 }
                 .buttonStyle(.plain)
             }

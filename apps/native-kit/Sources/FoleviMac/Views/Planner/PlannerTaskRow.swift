@@ -200,7 +200,7 @@ struct PlannerTaskRow<Action: View>: View {
             }
             if let d = t.dueDate {
                 let due = PS("tasks.due").resolve(scheme)
-                Text("\(overdue ? "Overdue · " : "")\(PlannerDates.dueLabel(d, today: today))\(t.dueTime.map { " \($0)" } ?? "")")
+                Text("\(overdue ? "Overdue · " : "")\(PlannerDates.dueLabel(d, today: today))\(t.dueTime.map { " \(PlannerDates.timeLabel($0))" } ?? "")")
                     // (Its colour and weight by name: the style read may be of an overdue task.)
                     .webText(due.text(weight: overdue ? 500 : 400))
                     .lineLimit(1)

@@ -162,7 +162,7 @@ struct NotificationsPanel: View {
                             Text(verbatim: String(name.prefix(1)).uppercased()).webText(.role(.footnote, weight: 600)).lineLimit(1)
                                 .foregroundStyle(moreVar("color-canvas", scheme))
                                 .frame(width: 28, height: 28)
-                                .background(Circle().fill(moreVar("color-heading", scheme)))
+                                .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(moreVar("color-heading", scheme)))
                             WebIconView(kindIcon(n.kind), size: 9.5, strokeWidth: 2.4).foregroundStyle(muted)
                                 .frame(width: 16, height: 16)
                                 .background(RoundedRectangle(cornerRadius: 6).fill(moreVar("color-surface", scheme)))

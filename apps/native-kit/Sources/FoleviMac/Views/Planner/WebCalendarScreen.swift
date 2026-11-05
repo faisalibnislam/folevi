@@ -127,6 +127,17 @@ final class WebCalendarState {
     }
 }
 
+/// The calendar's short headings (MAC-20).
+enum CalendarHeading {
+    /// "Nov 2 to 8" in one month, "Nov 30 to Dec 6" across two, "Dec 28 to Jan 3, 2027" across years.
+    static func week(first: String, last: String) -> String {
+        let a = PlannerDates.format(first, "MMMd")
+        if first.prefix(7) == last.prefix(7) { return "\(a) to \(Int(last.suffix(2)) ?? 0)" }
+        if first.prefix(4) == last.prefix(4) { return "\(a) to \(PlannerDates.format(last, "MMMd"))" }
+        return "\(a) to \(PlannerDates.format(last, "MMMdyyyy"))"
+    }
+}
+
 func calendarColor(_ key: String) -> ColorPair { PV(key == "muted" ? "color-ink-muted" : "color-\(key)") }
 
 struct WebCalendarScreen: View {
@@ -192,32 +203,66 @@ struct WebCalendarScreen: View {
         }
     }
 
+    /// A narrow window's heading: "Nov 2 to 8" (MAC-20), "Nov 30 to Dec 6" across months.
+    private var shortHeading: String {
+        guard state.layout == .week else { return state.layout == .month ? PlannerDates.format("\(state.month)-01", "MMMyyyy") : heading }
+        let d = state.weekDays
+        return CalendarHeading.week(first: d[0], last: d[6])
+    }
+
+    /// The toolbar in one row as the web lays it out; when that doesn't fit (a narrow window with the sidebar
+    /// open, MAC-20), the shorter heading and Calendars and Subscribe as icons; narrower still, two rows. The
+    /// content's side margins always stay.
     private var toolbar: some View {
         let bar = PS("cal.toolbar").resolve(scheme)
-        let unit = state.layout == .month ? "month" : "week"
-        return HStack(spacing: bar.gap) {
-            StyledText(heading, "cal.heading").fixedSize()
-            if state.layout != .agenda {
-                HStack(spacing: 4) {
-                    PlannerIconButton(icon: .chevronLeft, label: "Previous \(unit)") { state.move(-1) }
-                    PlannerButton("Today", style: "cal.today") { state.goToday() }
-                    PlannerIconButton(icon: .chevronRight, label: "Next \(unit)") { state.move(1) }
-                }
-            }
-            Spacer(minLength: 0)
-            HStack(spacing: 6) {
-                CalendarsButton(state: state, frame: frame)
-                if state.feeds {
-                    PlannerButton("Subscribe", icon: .rss, style: "cal.calendars") { openFeed() }
-                }
-                WebSeg(items: WebCalendarLayout.allCases.map { SegItem(id: $0.rawValue, title: $0.rawValue.capitalized) }, selected: state.layout.rawValue, base: "cal.layout", fill: false) { id in
-                    if let l = WebCalendarLayout(rawValue: id) { state.setLayout(l) }
-                }
-                .fixedSize()
+        return ViewThatFits(in: .horizontal) {
+            toolbarRow(heading: heading, compact: false).frame(height: bar.height)
+            toolbarRow(heading: shortHeading, compact: true).frame(height: bar.height)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: bar.gap) { StyledText(shortHeading, "cal.heading").fixedSize(); Spacer(minLength: 0) }
+                HStack(spacing: bar.gap) { stepper; Spacer(minLength: 0); actions(compact: true) }
             }
         }
-        .frame(height: bar.height)
         .padding(.bottom, bar.margin.bottom)
+    }
+
+    private func toolbarRow(heading: String, compact: Bool) -> some View {
+        HStack(spacing: PS("cal.toolbar").resolve(scheme).gap) {
+            StyledText(heading, "cal.heading").fixedSize()
+            stepper
+            Spacer(minLength: 0)
+            actions(compact: compact)
+        }
+    }
+
+    @ViewBuilder private var stepper: some View {
+        let unit = state.layout == .month ? "month" : "week"
+        if state.layout != .agenda {
+            HStack(spacing: 4) {
+                PlannerIconButton(icon: .chevronLeft, label: "Previous \(unit)") { state.move(-1) }
+                PlannerButton("Today", style: "cal.today") { state.goToday() }.fixedSize()
+                PlannerIconButton(icon: .chevronRight, label: "Next \(unit)") { state.move(1) }
+            }
+            .fixedSize()
+        }
+    }
+
+    private func actions(compact: Bool) -> some View {
+        HStack(spacing: 6) {
+            CalendarsButton(state: state, frame: frame, compact: compact)
+            if state.feeds {
+                if compact {
+                    PlannerIconButton(icon: .rss, label: "Subscribe") { openFeed() }.foleviTooltip("Subscribe")
+                } else {
+                    PlannerButton("Subscribe", icon: .rss, style: "cal.calendars") { openFeed() }
+                }
+            }
+            WebSeg(items: WebCalendarLayout.allCases.map { SegItem(id: $0.rawValue, title: $0.rawValue.capitalized) }, selected: state.layout.rawValue, base: "cal.layout", fill: false) { id in
+                if let l = WebCalendarLayout(rawValue: id) { state.setLayout(l) }
+            }
+            .fixedSize()
+        }
+        .fixedSize()
     }
 
     private func openFeed() {
@@ -559,7 +604,7 @@ struct EventChip: View {
         let time = !placed.allDay && placed.startMinute > 0 ? PlannerDates.time(placed.startMinute) + " " : ""
         Button { showEvent(e, anchor: anchor) } label: {
             HStack(spacing: 4) {
-                Circle().fill(calendarColor(e.color).c(scheme)).frame(width: 6, height: 6)
+                RoundedRectangle(cornerRadius: 3, style: .circular).fill(calendarColor(e.color).c(scheme)).frame(width: 6, height: 6)
                 Text("\(time)\(e.title.isEmpty ? "Untitled event" : e.title)").webText(.role(.footnote)).lineLimit(1)
             }
             .padding(.horizontal, 4)
@@ -609,7 +654,7 @@ struct EventRow: View {
         let e = placed.event
         Button { showEvent(e, anchor: anchor) } label: {
             HStack(alignment: .top, spacing: 10) {
-                Circle().fill(calendarColor(e.color).c(scheme)).frame(width: 10, height: 10).padding(.top, 6)
+                RoundedRectangle(cornerRadius: 3, style: .circular).fill(calendarColor(e.color).c(scheme)).frame(width: 10, height: 10).padding(.top, 6)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(e.title.isEmpty ? "Untitled event" : e.title).webText(WebTextStyle(size: 14, leading: 18.9)).foregroundStyle(PV("color-ink-muted").c(scheme))
                     Text("\(eventWhen(e, timeZone: timeZone)) · \(e.calendarName)").webText(.role(.footnote)).foregroundStyle(PV("color-ink-faint").c(scheme))
@@ -637,7 +682,7 @@ struct EventPopover: View {
         let p = pop.resolve(scheme)
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Circle().fill(calendarColor(event.color).c(scheme)).frame(width: 10, height: 10)
+                RoundedRectangle(cornerRadius: 3, style: .circular).fill(calendarColor(event.color).c(scheme)).frame(width: 10, height: 10)
                 Text(event.calendarName).webText(.role(.footnote))
             }
             .foregroundStyle(PV("color-ink-muted").c(scheme))

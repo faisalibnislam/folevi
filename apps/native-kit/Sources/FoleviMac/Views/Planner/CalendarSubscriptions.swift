@@ -18,13 +18,21 @@ private let colors: [(String, String)] = [("accent", "Cocoa"), ("moss", "Moss"),
 struct CalendarsButton: View {
     let state: WebCalendarState
     let frame: FrameModel
+    /// Its icon alone (a narrow window's toolbar, MAC-20).
+    var compact = false
     @State private var anchor = PlannerAnchor()
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        PlannerButton("Calendars", icon: .calendarRange, style: "cal.calendars") { open() }
+        Group {
+            if compact {
+                PlannerIconButton(icon: .calendarRange, label: "Calendars") { open() }.foleviTooltip("Calendars")
+            } else {
+                PlannerButton("Calendars", icon: .calendarRange, style: "cal.calendars") { open() }
+            }
+        }
             .overlay(alignment: .trailing) {
-                if state.failing { Circle().fill(PV("color-danger").c(scheme)).frame(width: 6, height: 6).padding(.trailing, 4) }
+                if state.failing { RoundedRectangle(cornerRadius: 3, style: .circular).fill(PV("color-danger").c(scheme)).frame(width: 6, height: 6).padding(.trailing, 4) }
             }
             .plannerAnchor(anchor)
     }
@@ -83,7 +91,7 @@ struct ColorPicker: View {
                 ForEach(colors, id: \.0) { id, label in
                     Button { value = id } label: {
                         HStack(spacing: item.gap) {
-                            Circle().fill(calendarColor(id).c(scheme)).frame(width: 12, height: 12)
+                            RoundedRectangle(cornerRadius: 3, style: .circular).fill(calendarColor(id).c(scheme)).frame(width: 12, height: 12)
                             Text(label).webText(item.text).lineLimit(1)
                         }
                         .padding(item.padding.edgeInsets)
@@ -143,7 +151,7 @@ struct SubscriptionRow: View {
         let status = cal.loading ? "Loading…" : cal.lastFetchedAt.map { "Updated \(PlannerDates.relative($0))" } ?? ""
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 8) {
-                Circle().fill(calendarColor(cal.color).c(scheme)).frame(width: 10, height: 10).padding(.top, 6)
+                RoundedRectangle(cornerRadius: 3, style: .circular).fill(calendarColor(cal.color).c(scheme)).frame(width: 10, height: 10).padding(.top, 6)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(cal.name).webText(.role(.subheadline, weight: 500)).lineLimit(1).foregroundStyle(cal.visible ? PV("color-ink").c(scheme) : PV("color-ink-muted").c(scheme))
                     Text(status.isEmpty ? host : "\(host) · \(status)").webText(.role(.footnote)).lineLimit(1).foregroundStyle(PV("color-ink-faint").c(scheme)).foleviTooltip(host)

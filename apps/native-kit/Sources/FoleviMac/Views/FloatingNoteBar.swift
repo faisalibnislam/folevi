@@ -3,6 +3,9 @@
 // top of other apps. Dragging the bar moves the window. The note page under it brings its own bottom bar.
 import SwiftUI
 import Observation
+#if os(macOS)
+import AppKit
+#endif
 import FoleviDesign
 
 /// What the window tells its bar: whether it stays on top, and the title bar's height and buttons.
@@ -17,6 +20,29 @@ public final class FloatingNoteState {
 
     public init(onTop: Bool) {
         self.onTop = onTop
+    }
+
+    /// What a title bar's double-click does, from System Settings > Desktop & Dock ("Double-click a window's title
+    /// bar to"): AppleActionOnDoubleClick says Maximize (zoom, the default), Minimize, or None.
+    enum DoubleClick: Equatable { case zoom, minimize, none }
+
+    static func doubleClickAction(_ setting: String?) -> DoubleClick {
+        switch setting {
+        case "Minimize": .minimize
+        case "None": .none
+        default: .zoom
+        }
+    }
+
+    static func titleBarDoubleClick() {
+        #if os(macOS)
+        guard let window = NSApp.keyWindow else { return }
+        switch doubleClickAction(UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)?["AppleActionOnDoubleClick"] as? String) {
+        case .zoom: window.performZoom(nil)
+        case .minimize: window.performMiniaturize(nil)
+        case .none: break
+        }
+        #endif
     }
 }
 
@@ -69,6 +95,8 @@ public struct FloatingNoteBar: View {
         }
         .contentShape(Rectangle())
         .windowDrag()
+        // A double-click does what it does on any title bar (MAC-50): zoom or minimise, as the Mac is set.
+        .simultaneousGesture(TapGesture(count: 2).onEnded { FloatingNoteState.titleBarDoubleClick() })
     }
 
     /// The pin: filled while the window stays on top of other apps.

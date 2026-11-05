@@ -119,6 +119,7 @@ struct WebCardMenuButton: View {
                 .foregroundStyle(button.color.color)
                 .frame(width: r.width, height: r.height)
                 .webBox(raised)
+                .listHoverTint(radius: r.radius, fill: "color-accent-soft")
                 .contentShape(Rectangle())
         }
         .foleviTooltip(label)
@@ -332,6 +333,7 @@ struct WebSegmented<T: Hashable>: View {
                         .foregroundStyle(bs.color.color)
                         .frame(width: bs.width, height: height.map { $0 - 2 * (inset ?? 0) } ?? bs.height)
                         .webBox(b)
+                        .listHoverTint(radius: bs.radius, enabled: !on)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -383,6 +385,7 @@ extension WebSortSelect {
         .frame(height: s.height)
         .foregroundStyle(s.color.color)
         .webBox(style)
+        .listHoverTint(radius: s.radius)
         .fixedSize()
     }
 }
@@ -411,6 +414,7 @@ struct WebRowSort<T: Hashable>: View {
             .frame(height: WebListPageHeaderMetrics.controlHeight)
             .foregroundStyle(s.color.color)
             .webBox(style)
+            .listHoverTint(radius: s.radius)
             .fixedSize()
         }
         .foleviTooltip("Sort")
@@ -536,6 +540,8 @@ struct WebHomeScreen: View {
                     section("Recent notes", icon: .clock3, route: .notes(.all), top: 36, count: nil) {
                         if home.recentsLoaded && home.recents.isEmpty {
                             WebEmptyState(icon: nil, title: "No notes yet", message: "Press New to write your first one.", page: false)
+                        } else if !home.recentsLoaded && home.recents.isEmpty {
+                            ListSkeleton(shape: .carousel(width: inner))
                         } else {
                             WebNoteCarousel(label: "Recent notes", rows: Array(home.recents.prefix(10)), width: inner, list: list, frame: frame, recent: true)
                         }
@@ -818,6 +824,7 @@ struct WebNoteCarousel: View {
                 .foregroundStyle(pair.resolve(scheme).color.color)
                 .frame(width: size, height: size)
                 .webBox(pair)
+                .listHoverTint(radius: pair.resolve(scheme).radius)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -880,7 +887,8 @@ struct WebNoteBrowser: View {
                         if !model.subfolders.isEmpty { subfolders }
                         if model.kind.view == .templates, !builtIns.isEmpty { builtInTemplates(width: inner) }
                         if model.isLoading {
-                            Color.clear.frame(height: 200)
+                            // Placeholders while the first page comes (MAC-47), not a blank gap.
+                            ListSkeleton(shape: layout == .list ? .rows : .cards(width: inner))
                         } else if model.total == 0 || (model.isFiltering && model.slots.isEmpty) {
                             empty
                         } else {
@@ -1288,7 +1296,9 @@ struct WebNoteListRow: View {
         }
         .padding(r.padding.edgeInsets)
         .frame(height: r.height)
-        .background(on ? webVar("glass-active", scheme).color : hovered ? webVar("color-surface", scheme).color : .clear)
+        // Selected and hovered rows show on the list's own surface (MAC-19: glass-active and surface were white on
+        // white, #1C1C1E on #1C1C1E): the Mac's selected and hover fills.
+        .background(on ? webVar("mac-selected", scheme).color : hovered ? webVar("mac-hover", scheme).color : .clear)
         .contentShape(Rectangle())
         .onTapGesture {
             let flags = NSEvent.modifierFlags
@@ -1816,6 +1826,7 @@ struct WebIndexSearch: View {
     var width: CGFloat = 327
     /// A title row's height in place of the search row's.
     var height: CGFloat? = nil
+    @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -1824,6 +1835,7 @@ struct WebIndexSearch: View {
         HStack(spacing: 0) {
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
+                .focused($focused)
                 .webText(s.text)
                 .lineLimit(1)
                 .offset(x: -1.125, y: 1.035)
@@ -1833,7 +1845,12 @@ struct WebIndexSearch: View {
         // (On the iPad the row's touch-sized controls leave the field what's over: `min-w-0`, down to its icon.)
         .frame(minWidth: WebStyles.isPad ? 0 : width, maxWidth: width)
         .foregroundStyle(s.color.color)
-        .webBox(style)
+        // The input's focus ring while typing (MAC-46), and a click anywhere in the box, the magnifier included,
+        // puts the cursor in the field.
+        .webBox(listFieldStyle(style, focused: focused))
+        .contentShape(Rectangle())
+        .onTapGesture { focused = true }
+        .animation(.easeOut(duration: 0.12), value: focused)
         .overlay(alignment: .leading) {
             WebIconView(.search, size: 14).foregroundStyle(webVar("color-ink-faint", scheme).color).padding(.leading, 12).allowsHitTesting(false)
         }
@@ -1881,7 +1898,9 @@ struct WebTagsIndex: View {
                     Spacer(minLength: 0)
                     WebSortSelect(options: [("name", "Name"), ("count", "Most used"), ("created", "Newest")], value: $sort)
                 }
-                if tags.value != nil && shown.isEmpty {
+                if tags.value == nil {
+                    ListSkeleton(shape: .chips).padding(.top, 24)
+                } else if shown.isEmpty {
                     WebEmptyState(icon: .hash, title: needle.isEmpty ? "No tags yet" : "No tags match “\(needle)”", message: needle.isEmpty ? "Add tags to a page from its Info panel." : nil)
                 } else {
                     WebFlow(spacing: 8) {
@@ -1906,6 +1925,7 @@ struct WebTagsIndex: View {
                                 .padding(.trailing, 8)
                                 .frame(height: 36)
                                 .webBox(WebStyles.named("notes.card.menu"))
+                                .listHoverTint(radius: WebStyles.named("notes.card.menu").resolve(scheme).radius)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)

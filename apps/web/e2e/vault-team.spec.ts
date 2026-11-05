@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { APP, createWorkspace, newPerson, pick, showFolders, switcher, waitForSaved } from "./helpers";
+import { APP, createWorkspace, newPerson, pick, showFolders, switcher, waitForSaved, noteMenuItem } from "./helpers";
 
 /** Health, Activity, People, Trash and Settings open from the ⋯ menu beside Lock. */
 async function vaultSection(page: Page, name: string) {
@@ -152,7 +152,7 @@ test("a team Vault: a member gets the key from the owner's device; an outsider o
   await owner.page.goBack();
   await expect(owner.page.getByRole("heading", { name: "Root passwords" })).toBeVisible({ timeout: 30_000 });
   await owner.page.getByRole("button", { name: "Document actions" }).click();
-  await owner.page.getByRole("menuitem", { name: "Move to the Vault…" }).click();
+  await (await noteMenuItem(owner.page, "Move to the Vault…")).click();
   const moveIn = owner.page.getByRole("dialog", { name: "Move to the Vault?" });
   await shot(owner.page, "team-5-move-in");
   await moveIn.getByRole("button", { name: "Move to the Vault" }).click();

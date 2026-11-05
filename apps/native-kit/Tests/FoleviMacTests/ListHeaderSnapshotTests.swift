@@ -1,7 +1,8 @@
-// The title rows of a folder's page and the Folders page (the owner, 6 November 2026): a folder's mark, name, the way
-// up when nested, "N notes · edited …", Share, its menu and New note; the Folders page's name, count and New folder;
-// a folder's subfolders under a small "Folders" heading. The title row, the toolbar and the cards share their left and
-// right edges. Drawn by ScreenRoot on the scripted engine at the Mac's and the iPad's widths, light and dark, and
+// The one-row title rows of a folder's page and the Folders page (the owner, 6 November 2026, "A. One compact row"):
+// a folder's glyph, the way up when nested ("Work ›"), its name and "N notes", then Sort, the view switch, Share and
+// its "…" (no New note: the top bar's makes it there); the Folders page's name and count, then the search, Sort, the
+// view switch and New folder; a folder's subfolders under a small "Folders" heading. Every control in the row is one
+// height, and the row and the cards share their left and right edges. Drawn by ScreenRoot on the scripted engine at the Mac's and the iPad's widths, light and dark, and
 // compared to 1x references in __Snapshots__ (written when missing or with FOLEVI_RECORD_SNAPSHOTS=1); written at 2x
 // to FOLEVI_SCREENS_OUT when set.
 #if os(macOS)

@@ -70,6 +70,20 @@ final class ScreenModels {
     func list(_ kind: NotesListKind) -> NotesListModel {
         if let m = lists[kind] { return m }
         let m = NotesListModel(client: frame.client, kind: kind, feedback: feedback)
+        // Move and Copy in Folevi's own dialogs (FrameDialogs), never the system's sheets.
+        let frame = self.frame
+        m.presentMove = { [weak m] ids in
+            let rows = m?.loadedRows.filter { ids.contains($0.id) } ?? []
+            let folders = Set(rows.map { $0.folder?.id })
+            FrameDialogs.moveNotes(frame, ids: ids, title: ids.count == 1 ? rows.first?.title : nil, currentFolderId: rows.count == ids.count && folders.count == 1 ? .some(folders.first!) : nil)
+        }
+        m.presentCopy = { [weak m] ids in
+            guard let m else { return }
+            FrameDialogs.copyNotes(frame, ids: ids, spaces: m.copyTargets) { space, folder in
+                m.selecting = false
+                await m.actions.copy(ids, to: space, folder: folder)
+            }
+        }
         lists[kind] = m
         return m
     }
@@ -278,7 +292,7 @@ struct ScreenRoot: View {
             switch route {
             case .home: WebHomeScreen(frame: model, home: models.homeModel(), list: models.list(NotesListKind(.all)), allFolders: models.allFolderCards())
             case .notes(let v): WebNoteBrowser(frame: model, model: models.list(NotesListKind(v)))
-            case .folder(let id): WebNoteBrowser(frame: model, model: models.list(.folder(id)), folderCards: models.allFolderCards())
+            case .folder(let id): WebNoteBrowser(frame: model, model: models.list(.folder(id)))
             case .tag(let id): WebNoteBrowser(frame: model, model: models.list(.tag(id)))
             case .web("/folders"): WebFoldersIndex(frame: model, home: models.homeModel(), allFolders: models.allFolderCards())
             case .web("/tags"): WebTagsIndex(frame: model, tags: models.tagsIndex())

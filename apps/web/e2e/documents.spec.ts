@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { strToU8, unzipSync, zipSync } from "fflate";
-import { newPerson, waitForSaved } from "./helpers";
+import { newPerson, waitForSaved, noteMenuItem } from "./helpers";
 
 // 1×1 PNG.
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
@@ -106,7 +106,7 @@ test.describe("documents", () => {
     await page.keyboard.type("Child body");
     await waitForSaved(page);
     await page.getByRole("button", { name: "Document actions" }).click();
-    await page.getByRole("menuitem", { name: "Move…" }).click();
+    await (await noteMenuItem(page, "Move…")).click();
     const dialog = page.getByRole("dialog", { name: /^Move “/ });
     await dialog.getByRole("radio", { name: /A page/ }).click();
     await dialog.getByRole("textbox", { name: "Search pages" }).fill("Harbor parent");
@@ -138,7 +138,7 @@ test.describe("documents", () => {
     await expect(page.locator(".fb-editor a[data-page-link]")).toBeVisible();
     await page.getByRole("button", { name: "Document actions" }).click();
     const download = page.waitForEvent("download");
-    await page.getByRole("menuitem", { name: "Export…" }).click();
+    await (await noteMenuItem(page, "Export…")).click();
     await page.getByRole("dialog", { name: /^Export “/ }).getByRole("button", { name: "Export Markdown" }).click();
     const md = Buffer.concat(await (await (await download).createReadStream()).toArray()).toString("utf8");
     expect(md).toMatch(/\[Tide tables\]\(https?:\/\/[^)]+\/d\/[0-9A-Z]{26}\)/);

@@ -4,7 +4,7 @@
 // and dark (interactions/walkthrough.tsx, FlowchartStatic.tsx, canvas/imageFiles.ts).
 import { readFileSync, mkdirSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { newPerson, openShare, waitForSaved } from "./helpers";
+import { newPerson, openShare, waitForSaved, noteMenuItem } from "./helpers";
 
 // Screenshots for review when FC_SHOTS names a folder.
 const SHOTS = process.env.FC_SHOTS;
@@ -243,7 +243,7 @@ test.describe("Flowchart: present and follow a path", () => {
     // The note's HTML export packs the shape's image and draws a light and a dark picture.
     await page.getByRole("button", { name: "Document actions" }).click();
     const htmlDownload = page.waitForEvent("download");
-    await page.getByRole("menuitem", { name: "Export…" }).click();
+    await (await noteMenuItem(page, "Export…")).click();
     const exporting = page.getByRole("dialog", { name: /^Export “/ });
     await exporting.getByRole("radio", { name: /Web page/ }).click();
     await exporting.getByRole("button", { name: "Export Web page" }).click();

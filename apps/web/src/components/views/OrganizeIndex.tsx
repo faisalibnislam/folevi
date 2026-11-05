@@ -17,7 +17,7 @@ import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { ageText } from "@/lib/format";
 import { NewFolderButton } from "@/components/app/NewFolderButton";
 import { ViewChrome } from "@/components/app/Shell";
-import { ListPageHeader } from "./ListPageHeader";
+import { ListPageHeader, ROW_CONTROL, ROW_SEG, RowSort } from "./ListPageHeader";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useIphoneApp } from "@/lib/iphone";
@@ -33,15 +33,16 @@ type TagSort = "name" | "count" | "created";
 const tagColor = (color: string) => `var(--color-${color === "muted" ? "ink-muted" : color})`;
 const pages = (n: number) => (n === 1 ? "1 page" : `${n.toLocaleString()} pages`);
 
-function SearchField({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+function SearchField({ value, onChange, label, inRow = false }: { value: string; onChange: (v: string) => void; label: string; inRow?: boolean }) {
   const id = useId();
   return (
-    <div className="relative min-w-0 flex-1 max-sm:basis-full sm:max-w-sm">
+    // In a title row: as tall as the row's other controls, its width following the window's up to 300 px.
+    <div className={inRow ? "relative w-[clamp(10rem,26vw,300px)] min-w-0 flex-none" : "relative min-w-0 flex-1 max-sm:basis-full sm:max-w-sm"}>
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
       <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
-      <input id={id} type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={label} autoComplete="off" className="ui-input h-9 w-full rounded-chip pl-8 pr-8 text-callout" />
+      <input id={id} type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={label} autoComplete="off" className={`ui-input ${inRow ? ROW_CONTROL : "h-9"} w-full rounded-chip pl-8 pr-8 text-callout`} />
       {value ? (
         <button type="button" aria-label="Clear search" onClick={() => onChange("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-chip text-faint hover:text-ink">
           <X size={13} aria-hidden />
@@ -168,36 +169,34 @@ export function FoldersIndex() {
       />
     );
   return (
-    // The page names itself in its title row (with the count and New folder); the top bar keeps only New note.
+    // The page names itself in one compact title row (the owner, 6 November 2026): Folders and its count, then the
+    // search, Sort, the view switch and New folder (the top bar keeps only New note here).
     <ViewChrome title={null} tabTitle="Folders">
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
         <ListPageHeader
           title="Folders"
-          info={data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.folders.length} folders` : `${list.length} ${list.length === 1 ? "folder" : "folders"}`}
-          actions={<NewFolderButton parentId={null} inPage />}
+          count={data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.folders.length} folders` : `${list.length} ${list.length === 1 ? "folder" : "folders"}`}
+          controls={
+            <>
+              <SearchField value={q} onChange={setQ} label="Search folders" inRow />
+              <RowSort<FolderSort> value={sort} onChange={setSort} options={FOLDER_SORTS} />
+              <div className={ROW_SEG} role="group" aria-label="Layout">
+                <button type="button" aria-pressed={layout === "grid"} aria-label="Grid" title="Grid" onClick={() => setLayout("grid")}>
+                  <LayoutGrid size={15} aria-hidden />
+                </button>
+                <button type="button" aria-pressed={layout === "list"} aria-label="List" title="List" onClick={() => setLayout("list")}>
+                  <Rows3 size={15} aria-hidden />
+                </button>
+              </div>
+              <NewFolderButton parentId={null} inPage />
+            </>
+          }
         />
-        <div className="flex flex-wrap items-center gap-3">
-          <SearchField value={q} onChange={setQ} label="Search folders" />
-          <span className="flex-1" />
-          <SortSelect<FolderSort>
-            value={sort}
-            onChange={setSort}
-            options={FOLDER_SORTS}
-          />
-          <div className="ui-seg ui-well" role="group" aria-label="Layout">
-            <button type="button" aria-pressed={layout === "grid"} aria-label="Grid" title="Grid" onClick={() => setLayout("grid")}>
-              <LayoutGrid size={15} aria-hidden />
-            </button>
-            <button type="button" aria-pressed={layout === "list"} aria-label="List" title="List" onClick={() => setLayout("list")}>
-              <Rows3 size={15} aria-hidden />
-            </button>
-          </div>
-        </div>
 
         {data && !list.length ? (
           <EmptyState icon={FolderOpen} title={q.trim() ? `No folders match “${q.trim()}”` : "No folders yet"} body={q.trim() ? undefined : "Create one to group related pages."} />
         ) : layout === "grid" ? (
-          <ul {...reorder.listProps} className="relative mt-6 grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-x-8 gap-y-10" aria-label="Folders">
+          <ul {...reorder.listProps} className="relative grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-x-8 gap-y-10" aria-label="Folders">
             {reorderedCards(list, reorder).map((f) =>
               typeof f === "string" ? (
                 <ReorderGap key={f} id={f} />
@@ -215,7 +214,7 @@ export function FoldersIndex() {
             )}
           </ul>
         ) : (
-          <ul className="ui-card mt-6 divide-y divide-line overflow-hidden rounded-chip" aria-label="Folders">
+          <ul className="ui-card divide-y divide-line overflow-hidden rounded-chip" aria-label="Folders">
             {list.map((f) => (
               <li key={f.id} data-ctx-host="" className="group relative">
                 <AppLink href={`/folders/${f.id}`} {...folderTabClicks(openInBackground, f)} className="flex items-center gap-3 py-2.5 pl-4 pr-14 hover:bg-accent-soft/50 focus-visible:bg-accent-soft/60 focus-visible:outline-none">

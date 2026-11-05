@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { APP, createWorkspace, newPerson, switcher, switchTo, waitForSaved } from "./helpers";
+import { APP, createWorkspace, newPerson, switcher, switchTo, waitForSaved, noteMenuItem } from "./helpers";
 
 // Personal is not a workspace (docs/ACCOUNT_MODEL_PLAN.md): the switcher at the bottom of the sidebar lists
 // Personal first, then your team workspaces, and everything in the app follows the current context.
@@ -124,7 +124,7 @@ test("a page from Personal still opens by link while a workspace is selected, wi
   await waitForSaved(page);
   // It belongs to Personal, not the open workspace: Move can't file it in a folder here.
   await page.getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Move…" }).click();
+  await (await noteMenuItem(page, "Move…")).click();
   let move = page.getByRole("dialog", { name: /^Move “/ });
   await move.getByRole("radio", { name: /A folder/ }).click();
   await expect(move.getByText("You can't file this note in a folder here.")).toBeVisible();
@@ -135,7 +135,7 @@ test("a page from Personal still opens by link while a workspace is selected, wi
   await page.goto(personalUrl);
   await expect(page.getByRole("textbox", { name: "Document body" })).toContainText("Edited while in a workspace");
   await page.getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Move…" }).click();
+  await (await noteMenuItem(page, "Move…")).click();
   move = page.getByRole("dialog", { name: /^Move “/ });
   await expect(move.getByRole("combobox", { name: "Search folders" })).toBeVisible();
 });

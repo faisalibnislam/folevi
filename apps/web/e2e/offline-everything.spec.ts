@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { convexUrl, newPerson, pick, showFolders, waitForSaved } from "./helpers";
+import { convexUrl, newPerson, pick, showFolders, waitForSaved, noteMenuItem } from "./helpers";
 
 // Folders, comments and collections work offline the way notes do: changes made with no connection are
 // shown at once, kept on the device (the outbox), counted in the sync status, and reach the server once,
@@ -54,7 +54,7 @@ test("a folder made offline, with a note moved into it, reaches the server once"
 
   // Filed in the folder that only exists on this device so far.
   await page.getByRole("button", { name: "Document actions" }).click();
-  await page.getByRole("menuitem", { name: "Move…" }).click();
+  await (await noteMenuItem(page, "Move…")).click();
   await page.getByRole("dialog", { name: /^Move “/ }).getByRole("option", { name: /^Trips/ }).click();
   await expect(page.getByRole("status").filter({ hasText: "Moved to Trips" })).toBeVisible();
 

@@ -215,3 +215,125 @@ describe("the Mac app's page (native draws the strip)", () => {
     setNativePanes({ panes: null, sizes: null, tabs: [] });
   });
 });
+
+describe("folders open like Finder", () => {
+  const folderTabs = () => api.tabs.filter((t) => t.view?.kind === "folder" || t.view?.kind === "folders");
+  const pathOf = (id: string) => api.tabs.find((t) => t.id === id)?.view?.path;
+
+  test("the folder tab on screen goes to the folder clicked, the Folders page too, instead of adding a tab", () => {
+    render("/folders/brainstorming", null);
+    expect(seen).toHaveLength(1);
+    const tab = seen[0]!;
+    expect(tab.startsWith("folders:")).toBe(true);
+    render("/folders/cherries", null);
+    expect(seen).toEqual([tab]);
+    expect(pathOf(tab)).toBe("/folders/cherries");
+    render("/folders", null);
+    expect(seen).toEqual([tab]);
+    expect(api.tabs[0]!.view).toEqual({ kind: "folders", path: "/folders" });
+    render("/folders/plums", null);
+    expect(api.tabs[0]!.view).toEqual({ kind: "folder", path: "/folders/plums" });
+  });
+
+  test("from Home or a note the folder tab used last goes there; Home and notes stay", () => {
+    render("/documents", null);
+    render("/folders/a", null);
+    const first = seen[0]!;
+    act(() => api.openInBackground({ id: "b", name: "B" }));
+    const second = seen[1]!;
+    // b's tab on screen, then a note (its own tab), then a folder: b's tab (used last) goes there.
+    render("/folders/b", null);
+    render("/documents", null);
+    render(`/d/${A}`, null);
+    expect(seen).toEqual([first, second, A]);
+    render("/folders/c", null);
+    expect(seen).toEqual([first, second, A]);
+    expect(pathOf(second)).toBe("/folders/c");
+    expect(pathOf(first)).toBe("/folders/a");
+    expect(api.tabs.find((t) => t.id === A)).toMatchObject({ at: A });
+    // From Home, the same.
+    render("/documents", null);
+    render("/folders/d", null);
+    expect(pathOf(second)).toBe("/folders/d");
+    expect(folderTabs()).toHaveLength(2);
+  });
+
+  test("with no folder tab one opens; other views keep their own tabs", () => {
+    render("/tasks/today", null);
+    render("/folders/a", null);
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toBe("view:tasks");
+    expect(seen[1]!.startsWith("folders:")).toBe(true);
+    render("/drafts", null);
+    expect(seen).toHaveLength(3);
+  });
+
+  test("a folder already in another tab shows there, and the tab on screen stays as it was", () => {
+    render("/folders/a", null);
+    const first = seen[0]!;
+    act(() => api.openInBackground({ id: "b", name: "B" }));
+    const second = seen[1]!;
+    // A folder with a tab keeps it.
+    act(() => api.openInBackground({ id: "a", name: "A" }));
+    expect(seen).toHaveLength(2);
+    render("/folders/b", null);
+    expect(seen).toEqual([first, second]);
+    expect(pathOf(first)).toBe("/folders/a");
+    expect(pathOf(second)).toBe("/folders/b");
+  });
+
+  test("each tab has its own Back and Forward, in place; Home has none", () => {
+    render("/documents", null);
+    expect(api.tabHistory).toMatchObject({ canBack: false, canForward: false });
+    render("/folders/brainstorming", null);
+    const tab = seen[0]!;
+    expect(api.tabHistory?.canBack).toBe(false);
+    render("/folders/space-cherries", null);
+    expect(api.tabHistory?.canBack).toBe(true);
+    act(() => api.tabHistory!.back());
+    expect(window.location.pathname).toBe("/folders/brainstorming");
+    expect(seen).toEqual([tab]);
+    expect(pathOf(tab)).toBe("/folders/brainstorming");
+    expect(api.tabHistory).toMatchObject({ canBack: false, canForward: true });
+    act(() => api.tabHistory!.forward!());
+    expect(pathOf(tab)).toBe("/folders/space-cherries");
+    expect(api.tabHistory).toMatchObject({ canBack: true, canForward: false });
+    // A note opened from here has its own tab, with nowhere to go back to.
+    render(`/d/${A}`, null);
+    expect(api.tabHistory?.canBack).toBe(false);
+  });
+
+  test("Back to a folder that's in another tab by now shows that tab", () => {
+    render("/folders/a", null);
+    const first = seen[0]!;
+    render("/folders/b", null);
+    act(() => api.openInBackground({ id: "a", name: "A" }));
+    const second = seen[1]!;
+    act(() => api.tabHistory!.back());
+    expect(window.location.pathname).toBe("/folders/a");
+    expect(pathOf(first)).toBe("/folders/b");
+    expect(pathOf(second)).toBe("/folders/a");
+  });
+
+  test("tabs saved with one tab per folder come back as folder tabs", () => {
+    localStorage.setItem(
+      "folevi:tabs:acct",
+      JSON.stringify([
+        { id: A, at: A, title: "" },
+        { id: "view:folder:f1", title: "Trips", view: { kind: "folder", path: "/folders/f1" } },
+        { id: "view:folders", title: "Folders", view: { kind: "folders", path: "/folders" } },
+        { id: "view:folder:f1b", title: "Trips again", view: { kind: "folder", path: "/folders/f1" } },
+      ]),
+    );
+    render("/documents", null);
+    expect(seen).toHaveLength(3);
+    expect(seen[0]).toBe(A);
+    expect(seen.slice(1).every((id) => id.startsWith("folders:"))).toBe(true);
+    expect(api.tabs[1]).toMatchObject({ title: "Trips", view: { path: "/folders/f1" } });
+    // They navigate like any folder tab.
+    render("/folders/f1", null);
+    render("/folders/f2", null);
+    expect(seen).toHaveLength(3);
+    expect(api.tabs[1]!.view?.path).toBe("/folders/f2");
+  });
+});

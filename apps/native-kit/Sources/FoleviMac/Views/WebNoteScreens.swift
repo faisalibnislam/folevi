@@ -128,7 +128,11 @@ struct WebFolderCell: View {
     var dropFolder: (@MainActor (FolderDragItem) -> Void)? = nil
     /// The folder this card sits in (nil: the top level), which its drag carries.
     var parentId: String? = nil
+    /// Cards that can be put in order (the Folders page): a folder held over the card's left or right quarter goes
+    /// before or after it, over the middle inside it.
+    var reorder: FolderCardReorder? = nil
     @State private var hovered = false
+    @State private var width: CGFloat = 0
     /// Set while a note or folder is held over the card.
     @State private var dropZone: FolderRules.Zone?
     @State private var spring = SpringLoader()
@@ -136,7 +140,7 @@ struct WebFolderCell: View {
 
     var body: some View {
         ZStack {
-            if dropZone != nil {
+            if dropZone == .inside || (dropZone != nil && reorder == nil) {
                 RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular)
                     .fill(webVar("glass-active", scheme).color)
                     .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).strokeBorder(webVar("color-heading", scheme).color, lineWidth: 2))
@@ -146,7 +150,11 @@ struct WebFolderCell: View {
                 WebFolderCard(card, labelScale: labelScale, hovered: hovered)
             }
             .buttonStyle(PressDipButtonStyle())
-                .draggable(FolderDragItem(id: card.id, name: card.name, parentId: parentId))
+                .draggable({
+                    // (Read when the drag begins: the page knows which card is in the air.)
+                    reorder?.began()
+                    return FolderDragItem(id: card.id, name: card.name, parentId: parentId)
+                }())
             GeometryReader { geo in
                 WebCardMenuButton(label: "Folder options for \(card.name)", entries: menu)
                     .position(x: geo.size.width / 2, y: geo.size.height * 0.7 + (hovered ? -4 : 0))
@@ -154,15 +162,30 @@ struct WebFolderCell: View {
             }
         }
         .aspectRatio(WebFolderCard.aspect, contentMode: .fit)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .onHover { hovered = $0 }
         .webContextMenu(menu)
-        // Notes and folders through one target (FolderDrop): anywhere on the card is inside it.
+        // Notes and folders through one target (FolderDrop): anywhere on the card is inside it, unless the cards can
+        // be put in order (then its left and right quarters are the gaps before and after it).
         .onDrop(of: dropFolder == nil ? [.foleviNoteRef] : [.foleviNoteRef, .foleviFolderRef], delegate: FolderDrop(
-            folderId: card.id, axis: .horizontal, length: 0, zone: $dropZone, spring: spring,
+            folderId: card.id, axis: .horizontal, length: reorder == nil ? 0 : width, zone: $dropZone, spring: spring,
             onNotes: { items in drop(items) },
-            onFolder: { item, _ in if item.id != card.id { dropFolder?(item) } }
+            onFolder: { item, zone in
+                if zone != .inside, let reorder { reorder.drop(item, zone) } else if item.id != card.id { dropFolder?(item) }
+            },
+            onZone: reorder?.hover
         ))
     }
+}
+
+/// What a folder card on the Folders page tells the page about a drag (WebFoldersIndex: the gap the cards open).
+struct FolderCardReorder {
+    /// A drag of this card begins.
+    var began: @MainActor () -> Void
+    /// Where over the card a dragged folder is held (nil: it left).
+    var hover: @MainActor (FolderRules.Zone?) -> Void
+    /// A folder dropped before or after the card.
+    var drop: @MainActor (FolderDragItem, FolderRules.Zone) -> Void
 }
 
 /// The folder menu's rows (the web's FolderMenu, WebFolderMenu.swift) as Folevi menu entries.
@@ -1131,20 +1154,34 @@ struct WebTemplateTile: View {
 
 // MARK: Folders and Tags
 
-enum WebFolderSort: String, CaseIterable { case name, updated, count, created }
-
 struct WebFoldersIndex: View {
     let frame: FrameModel
     let home: HomeModel
     let allFolders: ValueStore<FolderCardsValue>
     @State private var query = ""
-    @AppStorage("folevi.web.folders-sort") private var sortRaw = WebFolderSort.name.rawValue
+    /// Manual, Name or Recent (FolderOrder.swift), kept on this device as the web keeps `folevi:folders-sort`.
+    @AppStorage("folevi.web.folders-sort") private var sortRaw = FoldersSort.manual.rawValue
     @AppStorage("folevi.web.folders-layout") private var layoutRaw = "grid"
+    /// Where the cards open a gap for a folder held between them (a place in the cards on show), and the card whose
+    /// drag is under way here (dimmed: the spot it leaves).
+    @State private var gap: Int?
+    @State private var gapHold = 0
+    @State private var dragging: String?
     @Environment(\.colorScheme) private var scheme
     @Environment(\.screenNavigator) private var navigator
     @Environment(\.screenFeedback) private var feedback
 
-    private var sort: WebFolderSort { WebFolderSort(rawValue: sortRaw) ?? .name }
+    private var sort: FoldersSort { FoldersSort(saved: sortRaw) }
+    private var searching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
+    /// Cards can be put in order by dragging (not while searching: a folder still goes inside a card).
+    private var canReorder: Bool { home.canEdit && !searching }
+
+    /// Every folder's place in its own order (the tree's, as the sidebar shows them).
+    private var manualRank: [String: Int] {
+        var out: [String: Int] = [:]
+        for (i, f) in (home.tree.value?.folders ?? []).enumerated() { out[f.id] = i }
+        return out
+    }
 
     private var list: [FolderCard] {
         let all = allFolders.value?.folders ?? []
@@ -1153,13 +1190,84 @@ struct WebFoldersIndex: View {
         // through every level (each match says where it is). A parent that isn't in the list reads as the top level.
         let ids = Set(all.map(\.id))
         let rows = needle.isEmpty ? all.filter { $0.parentId.map { !ids.contains($0) } ?? true } : all.filter { $0.name.lowercased().contains(needle) }
-        return rows.sorted { a, b in
-            switch sort {
-            case .updated: return a.updatedAt > b.updatedAt
-            case .count: return a.noteCount != b.noteCount ? a.noteCount > b.noteCount : a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
-            case .created: return a.createdAt > b.createdAt
-            case .name: return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+        let rank = manualRank
+        let manual = rows.enumerated().sorted { a, b in
+            let x = rank[a.element.id] ?? Int.max, y = rank[b.element.id] ?? Int.max
+            return x != y ? x < y : a.offset < b.offset
+        }.map(\.element)
+        return FolderOrder.sorted(manual, by: sort, name: \.name, updatedAt: \.updatedAt)
+    }
+
+    /// The cards to draw: each folder, and the gap where a held one will land (nil).
+    private func cells(_ shown: [FolderCard]) -> [FolderCard?] {
+        var out: [FolderCard?] = shown
+        guard let gap, canReorder else { return out }
+        // (Right beside the card being dragged, it would land where it is: no gap.)
+        if let dragging, let i = shown.firstIndex(where: { $0.id == dragging }), gap == i || gap == i + 1 { return out }
+        out.insert(nil, at: min(max(gap, 0), out.count))
+        return out
+    }
+
+    private var slide: Animation? { WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.82) }
+
+    /// A folder held at place `at` among the cards (nil: it left): the gap opens there; leaving, it closes a moment
+    /// later unless the folder is held over another card or the gap by then.
+    private func hold(_ at: Int?) {
+        gapHold += 1
+        if let at {
+            if gap != at { withAnimation(slide) { gap = at } }
+            return
+        }
+        let mine = gapHold
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(350))
+            if gapHold == mine { withAnimation(slide) { gap = nil }; dragging = nil }
+        }
+    }
+
+    private func reorder(_ f: FolderCard, in shown: [FolderCard]) -> FolderCardReorder? {
+        guard canReorder, let i = shown.firstIndex(where: { $0.id == f.id }) else { return nil }
+        return FolderCardReorder(
+            began: { dragging = f.id },
+            hover: { zone in
+                switch zone {
+                case .before?: hold(i)
+                case .after?: hold(i + 1)
+                case .inside?: gapHold += 1
+                case nil: hold(nil)
+                }
+            },
+            drop: { item, zone in
+                guard let to = FolderOrder.gap(shown.map(\.id), moving: item.id, at: f.id, zone: zone) else { return finishDrag() }
+                commit(item, gap: to, shown: shown)
             }
+        )
+    }
+
+    /// The gap's own drop: `at` is its place among the cards on show, counted with the dragged one.
+    private func dropInGap(_ item: FolderDragItem, shown: [FolderCard]) {
+        guard let at = gap else { return finishDrag() }
+        let from = shown.firstIndex { $0.id == item.id }
+        commit(item, gap: from.map { $0 < at ? at - 1 : at } ?? at, shown: shown)
+    }
+
+    private func commit(_ item: FolderDragItem, gap to: Int, shown: [FolderCard]) {
+        let ids = shown.map(\.id)
+        let rank = manualRank
+        let manual = ids.enumerated().sorted { a, b in
+            let x = rank[a.element] ?? Int.max, y = rank[b.element] ?? Int.max
+            return x != y ? x < y : a.offset < b.offset
+        }.map(\.element)
+        let current = sort
+        finishDrag()
+        Task { await FolderOrder.drop(item.id, name: item.name, gap: to, shown: ids, manual: manual, links: home.folderLinks, sort: current, setSort: { sortRaw = $0.rawValue }, actions: home.actions) }
+    }
+
+    private func finishDrag() {
+        gapHold += 1
+        withAnimation(slide) {
+            gap = nil
+            dragging = nil
         }
     }
 
@@ -1179,7 +1287,7 @@ struct WebFoldersIndex: View {
                         .webText(notesStyle("index.status", scheme).text).lineLimit(1).foregroundStyle(notesStyle("index.status", scheme).color.color)
                         .fixedSize()
                     Spacer(minLength: 0)
-                    WebSortSelect(options: [(WebFolderSort.name, "Name"), (.updated, "Last updated"), (.count, "Most pages"), (.created, "Newest")], value: Binding(get: { sort }, set: { sortRaw = $0.rawValue }))
+                    WebSortSelect(options: FoldersSort.options, value: Binding(get: { sort }, set: { sortRaw = $0.rawValue }))
                         .fixedSize()
                     WebSegmented(options: [("grid", WebIcon.layoutGrid, "Grid"), ("list", .rows3, "List")], value: $layoutRaw, prefix: "index")
                         .fixedSize()
@@ -1192,15 +1300,30 @@ struct WebFoldersIndex: View {
                         .transition(.opacity)
                 } else {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 32, alignment: .top)], alignment: .leading, spacing: 40) {
-                        ForEach(shown, id: \.id) { f in
-                            VStack(alignment: .leading, spacing: 8) {
-                                WebFolderCell(card: CardMapping.folderCard(f, parentName: f.path), menu: { menu(f) }, open: { frame.open(.folder(f.id)) }, drop: { items in Task { await home.dropNotes(items, on: f) } },
-                                              dropFolder: { item in Task { await home.dropFolder(item, on: f, zone: .inside) } }, parentId: f.parentId)
-                                // A search finds folders at every level: a nested one says where it is.
-                                if let path = f.path {
-                                    Text("in \(path)").webText(.role(.footnote)).lineLimit(1).foregroundStyle(webVar("color-ink-muted", scheme).color)
-                                        .accessibilityHidden(true)
+                        ForEach(Array(cells(shown).enumerated()), id: \.element?.id) { _, cell in
+                            if let f = cell {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    WebFolderCell(card: CardMapping.folderCard(f, parentName: f.path), menu: { menu(f) }, open: { frame.open(.folder(f.id)) }, drop: { items in Task { await home.dropNotes(items, on: f) } },
+                                                  dropFolder: { item in
+                                                      finishDrag()
+                                                      Task { await home.dropFolder(item, on: f, zone: .inside) }
+                                                  }, parentId: f.parentId, reorder: reorder(f, in: shown))
+                                    // A search finds folders at every level: a nested one says where it is.
+                                    if let path = f.path {
+                                        Text("in \(path)").webText(.role(.footnote)).lineLimit(1).foregroundStyle(webVar("color-ink-muted", scheme).color)
+                                            .accessibilityHidden(true)
+                                    }
                                 }
+                                .opacity(dragging == f.id && gap != nil ? 0.4 : 1)
+                            } else {
+                                // Where the held folder will land.
+                                RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular)
+                                    .strokeBorder(webVar("color-line", scheme).color, style: StrokeStyle(lineWidth: 2, dash: [6, 5]))
+                                    .aspectRatio(WebFolderCard.aspect, contentMode: .fit)
+                                    .contentShape(Rectangle())
+                                    .onDrop(of: [.foleviFolderRef], delegate: FolderGapDrop(onHover: { inside in if inside { gapHold += 1 } else { hold(nil) } }, onFolder: { item in dropInGap(item, shown: shown) }))
+                                    .accessibilityHidden(true)
+                                    .transition(.opacity)
                             }
                         }
                     }

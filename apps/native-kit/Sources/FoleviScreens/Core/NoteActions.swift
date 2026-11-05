@@ -235,6 +235,17 @@ public final class NoteActions {
         await folderCommand(.folderMove(id: id, parentId: place.parentId, afterId: place.afterId, space: space), message)
     }
 
+    /// Several folder moves in a row (the Folders page putting its cards in a new order), then one toast (none when
+    /// `message` is nil), with Undo when `undo` is given.
+    public func moveFolders(_ moves: [(id: String, place: FolderRules.Place)], message: String?, undo: (@MainActor @Sendable () -> Void)? = nil) async {
+        do {
+            for m in moves { try await client.command(.folderMove(id: m.id, parentId: m.place.parentId, afterId: m.place.afterId, space: space)) }
+            if let message { feedback.toast(ScreenToast(message, tone: .success, actionTitle: undo == nil ? nil : "Undo", action: undo)) }
+        } catch {
+            report(error)
+        }
+    }
+
     /// Always fully encrypted, on or off (web LockDialog's wording).
     public func lockFolder(_ id: String, name: String, locked: Bool) async {
         do {

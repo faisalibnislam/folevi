@@ -1,6 +1,7 @@
 // All folders (web views/OrganizeIndex.tsx, iphone/Organize.tsx): every folder of the space, nested ones too, as
-// folder cards ("in Work / Clients" under a nested one), as rows, or as the tree; a search field, sort (Name, Last
-// updated, Most notes, Newest), New folder, and every folder's menu, drags and drops. On the iPhone the tree is how
+// folder cards ("in Work / Clients" under a nested one), as rows, or as the tree; a search field, sort (Manual,
+// Name, Recent: FolderOrder.swift), New folder, and every folder's menu, drags and drops (a card dragged between
+// others goes in that spot). On the iPhone the tree is how
 // nested folders are walked without opening each one.
 import SwiftUI
 import Observation
@@ -8,7 +9,6 @@ import FoleviDesign
 import FoleviEngine
 
 public enum FoldersLayout: String, Sendable, CaseIterable { case tiles, list, tree }
-public enum FoldersSort: String, Sendable, CaseIterable { case name, updated, count, created }
 
 @MainActor
 @Observable
@@ -39,7 +39,7 @@ public final class AllFoldersModel {
         self.locks = client.watch(PendingN7Views.FolderLocks(SpaceArgs(space: space)))
         self.treeState = FolderTreeState(defaults: defaults)
         self.layout = defaults.string(forKey: "folevi.folders.layout").flatMap(FoldersLayout.init(rawValue:)) ?? .tiles
-        self.sort = defaults.string(forKey: "folevi.folders.sort").flatMap(FoldersSort.init(rawValue:)) ?? .name
+        self.sort = FoldersSort(saved: defaults.string(forKey: "folevi.folders.sort"))
     }
 
     public var nodes: [FolderNode] { tree.value?.folders ?? [] }
@@ -77,19 +77,26 @@ public final class AllFoldersModel {
     public var shown: [FolderNode] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let ids = Set(nodes.map(\.id))
-        var out = q.isEmpty ? nodes.filter { $0.parentId.map { !ids.contains($0) } ?? true } : nodes.filter { $0.name.lowercased().contains(q) || (path($0)?.lowercased().contains(q) ?? false) }
-        switch sort {
-        case .name:
-            out.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        case .count:
-            out.sort { ($0.noteCount ?? 0, $1.name) > ($1.noteCount ?? 0, $0.name) }
-        case .updated:
-            out.sort { (card($0.id)?.updatedAt ?? 0) > (card($1.id)?.updatedAt ?? 0) }
-        case .created:
-            // Newest first: folders made later rank later in the tree until R9.3 gives createdAt.
-            out.reverse()
-        }
-        return out
+        // (The tree is in the folders' own order: Manual.)
+        let out = q.isEmpty ? nodes.filter { $0.parentId.map { !ids.contains($0) } ?? true } : nodes.filter { $0.name.lowercased().contains(q) || (path($0)?.lowercased().contains(q) ?? false) }
+        return FolderOrder.sorted(out, by: sort, name: \.name, updatedAt: { self.card($0.id)?.updatedAt ?? 0 })
+    }
+
+    /// Cards can be put in order by dragging: not while searching (a folder still goes inside a card).
+    public var canReorder: Bool { canEdit && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    /// A folder dropped on a card's middle: it goes inside that folder (refused, with why, where it can't).
+    public func dropFolder(_ item: FolderDragItem, into targetId: String) async {
+        await FolderDrops.drop(item, targetId: targetId, targetName: nodes.first { $0.id == targetId }?.name, zone: .inside, links: links, actions: actions)
+    }
+
+    /// A folder dropped in a gap among the cards on show (FolderOrder.drop): in Name or Recent the order on screen,
+    /// with the move, becomes the manual order and the sort switches to Manual.
+    public func dropFolder(_ item: FolderDragItem, gap: Int) async {
+        let shown = self.shown.map(\.id)
+        let ids = Set(shown)
+        let manual = nodes.map(\.id).filter { ids.contains($0) }
+        await FolderOrder.drop(item.id, name: item.name, gap: gap, shown: shown, manual: manual, links: links, sort: sort, setSort: { [weak self] in self?.sort = $0 }, actions: actions)
     }
 
     public func cardModel(_ node: FolderNode) -> FolderCardModel {
@@ -99,7 +106,7 @@ public final class AllFoldersModel {
         return m
     }
 
-    public var sortOptions: [(FoldersSort, String)] { [(.name, "Name"), (.updated, "Last updated"), (.count, "Most notes"), (.created, "Newest")] }
+    public var sortOptions: [(FoldersSort, String)] { FoldersSort.options }
 
     public var emptyTitle: String {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -46,6 +46,8 @@ struct RebuildAllFoldersScreen: View {
         screen.folderMenu = { node, anchor in
             PhoneFolderMenu.show(MenuFolder(node), from: anchor, context: model.context, actions: model.actions, dialogs: model.dialogs, menus: menus, hooks: RebuildFolderHooks.make(frame: frame, phone: phone, newFolder: newFolder))
         }
+        // (A card held for its menu and then moved is dragged into a new place: the menu gives way.)
+        screen.closeMenu = { menus.close() }
         return screen.folderDialogs(model.dialogs, actions: model.actions, tree: model.nodes)
     }
 

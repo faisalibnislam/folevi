@@ -348,16 +348,25 @@ struct SyncSettingsView: View {
     let model: MacSettingsModel
 
     var body: some View {
-        let s = model.storage.value
+        // (Read so a Retry, which replaces the store, draws the new one.)
+        let _ = model.storageGeneration
+        let store = model.storage
+        let s = store.value
         VStack(alignment: .leading, spacing: 20) {
             SettingsCard("This device", description: "Folevi keeps your recent documents and every unsent change on this \(ThisDevice.noun), so you can keep writing offline and nothing is lost if a window closes.") {
                 VStack(alignment: .leading, spacing: 16) {
                     SettingsTerms(rows: [
                         ("Connection", model.session?.online == false ? "Offline" : "Online", nil),
                         ("Changes waiting to sync", "\(s?.waiting ?? 0)", nil),
-                        ("Notes kept", s?.notesKept.map(String.init) ?? "…", nil),
-                        ("Space used", s?.usedBytes.map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "…", nil),
+                        ("Notes kept", store.notesKeptText, nil),
+                        ("Space used", store.spaceUsedText, nil),
                     ])
+                    if store.canRetryReadings {
+                        HStack(spacing: 12) {
+                            SText("This \(ThisDevice.noun) didn't give every reading.", "row.hint")
+                            WebButton("Retry", icon: .refreshCw, iconSize: 14, size: .sm) { model.remeasureStorage() }
+                        }
+                    }
                     SettingsSwitchRow(label: "Keep all notes on this \(ThisDevice.noun)", hint: "Every note and its attachments stay on this \(ThisDevice.noun), so all of them open offline.", isOn: s?.keepAll ?? false, disabled: s?.available == false) { on in
                         Task { await model.perform(.deviceKeepAll(on: on), done: "Saved") }
                     }

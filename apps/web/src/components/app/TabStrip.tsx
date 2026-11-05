@@ -399,7 +399,7 @@ export function TabStrip() {
   return (
     <div
       data-ipad-tabs={ipad ? "" : undefined}
-      className={ipad ? "ui-liquid absolute inset-x-2 top-2 z-30 flex h-[52px] items-center gap-1 px-1.5" : `ui-drag ui-glass ui-glass-sidebar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-panel px-1 ${route.name === "vault" ? "!bg-surface" : ""}`}
+      className={ipad ? "ui-liquid absolute inset-x-2 top-2 z-30 flex h-[52px] items-center gap-1 px-1.5" : `ui-drag ui-glass ui-glass-sidebar ui-tabbar absolute inset-x-1 top-1 z-30 flex h-11 items-center gap-1.5 rounded-panel px-1 ${route.name === "vault" ? "!bg-surface" : ""}`}
     >
       {/* While the sidebar is hidden, its menu waits here; otherwise it sits in the sidebar. */}
       {!sidebarOpen ? (
@@ -529,7 +529,7 @@ export function TabStrip() {
                     if (!pt) return null;
                     return (
                       <div key={id} className="absolute inset-0" style={{ visibility: id === t.id ? "visible" : "hidden" }}>
-                        <TabPicture tab={pt} titles={titleMap} viewIcon={iconOf(pt)} viewName={labelOf(pt)} className="h-full w-full" />
+                        <TabPicture tab={pt} titles={titleMap} viewIcon={iconOf(pt)} className="h-full w-full" />
                       </div>
                     );
                   })}

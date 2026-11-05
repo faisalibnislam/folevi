@@ -2,7 +2,7 @@
 
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
-import { ChevronLeft, ChevronRight, GripVertical, PanelLeft, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, PanelLeft, Plus, X } from "lucide-react";
 import { usePane } from "@/lib/app/panes";
 import { api } from "@/lib/convex/api";
 import { useAppRouter } from "@/lib/app/router";
@@ -405,11 +405,18 @@ function WebShell() {
   useEffect(() => setDrawerOpen(false), [route]);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
-  const sidebarOpen = isNarrow ? drawerOpen : !collapsed;
+  // A window under 1000px wide (a tablet, a narrow window) starts with the sidebar folded away, so the page gets
+  // the room (at 820 it left one and a half note cards). ⌘\ or the sidebar button opens it; it folds again the
+  // next time the window narrows. The saved choice (collapsed) is for wider windows and stays untouched.
+  const tight = useMediaQuery("(max-width: 999px)") && !ipad && !isNarrow;
+  const [tightOpen, setTightOpen] = useState(false);
+  useEffect(() => setTightOpen(false), [tight]);
+  const sidebarOpen = isNarrow ? drawerOpen : tight ? tightOpen : !collapsed;
   const toggleSidebar = useCallback(() => {
     if (isNarrow) setDrawerOpen((o) => !o);
+    else if (tight) setTightOpen((o) => !o);
     else setCollapsed(!collapsed);
-  }, [isNarrow, collapsed, setCollapsed]);
+  }, [isNarrow, tight, collapsed, setCollapsed]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -538,7 +545,7 @@ function WebShell() {
         </Suspense>
       ) : null}
       {/* The floating Ask AI chat (bottom right), only where AI is included and on: Core has no AI, so nothing offers it. */}
-      {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} hideLauncher={(isNarrow && drawerOpen) || iphone || ipad} /> : null}
+      {ai.on ? <AskAiChat open={Boolean(askOpen)} onOpen={() => setAskOpen({})} initial={askOpen?.q} folder={askOpen?.folder} onClose={() => setAskOpen(null)} hideLauncher={(isNarrow && drawerOpen) || iphone || ipad || route.name === "settings"} /> : null}
     </>
   );
 
@@ -599,7 +606,7 @@ function WebShell() {
         </div>
         {isNarrow ? (
           drawerOpen ? <NavDrawer onClose={closeDrawer}>{pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar onNavigate={closeDrawer} />}</NavDrawer> : null
-        ) : !collapsed ? (
+        ) : sidebarOpen ? (
           // The iPad's sidebar is iPadOS's width, 320, and isn't dragged (a finger can't hold a 4 pt edge).
           <div ref={sidebarPanel} data-ipad-sidebar={ipad ? "" : undefined} className="relative z-20 flex-none" style={{ width: ipad ? 320 : width }}>
             {pageSidebar ? <div ref={setSidebarSlot} className="h-full" /> : <Sidebar />}
@@ -637,6 +644,7 @@ function WebShell() {
 /** Top bar shared by all views: sidebar toggle, title/breadcrumbs, and actions. */
 export function ViewChrome({ title, subtitle, leading, actions, children, tabTitle, overlay, tint, invert, iphone }: { /** The view in the other theme (dark in light mode, light in dark mode), the rest of the app unchanged: the Vault. */ invert?: boolean; title: ReactNode; /** A short fact next to the title (e.g. "48 notes"), announced politely when it changes. */ subtitle?: ReactNode; leading?: ReactNode; actions?: ReactNode; children: ReactNode; tabTitle?: string; /** Floats over the view without scrolling with it (e.g. the bar for selected notes). */ overlay?: ReactNode; /** A colour the view's background takes a faint wash of (a folder's colour). */ tint?: string; /** How the view looks as a screen of the iPhone app (large title, bar actions); only read there. */ iphone?: IphoneScreenOptions }) {
   const { sidebarOpen, toggleSidebar, drawerMode } = useShell();
+  const createDocument = useCreateDocument();
   const { route } = useAppRouter();
   useDocumentTitle(tabTitle ?? (typeof title === "string" ? title : undefined));
   useViewTab(tabTitle ?? (typeof title === "string" ? title : undefined));
@@ -683,12 +691,19 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
   }
   // Save state lives in the sidebar; on phones (sidebar is a drawer) it shows here instead.
   const sync = drawerMode ? <SyncStatus documentId={route.name === "doc" ? route.id : undefined} /> : null;
+  // On phones (no tab strip) the bar also names the view and has New note, which the strip has elsewhere.
+  const newNote =
+    drawerMode && route.name !== "doc" ? (
+      <IconButton label="New note" shortcut="⌘⌥N" onClick={() => void createDocument({})}>
+        <Plus size={16} aria-hidden />
+      </IconButton>
+    ) : null;
   // No title bar: the page's name is in its tab and read to screen readers (a visually hidden h1). Only
   // real content remains in a plain row (no box): a view's facts and actions, a note's breadcrumb, and on
   // phones the drawer toggle and save state.
-  const showTitle = route.name === "doc";
+  const showTitle = route.name === "doc" || drawerMode;
   const drawerToggle = !sidebarOpen && drawerMode;
-  const visible = Boolean(subtitle || leading || actions || sync || drawerToggle || (showTitle && title));
+  const visible = Boolean(subtitle || leading || actions || sync || drawerToggle || newNote || (showTitle && title));
   // Joined notes: each note's top row is its JoinedBar.
   const joined = showTitle ? pane.joined : undefined;
   const bar = joined ? (
@@ -714,6 +729,7 @@ export function ViewChrome({ title, subtitle, leading, actions, children, tabTit
         <div className="flex flex-none items-center gap-1.5">
           {sync}
           {actions}
+          {newNote}
         </div>
       </header>
   );

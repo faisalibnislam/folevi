@@ -120,7 +120,7 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
         aria-label={task.status === "done" ? `Mark “${task.title}” as not done` : task.status === "canceled" ? `Reopen canceled task “${task.title}”` : `Mark “${task.title}” as done`}
         title={task.status === "done" ? "Mark as not done" : task.status === "canceled" ? "Reopen" : "Mark as done"}
         onClick={() => onToggle(task)}
-        className={`mt-0.5 grid h-[18px] w-[18px] flex-none place-items-center rounded-chip border-[1.5px] transition-colors ${
+        className={`relative mt-0.5 grid h-[18px] w-[18px] flex-none place-items-center rounded-chip border-[1.5px] transition-colors before:absolute before:-inset-1 before:content-[''] ${
           task.status === "done"
             ? "border-transparent bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-moss)_82%,white),var(--color-moss))] text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.35)]"
             : task.status === "canceled"
@@ -133,7 +133,7 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
       <div className="min-w-0 flex-1">
         <p className={`text-body leading-snug ${closed ? "text-muted line-through" : ""}`}>{task.title || "Untitled task"}</p>
         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-footnote text-muted">
-          <AppLink href={noteHref} className="inline-flex min-w-0 items-center gap-1 hover:text-ink hover:underline">
+          <AppLink href={noteHref} className="-my-1 inline-flex min-w-0 items-center gap-1 py-1 hover:text-ink hover:underline">
             <FileText size={12} aria-hidden className="flex-none" />
             <span className="truncate">{task.documentTitle || "Untitled"}</span>
           </AppLink>
@@ -389,7 +389,8 @@ export function TasksView({ view }: { view: View }) {
             <Plus size={14} aria-hidden /> Add task
           </Button>
         </header>
-        <nav aria-label="Task views" className="ui-seg ui-well flex-wrap sm:flex-nowrap" title="Every task lives in a note. Open its page to see the context it was written in.">
+        {/* Whole items wrap to a second row when they don't fit (never a label broken over two lines). */}
+        <nav aria-label="Task views" className="ui-seg ui-well flex-wrap">
           {VIEWS.map((v) => {
             const count = counts && v.id !== "completed" ? counts[v.id as keyof typeof counts] : undefined;
             return (
@@ -398,7 +399,7 @@ export function TasksView({ view }: { view: View }) {
                 href={`/tasks/${v.id}`}
                 aria-current={v.id === view ? "page" : undefined}
                 data-active={v.id === view}
-                className="!min-h-8 !text-subheadline"
+                className="!min-h-8 flex-[1_0_auto] whitespace-nowrap !text-subheadline"
               >
                 {v.label}
                 {count ? <span className={`rounded-chip px-1.5 text-caption-2 font-semibold leading-[18px] tabular-nums ${v.id === view ? "bg-heading text-canvas" : "text-[var(--color-ink-faint)]"}`}>{count}</span> : null}
@@ -421,6 +422,7 @@ export function TasksView({ view }: { view: View }) {
         ) : (
           list
         )}
+        {tasks !== undefined && shown.length ? <p className="mt-6 text-footnote text-muted">Every task lives in a note. Open its page to see the context it was written in.</p> : null}
       </div>
       <TaskEditDialog task={editing} onClose={() => setEditing(null)} />
     </ViewChrome>

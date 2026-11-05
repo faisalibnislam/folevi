@@ -1,12 +1,16 @@
 // One tooltip everywhere in Folevi, the website and the app in a browser as well as Folevi for Mac (docs/MAC_POLISH_PLAN.md
 // §2.4, §3.7; never the browser's own, the owner's rule): what a control's `title` says,
-// drawn by the page in Folevi's type after 700 ms of the pointer resting on it, at once while another has just
+// drawn by the page in Folevi's type after 700 ms of the pointer resting on it (or 500 ms of keyboard focus on it), at once while another has just
 // shown (until a second passes with none), with a shortcut written in it ("New note (⌘⌥N)") in a keycap. The
 // browser's own tooltip is held back while the page's shows (the title comes back as the pointer leaves), so
 // Electron and WebKit show the same thing. Never for touch, never while a button is held or a menu is open.
 
 const REST_MS = 700;
 const WARM_MS = 1000;
+/** How long keyboard focus rests on a control before its tooltip shows. */
+const FOCUS_MS = 500;
+/** The controls whose title shows on keyboard focus (not fields: their hint would cover what's typed). */
+const FOCUS_TIP = "button, a[href], [role='button'], [role='tab'], [role='radio'], [role='checkbox'], [role='switch'], [role='menuitem']";
 const SHORTCUT = /^(.*?)\s*\(((?:[⌘⌃⌥⇧]+)[^\s()]+|[⌘⌃⌥⇧]*(?:Tab|Space|Return|Enter|Esc|F\d+))\)$/;
 
 /** "New note (⌘⌥N)" as its words and its shortcut. */
@@ -132,6 +136,27 @@ function install(): () => void {
     target.removeAttribute("title");
     timer = window.setTimeout(show, Date.now() - lastHidden < WARM_MS ? 0 : REST_MS);
   };
+  // Keyboard focus shows it too (icon-only buttons have no visible name otherwise), after a short rest; it goes
+  // with the focus. Only a control's own title, and only for the keyboard (:focus-visible), never a click.
+  const focusIn = (e: FocusEvent) => {
+    const target = e.target instanceof HTMLElement ? e.target : null;
+    if (!target || target === owner || !target.matches(FOCUS_TIP) || !target.hasAttribute("title")) return;
+    let keyboard = false;
+    try {
+      keyboard = target.matches(":focus-visible");
+    } catch {
+      /* an engine without :focus-visible: no tooltip on focus */
+    }
+    if (!keyboard || target.closest("iframe")) return;
+    hide();
+    owner = target;
+    target.setAttribute("data-mac-title", target.getAttribute("title") ?? "");
+    target.removeAttribute("title");
+    timer = window.setTimeout(show, FOCUS_MS);
+  };
+  const focusOut = (e: FocusEvent) => {
+    if (owner && e.target === owner) hide();
+  };
   const out = (e: PointerEvent) => {
     if (!owner) return;
     const to = e.relatedTarget instanceof Node ? e.relatedTarget : null;
@@ -151,6 +176,8 @@ function install(): () => void {
   document.addEventListener("pointerdown", down, true);
   document.addEventListener("pointerup", up, true);
   document.addEventListener("keydown", hide, true);
+  document.addEventListener("focusin", focusIn, true);
+  document.addEventListener("focusout", focusOut, true);
   document.addEventListener("wheel", hide, { capture: true, passive: true });
   window.addEventListener("blur", hide);
   return () => {
@@ -160,6 +187,8 @@ function install(): () => void {
     document.removeEventListener("pointerdown", down, true);
     document.removeEventListener("pointerup", up, true);
     document.removeEventListener("keydown", hide, true);
+    document.removeEventListener("focusin", focusIn, true);
+    document.removeEventListener("focusout", focusOut, true);
     document.removeEventListener("wheel", hide, true);
     window.removeEventListener("blur", hide);
   };

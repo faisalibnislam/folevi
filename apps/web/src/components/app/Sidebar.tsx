@@ -214,7 +214,7 @@ function Section({ title, href, children, action, defaultOpen = true, onNavigate
               href={href}
               onClick={onNavigate}
               aria-current={isActive(route, href) ? "page" : undefined}
-              className={`ui-caps flex h-7 min-w-0 flex-1 items-center rounded-chip pl-2.5 pr-2 transition-colors hover:bg-[var(--glass-hover)] hover:text-heading ${isActive(route, href) ? "bg-[var(--glass-hover)] text-heading" : ""}`}
+              className={`ui-caps flex h-7 min-w-0 flex-1 items-center rounded-chip pl-2.5 pr-2 transition-colors hover:bg-[var(--glass-hover)] hover:text-heading ${isActive(route, href) ? "text-heading" : ""}`}
               title={`All ${title.toLowerCase()}`}
             >
               {title}

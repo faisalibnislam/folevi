@@ -76,16 +76,13 @@ function PageFrame({ title, html, scale }: { title: string; html: string; scale:
 
 /**
  * A tab's picture for its preview and the Tab Overview: a note's page, joined notes side by side, or a view's
- * name and icon on its own background.
+ * icon on its own background (its name is already on the card or the preview, right next to it).
  */
-export function TabPicture({ tab, titles, viewIcon, viewName, className = "" }: { tab: DocTab; titles: Record<string, string>; viewIcon: React.ReactNode; viewName: string; className?: string }) {
+export function TabPicture({ tab, titles, viewIcon, className = "" }: { tab: DocTab; titles: Record<string, string>; viewIcon: React.ReactNode; className?: string }) {
   if (tab.view) {
     return (
       <div className={`grid place-items-center bg-[var(--color-canvas)] ${className}`}>
-        <div className="flex flex-col items-center gap-2 text-muted">
-          <span className="grid h-12 w-12 place-items-center rounded-container bg-[var(--glass-hover)] [&>svg]:h-6 [&>svg]:w-6">{viewIcon}</span>
-          <span className="text-subheadline font-semibold text-heading">{viewName}</span>
-        </div>
+        <span className="grid h-12 w-12 place-items-center rounded-container bg-[var(--glass-hover)] text-muted [&>svg]:h-6 [&>svg]:w-6">{viewIcon}</span>
       </div>
     );
   }

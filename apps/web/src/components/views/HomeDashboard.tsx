@@ -152,6 +152,7 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
   // The cards fade out at either edge while there's more to scroll that way. A mask on the row, not a
   // coloured overlay, so the fade matches whatever is behind it (the glass panel, a note's artwork).
   const fadeMask = `linear-gradient(to right, ${edges.start ? "#000" : "transparent"} 0, #000 64px, #000 calc(100% - 64px), ${edges.end ? "#000" : "transparent"} 100%)`;
+  // The arrows sit in the page's side margin, beside the row (over the cards only on phones, where there's no margin).
   const arrow = "absolute top-[calc(50%-10px)] z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-chip bg-surface text-heading shadow-[0_2px_10px_rgb(0_0_0/0.16),0_0_0_1px_rgb(0_0_0/0.05)] transition-[opacity,transform] hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
   return (
     <div className="relative">
@@ -168,12 +169,12 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
         ))}
       </ul>
       {!edges.start ? (
-        <button type="button" aria-label={`Scroll ${label.toLowerCase()} back`} onClick={() => scroll(-1)} className={`${arrow} left-0`}>
+        <button type="button" aria-label={`Scroll ${label.toLowerCase()} back`} title="Back" onClick={() => scroll(-1)} className={`${arrow} left-0 sm:h-8 sm:w-8 sm:-left-8`}>
           <ChevronLeft size={18} aria-hidden />
         </button>
       ) : null}
       {!edges.end ? (
-        <button type="button" aria-label={`Scroll ${label.toLowerCase()} forward`} onClick={() => scroll(1)} className={`${arrow} right-0`}>
+        <button type="button" aria-label={`Scroll ${label.toLowerCase()} forward`} title="More" onClick={() => scroll(1)} className={`${arrow} right-0 sm:h-8 sm:w-8 sm:-right-8`}>
           <ChevronRight size={18} aria-hidden />
         </button>
       ) : null}
@@ -251,7 +252,6 @@ export function HomeDashboard() {
           title="Recent folders"
           href="/folders"
           icon={<Folder size={17} strokeWidth={1.9} />}
-          count={org ? `${org.total}` : undefined}
           empty={org && !org.total ? <EmptyState size="inline" title="No folders yet" body="Create one from the sidebar to group related notes." /> : undefined}
         >
           <div ref={folders.ref}>

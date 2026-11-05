@@ -144,13 +144,10 @@ export function TabOverview({
               </div>
               <button type="button" aria-label={`Open ${e.label}`} onClick={() => onOpen(e.href)} className="block aspect-[16/10] w-full overflow-hidden border-t border-line text-left outline-none">
                 {e.tab ? (
-                  <TabPicture tab={e.tab} titles={titles} viewIcon={e.icon} viewName={e.label} className="h-full w-full" />
+                  <TabPicture tab={e.tab} titles={titles} viewIcon={e.icon} className="h-full w-full" />
                 ) : (
                   <div className="grid h-full w-full place-items-center bg-[var(--color-canvas)]">
-                    <div className="flex flex-col items-center gap-2 text-muted">
-                      <span className="grid h-12 w-12 place-items-center rounded-container bg-[var(--glass-hover)] [&>svg]:h-6 [&>svg]:w-6">{e.icon}</span>
-                      <span className="text-subheadline font-semibold text-heading">{e.label}</span>
-                    </div>
+                    <span className="grid h-12 w-12 place-items-center rounded-container bg-[var(--glass-hover)] text-muted [&>svg]:h-6 [&>svg]:w-6">{e.icon}</span>
                   </div>
                 )}
               </button>
@@ -164,9 +161,13 @@ export function TabOverview({
             onClick={onNewNote}
             onMouseEnter={() => setSel(shown.length)}
             aria-label="New note"
-            className={`grid aspect-[16/10] place-items-center self-end rounded-container bg-[var(--glass-hover)] text-faint transition-colors hover:text-heading ${sel === shown.length ? "ring-2 ring-focus" : ""}`}
+            // The same shape as a tab's card (a header band, then the picture), so its top lines up with theirs.
+            className={`flex flex-col overflow-hidden rounded-container bg-[var(--glass-hover)] text-faint transition-colors hover:text-heading ${sel === shown.length ? "ring-2 ring-focus" : ""}`}
           >
-            <Plus size={40} strokeWidth={1.5} aria-hidden />
+            <span className="flex h-10 flex-none items-center justify-center text-subheadline font-medium text-muted">New note</span>
+            <span className="grid aspect-[16/10] w-full place-items-center border-t border-line">
+              <Plus size={40} strokeWidth={1.5} aria-hidden />
+            </span>
           </button>
         ) : null}
       </div>

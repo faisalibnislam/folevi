@@ -149,7 +149,7 @@ test("mouse: notes onto folders from a list, a folder page's chips, Home, search
   await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
   const palette = page.getByRole("dialog", { name: "Search and commands" });
   await expect(palette).toBeVisible();
-  await palette.getByRole("combobox", { name: "Search documents or type a command" }).fill(title.slice(0, 6));
+  await palette.getByRole("combobox", { name: "Search notes or type a command" }).fill(title.slice(0, 6));
   const result = palette.getByRole("option").filter({ hasText: title }).first();
   await expect(result).toBeVisible();
   // Once the search has answered (the list redraws as the device's and the server's results come in).

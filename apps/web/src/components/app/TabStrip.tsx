@@ -24,13 +24,20 @@ import { TabOverview, type OverviewEntry } from "./TabOverview";
 import { NewFolderButton } from "./NewFolderButton";
 
 /** How wide the strip's soft edges are when it scrolls (the open tab is kept clear of them). */
-const FADE = 28;
+const FADE = 40;
 
 /** A tab's element in the strip: Home, or a tab by its id. */
 function tabElement(strip: HTMLElement, key: string | null): HTMLElement | null {
   if (key === "home") return strip.querySelector<HTMLElement>("[data-tab-home]");
   return key ? strip.querySelector<HTMLElement>(`[data-tab="${CSS.escape(key)}"]`) : null;
 }
+
+/**
+ * A tab's pin and close buttons: 20px drawn, a 24px target (WCAG 2.2's minimum), a ring for keyboard focus, and
+ * above the tab's stretched link.
+ */
+const TAB_BUTTON =
+  "relative z-[1] grid h-5 w-5 flex-none place-items-center rounded-chip transition-opacity before:absolute before:-inset-0.5 before:content-[''] hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 const ARROW = "grid h-9 w-6 flex-none place-items-center rounded-control text-muted transition-colors hover:bg-accent-soft hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
@@ -420,11 +427,6 @@ export function TabStrip() {
           <ChevronLeft size={15} aria-hidden />
         </button>
       ) : null}
-      {!ipad && (overflow.start || overflow.end) ? (
-        <button type="button" aria-label="Scroll tabs right" disabled={!overflow.end} onClick={() => scrollTabs(1)} className={`${ARROW} disabled:opacity-30`}>
-          <ChevronRight size={15} aria-hidden />
-        </button>
-      ) : null}
       <nav
         ref={navRef}
         onPointerLeave={hidePreview}
@@ -469,6 +471,13 @@ export function TabStrip() {
           );
         })}
       </nav>
+      {/* The strip's scroll arrows sit at its two ends (‹ before the tabs, › after them), apart from Back and
+          Forward, so four chevrons never line up in a row. */}
+      {!ipad && (overflow.start || overflow.end) ? (
+        <button type="button" aria-label="Scroll tabs right" disabled={!overflow.end} onClick={() => scrollTabs(1)} className={`${ARROW} disabled:opacity-30`}>
+          <ChevronRight size={15} aria-hidden />
+        </button>
+      ) : null}
       {tabMenu ? (() => {
         const i = tabs.findIndex((t) => t.id === tabMenu.id);
         if (i < 0) return null;
@@ -652,13 +661,31 @@ const TabRow = memo(function TabRow({
       : joined
         ? "min-w-[240px] flex-[0_1_460px] pr-1"
         : "min-w-[172px] flex-[0_1_284px] pr-1";
+  // Desktop tabs that can close: pin and close overlay the title's end (see the end of this component).
+  const overlay = !ipad && !pinned;
+  const closeButton = (
+    <button
+      type="button"
+      aria-label={`Close ${label}`}
+      onClick={() => act.current.close(id)}
+      data-ipad-tab-close={ipad ? "" : undefined}
+      className={
+        ipad
+          ? // A finger closes only the open tab (a closed one's × would be too easy to hit); a pointer sees them all on hover.
+            `relative grid h-7 w-7 flex-none place-items-center rounded-container text-muted outline-none transition-opacity before:absolute before:-inset-2 before:content-[''] active:bg-[var(--liquid-press)] focus-visible:opacity-100 ${active ? "opacity-100" : "pointer-events-none opacity-0 [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"}`
+          : `${TAB_BUTTON} text-faint ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`
+      }
+    >
+      <X size={ipad ? 15 : 12} strokeWidth={ipad ? 2.4 : 2} aria-hidden />
+    </button>
+  );
   const pinButton = ipad ? null : (
     <button
       type="button"
       aria-label={pinned ? `Unpin ${label}` : `Pin ${label}`}
       title={pinned ? "Unpin tab" : "Pin tab"}
       onClick={() => act.current.setPinned(id, !pinned)}
-      className={`grid h-5 w-5 flex-none place-items-center rounded-chip transition-opacity hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:outline-none ${pinned ? "text-muted" : "text-faint opacity-0 group-hover:opacity-100"}`}
+      className={`${TAB_BUTTON} ${pinned ? "text-muted" : "text-faint opacity-0 group-hover:opacity-100"}`}
     >
       {pinned ? (
         <>
@@ -673,9 +700,10 @@ const TabRow = memo(function TabRow({
   return (
     <div
       data-tab={id}
+      data-tab-active={active ? "" : undefined}
       data-pinned={pinned ? "" : undefined}
       data-ipad-tab={ipad ? "" : undefined}
-      className={`${tabBase} ${width} ${pinned ? "!gap-1 !px-2" : ""} ${active ? tabOn : tabOff} ${dragging ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
+      className={`${tabBase} ${overlay ? "ui-tab" : ""} ${width} ${pinned ? "!gap-1 !px-2" : ""} ${active ? tabOn : tabOff} ${dragging ? "z-10 cursor-grabbing shadow-[0_4px_14px_rgb(0_0_0/0.16)]" : ""}`}
       onPointerDown={(e) => act.current.pointerDown(e, id)}
       onPointerMove={(e) => act.current.dragMove(e)}
       onPointerUp={() => act.current.dragEnd()}
@@ -712,7 +740,7 @@ const TabRow = memo(function TabRow({
     >
       {joined ? (
         // Joined notes: one tab, a section per note (each opens the group with that note in focus).
-        <span className="flex min-w-0 flex-1 items-center">
+        <span className={`flex min-w-0 flex-1 items-stretch self-stretch ${overlay ? "ui-tab-label" : ""}`}>
           {panes.split("\u0000").map((id, i) => {
             const name = names[i]!;
             return (
@@ -722,7 +750,7 @@ const TabRow = memo(function TabRow({
                   href={`/d/${id}`}
                   aria-current={id === here ? "page" : undefined}
                   aria-label={`${name} (joined)`}
-                  className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-chip outline-none ${pinned ? "px-0.5" : "px-0.5"} ${id === here ? "font-semibold text-heading" : active ? "font-normal text-muted" : ""}`}
+                  className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-chip px-0.5 outline-none ${id === here ? "font-semibold text-heading" : active ? "font-normal text-muted" : ""}`}
                 >
                   <FileText size={13} aria-hidden className="flex-none opacity-70" />
                   {pinned ? null : <span className="truncate">{name}</span>}
@@ -732,7 +760,9 @@ const TabRow = memo(function TabRow({
           })}
         </span>
       ) : (
-        <AppLink href={href} aria-current={active ? "page" : undefined} className="flex min-w-0 flex-1 items-center gap-2 outline-none" aria-label={label}>
+        // The whole tab is the link's target (a pseudo-element stretched over it), not only its words: a click on
+        // the tab's padding opens it too. Pin and close sit above it.
+        <AppLink href={href} aria-current={active ? "page" : undefined} className={`flex min-w-0 flex-1 items-center gap-2 outline-none before:absolute before:inset-0 before:rounded-[inherit] before:content-[''] ${overlay ? "ui-tab-label" : ""}`} aria-label={label}>
           {viewKind ? <ViewIcon kind={viewKind} /> : <FileText size={14} aria-hidden className="flex-none opacity-70" />}
           {nested !== null ? (
             <span className="flex min-w-0 items-center gap-1">
@@ -745,22 +775,18 @@ const TabRow = memo(function TabRow({
           )}
         </AppLink>
       )}
-      {pinButton}
-      {pinned ? null : (
-        <button
-          type="button"
-          aria-label={`Close ${label}`}
-          onClick={() => act.current.close(id)}
-          data-ipad-tab-close={ipad ? "" : undefined}
-          className={
-            ipad
-              ? // A finger closes only the open tab (a closed one's × would be too easy to hit); a pointer sees them all on hover.
-                `relative grid h-7 w-7 flex-none place-items-center rounded-container text-muted outline-none transition-opacity before:absolute before:-inset-2 before:content-[''] active:bg-[var(--liquid-press)] focus-visible:opacity-100 ${active ? "opacity-100" : "pointer-events-none opacity-0 [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100"}`
-              : `grid h-5 w-5 flex-none place-items-center rounded-chip text-faint transition-opacity hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:opacity-100 focus-visible:outline-none ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`
-          }
-        >
-          <X size={ipad ? 15 : 12} strokeWidth={ipad ? 2.4 : 2} aria-hidden />
-        </button>
+      {overlay ? (
+        // Pin and close float over the end of the title (which fades out under them on hover, `.ui-tab`) instead
+        // of keeping their room while hidden, so a closed tab shows as much of its title as it can.
+        <span className="absolute inset-y-0 right-1 z-[1] flex items-center gap-0.5">
+          {pinButton}
+          {closeButton}
+        </span>
+      ) : (
+        <>
+          {pinButton}
+          {pinned ? null : closeButton}
+        </>
       )}
     </div>
   );

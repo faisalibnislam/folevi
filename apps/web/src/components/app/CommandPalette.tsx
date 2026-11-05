@@ -116,7 +116,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const graph = useCanCall(api.aiGraph.graph);
   const actions: Item[] = useMemo(
     () => [
-      { kind: "action", id: "new", label: "New document", hint: "⌘⌥N", icon: <Plus size={16} />, run: () => void createDocument({}) },
+      { kind: "action", id: "new", label: "New note", hint: "⌘⌥N", icon: <Plus size={16} />, run: () => void createDocument({}) },
       { kind: "action", id: "tasks", label: "Go to Tasks · Today", icon: <CheckSquare size={16} />, run: () => navigate("/tasks/today") },
       { kind: "action", id: "calendar", label: "Go to Calendar", icon: <CalendarDays size={16} />, run: () => navigate("/calendar") },
       { kind: "action", id: "review", label: "Go to Reviews", icon: <Layers size={16} />, run: () => navigate("/review") },
@@ -208,7 +208,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       className={
         iphone
           ? "fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-hidden bg-canvas p-0 pt-[env(safe-area-inset-top)] text-ink backdrop:bg-transparent open:animate-[iphone-fade-in_180ms_ease-out]"
-          : "m-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden ui-pop rounded-panel p-0 text-ink backdrop:bg-transparent shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-rise_160ms_var(--ease-folio)]"
+          : "m-auto mt-[12vh] w-[calc(100%-2rem)] max-w-xl overflow-hidden ui-pop ui-modal ui-modal-light rounded-panel p-0 text-ink shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-rise_160ms_var(--ease-folio)]"
       }
     >
       {open ? (
@@ -224,8 +224,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               aria-controls={listId}
               aria-activedescendant={items[active] ? `${listId}-${active}` : undefined}
               aria-autocomplete="list"
-              aria-label="Search documents or type a command"
-              placeholder={iphone ? "Search notes and commands" : "Search documents or type a command…"}
+              aria-label="Search notes or type a command"
+              placeholder={iphone ? "Search notes and commands" : "Search notes or type a command…"}
               enterKeyHint="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -309,8 +309,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           )}
           <div className={iphone ? "min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+16px)]" : "max-h-[55vh] overflow-y-auto p-2"}>
             {debounced && results === undefined ? <p className={iphone ? "px-5 py-3 text-subheadline text-muted" : "px-3 py-2 text-subheadline text-muted"}>Searching…</p> : null}
-            {debounced && results?.length === 0 && onDevice.length === 0 ? <p className={iphone ? "px-5 py-3 text-subheadline text-muted" : "px-3 py-2 text-subheadline text-muted"}>No {iphone ? "notes" : "documents"} match “{debounced}”.</p> : null}
-            <p className={iphone ? IPHONE_CAPS.replace("pt-6", "pt-3") : "ui-caps px-3 pb-1.5 pt-2"}>{debounced ? (iphone ? "Notes" : "Documents") : "Recent"}</p>
+            {debounced && results?.length === 0 && onDevice.length === 0 ? <p className={iphone ? "px-5 py-3 text-subheadline text-muted" : "px-3 py-2 text-subheadline text-muted"}>No notes match “{debounced}”.</p> : null}
+            {/* Its heading only over notes it has (no empty "Recent" right above Actions). */}
+            {docCount ? <p className={iphone ? IPHONE_CAPS.replace("pt-6", "pt-3") : "ui-caps px-3 pb-1.5 pt-2"}>{debounced ? "Notes" : "Recent"}</p> : null}
             <ul id={listId} role="listbox" aria-label="Results">
               {items.map((item, i) => {
                 const selected = i === active;
@@ -393,7 +394,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 /** A result's name for assistive tech (QA audit F05): its title, then what it is. */
 export function paletteOptionLabel(item: { kind: "action"; label: string } | { kind: "doc"; title: string; meaning?: boolean }): string {
   if (item.kind === "action") return `${item.label}, command`;
-  return `${item.title || "Untitled"}, ${item.meaning ? "document found by meaning" : "document"}`;
+  return `${item.title || "Untitled"}, ${item.meaning ? "note found by meaning" : "note"}`;
 }
 
 /** What follows the name: the snippet, the place, or when it was edited; a command's shortcut. */

@@ -497,7 +497,7 @@ export const FEATURES: Feature[] = [
         body: (
           <>
             <p>
-              With nothing typed, ⌘K shows the notes you opened most recently. It also runs commands: New document, Go to Tasks · Today, Go to Calendar, Go to Home, Open Trash, Open Settings and switching the app between light and dark. With Foli AI on, it can ask Foli AI about your notes.
+              With nothing typed, ⌘K shows the notes you opened most recently. It also runs commands: New note, Go to Tasks · Today, Go to Calendar, Go to Home, Open Trash, Open Settings and switching the app between light and dark. With Foli AI on, it can ask Foli AI about your notes.
             </p>
             <p>
               Use the arrow keys and Return to open a result, and Escape to close. Inside a note, <Kbd>⌘F</Kbd> finds text and <Kbd>⌘⌥F</Kbd> replaces it.

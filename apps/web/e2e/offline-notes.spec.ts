@@ -143,7 +143,7 @@ test("a note made offline shows in Home, All notes and search, then syncs and th
 
   // Search finds it with no connection.
   await page.keyboard.press("ControlOrMeta+k");
-  await page.getByRole("combobox", { name: "Search documents or type a command" }).fill("offline test");
+  await page.getByRole("combobox", { name: "Search notes or type a command" }).fill("offline test");
   await expect(page.getByRole("option", { name: /Offline test/ }).first()).toBeVisible();
   await page.keyboard.press("Escape");
 

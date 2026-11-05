@@ -203,9 +203,12 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
         while (next.length > MAX_TABS && next.some((x) => x.id !== docId && !x.pinned)) next = next.filter((t, i) => i !== next.findIndex((x) => x.id !== docId && !x.pinned));
         return next;
       });
-    } else if (!["settings", "onboarding", "invite", "share-invite", "folder-invite", "not_found", "help"].includes(route.name)) {
+    } else if (!["onboarding", "invite", "share-invite", "folder-invite", "not_found"].includes(route.name)) {
+      // Settings and Help get a tab like every other view (so the strip shows where you are), but the Home tab
+      // never leads back to them. Folevi for Mac's own Settings window has no strip: no tab from it.
+      if (new URLSearchParams(query ?? "").get("window") === "1") return;
       const href = `${pathname}${query ? `?${query}` : ""}`;
-      if (href !== homeHref) setHomeHref(href);
+      if (href !== homeHref && route.name !== "settings" && route.name !== "help") setHomeHref(href);
       // Every view you open gets its own tab, which stays until you close it (it follows you inside the view).
       const key = viewKey(route as { name: string; id?: string | null });
       if (key) {

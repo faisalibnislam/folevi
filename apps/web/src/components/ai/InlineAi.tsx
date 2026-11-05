@@ -52,6 +52,7 @@ import { useToast } from "@/components/ui/Toast";
 import { AiAnnouncer, useDoneAnnouncement } from "./announce";
 import { openFindTodos, scheduleResultTodos } from "./FindTodos";
 import { hasTodoLines } from "@/lib/ai/actionItems";
+import { useAiWhere } from "@/components/ai/aiWhere";
 
 /** What the inline composer works on: a range of text (a selection or whole blocks), or the cursor. */
 export interface InlineAiRequest {
@@ -153,6 +154,7 @@ interface Run {
  * Insert below or Append. Each of those is one undo step. Try again, quick refinements, Copy and Discard.
  */
 export function InlineAi({ editor, documentId, request, onClose }: { editor: Editor; documentId: string; request: InlineAiRequest; onClose: () => void }) {
+  const aiWhere = useAiWhere();
   const { write, saveDraft } = useAi();
   const stream = useAiStream();
   const noteAi = useNoteAi();
@@ -658,7 +660,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
           </ul>
         ) : null
       ) : null}
-      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">Foli AI can make mistakes. Sent to Google.</p>
+      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">Foli AI can make mistakes. {aiWhere}</p>
       <AiAnnouncer text={announce} />
     </div>
   );

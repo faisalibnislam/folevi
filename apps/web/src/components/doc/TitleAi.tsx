@@ -6,6 +6,7 @@ import { ArrowUp, X } from "lucide-react";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAi, type AiTask } from "@/components/ai/useAi";
 import { errorMessage } from "@/components/ui/Toast";
+import { useAiWhere } from "@/components/ai/aiWhere";
 
 /** A range of the title the AI works on (the whole title when nothing is selected). */
 export interface TitleRange {
@@ -99,6 +100,7 @@ export function TitleAi({
   onApply: (next: string) => void;
   onClose: () => void;
 }) {
+  const aiWhere = useAiWhere();
   const { write } = useAi();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -205,7 +207,7 @@ export function TitleAi({
           : null}
       </ul>
       {busy === "instruction" ? <p className="px-4 pb-2.5 text-subheadline text-muted">Working…</p> : null}
-      <p className="border-t border-line/60 px-4 py-2 text-footnote text-faint">Foli AI can make mistakes. Sent to Google.</p>
+      <p className="border-t border-line/60 px-4 py-2 text-footnote text-faint">Foli AI can make mistakes. {aiWhere}</p>
     </div>,
     document.body,
   );

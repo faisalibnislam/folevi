@@ -13,6 +13,7 @@ import { insertAiMarkdown } from "./insert";
 import { TranscriptPreview, type TranscriptView } from "./TranscriptPreview";
 import { scheduleResultTodos } from "./FindTodos";
 import { useAiAccess, useNoteAi } from "./useAi";
+import { useAiWhere } from "@/components/ai/aiWhere";
 
 // Transcribe on an audio block (docs/AI_ASSISTANT.md, "Attachments"): never automatic. The recording goes
 // to the AI only when the person presses Transcribe; the transcript shows in a preview under the block,
@@ -53,6 +54,7 @@ type State = { phase: "idle" } | { phase: "confirm" } | { phase: "working" } | {
  * Cancel. Nothing is sent until Transcribe.
  */
 export function TranscribeConfirm({ minutes, credits, onConfirm, onCancel }: { minutes: number; credits: number; onConfirm: () => void; onCancel: () => void }) {
+  const aiWhere = useAiWhere("recording");
   return (
     <div role="region" aria-label="Transcribe this recording" className="ui-card ui-app-colors mt-1.5 overflow-hidden rounded-panel text-ink" contentEditable={false}>
       <p className="px-4 pb-1 pt-3.5 text-body leading-[1.5]">
@@ -67,7 +69,7 @@ export function TranscribeConfirm({ minutes, credits, onConfirm, onCancel }: { m
           Cancel
         </button>
       </div>
-      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">The recording is sent to Google.</p>
+      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">{aiWhere}</p>
     </div>
   );
 }

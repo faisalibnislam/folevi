@@ -60,7 +60,7 @@ async function pasteFile(page: Page, file: { name: string; type: string; base64:
 /** Opens ⌘K and types `query`; returns the palette. */
 async function search(page: Page, query: string) {
   await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
-  const input = page.getByRole("combobox", { name: /Search documents/ });
+  const input = page.getByRole("combobox", { name: /Search notes/ });
   await expect(input).toBeFocused();
   await input.fill(query);
   return page.getByRole("dialog", { name: "Search and commands" });
@@ -72,8 +72,8 @@ async function searchUntil(page: Page, query: string, title: string) {
   const result = palette.getByRole("option").filter({ hasText: title });
   await expect(async () => {
     if (!(await result.count())) {
-      await page.getByRole("combobox", { name: /Search documents/ }).fill("");
-      await page.getByRole("combobox", { name: /Search documents/ }).fill(query);
+      await page.getByRole("combobox", { name: /Search notes/ }).fill("");
+      await page.getByRole("combobox", { name: /Search notes/ }).fill(query);
     }
     await expect(result).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 45_000 });

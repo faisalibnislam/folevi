@@ -16,6 +16,7 @@ import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "@/com
 import type { StickyColor } from "@folevi/editor-schema";
 import { Panel } from "./StickiesChrome";
 import { photoForAi } from "./photo";
+import { useAiWhere } from "@/components/ai/aiWhere";
 
 export type StickiesAiResult =
   | { kind: "cluster"; groups: { label: string; ids: string[] }[] }
@@ -55,6 +56,7 @@ export function StickiesAi({
   onInsertWriteUp: (w: { title: string; summary: string; nextSteps: string[] }) => void;
   onClose: () => void;
 }) {
+  const aiWhere = useAiWhere();
   const { scope } = useAppState();
   const cluster = useAction(api.stickiesAi.cluster);
   const summarize = useAction(api.stickiesAi.summarize);
@@ -248,7 +250,7 @@ export function StickiesAi({
             </ul>
           </>
         )}
-        <p className="st-ai-foot">Foli AI can make mistakes. Sent to Google. Undo changes to the board with ⌘Z.</p>
+        <p className="st-ai-foot">Foli AI can make mistakes. {aiWhere} Undo changes to the board with ⌘Z.</p>
       </div>
     </Panel>
   );

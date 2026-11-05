@@ -9,7 +9,7 @@ import { useCapabilities } from "@/lib/mode";
 
 const SHORTCUTS: [string, string][] = [
   ["Search or jump anywhere", "⌘ K"],
-  ["New document", "⌘ ⌥ N"],
+  ["New note", "⌘ ⌥ N"],
   ["Quick add task", "⌘ ⇧ A"],
   ["Toggle sidebar", "⌘ \\"],
   ["Toggle inspector", "⌘ ⌥ I"],

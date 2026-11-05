@@ -74,12 +74,12 @@ describe("command palette", () => {
     const { root } = mount();
     act(() => root.render(<CommandPalette open onClose={() => {}} />));
     const options = [...document.querySelectorAll<HTMLElement>('[role="option"]')];
-    const docs = options.filter((o) => o.getAttribute("aria-label")?.endsWith(", document"));
-    expect(docs.map((o) => o.getAttribute("aria-label"))).toEqual(["Cedar forest, document", "Violet bridge, document", "Untitled, document"]);
+    const docs = options.filter((o) => o.getAttribute("aria-label")?.endsWith(", note"));
+    expect(docs.map((o) => o.getAttribute("aria-label"))).toEqual(["Cedar forest, note", "Violet bridge, note", "Untitled, note"]);
     expect(docs.every((o) => o.getAttribute("aria-description")?.startsWith("Edited "))).toBe(true);
     expect(options.map((o) => o.getAttribute("aria-selected"))).toEqual(options.map((_, i) => String(i === 0)));
     // Commands are options too, named as commands.
-    expect(options.some((o) => o.getAttribute("aria-label") === "New document, command")).toBe(true);
+    expect(options.some((o) => o.getAttribute("aria-label") === "New note, command")).toBe(true);
     // Activating the third match opens it.
     act(() => docs[2]!.click());
     expect(navigate).toHaveBeenCalledWith("/d/d3");
@@ -87,7 +87,7 @@ describe("command palette", () => {
   });
 
   test("option names and details", () => {
-    expect(paletteOptionLabel({ kind: "doc", title: "Kyoto", meaning: true })).toBe("Kyoto, document found by meaning");
+    expect(paletteOptionLabel({ kind: "doc", title: "Kyoto", meaning: true })).toBe("Kyoto, note found by meaning");
     expect(paletteOptionLabel({ kind: "action", label: "Open Trash" })).toBe("Open Trash, command");
     expect(paletteOptionDetail({ kind: "doc", snippet: "a match", place: "Work" })).toBe("Work, a match");
     expect(paletteOptionDetail({ kind: "action", hint: "⌘J" })).toBe("Shortcut ⌘J");

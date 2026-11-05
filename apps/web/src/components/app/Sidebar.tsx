@@ -1,8 +1,8 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useState } from "react";
-import { Archive, Calendar, CheckSquare, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowDownUp, Archive, Calendar, CheckSquare, ChevronDown, ChevronRight, FileDiff, FolderPlus, Hash, Files, Inbox, Layers, LayoutTemplate, MoreHorizontal, Search, Share2, Trash2, House as Home, FileText, Waypoints, Lock } from "lucide-react";
 import { Bookmark } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -30,6 +30,8 @@ import { endFolderDrag, startFolderDrag, useFolderActions, useOpenFolders, useFo
 import { useDragPayload, useDropHint } from "@/lib/app/dragSession";
 import { FloatingDropRefusal } from "./FolderDropLayer";
 import { flattenFolders, folderAncestors } from "@folevi/editor-schema";
+import { useOfflineQuery } from "@/lib/sync/queryCache";
+import { adoptMoves, setSidebarShownOrder, SIDEBAR_FOLDER_SORTS, sortSidebarFolders, type SidebarFolderSort } from "@/lib/app/sidebarFolderSort";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { useAiEnabled } from "@/components/ai/useAi";
 import { useBackendMode, useCanCall, useCapabilities } from "@/lib/mode";
@@ -202,7 +204,7 @@ function Section({ title, href, children, action, defaultOpen = true, onNavigate
               href={href}
               onClick={onNavigate}
               aria-current={isActive(route, href) ? "page" : undefined}
-              className={`ui-caps flex h-7 min-w-0 flex-1 items-center rounded-chip pl-1 pr-2 transition-colors hover:bg-[var(--glass-hover)] hover:text-heading ${isActive(route, href) ? "bg-[var(--glass-hover)] text-heading" : ""}`}
+              className={`ui-caps flex h-7 min-w-0 flex-1 items-center rounded-chip pl-2.5 pr-2 transition-colors hover:bg-[var(--glass-hover)] hover:text-heading ${isActive(route, href) ? "bg-[var(--glass-hover)] text-heading" : ""}`}
               title={`All ${title.toLowerCase()}`}
             >
               {title}
@@ -459,7 +461,27 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   // Folders and notes marked Always fully encrypted (the lists carry `locked` once the account has encryption).
   const isLockedFolder = (f: object) => (f as { locked?: boolean }).locked === true;
 
-  const folders = org?.folders ?? [];
+  const manualFolders = org?.folders ?? [];
+  // The sidebar's own order (Manual, Name or Recent), kept on this device (lib/app/sidebarFolderSort.ts).
+  const [folderSort, setFolderSort] = useLocalStorage<SidebarFolderSort>("folevi:sidebar-folders-sort", "manual");
+  const folderIndex = useOfflineQuery(api.organization.index, folderSort === "recent" ? { scope, only: "folders" } : "skip");
+  const changed = useMemo(() => new Map((folderIndex?.folders ?? []).map((f) => [f.id, f.updatedAt])), [folderIndex]);
+  const folders = useMemo(() => sortSidebarFolders(manualFolders, folderSort, changed), [manualFolders, folderSort, changed]);
+  // While it's sorted by Name or Recent, a drag to a new spot first makes this order the manual one.
+  useEffect(() => {
+    if (folderSort === "manual") {
+      setSidebarShownOrder(null);
+      return;
+    }
+    setSidebarShownOrder({
+      folders,
+      adopt: () => {
+        for (const m of adoptMoves(manualFolders, folders)) folderActions.move(m.id, m.parentFolderId, m.afterFolderId);
+        setFolderSort("manual");
+      },
+    });
+    return () => setSidebarShownOrder(null);
+  }, [folderSort, folders, manualFolders, folderActions, setFolderSort]);
   // The folder tree: each folder followed by what's inside it.
   const tree = flattenFolders(folders);
   const roots = tree.filter((e) => e.depth === 0).map((e) => e.folder);
@@ -574,9 +596,16 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           href="/folders"
           onNavigate={onNavigate}
           action={
-            <IconButton label="New folder" onClick={() => setFolderDialog(true)}>
-              <FolderPlus size={14} aria-hidden />
-            </IconButton>
+            <span className="flex items-center">
+              <MenuButton
+                label="Sort folders"
+                trigger={<ArrowDownUp size={14} aria-hidden />}
+                items={[{ heading: "Sort folders" }, ...SIDEBAR_FOLDER_SORTS.map(([value, label]) => ({ label, checked: folderSort === value, onSelect: () => setFolderSort(value) }))]}
+              />
+              <IconButton label="New folder" onClick={() => setFolderDialog(true)}>
+                <FolderPlus size={14} aria-hidden />
+              </IconButton>
+            </span>
           }
         >
           {roots.length === 0 ? <p className="px-2 py-1 text-footnote text-faint">No folders yet</p> : null}
@@ -587,7 +616,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           {draggedIsNested && canEdit ? <TopLevelDrop /> : null}
           {hiddenFolders > 0 ? (
             <button type="button" data-drop-expand="" onClick={() => setAllFoldersShown(true)} className="flex h-8 w-full items-center rounded-chip px-2.5 pl-8 text-left text-subheadline text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11">
-              +{hiddenFolders.toLocaleString()} more <span className="sr-only">folders</span>
+              Show more <span className="sr-only">folders</span>
             </button>
           ) : allFoldersShown && roots.length > SIDEBAR_LIMIT ? (
             <button type="button" onClick={() => setAllFoldersShown(false)} className="flex h-8 w-full items-center rounded-chip px-2.5 pl-8 text-left text-subheadline text-muted transition-colors hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:h-11">

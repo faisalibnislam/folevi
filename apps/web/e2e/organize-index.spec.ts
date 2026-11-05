@@ -9,7 +9,7 @@ test("the sidebar lists a few folders and tags; All folders / All tags pages sea
   const nav = page.getByRole("navigation", { name: "Folio" });
 
   // Five folders (plus nested ones under them) and "+N more", which shows the rest in place.
-  const moreFolders = nav.getByRole("button", { name: /^\+\d+ more folders$/ });
+  const moreFolders = nav.getByRole("button", { name: "Show more folders" });
   await expect(moreFolders).toBeVisible({ timeout: 20_000 });
   // Tags start collapsed.
   await nav.getByRole("button", { name: "Expand Tags" }).click();

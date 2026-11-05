@@ -22,6 +22,7 @@ import { useAppState } from "@/lib/app/state";
 import { useFolderActions, useFolderTree, useOpenFolders } from "@/lib/app/folders";
 import { POINTER_DRAG_EVENT, beginDrag, dragState, endDrag, setDropHint, type DragPayload, type DropHint, type PointerDragDetail } from "@/lib/app/dragSession";
 import { folderPlace, resolveFolderDrop, zoneAt, type FolderPlace } from "@/lib/app/folderDrop";
+import { sidebarShownOrder } from "@/lib/app/sidebarFolderSort";
 import { FOLDER_MIME } from "@/lib/app/folders";
 import { NOTE_MIME, draggedNoteIds, previewOf } from "@/lib/app/noteDrag";
 import { HOLD_MOVE_EVENT, type HoldMoveDetail } from "@/lib/touchContextMenu";
@@ -140,11 +141,21 @@ export function FolderDropLayer() {
       const { folders } = live.current;
       const rect = target.getBoundingClientRect();
       const zone = key !== "@top" && target.hasAttribute("data-drop-tree") ? zoneAt(y, rect.top, rect.height) : "inside";
-      const drop = resolveFolderDrop(folders, payload.id, key === "@top" ? null : key, zone, target.dataset.dropOpen === "1");
+      // A sidebar row while the sidebar is sorted by Name or Recent: the drop is placed in the order it shows,
+      // which becomes the manual one if the folder moves to a new spot (lib/app/sidebarFolderSort.ts).
+      const shownOrder = target.hasAttribute("data-drop-tree") ? sidebarShownOrder() : null;
+      const drop = resolveFolderDrop(shownOrder?.folders ?? folders, payload.id, key === "@top" ? null : key, zone, target.dataset.dropOpen === "1");
       // (Over its own row it simply isn't taken; anywhere else the target says why.)
       if (!drop.ok) return drop.problem === "self" && key === payload.id ? null : { hint: { key: shown, zone: "inside", refused: refusalText(drop.problem) }, target };
       if (!drop.changed) return null;
-      return { hint: { key: shown, zone }, target, run: () => moveFolder(payload.id, drop) };
+      return {
+        hint: { key: shown, zone },
+        target,
+        run: () => {
+          if (shownOrder && zone !== "inside") shownOrder.adopt();
+          moveFolder(payload.id, drop);
+        },
+      };
     };
     // Notes dropped from another Folevi window: their ids come with the drop.
     let pendingIds: string[] = [];

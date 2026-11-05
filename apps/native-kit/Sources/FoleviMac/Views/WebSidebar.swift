@@ -43,6 +43,12 @@ public struct WebSidebar: View {
     /// The folders closed in the sidebar (every folder starts open; lib/app/folders.ts useOpenFolders keeps the
     /// closed ones, `folevi:sidebar-folders-closed`).
     @AppStorage("folevi.sidebar-folders-closed") private var closedFolders = ""
+    /// The sidebar's own folder order (Manual, Name or Recent; Sidebar.tsx `folevi:sidebar-folders-sort`).
+    @AppStorage("folevi.sidebar.folders-sort") private var folderSortRaw = SidebarFolderSort.manual.rawValue
+    /// Every top-level folder listed, after Show more (`folevi:sidebar-folders-all`).
+    @AppStorage("folevi.sidebar.folders-all") private var allFoldersShown = false
+    /// Each folder's last change, for Recent (watched only while the sidebar is sorted by it).
+    @State private var folderChanges: ValueStore<FolderCardsValue>?
     #if os(iOS)
     /// The account row, for the account menu's place on the iPad.
     @State private var accountAnchor: UIView?
@@ -258,21 +264,58 @@ public struct WebSidebar: View {
     // MARK: folders
 
     private var foldersSection: some View {
-        let all = model.folders.value?.folders ?? []
+        let sort = SidebarFolderSort(rawValue: folderSortRaw) ?? .manual
+        var changed: [String: Double] = [:]
+        for c in folderChanges?.value?.folders ?? [] { changed[c.id] = c.updatedAt }
+        let all = SidebarFolderSort.sorted(model.folders.value?.folders ?? [], by: sort, changed: changed)
         let roots = all.filter { $0.parentId == nil }
+        // The first five top-level folders (and the one you're in); Show more lists them all, here.
+        let activeRoot = activeRootId(all)
+        let shown = allFoldersShown ? roots : roots.enumerated().filter { $0.offset < Self.limit || $0.element.id == activeRoot }.map(\.element)
         return section("Folders", route: .web("/folders"), open: $foldersOpen, action: AnyView(
-            WebIconButton(.folderPlus, label: "New folder") { FrameDialogs.newFolder(model) }
+            HStack(spacing: 0) {
+                WebMenuButton(width: 180, entries: {
+                    [WebMenuEntry.heading("Sort folders")] + SidebarFolderSort.allCases.map { o in
+                        WebMenuEntry(.item(o.title, checked: o == sort)) { folderSortRaw = o.rawValue }
+                    }
+                }) {
+                    WebIconView(.arrowDownUp, size: 14)
+                        .frame(width: 28, height: 28)
+                        .foregroundStyle(Folevi.color.inkMuted)
+                        .contentShape(Rectangle())
+                }
+                .foleviTooltip("Sort folders")
+                .accessibilityLabel("Sort folders")
+                WebIconButton(.folderPlus, label: "New folder") { FrameDialogs.newFolder(model) }
+            }
         ), takesFolders: true) {
             if roots.isEmpty {
                 Text("No folders yet").webText(.role(.footnote)).foregroundStyle(Folevi.color.inkFaint).padding(.horizontal, 8).padding(.vertical, 4)
             }
-            ForEach(Array(roots.prefix(Self.limit)), id: \.id) { f in
+            ForEach(shown, id: \.id) { f in
                 folder(f, all: all)
             }
-            if roots.count > Self.limit {
-                moreLink("+\(roots.count - Self.limit) more", route: .web("/folders"))
+            if shown.count < roots.count {
+                toggleLink("Show more") { WebMotion.animate { allFoldersShown = true } }
+            } else if allFoldersShown && roots.count > Self.limit {
+                toggleLink("Show less") { WebMotion.animate { allFoldersShown = false } }
             }
         }
+        .task(id: sort) {
+            if sort == .recent, folderChanges == nil { folderChanges = model.client.watch(.foldersCards(all: true)) }
+        }
+    }
+
+    /// The top-level folder the open folder is in (or is), kept listed when the rest are folded away.
+    private func activeRootId(_ all: [FolderNode]) -> String? {
+        guard case .folder(let id) = model.route else { return nil }
+        var cur = all.first { $0.id == id }
+        var guardCount = 0
+        while let c = cur, let pid = c.parentId, guardCount < 50 {
+            cur = all.first { $0.id == pid }
+            guardCount += 1
+        }
+        return cur?.id
     }
 
     private func folder(_ f: FolderNode, all: [FolderNode]) -> AnyView {
@@ -464,6 +507,17 @@ public struct WebSidebar: View {
             }
         }
         .padding(.top, 20)
+    }
+
+    /// Show more / Show less under the folders: the list grows or folds in place.
+    private func toggleLink(_ text: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(text).webText(.role(.subheadline)).lineLimit(1).foregroundStyle(Folevi.color.inkMuted)
+                .padding(.leading, 32).padding(.trailing, 10)
+                .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(WebHoverRowStyle(radius: 6, hover: WebStyles.vars["mac-hover"], press: WebStyles.vars["mac-press"], selected: false))
     }
 
     private func moreLink(_ text: String, route: FrameRoute) -> some View {

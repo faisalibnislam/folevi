@@ -10,7 +10,7 @@ export const toast = (page: Page, text: string | RegExp) => page.getByRole("stat
 
 // A new account starts with a couple of sample folders; the tests look at their own.
 const SAMPLE = new Set(["Projects", "Personal"]);
-export const more = (page: Page) => nav(page).getByRole("button", { name: /^\+\d+ more folders$/ });
+export const more = (page: Page) => nav(page).getByRole("button", { name: "Show more folders" });
 
 /** The top-level folders in the sidebar (the tests' own), in order. */
 export async function roots(page: Page): Promise<string[]> {

@@ -491,6 +491,8 @@
     font-size: var(--type-body); text-align: left; color: var(--color-ink);
   }
   .ui-menu-item:hover, .ui-menu-item:focus-visible, .ui-menu-item[data-highlighted="true"] { background: var(--glass-hover); color: var(--color-heading); outline: none; }
+  /* A submenu's row stays lit while its submenu is open beside it (ui/Menu.tsx). */
+  .ui-menu-item[aria-expanded="true"] { background: var(--glass-hover); color: var(--color-heading); }
   /* The row the keyboard is on reads clearly (stronger than a hover). */
   .ui-menu-item:focus-visible, .ui-menu-item[data-highlighted="true"], .ui-row-active { background: color-mix(in oklab, var(--color-ink) 9%, transparent); color: var(--color-heading); }
 }
@@ -895,6 +897,11 @@
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="icon"] svg { width: 20px; height: 20px; stroke-width: 1.9; }
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] { order: -1; display: inline-flex; flex: none; width: 16px; margin-right: -2px; justify-content: center; color: var(--color-ink); }
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] svg { width: 16px; height: 16px; stroke-width: 2.6; }
+/* A check asked for at the end of its row (ui/Menu.tsx `checkAt`), and a submenu's chevron: after the icon. */
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) :is([data-menu-part="check-end"], [data-menu-part="chevron"]) { order: 6; display: inline-flex; flex: none; color: var(--color-ink-muted); }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="check-end"] { color: var(--color-ink); }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="check-end"] svg { width: 16px; height: 16px; stroke-width: 2.6; }
+:root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) .ui-menu-item[aria-expanded="true"] { background: color-mix(in oklab, var(--color-ink) 10%, transparent); }
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="label"] { min-width: 0; }
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="description"] { margin-top: 1px; font-size: var(--type-subheadline); line-height: 20px; color: var(--color-ink-muted); }
 :root:is([data-iphone], [data-native="ios"]) :is([role="menu"], [data-menu-ghost]) [data-menu-part="detail"] { font-size: var(--type-subheadline); line-height: 20px; color: var(--color-ink-muted); }
@@ -1114,6 +1121,14 @@
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="shortcut"] { padding-left: 16px; font-size: var(--type-subheadline); color: var(--color-ink-muted); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] { order: -1; display: inline-flex; width: 16px; flex: none; justify-content: center; margin-right: -2px; color: var(--color-heading); }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="check"] svg { width: 12px; height: 12px; stroke-width: 3; }
+/* A check at the end of its row (ui/Menu.tsx `checkAt`: no column kept before the icons), a submenu's chevron, and
+   its row lit while the submenu is open beside it. */
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="check-end"] { display: inline-flex; width: 16px; flex: none; justify-content: center; color: var(--color-heading); }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="check-end"] svg { width: 12px; height: 12px; stroke-width: 3; }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="chevron"] { display: inline-flex; flex: none; margin-right: -4px; color: var(--color-ink-muted); }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) [data-menu-part="chevron"] svg { width: 12px; height: 12px; stroke-width: 2.5; }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item[aria-expanded="true"] { background: var(--mac-highlight); color: var(--color-heading); }
+:root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item:is(:hover, [data-highlighted="true"], [aria-expanded="true"]) [data-menu-part="chevron"] { color: inherit; }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost], [role="listbox"]) [role="separator"] { height: 1px; margin: 6px 10px; background: var(--color-line); }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-caps { padding: 8px 10px 4px; font-size: var(--type-footnote); line-height: 16px; color: var(--color-ink-muted); }
 /* An item with a second line (a workspace and its plan) and an item under another keep their room. */

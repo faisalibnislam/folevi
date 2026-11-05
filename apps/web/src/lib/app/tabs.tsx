@@ -20,7 +20,8 @@ export interface DocTab {
   atTitle?: string;
   /**
    * A view's tab (Foli AI, Graph, Drafts, a folder, Tasks…) instead of a note's: its route kind and the path it
-   * shows now. Its id is `view:` and the view's key (one per view; one per folder or tag).
+   * shows now. Its id is `view:` and the view's key (one per view; one per tag). A folder tab (kind `folder` or
+   * `folders`) moves between folders, Finder style, so its id is its own: `folders:` and a random key.
    */
   view?: { kind: string; path: string };
   /** Kept at the strip's start, half as wide, with no close button (unpin it first). */
@@ -32,6 +33,12 @@ export interface DocTab {
   panes?: string[];
   /** Each pane's share of the width (they add up to 1); missing means equal. */
   sizes?: number[];
+  /**
+   * The tab's own Back and Forward (Finder style): the addresses it showed, oldest first, and the one it shows
+   * (`trailAt`). Missing means only the page it shows now.
+   */
+  trail?: string[];
+  trailAt?: number;
 }
 
 /** The page a tab is showing (a note's id; a view's path; a joined tab's pane with focus). */
@@ -45,11 +52,51 @@ export const tabHref = (t: DocTab) => (t.view ? t.view.path : `/d/${tabPage(t)}`
 
 /** Views that get no tab of their own: Home is always the first tab; the rest aren't places you work in. */
 const NO_VIEW_TAB = new Set(["documents", "doc", "onboarding", "quick-add", "invite", "share-invite", "folder-invite", "not_found"]);
-/** A view's tab key: one tab per view (it follows you inside it, like Foli AI's conversations), one per folder or tag. */
+/** A view's tab key: one tab per view (it follows you inside it, like Foli AI's conversations), one per tag. */
 function viewKey(route: { name: string; id?: string | null }): string | null {
   if (NO_VIEW_TAB.has(route.name)) return null;
-  if ((route.name === "folder" || route.name === "tag") && route.id) return `view:${route.name}:${route.id}`;
+  if (route.name === "tag" && route.id) return `view:${route.name}:${route.id}`;
   return `view:${route.name}`;
+}
+
+/** Folder browsing: a folder, or the Folders page. These show in a folder tab (see TabsProvider). */
+const FOLDER_KINDS = new Set(["folder", "folders"]);
+/** A folder tab: it shows a folder or the Folders page, and navigates between them. */
+export const isFolderTab = (t: DocTab) => Boolean(t.view && FOLDER_KINDS.has(t.view.kind));
+const newFolderTabId = () => `folders:${Math.random().toString(36).slice(2, 10)}`;
+/** Whether a tab shows an address (a view's path, or a note page `/d/<id>` it holds). */
+const tabShows = (t: DocTab, href: string) => (t.view ? t.view.path === href : href.startsWith("/d/") && tabHolds(t, href.slice(3)));
+
+/** The most addresses a tab's Back remembers. */
+const TRAIL_LIMIT = 50;
+/** `next` (the tab `prev` became) with `href` after what `prev` was showing: what was ahead of it is gone, as in a browser. */
+function withTrail(prev: DocTab, next: DocTab, href: string): DocTab {
+  const base = prev.trail?.length ? prev.trail.slice(0, (prev.trailAt ?? prev.trail.length - 1) + 1) : [tabHref(prev)];
+  const trail = base[base.length - 1] === href ? base : [...base, href].slice(-TRAIL_LIMIT);
+  return { ...next, trail, trailAt: trail.length - 1 };
+}
+
+/**
+ * Tabs saved when each folder had a tab of its own (`view:folder:<id>`, the Folders page's `view:folders`): each
+ * becomes a folder tab with an id of its own, and a folder in two tabs is kept in the first.
+ */
+export function migrateFolderTabs(tabs: DocTab[]): DocTab[] {
+  if (!tabs.some((t) => isFolderTab(t) && !t.id.startsWith("folders:"))) return tabs;
+  const seen = new Set<string>();
+  return tabs.flatMap((t) => {
+    if (!isFolderTab(t)) return [t];
+    if (seen.has(t.view!.path)) return [];
+    seen.add(t.view!.path);
+    return [t.id.startsWith("folders:") ? t : { ...t, id: newFolderTabId() }];
+  });
+}
+
+/** Back and Forward for the top bar: the tab on screen's own, or the browser's where no tab keeps one. */
+export interface BackForwardValue {
+  back: () => void;
+  forward?: () => void;
+  canBack?: boolean;
+  canForward?: boolean;
 }
 
 interface TabsValue {
@@ -94,6 +141,11 @@ interface TabsValue {
   openInBackground: (folder: { id: string; name: string }) => void;
   /** Opens several notes and folders in tabs behind the one on screen (a multi-selection's "Open in new tabs"). */
   openManyInBackground: (items: BackgroundTabItem[]) => void;
+  /**
+   * The tab on screen's own Back and Forward (Finder style); Home has none. Null where no tab is on screen
+   * (Settings, Help…): the browser's history goes on there.
+   */
+  tabHistory: BackForwardValue | null;
 }
 
 /** A note or folder to open in a background tab. */
@@ -147,12 +199,34 @@ export function tabsStorageKeys(accountKey: string, workspaceId: string | null):
  * Pages open in tabs: visiting a page adds its tab (or switches to it), tabs stay open until closed, and
  * they're remembered per account and per context (Personal, or each workspace) on this device. Switching
  * context shows that context's tabs, so a page from one never sits in another's strip.
+ *
+ * Folders open like Finder (the owner, 6 November 2026; the Mac app's TabsModel does the same): a folder or the
+ * Folders page shows in a folder tab, which navigates rather than adding a tab. The folder tab on screen goes to the
+ * folder; from Home, a note or another view the folder tab used last does (or a new one opens); a folder already in
+ * another tab shows there instead. ⌘-click, middle-click and "Open in new tab" still add one behind (openInBackground).
+ * A page (a note, a view, a folder) is in one tab at a time, so the address still says which tab is on screen.
+ *
+ * Each tab keeps its own Back and Forward (`trail`): the top bar's buttons, ⌘[ and ⌘] and the Go menu step through
+ * the tab on screen's (useBackForward), in place. The browser's own Back button keeps the browser's history: a step
+ * back there is a move like any other (into a folder, the folder tab follows it; to a note whose tab was closed, the
+ * tab comes back).
  */
 export function TabsProvider({ accountKey, workspaceId, children }: { accountKey: string; workspaceId: string | null; children: ReactNode }) {
   const { route, pathname, search, navigate } = useAppRouter();
   const keys = tabsStorageKeys(accountKey, workspaceId);
   const [tabs, setTabs] = useLocalStorage<DocTab[]>(keys.tabs, []);
   const [homeHref, setHomeHref] = useLocalStorage<string>(keys.homeHref, "/documents");
+  // Tabs saved when each folder had its own tab become folder tabs.
+  useEffect(() => {
+    if (migrateFolderTabs(tabs) !== tabs) setTabs((cur) => migrateFolderTabs(cur));
+  }, [tabs, setTabs]);
+  // The address on screen before this one, and a Back or Forward in a tab on its way (the tab, where in its trail,
+  // and the address it goes to).
+  const shownPath = useRef<string | null>(null);
+  const travel = useRef<{ id: string; at: number; href: string } | null>(null);
+  // When each tab was last on screen: a folder opened from Home or a note goes to the folder tab used last.
+  const used = useRef(new Map<string, number>());
+  const useClock = useRef(0);
 
   const docId = route.name === "doc" ? route.id : null;
   const query = search.toString();
@@ -185,25 +259,44 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   useEffect(() => {
     const from = previousDoc.current;
     previousDoc.current = docId;
+    const fromPath = shownPath.current;
+    shownPath.current = pathname;
     // "Open in a new tab" is for the next move to another page, not any update of this one (the address
     // losing "?new=1" used to take it, and the following new note then replaced the current tab).
     const moved = docId !== from;
     // Back or Forward to a page whose tab was closed brings that tab back rather than taking over this one.
     const newTab = moved && (nextInNewTab || cameFromHistory());
     if (moved) nextInNewTab = false;
+    // The top bar's Back or Forward in a tab (tabHistory): that tab goes there, in place.
+    const trip = travel.current;
+    travel.current = null;
+    if (trip && trip.href === (docId ? `/d/${docId}` : pathname)) {
+      const kind = route.name;
+      const title = viewTitle.current?.path === pathname ? viewTitle.current.title : "";
+      setTabs((cur) =>
+        cur.map((t) => {
+          if (t.id !== trip.id) return t;
+          if (t.view) return { ...t, view: { kind, path: pathname }, trailAt: trip.at, ...(isFolderTab(t) ? { title } : {}) };
+          const page = trip.href.slice(3);
+          if (t.panes) return { ...t, panes: t.panes.includes(page) ? t.panes : t.panes.map((p) => (p === tabPage(t) ? page : p)), at: page, trailAt: trip.at };
+          return { id: page, at: page, title: "", trail: t.trail, trailAt: trip.at, ...(t.pinned ? { pinned: true } : {}) };
+        }),
+      );
+      return;
+    }
     if (docId) {
       const open = tabs.findIndex((t) => tabHolds(t, docId));
       if (open !== -1) {
-        if (tabPage(tabs[open]!) !== docId) setTabs((cur) => cur.map((t) => (t.id === tabs[open]!.id ? { ...t, at: docId, atTitle: undefined } : t)));
+        if (tabPage(tabs[open]!) !== docId) setTabs((cur) => cur.map((t) => (t.id === tabs[open]!.id ? withTrail(t, { ...t, at: docId, atTitle: undefined }, `/d/${docId}`) : t)));
         return;
       }
       const at = from ? tabs.findIndex((t) => tabPage(t) === from) : -1;
       if (at !== -1 && !newTab) {
         // Moving within a note: the current tab follows it (place() then files it under its top page). In a
-        // joined tab, the pane with focus follows it.
+        // joined tab, the pane with focus follows it. Its Back goes to where it was.
         const replaced = tabs[at]!;
-        if (replaced.panes) setTabs((cur) => cur.map((t) => (t.id === replaced.id ? { ...t, panes: t.panes!.map((p) => (p === from ? docId : p)), at: docId } : t)));
-        else setTabs((cur) => cur.map((t) => (t.id === replaced.id ? { id: docId, at: docId, title: "", ...(t.pinned ? { pinned: true } : {}) } : t)));
+        if (replaced.panes) setTabs((cur) => cur.map((t) => (t.id === replaced.id ? withTrail(t, { ...t, panes: t.panes!.map((p) => (p === from ? docId : p)), at: docId }, `/d/${docId}`) : t)));
+        else setTabs((cur) => cur.map((t) => (t.id === replaced.id ? withTrail(t, { id: docId, at: docId, title: "", ...(t.pinned ? { pinned: true } : {}) }, `/d/${docId}`) : t)));
         return;
       }
       setTabs((cur) => {
@@ -216,13 +309,34 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
     } else if (!["settings", "onboarding", "invite", "share-invite", "folder-invite", "not_found", "help"].includes(route.name)) {
       const href = `${pathname}${query ? `?${query}` : ""}`;
       if (href !== homeHref) setHomeHref(href);
-      // Every view you open gets its own tab, which stays until you close it (it follows you inside the view).
+      const kind = route.name;
+      if (FOLDER_KINDS.has(kind)) {
+        // Folders open like Finder (the owner, 6 November 2026): a folder (or the Folders page) already in a tab
+        // shows there (the address says which tab is on screen; the one before stays as it was). Otherwise the
+        // folder tab on screen goes there; from Home, a note or any other view the folder tab used last does (Home,
+        // notes and other views are never replaced by a folder); with no folder tab, one opens.
+        const title = viewTitle.current?.path === pathname ? viewTitle.current.title : "";
+        setTabs((cur) => {
+          if (cur.some((t) => t.view?.path === pathname)) return cur;
+          const folderTabs = cur.filter(isFolderTab);
+          const here = fromPath ? folderTabs.find((t) => t.view!.path === fromPath) : undefined;
+          const score = (t: DocTab) => used.current.get(t.id) ?? 0;
+          // (The rightmost when none has been on screen yet, as after a reload.)
+          const target = here ?? folderTabs.reduce<DocTab | undefined>((best, t) => (!best || score(t) >= score(best) ? t : best), undefined);
+          if (target) return cur.map((t) => (t.id === target.id ? withTrail(t, { ...t, title, view: { kind, path: pathname } }, pathname) : t));
+          const id = newFolderTabId();
+          let next: DocTab[] = [...cur, { id, title, view: { kind, path: pathname } }];
+          while (next.length > MAX_TABS && next.some((x) => x.id !== id && !x.pinned)) next = next.filter((t, j) => j !== next.findIndex((x) => x.id !== id && !x.pinned));
+          return next;
+        });
+        return;
+      }
+      // Every other view you open gets its own tab, which stays until you close it (it follows you inside the view).
       const key = viewKey(route as { name: string; id?: string | null });
       if (key) {
-        const kind = route.name;
         setTabs((cur) => {
           const i = cur.findIndex((t) => t.id === key);
-          if (i !== -1) return cur[i]!.view?.path === pathname ? cur : cur.map((t) => (t.id === key ? { ...t, view: { kind, path: pathname } } : t));
+          if (i !== -1) return cur[i]!.view?.path === pathname ? cur : cur.map((t) => (t.id === key ? withTrail(t, { ...t, view: { kind, path: pathname } }, pathname) : t));
           const title = viewTitle.current?.path === pathname ? viewTitle.current.title : "";
           let next: DocTab[] = [...cur, { id: key, title, view: { kind, path: pathname } }];
           while (next.length > MAX_TABS && next.some((x) => x.id !== key && !x.pinned)) next = next.filter((t, j) => j !== next.findIndex((x) => x.id !== key && !x.pinned));
@@ -234,6 +348,29 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
 
   // Whether a tab is the one on screen (a note's page, or a view at its path).
   const isShown = useCallback((t: DocTab) => (t.view ? t.view.path === pathname : Boolean(docId) && tabHolds(t, docId!)), [pathname, docId]);
+  const shown = tabs.find(isShown) ?? null;
+  const shownId = shown?.id ?? null;
+  useEffect(() => {
+    if (shownId) used.current.set(shownId, ++useClock.current);
+  }, [shownId]);
+
+  // The tab on screen's own Back and Forward: the tab goes to the address in place (the effect above). A page that's
+  // in another tab by now shows in that tab instead, and this tab stays where it was.
+  const onHome = route.name === "documents";
+  const tabHistory = useMemo<BackForwardValue | null>(() => {
+    if (!shown) return onHome ? { back: () => undefined, forward: () => undefined, canBack: false, canForward: false } : null;
+    const trail = shown.trail?.length ? shown.trail : [tabHref(shown)];
+    const at = Math.min(shown.trailAt ?? trail.length - 1, trail.length - 1);
+    const go = (to: number) => {
+      const href = trail[to];
+      if (!href) return;
+      const other = tabs.find((t) => t.id !== shown.id && tabShows(t, href));
+      if (other) return navigate(tabHref(other));
+      travel.current = { id: shown.id, at: to, href };
+      navigate(href);
+    };
+    return { back: () => go(at - 1), forward: () => go(at + 1), canBack: at > 0, canForward: at < trail.length - 1 };
+  }, [shown, onHome, tabs, navigate]);
 
   const close = useCallback(
     (id: string) => {
@@ -302,7 +439,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
         cur
           // The note's own tab (if open) merges into this one.
           .filter((x) => x.id === id || !(x.id === documentId || (!x.panes && tabPage(x) === documentId)))
-          .map((x) => (x.id === id ? { id: joinedId, title: "", panes: [...panes, documentId], at: documentId, ...(x.pinned ? { pinned: true } : {}) } : x)),
+          .map((x) => (x.id === id ? { id: joinedId, title: "", panes: [...panes, documentId], at: documentId, ...(x.pinned ? { pinned: true } : {}), ...(x.trail ? { trail: x.trail, trailAt: x.trailAt } : {}) } : x)),
       );
       navigate(`/d/${documentId}`);
     },
@@ -385,7 +522,7 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
         // The note already has a tab: show this page there and drop the extra one.
         setTabs((cur) => cur.filter((x) => x.id !== t.id).map((x) => (x.id === root.id ? { ...x, at: documentId, title: root.title, atTitle } : x)));
       } else {
-        setTabs((cur) => cur.map((x) => (x.id === t.id ? { id: root.id, at: documentId, title: root.title, atTitle } : x)));
+        setTabs((cur) => cur.map((x) => (x.id === t.id ? { id: root.id, at: documentId, title: root.title, atTitle, ...(x.trail ? { trail: x.trail, trailAt: x.trailAt } : {}) } : x)));
       }
     },
     [tabs, setTabs],
@@ -416,14 +553,21 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   const warm = useMemo(() => (warmKey ? warmKey.split(",") : []), [warmKey]);
   const openManyInBackground = useCallback(
     (items: BackgroundTabItem[]) => {
-      // At most a strip's worth: more would only push each other out.
-      const wanted = items.slice(0, MAX_TABS).map((it) =>
-        it.kind === "folder" ? ({ id: `view:folder:${it.id}`, title: it.name, view: { kind: "folder", path: `/folders/${it.id}` } } satisfies DocTab) : ({ id: it.id, at: it.id, title: it.name } satisfies DocTab),
-      );
       setTabs((cur) => {
-        const adding = wanted.filter((w) => !cur.some((t) => t.id === w.id || (!w.view && tabHolds(t, w.id))));
+        // At most a strip's worth: more would only push each other out. A folder or note that has a tab keeps it
+        // (a folder is in one tab at a time).
+        const adding: DocTab[] = [];
+        for (const it of items.slice(0, MAX_TABS)) {
+          if (it.kind === "folder") {
+            const path = `/folders/${it.id}`;
+            if (cur.some((t) => t.view?.path === path) || adding.some((t) => t.view?.path === path)) continue;
+            adding.push({ id: newFolderTabId(), title: it.name, view: { kind: "folder", path } });
+          } else if (!cur.some((t) => tabHolds(t, it.id)) && !adding.some((t) => t.id === it.id)) {
+            adding.push({ id: it.id, at: it.id, title: it.name });
+          }
+        }
         if (!adding.length) return cur;
-        const keep = new Set(adding.map((w) => w.id));
+        const keep = new Set(adding.map((t) => t.id));
         let next: DocTab[] = [...cur, ...adding];
         // Bounded as ever, never dropping the new tabs or the one on screen.
         const droppable = (x: DocTab) => !keep.has(x.id) && !x.pinned && !isShown(x);
@@ -435,8 +579,8 @@ export function TabsProvider({ accountKey, workspaceId, children }: { accountKey
   );
   const openInBackground = useCallback((folder: { id: string; name: string }) => openManyInBackground([{ kind: "folder", ...folder }]), [openManyInBackground]);
   const value = useMemo(
-    () => ({ tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground, openManyInBackground }),
-    [tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground, openManyInBackground],
+    () => ({ tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground, openManyInBackground, tabHistory }),
+    [tabs, view, setView, homeHref, close, closeMany, move, setPinned, join, unjoin, setSizes, movePane, detachPane, place, warm, openInBackground, openManyInBackground, tabHistory],
   );
 
   // The pages placed (useDocTab), placed again with each change to the tabs: a page names its tab before the tab
@@ -525,6 +669,8 @@ export function NativeTabsProvider({ children }: { accountKey?: string; workspac
       detachPane: (_id, page) => emitNoteEvent("panes.change", { action: "detach", note: page }),
       place: noop,
       warm: [],
+      // Native keeps each tab's Back and Forward.
+      tabHistory: null,
     }),
     [tabs],
   );
@@ -566,6 +712,16 @@ export function folderTabClicks(open: TabsValue["openInBackground"] | undefined,
       open(folder);
     },
   };
+}
+
+/**
+ * Back and Forward for the top bar (BackForward, the menu bar's Go menu, the right-click menu): the tab on screen's
+ * own history (TabsValue.tabHistory) where tabs keep one, else the browser's (the router's).
+ */
+export function useBackForward(): BackForwardValue {
+  const own = useContext(TabsContext)?.tabHistory;
+  const { back, forward, canBack, canForward } = useAppRouter();
+  return own ?? { back, forward, canBack, canForward };
 }
 
 export function useTabs(): TabsValue {

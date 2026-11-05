@@ -47,7 +47,7 @@ import { useCapabilities } from "@/lib/mode";
 import { FolderShareDialog } from "@/components/app/FolderShareDialog";
 import { FolderMenu } from "@/components/app/FolderMenu";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
-import { ListPageHeader, SECTION_LABEL } from "./ListPageHeader";
+import { ListPageHeader, ROW_ICON_BUTTON, ROW_SEG, RowSort, SECTION_LABEL } from "./ListPageHeader";
 
 // Foli AI's "Generate a template" brings the read-only drawing of every block (its preview): it loads the first
 // time it's opened, not with every list (docs/IOS_PERFORMANCE.md, "Startup").
@@ -66,6 +66,12 @@ function UnsyncedMarker({ className = "" }: { className?: string }) {
 type View = "all" | "starred" | "archive" | "trash" | "templates" | "unsorted" | "folder" | "tag";
 type Layout = "grid" | "compact" | "list";
 type Sort = "updated" | "created" | "title" | "manual";
+const NOTE_SORTS: readonly (readonly [Sort, string])[] = [
+  ["updated", "Last edited"],
+  ["created", "Created"],
+  ["title", "Title"],
+  ["manual", "Manual order"],
+];
 
 const TITLES: Record<View, string> = {
   all: "Home",
@@ -176,7 +182,7 @@ function cachedViewFilter(view: View, sort: Sort, online: boolean): ((d: KeptRow
 }
 
 function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: View; folderId?: string; tagId?: string; org: Org; titleOverride?: string }) {
-  const { scope, scopeKey, profile, online, engine, outbox, canEdit } = useAppState();
+  const { scope, scopeKey, profile, online, engine, outbox } = useAppState();
   const [layout, setLayout] = useLocalStorage<Layout>(`folevi:layout:${view}`, view === "trash" || view === "archive" ? "list" : "grid");
   const [sort, setSort] = useLocalStorage<Sort>(`folevi:sort:${view}`, "updated");
   // A folder made on this device whose creation is still in the outbox (just made, or made offline) isn't on
@@ -406,39 +412,50 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     : "Counting the notes in Trash…";
 
   // The folders inside, drawn as folder cards like All folders: their page counts, last change and previews come
-  // from the same index (and offline cache) All folders reads; until it's here, the tree's names and colours. The
-  // folder's own last change (its title row's "edited Oct 22") comes from there too.
-  const servedIndex = useOfflineQuery(api.organization.index, view === "folder" && folderId ? { scope, only: "folders" } : "skip");
+  // from the same index (and offline cache) All folders reads; until it's here, the tree's names and colours.
+  const servedIndex = useOfflineQuery(api.organization.index, subfolders.length ? { scope, only: "folders" } : "skip");
   const folderIndex = useMemo(() => (servedIndex ? overlayFolderIndex(servedIndex, queued, scope) : servedIndex), [servedIndex, queued, scope]);
   const subfolderCards: FolderSummary[] = subfolders.map(
     (f) => folderIndex?.folders.find((x) => x.id === f.id) ?? { id: f.id, name: f.name, color: f.color, parentFolderId: f.parentFolderId, updatedAt: 0, documentCount: 0 },
   );
   const heading = <h1 className="truncate text-subheadline font-semibold">{title}</h1>;
-  const folderEdited = folderId ? folderIndex?.folders.find((x) => x.id === folderId)?.updatedAt : undefined;
   const countText = `${docs.length}${canLoadMore ? "+" : ""} ${docs.length === 1 ? "note" : "notes"}`;
-  // A folder's page: its title row (the folder's mark and name, the way up, its facts and actions) over the toolbar.
+  // How the list is shown: in the toolbar on most lists, in a folder's title row on its page.
+  const layoutSwitch = (compact: boolean) => (
+    <div role="radiogroup" aria-label="Layout" className={compact ? ROW_SEG : "ui-seg ui-well"}>
+      {(
+        [
+          ["grid", "Grid", <LayoutGrid key="g" size={15} />],
+          ["compact", "Compact cards", <Rows3 key="c" size={15} />],
+          ["list", "List", <List key="l" size={15} />],
+        ] as const
+      ).map(([value, label, icon]) => (
+        <button key={value} type="button" role="radio" aria-checked={layout === value} data-active={layout === value} aria-label={label} title={label} onClick={() => setLayout(value)}>
+          {icon}
+        </button>
+      ))}
+    </div>
+  );
+  // A folder's page: one compact title row (the owner, 6 November 2026, "A. One compact row"): the folder's glyph,
+  // the way up when it's nested, its name and count, then Sort, the view switch, Share and its "…" menu. No New note
+  // of its own: the top bar's makes the note in the open folder (useCreateDocument).
   const folderHeader =
     view === "folder" && folderId ? (
       <ListPageHeader
         title={title}
-        mark={<FolderGlyph color={folder?.color} size={30} />}
-        path={crumbs.length ? [{ label: "Folders", href: "/folders" }, ...crumbs.map((c) => ({ label: c.name, href: `/folders/${c.id}` }))] : undefined}
-        info={loading ? undefined : [countText, folderEdited ? `edited ${formatRelative(folderEdited)}` : null].filter(Boolean).join(" · ")}
-        actions={
+        mark={<FolderGlyph color={folder?.color} size={22} />}
+        path={crumbs.length ? crumbs.map((c) => ({ label: c.name, href: `/folders/${c.id}` })) : undefined}
+        count={loading ? undefined : `${countText}${!online && cached ? " · saved on this device" : ""}`}
+        controls={
           <>
+            <RowSort<Sort> value={sort} onChange={setSort} options={NOTE_SORTS} />
+            {layoutSwitch(true)}
             {caps.sharing ? (
-              <Button size="sm" variant="secondary" onClick={() => setSharingFolder(true)}>
-                <Share2 size={14} aria-hidden /> Share
-              </Button>
+              <button type="button" aria-label="Share" title="Share" className={ROW_ICON_BUTTON} onClick={() => setSharingFolder(true)}>
+                <Share2 size={15} aria-hidden />
+              </button>
             ) : null}
-            {folder ? (
-              <FolderMenu folder={folder} trigger={<MoreHorizontal size={15} aria-hidden />} triggerClassName="ui-btn ui-btn-secondary h-8 w-8 pointer-coarse:h-11 pointer-coarse:w-11" />
-            ) : null}
-            {canEdit ? (
-              <Button size="sm" variant="primary" data-folder-new-note="" onClick={() => void createDocument({ folderId })}>
-                <Plus size={14} aria-hidden /> New note
-              </Button>
-            ) : null}
+            {folder ? <FolderMenu folder={folder} tooltip="More" trigger={<MoreHorizontal size={15} aria-hidden />} triggerClassName={ROW_ICON_BUTTON} /> : null}
           </>
         }
       />
@@ -554,14 +571,13 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       {/* The surface fills the scrolling area so a selection rectangle can start anywhere around the cards. */}
       <div className="min-h-full" onPointerDown={selection.onSurfacePointerDown}>
       <div className="mx-auto max-w-[1180px] px-4 pb-[max(6rem,var(--fab-clearance))] pt-3 sm:px-8">
-        {folderHeader}
+        {folderHeader ?? (
         <div className="mb-5 flex flex-wrap items-center gap-3">
-          {/* A folder's page says its count in its title row: here only how its list is shown. */}
-          <p role={folderHeader ? undefined : "status"} className="mr-auto min-w-0 truncate text-subheadline text-muted">
+          <p role="status" className="mr-auto min-w-0 truncate text-subheadline text-muted">
             {loading
               ? undefined
               : sentence(
-                  [folderHeader ? null : view === "templates" ? templatesCountText(builtIns?.length ?? 0, docs.length, canLoadMore) : countText, !online && cached ? "saved on this device" : null, canArrange ? "drag to arrange" : null]
+                  [view === "templates" ? templatesCountText(builtIns?.length ?? 0, docs.length, canLoadMore) : countText, !online && cached ? "saved on this device" : null, canArrange ? "drag to arrange" : null]
                     .filter(Boolean)
                     .join(" · "),
                 )}
@@ -569,35 +585,15 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           <label className="flex items-center gap-2 text-subheadline text-muted">
             <span>Sort</span>
             <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-9 ui-input rounded-chip px-3 text-callout text-ink">
-              <option value="updated">Last edited</option>
-              <option value="created">Created</option>
-              <option value="title">Title</option>
-              <option value="manual">Manual order</option>
+              {NOTE_SORTS.map(([v, label]) => (
+                <option key={v} value={v}>
+                  {label}
+                </option>
+              ))}
             </Select>
           </label>
-          <div role="radiogroup" aria-label="Layout" className="ui-seg ui-well">
-            {(
-              [
-                ["grid", "Grid", <LayoutGrid key="g" size={15} />],
-                ["compact", "Compact cards", <Rows3 key="c" size={15} />],
-                ["list", "List", <List key="l" size={15} />],
-              ] as const
-            ).map(([value, label, icon]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={layout === value}
-                data-active={layout === value}
-                aria-label={label}
-                title={label}
-                onClick={() => setLayout(value)}
-              >
-                {icon}
-              </button>
-            ))}
-          </div>
-          {/* Page actions share the toolbar row (a folder's sit in its title row). */}
+          {layoutSwitch(false)}
+          {/* Page actions share the toolbar row. */}
           {view === "trash" && results.length ? (
             <Button variant="quiet" onClick={() => setConfirmEmpty(true)}>
               Empty Trash
@@ -619,6 +615,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           </Suspense>
         ) : null}
         </div>
+        )}
 
         {subfolderCards.length ? (
           // A third smaller than All folders' cards: the page's own notes stay the main thing here. A section of its

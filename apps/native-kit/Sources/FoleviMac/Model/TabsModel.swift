@@ -1,8 +1,18 @@
 // The Mac window's tab strip (Craft style, docs/MAC_POLISH_PLAN.md section 2.1 and 3.5), with the web's rules
 // (apps/web/src/lib/app/tabs.tsx) so the website and the app behave the same:
 //
-// - Home is the pinned first tab; every other view gets one tab (one per view kind, one per folder or tag) that
-//   follows you inside it; every note opened from a list, Home, search or "+" gets its own tab.
+// - Home is the pinned first tab; every other view gets one tab (one per view kind, one per tag) that follows you
+//   inside it; every note opened from a list, Home, search or "+" gets its own tab.
+// - Folders open like Finder (the owner, 6 November 2026): a folder or the Folders page shows in a folder tab, which
+//   navigates rather than adding a tab. A plain click shows the folder in the folder tab on screen; from Home, a note
+//   or any other view it reuses the folder tab used last (or opens one if there is none), so Home, notes and other
+//   views are never replaced by a folder. A folder already shown in another tab switches to that tab instead.
+//   "Open in new tab", a ⌘-click or a middle-click still add a folder tab behind the one on screen.
+//   A folder tab's id is its own (`folders:` and a random key), not its folder's: it is a container that moves
+//   between folders, as a joined tab's `join:` id is. Every page (a note, a view, a folder) is still in one tab at most.
+// - Each tab keeps its own Back and Forward (Finder style): Back in a folder tab goes to the folder it showed
+//   before, in the same tab; in a note's tab to the note a link replaced. Closing a tab drops it (⇧⌘T brings it
+//   back with the tab). A page that is in another tab by then switches to that tab instead.
 // - Opening a page from inside a note (a page link, a nested page) replaces the current note's tab.
 // - At most 12 tabs besides Home: opening one more drops the oldest other tab.
 // - Closing the tab on screen shows its right neighbour, else its left one, else Home.
@@ -19,7 +29,10 @@ import FoleviScreens
 
 public struct FrameTab: Hashable, Sendable, Identifiable, Codable {
     public static let homeID = FrameRoute.homeTabKey
-    /// The route's `tabKey`.
+    /// A folder tab's id starts with this (then a random key): it moves between folders, so it isn't one folder's.
+    public static let folderPrefix = "folders:"
+    static func newFolderID() -> String { folderPrefix + String(UUID().uuidString.lowercased().replacingOccurrences(of: "-", with: "").prefix(8)) }
+    /// The route's `tabKey`; a folder tab's own `folders:` id; a joined tab's `join:` id.
     public var id: String
     public var path: String
     /// Cached title (the strip draws before the engine answers).
@@ -32,12 +45,15 @@ public struct FrameTab: Hashable, Sendable, Identifiable, Codable {
     public var panes: [String]?
     /// Each pane's share of the width (adding up to 1); nil is equal.
     public var sizes: [Double]?
+    /// The tab's own Back and Forward (kept while the app runs, not saved; a closed tab keeps it for ⇧⌘T).
+    public var history: RouteHistory
 
     public init(route: FrameRoute, title: String? = nil, icon: String? = nil) {
-        id = route.tabKey
+        id = route.isFolderBrowsing ? Self.newFolderID() : route.tabKey
         path = route.path
         self.title = title ?? route.fallbackTitle
         self.icon = icon
+        history = RouteHistory(route)
     }
 
     /// A joined tab: `panes`, `at` the one with focus.
@@ -48,6 +64,7 @@ public struct FrameTab: Hashable, Sendable, Identifiable, Codable {
         self.panes = panes
         self.sizes = sizes
         self.pinned = pinned
+        history = RouteHistory(.note(at))
     }
 
     enum CodingKeys: String, CodingKey { case id, path, title, icon, pinned, panes, sizes }
@@ -61,6 +78,22 @@ public struct FrameTab: Hashable, Sendable, Identifiable, Codable {
         pinned = try c.decodeIfPresent(Bool.self, forKey: .pinned) ?? false
         panes = try c.decodeIfPresent([String].self, forKey: .panes)
         sizes = try c.decodeIfPresent([Double].self, forKey: .sizes)
+        history = RouteHistory(FrameRoute(path: path))
+    }
+
+    // (The history is the session's, not part of what a tab is: two tabs that show the same are equal.)
+    public static func == (a: FrameTab, b: FrameTab) -> Bool {
+        a.id == b.id && a.path == b.path && a.title == b.title && a.icon == b.icon && a.pinned == b.pinned && a.panes == b.panes && a.sizes == b.sizes
+    }
+
+    public func hash(into h: inout Hasher) {
+        h.combine(id)
+        h.combine(path)
+        h.combine(title)
+        h.combine(icon)
+        h.combine(pinned)
+        h.combine(panes)
+        h.combine(sizes)
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -77,8 +110,10 @@ public struct FrameTab: Hashable, Sendable, Identifiable, Codable {
     public var route: FrameRoute { FrameRoute(path: path) }
     public var isHome: Bool { id == Self.homeID }
     public var isJoined: Bool { (panes?.count ?? 0) > 1 }
-    /// Whether the tab holds a page: its own, or one of its joined notes.
-    public func holds(_ key: String) -> Bool { id == key || panes?.contains(key) == true }
+    /// A folder tab (it shows a folder or the Folders page, and navigates between them).
+    public var isFolderTab: Bool { id.hasPrefix(Self.folderPrefix) }
+    /// Whether the tab holds a page (a route's `tabKey`): the one it shows, or one of its joined notes.
+    public func holds(_ key: String) -> Bool { id == key || route.tabKey == key || panes?.contains(key) == true }
 }
 
 @MainActor
@@ -90,7 +125,17 @@ public final class TabsModel {
 
     /// Home first, then the open tabs in strip order.
     public private(set) var tabs: [FrameTab] = [FrameTab(route: .home)]
-    public private(set) var activeID: String = FrameTab.homeID
+    public private(set) var activeID: String = FrameTab.homeID {
+        didSet {
+            guard activeID != oldValue else { return }
+            useClock += 1
+            usedAt[activeID] = useClock
+        }
+    }
+    /// When each tab was last on screen (a clock that only goes up): a folder clicked from Home or a note reuses the
+    /// folder tab used last.
+    @ObservationIgnored private var usedAt: [String: Int] = [:]
+    @ObservationIgnored private var useClock = 0
     /// Closed tabs, newest last (⇧⌘T).
     public private(set) var closed: [FrameTab] = []
     /// Joined notes' titles (a joined tab is named from them: "A + B").
@@ -117,18 +162,20 @@ public final class TabsModel {
         case newTab
         /// From inside a note (a page link, a nested page, a breadcrumb): the current note tab follows it.
         case replace
-        /// Back or Forward: brings a closed tab back rather than taking over the current one.
-        case history
     }
 
     /// Shows a route, following the web's tab rules. Returns the route now on screen.
     @discardableResult
     public func show(_ route: FrameRoute, _ opening: Opening = .newTab) -> FrameRoute {
+        if route.isFolderBrowsing { return showFolder(route) }
         let key = route.tabKey
         if let i = tabs.firstIndex(where: { $0.holds(key) }) {
-            // A view's tab follows you inside the view (a search with new words, a folder's own path); a joined
-            // tab's focus follows the note shown.
-            if tabs[i].path != route.path { tabs[i].path = route.path }
+            // A view's tab follows you inside the view (a search with new words, Tasks' lists); a joined tab's focus
+            // follows the note shown.
+            if tabs[i].path != route.path {
+                tabs[i].path = route.path
+                tabs[i].history.push(route)
+            }
             activeID = tabs[i].id
             return route
         }
@@ -137,9 +184,12 @@ public final class TabsModel {
                 // A link inside a joined note opens in that note's place.
                 tabs[i].panes![j] = key
                 tabs[i].path = route.path
+                tabs[i].history.push(route)
             } else {
                 var t = FrameTab(route: route)
                 t.pinned = tabs[i].pinned
+                t.history = tabs[i].history
+                t.history.push(route)
                 tabs[i] = t
                 activeID = key
             }
@@ -151,16 +201,96 @@ public final class TabsModel {
         return route
     }
 
-    /// Adds a route's tab behind the one on screen ("Open in new tab", a middle-click on a folder, a sidebar ⌘-click,
-    /// a selection's Open in new tabs), as a browser opens a background tab; the tab on screen stays. A route that has a tab already keeps it. True when
-    /// a tab was added.
-    @discardableResult
-    public func addInBackground(_ route: FrameRoute) -> Bool {
+    /// A folder or the Folders page (Finder style, see the top): the tab that already shows it comes forward;
+    /// otherwise the folder tab on screen goes there, else the folder tab used last does, else a new one opens.
+    private func showFolder(_ route: FrameRoute) -> FrameRoute {
+        if let i = tabs.firstIndex(where: { $0.holds(route.tabKey) }) {
+            activeID = tabs[i].id
+            return route
+        }
+        if let i = active.isFolderTab ? activeIndex : lastFolderTab() {
+            go(i, to: route)
+            tabs[i].history.push(route)
+            activeID = tabs[i].id
+            return route
+        }
+        let t = FrameTab(route: route)
+        tabs.append(t)
+        activeID = t.id
+        trim(keeping: t.id)
+        return route
+    }
+
+    /// The folder tab on screen last (the rightmost when none has been yet, as after a launch).
+    private func lastFolderTab() -> Int? {
+        tabs.indices.filter { tabs[$0].isFolderTab }.max { (usedAt[tabs[$0].id] ?? 0, $0) < (usedAt[tabs[$1].id] ?? 0, $1) }
+    }
+
+    /// Moves tab `i` to `route` in place (its history is the caller's): a folder tab or a view's tab follows it,
+    /// a joined tab's pane with focus becomes it, any other tab becomes that page's tab.
+    private func go(_ i: Int, to route: FrameRoute) {
+        var t = tabs[i]
         let key = route.tabKey
-        guard !tabs.contains(where: { $0.holds(key) }) else { return false }
-        tabs.append(FrameTab(route: route))
-        trim(keeping: key, alsoKeeping: activeID)
-        return true
+        if t.isFolderTab, route.isFolderBrowsing {
+            guard t.path != route.path else { return }
+            t.path = route.path
+            // Named again by the engine (FrameModel.updateViewTitles); the icon is the route's.
+            t.title = route.fallbackTitle
+            t.icon = nil
+        } else if !t.isFolderTab, t.holds(key) {
+            t.path = route.path
+        } else if route.isNote, let panes = t.panes, let from = t.route.noteId, let j = panes.firstIndex(of: from) {
+            t.panes![j] = key
+            t.path = route.path
+        } else {
+            var n = FrameTab(route: route)
+            n.pinned = t.pinned
+            n.history = t.history
+            t = n
+        }
+        tabs[i] = t
+    }
+
+    /// Back in the tab on screen (its own history). Returns the route now on screen, or nil when there's nowhere to go.
+    @discardableResult
+    public func goBack() -> FrameRoute? { travel(back: true) }
+
+    /// Forward in the tab on screen.
+    @discardableResult
+    public func goForward() -> FrameRoute? { travel(back: false) }
+
+    private func travel(back: Bool) -> FrameRoute? {
+        let i = activeIndex
+        var h = tabs[i].history
+        guard let r = back ? h.back() : h.forward() else { return nil }
+        // A page that's in another tab by now (a page is in one tab at a time): that tab comes forward instead, and
+        // this tab stays where it was.
+        if let j = tabs.firstIndex(where: { $0.id != tabs[i].id && $0.holds(r.tabKey) }) {
+            activeID = tabs[j].id
+            return tabs[j].route
+        }
+        tabs[i].history = h
+        go(i, to: r)
+        activeID = tabs[i].id
+        return r
+    }
+
+    /// A page that's gone (a note in the Trash) leaves every tab's history.
+    public func forgetInHistory(_ route: FrameRoute) {
+        for i in tabs.indices { tabs[i].history.forget(route, fallback: tabs[i].route) }
+        for i in closed.indices { closed[i].history.forget(route, fallback: closed[i].route) }
+    }
+
+    /// Adds a route's tab behind the one on screen ("Open in new tab", a middle-click on a folder, a sidebar ⌘-click,
+    /// a selection's Open in new tabs), as a browser opens a background tab; the tab on screen stays. A page that has a tab already keeps it (a page is
+    /// in one tab at a time; a plain click then switches to it). The new tab's id, or nil when none was added.
+    @discardableResult
+    public func addInBackground(_ route: FrameRoute) -> String? {
+        guard !tabs.contains(where: { $0.holds(route.tabKey) }) else { return nil }
+        let t = FrameTab(route: route)
+        tabs.append(t)
+        trim(keeping: t.id, alsoKeeping: activeID)
+        return t.id
     }
 
     /// Keeps the strip bounded: drops the oldest tabs other than `keeping` (Home never goes).
@@ -229,7 +359,7 @@ public final class TabsModel {
     @discardableResult
     public func reopenClosed() -> FrameRoute? {
         while let last = closed.popLast() {
-            if tabs.contains(where: { $0.id == last.id || last.panes?.contains(where: $0.holds) == true || $0.panes?.contains(last.id) == true }) { continue }
+            if tabs.contains(where: { $0.id == last.id || $0.holds(last.route.tabKey) || last.panes?.contains(where: $0.holds) == true || $0.panes?.contains(last.id) == true }) { continue }
             tabs.append(last)
             activeID = last.id
             trim(keeping: last.id)
@@ -273,7 +403,9 @@ public final class TabsModel {
         // The notes' names as their own tabs knew them (a joined tab is named from them).
         for p in panes where paneTitles[p] == nil { if t.panes == nil, !t.title.isEmpty { paneTitles[p] = t.title } }
         if paneTitles[note] == nil, let own = tabs.first(where: { $0.id == note }), !own.title.isEmpty { paneTitles[note] = own.title }
-        let joined = FrameTab(joined: t.panes != nil ? t.id : newJoinID(), panes: panes + [note], at: note, pinned: t.pinned)
+        var joined = FrameTab(joined: t.panes != nil ? t.id : newJoinID(), panes: panes + [note], at: note, pinned: t.pinned)
+        joined.history = t.history
+        joined.history.push(.note(note))
         tabs[i] = joined
         tabs.removeAll { $0.id != joined.id && !$0.isJoined && ($0.id == note || $0.route.noteId == note) }
         activeID = joined.id
@@ -293,7 +425,9 @@ public final class TabsModel {
                 return one
             }
             let total = sizes?.reduce(0, +) ?? 0
-            return FrameTab(joined: keep ? t.id : newJoinID(), panes: p, at: at, sizes: total > 0 ? sizes!.map { $0 / total } : nil, pinned: t.pinned)
+            var joined = FrameTab(joined: keep ? t.id : newJoinID(), panes: p, at: at, sizes: total > 0 ? sizes!.map { $0 / total } : nil, pinned: t.pinned)
+            if keep { joined.history = t.history }
+            return joined
         }
         let left = side(Array(panes[...gap]), t.sizes.map { Array($0.prefix(gap + 1)) }, keep: true)
         let right = side(Array(panes[(gap + 1)...]), t.sizes.map { Array($0.dropFirst(gap + 1)) }, keep: false)
@@ -341,7 +475,9 @@ public final class TabsModel {
         } else {
             let sizes = t.sizes.map { s in s.enumerated().filter { $0.offset != j }.map(\.element) }
             let total = sizes?.reduce(0, +) ?? 0
-            kept = FrameTab(joined: t.id, panes: rest, at: wasFocus ? rest[0] : (t.route.noteId ?? rest[0]), sizes: total > 0 ? sizes!.map { $0 / total } : nil, pinned: t.pinned)
+            var joined = FrameTab(joined: t.id, panes: rest, at: wasFocus ? rest[0] : (t.route.noteId ?? rest[0]), sizes: total > 0 ? sizes!.map { $0 / total } : nil, pinned: t.pinned)
+            joined.history = t.history
+            kept = joined
         }
         tabs.replaceSubrange(i...i, with: [kept, own])
         guard activeID == t.id else { return nil }
@@ -457,7 +593,23 @@ public final class TabsModel {
     private func place(_ saved: Saved) {
         var seen = Set<String>([FrameTab.homeID])
         var list = [FrameTab(route: .home)]
+        var active = saved.active
         for t in saved.tabs.prefix(Self.maxTabs) where !seen.contains(t.id) {
+            let route = FrameRoute(path: t.path)
+            if t.panes == nil, route.isFolderBrowsing {
+                // A folder tab. One saved when each folder had its own tab (`view:folder:<id>`, or the Folders
+                // page's `view:web:/folders`) becomes a folder tab with an id of its own; a folder is in one tab.
+                guard t.isFolderTab || t.id == route.tabKey, !seen.contains(route.tabKey) else { continue }
+                var f = t
+                if !t.isFolderTab {
+                    f.id = FrameTab.newFolderID()
+                    if active == t.id { active = f.id }
+                }
+                seen.insert(f.id)
+                seen.insert(route.tabKey)
+                list.append(f)
+                continue
+            }
             // A tab's id must be what its path says (a hand-edited file can't make two tabs one).
             if let panes = t.panes {
                 guard t.id.hasPrefix("join:"), (2...Self.maxPanes).contains(panes.count), Set(panes).count == panes.count,
@@ -467,11 +619,11 @@ public final class TabsModel {
                 list.append(t)
                 continue
             }
-            guard FrameRoute(path: t.path).tabKey == t.id else { continue }
+            guard route.tabKey == t.id else { continue }
             seen.insert(t.id)
             list.append(t)
         }
         tabs = [list[0]] + list.dropFirst().filter(\.pinned) + list.dropFirst().filter { !$0.pinned }
-        activeID = list.contains(where: { $0.id == saved.active }) ? saved.active : FrameTab.homeID
+        activeID = list.contains(where: { $0.id == active }) ? active : FrameTab.homeID
     }
 }

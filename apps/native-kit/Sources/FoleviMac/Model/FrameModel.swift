@@ -60,13 +60,17 @@ public struct FrameToast: Identifiable, Equatable, Sendable {
     public static func == (a: FrameToast, b: FrameToast) -> Bool { a.id == b.id }
 }
 
-/// Back and forward through the routes this window showed (⌘[ and ⌘]).
+/// Back and forward through the routes one tab showed (⌘[ and ⌘]): each tab keeps its own (FrameTab.history), as
+/// Finder's tabs do.
 public struct RouteHistory: Equatable, Sendable {
     public private(set) var items: [FrameRoute] = [.home]
     public private(set) var index = 0
     public static let limit = 100
 
     public init() {}
+
+    /// A history that starts at `route` (a new tab's).
+    public init(_ route: FrameRoute) { items = [route] }
 
     public var current: FrameRoute { items[index] }
     public var canGoBack: Bool { index > 0 }
@@ -92,11 +96,11 @@ public struct RouteHistory: Equatable, Sendable {
         return items[index]
     }
 
-    /// A note that's gone (Trash) leaves the history.
-    public mutating func forget(_ route: FrameRoute) {
+    /// A note that's gone (Trash) leaves the history (`fallback` stays if nothing else would).
+    public mutating func forget(_ route: FrameRoute, fallback: FrameRoute = .home) {
         let cur = current
         items.removeAll { $0 == route }
-        if items.isEmpty { items = [.home] }
+        if items.isEmpty { items = [fallback] }
         index = items.lastIndex(of: cur) ?? (items.count - 1)
     }
 }
@@ -106,7 +110,8 @@ public struct RouteHistory: Equatable, Sendable {
 public final class FrameModel {
     public let client: EngineClient
     public let tabs = TabsModel()
-    public private(set) var history = RouteHistory()
+    /// Back and Forward of the tab on screen (each tab keeps its own).
+    public var history: RouteHistory { tabs.active.history }
     @ObservationIgnored public weak var host: (any FrameHost)?
 
     // Live values (the engine's views).
@@ -281,28 +286,33 @@ public final class FrameModel {
 
     // MARK: navigation
 
-    /// Shows a route in this window (its own tab, or the one it has).
+    /// Shows a route in this window (its own tab, or the one it has; a folder in a folder tab, TabsModel.show).
+    /// Every caller gets the tab rules here: the sidebar, folder cards, the Folders page, a folder page's path,
+    /// links from the page (`navigate.request`).
     public func open(_ route: FrameRoute, _ opening: TabsModel.Opening = .newTab, title: String? = nil, icon: String? = nil) {
         let shown = tabs.show(route, opening)
-        if let title { tabs.setTitle(title, icon: icon, for: shown.tabKey) }
-        if opening != .history { history.push(shown) }
+        // (A folder tab's id is its own; a joined note's name goes to its pane.)
+        if let title { tabs.setTitle(title, icon: icon, for: shown.isFolderBrowsing ? tabs.activeID : shown.tabKey) }
         routeChanged()
     }
 
     /// Adds a route's tab without going there (TabsModel.addInBackground), named `title` until the engine names it.
     public func openInBackground(_ route: FrameRoute, title: String? = nil) {
-        guard tabs.addInBackground(route) else { return }
-        if let title { tabs.setTitle(title, for: route.tabKey) }
+        guard let id = tabs.addInBackground(route) else { return }
+        if let title { tabs.setTitle(title, for: id) }
+        updateViewTitles()
+        host?.frameStateChanged()
     }
 
+    /// Back in the tab on screen (its own history, Finder style).
     public func goBack() {
-        guard let r = history.back() else { return }
-        open(r, .history)
+        guard tabs.goBack() != nil else { return }
+        routeChanged()
     }
 
     public func goForward() {
-        guard let r = history.forward() else { return }
-        open(r, .history)
+        guard tabs.goForward() != nil else { return }
+        routeChanged()
     }
 
     /// Bumped by Reload (the right-click menu's): the native screen on show reads its data again.
@@ -311,44 +321,42 @@ public final class FrameModel {
     public func reloadScreen() { screenReloads += 1 }
 
     public func selectTab(_ id: String) {
-        guard let r = tabs.select(id: id) else { return }
-        history.push(r)
+        guard tabs.select(id: id) != nil else { return }
         routeChanged()
     }
 
     public func selectTab(number n: Int) {
-        guard let r = tabs.select(number: n) else { return }
-        history.push(r)
+        guard tabs.select(number: n) != nil else { return }
         routeChanged()
     }
 
     public func nextTab(_ step: Int = 1) {
-        history.push(tabs.selectNext(step))
+        tabs.selectNext(step)
         routeChanged()
     }
 
     public func closeTab(_ id: String? = nil) {
-        if let r = tabs.close(id ?? tabs.activeID) { history.push(r) }
+        tabs.close(id ?? tabs.activeID)
         routeChanged()
     }
 
     public func closeOtherTabs(_ id: String) {
-        if let r = tabs.closeOthers(id) { history.push(r) }
+        tabs.closeOthers(id)
         routeChanged()
     }
 
     public func closeTabsToTheRight(of id: String) {
-        if let r = tabs.closeToTheRight(of: id) { history.push(r) }
+        tabs.closeToTheRight(of: id)
         routeChanged()
     }
 
     public func closeTabsToTheLeft(of id: String) {
-        if let r = tabs.closeToTheLeft(of: id) { history.push(r) }
+        tabs.closeToTheLeft(of: id)
         routeChanged()
     }
 
     public func closeAllTabs() {
-        if let r = tabs.closeAll() { history.push(r) }
+        tabs.closeAll()
         routeChanged()
     }
 
@@ -375,8 +383,7 @@ public final class FrameModel {
 
     /// Joins `note` to the tab `id`, on its right, and shows it there.
     public func joinNote(_ note: String, to id: String) {
-        guard let r = tabs.join(id, note: note) else { return }
-        history.push(r)
+        guard tabs.join(id, note: note) != nil else { return }
         routeChanged()
     }
 
@@ -391,7 +398,7 @@ public final class FrameModel {
     }
 
     public func detachPane(_ note: String, from id: String) {
-        if let r = tabs.detachPane(id, note: note) { history.push(r) }
+        tabs.detachPane(id, note: note)
         routeChanged()
     }
 
@@ -401,8 +408,7 @@ public final class FrameModel {
     }
 
     public func reopenClosedTab() {
-        guard let r = tabs.reopenClosed() else { return }
-        history.push(r)
+        guard tabs.reopenClosed() != nil else { return }
         routeChanged()
     }
 
@@ -414,21 +420,16 @@ public final class FrameModel {
     /// Restores this window's tabs (window restoration).
     public func restore(_ saved: TabsModel.Saved) {
         tabs.restore(saved)
-        history = RouteHistory()
-        history.push(tabs.activeRoute)
         // Saved in another space than the one the engine is in now: that space's tabs come out.
         if let s = session.value?.space { swapTabs(to: s) }
         routeChanged()
     }
 
-    /// The window shows a space (Personal or a workspace): its own tabs come out, the other's are put away, and
-    /// Back and Forward start again there. Floating notes stay as they are. Returns whether the strip changed.
+    /// The window shows a space (Personal or a workspace): its own tabs come out (each with its Back and Forward),
+    /// the other's are put away. Floating notes stay as they are. Returns whether the strip changed.
     @discardableResult
     private func swapTabs(to space: String) -> Bool {
-        guard tabs.enter(space: space) else { return false }
-        history = RouteHistory()
-        history.push(tabs.activeRoute)
-        return true
+        tabs.enter(space: space)
     }
 
     private func entered(space: String) {
@@ -699,8 +700,8 @@ public final class FrameModel {
         perform {
             _ = try await self.client.command(.noteTrash(ids: ids))
             for id in ids {
-                self.history.forget(.note(id))
-                if let r = self.tabs.forget(noteId: id) { self.history.push(r) }
+                self.tabs.forgetInHistory(.note(id))
+                self.tabs.forget(noteId: id)
             }
             self.routeChanged()
         }

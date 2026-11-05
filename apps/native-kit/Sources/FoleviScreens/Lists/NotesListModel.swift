@@ -146,6 +146,10 @@ public final class NotesListModel {
     public var moving: [String]?
     /// Notes the Copy to sheet is open for.
     public var copying: [String]?
+    /// A host that draws its own Move and Copy dialogs (the Mac's, matched to the web's): set, `moving` and
+    /// `copying` go to it instead of the sheets (NotesListSheets).
+    public var presentMove: (@MainActor ([String]) -> Void)?
+    public var presentCopy: (@MainActor ([String]) -> Void)?
     /// The Generate with Foli AI sheet (Templates).
     public var generating: GenerateModel?
 

@@ -13,7 +13,7 @@ extension FrameModel {
     /// A folder clicked where the list doesn't select (the sidebar, Home): a ⌘-click adds its tab behind the one on
     /// screen; a plain click shows it.
     func openFolder(_ id: String, name: String) {
-        if FolderTabClicks.commandHeld { openInBackground(.folder(id), title: name) } else { open(.folder(id)) }
+        if FolderTabClicks.commandHeld { openInBackground(.folder(id), title: name) } else { open(.folder(id), title: name) }
     }
 }
 

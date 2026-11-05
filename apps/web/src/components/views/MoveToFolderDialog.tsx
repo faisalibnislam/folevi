@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Check, CornerLeftUp, Inbox, Search } from "lucide-react";
+import { Check, CornerLeftUp, FolderPlus, Inbox, Search } from "lucide-react";
 import { flattenFolders, folderAncestors, folderMoveProblem, type WireScope } from "@folevi/editor-schema";
 import { useAppState } from "@/lib/app/state";
-import { folderMoveMessage, useFolderTree } from "@/lib/app/folders";
+import { folderMoveMessage, useFolderActions, useFolderTree } from "@/lib/app/folders";
 import { Dialog } from "@/components/ui/Dialog";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
 import type { FolderTarget } from "./noteActions";
 import { selectionNoun } from "@/lib/app/multiSelect";
 
 interface Option {
-  id: string | null;
+  /** "new": the row that makes a folder (named after the search, or named next) and picks it. */
+  id: string | null | "new";
   name: string;
   color: string | null;
   /** The folders above it ("Work / Clients"), shown while searching and read out to screen readers. */
@@ -62,7 +63,9 @@ export function MoveToFolderDialog({
 
 /**
  * The folder search and list (also the Folder side of a note's Move dialog, the Move folder dialog and the
- * Copy to dialog). Folders show as a tree; while searching each match says where it is.
+ * Copy to dialog). Folders show as a tree; while searching each match says where it is. The last row makes a
+ * new folder at the top level and picks it: "New folder “<search>”" while searching for a name no folder has,
+ * else "New folder…", which turns the field into the new folder's name (Enter makes it).
  */
 export function FolderPicker({
   open,
@@ -90,10 +93,14 @@ export function FolderPicker({
   /** Close once a folder is picked (a picker inside a bigger form keeps it open). */
   closeOnPick?: boolean;
 }) {
-  const { scope: here } = useAppState();
+  const { scope: here, canEdit } = useAppState();
   const scope = scopeOverride ?? here;
   const org = useFolderTree(open ? scope : "skip");
+  const folderActions = useFolderActions();
   const [q, setQ] = useState("");
+  // Naming a new folder: the field is its name, and Enter makes it and picks it.
+  const [naming, setNaming] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [active, setActive] = useState(0);
   const baseId = useId();
   const listRef = useRef<HTMLUListElement>(null);
@@ -102,6 +109,7 @@ export function FolderPicker({
     if (open) {
       setQ("");
       setActive(0);
+      setNaming(false);
     }
   }, [open]);
 
@@ -126,12 +134,15 @@ export function FolderPicker({
       }),
     ];
     const needle = q.trim().toLocaleLowerCase();
-    if (!needle) return all;
-    return all.filter((o) => o.name.toLocaleLowerCase().includes(needle) || (o.id === null && (topLevel ? "top level" : "drafts").includes(needle)));
-  }, [org, q, moving, topLevel, notesToo]);
+    const shown = needle ? all.filter((o) => o.name.toLocaleLowerCase().includes(needle) || (o.id === null && (topLevel ? "top level" : "drafts").includes(needle))) : all;
+    if (!canEdit || !org) return shown;
+    // A search for a name no folder has offers to make it.
+    const named = needle && !folders.some((f) => f.name.trim().toLocaleLowerCase() === needle) ? q.trim() : "";
+    return [...shown, { id: "new" as const, name: named ? `New folder “${named}”` : "New folder…", color: null, path: named || null, depth: 0 }];
+  }, [org, q, moving, topLevel, notesToo, canEdit]);
 
   const current = Math.min(active, Math.max(0, options.length - 1));
-  const isCurrent = (o: Option) => currentFolderId !== undefined && o.id === currentFolderId;
+  const isCurrent = (o: Option) => currentFolderId !== undefined && o.id !== "new" && o.id === currentFolderId;
   const unavailable = (o: Option) => isCurrent(o) || Boolean(o.blocked);
   const optionId = (i: number) => `${baseId}-opt-${i}`;
 
@@ -140,8 +151,23 @@ export function FolderPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
+  const make = (name: string) => {
+    const clean = name.trim();
+    if (!clean) return;
+    const id = folderActions.create(clean, null, scope);
+    if (closeOnPick) onClose();
+    onPick({ id, name: clean });
+  };
+
   const pick = (o: Option | undefined) => {
     if (!o || unavailable(o)) return;
+    if (o.id === "new") {
+      if (o.path) return make(o.path);
+      setNaming(true);
+      setQ("");
+      inputRef.current?.focus();
+      return;
+    }
     if (closeOnPick) onClose();
     onPick({ id: o.id, name: o.id ? o.name : topLevel ? "the top level" : "Drafts" });
   };
@@ -149,11 +175,16 @@ export function FolderPicker({
   return (
     <>
       <label htmlFor={`${baseId}-q`} className="sr-only">
-        Search folders
+        {naming ? "New folder name" : "Search folders"}
       </label>
       <div className="relative">
-        <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
+        {naming ? (
+          <FolderPlus size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
+        ) : (
+          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
+        )}
         <input
+          ref={inputRef}
           id={`${baseId}-q`}
           autoFocus
           autoComplete="off"
@@ -167,6 +198,13 @@ export function FolderPicker({
             setActive(0);
           }}
           onKeyDown={(e) => {
+            if (naming) {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                make(q);
+              }
+              return;
+            }
             if (e.key === "ArrowDown") {
               e.preventDefault();
               setActive((current + 1) % Math.max(1, options.length));
@@ -184,11 +222,19 @@ export function FolderPicker({
               pick(options[current]);
             }
           }}
-          placeholder="Search folders"
+          placeholder={naming ? "Name the new folder" : "Search folders"}
           className="ui-input h-10 w-full rounded-chip pl-8 pr-3 text-callout"
         />
       </div>
-      <ul ref={listRef} id={`${baseId}-list`} role="listbox" aria-label="Folders" aria-busy={org === undefined} className="mt-3 max-h-[min(360px,50dvh)] space-y-0.5 overflow-y-auto">
+      {naming ? (
+        <div className="mt-3 flex items-center justify-between gap-3 px-2 py-2 text-subheadline text-muted">
+          <span>{q.trim() ? `Press Enter to make “${q.trim()}” and move there.` : "Type a name, then press Enter."}</span>
+          <button type="button" onClick={() => { setNaming(false); setQ(""); inputRef.current?.focus(); }} className="rounded-chip px-2 py-1 text-heading hover:bg-accent-soft">
+            Back to folders
+          </button>
+        </div>
+      ) : null}
+      <ul ref={listRef} hidden={naming} id={`${baseId}-list`} role="listbox" aria-label="Folders" aria-busy={org === undefined} className="mt-3 max-h-[min(360px,50dvh)] space-y-0.5 overflow-y-auto">
         {options.map((o, i) => {
           const here = isCurrent(o);
           const searching = Boolean(q.trim());
@@ -207,7 +253,9 @@ export function FolderPicker({
               style={o.depth && !searching ? { paddingLeft: `calc(0.5rem + ${o.depth * 1.25}rem)` } : undefined}
               className={`ui-menu-item cursor-pointer ${unavailable(o) ? "cursor-default opacity-60" : ""}`}
             >
-              {o.id ? (
+              {o.id === "new" ? (
+                <FolderPlus size={15} className="flex-none text-muted" aria-hidden />
+              ) : o.id ? (
                 <FolderGlyph color={o.color} size={17} />
               ) : topLevel ? (
                 <CornerLeftUp size={15} className="flex-none text-muted" aria-hidden />
@@ -216,7 +264,7 @@ export function FolderPicker({
               )}
               <span className="min-w-0 flex-1 truncate">
                 {o.name}
-                {o.path ? searching ? <span className="ml-1.5 text-footnote text-faint">in {o.path}</span> : <span className="sr-only">, in {o.path}</span> : null}
+                {o.path && o.id !== "new" ? searching ? <span className="ml-1.5 text-footnote text-faint">in {o.path}</span> : <span className="sr-only">, in {o.path}</span> : null}
               </span>
               {here ? (
                 <span className="inline-flex items-center gap-1 text-footnote text-muted">
@@ -227,7 +275,7 @@ export function FolderPicker({
           );
         })}
         {org === undefined ? <li className="px-2 py-3 text-subheadline text-muted">Loading folders…</li> : null}
-        {org && !options.length ? <li className="px-2 py-3 text-subheadline text-muted">No folders match “{q.trim()}”.</li> : null}
+        {org && !options.some((o) => o.id !== "new") && q.trim() ? <li className="px-2 py-3 text-subheadline text-muted">No folders match “{q.trim()}”.</li> : null}
       </ul>
     </>
   );

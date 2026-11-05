@@ -75,3 +75,22 @@ Recommended order (as it was): top to bottom.
 - [x] Very large spaces: draw with Metal or a level-of-detail pass past 2,000 nodes; raise the `GRAPH_LIMITS` cap
 - [x] Keyboard and VoiceOver pass on Mac and iPad (rotor of nodes, same as the web's List view)
 - [x] folevi.com: a Foli DNA feature section with a moving picture (from the time-lapse)
+
+## Fixes after the owner's report on 1.2.32 (5 November 2026, Mac)
+"Foli DNA is really buggy, note shows up behind." Fixed on the Mac, iPad and iPhone (one SwiftUI screen):
+- The note from another tab showed through: the screen's fill was the card's 90% glass over the waiting note page.
+  It's now laid over the canvas (`ScreenRoot` in Screens.swift), which also fixes Help, Reviews and shared folders.
+- The map wasn't fitted, and zooming and dragging only showed late: the Canvas drew from a body that never read the
+  zoom and pan, so the fit was computed and thrown away. The body now reads what the drawing uses; the map also
+  fits again when positions change (not only when the set of notes does), never to a zero size, and is clipped.
+- Most notes were bare dots: labels now go on every note whose label has room (no overlap with another label or dot,
+  inside the map), best-connected first; hubs may sit beside a dot when the map is near full size.
+- Cluster names ran under the filter bar and were covered by dots: the fit takes in each cluster's wash and name,
+  and names are drawn on top with a halo.
+- Dotted rings on dots with no lines: a bridge is marked only when its lines on the map reach another cluster.
+- The filter bar was two crowded rows: one row for Map or List, search, the count and the actions (play, layout,
+  Insights, export, saved views as icons), and one short row of four filters and a Show menu holding the kinds and
+  the on/off choices (it says how many differ from a fresh map; on the phone it comes first).
+- Tests: `apps/native-kit/Tests/FoleviMacTests/DnaSnapshotTests.swift`, on the scripted engine's map
+  (`Demo/DemoGraph.swift`, 44 notes like the report's): Mac, iPad and iPhone sizes, light and dark, a red stand-in
+  note behind that must not show, and checks of labels, fit and bridges. Rendered on the Mac.

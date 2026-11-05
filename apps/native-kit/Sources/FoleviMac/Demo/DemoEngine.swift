@@ -160,6 +160,7 @@ public final class DemoEngine {
         case "tasks.range":
             let from = args["from"]?.string ?? "", to = args["to"]?.string ?? "~"
             return try .from(TasksRangeValue(tasks: taskRows.filter { ($0.dueDate ?? "") >= from && ($0.dueDate ?? "") <= to }))
+        case "graph": return try .from(DemoEngine.graph)
         case "calendars.events":
             return try .from(CalendarEventsValue(events: []))
         case "calendars.list":

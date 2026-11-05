@@ -306,9 +306,15 @@ struct ScreenRoot: View {
         // own fill drawn here, since the note page waiting behind the screens has its own canvas over the card's.
         // (Drawn to the card's top edge, under the glass bar too: on an iPad the padded safe area left a white band
         // of the card's own fill above the screen's canvas.)
+        // The card's fill is 90% opaque (the web's glass), so it's laid over the canvas: on its own the note page
+        // waiting behind showed through (Foli DNA over a note's title, body and floating bar, November 2026).
         .background {
-            (MoreScreen.clear(route) ? WebStyles.named("frame.content").resolve(scheme).background.color : Folevi.color.canvas)
-                .ignoresSafeArea()
+            ZStack {
+                Folevi.color.canvas
+                if MoreScreen.clear(route) { WebStyles.named("frame.content").resolve(scheme).background.color }
+            }
+            .ignoresSafeArea()
+            .contentShape(Rectangle())
         }
         // Another place or space: the screen crossfades instead of cutting.
         .placeCrossfade("\(model.session.value?.place ?? "")|\(model.session.value?.space ?? "")")

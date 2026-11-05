@@ -58,6 +58,7 @@ let package = Package(
         .testTarget(
             name: "FoleviMacTests",
             dependencies: ["FoleviMac", "FoleviEngine"],
+            exclude: ["__Snapshots__"],
             swiftSettings: strict
         ),
         .testTarget(

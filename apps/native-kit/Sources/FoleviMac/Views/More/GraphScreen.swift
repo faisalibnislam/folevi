@@ -239,6 +239,74 @@ enum GraphMath {
         fit(nodes.map { CGPoint(x: $0.x, y: $0.y) }, size, padding: padding)
     }
 
+    /// A node's label on the map: at most 40 characters, cut with an ellipsis.
+    static func shortLabel(_ label: String) -> String {
+        let l = label.isEmpty ? "Untitled" : label
+        return l.count > 40 ? String(l.prefix(39)).trimmingCharacters(in: .whitespaces) + "…" : l
+    }
+
+    /// A cluster's wash in map units: its notes' middle and the farthest of them plus a margin (drawn the same way).
+    static func clusterCircle(_ pts: [CGPoint]) -> (center: CGPoint, r: CGFloat)? {
+        guard pts.count >= 3 else { return nil }
+        let cx = pts.map(\.x).reduce(0, +) / CGFloat(pts.count), cy = pts.map(\.y).reduce(0, +) / CGFloat(pts.count)
+        return (CGPoint(x: cx, y: cy), (pts.map { hypot($0.x - cx, $0.y - cy) }.max() ?? 0) + 28)
+    }
+
+    /// What the map fits to: every node, plus each cluster's wash and the room for its name above it (before, the
+    /// washes and names ran under the filter bar).
+    static func extent(_ points: [CGPoint], clusters: [[CGPoint]]) -> [CGPoint] {
+        var out = points
+        for pts in clusters {
+            guard let (c, r) = clusterCircle(pts) else { continue }
+            out += [CGPoint(x: c.x - r, y: c.y - r - 22), CGPoint(x: c.x + r, y: c.y + r)]
+        }
+        return out
+    }
+
+    /// Which nodes get a label: the ones that must (`always`: the one in the middle, what's searched for, what's
+    /// near the pointer) and then, best-connected first, every other one whose label has room: it doesn't cover a
+    /// placed label or another node. Before, only the 12 best-connected were labelled and most notes were bare dots.
+    /// `preferred` (the hubs) may sit beside another dot, `bounds` keeps the rest inside the map, and `blocked` is
+    /// room already taken (the clusters' names).
+    static func labelPlan(_ order: [String], always: Set<String>, preferred: Set<String> = [], bounds: CGRect? = nil, blocked: [CGRect] = [], center: (String) -> CGPoint?, radius: (String) -> CGFloat, width: (String) -> CGFloat, limit: Int = .max) -> Set<String> {
+        let height: CGFloat = 14
+        func rect(_ id: String) -> CGRect? {
+            guard let c = center(id) else { return nil }
+            let w = width(id), r = radius(id)
+            return CGRect(x: c.x - w / 2, y: c.y + r + 12 - height + 2, width: w, height: height)
+        }
+        var discs: [(CGPoint, CGFloat, String)] = []
+        for id in order { if let c = center(id) { discs.append((c, radius(id), id)) } }
+        var placed: [CGRect] = blocked
+        var out = Set<String>()
+        let first = order.filter { always.contains($0) }, rest = order.filter { !always.contains($0) }
+        for id in first { if let r = rect(id) { placed.append(r); out.insert(id) } }
+        for id in rest where out.count < limit {
+            guard let r = rect(id) else { continue }
+            let room = r.insetBy(dx: -3, dy: -1)
+            if let bounds, !bounds.contains(r) { continue }
+            if placed.contains(where: { $0.intersects(room) }) { continue }
+            if !preferred.contains(id), discs.contains(where: { $0.2 != id && room.insetBy(dx: -$0.1, dy: -$0.1).contains($0.0) }) { continue }
+            placed.append(r)
+            out.insert(id)
+        }
+        return out
+    }
+
+    /// The bridges worth marking on this map: a node the engine called a bridge, still joined by lines on screen to
+    /// at least two notes, one of them in another cluster. (Its links to hidden people and topics don't count: they
+    /// made rings on notes that looked unlinked.)
+    static func shownBridges(_ nodes: [GraphNode], _ edges: [GraphEdge]) -> Set<String> {
+        let cluster = Dictionary(nodes.map { ($0.id, $0.cluster) }, uniquingKeysWith: { a, _ in a })
+        var out = Set<String>()
+        for n in nodes where n.bridge {
+            let near = neighbours(edges, n.id).filter { cluster[$0] != nil }
+            guard near.count >= 2 else { continue }
+            if near.contains(where: { cluster[$0] != n.cluster }) { out.insert(n.id) }
+        }
+        return out
+    }
+
     static func zoom(_ t: Transform, _ factor: CGFloat, around p: CGPoint) -> Transform {
         let k = clamp(t.k * factor), f = k / t.k
         return Transform(x: p.x - (p.x - t.x) * f, y: p.y - (p.y - t.y) * f, k: k)
@@ -445,7 +513,7 @@ enum DnaMath {
             guard let p = at(n.id) else { continue }
             let r = GraphMath.radius(deg[n.id] ?? 0, entity: n.kind != "note")
             out.append("<circle cx=\"\(f(p.x))\" cy=\"\(f(p.y))\" r=\"\(f(r))\" fill=\"\(colors[n.kind] ?? "#8a8a8a")\" stroke=\"#ffffff\" stroke-width=\"1.5\"/>")
-            if labelled.contains(n.id) { out.append("<text x=\"\(f(p.x))\" y=\"\(f(p.y + r + 12))\" font-family=\"-apple-system, system-ui, sans-serif\" font-size=\"11.5\" text-anchor=\"middle\" fill=\"#333333\">\(esc(String((n.label.isEmpty ? "Untitled" : n.label).prefix(40))))</text>") }
+            if labelled.contains(n.id) { out.append("<text x=\"\(f(p.x))\" y=\"\(f(p.y + r + 12))\" font-family=\"-apple-system, system-ui, sans-serif\" font-size=\"11.5\" text-anchor=\"middle\" fill=\"#333333\">\(esc(GraphMath.shortLabel(n.label)))</text>") }
         }
         out.append("</svg>")
         return out.joined(separator: "\n")
@@ -534,6 +602,8 @@ struct GraphScreen: View {
         let found = model.query.trimmingCharacters(in: .whitespaces).isEmpty ? "" : " · \(model.matches.count) found"
         let more = shown.nodes.count > notes ? ", \(shown.nodes.count - notes) more" : ""
         let count = "\(notes) \(notes == 1 ? "note" : "notes")\(more)\(found)"
+        // One row: Map or List, the search, how many, and the map's actions as icons. The filters sit in a second,
+        // short row below (filterBar); the on/off choices live in its Show menu. (It was two crowded rows of chips.)
         return Group {
             if compact {
                 VStack(alignment: .leading, spacing: 8) {
@@ -542,16 +612,20 @@ struct GraphScreen: View {
                         Spacer(minLength: 0)
                         if v != nil { Text(verbatim: count).webText(.role(.footnote)).lineLimit(1).monospacedDigit().foregroundStyle(faint) }
                     }
-                    searchField
-                    if v?.full == true { ScrollView(.horizontal, showsIndicators: false) { kindChips } }
+                    HStack(spacing: 4) {
+                        searchField
+                        if let v { actions(v) }
+                    }
                 }
             } else {
                 HStack(spacing: 8) {
                     segmented
                     searchField
-                    if v?.full == true { kindChips }
-                    Spacer(minLength: 0)
-                    if v != nil { Text(verbatim: count).webText(.role(.footnote)).lineLimit(1).monospacedDigit().foregroundStyle(faint) }
+                    Spacer(minLength: 8)
+                    if let v {
+                        Text(verbatim: count).webText(.role(.footnote)).lineLimit(1).monospacedDigit().foregroundStyle(faint)
+                        actions(v)
+                    }
                 }
             }
         }
@@ -639,28 +713,69 @@ struct GraphScreen: View {
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
-    private var kindChips: some View {
-        HStack(spacing: 4) {
-            ForEach(GraphMath.entityKinds, id: \.self) { k in
-                let on = model.kinds.contains(k)
-                chip(GraphMath.filterLabel[k] ?? k, on: on, glyph: k) {
-                    model.settings.kinds = on ? model.kinds.filter { $0 != k } : GraphMath.entityKinds.filter { $0 == k || model.kinds.contains($0) }
-                }
+    /// The map's actions, as icons: play how it grew, layout, Insights, export, saved views.
+    private func actions(_ v: GraphValue) -> some View {
+        let span = DnaMath.span(model.shown.nodes)
+        return HStack(spacing: 0) {
+            WebIconButton(model.playAt == nil ? .play : .pause, label: model.playAt == nil ? "Play how it grew" : "Stop") {
+                model.playAt = model.playAt == nil ? span?.start : nil
             }
+            .disabled(span == nil || span?.start == span?.end)
+            WebIconButton(.slidersHorizontal, label: "Layout", pressed: model.layoutOpen) { model.layoutOpen.toggle() }
+            WebIconButton(.chartNetwork, label: "Insights", pressed: model.insights) { model.insights.toggle() }
+            WebMenuButton(entries: { exportEntries }) { WebIconView(.download, size: 16).foregroundStyle(moreVar("color-ink-muted", scheme)).frame(width: 32, height: 32).contentShape(Rectangle()) }
+                .accessibilityLabel("Export")
+            WebMenuButton(entries: { viewEntries(v) }) { WebIconView(.bookmark, size: 16).foregroundStyle(moreVar("color-ink-muted", scheme)).frame(width: 32, height: 32).contentShape(Rectangle()) }
+                .accessibilityLabel("Saved views")
+        }
+        .task(id: model.playAt) {
+            guard let at = model.playAt, let s = span else { return }
+            if at >= s.end {
+                try? await Task.sleep(for: .milliseconds(1200))
+                model.playAt = nil
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(16))
+            if model.playAt != nil { model.playAt = min(s.end, at + max(1, (s.end - s.start) / 480)) }
         }
     }
 
-    private func chip(_ title: String, on: Bool, glyph: String? = nil, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                if let glyph { KindGlyph(kind: glyph, muted: !on) }
-                Text(verbatim: title).webText(WebStyles.named("chip").resolve(scheme).text).lineLimit(1)
+    /// The Show menu: which kinds Foli AI found are drawn, and the map's on/off choices, each checked when on.
+    private func showEntries(_ v: GraphValue, orphanCount: Int) -> [WebMenuEntry] {
+        let f = model.settings.filter
+        var out: [WebMenuEntry] = []
+        if v.full {
+            out.append(.heading("Foli AI’s finds"))
+            out.append(WebMenuEntry(.item("Show Foli AI’s finds", checked: f.linksOnly != true, id: "finds")) { model.settings.filter.linksOnly = f.linksOnly == true ? false : true })
+            for k in GraphMath.entityKinds {
+                let on = model.kinds.contains(k)
+                out.append(WebMenuEntry(.item(GraphMath.filterLabel[k] ?? k, checked: on, swatch: moreVar(GraphMath.colorVar(k), scheme), id: "kind:\(k)"), disabled: f.linksOnly == true) {
+                    model.settings.kinds = on ? model.kinds.filter { $0 != k } : GraphMath.entityKinds.filter { $0 == k || model.kinds.contains($0) }
+                })
             }
-            .foregroundStyle(on ? moreVar("color-heading", scheme) : moreVar("color-ink-faint", scheme))
-            .webElement(WebStyles.named("chip"))
+            out.append(.separator())
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(on ? .isSelected : [])
+        out.append(.heading("On the map"))
+        out.append(WebMenuEntry(.item(orphanCount > 0 ? "Unlinked notes (\(orphanCount))" : "Unlinked notes", checked: f.hideOrphans != true, id: "orphans")) { model.settings.filter.hideOrphans = f.hideOrphans == true ? false : true })
+        out.append(WebMenuEntry(.item("Clusters", checked: model.settings.clusters, id: "clusters")) { model.settings.clusters.toggle() })
+        out.append(WebMenuEntry(.item("Arrows", checked: model.settings.arrows, id: "arrows")) { model.settings.arrows.toggle() })
+        out.append(WebMenuEntry(.item("Focus", checked: model.focusMode, description: "Dim notes more than two steps away", id: "focus")) { model.focusMode.toggle() })
+        out.append(WebMenuEntry(.item("New this week", checked: model.sinceWeek, id: "week")) { model.sinceWeek.toggle() })
+        return out
+    }
+
+    /// How many Show choices differ from a fresh map (shown beside "Show").
+    private var changedShows: Int {
+        let f = model.settings.filter
+        var n = 0
+        if f.linksOnly == true { n += 1 }
+        if model.kinds.count != GraphMath.entityKinds.count, f.linksOnly != true { n += 1 }
+        if f.hideOrphans == true { n += 1 }
+        if !model.settings.clusters { n += 1 }
+        if model.settings.arrows { n += 1 }
+        if model.focusMode { n += 1 }
+        if model.sinceWeek { n += 1 }
+        return n
     }
 
     private static let edited: [(id: String, title: String, days: Double?)] = [("any", "Edited any time", nil), ("7", "Edited this week", 7), ("30", "Edited this month", 30), ("90", "Edited in 3 months", 90), ("365", "Edited this year", 365)]
@@ -673,10 +788,11 @@ struct GraphScreen: View {
         let tagId = f.tags?.first ?? ""
         let base = DnaMath.filter(v.nodes, v.edges, DnaFilter(folders: f.folders, tags: f.tags, editedSince: f.editedSince, linksOnly: f.linksOnly))
         let orphanCount = DnaMath.orphans(base.nodes, base.edges).count
-        let span = DnaMath.span(model.shown.nodes)
         let colorTitles = ["kind": "Colour by kind", "folder": "Colour by folder", "tag": "Colour by tag"]
         return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: 14) {
+                // On a phone the row scrolls: Show comes first so it's never off the end.
+                if compact { showMenu(v, orphanCount: orphanCount) }
                 WebBareSelect(label: v.folders.first { $0.id == folderId }?.name ?? "All folders", options: [("", "All folders")] + v.folders.map { ($0.id, $0.name) }, selected: folderId) { id in model.settings.filter.folders = id.isEmpty ? [] : [id] }
                 WebBareSelect(label: v.tags.first { $0.id == tagId }.map { "#\($0.name)" } ?? "Any tag", options: [("", "Any tag")] + v.tags.map { ($0.id, "#\($0.name)") }, selected: tagId) { id in model.settings.filter.tags = id.isEmpty ? [] : [id] }
                 WebBareSelect(label: Self.edited.first { $0.id == editedId }?.title ?? "Edited any time", options: Self.edited.map { ($0.id, $0.title) }, selected: editedId) { id in
@@ -684,35 +800,24 @@ struct GraphScreen: View {
                     model.settings.filter.editedSince = days.map { Date().timeIntervalSince1970 * 1000 - $0 * 86_400_000 }
                 }
                 WebBareSelect(label: colorTitles[model.settings.colorBy] ?? "Colour by kind", options: [("kind", "Colour by kind"), ("folder", "Colour by folder"), ("tag", "Colour by tag")], selected: model.settings.colorBy) { model.settings.colorBy = $0 }
-                if v.full { chip("Foli AI’s finds", on: f.linksOnly != true) { model.settings.filter.linksOnly = f.linksOnly == true ? false : true } }
-                chip(orphanCount > 0 ? "Unlinked notes (\(orphanCount))" : "Unlinked notes", on: f.hideOrphans != true) { model.settings.filter.hideOrphans = f.hideOrphans == true ? false : true }
-                chip("Clusters", on: model.settings.clusters) { model.settings.clusters.toggle() }
-                chip("Arrows", on: model.settings.arrows) { model.settings.arrows.toggle() }
-                chip("Focus", on: model.focusMode) { model.focusMode.toggle() }
-                chip("New this week", on: model.sinceWeek) { model.sinceWeek.toggle() }
-                WebIconButton(model.playAt == nil ? .play : .pause, label: model.playAt == nil ? "Play how it grew" : "Stop") {
-                    model.playAt = model.playAt == nil ? span?.start : nil
-                }
-                .disabled(span == nil || span?.start == span?.end)
-                WebIconButton(.slidersHorizontal, label: "Layout", pressed: model.layoutOpen) { model.layoutOpen.toggle() }
-                WebIconButton(.chartNetwork, label: "Insights", pressed: model.insights) { model.insights.toggle() }
-                WebMenuButton(entries: { exportEntries }) { WebIconView(.download, size: 16).frame(width: 32, height: 32).contentShape(Rectangle()) }
-                    .accessibilityLabel("Export")
-                WebMenuButton(entries: { viewEntries(v) }) {
-                    Text(verbatim: "Views").webText(.role(.subheadline)).foregroundStyle(moreVar("color-ink", scheme)).padding(.horizontal, 8).frame(height: 32).contentShape(Rectangle())
-                }
+                if !compact { showMenu(v, orphanCount: orphanCount) }
             }
         }
-        .task(id: model.playAt) {
-            guard let at = model.playAt, let s = span else { return }
-            if at >= s.end {
-                try? await Task.sleep(for: .milliseconds(1200))
-                model.playAt = nil
-                return
+    }
+
+    private func showMenu(_ v: GraphValue, orphanCount: Int) -> some View {
+        let l = moreStyle("more.review.select.label", scheme)
+        let c = moreStyle("more.review.select.chevron", scheme)
+        let n = changedShows
+        return WebMenuButton(entries: { showEntries(v, orphanCount: orphanCount) }) {
+            HStack(spacing: 4) {
+                Text(verbatim: n > 0 ? "Show · \(n) changed" : "Show").webText(l.text).lineLimit(1).foregroundStyle(l.color.color)
+                WebIconView(.chevronDown, size: 14).foregroundStyle(c.color.color).opacity(c.opacity)
             }
-            try? await Task.sleep(for: .milliseconds(16))
-            if model.playAt != nil { model.playAt = min(s.end, at + max(1, (s.end - s.start) / 480)) }
+            .frame(height: 32)
+            .contentShape(Rectangle())
         }
+        .accessibilityLabel("Show")
     }
 
     private var exportEntries: [WebMenuEntry] {
@@ -871,6 +976,8 @@ struct GraphCanvasView: View {
     @Environment(\.colorScheme) private var scheme
     @State private var t = GraphMath.Transform(x: 0, y: 0, k: 1)
     @State private var moved = false
+    /// Whether the map has been fitted to its size yet (the first fit waits for a real size).
+    @State private var fitted = false
     @State private var size: CGSize = .zero
     @State private var hover: String?
     @State private var selected: String?
@@ -895,10 +1002,35 @@ struct GraphCanvasView: View {
     }
 
     private var points: [CGPoint] { nodes.compactMap { at($0.id) } }
+    /// What the fit takes in: the nodes and, with clusters on, their washes and names.
+    private var fitPoints: [CGPoint] {
+        guard model.settings.clusters else { return points }
+        return GraphMath.extent(points, clusters: value.clusters.prefix(12).map { c in nodes.filter { $0.cluster == c.id }.compactMap { at($0.id) } })
+    }
+    /// Changes when any node moves (a new layout, Reset, a pin from another window): the map fits again unless
+    /// it was zoomed or panned by hand. (Ids alone missed new positions, so the map sat off to one side.)
+    private var placeKey: Int {
+        var h = Hasher()
+        for n in nodes { h.combine(n.id); if let p = at(n.id), dragNode?.id != n.id { h.combine(Int(p.x)); h.combine(Int(p.y)) } }
+        h.combine(model.settings.clusters)
+        return h.finalize()
+    }
+    private func refit(_ in: CGSize? = nil) {
+        let s = `in` ?? size
+        // Not before the map has a size: a fit to zero left it at zoom 1 in the top-left corner.
+        guard s.width > 1, s.height > 1 else { return }
+        t = GraphMath.fit(fitPoints, s, padding: 28)
+        fitted = true
+    }
     private var searching: Bool { !model.query.trimmingCharacters(in: .whitespaces).isEmpty }
     private var matches: Set<String> { GraphMath.match(nodes, model.query) }
 
     var body: some View {
+        // The Canvas draws from this body's copy of the state, and SwiftUI only runs the body again for what it read.
+        // So everything draw() uses is read here: the zoom and pan, a node being dragged, the pins. (The body didn't
+        // read them, so the first fit, zooming and dragging only showed once something else redrew the map.)
+        let transform = t
+        let live = [dragNode.map { "\($0.id)@\($0.at.x),\($0.at.y)" } ?? "", "\(model.pins.count)", box.map { "\($0)" } ?? ""]
         let deg = GraphMath.degrees(edges)
         let large = nodes.count > GraphMath.large
         let labelled = GraphMath.top(nodes, deg, count: large ? 8 : GraphMath.alwaysLabelled)
@@ -913,8 +1045,10 @@ struct GraphCanvasView: View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
                 Canvas { ctx, _ in
-                    draw(&ctx, deg: deg, labelled: labelled, near: near, visible: visible, fresh: fresh, suggested: suggested, large: large)
+                    _ = live
+                    draw(&ctx, t: transform, deg: deg, labelled: labelled, near: near, visible: visible, fresh: fresh, suggested: suggested, large: large)
                 }
+                .clipped()
                 .contentShape(Rectangle())
                 .gesture(drag)
                 .simultaneousGesture(MagnifyGesture().onChanged { g in
@@ -972,19 +1106,22 @@ struct GraphCanvasView: View {
             }
             .onAppear {
                 size = geo.size
-                t = GraphMath.fit(points, geo.size)
+                refit(geo.size)
                 hookExport(deg: deg, labelled: labelled)
             }
-            .onChange(of: geo.size) { _, s in size = s; if !moved { t = GraphMath.fit(points, s) } }
+            .onChange(of: geo.size) { _, s in size = s; if !moved || !fitted { refit(s) } }
             .onChange(of: nodes.map(\.id)) { _, _ in
-                if !moved { t = GraphMath.fit(points, size) }
+                moved = false
+                refit(geo.size)
                 hookExport(deg: deg, labelled: labelled)
             }
+            .onChange(of: placeKey) { _, _ in if !moved && dragNode == nil { refit(geo.size) } }
             .onChange(of: model.glideTo) { _, id in
                 guard let id else { return }
                 glide(to: id)
                 model.glideTo = nil
             }
+            .clipped()
         }
         .focusable()
         .focusEffectDisabled()
@@ -999,8 +1136,19 @@ struct GraphCanvasView: View {
     private func hookExport(deg: [String: Int], labelled: Set<String>) {
         let nodes = nodes, edges = edges
         let place = { (id: String) in self.at(id) }
-        exporter.svg = { DnaMath.svg(nodes, edges, at: place, labelled: labelled, deg: deg) }
-        exporter.png = { self.png(deg: deg, labelled: labelled) }
+        // The saved picture labels what has room, as the map does (widths estimated: no drawing context here).
+        let order = nodes.sorted { (deg[$0.id] ?? 0) != (deg[$1.id] ?? 0) ? (deg[$0.id] ?? 0) > (deg[$1.id] ?? 0) : $0.label < $1.label }
+        let byId = Dictionary(order.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let plan = { (scale: CGFloat, map: (CGPoint) -> CGPoint) -> Set<String> in
+            nodes.count > GraphMath.large ? labelled : GraphMath.labelPlan(
+                order.map(\.id), always: [],
+                center: { id in place(id).map(map) },
+                radius: { id in GraphMath.radius(deg[id] ?? 0, entity: byId[id]?.kind != "note") * scale },
+                width: { id in CGFloat(min(40, max(8, byId[id]?.label.count ?? 8))) * 6.2 }
+            )
+        }
+        exporter.svg = { DnaMath.svg(nodes, edges, at: place, labelled: plan(1) { $0 }, deg: deg) }
+        exporter.png = { self.png(deg: deg, labels: plan) }
     }
 
     // MARK: drawing
@@ -1015,20 +1163,25 @@ struct GraphCanvasView: View {
         return GraphMath.tagColor(g.color, scheme)
     }
 
-    private func draw(_ ctx: inout GraphicsContext, deg: [String: Int], labelled: Set<String>, near: Set<String>?, visible: Set<String>?, fresh: Set<String>?, suggested: [GraphSuggestion], large: Bool) {
+    private func draw(_ ctx: inout GraphicsContext, t: GraphMath.Transform, deg: [String: Int], labelled: Set<String>, near: Set<String>?, visible: Set<String>?, fresh: Set<String>?, suggested: [GraphSuggestion], large: Bool) {
         let k = t.k
         let shows = { (id: String) in visible?.contains(id) ?? true }
-        // Clusters: a faint wash behind each, and its name above.
+        // Clusters: a faint wash behind each; its name goes above it, drawn after the nodes (so no dot covers it) and
+        // kept clear of the notes' labels.
+        var names: [(text: GraphicsContext.ResolvedText, at: CGPoint, rect: CGRect, halo: GraphicsContext.ResolvedText)] = []
         if model.settings.clusters {
             for c in value.clusters.prefix(12) {
                 let pts = nodes.filter { $0.cluster == c.id && shows($0.id) }.compactMap { at($0.id) }
-                guard pts.count >= 3 else { continue }
-                let cx = pts.map(\.x).reduce(0, +) / CGFloat(pts.count), cy = pts.map(\.y).reduce(0, +) / CGFloat(pts.count)
-                let r = (pts.map { hypot($0.x - cx, $0.y - cy) }.max() ?? 0) + 28
-                let center = GraphMath.screen(t, CGPoint(x: cx, y: cy))
+                guard let (mid, r) = GraphMath.clusterCircle(pts) else { continue }
+                let center = GraphMath.screen(t, mid)
                 let tint = moreVar(GraphMath.clusterTints[c.id % GraphMath.clusterTints.count], scheme)
                 ctx.fill(Path(ellipseIn: CGRect(x: center.x - r * k, y: center.y - r * k, width: r * k * 2, height: r * k * 2)), with: .color(tint.opacity(0.06)))
-                ctx.draw(Text(verbatim: c.name).font(WebFont.font(.sans, size: 12, weight: 600)).foregroundColor(tint), at: CGPoint(x: center.x, y: center.y - r * k - 6), anchor: .bottom)
+                let font = WebFont.font(.sans, size: 12, weight: 600)
+                let text = ctx.resolve(Text(verbatim: c.name).font(font).foregroundColor(tint))
+                let halo = ctx.resolve(Text(verbatim: c.name).font(font).foregroundColor(moreVar("color-canvas", scheme)))
+                let size = text.measure(in: CGSize(width: 600, height: 40))
+                let spot = CGPoint(x: center.x, y: center.y - r * k - 6)
+                names.append((text, spot, CGRect(x: spot.x - size.width / 2, y: spot.y - size.height, width: size.width, height: size.height), halo))
             }
         }
         let dups = Set(value.duplicates.map { [$0.a, $0.b].sorted().joined(separator: ":") })
@@ -1079,7 +1232,32 @@ struct GraphCanvasView: View {
         }
         let canvas = moreVar("color-canvas", scheme), heading = moreVar("color-heading", scheme), ink = moreVar("color-ink", scheme)
         let dim: CGFloat = model.focusMode ? 0.06 : 0.25
-        for n in nodes where shows(n.id) {
+        let drawnNodes = nodes.filter { shows($0.id) }
+        let bridges = model.settings.clusters ? GraphMath.shownBridges(drawnNodes, edges.filter { shows($0.source) && shows($0.target) }) : []
+        let font = WebFont.font(.sans, size: 11.5)
+        let text = { (n: GraphNode) in GraphMath.shortLabel(n.label) }
+        var always = Set(near ?? [])
+        if searching { always.formUnion(matches) }
+        if let c = model.center { always.insert(c) }
+        let shown = Set(drawnNodes.map(\.id))
+        let labels: Set<String>
+        if large {
+            labels = labelled.union(always).intersection(shown)
+        } else {
+            let order = drawnNodes.sorted { (deg[$0.id] ?? 0) != (deg[$1.id] ?? 0) ? (deg[$0.id] ?? 0) > (deg[$1.id] ?? 0) : $0.label < $1.label }
+            let byId = Dictionary(order.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+            labels = GraphMath.labelPlan(
+                // Hubs may sit beside another dot only while the map is drawn near full size (a phone's whole-map
+                // fit is too small for that: their labels covered each other).
+                order.map(\.id), always: always, preferred: k >= 0.7 ? labelled : [],
+                bounds: CGRect(origin: .zero, size: size).insetBy(dx: 4, dy: 4),
+                blocked: names.map(\.rect),
+                center: { id in at(id).map { GraphMath.screen(t, $0) } },
+                radius: { id in GraphMath.drawn(GraphMath.radius(deg[id] ?? 0, entity: byId[id]?.kind != "note"), k) * k },
+                width: { id in byId[id].map { ctx.resolve(Text(verbatim: text($0)).font(font)).measure(in: CGSize(width: 600, height: 40)).width } ?? 0 }
+            )
+        }
+        for n in drawnNodes {
             guard let p = at(n.id) else { continue }
             let entity = n.kind != "note"
             let r = GraphMath.drawn(GraphMath.radius(deg[n.id] ?? 0, entity: entity), k) * k
@@ -1088,7 +1266,7 @@ struct GraphCanvasView: View {
             var layer = ctx
             layer.opacity = on ? 1 : dim
             if fresh?.contains(n.id) == true { layer.fill(Path(ellipseIn: CGRect(x: c.x - r - 5, y: c.y - r - 5, width: (r + 5) * 2, height: (r + 5) * 2)), with: .color(moreVar("color-marigold", scheme).opacity(0.35))) }
-            if model.settings.clusters, n.bridge { layer.stroke(Path(ellipseIn: CGRect(x: c.x - r - 3, y: c.y - r - 3, width: (r + 3) * 2, height: (r + 3) * 2)), with: .color(moreVar("color-accent", scheme)), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2])) }
+            if bridges.contains(n.id) { layer.stroke(Path(ellipseIn: CGRect(x: c.x - r - 3, y: c.y - r - 3, width: (r + 3) * 2, height: (r + 3) * 2)), with: .color(moreVar("color-accent", scheme)), style: StrokeStyle(lineWidth: 1.5, dash: [2, 2])) }
             let picked = model.picked.contains(n.id)
             let path = GraphMath.shape(n.kind, r, at: c) ?? Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
             layer.fill(path, with: .color(colorOf(n)))
@@ -1097,25 +1275,29 @@ struct GraphCanvasView: View {
             if n.id == focusedNode {
                 layer.stroke(Path(ellipseIn: CGRect(x: c.x - r - 4, y: c.y - r - 4, width: (r + 4) * 2, height: (r + 4) * 2)), with: .color(moreVar("color-focus", scheme)), lineWidth: 2.5)
             }
-            let showLabel = on && (k >= 1.3 || labelled.contains(n.id) || (near?.contains(n.id) ?? false) || (searching && matches.contains(n.id)) || n.id == model.center)
-            if showLabel, n.id != hover, n.id != focusedNode {
-                let label = String((n.label.isEmpty ? "Untitled" : n.label).prefix(40))
+            if on, labels.contains(n.id), n.id != hover, n.id != focusedNode {
+                let label = text(n)
                 let spot = CGPoint(x: c.x, y: c.y + r + 12)
                 // The label's halo (paint-order: stroke), then the label; big maps skip the halo.
                 if !large {
                     for (dx, dy) in [(-1.5, 0.0), (1.5, 0.0), (0.0, -1.5), (0.0, 1.5)] {
-                        layer.draw(Text(verbatim: label).font(WebFont.font(.sans, size: 11.5)).foregroundColor(canvas), at: CGPoint(x: spot.x + dx, y: spot.y + dy), anchor: .bottom)
+                        layer.draw(Text(verbatim: label).font(font).foregroundColor(canvas), at: CGPoint(x: spot.x + dx, y: spot.y + dy), anchor: .bottom)
                     }
                 }
-                layer.draw(Text(verbatim: label).font(WebFont.font(.sans, size: 11.5)).foregroundColor(ink), at: spot, anchor: .bottom)
+                layer.draw(Text(verbatim: label).font(font).foregroundColor(ink), at: spot, anchor: .bottom)
             }
+        }
+        for n in names {
+            for (dx, dy) in [(-1.5, 0.0), (1.5, 0.0), (0.0, -1.5), (0.0, 1.5)] { ctx.draw(n.halo, at: CGPoint(x: n.at.x + dx, y: n.at.y + dy), anchor: .bottom) }
+            ctx.draw(n.text, at: n.at, anchor: .bottom)
         }
     }
 
     /// The map drawn at 2x for Save as PNG.
-    private func png(deg: [String: Int], labelled: Set<String>) -> Data? {
+    private func png(deg: [String: Int], labels: (CGFloat, (CGPoint) -> CGPoint) -> Set<String>) -> Data? {
         let s = CGSize(width: max(size.width, 600), height: max(size.height, 400))
         let fitT = GraphMath.fit(points, s)
+        let labelled = labels(fitT.k) { GraphMath.screen(fitT, $0) }
         let places = Dictionary(nodes.compactMap { n in at(n.id).map { (n.id, $0) } }, uniquingKeysWith: { a, _ in a })
         let colors = Dictionary(nodes.map { ($0.id, colorOf($0)) }, uniquingKeysWith: { a, _ in a })
         let nodes = nodes, edges = edges
@@ -1134,7 +1316,7 @@ struct GraphCanvasView: View {
                 let c = GraphMath.screen(fitT, p)
                 ctx.fill(GraphMath.shape(n.kind, r, at: c) ?? Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)), with: .color(colors[n.id] ?? .gray))
                 if labelled.contains(n.id) {
-                    ctx.draw(Text(verbatim: String((n.label.isEmpty ? "Untitled" : n.label).prefix(40))).font(.system(size: 11.5)).foregroundColor(.black), at: CGPoint(x: c.x, y: c.y + r + 12), anchor: .bottom)
+                    ctx.draw(Text(verbatim: GraphMath.shortLabel(n.label)).font(.system(size: 11.5)).foregroundColor(.black), at: CGPoint(x: c.x, y: c.y + r + 12), anchor: .bottom)
                 }
             }
         }
@@ -1279,7 +1461,7 @@ struct GraphCanvasView: View {
         switch press.characters {
         case "+", "=": zoomBy(1.25)
         case "-": zoomBy(0.8)
-        case "0": moved = false; t = GraphMath.fit(points, size)
+        case "0": moved = false; refit()
         default:
             if press.key == .return || press.key == .space, let id = focusedNode { activate(id, newTab: press.modifiers.contains(.command)); return .handled }
             if press.key == .escape, selected != nil || !model.picked.isEmpty { selected = nil; model.picked = []; return .handled }
@@ -1407,7 +1589,7 @@ struct GraphCanvasView: View {
         VStack(spacing: 2) {
             WebIconButton(.zoomIn, label: "Zoom in") { zoomBy(1.25) }
             WebIconButton(.zoomOut, label: "Zoom out") { zoomBy(0.8) }
-            WebIconButton(.maximize, label: "Fit to screen") { moved = false; t = GraphMath.fit(points, size) }
+            WebIconButton(.maximize, label: "Fit to screen") { moved = false; refit() }
             // Touch has no Shift: Select mode picks notes by tapping and draws a box by dragging.
             WebIconButton(.squareDashed, label: model.selecting ? "Stop selecting" : "Select notes", pressed: model.selecting) { model.selecting.toggle() }
         }
@@ -1482,7 +1664,8 @@ struct DnaInsightsView: View {
         let ids = Set(nodes.map(\.id))
         let hubs = DnaMath.hubs(nodes, edges)
         let clusters = value.clusters.filter { c in nodes.contains { $0.cluster == c.id } }
-        let bridges = nodes.filter(\.bridge)
+        let shownBridges = GraphMath.shownBridges(nodes, edges)
+        let bridges = nodes.filter { shownBridges.contains($0.id) }
         let suggested = value.full ? value.suggested.filter { ids.contains($0.source) && ids.contains($0.target) } : []
         let f = model.settings.filter
         let base = DnaMath.filter(value.nodes, value.edges, DnaFilter(folders: f.folders, tags: f.tags, editedSince: f.editedSince, linksOnly: f.linksOnly))

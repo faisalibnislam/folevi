@@ -91,7 +91,7 @@ test("onboarding: choices are saved, a reload resumes, and the Welcome page open
 
   // The starter pages exist.
   await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
-  await page.getByRole("combobox", { name: /Search documents/ }).fill("Event Plan");
+  await page.getByRole("combobox", { name: /Search notes/ }).fill("Event Plan");
   await expect(page.getByRole("option", { name: /Event Plan/ })).toBeVisible();
   await page.keyboard.press("Escape");
 

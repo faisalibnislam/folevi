@@ -40,7 +40,7 @@ test("keyboard: skip link, command palette and editor are reachable without a po
   await page.keyboard.press("Enter");
   await expect(page.locator("#main")).toBeFocused();
   await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
-  await expect(page.getByRole("combobox", { name: /Search documents/ })).toBeFocused();
+  await expect(page.getByRole("combobox", { name: /Search notes/ })).toBeFocused();
   await page.keyboard.type("welcome");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Welcome to Folevi");

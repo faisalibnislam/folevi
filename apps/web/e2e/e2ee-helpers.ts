@@ -151,7 +151,7 @@ export async function hideDevOverlay(context: BrowserContext) {
 export async function paletteResults(page: Page, query: string) {
   await expect(page.getByRole("navigation", { name: "Folio" })).toBeVisible({ timeout: 30_000 });
   await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
-  const input = page.getByRole("combobox", { name: /Search documents/ });
+  const input = page.getByRole("combobox", { name: /Search notes/ });
   await input.fill(query);
   // Documents only: the palette always offers "Ask Foli AI: <what you typed>" too, which would match any query.
   return page.getByRole("dialog", { name: "Search and commands" }).getByRole("option").filter({ hasNotText: "Ask Foli AI" });

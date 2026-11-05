@@ -90,7 +90,7 @@ const EMPTY: Record<View, { icon: LucideIcon; title: string; body?: string }> = 
   starred: { icon: Bookmark, title: "No bookmarks yet", body: "Bookmark a note to keep it close at hand." },
   archive: { icon: Archive, title: "Archive is empty", body: "Archived notes rest here, out of your lists but never lost." },
   trash: { icon: Trash2, title: "Trash is empty", body: "Deleted notes stay here for 30 days." },
-  templates: { icon: LayoutTemplate, title: "No templates of your own yet", body: "Save any document as a template from its menu." },
+  templates: { icon: LayoutTemplate, title: "No templates of your own yet", body: "Save any note as a template from its menu." },
   unsorted: { icon: Inbox, title: "No drafts", body: "Everything has a folder. Nicely done." },
   folder: { icon: FolderOpen, title: "This folder is empty", body: "Start a document here, or move one in with Move to folder." },
   tag: { icon: Hash, title: "No documents carry this tag yet", body: "Add tags to a document from its Info panel." },
@@ -419,6 +419,8 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
     (f) => folderIndex?.folders.find((x) => x.id === f.id) ?? { id: f.id, name: f.name, color: f.color, parentFolderId: f.parentFolderId, updatedAt: 0, documentCount: 0 },
   );
   const heading = <h1 className="truncate text-subheadline font-semibold">{title}</h1>;
+  // Nothing in the list (and, on Templates, no built-in ones either).
+  const listEmpty = !loading && docs.length === 0 && !(view === "templates" && builtIns?.length);
   const countText = `${docs.length}${canLoadMore ? "+" : ""} ${docs.length === 1 ? "note" : "notes"}`;
   // How the list is shown: in the toolbar on most lists, in a folder's title row on its page.
   const layoutSwitch = (compact: boolean) => (
@@ -574,7 +576,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
         {folderHeader ?? (
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <p role="status" className="mr-auto min-w-0 truncate text-subheadline text-muted">
-            {loading
+            {loading || listEmpty
               ? undefined
               : sentence(
                   [view === "templates" ? templatesCountText(builtIns?.length ?? 0, docs.length, canLoadMore) : countText, !online && cached ? "saved on this device" : null, canArrange ? "drag to arrange" : null]
@@ -582,17 +584,22 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                     .join(" · "),
                 )}
           </p>
-          <label className="flex items-center gap-2 text-subheadline text-muted">
-            <span>Sort</span>
-            <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-9 ui-input rounded-chip px-3 text-callout text-ink">
-              {NOTE_SORTS.map(([v, label]) => (
-                <option key={v} value={v}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </label>
-          {layoutSwitch(false)}
+          {/* An empty list has nothing to sort or lay out: its empty state says so, without a "0 notes" over it. */}
+          {listEmpty ? null : (
+            <>
+              <label className="flex items-center gap-2 text-subheadline text-muted">
+                <span>Sort</span>
+                <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="h-9 ui-input rounded-chip px-3 text-callout text-ink">
+                  {NOTE_SORTS.map(([v, label]) => (
+                    <option key={v} value={v}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              {layoutSwitch(false)}
+            </>
+          )}
           {/* Page actions share the toolbar row. */}
           {view === "trash" && results.length ? (
             <Button variant="quiet" onClick={() => setConfirmEmpty(true)}>
@@ -673,12 +680,12 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
           <EmptyState
             icon={EMPTY[view].icon}
             title={view === "folder" && subfolders.length ? "No notes directly in this folder yet" : EMPTY[view].title}
-            body={view === "folder" && subfolders.length ? "The folders above hold the rest." : view === "templates" && builtIns?.length ? "Save any document as a template from its menu, or start from a built-in one above." : EMPTY[view].body}
+            body={view === "folder" && subfolders.length ? "The folders above hold the rest." : view === "templates" && builtIns?.length ? "Save any note as a template from its menu, or start from a built-in one above." : EMPTY[view].body}
             action={
               view === "all" || view === "folder" ? (
                 // On a folder page the new note starts in that folder.
                 <Button variant="primary" onClick={() => void createDocument({})}>
-                  <Plus size={14} aria-hidden /> New document
+                  <Plus size={14} aria-hidden /> New note
                 </Button>
               ) : null
             }
@@ -690,7 +697,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
               return (
                 <li
                   key={d.id}
-                  className={`group flex items-center gap-3 px-4 py-2.5 ${on ? "bg-[var(--glass-active)]" : "hover:bg-surface"} ${dropTarget === d.id ? "shadow-[inset_0_2px_0_var(--color-heading)]" : ""}`}
+                  className={`group flex items-center gap-3 px-4 py-2.5 ${on ? "bg-[var(--glass-active)]" : "hover:bg-[var(--glass-hover)]"} ${dropTarget === d.id ? "shadow-[inset_0_2px_0_var(--color-heading)]" : ""}`}
                   {...cardProps(d)}
                 >
                   <DocDragHandle ids={on ? selection.selectedIds : [d.id]} />
@@ -706,9 +713,10 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                     {on ? <span className="sr-only"> (selected)</span> : null}
                   </AppLink>
                   {unsynced.has(d.id) ? <UnsyncedMarker /> : null}
-                  {d.kind !== "template" ? <FolderBadge folder={d.homeFolder} /> : null}
-                  <span className="hidden text-footnote text-muted sm:block">{d.tags.map((t) => `#${t.name}`).join(" ")}</span>
-                  <span className="w-28 text-right text-footnote text-faint">{view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}</span>
+                  {/* Fixed columns (folder, tags, time), so they line up from row to row. */}
+                  <span className="flex w-32 flex-none justify-end sm:w-40">{d.kind !== "template" ? <FolderBadge folder={d.homeFolder} className="!max-w-full" /> : null}</span>
+                  <span className="hidden w-28 flex-none truncate text-footnote text-muted sm:block">{d.tags.map((t) => `#${t.name}`).join(" ")}</span>
+                  <span className="w-28 flex-none text-right text-footnote text-faint">{view === "trash" && d.deletedAt ? `Deleted ${formatRelative(d.deletedAt)}` : ageText(d.updatedAt)}</span>
                   {d.kind === "template" && view !== "trash" ? <UseTemplateButton doc={d} /> : null}
                   <DocMenu {...menuProps(d)} />
                 </li>

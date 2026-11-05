@@ -275,7 +275,7 @@ export function DateField({
             onChange("");
             button.current?.focus();
           }}
-          className="absolute right-1.5 grid h-5 w-5 place-items-center rounded-tiny text-faint hover:bg-accent-soft hover:text-heading"
+          className="absolute right-1.5 grid h-5 w-5 place-items-center rounded-tiny text-faint before:absolute before:-inset-0.5 before:content-[''] hover:bg-accent-soft hover:text-heading"
         >
           <X size={12} aria-hidden />
         </button>

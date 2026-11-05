@@ -14,6 +14,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { useNoteAi } from "@/components/ai/useAi";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "@/components/ai/AiCredits";
 import { FRAME_ICON } from "./WireframeChrome";
+import { useAiWhere } from "@/components/ai/aiWhere";
 
 export type AiMode = "draw" | "vary" | "refine";
 
@@ -37,6 +38,7 @@ export function WireframeAi({
   onResult: (mode: AiMode, wf: WireframeData) => void;
   onClose: () => void;
 }) {
+  const aiWhere = useAiWhere();
   const { scope } = useAppState();
   const documentId = useNoteAi()?.home?.id;
   const draw = useAction(api.wireframeAi.draw);
@@ -173,7 +175,7 @@ export function WireframeAi({
           </ul>
         </>
       )}
-      <p className="wf-ai-foot">Foli AI can make mistakes. Sent to Google. Undo with ⌘Z.</p>
+      <p className="wf-ai-foot">Foli AI can make mistakes. {aiWhere} Undo with ⌘Z.</p>
     </div>
   );
 }

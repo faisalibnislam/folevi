@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Dialog } from "./Dialog";
 import { Button } from "./Button";
 import { askText, hasNative } from "@/lib/native/ui";
@@ -27,6 +27,8 @@ export function PromptDialog({
   onSubmit: (value: string) => void | Promise<void>;
 }) {
   const [value, setValue] = useState(initial);
+  const formId = useId();
+  const inputId = useId();
   useEffect(() => {
     if (open) setValue(initial);
   }, [open, initial]);
@@ -48,9 +50,24 @@ export function PromptDialog({
     });
   }, [native, open]);
   if (native) return null;
+  // The buttons sit in the dialog's footer band, as in every other dialog; Create submits the form by its id.
   return (
-    <Dialog open={open} onClose={onClose} title={title} size="sm">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={title}
+      size="sm"
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button type="submit" form={formId} variant="primary" disabled={!value.trim()}>
+            {confirmLabel}
+          </Button>
+        </>
+      }
+    >
       <form
+        id={formId}
         onSubmit={async (e) => {
           e.preventDefault();
           if (!value.trim()) return;
@@ -58,23 +75,17 @@ export function PromptDialog({
           onClose();
         }}
       >
-        <label className="block text-subheadline font-medium" htmlFor="prompt-input">
+        <label className="block text-subheadline font-medium" htmlFor={inputId}>
           {label}
         </label>
         <input
-          id="prompt-input"
+          id={inputId}
           autoFocus
           value={value}
           onChange={(e) => setValue(e.target.value)}
           maxLength={80}
           className="ui-input mt-2 h-10 w-full rounded-chip px-3 text-callout"
         />
-        <div className="mt-4 flex justify-end gap-2">
-          <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="primary" disabled={!value.trim()}>
-            {confirmLabel}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

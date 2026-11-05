@@ -221,6 +221,9 @@
 /* To-do */
 .fb-editor .fb-todo { display: flex; align-items: flex-start; gap: 0.55em; }
 .fb-editor .fb-todo > .fb-content { flex: 1; min-width: 0; }
+/* A task with a due date: the chip follows its words (it sat at the page's far edge, far from the task it
+   belongs to), and a long task still wraps before it. */
+.fb-editor .fb-todo:has(> .fb-task-meta:not(:empty)) > .fb-content { flex: 0 1 auto; min-width: 2em; }
 /* The hit area is 24×24 (WCAG 2.5.8); the visible box is drawn inside it. Its outline keeps at least 3:1
    against every note background in Light and Dark (WCAG 1.4.11; QA audit F10): --fb-check-edge, a mix of the
    muted ink and the strong line (test/checkbox-contrast.test.ts checks it against the tokens). A checked box
@@ -349,6 +352,11 @@
    Tables while a cell is being edited show nothing at all. */
 .fb-atom { margin-left: calc((var(--depth, 0) - var(--lift, 0)) * 1.6em); border-radius: var(--radius-chip); }
 .fb-atom-selected, .ProseMirror-selectednode > .fb-atom { background: var(--color-selection); box-shadow: 0 0 0 4px var(--color-selection); }
+/* A selected table is a big area: a neutral tint (the chrome's own), not the selection colour, which made the
+   whole table the only blue thing on the page. */
+.fb-atom.fb-table-block.fb-atom-selected, .ProseMirror-selectednode > .fb-atom.fb-table-block {
+  background: color-mix(in oklab, var(--color-ink) 4%, transparent); box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-ink) 4%, transparent);
+}
 .fb-atom.fb-table-block.fb-atom-selected:focus-within,
 .ProseMirror-selectednode > .fb-atom.fb-table-block:focus-within { background: none; box-shadow: none; }
 /* Flowcharts, whiteboards and the other visual blocks have rounder boxes (14px): the highlight follows them. */
@@ -369,6 +377,8 @@
   background: var(--color-ember-soft); color: var(--color-ember-ink); font-weight: 550;
 }
 .fb-date { background: var(--color-marigold-soft); color: var(--color-marigold-ink); }
+/* A date chip never breaks over two lines ("Wed, Nov" / "18" in a narrow table column). */
+.fb-date { white-space: nowrap; }
 .ProseMirror-selectednode.fb-mention, .ProseMirror-selectednode.fb-date, .ProseMirror-selectednode.fb-page-link { box-shadow: 0 0 0 2px var(--color-selection); }
 
 .fb-color-muted { color: var(--color-ink-muted); }
@@ -680,6 +690,9 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
   color: var(--color-ink-muted); text-decoration: none; background: var(--glass-hover);
   box-shadow: inset 0 0 0 1px var(--glass-border);
 }
+/* (Drawn small, but a 24px target: WCAG 2.2's minimum.) */
+.fb-ai-answer a.fb-link[href^="#cite-"] { position: relative; }
+.fb-ai-answer a.fb-link[href^="#cite-"]::before { content: ""; position: absolute; inset: -6px; }
 .fb-ai-answer a.fb-link[href^="#cite-"]:hover { color: var(--color-heading); background: var(--glass-active); }
 
 /* A block wider than the note (a table, a long formula) scrolls sideways inside itself, never the page;

@@ -582,7 +582,7 @@ export function AiPanel({
 
       <p className="px-1 text-footnote text-muted">
         Foli AI can make mistakes.{" "}
-        <a href={`${MARKETING_URL}/ai-policy`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+        <a href={`${MARKETING_URL}/ai-policy`} target="_blank" rel="noopener noreferrer" className="-my-1 inline-block py-1 underline underline-offset-2">
           AI policy
         </a>
       </p>

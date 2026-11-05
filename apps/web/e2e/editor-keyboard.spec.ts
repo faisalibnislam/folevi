@@ -73,7 +73,7 @@ test.describe("editor keyboard", () => {
     await page.keyboard.press(`${mod}+Shift+k`);
     const address = page.getByRole("textbox", { name: "Link address" });
     await expect(address).toBeFocused();
-    await expect(page.getByRole("combobox", { name: /Search documents/ })).toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: /Search notes/ })).toHaveCount(0);
     await page.keyboard.type("example.com/docs");
     await page.keyboard.press("Enter");
     await expect(body.locator("a.fb-link")).toHaveText("docs");

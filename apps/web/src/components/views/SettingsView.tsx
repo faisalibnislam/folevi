@@ -237,13 +237,16 @@ export function SettingsView({ section: asked }: { section: Section }) {
   }
   return (
     <ViewChrome title={<h1 className="text-subheadline font-semibold">Settings</h1>} tabTitle="Settings">
-      <div data-mac-settings-window={settingsWindow ? "" : undefined} className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8 md:grid-cols-[216px_minmax(0,1fr)] md:gap-10">
-        <nav aria-label="Settings sections" hidden={settingsWindow} className="md:sticky md:top-6 md:self-start">
-          <div className="flex gap-6 overflow-x-auto pb-1 md:flex-col md:gap-5 md:overflow-visible md:pb-0">
+      {/* Two columns (sections, then the page) only where the view itself is wide enough (a container query, not the
+          window: beside the app sidebar at tablet widths the sections become a row above the page). */}
+      <div className="@container">
+      <div data-mac-settings-window={settingsWindow ? "" : undefined} className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pb-[max(6rem,var(--fab-clearance))] pt-6 sm:px-8 @3xl:grid-cols-[216px_minmax(0,1fr)] @3xl:gap-10">
+        <nav aria-label="Settings sections" hidden={settingsWindow} className="@3xl:sticky @3xl:top-6 @3xl:self-start">
+          <div className="flex gap-6 overflow-x-auto pb-1 @3xl:flex-col @3xl:gap-5 @3xl:overflow-visible @3xl:pb-0">
             {groups.map((g) => (
               <div key={g.label} className="flex-none">
                 <p className="mb-1.5 truncate px-2.5 text-caption-2 font-semibold uppercase tracking-[0.07em] text-faint">{g.label}</p>
-                <ul className="flex gap-0.5 md:flex-col">
+                <ul className="flex gap-0.5 @3xl:flex-col">
                   {g.items.map((s) => {
                     const active = section === s.id;
                     const Icon = s.icon;
@@ -299,6 +302,7 @@ export function SettingsView({ section: asked }: { section: Section }) {
           {section === "this-device" ? <ThisDeviceSection /> : null}
           {section === "about" ? <AboutSection /> : null}
         </div>
+      </div>
       </div>
     </ViewChrome>
   );
@@ -396,7 +400,7 @@ function SupportGroup({ look, current }: { look: "web" | "ios"; current?: Sectio
   return (
     <div className="flex-none">
       <p className="mb-1.5 truncate px-2.5 text-caption-2 font-semibold uppercase tracking-[0.07em] text-faint">Support</p>
-      <ul className="flex gap-0.5 md:flex-col">
+      <ul className="flex gap-0.5 @3xl:flex-col">
         <li>
           <AppLink href="/help" className={row}>
             <HelpCircle size={16} aria-hidden className={icon} />
@@ -454,7 +458,7 @@ function CreateWorkspaceNudge() {
   const [open, setOpen] = useState(false);
   const { navigate } = useAppRouter();
   return (
-    <div className="hidden flex-none rounded-control border border-line p-3 md:mt-1 md:block">
+    <div className="hidden flex-none rounded-control border border-line p-3 @3xl:mt-1 @3xl:block">
       <p className="text-caption-2 font-semibold uppercase tracking-[0.07em] text-faint">Workspace</p>
       <p className="mt-1 max-w-52 text-subheadline text-muted">Work with a team: shared notes, folders and tasks, with its own plan and members.</p>
       <Button size="sm" className="mt-2" onClick={() => setOpen(true)}>

@@ -15,6 +15,7 @@ import type { Outbox } from "@/lib/sync/outbox";
 import { useOutboxEntries } from "@/lib/sync/queryCache";
 import { t } from "@/i18n";
 import { useToast } from "@/components/ui/Toast";
+import { useBackendMode } from "@/lib/mode";
 
 const LABELS = {
   saved: "Saved",
@@ -34,6 +35,8 @@ const LIST_LIMIT = 6;
  */
 export function SyncStatus({ documentId, compact = true, align = "end" }: { documentId?: string; /** Icon only (the default). */ compact?: boolean; /** Which edge the details popover lines up with. */ align?: "start" | "end" }) {
   const { engine, outbox, online } = useAppState();
+  // A library kept on this person's devices: nothing goes to Folevi, so the details say where it went.
+  const local = useBackendMode() === "local";
   // Counts and flags only: it's always on screen, and should re-render when they change, not on every
   // change to the queue. Page edits (the engine) and other changes (the outbox) count together.
   const queued = useEngineSelector(engine, (s) => s.pending.length + s.inflight.length);
@@ -142,9 +145,9 @@ export function SyncStatus({ documentId, compact = true, align = "end" }: { docu
             {LABELS[status]}
           </p>
           <p className="mt-1 pl-4 text-muted">
-            {status === "saved" && "Every change has been saved to Folevi."}
-            {status === "saving" && "Sending your latest changes."}
-            {status === "syncing" && "Waiting for the server to confirm your changes."}
+            {status === "saved" && (local ? "Every change has been saved to your library." : "Every change has been saved to Folevi.")}
+            {status === "saving" && (local ? "Writing your latest changes to your library." : "Sending your latest changes.")}
+            {status === "syncing" && (local ? "Finishing writing your changes to your library." : "Waiting for the server to confirm your changes.")}
             {status === "offline" && t("sync.offline.detail", { count: pending })}
             {status === "conflict" && t("sync.conflict.detail", { count: conflictCount })}
             {status === "error" &&

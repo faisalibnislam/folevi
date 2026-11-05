@@ -13,6 +13,7 @@ import { useAppState } from "@/lib/app/state";
 import { AiIcon } from "@/components/ai/AiIcon";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "@/components/ai/AiCredits";
 import { Takeaway } from "./render";
+import { useAiWhere } from "@/components/ai/aiWhere";
 
 export type ChartAiTask = "suggest" | "explain" | "tidy" | "title";
 
@@ -77,6 +78,7 @@ const ACTIONS: { task: Exclude<ChartAiTask, "title">; label: string; icon: React
 ];
 
 export function ChartAiPanel({ chart, data, documentId, onApply, onClose }: { chart: ChartData; data: string; documentId?: string; onApply: (next: ChartData) => void; onClose: () => void }) {
+  const aiWhere = useAiWhere();
   const ai = useChartAi();
   const hasData = chart.columns.length > 0 && chart.rows.length > 0;
   const [busy, setBusy] = useState<string | null>(null);
@@ -171,7 +173,7 @@ export function ChartAiPanel({ chart, data, documentId, onApply, onClose }: { ch
       ) : (
         <AiCreditsNote documentId={documentId} className="mx-1 mt-1" />
       )}
-      <p className="fb-chart-ai-foot">Foli AI can make mistakes. Sent to Google. Undo with ⌘Z.</p>
+      <p className="fb-chart-ai-foot">Foli AI can make mistakes. {aiWhere} Undo with ⌘Z.</p>
     </div>
   );
 }

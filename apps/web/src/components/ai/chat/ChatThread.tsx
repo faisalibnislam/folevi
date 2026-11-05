@@ -659,7 +659,7 @@ export function ChatThread({
           <p className={iphone ? "mt-2 px-4 text-center text-footnote leading-[18px] text-faint" : "mt-2 px-1 text-footnote text-faint"}>
             Foli AI can make mistakes.
             {footNotes.length ? ` ${footNotes.join(" ")}` : ""}{" "}
-            <a href={`${MARKETING_URL}/ai-policy`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+            <a href={`${MARKETING_URL}/ai-policy`} target="_blank" rel="noopener noreferrer" className="-my-1 inline-block py-1 underline underline-offset-2">
               AI policy
             </a>
           </p>

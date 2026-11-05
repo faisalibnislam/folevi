@@ -12,6 +12,7 @@ import { useAiStream } from "./useAiStream";
 import { useAi } from "./useAi";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "./AiCredits";
 import { AiAnnouncer, useDoneAnnouncement } from "./announce";
+import { useAiWhere } from "@/components/ai/aiWhere";
 
 const EXAMPLES: Record<"template" | "note", string[]> = {
   template: ["Weekly team meeting", "Project kickoff", "Book notes", "Trip planner"],
@@ -24,6 +25,7 @@ const EXAMPLES: Record<"template" | "note", string[]> = {
  * in Templates and the template picker like any other.
  */
 export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClose: () => void; kind: "template" | "note" }) {
+  const aiWhere = useAiWhere();
   const { write, saveDraft } = useAi();
   const stream = useAiStream();
   const toast = useToast();
@@ -188,7 +190,7 @@ export function AiGenerateDialog({ open, onClose, kind }: { open: boolean; onClo
           <div className="max-h-[46vh] overflow-y-auto rounded-control bg-[var(--glass-hover)] p-3 shadow-[inset_0_0_0_1px_var(--glass-border)]">
             <AiMarkdown markdown={draft.text} />
           </div>
-          <p className="text-footnote text-faint">Foli AI can make mistakes, so check it before you save. Sent to Google.</p>
+          <p className="text-footnote text-faint">Foli AI can make mistakes, so check it before you save. {aiWhere}</p>
         </section>
       )}
       {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mt-3 rounded-control bg-danger-soft px-3 py-2 text-subheadline text-danger" : "mt-3"} /> : null}

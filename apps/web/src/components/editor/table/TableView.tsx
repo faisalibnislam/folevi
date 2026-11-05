@@ -493,7 +493,7 @@ export function TableView({ node, selected, updateAttributes, editor, getPos }: 
                             <div data-cell-slot="" className={header ? "font-semibold" : undefined} />
                           ) : (
                             <div
-                              className={`fb-cell block min-w-[6rem] px-2.5 py-1.5 ${shown?.numeric && !header ? "text-right" : ""}`}
+                              className={`fb-cell block min-w-[6rem] px-2.5 py-1.5 ${shown?.numeric && shown.kind !== "date" && !header ? "text-right" : ""}`}
                               data-cell={`${r}:${c}`}
                               data-enter-focus={r === 0 && c === 0 && editable ? "" : undefined}
                               role={editable ? "textbox" : undefined}

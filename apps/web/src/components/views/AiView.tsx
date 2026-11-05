@@ -61,7 +61,10 @@ function ListDrawer({ activeId, onClose }: { activeId: string | null; onClose: (
  */
 export function AiView({ id }: { id: string | null }) {
   const { navigate } = useAppRouter();
-  const narrow = useMediaQuery("(max-width: 767px)");
+  // Below 1100px the conversation list is a drawer (the Conversations button), so the chat keeps its width
+  // beside the app's sidebar at tablet widths. An encrypted place's list has no drawer: it hides only on phones.
+  const narrow = useMediaQuery("(max-width: 1099px)");
+  const phone = useMediaQuery("(max-width: 767px)");
   const ai = useAiAccess();
   const [listOpen, setListOpen] = useState(false);
   // An end-to-end encrypted place: its chats are sealed records on this person's devices (chat/SealedChat.tsx).
@@ -97,7 +100,7 @@ export function AiView({ id }: { id: string | null }) {
     return (
       <ViewChrome title="Foli AI" tabTitle="Foli AI">
         <div className="flex h-full min-h-0">
-          {narrow ? null : (
+          {phone ? null : (
             <aside className="flex w-[264px] flex-none flex-col border-r border-line/70">
               <SealedChatList space={sealedSpace} activeId={id} onOpen={(next) => navigate(next ? `/ai/${next}` : "/ai")} />
             </aside>
@@ -142,7 +145,9 @@ export function AiView({ id }: { id: string | null }) {
           </aside>
         )}
         <section aria-label={title || "Conversation"} className="flex min-w-0 flex-1 flex-col">
-          <div className="flex h-11 flex-none items-center gap-2 px-4 sm:px-8">
+          {/* The title row lines up with the thread and the composer under it (the same centred column). */}
+          <div className="flex-none px-4 sm:px-8">
+          <div className="mx-auto flex h-11 max-w-3xl items-center gap-2">
             {narrow ? (
               <button type="button" onClick={() => setListOpen(true)} aria-haspopup="dialog" className="inline-flex h-8 items-center gap-1.5 rounded-chip px-2 text-subheadline text-muted hover:bg-[var(--glass-hover)] hover:text-heading">
                 <MessagesSquare size={15} aria-hidden /> Conversations
@@ -153,6 +158,7 @@ export function AiView({ id }: { id: string | null }) {
               <MenuButton label="Conversation options" triggerClassName="grid h-8 w-8 place-items-center rounded-chip text-muted hover:bg-[var(--glass-hover)] hover:text-heading" trigger={<MoreHorizontal size={16} aria-hidden />} items={actions.items} />
             ) : null}
             {actions.dialog}
+          </div>
           </div>
           {data === null && shared ? (
             <SharedThread data={shared} onOpen={navigate} onCite={(c) => navigate(citationHref(c))} />

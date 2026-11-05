@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { Monitor, Moon, Sun, Type } from "lucide-react";
+import { Check, Monitor, Moon, Sun, Type } from "lucide-react";
 import { useIphoneLook } from "@/lib/iphone";
 import { ChoiceRow, IosSection } from "@/components/iphone/SettingsKit";
 import { RowIcon } from "@/components/iphone/Grouped";
@@ -9,6 +9,7 @@ import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { EDITOR_ZOOMS, EDITOR_ZOOM_KEY } from "@/lib/editorZoom";
+import { Slider } from "@/components/ui/Slider";
 import { Card } from "./Card";
 
 const ZOOMS = EDITOR_ZOOMS;
@@ -78,8 +79,14 @@ export function AppearanceSection() {
                 setAppearance(v);
                 void update({ appearance: v });
               }}
-              className={`flex flex-col items-center gap-2 rounded-control border p-4 text-subheadline ${appearance === v ? "border-accent bg-accent-soft text-accent-soft-ink" : "border-line bg-surface"}`}
+              // Hover tints the card; the chosen one has a firm ring and a check (not only a brighter border).
+              className={`relative flex flex-col items-center gap-2 rounded-control border p-4 text-subheadline outline-none transition-[background-color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-focus ${appearance === v ? "border-transparent bg-accent-soft font-semibold text-heading shadow-[inset_0_0_0_2px_var(--color-heading)]" : "border-line bg-surface hover:bg-[var(--glass-hover)] hover:text-heading"}`}
             >
+              {appearance === v ? (
+                <span aria-hidden className="absolute right-2 top-2 grid h-4 w-4 place-items-center rounded-tiny bg-heading text-canvas">
+                  <Check size={11} strokeWidth={3} />
+                </span>
+              ) : null}
               {icon}
               {label}
             </button>
@@ -89,16 +96,7 @@ export function AppearanceSection() {
       <Card title="Editor text size">
         <label className="flex max-w-md items-center gap-3 text-subheadline">
           <span>Smaller</span>
-          <input
-            type="range"
-            min={0.85}
-            max={1.35}
-            step={0.05}
-            value={zoom}
-            onChange={(e) => applyZoom(Number(e.target.value))}
-            aria-label="Editor text size"
-            className="flex-1 accent-[var(--color-accent)]"
-          />
+          <Slider min={0.85} max={1.35} step={0.05} value={zoom} onValueChange={applyZoom} aria-label="Editor text size" className="flex-1" />
           <span>Larger</span>
         </label>
       </Card>

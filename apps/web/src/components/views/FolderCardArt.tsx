@@ -110,8 +110,8 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
         >
           {count.toLocaleString()}
         </span>
-        {/* last update */}
-        <span data-fc="age" className="absolute right-[7%] top-[10.37%] -mt-[0.15em] max-w-[55%] truncate pb-[0.1em] font-serif text-[clamp(11px,calc(5.6cqw*var(--fc-text,1)),24px)] leading-[1.2]" style={{ color: `color-mix(in oklab, ${base} 25%, #3c4250)` }}>
+        {/* last update (dark enough for 4.5:1 on every folder colour) */}
+        <span data-fc="age" className="absolute right-[7%] top-[10.37%] -mt-[0.15em] max-w-[55%] truncate pb-[0.1em] font-serif text-[clamp(11px,calc(5.6cqw*var(--fc-text,1)),24px)] leading-[1.2]" style={{ color: `color-mix(in oklab, ${base} 10%, #16171d)` }}>
           {age}
         </span>
         {/* name */}

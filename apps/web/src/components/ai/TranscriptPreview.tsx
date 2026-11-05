@@ -8,6 +8,7 @@ import { AiProblemNotice, type AiProblem } from "./AiCredits";
 import { markdownToPlain } from "./plainText";
 import { AiAnnouncer, useDoneAnnouncement } from "./announce";
 import { hasTodoLines } from "@/lib/ai/actionItems";
+import { useAiWhere } from "@/components/ai/aiWhere";
 
 /** What a transcription shows: the transcript, its summary, or a meeting summary of it. */
 export type TranscriptView = "transcript" | "summary" | "meeting";
@@ -59,6 +60,7 @@ export function TranscriptPreview({
   onSchedule?: () => void;
   onDiscard: () => void;
 }) {
+  const aiWhere = useAiWhere("recording");
   const [copied, setCopied] = useState(false);
   // Said once when the transcript, summary or meeting summary is ready.
   const announce = useDoneAnnouncement(working || summarizing || Boolean(meetingBusy), problem ? "" : "Ready. It's below the recording.");
@@ -143,7 +145,7 @@ export function TranscriptPreview({
           </button>
         </div>
       ) : null}
-      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">Foli AI can make mistakes. The recording is sent to Google.</p>
+      <p className="border-t border-line/60 px-3.5 py-1.5 text-footnote text-faint">Foli AI can make mistakes. {aiWhere}</p>
       <AiAnnouncer text={announce} />
     </div>
   );

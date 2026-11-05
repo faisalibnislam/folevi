@@ -330,6 +330,13 @@ the bottom left, ~35% opacity in light, ~50% in dark), fixed behind content. No 
     older pages; choosing an artwork clears it.)
   - **Info** has two views: *Page info* (properties, stats, location, tags, activity) and *Actions*.
     **Comments** open from the toolbar as their own panel with a back link to the previous tab.
+- **Narrow windows**: under 1000px wide the sidebar starts folded away (⌘\ or the sidebar button opens it; the
+  saved choice is for wider windows). Under 768px it's a drawer, and the phone bar names the view and has New note.
+  Settings puts its sections in a row above the page when the view is under 768px wide (a container query), and
+  Foli AI's conversation list is a drawer under 1100px.
+- **Tasks** keeps a readable centred column (768px at most), unlike the edge-to-edge card views: a list of
+  one-line rows is easier to scan narrow. Its hint ("Every task lives in a note…") is a footnote under the list.
+- **Empty lists** show only their empty state: no count, Sort or layout switch over it.
 - **Sidebar Folders / Document**: chosen from the sidebar menu on notes (no switch at the sidebar bottom).
 - **No big page titles** on list views (Home, All notes, Drafts, folders, tags, Starred, Templates,
   Shared with Me, Folders, Tags, Tasks, Calendar): the small title in the 52px toolbar names the view, and the key fact sits
@@ -399,11 +406,16 @@ the bottom left, ~35% opacity in light, ~50% in dark), fixed behind content. No 
 - **Buttons**: primary (cocoa gradient pill), secondary (white pill + `control`), ghost (text, hover
   `accentSoft`), danger (destructive text; destructive-soft hover). Heights 28 (sm) / 34 (md) / 40 (lg).
 - **Icon buttons**: 30px circles/pills, ghost; `aria-label` required; tooltips with shortcuts.
-- **Segmented control**: sunken pill track, raised thumb that slides (180ms) under the active item.
+- **Segmented control**: sunken pill track, raised thumb that slides (180ms) under the active item. Where it may
+  not fit (Tasks' views), whole items wrap to a second row; a label never breaks.
 - **Chips/tags**: pills, 24px, soft fills (`*-soft` + `*-ink`).
 - **Menus/popovers/palette**: `surfaceRaised`, radius 8, `pop` shadow, 6px inner padding, 32px rows
   with 4px radius, hover `accentSoft`.
-- **Dialogs**: radius 22, `pop` shadow, scrim `scrim` with 4px backdrop blur.
+- **Dialogs**: radius 22, `pop` shadow, scrim `scrim` with 4px backdrop blur (`dialog.ui-modal`; the command
+  palette a lighter one; none in Folevi for Mac, where a sheet doesn't dim the window), a nearly opaque surface,
+  and every dialog's buttons in the footer band. A disabled primary button is a sunken fill with faint text.
+- **Slider** (`components/ui/Slider.tsx`, `.ui-slider`): a native range input drawn in Folevi's look (sunken 4px
+  track filled to the value in `heading`, a raised 16px thumb, the focus ring), never the browser's own.
 - **Inputs**: radius 6, focus ring 2px `focus` offset 2px.
 - **Cards** (documents): `surface`, radius 16, `card` shadow; cover strip uses the page accent; hover
   lifts 1px with a slightly deeper shadow.
@@ -479,9 +491,13 @@ text to `ink`. Axe runs in the e2e suite in both themes.
 
 ## Chrome (latest)
 
-- **Tab strip** floats in its own rounded rectangle (8px, hairline, translucent white; content scrolls
-  behind it). Left to right: ‹ › scroll arrows (together, only when the tabs overflow), the tabs
-  (172–284px; the others shrink evenly to 172, the open one keeps room for its whole title up to 284), then
+- **Tab strip** floats in its own rounded rectangle (8px, hairline, white at 86% so a heading scrolled under it
+  doesn't read through; content scrolls behind it). Left to right: Back and Forward, then ‹ (only when the tabs
+  overflow), the tabs, then › right after them (the two scroll arrows sit at the tabs' two ends, apart from Back and
+  Forward), with 40px edge fades. The tabs are 172–284px (the others shrink evenly to 172, the open one keeps room
+  for its whole title up to 284). The whole tab is its link's target; pin and close float over the end of the
+  title (it fades out under them on hover) instead of keeping room while hidden, 20px drawn with 24px targets.
+  Every view has a tab, Settings and Help too (the Home tab never leads back to them). Then
   **+ New note** at the far right, always there (⌘⌥N), opening a new note in its own tab. The open tab is always
   fully in view, clear of the edge fades: the strip glides to it (jumps with Reduce Motion) whenever it changes,
   tabs close around it, its title grows or the strip's width changes.
@@ -494,7 +510,8 @@ text to `ink`. Axe runs in the e2e suite in both themes.
   sidebar menu; the same row in the app sidebar and a note's sidebar); on phones it sits in the view bar.
 - **Notes**: no header bar; comments, share and the page's "…" menu live in the bottom dock after the four
   tools (divider between). The note's backdrop panel has no outline or shadow.
-- **Appearance**: Light / Dark / Match system are in the workspace & account menu (also in Settings).
+- **Appearance**: Light / Dark / Match system are in Settings > Appearance and the ⌘K palette (the account menu
+  keeps to places and account actions). Theme cards: a hover tint; the chosen one a 2px heading ring and a check.
 
 - **Note themes**: images in `packages/design-tokens/covers/source/` (`NN-name.jpg` → style `art-NN`, named
   from the file). `scripts/covers.mjs` writes to `apps/web/public/covers/` `art-NN.webp` (3200 px, Retina/2×) and

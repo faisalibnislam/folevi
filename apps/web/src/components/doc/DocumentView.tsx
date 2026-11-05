@@ -1799,7 +1799,7 @@ function DocumentHeader({
             }
           }}
           style={titleColor ? { color: titleColor, textShadow: whiteTitle ? "0 1px 14px rgb(0 0 0 / 0.4)" : "0 1px 12px rgb(255 255 255 / 0.5)" } : undefined}
-          className={`block w-full resize-none overflow-hidden bg-transparent text-[40px] font-semibold leading-[1.12] outline-none ${titleColor ? "placeholder:text-current placeholder:opacity-55" : "text-heading placeholder:text-[var(--color-ink-faint)]"} ${onCover ? "" : "mt-4"} ${style.font === "mono" ? "[font-family:var(--note-mono,var(--font-mono))] [font-size-adjust:ex-height_0.55] text-large-title tracking-[-0.02em]" : style.font === "rounded" ? "[font-family:var(--note-soft,var(--font-rounded))] [font-size-adjust:ex-height_0.52] tracking-[-0.02em]" : "[font-family:var(--note-serif,var(--font-serif))] [font-size-adjust:ex-height_0.45] tracking-[-0.012em]"}`}
+          className={`block w-full resize-none overflow-hidden bg-transparent text-[40px] font-semibold leading-[1.12] outline-none ${titleColor ? "placeholder:text-current placeholder:opacity-55" : "text-heading placeholder:text-[color-mix(in_oklab,var(--color-ink-faint)_70%,transparent)]"} ${onCover ? "" : "mt-4"} ${style.font === "mono" ? "[font-family:var(--note-mono,var(--font-mono))] [font-size-adjust:ex-height_0.55] text-large-title tracking-[-0.02em]" : style.font === "rounded" ? "[font-family:var(--note-soft,var(--font-rounded))] [font-size-adjust:ex-height_0.52] tracking-[-0.02em]" : "[font-family:var(--note-serif,var(--font-serif))] [font-size-adjust:ex-height_0.45] tracking-[-0.012em]"}`}
           aria-describedby={readOnly ? `ro-${documentId}` : undefined}
         />
       </h1>

@@ -324,8 +324,8 @@
     pointer-events: none;
     background:
       radial-gradient(70vw 60vh at 85% -10%, var(--glass-light-a), transparent 70%),
-      radial-gradient(60vw 70vh at -10% 110%, var(--glass-light-b), transparent 70%),
-      radial-gradient(50vw 50vh at 50% 50%, var(--glass-light-c), transparent 75%);
+      radial-gradient(60vw 70vh at -10% 110%, var(--glass-light-b), transparent 70%);
+    /* (No glow in the middle: through the list views' panel it showed as a circle with a visible edge.) */
   }
 
   /* Pills and buttons */
@@ -356,7 +356,9 @@
     background: color-mix(in oklab, var(--color-surface-raised) 72%, transparent);
     box-shadow: var(--glass-edge), 0 1px 2px rgb(0 0 0 / 0.06);
   }
-  .ui-btn-secondary:hover:not(:disabled) { background: var(--color-surface-raised); color: var(--color-heading); }
+  /* Secondary buttons, select pills and switches share one visible hover (on a white page the old one, white on
+     72% white, didn't show): a faint ink tint, and for fields a firmer outline. */
+  .ui-btn-secondary:hover:not(:disabled) { background: color-mix(in oklab, var(--color-surface-raised), var(--color-ink) 5%); color: var(--color-heading); }
   .ui-btn-secondary:active:not(:disabled) { background: var(--color-surface-sunken); }
   .ui-btn-ghost { color: var(--color-ink); }
   .ui-btn-ghost:hover:not(:disabled) { background: var(--glass-hover); color: var(--color-heading); }
@@ -383,16 +385,19 @@
     transition: box-shadow 140ms;
   }
   /* Focused or open: the same soft outline as the active tab (16.5% ink), never a dark ring. */
+  button.ui-input:hover:not(:disabled):not([aria-expanded="true"]) { box-shadow: inset 0 1px 2px color-mix(in oklab, var(--color-heading) 8%, transparent), 0 0 0 1px var(--color-line-strong); background: color-mix(in oklab, var(--color-surface), var(--color-ink) 3%); }
   .ui-input:focus, .ui-input:focus-within, .ui-input[aria-expanded="true"] { outline: none; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 0 0 1.5px color-mix(in oklab, var(--color-heading) 16.5%, transparent); }
 
   /* Surfaces */
   .ui-card { background: var(--color-surface); border-radius: var(--radius-container); box-shadow: var(--shadow-card); }
   .ui-sheet { border-radius: var(--radius-container); box-shadow: var(--shadow-sheet); }
   /* Popovers, menus, dialogs: strong glass, with enough tint for text to read on anything behind. */
+  /* Half the pop glass, half the raised surface, and only a little saturation: a menu over a coloured folder
+     card or a date chip reads as one calm surface instead of picking up a smear of that colour. */
   .ui-pop {
-    background: var(--glass-pop);
-    -webkit-backdrop-filter: blur(28px) saturate(1.8);
-    backdrop-filter: blur(28px) saturate(1.8);
+    background: color-mix(in oklab, var(--glass-pop), var(--color-surface-raised) 50%);
+    -webkit-backdrop-filter: blur(28px) saturate(1.15);
+    backdrop-filter: blur(28px) saturate(1.15);
     /* Menus, dropdowns, popovers: panel corners with 6px padding, so their 8px items run parallel. */
     border-radius: var(--radius-panel);
     box-shadow: var(--glass-edge), var(--shadow-pop);
@@ -402,6 +407,19 @@
   .ui-invert .ui-pop {
     background: var(--color-surface-raised);
   }
+  /* Modal dialogs (Dialog, the command palette): the page behind dims under the scrim with a 4px blur, and the
+     dialog itself is nearly opaque, so it separates from whatever cards sit behind it. `ui-modal-light` is the
+     palette's lighter dimming. */
+  dialog.ui-modal { background: color-mix(in oklab, var(--color-surface-raised) 94%, transparent); }
+  dialog.ui-modal::backdrop {
+    background: var(--color-scrim);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    animation: folio-fade 180ms var(--motion-easing);
+  }
+  dialog.ui-modal.ui-modal-light::backdrop { background: color-mix(in oklab, var(--color-scrim) 50%, transparent); }
+  /* A disabled primary button reads as off (a sunken well, faint text), not as a broken grey primary. */
+  .ui-btn-primary:disabled { opacity: 1; color: var(--color-ink-faint); background: var(--color-surface-sunken); box-shadow: inset 0 0 0 1px var(--color-line); }
   /* Progressive blur at a panel's bottom edge (clear above, strongest at the edge), like iOS's bars:
      stacked layers, each blurrier and masked to a lower band. */
   .ui-blur-bottom { position: absolute; inset-inline: 0; bottom: 0; height: 72px; pointer-events: none; z-index: 1; }
@@ -429,6 +447,9 @@
   }
   /* The sidebar and the tab bar: the same lighter glass, so more of the ambient light comes through. */
   .ui-glass.ui-glass-sidebar { background: var(--glass-sidebar); }
+  /* The tab bar floats over the scrolling content: tinted enough that a heading scrolled under it doesn't stay
+     legible through it (it ghosted behind Back and Forward), still glass. */
+  .ui-glass.ui-tabbar { background: color-mix(in oklab, var(--color-surface) 86%, transparent); }
   /* The content panel beside the sidebar: nearly opaque, so reading surfaces stay calm. */
   .ui-content {
     background: var(--glass-content);
@@ -495,6 +516,35 @@
   .ui-menu-item[aria-expanded="true"] { background: var(--glass-hover); color: var(--color-heading); }
   /* The row the keyboard is on reads clearly (stronger than a hover). */
   .ui-menu-item:focus-visible, .ui-menu-item[data-highlighted="true"], .ui-row-active { background: color-mix(in oklab, var(--color-ink) 9%, transparent); color: var(--color-heading); }
+
+  /* Folevi's slider (components/ui/Slider.tsx): a sunken 4px track filled to the value in the heading colour,
+     a raised 16px thumb with the control shadow, a ring for keyboard focus. Not the browser's own range. */
+  .ui-slider {
+    -webkit-appearance: none; appearance: none; height: 24px; background: transparent; cursor: pointer; outline: none;
+    --slider-track: linear-gradient(to right, var(--color-heading) var(--slider-fill, 0%), var(--color-surface-sunken) var(--slider-fill, 0%));
+  }
+  .ui-slider::-webkit-slider-runnable-track { height: 4px; border-radius: var(--radius-tiny); background: var(--slider-track); box-shadow: inset 0 0 0 1px var(--glass-border); }
+  .ui-slider::-moz-range-track { height: 4px; border-radius: var(--radius-tiny); background: var(--slider-track); box-shadow: inset 0 0 0 1px var(--glass-border); }
+  .ui-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: var(--radius-small);
+    background: var(--color-surface-raised); box-shadow: 0 0 0 1px var(--color-line-strong), 0 1px 3px rgb(0 0 0 / 0.18);
+    transition: transform 140ms var(--motion-easing);
+  }
+  .ui-slider::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: var(--radius-small); background: var(--color-surface-raised); box-shadow: 0 0 0 1px var(--color-line-strong), 0 1px 3px rgb(0 0 0 / 0.18); }
+  .ui-slider:hover::-webkit-slider-thumb { transform: scale(1.08); }
+  .ui-slider:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--color-canvas), 0 0 0 4px var(--color-focus); }
+  .ui-slider:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(--color-canvas), 0 0 0 4px var(--color-focus); }
+  .ui-slider:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Tab strip tabs (TabStrip): pin and close float over the end of the title. The open tab keeps room for its
+     always-visible close; on hover (or keyboard focus inside) the title's end fades out under the buttons. */
+  .ui-tab { --tab-fade: 44px; }
+  .ui-tab[data-tab-active] { --tab-fade: 20px; }
+  .ui-tab[data-tab-active] .ui-tab-label { padding-right: 20px; }
+  .ui-tab:is(:hover, :has(:focus-visible)) .ui-tab-label {
+    -webkit-mask-image: linear-gradient(to left, transparent var(--tab-fade), #000 calc(var(--tab-fade) + 16px));
+    mask-image: linear-gradient(to left, transparent var(--tab-fade), #000 calc(var(--tab-fade) + 16px));
+  }
 }
 
 @media (prefers-contrast: more) {
@@ -925,17 +975,18 @@
 :root[data-iphone] [data-card="memo"] { font-size: var(--type-caption-1); line-height: var(--type-caption-1-leading); padding: 4px 8px; }
 :root[data-iphone][data-theme="dark"] [data-card="edge"] { box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.08); }
 /* Folder tiles (FolderCardArt.tsx) on the phone: the name in Spectral 19/24 (19 so a 13-letter word such as
-   "Brainstorming" fits the 142 px tile; longer ones end in "…"); in dark the folder's darker tone with light
-   words on it (4.5:1 on every colour). */
+   "Brainstorming" fits the 142 px tile; longer ones end in "…"). In dark, on every platform (the web and the Mac
+   too: the full pastel was the brightest thing on a dark page), the folder's darker tone with light words on it
+   (4.5:1 on every colour). */
 :root[data-iphone] [data-fc="name"] { font-size: var(--type-title-3); line-height: 24px; }
-:root[data-iphone][data-theme="dark"] [data-fc="back"] { background: color-mix(in oklab, var(--fc) 38%, #23252c) !important; }
-:root[data-iphone][data-theme="dark"] [data-fc="front"] {
+:root[data-theme="dark"] [data-fc="back"] { background: color-mix(in oklab, var(--fc) 38%, #23252c) !important; }
+:root[data-theme="dark"] [data-fc="front"] {
   background: color-mix(in oklab, var(--fc) 46%, #121318) !important;
   box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 -2px 6px -4px rgb(0 0 0 / 0.3) !important;
 }
-:root[data-iphone][data-theme="dark"] [data-fc="name"] { color: #f6f6f8 !important; }
-:root[data-iphone][data-theme="dark"] [data-fc="age"] { color: color-mix(in oklab, var(--fc) 22%, #dcdee5) !important; }
-:root[data-iphone][data-theme="dark"] [data-fc="count"] { background: rgb(255 255 255 / 0.3) !important; color: #f6f6f8 !important; }
+:root[data-theme="dark"] [data-fc="name"] { color: #f6f6f8 !important; }
+:root[data-theme="dark"] [data-fc="age"] { color: color-mix(in oklab, var(--fc) 22%, #dcdee5) !important; }
+:root[data-theme="dark"] [data-fc="count"] { background: rgb(255 255 255 / 0.3) !important; color: #f6f6f8 !important; }
 /* The iPad app: a card's or folder's "…" stays out of sight on touch, as on the iPhone (a long press or a
    right-click opens the same menu), and out of sight takes no taps (a finger or Pencil tapping the middle of a
    folder's cover opens the folder). With a trackpad or mouse attached, hovering shows it and it can be clicked;
@@ -1090,7 +1141,7 @@
 :root[data-desktop="mac"] nav[aria-label="Open pages"] > :is(a, [data-tab]) { height: 32px; border-radius: var(--radius-small); }
 :root[data-desktop="mac"] nav[aria-label="Open pages"] > :is(a, [data-tab])[aria-current="page"],
 :root[data-desktop="mac"] nav[aria-label="Open pages"] > [data-tab]:has(> a[aria-current="page"]) { box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), inset 0 0 0 1px var(--color-line-strong); }
-:root[data-desktop="mac"] [data-tab] > button[aria-label^="Close "] { width: 16px; height: 16px; border-radius: var(--radius-tiny); }
+:root[data-desktop="mac"] [data-tab] button[aria-label^="Close "] { width: 16px; height: 16px; border-radius: var(--radius-tiny); }
 
 /* §3.14 Buttons: 28 tall with 8 corners (fields 28 in dialogs and popovers too); icon buttons keep their 32 point box. */
 :root[data-desktop="mac"] .ui-btn:is(.h-8, .h-9):not(.w-8) { height: 28px; padding-inline: 12px; border-radius: var(--radius-small); font-size: var(--type-callout); }
@@ -1109,6 +1160,8 @@
   backdrop-filter: blur(24px) saturate(1.8);
   box-shadow: inset 0 0 0 0.5px var(--mac-pop-edge), var(--mac-pop-shadow);
 }
+/* A Mac sheet doesn't dim the window behind it: no web scrim there. */
+:root[data-desktop="mac"] dialog.ui-modal::backdrop { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost], [role="listbox"]).ui-pop { min-width: 200px; padding: 6px; border-radius: var(--radius-control); animation: none; }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost], [role="listbox"]) :is(.ui-menu-item, [role="option"]) { min-height: 32px; gap: 10px; padding-block: 6px; padding-inline: 10px; border-radius: var(--radius-small); font-size: var(--type-body); line-height: 18px; }
 :root[data-desktop="mac"] :is([role="menu"], [data-menu-ghost]) .ui-menu-item:focus-visible { background: transparent; color: var(--color-ink); }

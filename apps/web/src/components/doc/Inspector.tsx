@@ -294,7 +294,8 @@ function ColorDot({ css, ring }: { css: string; ring?: boolean }) {
   if (phone) {
     return <span aria-hidden className="inline-block h-7 w-7 flex-none iphone-round shadow-[inset_0_0_0_0.5px_rgb(0_0_0/0.16),0_0_0_0.5px_rgb(255_255_255/0.08)]" style={{ background: css }} />;
   }
-  return <span aria-hidden className={`inline-block h-7 w-9 rounded-chip shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] ${ring ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : ""}`} style={{ background: css }} />;
+  // A 1px line-strong ring in both themes, so a near-black swatch still shows on the dark panel.
+  return <span aria-hidden className={`inline-block h-7 w-9 rounded-chip shadow-[inset_0_0_0_1px_var(--color-line-strong)] ${ring ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : ""}`} style={{ background: css }} />;
 }
 
 function Choice({ label, on, onPick, children, wide }: { label: string; on: boolean; onPick: () => void; children: React.ReactNode; wide?: boolean }) {

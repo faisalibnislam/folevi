@@ -102,7 +102,7 @@ export function Dialog({
         if (e.target === ref.current) onClose();
       }}
       onKeyDown={(e) => macDialogKeys(e, ref.current, onClose)}
-      className={`m-auto w-[calc(100%-2rem)] ${width} ui-pop rounded-panel p-0 text-ink outline-none backdrop:bg-transparent shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-pop_520ms_var(--spring-pop)]`}
+      className={`m-auto w-[calc(100%-2rem)] ${width} ui-pop ui-modal rounded-panel p-0 text-ink outline-none shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-pop_520ms_var(--spring-pop)]`}
     >
       {open && shown ? (
         <div className="flex max-h-[85dvh] flex-col">

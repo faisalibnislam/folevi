@@ -18,6 +18,8 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { AiCreditsNote, AiProblemNotice, aiProblem, type AiProblem } from "@/components/ai/AiCredits";
 import { Sheet } from "@/components/iphone/Sheet";
 import { tasksMarkdown } from "./noteConvert";
+import { useAiWhere } from "@/components/ai/aiWhere";
+import { useBackendMode } from "@/lib/mode";
 
 export type MapSource = "prompt" | "note" | "text" | "file";
 
@@ -83,6 +85,8 @@ export function MindmapAi({
   onInsert: (markdown: string, what: "summary" | "tasks") => void;
   onClose: () => void;
 }) {
+  const aiLocal = useBackendMode() === "local";
+  const aiWhere = useAiWhere();
   const ai = useMindmapAi();
   const iphone = useIphoneApp();
   const [tab, setTab] = useState<"map" | "new">(start.tab ?? (hasMap ? "map" : "new"));
@@ -305,7 +309,7 @@ export function MindmapAi({
       ) : (
         <AiCreditsNote documentId={ai.documentId} className="mx-3 mb-2" />
       )}
-      <p className="mm-ai-foot">Foli AI can make mistakes. Uses AI credits; sent to Google.</p>
+      <p className="mm-ai-foot">Foli AI can make mistakes. {aiLocal ? aiWhere : "Uses AI credits; sent to Google."}</p>
     </div>
   );
 

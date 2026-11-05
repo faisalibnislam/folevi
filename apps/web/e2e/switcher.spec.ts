@@ -9,7 +9,7 @@ const SWITCHER = /: Personal, workspaces and account$/;
 
 async function searchFor(page: Page, query: string) {
   await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
-  const input = page.getByRole("combobox", { name: /Search documents/ });
+  const input = page.getByRole("combobox", { name: /Search notes/ });
   await expect(input).toBeFocused();
   await input.fill(query);
   return page.getByRole("dialog", { name: "Search and commands" });

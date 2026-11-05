@@ -20,7 +20,7 @@ export interface AskAiProps {
   initial?: string;
   /** Only this folder's notes. */
   folder?: { id: string; name: string };
-  /** No floating button (the phone's navigation drawer is open over the page). */
+  /** No floating button (the phone's navigation drawer is open over the page; Settings, whose cards it covered). */
   hideLauncher?: boolean;
 }
 

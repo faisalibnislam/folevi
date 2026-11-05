@@ -48,7 +48,7 @@ test("search finds text inside documents with highlighted matches", async ({ bro
   const { page } = await newPerson(browser, "Searcher");
   await showFolders(page);
   await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
-  const box = page.getByRole("combobox", { name: /Search documents/ });
+  const box = page.getByRole("combobox", { name: /Search notes/ });
   await box.fill("magpies");
   const option = page.getByRole("option").filter({ hasText: "Field Notes" });
   await expect(option).toBeVisible();

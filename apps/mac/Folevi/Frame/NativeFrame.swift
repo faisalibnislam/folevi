@@ -336,6 +336,10 @@ enum FrameCommands {
         case "file.reopen-closed-tab": m.reopenClosedTab()
         case "file.tab-overview": m.overviewShown.toggle()
         case "file.export": if noteOpen { m.noteMenu(.export) }
+        // Import (QA F18): Settings' Import & Export for the space open in this window, brought to the front; its
+        // card says where the files go ("Import into Personal", or the workspace's name). From a note, a folder
+        // or anywhere else alike.
+        case "file.import": SettingsWindow.shared.show(section: SettingsWindow.importSection(session: m.session.value))
         case "note.star": if let id = m.route.noteId { m.star([id], !(m.noteMeta[id]?.starred ?? false)) }
         case "note.archive": if let id = m.route.noteId { m.archive([id], !(m.noteMeta[id]?.archived ?? false)) }
         case "note.move": if noteOpen { m.noteMenu(.move) }

@@ -143,6 +143,9 @@ final class ChromeTests: XCTestCase {
         XCTAssertFalse(account.contains("ai"), "Foli AI is hidden while AI is off")
         XCTAssertFalse(account.contains("billing"), "billing is on the website")
         XCTAssertEqual(SettingsWindow.path("appearance"), "/settings/appearance?window=1")
+        // A fixed size that always fits the screen above the Dock (with a margin).
+        XCTAssertEqual(SettingsWindow.size(room: NSSize(width: 1440, height: 875)), NSSize(width: 880, height: 640))
+        XCTAssertEqual(SettingsWindow.size(room: NSSize(width: 800, height: 600)), NSSize(width: 760, height: 560))
     }
 
     /// File > Import (QA F18) opens Import & Export for the open space, under the Import & Export item.

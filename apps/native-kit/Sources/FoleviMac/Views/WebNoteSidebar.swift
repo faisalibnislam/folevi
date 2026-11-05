@@ -478,6 +478,7 @@ struct WebNoteSidebar: View {
                 }
                 .frame(width: 16, height: 16)
                 .contentShape(Rectangle())
+                .fingerTarget(width: 16, height: 16)
             }
             .buttonStyle(WebPressStyleLocal())
             .disabled(!canEdit)
@@ -601,7 +602,7 @@ struct WebNoteSidebar: View {
                     HStack {
                         Spacer()
                         Button { find.clear(model) } label: {
-                            WebIconView(.x, size: 13).frame(width: 24, height: 24).foregroundStyle(v("color-ink-faint")).contentShape(Rectangle())
+                            WebIconView(.x, size: 13).frame(width: 24, height: 24).foregroundStyle(v("color-ink-faint")).contentShape(Rectangle()).fingerTarget(width: 24, height: 24)
                         }
                         .buttonStyle(WebPressStyleLocal())
                         .foleviTooltip("Clear search")

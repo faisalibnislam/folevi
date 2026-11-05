@@ -523,22 +523,9 @@ struct MenuHold: UIGestureRecognizerRepresentable {
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var start: CGPoint = .zero
         weak var menu: WebMenuWindow?
-        /// The finger being held: the hold begins only while it's still down (a view taken away mid-touch may never
-        /// tell its recognizer the finger lifted).
-        weak var touch: UITouch?
-
-        var stillDown: Bool {
-            guard let touch else { return false }
-            return touch.phase == .began || touch.phase == .stationary || touch.phase == .moved
-        }
-
         func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
         // (Only fingers: a pointer's click and hold is a drag or a selection there.)
-        func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-            guard touch.type == .direct else { return false }
-            self.touch = touch
-            return true
-        }
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool { touch.type == .direct }
     }
 
     func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
@@ -558,10 +545,6 @@ struct MenuHold: UIGestureRecognizerRepresentable {
         let at = recognizer.location(in: window)
         switch recognizer.state {
         case .began:
-            guard context.coordinator.stillDown else {
-                recognizer.state = .cancelled
-                return
-            }
             context.coordinator.start = at
             if began(at, window) { context.coordinator.menu = WebMenuWindow.shown }
         case .changed:
@@ -654,6 +637,18 @@ public struct RowMoreButton: View {
         .allowsHitTesting(shown || hover || TouchReveal.always)
         #endif
         .accessibilityLabel(label)
+    }
+}
+
+extension View {
+    /// On the iPad, a control drawn smaller than a finger (a 24 to 40 pt icon button) takes taps 44 points across,
+    /// its drawn size and its place unchanged (IPAD-06, IPAD-07, IPAD-12). Nothing on the Mac.
+    func fingerTarget(width: CGFloat, height: CGFloat) -> some View {
+        #if os(iOS)
+        contentShape(Rectangle().inset(by: -max(0, (44 - min(width, height)) / 2)))
+        #else
+        self
+        #endif
     }
 }
 

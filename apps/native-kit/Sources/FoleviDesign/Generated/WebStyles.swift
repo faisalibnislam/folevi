@@ -4868,7 +4868,7 @@ public enum WebStyles {
     /// programming error (the generated file and the samples are checked together).
     public static func named(_ id: String) -> WebStylePair {
         #if os(iOS)
-        if isPad, let s = ipad[id] { return s }
+        if isPad, let s = ipad[id] { return s.touchSized(id) }
         if let s = ios[id] { return s }
         #endif
         guard let s = all[id] else { preconditionFailure("no web style \(id): add it to apps/web/src/app/dev/match/samples.tsx and run pnpm styles:gen") }

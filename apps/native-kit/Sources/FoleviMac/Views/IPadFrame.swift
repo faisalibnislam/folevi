@@ -73,6 +73,10 @@ public struct IPadFrameView<Page: View>: View {
                         .padding(.top, side.y)
                         .padding(.bottom, bottom)
                         .padding(.horizontal, side.x)
+                        // A swipe back towards the edge puts it away, as iPadOS's own sidebar goes (IPAD-16).
+                        .simultaneousGesture(DragGesture(minimumDistance: 20).onEnded { g in
+                            if g.translation.width < -60, abs(g.translation.width) > abs(g.translation.height) { model.sidebarOverlayShown = false }
+                        })
                         .background {
                             WebCanvas()
                                 .clipShape(UnevenRoundedRectangle(bottomTrailingRadius: 20, topTrailingRadius: 20, style: .continuous))
@@ -83,6 +87,8 @@ public struct IPadFrameView<Page: View>: View {
                 }
             }
             .ignoresSafeArea(.container, edges: .vertical)
+            // A swipe in from the left edge brings the floating sidebar out (IPAD-16: only its button did).
+            .gesture(SidebarEdgePan { if model.sidebarFloats && !model.sidebarOverlayShown { model.sidebarOverlayShown = true } })
             .onChange(of: g.size.width, initial: true) { _, width in
                 let floats = width < IPadFrameMetrics.floatingSidebarBelow
                 if floats != model.sidebarFloats {
@@ -95,8 +101,11 @@ public struct IPadFrameView<Page: View>: View {
         .animation(.easeOut(duration: 0.22), value: model.sidebarOverlayShown)
         .animation(.easeOut(duration: 0.18), value: model.sidebarFloats)
         .background(WindowCatcher { FrameSheets.attach(model, window: $0) })
-        .onChange(of: model.route) {
+        .onChange(of: model.route, initial: true) {
             models.keep(only: Set(model.tabs.tabs.map(\.route)))
+            // The route's own view of a kept screen (a Tasks view, a calendar day, the search's words), as the
+            // Mac's frame does: /tasks/all opened on Today (IPAD-22).
+            models.prepare(model.route)
             model.sidebarOverlayShown = false
         }
         // The page leaves the glass bar's room at its top (--native-inset-top), as the Mac's does, so a note's
@@ -161,6 +170,22 @@ public struct IPadFrameView<Page: View>: View {
             PlannerPanel.popover(below: anchor) { _ in SyncPopover(model: model) }
         }
         return a
+    }
+}
+
+/// A swipe in from the screen's left edge (the system's edge pan, so taps and scrolls near the edge are untouched).
+private struct SidebarEdgePan: UIGestureRecognizerRepresentable {
+    let opened: () -> Void
+
+    func makeUIGestureRecognizer(context: Context) -> UIScreenEdgePanGestureRecognizer {
+        let pan = UIScreenEdgePanGestureRecognizer()
+        pan.edges = .left
+        pan.cancelsTouchesInView = false
+        return pan
+    }
+
+    func handleUIGestureRecognizerAction(_ pan: UIScreenEdgePanGestureRecognizer, context: Context) {
+        if pan.state == .changed || pan.state == .ended, pan.translation(in: pan.view).x > 40 { opened() }
     }
 }
 

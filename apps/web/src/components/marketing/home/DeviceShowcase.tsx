@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cx } from "../ui";
 
 /*
@@ -23,6 +23,8 @@ const CHAPTERS: Array<{ id: ChapterId; label: string; frames: string[]; phone: s
 ];
 const STEP_MS = 2200;
 const WEB = (f: string) => `/marketing/showcase/web/${f}.webp`;
+/** The same frame as static HTML (the app's own DOM and CSS, no scripts), drawn at 1280 × 800 and scaled. */
+const HTML = (f: string) => `/marketing/showcase/web-html/${f}.html`;
 const PHONE = (f: string) => `/marketing/showcase/iphone/${f}.webp`;
 
 export function DeviceShowcase() {
@@ -30,6 +32,17 @@ export function DeviceShowcase() {
   const [step, setStep] = useState(0);
   const [paused, setPaused] = useState(false);
   const [still, setStill] = useState(false);
+  const [scale, setScale] = useState(0);
+  const [loaded, setLoaded] = useState<Record<string, boolean>>({});
+  const win = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = win.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setScale((e?.contentRect.width ?? 1280) / 1280));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -71,7 +84,7 @@ export function DeviceShowcase() {
       <div role="img" aria-label={`Folevi on a Mac and an iPhone. ${c.says}`} className="relative mx-auto w-full max-w-[1060px] pb-[6%] pr-[9%]">
         <div aria-hidden="true">
           {/* The Mac window: the captured app, 16:10, with the window's corners and shadow. */}
-          <div className="mk-mac-window relative aspect-[16/10] w-full overflow-hidden bg-(--color-surface-sunken)">
+          <div ref={win} className="mk-mac-window relative aspect-[16/10] w-full overflow-hidden bg-(--color-surface-sunken)">
             {c.frames.map((f, i) => (
               // eslint-disable-next-line @next/next/no-img-element -- captured frames, already sized; cross-faded by opacity
               <img
@@ -85,6 +98,21 @@ export function DeviceShowcase() {
                 className={cx("absolute inset-0 size-full object-cover transition-opacity duration-700 ease-out", i === step ? "opacity-100" : "opacity-0")}
               />
             ))}
+            {/* Over each picture, the frame as HTML: the app's own markup and styles, sharp at any size. */}
+            {scale
+              ? c.frames.map((f, i) => (
+                  <iframe
+                    key={`html-${f}`}
+                    src={HTML(f)}
+                    title=""
+                    tabIndex={-1}
+                    sandbox="allow-same-origin"
+                    onLoad={() => setLoaded((l) => ({ ...l, [f]: true }))}
+                    className={cx("pointer-events-none absolute left-0 top-0 origin-top-left border-0 transition-opacity duration-700 ease-out", i === step && loaded[f] ? "opacity-100" : "opacity-0")}
+                    style={{ width: 1280, height: 800, transform: `scale(${scale})` }}
+                  />
+                ))
+              : null}
             {/* The next chapter's first frame, loaded ahead so it's there when the chapter changes. */}
             {/* eslint-disable-next-line @next/next/no-img-element -- preloaded frame, never shown */}
             <img src={WEB(next.frames[0]!)} alt="" width={2560} height={1600} decoding="async" className="pointer-events-none absolute size-px opacity-0" />

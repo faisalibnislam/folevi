@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { APP, completeOnboarding, createAccount, createWorkspace, openTool, pick, pickDate, showFolders, switchTo, waitForSaved } from "./helpers";
@@ -12,6 +13,10 @@ import { APP, completeOnboarding, createAccount, createWorkspace, openTool, pick
 test.skip(!process.env.SHOWCASE_CAPTURE, "Set SHOWCASE_CAPTURE=1 to capture the showcase frames.");
 
 const OUT = fileURLToPath(new URL("../public/marketing/showcase/web/", import.meta.url));
+/** Each frame as plain HTML (the live DOM, no scripts) with the app's CSS in one shared file. */
+const HTML_OUT = fileURLToPath(new URL("../public/marketing/showcase/web-html/", import.meta.url));
+/** PNG originals, kept out of the repo (only WebP is committed). */
+const PNG_OUT = process.env.SHOWCASE_PNG_DIR;
 const DEBUG = process.env.SHOWCASE_DEBUG; // a folder for extra screenshots while working on this spec
 
 /** The demo Vault's passcode (a test value on the dev deployment). */
@@ -25,13 +30,102 @@ nextjs-portal, [data-nextjs-toast], [data-nextjs-dev-tools-button], .ui-toasts {
 *, *::before, *::after { caret-color: transparent !important; }
 `;
 
+/**
+ * Folevi for Mac shows the window's traffic lights where the web app has its logo (Sidebar.tsx): the frames are
+ * of the Mac window, so they draw the lights there (12 px buttons, 8 px apart).
+ */
+const MAC_LIGHTS = `
+a[aria-label="Folevi"].ui-browser-only > svg { visibility: hidden; }
+a[aria-label="Folevi"].ui-browser-only { position: relative; }
+a[aria-label="Folevi"].ui-browser-only::before {
+  content: ""; position: absolute; left: 6px; top: 50%; width: 52px; height: 12px; margin-top: -6px;
+  background:
+    radial-gradient(circle at 6px 6px, #ff5f57 5.5px, #e0443e 5.6px, #e0443e 6px, transparent 6.2px),
+    radial-gradient(circle at 26px 6px, #febc2e 5.5px, #dea123 5.6px, #dea123 6px, transparent 6.2px),
+    radial-gradient(circle at 46px 6px, #28c840 5.5px, #1aab29 5.6px, #1aab29 6px, transparent 6.2px);
+}
+`;
+
+const CSS_RULES = new Set<string>();
+
+/** The page as static HTML: the live DOM without scripts, scroll positions kept, images made local. */
+async function snapshot(page: Page, name: string) {
+  const { html, rules, remote } = await page.evaluate(() => {
+    const abs = (text: string, base: string) => text.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/g, (_m, _q, u: string) => (u.startsWith("data:") ? `url("${u}")` : `url("${new URL(u, base).href}")`));
+    const rules: string[] = [];
+    for (const sheet of [...document.styleSheets, ...((document as Document & { adoptedStyleSheets?: CSSStyleSheet[] }).adoptedStyleSheets ?? [])]) {
+      try {
+        const base = sheet.href ?? location.href;
+        for (const rule of sheet.cssRules) rules.push(abs(rule.cssText, base));
+      } catch {
+        // A stylesheet from another origin: not readable, and the app has none that matter here.
+      }
+    }
+    // Scroll positions don't survive a copy: mark scrolled boxes and move their content by the same amount.
+    const all = [...document.querySelectorAll<HTMLElement>("body *")];
+    const scrolled = all.map((el, i) => ({ i, x: el.scrollLeft, y: el.scrollTop })).filter((s) => s.x || s.y);
+    // Open popovers and modal dialogs sit in the browser's top layer, which a copy doesn't reopen: pin them where they are.
+    const lifted = all
+      .map((el, i) => ({ i, el }))
+      .filter(({ el }) => el.matches(":popover-open") || el.matches("dialog:modal"))
+      .map(({ i, el }) => ({ i, r: el.getBoundingClientRect() }));
+    const live = [...document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input, textarea")];
+    const clone = document.documentElement.cloneNode(true) as HTMLElement;
+    const cloned = [...clone.querySelectorAll<HTMLElement>("body *")];
+    for (const s of scrolled) {
+      const el = cloned[s.i];
+      if (!el) continue;
+      el.style.overflow = "hidden";
+      for (const child of [...el.children] as HTMLElement[]) child.style.translate = `${-s.x}px ${-s.y}px`;
+    }
+    for (const l of lifted) {
+      const el = cloned[l.i];
+      if (!el) continue;
+      el.removeAttribute("popover");
+      if (el.tagName === "DIALOG") el.setAttribute("open", "");
+      Object.assign(el.style, { position: "fixed", inset: "auto", margin: "0", left: `${l.r.left}px`, top: `${l.r.top}px`, width: `${l.r.width}px`, height: `${l.r.height}px`, zIndex: "2147483647", display: "block" });
+    }
+    clone.querySelectorAll("input, textarea").forEach((n, i) => n.setAttribute("value", live[i]?.value ?? ""));
+    clone.querySelectorAll("script, noscript, link, style, iframe").forEach((n) => n.remove());
+    clone.querySelectorAll("[contenteditable]").forEach((n) => n.setAttribute("contenteditable", "false"));
+    const remote: string[] = [];
+    clone.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
+      const live = document.querySelector<HTMLImageElement>(`img[src="${CSS.escape(img.getAttribute("src") ?? "")}"]`);
+      const src = live?.currentSrc || new URL(img.getAttribute("src") ?? "", location.href).href;
+      img.removeAttribute("srcset");
+      img.removeAttribute("sizes");
+      img.setAttribute("src", src);
+      img.setAttribute("loading", "eager");
+      if (!src.startsWith(location.origin) && !src.startsWith("data:")) remote.push(src);
+    });
+    return { html: clone.outerHTML, rules, remote };
+  });
+  mkdirSync(`${HTML_OUT}assets`, { recursive: true });
+  // The app's CSS, shared by all frames: every rule once, in the order first seen (written after the last frame).
+  const sameSite = (text: string) => text.replaceAll(`${APP}/`, "/");
+  for (const rule of rules) CSS_RULES.add(sameSite(rule));
+  let body = sameSite(html);
+  // Images from the backend's file storage are copied next to the frames.
+  for (const url of [...new Set(remote)]) {
+    const res = await page.request.get(url);
+    const type = res.headers()["content-type"] ?? "";
+    const ext = type.includes("png") ? "png" : type.includes("webp") ? "webp" : type.includes("svg") ? "svg" : "jpg";
+    const file = `assets/${createHash("sha256").update(url).digest("hex").slice(0, 12)}.${ext}`;
+    writeFileSync(`${HTML_OUT}${file}`, await res.body());
+    body = body.replaceAll(url, file);
+  }
+  body = body.replace("<head>", `<head><base href="/marketing/showcase/web-html/"><link rel="stylesheet" href="app.css">`);
+  writeFileSync(`${HTML_OUT}${name}.html`, `<!doctype html>\n${body}`);
+}
+
 async function frame(page: Page, name: string) {
   // The pointer rests on the window's bottom-left corner, away from hover states and tooltips.
   await page.mouse.move(2, 798);
-  await page.addStyleTag({ content: HIDE });
+  await page.addStyleTag({ content: HIDE + MAC_LIGHTS });
   await page.waitForTimeout(600);
   mkdirSync(OUT, { recursive: true });
   await page.screenshot({ path: `${OUT}${name}.png` });
+  await snapshot(page, name);
 }
 
 async function debug(page: Page, name: string) {
@@ -428,5 +522,11 @@ test("capture the showcase frames from the real app", async ({ browser }) => {
       console.log("cwebp isn't installed: PNG frames only.");
       break;
     }
+  }
+  writeFileSync(`${HTML_OUT}app.css`, [...CSS_RULES].join("\n"));
+  // The PNG originals leave the repo's folder (only WebP is committed).
+  if (PNG_OUT) {
+    mkdirSync(PNG_OUT, { recursive: true });
+    for (const file of readdirSync(OUT).filter((f) => f.endsWith(".png"))) renameSync(`${OUT}${file}`, `${PNG_OUT}/${file}`);
   }
 });

@@ -140,6 +140,14 @@ async function headers() {
         { key: "Cache-Control", value: "private, no-store" },
       ],
     },
+    // The home page's showcase frames: static HTML snapshots of the app (no scripts), framed by the site itself only.
+    {
+      source: "/marketing/showcase/web-html/:file*",
+      headers: [
+        { key: "Content-Security-Policy", value: staticCsp.replace("frame-ancestors 'none'", "frame-ancestors 'self'") },
+        { key: "X-Frame-Options", value: "SAMEORIGIN" },
+      ],
+    },
     {
       // Authenticated surfaces and share pages are never cached by shared caches.
       source: "/:path(d|ai|graph|documents|notes|tasks|calendar|review|changes|daily|settings|admin|s|api|shared|templates|starred|archive|trash|drafts|unsorted|folders|tags|onboarding|invite|share-invite|share|share-target)/:rest*",

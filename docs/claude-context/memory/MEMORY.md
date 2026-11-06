@@ -31,3 +31,4 @@
 - [Native UI decisions](native-ui-decisions.md): 2026-10-24 everything but the editor goes native Swift on iPhone/iPad/Mac, data via web layer bridge, one big release
 - [Mac rebuild decisions](mac-rebuild-decisions.md): 2026-10-27 native Mac rebuild, everything native but the editor, pixel match with web, account-free local mode; plan docs/MAC_REBUILD_PLAN.md
 - [iOS rebuild decisions](ios-rebuild-decisions.md): 2026-10-30 iPhone+iPad native rebuild, Mac rule, pixel match with the web phone layout, iOS 18, one build at the end; plan docs/IOS_REBUILD_PLAN.md
+- [Hover everywhere](hover-everywhere.md): 2026-11-06 every button and clickable control shows a visible hover, web, Mac and iPad pointer; check on every UI change

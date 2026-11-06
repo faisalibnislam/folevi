@@ -1012,19 +1012,18 @@
 :root[data-iphone] [data-card="title"] { font-size: var(--type-body); line-height: 22px; font-weight: 600; letter-spacing: -0.005em; }
 :root[data-iphone] [data-card="memo"] { font-size: var(--type-caption-1); line-height: var(--type-caption-1-leading); padding: 4px 8px; }
 :root[data-iphone][data-theme="dark"] [data-card="edge"] { box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.08); }
-/* Folder tiles (FolderCardArt.tsx) on the phone: the name in Spectral 19/24 (19 so a 13-letter word such as
+/* Folder tiles (FolderCardArt.tsx) on the phone: the name at Headline size, 17/22 (so a 13-letter word such as
    "Brainstorming" fits the 142 px tile; longer ones end in "…"). In dark, on every platform (the web and the Mac
    too: the full pastel was the brightest thing on a dark page), the folder's darker tone with light words on it
    (4.5:1 on every colour). */
-:root[data-iphone] [data-fc="name"] { font-size: var(--type-title-3); line-height: 24px; }
-:root[data-theme="dark"] [data-fc="back"] { background: color-mix(in oklab, var(--fc) 38%, #23252c) !important; }
+:root[data-iphone] [data-fc="name"] { font-size: var(--type-headline); line-height: 22px; }
+:root[data-theme="dark"] [data-fc="back"] { background: linear-gradient(to bottom, color-mix(in oklab, var(--fc) 44%, #2c2e35), color-mix(in oklab, var(--fc) 34%, #202228)) !important; }
 :root[data-theme="dark"] [data-fc="front"] {
-  background: color-mix(in oklab, var(--fc) 46%, #121318) !important;
-  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 -2px 6px -4px rgb(0 0 0 / 0.3) !important;
+  background: linear-gradient(to bottom, color-mix(in oklab, var(--fc) 50%, #1a1b21), color-mix(in oklab, var(--fc) 42%, #121318)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), inset 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 -4px 10px -6px rgb(0 0 0 / 0.4) !important;
 }
 :root[data-theme="dark"] [data-fc="name"] { color: #f6f6f8 !important; }
 :root[data-theme="dark"] [data-fc="age"] { color: color-mix(in oklab, var(--fc) 22%, #dcdee5) !important; }
-:root[data-theme="dark"] [data-fc="count"] { background: rgb(255 255 255 / 0.3) !important; color: #f6f6f8 !important; }
 /* The iPad app: a card's or folder's "…" stays out of sight on touch, as on the iPhone (a long press or a
    right-click opens the same menu), and out of sight takes no taps (a finger or Pencil tapping the middle of a
    folder's cover opens the folder). With a trackpad or mouse attached, hovering shows it and it can be clicked;

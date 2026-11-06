@@ -30,9 +30,17 @@ export const FOLDER_CARD_FRAME =
  * shadow never falls on it; the front cover sits inside the back, so the outline is the same.
  */
 const BACK_SHADOW = "0 4px 8px rgb(20 20 30 / 0.05), 0 1px 2px rgb(20 20 30 / 0.04)";
-/** Where the folder's "…" menu appears on hover, over the front cover: the same raised chip as a note card's "…". */
+/**
+ * The back's outline: a tab on the left whose shoulder slopes down into the top edge, one piece with the body
+ * (the owner, 7 November 2026, after a classic folder icon). Drawn as a mask over a 100 × 100 box stretched to
+ * the card, so the back can be a plain CSS gradient (and dark mode can restyle it).
+ */
+const BACK_PATH =
+  "M0 7C0 2.5 2 0 6.5 0H31C35 0 36.5 1 38.5 3.2C40.5 5.4 42 6 45 6H93.5C98 6 100 8.5 100 13V93C100 97.5 98 100 93.5 100H6.5C2 100 0 97.5 0 93Z";
+const BACK_MASK = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><path d='${BACK_PATH}'/></svg>`)}") 0 0 / 100% 100% no-repeat`;
+/** Where the folder's "…" menu appears on hover, at the right of the name on the front: the same raised chip as a note card's "…". */
 export const FOLDER_CARD_MENU =
-  "ui-raised absolute left-1/2 top-[70%] z-10 -translate-x-1/2 -translate-y-1/2 rounded-chip opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100";
+  "ui-raised absolute bottom-[8%] right-[4%] z-10 rounded-chip opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100";
 
 /** The "…" button's look inside FOLDER_CARD_MENU, for pictures of the card (the app uses its MenuButton). */
 export function FolderCardMenuLook() {
@@ -73,50 +81,51 @@ function FolderNote({ note, index }: { note: FolderPreview; index: number }) {
 }
 
 /**
- * The drawing: a tinted back with a tab, up to three of the notes inside (faint and soft, fanned), and a
- * flat front cover in the folder's colour (no frosted glass, the owner, 5 November 2026) in front of them. Count, last update and
- * name sit on the front. Goes inside an element with FOLDER_CARD_FRAME, inside one with FOLDER_CARD_BOX.
+ * The drawing, after a classic folder icon but in the folder's softened colour (the owner, 7 November 2026): a
+ * back with a sloped tab, lighter at the top; up to three of the notes inside, fanned; and a front pocket in the
+ * folder's colour over their lower half, with the name and, under it, the count and last update. Goes inside an
+ * element with FOLDER_CARD_FRAME, inside one with FOLDER_CARD_BOX.
  */
 export function FolderCardArt({ name, color, count, age, previews = [] }: { name: string; color: string | null; count: number; age: string; previews?: FolderPreview[] }) {
   const base = folderHex(color);
-  // 30% lighter than the folder's greyed colour (the owner, 5 November 2026), so the front reads first.
-  const backTone = `color-mix(in oklab, color-mix(in oklab, ${base} 80%, #8e94a3) 70%, #ffffff)`;
+  // The palette colour a little greyed, so a page of folders stays calm; the back is a lighter tint of it.
+  const tone = `color-mix(in oklab, ${base} 84%, #9a9fab)`;
   const shown = previews.slice(0, 3);
   return (
     <>
-      {/* back, with its tab */}
-      <div aria-hidden data-fc="back" className="absolute left-0 top-0 h-[9%] w-[44%] rounded-t-control" style={{ background: backTone, boxShadow: `inset 0 0 0 1px rgb(0 0 0 / 0.08), ${BACK_SHADOW}`, ["--fc" as string]: base }} />
-      <div aria-hidden data-fc="back" className="absolute inset-x-0 bottom-0 top-[5%] rounded-panel rounded-tl-none" style={{ background: backTone, boxShadow: `inset 0 0 0 1px rgb(0 0 0 / 0.08), ${BACK_SHADOW}`, ["--fc" as string]: base }} />
-      {/* the notes inside, faint and soft */}
+      {/* the back's soft shadow (the mask below would clip a box-shadow), then the back with its tab */}
+      <div aria-hidden className="absolute inset-x-0 bottom-0 top-[6%] rounded-panel" style={{ boxShadow: BACK_SHADOW }} />
+      <div
+        aria-hidden
+        data-fc="back"
+        className="absolute inset-0"
+        style={{ background: `linear-gradient(to bottom, color-mix(in oklab, ${tone} 52%, #ffffff), color-mix(in oklab, ${tone} 74%, #ffffff))`, mask: BACK_MASK, WebkitMask: BACK_MASK, ["--fc" as string]: base }}
+      />
+      {/* the notes inside */}
       <div aria-hidden className="absolute inset-0">
         {shown.length ? (
           [...shown].reverse().map((p, i) => <FolderNote key={i} note={p} index={shown.length - 1 - i} />)
         ) : (
-          <div className="absolute left-[12%] top-[12%] h-[60%] w-[76%] rounded-chip bg-white/60" />
+          <div className="absolute left-[12%] top-[14%] h-[60%] w-[76%] rounded-chip bg-white/70" />
         )}
       </div>
-      {/* flat front cover, with the count, last update and name on it */}
+      {/* the front pocket, with the name and, under it, the count and last update */}
       <div
         aria-hidden
         data-fc="front"
-        className="absolute inset-x-0 bottom-0 top-[46%] rounded-panel shadow-[inset_0_0_0_1px_rgb(0_0_0/0.06),0_-2px_6px_-4px_rgb(0_0_0/0.12)]"
-        style={{ background: base, ["--fc" as string]: base }}
+        className="absolute inset-x-0 bottom-0 top-[50%] rounded-panel"
+        style={{
+          background: `linear-gradient(to bottom, color-mix(in oklab, ${tone} 90%, #ffffff), ${tone})`,
+          boxShadow: "inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 0 0 1px rgb(0 0 0 / 0.05), 0 -4px 10px -6px rgb(0 0 0 / 0.18)",
+          ["--fc" as string]: base,
+        }}
       >
-        {/* page count */}
-        <span
-          data-fc="count"
-          className="absolute left-[7%] top-[9.26%] inline-flex items-center rounded-tiny px-[calc(2.2cqw*var(--fc-text,1))] py-[calc(1.3cqw*var(--fc-text,1))] font-serif text-[clamp(12px,calc(5.4cqw*var(--fc-text,1)),22px)] font-semibold leading-none tabular-nums text-[#111114]"
-          style={{ background: "rgb(255 255 255 / 0.3)" }}
-        >
-          {count.toLocaleString()}
-        </span>
-        {/* last update (dark enough for 4.5:1 on every folder colour) */}
-        <span data-fc="age" className="absolute right-[7%] top-[10.37%] -mt-[0.15em] max-w-[55%] truncate pb-[0.1em] font-serif text-[clamp(11px,calc(5.6cqw*var(--fc-text,1)),24px)] leading-[1.2]" style={{ color: `color-mix(in oklab, ${base} 10%, #16171d)` }}>
-          {age}
-        </span>
-        {/* name */}
-        <span data-fc="name" className="absolute bottom-[11.48%] left-[7%] right-[7%] line-clamp-2 text-ellipsis wrap-normal break-normal font-serif text-[clamp(16px,calc(9.4cqw*var(--fc-text,1)),40px)] leading-[1.12] tracking-[-0.01em] text-[#0d0d10]">
+        <span data-fc="name" className="absolute bottom-[30%] left-[8%] right-[18%] line-clamp-2 text-ellipsis wrap-normal break-normal text-[clamp(16px,calc(8.4cqw*var(--fc-text,1)),34px)] font-semibold leading-[1.15] tracking-[-0.015em] text-[#121318]">
           {name}
+        </span>
+        {/* count and last update (dark enough for 4.5:1 on every folder colour) */}
+        <span data-fc="age" className="absolute bottom-[13%] left-[8%] right-[18%] truncate text-[clamp(12px,calc(5cqw*var(--fc-text,1)),20px)] font-medium leading-[1.25] tabular-nums" style={{ color: `color-mix(in oklab, ${base} 14%, #2a2c33)` }}>
+          <span data-fc="count">{count.toLocaleString()}</span> · {age}
         </span>
       </div>
     </>

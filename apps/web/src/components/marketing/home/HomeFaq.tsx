@@ -5,6 +5,10 @@ import type { FaqItem } from "../seo";
 /** The home page's questions: short answers, the same text as the FAQPage data. */
 export const HOME_FAQS: FaqItem[] = [
   {
+    q: "What can I do in Folevi?",
+    a: "Write notes and docs, build a team wiki, plan tasks on a calendar, keep collections as a table, gallery or kanban board, draw flowcharts and whiteboards, see your notes as a map in Foli DNA, and keep passwords in the Vault.",
+  },
+  {
     q: "Is Folevi really free?",
     a: "Yes. The Mac, iPhone and iPad apps are free forever when you keep notes on your devices: no account, no trial, no card and no limit on notes. Folevi Cloud plans are optional.",
   },

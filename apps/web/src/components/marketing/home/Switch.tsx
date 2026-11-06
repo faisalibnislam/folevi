@@ -9,7 +9,7 @@ import { Mark } from "../fun";
 
 const FROM: Array<{ slug: string; name: string; body: string }> = [
   { slug: "evernote", name: "Coming from Evernote?", body: "No note limit and no one-device rule. Bring your notebooks over and keep them free." },
-  { slug: "notion", name: "Coming from Notion?", body: "A calm notes app for one person, native on your Apple devices, that works fully offline." },
+  { slug: "notion", name: "Coming from Notion?", body: "Docs, tasks and databases in a calmer workspace, with native Apple apps that work fully offline." },
   { slug: "craft", name: "Coming from Craft?", body: "The same care for how notes look, with no block limit, and your notes stay your files." },
   { slug: "obsidian", name: "Coming from Obsidian?", body: "Linked notes kept as files you own, in a native app that is ready the moment you open it." },
 ];

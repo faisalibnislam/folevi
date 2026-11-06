@@ -10,16 +10,18 @@ import { PageBackdrop } from "@/components/marketing/PageBackdrop";
 import { Included } from "@/components/marketing/home/Included";
 import { YourFiles } from "@/components/marketing/home/YourFiles";
 import { Switch } from "@/components/marketing/home/Switch";
+import { Suite } from "@/components/marketing/home/Suite";
+import { FoliDna, VaultSecurity } from "@/components/marketing/home/DnaAndVault";
 import { HomeFaq } from "@/components/marketing/home/HomeFaq";
 import { NoteStyles } from "@/components/marketing/home/NoteStyles";
 import { SlashSection } from "@/components/marketing/home/SlashSection";
 import { JsonLd, organizationLd, pageMetadata, softwareLd } from "@/components/marketing/seo";
 
 export const metadata = pageMetadata({
-  title: "Folevi: the free notes app for Mac, iPhone and iPad",
+  title: "Folevi: a digital workspace for Mac, iPhone, iPad and web",
   absoluteTitle: true,
   description:
-    "Folevi is a calm notes app for Mac, iPhone and iPad, free forever with no account. Your notes are files in iCloud, Dropbox or any folder you pick.",
+    "Folevi is a calm digital workspace for notes, docs, tasks and databases, with a Vault and Foli DNA. Free Mac, iPhone and iPad apps, no account.",
   path: "/",
 });
 
@@ -34,6 +36,9 @@ export default function HomePage() {
         <Hero />
         <div className="mk-stack mk-home-stack">
           <PricingSection />
+          <Suite />
+          <FoliDna />
+          <VaultSecurity />
           <YourFiles />
           <Included />
           <NoteStyles />

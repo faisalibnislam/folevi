@@ -16,7 +16,7 @@ test("the home page hero: title, theme picker and the apps", async ({ page }) =>
   });
   await page.goto(`${SITE}/`);
   // The title is being co-edited (the ending changes); assistive tech reads the whole sentence once.
-  await expect(page.getByRole("heading", { level: 1 })).toHaveAccessibleName("Folevi is a free digital workspace for your notes, on Mac, iPhone and iPad.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveAccessibleName("Folevi is a digital workspace for notes, docs, projects and team wikis.");
 
   // The theme picker on the cover recolours the note (and the site).
   const themes = page.getByRole("radiogroup", { name: "Note theme" });

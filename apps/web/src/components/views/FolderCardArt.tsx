@@ -29,7 +29,7 @@ export const FOLDER_CARD_FRAME =
  * and blur it again on every new screen (docs/IOS_PERFORMANCE.md). The body is drawn after the tab, so the tab's
  * shadow never falls on it; the front cover sits inside the back, so the outline is the same.
  */
-const BACK_SHADOW = "0 4px 8px rgb(20 20 30 / 0.05), 0 1px 2px rgb(20 20 30 / 0.04)";
+const BACK_SHADOW = "0 8px 18px -4px rgb(20 20 30 / 0.12), 0 2px 4px rgb(20 20 30 / 0.07)";
 /**
  * The back's outline: a tab on the left whose shoulder slopes down into the top edge, one piece with the body
  * (the owner, 7 November 2026, after a classic folder icon). Drawn as a mask over a 100 × 100 box stretched to
@@ -64,7 +64,7 @@ function FolderNote({ note, index }: { note: FolderPreview; index: number }) {
   return (
     <div
       aria-hidden
-      className={`absolute h-[70%] w-[78%] overflow-hidden rounded-chip shadow-[0_1px_2px_rgb(0_0_0/0.12),0_6px_14px_-6px_rgb(0_0_0/0.25)] transition-transform duration-300 ease-[var(--ease-folio)] ${place}`}
+      className={`absolute h-[70%] w-[78%] overflow-hidden rounded-chip shadow-[0_1px_3px_rgb(0_0_0/0.16),0_8px_18px_-6px_rgb(0_0_0/0.32)] transition-transform duration-300 ease-[var(--ease-folio)] ${place}`}
       style={{ background: colors?.paper ?? "#ffffff" }}
     >
       {art ? <div className="absolute inset-y-0 left-0 w-[7%]" style={{ background: `url(${coverArtThumbUrl(art.id)}) center / cover no-repeat` }} /> : null}
@@ -116,7 +116,7 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
         className="absolute inset-x-0 bottom-0 top-[50%] rounded-panel"
         style={{
           background: `linear-gradient(to bottom, color-mix(in oklab, ${tone} 58%, #ffffff), color-mix(in oklab, ${tone} 70%, #ffffff))`,
-          boxShadow: "inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 0 0 1px rgb(0 0 0 / 0.05), 0 -4px 10px -6px rgb(0 0 0 / 0.18)",
+          boxShadow: "inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 0 0 1px rgb(0 0 0 / 0.05), 0 -6px 14px -6px rgb(0 0 0 / 0.26)",
           ["--fc" as string]: base,
         }}
       >

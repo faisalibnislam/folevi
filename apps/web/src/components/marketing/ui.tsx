@@ -19,6 +19,7 @@ export function ButtonLink({
   variant = "primary",
   size = "md",
   icon,
+  lead,
   className,
 }: {
   href: string;
@@ -26,6 +27,8 @@ export function ButtonLink({
   variant?: "primary" | "secondary" | "ghost";
   size?: "sm" | "md" | "lg";
   icon?: IconName;
+  /** An icon before the label (a store or platform mark). */
+  lead?: IconName;
   className?: string;
 }) {
   const classes = cx(
@@ -36,6 +39,7 @@ export function ButtonLink({
   );
   const content = (
     <>
+      {lead ? <Icon name={lead} size={size === "sm" ? 15 : size === "lg" ? 18 : 17} /> : null}
       {children}
       {icon ? <Icon name={icon} size={size === "sm" ? 14 : 16} /> : null}
     </>
@@ -95,6 +99,7 @@ export function SectionHeading({
   id,
   lede,
   align = "left",
+  wide = false,
   className,
 }: {
   eyebrow: string;
@@ -102,13 +107,15 @@ export function SectionHeading({
   id: string;
   lede?: ReactNode;
   align?: "left" | "center";
+  /** The title sets its own lines (with <br />) instead of wrapping at 18 characters. */
+  wide?: boolean;
   className?: string;
 }) {
   const center = align === "center";
   return (
     <div className={cx(center && "mx-auto text-center", className)}>
       <Eyebrow>{eyebrow}</Eyebrow>
-      <h2 id={id} className={cx("mk-h2 mt-5 max-w-[18ch]", center && "mx-auto")}>
+      <h2 id={id} className={cx("mk-h2 mt-5", !wide && "max-w-[18ch]", center && "mx-auto")}>
         {title}
       </h2>
       {lede ? <p className={cx("mk-lede mt-4 max-w-[54ch]", center && "mx-auto")}>{lede}</p> : null}

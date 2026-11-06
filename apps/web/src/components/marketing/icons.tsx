@@ -9,6 +9,7 @@ export type IconName =
   | "outdent"
   | "check"
   | "mac"
+  | "app-store"
   | "offline"
   | "sync"
   | "markdown"
@@ -50,6 +51,13 @@ const paths: Record<IconName, React.ReactNode> = {
   indent: <path d="M3.5 4.5h13M9 8.5h7.5M9 12h7.5M3.5 16h13M3.5 8l3 2.2-3 2.2" />,
   outdent: <path d="M3.5 4.5h13M9 8.5h7.5M9 12h7.5M3.5 16h13M6.5 8l-3 2.2 3 2.2" />,
   check: <path d="m4.5 10.5 3.5 3.5 7.5-8" />,
+  // The App Store's A: three strokes in a rounded square.
+  "app-store": (
+    <>
+      <rect x="2.5" y="2.5" width="15" height="15" rx="4" />
+      <path d="M8.4 5.8 12.9 13.6M11.6 5.8 7.1 13.6M5.6 11.6h8.8" />
+    </>
+  ),
   mac: (
     <>
       <rect x="3" y="4" width="14" height="9.5" rx="1.5" />

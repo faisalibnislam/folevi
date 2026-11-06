@@ -59,9 +59,12 @@ export function PricingSection() {
           align="center"
           id="pricing-title"
           eyebrow="Pricing"
+          wide
           title={
             <>
-              Free on your devices. <Mark>Cloud</Mark> when you want it.
+              Free on your devices.
+              <br />
+              <Mark>Cloud</Mark> when you want it.
             </>
           }
           lede={`The apps cost nothing with no account. Folevi Cloud adds the web app, sharing and Foli AI, and every new account gets ${TIER_NAMES[TRIAL_TIER]} free for ${TRIAL_DAYS} days, no card.`}
@@ -83,10 +86,10 @@ export function PricingSection() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <ButtonLink href={MAC_DOWNLOAD_URL} icon="arrow-down">
+            <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac">
               Download for Mac
             </ButtonLink>
-            <ButtonLink href={APP_STORE_URL} variant="secondary">
+            <ButtonLink href={APP_STORE_URL} lead="app-store" variant="secondary">
               App Store
             </ButtonLink>
           </div>
@@ -159,10 +162,10 @@ export function FinalCta() {
         </h2>
         <p className="mk-lede mx-auto mt-5 max-w-[46ch]">Free forever on your Mac, iPhone and iPad. No account.</p>
         <div className="mt-9 flex flex-wrap justify-center gap-2.5">
-          <ButtonLink href={MAC_DOWNLOAD_URL} icon="arrow-down" size="lg">
+          <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac" size="lg">
             Download for Mac
           </ButtonLink>
-          <ButtonLink href={APP_STORE_URL} icon="arrow-right" size="lg">
+          <ButtonLink href={APP_STORE_URL} lead="app-store" size="lg">
             Get it on the App Store
           </ButtonLink>
           <ButtonLink href={WEB_APP_URL} variant="secondary" size="lg">

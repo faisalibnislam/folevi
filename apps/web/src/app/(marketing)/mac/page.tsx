@@ -49,7 +49,7 @@ export default function MacPage() {
               </p>
               <p className="text-[15px] leading-relaxed text-muted">Open the download and drag Folevi to Applications. It updates itself.</p>
               <div className="mt-6 flex flex-wrap gap-2.5">
-                <ButtonLink href={MAC_DOWNLOAD_URL} icon="arrow-down">
+                <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac">
                   Download for Mac
                 </ButtonLink>
                 <ButtonLink href={WEB_APP_URL} variant="secondary">
@@ -207,7 +207,7 @@ export default function MacPage() {
             />
             <div>
               <div className="flex flex-wrap gap-2.5">
-                <ButtonLink href={APP_STORE_URL} icon="arrow-right">
+                <ButtonLink href={APP_STORE_URL} lead="app-store">
                   Get it on the App Store
                 </ButtonLink>
                 <ButtonLink href="/apps" variant="secondary">

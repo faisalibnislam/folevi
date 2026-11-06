@@ -100,7 +100,7 @@ const PAGES = [
   { path: "/template-gallery", h1: "Free note templates for Folevi." },
   { path: "/docs", h1: "How Folevi works." },
   // Pages that gained links to the new ones.
-  { path: "/", h1: "Folevi is a free notes app for Mac, iPhone and iPad." },
+  { path: "/", h1: "Folevi is a free digital workspace for your notes, on Mac, iPhone and iPad." },
   { path: "/pricing", h1: "Free forever on your devices." },
   { path: "/apps", h1: "Folevi on your Mac, iPhone and iPad." },
   // Comparison pages and the blog.

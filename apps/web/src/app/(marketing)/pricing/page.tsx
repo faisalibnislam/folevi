@@ -191,10 +191,10 @@ export default function PricingPage() {
               need a Folevi account. You can move a library to an account later, or export it back into a folder.
             </p>
             <div className="mt-7 flex flex-wrap gap-2.5">
-              <ButtonLink href={MAC_DOWNLOAD_URL} icon="arrow-down">
+              <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac">
                 Download for Mac
               </ButtonLink>
-              <ButtonLink href={APP_STORE_URL} variant="secondary">
+              <ButtonLink href={APP_STORE_URL} lead="app-store" variant="secondary">
                 App Store
               </ButtonLink>
             </div>

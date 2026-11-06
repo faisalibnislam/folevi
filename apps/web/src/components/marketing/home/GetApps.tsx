@@ -159,7 +159,7 @@ export function HeroApps() {
             body="Its own windows, Quick Add from any app, a menu bar icon and Mac notifications. It updates itself."
             requirement={`${MAC_REQUIREMENT}, Apple silicon or Intel.`}
             action={
-              <ButtonLink href={MAC_DOWNLOAD_URL} icon="arrow-down">
+              <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac">
                 Download for Mac
               </ButtonLink>
             }
@@ -175,7 +175,7 @@ export function HeroApps() {
             body="The same notes in your pocket and on your iPad, with a layout made for each screen. Sync them with iCloud Drive."
             requirement={`${IOS_REQUIREMENT}.`}
             action={
-              <ButtonLink href={APP_STORE_URL} icon="arrow-right">
+              <ButtonLink href={APP_STORE_URL} lead="app-store">
                 Get it on the App Store
               </ButtonLink>
             }

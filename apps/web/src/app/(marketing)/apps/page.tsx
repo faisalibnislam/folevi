@@ -144,10 +144,10 @@ export default function AppsPage() {
             Native apps, free forever with no account. Your notes are files in a folder you pick, and they work offline.
           </p>
           <div className="mt-8 flex flex-wrap gap-2.5">
-            <ButtonLink href={MAC_DOWNLOAD_URL} icon="arrow-down" size="lg">
+            <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac" size="lg">
               Download for Mac
             </ButtonLink>
-            <ButtonLink href={APP_STORE_URL} icon="arrow-right" size="lg">
+            <ButtonLink href={APP_STORE_URL} lead="app-store" size="lg">
               Get it on the App Store
             </ButtonLink>
             <ButtonLink href={WEB_APP_URL} variant="secondary" size="lg">
@@ -210,7 +210,7 @@ export default function AppsPage() {
           picture={<MacPicture />}
           actions={
             <>
-              <ButtonLink href={MAC_DOWNLOAD_URL} icon="arrow-down">
+              <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac">
                 Download for Mac
               </ButtonLink>
               <ButtonLink href="/mac" variant="secondary">
@@ -238,7 +238,7 @@ export default function AppsPage() {
             </div>
           }
           actions={
-            <ButtonLink href={APP_STORE_URL} icon="arrow-right">
+            <ButtonLink href={APP_STORE_URL} lead="app-store">
               Get it on the App Store
             </ButtonLink>
           }

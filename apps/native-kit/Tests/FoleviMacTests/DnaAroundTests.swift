@@ -92,15 +92,87 @@ struct Around {
         #expect(DnaMath.labelBudget(0.3, 100) == 12 && DnaMath.labelBudget(1, 100) == 100)
     }
 
+    // MARK: the floating card and the time-lapse (the owner, 6 November 2026)
+
+    @Test func theCardGroupsConnectionsByWhy() {
+        let v = DemoEngine.graph
+        let ix = DnaAround.index(v.nodes, v.edges)
+        let names = DnaNames(tag: { _ in nil }, folder: { ["f1": "Airly.io"][$0] })
+        let conns = DnaAround.connections(ix, "a3")
+        let groups = DnaAround.groups(conns, names)
+        #expect(groups.map(\.title) == ["Links", "Same folder"])
+        #expect(groups.first?.ids == ["b2", "a0"])
+        // Each connection once.
+        #expect(groups.flatMap(\.ids).count == conns.count)
+        #expect(Set(groups.flatMap(\.ids)) == Set(conns.map(\.id)))
+        let tagged = DnaAround.groups([DnaConnection(id: "x", reasons: [.folder("f1")]), DnaConnection(id: "y", reasons: [.tag("t1"), .folder("f1")]), DnaConnection(id: "z", reasons: [.mention])], DnaNames(tag: { _ in "pricing" }))
+        #expect(tagged.map(\.title) == ["Mentions", "Tagged #pricing", "Same folder"])
+    }
+
+    @Test func insightsShowsInTheCardAroundANote() async {
+        // The owner's report: around a note the Insights button did nothing (the connections held the side spot).
+        let demo = DemoEngine(now: Date(timeIntervalSince1970: 1_800_000_000))
+        let model = GraphModel(client: demo.client(), feedback: ScreenFeedback())
+        model.apply(path: "/graph?note=a3")
+        await eventually("graph", timeout: .seconds(8)) { model.value != nil }
+        #expect(model.side == .connections)
+        model.insights = true
+        #expect(model.side == .insights)
+        // A picked note's panel takes the card; closing it brings Insights back, and the switch goes back.
+        model.panel = "a0"
+        #expect(model.side == .panel)
+        model.panel = nil
+        #expect(model.side == .insights)
+        model.insights = false
+        #expect(model.side == .connections)
+        // On the whole map Insights opens the same card.
+        model.showEverything()
+        model.apply(path: "/graph")
+        #expect(model.side == nil)
+        model.insights = true
+        #expect(model.side == .insights)
+        model.insights = false
+    }
+
+    @Test func theTimeLapseTicksStepsAndCounts() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        func at(_ y: Int, _ m: Int, _ d: Int = 1) -> Double { cal.date(from: DateComponents(year: y, month: m, day: d))!.timeIntervalSince1970 * 1000 }
+        #expect(DnaTimelineMath.unit(at(2026, 1), at(2026, 1, 10)) == .day)
+        #expect(DnaTimelineMath.unit(at(2026, 1), at(2026, 2, 15)) == .week)
+        #expect(DnaTimelineMath.unit(at(2025, 1), at(2026, 7)) == .month)
+        #expect(DnaTimelineMath.unit(at(2020, 1), at(2026, 7)) == .year)
+        let months = DnaTimelineMath.ticks(at(2025, 11, 15), at(2026, 3, 10), calendar: cal)
+        #expect(months.ticks.map { cal.component(.month, from: Date(timeIntervalSince1970: $0.at / 1000)) } == [12, 1, 2, 3])
+        #expect(months.ticks.filter(\.major).count == 1)
+        #expect(months.ticks.allSatisfy { $0.pos > 0 && $0.pos < 1 })
+        let years = DnaTimelineMath.ticks(at(2020, 6), at(2026, 6), calendar: cal)
+        #expect(years.ticks.map { cal.component(.year, from: Date(timeIntervalSince1970: $0.at / 1000)) } == [2021, 2022, 2023, 2024, 2025, 2026])
+        #expect(cal.component(.weekday, from: Date(timeIntervalSince1970: DnaTimelineMath.next(at(2026, 11, 6), .week, calendar: cal) / 1000)) == 2)
+        let s = at(2025, 1), e = at(2026, 1)
+        #expect(DnaTimelineMath.step(s, e, at: s, by: -1) == s)
+        #expect(DnaTimelineMath.step(s, e, at: e, by: 1) == e)
+        #expect(abs((DnaTimelineMath.step(s, e, at: s, by: 1) - s) / DnaTimelineMath.day - 30.44) < 0.01)
+        let nodes = DemoEngine.graph.nodes
+        let span = DnaMath.span(nodes)!
+        let all = DnaTimelineMath.notesSoFar(nodes, at: span.end)
+        #expect(all.shown == all.total && all.total == nodes.filter { $0.kind == "note" }.count)
+        #expect(DnaTimelineMath.notesSoFar(nodes, at: span.start).shown >= 1)
+    }
+
     // MARK: pictures
 
     @Test func pictures() async throws {
         _ = FoleviFonts.register()
-        let out: [(name: String, route: String, size: CGSize, tour: Bool, panel: String?)] = [
-            ("dna-note-mac", "/graph?note=a3", CGSize(width: 1180, height: 820), false, nil),
-            ("dna-panel-mac", "/graph?note=a3", CGSize(width: 1180, height: 820), false, "a0"),
-            ("dna-tour-mac", "/graph", CGSize(width: 1180, height: 820), true, nil),
-            ("dna-note-iphone", "/graph?note=a3", CGSize(width: 393, height: 852), false, "a3"),
+        // Around a note with its card, a picked note's panel, Insights in the card, the time-lapse paused part way,
+        // the first-time tips, and the phone width.
+        let out: [(name: String, route: String, size: CGSize, tour: Bool, panel: String?, insights: Bool, play: Double?)] = [
+            ("dna-note-mac", "/graph?note=a3", CGSize(width: 1180, height: 820), false, nil, false, nil),
+            ("dna-panel-mac", "/graph?note=a3", CGSize(width: 1180, height: 820), false, "a0", false, nil),
+            ("dna-insights-mac", "/graph?note=a3", CGSize(width: 1180, height: 820), false, nil, true, nil),
+            ("dna-timeline-mac", "/graph?note=a3", CGSize(width: 1180, height: 820), false, nil, false, 0.6),
+            ("dna-tour-mac", "/graph", CGSize(width: 1180, height: 820), true, nil, false, nil),
+            ("dna-note-iphone", "/graph?note=a3", CGSize(width: 393, height: 852), false, "a3", false, nil),
         ]
         for o in out {
             for scheme in [ColorScheme.light, .dark] {
@@ -122,6 +194,8 @@ struct Around {
                 let graph = models.more.graphModel()
                 await eventually("graph \(o.name)", timeout: .seconds(8)) { graph.value != nil }
                 graph.panel = o.panel
+                graph.insights = o.insights
+                if let p = o.play, let s = DnaMath.span(graph.shown.nodes) { graph.playing = false; graph.playAt = s.start + (s.end - s.start) * p } else { graph.playAt = nil }
                 for _ in 0..<10 {
                     view.layoutSubtreeIfNeeded()
                     try? await Task.sleep(for: .milliseconds(150))
@@ -133,6 +207,7 @@ struct Around {
             }
         }
         UserDefaults.standard.set(true, forKey: "folevi.dna.tourDone")
+        UserDefaults.standard.removeObject(forKey: "folevi.dna.insights")
     }
 }
 }

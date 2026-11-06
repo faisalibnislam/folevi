@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, Bookmark, ChevronDown, CircleHelp, Download, FileText, Focus, Maximize, Pause, Play, Search, SlidersHorizontal, Sparkles, Tag as TagIcon, Waypoints, X, ZoomIn, ZoomOut, FolderInput, ChartNetwork } from "lucide-react";
+import { ArrowLeft, Bookmark, ChevronDown, CircleHelp, Download, FileText, Focus, Folder, Maximize, Pause, Play, Search, SlidersHorizontal, Sparkles, SquareDashed, Tag as TagIcon, Waypoints, X, ZoomIn, ZoomOut, FolderInput, ChartNetwork } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { AppLink, useAppRouter } from "@/lib/app/router";
@@ -65,8 +65,10 @@ import {
   type DnaNode,
   type DnaSettings,
 } from "@/lib/graph/analysis";
-import { indexGraph, neighbourhood, type AroundEdge, type Names } from "@/lib/graph/neighbourhood";
-import { DnaConnections, DnaLegend, DnaNodePanel, DnaTour, type LegendShows } from "@/components/views/DnaGuide";
+import { dnaSide, indexGraph, neighbourhood, type AroundEdge, type Names } from "@/lib/graph/neighbourhood";
+import { notesSoFar, PLAY_MS } from "@/lib/graph/timeline";
+import { DNA_CARD, DNA_ROW, DnaCardHead, DnaConnections, DnaLegend, DnaNodePanel, DnaSection, DnaTour, KindDot, type LegendShows } from "@/components/views/DnaGuide";
+import { DnaTimeline } from "@/components/views/DnaTimeline";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { canPurchaseHere } from "@/lib/nativeApp";
 
@@ -89,6 +91,8 @@ const EDGE_LABEL: Record<string, string> = { link: "Linked", mention: "Mentions"
 const CLUSTER_TINTS = ["var(--color-accent)", "var(--color-moss)", "var(--color-marigold)", "var(--color-plum)", "var(--color-coral)", "var(--color-ink-muted)"];
 const tagColor = (color: string | null | undefined) => `var(--color-${!color || color === "muted" ? "ink-muted" : color})`;
 const DAY = 86_400_000;
+/** A filter row trigger (folder, tag, edited, colour, Show): bare words that take the glass hover under the pointer. */
+const FILTER_TRIGGER = "h-8 rounded-chip px-2 text-subheadline transition-colors duration-150 hover:bg-[var(--glass-hover)] hover:text-heading";
 const EDITED: { value: string; label: string; days: number | null }[] = [
   { value: "any", label: "Edited any time", days: null },
   { value: "7", label: "Edited this week", days: 7 },
@@ -135,7 +139,9 @@ export function GraphView() {
   const [sinceWeek, setSinceWeek] = useState(false);
   // How many of the Show menu's choices differ from a fresh map (shown on its button).
   const changedShows = [settings.filter.linksOnly, !settings.filter.linksOnly && kinds.length !== ENTITY_KINDS.length, !settings.filter.hideOrphans, !settings.filter.hideAiLines, !settings.clusters, settings.arrows, focusMode, sinceWeek].filter(Boolean).length;
+  // The time-lapse: its bar shows while `playAt` is set; `playing` runs it (paused, it holds the date).
   const [playAt, setPlayAt] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
   // Around one note (`?note=`), else the saved center. The note is sent along so it (and what it links to) is in
@@ -237,16 +243,32 @@ export function GraphView() {
   const [weekAgo] = useState(() => Date.now() - 7 * DAY);
   const fresh = useMemo(() => (sinceWeek ? newSince(shown.nodes, shown.edges, weekAgo) : null), [sinceWeek, shown, weekAgo]);
 
-  // The time-lapse: about eight seconds from the first note to the last.
+  // The time-lapse: about eight seconds from the first note to the last, by the clock (smooth whatever the frame
+  // rate). At the end it pauses there; the bar's x goes back to now.
+  const timelineOpen = playAt !== null;
   useEffect(() => {
-    if (playAt === null || !span) return;
-    if (playAt >= span.end) {
-      const t = setTimeout(() => setPlayAt(null), 1200);
-      return () => clearTimeout(t);
-    }
-    const raf = requestAnimationFrame(() => setPlayAt((at) => (at === null ? null : Math.min(span.end, at + Math.max(1, (span.end - span.start) / 480)))));
+    if (!playing || !timelineOpen || !span) return;
+    let raf = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = now - last;
+      last = now;
+      setPlayAt((at) => (at === null ? null : Math.min(span.end, at + ((span.end - span.start) * dt) / PLAY_MS)));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playAt, span]);
+  }, [playing, timelineOpen, span]);
+  if (playing && span && playAt !== null && playAt >= span.end) setPlaying(false);
+  const togglePlay = () => {
+    if (!span) return;
+    if (playing) return setPlaying(false);
+    // Played to the end: Play starts again from the first note.
+    if (playAt === null || playAt >= span.end) setPlayAt(span.start);
+    setPlaying(true);
+  };
+  const stopTimeline = () => (setPlaying(false), setPlayAt(null));
+  const seek = (t: number) => (setPlaying(false), setPlayAt(span ? Math.min(span.end, Math.max(span.start, t)) : t));
 
   const groups = useMemo(() => {
     if (settings.colorBy === "folder") return (data?.folders ?? []).map((f) => ({ id: f.id, name: f.name, color: folderHex(f.color) }));
@@ -330,15 +352,71 @@ export function GraphView() {
   };
   const layoutBtn = useRef<HTMLButtonElement>(null);
 
+  // The floating card over the map (top right, clear of Ask Foli AI): a picked node's panel, else Insights, else
+  // (around a note) its connections. Around a note a switch at its top moves between Connections and Insights.
+  const side = dnaSide({ centred: Boolean(center && around), insights, panel: panelId });
+  const centreFolder = centerNode?.folderId ? (data?.folders ?? []).find((f) => f.id === centerNode.folderId) : undefined;
+  const centreGlyph = centreFolder ? <Folder size={14} aria-hidden fill="currentColor" fillOpacity={0.18} style={{ color: folderHex(centreFolder.color) }} /> : <KindDot kind={centerNode?.kind ?? "note"} />;
+  const connectionCount = around ? (around.connections.length === 1 ? "1 connection" : `${around.connections.length} connections`) : undefined;
+  const sideCard =
+    side === "panel" && panelId ? (
+      <DnaNodePanel
+        key={panelId}
+        id={panelId}
+        index={index}
+        names={names}
+        ai={ai}
+        isCenter={panelId === center}
+        expand={around && around.nodes.some((n) => n.id === panelId) && panelId !== center && index.byId.get(panelId)?.kind === "note" ? { on: expandedIds.has(panelId), toggle: () => toggleExpanded(panelId) } : null}
+        onOpen={open}
+        onCenter={mapAround}
+        onPick={setPanel}
+        onClose={() => setPanel(null)}
+      />
+    ) : side ? (
+      <aside aria-label={side === "insights" ? "Insights" : "Connections"} className={DNA_CARD}>
+        {center && around ? (
+          <DnaCardHead
+            glyph={centreGlyph}
+            title={centerNode?.label || "Untitled"}
+            sub={connectionCount}
+            closeLabel="Back to the whole map"
+            onClose={whole}
+            tab={side === "insights" ? "insights" : "connections"}
+            onTab={(t) => setInsights(t === "insights")}
+          />
+        ) : (
+          <DnaCardHead title="Insights" sub={`${notes} ${notes === 1 ? "note" : "notes"} on the map`} closeLabel="Close Insights" onClose={() => setInsights(false)} />
+        )}
+        {side === "connections" && around ? (
+          <DnaConnections connections={around.connections} index={index} names={names} expanded={expandedIds} picked={panelId} onToggle={toggleExpanded} onPick={setPanel} onOpen={open} />
+        ) : (
+          <DnaInsights
+            hubs={hubList}
+            clusters={clusterInfo.clusters}
+            bridges={[...bridgeSet].map((id) => shown.nodes.find((n) => n.id === id)).filter((n): n is DnaNode => Boolean(n))}
+            orphans={orphanList}
+            suggested={suggested}
+            duplicates={duplicates}
+            byId={new Map(all.nodes.map((n) => [n.id, n]))}
+            scope={scope}
+            full={Boolean(data?.full)}
+            onCenter={mapAround}
+            onPick={setPanel}
+          />
+        )}
+      </aside>
+    ) : null;
+
   return (
     <ViewChrome title="Foli DNA" tabTitle="Foli DNA">
       <div className="flex h-full min-h-0 flex-col">
         <div className="flex flex-none flex-wrap items-center gap-2 px-4 pb-2 pt-1 sm:px-6">
           <div role="group" aria-label="View" className="ui-seg ui-well">
-            <button type="button" aria-pressed={view === "graph"} onClick={() => setView("graph")} className="!min-h-8 px-3 text-subheadline">
+            <button type="button" aria-pressed={view === "graph"} onClick={() => setView("graph")} className="!min-h-8 px-3 text-subheadline hover:aria-[pressed=false]:bg-[var(--glass-hover)]">
               Map
             </button>
-            <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")} className="!min-h-8 px-3 text-subheadline">
+            <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")} className="!min-h-8 px-3 text-subheadline hover:aria-[pressed=false]:bg-[var(--glass-hover)]">
               List
             </button>
           </div>
@@ -362,9 +440,10 @@ export function GraphView() {
           {data ? (
               <div className="flex items-center gap-0.5">
                 <IconButton
-                  label={playAt === null ? "Play how it grew" : "Stop"}
+                  label={playAt === null ? "Play how it grew" : "Stop the time-lapse"}
+                  aria-pressed={playAt !== null}
                   disabled={!span || span.end === span.start}
-                  onClick={() => setPlayAt((at) => (at === null && span ? span.start : null))}
+                  onClick={() => (playAt === null && span ? (setPlayAt(span.start), setPlaying(true)) : stopTimeline())}
                 >
                   {playAt === null ? <Play size={15} aria-hidden /> : <Pause size={15} aria-hidden />}
                 </IconButton>
@@ -418,7 +497,7 @@ export function GraphView() {
           <div role="toolbar" aria-label="Foli DNA filters" className="flex flex-none flex-wrap items-center gap-2 px-4 pb-2 sm:px-6">
             {!center ? (
             <>
-            <Select aria-label="Folder" value={settings.filter.folders?.[0] ?? ""} onChange={(e) => setFilter({ folders: e.target.value ? [e.target.value] : [] })} className="h-8 text-subheadline">
+            <Select aria-label="Folder" value={settings.filter.folders?.[0] ?? ""} onChange={(e) => setFilter({ folders: e.target.value ? [e.target.value] : [] })} className={FILTER_TRIGGER}>
               <option value="">All folders</option>
               {(data.folders ?? []).map((f) => (
                 <option key={f.id} value={f.id}>
@@ -426,7 +505,7 @@ export function GraphView() {
                 </option>
               ))}
             </Select>
-            <Select aria-label="Tag" value={settings.filter.tags?.[0] ?? ""} onChange={(e) => setFilter({ tags: e.target.value ? [e.target.value] : [] })} className="h-8 text-subheadline">
+            <Select aria-label="Tag" value={settings.filter.tags?.[0] ?? ""} onChange={(e) => setFilter({ tags: e.target.value ? [e.target.value] : [] })} className={FILTER_TRIGGER}>
               <option value="">Any tag</option>
               {(data.tags ?? []).map((t) => (
                 <option key={t.id} value={t.id}>
@@ -441,7 +520,7 @@ export function GraphView() {
                 const days = EDITED.find((x) => x.value === e.target.value)?.days ?? null;
                 setFilter({ editedSince: days === null ? null : Date.now() - days * DAY });
               }}
-              className="h-8 text-subheadline"
+              className={FILTER_TRIGGER}
             >
               {EDITED.map((x) => (
                 <option key={x.value} value={x.value}>
@@ -451,7 +530,7 @@ export function GraphView() {
             </Select>
             </>
             ) : null}
-            <Select aria-label="Colour by" value={settings.colorBy} onChange={(e) => set({ colorBy: e.target.value as DnaSettings["colorBy"] })} className="h-8 text-subheadline">
+            <Select aria-label="Colour by" value={settings.colorBy} onChange={(e) => set({ colorBy: e.target.value as DnaSettings["colorBy"] })} className={FILTER_TRIGGER}>
               <option value="kind">Colour by kind</option>
               <option value="folder">Colour by folder</option>
               <option value="tag">Colour by tag</option>
@@ -459,7 +538,7 @@ export function GraphView() {
             <MenuButton
               label={changedShows ? `Show, ${changedShows} changed` : "Show"}
               align="start"
-              triggerClassName="h-8 px-1 text-subheadline"
+              triggerClassName={FILTER_TRIGGER}
               trigger={
                 <span className="flex items-center gap-1">
                   {changedShows ? `Show · ${changedShows} changed` : "Show"}
@@ -573,7 +652,6 @@ export function GraphView() {
               pinKey={`folevi:dna-pins:${scopeKey}`}
               center={center}
               exportRef={exportRef}
-              playLabel={playAt !== null ? new Date(playAt).toLocaleDateString(undefined, { month: "short", year: "numeric" }) : null}
               selected={panelId}
               onSelect={setPanel}
               sparse={
@@ -587,41 +665,14 @@ export function GraphView() {
               overlay={{
                 topCenter: !tourDone ? <DnaTour step={tourStep} onStep={setTourStep} onDone={() => setTourDone(true)} /> : null,
                 bottomLeft: <DnaLegend shows={legendShows} open={legendOpen} onToggle={() => setLegendOpen(!legendOpen)} />,
-                bottomRight: panelId ? (
-                  <DnaNodePanel
-                    key={panelId}
-                    id={panelId}
-                    index={index}
-                    names={names}
-                    ai={ai}
-                    isCenter={panelId === center}
-                    expand={around && around.nodes.some((n) => n.id === panelId) && panelId !== center && index.byId.get(panelId)?.kind === "note" ? { on: expandedIds.has(panelId), toggle: () => toggleExpanded(panelId) } : null}
-                    onOpen={open}
-                    onCenter={mapAround}
-                    onPick={setPanel}
-                    onClose={() => setPanel(null)}
-                  />
-                ) : null,
+                side: sideCard,
+                sideNarrowHidden: side === "connections",
+                bottomCenter:
+                  playAt !== null && span ? (
+                    <DnaTimeline start={span.start} end={span.end} at={playAt} playing={playing} count={notesSoFar(shown.nodes, playAt)} onPlay={togglePlay} onSeek={seek} onClose={stopTimeline} />
+                  ) : null,
               }}
             />
-            {around && center ? (
-              <DnaConnections center={center} connections={around.connections} index={index} names={names} expanded={expandedIds} onToggle={toggleExpanded} onPick={setPanel} onWhole={whole} />
-            ) : null}
-            {insights && !center ? (
-              <DnaInsights
-                hubs={hubList}
-                clusters={clusterInfo.clusters}
-                bridges={[...bridgeSet].map((id) => shown.nodes.find((n) => n.id === id)).filter((n): n is DnaNode => Boolean(n))}
-                orphans={orphanList}
-                suggested={suggested}
-                duplicates={duplicates}
-                byId={new Map(all.nodes.map((n) => [n.id, n]))}
-                scope={scope}
-                full={Boolean(data.full)}
-                onCenter={mapAround}
-                onClose={() => setInsights(false)}
-              />
-            ) : null}
           </div>
         )}
       </div>
@@ -631,8 +682,10 @@ export function GraphView() {
 }
 
 /**
- * Foli DNA's side list: the best-connected notes, clusters, notes that bridge them, unlinked notes, suggested links
- * (with Link), likely duplicates and contradictions (opening the note on its Related notes).
+ * Insights, in the floating card: the best-connected notes (a click maps around one), clusters (a click goes to
+ * one; the sparkle asks Foli AI to sum it up), notes that bridge them, suggested links (with Link them), unlinked
+ * notes, likely duplicates and contradictions (each opening the note on its Related notes). Every row does
+ * something; the words that only explain are not rows.
  */
 function DnaInsights({
   hubs,
@@ -645,7 +698,7 @@ function DnaInsights({
   scope,
   full,
   onCenter,
-  onClose,
+  onPick,
 }: {
   hubs: (DnaNode & { degree: number })[];
   clusters: { id: number; name: string; members: string[] }[];
@@ -657,7 +710,7 @@ function DnaInsights({
   scope: ReturnType<typeof useAppState>["scope"];
   full: boolean;
   onCenter: (id: string) => void;
-  onClose: () => void;
+  onPick: (id: string) => void;
 }) {
   const link = useMutation(api.aiGraph.linkNote);
   const contradictions = useQuery(api.aiGraph.contradictions, full ? { scope } : "skip");
@@ -665,145 +718,161 @@ function DnaInsights({
   const toast = useToast();
   const [linked, setLinked] = useState<Set<string>>(new Set());
   const name = (id: string) => byId.get(id)?.label || "Untitled";
-  const noteLink = (id: string, panel = false) => (
-    <AppLink href={`/d/${id}${panel ? "?panel=related" : ""}`} className="truncate text-ink underline-offset-2 hover:underline">
-      {name(id)}
+  const empty = (text: string) => <p className="px-1.5 pb-1 text-footnote text-faint">{text}</p>;
+  const noteRow = (id: string, panel = false, text?: React.ReactNode) => (
+    <AppLink href={`/d/${id}${panel ? "?panel=related" : ""}`} className={DNA_ROW}>
+      <FileText size={13} aria-hidden className="flex-none text-muted" />
+      <span className="min-w-0 flex-1 truncate">{text ?? name(id)}</span>
     </AppLink>
   );
-  const section = (title: string, children: React.ReactNode, empty?: string) => (
-    <section className="mt-4 first:mt-0">
-      <h3 className="ui-caps mb-1.5">{title}</h3>
-      {children ?? <p className="text-footnote text-faint">{empty}</p>}
-    </section>
-  );
+  const zoomTo = (id: string) => window.dispatchEvent(new CustomEvent("folevi:dna-zoom-to", { detail: id }));
   return (
-    <aside aria-label="Insights" className="w-72 flex-none overflow-y-auto border-l border-line px-4 pb-[max(2rem,var(--fab-clearance))] pt-1 text-subheadline">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-body font-semibold text-heading">Insights</h2>
-        <IconButton label="Close Insights" onClick={onClose} className="!h-7 !w-7">
-          <X size={14} aria-hidden />
-        </IconButton>
-      </div>
-      {section(
-        "Hubs",
-        hubs.length ? (
-          <ol className="space-y-0.5">
+    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 pb-2 text-subheadline">
+      <DnaSection title="Hubs" count={hubs.length}>
+        {hubs.length ? (
+          <ol>
             {hubs.map((h) => (
-              <li key={h.id} className="flex items-center gap-1.5">
-                <KindGlyph kind={h.kind} />
-                <button type="button" onClick={() => onCenter(h.id)} className="min-w-0 flex-1 truncate text-left hover:underline">
-                  {h.label || "Untitled"}
+              <li key={h.id}>
+                <button type="button" title="Map around it" onClick={() => onCenter(h.id)} className={`${DNA_ROW} w-full text-left`}>
+                  <KindDot kind={h.kind} />
+                  <span className="min-w-0 flex-1 truncate">{h.label || "Untitled"}</span>
+                  <span className="text-footnote tabular-nums text-faint">{h.degree}</span>
                 </button>
-                <span className="text-footnote tabular-nums text-faint">{h.degree}</span>
               </li>
             ))}
           </ol>
-        ) : null,
-        "Nothing is connected yet.",
-      )}
-      {section(
-        "Clusters",
-        clusters.length ? (
-          <ul className="space-y-1">
-            {clusters.slice(0, 12).map((c) => (
-              <li key={c.id} className="flex items-center gap-1.5">
-                <span aria-hidden className="inline-block h-2.5 w-2.5 flex-none rounded-chip" style={{ background: CLUSTER_TINTS[c.id % CLUSTER_TINTS.length] }} />
-                <span className="min-w-0 flex-1 truncate">{c.name}</span>
-                <span className="text-footnote tabular-nums text-faint">{c.members.length}</span>
-                <IconButton
-                  label={`Ask Foli AI to sum up ${c.name}`}
-                  className="!h-6 !w-6"
-                  onClick={() => openAsk(`Sum up what these notes say together: ${c.members.filter((m) => byId.get(m)?.kind === "note").slice(0, 20).map(name).join(", ")}.`)}
-                >
-                  <Sparkles size={12} aria-hidden />
-                </IconButton>
+        ) : (
+          empty("Nothing is connected yet.")
+        )}
+      </DnaSection>
+      <DnaSection title="Clusters" count={clusters.length}>
+        {clusters.length ? (
+          <ul>
+            {clusters.slice(0, 12).map((c) => {
+              const first = c.members.find((m) => byId.get(m)?.kind === "note") ?? c.members[0];
+              return (
+                <li key={c.id} className="flex items-center gap-0.5 rounded-chip pr-1 transition-colors duration-150 hover:bg-[var(--glass-hover)]">
+                  <button type="button" title="Show it on the map" onClick={() => first && zoomTo(first)} className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-chip pl-1.5 text-left text-ink hover:text-heading">
+                    <span aria-hidden className="inline-block h-2.5 w-2.5 flex-none rounded-chip" style={{ background: CLUSTER_TINTS[c.id % CLUSTER_TINTS.length] }} />
+                    <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                    <span className="text-footnote tabular-nums text-faint">{c.members.length}</span>
+                  </button>
+                  <IconButton
+                    label={`Ask Foli AI to sum up ${c.name}`}
+                    className="!h-6 !min-h-6 !w-6 !min-w-6 flex-none"
+                    onClick={() => openAsk(`Sum up what these notes say together: ${c.members.filter((m) => byId.get(m)?.kind === "note").slice(0, 20).map(name).join(", ")}.`)}
+                  >
+                    <Sparkles size={12} aria-hidden />
+                  </IconButton>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          empty("Clusters show once a few notes link together.")
+        )}
+      </DnaSection>
+      {bridges.length ? (
+        <DnaSection title="Bridges" count={bridges.length}>
+          <ul>
+            {bridges.slice(0, 10).map((b) => (
+              <li key={b.id}>
+                {b.kind === "note" ? (
+                  noteRow(b.id)
+                ) : (
+                  <button type="button" onClick={() => onPick(b.id)} className={`${DNA_ROW} w-full text-left`}>
+                    <KindDot kind={b.kind} />
+                    <span className="min-w-0 flex-1 truncate">{b.label}</span>
+                  </button>
+                )}
               </li>
             ))}
           </ul>
-        ) : null,
-        "Clusters show once a few notes link together.",
-      )}
-      {bridges.length ? section("Bridges", <ul className="space-y-0.5">{bridges.slice(0, 10).map((b) => <li key={b.id} className="flex">{b.kind === "note" ? noteLink(b.id) : <span>{b.label}</span>}</li>)}</ul>) : null}
-      {full
-        ? section(
-            "Suggested links",
-            suggested.length ? (
-              <ul className="space-y-2">
-                {suggested.slice(0, 12).map((s) => {
-                  const key = `${s.source}:${s.target}`;
-                  return (
-                    <li key={key}>
-                      <p className="flex flex-wrap gap-x-1">
-                        {noteLink(s.source)} <span className="text-faint">and</span> {noteLink(s.target)}
-                      </p>
-                      <p className="text-footnote text-faint">Both mention {s.entities.join(", ")}</p>
-                      <Button
-                        variant="quiet"
-                        className="mt-0.5 !h-7 !px-2"
-                        disabled={linked.has(key)}
-                        onClick={async () => {
-                          try {
-                            await link({ documentId: s.source, targetId: s.target });
-                            setLinked((cur) => new Set(cur).add(key));
-                            toast.show(`Linked ${name(s.source)} to ${name(s.target)}`);
-                          } catch (e) {
-                            toast.show(errorMessage(e), { tone: "error" });
-                          }
-                        }}
-                      >
-                        {linked.has(key) ? "Linked" : "Link them"}
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : null,
-            "No suggestions right now.",
-          )
-        : null}
-      {section(
-        "Unlinked notes",
-        orphans.length ? (
-          <ul className="space-y-0.5">
+        </DnaSection>
+      ) : null}
+      {full ? (
+        <DnaSection title="Suggested links" count={suggested.length}>
+          {suggested.length ? (
+            <ul className="space-y-1">
+              {suggested.slice(0, 12).map((s) => {
+                const key = `${s.source}:${s.target}`;
+                return (
+                  <li key={key} className="rounded-chip px-1.5 py-1 transition-colors duration-150 hover:bg-[var(--glass-hover)]">
+                    <p className="flex flex-wrap gap-x-1">
+                      <AppLink href={`/d/${s.source}`} className="truncate text-ink underline-offset-2 hover:text-heading hover:underline">
+                        {name(s.source)}
+                      </AppLink>
+                      <span className="text-faint">and</span>
+                      <AppLink href={`/d/${s.target}`} className="truncate text-ink underline-offset-2 hover:text-heading hover:underline">
+                        {name(s.target)}
+                      </AppLink>
+                    </p>
+                    <p className="text-footnote text-faint">Both mention {s.entities.join(", ")}</p>
+                    <Button
+                      variant="quiet"
+                      size="sm"
+                      className="-ml-1.5 mt-0.5"
+                      disabled={linked.has(key)}
+                      onClick={async () => {
+                        try {
+                          await link({ documentId: s.source, targetId: s.target });
+                          setLinked((cur) => new Set(cur).add(key));
+                          toast.show(`Linked ${name(s.source)} to ${name(s.target)}`);
+                        } catch (e) {
+                          toast.show(errorMessage(e), { tone: "error" });
+                        }
+                      }}
+                    >
+                      {linked.has(key) ? "Linked" : "Link them"}
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            empty("No suggestions right now.")
+          )}
+        </DnaSection>
+      ) : null}
+      <DnaSection title="Unlinked notes" count={orphans.length}>
+        {orphans.length ? (
+          <ul>
             {orphans.slice(0, 15).map((o) => (
-              <li key={o.id} className="flex">
-                {noteLink(o.id, full)}
+              <li key={o.id}>{noteRow(o.id, full)}</li>
+            ))}
+            {orphans.length > 15 ? <li className="px-1.5 text-footnote text-faint">and {orphans.length - 15} more</li> : null}
+          </ul>
+        ) : (
+          empty("Every note links to another.")
+        )}
+        {orphans.length ? <p className="px-1.5 pt-0.5 text-footnote text-faint">{full ? "Open one to see the notes it could link to." : "Type [[ in a note to link it to another."}</p> : null}
+      </DnaSection>
+      {full && duplicates.length ? (
+        <DnaSection title="Likely duplicates" count={duplicates.length}>
+          <ul>
+            {duplicates.slice(0, 10).map((d) => (
+              <li key={`${d.a}:${d.b}`}>{noteRow(d.a, true, `${name(d.a)} and ${name(d.b)}`)}</li>
+            ))}
+          </ul>
+        </DnaSection>
+      ) : null}
+      {full && contradictions?.items.length ? (
+        <DnaSection title="Contradictions" count={contradictions.items.length}>
+          <ul>
+            {contradictions.items.slice(0, 10).map((c) => (
+              <li key={`${c.from.id}:${c.from.blockId}:${c.to.id}`}>
+                <AppLink href={`/d/${c.from.id}?panel=related`} title={`“${c.from.quote}”`} className={DNA_ROW}>
+                  <FileText size={13} aria-hidden className="flex-none text-muted" />
+                  <span className="min-w-0 flex-1 truncate">
+                    {name(c.from.id)} {c.kind === "supersedes" ? "replaces" : "and"} {name(c.to.id)}
+                  </span>
+                </AppLink>
               </li>
             ))}
-            {orphans.length > 15 ? <li className="text-footnote text-faint">and {orphans.length - 15} more</li> : null}
           </ul>
-        ) : null,
-        "Every note links to another.",
-      )}
-      {orphans.length ? <p className="mt-1 text-footnote text-faint">{full ? "Open one to see the notes it could link to." : "Type [[ in a note to link it to another."}</p> : null}
-      {full && duplicates.length
-        ? section(
-            "Likely duplicates",
-            <ul className="space-y-1.5">
-              {duplicates.slice(0, 10).map((d) => (
-                <li key={`${d.a}:${d.b}`} className="flex flex-wrap gap-x-1">
-                  {noteLink(d.a, true)} <span className="text-faint">and</span> {noteLink(d.b, true)}
-                </li>
-              ))}
-            </ul>,
-          )
-        : null}
-      {full && contradictions?.items.length
-        ? section(
-            "Contradictions",
-            <ul className="space-y-1.5">
-              {contradictions.items.slice(0, 10).map((c) => (
-                <li key={`${c.from.id}:${c.from.blockId}:${c.to.id}`}>
-                  <p className="flex flex-wrap gap-x-1">
-                    {noteLink(c.from.id, true)} <span className="text-faint">{c.kind === "supersedes" ? "replaces" : "and"}</span> {noteLink(c.to.id, true)}
-                  </p>
-                  <p className="line-clamp-2 text-footnote text-faint">“{c.from.quote}”</p>
-                </li>
-              ))}
-            </ul>,
-          )
-        : null}
-    </aside>
+        </DnaSection>
+      ) : null}
+    </div>
   );
 }
 
@@ -963,7 +1032,6 @@ export function GraphCanvas({
   pinKey,
   center = null,
   exportRef,
-  playLabel = null,
   compact = false,
   selected: selectedProp,
   onSelect,
@@ -992,7 +1060,6 @@ export function GraphCanvas({
   pinKey?: string;
   center?: string | null;
   exportRef?: React.MutableRefObject<{ svg: () => string; markdown: () => string } | null>;
-  playLabel?: string | null;
   /** The Inspector's small map: no zoom buttons, tips or selection. */
   compact?: boolean;
   /**
@@ -1005,8 +1072,11 @@ export function GraphCanvas({
   sparse?: string | null;
   /** Unlinked notes left off the map, and how to bring them back. */
   hidden?: { count: number; show: () => void } | null;
-  /** Cards over the map: the tips at the top, the Key bottom left, a panel bottom right. */
-  overlay?: { topCenter?: React.ReactNode; bottomLeft?: React.ReactNode; bottomRight?: React.ReactNode };
+  /**
+   * Cards over the map: the tips at the top, the Key bottom left, the floating card top right (stopping above Ask
+   * Foli AI; `sideNarrowHidden`: not on a phone-wide map), the time-lapse bar at the bottom between them.
+   */
+  overlay?: { topCenter?: React.ReactNode; bottomLeft?: React.ReactNode; side?: React.ReactNode; sideNarrowHidden?: boolean; bottomCenter?: React.ReactNode };
 }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -1027,6 +1097,8 @@ export function GraphCanvas({
   );
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  // Select mode (the zoom pill's box): a drag draws a box and a click picks, as with Shift.
+  const [boxMode, setBoxMode] = useState(false);
   const [offer, setOffer] = useState<{ source: string; target: string; entities: string[]; x: number; y: number } | null>(null);
   const [pins, setPins] = useState<Map<string, Point>>(() => readPins(pinKey));
   const [dragging, setDragging] = useState<{ id: string; p: Point } | null>(null);
@@ -1180,7 +1252,7 @@ export function GraphCanvas({
     (e.currentTarget as HTMLDivElement).setPointerCapture?.(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const node = (e.target as Element).closest?.("[data-node]")?.getAttribute("data-node") ?? null;
-    press.current = pointers.current.size === 1 ? { x: e.clientX, y: e.clientY, node, far: false, shift: e.shiftKey, meta: e.metaKey || e.ctrlKey } : null;
+    press.current = pointers.current.size === 1 ? { x: e.clientX, y: e.clientY, node, far: false, shift: e.shiftKey || (boxMode && !compact), meta: e.metaKey || e.ctrlKey } : null;
     setOffer(null);
   };
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -1191,7 +1263,7 @@ export function GraphCanvas({
     if (p && Math.hypot(now.x - p.x, now.y - p.y) > 5) p.far = true;
     const r = wrap.current!.getBoundingClientRect();
     if (pointers.current.size === 1) {
-      if (p?.far && p.node && !compact) {
+      if (p?.far && p.node && !compact && !boxMode) {
         // Drag the node (pinned where it's let go).
         setDragging({ id: p.node, p: toWorld(now.x - r.left, now.y - r.top) });
       } else if (p?.far && p.shift && !compact) {
@@ -1336,8 +1408,15 @@ export function GraphCanvas({
   const at = useCallback((id: string) => (dragging?.id === id ? dragging.p : positions.get(id)), [dragging, positions]);
   // What's highlighted: the hovered, focused or selected node and its neighbours (focus mode: two steps), or the
   // search's matches.
-  const focus = hover ?? focused ?? selected ?? (center && byId.has(center) ? center : null);
-  const near = useMemo(() => (focus ? (focusMode ? within(edges, focus, 2) : new Set([focus, ...neighbours(edges, focus)])) : null), [focus, edges, focusMode]);
+  const centred = center && byId.has(center) ? center : null;
+  const focus = hover ?? focused ?? selected ?? centred;
+  // Around a note, the note and its connections stay lit and named while another dot is pointed at (the owner,
+  // 6 November 2026: pointing at one greyed out and unnamed every other dot round the note). GraphScreen.swift too.
+  const near = useMemo(() => {
+    if (!focus) return null;
+    const lit = (id: string) => (focusMode ? within(edges, id, 2) : new Set([id, ...neighbours(edges, id)]));
+    return centred ? new Set([...lit(centred), ...lit(focus)]) : lit(focus);
+  }, [focus, centred, edges, focusMode]);
   const dimTo = focusMode ? 0.06 : 0.16;
   // The map's one Tab stop: the last node focused, else the best-connected one.
   const tabStop = stop && byId.has(stop) ? stop : ([...labelled][0] ?? nodes[0]?.id ?? null);
@@ -1406,13 +1485,15 @@ export function GraphCanvas({
       const b = at(e.target);
       if (!text || !a || !b) return null;
       if (near && !(near.has(e.source) && near.has(e.target))) return null;
+      // (The time-lapse: no words for a line that isn't there yet.)
+      if (visible && !(visible.has(e.source) && visible.has(e.target))) return null;
       return (
         <text key={i} aria-hidden x={(a.x + b.x) / 2} y={(a.y + b.y) / 2 + 3.5 / k} textAnchor="middle" fontSize={10.5 / k} fill="var(--color-ink-muted)" style={{ paintOrder: "stroke", stroke: "var(--color-canvas)", strokeWidth: 3 / k }}>
           {text}
         </text>
       );
     });
-  }, [edges, at, near, k, large]);
+  }, [edges, at, near, k, large, visible]);
 
   // Suggested links: dashed accent lines, each a wide invisible line that takes clicks.
   const suggestLayer = useMemo(
@@ -1575,6 +1656,11 @@ export function GraphCanvas({
   const tipId = compact ? null : (hover ?? focused);
   const tip = tipId ? byId.get(tipId) : null;
   const tipAt = tipId && at(tipId) ? toScreen(t, at(tipId)!) : null;
+  // The card sits off the dot by its radius and 10: away from the note in the middle (above a dot above it, below
+  // one below), else above when there's room. It never covers the dot, its line in, or the label under it.
+  const tipGap = tip ? drawnRadius(radiusFor(deg.get(tip.id) ?? 0, tip.kind !== "note"), k) * k + 10 : 0;
+  const midAt = centred && tipId !== centred && at(centred) ? toScreen(t, at(centred)!) : null;
+  const tipAbove = tipAt ? (midAt ? tipAt.y < midAt.y : tipAt.y > 90) : false;
   const entityPicked = selected ? byId.get(selected) : null;
   const pickedNotes = useMemo(
     () =>
@@ -1590,6 +1676,17 @@ export function GraphCanvas({
   const laidOut = positions.size > 0;
   // A map with hardly anything in it: say how it fills up.
   const sparse = compact ? null : sparseProp !== undefined ? sparseProp : noteCount < 3 ? "Foli DNA grows as you write. Notes show up here, and lines join the ones that link to each other." : !edges.length ? "None of these notes link to each other yet. Type [[ in a note to link another one, and a line joins them here." : null;
+  // Where the floating pieces go. The card and the zoom pill stop above Ask Foli AI (--fab-clearance), the pill to
+  // the left of the card; the time-lapse bar runs along the bottom between the Key and the pill or Ask Foli AI. On
+  // a phone-wide map the bar spans the width above them.
+  const narrow = size.w > 0 && size.w < 640;
+  const sideShown = Boolean(overlay?.side) && !(overlay?.sideNarrowHidden && size.w > 0 && size.w < 768);
+  const floorBottom = "max(12px, var(--fab-clearance))";
+  const pillRight = sideShown ? SIDE_W + 20 : 12;
+  const keyRoom = overlay?.bottomLeft && !narrow ? 12 + KEY_W + 12 : 12;
+  const timelineAt: React.CSSProperties = narrow
+    ? { left: 12, right: 12, bottom: "calc(max(12px, var(--fab-clearance)) + 52px)" }
+    : { left: keyRoom, right: `max(var(--fab-side), ${pillRight + PILL_W + 12}px)`, bottom: 12 };
   const closePicked = () => {
     const id = selected;
     setSelected(null);
@@ -1633,13 +1730,12 @@ export function GraphCanvas({
         </p>
       ) : null}
       {laidOut && sparse ? <p className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(340px,calc(100%-80px))] rounded-control bg-[var(--glass-hover)] px-3 py-2 text-subheadline leading-snug text-muted">{sparse}</p> : null}
-      {playLabel ? (
-        <p role="status" className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-control bg-[var(--glass-hover)] px-3 py-1 text-subheadline tabular-nums text-heading">
-          {playLabel}
-        </p>
-      ) : null}
       {tip && tipAt ? (
-        <div role="tooltip" className="ui-pop pointer-events-none absolute z-10 max-w-[240px] -translate-x-1/2 rounded-control px-2.5 py-1.5 text-subheadline" style={{ left: tipAt.x, top: tipAt.y + 16 }}>
+        <div
+          role="tooltip"
+          className={`ui-pop pointer-events-none absolute z-10 max-w-[240px] -translate-x-1/2 rounded-control px-2.5 py-1.5 text-subheadline ${tipAbove ? "-translate-y-full" : ""}`}
+          style={{ left: tipAt.x, top: tipAbove ? tipAt.y - tipGap : tipAt.y + tipGap }}
+        >
           <span className="font-medium text-heading">{tip.label || "Untitled"}</span>
           <span className="block text-footnote text-muted">
             {tip.kind === "note"
@@ -1684,31 +1780,46 @@ export function GraphCanvas({
           </ul>
         </section>
       ) : null}
-      {hidden && laidOut && !overlay?.bottomRight ? (
-        <p className="absolute bottom-3 right-3 z-10 whitespace-nowrap rounded-control bg-[var(--glass-hover)] px-3 py-1 text-footnote text-muted">
+      {hidden && laidOut && !overlay?.side ? (
+        <p className="absolute right-3 top-3 z-10 whitespace-nowrap rounded-control bg-[var(--glass-hover)] px-3 py-1 text-footnote text-muted">
           {hidden.count === 1 ? "1 unlinked note hidden." : `${hidden.count} unlinked notes hidden.`}{" "}
-          <button type="button" onClick={hidden.show} className="text-heading underline underline-offset-2">
+          <button type="button" onClick={hidden.show} className="rounded-chip px-1 text-heading underline underline-offset-2 transition-colors duration-150 hover:bg-[var(--glass-hover)]">
             Show
           </button>
         </p>
       ) : null}
       {overlay?.topCenter ? <div className="pointer-events-none absolute inset-x-0 top-3 z-30 flex justify-center px-3">{overlay.topCenter}</div> : null}
       {overlay?.bottomLeft && laidOut ? <div className="pointer-events-none absolute bottom-3 left-3 z-10">{overlay.bottomLeft}</div> : null}
-      {overlay?.bottomRight ? <div className="pointer-events-none absolute bottom-3 right-3 z-20">{overlay.bottomRight}</div> : null}
-      {picked.size && !compact ? <SelectionBar ids={[...picked]} byId={byId} onClear={() => setPicked(new Set())} /> : null}
-      {!compact ? (
-        <div role="group" aria-label="Zoom" className="ui-pop absolute right-3 top-3 z-10 flex flex-col gap-0.5 rounded-panel p-1">
-          <IconButton label="Zoom in" shortcut="+" onClick={() => zoomBy(1.25)}>
+      {overlay?.side ? (
+        <div
+          className={`pointer-events-none absolute right-3 top-3 z-20 flex w-[min(300px,calc(100%-24px))] flex-col ${overlay.sideNarrowHidden ? "max-md:hidden" : ""}`}
+          style={{ bottom: floorBottom }}
+        >
+          {overlay.side}
+        </div>
+      ) : null}
+      {overlay?.bottomCenter ? (
+        <div className="pointer-events-none absolute z-20 flex justify-center" style={timelineAt}>
+          <div className="w-full max-w-[560px]">{overlay.bottomCenter}</div>
+        </div>
+      ) : null}
+      {picked.size && !compact ? <SelectionBar ids={[...picked]} byId={byId} onClear={() => setPicked(new Set())} bottom={overlay?.bottomCenter ? TIMELINE_ROOM : 12} /> : null}
+      {!compact && !(sideShown && narrow) ? (
+        <div role="group" aria-label="Zoom" className="ui-pop absolute z-10 flex items-center gap-0.5 rounded-panel p-1" style={{ right: pillRight, bottom: floorBottom }}>
+          <IconButton label="Zoom in" shortcut="+" onClick={() => zoomBy(1.25)} className="!h-8 !w-8">
             <ZoomIn size={15} aria-hidden />
           </IconButton>
-          <IconButton label="Zoom out" shortcut="-" onClick={() => zoomBy(0.8)}>
+          <IconButton label="Zoom out" shortcut="-" onClick={() => zoomBy(0.8)} className="!h-8 !w-8">
             <ZoomOut size={15} aria-hidden />
           </IconButton>
-          <IconButton label="Fit to screen" shortcut="0" onClick={refit}>
+          <IconButton label="Fit to screen" shortcut="0" onClick={refit} className="!h-8 !w-8">
             <Maximize size={15} aria-hidden />
           </IconButton>
+          <IconButton label={boxMode ? "Stop selecting" : "Select notes with a box"} aria-pressed={boxMode} onClick={() => setBoxMode((on) => !on)} className="!h-8 !w-8">
+            <SquareDashed size={15} aria-hidden />
+          </IconButton>
           {focus ? (
-            <IconButton label="Go to the highlighted note" onClick={() => glideTo(focus)}>
+            <IconButton label="Go to the highlighted note" onClick={() => glideTo(focus)} className="!h-8 !w-8">
               <Focus size={15} aria-hidden />
             </IconButton>
           ) : null}
@@ -1717,6 +1828,12 @@ export function GraphCanvas({
     </div>
   );
 }
+
+/** The floating card's width, the Key's, and the room the time-lapse bar takes at the bottom (with its date pill). */
+const SIDE_W = 300;
+const KEY_W = 250;
+const PILL_W = 184;
+const TIMELINE_ROOM = 116;
 
 /** A suggested link's offer, by its dashed line: link the two notes, or not now. */
 function LinkOffer({ offer, byId, onDone }: { offer: { source: string; target: string; entities: string[]; x: number; y: number }; byId: Map<string, GraphNodeData>; onDone: () => void }) {
@@ -1751,7 +1868,7 @@ function LinkOffer({ offer, byId, onDone }: { offer: { source: string; target: s
 }
 
 /** The bar for notes picked on the map (Shift-click, Shift-drag): move, bookmark, tag, ask Foli AI. */
-function SelectionBar({ ids, byId, onClear }: { ids: string[]; byId: Map<string, GraphNodeData>; onClear: () => void }) {
+function SelectionBar({ ids, byId, onClear, bottom = 12 }: { ids: string[]; byId: Map<string, GraphNodeData>; onClear: () => void; bottom?: number }) {
   const notesApi = useNoteActions();
   const { openAsk } = useShell();
   const { scope } = useAppState();
@@ -1776,7 +1893,7 @@ function SelectionBar({ ids, byId, onClear }: { ids: string[]; byId: Map<string,
     toast.show(done === 1 ? `Tagged 1 note #${name}` : `Tagged ${done} notes #${name}`);
   };
   return (
-    <div role="toolbar" aria-label="Selected notes" className="ui-pop absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center gap-1 rounded-panel px-2 py-1.5 text-subheadline">
+    <div role="toolbar" aria-label="Selected notes" className="ui-pop absolute left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center gap-1 rounded-panel px-2 py-1.5 text-subheadline" style={{ bottom }}>
       <span className="px-1.5 tabular-nums text-heading">{ids.length === 1 ? "1 note" : `${ids.length} notes`}</span>
       <MenuButton
         label="Move to folder"

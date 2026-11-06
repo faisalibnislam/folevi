@@ -3,7 +3,8 @@
 // (lib/graph/analysis.ts hideAiLines, labelBudget).
 import { describe, expect, it } from "vitest";
 import { cleanSettings, DEFAULT_SETTINGS, filterGraph, labelBudget } from "@/lib/graph/analysis";
-import { connectionsOf, explain, indexGraph, lineLabel, neighbourhood, SHARED_LIMIT } from "@/lib/graph/neighbourhood";
+import { connectionsOf, dnaSide, explain, groupConnections, indexGraph, lineLabel, neighbourhood, SHARED_LIMIT } from "@/lib/graph/neighbourhood";
+import { nextBoundary, notesSoFar, tickUnit, timelineStep, timelineTicks } from "@/lib/graph/timeline";
 
 const note = (id: string, extra: Record<string, unknown> = {}) => ({ id, kind: "note", label: id[0]!.toUpperCase() + id.slice(1), ...extra });
 const link = (source: string, target: string) => ({ source, target, kind: "link", inferred: false });
@@ -140,5 +141,55 @@ describe("a calmer map", () => {
     expect(labelBudget(0.6, 100)).toBe(30);
     expect(labelBudget(1, 100)).toBe(100);
     expect(labelBudget(0.3, 5)).toBe(5);
+  });
+});
+
+describe("the floating card (the owner's design A, 6 November 2026)", () => {
+  it("groups the connections by their strongest reason, each once, links first and the folder last", () => {
+    const groups = groupConnections(connectionsOf(index, "pricing"), names);
+    expect(groups.map((g) => [g.title, g.ids])).toEqual([
+      ["Links", ["plan", "launch", "notes"]],
+      ["Mentions", ["e:sam"]],
+      ["Foli AI found", ["old"]],
+      ["Tagged #pricing", ["faq"]],
+      ["Same folder", ["memo"]],
+    ]);
+    expect(groups.flatMap((g) => g.ids)).toHaveLength(connectionsOf(index, "pricing").length);
+  });
+  it("shows Insights around a note when it's switched on (it lost the spot to the connections and did nothing)", () => {
+    expect(dnaSide({ centred: true, insights: true, panel: null })).toBe("insights");
+    expect(dnaSide({ centred: true, insights: false, panel: null })).toBe("connections");
+    expect(dnaSide({ centred: false, insights: true, panel: null })).toBe("insights");
+    expect(dnaSide({ centred: false, insights: false, panel: null })).toBeNull();
+    // A picked note's panel takes the card, and closing it brings back what was there.
+    expect(dnaSide({ centred: true, insights: true, panel: "plan" })).toBe("panel");
+  });
+});
+
+describe("the time-lapse bar", () => {
+  const at = (y: number, m: number, d = 1) => new Date(y, m, d).getTime();
+  it("ticks months for a year or two, years past that, weeks or days for a short span", () => {
+    expect(tickUnit(at(2026, 0), at(2026, 0, 10))).toBe("day");
+    expect(tickUnit(at(2026, 0), at(2026, 1, 15))).toBe("week");
+    expect(tickUnit(at(2025, 0), at(2026, 6))).toBe("month");
+    expect(tickUnit(at(2020, 0), at(2026, 6))).toBe("year");
+    const months = timelineTicks(at(2025, 10, 15), at(2026, 2, 10));
+    expect(months.ticks.map((t) => new Date(t.at).getMonth())).toEqual([11, 0, 1, 2]);
+    expect(months.ticks.find((t) => new Date(t.at).getMonth() === 0)!.major).toBe(true);
+    expect(months.ticks.every((t) => t.pos > 0 && t.pos < 1)).toBe(true);
+    expect(timelineTicks(at(2020, 5), at(2026, 5)).ticks.map((t) => new Date(t.at).getFullYear())).toEqual([2021, 2022, 2023, 2024, 2025, 2026]);
+    expect(new Date(nextBoundary(at(2026, 10, 6), "week")).getDay()).toBe(1);
+  });
+  it("steps by a tick (or a fiftieth of the span), never past the ends", () => {
+    const s = at(2025, 0);
+    const e = at(2026, 0);
+    expect(timelineStep(s, e, s, -1)).toBe(s);
+    expect(timelineStep(s, e, e, 1)).toBe(e);
+    const one = timelineStep(s, e, s, 1) - s;
+    expect(one / 86_400_000).toBeCloseTo(30.44, 1);
+  });
+  it("counts the notes made so far", () => {
+    const nodes = [note("a", { createdAt: 1 }), note("b", { createdAt: 5 }), note("c", { createdAt: 9 }), { id: "e:x", kind: "person", label: "X", createdAt: 1 }];
+    expect(notesSoFar(nodes, 5)).toEqual({ shown: 2, total: 3 });
   });
 });

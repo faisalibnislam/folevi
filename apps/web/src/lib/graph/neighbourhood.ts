@@ -267,3 +267,62 @@ export function explain(index: DnaIndex, id: string, names: Names = {}, opts: { 
   const summary = sentence(parts) || (me.kind === "note" ? "Not connected to anything yet. Type [[ in it to link another note." : "Not mentioned in any note shown.");
   return { summary, groups };
 }
+
+export interface ConnectionGroup {
+  key: string;
+  /** The small caps label over the group ("Links", "Same folder", "Tagged #pricing"). */
+  title: string;
+  ids: string[];
+}
+
+/**
+ * The connections card's sections: each connection once, under its strongest reason, in the order reasons rank
+ * (written links first, a shared folder last); each tag gets a section of its own. GraphScreen.swift's
+ * DnaAround.groups does the same.
+ */
+export function groupConnections(connections: readonly Connection[], names: Names = {}): ConnectionGroup[] {
+  const out: ConnectionGroup[] = [];
+  const at = new Map<string, ConnectionGroup>();
+  const sorted = [...connections].filter((c) => c.reasons.length).sort((a, b) => reasonRank(a.reasons[0]!) - reasonRank(b.reasons[0]!));
+  for (const c of sorted) {
+    const [key, title] = groupOf(c.reasons[0]!, names);
+    let g = at.get(key);
+    if (!g) {
+      g = { key, title, ids: [] };
+      at.set(key, g);
+      out.push(g);
+    }
+    g.ids.push(c.id);
+  }
+  return out;
+}
+function groupOf(r: Reason, names: Names): [string, string] {
+  switch (r.kind) {
+    case "link":
+    case "backlink":
+      return ["links", "Links"];
+    case "mention":
+      return ["mentions", "Mentions"];
+    case "mentionedIn":
+      return ["mentionedIn", "Mentioned in"];
+    case "ai":
+      return ["ai", "Foli AI found"];
+    case "suggested":
+      return ["suggested", "Could link"];
+    case "tag":
+      return [`tag:${r.tagId}`, `Tagged #${names.tag?.(r.tagId) ?? "tag"}`];
+    case "folder":
+      return ["folder", "Same folder"];
+  }
+}
+
+/**
+ * What the floating card on the map shows: a picked node's panel, Insights, the centre note's connections, or
+ * nothing. Insights shows around a note too (it used to lose the spot to the connections, and did nothing).
+ */
+export type DnaSide = "panel" | "insights" | "connections" | null;
+export function dnaSide(o: { centred: boolean; insights: boolean; panel: string | null }): DnaSide {
+  if (o.panel) return "panel";
+  if (o.insights) return "insights";
+  return o.centred ? "connections" : null;
+}

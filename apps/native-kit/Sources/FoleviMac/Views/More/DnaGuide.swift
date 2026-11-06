@@ -125,6 +125,37 @@ enum DnaAround {
         return words.prefix(2).joined(separator: " · ")
     }
 
+    struct ConnectionGroup: Identifiable, Equatable {
+        var key: String
+        /// The small caps label over it ("Links", "Same folder", "Tagged #pricing").
+        var title: String
+        var ids: [String]
+        var id: String { key }
+    }
+
+    /// The connections card's sections (neighbourhood.ts groupConnections): each connection once, under its strongest
+    /// reason, in the order reasons rank (written links first, a shared folder last); each tag a section of its own.
+    static func groups(_ conns: [DnaConnection], _ names: DnaNames) -> [ConnectionGroup] {
+        var out: [ConnectionGroup] = []
+        let sorted = conns.filter { !$0.reasons.isEmpty }.enumerated().sorted { a, b in
+            a.element.reasons[0].rank != b.element.reasons[0].rank ? a.element.reasons[0].rank < b.element.reasons[0].rank : a.offset < b.offset
+        }.map(\.element)
+        for c in sorted {
+            let (key, title): (String, String)
+            switch c.reasons[0] {
+            case .link, .backlink: (key, title) = ("links", "Links")
+            case .mention: (key, title) = ("mentions", "Mentions")
+            case .mentionedIn: (key, title) = ("mentionedIn", "Mentioned in")
+            case .ai: (key, title) = ("ai", "Foli AI found")
+            case .suggested: (key, title) = ("suggested", "Could link")
+            case .tag(let t): (key, title) = ("tag:\(t)", "Tagged #\(names.tag(t) ?? "tag")")
+            case .folder: (key, title) = ("folder", "Same folder")
+            }
+            if let i = out.firstIndex(where: { $0.key == key }) { out[i].ids.append(c.id) } else { out.append(ConnectionGroup(key: key, title: title, ids: [c.id])) }
+        }
+        return out
+    }
+
     private static func edgeKind(_ r: DnaReason) -> String {
         switch r {
         case .link, .backlink: "link"
@@ -420,6 +451,134 @@ struct DnaLegendCard: View {
     }
 }
 
+// MARK: - The floating card over the map (the owner's design A, 6 November 2026)
+
+/// What the floating card shows (neighbourhood.ts dnaSide): a picked node's panel, Insights, the centre note's
+/// connections, or nothing. Insights shows around a note too (it lost the spot to the connections and did nothing).
+enum DnaSide: Equatable {
+    case panel, insights, connections
+
+    static func of(centred: Bool, insights: Bool, panel: String?) -> DnaSide? {
+        if panel != nil { return .panel }
+        if insights { return .insights }
+        return centred ? .connections : nil
+    }
+
+    /// The card's width, and the room the time-lapse bar takes at the bottom of the map (with its date pill).
+    static let width: CGFloat = 300
+    static let barRoom: CGFloat = 116
+}
+
+private struct DnaCardSurface: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+    func body(content: Content) -> some View {
+        content
+            .frame(width: DnaSide.width, alignment: .leading)
+            // Opaque under the panel's glass: the map's lines and labels showed through and the words were hard to read.
+            .background(moreVar("color-surface", scheme), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .webBox(WebStyles.named("menu.panel"))
+    }
+}
+
+/// The glass hover (`--glass-hover`, the web's `.ui-btn-quiet:hover`) over a control's box, `radius` round, laid
+/// `outset` beyond its sides; under the pointer its words take the heading colour where the caller asks.
+private struct DnaHover: ViewModifier {
+    let radius: CGFloat
+    let outset: CGFloat
+    let selected: Bool
+    @State private var over = false
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.isEnabled) private var enabled
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                if selected || (over && enabled) {
+                    RoundedRectangle(cornerRadius: radius, style: .circular)
+                        .fill(moreVar(selected ? "color-accent-soft" : "glass-hover", scheme))
+                        .padding(.horizontal, -outset)
+                        .allowsHitTesting(false)
+                }
+            }
+            .onHover { over = $0 }
+            .animation(.easeOut(duration: WebMotion.fadeOut), value: over)
+    }
+}
+
+extension View {
+    /// The floating card's surface: the popover's opaque fill, radius and soft shadow, 300 wide.
+    func dnaCard() -> some View { modifier(DnaCardSurface()) }
+    /// A Foli DNA control's hover (owner's rule, 6 November 2026: every button shows one).
+    func dnaHover(radius: CGFloat = 6, outset: CGFloat = 0, selected: Bool = false) -> some View { modifier(DnaHover(radius: radius, outset: outset, selected: selected)) }
+}
+
+/// The card's head: the centre note's glyph and name, a muted line under it, an x; around a note, a small switch
+/// between its Connections and Insights.
+struct DnaCardHead<Glyph: View>: View {
+    let title: String
+    var sub: String?
+    let closeLabel: String
+    let onClose: () -> Void
+    var tab: DnaSide?
+    var onTab: ((DnaSide) -> Void)?
+    @ViewBuilder var glyph: Glyph
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
+                glyph.frame(width: 16, height: 16).padding(.top, 2)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(verbatim: title).webText(.role(.body, weight: 600)).foregroundStyle(moreVar("color-heading", scheme)).lineLimit(1)
+                    if let sub { Text(verbatim: sub).webText(.role(.footnote)).monospacedDigit().foregroundStyle(moreVar("color-ink-muted", scheme)).lineLimit(1) }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                WebIconButton(.x, label: closeLabel) { onClose() }.padding(.top, -4).padding(.trailing, -4)
+            }
+            if let tab, let onTab {
+                HStack(spacing: 2) {
+                    segment("Connections", on: tab == .connections) { onTab(.connections) }
+                    segment("Insights", on: tab == .insights) { onTab(.insights) }
+                }
+                .padding(2)
+                .webBox(WebStyles.named("input"))
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Show in the card")
+            }
+        }
+        .padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 8)
+    }
+
+    private func segment(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(verbatim: title).webText(.role(.subheadline, weight: on ? 550 : 400)).lineLimit(1)
+                .foregroundStyle(on ? moreVar("color-heading", scheme) : moreVar("color-ink-muted", scheme))
+                .frame(maxWidth: .infinity).frame(height: 26)
+                .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(on ? moreVar("color-surface", scheme) : .clear).shadow(color: .black.opacity(on ? 0.08 : 0), radius: 1, y: 0.5))
+                .contentShape(Rectangle())
+                .dnaHover(radius: 6, selected: false)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
+/// A small caps section label with its count at the right.
+struct DnaSectionHead: View {
+    let title: String
+    var count: Int?
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        HStack {
+            Text(verbatim: title.uppercased()).webText(.caps).foregroundStyle(moreVar("color-ink-muted", scheme)).lineLimit(1)
+            Spacer(minLength: 8)
+            if let count { Text(verbatim: "\(count)").webText(.role(.caption1, weight: 600)).monospacedDigit().foregroundStyle(moreVar("color-ink-faint", scheme)) }
+        }
+        .frame(height: 24)
+        .padding(.horizontal, 6)
+    }
+}
+
 // MARK: - Why a note is connected, in words
 
 struct DnaPanelCard: View {
@@ -430,6 +589,8 @@ struct DnaPanelCard: View {
     let isCenter: Bool
     /// On the map around a note: whether this one's own connections show, and how to switch them.
     let expanded: Bool?
+    /// How tall its list may grow before it scrolls (the card stops above Ask Foli AI).
+    var listMax: CGFloat = 260
     let onToggleExpand: () -> Void
     let onOpen: (String) -> Void
     let onCenter: (String) -> Void
@@ -443,31 +604,35 @@ struct DnaPanelCard: View {
         let note = n?.kind == "note"
         let title = (n?.label).flatMap { $0.isEmpty ? nil : $0 } ?? "Untitled"
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
+            HStack(alignment: .top, spacing: 8) {
+                KindGlyph(kind: n?.kind ?? "note").padding(.top, 5)
                 Text(verbatim: title).webText(.role(.body, weight: 600)).foregroundStyle(moreVar("color-heading", scheme)).frame(maxWidth: .infinity, alignment: .leading)
-                WebIconButton(.x, label: "Close") { onClose() }
+                WebIconButton(.x, label: "Close") { onClose() }.padding(.top, -4).padding(.trailing, -4)
             }
-            Text(verbatim: words.summary).webText(.role(.subheadline)).foregroundStyle(moreVar("color-ink", scheme)).fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 12).padding(.top, 12)
+            Text(verbatim: words.summary).webText(.role(.subheadline)).foregroundStyle(moreVar("color-ink", scheme)).fixedSize(horizontal: false, vertical: true).padding(.horizontal, 12)
             DnaButtonRow {
-                if note { WebButton("Open note", variant: .primary, size: .sm) { onOpen(id) } }
-                if note && !isCenter { WebButton("Map around this note", icon: .waypoints, size: .sm) { onCenter(id) } }
-                if let expanded { WebButton(expanded ? "Hide its connections" : "Show its connections", variant: .quiet, size: .sm) { onToggleExpand() } }
+                if note { WebButton("Open note", variant: .primary, size: .sm) { onOpen(id) }.dnaHover(radius: 8) }
+                if note && !isCenter { WebButton("Map around this note", icon: .waypoints, size: .sm) { onCenter(id) }.dnaHover(radius: 8) }
+                if let expanded { WebButton(expanded ? "Hide its connections" : "Show its connections", variant: .quiet, size: .sm) { onToggleExpand() }.dnaHover(radius: 8) }
             }
+            .padding(.horizontal, 12)
             ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
                     ForEach(words.groups) { g in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(verbatim: "\(g.title.uppercased())  \(g.ids.count)").webText(.role(.caption1, weight: 600)).foregroundStyle(moreVar("color-ink-faint", scheme))
+                        VStack(alignment: .leading, spacing: 0) {
+                            DnaSectionHead(title: g.title, count: g.ids.count)
                             ForEach(g.ids.prefix(8), id: \.self) { x in
                                 let o = ix.byId[x]
                                 Button { o?.kind == "note" ? onOpen(x) : onPick(x) } label: {
-                                    HStack(spacing: 6) {
-                                        if o?.kind == "note" { WebIconView(.fileText, size: 13).foregroundStyle(moreVar("color-ink-muted", scheme)) }
-                                        Text(verbatim: (o?.label).flatMap { $0.isEmpty ? nil : $0 } ?? "Untitled").webText(.role(.subheadline)).lineLimit(1)
+                                    HStack(spacing: 8) {
+                                        if o?.kind == "note" { WebIconView(.fileText, size: 13).foregroundStyle(moreVar("color-ink-muted", scheme)) } else { KindGlyph(kind: o?.kind ?? "topic") }
+                                        Text(verbatim: (o?.label).flatMap { $0.isEmpty ? nil : $0 } ?? "Untitled").webText(.role(.subheadline)).foregroundStyle(moreVar("color-ink", scheme)).lineLimit(1)
                                     }
-                                    .padding(.horizontal, 6).padding(.vertical, 4)
+                                    .padding(.horizontal, 6).frame(height: 32)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .contentShape(Rectangle())
+                                    .dnaHover()
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -475,15 +640,13 @@ struct DnaPanelCard: View {
                         }
                     }
                 }
+                .padding(.horizontal, 6).padding(.bottom, 8)
             }
-            .frame(maxHeight: 260)
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(maxHeight: listMax)
             .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(12)
-        .frame(width: 320, alignment: .leading)
-        // Opaque under the panel's glass: the map's lines and labels showed through and the words were hard to read.
-        .background(moreVar("color-surface", scheme), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .webBox(WebStyles.named("menu.panel"))
+        .dnaCard()
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Why \(title) is connected")
     }
@@ -500,63 +663,98 @@ private struct DnaButtonRow<Content: View>: View {
     }
 }
 
-// MARK: - The map around a note: its connections as a list
+// MARK: - The map around a note: its connections, grouped by why
 
+/// The centre note's connections in the card (DnaGuide.tsx DnaConnections): a click on a row picks it on the map
+/// (its panel says why), the arrow at its end opens it, + (on hover) shows its own connections too.
 struct DnaConnectionsList: View {
-    let center: String
     let connections: [DnaConnection]
     let ix: DnaAround.Index
     let names: DnaNames
     let expanded: Set<String>
+    let picked: String?
     let onToggle: (String) -> Void
     let onOpen: (String) -> Void
     let onPick: (String) -> Void
-    let onWhole: () -> Void
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let me = ix.byId[center]
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: connections.count == 1 ? "1 connection" : "\(connections.count) connections").webText(.role(.body, weight: 600)).foregroundStyle(moreVar("color-heading", scheme))
-                Text(verbatim: "What \((me?.label).flatMap { $0.isEmpty ? nil : $0 } ?? "this note") is connected to, and why.").webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-muted", scheme))
-            }
-            .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 6)
+        if connections.isEmpty {
+            Text(verbatim: "Nothing yet. Type [[ in the note to link another one.").webText(.role(.subheadline)).foregroundStyle(moreVar("color-ink-muted", scheme)).padding(.horizontal, 12).padding(.bottom, 12)
+        } else {
             ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(connections, id: \.id) { c in
-                        let o = ix.byId[c.id]
-                        let title = (o?.label).flatMap { $0.isEmpty ? nil : $0 } ?? "Untitled"
-                        HStack(spacing: 4) {
-                            Button { o?.kind == "note" ? onOpen(c.id) : onPick(c.id) } label: {
-                                VStack(alignment: .leading, spacing: 0) {
-                                    Text(verbatim: title).webText(.role(.subheadline)).foregroundStyle(moreVar("color-heading", scheme)).lineLimit(1)
-                                    Text(verbatim: DnaAround.lineLabel(c.reasons, names)).webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-muted", scheme)).lineLimit(1)
-                                }
-                                .padding(.horizontal, 8).padding(.vertical, 6)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            if o?.kind == "note" {
-                                let on = expanded.contains(c.id)
-                                WebIconButton(on ? .minus : .plus, label: on ? "Hide what \(title) connects to" : "Show what \(title) connects to", pressed: on) { onToggle(c.id) }
-                            }
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(DnaAround.groups(connections, names)) { g in
+                        VStack(alignment: .leading, spacing: 0) {
+                            DnaSectionHead(title: g.title, count: g.ids.count)
+                            ForEach(g.ids, id: \.self) { id in DnaConnectionRow(id: id, ix: ix, why: connections.first { $0.id == id }.map { DnaAround.lineLabel($0.reasons, names) } ?? "", on: expanded.contains(id), picked: picked == id, onToggle: onToggle, onOpen: onOpen, onPick: onPick) }
                         }
                     }
-                    if connections.isEmpty {
-                        Text(verbatim: "Nothing yet. Type [[ in the note to link another one.").webText(.role(.subheadline)).foregroundStyle(moreVar("color-ink-muted", scheme)).padding(8)
-                    }
                 }
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 6).padding(.bottom, 8)
             }
-            Rectangle().fill(moreVar("color-line", scheme)).frame(height: 1)
-            WebButton("Back to the whole map", variant: .quiet, size: .sm) { onWhole() }.frame(maxWidth: .infinity).padding(8)
+            .scrollBounceBehavior(.basedOnSize)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Connections")
         }
-        .frame(width: 280)
-        .overlay(alignment: .leading) { Rectangle().fill(moreVar("color-line", scheme)).frame(width: 1) }
+    }
+}
+
+private struct DnaConnectionRow: View {
+    let id: String
+    let ix: DnaAround.Index
+    let why: String
+    let on: Bool
+    let picked: Bool
+    let onToggle: (String) -> Void
+    let onOpen: (String) -> Void
+    let onPick: (String) -> Void
+    @State private var over = false
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let o = ix.byId[id]
+        let title = (o?.label).flatMap { $0.isEmpty ? nil : $0 } ?? "Untitled"
+        let note = o?.kind == "note"
+        HStack(spacing: 2) {
+            Button { onPick(id) } label: {
+                HStack(spacing: 8) {
+                    if note { WebIconView(.fileText, size: 13).foregroundStyle(moreVar("color-ink-muted", scheme)) } else { KindGlyph(kind: o?.kind ?? "topic") }
+                    Text(verbatim: title).webText(.role(.subheadline)).foregroundStyle(moreVar(over ? "color-heading" : "color-ink", scheme)).lineLimit(1).truncationMode(.tail)
+                }
+                .padding(.leading, 6).frame(height: 32)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foleviTooltip(why)
+            .accessibilityLabel(title)
+            .accessibilityHint(why)
+            if note {
+                // The expand action stays quiet until the row is pointed at (always there on touch, and while on).
+                WebIconButton(on ? .minus : .plus, label: on ? "Hide what \(title) connects to" : "Show what \(title) connects to", pressed: on) { onToggle(id) }
+                    .opacity(on || over || !Self.hovers ? 1 : 0)
+                WebIconButton(.arrowUpRight, label: "Open") { onOpen(id) }
+            }
+        }
+        .padding(.trailing, 2)
+        .background {
+            RoundedRectangle(cornerRadius: 6, style: .circular)
+                .fill(moreVar(picked ? "color-accent-soft" : "glass-hover", scheme))
+                .opacity(picked || over ? 1 : 0)
+        }
+        .onHover { over = $0 }
+        .animation(.easeOut(duration: WebMotion.fadeOut), value: over)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Connections")
+    }
+
+    /// A pointer that hovers: the Mac, and an iPad with a trackpad (where touch alone shows it always).
+    private static var hovers: Bool {
+        #if os(macOS)
+        true
+        #else
+        false
+        #endif
     }
 }
 #endif

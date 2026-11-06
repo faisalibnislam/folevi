@@ -88,7 +88,7 @@ function FolderNote({ note, index }: { note: FolderPreview; index: number }) {
  */
 export function FolderCardArt({ name, color, count, age, previews = [] }: { name: string; color: string | null; count: number; age: string; previews?: FolderPreview[] }) {
   const base = folderHex(color);
-  // The palette colour a little greyed, so a page of folders stays calm; the back is a lighter tint of it.
+  // The palette colour a little greyed, so a page of folders stays calm, then lightened (the owner, 7 November 2026: "lighter color overall"); the back is a lighter tint still.
   const tone = `color-mix(in oklab, ${base} 84%, #9a9fab)`;
   const shown = previews.slice(0, 3);
   return (
@@ -99,7 +99,7 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
         aria-hidden
         data-fc="back"
         className="absolute inset-0"
-        style={{ background: `linear-gradient(to bottom, color-mix(in oklab, ${tone} 52%, #ffffff), color-mix(in oklab, ${tone} 74%, #ffffff))`, mask: BACK_MASK, WebkitMask: BACK_MASK, ["--fc" as string]: base }}
+        style={{ background: `linear-gradient(to bottom, color-mix(in oklab, ${tone} 36%, #ffffff), color-mix(in oklab, ${tone} 52%, #ffffff))`, mask: BACK_MASK, WebkitMask: BACK_MASK, ["--fc" as string]: base }}
       />
       {/* the notes inside */}
       <div aria-hidden className="absolute inset-0">
@@ -115,7 +115,7 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
         data-fc="front"
         className="absolute inset-x-0 bottom-0 top-[50%] rounded-panel"
         style={{
-          background: `linear-gradient(to bottom, color-mix(in oklab, ${tone} 90%, #ffffff), ${tone})`,
+          background: `linear-gradient(to bottom, color-mix(in oklab, ${tone} 58%, #ffffff), color-mix(in oklab, ${tone} 70%, #ffffff))`,
           boxShadow: "inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 0 0 1px rgb(0 0 0 / 0.05), 0 -4px 10px -6px rgb(0 0 0 / 0.18)",
           ["--fc" as string]: base,
         }}

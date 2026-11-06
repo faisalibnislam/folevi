@@ -659,16 +659,11 @@ public struct WebFolderCard: View {
 
     public static let aspect: CGFloat = 820.0 / 912.0
 
-    /// The phone in dark: the folder's darker tone, light words on it (globals.css `[data-fc]`, 4.5:1 everywhere).
-    private var phoneDark: Bool { phone && scheme == .dark }
-
     public init(_ model: FolderCardModel, labelScale: CGFloat = 1, hovered: Bool = false) {
         self.model = model
         self.labelScale = labelScale
         self.hovered = hovered
     }
-
-    private func s(_ id: String) -> WebComputedStyle { WebStyles.named("notes.folder.\(id)").resolve(scheme) }
 
     public var body: some View {
         GeometryReader { geo in
@@ -680,24 +675,34 @@ public struct WebFolderCard: View {
         .accessibilityAddTraits(.isLink)
     }
 
-    static let grey = RGBA(142, 148, 163)
+    /// The grey the folder's colour is softened with (FolderCardArt's `tone`: the colour 84% into #9a9fab).
+    static let grey = RGBA(154, 159, 171)
+
+    /// The palette colour a little greyed, so a page of folders stays calm (FolderCardArt's `tone`).
+    static func tone(_ base: RGBA) -> RGBA { base.oklabMix(grey, 0.84) }
+
+    /// Dark, on every platform: the folder's darker tone with light words on it (globals.css `[data-fc]`, 4.5:1 on
+    /// every colour).
+    private var dark: Bool { scheme == .dark }
 
     private func drawing(w: CGFloat, h: CGFloat) -> some View {
         let cq = w / 100
         let base = FolderColor.resolve(model.colorId).color
-        let backTone = phoneDark ? base.oklabMix(RGBA(35, 37, 44), 0.38) : base.oklabMix(Self.grey, 0.8).oklabMix(RGBA(255, 255, 255), 0.7)
-        let back = s("back")
-        let tabShape = WebCornersShape(topLeft: FoleviTokens.Radius.control, topRight: FoleviTokens.Radius.control, bottomRight: 0, bottomLeft: 0)
-        let bodyShape = WebCornersShape(topLeft: 0, topRight: FoleviTokens.Radius.panel, bottomRight: FoleviTokens.Radius.panel, bottomLeft: FoleviTokens.Radius.panel)
-        let frontH = h * 0.54
-        // (FolderCardArt's BACK_SHADOW, softened by half on 5 November 2026, and its outline.)
-        let backShadows = back.visibleShadows.filter(\.inset) + Self.folderBackShadows
+        let tone = Self.tone(base)
+        let white = RGBA(255, 255, 255)
+        // The back, lighter at the top (globals.css `[data-fc="back"]` in dark: the colour into a dark grey).
+        let backColors = dark
+            ? [base.oklabMix(RGBA(44, 46, 53), 0.44), base.oklabMix(RGBA(32, 34, 40), 0.34)]
+            : [tone.oklabMix(white, 0.24), tone.oklabMix(white, 0.38)]
+        let panel = WebCornersShape(topLeft: FoleviTokens.Radius.panel, topRight: FoleviTokens.Radius.panel, bottomRight: FoleviTokens.Radius.panel, bottomLeft: FoleviTokens.Radius.panel)
         let backLayer = ZStack(alignment: .topLeading) {
-            WebShapeBox(shape: tabShape, fill: backTone.color, shadows: backShadows)
-                .frame(width: w * 0.44, height: h * 0.09)
-            WebShapeBox(shape: bodyShape, fill: backTone.color, shadows: backShadows)
-                .frame(width: w, height: h * 0.95)
-                .padding(.top, h * 0.05)
+            // The back's soft shadow, cast by a panel from 6% down (the sloped outline below can't cast one).
+            WebShapeBox(shape: panel, fill: nil, shadows: Self.folderBackShadows)
+                .frame(width: w, height: h * 0.94)
+                .offset(y: h * 0.06)
+            FolderBackShape()
+                .fill(LinearGradient(colors: backColors.map(\.color), startPoint: .top, endPoint: .bottom))
+                .frame(width: w, height: h)
         }
         .frame(width: w, height: h, alignment: .topLeading)
         // The back and the papers flattened (their shadows are the costly part), and the whole card again below:
@@ -708,8 +713,8 @@ public struct WebFolderCard: View {
         return ZStack(alignment: .topLeading) {
             backLayer
             notes
-            front(w: w, h: h, frontH: frontH, cq: cq, base: base)
-                .offset(y: h * 0.46)
+            front(w: w, h: h * 0.5, cq: cq, base: base, tone: tone)
+                .offset(y: h * 0.5)
         }
         .frame(width: w, height: h, alignment: .topLeading)
         // The whole card in one picture too: its shadows were blurred again on every frame while Home or Folders
@@ -725,9 +730,9 @@ public struct WebFolderCard: View {
         return ZStack(alignment: .topLeading) {
             if shown.isEmpty {
                 RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular)
-                    .fill(Color.white.opacity(0.6))
+                    .fill(Color.white.opacity(0.7))
                     .frame(width: w * 0.76, height: h * 0.6)
-                    .offset(x: w * 0.12, y: h * 0.12)
+                    .offset(x: w * 0.12, y: h * 0.14)
             } else {
                 ForEach(Array(shown.enumerated().reversed()), id: \.offset) { i, note in
                     let p = places[i]
@@ -748,58 +753,84 @@ public struct WebFolderCard: View {
         ShadowLayer(x: 0, y: 1, blur: 2, spread: 0, color: RGBA(20, 20, 30, 0.04)),
     ]
 
-    /// The front cover, flat in the folder's colour (FolderCardArt's data-fc="front": no frosted glass since 5 November 2026).
-    private func front(w: CGFloat, h: CGFloat, frontH: CGFloat, cq: CGFloat, base: RGBA) -> some View {
-        let f = s("front")
-        let shape = WebCornersShape(topLeft: f.radius, topRight: f.radius, bottomRight: f.radius, bottomLeft: f.radius)
+    /// "2 notes · 1 min ago" (FolderCardArt's count and age; "1 note").
+    static func countLine(_ count: Int, age: String) -> String {
+        let notes = "\(count.formatted()) \(count == 1 ? "note" : "notes")"
+        return age.isEmpty ? notes : "\(notes) · \(age)"
+    }
+
+    /// The front pocket over the notes' lower half (FolderCardArt's data-fc="front"), in the folder's colour, lighter
+    /// at the top; the name in the serif and, under it, the count and last update.
+    private func front(w: CGFloat, h frontH: CGFloat, cq: CGFloat, base: RGBA, tone: RGBA) -> some View {
+        let r = FoleviTokens.Radius.panel
+        let shape = WebCornersShape(topLeft: r, topRight: r, bottomRight: r, bottomLeft: r)
+        let white = RGBA(255, 255, 255)
+        let colors = dark
+            ? [base.oklabMix(RGBA(26, 27, 33), 0.5), base.oklabMix(RGBA(18, 19, 24), 0.42)]
+            : [tone.oklabMix(white, 0.58), tone.oklabMix(white, 0.7)]
+        let outer = dark
+            ? [ShadowLayer(x: 0, y: -4, blur: 10, spread: -6, color: RGBA(0, 0, 0, 0.4))]
+            : [ShadowLayer(x: 0, y: -4, blur: 10, spread: -6, color: RGBA(0, 0, 0, 0.18))]
+        let inset = dark
+            ? [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.1), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 0.5, color: RGBA(255, 255, 255, 0.08), inset: true)]
+            : [ShadowLayer(x: 0, y: 1, blur: 0, spread: 0, color: RGBA(255, 255, 255, 0.35), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.05), inset: true)]
         let k = labelScale
-        let countSize = min(22, max(12, 5.4 * cq * k))
-        let ageSize = min(24, max(11, 5.6 * cq * k))
-        let nameSize = min(40, max(16, 9.4 * cq * k))
+        // The name: clamp(16px, 8.4cqw, 34px), 1.15; the phone's at Headline, 17/22 (globals.css).
+        let nameSize = min(34, max(16, 8.4 * cq * k))
+        let nameStyle = phone ? WebTextStyle(family: .display, size: 17, leading: 22, weight: 500) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.15, weight: 500)
+        // The count and age: clamp(12px, 5cqw, 20px), medium, 1.25, figures all one width.
+        let ageSize = min(20, max(12, 5 * cq * k))
+        let ageStyle = WebTextStyle(size: ageSize, leading: ageSize * 1.25, weight: 500)
+        let ageInk = dark ? base.oklabMix(RGBA(220, 222, 229), 0.22) : base.oklabMix(RGBA(42, 44, 51), 0.14)
         return ZStack(alignment: .topLeading) {
-            if phoneDark {
-                // background: the colour 46% into #121318; inset 0 0 0 0.5px white 8%, 0 -2px 6px -4px black 30%.
-                WebShapeBox(shape: shape, fill: base.oklabMix(RGBA(18, 19, 24), 0.46).color, shadows: [ShadowLayer(x: 0, y: -2, blur: 6, spread: -4, color: RGBA(0, 0, 0, 0.3))])
-                    .frame(width: w, height: frontH)
-                shape.stroke(Color.white.opacity(0.08), lineWidth: 1).clipShape(shape)
-            } else {
-                // inset 0 0 0 1px black 6%, 0 -2px 6px -4px black 12%.
-                WebShapeBox(shape: shape, fill: base.color, shadows: [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06), inset: true), ShadowLayer(x: 0, y: -2, blur: 6, spread: -4, color: RGBA(0, 0, 0, 0.12))])
-                    .frame(width: w, height: frontH)
-            }
-            // The words in a box of the cover's own size: a line taller or wider than its place mustn't grow the
-            // cover (it did: the whole cover drawn 2 pt low and 2 pt long on the phone's 178 pt cards).
+            WebShapeBox(shape: shape, fill: nil, shadows: outer)
+            shape.fill(LinearGradient(colors: colors.map(\.color), startPoint: .top, endPoint: .bottom))
+            WebShapeBox(shape: shape, fill: nil, shadows: inset)
+            // The words in a box of the pocket's own size: a line taller or wider than its place mustn't grow it.
             ZStack(alignment: .topLeading) {
-                Text(model.count.formatted())
-                    .webText(WebTextStyle(family: .display, size: countSize, leading: countSize, weight: 600))
-                    .lineLimit(1)
-                    .monospacedDigit()
-                    .foregroundStyle((phoneDark ? RGBA(246, 246, 248) : RGBA(17, 17, 20)).color)
-                    .padding(.horizontal, 2.2 * cq * k)
-                    .padding(.vertical, 1.3 * cq * k)
-                    .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .circular).fill(RGBA(255, 255, 255, 0.3).color))
-                    // (webText's top guide, moved down by the padding, would otherwise line the age and the name
-                    // up with it in this ZStack: both were drawn 1.3 cq low.)
+                WebClampedText(model.name, style: nameStyle, maxLines: 2, width: w * 0.74)
+                    .foregroundStyle((dark ? RGBA(246, 246, 248) : RGBA(18, 19, 24)).color)
+                    .frame(width: w * 0.74, height: frontH * 0.7, alignment: .bottomLeading)
+                    // (webText's own top guide would otherwise place this box by its text's baseline.)
                     .alignmentGuide(.top) { _ in 0 }
-                    .fixedSize()
-                    .offset(x: w * 0.07, y: frontH * 0.0926)
-                Text(model.ageText)
-                    .webText(WebTextStyle(family: .display, size: ageSize, leading: ageSize * 1.2))
+                    .offset(x: w * 0.08)
+                Text(Self.countLine(model.count, age: model.ageText))
+                    .webText(ageStyle)
                     .lineLimit(1)
-                    .foregroundStyle((phoneDark ? base.oklabMix(RGBA(220, 222, 229), 0.22) : base.oklabMix(RGBA(60, 66, 80), 0.25)).color)
-                    .frame(maxWidth: w * 0.55, alignment: .trailing)
-                    .fixedSize()
-                    .frame(width: w * 0.93, alignment: .trailing)
-                    .offset(y: frontH * 0.1037 - 0.15 * ageSize)
-                // (The phone's names are Title 3: 20 on 24 as its web measures them.)
-                WebClampedText(model.name, style: phone ? WebTextStyle(family: .display, size: 20, leading: 24, letterSpacing: -0.2) : WebTextStyle(family: .display, size: nameSize, leading: nameSize * 1.12, letterSpacing: -0.01 * nameSize), maxLines: 2, width: w * 0.86)
-                    .foregroundStyle((phoneDark ? RGBA(246, 246, 248) : RGBA(13, 13, 16)).color)
-                    .frame(width: w, height: frontH * (1 - 0.1148), alignment: .bottomLeading)
-                    .offset(x: w * 0.07)
+                    .truncationMode(.tail)
+                    .monospacedDigit()
+                    .foregroundStyle(ageInk.color)
+                    .frame(width: w * 0.74, height: frontH * 0.87, alignment: .bottomLeading)
+                    .alignmentGuide(.top) { _ in 0 }
+                    .offset(x: w * 0.08)
             }
             .frame(width: w, height: frontH, alignment: .topLeading)
+            .clipped()
         }
         .frame(width: w, height: frontH, alignment: .topLeading)
+    }
+}
+
+/// The folder's back (FolderCardArt's BACK_PATH): a tab on the left whose shoulder slopes down into the top edge,
+/// one piece with the body, on a 100 by 100 grid stretched to the card.
+struct FolderBackShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let sx = rect.width / 100, sy = rect.height / 100
+        func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: rect.minX + x * sx, y: rect.minY + y * sy) }
+        var path = Path()
+        path.move(to: p(0, 7))
+        path.addCurve(to: p(6.5, 0), control1: p(0, 2.5), control2: p(2, 0))
+        path.addLine(to: p(31, 0))
+        path.addCurve(to: p(38.5, 3.2), control1: p(35, 0), control2: p(36.5, 1))
+        path.addCurve(to: p(45, 6), control1: p(40.5, 5.4), control2: p(42, 6))
+        path.addLine(to: p(93.5, 6))
+        path.addCurve(to: p(100, 13), control1: p(98, 6), control2: p(100, 8.5))
+        path.addLine(to: p(100, 93))
+        path.addCurve(to: p(93.5, 100), control1: p(100, 97.5), control2: p(98, 100))
+        path.addLine(to: p(6.5, 100))
+        path.addCurve(to: p(0, 93), control1: p(2, 100), control2: p(0, 97.5))
+        path.closeSubpath()
+        return path
     }
 }
 

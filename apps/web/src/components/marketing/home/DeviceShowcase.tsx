@@ -12,17 +12,18 @@ import { cx } from "../ui";
  */
 
 type ChapterId = "write" | "together" | "tasks" | "board" | "ai" | "vault";
-const CHAPTERS: Array<{ id: ChapterId; label: string; frames: string[]; says: string }> = [
-  { id: "write", label: "Write with /", frames: ["write-1", "write-2", "write-3"], says: "A page called Spring launch: the / menu adds a table of who does what." },
-  { id: "together", label: "Write together", frames: ["together-1", "together-2", "together-3", "together-4"], says: "Sam edits the same page live, Maya leaves a comment for him, he replies and the thread is resolved." },
-  { id: "tasks", label: "Tasks and calendar", frames: ["tasks-1", "tasks-2", "tasks-3"], says: "This week's tasks with their dates, one ticked off, then the same tasks on the calendar." },
-  { id: "board", label: "Databases", frames: ["board-1", "board-2"], says: "The Content plan collection as a table, then as a board grouped by status." },
-  { id: "ai", label: "Foli AI", frames: ["ai-1", "ai-2"], says: "Foli AI is asked what's left before the launch and answers with sources from the workspace." },
-  { id: "vault", label: "Vault", frames: ["vault-1", "vault-2"], says: "The Vault opens with a passcode and shows passwords, an API key and a 2FA code." },
+/** Each chapter's Mac frames, and the iPhone frame shown at each of those steps. */
+const CHAPTERS: Array<{ id: ChapterId; label: string; frames: string[]; phone: string[]; says: string }> = [
+  { id: "write", label: "Write with /", frames: ["write-1", "write-2", "write-3"], phone: ["write-1", "write-1", "write-1"], says: "A page called Spring launch: the / menu adds a table of who does what." },
+  { id: "together", label: "Write together", frames: ["together-1", "together-2", "together-3", "together-4"], phone: ["write-1", "together-1", "together-1", "together-2"], says: "Sam edits the same page live, Maya leaves a comment for him, he replies and the thread is resolved." },
+  { id: "tasks", label: "Tasks and calendar", frames: ["tasks-1", "tasks-2", "tasks-3"], phone: ["tasks-1", "tasks-1", "tasks-2"], says: "This week's tasks with their dates, one ticked off, then the same tasks on the calendar." },
+  { id: "board", label: "Databases", frames: ["board-1", "board-2"], phone: ["board-2", "board-1"], says: "The Content plan collection as a table, then as a board grouped by status." },
+  { id: "ai", label: "Foli AI", frames: ["ai-1", "ai-2"], phone: ["ai-1", "ai-2"], says: "Foli AI is asked what's left before the launch and answers with sources from the workspace." },
+  { id: "vault", label: "Vault", frames: ["vault-1", "vault-2"], phone: ["vault-1", "vault-1"], says: "The Vault opens with a passcode and shows passwords, an API key and a 2FA code." },
 ];
 const STEP_MS = 2200;
 const WEB = (f: string) => `/marketing/showcase/web/${f}.webp`;
-const PHONE = (c: ChapterId) => `/marketing/showcase/iphone/${c}.webp`;
+const PHONE = (f: string) => `/marketing/showcase/iphone/${f}.webp`;
 
 export function DeviceShowcase() {
   const [chapter, setChapter] = useState(0);
@@ -91,17 +92,16 @@ export function DeviceShowcase() {
           {/* The iPhone: the captured screen in a minimal frame, in front of the window's lower right corner. */}
           <div className="mk-phone absolute bottom-0 right-0 w-[24%] bg-[#111113] p-[0.6%] shadow-[0_30px_60px_-18px_rgb(0_0_0/0.5),0_0_0_1px_rgb(255_255_255/0.08)_inset]">
             <div className="mk-phone-screen relative aspect-[1206/2622] overflow-hidden bg-(--color-surface)">
-              {CHAPTERS.map((ch) => (
+              {[...new Set(c.phone)].map((f) => (
                 // eslint-disable-next-line @next/next/no-img-element -- captured frames, already sized; cross-faded by opacity
                 <img
-                  key={ch.id}
-                  src={PHONE(ch.id)}
+                  key={f}
+                  src={PHONE(f)}
                   alt=""
                   width={1206}
                   height={2622}
-                  loading={ch.id === c.id ? "eager" : "lazy"}
                   decoding="async"
-                  className={cx("absolute inset-0 size-full object-cover transition-opacity duration-700 ease-out", ch.id === c.id ? "opacity-100" : "opacity-0")}
+                  className={cx("absolute inset-0 size-full object-cover transition-opacity duration-700 ease-out", f === c.phone[step] ? "opacity-100" : "opacity-0")}
                 />
               ))}
               <span className="absolute left-1/2 top-[1.6%] h-[3.6%] w-[31%] -translate-x-1/2 rounded-chip bg-black" />

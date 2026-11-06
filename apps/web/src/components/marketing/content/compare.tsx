@@ -225,12 +225,12 @@ export const COMPETITORS: Competitor[] = [
     slug: "notion",
     name: "Notion",
     trademarks: ["Notion"],
-    title: "Folevi vs Notion: a calm notes app for Mac, iPhone and iPad",
-    description: "A Notion alternative for one person: native on Mac, iPhone and iPad, fully offline, free with no account. Compared on price, AI, apps and export, with sources.",
+    title: "Folevi vs Notion: a workspace with free Mac and iPhone apps",
+    description: "A Notion alternative workspace: docs, tasks and databases, plus free native Mac, iPhone and iPad apps that work offline with no account. Every fact sourced.",
     h1: "Folevi vs Notion",
     intro:
-      "Notion is a workspace for documents, wikis, databases and projects, with apps on every major platform and a large set of integrations. It suits teams that run their work from linked databases. Folevi is a calm notes app for one person: native on Mac, iPhone and iPad, fully offline, and free forever with no account. Folevi Cloud adds the web app, sharing and workspaces when you want them.",
-    summary: "Team databases, or calm notes on your Apple devices.",
+      "Notion is a workspace for documents, wikis, databases and projects, with apps on every major platform and a large set of integrations. It suits teams that run their work from linked databases. Folevi is a workspace too: block documents and pages inside pages, tasks with a calendar, and databases you can see as a table, a gallery or a kanban board, with formulas. Its native Mac, iPhone and iPad apps are free forever with no account and work fully offline. Folevi Cloud adds the web app, team workspaces, comments and guests when you want them.",
+    summary: "Deep team databases, or a workspace with free native apps.",
     updated: "2026-11-06",
     rows: [
       { key: "price", them: "$0. File uploads up to 5 MB each. Up to 10 guests.", sources: ["pricing"] },
@@ -251,10 +251,10 @@ export const COMPETITORS: Competitor[] = [
     ],
     different: [
       {
-        title: "A calm notes app for one person",
+        title: "A workspace with nothing to set up first",
         body: (
           <p>
-            Folevi is pages, tasks and linked notes, with nothing to set up first. It opens to your notes, not to a workspace, and the Mac, iPhone and iPad apps are native, so they start quickly and feel at home on each device.
+            Folevi has docs, wikis, tasks and databases in one place: block documents, pages inside pages, tasks on a calendar, and collections you can see as a table, a gallery or a kanban board, with formulas. It starts with a blank page, not a setup, and the Mac, iPhone and iPad apps are native, so they start quickly and feel at home on each device. See <Link href="/features/blocks">blocks</Link>.
           </p>
         ),
       },
@@ -283,7 +283,7 @@ export const COMPETITORS: Competitor[] = [
       { title: "You need Windows or Android apps", body: <p>Notion has apps for Mac, Windows, iOS and Android. {PLATFORMS_HONEST}</p> },
       {
         title: "Your work runs on databases",
-        body: <p>Notion’s databases have custom properties, dependencies, charts, forms and automations, and it connects to other tools through an API, webhooks and syncs. Folevi has collections (a table, a gallery or a board of pages), which are much simpler.</p>,
+        body: <p>Notion’s databases have custom properties, dependencies, charts, forms and automations, and it connects to other tools through an API, webhooks and syncs. Folevi has collections (a table, a gallery, a kanban board or a calendar of pages, with formulas), which are much simpler.</p>,
       },
       { title: "You type in the same paragraph as your colleagues", body: <p>Folevi syncs block by block. If two people change the same paragraph at once, Folevi shows a conflict and keeps both versions until someone chooses. It doesn’t merge edits character by character yet.</p> },
       { title: "You need enterprise controls", body: <p>Notion lists SAML single sign-on on Business, and SCIM and an audit log on Enterprise. Folevi has none of these today.</p> },
@@ -294,7 +294,7 @@ export const COMPETITORS: Competitor[] = [
       </>,
     ),
     faq: [
-      { q: "Can Folevi replace Notion?", a: "For your own notes, documents, tasks and linked pages, yes. If you rely on Notion’s databases, automations, integrations or Windows and Android apps, Folevi doesn’t have those." },
+      { q: "Can Folevi replace Notion?", a: "For docs, team wikis, tasks, simple databases and shared workspaces, yes. If you rely on Notion’s databases, automations, integrations or Windows and Android apps, Folevi doesn’t have those." },
       { q: "Can I use Folevi without an account?", a: "Yes. In the Mac, iPhone and iPad apps, choose Keep notes on my devices. It’s free forever, and your notes are files in a place you pick, such as iCloud Drive. Notion needs an account." },
       { q: "Does Folevi work offline?", a: "Yes. The Mac, iPhone and iPad apps work fully offline. In the browser, every edit is saved on the device first and syncs when you reconnect." },
       { q: "Can I import my Notion pages?", a: "Yes, as Markdown. Export from Notion as Markdown, then import the ZIP in Settings → Import & export. Databases export as CSV, which Folevi doesn’t import." },
@@ -321,11 +321,11 @@ export const COMPETITORS: Competitor[] = [
     slug: "craft",
     name: "Craft",
     trademarks: ["Craft"],
-    title: "Folevi vs Craft: beautiful notes with no block limit",
-    description: "A Craft alternative with the same care for design: no block limit, free with no account on Mac, iPhone and iPad, and your notes stay your files. Sourced.",
+    title: "Folevi vs Craft: a designed workspace with no block limit",
+    description: "A Craft alternative: docs, tasks and databases with the same care for design. No block limit, free with no account on Mac, iPhone and iPad. Sourced.",
     h1: "Folevi vs Craft",
     intro:
-      "Craft is a documents and notes app with native apps for Apple devices, Windows and Android, plus a web app. It includes tasks, a calendar, whiteboards and publishing, and suits people who want designed documents on many devices. Folevi takes the same care with design, in native apps for Mac, iPhone and iPad that are free with no account and no block limit, and your notes stay files in a folder you pick.",
+      "Craft is a documents and notes app with native apps for Apple devices, Windows and Android, plus a web app. It includes tasks, a calendar, whiteboards and publishing, and suits people who want designed documents on many devices. Folevi is a workspace for docs, tasks and databases that takes the same care with design. Its native apps for Mac, iPhone and iPad are free with no account and no block limit, and your pages stay files in a folder you pick.",
     summary: "The same care for design, no block limit, your own files.",
     updated: "2026-11-06",
     rows: [
@@ -366,7 +366,7 @@ export const COMPETITORS: Competitor[] = [
       { title: "You edit the same paragraph as someone else", body: <p>Craft shows changes to collaborators as they happen. Folevi merges edits to different blocks, and shows a conflict when two people change the same block at once.</p> },    ],
     switching: importSteps(<>In Craft, export your documents as Markdown. Craft does bulk export on Mac and iPad.</>),
     faq: [
-      { q: "Is Folevi an alternative to Craft?", a: "Yes, if you want a beautiful notes app on your Mac, iPhone and iPad with no block limit and no account, where your notes stay your files. Craft has more platforms, website publishing and real-time editing together." },
+      { q: "Is Folevi an alternative to Craft?", a: "Yes, if you want a well-designed workspace for docs, tasks and databases on your Mac, iPhone and iPad with no block limit and no account, where your notes stay your files. Craft has more platforms, website publishing and real-time editing together." },
       { q: "Can I use Folevi without an account?", a: "Yes. In the Mac, iPhone and iPad apps, choose Keep notes on my devices. It’s free forever, and your notes are a folder of files in iCloud Drive, Dropbox, Google Drive or any folder you pick." },
       { q: "Can I move my Craft documents to Folevi?", a: "Yes. Export them from Craft as Markdown, then import the files, a folder or a ZIP in Folevi under Settings → Import & export." },
       { q: "Does Folevi have an iPhone or Android app?", a: `Folevi has an iPhone and iPad app (${IOS_REQUIREMENT}) and a Mac app (${MAC_REQUIREMENT}). There is no Android app.` },
@@ -391,12 +391,12 @@ export const COMPETITORS: Competitor[] = [
     slug: "apple-notes",
     name: "Apple Notes",
     trademarks: ["Apple", "Apple Notes", "iPhone", "iPad", "Mac", "iCloud"],
-    title: "Folevi vs Apple Notes: tasks, linked pages, workspaces",
-    description: "An Apple Notes alternative: compare Folevi and Apple Notes on price, apps, offline notes, AI, sharing, export and encryption, with every fact sourced.",
+    title: "Folevi vs Apple Notes: a workspace for notes, tasks and docs",
+    description: "An Apple Notes alternative: a workspace with docs, tasks and databases. Compared on price, apps, offline notes, AI, sharing and export, every fact sourced.",
     h1: "Folevi vs Apple Notes",
     intro:
-      "Apple Notes comes with every iPhone, iPad and Mac and syncs through iCloud. It’s good for quick notes, scanned documents, handwriting with Apple Pencil and checklists, especially if everyone you share with uses Apple devices. Folevi is a notes app for Mac, iPhone, iPad and the web, with tasks that have dates, linked pages and export to Markdown, HTML and PDF. Its Apple apps are free with no account.",
-    summary: "Built into Apple devices, or notes with tasks.",
+      "Apple Notes comes with every iPhone, iPad and Mac and syncs through iCloud. It’s good for quick notes, scanned documents, handwriting with Apple Pencil and checklists, especially if everyone you share with uses Apple devices. Folevi is a workspace for Mac, iPhone, iPad and the web: notes and docs with linked pages, tasks that have dates, databases, and export to Markdown, HTML and PDF. Its Apple apps are free with no account.",
+    summary: "Built into Apple devices, or a workspace with tasks.",
     updated: "2026-11-06",
     rows: [
       { key: "price", them: "Built into iPhone, iPad and Mac. iCloud includes 5 GB free (1 GB for accounts used only on the web).", sources: ["platforms", "icloud", "webonly"] },
@@ -433,7 +433,7 @@ export const COMPETITORS: Competitor[] = [
     ],
     switching: importSteps(<>In Apple Notes on a Mac, select the notes and choose File → Export To → Markdown. On iPhone, a note’s Export as Markdown does the same.</>),
     faq: [
-      { q: "Is Folevi a good Apple Notes alternative?", a: "It is if you want tasks with dates, linked pages, note themes, or notes as files you can also open in any browser. Folevi has apps for Mac, iPhone and iPad that are free with no account." },
+      { q: "Is Folevi a good Apple Notes alternative?", a: "It is if you want a workspace with tasks that have dates, linked pages, databases, note themes, or notes as files you can also open in any browser. Folevi has apps for Mac, iPhone and iPad that are free with no account." },
       { q: "Can I move my Apple Notes to Folevi?", a: "Yes. Export your notes as Markdown from Apple Notes on a Mac or iPhone, then import the files in Folevi under Settings → Import & export." },
       { q: "Does Folevi have an iPhone app?", a: `Yes, for iPhone and iPad (${IOS_REQUIREMENT}), on the App Store. Without an account, your notes can sync through iCloud Drive across your iPhone, iPad and Mac.` },
       { q: "Is Folevi end-to-end encrypted like Apple Notes?", a: "Yes, when you turn it on. Folevi Cloud is end-to-end encrypted when you turn it on in Settings → Privacy, on every plan, and you choose which features may still read your notes. Without an account, Folevi’s servers never see your notes, and you can encrypt the synced copy with a passphrase. Apple Notes is end-to-end encrypted when you turn on Advanced Data Protection." },
@@ -458,12 +458,12 @@ export const COMPETITORS: Competitor[] = [
     slug: "obsidian",
     name: "Obsidian",
     trademarks: ["Obsidian"],
-    title: "Folevi vs Obsidian: linked notes as files, in a native app",
-    description: "An Obsidian alternative: linked notes that are files you own, in a native Mac, iPhone and iPad app that is ready when you open it. Free, no account, sourced.",
+    title: "Folevi vs Obsidian: a linked workspace that stays your files",
+    description: "An Obsidian alternative: linked notes, tasks and databases as files you own, in native Mac, iPhone and iPad apps. Free, no account, no plugins. Sourced.",
     h1: "Folevi vs Obsidian",
     intro:
-      "Obsidian keeps your notes as Markdown files in a folder on your own device, and it’s free to use. It has apps for desktop and mobile, a large library of community plugins and themes, and paid add-ons for sync and publishing. It suits people who want to shape the app themselves. Folevi also keeps linked notes as files you own, in a folder you pick, in a native app for Mac, iPhone and iPad that is ready the moment you open it. It’s free with no account, and syncs through iCloud Drive, Dropbox or Google Drive.",
-    summary: "Linked notes as your own files, ready when you open the app.",
+      "Obsidian keeps your notes as Markdown files in a folder on your own device, and it’s free to use. It has apps for desktop and mobile, a large library of community plugins and themes, and paid add-ons for sync and publishing. It suits people who want to shape the app themselves. Folevi is a workspace that also keeps your pages as files you own, in a folder you pick: linked notes, tasks and databases, in a native app for Mac, iPhone and iPad that is ready the moment you open it. It’s free with no account, and syncs through iCloud Drive, Dropbox or Google Drive.",
+    summary: "A linked workspace as your own files, ready when you open it.",
     updated: "2026-11-06",
     rows: [
       { key: "price", them: "The app is free, including for work. A commercial licence is optional, at $50 per user a year.", sources: ["license", "pricing"] },
@@ -488,7 +488,7 @@ export const COMPETITORS: Competitor[] = [
         title: "Files you own, in a native app",
         body: (
           <p>
-            Without an account, your Folevi library is a folder of files, one per note plus a small index, in iCloud Drive, Dropbox, Google Drive or any folder you pick. The Mac, iPhone and iPad apps are native, ready the moment you open them, with linked notes, tasks and themes built in. There is nothing to install or configure first.
+            Without an account, your Folevi library is a folder of files, one per note plus a small index, in iCloud Drive, Dropbox, Google Drive or any folder you pick. The Mac, iPhone and iPad apps are native, ready the moment you open them, with linked notes, tasks, databases and themes built in. There is nothing to install or configure first.
           </p>
         ),
       },
@@ -519,7 +519,7 @@ export const COMPETITORS: Competitor[] = [
       </>
     ),
     faq: [
-      { q: "Is Folevi an Obsidian alternative?", a: "It is if you want linked notes that are files you own, in a native app for Mac, iPhone and iPad that is ready when you open it, with no plugins to set up. If you want plain Markdown files and community plugins, Obsidian does that and Folevi doesn’t." },
+      { q: "Is Folevi an Obsidian alternative?", a: "It is if you want linked notes, tasks and databases that are files you own, in a native app for Mac, iPhone and iPad that is ready when you open it, with no plugins to set up. If you want plain Markdown files and community plugins, Obsidian does that and Folevi doesn’t." },
       { q: "Do I need an account to use Folevi?", a: "No. In the Mac, iPhone and iPad apps, choose Keep notes on my devices. It’s free forever, like Obsidian, and your notes stay in a folder you pick." },
       { q: "Can I import my Obsidian vault?", a: "Yes. Choose the vault folder, or a ZIP of it, in Settings → Import & export. Wiki links come in as plain text." },
       { q: "Does Folevi have backlinks?", a: "Yes. Type [[ to link a page. The linked page lists every page that links to it, with a line of text around each link." },
@@ -547,12 +547,12 @@ export const COMPETITORS: Competitor[] = [
     slug: "bear",
     name: "Bear",
     trademarks: ["Bear"],
-    title: "Folevi vs Bear: notes with tasks and team workspaces",
-    description: "A Bear alternative for notes: compare Folevi and Bear on price, apps, offline notes, sync, export and encryption, with every fact sourced.",
+    title: "Folevi vs Bear: a notes workspace with tasks and teams",
+    description: "A Bear alternative: a workspace for notes, docs, tasks and databases. Compared on price, apps, offline notes, sync, export and encryption, every fact sourced.",
     h1: "Folevi vs Bear",
     intro:
-      "Bear is a Markdown notes app for Mac, iPhone and iPad, with tags, a clean editor and iCloud sync on its Pro plan. It suits people who write on Apple devices and want a quiet place for text. Folevi is a notes app for Mac, iPhone, iPad and the web, with tasks that have dates and linked pages. Its Apple apps are free with no account, and Folevi Cloud adds sharing and team workspaces.",
-    summary: "Markdown on Apple devices, or notes with tasks and sharing.",
+      "Bear is a Markdown notes app for Mac, iPhone and iPad, with tags, a clean editor and iCloud sync on its Pro plan. It suits people who write on Apple devices and want a quiet place for text. Folevi is a workspace for Mac, iPhone, iPad and the web: notes and docs with linked pages, tasks that have dates, and databases. Its Apple apps are free with no account, and Folevi Cloud adds sharing and team workspaces.",
+    summary: "Markdown on Apple devices, or a workspace with tasks and teams.",
     updated: "2026-11-06",
     rows: [
       { key: "price", them: "$0. Notes stay on the device (iCloud sync is on Pro). Export to TXT, Markdown, TextBundle and RTF.", sources: ["home"] },
@@ -616,11 +616,11 @@ export const COMPETITORS: Competitor[] = [
     slug: "evernote",
     name: "Evernote",
     trademarks: ["Evernote"],
-    title: "Folevi vs Evernote: free notes with no 50-note limit",
-    description: "An Evernote alternative with no 50-note limit and no one-device rule: free Mac, iPhone and iPad apps with no account. Bring your notes. Every fact sourced.",
+    title: "Folevi vs Evernote: a free workspace, no 50-note limit",
+    description: "An Evernote alternative workspace with no 50-note limit and no one-device rule: free Mac, iPhone and iPad apps, no account. Bring your notes. Sourced.",
     h1: "Folevi vs Evernote",
     intro:
-      "Evernote is a notes app with a web clipper, document scanning, tasks and a calendar, and apps for the web, Mac, Windows, iOS and Android. It suits people who collect a lot of material from the web and from paper. Folevi is a notes app for Mac, iPhone and iPad that is free forever with no account: no 50-note limit, no one-device rule. Bring your notes across and keep them free, as files in a folder you pick.",
+      "Evernote is a notes app with a web clipper, document scanning, tasks and a calendar, and apps for the web, Mac, Windows, iOS and Android. It suits people who collect a lot of material from the web and from paper. Folevi is a workspace for notes, docs, tasks and databases, free forever on Mac, iPhone and iPad with no account: no 50-note limit, no one-device rule. Bring your notes across and keep them free, as files in a folder you pick.",
     summary: "No 50-note limit, no one-device rule, free.",
     updated: "2026-11-06",
     rows: [

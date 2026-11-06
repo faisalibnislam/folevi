@@ -11,9 +11,9 @@ import { ButtonLink, Eyebrow, SectionHeading, cx } from "@/components/marketing/
 import { PRICES, formatPrice } from "@/lib/plans";
 
 export const metadata = pageMetadata({
-  title: "Folevi apps: free notes for Mac, iPhone and iPad",
+  title: "Folevi apps: a free notes workspace for Mac, iPhone, iPad",
   description:
-    "Download Folevi for Mac, iPhone and iPad: free forever with no account. Notes are files in iCloud Drive, Dropbox, Google Drive or any folder, and work offline.",
+    "Folevi for Mac, iPhone and iPad: docs, tasks and databases in one workspace. Free forever, no account, works offline. Your pages stay in a folder you pick.",
   path: "/apps",
 });
 
@@ -29,7 +29,7 @@ const MODES: Array<{ label: string; local: boolean | string; cloud: boolean | st
   { label: "Where notes live", local: "Files in a folder you pick", cloud: "Folevi Cloud, synced to every device" },
   { label: "Mac, iPhone and iPad apps", local: true, cloud: true },
   { label: "Works offline", local: true, cloud: true },
-  { label: "Themes, tasks, linked pages, Foli DNA", local: true, cloud: true },
+  { label: "Docs, tasks, databases, themes, Foli DNA", local: true, cloud: true },
   { label: "Foli AI", local: "On your Mac: Apple Intelligence or your own key", cloud: "Foli AI credits on every device" },
   { label: "The web app", local: false, cloud: true },
   { label: "Share, comment and edit together", local: false, cloud: true },
@@ -56,7 +56,7 @@ const IOS_POINTS = [
 const FAQS: FaqItem[] = [
   {
     q: "Are the apps free?",
-    a: "Yes. Choose Keep notes on my devices when the app opens and Folevi is free forever on your Mac, iPhone and iPad: no account, no trial and no limit on notes.",
+    a: "Yes. Choose Keep notes on my devices when the app opens and the whole workspace (docs, tasks, databases and themes) is free forever on your Mac, iPhone and iPad: no account, no trial and no limit on notes.",
   },
   {
     q: "Can I sign in to my Folevi account in the apps?",
@@ -141,7 +141,8 @@ export default function AppsPage() {
             Folevi on your Mac, iPhone and <Mark>iPad.</Mark>
           </h1>
           <p className="mk-lede mt-6 max-w-[56ch]">
-            Native apps, free forever with no account. Your notes are files in a folder you pick, and they work offline.
+            The full Folevi workspace in native apps: docs, tasks, databases and themes. Free forever with no account.
+            Your pages are files in a folder you pick, and they work offline.
           </p>
           <div className="mt-8 flex flex-wrap gap-2.5">
             <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac" size="lg">
@@ -205,7 +206,7 @@ export default function AppsPage() {
               A Mac app that feels <Mark>at home</Mark>.
             </>
           }
-          lede="Folevi in windows of its own, with the keyboard, the menu bar and Finder close at hand."
+          lede="Docs, tasks and databases in windows of their own, with the keyboard, the menu bar and Finder close at hand."
           points={MAC_POINTS}
           picture={<MacPicture />}
           actions={
@@ -226,10 +227,10 @@ export default function AppsPage() {
           eyebrow="For iPhone and iPad"
           title={
             <>
-              Your notes, everywhere you <Mark>go.</Mark>
+              Your workspace, everywhere you <Mark>go.</Mark>
             </>
           }
-          lede="New on the App Store: the same calm notes on your iPhone and iPad, with widgets and the Share sheet."
+          lede="New on the App Store: the same workspace on your iPhone and iPad, with widgets and the Share sheet."
           points={IOS_POINTS}
           picture={
             <div className="flex items-end gap-5">

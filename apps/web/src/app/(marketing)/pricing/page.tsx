@@ -32,8 +32,8 @@ const gb = sizeLabel;
 const credits = (n: number) => n.toLocaleString("en-US");
 
 export const metadata = pageMetadata({
-  title: `Pricing: free apps, and Folevi Cloud from ${formatPrice(PRICES.core.month)} a month`,
-  description: `Folevi for Mac, iPhone and iPad is free forever with no account. Folevi Cloud adds the web app, sharing and Foli AI, from ${formatPrice(PRICES.core.month)} a month.`,
+  title: `Pricing: a free workspace app, Folevi Cloud from ${formatPrice(PRICES.core.month)}/month`,
+  description: `Docs, tasks and databases on Mac, iPhone and iPad, free forever with no account. Folevi Cloud adds the web app, teams and Foli AI from ${formatPrice(PRICES.core.month)} a month.`,
   path: "/pricing",
 });
 
@@ -51,7 +51,7 @@ const saving = (tier: "core" | "pro" | "pro_ai") =>
 const faqs: FaqItem[] = [
   {
     q: "Are the apps free?",
-    a: `Yes. Folevi for Mac, iPhone and iPad is free forever when you keep notes on your devices, with no account and no limit on notes. The Mac app is a download from folevi.com (${MAC_REQUIREMENT}); the iPhone and iPad app is on the App Store (${IOS_REQUIREMENT}).`,
+    a: `Yes. Folevi for Mac, iPhone and iPad is free forever when you keep notes on your devices: docs, tasks and databases, with no account and no limit on notes. The Mac app is a download from folevi.com (${MAC_REQUIREMENT}); the iPhone and iPad app is on the App Store (${IOS_REQUIREMENT}).`,
   },
   {
     q: "Do I need an account?",
@@ -156,8 +156,8 @@ export default function PricingPage() {
           <Mark kind="circle">Free</Mark> forever on your devices.
         </h1>
         <p className="mk-lede mt-6 max-w-[60ch]">
-          The Mac, iPhone and iPad apps are free, with no account. Folevi Cloud adds the web app, sharing and Foli AI
-          when you want them.
+          Your workspace for docs, tasks and databases is free on Mac, iPhone and iPad, with no account. Folevi Cloud
+          adds the web app, team workspaces, sharing and Foli AI when you want them.
         </p>
       </HeaderCard>
 
@@ -175,14 +175,15 @@ export default function PricingPage() {
               <span className="text-[17px] font-semibold text-(--color-heading)">forever</span>
             </h2>
             <p className="mk-lede mt-4 max-w-[52ch]">
-              Choose Keep notes on my devices. Your notes are files in a folder you pick, and Folevi’s servers never see them.
+              The whole workspace, on your devices. Choose Keep notes on my devices: your pages are files in a folder you
+              pick, and Folevi’s servers never see them.
             </p>
             <Checks
               className="mt-6"
               items={[
                 <>No account, no limit on notes</>,
                 <>iCloud Drive, Dropbox, Google Drive or any folder, synced by your own cloud</>,
-                <>Tasks, note themes, Foli DNA and search</>,
+                <>Docs, tasks, databases, themes, Foli DNA and search</>,
                 <>Foli AI on your Mac, with Apple Intelligence or your own API key</>,
               ]}
             />
@@ -211,7 +212,7 @@ export default function PricingPage() {
           Folevi <Mark>Cloud</Mark>
         </h2>
         <p className="mk-lede mt-3 mb-8 max-w-[60ch]">
-          An account for the web app, sharing and teams. Try {trialName} free for {TRIAL_DAYS} days, with {TRIAL_CREDITS} AI
+          An account for the web app, sharing and team workspaces where you edit together. Try {trialName} free for {TRIAL_DAYS} days, with {TRIAL_CREDITS} AI
           credits. No card.
         </p>
         <PlanPicker headingLevel="h3" />

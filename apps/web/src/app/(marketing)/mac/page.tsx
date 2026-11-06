@@ -12,8 +12,8 @@ import { Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
 import { KeysPiece, SyncPiece } from "@/components/marketing/pieces";
 
 export const metadata = pageMetadata({
-  title: "Folevi for Mac: a free notes app for Mac, no account",
-  description: `A free notes app for Mac with no account. Notes are files in iCloud Drive or any folder you pick. Quick Add, a menu bar icon, offline. ${MAC_REQUIREMENT}.`,
+  title: "Folevi for Mac: a free workspace for notes, no account",
+  description: `Docs, tasks and databases on your Mac, free with no account. Pages are files in iCloud Drive or any folder. Quick Add, menu bar, offline. ${MAC_REQUIREMENT}.`,
   path: "/mac",
 });
 
@@ -39,7 +39,10 @@ export default function MacPage() {
               <h1 className="mk-display mt-5 max-w-[13ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
                 Folevi, in a window of <Mark>its own</Mark>.
               </h1>
-              <p className="mk-lede mt-6 max-w-[50ch]">Free forever, no account. Quick Add, a menu bar icon and Mac notifications.</p>
+              <p className="mk-lede mt-6 max-w-[50ch]">
+                Your workspace for docs, tasks and databases, as a native Mac app. Free forever, no account. Quick Add, a
+                menu bar icon and Mac notifications.
+              </p>
             </div>
             <div className="mk-card relative p-6 pt-12 sm:p-7 sm:pt-14">
               <p className="absolute -top-5 left-5 sm:-left-4">
@@ -90,7 +93,7 @@ export default function MacPage() {
                 Everything on the web, plus <Mark kind="circle">more</Mark>.
               </>
             }
-            lede="Notes are kept on your Mac, so writing never waits."
+            lede="Docs, tasks and databases are kept on your Mac, so your work never waits."
           />
           <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature) => (
@@ -203,7 +206,7 @@ export default function MacPage() {
                   The same library in your <Mark>pocket</Mark>.
                 </>
               }
-              lede="Folevi for iPhone and iPad is free on the App Store, with no account. Put your library in iCloud Drive and it’s on every device."
+              lede="Folevi for iPhone and iPad is the same workspace, free on the App Store with no account. Put your library in iCloud Drive and it’s on every device."
             />
             <div>
               <div className="flex flex-wrap gap-2.5">
@@ -226,10 +229,10 @@ export default function MacPage() {
             eyebrow="Also on the web"
             title={
               <>
-                The same notes in <Mark kind="squiggle">any browser</Mark>.
+                The same workspace in <Mark kind="squiggle">any browser</Mark>.
               </>
             }
-            lede="With a Folevi account, your notes sync in real time with your Mac and work offline once loaded."
+            lede="With a Folevi account, your pages sync in real time with your Mac, you can invite your team, and it works offline once loaded."
           />
           <div className="mx-auto mt-12 max-w-[1080px]">
             <AppWindow

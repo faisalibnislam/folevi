@@ -11,9 +11,9 @@ import { CursorPiece, SearchPiece } from "@/components/marketing/pieces";
 import { Eyebrow } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
-  title: "Folevi alternatives and comparisons",
+  title: "Folevi vs Notion, Evernote and other notes workspaces",
   description:
-    "Folevi’s free Mac, iPhone and iPad apps, with no account, next to Notion, Craft, Apple Notes, Obsidian, Bear and Evernote. Every fact sourced.",
+    "Folevi, a workspace for docs, tasks and databases with free Mac, iPhone and iPad apps, next to Notion, Craft, Apple Notes, Obsidian, Bear and Evernote.",
   path: "/compare",
   ogImage: "segment",
 });
@@ -55,7 +55,7 @@ export default function CompareIndexPage() {
             How Folevi <Mark>compares.</Mark>
           </h1>
           <p className="mk-lede mt-6 max-w-[60ch]">
-            Folevi’s Mac, iPhone and iPad apps are free forever, with no account, and your notes stay files in a folder you pick. Here is how that compares, one page per app, with sources and how to move across.
+            Folevi is a workspace for docs, tasks and databases. Its Mac, iPhone and iPad apps are free forever, with no account, and your pages stay files in a folder you pick. Here is how that compares, one page per app, with sources and how to move across.
           </p>
         </HeaderCard>
         <Card as="div">

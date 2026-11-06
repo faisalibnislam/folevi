@@ -99,7 +99,7 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
         aria-hidden
         data-fc="back"
         className="absolute inset-0"
-        style={{ background: `linear-gradient(to bottom, color-mix(in oklab, ${tone} 36%, #ffffff), color-mix(in oklab, ${tone} 52%, #ffffff))`, mask: BACK_MASK, WebkitMask: BACK_MASK, ["--fc" as string]: base }}
+        style={{ background: `linear-gradient(to bottom, color-mix(in oklab, ${tone} 24%, #ffffff), color-mix(in oklab, ${tone} 38%, #ffffff))`, mask: BACK_MASK, WebkitMask: BACK_MASK, ["--fc" as string]: base }}
       />
       {/* the notes inside */}
       <div aria-hidden className="absolute inset-0">
@@ -120,7 +120,7 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
           ["--fc" as string]: base,
         }}
       >
-        <span data-fc="name" className="absolute bottom-[30%] left-[8%] right-[18%] line-clamp-2 text-ellipsis wrap-normal break-normal text-[clamp(16px,calc(8.4cqw*var(--fc-text,1)),34px)] font-semibold leading-[1.15] tracking-[-0.015em] text-[#121318]">
+        <span data-fc="name" className="absolute bottom-[30%] left-[8%] right-[18%] line-clamp-2 text-ellipsis wrap-normal break-normal text-[clamp(16px,calc(8.4cqw*var(--fc-text,1)),34px)] font-serif font-medium leading-[1.15] text-[#121318]">
           {name}
         </span>
         {/* count and last update (dark enough for 4.5:1 on every folder colour) */}

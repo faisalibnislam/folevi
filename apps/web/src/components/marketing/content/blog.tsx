@@ -72,7 +72,7 @@ const POSTS: BlogPost[] = [
     body: () => (
       <>
         <p>
-          Folevi now has an app for iPhone and iPad, on the App Store today. It joins the Mac app, and both work the same way: open the app, choose <strong>Keep notes on my devices</strong>, and start writing. There’s no account to make. It’s free forever.
+          Folevi is a workspace for notes, docs, tasks and databases, and it now has an app for iPhone and iPad, on the App Store today. It joins the Mac app, and both work the same way: open the app, choose <strong>Keep notes on my devices</strong>, and start writing. There’s no account to make. It’s free forever.
         </p>
         <p>
           We built it this way because a notes app shouldn’t need our permission. Your notes are yours, so they should live somewhere you choose, and keep working if we ever disappear.

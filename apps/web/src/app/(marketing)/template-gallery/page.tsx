@@ -20,8 +20,8 @@ export const revalidate = 3600;
 export async function generateMetadata() {
   const count = (await availableGalleryTemplates()).length;
   return pageMetadata({
-    title: "Free note templates",
-    description: `${count} free note templates: meeting notes, 1:1s, a weekly reset, project briefs, class notes, a travel plan and more. Preview one and start a page from it.`,
+    title: "Free templates for notes, docs and planning",
+    description: `${count} free templates for notes, docs and planning: meeting notes, 1:1s, a weekly reset, project briefs, a travel plan and more. Preview one and use it.`,
     path: "/template-gallery",
     ogImage: "segment",
   });

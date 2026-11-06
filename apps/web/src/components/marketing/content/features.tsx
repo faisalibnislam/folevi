@@ -547,6 +547,88 @@ export const FEATURES: Feature[] = [
     related: ["audio-recordings", "flowcharts", "tasks"],
   },
   {
+    // Collections: packages/editor-schema (collectionValues.ts, collectionFormulas.ts), components/editor/
+    // CollectionEmbed.tsx and collection/ (formulas, summaries, export), the / menu's Database, Gallery, Kanban
+    // and Calendar items (EditorMenus.tsx) and the chart block's collection source (chart/SourcePanel.tsx).
+    slug: "databases",
+    name: "Databases and views",
+    summary: "Rows that are pages, as a table, board, gallery or calendar.",
+    title: "Databases with table, kanban and gallery views",
+    description: "A Folevi database is a set of pages with properties. Show it as a table, kanban board, gallery or calendar, filter and sort it, and add formulas.",
+    h1: "Databases you can see as a table, a board or a gallery",
+    intro:
+      "Type /database and Folevi adds a collection to the page: rows that are pages, with properties like a status, a date, a price or a person. Show the same rows as a table, a kanban board, a gallery of cards or a month calendar, and let formulas work out the rest.",
+    plans: "Every plan, including Free.",
+    updated: "2026-11-06",
+    art: "art-22",
+    visual: "slash",
+    docs: { label: "Blocks and slash commands", href: "/docs/blocks-and-slash-commands" },
+    sections: [
+      {
+        id: "rows",
+        title: "Rows are pages, with properties",
+        body: (
+          <>
+            <p>
+              Every row is a page. Open it and write in it like any other page. Properties hold its details, and each one has a type: text, number, checkbox, date, select, multi-select, URL, person, relation or formula. A relation links a row to other pages, picked with a search.
+            </p>
+            <p>A collection holds up to 40 properties, 2,000 rows and 20 views.</p>
+          </>
+        ),
+      },
+      {
+        id: "views",
+        title: "Table, board, gallery and calendar",
+        body: (
+          <>
+            <p>Every view shows the same rows in its own way, and a collection can have several views side by side.</p>
+            <ul>
+              <li>
+                <strong>Table</strong>: rows and columns, with a summary row for counts, sums, averages and more.
+              </li>
+              <li>
+                <strong>Board</strong>: a kanban board with a column for each option of a select property. Drag a card to another column to change it.
+              </li>
+              <li>
+                <strong>Gallery</strong>: a card for each row, with the row’s theme as its cover.
+              </li>
+              <li>
+                <strong>Calendar</strong>: rows on a month grid by a date property. Drag a row to another day to change its date.
+              </li>
+            </ul>
+            <p>Each view keeps its own filters (up to 20), sorting (up to 5 rules) and the properties it shows.</p>
+          </>
+        ),
+      },
+      {
+        id: "formulas",
+        title: "Formulas",
+        body: (
+          <p>
+            A formula property works something out for every row from the row’s other properties, like <code>Price * Qty</code> or <code>IF(Done, &quot;Yes&quot;, &quot;No&quot;)</code>. You can also write <code>prop(&quot;Price&quot;)</code>. Formulas use the same functions as table formulas, among them IF, ROUND, SUM, CONCAT, TODAY and DAYS, and numbers can show as currency or a percentage. The editor suggests property names and functions as you type and previews the result on the first rows. With Foli AI on, describe what you want and it writes the formula.
+          </p>
+        ),
+      },
+      {
+        id: "export",
+        title: "Charts and export",
+        body: (
+          <p>
+            A chart block can use a collection as its source, grouped by one of its properties and counted or summed, and it follows the collection as it changes. Export any view as CSV or Markdown, or copy it as a Markdown table. The export has what the view shows, with its filters and sorting.
+          </p>
+        ),
+      },
+    ],
+    faq: [
+      { q: "How do I add a database in Folevi?", a: "Type /database on any line. To start with a different view, type /gallery, /kanban or /calendar instead. You can add more views later." },
+      { q: "Which property types are there?", a: "Text, number, checkbox, date, select, multi-select, URL, person, relation and formula." },
+      { q: "Can I use formulas?", a: "Yes. A formula property can name the row’s other properties, like Price * Qty, and use functions such as IF, ROUND, SUM, CONCAT, TODAY and DAYS. With Foli AI on, it can write a formula from a description." },
+      { q: "Can I edit a database offline?", a: "Yes, for collections you’ve opened before on that device. You can change values, add and delete rows and properties, and change views. The changes sync when you’re back online." },
+      { q: "Can I bring in a database from Notion?", a: "Folevi imports the ZIP from Notion’s Markdown and CSV export. Pages keep their nesting, and databases come in as tables." },
+    ],
+    related: ["blocks", "calendar", "team-workspaces"],
+  },
+  {
     slug: "search",
     name: "Search",
     summary: "Press ⌘K to find any note or command.",
@@ -1232,13 +1314,13 @@ export const FEATURES: Feature[] = [
     slug: "team-workspaces",
     name: "Team workspaces",
     summary: "A shared space with roles and free guests.",
-    title: "Team workspaces for shared notes",
+    title: "Team workspaces for shared docs, wikis and tasks",
     description: `A Folevi workspace for your team, with admins, members and free guests. Paid plans are per member from ${formatPrice(PRICES.core.month)} a month, separate from your Personal.`,
     h1: "Team workspaces with roles and per-member plans",
     intro:
-      "A workspace is a shared space for a team. It has its own pages, plan, storage and billing, and it never mixes with anyone’s Personal, which stays theirs alone.",
+      "A workspace is a shared space for a team: its docs, its wiki, its tasks and its databases. It has its own pages, plan, storage and billing, and it never mixes with anyone’s Personal, which stays theirs alone.",
     plans: "Free, Core, Pro and Pro AI, billed per member.",
-    updated: "2026-09-30",
+    updated: "2026-11-06",
     art: "art-39",
     visual: "workspaces",
     docs: { label: "Workspaces and plans", href: "/docs/workspaces-and-plans" },
@@ -1247,6 +1329,15 @@ export const FEATURES: Feature[] = [
         id: "personal",
         title: "Personal and workspaces",
         body: <p>Everyone has a Personal: it isn’t a workspace, and nobody can join it. Create a workspace from the menu at the bottom of the sidebar. The switcher lists your Personal first, then each workspace with your role in it.</p>,
+      },
+      {
+        id: "wiki",
+        title: "A team wiki, tasks and databases",
+        body: (
+          <p>
+            Pages in a workspace are open to its members, so it works as a team wiki: nest pages inside pages, link them with <Kbd>[[</Kbd>, and restrict the ones only a few people should see. Assign to-dos to people, and each person finds theirs in My Tasks. <Link href="/features/databases">Databases</Link> keep a team’s projects, people or bugs in one place, on a table or a kanban board.
+          </p>
+        ),
       },
       {
         id: "roles",
@@ -1411,9 +1502,9 @@ export const FEATURES: Feature[] = [
     slug: "security-and-privacy",
     name: "Security and privacy",
     summary: "Passkeys, two-step verification, private pages, no trackers.",
-    title: "Private and secure notes app",
+    title: "Security and privacy for your notes and workspace",
     description: "Folevi needs a verified email, offers two-step verification, encrypts data in transit and at rest, offers end-to-end encryption, and loads no trackers.",
-    h1: "Private notes, with plain answers about security",
+    h1: "Private by default, with plain answers about security",
     intro: "Here is what protects your account and your notes in Folevi today, and one thing it doesn’t do. The full details, with every subprocessor, are on the Security page. If you’d rather your notes never reach our servers, the Mac, iPhone and iPad apps can keep them on your devices with no account.",
     plans: "Every plan, including Free.",
     updated: "2026-11-06",

@@ -471,7 +471,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               aria-label={`Text color: ${colorName(palette, c)}`}
               aria-pressed={marks.isActive("textColor", { value: c })}
               title={colorName(palette, c)}
-              className={`grid h-8 w-8 place-items-center rounded-chip ui-raised disabled:opacity-40 ${marks.isActive("textColor", { value: c }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
+              className={`grid h-8 w-8 place-items-center rounded-chip ui-raised disabled:opacity-40 ${marks.isActive("textColor", { value: c }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : "enabled:hover:shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}
             >
               <span className={`fb-color-${c} text-subheadline font-semibold`} aria-hidden>
                 A
@@ -496,7 +496,7 @@ export function FormatPanel({ editor, disabled }: { editor: Editor | null; disab
               aria-label={`Highlight: ${colorName(palette, h)}`}
               aria-pressed={marks.isActive("highlight", { value: h })}
               title={colorName(palette, h)}
-              className={`grid h-8 w-8 place-items-center rounded-chip ui-raised disabled:opacity-40 ${marks.isActive("highlight", { value: h }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : ""}`}
+              className={`grid h-8 w-8 place-items-center rounded-chip ui-raised disabled:opacity-40 ${marks.isActive("highlight", { value: h }) ? "shadow-[inset_0_0_0_1.5px_var(--color-accent)]" : "enabled:hover:shadow-[inset_0_0_0_1.5px_var(--color-line-strong)]"}`}
             >
               <span className={`fb-hl-${h} fb-swatch h-4 w-4 rounded-tiny`} aria-hidden />
             </button>

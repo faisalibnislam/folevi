@@ -284,7 +284,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
                     type="button"
                     onClick={() => update({ width: w === 1 ? null : w })}
                     aria-pressed={width === w}
-                    className={`h-7 rounded-chip border px-2 ${width === w ? "border-accent text-accent" : "border-line"}`}
+                    className={`h-7 rounded-chip border px-2 ${width === w ? "border-accent text-accent" : "border-line hover:bg-[var(--glass-hover)] hover:text-heading"}`}
                   >
                     {w * 100}%
                   </button>
@@ -636,7 +636,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
             e.preventDefault();
             if (href !== "#") window.open(href, "_blank", "noopener,noreferrer");
           }}
-          className="flex min-h-[7.5rem] items-stretch no-underline"
+          className="flex min-h-[7.5rem] items-stretch no-underline transition-colors hover:bg-[var(--glass-hover)]"
         >
           <span className="flex min-w-0 flex-1 flex-col justify-center gap-1 p-4 pr-10">
             {a.icon && !iconFailed ? (

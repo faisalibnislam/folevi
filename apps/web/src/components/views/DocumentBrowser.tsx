@@ -536,7 +536,7 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
                   type="button"
                   aria-label={`New note from ${t.name}`}
                   onClick={() => void createDocument({ title: t.name, templateId: t.key })}
-                  className="flex w-full items-center gap-3 pl-5 pr-4 text-left outline-none active:bg-[var(--liquid-press)]"
+                  className="flex w-full items-center gap-3 pl-5 pr-4 text-left outline-none hover:bg-[var(--glass-hover)] active:bg-[var(--liquid-press)]"
                 >
                   <TemplateTile name={t.icon} />
                   <span className="ui-row-sep min-w-0 flex-1 py-2.5">

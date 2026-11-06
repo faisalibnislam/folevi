@@ -95,6 +95,7 @@
   cursor: text;
 }
 .fb-tabs-empty:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; border-radius: var(--radius-chip); }
+.fb-tabs-empty:hover { color: var(--color-ink-muted); background: var(--glass-hover); border-radius: var(--radius-chip); }
 .fb-tabs-selected .fb-tabs-bar { box-shadow: 0 0 0 4px var(--color-selection); background: var(--color-selection); border-radius: var(--radius-chip) var(--radius-chip) 0 0; }
 
 /* The tabs block's bottom edge, drawn under the open tab's last line (a widget, not a line of the note). */

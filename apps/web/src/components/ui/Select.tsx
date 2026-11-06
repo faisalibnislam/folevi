@@ -245,7 +245,9 @@ export function Select({
         onKeyUp={(e) => {
           if (e.key === " ") e.preventDefault();
         }}
-        className={`inline-flex min-w-0 items-center justify-between gap-1.5 text-left disabled:cursor-default disabled:opacity-50 ${className}`}
+        // Every trigger shows a hover: a shared style (ui-input, ui-well, ui-btn-*) or a hover: class brings its
+        // own; a bare trigger takes the quiet tint.
+        className={`inline-flex min-w-0 items-center justify-between gap-1.5 text-left disabled:cursor-default disabled:opacity-50 ${/(^|\s)(ui-input|ui-well|ui-btn|ui-seg)|hover:/.test(className) ? "" : "rounded-chip enabled:hover:bg-[var(--glass-hover)] enabled:hover:text-heading"} ${className}`}
       >
         {leading}
         <span className={`min-w-0 truncate ${leading ? "flex-1" : ""}`}>{selected?.label ?? ""}</span>

@@ -172,7 +172,7 @@ export function MembersSection({ workspace }: { workspace: Workspace }) {
                 label={i.email}
                 description={`${ROLE_LABEL[i.role] ?? "Member"}${i.role === "member" && ACCESS_CHIP[i.memberAccess] ? `, ${ACCESS_CHIP[i.memberAccess]!.toLowerCase()}` : ""} · ${i.expired ? "expired" : `expires ${formatRelative(i.expiresAt)}`}`}
                 trailing={
-                  <button type="button" aria-label={`Revoke the invitation to ${i.email}`} onClick={() => setRevoking(i.id)} className="-mr-2 flex h-11 items-center px-2 text-body text-danger outline-none">
+                  <button type="button" aria-label={`Revoke the invitation to ${i.email}`} onClick={() => setRevoking(i.id)} className="-mr-2 flex h-11 items-center px-2 text-body text-danger outline-none hover:opacity-70">
                     Revoke
                   </button>
                 }

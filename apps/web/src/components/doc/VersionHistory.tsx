@@ -419,7 +419,7 @@ function VersionRow({
           <p className="mt-1 text-footnote text-muted">Enter to save, Esc to cancel. Named versions are kept for good.</p>
         </form>
       ) : (
-        <button id={`version-${id}`} type="button" aria-current={selected ? "true" : undefined} onClick={onSelect} className="block w-full rounded-control px-3 py-2 pr-10 text-left outline-none focus-visible:ring-2 focus-visible:ring-focus">
+        <button id={`version-${id}`} type="button" aria-current={selected ? "true" : undefined} onClick={onSelect} className={`block w-full rounded-control px-3 py-2 pr-10 text-left outline-none focus-visible:ring-2 focus-visible:ring-focus ${selected ? "" : "hover:bg-[var(--glass-hover)]"}`}>
           <span className={`block truncate text-subheadline ${selected ? "font-semibold text-heading" : "font-medium text-ink"}`}>{title}</span>
           {detail ? <span className="block truncate text-footnote text-muted">{detail}</span> : null}
           {shown.length ? (

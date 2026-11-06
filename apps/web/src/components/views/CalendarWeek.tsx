@@ -149,7 +149,7 @@ export function CalendarWeek({
                   const id = e.dataTransfer.getData(TASK_TYPE);
                   if (id) onMove(id, date, null);
                 }}
-                className={`min-h-11 border-l border-line p-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${selected === date ? "bg-accent-soft/40" : ""}`}
+                className={`min-h-11 border-l border-line p-1 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${selected === date ? "bg-accent-soft/40" : "hover:bg-[var(--glass-hover)]"}`}
               >
                 <ul className="space-y-0.5">
                   {items.map((t) => (
@@ -160,7 +160,7 @@ export function CalendarWeek({
                         onDragStart={(e) => dragStart(e, t)}
                         onClick={() => onEdit(t)}
                         title={t.title}
-                        className={`block w-full cursor-grab truncate rounded-tiny px-1.5 text-left text-footnote font-medium leading-6 ${taskChipClass(t)}`}
+                        className={`block w-full cursor-grab truncate rounded-tiny px-1.5 hover:brightness-95 text-left text-footnote font-medium leading-6 ${taskChipClass(t)}`}
                       >
                         {t.title || "Untitled task"}
                       </button>
@@ -286,7 +286,7 @@ export function CalendarWeek({
                       onClick={() => onEdit(t)}
                       aria-label={`${t.title || "Untitled task"}, ${t.dueTime}${t.status === "done" ? ", done" : ""}`}
                       title={`${t.dueTime} ${t.title}`}
-                      className={`absolute cursor-grab overflow-hidden rounded-tiny px-1.5 text-left text-caption-1 font-medium leading-4 shadow-[0_0_0_1px_var(--color-canvas)] ${taskChipClass(t)}`}
+                      className={`absolute cursor-grab overflow-hidden rounded-tiny px-1.5 hover:brightness-95 text-left text-caption-1 font-medium leading-4 shadow-[0_0_0_1px_var(--color-canvas)] ${taskChipClass(t)}`}
                       style={{ top: minutesToPx(start) + 1, height: minutesToPx(TASK_MINUTES) - 2, left: `calc(${(p.col / p.cols) * 100}% + 2px)`, width: `calc(${100 / p.cols}% - 4px)` }}
                     >
                       <span className="block truncate pt-0.5">{t.title || "Untitled task"}</span>

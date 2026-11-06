@@ -79,7 +79,7 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
                   label={`${p.title}${p.inTrash ? " (in Trash)" : ""}`}
                   value={p.role}
                   choices={roles}
-                  footer={<button type="button" className="underline underline-offset-2" onClick={() => navigate(`/d/${p.documentId}`)}>Open the page</button>}
+                  footer={<button type="button" className="underline underline-offset-2 hover:text-heading hover:decoration-2" onClick={() => navigate(`/d/${p.documentId}`)}>Open the page</button>}
                   onChange={(r) => void act(setAccess({ workspaceId: workspace.id, profileId: g.profileId, documentId: p.documentId, role: r }), `${g.displayName}: ${ROLE_WORDS[r]} on ${p.title}`)}
                 />
               ))}
@@ -100,7 +100,7 @@ export function GuestsSection({ workspace }: { workspace: Workspace }) {
                 label={i.email}
                 description={`${i.title} · ${ROLE_WORDS[i.role]} · ${i.expired ? "expired" : `expires ${formatRelative(i.expiresAt)}`}`}
                 trailing={
-                  <button type="button" aria-label={`Revoke the invitation to ${i.email}`} onClick={() => setRevoking(i.id)} className="-mr-2 flex h-11 items-center px-2 text-body text-danger outline-none">
+                  <button type="button" aria-label={`Revoke the invitation to ${i.email}`} onClick={() => setRevoking(i.id)} className="-mr-2 flex h-11 items-center px-2 text-body text-danger outline-none hover:opacity-70">
                     Revoke
                   </button>
                 }

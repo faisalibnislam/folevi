@@ -246,7 +246,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             />
             </span>
             {iphone ? (
-              <button type="button" onClick={onClose} className="h-11 flex-none px-1 text-body text-heading">
+              <button type="button" onClick={onClose} className="h-11 flex-none px-1 text-body text-heading hover:opacity-70">
                 Cancel
               </button>
             ) : (

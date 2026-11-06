@@ -120,14 +120,14 @@ export function VaultView() {
           <>
             {info.recoveryOutdated ? <p className="mb-3 rounded-chip border border-warning/40 p-3 text-subheadline text-warning">
                 The Vault's key changed since you saved your recovery key. Make a new one in{" "}
-                <button type="button" className="font-medium underline underline-offset-2" onClick={() => openSection("settings")}>
+                <button type="button" className="font-medium underline underline-offset-2 hover:text-heading hover:decoration-2" onClick={() => openSection("settings")}>
                   Settings
                 </button>
                 .
               </p> : null}
             {info.accessReviewDue ? <p className="mb-3 rounded-chip border border-line p-3 text-subheadline text-muted">
                 It's been 90 days since anyone checked who has access to this Vault. Have a look in{" "}
-                <button type="button" className="font-medium text-heading underline underline-offset-2" onClick={() => openSection("people")}>
+                <button type="button" className="font-medium text-heading underline underline-offset-2 hover:decoration-2" onClick={() => openSection("people")}>
                   People
                 </button>
                 .

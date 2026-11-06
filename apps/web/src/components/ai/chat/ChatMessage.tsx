@@ -119,7 +119,7 @@ export function UserMessage({ text, attachments, onEdit, disabled }: { text: str
           <button type="button" onClick={() => setEditing(false)} className="h-7 rounded-chip px-2.5 text-subheadline text-muted hover:bg-[var(--glass-active)] hover:text-heading">
             Cancel
           </button>
-          <button type="submit" disabled={!draft.trim()} className="h-7 rounded-chip bg-heading px-2.5 text-subheadline font-medium text-canvas disabled:opacity-40">
+          <button type="submit" disabled={!draft.trim()} className="h-7 rounded-chip bg-heading px-2.5 text-subheadline font-medium text-canvas disabled:opacity-40 enabled:hover:bg-[color-mix(in_oklab,var(--color-heading)_85%,var(--color-canvas))]">
             Send
           </button>
         </div>

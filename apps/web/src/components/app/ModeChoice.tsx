@@ -133,7 +133,7 @@ export function ChoiceButton({
         onClick={onClick}
         disabled={disabled}
         aria-busy={busy || undefined}
-        className="flex min-h-[72px] w-full items-center gap-3.5 rounded-container bg-[var(--iphone-row)] px-4 py-3.5 text-left text-ink shadow-[0_0_0_0.5px_var(--iphone-separator),0_1px_3px_rgb(0_0_0/0.05)] outline-none transition-[background-color,transform] duration-150 active:scale-[0.985] active:bg-[color-mix(in_oklab,var(--iphone-row)_92%,var(--color-ink))] focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-default disabled:opacity-60 motion-reduce:active:scale-100"
+        className="flex min-h-[72px] w-full items-center gap-3.5 rounded-container bg-[var(--iphone-row)] px-4 py-3.5 text-left text-ink shadow-[0_0_0_0.5px_var(--iphone-separator),0_1px_3px_rgb(0_0_0/0.05)] outline-none transition-[background-color,transform] duration-150 enabled:hover:bg-[color-mix(in_oklab,var(--iphone-row)_95%,var(--color-ink))] active:scale-[0.985] active:bg-[color-mix(in_oklab,var(--iphone-row)_92%,var(--color-ink))] focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-default disabled:opacity-60 motion-reduce:active:scale-100"
       >
         <span className="grid h-10 w-10 flex-none place-items-center rounded-small bg-[color-mix(in_oklab,var(--color-ink)_6%,transparent)] text-heading">{icon}</span>
         <span className="min-w-0 flex-1">

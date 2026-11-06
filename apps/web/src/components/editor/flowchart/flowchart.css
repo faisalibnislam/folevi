@@ -107,7 +107,7 @@
 .fc-canvas[data-panning] .fc-shape { filter: none; }
 .fc-dot { fill: var(--fc-dot-color); }
 .fc-node { cursor: move; }
-.fc-node[data-shape] .fc-shape:hover { stroke: color-mix(in oklab, var(--fc-line) 60%, var(--color-ink)); }
+.fc-node[data-shape]:hover .fc-shape { stroke: color-mix(in oklab, var(--fc-line) 60%, var(--color-ink)); }
 
 /* Selection, handles and guides keep a constant on-screen size at any zoom. */
 .fc-overlay * { vector-effect: non-scaling-stroke; }
@@ -188,6 +188,7 @@
 .fc-swatch[data-color="pink"] { --fc-tint: var(--fc-pink); }
 .fc-swatch[data-color="purple"] { --fc-tint: var(--fc-purple); }
 .fc-swatch[aria-pressed="true"] { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+.fc-swatch:hover:not([aria-pressed="true"]) { outline: 2px solid var(--color-line-strong); outline-offset: 2px; }
 /* Connector colours in the connector bar and its menus (the menus open outside the card, so the tints are
    spelled out here rather than read from the card's variables). */
 .fc-color-dot {
@@ -240,6 +241,7 @@
 .fc-ai-modes { display: flex; gap: 4px; padding: 8px 10px 0; }
 .fc-ai-modes button { padding: 4px 10px; border-radius: var(--radius-chip); font: 550 var(--type-footnote)/1.2 var(--font-sans); color: var(--color-ink-muted); }
 .fc-ai-modes button[aria-pressed="true"] { background: var(--glass-hover); color: var(--color-heading); box-shadow: inset 0 0 0 1px var(--glass-border); }
+.fc-ai-modes button:hover { background: var(--glass-hover); color: var(--color-heading); }
 .fc-ai-form { display: flex; align-items: flex-start; gap: 8px; padding: 10px; }
 .fc-ai-form .fc-ai-mark { margin-top: 6px; }
 .fc-ai-form textarea {
@@ -249,6 +251,7 @@
 .fc-ai-form textarea::placeholder { color: var(--color-ink-faint); }
 .fc-ai-send { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-chip); background: var(--color-heading); color: var(--color-canvas); }
 .fc-ai-send:disabled { opacity: 0.3; }
+.fc-ai-send:hover:not(:disabled) { background: color-mix(in oklab, var(--color-heading) 85%, var(--color-canvas)); }
 .fc-ai-ideas { margin: 0; padding: 4px 6px 6px; list-style: none; border-top: 1px solid color-mix(in oklab, var(--color-line) 60%, transparent); }
 .fc-ai-ideas button { width: 100%; padding: 6px 8px; border-radius: var(--radius-control); text-align: left; font-size: var(--type-subheadline); color: var(--color-ink-muted); }
 .fc-ai-ideas button:hover { background: var(--glass-hover); color: var(--color-heading); }
@@ -284,6 +287,7 @@
   display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 10px; border-radius: var(--radius-small);
   font-size: var(--type-body); color: var(--color-ink); cursor: pointer; user-select: none;
 }
+.fc-picker-option:hover { background: var(--glass-hover); color: var(--color-heading); }
 .fc-picker-option[aria-selected="true"] { background: color-mix(in oklab, var(--color-ink) 9%, transparent); color: var(--color-heading); }
 .fc-picker-none { margin: 0; padding: 10px; font-size: var(--type-subheadline); color: var(--color-ink-muted); }
 .fc-mini-shape { flex: none; overflow: visible; }
@@ -321,6 +325,8 @@
 .fc-lane:not([data-color="neutral"]) .fc-lane-header { fill: color-mix(in oklab, var(--fc-tint) 12%, var(--color-surface)); }
 .fc-lane-line { fill: none; stroke: var(--fc-box-line); stroke-width: 1px; vector-effect: non-scaling-stroke; pointer-events: none; }
 :is(.fc-frame, .fc-pool, .fc-lane):focus-visible .fc-focus { stroke: var(--fc-select); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-dasharray: 4 3; }
+/* Pointing at a frame, pool or lane outlines it faintly (every clickable thing shows a hover). */
+:is(.fc-frame, .fc-pool, .fc-lane):hover:not([data-selected]) > :is(.fc-frame-body, .fc-pool-body, .fc-lane-body) { stroke: color-mix(in oklab, var(--fc-select) 45%, var(--color-surface)); }
 .fc-canvas[data-panning] :is(.fc-frame-band, .fc-pool-band, .fc-lane-header) { cursor: grabbing; }
 /* Selection, drop targets and handles (in the overlay: constant size at any zoom). */
 .fc-box-sel { fill: none; stroke: var(--fc-select); stroke-width: 1.5px; pointer-events: none; }
@@ -451,6 +457,7 @@
 .fc-panel-actions { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 4px; padding: 6px 8px 8px; }
 .fc-panel-count { margin-right: auto; padding-left: 6px; font-size: var(--type-footnote); color: var(--color-ink-faint); }
 .fc-link-btn { padding: 0; color: var(--color-accent); text-decoration: underline; text-underline-offset: 2px; }
+.fc-link-btn:hover { color: color-mix(in oklab, var(--color-accent) 75%, var(--color-heading)); text-decoration-thickness: 2px; }
 .fc-btn-primary { background: var(--color-heading); color: var(--color-canvas); }
 .fc-btn-primary:hover:not(:disabled) { background: color-mix(in oklab, var(--color-heading) 85%, var(--color-canvas)); color: var(--color-canvas); }
 

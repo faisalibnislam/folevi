@@ -139,7 +139,7 @@ export function AudioDemo() {
               if (!playing && time >= LENGTH) setTime(0);
               setPlaying((p) => !p);
             }}
-            className="grid size-9 flex-none place-items-center rounded-chip bg-(--color-heading) text-(--color-canvas)"
+            className="grid size-9 flex-none place-items-center rounded-chip bg-(--color-heading) text-(--color-canvas) hover:bg-[color-mix(in_oklab,var(--color-heading)_85%,var(--color-canvas))]"
           >
             {playing ? <Pause size={15} className="fill-current" /> : <Play size={15} className="ml-0.5 fill-current" />}
           </button>

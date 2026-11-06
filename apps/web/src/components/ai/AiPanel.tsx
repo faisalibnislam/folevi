@@ -337,7 +337,7 @@ export function AiPanel({
               title="Write (Enter)"
               disabled={!prompt.trim() || Boolean(busy) || (mode === "write" && readOnly)}
               onClick={submit}
-              className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-chip bg-heading text-canvas transition-opacity disabled:opacity-30"
+              className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-chip bg-heading text-canvas transition-opacity disabled:opacity-30 enabled:hover:bg-[color-mix(in_oklab,var(--color-heading)_85%,var(--color-canvas))]"
             >
               <ArrowUp size={15} aria-hidden />
             </button>

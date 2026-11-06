@@ -82,7 +82,7 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
     return (
       <div>
         {/* One line, as Home's other rows; what it does is said in its brief (and to screen readers here). */}
-        <button type="button" onClick={() => void run()} aria-description="A quick AI brief of this week’s notes and what’s due" className="ui-key-focus flex w-full items-center gap-3 pl-5 pr-4 text-left outline-none transition-colors duration-150 active:bg-[var(--liquid-press)] active:duration-0">
+        <button type="button" onClick={() => void run()} aria-description="A quick AI brief of this week’s notes and what’s due" className="ui-key-focus flex w-full items-center gap-3 pl-5 pr-4 text-left outline-none transition-colors duration-150 hover:bg-[var(--glass-hover)] active:bg-[var(--liquid-press)] active:duration-0">
           <span aria-hidden className="grid w-7 flex-none place-items-center">
             <AiIcon size={22} />
           </span>

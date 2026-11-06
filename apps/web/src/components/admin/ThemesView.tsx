@@ -154,7 +154,7 @@ export function ThemesView() {
                       e.preventDefault();
                       void save(move(t.id, index + step));
                     }}
-                    className="absolute left-1 top-1 grid size-7 cursor-grab place-items-center rounded-chip bg-[rgb(0_0_0/0.5)] text-white opacity-0 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white group-hover:opacity-100"
+                    className="absolute left-1 top-1 grid size-7 cursor-grab place-items-center rounded-chip bg-[rgb(0_0_0/0.5)] text-white opacity-0 hover:bg-[rgb(0_0_0/0.7)] transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white group-hover:opacity-100"
                   >
                     <GripVertical size={14} aria-hidden />
                   </button>

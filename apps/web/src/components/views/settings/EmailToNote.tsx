@@ -92,7 +92,7 @@ export function EmailToNoteView({ status, places, ...on }: { status: EmailNoteSt
                 key={addr}
                 label={addr}
                 trailing={
-                  <button type="button" aria-label={`Remove ${addr}`} disabled={busy} onClick={() => setRemoving(addr)} className="-mr-2 flex h-11 items-center px-2 text-body text-danger outline-none disabled:opacity-40">
+                  <button type="button" aria-label={`Remove ${addr}`} disabled={busy} onClick={() => setRemoving(addr)} className="-mr-2 flex h-11 items-center px-2 text-body text-danger outline-none enabled:hover:opacity-70 disabled:opacity-40">
                     Remove
                   </button>
                 }

@@ -334,11 +334,11 @@ function ThemeChip({ label, art, on, locked, onPick }: { label: string; art: str
         feel("choose");
         onPick();
       }}
-      className="flex w-16 flex-none snap-start flex-col items-center gap-1.5"
+      className="group flex w-16 flex-none snap-start flex-col items-center gap-1.5"
     >
       <span
         aria-hidden
-        className={`relative block h-20 w-16 overflow-hidden rounded-panel transition-transform active:scale-95 ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--iphone-solid)]" : "shadow-[inset_0_0_0_0.5px_rgb(0_0_0/0.16)]"}`}
+        className={`relative block h-20 w-16 overflow-hidden rounded-panel transition-[transform,filter] group-hover:brightness-95 active:scale-95 ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--iphone-solid)]" : "shadow-[inset_0_0_0_0.5px_rgb(0_0_0/0.16)]"}`}
         style={{ background: art }}
       >
         {locked ? (
@@ -469,8 +469,8 @@ function StylePanel({ documentId, meta, disabled }: { documentId: string; meta: 
                 onPick={() => pickTheme(t)}
               />
             ))}
-            <button type="button" aria-haspopup="dialog" onClick={() => setGallery(true)} className="flex w-16 flex-none snap-start flex-col items-center gap-1.5">
-              <span aria-hidden className="grid h-20 w-16 place-items-center rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_5.5%,transparent)] text-heading">
+            <button type="button" aria-haspopup="dialog" onClick={() => setGallery(true)} className="group flex w-16 flex-none snap-start flex-col items-center gap-1.5">
+              <span aria-hidden className="grid h-20 w-16 place-items-center rounded-panel bg-[color-mix(in_oklab,var(--color-ink)_5.5%,transparent)] text-heading group-hover:bg-[color-mix(in_oklab,var(--color-ink)_10%,transparent)]">
                 <ChevronRight size={20} strokeWidth={2.2} />
               </span>
               <span className="w-full truncate text-center text-subheadline leading-4 text-ink">All themes</span>

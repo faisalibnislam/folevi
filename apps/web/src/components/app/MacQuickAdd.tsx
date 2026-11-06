@@ -296,7 +296,7 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
           </span>
         ) : null}
         <span className={`${chip} ${dateLabel ? "bg-[var(--mac-hover)] text-heading" : "text-muted"} p-0`}>
-          <button type="button" id="qa-when" aria-expanded={editor === "date"} onClick={() => setEditor((x) => (x === "date" ? null : "date"))} className="inline-flex h-7 items-center gap-1.5 rounded-small px-2.5 outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          <button type="button" id="qa-when" aria-expanded={editor === "date"} onClick={() => setEditor((x) => (x === "date" ? null : "date"))} className="inline-flex h-7 items-center gap-1.5 rounded-small px-2.5 outline-none hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus">
             <CalendarDays size={13} aria-hidden />
             <span className="truncate">{dateLabel ? `Due ${dateLabel}` : "Date"}</span>
           </button>
@@ -311,7 +311,7 @@ export function MacQuickAdd({ round, place }: { round: number; /** The place pic
           ) : null}
         </span>
         <span className={`${chip} ${q.priority !== "none" ? "bg-[var(--mac-hover)] text-heading" : "text-muted"} p-0`}>
-          <button type="button" aria-expanded={editor === "priority"} onClick={() => setEditor((x) => (x === "priority" ? null : "priority"))} className="inline-flex h-7 items-center gap-1.5 rounded-small px-2.5 outline-none focus-visible:ring-2 focus-visible:ring-focus">
+          <button type="button" aria-expanded={editor === "priority"} onClick={() => setEditor((x) => (x === "priority" ? null : "priority"))} className="inline-flex h-7 items-center gap-1.5 rounded-small px-2.5 outline-none hover:bg-[var(--glass-hover)] hover:text-heading focus-visible:ring-2 focus-visible:ring-focus">
             <Flag size={13} aria-hidden style={priority.tone ? { color: priority.tone } : undefined} />
             <span>{q.priority === "none" ? "Priority" : priority.label}</span>
           </button>

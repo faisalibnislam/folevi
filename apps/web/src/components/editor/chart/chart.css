@@ -143,6 +143,7 @@ ul.fb-chart-takeaway li + li { margin-top: 2px; }
 .fb-chart-swatches { display: flex; gap: 3px; }
 .fb-chart-swatch { display: grid; place-items: center; width: 20px; height: 20px; border-radius: var(--radius-tiny); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.1); }
 .fb-chart-swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--color-surface-raised), 0 0 0 3.5px var(--color-heading); }
+.fb-chart-swatch:hover:not([aria-checked="true"]) { box-shadow: 0 0 0 2px var(--color-surface-raised), 0 0 0 3.5px var(--color-line-strong); }
 .fb-chart-switches { gap: 2px; }
 .fb-chart-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; }
 .fb-chart-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -172,6 +173,7 @@ ul.fb-chart-takeaway li + li { margin-top: 2px; }
 .fb-chart-ai-form textarea::placeholder { color: var(--color-ink-faint); }
 .fb-chart-ai-send { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-control); background: var(--color-accent); color: var(--color-accent-ink); }
 .fb-chart-ai-send:disabled { opacity: 0.35; }
+.fb-chart-ai-send:hover:not(:disabled) { filter: brightness(1.08); }
 .fb-chart-ai-status { margin: 0; color: var(--color-ink-muted); font-size: var(--type-subheadline); }
 .fb-chart-ai-error { margin: 0; padding: 8px 10px; border-radius: var(--radius-control); background: var(--color-danger-soft); color: var(--color-danger); font-size: var(--type-subheadline); }
 .fb-chart-ai-result { padding: 10px 12px; border-radius: var(--radius-control); background: color-mix(in oklab, var(--color-surface-sunken) 70%, transparent); }

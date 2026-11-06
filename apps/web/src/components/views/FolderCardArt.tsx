@@ -125,7 +125,7 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
         </span>
         {/* count and last update (dark enough for 4.5:1 on every folder colour) */}
         <span data-fc="age" className="absolute bottom-[13%] left-[8%] right-[18%] truncate text-[clamp(12px,calc(5cqw*var(--fc-text,1)),20px)] font-medium leading-[1.25] tabular-nums" style={{ color: `color-mix(in oklab, ${base} 14%, #2a2c33)` }}>
-          <span data-fc="count">{count.toLocaleString()}</span> · {age}
+          <span data-fc="count">{count.toLocaleString()} {count === 1 ? "note" : "notes"}</span> · {age}
         </span>
       </div>
     </>

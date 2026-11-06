@@ -307,6 +307,10 @@
 :root { --fab-clearance: 0px; }
 :root:has(.ui-fab) { --fab-clearance: 100px; }
 @media (max-width: 639px) { :root:has(.ui-fab) { --fab-clearance: 76px; } }
+/* Room beside it (36px from the right, about 160px wide, a 14px gap): what floats along a view's bottom edge, like
+   Foli DNA's time-lapse bar, stops this far from the right. */
+:root { --fab-side: 0px; }
+:root:has(.ui-fab) { --fab-side: 210px; }
 
 @layer components {
   /* Canvas: a soft, neutral ambient light behind the floating glass panels. On a note, the note's own theme

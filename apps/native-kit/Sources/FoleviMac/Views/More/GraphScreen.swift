@@ -77,7 +77,9 @@ final class GraphModel {
     var insights = UserDefaults.standard.bool(forKey: "folevi.dna.insights") { didSet { UserDefaults.standard.set(insights, forKey: "folevi.dna.insights") } }
     var focusMode = UserDefaults.standard.bool(forKey: "folevi.dna.focus") { didSet { UserDefaults.standard.set(focusMode, forKey: "folevi.dna.focus") } }
     var sinceWeek = false
+    /// The time-lapse: its bar shows while `playAt` is set; `playing` runs it (paused, it holds the date).
     var playAt: Double?
+    var playing = false
     var layoutOpen = false
     var selecting = false
     var picked: Set<String> = []
@@ -251,6 +253,10 @@ final class GraphModel {
     }
 
     var matches: Set<String> { GraphMath.match(shown.nodes, query) }
+
+    /// What the floating card over the map shows: a picked node's panel, Insights (around a note too), or the
+    /// centre note's connections.
+    var side: DnaSide? { DnaSide.of(centred: center != nil && around != nil, insights: insights, panel: panel.flatMap { index.byId[$0] != nil ? $0 : nil }) }
 
     func link(_ s: GraphSuggestion) {
         Task {
@@ -665,7 +671,7 @@ struct GraphScreen: View {
     @Environment(\.colorScheme) private var scheme
     @State private var saveName: String?
     @State private var exporter = DnaExporter()
-    /// A phone-wide screen (the iPhone, a narrow iPad window): the header stacks and Insights covers the map.
+    /// A phone-wide screen (the iPhone, a narrow iPad window): the header stacks.
     @State private var compact = false
     private var inset: CGFloat { compact ? 16 : 24 }
 
@@ -780,24 +786,9 @@ struct GraphScreen: View {
             } else if model.list {
                 GraphListView(nodes: shown.nodes, edges: shown.edges, query: model.query, open: { frame.open(.note($0)) })
             } else {
-                if compact {
-                    // The phone: Insights covers the map (no room for a side column).
-                    ZStack {
-                        GraphCanvasView(model: model, value: v, nodes: shown.nodes, edges: shown.edges, frame: frame, exporter: exporter)
-                        if model.insights {
-                            DnaInsightsView(model: model, value: v, nodes: shown.nodes, edges: shown.edges, frame: frame, wide: true)
-                                .background(moreVar("color-canvas", scheme))
-                                .transition(.move(edge: .bottom))
-                        }
-                    }
-                } else {
-                    HStack(spacing: 0) {
-                        GraphCanvasView(model: model, value: v, nodes: shown.nodes, edges: shown.edges, frame: frame, exporter: exporter)
-                        if let c = model.center, let a = model.around {
-                            DnaConnectionsList(center: c, connections: a.connections, ix: model.index, names: model.names, expanded: model.expandedNow, onToggle: { model.toggleExpanded($0) }, onOpen: { frame.open(.note($0)) }, onPick: { model.panel = $0 }, onWhole: { whole() })
-                        } else if model.insights { DnaInsightsView(model: model, value: v, nodes: shown.nodes, edges: shown.edges, frame: frame) }
-                    }
-                }
+                // The connections, Insights and a picked note's panel float over the map in one card (the owner's
+                // design A, 6 November 2026), so Insights shows around a note too (it lost the spot and did nothing).
+                GraphCanvasView(model: model, value: v, nodes: shown.nodes, edges: shown.edges, frame: frame, exporter: exporter, onWhole: { whole() })
             }
         } else {
             Text(verbatim: "Loading Foli DNA…").webText(.role(.subheadline)).foregroundStyle(moreVar("color-ink-muted", scheme)).frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -820,6 +811,7 @@ struct GraphScreen: View {
                 .padding(.horizontal, 12).frame(height: 28)
                 .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(on ? moreVar("color-surface", scheme) : .clear).shadow(color: .black.opacity(on ? 0.08 : 0), radius: 1, y: 0.5))
                 .contentShape(Rectangle())
+                .dnaHover(radius: 6, selected: false)
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(on ? .isSelected : [])
@@ -829,27 +821,21 @@ struct GraphScreen: View {
     private func actions(_ v: GraphValue) -> some View {
         let span = DnaMath.span(model.shown.nodes)
         return HStack(spacing: 0) {
-            WebIconButton(model.playAt == nil ? .play : .pause, label: model.playAt == nil ? "Play how it grew" : "Stop") {
-                model.playAt = model.playAt == nil ? span?.start : nil
+            WebIconButton(model.playAt == nil ? .play : .pause, label: model.playAt == nil ? "Play how it grew" : "Stop the time-lapse", pressed: model.playAt != nil) {
+                WebMotion.animate(WebMotion.viewSwitch) {
+                    if model.playAt == nil, let s = span { model.playAt = s.start; model.playing = true } else { model.playing = false; model.playAt = nil }
+                }
             }
             .disabled(span == nil || span?.start == span?.end)
             WebIconButton(.slidersHorizontal, label: "Layout", pressed: model.layoutOpen) { model.layoutOpen.toggle() }
             WebIconButton(.circleQuestionMark, label: "Show the tips again") { model.tourStep = 0; model.tourDone = false }
             WebIconButton(.chartNetwork, label: "Insights", pressed: model.insights) { model.insights.toggle() }
-            WebMenuButton(entries: { exportEntries }) { WebIconView(.download, size: 16).foregroundStyle(moreVar("color-ink-muted", scheme)).frame(width: 32, height: 32).contentShape(Rectangle()) }
+            WebMenuButton(entries: { exportEntries }) { WebIconView(.download, size: 16).foregroundStyle(moreVar("color-ink-muted", scheme)).frame(width: 32, height: 32).contentShape(Rectangle()).dnaHover(radius: 6) }
+                .foleviTooltip("Export")
                 .accessibilityLabel("Export")
-            WebMenuButton(entries: { viewEntries(v) }) { WebIconView(.bookmark, size: 16).foregroundStyle(moreVar("color-ink-muted", scheme)).frame(width: 32, height: 32).contentShape(Rectangle()) }
+            WebMenuButton(entries: { viewEntries(v) }) { WebIconView(.bookmark, size: 16).foregroundStyle(moreVar("color-ink-muted", scheme)).frame(width: 32, height: 32).contentShape(Rectangle()).dnaHover(radius: 6) }
+                .foleviTooltip("Saved views")
                 .accessibilityLabel("Saved views")
-        }
-        .task(id: model.playAt) {
-            guard let at = model.playAt, let s = span else { return }
-            if at >= s.end {
-                try? await Task.sleep(for: .milliseconds(1200))
-                model.playAt = nil
-                return
-            }
-            try? await Task.sleep(for: .milliseconds(16))
-            if model.playAt != nil { model.playAt = min(s.end, at + max(1, (s.end - s.start) / 480)) }
         }
     }
 
@@ -905,22 +891,25 @@ struct GraphScreen: View {
         let orphanCount = DnaMath.orphans(base.nodes, base.edges).count
         let colorTitles = ["kind": "Colour by kind", "folder": "Colour by folder", "tag": "Colour by tag"]
         return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 14) {
+            HStack(spacing: 18) {
                 // On a phone the row scrolls: Show comes first so it's never off the end.
                 if compact { showMenu(v, orphanCount: orphanCount) }
                 // Around one note the filters don't apply (the map reads the whole of it).
                 if model.center == nil {
-                WebBareSelect(label: v.folders.first { $0.id == folderId }?.name ?? "All folders", options: [("", "All folders")] + v.folders.map { ($0.id, $0.name) }, selected: folderId) { id in model.settings.filter.folders = id.isEmpty ? [] : [id] }
-                WebBareSelect(label: v.tags.first { $0.id == tagId }.map { "#\($0.name)" } ?? "Any tag", options: [("", "Any tag")] + v.tags.map { ($0.id, "#\($0.name)") }, selected: tagId) { id in model.settings.filter.tags = id.isEmpty ? [] : [id] }
+                WebBareSelect(label: v.folders.first { $0.id == folderId }?.name ?? "All folders", options: [("", "All folders")] + v.folders.map { ($0.id, $0.name) }, selected: folderId) { id in model.settings.filter.folders = id.isEmpty ? [] : [id] }.dnaHover(radius: 6, outset: 6)
+                WebBareSelect(label: v.tags.first { $0.id == tagId }.map { "#\($0.name)" } ?? "Any tag", options: [("", "Any tag")] + v.tags.map { ($0.id, "#\($0.name)") }, selected: tagId) { id in model.settings.filter.tags = id.isEmpty ? [] : [id] }.dnaHover(radius: 6, outset: 6)
                 WebBareSelect(label: Self.edited.first { $0.id == editedId }?.title ?? "Edited any time", options: Self.edited.map { ($0.id, $0.title) }, selected: editedId) { id in
                     let days = Self.edited.first { $0.id == id }?.days ?? nil
                     model.settings.filter.editedSince = days.map { Date().timeIntervalSince1970 * 1000 - $0 * 86_400_000 }
                 }
+                .dnaHover(radius: 6, outset: 6)
                 }
-                WebBareSelect(label: colorTitles[model.settings.colorBy] ?? "Colour by kind", options: [("kind", "Colour by kind"), ("folder", "Colour by folder"), ("tag", "Colour by tag")], selected: model.settings.colorBy) { model.settings.colorBy = $0 }
+                WebBareSelect(label: colorTitles[model.settings.colorBy] ?? "Colour by kind", options: [("kind", "Colour by kind"), ("folder", "Colour by folder"), ("tag", "Colour by tag")], selected: model.settings.colorBy) { model.settings.colorBy = $0 }.dnaHover(radius: 6, outset: 6)
                 if !compact { showMenu(v, orphanCount: orphanCount) }
             }
+            .padding(.horizontal, 6)
         }
+        .padding(.horizontal, -6)
     }
 
     private func showMenu(_ v: GraphValue, orphanCount: Int) -> some View {
@@ -934,6 +923,7 @@ struct GraphScreen: View {
             }
             .frame(height: 32)
             .contentShape(Rectangle())
+            .dnaHover(radius: 6, outset: 6)
         }
         .accessibilityLabel("Show")
     }
@@ -1004,13 +994,15 @@ struct GraphScreen: View {
     private func aroundBar(_ c: GraphNode?) -> some View {
         let count = model.around?.connections.count
         return HStack(spacing: 8) {
-            WebButton("Whole map", icon: .arrowLeft, size: .sm) { whole() }
+            WebButton("Whole map", icon: .arrowLeft, size: .sm) { whole() }.dnaHover(radius: 8)
             Text(verbatim: "Around").webText(.role(.subheadline)).foregroundStyle(moreVar("color-ink-muted", scheme))
             if let c {
                 Button { frame.open(.note(c.id)) } label: {
                     Text(verbatim: c.label.isEmpty ? "Untitled" : c.label).webText(.role(.subheadline, weight: 500)).foregroundStyle(moreVar("color-heading", scheme)).lineLimit(1)
+                        .dnaHover(radius: 6, outset: 4)
                 }
                 .buttonStyle(.plain)
+                .foleviTooltip("Open it")
             } else {
                 Text(verbatim: "a note that isn’t here").webText(.role(.subheadline)).foregroundStyle(moreVar("color-heading", scheme))
             }
@@ -1085,6 +1077,7 @@ struct GraphCanvasView: View {
     let edges: [GraphEdge]
     let frame: FrameModel
     let exporter: DnaExporter
+    var onWhole: () -> Void = {}
     @Environment(\.colorScheme) private var scheme
     @State private var t = GraphMath.Transform(x: 0, y: 0, k: 1)
     @State private var moved = false
@@ -1159,6 +1152,14 @@ struct GraphCanvasView: View {
         let notes = nodes.filter { $0.kind == "note" }.count
         let sparse: String? = model.around.map { $0.connections.isEmpty ? "This note isn’t connected to anything yet. Type [[ in it to link another note, and a line joins them here." : nil } ?? (notes < 3 ? "Foli DNA grows as you write. Notes show up here, and lines join the ones that link to each other." : edges.isEmpty ? "None of these notes link to each other yet. Type [[ in a note to link another one, and a line joins them here." : nil)
         let hiddenOrphans = model.center == nil && model.settings.filter.hideOrphans == true ? DnaMath.orphans(value.nodes, value.edges).count : 0
+        // The floating card (top right), the zoom pill to its left, both stopping above Ask Foli AI; the time-lapse
+        // bar along the bottom between the Key and the pill or Ask Foli AI (on a narrow map, the width above them).
+        let side = model.side
+        let narrow = size.width > 0 && size.width < 600
+        let sideShown = side != nil && !(side == .connections && narrow)
+        let floor = max(12, AiAskOverlay.clearance)
+        let pillRight: CGFloat = sideShown ? DnaSide.width + 20 : 12
+        let keyShown = size.width >= 560 || model.panel == nil
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
                 Canvas { ctx, _ in
@@ -1210,13 +1211,6 @@ struct GraphCanvasView: View {
                         .padding(12)
                         .allowsHitTesting(false)
                 }
-                if let playAt = model.playAt {
-                    Text(verbatim: Date(timeIntervalSince1970: playAt / 1000).formatted(.dateTime.month(.abbreviated).year()))
-                        .webText(.role(.subheadline)).monospacedDigit().foregroundStyle(moreVar("color-heading", scheme))
-                        .padding(.horizontal, 12).padding(.vertical, 4)
-                        .background(RoundedRectangle(cornerRadius: 10, style: .circular).fill(moreVar("glass-hover", scheme)))
-                        .frame(maxWidth: .infinity).padding(.top, 12).allowsHitTesting(false)
-                }
                 if let id = hover ?? focusedNode, let n = byId[id], let p = at(id) {
                     let r = GraphMath.drawn(GraphMath.radius(deg[id] ?? 0, entity: n.kind != "note"), t.k) * t.k
                     let spot = GraphMath.screen(t, p)
@@ -1226,31 +1220,40 @@ struct GraphCanvasView: View {
                     let above = mid.map { spot.y < $0.y } ?? (spot.y > 90)
                     tooltip(n, spot, gap: r + 10, above: above)
                 }
-                if model.panel == nil, hiddenOrphans > 0, !model.list {
+                if side == nil, hiddenOrphans > 0, !model.list {
                     HStack(spacing: 4) {
                         Text(verbatim: hiddenOrphans == 1 ? "1 unlinked note hidden." : "\(hiddenOrphans) unlinked notes hidden.").webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-muted", scheme))
                         Button { model.settings.filter.hideOrphans = false } label: { Text(verbatim: "Show").webText(.role(.footnote)).underline().foregroundStyle(moreVar("color-heading", scheme)) }.buttonStyle(.plain)
                     }
                     .padding(.horizontal, 12).padding(.vertical, 4)
                     .background(RoundedRectangle(cornerRadius: 10, style: .circular).fill(moreVar("glass-hover", scheme)))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(12)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(12)
                 }
-                if size.width >= 560 || model.panel == nil {
+                if keyShown {
                     // On a phone-wide map the Key starts folded (open, it covered half the map).
                     DnaLegendCard(shows: legendShows(), open: size.width >= 560 ? model.legendOpen : narrowKey) { if size.width >= 560 { model.legendOpen.toggle() } else { narrowKey.toggle() } }
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading).padding(12)
                 }
-                if let id = model.panel, model.index.byId[id] != nil {
-                    DnaPanelCard(
-                        id: id, ix: model.index, names: model.names, ai: model.ai, isCenter: id == model.center,
-                        expanded: model.around.map { a in a.nodes.contains { $0.id == id } && id != model.center && model.index.byId[id]?.kind == "note" } == true ? model.expandedNow.contains(id) : nil,
-                        onToggleExpand: { model.toggleExpanded(id) },
-                        onOpen: { frame.open(.note($0), commandHeld ? .newTab : .replace) },
-                        onCenter: { frame.open(.web("/graph?note=\($0)")) },
-                        onPick: { model.panel = $0 },
-                        onClose: { model.panel = nil }
+                if let side, sideShown {
+                    sideCard(side, listMax: max(120, geo.size.height - 12 - floor - (side == .panel ? 150 : 130)), notes: notes)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .padding(.top, 12).padding(.trailing, 12).padding(.bottom, floor)
+                        .transition(.opacity.combined(with: .offset(y: 6)))
+                }
+                if let at = model.playAt, let s = DnaMath.span(nodes) {
+                    let room = keyShown && !narrow ? 12 + 250 + 12 : 12
+                    DnaTimelineBar(
+                        start: s.start, end: s.end, at: at, playing: model.playing, count: DnaTimelineMath.notesSoFar(nodes, at: at),
+                        onPlay: { togglePlay(s) },
+                        onSeek: { v in model.playing = false; model.playAt = min(s.end, max(s.start, v)) },
+                        onClose: { WebMotion.animate(WebMotion.viewSwitch) { model.playing = false; model.playAt = nil } }
                     )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).padding(12)
+                    .frame(maxWidth: 560)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .padding(.leading, narrow ? 12 : CGFloat(room))
+                    .padding(.trailing, narrow ? 12 : max(Self.fabSide, pillRight + 184 + 12))
+                    .padding(.bottom, narrow ? floor + 52 : 12)
+                    .transition(.opacity.combined(with: .offset(y: 8)))
                 }
                 if !model.tourDone {
                     DnaTourCard(step: model.tourStep, onStep: { model.tourStep = $0 }, onDone: { model.tourDone = true })
@@ -1258,9 +1261,15 @@ struct GraphCanvasView: View {
                         .frame(maxWidth: .infinity, alignment: .top).padding(.top, 12)
                 }
                 if let o = offer { offerCard(o.s, at: o.at) }
-                if !model.picked.isEmpty { selectionBar.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom).padding(12) }
-                zoomButtons.frame(maxWidth: .infinity, alignment: .topTrailing).padding(12)
+                if !model.picked.isEmpty { selectionBar.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom).padding(12).padding(.bottom, model.playAt != nil ? DnaSide.barRoom - 12 : 0) }
+                if !(sideShown && narrow) {
+                    zoomButtons.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                        .padding(.trailing, pillRight).padding(.bottom, floor)
+                }
             }
+            .animation(WebMotion.change(WebMotion.viewSwitch), value: side)
+            .animation(WebMotion.change(WebMotion.viewSwitch), value: model.playAt != nil)
+            .task(id: model.playing) { await play() }
             .onAppear {
                 size = geo.size
                 refit(geo.size)
@@ -1674,6 +1683,84 @@ struct GraphCanvasView: View {
 
     // MARK: overlays
 
+    /// Room beside Ask Foli AI's button (the web's --fab-side): its left edge from the map's right, and a gap.
+    static var fabSide: CGFloat {
+        guard AiAskOverlay.clearance > 0 else { return 0 }
+        let fab = WebStyles.named("ai.fab").light
+        return 1280 - fab.x - AiAskOverlay.cardInset + 14
+    }
+
+    private func togglePlay(_ s: (start: Double, end: Double)) {
+        if model.playing { model.playing = false; return }
+        // Played to the end: Play starts again from the first note.
+        if (model.playAt ?? s.end) >= s.end { model.playAt = s.start }
+        model.playing = true
+    }
+
+    /// The time-lapse: about eight seconds from the first note to the last, by the clock; at the end it pauses there.
+    private func play() async {
+        guard model.playing, let s = DnaMath.span(nodes) else { return }
+        var last = Date()
+        while !Task.isCancelled, model.playing, let at = model.playAt {
+            try? await Task.sleep(for: .milliseconds(16))
+            guard model.playing, model.playAt == at else { return }
+            let now = Date()
+            let next = min(s.end, at + (s.end - s.start) * now.timeIntervalSince(last) * 1000 / DnaTimelineMath.playMs)
+            last = now
+            model.playAt = next
+            if next >= s.end { model.playing = false }
+        }
+    }
+
+    /// The floating card: a picked node's panel, else Insights, else the centre note's connections.
+    @ViewBuilder private func sideCard(_ side: DnaSide, listMax: CGFloat, notes: Int) -> some View {
+        if side == .panel, let id = model.panel {
+            DnaPanelCard(
+                id: id, ix: model.index, names: model.names, ai: model.ai, isCenter: id == model.center,
+                expanded: model.around.map { a in a.nodes.contains { $0.id == id } && id != model.center && model.index.byId[id]?.kind == "note" } == true ? model.expandedNow.contains(id) : nil,
+                listMax: listMax,
+                onToggleExpand: { model.toggleExpanded(id) },
+                onOpen: { frame.open(.note($0), commandHeld ? .newTab : .replace) },
+                onCenter: { frame.open(.web("/graph?note=\($0)")) },
+                onPick: { model.panel = $0 },
+                onClose: { model.panel = nil }
+            )
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                if let c = model.center, let a = model.around {
+                    let me = model.index.byId[c]
+                    DnaCardHead(
+                        title: (me?.label).flatMap { $0.isEmpty ? nil : $0 } ?? "Untitled",
+                        sub: a.connections.count == 1 ? "1 connection" : "\(a.connections.count) connections",
+                        closeLabel: "Back to the whole map", onClose: onWhole,
+                        tab: side, onTab: { t in WebMotion.animate(WebMotion.viewSwitch) { model.insights = t == .insights } }
+                    ) { centreGlyph(me) }
+                } else {
+                    DnaCardHead(title: "Insights", sub: "\(notes) \(notes == 1 ? "note" : "notes") on the map", closeLabel: "Close Insights", onClose: { model.insights = false }) { EmptyView() }
+                }
+                if side == .connections, let a = model.around {
+                    DnaConnectionsList(connections: a.connections, ix: model.index, names: model.names, expanded: model.expandedNow, picked: model.panel, onToggle: { model.toggleExpanded($0) }, onOpen: { frame.open(.note($0), commandHeld ? .newTab : .replace) }, onPick: { model.panel = $0 })
+                        .frame(maxHeight: listMax).fixedSize(horizontal: false, vertical: true)
+                } else {
+                    DnaInsightsView(model: model, value: value, nodes: nodes, edges: edges, frame: frame)
+                        .frame(maxHeight: listMax).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .dnaCard()
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(side == .insights ? "Insights" : "Connections")
+        }
+    }
+
+    /// The centre note's glyph: its folder in the folder's colour, else its dot.
+    @ViewBuilder private func centreGlyph(_ n: GraphNode?) -> some View {
+        if let f = n?.folderId, let folder = value.folders.first(where: { $0.id == f }) {
+            WebIconView(.folder, size: 14).foregroundStyle(FolderColor.resolve(folder.color).color.color)
+        } else {
+            KindGlyph(kind: n?.kind ?? "note")
+        }
+    }
+
     private func tooltip(_ n: GraphNode, _ spot: CGPoint, gap: CGFloat, above: Bool) -> some View {
         let keyboard = n.id == focusedNode && hover == nil
         let what = n.kind == "note" ? (keyboard ? "Enter opens it · Space says why it’s connected" : model.center == nil && model.pins[n.id] != nil ? "Click to see why it’s connected · double-click to unpin" : "Click to see why it’s connected · double-click to open") : "\(GraphMath.kindLabel[n.kind] ?? "Topic") · \(keyboard ? "Enter shows its notes" : "Click for its notes")"
@@ -1747,7 +1834,7 @@ struct GraphCanvasView: View {
     }
 
     private var zoomButtons: some View {
-        VStack(spacing: 2) {
+        HStack(spacing: 2) {
             WebIconButton(.zoomIn, label: "Zoom in") { zoomBy(1.25) }
             WebIconButton(.zoomOut, label: "Zoom out") { zoomBy(0.8) }
             WebIconButton(.maximize, label: "Fit to screen") { moved = false; refit() }
@@ -1806,16 +1893,15 @@ private struct ScrollWheelCatcher: View {
 
 // MARK: - Insights
 
-/// Foli DNA's side list (GraphView.tsx DnaInsights): hubs, clusters, bridges, suggested links, unlinked notes, likely
-/// duplicates and contradictions.
+/// Insights in the floating card (GraphView.tsx DnaInsights): hubs (a click maps around one), clusters (a click goes
+/// to one, the sparkle asks Foli AI to sum it up), bridges, suggested links, unlinked notes, likely duplicates and
+/// contradictions. Every row does something.
 struct DnaInsightsView: View {
     let model: GraphModel
     let value: GraphValue
     let nodes: [GraphNode]
     let edges: [GraphEdge]
     let frame: FrameModel
-    /// Full width (the phone), not a 280 pt column.
-    var wide = false
     @Environment(\.colorScheme) private var scheme
 
     private var byId: [String: GraphNode] { Dictionary(value.nodes.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) }
@@ -1833,27 +1919,25 @@ struct DnaInsightsView: View {
         let orphans = DnaMath.orphans(base.nodes, base.edges)
         let clashes = edges.filter { $0.kind == "contradicts" || $0.kind == "supersedes" }
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Text(verbatim: "Insights").webText(.role(.body, weight: 600)).foregroundStyle(moreVar("color-heading", scheme))
-                    Spacer()
-                    WebIconButton(.x, label: "Close Insights") { model.insights = false }
-                }
-                section("Hubs", empty: hubs.isEmpty ? "Nothing is connected yet." : nil) {
+            VStack(alignment: .leading, spacing: 4) {
+                section("Hubs", count: hubs.count, empty: hubs.isEmpty ? "Nothing is connected yet." : nil) {
                     ForEach(hubs, id: \.0.id) { h in
-                        HStack(spacing: 6) {
-                            KindGlyph(kind: h.0.kind)
-                            row(h.0.label.isEmpty ? "Untitled" : h.0.label) { model.center(on: h.0.id) }
+                        row(h.0.label.isEmpty ? "Untitled" : h.0.label, tip: "Map around it", action: { model.center(on: h.0.id) }) { KindGlyph(kind: h.0.kind) } trailing: {
                             Text(verbatim: "\(h.1)").webText(.role(.footnote)).monospacedDigit().foregroundStyle(moreVar("color-ink-faint", scheme))
                         }
                     }
                 }
-                section("Clusters", empty: clusters.isEmpty ? "Clusters show once a few notes link together." : nil) {
+                section("Clusters", count: clusters.count, empty: clusters.isEmpty ? "Clusters show once a few notes link together." : nil) {
                     ForEach(Array(clusters.prefix(12)), id: \.id) { c in
-                        HStack(spacing: 6) {
-                            RoundedRectangle(cornerRadius: 3, style: .circular).fill(moreVar(GraphMath.clusterTints[c.id % GraphMath.clusterTints.count], scheme)).frame(width: 10, height: 10)
-                            Text(verbatim: c.name).webText(.role(.subheadline)).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-                            Text(verbatim: "\(c.size)").webText(.role(.footnote)).monospacedDigit().foregroundStyle(moreVar("color-ink-faint", scheme))
+                        HStack(spacing: 2) {
+                            // A click goes to the cluster on the map; the sparkle asks Foli AI to sum it up.
+                            row(c.name, tip: "Show it on the map", action: {
+                                if let first = nodes.first(where: { $0.cluster == c.id && $0.kind == "note" }) ?? nodes.first(where: { $0.cluster == c.id }) { model.glideTo = first.id }
+                            }) {
+                                RoundedRectangle(cornerRadius: 3, style: .circular).fill(moreVar(GraphMath.clusterTints[c.id % GraphMath.clusterTints.count], scheme)).frame(width: 10, height: 10)
+                            } trailing: {
+                                Text(verbatim: "\(c.size)").webText(.role(.footnote)).monospacedDigit().foregroundStyle(moreVar("color-ink-faint", scheme))
+                            }
                             WebIconButton(.sparkles, label: "Ask Foli AI to sum up \(c.name)") {
                                 let names = value.nodes.filter { $0.cluster == c.id && $0.kind == "note" }.prefix(20).map { $0.label.isEmpty ? "Untitled" : $0.label }
                                 frame.askAI(question: "Sum up what these notes say together: \(names.joined(separator: ", ")).")
@@ -1862,43 +1946,48 @@ struct DnaInsightsView: View {
                     }
                 }
                 if !bridges.isEmpty {
-                    section("Bridges") {
-                        ForEach(Array(bridges.prefix(10)), id: \.id) { b in row(b.label.isEmpty ? "Untitled" : b.label) { if b.kind == "note" { frame.open(.note(b.id)) } } }
-                    }
-                }
-                if value.full {
-                    section("Suggested links", empty: suggested.isEmpty ? "No suggestions right now." : nil) {
-                        ForEach(Array(suggested.prefix(12).enumerated()), id: \.offset) { _, s in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(verbatim: "\(name(s.source)) and \(name(s.target))").webText(.role(.subheadline)).foregroundStyle(moreVar("color-ink", scheme))
-                                Text(verbatim: "Both mention \(s.entities.joined(separator: ", "))").webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-faint", scheme))
-                                WebButton("Link them", variant: .quiet, size: .sm) { model.link(s) }
+                    section("Bridges", count: bridges.count) {
+                        ForEach(Array(bridges.prefix(10)), id: \.id) { b in
+                            // A note opens; a person, project or topic says why it's connected.
+                            row(b.label.isEmpty ? "Untitled" : b.label, action: { if b.kind == "note" { frame.open(.note(b.id)) } else { model.panel = b.id } }) {
+                                if b.kind == "note" { noteIcon } else { KindGlyph(kind: b.kind) }
                             }
                         }
                     }
                 }
-                section("Unlinked notes", empty: orphans.isEmpty ? "Every note links to another." : nil) {
-                    ForEach(Array(orphans.prefix(15)), id: \.id) { o in row(o.label.isEmpty ? "Untitled" : o.label) { openRelated(o.id) } }
-                    if orphans.count > 15 { Text(verbatim: "and \(orphans.count - 15) more").webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-faint", scheme)) }
+                if value.full {
+                    section("Suggested links", count: suggested.count, empty: suggested.isEmpty ? "No suggestions right now." : nil) {
+                        ForEach(Array(suggested.prefix(12).enumerated()), id: \.offset) { _, s in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(verbatim: "\(name(s.source)) and \(name(s.target))").webText(.role(.subheadline)).foregroundStyle(moreVar("color-ink", scheme))
+                                Text(verbatim: "Both mention \(s.entities.joined(separator: ", "))").webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-faint", scheme))
+                                WebButton("Link them", variant: .quiet, size: .sm) { model.link(s) }.dnaHover(radius: 8)
+                            }
+                            .padding(.horizontal, 6).padding(.vertical, 4)
+                        }
+                    }
+                }
+                section("Unlinked notes", count: orphans.count, empty: orphans.isEmpty ? "Every note links to another." : nil) {
+                    ForEach(Array(orphans.prefix(15)), id: \.id) { o in row(o.label.isEmpty ? "Untitled" : o.label, action: { openRelated(o.id) }) { noteIcon } }
+                    if orphans.count > 15 { Text(verbatim: "and \(orphans.count - 15) more").webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-faint", scheme)).padding(.horizontal, 6) }
                 }
                 if value.full, !value.duplicates.isEmpty {
-                    section("Likely duplicates") {
-                        ForEach(Array(value.duplicates.prefix(10).enumerated()), id: \.offset) { _, d in row("\(name(d.a)) and \(name(d.b))") { openRelated(d.a) } }
+                    section("Likely duplicates", count: value.duplicates.count) {
+                        ForEach(Array(value.duplicates.prefix(10).enumerated()), id: \.offset) { _, d in row("\(name(d.a)) and \(name(d.b))", action: { openRelated(d.a) }) { noteIcon } }
                     }
                 }
                 if !clashes.isEmpty {
-                    section("Contradictions") {
+                    section("Contradictions", count: clashes.count) {
                         ForEach(Array(clashes.prefix(10).enumerated()), id: \.offset) { _, e in
-                            row("\(name(e.source)) \(e.kind == "supersedes" ? "replaces" : "and") \(name(e.target))") { openRelated(e.source) }
+                            row("\(name(e.source)) \(e.kind == "supersedes" ? "replaces" : "and") \(name(e.target))", action: { openRelated(e.source) }) { noteIcon }
                         }
                     }
                 }
             }
-            .padding(.horizontal, 16).padding(.bottom, max(32, AiAskOverlay.clearance))
+            .padding(.horizontal, 6).padding(.bottom, 8)
         }
-        .frame(width: wide ? nil : 280)
-        .frame(maxWidth: wide ? .infinity : nil)
-        .overlay(alignment: .leading) { if !wide { Rectangle().fill(moreVar("color-line", scheme)).frame(width: 1) } }
+        .scrollBounceBehavior(.basedOnSize)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel("Insights")
     }
 
@@ -1911,19 +2000,30 @@ struct DnaInsightsView: View {
         }
     }
 
-    private func section<C: View>(_ title: String, empty: String? = nil, @ViewBuilder content: () -> C) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(verbatim: title.uppercased()).webText(.caps).foregroundStyle(moreVar("color-ink-muted", scheme))
-            if let empty { Text(verbatim: empty).webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-faint", scheme)) } else { content() }
+    private func section<C: View>(_ title: String, count: Int? = nil, empty: String? = nil, @ViewBuilder content: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            DnaSectionHead(title: title, count: count)
+            if let empty { Text(verbatim: empty).webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-faint", scheme)).padding(.horizontal, 6).padding(.bottom, 4) } else { content() }
         }
     }
 
-    private func row(_ title: String, action: @escaping () -> Void) -> some View {
+    /// A tight row (32 tall) with the glass hover over all of it; `trailing` sits at its end.
+    private func row<Lead: View, Trail: View>(_ title: String, tip: String? = nil, action: @escaping () -> Void, @ViewBuilder lead: () -> Lead, @ViewBuilder trailing: () -> Trail = { EmptyView() }) -> some View {
         Button(action: action) {
-            Text(verbatim: title).webText(.role(.subheadline)).lineLimit(1).foregroundStyle(moreVar("color-ink", scheme)).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            HStack(spacing: 8) {
+                lead()
+                Text(verbatim: title).webText(.role(.subheadline)).lineLimit(1).foregroundStyle(moreVar("color-ink", scheme)).frame(maxWidth: .infinity, alignment: .leading)
+                trailing()
+            }
+            .padding(.horizontal, 6).frame(height: 32)
+            .contentShape(Rectangle())
+            .dnaHover()
         }
         .buttonStyle(.plain)
+        .foleviTooltip(tip ?? "")
     }
+
+    private var noteIcon: some View { WebIconView(.fileText, size: 13).foregroundStyle(moreVar("color-ink-muted", scheme)) }
 }
 
 // MARK: - List

@@ -87,16 +87,59 @@ test.describe("Foli DNA of this note", { tag: "@local" }, () => {
     await page.waitForURL(/\/graph\?note=/);
     expect(new URL(page.url()).searchParams.get("note")).toBe(pricing.replace("/d/", ""));
     await expect(page.getByRole("application", { name: /Foli DNA of 4 notes/ })).toBeVisible({ timeout: 30_000 });
+    // The floating card: the note's name, how many, its connections grouped by why, each with Open.
     const list = page.getByRole("complementary", { name: "Connections" });
-    await expect(list.getByRole("heading", { name: "3 connections" })).toBeVisible();
-    await expect(list.getByRole("link", { name: /Plan.*links to/ })).toBeVisible();
-    await expect(list.getByRole("link", { name: /Weekly notes.*links here/ })).toBeVisible();
+    await expect(list.getByRole("heading", { name: "Pricing" })).toBeVisible();
+    await expect(list).toContainText("3 connections");
+    await expect(list.getByRole("heading", { name: /Links\s*3/ })).toBeVisible();
+    await expect(list.getByRole("button", { name: "Plan", exact: true })).toBeVisible();
+    await expect(list.getByRole("button", { name: "Weekly notes", exact: true })).toBeVisible();
+    await expect(list.getByRole("button", { name: "Open" })).toHaveCount(3);
     await expect(page.getByRole("button", { name: /^Lonely thought, note/ })).toHaveCount(0);
     // Each line says why, on the map too.
     await expect(page.locator("svg text", { hasText: "links here" })).toHaveCount(1);
+    // The card and the zoom pill stay clear of each other and of Ask Foli AI.
+    const box = async (sel: ReturnType<Page["locator"]>) => (await sel.boundingBox())!;
+    const card = await box(list);
+    const zoom = await box(page.getByRole("group", { name: "Zoom" }));
+    const overlaps = (a: { x: number; y: number; width: number; height: number }, b: typeof a) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+    expect(overlaps(card, zoom)).toBe(false);
+    const fab = page.locator(".ui-fab");
+    if (await fab.count()) expect(overlaps(card, await box(fab)) || overlaps(zoom, await box(fab))).toBe(false);
     await shots(page, "note-map");
 
+    // Insights around a note: the toolbar's button switches the card to it (it did nothing here), and back.
+    await page.getByRole("button", { name: "Insights", exact: true }).first().click();
+    const insights = page.getByRole("complementary", { name: "Insights" });
+    await expect(insights.getByRole("heading", { name: /^Hubs/ })).toBeVisible();
+    await expect(insights.getByRole("group", { name: "Show in the card" }).getByRole("button", { name: "Insights" })).toHaveAttribute("aria-pressed", "true");
+    await shots(page, "note-insights");
+    await insights.getByRole("button", { name: "Connections", exact: true }).click();
+    await expect(list).toBeVisible();
+
+    // The time-lapse: a bar with play, the date over the playhead, how many notes so far; Space pauses, the arrow
+    // keys step, x goes back to now.
+    await page.getByRole("button", { name: "Play how it grew" }).click();
+    const bar = page.getByRole("group", { name: "How it grew" });
+    await expect(bar).toBeVisible();
+    await expect(bar.getByRole("slider", { name: "Date" })).toBeFocused();
+    await page.waitForTimeout(2500);
+    await page.keyboard.press(" ");
+    await expect(bar.getByRole("button", { name: "Play" })).toBeVisible();
+    await expect(bar).toContainText(/\d of 4 notes/);
+    await page.keyboard.press("Home");
+    await expect(bar).toContainText(/1 of 4 notes/);
+    await page.keyboard.press("End");
+    await expect(bar).toContainText("4 of 4 notes");
+    await bar.getByRole("slider", { name: "Date" }).click();
+    expect(overlaps(await box(bar), await box(list))).toBe(false);
+    expect(overlaps(await box(bar), await box(page.getByRole("group", { name: "Zoom" })))).toBe(false);
+    await shots(page, "timeline");
+    await bar.getByRole("button", { name: "Close the time-lapse" }).click();
+    await expect(bar).toHaveCount(0);
+
     // Expand a neighbour: Weekly notes' own link to Archive idea shows.
+    await list.getByRole("button", { name: "Weekly notes", exact: true }).hover();
     await list.getByRole("button", { name: "Show what Weekly notes connects to" }).click();
     await expect(page.getByRole("application", { name: /Foli DNA of 5 notes/ })).toBeVisible();
 

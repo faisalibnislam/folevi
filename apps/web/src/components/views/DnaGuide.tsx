@@ -5,11 +5,11 @@
 // connected, and the list of a note's connections on the map around it. The Mac, iPad and iPhone draw the same
 // in GraphScreen.swift.
 import { useEffect, useMemo, useRef } from "react";
-import { ChevronDown, ChevronUp, FileText, Plus, Minus, Waypoints, X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronUp, FileText, Plus, Minus, Waypoints, X } from "lucide-react";
 import { AppLink } from "@/lib/app/router";
 import { Button, IconButton } from "@/components/ui/Button";
 import { shapePath } from "@/lib/graph/layout";
-import { explain, lineLabel, type Connection, type DnaIndex, type Names } from "@/lib/graph/neighbourhood";
+import { explain, groupConnections, lineLabel, type Connection, type DnaIndex, type Names } from "@/lib/graph/neighbourhood";
 
 // ---- the Key
 
@@ -63,7 +63,7 @@ export function DnaLegend({ shows, open, onToggle }: { shows: LegendShows; open:
   );
   return (
     <section aria-label="Key" className="ui-pop pointer-events-auto w-[min(250px,calc(100vw-48px))] rounded-panel text-footnote text-muted">
-      <button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-center gap-2 rounded-panel px-3 py-2 text-left font-semibold text-heading">
+      <button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-center gap-2 rounded-panel px-3 py-2 text-left font-semibold text-heading transition-colors duration-150 hover:bg-[var(--glass-hover)]">
         <span className="flex-1">Key</span>
         {open ? <ChevronDown size={14} aria-hidden className="text-faint" /> : <ChevronUp size={14} aria-hidden className="text-faint" />}
       </button>
@@ -173,6 +173,170 @@ export function DnaTour({ step, onStep, onDone }: { step: number; onStep: (n: nu
   );
 }
 
+// ---- the floating card over the map (the map around a note, a picked note's panel, Insights)
+
+/**
+ * The floating card's surface (the owner's design A, 6 November 2026): the popover glass, its radius and shadow,
+ * as wide as its slot (about 300), as tall as its content up to the slot (which stops above Ask Foli AI).
+ */
+export const DNA_CARD = "ui-pop pointer-events-auto flex max-h-full min-h-0 w-full flex-col overflow-hidden rounded-panel animate-[folio-rise_180ms_var(--ease-folio)] motion-reduce:animate-none";
+/** A tight row in the card (about 32 tall) with the glass hover over all of it. */
+export const DNA_ROW = "flex h-8 min-w-0 items-center gap-2 rounded-chip px-1.5 text-subheadline text-ink transition-colors duration-150 hover:bg-[var(--glass-hover)] hover:text-heading";
+
+const KIND_VAR: Record<string, string> = {
+  note: "var(--color-ink-muted)",
+  person: "var(--color-coral)",
+  project: "var(--color-accent)",
+  organization: "var(--color-moss)",
+  topic: "var(--color-marigold)",
+  decision: "var(--color-plum)",
+};
+
+/** A node's small glyph: a note's dot, an entity's shape in its colour. */
+export function KindDot({ kind, size = 10 }: { kind: string; size?: number }) {
+  const r = size / 2 - 1;
+  const d = shapePath(kind, r * 0.85);
+  const fill = KIND_VAR[kind] ?? KIND_VAR.note;
+  return (
+    <svg width={size} height={size} viewBox={`${-size / 2} ${-size / 2} ${size} ${size}`} aria-hidden className="flex-none">
+      {d ? <path d={d} fill={fill} /> : <circle r={r} fill={fill} />}
+    </svg>
+  );
+}
+
+/**
+ * The card's head: the centre note's glyph (its folder's colour, else its dot) and name, a muted line under it, and
+ * an x (back to the whole map, or close Insights). Around a note, a small switch below: Connections or Insights.
+ */
+export function DnaCardHead({
+  glyph,
+  title,
+  sub,
+  closeLabel,
+  onClose,
+  tab,
+  onTab,
+}: {
+  glyph?: React.ReactNode;
+  title: string;
+  sub?: string;
+  closeLabel: string;
+  onClose: () => void;
+  tab?: "connections" | "insights";
+  onTab?: (t: "connections" | "insights") => void;
+}) {
+  return (
+    <div className="flex-none px-3 pb-2 pt-3">
+      <div className="flex items-start gap-2">
+        {glyph ? <span className="mt-0.5 flex h-4 w-4 flex-none items-center justify-center">{glyph}</span> : null}
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-body font-semibold leading-snug text-heading">{title}</h2>
+          {sub ? <p className="truncate text-footnote tabular-nums text-muted">{sub}</p> : null}
+        </div>
+        <IconButton label={closeLabel} onClick={onClose} className="!h-7 !w-7 -mr-1 -mt-1 flex-none">
+          <X size={14} aria-hidden />
+        </IconButton>
+      </div>
+      {tab && onTab ? (
+        <div role="group" aria-label="Show in the card" className="ui-seg ui-well mt-2 !p-0.5">
+          {(["connections", "insights"] as const).map((t) => (
+            <button key={t} type="button" aria-pressed={tab === t} onClick={() => onTab(t)} className="!min-h-7 text-subheadline hover:aria-[pressed=false]:bg-[var(--glass-hover)]">
+              {t === "connections" ? "Connections" : "Insights"}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** A small caps section label with its count at the right. */
+export function DnaSection({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
+  return (
+    <section className="mt-2 first:mt-0">
+      <h3 className="ui-caps flex h-6 items-center justify-between gap-2 px-1.5">
+        <span className="truncate">{title}</span>
+        {count !== undefined ? <span className="tabular-nums text-faint">{count}</span> : null}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * The centre note's connections, grouped by why (links, mentions, a shared tag or folder…). A click on a row picks
+ * it on the map (its panel says why); the arrow at the end opens it; + (on hover) shows its own connections too.
+ */
+export function DnaConnections({
+  connections,
+  index,
+  names,
+  expanded,
+  picked,
+  onToggle,
+  onPick,
+  onOpen,
+}: {
+  connections: Connection[];
+  index: DnaIndex;
+  names: Names;
+  expanded: ReadonlySet<string>;
+  picked: string | null;
+  onToggle: (id: string) => void;
+  onPick: (id: string) => void;
+  onOpen: (id: string, newTab?: boolean) => void;
+}) {
+  const groups = useMemo(() => groupConnections(connections, names), [connections, names]);
+  const why = useMemo(() => new Map(connections.map((c) => [c.id, lineLabel(c.reasons, names)])), [connections, names]);
+  if (!connections.length) return <p className="px-3 pb-3 text-subheadline text-muted">Nothing yet. Type [[ in the note to link another one.</p>;
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 pb-2">
+      {groups.map((g) => (
+        <DnaSection key={g.key} title={g.title} count={g.ids.length}>
+          <ul>
+            {g.ids.map((id) => {
+              const o = index.byId.get(id);
+              if (!o) return null;
+              const label = o.label || "Untitled";
+              const note = o.kind === "note";
+              const on = expanded.has(id);
+              return (
+                <li key={id} className={`group flex items-center gap-0.5 rounded-chip pr-1 transition-colors duration-150 hover:bg-[var(--glass-hover)] ${picked === id ? "bg-accent-soft" : ""}`}>
+                  <button
+                    type="button"
+                    aria-current={picked === id || undefined}
+                    title={why.get(id)}
+                    onClick={() => onPick(id)}
+                    className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-chip pl-1.5 text-left text-subheadline text-ink outline-none hover:text-heading focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"
+                  >
+                    {note ? <FileText size={13} aria-hidden className="flex-none text-muted" /> : <KindDot kind={o.kind} />}
+                    <span className="truncate">{label}</span>
+                  </button>
+                  {note ? (
+                    <IconButton
+                      label={on ? `Hide what ${label} connects to` : `Show what ${label} connects to`}
+                      aria-pressed={on}
+                      onClick={() => onToggle(id)}
+                      className={`!h-6 !min-h-6 !w-6 !min-w-6 flex-none ${on ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"}`}
+                    >
+                      {on ? <Minus size={13} aria-hidden /> : <Plus size={13} aria-hidden />}
+                    </IconButton>
+                  ) : null}
+                  {note ? (
+                    <IconButton label="Open" onClick={(e) => onOpen(id, e.metaKey || e.ctrlKey)} className="!h-6 !min-h-6 !w-6 !min-w-6 flex-none">
+                      <ArrowUpRight size={14} aria-hidden />
+                    </IconButton>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </DnaSection>
+      ))}
+    </div>
+  );
+}
+
 // ---- why a note is connected, in words
 
 /**
@@ -210,8 +374,11 @@ export function DnaNodePanel({
   if (!n) return null;
   const note = n.kind === "note";
   return (
-    <section aria-label={`Why ${n.label || "Untitled"} is connected`} className="ui-pop pointer-events-auto flex max-h-[min(70vh,520px)] w-[min(320px,calc(100vw-32px))] flex-col rounded-panel">
+    <section aria-label={`Why ${n.label || "Untitled"} is connected`} className={DNA_CARD}>
       <div className="flex items-start gap-2 px-3 pt-3">
+        <span className="mt-1 flex-none">
+          <KindDot kind={n.kind} />
+        </span>
         <h2 className="min-w-0 flex-1 text-body font-semibold leading-snug text-heading">{n.label || "Untitled"}</h2>
         <IconButton label="Close" onClick={onClose} className="!h-7 !w-7 -mr-1 -mt-1">
           <X size={14} aria-hidden />
@@ -239,8 +406,8 @@ export function DnaNodePanel({
       <div className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3">
         {words.groups.map((g) => (
           <div key={g.title}>
-            <h3 className="ui-caps mb-0.5">
-              {g.title} <span className="tabular-nums text-faint">{g.ids.length}</span>
+            <h3 className="ui-caps mb-0.5 flex items-center justify-between px-1.5">
+              <span className="truncate">{g.title}</span> <span className="tabular-nums text-faint">{g.ids.length}</span>
             </h3>
             <ul className="space-y-0.5">
               {g.ids.slice(0, 8).map((x) => {
@@ -249,12 +416,13 @@ export function DnaNodePanel({
                 return (
                   <li key={x}>
                     {o.kind === "note" ? (
-                      <AppLink href={`/d/${x}`} className="flex items-center gap-1.5 rounded-chip px-1.5 py-1 text-subheadline hover:bg-accent-soft">
+                      <AppLink href={`/d/${x}`} className={DNA_ROW}>
                         <FileText size={13} aria-hidden className="flex-none text-muted" />
                         <span className="truncate">{o.label || "Untitled"}</span>
                       </AppLink>
                     ) : (
-                      <button type="button" onClick={() => onPick(x)} className="flex w-full items-center gap-1.5 rounded-chip px-1.5 py-1 text-left text-subheadline hover:bg-accent-soft">
+                      <button type="button" onClick={() => onPick(x)} className={`${DNA_ROW} w-full text-left`}>
+                        <KindDot kind={o.kind} />
                         <span className="truncate">{o.label}</span>
                       </button>
                     )}
@@ -270,69 +438,3 @@ export function DnaNodePanel({
   );
 }
 
-// ---- the map around a note: its connections as a list
-
-/** Beside the map around a note: each connection with why, one click to open; + shows that note's own too. */
-export function DnaConnections({
-  center,
-  connections,
-  index,
-  names,
-  expanded,
-  onToggle,
-  onPick,
-  onWhole,
-}: {
-  center: string;
-  connections: Connection[];
-  index: DnaIndex;
-  names: Names;
-  expanded: ReadonlySet<string>;
-  onToggle: (id: string) => void;
-  onPick: (id: string) => void;
-  onWhole: () => void;
-}) {
-  const me = index.byId.get(center);
-  return (
-    <aside aria-label="Connections" className="hidden w-72 flex-none flex-col border-l border-line md:flex">
-      <div className="px-4 pb-1 pt-3">
-        <h2 className="text-body font-semibold text-heading">{connections.length === 1 ? "1 connection" : `${connections.length} connections`}</h2>
-        <p className="text-footnote text-muted">What {me?.label || "this note"} is connected to, and why.</p>
-      </div>
-      <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
-        {connections.map((c) => {
-          const o = index.byId.get(c.id);
-          if (!o) return null;
-          const why = lineLabel(c.reasons, names);
-          const on = expanded.has(c.id);
-          return (
-            <li key={c.id} className="group flex items-center gap-1 rounded-chip hover:bg-accent-soft">
-              {o.kind === "note" ? (
-                <AppLink href={`/d/${c.id}`} className="min-w-0 flex-1 px-2 py-1.5">
-                  <span className="block truncate text-subheadline text-heading">{o.label || "Untitled"}</span>
-                  <span className="block truncate text-footnote text-muted">{why}</span>
-                </AppLink>
-              ) : (
-                <button type="button" onClick={() => onPick(c.id)} className="min-w-0 flex-1 px-2 py-1.5 text-left">
-                  <span className="block truncate text-subheadline text-heading">{o.label}</span>
-                  <span className="block truncate text-footnote text-muted">{why}</span>
-                </button>
-              )}
-              {o.kind === "note" ? (
-                <IconButton label={on ? `Hide what ${o.label || "Untitled"} connects to` : `Show what ${o.label || "Untitled"} connects to`} aria-pressed={on} onClick={() => onToggle(c.id)} className="!h-7 !w-7 flex-none">
-                  {on ? <Minus size={14} aria-hidden /> : <Plus size={14} aria-hidden />}
-                </IconButton>
-              ) : null}
-            </li>
-          );
-        })}
-        {!connections.length ? <li className="px-2 py-1.5 text-subheadline text-muted">Nothing yet. Type [[ in the note to link another one.</li> : null}
-      </ul>
-      <div className="border-t border-line p-2">
-        <Button variant="quiet" size="sm" onClick={onWhole} className="w-full">
-          Back to the whole map
-        </Button>
-      </div>
-    </aside>
-  );
-}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import { COMPARE_CHECKED, COMPETITORS, FOLEVI_ROWS, TRIAL_LINE, comparePath, competitorBySlug, trademarkLine, type Competitor } from "@/components/marketing/content/compare";
+import { COMPETITORS, FOLEVI_ROWS, TRIAL_LINE, checkedRange, comparePath, competitorBySlug, trademarkLine, type Competitor } from "@/components/marketing/content/compare";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { FaqSection, LinkCard, SignUpPanel } from "@/components/marketing/parts";
 import { JsonLd, pageMetadata } from "@/components/marketing/seo";
@@ -32,10 +32,27 @@ function webPageLd(competitor: Competitor): Record<string, unknown> {
     dateModified: competitor.updated,
     isPartOf: { "@type": "WebSite", name: "Folevi", url: absoluteUrl("/") },
     about: [
-      { "@type": "SoftwareApplication", name: "Folevi", applicationCategory: "ProductivityApplication", operatingSystem: "Web" },
+      { "@type": "SoftwareApplication", name: "Folevi", applicationCategory: "ProductivityApplication", operatingSystem: "macOS 15, iOS 18, iPadOS 18, Web" },
       { "@type": "SoftwareApplication", name: competitor.name, applicationCategory: "ProductivityApplication" },
     ],
   };
+}
+
+/** "on 30 September 2026", or "between 30 September 2026 and 6 November 2026" when sources were checked on different days. */
+function CheckedDays({ competitor }: { competitor: Competitor }) {
+  const { first, last } = checkedRange(competitor.sources);
+  if (first === last) {
+    return (
+      <>
+        on <time dateTime={first}>{formatDay(first)}</time>
+      </>
+    );
+  }
+  return (
+    <>
+      between <time dateTime={first}>{formatDay(first)}</time> and <time dateTime={last}>{formatDay(last)}</time>
+    </>
+  );
 }
 
 /** The comparison table: one row per fact, a plain value per product, and the sources for the other one. */
@@ -81,7 +98,7 @@ function CompareTableWide({ competitor, sourceNumbers }: { competitor: Competito
     <div className="mk-table-card overflow-x-auto max-sm:hidden" role="region" aria-label={`Folevi and ${competitor.name} compared`} tabIndex={0}>
       <table className="min-w-[560px]">
         <caption className="sr-only">
-          Folevi and {competitor.name} compared. {competitor.name}’s details are from its website on {formatDay(COMPARE_CHECKED)}; the numbers after each one point to the sources below.
+          Folevi and {competitor.name} compared. {competitor.name}’s details are from its website, checked <CheckedDays competitor={competitor} />; the numbers after each one point to the sources below.
         </caption>
         <thead>
           <tr>
@@ -155,7 +172,7 @@ export default async function ComparePage({ params }: Params) {
             </ButtonLink>
           </div>
           <p className="mt-4 text-[14px] text-muted">
-            {competitor.name}’s details checked on <time dateTime={COMPARE_CHECKED}>{formatDay(COMPARE_CHECKED)}</time>. Updated <time dateTime={competitor.updated}>{formatDay(competitor.updated)}</time>.
+            {competitor.name}’s details checked <CheckedDays competitor={competitor} />. Updated <time dateTime={competitor.updated}>{formatDay(competitor.updated)}</time>.
           </p>
         </HeaderCard>
 
@@ -215,7 +232,7 @@ export default async function ComparePage({ params }: Params) {
             <section aria-labelledby="sources" className={proseCard}>
               <h2 id="sources">Sources</h2>
               <p>
-                {competitor.name}’s details come from its own website. Each was checked on <time dateTime={COMPARE_CHECKED}>{formatDay(COMPARE_CHECKED)}</time>. Folevi’s come from our <Link href="/pricing">pricing</Link>, <Link href="/features">features</Link> and <Link href="/docs">docs</Link>.
+                {competitor.name}’s details come from its own website, checked <CheckedDays competitor={competitor} />. Each source below shows the day it was checked. Folevi’s come from our <Link href="/pricing">pricing</Link>, <Link href="/features">features</Link> and <Link href="/docs">docs</Link>.
               </p>
               <ol className="text-[15px]">
                 {competitor.sources.map((s) => (
@@ -228,7 +245,7 @@ export default async function ComparePage({ params }: Params) {
                 ))}
               </ol>
               <p className="text-[15px] text-muted">
-                Prices and features of other products are from their public websites on {formatDay(COMPARE_CHECKED)} and may have changed. {trademarkLine(competitor.trademarks)} If something here is out of date, <Link href="/support">tell us</Link> and we’ll fix it.
+                Prices and features of other products are from their public websites on the days shown and may have changed since. {trademarkLine(competitor.trademarks)} If something here is out of date, <Link href="/support">tell us</Link> and we’ll fix it.
               </p>
             </section>
           </div>

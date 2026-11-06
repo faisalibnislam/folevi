@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { COMPARE_CHECKED, COMPETITORS, TRIAL_LINE, comparePath, trademarkLine } from "@/components/marketing/content/compare";
+import { COMPARE_CHECKED, COMPARE_LAST_CHECKED, COMPETITORS, TRIAL_LINE, comparePath, trademarkLine } from "@/components/marketing/content/compare";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { Checks } from "@/components/marketing/Checks";
 import { CompareChart } from "@/components/marketing/CompareChart";
@@ -13,7 +13,7 @@ import { Eyebrow } from "@/components/marketing/ui";
 export const metadata = pageMetadata({
   title: "Folevi alternatives and comparisons",
   description:
-    "How Folevi compares with Notion, Craft, Apple Notes, Obsidian, Bear and Evernote on price, offline editing, AI, apps and export, with every fact sourced.",
+    "Folevi’s free Mac, iPhone and iPad apps, with no account, next to Notion, Craft, Apple Notes, Obsidian, Bear and Evernote. Every fact sourced.",
   path: "/compare",
   ogImage: "segment",
 });
@@ -54,7 +54,9 @@ export default function CompareIndexPage() {
           <h1 className="mk-display mt-5 max-w-[14ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
             How Folevi <Mark>compares.</Mark>
           </h1>
-          <p className="mk-lede mt-6 max-w-[60ch]">One page per app, with sources and how to move across.</p>
+          <p className="mk-lede mt-6 max-w-[60ch]">
+            Folevi’s Mac, iPhone and iPad apps are free forever, with no account, and your notes stay files in a folder you pick. Here is how that compares, one page per app, with sources and how to move across.
+          </p>
         </HeaderCard>
         <Card as="div">
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -92,7 +94,7 @@ export default function CompareIndexPage() {
               <>Every page lists its sources, with links</>,
               <>No reviews, ratings or rankings</>,
               <>
-                Checked {formatDay(COMPARE_CHECKED)}. Out of date?{" "}
+                Checked between {formatDay(COMPARE_CHECKED)} and {formatDay(COMPARE_LAST_CHECKED)}. Out of date?{" "}
                 <Link href="/support" className="mk-link">
                   Tell us
                 </Link>

@@ -8,12 +8,9 @@ import { FinalCta, PricingSection } from "@/components/marketing/home/Closing";
 import { Hero } from "@/components/marketing/home/Hero";
 import { PageBackdrop } from "@/components/marketing/PageBackdrop";
 import { Included } from "@/components/marketing/home/Included";
-import { YourFiles } from "@/components/marketing/home/YourFiles";
-import { Switch } from "@/components/marketing/home/Switch";
 import { Suite } from "@/components/marketing/home/Suite";
 import { FoliDna, VaultSecurity } from "@/components/marketing/home/DnaAndVault";
 import { HomeFaq } from "@/components/marketing/home/HomeFaq";
-import { NoteStyles } from "@/components/marketing/home/NoteStyles";
 import { SlashSection } from "@/components/marketing/home/SlashSection";
 import { JsonLd, organizationLd, pageMetadata, softwareLd } from "@/components/marketing/seo";
 
@@ -39,13 +36,10 @@ export default function HomePage() {
           <Suite />
           <FoliDna />
           <VaultSecurity />
-          <YourFiles />
           <Included />
-          <NoteStyles />
           <AiSection />
           <SlashSection />
           <Chapters />
-          <Switch />
           <HomeFaq />
           <FinalCta />
         </div>

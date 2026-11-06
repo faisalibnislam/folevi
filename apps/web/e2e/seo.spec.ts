@@ -96,7 +96,7 @@ const PAGES = [
   { path: "/features/flowcharts", h1: "Flowcharts and diagrams inside your notes" },
   { path: "/template-gallery/meeting-notes", h1: "Meeting notes template" },
   { path: "/docs/sync-and-offline", h1: "Sync and offline" },
-  { path: "/features", h1: "Everything Folevi does, one page each." },
+  { path: "/features", h1: "One workspace for your docs, tasks and team." },
   { path: "/template-gallery", h1: "Free note templates for Folevi." },
   { path: "/docs", h1: "How Folevi works." },
   // Pages that gained links to the new ones.

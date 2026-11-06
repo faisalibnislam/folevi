@@ -29,7 +29,7 @@ const TILES: Tile[] = [
     picture: <SyncPicture />,
   },
   {
-    title: "Note themes",
+    title: "57 note themes",
     href: "/features/note-themes",
     label: "Five note theme artworks fanned out, and a note in the Summer sky theme.",
     picture: <StylesPicture />,

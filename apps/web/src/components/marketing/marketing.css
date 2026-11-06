@@ -1444,3 +1444,7 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
 .mk-hero-apps { padding: 28px 20px 32px; }
 @media (min-width: 640px) { .mk-hero-apps { padding: 36px 40px 44px; } }
 @media (min-width: 1024px) { .mk-hero-apps { padding: 40px 56px 56px; } }
+
+/* The iPhone drawn in the home page's showcase (home/DeviceShowcase.tsx): the device's own corners. */
+.mk-phone { --mk-phone-r: 40px; border-radius: var(--mk-phone-r, var(--radius-container)); }
+.mk-phone-screen { --mk-phone-screen-r: 32px; border-radius: var(--mk-phone-screen-r, var(--radius-container)); }

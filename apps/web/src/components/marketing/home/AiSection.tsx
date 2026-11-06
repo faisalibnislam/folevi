@@ -3,7 +3,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import { Icon } from "../icons";
 import { AskDemo } from "../demos/AskDemo";
 import { EditDemo } from "../demos/EditDemo";
-import { Kbd, SectionHeading, box, container, cx } from "../ui";
+import { Kbd, box, container, cx } from "../ui";
 import { Feature } from "../featureRows";
 import { Mark } from "../fun";
 
@@ -16,12 +16,15 @@ export function AiSection() {
   return (
     <section id="ai" aria-labelledby="ai-title" className={cx(container, "scroll-mt-20")}>
       <div className={cx(box, "mk-tint relative")}>
-        <AiIcon size={32} />
-        <SectionHeading className="mt-6" id="ai-title" eyebrow="Foli AI" title={
-            <>
-              Ask, write and draw with <Mark>your notes</Mark>.
-            </>
-          } lede="It only reads notes you can open, and asks before changes. In the Mac app it can run on Apple Intelligence or your own key." />
+        <h2 id="ai-title" className="mk-h2">
+          <span className="flex items-center gap-3">
+            <AiIcon size={52} /> Foli AI
+          </span>
+          <span className="block">
+            Ask, write and draw with <Mark>your notes.</Mark>
+          </span>
+        </h2>
+        <p className="mk-lede mt-4 max-w-[54ch]">It only reads notes you can open, and asks before changes. In the Mac app it can run on Apple Intelligence or your own key.</p>
 
         <div className="mt-12 grid gap-12 lg:grid-cols-2 lg:gap-x-10 lg:gap-y-8">
           <Feature

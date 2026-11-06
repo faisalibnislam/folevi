@@ -547,7 +547,7 @@ const POSTS: BlogPost[] = [
 
         <h2 id="from">Exporting from the app you use now</h2>
         <p>
-          Our comparison pages have the steps for each app, with links to its own help pages: <Link href="/compare/notion">Notion</Link>, <Link href="/compare/craft">Craft</Link>, <Link href="/compare/apple-notes">Apple Notes</Link>, <Link href="/compare/obsidian">Obsidian</Link>, <Link href="/compare/bear">Bear</Link> and <Link href="/compare/evernote">Evernote</Link>. Obsidian notes are already Markdown files. Evernote exports ENEX, which Folevi can’t read, so those notes need converting to Markdown first.
+          Our comparison pages have the steps for each app, with links to its own help pages: <Link href="/compare/notion">Notion</Link> and <Link href="/compare/obsidian">Obsidian</Link>. Obsidian notes are already Markdown files. Evernote exports ENEX, which Folevi can’t read, so those notes need converting to Markdown first.
         </p>
 
         <h2 id="export">Taking everything out again</h2>

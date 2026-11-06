@@ -119,6 +119,11 @@ async function redirects() {
     { source: "/features/note-styles", destination: "/features/note-themes", permanent: true },
     // The Foli page became the Foli AI page.
     { source: "/foli", destination: "/foli-ai", permanent: true },
+    // The Bear, Evernote, Craft and Apple Notes comparisons were retired (2026-11-06); links land on the hub.
+    { source: "/compare/bear", destination: "/compare", permanent: true },
+    { source: "/compare/craft", destination: "/compare", permanent: true },
+    { source: "/compare/apple-notes", destination: "/compare", permanent: true },
+    { source: "/compare/evernote", destination: "/compare", permanent: true },
   ];
 }
 

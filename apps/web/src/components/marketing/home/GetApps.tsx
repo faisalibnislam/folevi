@@ -1,9 +1,9 @@
-import type { ReactNode } from "react";
-import { Cloud, LockKeyhole, WifiOff } from "lucide-react";
+import { Cloud, LockKeyhole, Sparkles, WifiOff } from "lucide-react";
 import { APP_STORE_URL, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT, WEB_APP_URL } from "../site";
 import { artById, artVars, CheckMark } from "../product/Replica";
 import { ButtonLink, cx } from "../ui";
-import { Hand, Mark, Sticker } from "../fun";
+import { DeviceShowcase } from "./DeviceShowcase";
+import { Mark } from "../fun";
 
 /*
  * The apps, right under the hero: the Mac, iPhone and iPad apps (free forever with no account) and the web app
@@ -85,48 +85,20 @@ export function DevicePicture({ kind }: { kind: "iphone" | "ipad" }) {
   );
 }
 
-function AppTile({
-  picture,
-  title,
-  body,
-  requirement,
-  action,
-  sticker,
-}: {
-  picture: ReactNode;
-  title: string;
-  body: string;
-  requirement: string;
-  action: ReactNode;
-  sticker?: ReactNode;
-}) {
-  return (
-    <li className="relative flex min-w-0 flex-col">
-      <div role="img" aria-label={`Folevi on ${title}, with a note open`} className="mk-mini-stage relative flex items-center justify-center" style={{ height: 244 }}>
-        <div aria-hidden="true" className="contents">
-          {picture}
-        </div>
-      </div>
-      {sticker ? <div className="pointer-events-none absolute -top-3 right-3">{sticker}</div> : null}
-      <h3 className="mk-h3 mt-4 text-[18px]">{title}</h3>
-      <p className="mt-1.5 flex-1 text-[15px] leading-relaxed text-muted">{body}</p>
-      <div className="mt-4 flex flex-wrap items-center gap-2.5">{action}</div>
-      <p className="mt-3 text-[13px] text-muted">{requirement}</p>
-    </li>
-  );
-}
-
 /** What the apps promise, as chips under the heading. */
 const PROMISES = [
   { icon: LockKeyhole, text: "End-to-end encryption, when you want it" },
   { icon: WifiOff, text: "Works offline" },
   { icon: Cloud, text: "Your own iCloud, Dropbox or Google Drive" },
+  { icon: Sparkles, text: "Folevi Cloud and Foli AI, optional" },
 ];
 
 /** The apps, inside the hero note under its text: the note and the apps are one card. */
 export function HeroApps() {
   return (
     <section id="apps" aria-labelledby="apps-title" className="mk-hero-apps scroll-mt-20">
+        <DeviceShowcase />
+        <div className="mt-12">
         <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
           <div>
             <h2 id="apps-title" className="mk-h2">
@@ -146,66 +118,22 @@ export function HeroApps() {
               ))}
             </ul>
           </div>
-          <div className="relative pb-2 max-lg:hidden">
-            <Hand rotate={-4} arrow="down-left">
-              free forever, really
-            </Hand>
-          </div>
         </div>
-        <ul className="mt-10 grid grid-cols-1 gap-x-5 gap-y-10 md:grid-cols-3">
-          <AppTile
-            picture={<MacPicture />}
-            title="Mac"
-            body="Its own windows, Quick Add from any app, a menu bar icon and Mac notifications. It updates itself."
-            requirement={`${MAC_REQUIREMENT}, Apple silicon or Intel.`}
-            action={
-              <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac">
-                Download for Mac
-              </ButtonLink>
-            }
-          />
-          <AppTile
-            picture={
-              <div className="flex items-end gap-3 sm:gap-4">
-                <DevicePicture kind="iphone" />
-                <DevicePicture kind="ipad" />
-              </div>
-            }
-            title="iPhone and iPad"
-            body="The same notes in your pocket and on your iPad, with a layout made for each screen. Sync them with iCloud Drive."
-            requirement={`${IOS_REQUIREMENT}.`}
-            action={
-              <ButtonLink href={APP_STORE_URL} lead="app-store">
-                Get it on the App Store
-              </ButtonLink>
-            }
-            sticker={
-              <Sticker tone="violet" rotate={6} className="text-[13px]">
-                New
-              </Sticker>
-            }
-          />
-          <AppTile
-            picture={
-              <div className="mk-card mx-auto flex h-[196px] w-full max-w-[300px] flex-col overflow-hidden">
-                <div className="flex h-7 flex-none items-center gap-2 px-3">
-                  <span className="h-3.5 flex-1 rounded-chip bg-(--mk-well)" />
-                </div>
-                <div className="min-h-0 flex-1 px-2 pb-2">
-                  <Note note={{ art: "art-01", title: "Reading list", lines: ["The Overstory, then Braiding Sweetgrass."], todos: [{ text: "Return the library copy" }] }} size="md" />
-                </div>
-              </div>
-            }
-            title="Web"
-            body="Open your notes in any browser, on any computer, and share and edit them with others. Needs a Folevi account."
-            requirement="Any modern browser. Free account, no card."
-            action={
-              <ButtonLink href={WEB_APP_URL} variant="secondary">
-                Open the web app
-              </ButtonLink>
-            }
-          />
-        </ul>
+        </div>
+        <div className="mt-8 flex flex-wrap items-center gap-2.5">
+          <ButtonLink href={MAC_DOWNLOAD_URL} lead="mac" size="lg">
+            Download for Mac
+          </ButtonLink>
+          <ButtonLink href={APP_STORE_URL} lead="app-store" size="lg">
+            Get it on the App Store
+          </ButtonLink>
+          <ButtonLink href={WEB_APP_URL} variant="secondary" size="lg">
+            Open the web app
+          </ButtonLink>
+        </div>
+        <p className="mt-4 text-[13px] text-muted">
+          {MAC_REQUIREMENT}. {IOS_REQUIREMENT}. The web app needs a free Folevi account.
+        </p>
     </section>
   );
 }

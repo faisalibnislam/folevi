@@ -11,9 +11,9 @@ import { CursorPiece, SearchPiece } from "@/components/marketing/pieces";
 import { Eyebrow } from "@/components/marketing/ui";
 
 export const metadata = pageMetadata({
-  title: "Folevi vs Notion, Evernote and other notes workspaces",
+  title: "Folevi vs Notion and Obsidian: a workspace compared",
   description:
-    "Folevi, a workspace for docs, tasks and databases with free Mac, iPhone and iPad apps, next to Notion, Craft, Apple Notes, Obsidian, Bear and Evernote.",
+    "Folevi, a workspace for docs, tasks and databases with free Mac, iPhone and iPad apps, next to Notion and Obsidian.",
   path: "/compare",
   ogImage: "segment",
 });

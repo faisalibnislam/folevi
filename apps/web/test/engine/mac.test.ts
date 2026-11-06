@@ -5,7 +5,7 @@ import { BridgeHost } from "@/lib/engine/host";
 import { registerNote, resetNoteHost, focusMode } from "@/lib/engine/noteHost";
 import { currentGate, resetGates } from "@/lib/engine/gates";
 import { snoozeUntil } from "@/lib/engine/commandsMac";
-import { onAppOrigin } from "@/lib/engine/commandsAccount";
+import { onShareOrigin, publicLinkUrl } from "@/lib/env";
 import { runEditorCommand, type NativeNoteOptions } from "@/lib/engine/editorCommands";
 import type { NotesMetaValue, PlaceMovePreview, Reply, ResearchValue } from "@/lib/engine/protocol";
 import { Posts, rig, type Rig } from "./fakes";
@@ -136,8 +136,10 @@ describe("the profile picture and encrypted links", () => {
     expect(await code({ kind: "command", place: PLACE, name: "settings.setAvatar", args: { data: "AAAA", mimeType: "image/tiff" } })).toBe("invalid_args");
   });
 
-  it("encrypted links use Folevi's own address", () => {
-    expect(onAppOrigin("capacitor://localhost/s/abc#k=xyz")).toBe("https://app.folevi.com/s/abc#k=xyz");
+  it("public links use the real web address, folevi.com, not the app's own origin", () => {
+    expect(onShareOrigin("capacitor://localhost/s/abc#k=xyz")).toBe("https://folevi.com/s/abc#k=xyz");
+    expect(onShareOrigin("app://folevi/s/abc#k=xyz")).toBe("https://folevi.com/s/abc#k=xyz");
+    expect(publicLinkUrl("abc")).toBe("https://folevi.com/s/abc");
   });
 });
 

@@ -100,8 +100,8 @@ test("a note without breaks is cut at its headings; a shared page has a Present 
 
   await openShare(page);
   const share = page.getByRole("dialog", { name: /Share/ });
-  await share.getByRole("button", { name: "Create link" }).click();
-  const link = await share.getByLabel("Public link").inputValue();
+  await share.getByRole("switch", { name: "Public link" }).click();
+  const link = await share.getByLabel("Public link address").inputValue();
 
   const phone = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
   const reader = await phone.newPage();

@@ -9,6 +9,7 @@ import { Button, IconButton } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { useToast, errorMessage } from "@/components/ui/Toast";
 import { AppLink } from "@/lib/app/router";
+import { InfoTip } from "@/components/doc/ShareDialog";
 import { folderAccessSummary, roleLabel, type ShareRole } from "@/lib/app/folderSharing";
 
 /**
@@ -40,34 +41,46 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
   };
 
   return (
-    <Dialog open={open} onClose={onClose} title={`Share “${name || "Untitled"}”`} size="md">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={`Share “${name || "Untitled"}”`}
+      size="md"
+      footer={
+        <Button variant="primary" onClick={onClose}>
+          Done
+        </Button>
+      }
+    >
       {!data ? (
         <p className="text-subheadline text-muted">Loading…</p>
       ) : (
-        <div className="space-y-6 pb-3 text-subheadline" data-testid="folder-share-dialog">
-          <p className="rounded-chip border border-line p-3 text-muted" data-testid="folder-share-summary">
+        // The note Share dialog's compact rows (doc/ShareDialog.tsx): add people, who's added, then what it reaches.
+        <div className="space-y-4 text-subheadline" data-testid="folder-share-dialog">
+          <p className="text-footnote text-muted" data-testid="folder-share-summary">
             {folderAccessSummary({ noteCount: data.noteCount, people: data.people.length, personal: data.personal })}
           </p>
 
           {data.blocked ? (
-            <p className="flex items-start gap-2 rounded-chip border border-line p-3 text-muted">
-              <FolderLock size={16} aria-hidden className="mt-0.5 flex-none" />
+            <p className="flex items-start gap-2 text-footnote text-muted">
+              <FolderLock size={15} aria-hidden className="mt-px flex-none" />
               <span>{data.blocked}</span>
             </p>
           ) : null}
 
-          <section>
-            <h3 className="mb-2 font-semibold">People</h3>
+          <section aria-label="People" className="space-y-2">
             {data.youAreGuest ? (
-              <p className="mb-3 text-footnote text-muted">
-                This folder was shared with you{data.sharedBy ? ` by ${data.sharedBy}` : ""}. {data.ownerName ? `It belongs to ${data.ownerName}.` : ""} Only its owner{data.personal ? "" : " and the workspace’s admins"} can share it.
+              <p className="flex items-center gap-1.5 text-footnote text-muted">
+                <span className="min-w-0 truncate">Shared with you{data.sharedBy ? ` by ${data.sharedBy}` : ""}.</span>
+                <InfoTip text={`${data.ownerName ? `It belongs to ${data.ownerName}. ` : ""}Only its owner${data.personal ? "" : " and the workspace’s admins"} can share it.`} />
               </p>
             ) : !data.canManage ? (
-              <p className="mb-3 text-footnote text-muted">Only the folder’s owner and the workspace’s owners and admins can share it.</p>
+              <p className="text-footnote text-muted">Only the folder’s owner and the workspace’s owners and admins can share it.</p>
             ) : null}
             {data.canManage && !data.blocked ? (
+              <>
               <form
-                className="flex flex-wrap gap-2"
+                className="flex gap-2"
                 onSubmit={async (e) => {
                   e.preventDefault();
                   const to = email.trim();
@@ -88,7 +101,7 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
                   Email address
                 </label>
                 <input id={`${uid}-email`} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="h-9 min-w-0 flex-1 ui-input rounded-chip px-3" />
-                <Select aria-label="Role" value={role} onChange={(e) => setNewRole(e.target.value as ShareRole)} className="h-9 ui-input rounded-chip px-3">
+                <Select aria-label="Role" value={role} onChange={(e) => setNewRole(e.target.value as ShareRole)} className="h-9 flex-none ui-input rounded-chip px-3">
                   <option value="viewer">Can view</option>
                   <option value="commenter">Can comment</option>
                   <option value="editor">Can edit</option>
@@ -96,17 +109,23 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
                 <Button type="submit" variant="primary" disabled={sending}>
                   Share
                 </Button>
-                <p className="w-full text-footnote text-muted">
-                  {data.personal
-                    ? "Anyone with an email address. People without a Folevi account get an invitation by email."
-                    : "People outside the workspace join as guests on this folder only and aren’t billed. People without a Folevi account get an invitation by email."}
-                </p>
               </form>
+              <p className="flex items-center gap-1.5 text-footnote text-muted">
+                <span className="min-w-0 truncate">{data.personal ? "Anyone with an email address." : "People outside the workspace join as guests."}</span>
+                <InfoTip
+                  text={
+                    data.personal
+                      ? "Anyone with an email address. People without a Folevi account get an invitation by email."
+                      : "People outside the workspace join as guests on this folder only and aren’t billed. People without a Folevi account get an invitation by email."
+                  }
+                />
+              </p>
+              </>
             ) : null}
-            <ul className="mt-3 divide-y divide-line rounded-chip border border-line" aria-label="People with access">
-              {data.people.length === 0 ? <li className="px-3 py-2.5 text-muted">{data.youAreGuest ? "It was shared with you through a folder above it." : "No one has been added to this folder yet."}</li> : null}
+            <ul className="-mx-2" aria-label="People with access">
+              {data.people.length === 0 ? <li className="px-2 py-1 text-muted">{data.youAreGuest ? "Shared with you through a folder above it." : "No one added yet."}</li> : null}
               {data.people.map((p) => (
-                <li key={p.profileId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+                <li key={p.profileId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1.5">
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-1.5 truncate font-medium">
                       <span className="truncate">{p.displayName}</span>
@@ -145,11 +164,11 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
 
             {data.inherited.length ? (
               <>
-                <h4 className="mb-1.5 mt-4 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">From folders above</h4>
-                <ul className="divide-y divide-line rounded-chip border border-line" aria-label="Access from folders above">
+                <h4 className="pt-1 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">From folders above</h4>
+                <ul className="-mx-2" aria-label="Access from folders above">
                   {data.inherited.flatMap((f) =>
                     f.people.map((p) => (
-                      <li key={`${f.folderId}:${p.profileId}`} className="flex items-center gap-3 px-3 py-2">
+                      <li key={`${f.folderId}:${p.profileId}`} className="flex items-center gap-3 px-2 py-1">
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-medium">
                             {p.displayName}
@@ -167,10 +186,10 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
 
             {data.pendingInvites.length ? (
               <>
-                <h4 className="mb-1.5 mt-4 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">Invited by email</h4>
-                <ul className="divide-y divide-line rounded-chip border border-line" aria-label="Invited by email">
+                <h4 className="pt-1 text-footnote font-semibold uppercase tracking-[0.06em] text-faint">Invited by email</h4>
+                <ul className="-mx-2" aria-label="Invited by email">
                   {data.pendingInvites.map((i) => (
-                    <li key={i.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+                    <li key={i.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1">
                       <span className="min-w-0 flex-1 truncate">{i.email}</span>
                       <span className="text-footnote text-muted">
                         {roleLabel(i.role)} · {i.expired ? "expired" : "waiting to accept"}
@@ -186,13 +205,13 @@ export function FolderShareDialog({ open, onClose, folderId, name }: { open: boo
           </section>
 
           {data.youAreGuest ? (
-            <p className="text-footnote text-muted">
+            <p className="border-t border-line pt-3 text-footnote text-muted">
               <AppLink href={`/shared/${folderId}`} className="underline underline-offset-2" onClick={onClose}>
                 Open the shared folder
               </AppLink>
             </p>
           ) : (
-            <p className="text-footnote text-muted">Public links are for single notes: share a note to make one.</p>
+            <p className="border-t border-line pt-3 text-footnote text-muted">Public links are for single notes: share a note to make one.</p>
           )}
         </div>
       )}

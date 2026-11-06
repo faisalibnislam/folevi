@@ -37,12 +37,13 @@ test("publish a note with the Article look, then switch it to Docs and Minimal",
 
   await openShare(page);
   const share = page.getByRole("dialog", { name: /Share/ });
-  const looks = share.getByRole("radiogroup", { name: "Look" });
-  await expect(looks.getByRole("radio", { name: /^Note/ })).toHaveAttribute("aria-checked", "true");
-  await looks.getByRole("radio", { name: /^Article/ }).click();
-  await expect(looks.getByRole("radio", { name: /^Article/ })).toHaveAttribute("aria-checked", "true");
+  await share.getByRole("button", { name: /^Link settings/ }).click();
+  const looks = share.getByRole("combobox", { name: "Look", exact: true });
+  await expect(looks).toContainText("Note");
+  await pick(looks, "Article");
+  await expect(looks).toContainText("Article");
   await share.getByRole("button", { name: "Create link" }).click();
-  const link = await share.getByLabel("Public link").inputValue();
+  const link = await share.getByLabel("Public link address").inputValue();
 
   const anon = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const reader = await anon.newPage();

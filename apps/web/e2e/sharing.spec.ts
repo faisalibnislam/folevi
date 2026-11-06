@@ -17,9 +17,9 @@ test("share a page with another person, comment, and publish a revocable public 
   await share.getByRole("button", { name: "Share", exact: true }).click();
   await expect(share.getByText("Guest Person")).toBeVisible();
 
-  // Public link: create, open anonymously, revoke, and confirm it stops working.
-  await share.getByRole("button", { name: "Create link" }).click();
-  const link = await share.getByLabel("Public link").inputValue();
+  // Public link: the switch makes one, open anonymously, revoke, and confirm it stops working.
+  await share.getByRole("switch", { name: "Public link" }).click();
+  const link = await share.getByLabel("Public link address").inputValue();
   expect(link).toMatch(/\/s\/[A-Za-z0-9_-]{20,}/);
   const anon = await browser.newContext();
   const anonPage = await anon.newPage();
@@ -34,11 +34,12 @@ test("share a page with another person, comment, and publish a revocable public 
   await anonPage.reload();
   await expect(anonPage.getByRole("heading", { name: "Page unavailable" })).toBeVisible();
 
-  // A link the owner lets search engines find carries its title and index robots.
+  // A link the owner lets search engines find carries its title and index robots (set under Link settings).
+  await share.getByRole("button", { name: /^Link settings/ }).click();
   await share.getByRole("switch", { name: "Let search engines find it" }).click();
   await share.getByRole("button", { name: "Create link" }).click();
   await expect(share.getByText("Search engines can find it")).toBeVisible();
-  await anonPage.goto(await share.getByLabel("Public link").inputValue());
+  await anonPage.goto(await share.getByLabel("Public link address").inputValue());
   await expect(anonPage.locator('meta[name="robots"]')).toHaveAttribute("content", /^index/);
   await expect(anonPage).toHaveTitle(/Project Atlas Brief/);
   await anon.close();

@@ -8,6 +8,8 @@ interface Option {
   value: string;
   label: string;
   disabled?: boolean;
+  /** A muted line under the label in the open list (`<option data-description="…">`). */
+  description?: string;
 }
 
 /** The change "event" Select passes to onChange: shaped like a native select's, so handlers read e.target.value. */
@@ -30,10 +32,10 @@ function readOptions(children: ReactNode): Option[] {
   const walk = (nodes: ReactNode) => {
     Children.forEach(nodes, (child) => {
       if (!isValidElement(child)) return;
-      const el = child as ReactElement<{ value?: string | number; children?: ReactNode; disabled?: boolean }>;
+      const el = child as ReactElement<{ value?: string | number; children?: ReactNode; disabled?: boolean; "data-description"?: string }>;
       if (el.type === "option") {
         const label = textOf(el.props.children);
-        out.push({ value: el.props.value === undefined ? label : String(el.props.value), label, disabled: el.props.disabled });
+        out.push({ value: el.props.value === undefined ? label : String(el.props.value), label, disabled: el.props.disabled, description: el.props["data-description"] });
       } else if (el.props.children) walk(el.props.children);
     });
   };
@@ -97,13 +99,15 @@ export function Select({
   const optionId = (i: number) => `${uid}-opt-${i}`;
 
   const enabled = options.map((o, i) => (o.disabled ? -1 : i)).filter((i) => i >= 0);
+  // (Options with a description line are taller.)
+  const rowHeight = options.some((o) => o.description) ? 52 : 36;
 
   const place = useCallback(() => {
     const b = button.current?.getBoundingClientRect();
     if (!b) return;
     const below = window.innerHeight - b.bottom - 8;
     const above = b.top - 8;
-    const wanted = Math.min(320, options.length * 36 + 12);
+    const wanted = Math.min(320, options.length * rowHeight + 12);
     const up = below < Math.min(wanted, 200) && above > below;
     const width = Math.max(b.width, 180);
     const left = Math.min(Math.max(8, b.left), window.innerWidth - width - 8);
@@ -112,7 +116,7 @@ export function Select({
         ? { left, bottom: window.innerHeight - b.top + 6, width, maxHeight: Math.min(320, above - 6) }
         : { left, top: b.bottom + 6, width, maxHeight: Math.min(320, below - 6) },
     );
-  }, [options.length]);
+  }, [options.length, rowHeight]);
 
   const show = () => {
     if (disabled) return;
@@ -274,11 +278,20 @@ export function Select({
               role="option"
               aria-selected={isSelected}
               aria-disabled={o.disabled || undefined}
+              // (Named by its label alone; the description is said after it.)
+              aria-label={o.description ? o.label : undefined}
+              aria-description={o.description}
               onPointerMove={() => !o.disabled && active !== i && setActive(i)}
               onClick={() => choose(i)}
               className={`flex min-h-8 cursor-default items-center gap-2 rounded-small px-2.5 py-1.5 ${i === active ? "bg-[var(--glass-hover)] text-heading" : ""} ${isSelected ? "font-semibold text-heading" : ""} ${o.disabled ? "opacity-40" : ""}`}
             >
-              <span className="min-w-0 flex-1 truncate">{o.label || " "}</span>
+              {o.description ? (
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{o.label}</span>
+                  <span className="block text-footnote font-normal text-muted">{o.description}</span>
+                </span>
+              ) : null}
+              {o.description ? null : <span className="min-w-0 flex-1 truncate">{o.label || " "}</span>}
               {isSelected ? <Check size={14} strokeWidth={2.5} aria-hidden className="flex-none" /> : <span className="w-3.5 flex-none" aria-hidden />}
             </li>
           );

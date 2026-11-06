@@ -106,7 +106,7 @@ test("share a folder: later notes follow, the note says where access comes from,
   // Removing them ends the folder for them.
   const again = await openFolderShare(owner.page, "Garden club");
   await again.getByRole("button", { name: "Remove Folder Friend" }).click();
-  await expect(again.getByRole("list", { name: "People with access" })).toContainText("No one has been added to this folder yet.");
+  await expect(again.getByRole("list", { name: "People with access" })).toContainText("No one added yet.");
   await again.getByRole("button", { name: "Close" }).click();
   await friend.page.goto(sharedUrl);
   await expect(friend.page.getByRole("heading", { name: "You can’t open this folder" })).toBeVisible({ timeout: 20_000 });

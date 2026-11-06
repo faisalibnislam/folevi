@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { COMPARE_CHECKED, COMPETITORS, FOLEVI_ROWS, comparePath } from "./content/compare";
+import { COMPARE_CHECKED, COMPARE_LAST_CHECKED, COMPETITORS, FOLEVI_ROWS, comparePath } from "./content/compare";
 import { formatDay } from "./site";
 import { cx } from "./ui";
 import { Sticker } from "./fun";
@@ -18,7 +18,7 @@ export function CompareChart() {
     <div className="mk-card overflow-x-auto" role="region" aria-label="Folevi and other notes apps, side by side" tabIndex={0}>
       <table className="w-full min-w-[1320px] border-collapse text-left">
         <caption className="sr-only">
-          Folevi next to {COMPETITORS.map((x) => x.name).join(", ")}, one topic per row. Other products’ details are from their websites on {formatDay(COMPARE_CHECKED)}; each product’s page lists the sources.
+          Folevi next to {COMPETITORS.map((x) => x.name).join(", ")}, one topic per row. Other products’ details are from their websites, checked between {formatDay(COMPARE_CHECKED)} and {formatDay(COMPARE_LAST_CHECKED)}; each product’s page lists the sources.
         </caption>
         <thead>
           <tr>

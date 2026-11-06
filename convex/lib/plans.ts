@@ -207,7 +207,7 @@ export const DAY_MS = 86_400_000;
 // ---------------------------------------------------------------------------------------------------
 
 /** Where Folevi runs today (the Mac app isn't out yet and there's no iOS app). */
-export const AVAILABILITY = "On the web and Mac";
+export const AVAILABILITY = "On the web, Mac, iPhone and iPad";
 
 export const TIER_NAMES: Record<PlanTier, string> = { free: "Free", core: "Core", pro: "Pro", pro_ai: "Pro AI" };
 

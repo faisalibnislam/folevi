@@ -35,7 +35,7 @@ const ICONS: Record<ChapterId, ReactNode> = {
 const STEP_MS = 2200;
 /** The same frame as static HTML (the app's own DOM and CSS, no scripts), drawn at 1280 × 800 and scaled. */
 /** Bumped whenever the frames are captured again, so browsers fetch the new ones. */
-const FRAMES_VERSION = "2026-11-06b";
+const FRAMES_VERSION = "2026-11-06c";
 const HTML = (f: string) => `/marketing/showcase/web-html/${f}.html?v=${FRAMES_VERSION}`;
 /** The iPhone's frames: the app's own iPhone interface as HTML, drawn at 402 × 874 points (iPhone 17 Pro). */
 const PHONE = (f: string) => `/marketing/showcase/iphone-html/${f}.html?v=${FRAMES_VERSION}`;

@@ -106,7 +106,7 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
           <AiIcon size={15} aria-hidden /> Catch me up
         </button>
         <span className="text-subheadline text-muted">A quick AI brief of this week’s notes and what’s due.</span>
-        {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "w-full text-subheadline text-danger" : "w-full max-w-xl"} /> : <AiCreditsNote className="w-full max-w-xl" />}
+        {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "w-full text-subheadline text-danger" : "w-full"} /> : <AiCreditsNote className="w-full" />}
       </div>
     );
   }

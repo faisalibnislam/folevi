@@ -1599,6 +1599,7 @@ export function GraphCanvas({
         const outline = n.id === selected || isPicked ? "var(--color-heading)" : "var(--color-canvas)";
         const fill = colorFor ? colorFor(n as DnaNode) : (KIND_COLOR[n.kind] ?? KIND_COLOR.note);
         return (
+          // eslint-disable-next-line folevi/button-hover -- a dot's hover is its card and its lit connections (setHover)
           <g
             key={n.id}
             ref={(el) => {

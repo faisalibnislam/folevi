@@ -1,5 +1,6 @@
 "use client";
 
+import { inShowcaseFrame } from "@/lib/showcaseFrame";
 import { useEffect } from "react";
 import { isShell } from "@/lib/shell";
 
@@ -11,6 +12,8 @@ import { isShell } from "@/lib/shell";
 export function ServiceWorkerRegistration() {
   useEffect(() => {
     if (isShell()) return;
+    // The home page's showcase runs the app on the website's own address: no app worker there.
+    if (inShowcaseFrame()) return;
     if (!("serviceWorker" in navigator)) return;
     if (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENABLE_SW !== "1") return;
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined);

@@ -77,13 +77,25 @@ export function localProfile(input: LocalSetup, now: number): LocalProfile {
   };
 }
 
+/**
+ * What a new library starts with in place of the welcome notes, when a page sets it: the home page's showcase
+ * (components/marketing/showcase) seeds its demo workspace this way. It runs in the setup's own mutation.
+ */
+type Seeder = (ctx: LocalMutationCtx, today: string, profile: LocalProfile) => Promise<void>;
+let seeder: Seeder | null = null;
+export function setLocalSeeder(next: Seeder | null): void {
+  seeder = next;
+}
+
 /** Creates the profile and, unless asked not to, the welcome note and two folders. Idempotent. */
 export async function setupLibrary(ctx: LocalMutationCtx, input: LocalSetup): Promise<{ created: boolean }> {
   if (await getProfile(ctx.db)) return { created: false };
   const now = ctx.now();
   const profile = localProfile(input, now);
   ctx.db.put("meta", PROFILE_KEY, profile);
-  if (input.seed !== false) await seedLibrary(ctx, input.today ?? localDate(now, profile.timeZone));
+  const today = input.today ?? localDate(now, profile.timeZone);
+  if (seeder) await seeder(ctx, today, profile);
+  else if (input.seed !== false) await seedLibrary(ctx, today);
   return { created: true };
 }
 

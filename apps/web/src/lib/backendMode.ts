@@ -56,6 +56,18 @@ export function capabilitiesOf(mode: BackendMode): Capabilities {
   return Object.fromEntries(CAPABILITIES.map((c) => [c, on])) as Record<Capability, boolean>;
 }
 
+/**
+ * Capabilities a local page turns on for itself: the home page's showcase (components/marketing/showcase) runs
+ * local mode with demo stand-ins for comments and presence, so their interface shows. Set before rendering.
+ */
+let localExtras: Partial<Record<Capability, boolean>> = {};
+export function setLocalCapabilityExtras(extras: Partial<Record<Capability, boolean>>): void {
+  localExtras = extras;
+}
+export function localCapabilityExtras(): Partial<Record<Capability, boolean>> {
+  return localExtras;
+}
+
 let current: BackendMode = "account";
 
 export function currentBackendMode(): BackendMode {

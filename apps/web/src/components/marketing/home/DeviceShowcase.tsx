@@ -3,27 +3,27 @@
 import { CalendarCheck, Kanban, LockKeyhole, SquareSlash, Users } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AiIcon } from "@/components/ai/AiIcon";
+import type { ChapterId, ShowcaseFrame } from "../showcase/script";
 import { cx } from "../ui";
 
 /*
- * The apps at work, as they really look: frames captured from the real web app (apps/web/e2e/showcase-capture.spec.ts,
- * with macOS's traffic lights in place of the web logo, as Folevi for Mac shows them) and from the real iPhone app,
- * all one demo workspace ("Studio"). Each chapter steps through its frames, cross-fading, then moves on; it
- * pauses while the pointer or focus is on it, and the tabs underneath jump to a chapter. With reduced motion each
- * chapter shows its last frame and nothing moves by itself. The scene is one picture to assistive tech.
+ * The apps at work, live: the real Folevi app runs in the Mac window and on the iPhone (/showcase-app, local mode on
+ * a demo workspace kept in memory, nothing sent anywhere), and a script plays it like a person would: a pointer
+ * moves and clicks, words are typed letter by letter, menus open with the app's own motion. Both devices share one
+ * library, so the iPhone picks up each change from the Mac a moment later, as sync does. The frames load when the
+ * section comes near the screen. The loop waits while the pointer or focus is on it (after the chapter playing),
+ * the tabs underneath jump to a chapter, and with reduced motion each chapter shows its end and nothing moves by
+ * itself. The scene is one picture to assistive tech; the frames never take focus or clicks.
  */
 
-type ChapterId = "write" | "together" | "tasks" | "board" | "ai" | "vault";
-/** Each chapter's Mac frames, and the iPhone frame shown at each of those steps. */
-const CHAPTERS: Array<{ id: ChapterId; label: string; frames: string[]; phone: string[]; says: string }> = [
-  { id: "write", label: "Write with /", frames: ["write-1", "write-2", "write-3"], phone: ["write-1", "write-1", "write-1"], says: "A page called Spring launch: the / menu adds a table of who does what." },
-  { id: "together", label: "Write together", frames: ["together-1", "together-2", "together-3", "together-4"], phone: ["write-1", "together-1", "together-1", "together-1"], says: "Sam edits the same page live, Maya leaves a comment for him, he replies and the thread is resolved." },
-  { id: "tasks", label: "Tasks and calendar", frames: ["tasks-1", "tasks-2", "tasks-3"], phone: ["tasks-1", "tasks-1", "tasks-2"], says: "This week's tasks with their dates, one ticked off, then the same tasks on the calendar." },
-  { id: "board", label: "Databases", frames: ["board-1", "board-2"], phone: ["board-1", "board-2"], says: "The Content plan collection as a table, then as a board grouped by status." },
-  { id: "ai", label: "Foli AI", frames: ["ai-1", "ai-2"], phone: ["ai-1", "ai-2"], says: "Foli AI is asked what's left before the launch and answers with sources from the workspace." },
-  { id: "vault", label: "Vault", frames: ["vault-1", "vault-2"], phone: ["vault-1", "vault-2"], says: "The Vault opens with a passcode and shows passwords, an API key and a 2FA code." },
+const CHAPTERS: Array<{ id: ChapterId; label: string; says: string }> = [
+  { id: "write", label: "Write with /", says: "A page called Spring launch: the / menu adds a table of who does what." },
+  { id: "together", label: "Write together", says: "Sam edits the same page live, Maya leaves a comment for him and he replies." },
+  { id: "tasks", label: "Tasks and calendar", says: "This week's tasks with their dates, one ticked off, then the same tasks on the calendar." },
+  { id: "board", label: "Databases", says: "The Content plan collection as a table, then as a board grouped by status." },
+  { id: "ai", label: "Foli AI", says: "Foli AI is asked what's left before the launch and answers with sources from the workspace." },
+  { id: "vault", label: "Vault", says: "The Vault keeps passwords, an API key and a 2FA code behind a passcode." },
 ];
-/** Each tab's icon, before its name. */
 const ICONS: Record<ChapterId, ReactNode> = {
   write: <SquareSlash size={15} aria-hidden="true" />,
   together: <Users size={15} aria-hidden="true" />,
@@ -32,13 +32,10 @@ const ICONS: Record<ChapterId, ReactNode> = {
   ai: <AiIcon size={15} />,
   vault: <LockKeyhole size={15} aria-hidden="true" />,
 };
-const STEP_MS = 2200;
-/** The same frame as static HTML (the app's own DOM and CSS, no scripts), drawn at 1280 × 800 and scaled. */
-/** Bumped whenever the frames are captured again, so browsers fetch the new ones. */
-const FRAMES_VERSION = "2026-11-06c";
-const HTML = (f: string) => `/marketing/showcase/web-html/${f}.html?v=${FRAMES_VERSION}`;
-/** The iPhone's frames: the app's own iPhone interface as HTML, drawn at 402 × 874 points (iPhone 17 Pro). */
-const PHONE = (f: string) => `/marketing/showcase/iphone-html/${f}.html?v=${FRAMES_VERSION}`;
+/** About how long a chapter plays, for the tab's progress line. */
+const CHAPTER_MS = 9000;
+const MAC_W = 1280;
+const MAC_H = 800;
 const PHONE_W = 402;
 const PHONE_H = 874;
 
@@ -64,32 +61,55 @@ function StatusBar() {
   );
 }
 
+/** A frame's showcase side, once its app has started. */
+async function frameOf(iframe: HTMLIFrameElement | null, signal: AbortSignal): Promise<ShowcaseFrame | null> {
+  while (!signal.aborted) {
+    const f = (iframe?.contentWindow as (Window & { __foleviShowcase?: ShowcaseFrame }) | null)?.__foleviShowcase;
+    if (f) {
+      await f.ready;
+      return f;
+    }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return null;
+}
+
+/** Scales a fixed-size frame to the width of its box. */
+function useScale(ref: React.RefObject<HTMLDivElement | null>, width: number): number {
+  const [scale, setScale] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setScale((e?.contentRect.width ?? width) / width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref, width]);
+  return scale;
+}
+
 export function DeviceShowcase() {
   const [chapter, setChapter] = useState(0);
-  const [step, setStep] = useState(0);
   const [paused, setPaused] = useState(false);
   const [still, setStill] = useState(false);
-  const [scale, setScale] = useState(0);
-  const [loaded, setLoaded] = useState<Record<string, boolean>>({});
+  const [near, setNear] = useState(false);
+  const [onScreen, setOnScreen] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [phoneOn, setPhoneOn] = useState(false);
+  // A new library each visit: the Mac and the iPhone find each other by it.
+  const [session] = useState(() => Math.random().toString(36).slice(2, 10));
+  // Development: ?showcase=manual plays nothing by itself (chapters are played from the console).
+  const [manual] = useState(() => process.env.NODE_ENV !== "production" && typeof location !== "undefined" && location.search.includes("showcase=manual"));
+  const root = useRef<HTMLDivElement>(null);
   const win = useRef<HTMLDivElement>(null);
   const screen = useRef<HTMLDivElement>(null);
-  const [phoneScale, setPhoneScale] = useState(0);
-
-  useEffect(() => {
-    const el = screen.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([e]) => setPhoneScale((e?.contentRect.width ?? PHONE_W) / PHONE_W));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const el = win.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([e]) => setScale((e?.contentRect.width ?? 1280) / 1280));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const macFrame = useRef<HTMLIFrameElement>(null);
+  const phoneFrame = useRef<HTMLIFrameElement>(null);
+  const frames = useRef<{ mac: ShowcaseFrame | null; phone: ShowcaseFrame | null }>({ mac: null, phone: null });
+  const scale = useScale(win, MAC_W);
+  const phoneScale = useScale(screen, PHONE_W);
+  // Which chapter is playing, and how to stop it.
+  const playing = useRef<{ index: number; stop: AbortController } | null>(null);
+  const [played, setPlayed] = useState(0);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -99,75 +119,103 @@ export function DeviceShowcase() {
     return () => reduce.removeEventListener("change", apply);
   }, []);
 
+  // Load when the section comes near; play only while it's on screen.
   useEffect(() => {
-    const last = CHAPTERS[chapter]!.frames.length - 1;
-    if (still) {
-      setStep(last);
-      return;
-    }
-    if (paused) return;
-    const t = window.setTimeout(
-      () => {
-        if (step < last) setStep(step + 1);
-        else {
-          setChapter((chapter + 1) % CHAPTERS.length);
-          setStep(0);
-        }
-      },
-      step === last ? STEP_MS * 1.6 : STEP_MS,
-    );
-    return () => window.clearTimeout(t);
-  }, [chapter, step, paused, still]);
+    const el = root.current;
+    if (!el) return;
+    const nearBy = new IntersectionObserver(([e]) => e?.isIntersecting && setNear(true), { rootMargin: "800px 0px" });
+    const seen = new IntersectionObserver(([e]) => setOnScreen(Boolean(e?.isIntersecting)), { threshold: 0.25 });
+    nearBy.observe(el);
+    seen.observe(el);
+    return () => {
+      nearBy.disconnect();
+      seen.disconnect();
+    };
+  }, []);
+
+  // The Mac's app first (it hosts the library), then the iPhone's, which joins it.
+  useEffect(() => {
+    if (!near) return;
+    const stop = new AbortController();
+    void (async () => {
+      frames.current.mac = await frameOf(macFrame.current, stop.signal);
+      if (!frames.current.mac) return;
+      setPhoneOn(true);
+      await new Promise((r) => setTimeout(r, 50));
+      frames.current.phone = await frameOf(phoneFrame.current, stop.signal);
+      if (!stop.signal.aborted) setReady(true);
+    })();
+    return () => stop.abort();
+  }, [near]);
+
+  // Plays the chapter shown, then moves on (unless held).
+  useEffect(() => {
+    const mac = frames.current.mac;
+    if (!ready || !mac || manual) return;
+    if (playing.current?.index === chapter) return;
+    playing.current?.stop.abort();
+    const stop = new AbortController();
+    playing.current = { index: chapter, stop };
+    void mac.play(CHAPTERS[chapter]!.id, { signal: stop.signal, phone: frames.current.phone, still }).then(() => {
+      if (stop.signal.aborted) return;
+      setPlayed((n) => n + 1);
+    });
+  }, [ready, chapter, still, manual]);
+
+  // The next chapter, once this one is done, if nobody's holding the scene and it's on screen.
+  useEffect(() => {
+    if (!played || still || paused || !onScreen) return;
+    const t = setTimeout(() => {
+      playing.current = null;
+      setChapter((c) => (c + 1) % CHAPTERS.length);
+    }, 900);
+    return () => clearTimeout(t);
+  }, [played, still, paused, onScreen]);
+
+  useEffect(() => () => playing.current?.stop.abort(), []);
 
   const go = (i: number) => {
+    playing.current?.stop.abort();
+    playing.current = null;
+    setPlayed(0);
     setChapter(i);
-    setStep(still ? CHAPTERS[i]!.frames.length - 1 : 0);
   };
   const c = CHAPTERS[chapter]!;
-  const next = CHAPTERS[(chapter + 1) % CHAPTERS.length]!;
+  const src = (device: "mac" | "phone") => `/showcase-app?s=${session}&device=${device}`;
 
   return (
-    <div onPointerEnter={() => setPaused(true)} onPointerLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
+    <div ref={root} onPointerEnter={() => setPaused(true)} onPointerLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
       <div role="img" aria-label={`Folevi on a Mac and an iPhone. ${c.says}`} className="relative mx-auto w-full max-w-[1060px] pb-[6%] pr-[9%]">
         <div aria-hidden="true">
-          {/* The Mac window: the captured app, 16:10, with the window's corners and shadow. */}
+          {/* The Mac window: the app at 1280 × 800, scaled, with the window's corners and shadow. */}
           <div ref={win} className="mk-mac-window relative aspect-[16/10] w-full overflow-hidden bg-(--color-surface-sunken)">
-            {/* Each frame is HTML: the app's own markup and styles (no scripts), sharp at any size. */}
-            {scale
-              ? // This chapter's frames, and the next chapter's (hidden) so they're loaded before it starts.
-                [...c.frames.map((f, i) => ({ f, on: i === step })), ...next.frames.map((f) => ({ f, on: false }))].map(({ f, on }) => (
-                  <iframe
-                    key={`html-${f}`}
-                    src={HTML(f)}
-                    title=""
-                    tabIndex={-1}
-                    sandbox="allow-same-origin"
-                    onLoad={() => setLoaded((l) => ({ ...l, [f]: true }))}
-                    className={cx("pointer-events-none absolute left-0 top-0 origin-top-left border-0 transition-opacity duration-700 ease-out", on && loaded[f] ? "opacity-100" : "opacity-0")}
-                    style={{ width: 1280, height: 800, transform: `scale(${scale})` }}
-                  />
-                ))
-              : null}
+            {near && scale ? (
+              <iframe
+                ref={macFrame}
+                src={src("mac")}
+                title=""
+                tabIndex={-1}
+                className={cx("pointer-events-none absolute left-0 top-0 origin-top-left border-0 transition-opacity duration-700 ease-out", ready ? "opacity-100" : "opacity-0")}
+                style={{ width: MAC_W, height: MAC_H, transform: `scale(${scale})` }}
+              />
+            ) : null}
           </div>
-          {/* The iPhone: the captured screen in a minimal frame, in front of the window's lower right corner. */}
+          {/* The iPhone, in front of the window's lower right corner. */}
           <div className="mk-phone absolute bottom-0 right-0 w-[24%] bg-[#111113] p-[0.6%] shadow-[0_30px_60px_-18px_rgb(0_0_0/0.5),0_0_0_1px_rgb(255_255_255/0.08)_inset]">
             <div ref={screen} className="mk-phone-screen relative aspect-[402/874] overflow-hidden bg-(--color-surface)">
               {phoneScale ? (
                 <div className="absolute left-0 top-0 origin-top-left" style={{ width: PHONE_W, height: PHONE_H, transform: `scale(${phoneScale})` }}>
-                  {[...new Set([...c.phone, ...next.phone])].map((f) => (
+                  {phoneOn ? (
                     <iframe
-                      key={`phone-${f}`}
-                      src={PHONE(f)}
+                      ref={phoneFrame}
+                      src={src("phone")}
                       title=""
                       tabIndex={-1}
-                      sandbox="allow-same-origin"
-                      onLoad={() => setLoaded((l) => ({ ...l, [`phone-${f}`]: true }))}
-                      className={cx("pointer-events-none absolute inset-0 border-0 transition-opacity duration-700 ease-out", f === c.phone[step] && loaded[`phone-${f}`] ? "opacity-100" : "opacity-0")}
+                      className={cx("pointer-events-none absolute inset-0 border-0 transition-opacity duration-700 ease-out", ready ? "opacity-100" : "opacity-0")}
                       style={{ width: PHONE_W, height: PHONE_H }}
                     />
-                  ))}
+                  ) : null}
                   <StatusBar />
-                  {/* The home indicator. */}
                   <span className="absolute bottom-2 left-1/2 h-[5px] w-[140px] -translate-x-1/2 rounded-chip bg-black" />
                 </div>
               ) : null}
@@ -190,8 +238,8 @@ export function DeviceShowcase() {
           >
             {ICONS[ch.id]}
             {ch.label}
-            {i === chapter && !still ? (
-              <span aria-hidden="true" className="absolute bottom-0 left-0 h-0.5 bg-(--color-canvas) opacity-60 transition-[width] duration-500" style={{ width: `${((step + 1) / c.frames.length) * 100}%` }} />
+            {i === chapter && ready && !still ? (
+              <span key={`${chapter}-${played}`} aria-hidden="true" className="mk-showcase-progress absolute bottom-0 left-0 h-0.5 w-full origin-left bg-(--color-canvas) opacity-60" style={{ animationDuration: `${CHAPTER_MS}ms` }} />
             ) : null}
           </button>
         ))}

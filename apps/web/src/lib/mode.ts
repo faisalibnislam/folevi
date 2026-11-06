@@ -6,7 +6,7 @@
 // every platform, and inside the iOS app.
 import { createContext, useContext, useSyncExternalStore } from "react";
 import { getFunctionName, type FunctionReference } from "convex/server";
-import { capabilitiesOf, currentBackendMode as modeNow, type BackendMode, type Capabilities, type Capability } from "./backendMode";
+import { capabilitiesOf, currentBackendMode as modeNow, localCapabilityExtras, type BackendMode, type Capabilities, type Capability } from "./backendMode";
 import { LOCAL_FUNCTIONS } from "./local/registry";
 import { localAiState, subscribeLocalAi, type LocalAiState } from "./local/ai/state";
 import { ACCOUNT_FEATURES, type AiFeature, type AiFeatures } from "./local/ai/features";
@@ -26,6 +26,7 @@ const ACCOUNT = capabilitiesOf("account");
 
 const LOCAL_WITH_AI: Capabilities = { ...LOCAL, foliAi: true };
 const serverAiState = () => null;
+const merged: { base: Capabilities; extras: object; value: Capabilities }[] = [];
 
 /**
  * Foli AI in local mode (WP11): which model is active on this device and what it can do, kept up to date
@@ -44,7 +45,15 @@ export function useCapabilities(): Capabilities {
   const ai = useLocalAi();
   if (!local) return ACCOUNT;
   // Foli AI shows in local mode once this device has a model for it (Apple's, or the person's own key).
-  return ai?.active ? LOCAL_WITH_AI : LOCAL;
+  const base = ai?.active ? LOCAL_WITH_AI : LOCAL;
+  const extras = localCapabilityExtras();
+  if (!Object.keys(extras).length) return base;
+  // The same object every render, so components that depend on it don't re-run.
+  const hit = merged.find((m) => m.base === base && m.extras === extras);
+  if (hit) return hit.value;
+  const value = { ...base, ...extras };
+  merged.push({ base, extras, value });
+  return value;
 }
 
 /**

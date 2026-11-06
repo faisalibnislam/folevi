@@ -119,7 +119,7 @@ async function rowFor(db: LocalReader, collection: LocalCollection, rowId: strin
   return note;
 }
 
-function putRow(ctx: LocalMutationCtx, note: LocalDocument, row: LocalCollectionRow) {
+export function putRow(ctx: LocalMutationCtx, note: LocalDocument, row: LocalCollectionRow) {
   ctx.db.put("documents", note.id, { ...note, row });
 }
 

@@ -4,6 +4,35 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.36: Small update
+
+Released 2026-11-06 06:28:32+06:00 (build 48, tag v1.2.36)
+
+Finder-style folders and multi-select, a note-centred Foli DNA map, a compact one-row list header, a tidier note menu, and fixes from a full review of the Mac, web, iPad and iPhone apps.
+
+### Added
+
+- Folder tabs work like Finder: opening a folder reuses its tab or switches to one already open, and each tab keeps its own back and forward.
+- Select several notes or folders with Command-click or Shift-click, then move, copy, archive, trash, bookmark, colour, tag or open them in new tabs together.
+- Foli DNA opens centred on the note you are reading, with a legend, a short tour and a panel that explains why notes are connected.
+
+### Improved
+
+- List pages use one compact header row with the sort and view controls beside the title.
+- The note menu groups its items into Connections, History, Move and copy, Share and export, and Note settings.
+- Move and copy dialogs can create a folder and use Folevi's own dropdowns.
+- Settings and Foli AI fit tablet widths, dialogs dim the page behind them, and the sidebar starts folded on narrow windows.
+- Mac switches, sliders, checkboxes and dialogs match the rest of Folevi, and the first click in a window works.
+- On the iPad, the note dock appears in the wide layout and row actions are easier to reach by touch.
+
+### Fixed
+
+- Clicking anywhere on a tab now opens it.
+- Foli DNA no longer opens empty or on the wrong notes.
+- Foli AI no longer always says a message was sent to Google.
+- The Tasks view switcher no longer overflows on narrow screens.
+- Popovers no longer cover the line you are typing.
+
 ## Version 1.2.35: Small update
 
 Released 2026-11-06 02:47:02+06:00 (build 47, tag v1.2.35)

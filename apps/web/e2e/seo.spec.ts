@@ -101,7 +101,8 @@ const PAGES = [
   { path: "/docs", h1: "How Folevi works." },
   // Pages that gained links to the new ones.
   { path: "/", h1: "Folevi is a free notes app for Mac, iPhone and iPad." },
-  { path: "/pricing", h1: "Start free. Pay for room, or for AI." },
+  { path: "/pricing", h1: "Free forever on your devices." },
+  { path: "/apps", h1: "Folevi on your Mac, iPhone and iPad." },
   // Comparison pages and the blog.
   { path: "/compare", h1: "How Folevi compares." },
   { path: "/compare/notion", h1: "Folevi vs Notion" },
@@ -175,7 +176,7 @@ test("a comparison page has a table with a value per product, sources and FAQ da
   for (const row of await rows.all()) {
     for (const cell of await row.getByRole("cell").all()) expect((await cell.innerText()).trim().length).toBeGreaterThan(2);
   }
-  await expect(table.getByRole("row", { name: /^Apps/ })).toContainText("No iOS");
+  await expect(table.getByRole("row", { name: /^Apps/ })).toContainText("iPhone and iPad");
   // Sources: official links, each with the day it was checked, and the disclaimer.
   const sources = page.locator("ol li[id^='source-'] a");
   expect(await sources.count()).toBeGreaterThanOrEqual(5);
@@ -211,7 +212,7 @@ test("the blog lists posts newest first, each post is a BlogPosting, and the RSS
   }, xml);
   expect(feed).not.toBeNull();
   expect(feed!.version).toBe("2.0");
-  expect(feed!.items).toHaveLength(5);
+  expect(feed!.items).toHaveLength(6);
   for (const item of feed!.items) {
     expect(item.link).toMatch(/^https?:\/\/[^/]+\/blog\/[a-z0-9-]+$/);
     expect(item.guid).toBe(item.link);

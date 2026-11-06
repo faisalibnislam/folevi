@@ -125,7 +125,7 @@ export function GetApps() {
             eyebrow="Now on iPhone and iPad"
             title={
               <>
-                On your Mac, iPhone and iPad. <Mark kind="circle">Free</Mark>, with no account.
+                On your Mac, iPhone and iPad. <Mark kind="circle">Free,</Mark> with no account.
               </>
             }
             lede="Native apps that open in a moment and work offline. Choose Keep notes on my devices and start writing: no sign-up, no trial, no limit on notes."

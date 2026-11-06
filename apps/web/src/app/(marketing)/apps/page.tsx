@@ -138,7 +138,7 @@ export default function AppsPage() {
           </div>
           <Eyebrow>Folevi apps</Eyebrow>
           <h1 className="mk-display mt-5 max-w-[15ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
-            Folevi on your Mac, iPhone and <Mark>iPad</Mark>.
+            Folevi on your Mac, iPhone and <Mark>iPad.</Mark>
           </h1>
           <p className="mk-lede mt-6 max-w-[56ch]">
             Native apps, free forever with no account. Your notes are files in a folder you pick, and they work offline.
@@ -226,7 +226,7 @@ export default function AppsPage() {
           eyebrow="For iPhone and iPad"
           title={
             <>
-              Your notes, everywhere you <Mark>go</Mark>.
+              Your notes, everywhere you <Mark>go.</Mark>
             </>
           }
           lede="New on the App Store: the same calm notes on your iPhone and iPad, with widgets and the Share sheet."

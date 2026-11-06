@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { CalendarCheck, Kanban, LockKeyhole, SquareSlash, Users } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AiIcon } from "@/components/ai/AiIcon";
 import { cx } from "../ui";
 
 /*
@@ -21,8 +23,16 @@ const CHAPTERS: Array<{ id: ChapterId; label: string; frames: string[]; phone: s
   { id: "ai", label: "Foli AI", frames: ["ai-1", "ai-2"], phone: ["ai-1", "ai-2"], says: "Foli AI is asked what's left before the launch and answers with sources from the workspace." },
   { id: "vault", label: "Vault", frames: ["vault-1", "vault-2"], phone: ["vault-1", "vault-1"], says: "The Vault opens with a passcode and shows passwords, an API key and a 2FA code." },
 ];
+/** Each tab's icon, before its name. */
+const ICONS: Record<ChapterId, ReactNode> = {
+  write: <SquareSlash size={15} aria-hidden="true" />,
+  together: <Users size={15} aria-hidden="true" />,
+  tasks: <CalendarCheck size={15} aria-hidden="true" />,
+  board: <Kanban size={15} aria-hidden="true" />,
+  ai: <AiIcon size={15} />,
+  vault: <LockKeyhole size={15} aria-hidden="true" />,
+};
 const STEP_MS = 2200;
-const WEB = (f: string) => `/marketing/showcase/web/${f}.webp`;
 /** The same frame as static HTML (the app's own DOM and CSS, no scripts), drawn at 1280 × 800 and scaled. */
 const HTML = (f: string) => `/marketing/showcase/web-html/${f}.html`;
 const PHONE = (f: string) => `/marketing/showcase/iphone/${f}.webp`;
@@ -85,22 +95,10 @@ export function DeviceShowcase() {
         <div aria-hidden="true">
           {/* The Mac window: the captured app, 16:10, with the window's corners and shadow. */}
           <div ref={win} className="mk-mac-window relative aspect-[16/10] w-full overflow-hidden bg-(--color-surface-sunken)">
-            {c.frames.map((f, i) => (
-              // eslint-disable-next-line @next/next/no-img-element -- captured frames, already sized; cross-faded by opacity
-              <img
-                key={f}
-                src={WEB(f)}
-                alt=""
-                width={2560}
-                height={1600}
-                decoding="async"
-                fetchPriority={chapter === 0 && i === 0 ? "high" : "auto"}
-                className={cx("absolute inset-0 size-full object-cover transition-opacity duration-700 ease-out", i === step ? "opacity-100" : "opacity-0")}
-              />
-            ))}
-            {/* Over each picture, the frame as HTML: the app's own markup and styles, sharp at any size. */}
+            {/* Each frame is HTML: the app's own markup and styles (no scripts), sharp at any size. */}
             {scale
-              ? c.frames.map((f, i) => (
+              ? // This chapter's frames, and the next chapter's (hidden) so they're loaded before it starts.
+                [...c.frames.map((f, i) => ({ f, on: i === step })), ...next.frames.map((f) => ({ f, on: false }))].map(({ f, on }) => (
                   <iframe
                     key={`html-${f}`}
                     src={HTML(f)}
@@ -108,14 +106,11 @@ export function DeviceShowcase() {
                     tabIndex={-1}
                     sandbox="allow-same-origin"
                     onLoad={() => setLoaded((l) => ({ ...l, [f]: true }))}
-                    className={cx("pointer-events-none absolute left-0 top-0 origin-top-left border-0 transition-opacity duration-700 ease-out", i === step && loaded[f] ? "opacity-100" : "opacity-0")}
+                    className={cx("pointer-events-none absolute left-0 top-0 origin-top-left border-0 transition-opacity duration-700 ease-out", on && loaded[f] ? "opacity-100" : "opacity-0")}
                     style={{ width: 1280, height: 800, transform: `scale(${scale})` }}
                   />
                 ))
               : null}
-            {/* The next chapter's first frame, loaded ahead so it's there when the chapter changes. */}
-            {/* eslint-disable-next-line @next/next/no-img-element -- preloaded frame, never shown */}
-            <img src={WEB(next.frames[0]!)} alt="" width={2560} height={1600} decoding="async" className="pointer-events-none absolute size-px opacity-0" />
           </div>
           {/* The iPhone: the captured screen in a minimal frame, in front of the window's lower right corner. */}
           <div className="mk-phone absolute bottom-0 right-0 w-[24%] bg-[#111113] p-[0.6%] shadow-[0_30px_60px_-18px_rgb(0_0_0/0.5),0_0_0_1px_rgb(255_255_255/0.08)_inset]">
@@ -146,10 +141,11 @@ export function DeviceShowcase() {
             aria-selected={i === chapter}
             onClick={() => go(i)}
             className={cx(
-              "relative overflow-hidden rounded-chip px-3.5 py-2 text-[13px] font-medium transition-colors",
+              "relative flex items-center gap-1.5 overflow-hidden rounded-chip px-3.5 py-2 text-[13px] font-medium transition-colors",
               i === chapter ? "bg-(--color-heading) text-(--color-canvas)" : "bg-(--color-surface-sunken) text-muted hover:bg-(--glass-hover) hover:text-(--color-heading)",
             )}
           >
+            {ICONS[ch.id]}
             {ch.label}
             {i === chapter && !still ? (
               <span aria-hidden="true" className="absolute bottom-0 left-0 h-0.5 bg-(--color-canvas) opacity-60 transition-[width] duration-500" style={{ width: `${((step + 1) / c.frames.length) * 100}%` }} />

@@ -23,9 +23,9 @@ import { AiPiece, CursorPiece } from "@/components/marketing/pieces";
 import { CREDIT_PACKS, MONTHLY_CREDITS, TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/plans";
 
 export const metadata = pageMetadata({
-  title: "Foli AI: the assistant in Folevi",
+  title: "Foli AI: the AI assistant in your Folevi workspace",
   description:
-    "Foli AI answers from your notes with sources, edits when you approve, writes, translates and draws flowcharts. On the Mac it can use Apple Intelligence.",
+    "Foli AI answers from your pages with sources, edits when you approve, writes, translates and draws flowcharts. On the Mac it can use Apple Intelligence.",
   path: "/foli-ai",
 });
 

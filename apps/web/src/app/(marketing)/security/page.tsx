@@ -10,9 +10,9 @@ import { Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
 import { SyncPiece } from "@/components/marketing/pieces";
 
 export const metadata = pageMetadata({
-  title: "Security and privacy for your notes",
+  title: "Folevi security and privacy: how we protect your work",
   description:
-    "How Folevi protects your notes: verified email, passkeys, two-step verification, encryption in transit and at rest, private sharing, full export and subprocessors.",
+    "How Folevi protects your workspace and notes: passkeys, two-step verification, encryption in transit and at rest, private sharing, export and subprocessors.",
   path: "/security",
 });
 

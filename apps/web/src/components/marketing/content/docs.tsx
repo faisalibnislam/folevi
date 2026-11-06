@@ -94,7 +94,7 @@ export const DOC_ARTICLES: DocArticle[] = [
     body: () => (
       <>
         <p>
-          Folevi runs on the web, on the Mac and on iPhone and iPad. In the apps you can skip the account: choose <strong>Keep notes on my devices</strong> and your notes live in a folder you pick. See <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>. For the web app and sharing, start with an account:
+          Folevi is a workspace for notes, docs and wikis, tasks, a calendar and databases, on your own or with a team. Foli AI helps when you want it. Folevi runs on the web, on the Mac and on iPhone and iPad. In the apps you can skip the account: choose <strong>Keep notes on my devices</strong> and your notes live in a folder you pick. See <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>. For the web app and sharing, start with an account:
         </p>
         <ol>
           <li>
@@ -120,6 +120,12 @@ export const DOC_ARTICLES: DocArticle[] = [
           </li>
           <li>
             <Link href="/docs/tasks-and-calendar">Tasks and calendar</Link> explains how to-dos become tasks.
+          </li>
+          <li>
+            <Link href="/features/databases">Databases and views</Link> shows how a collection works as a table, board, gallery or calendar.
+          </li>
+          <li>
+            <Link href="/docs/workspaces-and-plans">Workspaces and plans</Link> covers working with a team.
           </li>
           <li>
             <Link href="/template-gallery">The template gallery</Link> has 26 pages you can start from.

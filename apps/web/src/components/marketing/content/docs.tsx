@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { CREDIT_PACKS, MONTHLY_CREDITS, PACK_VALID_MONTHS, STORAGE_BYTES, TIER_NAMES, TRIAL_CREDITS, TRIAL_DAYS, formatPrice, sizeLabel } from "@/lib/plans";
 import { ShortcutTable } from "../mac/ShortcutTable";
-import { SECURITY_EMAIL, SIGN_UP_URL, SUPPORT_EMAIL } from "../site";
+import { APP_STORE_URL, IOS_REQUIREMENT, MAC_REQUIREMENT, SECURITY_EMAIL, SIGN_UP_URL, SUPPORT_EMAIL, WEB_APP_URL } from "../site";
 
 /*
  * The documentation, one article per page (/docs/<slug>). The index (/docs) keeps the old in-page anchors
@@ -87,12 +87,15 @@ export const DOC_ARTICLES: DocArticle[] = [
     slug: "getting-started",
     title: "Getting started with Folevi",
     nav: "Getting started",
-    description: "Create a Folevi account, write your first page, turn lines into blocks with the slash menu, link pages with [[ and find anything with ⌘K.",
+    description: "Get the apps or create a Folevi account, write your first page, turn lines into blocks with the slash menu, link pages with [[ and find anything with ⌘K.",
     legacyAnchor: "getting-started",
     published: "2026-09-25",
-    updated: "2026-10-14",
+    updated: "2026-11-06",
     body: () => (
       <>
+        <p>
+          Folevi runs on the web, on the Mac and on iPhone and iPad. In the apps you can skip the account: choose <strong>Keep notes on my devices</strong> and your notes live in a folder you pick. See <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>. For the web app and sharing, start with an account:
+        </p>
         <ol>
           <li>
             <a href={SIGN_UP_URL}>Create an account</a> and confirm your email address.
@@ -121,6 +124,58 @@ export const DOC_ARTICLES: DocArticle[] = [
           <li>
             <Link href="/template-gallery">The template gallery</Link> has 26 pages you can start from.
           </li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    // The apps' "Keep notes on my devices" mode: packages/local-store, components/app/LibrarySetup.tsx, native-kit
+    // WebGates.swift (the places) and the Foli AI setup screens (Apple Intelligence or your own key).
+    slug: "apps-and-local-notes",
+    title: "The apps and notes on your devices",
+    nav: "Apps and no-account notes",
+    description: "Folevi for Mac, iPhone and iPad: where to get them, keeping notes on your devices with no account, where a library can live, and moving to an account.",
+    published: "2026-11-06",
+    updated: "2026-11-06",
+    body: () => (
+      <>
+        <h2 id="apps">The apps</h2>
+        <Table
+          label="Folevi apps"
+          head={["App", "Where to get it"]}
+          rows={[
+            ["Mac", <>A free download from <Link href="/mac">folevi.com/mac</Link>. Open it and drag Folevi to Applications; it updates itself. {MAC_REQUIREMENT}.</>],
+            ["iPhone and iPad", <>Free on the <a href={APP_STORE_URL}>App Store</a>. {IOS_REQUIREMENT}.</>],
+            ["Web", <>In any modern browser: <a href={WEB_APP_URL}>open the web app</a>. Needs a Folevi account.</>],
+          ]}
+        />
+        <p>There is no Android or Windows app. On those, use the web app.</p>
+        <h2 id="no-account">Keep notes on your devices</h2>
+        <p>
+          The first time you open the Mac, iPhone or iPad app, choose <strong>Keep notes on my devices</strong>. It’s free forever and needs no account. Then pick where your library lives:
+        </p>
+        <ul>
+          <li><strong>Sync with iCloud</strong>: a Folevi folder in iCloud Drive, on every iPhone, iPad and Mac signed in to your iCloud account.</li>
+          <li><strong>Sync with Dropbox</strong>: sign in to Dropbox once. Folevi only uses its own folder, Apps › Folevi.</li>
+          <li><strong>Sync with Google Drive</strong>: sign in to Google once. Folevi only sees the files it makes.</li>
+          <li><strong>Choose a folder</strong>: any folder on the Mac, or any folder the Files app offers on iPhone and iPad, such as one in OneDrive.</li>
+          <li><strong>This device only</strong>: nothing leaves the device. You can turn on sync later in Settings.</li>
+        </ul>
+        <p>
+          A library is a folder of files: one file for each note, and a small index beside them. Folevi’s servers never see them. To use the same library on another device, open the app there, choose Keep notes on my devices and pick the same place.
+        </p>
+        <h2 id="ai">Foli AI without an account</h2>
+        <p>
+          On the Mac, Foli AI runs on Apple Intelligence, or on your own OpenAI, Anthropic or Google API key. Your notes go straight from your Mac to the model, never through Folevi. Set it up in Settings → Foli AI.
+        </p>
+        <h2 id="account">What needs an account</h2>
+        <p>
+          These need a Folevi account, because they go through our servers: the web app, sharing and public pages, comments with other people, workspaces, email-in, the <Link href="/docs/web-clipper">web clipper</Link>, the <Link href="/docs/connected-apps">MCP server</Link> and <Link href="/docs/rest-api">REST API</Link>, and AI credits. An account works in every app, too. See <Link href="/pricing">Pricing</Link> for the plans.
+        </p>
+        <h2 id="move">Moving between the two</h2>
+        <ul>
+          <li><strong>To an account</strong>: sign in from the app and upload your library. Your notes then sync through Folevi like any account’s.</li>
+          <li><strong>Back to your devices</strong>: export everything from your account into a folder you pick.</li>
         </ul>
       </>
     ),
@@ -240,11 +295,11 @@ export const DOC_ARTICLES: DocArticle[] = [
     description: "How offline editing works in Folevi, what the Saved, Saving, Offline, Syncing, Conflict and Not saved statuses mean, and how version snapshots work.",
     legacyAnchor: "sync",
     published: "2026-09-25",
-    updated: "2026-10-14",
+    updated: "2026-11-06",
     body: () => (
       <>
         <p>
-          Folevi saves every change on your device first, then syncs it. On the web, your notes are kept in the browser’s storage; Folevi for Mac keeps them the same way, on your Mac. You can keep writing with no connection at all.
+          Folevi saves every change on your device first, then syncs it. On the web, your notes are kept in the browser’s storage; the Mac, iPhone and iPad apps keep them on the device. You can keep writing with no connection at all. (This is how an account syncs. A library kept on your devices with no account syncs through your own cloud instead: see <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>.)
         </p>
         <h2 id="offline">What works offline</h2>
         <p>With no connection you can:</p>
@@ -414,11 +469,11 @@ export const DOC_ARTICLES: DocArticle[] = [
     nav: "Foli AI and credits",
     description: "How Foli AI, Folevi’s AI assistant, works: Ask Foli AI, editing and writing with ⌘J, titles, Catch me up, flowcharts, flashcards and reviews, AI credits per plan, and turning AI off.",
     published: "2026-09-30",
-    updated: "2026-10-27",
+    updated: "2026-11-06",
     body: () => (
       <>
         <p>
-          Foli AI answers questions from the notes you can open, helps you write, and writes a short brief of your week. It runs on Google’s AI models. It’s part of every plan except Core.
+          Foli AI answers questions from the notes you can open, helps you write, and writes a short brief of your week. It runs on Google’s AI models. It’s part of every plan except Core. In a library kept on your devices with no account, Foli AI on the Mac runs on Apple Intelligence or on your own OpenAI, Anthropic or Google key instead, and uses no credits (see <Link href="/docs/apps-and-local-notes#ai">the apps</Link>).
         </p>
         <h2 id="use">Where to find it</h2>
         <ul>
@@ -875,11 +930,11 @@ app.listen(3000);`}</code>
     description: "Email verification, passkeys, two-step verification with an authenticator app, recovery codes and deleting your Folevi account.",
     legacyAnchor: "account-security",
     published: "2026-09-25",
-    updated: "2026-10-14",
+    updated: "2026-11-06",
     body: () => (
       <>
         <ul>
-          <li>Email verification is required before you can open Folevi.</li>
+          <li>Email verification is required before you can use a Folevi account. (The Mac, iPhone and iPad apps also work with no account; see <Link href="/docs/apps-and-local-notes">The apps and notes on your devices</Link>.)</li>
           <li>
             Folevi won’t accept a password that has appeared in a known data breach. It checks with Have I Been Pwned using only the first five characters of a scrambled (hashed) version of the password, so the password itself never leaves Folevi.
           </li>
@@ -889,7 +944,7 @@ app.listen(3000);`}</code>
             Passkeys let you sign in with your fingerprint, face or screen lock instead of your password. Add one in Settings → Security (Folevi asks you to sign in again first if your last sign-in was more than 10 minutes ago), and rename or remove it there. Each passkey shows when it last signed you in, so one you no longer use is easy to spot. A passkey only works on Folevi, so it can’t be phished.
           </li>
           <li>
-            With two-step verification on, a passkey that checks it’s you replaces both your password and the code. Admin accounts always sign in with a password and an authenticator code. Folevi for Mac can’t use passkeys yet; use them in your browser.
+            With two-step verification on, a passkey that checks it’s you replaces both your password and the code. Admin accounts always sign in with a password and an authenticator code. In the Mac, iPhone and iPad apps, Sign in with a passkey opens Folevi’s sign-in page in a sheet.
           </li>
           <li>
             You can delete your account at any time. If you own a workspace other people use, transfer it or delete it first. After a 7-day grace period, your account, your Personal and any workspace only you use are deleted permanently.

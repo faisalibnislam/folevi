@@ -25,7 +25,7 @@ import { CREDIT_PACKS, MONTHLY_CREDITS, TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/
 export const metadata = pageMetadata({
   title: "Foli AI: the assistant in Folevi",
   description:
-    "Everything Foli AI does in Folevi: answers from your notes with sources, edits and tidies notes when you ask (you approve first), writing, translation, flowcharts, study cards, meeting summaries, web research and more.",
+    "Foli AI answers from your notes with sources, edits when you approve, writes, translates and draws flowcharts. On the Mac it can use Apple Intelligence.",
   path: "/foli-ai",
 });
 
@@ -331,6 +331,40 @@ export default function FoliPage() {
                 <>Switch it off in Settings</>,
               ]}
             />
+          </div>
+        </div>
+      </Card>
+
+      <Card aria-labelledby="apps-ai-title">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-16">
+          <SectionHeading
+            id="apps-ai-title"
+            eyebrow="Private AI in the apps"
+            title={
+              <>
+                Foli AI that never goes <Mark>through us</Mark>.
+              </>
+            }
+            lede="In a library on your devices, with no account, Foli AI on the Mac uses Apple Intelligence or your own API key."
+          />
+          <div>
+            <Checks
+              className="lg:text-[16px]"
+              items={[
+                <>Apple Intelligence, on your Mac</>,
+                <>Or your own OpenAI, Anthropic or Google key</>,
+                <>Your notes go straight from your Mac to the model, never through Folevi</>,
+                <>No Folevi account or AI credits needed</>,
+              ]}
+            />
+            <p className="mt-6 flex flex-wrap gap-x-8 gap-y-1 text-[15px]">
+              <Link href="/features/notes-on-your-devices" className="mk-link inline-flex min-h-11 items-center">
+                Notes on your devices
+              </Link>
+              <Link href="/mac" className="mk-link inline-flex min-h-11 items-center">
+                Folevi for Mac
+              </Link>
+            </p>
           </div>
         </div>
       </Card>

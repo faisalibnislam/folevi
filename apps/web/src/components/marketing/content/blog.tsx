@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CREDIT_PACKS, MONTHLY_CREDITS, PACK_VALID_MONTHS, PLAN_CATALOG, PRICES, STORAGE_BYTES, TRIAL_CREDITS, TRIAL_DAYS, formatPrice, sizeLabel } from "@/lib/plans";
+import { APP_STORE_URL, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT } from "../site";
 import { Kbd } from "../ui";
 
 /*
@@ -57,6 +58,78 @@ function Table({ label, head, rows }: { label: string; head: [string, string]; r
 }
 
 const POSTS: BlogPost[] = [
+  {
+    slug: "folevi-on-iphone-and-ipad",
+    title: "Folevi is on iPhone and iPad, free with no account",
+    description: "Folevi for iPhone and iPad is on the App Store. Like the Mac app, it’s free forever with no account: your notes are files in a folder you pick.",
+    published: "2026-11-06",
+    updated: "2026-11-06",
+    author: BLOG_AUTHOR,
+    tags: ["Apps", "Privacy"],
+    related: ["how-offline-first-notes-work", "moving-your-notes-into-folevi"],
+    // The apps' "Keep notes on my devices" mode: packages/local-store, components/app/LibrarySetup.tsx,
+    // native-kit WebGates.swift (the places) and the Foli AI setup screens. Requirements: site.ts.
+    body: () => (
+      <>
+        <p>
+          Folevi now has an app for iPhone and iPad, on the App Store today. It joins the Mac app, and both work the same way: open the app, choose <strong>Keep notes on my devices</strong>, and start writing. There’s no account to make. It’s free forever.
+        </p>
+        <p>
+          We built it this way because a notes app shouldn’t need our permission. Your notes are yours, so they should live somewhere you choose, and keep working if we ever disappear.
+        </p>
+
+        <h2 id="new">What’s new</h2>
+        <p>
+          The iPhone and iPad app is a native app, built for each screen. On the iPad, Foli DNA, the map of your linked notes, is drawn right on the screen, and the iPhone has its own view of it. Both have the Folevi basics: checklists with due dates, note themes, links between notes and search.
+        </p>
+        <p>
+          You can lock the app with Face ID or Touch ID, so the notes stay private even when someone borrows your phone.
+        </p>
+
+        <h2 id="where">Where your notes live</h2>
+        <p>The first time you open the app, it asks where your library should live:</p>
+        <ul>
+          <li><strong>iCloud Drive</strong>, so the same notes are on your iPhone, iPad and Mac.</li>
+          <li><strong>Dropbox</strong> or <strong>Google Drive</strong>, where Folevi uses only its own folder.</li>
+          <li><strong>Any folder</strong> the Files app offers, such as one in OneDrive.</li>
+          <li><strong>This device only</strong>, if you’d rather nothing left it. You can turn on sync later.</li>
+        </ul>
+        <p>
+          A library is a folder of files: one file for each note, and a small index beside them. Your own cloud keeps the copies in step, and Folevi merges changes from two devices. Folevi’s servers never see these notes. If you stop using Folevi one day, the folder is still there.
+        </p>
+
+        <h2 id="free">What’s free</h2>
+        <p>
+          Everything you need to write and organize notes on your own devices: the editor, folders, tasks, note themes, search and Foli DNA. There’s no limit on notes and no limit on devices, because there’s no account to count them against.
+        </p>
+        <p>
+          On the Mac, Foli AI can help too. It runs on Apple Intelligence, or on your own OpenAI, Anthropic or Google key. Either way, your notes go straight from your Mac to the model, never through Folevi.
+        </p>
+
+        <h2 id="cloud">What Folevi Cloud adds</h2>
+        <p>
+          Some things need a place on the internet. A Folevi account adds the web app, sharing and public pages, comments with other people, team workspaces, email-in, the web clipper, the MCP server and REST API, and AI credits. Making an account is free, and paid plans start at {p(PRICES.core.month)} a month. The details are on the <Link href="/pricing">pricing page</Link>.
+        </p>
+        <p>
+          You don’t have to decide now. Start with notes on your devices, then sign in later and upload your library if you want the web app or sharing. If you change your mind, export everything from your account back into a folder.
+        </p>
+
+        <h2 id="get">How to get it</h2>
+        <Table
+          label="Where to get Folevi"
+          head={["App", "Where"]}
+          rows={[
+            ["iPhone and iPad", <><a href={APP_STORE_URL}>Folevi on the App Store</a>. {IOS_REQUIREMENT}.</>],
+            ["Mac", <><a href={MAC_DOWNLOAD_URL}>Download for Mac</a>, open it and drag Folevi to Applications. It updates itself. {MAC_REQUIREMENT}.</>],
+            ["Web", <>Needs a Folevi account. <Link href="/pricing">See the plans</Link>.</>],
+          ]}
+        />
+        <p>
+          If your notes are in another app today, <Link href="/blog/moving-your-notes-into-folevi">moving your notes into Folevi</Link> explains the import. And if something doesn’t work the way you expect, write to us. We read every message.
+        </p>
+      </>
+    ),
+  },
   {
     slug: "how-offline-first-notes-work",
     title: "How offline-first notes work in Folevi",

@@ -203,7 +203,7 @@ export const FEATURES: Feature[] = [
     intro:
       "Folevi writes every change to your device before it sends it anywhere. With no connection you keep writing, and your edits wait on the device until you’re back online. The status on each page tells you which of those is happening.",
     plans: "Every plan, including Free.",
-    updated: "2026-10-23",
+    updated: "2026-11-06",
     art: "art-13",
     visual: "offline",
     docs: { label: "Sync and offline", href: "/docs/sync-and-offline" },
@@ -213,7 +213,7 @@ export const FEATURES: Feature[] = [
         title: "Saved on your device first",
         body: (
           <p>
-            Every edit goes into a queue on your device first: in the browser’s storage, on the web and in Folevi for Mac. Then it’s sent to the server. Queued edits survive a reload, a closed tab or a restart.
+            Every edit goes into a queue on your device first: in the browser’s storage on the web, and on the device in the Mac, iPhone and iPad apps. Then it’s sent to the server. Queued edits survive a reload, a closed tab or a restart.
           </p>
         ),
       },
@@ -254,6 +254,15 @@ export const FEATURES: Feature[] = [
         title: "Version history",
         body: <p>Folevi takes snapshots of a page as you work, and you can restore an earlier version. Versions are kept for {VERSION_DAYS} days on every plan.</p>,
       },
+      {
+        id: "no-account",
+        title: "Or keep notes on your devices",
+        body: (
+          <p>
+            The Mac, iPhone and iPad apps also work with no account. Your notes are files in a folder you pick, such as iCloud Drive, and your own cloud syncs them. See <Link href="/features/notes-on-your-devices">notes on your devices</Link>.
+          </p>
+        ),
+      },
     ],
     faq: [
       { q: "Does Folevi work offline in the browser?", a: "Yes. Every edit is saved in the browser’s storage first and synced when you reconnect. After one visit online, Folevi also opens with no connection and shows your notes as this device last saw them." },
@@ -263,6 +272,80 @@ export const FEATURES: Feature[] = [
       { q: "How long are old versions kept?", a: `Version snapshots are kept for ${VERSION_DAYS} days on every plan, and you can restore any of them.` },
     ],
     related: ["version-history", "import-and-export", "tasks"],
+  },
+  {
+    // The apps' "Keep notes on my devices" mode: packages/local-store (the library format and merge),
+    // components/app/LibrarySetup.tsx (the places), native-kit Foli AI setup (Apple Intelligence or your own key).
+    slug: "notes-on-your-devices",
+    name: "Notes on your devices",
+    summary: "Free forever, no account. Your notes are files in your own cloud.",
+    title: "Free notes app with no account: Mac, iPhone, iPad",
+    description: "Use Folevi on Mac, iPhone and iPad with no account. Your notes are files in iCloud Drive, Dropbox, Google Drive or any folder, never on our servers.",
+    h1: "A notes app with no account, free forever",
+    intro:
+      "The Folevi apps for Mac, iPhone and iPad work without an account. Choose Keep notes on my devices when the app opens, pick a place for your library, and start writing. Your notes are files in that place, and Folevi’s servers never see them.",
+    plans: "Free forever in the Mac, iPhone and iPad apps. No account.",
+    updated: "2026-11-06",
+    art: "art-13",
+    visual: "folders",
+    docs: { label: "The apps and notes on your devices", href: "/docs/apps-and-local-notes" },
+    sections: [
+      {
+        id: "places",
+        title: "Pick where your library lives",
+        body: (
+          <>
+            <p>The first time you open the app, choose one of these:</p>
+            <ul>
+              <li><strong>iCloud Drive</strong>: a Folevi folder that syncs to every iPhone, iPad and Mac signed in to your iCloud account.</li>
+              <li><strong>Dropbox</strong> or <strong>Google Drive</strong>: sign in once, and Folevi only uses its own folder there.</li>
+              <li><strong>Any folder</strong>: on the Mac, any folder; on iPhone and iPad, any folder the Files app offers, such as one in OneDrive.</li>
+              <li><strong>This device only</strong>: nothing leaves the device. You can turn on sync later in Settings.</li>
+            </ul>
+          </>
+        ),
+      },
+      {
+        id: "files",
+        title: "Your notes are files",
+        body: (
+          <p>
+            A library is a folder with one file for each note and a small index beside them. Your own cloud keeps the copies in step across devices, and Folevi merges changes made on two of them. If you stop using Folevi, the folder is still yours.
+          </p>
+        ),
+      },
+      {
+        id: "ai",
+        title: "Private Foli AI",
+        body: (
+          <p>
+            On the Mac, Foli AI runs on Apple Intelligence, or on your own OpenAI, Anthropic or Google key. Your notes go straight from your Mac to the model, never through Folevi. More on the <Link href="/foli-ai">Foli AI</Link> page.
+          </p>
+        ),
+      },
+      {
+        id: "account",
+        title: "What needs an account",
+        body: (
+          <>
+            <p>
+              Some things need a place on the internet, so they need a Folevi account: sharing and public pages, comments with other people, workspaces, email-in, the web clipper, the MCP server and REST API, and AI credits. The web app needs an account too.
+            </p>
+            <p>
+              You can move between the two. Sign in and upload a library to your account, or export everything from an account back into a folder. See <Link href="/pricing">pricing</Link> for the plans.
+            </p>
+          </>
+        ),
+      },
+    ],
+    faq: [
+      { q: "Is Folevi free without an account?", a: "Yes. The Mac, iPhone and iPad apps are free forever when you keep notes on your devices, with no account." },
+      { q: "Where are my notes stored?", a: "In the place you pick: iCloud Drive, Dropbox, Google Drive, any folder, or this device only. Each note is a file, with a small index beside them. Folevi’s servers never see them." },
+      { q: "Do my notes sync between iPhone, iPad and Mac?", a: "Yes, through your own cloud. Put the library in iCloud Drive, Dropbox or Google Drive and open it on each device." },
+      { q: "What doesn’t work without an account?", a: "Sharing, public pages, comments with others, workspaces, email-in, the web clipper, the API, AI credits and the web app need a Folevi account." },
+      { q: "Can I switch to an account later?", a: "Yes. Sign in and upload your library. You can also export everything from an account back into a folder." },
+    ],
+    related: ["offline-notes", "security-and-privacy", "import-and-export"],
   },
   {
     slug: "tasks",
@@ -1331,9 +1414,9 @@ export const FEATURES: Feature[] = [
     title: "Private and secure notes app",
     description: "Folevi needs a verified email, offers two-step verification, encrypts data in transit and at rest, and loads no trackers. It isn’t end-to-end encrypted.",
     h1: "Private notes, with plain answers about security",
-    intro: "Here is what protects your account and your notes in Folevi today, and one thing it doesn’t do. The full details, with every subprocessor, are on the Security page.",
+    intro: "Here is what protects your account and your notes in Folevi today, and one thing it doesn’t do. The full details, with every subprocessor, are on the Security page. If you’d rather your notes never reach our servers, the Mac, iPhone and iPad apps can keep them on your devices with no account.",
     plans: "Every plan, including Free.",
-    updated: "2026-10-14",
+    updated: "2026-11-06",
     art: "art-01",
     visual: "security",
     docs: { label: "Account security", href: "/docs/account-security" },
@@ -1386,7 +1469,7 @@ export const FEATURES: Feature[] = [
       { q: "Does Folevi use my notes to train AI?", a: "No. Folevi doesn’t use your notes to train AI models, and neither does its AI provider." },
       { q: "How do I report a vulnerability?", a: "Email security@folevi.com. The Security page explains what to include." },
     ],
-    related: ["version-history", "sharing", "import-and-export"],
+    related: ["notes-on-your-devices", "sharing", "import-and-export"],
   },
 ];
 

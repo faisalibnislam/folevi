@@ -32,6 +32,14 @@ const faqs: FaqItem[] = [
     a: "When you sign in, choose “Use a backup code instead” and enter one of the backup codes you saved when you turned on two-step verification. Each code works once. Then, in Settings → Security, turn two-step verification off and on again with your new phone. If you have no backup codes left, write to us from the address on your account.",
   },
   {
+    q: "Which devices does Folevi work on?",
+    a: "Mac (a free download from folevi.com/mac), iPhone and iPad (free on the App Store), and any modern browser through the web app. There is no Android or Windows app; on those, use the web app.",
+  },
+  {
+    q: "Do I need an account?",
+    a: "Not in the Mac, iPhone and iPad apps. Choose Keep notes on my devices and your notes are files in a folder you pick, such as iCloud Drive, free forever. The web app, sharing and AI credits need a Folevi account.",
+  },
+  {
     q: "Does Folevi work offline?",
     a: "Yes. Every change is saved on your device first, then synced. With no connection the page shows Offline and counts the edits waiting on this device; they sync when you reconnect. Saved means everything has reached our servers.",
   },

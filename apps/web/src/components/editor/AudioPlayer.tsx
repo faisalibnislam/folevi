@@ -91,7 +91,7 @@ export function AudioPlayer({
         onClick={toggle}
         disabled={!src}
         aria-label={playing ? "Pause" : "Play"}
-        className="grid size-9 flex-none place-items-center rounded-chip bg-heading text-canvas transition-opacity disabled:opacity-40"
+        className="grid size-9 flex-none place-items-center rounded-chip bg-heading text-canvas transition-opacity disabled:opacity-40 enabled:hover:bg-[color-mix(in_oklab,var(--color-heading)_85%,var(--color-canvas))]"
       >
         {playing ? (
           <Pause size={15} aria-hidden className="fill-current" />

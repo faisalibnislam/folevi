@@ -229,7 +229,7 @@ export function VaultGate({ info, onOpen }: { info: Info; onOpen: () => void }) 
             No recovery key?{" "}
             <button
               type="button"
-              className="underline underline-offset-2"
+              className="underline underline-offset-2 hover:text-heading hover:decoration-2"
               onClick={() =>
                 void requestReset({ vaultId: info.id, client: vaultSessions().info() }).then(
                   () => toast.show("Asked. A custodian's device shares the key with you again when they next open the Vault.", { tone: "success" }),

@@ -76,7 +76,7 @@ export function ActionsCard({ actions, outcome, onApply, onDismiss, onOpen }: { 
             </p>
           ) : null}
           <div className="mt-3 flex gap-2">
-            <button type="button" onClick={onApply} disabled={outcome === "applying"} className="inline-flex h-8 items-center gap-1.5 rounded-chip bg-heading px-3 text-subheadline font-medium text-canvas disabled:opacity-60">
+            <button type="button" onClick={onApply} disabled={outcome === "applying"} className="inline-flex h-8 items-center gap-1.5 rounded-chip bg-heading px-3 text-subheadline font-medium text-canvas disabled:opacity-60 enabled:hover:bg-[color-mix(in_oklab,var(--color-heading)_85%,var(--color-canvas))]">
               {outcome === "applying" ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Check size={14} aria-hidden />}
               {outcome === "applying" ? "Applying…" : "Apply changes"}
             </button>

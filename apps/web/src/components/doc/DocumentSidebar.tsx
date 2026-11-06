@@ -201,7 +201,7 @@ function ContentsPanel({ documentId, title, onJump }: { documentId: string; titl
       <button
         type="button"
         onClick={() => (document.getElementById("doc-scroll") ?? document.getElementById("main"))?.scrollTo({ top: 0, behavior: scrollBehavior() })}
-        className="mb-0.5 block w-full truncate rounded-chip bg-[var(--glass-hover)] px-3 py-1.5 text-left text-subheadline font-semibold text-heading transition-colors hover:bg-[var(--glass-hover)]"
+        className="mb-0.5 block w-full truncate rounded-chip bg-[var(--glass-hover)] px-3 py-1.5 text-left text-subheadline font-semibold text-heading transition-colors hover:bg-[color-mix(in_oklab,var(--color-ink)_9%,transparent)]"
       >
         {title || "Untitled"}
       </button>
@@ -249,7 +249,7 @@ function TasksPanel({ documentId, editor, readOnly, onJump }: { documentId: stri
                     </svg>
                   ) : null}
                 </button>
-                <button type="button" onClick={() => onJump(b.id)} className={`min-w-0 flex-1 text-left text-subheadline leading-snug ${checked ? "text-muted line-through" : "text-ink"}`}>
+                <button type="button" onClick={() => onJump(b.id)} className={`-mx-1 min-w-0 flex-1 rounded-tiny px-1 text-left text-subheadline leading-snug hover:bg-[var(--glass-hover)] hover:text-heading ${checked ? "text-muted line-through" : "text-ink"}`}>
                   {text}
                 </button>
               </li>

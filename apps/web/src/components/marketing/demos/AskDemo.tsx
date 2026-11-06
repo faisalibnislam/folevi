@@ -224,7 +224,7 @@ export function AskDemo({ compact = false }: { compact?: boolean } = {}) {
           <button
             type="submit"
             aria-label="Send"
-            className={cx("absolute bottom-3 right-2 grid size-7 place-items-center rounded-chip bg-(--color-heading) text-(--color-canvas) transition-opacity", draft.trim() ? "opacity-100" : "opacity-30")}
+            className={cx("absolute bottom-3 right-2 grid size-7 place-items-center rounded-chip bg-(--color-heading) text-(--color-canvas) transition-opacity hover:bg-[color-mix(in_oklab,var(--color-heading)_85%,var(--color-canvas))]", draft.trim() ? "opacity-100" : "opacity-30")}
           >
             <ArrowUp size={15} aria-hidden="true" />
           </button>

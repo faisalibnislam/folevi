@@ -611,7 +611,7 @@ function JoinPicker({ at, exclude, onClose, onPick }: { at: { x: number; y: numb
               aria-selected={i === active}
               onMouseEnter={() => setActive(i)}
               onClick={() => onPick(it.id)}
-              className={`flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-subheadline ${i === active ? "bg-[var(--glass-hover)] text-heading" : "text-ink"}`}
+              className={`flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-subheadline hover:bg-[var(--glass-hover)] ${i === active ? "bg-[var(--glass-hover)] text-heading" : "text-ink"}`}
             >
               <FileText size={14} aria-hidden className="flex-none opacity-60" />
               <span className="truncate">{it.title || "Untitled"}</span>

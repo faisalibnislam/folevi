@@ -549,7 +549,7 @@ export function InlineAi({ editor, documentId, request, onClose }: { editor: Edi
               aria-label="Send"
               title="Send (Enter)"
               onClick={() => (phase.kind === "result" ? refine(input) : choose(options[0]))}
-              className="grid h-7 w-7 flex-none place-items-center rounded-chip bg-heading text-canvas"
+              className="grid h-7 w-7 flex-none place-items-center rounded-chip bg-heading text-canvas hover:bg-[color-mix(in_oklab,var(--color-heading)_85%,var(--color-canvas))]"
             >
               <ArrowUp size={15} aria-hidden />
             </button>

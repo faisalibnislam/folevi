@@ -286,7 +286,7 @@ function PhoneTile({ tile, editor, disabled, onDone }: { tile: Tile; editor: Edi
     >
       <span
         aria-hidden
-        className="iphone-insert-art grid h-14 w-full place-items-center overflow-hidden rounded-panel transition-transform duration-150 group-active:scale-[0.96]"
+        className="iphone-insert-art grid h-14 w-full place-items-center overflow-hidden rounded-panel transition-[transform,filter] duration-150 group-enabled:group-hover:brightness-95 group-active:scale-[0.96]"
         style={hue ? ({ color: `var(--color-${hue})`, ["--color-accent" as string]: `var(--color-${hue})` } as React.CSSProperties) : undefined}
       >
         {tile.picture}

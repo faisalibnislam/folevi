@@ -307,7 +307,7 @@ export function CalendarView({ month }: { month: string | null }) {
                           const id = e.dataTransfer.getData("application/x-folevi-task");
                           if (id) reschedule(id, date);
                         }}
-                        className={`min-h-[104px] border-b border-r border-line p-1.5 outline-none last:border-r-0 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${inMonth ? "" : "bg-surface/60"} ${selected === date ? "bg-accent-soft/40" : ""}`}
+                        className={`min-h-[104px] border-b border-r border-line p-1.5 outline-none last:border-r-0 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${inMonth ? "" : "bg-surface/60"} ${selected === date ? "bg-accent-soft/40" : "hover:bg-[var(--glass-hover)]"}`}
                       >
                         <div className="flex items-center justify-between">
                           <span className={`grid h-6 min-w-6 place-items-center rounded-chip px-1 text-footnote tabular-nums ${isToday ? "bg-heading font-semibold text-canvas shadow-[inset_0_1px_0_rgb(255_255_255/0.25)]" : inMonth ? "text-ink" : "text-faint"}`}>{Number(date.slice(8))}</span>

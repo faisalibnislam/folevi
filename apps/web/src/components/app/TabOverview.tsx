@@ -142,7 +142,7 @@ export function TabOverview({
                   <span className={`truncate ${e.active ? "font-semibold text-heading" : "text-ink"}`}>{e.label}</span>
                 </span>
               </div>
-              <button type="button" aria-label={`Open ${e.label}`} onClick={() => onOpen(e.href)} className="block aspect-[16/10] w-full overflow-hidden border-t border-line text-left outline-none">
+              <button type="button" aria-label={`Open ${e.label}`} onClick={() => onOpen(e.href)} className="block aspect-[16/10] w-full overflow-hidden border-t border-line text-left outline-none transition-opacity hover:opacity-85">
                 {e.tab ? (
                   <TabPicture tab={e.tab} titles={titles} viewIcon={e.icon} className="h-full w-full" />
                 ) : (

@@ -494,7 +494,7 @@ export function ChatThread({
         <ul className="mt-1">
           {suggestions.map((s) => (
             <li key={s}>
-              <button type="button" onClick={() => send(s)} className="flex min-h-11 w-full items-center gap-3 py-2 text-left text-callout text-ink outline-none active:opacity-60 focus-visible:underline">
+              <button type="button" onClick={() => send(s)} className="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center gap-3 rounded-control px-2 py-2 text-left text-callout text-ink outline-none hover:bg-[var(--glass-hover)] hover:text-heading active:opacity-60 focus-visible:underline">
                 <MessageCircle size={18} strokeWidth={1.8} aria-hidden className="flex-none text-muted" />
                 {s}
               </button>
@@ -574,7 +574,7 @@ export function ChatThread({
         <button
           type="button"
           onClick={toLatest}
-          className={`absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-capsule bg-[var(--color-surface-raised)] font-medium text-heading shadow-[0_0_0_0.5px_rgb(0_0_0/0.12),0_4px_14px_-4px_rgb(0_0_0/0.25)] outline-none animate-[iphone-fade-in_160ms_ease-out] focus-visible:ring-2 focus-visible:ring-focus active:opacity-70 motion-reduce:animate-none ${iphone ? "h-9 px-3.5 text-subheadline" : "h-8 px-3 text-subheadline"}`}
+          className={`absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-capsule bg-[var(--color-surface-raised)] font-medium text-heading shadow-[0_0_0_0.5px_rgb(0_0_0/0.12),0_4px_14px_-4px_rgb(0_0_0/0.25)] outline-none animate-[iphone-fade-in_160ms_ease-out] focus-visible:ring-2 focus-visible:ring-focus hover:bg-[color-mix(in_oklab,var(--color-surface-raised),var(--color-ink)_6%)] active:opacity-70 motion-reduce:animate-none ${iphone ? "h-9 px-3.5 text-subheadline" : "h-8 px-3 text-subheadline"}`}
         >
           <ArrowDown size={iphone ? 16 : 14} aria-hidden /> Jump to latest
         </button>
@@ -649,7 +649,7 @@ export function ChatThread({
                 {iphone ? (
                   <SendButton label={mode === "research" ? "Start research" : "Ask"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="-m-[5px]" />
                 ) : (
-                  <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} title={mode === "research" ? "Start research (Enter)" : "Ask (Enter)"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="grid h-9 w-9 flex-none place-items-center rounded-control bg-heading text-canvas transition-opacity disabled:opacity-30">
+                  <button type="button" aria-label={mode === "research" ? "Start research" : "Ask"} title={mode === "research" ? "Start research (Enter)" : "Ask (Enter)"} disabled={!draft.trim() || working || attachments.uploading} onClick={() => send(draft)} className="grid h-9 w-9 flex-none place-items-center rounded-control bg-heading text-canvas transition-opacity disabled:opacity-30 enabled:hover:bg-[color-mix(in_oklab,var(--color-heading)_85%,var(--color-canvas))]">
                     <ArrowUp size={16} aria-hidden />
                   </button>
                 )}

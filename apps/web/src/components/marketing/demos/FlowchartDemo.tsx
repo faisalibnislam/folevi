@@ -259,7 +259,7 @@ export function FlowchartDemo() {
                 placeholder={mode === "create" ? "Describe a process, step by step or in a sentence…" : "What should change? e.g. add an approval step after review"}
                 className="min-w-0 flex-1 resize-none bg-transparent text-[14px] leading-[1.45] text-ink outline-none placeholder:text-faint"
               />
-              <button type="submit" aria-label={mode === "create" ? "Create flowchart" : "Update flowchart"} disabled={busy !== null || !text.trim()} className="grid size-7 flex-none place-items-center rounded-chip bg-(--color-heading) text-(--color-canvas) transition-opacity disabled:opacity-30">
+              <button type="submit" aria-label={mode === "create" ? "Create flowchart" : "Update flowchart"} disabled={busy !== null || !text.trim()} className="grid size-7 flex-none place-items-center rounded-chip bg-(--color-heading) text-(--color-canvas) transition-opacity disabled:opacity-30 enabled:hover:bg-[color-mix(in_oklab,var(--color-heading)_85%,var(--color-canvas))]">
                 <ArrowUp size={15} aria-hidden="true" />
               </button>
             </form>

@@ -41,7 +41,7 @@ export function FolderColorDialog({ open, onClose, folder, folders }: { open: bo
                 }
               }}
               style={{ background: c.hex }}
-              className={`grid aspect-square place-items-center rounded-chip shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-surface" : ""}`}
+              className={`grid aspect-square place-items-center rounded-chip shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] transition-[transform,box-shadow] hover:scale-105 hover:shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08),0_0_0_2px_var(--color-line-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-surface" : ""}`}
             >
               {on ? <Check size={18} strokeWidth={2.5} className="text-[#17171a]" aria-hidden /> : null}
             </button>

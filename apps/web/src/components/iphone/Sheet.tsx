@@ -15,7 +15,7 @@ export type SheetSize = "fit" | "medium" | "large";
  * draws a sheet's close button. The circle is the ::before; the icon sits on it.
  */
 export const SHEET_BUTTON =
-  "relative isolate grid h-11 w-11 flex-none place-items-center rounded-capsule text-muted outline-none before:absolute before:left-1.5 before:top-1.5 before:-z-10 before:h-8 before:w-8 before:rounded-capsule before:bg-[color-mix(in_oklab,var(--color-ink)_9%,transparent)] before:transition-transform before:duration-200 active:before:scale-90 focus-visible:before:ring-2 focus-visible:before:ring-focus";
+  "relative isolate grid h-11 w-11 flex-none place-items-center rounded-capsule text-muted outline-none hover:text-heading hover:before:bg-[color-mix(in_oklab,var(--color-ink)_14%,transparent)] before:absolute before:left-1.5 before:top-1.5 before:-z-10 before:h-8 before:w-8 before:rounded-capsule before:bg-[color-mix(in_oklab,var(--color-ink)_9%,transparent)] before:transition-transform before:duration-200 active:before:scale-90 focus-visible:before:ring-2 focus-visible:before:ring-focus";
 
 /** How dark the screen behind gets (§2.4): a sheet at its large (or only) detent, and at medium. */
 const DIM_FULL = 0.25;

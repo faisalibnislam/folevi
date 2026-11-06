@@ -750,7 +750,7 @@ const TabRow = memo(function TabRow({
                   href={`/d/${id}`}
                   aria-current={id === here ? "page" : undefined}
                   aria-label={`${name} (joined)`}
-                  className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-chip px-0.5 outline-none ${id === here ? "font-semibold text-heading" : active ? "font-normal text-muted" : ""}`}
+                  className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-chip px-0.5 outline-none hover:text-heading ${id === here ? "font-semibold text-heading" : active ? "font-normal text-muted" : ""}`}
                 >
                   <FileText size={13} aria-hidden className="flex-none opacity-70" />
                   {pinned ? null : <span className="truncate">{name}</span>}

@@ -153,7 +153,7 @@ function NoteCarousel({ docs, label, recent }: { docs: Summary[] | undefined; la
   // coloured overlay, so the fade matches whatever is behind it (the glass panel, a note's artwork).
   const fadeMask = `linear-gradient(to right, ${edges.start ? "#000" : "transparent"} 0, #000 64px, #000 calc(100% - 64px), ${edges.end ? "#000" : "transparent"} 100%)`;
   // The arrows sit in the page's side margin, beside the row (over the cards only on phones, where there's no margin).
-  const arrow = "absolute top-[calc(50%-10px)] z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-chip bg-surface text-heading shadow-[0_2px_10px_rgb(0_0_0/0.16),0_0_0_1px_rgb(0_0_0/0.05)] transition-[opacity,transform] hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+  const arrow = "absolute top-[calc(50%-10px)] z-20 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-chip bg-surface text-heading shadow-[0_2px_10px_rgb(0_0_0/0.16),0_0_0_1px_rgb(0_0_0/0.05)] transition-[opacity,transform,background-color] hover:scale-105 hover:bg-[color-mix(in_oklab,var(--color-surface),var(--color-ink)_6%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
   return (
     <div className="relative">
       <ul

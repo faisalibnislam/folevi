@@ -122,7 +122,7 @@ export function EditDemo({ compact = false }: { compact?: boolean } = {}) {
               take();
               setPhase({ kind: "menu", active: 0 });
             }}
-            className={cx("cursor-text rounded-tiny outline-none transition-colors focus-visible:shadow-[0_0_0_2px_var(--color-focus)] duration-700", flash && "bg-[color-mix(in_oklab,#3fb27f_26%,transparent)]")}
+            className={cx("cursor-text rounded-tiny outline-none transition-colors hover:bg-(--glass-hover) focus-visible:shadow-[0_0_0_2px_var(--color-focus)] duration-700", flash && "bg-[color-mix(in_oklab,#3fb27f_26%,transparent)]")}
             aria-label="Select the sentence"
           >
             {words.map((w, i) => (
@@ -215,7 +215,7 @@ export function EditDemo({ compact = false }: { compact?: boolean } = {}) {
                       void run(i, plain);
                     }}
                     onPointerEnter={() => setPhase({ kind: "menu", active: i })}
-                    className={cx("flex w-full items-center gap-2.5 rounded-control px-2.5 text-left", compact ? "py-[5px]" : "py-[7px]", i === phase.active ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink")}
+                    className={cx("flex w-full items-center gap-2.5 rounded-control px-2.5 text-left", compact ? "py-[5px]" : "py-[7px]", i === phase.active ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink hover:bg-(--glass-hover)")}
                   >
                     <span className="text-muted">{a.icon}</span>
                     <span className="min-w-0 flex-1 truncate">{a.label}</span>

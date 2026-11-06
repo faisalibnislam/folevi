@@ -133,6 +133,7 @@
   background: var(--st-paper); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 18%, transparent);
 }
 .st-swatch[aria-pressed="true"] { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+.st-swatch:hover:not([aria-pressed="true"]) { outline: 2px solid var(--color-line-strong); outline-offset: 2px; }
 .st-btn:focus-visible, .st-swatch:focus-visible, .st-ai-action:focus-visible, .st-chip button:focus-visible, .st-chip-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .st-ai-mark { color: #7c6cf0; }
 :root[data-theme="dark"] .st-ai-mark { color: #a99bff; }

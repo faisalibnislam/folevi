@@ -762,7 +762,7 @@ function PropertyEditor({
           {prop.options.map((o) => {
             const on = selected.includes(o.id);
             return (
-              <button key={o.id} type="button" aria-pressed={on} onClick={() => void save(on ? selected.filter((x) => x !== o.id) : [...selected, o.id])} className={`rounded-chip px-2 py-0.5 text-footnote ${on ? "" : "opacity-40"}`} style={optionColor(o.color)}>
+              <button key={o.id} type="button" aria-pressed={on} onClick={() => void save(on ? selected.filter((x) => x !== o.id) : [...selected, o.id])} className={`rounded-chip px-2 py-0.5 text-footnote ${on ? "hover:brightness-95" : "opacity-40 hover:opacity-70"}`} style={optionColor(o.color)}>
                 {o.name}
               </button>
             );

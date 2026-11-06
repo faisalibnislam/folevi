@@ -137,7 +137,7 @@ function SiteNav({
           href="/"
           onClick={onNavigate}
           aria-label="Folevi home"
-          className="flex min-w-0 flex-1 items-center rounded-chip px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="flex min-w-0 flex-1 items-center rounded-chip px-1 py-1 text-heading outline-none hover:bg-[var(--glass-hover)] focus-visible:ring-2 focus-visible:ring-focus"
         >
           <FoleviLogo height={26} title={null} className="flex-none" />
         </Link>
@@ -675,7 +675,7 @@ export function SiteShell({
                 <div className="flex h-16 items-center gap-2 px-4 sm:px-8">
                   <Link
                     href="/"
-                    className="-ml-1.5 flex h-11 items-center rounded-chip px-1.5 text-heading"
+                    className="-ml-1.5 flex h-11 items-center rounded-chip px-1.5 text-heading hover:bg-[var(--glass-hover)]"
                     aria-label="Folevi home"
                   >
                     <FoleviLogo height={24} title={null} />

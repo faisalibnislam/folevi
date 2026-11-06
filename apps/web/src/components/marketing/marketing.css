@@ -484,6 +484,8 @@
   color: var(--check-ink, var(--color-canvas));
 }
 .mk-check-input:focus-visible + .mk-check { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+button.mk-check:hover:not([data-checked="true"]) { background: color-mix(in oklab, var(--color-surface), var(--color-ink) 6%); box-shadow: inset 0 0 0 1.5px var(--color-ink-muted); }
+button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
 
 /* ------------------------------------------------------------------------------------------------
  * Product replicas: the app's own chrome (glass canvas, sidebar, tab strip, dock) around a note that

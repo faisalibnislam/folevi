@@ -413,7 +413,7 @@ export function SidebarTopBar({ onNavigate }: { onNavigate?: () => void }) {
         onClick={onNavigate}
         aria-label="Folevi"
         title="Go to Home"
-        className="ui-browser-only flex min-w-0 flex-1 items-center gap-2 rounded-chip px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        className="ui-browser-only flex min-w-0 flex-1 items-center gap-2 rounded-chip px-1 py-1 text-heading outline-none hover:bg-[var(--glass-hover)] focus-visible:ring-2 focus-visible:ring-focus"
       >
         <FoleviLogo height={26} title={null} className="flex-none" />
       </AppLink>

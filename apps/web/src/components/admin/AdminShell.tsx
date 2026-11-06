@@ -116,7 +116,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </a>
         <aside className="flex flex-none flex-col md:w-[248px]">
           <div className="flex h-[52px] flex-none items-center gap-2 px-3">
-            <Link href="/admin" aria-label="Folevi admin" title="Go to the dashboard" className="flex items-center rounded-chip px-1 py-1 text-heading outline-none focus-visible:ring-2 focus-visible:ring-focus">
+            <Link href="/admin" aria-label="Folevi admin" title="Go to the dashboard" className="flex items-center rounded-chip px-1 py-1 text-heading outline-none hover:bg-[var(--glass-hover)] focus-visible:ring-2 focus-visible:ring-focus">
               <FoleviLogo height={26} title={null} className="flex-none" />
             </Link>
             <span className="rounded-chip bg-[var(--glass-hover)] px-2 py-0.5 text-footnote font-semibold text-muted">Admin</span>

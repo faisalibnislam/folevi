@@ -85,7 +85,7 @@ export function TitleDemo() {
           setTitle(MESSY);
           setPhase({ kind: "menu", active: 0 });
         }}
-        className="mk-display block text-left text-[24px] text-(--color-heading)"
+        className="mk-display -mx-1.5 block rounded-control px-1.5 text-left text-[24px] text-(--color-heading) hover:bg-(--glass-hover)"
         aria-label="Select the title"
       >
         <span className="bg-[color-mix(in_oklab,var(--mk-violet)_24%,transparent)]">{shownTitle.slice(0, selectedChars)}</span>
@@ -117,7 +117,7 @@ export function TitleDemo() {
                   onPointerEnter={() => phase.kind === "menu" && setPhase({ kind: "menu", active: i })}
                   className={cx(
                     "flex w-full items-center gap-2.5 rounded-control px-2.5 py-[7px] text-left",
-                    (phase.kind === "menu" && phase.active === i) || (phase.kind === "thinking" && phase.row === i) ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink",
+                    (phase.kind === "menu" && phase.active === i) || (phase.kind === "thinking" && phase.row === i) ? "bg-(--glass-hover) text-(--color-heading)" : "text-ink hover:bg-(--glass-hover)",
                   )}
                 >
                   <span className="text-muted">{r.icon}</span>

@@ -184,7 +184,7 @@ export function ConnectDemo() {
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => choose(id)}
                     onMouseMove={() => setActiveIndex(options.indexOf(id))}
-                    className={cx("flex h-10 cursor-pointer items-center gap-2.5 rounded-chip px-2 text-[14px]", selected ? "bg-(--color-surface-sunken) text-(--color-heading)" : "text-ink")}
+                    className={cx("flex h-10 cursor-pointer items-center gap-2.5 rounded-chip px-2 text-[14px]", selected ? "bg-(--color-surface-sunken) text-(--color-heading)" : "text-ink hover:bg-(--glass-hover)")}
                   >
                     <FileText size={14} aria-hidden="true" className="shrink-0 text-muted" />
                     {PAGES[id].title}

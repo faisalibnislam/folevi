@@ -28,7 +28,7 @@ import { ChoiceButton, PRE_APP_PAGE, mobileApp, preAppBackground, preAppTitle, u
 export const MIN_PASSPHRASE = 8;
 
 /** A plain text button in the phone and tablet apps' screens before the app (Back, Choose another place): 17 pt, 44 tall. */
-export const MOBILE_TEXT_BUTTON = "mx-auto flex min-h-11 items-center justify-center rounded-control px-4 text-body text-heading outline-none transition-opacity active:opacity-50 focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-40";
+export const MOBILE_TEXT_BUTTON = "mx-auto flex min-h-11 items-center justify-center rounded-control px-4 text-body text-heading outline-none transition-opacity enabled:hover:bg-[var(--glass-hover)] active:opacity-50 focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-40";
 
 /** Whether this host can encrypt a library with a passphrase (not in Folevi for Android yet). */
 export function passphraseHere(): boolean {

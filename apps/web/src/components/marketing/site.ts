@@ -5,6 +5,14 @@ export const SIGN_UP_URL = `${APP_URL}/signup`;
 export const WEB_APP_URL = APP_URL;
 /** Folevi for Mac's latest DMG: the update bucket through folevi.com/download (next.config.ts, docs/MAC_RELEASE.md). */
 export const MAC_DOWNLOAD_URL = "https://folevi.com/download/mac/Folevi.dmg";
+/**
+ * Folevi for iPhone and iPad on the App Store. TODO(owner, 2026-11-07): replace with the app's own App Store link
+ * (https://apps.apple.com/app/folevi/id…). Until then it opens an App Store search for Folevi.
+ */
+export const APP_STORE_URL = "https://apps.apple.com/us/search?term=Folevi";
+/** The apps' minimum systems (apps/native-kit/Package.swift, apps/mac/project.yml). */
+export const MAC_REQUIREMENT = "macOS 15 or later";
+export const IOS_REQUIREMENT = "iOS 18 or iPadOS 18 or later";
 export const SECURITY_EMAIL = "security@folevi.com";
 export const SUPPORT_EMAIL = "support@folevi.com";
 

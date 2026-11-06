@@ -17,7 +17,7 @@ import { useLocalStorage } from "@/lib/hooks/useEngine";
 import { ageText } from "@/lib/format";
 import { NewFolderButton } from "@/components/app/NewFolderButton";
 import { ViewChrome } from "@/components/app/Shell";
-import { ListPageHeader, ROW_CONTROL, ROW_SEG, RowSort } from "./ListPageHeader";
+import { ListPageHeader, ROW_CONTROL, ROW_SEG, RowSort, RowTraySep } from "./ListPageHeader";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useIphoneApp } from "@/lib/iphone";
@@ -211,10 +211,12 @@ export function FoldersIndex() {
         <ListPageHeader
           title="Folders"
           count={data === undefined ? "Loading…" : q.trim() ? `${list.length} of ${data.folders.length} folders` : `${list.length} ${list.length === 1 ? "folder" : "folders"}`}
+          before={<SearchField value={q} onChange={setQ} label="Search folders" inRow />}
+          after={<NewFolderButton parentId={null} inPage />}
           controls={
             <>
-              <SearchField value={q} onChange={setQ} label="Search folders" inRow />
               <RowSort<FolderSort> value={sort} onChange={setSort} options={FOLDER_SORTS} />
+              <RowTraySep />
               <div className={ROW_SEG} role="group" aria-label="Layout">
                 <button type="button" aria-pressed={layout === "grid"} aria-label="Grid" title="Grid" onClick={() => setLayout("grid")}>
                   <LayoutGrid size={15} aria-hidden />
@@ -223,7 +225,6 @@ export function FoldersIndex() {
                   <Rows3 size={15} aria-hidden />
                 </button>
               </div>
-              <NewFolderButton parentId={null} inPage />
             </>
           }
         />

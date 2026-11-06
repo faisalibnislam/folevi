@@ -253,7 +253,6 @@ func noteMenuEntries(_ row: NoteRow, list: NotesListModel, frame: FrameModel, re
     if template || !TouchReveal.always {
         out.append(WebMenuEntry(.item(template ? "Edit template" : "Open", icon: .externalLink)) { frame.open(.note(row.id)) })
     }
-    out.append(WebMenuEntry(.item("Open in new tab", icon: .externalLink, id: "newtab")) { frame.open(.note(row.id), .newTab) })
     let starred = list.isStarred(row)
     out.append(WebMenuEntry(.item(starred ? "Remove bookmark" : "Bookmark", icon: starred ? .bookmarkOff : .bookmark)) { run(starred ? .unstar : .star) })
     out.append(WebMenuEntry(.item("Duplicate", icon: .copy)) { run(.duplicate) })
@@ -326,11 +325,12 @@ struct WebSegmented<T: Hashable>: View {
     /// A title row's height (2 pt around the segments) in place of the toolbar's.
     var height: CGFloat? = nil
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.webRowTray) private var inTray
 
     var body: some View {
         let seg = WebStyles.named("notes.\(prefix).seg")
         let s = seg.resolve(scheme)
-        let inset: CGFloat? = height == nil ? nil : 2
+        let inset: CGFloat? = height == nil ? nil : inTray ? 0 : 2
         HStack(spacing: s.gap) {
             ForEach(options, id: \.0) { option in
                 let on = option.0 == value
@@ -352,7 +352,8 @@ struct WebSegmented<T: Hashable>: View {
         }
         .padding(inset.map { EdgeInsets(top: $0, leading: $0, bottom: $0, trailing: $0) } ?? s.padding.edgeInsets)
         .frame(height: height ?? s.height)
-        .webBox(seg)
+        // In a title row's tray the tray is the well: no second box around the segments.
+        .webBox(seg, unless: inTray)
         // The chosen segment eases across, as a macOS segmented control's does.
         .animation(WebMotion.change(WebMotion.viewSwitch), value: value)
     }
@@ -404,6 +405,7 @@ struct WebRowSort<T: Hashable>: View {
     let options: [(T, String)]
     @Binding var value: T
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.webRowTray) private var inTray
 
     var body: some View {
         let style = WebStyles.named("notes.toolbar.select")
@@ -417,12 +419,12 @@ struct WebRowSort<T: Hashable>: View {
                 Text(options.first { $0.0 == value }?.1 ?? "").webText(notesStyle("toolbar.select.label", scheme).text).lineLimit(1)
                 WebIconView(.chevronDown, size: 14).opacity(chevron.opacity)
             }
-            .padding(.leading, 10)
-            .padding(.trailing, 8)
-            .frame(height: WebListPageHeaderMetrics.controlHeight)
+            .padding(.leading, inTray ? 8 : 10)
+            .padding(.trailing, inTray ? 6 : 8)
+            .frame(height: inTray ? WebListPageHeaderMetrics.trayItemHeight : WebListPageHeaderMetrics.controlHeight)
             .foregroundStyle(s.color.color)
-            .webBox(style)
-            .listHoverTint(radius: s.radius)
+            .webBox(style, unless: inTray)
+            .listHoverTint(radius: inTray ? WebListPageHeaderMetrics.trayItemRadius : s.radius)
             .fixedSize()
         }
         .foleviTooltip("Sort")
@@ -1024,14 +1026,18 @@ struct WebNoteBrowser: View {
         let id = model.kind.folderId ?? ""
         let path = model.ancestors.map { a in WebPageStep(id: a.id, label: a.name) { frame.open(.folder(a.id)) } }
         return WebListPageHeader(title: model.title, mark: .some(model.folder?.color), count: model.isLoading ? "" : countText, path: path) {
-            WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
-            WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.compact, .rows3, "Compact cards"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar", height: WebListPageHeaderMetrics.controlHeight)
-            if frame.session.value?.capabilities.sharing ?? false {
-                WebRowIconButton(icon: .share2, label: "Share") { FrameDialogs.folderShare(frame, folderId: id, name: model.title) }
-            }
-            if let f = model.menuFolder(id) {
-                WebPageMenuButton(label: "Folder options for \(model.title)") {
-                    folderMenuEntries(f, context: model.folderContext, actions: model.actions, dialogs: model.dialogs, navigator: navigator, feedback: feedback, frame: frame)
+            WebRowTray {
+                WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
+                WebRowTrayDivider()
+                WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.compact, .rows3, "Compact cards"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar", height: WebListPageHeaderMetrics.trayItemHeight)
+                WebRowTrayDivider()
+                if frame.session.value?.capabilities.sharing ?? false {
+                    WebRowIconButton(icon: .share2, label: "Share") { FrameDialogs.folderShare(frame, folderId: id, name: model.title) }
+                }
+                if let f = model.menuFolder(id) {
+                    WebPageMenuButton(label: "Folder options for \(model.title)") {
+                        folderMenuEntries(f, context: model.folderContext, actions: model.actions, dialogs: model.dialogs, navigator: navigator, feedback: feedback, frame: frame)
+                    }
                 }
             }
         }
@@ -1536,8 +1542,11 @@ struct WebFoldersIndex: View {
                 WebListPageHeader(title: "Folders", count: allFolders.value == nil ? "Loading…" : searching ? "\(shown.count) of \(total) folders" : "\(shown.count) \(shown.count == 1 ? "folder" : "folders")") {
                     // (Its width follows the window's, up to 300: the web's clamp(10rem, 26vw, 300px).)
                     WebIndexSearch(placeholder: "Search folders", text: $query, width: min(300, max(160, geo.size.width * 0.26)), height: WebListPageHeaderMetrics.controlHeight)
-                    WebRowSort(options: FoldersSort.options, value: Binding(get: { sort }, set: { sortRaw = $0.rawValue }))
-                    WebSegmented(options: [("grid", WebIcon.layoutGrid, "Grid"), ("list", .rows3, "List")], value: $layoutRaw, prefix: "index", height: WebListPageHeaderMetrics.controlHeight)
+                    WebRowTray {
+                        WebRowSort(options: FoldersSort.options, value: Binding(get: { sort }, set: { sortRaw = $0.rawValue }))
+                        WebRowTrayDivider()
+                        WebSegmented(options: [("grid", WebIcon.layoutGrid, "Grid"), ("list", .rows3, "List")], value: $layoutRaw, prefix: "index", height: WebListPageHeaderMetrics.trayItemHeight)
+                    }
                     newFolderButton
                 }
                 if allFolders.value != nil && shown.isEmpty {
@@ -1691,6 +1700,53 @@ struct WebFoldersIndex: View {
 /// The heights a title row's controls share (ListPageHeader.tsx's ROW_CONTROL): 32 pt on the Mac, 36 on the iPad.
 enum WebListPageHeaderMetrics {
     @MainActor static var controlHeight: CGFloat { WebStyles.isPad ? 36 : 32 }
+    /// A control inside the row's tray: the row's height less the tray's 2 pt edge all round.
+    @MainActor static var trayItemHeight: CGFloat { controlHeight - 4 }
+    static let trayItemRadius: CGFloat = 6
+}
+
+private struct WebRowTrayKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    /// Inside a title row's tray (WebRowTray): Sort, the view switch and the icon buttons drop their own boxes.
+    var webRowTray: Bool {
+        get { self[WebRowTrayKey.self] }
+        set { self[WebRowTrayKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// The style's box, or none (inside a title row's tray, which draws the one box for all its controls).
+    @ViewBuilder func webBox(_ style: WebStylePair, unless off: Bool) -> some View {
+        if off { self } else { webBox(style) }
+    }
+}
+
+/// A title row's page controls in one quiet rounded tray (ListPageHeader.tsx's RowTray; the owner, 6 November 2026,
+/// "inside a rounded rectangle but nimble and less prominent"): a faint ink tint and hairline, 2 pt around controls
+/// that drop their own boxes, thin dividers between the groups. The row's height, so it sits level with the name.
+struct WebRowTray<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let ink = webVar("color-ink", scheme).color
+        HStack(spacing: 2) { content() }
+            .padding(2)
+            .frame(height: WebListPageHeaderMetrics.controlHeight)
+            .background(RoundedRectangle(cornerRadius: WebListPageHeaderMetrics.trayItemRadius + 2, style: .continuous).fill(ink.opacity(0.035)))
+            .overlay(RoundedRectangle(cornerRadius: WebListPageHeaderMetrics.trayItemRadius + 2, style: .continuous).strokeBorder(ink.opacity(0.07), lineWidth: 1))
+            .environment(\.webRowTray, true)
+            .fixedSize()
+    }
+}
+
+/// The hairline between groups in a title row's tray.
+struct WebRowTrayDivider: View {
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        Rectangle().fill(webVar("color-line", scheme).color).frame(width: 1, height: 16).padding(.horizontal, 2)
+            .accessibilityHidden(true)
+    }
 }
 
 /// The title row of a folder's page and the Folders page (components/views/ListPageHeader.tsx; the owner, 6 November
@@ -1721,6 +1777,8 @@ struct WebListPageHeader<Controls: View>: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Room above the row (the owner, 6 November 2026: "give more space on the top"): 20 pt on the page's 12.
+        .padding(.top, 20)
         .padding(.bottom, 24)
         .accessibilityElement(children: .contain)
     }
@@ -1788,15 +1846,17 @@ struct WebRowIconButton: View {
     let label: String
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.webRowTray) private var inTray
 
     var body: some View {
         let style = WebStyles.named("button.secondary.sm")
-        let h = WebListPageHeaderMetrics.controlHeight
+        let h = inTray ? WebListPageHeaderMetrics.trayItemHeight : WebListPageHeaderMetrics.controlHeight
         Button(action: action) {
             WebIconView(icon, size: 15)
-                .foregroundStyle(style.resolve(scheme).color.color)
+                .foregroundStyle(inTray ? webVar("color-ink-muted", scheme).color : style.resolve(scheme).color.color)
                 .frame(width: h, height: h)
-                .webBox(style)
+                .webBox(style, unless: inTray)
+                .listHoverTint(radius: WebListPageHeaderMetrics.trayItemRadius, enabled: inTray)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -1811,16 +1871,18 @@ struct WebPageMenuButton: View {
     let label: String
     let entries: @MainActor () -> [WebMenuEntry]
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.webRowTray) private var inTray
 
     var body: some View {
         let style = WebStyles.named("button.secondary.sm")
         let s = style.resolve(scheme)
-        let h = WebListPageHeaderMetrics.controlHeight
+        let h = inTray ? WebListPageHeaderMetrics.trayItemHeight : WebListPageHeaderMetrics.controlHeight
         WebMenuButton(width: 220, entries: entries) {
             WebIconView(.ellipsis, size: 15)
-                .foregroundStyle(s.color.color)
+                .foregroundStyle(inTray ? webVar("color-ink-muted", scheme).color : s.color.color)
                 .frame(width: h, height: h)
-                .webBox(style)
+                .webBox(style, unless: inTray)
+                .listHoverTint(radius: WebListPageHeaderMetrics.trayItemRadius, enabled: inTray)
                 .contentShape(Rectangle())
         }
         .foleviTooltip("More")

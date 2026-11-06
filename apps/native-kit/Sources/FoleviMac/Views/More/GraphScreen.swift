@@ -1147,7 +1147,11 @@ struct GraphCanvasView: View {
         let large = nodes.count > GraphMath.large
         let labelled = GraphMath.top(nodes, deg, count: large ? 8 : GraphMath.alwaysLabelled)
         let focus = hover ?? focusedNode ?? model.panel.flatMap { byId[$0] != nil ? $0 : nil } ?? model.center.flatMap { byId[$0] != nil ? $0 : nil }
-        let near: Set<String>? = focus.map { model.focusMode ? DnaMath.within(edges, $0, 2) : Set([$0]).union(GraphMath.neighbours(edges, $0)) }
+        let lit = { (id: String) in model.focusMode ? DnaMath.within(edges, id, 2) : Set([id]).union(GraphMath.neighbours(edges, id)) }
+        // Around a note, the note and its connections stay lit and named while another dot is pointed at (the owner,
+        // 6 November 2026: pointing at one greyed out and unnamed every other dot round the note).
+        let centred = model.center.flatMap { byId[$0] != nil ? $0 : nil }
+        let near: Set<String>? = focus.map { f in centred.map { lit($0).union(lit(f)) } ?? lit(f) }
         let visible: Set<String>? = model.playAt.map { DnaMath.asOf(nodes, edges, $0) }
         let fresh: Set<String>? = model.sinceWeek ? DnaMath.newSince(nodes, edges, model.weekAgo) : nil
         let ids = Set(nodes.map(\.id))
@@ -1213,7 +1217,15 @@ struct GraphCanvasView: View {
                         .background(RoundedRectangle(cornerRadius: 10, style: .circular).fill(moreVar("glass-hover", scheme)))
                         .frame(maxWidth: .infinity).padding(.top, 12).allowsHitTesting(false)
                 }
-                if let id = hover ?? focusedNode, let n = byId[id], let p = at(id) { tooltip(n, GraphMath.screen(t, p)) }
+                if let id = hover ?? focusedNode, let n = byId[id], let p = at(id) {
+                    let r = GraphMath.drawn(GraphMath.radius(deg[id] ?? 0, entity: n.kind != "note"), t.k) * t.k
+                    let spot = GraphMath.screen(t, p)
+                    // Away from the note in the middle (above a dot above it), else above when there's room: never
+                    // over the dot, its line in, or the label under it.
+                    let mid = model.center.flatMap { c in c == id ? nil : at(c) }.map { GraphMath.screen(t, $0) }
+                    let above = mid.map { spot.y < $0.y } ?? (spot.y > 90)
+                    tooltip(n, spot, gap: r + 10, above: above)
+                }
                 if model.panel == nil, hiddenOrphans > 0, !model.list {
                     HStack(spacing: 4) {
                         Text(verbatim: hiddenOrphans == 1 ? "1 unlinked note hidden." : "\(hiddenOrphans) unlinked notes hidden.").webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-muted", scheme))
@@ -1662,7 +1674,7 @@ struct GraphCanvasView: View {
 
     // MARK: overlays
 
-    private func tooltip(_ n: GraphNode, _ spot: CGPoint) -> some View {
+    private func tooltip(_ n: GraphNode, _ spot: CGPoint, gap: CGFloat, above: Bool) -> some View {
         let keyboard = n.id == focusedNode && hover == nil
         let what = n.kind == "note" ? (keyboard ? "Enter opens it · Space says why it’s connected" : model.center == nil && model.pins[n.id] != nil ? "Click to see why it’s connected · double-click to unpin" : "Click to see why it’s connected · double-click to open") : "\(GraphMath.kindLabel[n.kind] ?? "Topic") · \(keyboard ? "Enter shows its notes" : "Click for its notes")"
         return VStack(alignment: .leading, spacing: 0) {
@@ -1674,7 +1686,7 @@ struct GraphCanvasView: View {
         .webBox(WebStyles.named("menu.panel"))
         .fixedSize()
         .alignmentGuide(.leading) { d in d.width / 2 - spot.x }
-        .alignmentGuide(.top) { _ in -(spot.y + 16) }
+        .alignmentGuide(.top) { d in above ? -(spot.y - gap - d.height) : -(spot.y + gap) }
         .allowsHitTesting(false)
     }
 

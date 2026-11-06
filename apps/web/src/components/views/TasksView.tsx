@@ -3,7 +3,7 @@
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useDeferredValue, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowRightLeft, CalendarDays, Check, ExternalLink, FileText, Plus, Repeat, RotateCcw, SlidersHorizontal, CheckSquare } from "lucide-react";
+import { ArrowRightLeft, CalendarDays, Check, FileText, Plus, Repeat, RotateCcw, SlidersHorizontal, CheckSquare } from "lucide-react";
 import { DocumentPicker, type Target } from "@/components/app/QuickAddTask";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
@@ -108,7 +108,6 @@ export function TaskItem({ task, today, onToggle, onEdit, draggable = true, acti
             { label: "Move to…", icon: <ArrowRightLeft size={14} />, onSelect: () => setMoving(true) },
             "separator",
             { label: "Open note", icon: <FileText size={14} />, onSelect: () => navigate(noteHref) },
-            { label: "Open in new tab", icon: <ExternalLink size={14} />, onSelect: () => window.open(noteHref, "_blank", "noopener") },
           ]}
         />
       ) : null}

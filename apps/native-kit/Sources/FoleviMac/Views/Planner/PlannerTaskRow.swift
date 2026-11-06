@@ -110,7 +110,6 @@ final class PlannerTasks {
         out.append(WebMenuEntry(.item("Move to…", icon: .arrowRightLeft)) { self.move(task) })
         out.append(.separator())
         out.append(WebMenuEntry(.item("Open note", icon: .fileText)) { self.openNote(task) })
-        out.append(WebMenuEntry(.item("Open in new tab", icon: .externalLink)) { self.frame.open(.note(task.noteId), .newTab) })
         return out
     }
 }

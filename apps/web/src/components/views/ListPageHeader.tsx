@@ -1,14 +1,18 @@
 "use client";
 
-import { Fragment, type ReactNode } from "react";
-import { ArrowDownUp, ChevronRight } from "lucide-react";
-import { AppLink } from "@/lib/app/router";
+import type { ReactNode } from "react";
+import { ArrowDownUp, ChevronDown, FolderTree, LayoutGrid } from "lucide-react";
+import { useAppRouter } from "@/lib/app/router";
 import { Select } from "@/components/ui/Select";
+import { MenuButton, type MenuItem } from "@/components/ui/Menu";
+import { FolderGlyph } from "@/components/ui/FolderGlyph";
 
-/** A step of the way up before a nested folder's name ("Work ›"). */
+/** A folder above a nested folder's page, from the top level down ("Work", then "Clients"). */
 export interface PathStep {
   label: string;
   href: string;
+  /** The folder's colour, for its glyph in the path menu. */
+  color?: string | null;
 }
 
 /**
@@ -22,29 +26,84 @@ export const ROW_SEG = "ui-seg ui-well p-0.5 pointer-coarse:p-1 pointer-coarse:[
 export const ROW_ICON_BUTTON = "ui-btn ui-btn-secondary h-8 w-8 flex-none pointer-coarse:h-11 pointer-coarse:w-11";
 
 /**
+ * A title row's page controls in one quiet rounded tray (the owner, 6 November 2026: "inside a rounded rectangle
+ * but nimble and less prominent"): a faint tint and hairline around controls that drop their own boxes
+ * (globals.css .row-tray), with thin dividers (RowTraySep) between the groups. The row's height.
+ */
+export function RowTray({ children }: { children: ReactNode }) {
+  return <div className="row-tray">{children}</div>;
+}
+
+/** The hairline between groups in a RowTray. */
+export function RowTraySep() {
+  return <span aria-hidden className="row-tray-sep" />;
+}
+
+/**
+ * Where a nested folder sits, as Finder's path menu shows it (the owner, 6 November 2026): a button at the start of
+ * the tray listing this folder, then each folder above it up to All folders, each with its glyph; choosing one
+ * opens it.
+ */
+function PathMenu({ title, mark, path }: { title: string; mark?: string | null; path: PathStep[] }) {
+  const { navigate } = useAppRouter();
+  const items: MenuItem[] = [
+    { label: title, icon: <FolderGlyph color={mark} size={14} />, checked: true, onSelect: () => {} },
+    ...[...path].reverse().map((step) => ({ label: step.label, icon: <FolderGlyph color={step.color} size={14} />, onSelect: () => navigate(step.href) })),
+    { label: "All folders", icon: <LayoutGrid size={14} aria-hidden />, onSelect: () => navigate("/folders") },
+  ];
+  return (
+    <MenuButton
+      label={`Where ${title} is`}
+      tooltip="Enclosing folders"
+      align="start"
+      trigger={
+        <>
+          <FolderTree size={15} aria-hidden />
+          <ChevronDown size={12} aria-hidden className="-ml-0.5 text-faint" />
+        </>
+      }
+      triggerClassName={`ui-btn ui-btn-secondary row-tray-path ${ROW_CONTROL} flex-none gap-0.5 px-1.5`}
+      items={items}
+    />
+  );
+}
+/**
  * The title row of a folder's page and the Folders page (the owner, 6 November 2026, "A. One compact row"): one line
  * with the folder's glyph, the way up for a nested folder ("Work ›", each step a link), the page's name in the
  * display serif, its count in muted text, and the page's controls at the right (Sort, the view switch, the page's
  * actions). The cards start right under it, on the same left and right edges. On a narrow window the controls wrap
  * onto a line of their own under the name; the name truncates before anything overlaps.
  */
-export function ListPageHeader({ title, mark, count, path, controls }: { title: string; mark?: ReactNode; count?: ReactNode; path?: PathStep[]; controls?: ReactNode }) {
+export function ListPageHeader({
+  title,
+  mark,
+  markColor,
+  count,
+  path,
+  before,
+  controls,
+  after,
+}: {
+  title: string;
+  mark?: ReactNode;
+  /** The folder's colour, for its own row in the path menu. */
+  markColor?: string | null;
+  count?: ReactNode;
+  /** The folders above this one: a path menu at the start of the tray. */
+  path?: PathStep[];
+  /** Controls before the tray (the Folders page's search). */
+  before?: ReactNode;
+  /** The page's controls, in one quiet tray. */
+  controls?: ReactNode;
+  /** Controls after the tray (the Folders page's New folder). */
+  after?: ReactNode;
+}) {
+  const tray = path?.length || controls;
   return (
-    <header data-page-header="" className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-3">
+    // 20 px above the row on the page's 12 (the owner, 6 November 2026: "give more space on the top").
+    <header data-page-header="" className="mb-6 mt-5 flex flex-wrap items-center gap-x-4 gap-y-3">
       <div className="flex min-w-0 flex-[1_1_18rem] items-center gap-2.5">
         {mark}
-        {path?.length ? (
-          <nav aria-label="Breadcrumb" className="-mr-1 flex min-w-0 flex-shrink-[2] items-center gap-0.5 text-body">
-            {path.map((step) => (
-              <Fragment key={step.href}>
-                <AppLink href={step.href} className="min-w-0 max-w-[12rem] truncate rounded-chip px-1 py-0.5 text-muted transition-colors hover:bg-accent-soft hover:text-heading">
-                  {step.label}
-                </AppLink>
-                <ChevronRight size={13} className="flex-none text-faint" aria-hidden />
-              </Fragment>
-            ))}
-          </nav>
-        ) : null}
         {/* Title 1 on the desktop (24), Title 2 in the apps' iOS scale (22): the size of a folder card's name. */}
         <h1 data-page-title="" className="ui-display min-w-0 truncate text-title-1 [:root[data-native]_&]:text-title-2">
           {title}
@@ -55,7 +114,23 @@ export function ListPageHeader({ title, mark, count, path, controls }: { title: 
           </p>
         ) : null}
       </div>
-      {controls ? <div className="flex flex-none flex-wrap items-center gap-2">{controls}</div> : null}
+      {tray || before || after ? (
+        <div className="flex flex-none flex-wrap items-center gap-2">
+          {before}
+          {tray ? (
+            <RowTray>
+              {path?.length ? (
+                <>
+                  <PathMenu title={title} mark={markColor} path={path} />
+                  {controls ? <RowTraySep /> : null}
+                </>
+              ) : null}
+              {controls}
+            </RowTray>
+          ) : null}
+          {after}
+        </div>
+      ) : null}
     </header>
   );
 }

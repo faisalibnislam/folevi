@@ -210,7 +210,8 @@ struct NotesListModelTests {
         let row = model.loadedRows[1]
         let menu = model.menu(for: row, wide: true).flatMap { $0 }
         #expect(menu.first == .open)
-        #expect(menu.contains(.openInNewTab))
+        // Notes always open in a tab of their own (the owner, 6 November 2026): no Open in new tab.
+        #expect(!menu.contains(.openInNewTab))
         #expect(menu.contains(.move))
         #expect(menu.contains(.duplicate))
         #expect(menu.contains(.copyTo), "the session has a team workspace to copy to")

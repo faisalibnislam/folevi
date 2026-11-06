@@ -47,7 +47,7 @@ import { useCapabilities } from "@/lib/mode";
 import { FolderShareDialog } from "@/components/app/FolderShareDialog";
 import { FolderMenu } from "@/components/app/FolderMenu";
 import { FolderGlyph } from "@/components/ui/FolderGlyph";
-import { ListPageHeader, ROW_ICON_BUTTON, ROW_SEG, RowSort, SECTION_LABEL } from "./ListPageHeader";
+import { ListPageHeader, ROW_ICON_BUTTON, ROW_SEG, RowSort, RowTraySep, SECTION_LABEL } from "./ListPageHeader";
 
 // Foli AI's "Generate a template" brings the read-only drawing of every block (its preview): it loads the first
 // time it's opened, not with every list (docs/IOS_PERFORMANCE.md, "Startup").
@@ -446,12 +446,15 @@ function DocumentList({ view, folderId, tagId, org, titleOverride }: { view: Vie
       <ListPageHeader
         title={title}
         mark={<FolderGlyph color={folder?.color} size={22} />}
-        path={crumbs.length ? crumbs.map((c) => ({ label: c.name, href: `/folders/${c.id}` })) : undefined}
+        markColor={folder?.color}
+        path={crumbs.length ? crumbs.map((c) => ({ label: c.name, href: `/folders/${c.id}`, color: c.color })) : undefined}
         count={loading ? undefined : `${countText}${!online && cached ? " · saved on this device" : ""}`}
         controls={
           <>
             <RowSort<Sort> value={sort} onChange={setSort} options={NOTE_SORTS} />
+            <RowTraySep />
             {layoutSwitch(true)}
+            <RowTraySep />
             {caps.sharing ? (
               <button type="button" aria-label="Share" title="Share" className={ROW_ICON_BUTTON} onClick={() => setSharingFolder(true)}>
                 <Share2 size={15} aria-hidden />
@@ -870,7 +873,6 @@ function useDocMenu({ doc, view, arrange, select, recent }: DocMenuProps): { ite
             ? []
             : [
                 { label: doc.kind === "template" ? "Edit template" : "Open", icon: <ExternalLink size={14} />, onSelect: () => navigate(`/d/${doc.id}`) },
-                ...(phone ? [] : [{ label: "Open in new tab", icon: <ExternalLink size={14} />, onSelect: () => window.open(`/d/${doc.id}`, "_blank", "noopener") }]),
               ]),
           doc.starred
             ? { label: "Remove bookmark", icon: <BookmarkOff size={14} />, onSelect: () => void notes.star(ids, false) }

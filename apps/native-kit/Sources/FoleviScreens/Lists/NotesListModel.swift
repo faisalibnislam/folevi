@@ -417,7 +417,6 @@ public final class NotesListModel {
             first.append(.editTemplate)
         } else {
             first.append(.open)
-            if wide { first.append(.openInNewTab) }
         }
         var second: [RowAction] = [actions.isStarred(row) ? .unstar : .star]
         if row.kind != "template" && canEdit { second.append(.move) }

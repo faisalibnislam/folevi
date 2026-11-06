@@ -79,7 +79,6 @@ public struct SharedListScreen: View {
                     .modifier(RecordsFrame(id: row.id, kind: .noteRow))
                     .contextMenu {
                         Button { navigator.open(.note(id: row.id), nil) } label: { Label("Open", systemImage: "arrow.up.forward.square") }
-                        Button { navigator.open(.noteInNewTab(id: row.id), nil) } label: { Label("Open in new tab", systemImage: "plus.rectangle.on.rectangle") }
                     }
                     .listRowBackground(Color.clear)
                 }

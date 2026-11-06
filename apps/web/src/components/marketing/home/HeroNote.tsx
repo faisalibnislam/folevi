@@ -29,7 +29,7 @@ type Layer = { key: number; art: CoverArt };
  * all of it, as changing a note's theme does in the app. `children` is the note's body (its blocks); `actions`
  * sit in their own card under the note, beside the theme picker.
  */
-export function HeroNote({ title, children, extras }: { title: ReactNode; children: ReactNode; extras?: ReactNode }) {
+export function HeroNote({ title, children, extras, after }: { title: ReactNode; /** The note's body; without one there is no editor to load. */ children?: ReactNode; extras?: ReactNode; /** More of the note under its body (the apps). */ after?: ReactNode }) {
   const [art, setArt] = useState<CoverArt>(HERO_STYLES[0]!);
   // The artwork shown, newest last: a new theme fades in over the one before it once its image has loaded.
   const [layers, setLayers] = useState<Layer[]>([{ key: 0, art: HERO_STYLES[0]! }]);
@@ -52,12 +52,15 @@ export function HeroNote({ title, children, extras }: { title: ReactNode; childr
 
   // The live editor replaces the static body once it has loaded (same layout, so nothing moves).
   const [Live, setLive] = useState<ComponentType<HeroEditorProps> | null>(null);
-  const [dockSlot, setDockSlot] = useState<HTMLDivElement | null>(null);
+  // The page tools dock is not shown on the home page: themes are picked on the cover instead.
+  const dockSlot = null;
   const [editor, setEditor] = useState<Editor | null>(null);
   const noteRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const savedId = useId();
+  const hasBody = children != null;
   useEffect(() => {
+    if (!hasBody) return;
     let cancelled = false;
     const start = () => void loadEditor().then((C) => !cancelled && setLive(() => C));
     const note = noteRef.current;
@@ -80,7 +83,7 @@ export function HeroNote({ title, children, extras }: { title: ReactNode; childr
       if (idle !== null) window.cancelIdleCallback(idle);
       if (timer !== null) clearTimeout(timer);
     };
-  }, []);
+  }, [hasBody]);
   const onReady = useCallback((ed: Editor) => setEditor(ed), []);
 
   // Picking a theme here picks it for the whole site (SiteShell remembers it); a pick made on another page
@@ -128,6 +131,7 @@ export function HeroNote({ title, children, extras }: { title: ReactNode; childr
               <span className="mk-hero-shade" data-shade="deep" />
               <span className="mk-hero-shade" data-shade="light" />
             </div>
+            <ThemePicker current={art} onPick={pick} />
             {/* The page's h1. With the editor loaded it can be edited too, like a note's title (Enter goes to the text). */}
             <h1
               ref={titleRef}
@@ -152,6 +156,7 @@ export function HeroNote({ title, children, extras }: { title: ReactNode; childr
             </h1>
           </header>
 
+          {hasBody ? (
           <div className="mk-hero-body">
             <p id={savedId} className="sr-only">
               This note is a live demo of the editor. Changes aren’t saved; reloading the page brings the original note back.
@@ -163,13 +168,38 @@ export function HeroNote({ title, children, extras }: { title: ReactNode; childr
               </div>
             </div>
           </div>
-          {/* The page tools dock sticks to the bottom of the note while it's on screen. */}
-          <div ref={setDockSlot} className="mk-hero-dock-slot" />
+          ) : null}
+          {after}
         </article>
         {/* Doodles, stickers and app pieces around the note (decorative, beside the text, never over it). */}
         {extras}
 
       </div>
+    </div>
+  );
+}
+
+/** The note's themes as swatches on the cover's top-right corner: picking one recolours the note and the site. */
+function ThemePicker({ current, onPick }: { current: CoverArt; onPick: (art: CoverArt) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Note theme" className="mk-hero-themes">
+      {HERO_STYLES.map((a) => {
+        const on = a.id === current.id;
+        return (
+          <button
+            key={a.id}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            aria-label={`Note theme: ${a.name}`}
+            title={a.name}
+            data-on={on || undefined}
+            className="mk-hero-theme"
+            style={{ backgroundImage: `url("/covers/${a.id}-thumb.webp")` }}
+            onClick={() => onPick(a)}
+          />
+        );
+      })}
     </div>
   );
 }

@@ -1,16 +1,14 @@
-import "@/components/editor/editor.css";
 import { HeroNote } from "./HeroNote";
-import { HeroStaticBody } from "./HeroStaticBody";
 import { HeroTitle } from "./HeroTitle";
+import { HeroApps } from "./GetApps";
 
 export function Hero() {
   return (
     <section aria-labelledby="hero-title" className="mk-hero">
       <HeroNote
         title={<HeroTitle />}
-      >
-        <HeroStaticBody />
-      </HeroNote>
+        after={<HeroApps />}
+      />
     </section>
   );
 }

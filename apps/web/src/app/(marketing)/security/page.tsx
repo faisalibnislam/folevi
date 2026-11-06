@@ -195,9 +195,9 @@ export default function SecurityPage() {
           />
           <Section
             id="e2ee"
-            title={<KeepHyphens text="Not end-to-end encrypted" />}
-            lead="Our servers process your notes, so search, sharing and sync work."
-            items={[<>For notes our servers never see, keep them on your devices in the Mac, iPhone or iPad app, with no account</>, <>For notes no provider may ever read, use an end-to-end encrypted tool</>]}
+            title={<KeepHyphens text="End-to-end encryption" />}
+            lead="Yours to turn on in Settings → Privacy, on every plan."
+            items={[<>Your notes are encrypted on your devices before they’re sent, so Folevi can’t read them</>, <>Pick which features may still read your notes, or choose Fully encrypted</>, <>Mark any folder or note as Always fully encrypted</>, <>In the Mac, iPhone and iPad apps with no account, our servers never see your notes at all</>]}
             className="relative"
           >
             <div aria-hidden="true" className="pointer-events-none absolute right-8 top-8 max-xl:hidden">

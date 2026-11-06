@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
+import { Cloud, LockKeyhole, WifiOff } from "lucide-react";
 import { APP_STORE_URL, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT, WEB_APP_URL } from "../site";
 import { artById, artVars, CheckMark } from "../product/Replica";
-import { ButtonLink, SectionHeading, box, container, cx } from "../ui";
+import { ButtonLink, cx } from "../ui";
 import { Hand, Mark, Sticker } from "../fun";
 
 /*
@@ -115,21 +116,36 @@ function AppTile({
   );
 }
 
-export function GetApps() {
+/** What the apps promise, as chips under the heading. */
+const PROMISES = [
+  { icon: LockKeyhole, text: "End-to-end encryption, when you want it" },
+  { icon: WifiOff, text: "Works offline" },
+  { icon: Cloud, text: "Your own iCloud, Dropbox or Google Drive" },
+];
+
+/** The apps, inside the hero note under its text: the note and the apps are one card. */
+export function HeroApps() {
   return (
-    <section id="apps" aria-labelledby="apps-title" className={cx(container, "scroll-mt-20")}>
-      <div className={cx(box, "relative")}>
+    <section id="apps" aria-labelledby="apps-title" className="mk-hero-apps scroll-mt-20">
         <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
-          <SectionHeading
-            id="apps-title"
-            eyebrow="Now on iPhone and iPad"
-            title={
-              <>
-                On your Mac, iPhone and iPad. <Mark kind="circle">Free,</Mark> with no account.
-              </>
-            }
-            lede="Native apps that open in a moment and work offline. Choose Keep notes on my devices and start writing: no sign-up, no trial, no limit on notes."
-          />
+          <div>
+            <h2 id="apps-title" className="mk-h2">
+              On your Mac, iPhone and iPad.
+              <br />
+              <Mark kind="circle">Free,</Mark> with no account.
+            </h2>
+            <p className="mk-lede mt-4 max-w-[54ch]">
+              Native apps that open in a moment and work offline. Choose Keep notes on my devices and start writing: no sign-up, no trial, no limit on notes.
+            </p>
+            <ul className="mt-5 flex flex-wrap gap-2">
+              {PROMISES.map((p) => (
+                <li key={p.text} className="mk-chip inline-flex items-center gap-1.5">
+                  <p.icon size={14} aria-hidden="true" className="text-(--mk-violet-ink)" />
+                  {p.text}
+                </li>
+              ))}
+            </ul>
+          </div>
           <div className="relative pb-2 max-lg:hidden">
             <Hand rotate={-4} arrow="down-left">
               free forever, really
@@ -190,7 +206,6 @@ export function GetApps() {
             }
           />
         </ul>
-      </div>
     </section>
   );
 }

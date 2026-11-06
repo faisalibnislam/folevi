@@ -18,15 +18,10 @@ export const HERO_SEED: SeedBlock[] = [
     type: "paragraph",
     text: [
       {
-        text: "Folevi is free forever on your Mac, iPhone and iPad, with no account. Your notes are files in a folder you pick, in iCloud Drive, Dropbox, Google Drive or just on your device, so they stay yours.",
+        text: "A calm place for notes, tasks and linked pages. Your notes are files in a folder you pick, in iCloud Drive, Dropbox, Google Drive or just on your device, so they stay yours.",
       },
     ],
   },
-  { id: "hero-try", type: "heading", level: 1, text: [{ text: "First things to try" }] },
-  { id: "hero-todo-style", type: "todo", checked: true, text: [{ text: "Pick a theme for this note" }] },
-  { id: "hero-todo-apps", type: "todo", checked: false, text: [{ text: "Get Folevi on your Mac, iPhone and iPad" }] },
-  { id: "hero-todo-link", type: "todo", checked: false, text: [{ text: "Link another page with " }, { text: "[[", code: true }] },
-  { id: "hero-todo-date", type: "todo", checked: false, text: [{ text: "Give a to-do a due date" }] },
 ];
 
 /** The due date chip's text, as the editor writes it ("Oct 9"), fixed to English so the server and browser agree. */

@@ -1412,7 +1412,7 @@ export const FEATURES: Feature[] = [
     name: "Security and privacy",
     summary: "Passkeys, two-step verification, private pages, no trackers.",
     title: "Private and secure notes app",
-    description: "Folevi needs a verified email, offers two-step verification, encrypts data in transit and at rest, and loads no trackers. It isn’t end-to-end encrypted.",
+    description: "Folevi needs a verified email, offers two-step verification, encrypts data in transit and at rest, offers end-to-end encryption, and loads no trackers.",
     h1: "Private notes, with plain answers about security",
     intro: "Here is what protects your account and your notes in Folevi today, and one thing it doesn’t do. The full details, with every subprocessor, are on the Security page. If you’d rather your notes never reach our servers, the Mac, iPhone and iPad apps can keep them on your devices with no account.",
     plans: "Every plan, including Free.",
@@ -1438,7 +1438,7 @@ export const FEATURES: Feature[] = [
         title: "Encryption, and what it doesn’t cover",
         body: (
           <p>
-            Connections use TLS with HSTS, and stored data is encrypted at rest by our hosting providers. Folevi is <strong>not</strong> end-to-end encrypted: our servers can process your content so that search, sharing and sync work. See <Link href="/security#e2ee">why</Link>.
+            Connections use TLS with HSTS, and stored data is encrypted at rest by our hosting providers. End-to-end encryption is yours to turn on in Settings → Privacy, on every plan: your notes are encrypted on your devices before they’re sent, and you choose which features may still read them. See <Link href="/security#e2ee">how it works</Link>.
           </p>
         ),
       },
@@ -1463,7 +1463,7 @@ export const FEATURES: Feature[] = [
       },
     ],
     faq: [
-      { q: "Is Folevi end-to-end encrypted?", a: "No. Data is encrypted in transit and at rest, but our servers can process your content so that search, sharing and sync work." },
+      { q: "Is Folevi end-to-end encrypted?", a: "When you turn it on. In Settings → Privacy, choose Encrypted with the features you pick, or Fully encrypted. It’s on every plan, and you can also mark single folders or notes as Always fully encrypted." },
       { q: "Can Folevi staff read my notes?", a: "The admin tools have no way to open your pages, blocks, comments or files." },
       { q: "Does Folevi use trackers?", a: "No. Folevi has no third-party analytics or trackers, and folevi.com loads no third-party scripts, advertising pixels or remote fonts." },
       { q: "Does Folevi use my notes to train AI?", a: "No. Folevi doesn’t use your notes to train AI models, and neither does its AI provider." },

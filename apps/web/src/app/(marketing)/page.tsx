@@ -8,7 +8,6 @@ import { FinalCta, PricingSection } from "@/components/marketing/home/Closing";
 import { Hero } from "@/components/marketing/home/Hero";
 import { PageBackdrop } from "@/components/marketing/PageBackdrop";
 import { Included } from "@/components/marketing/home/Included";
-import { GetApps } from "@/components/marketing/home/GetApps";
 import { YourFiles } from "@/components/marketing/home/YourFiles";
 import { Switch } from "@/components/marketing/home/Switch";
 import { HomeFaq } from "@/components/marketing/home/HomeFaq";
@@ -34,7 +33,7 @@ export default function HomePage() {
         <PageBackdrop />
         <Hero />
         <div className="mk-stack mk-home-stack">
-          <GetApps />
+          <PricingSection />
           <YourFiles />
           <Included />
           <NoteStyles />
@@ -42,7 +41,6 @@ export default function HomePage() {
           <SlashSection />
           <Chapters />
           <Switch />
-          <PricingSection />
           <HomeFaq />
           <FinalCta />
         </div>

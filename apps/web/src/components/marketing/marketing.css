@@ -968,8 +968,8 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
    colours (fb-sheet data-sheet/data-text/data-palette read the --art-* and --pal-* variables set above).
    The same markup is drawn by the server first (HeroStaticBody) and then by the live editor (HeroEditor). */
 .mk-hero-body {
-  /* Room at the bottom for the page tools dock (its height and gap), so it never covers the last line. */
-  padding: 22px 20px 84px;
+  /* The home page shows no page tools dock; the apps follow the body (HeroApps). */
+  padding: 22px 20px 4px;
 }
 .mk-hero-page { max-width: var(--layout-editor-width-default, 760px); }
 /* The page tools dock: sticky at the bottom of the note while it's on screen, its panels float above it. */
@@ -1028,13 +1028,46 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
   transition: box-shadow var(--motion-fast, 140ms) var(--mk-ease);
 }
+/* The theme swatches on the cover's top-right corner (HeroNote ThemePicker), on a pane of frosted glass. */
+.mk-hero-themes {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border-radius: var(--radius-control);
+  background: rgb(255 255 255 / 0.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28), 0 6px 20px rgb(0 0 0 / 0.12);
+}
+.mk-hero-theme {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-small);
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
+  cursor: pointer;
+  transition: transform var(--motion-fast, 140ms) var(--mk-ease), box-shadow var(--motion-fast, 140ms) var(--mk-ease);
+}
+.mk-hero-theme:hover { transform: translateY(-1px) scale(1.06); box-shadow: 0 0 0 2px rgb(255 255 255 / 0.7); }
+.mk-hero-theme[aria-checked="true"] { box-shadow: 0 0 0 2px #fff, 0 2px 8px rgb(0 0 0 / 0.25); }
+.mk-hero-theme:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (min-width: 640px) {
+  .mk-hero-themes { top: 20px; right: 20px; }
+  .mk-hero-theme { width: 32px; height: 32px; }
+}
+@media (prefers-reduced-motion: reduce) { .mk-hero-theme { transition: none; } }
 .mk-hero-swatch:hover { box-shadow: 0 0 0 2px var(--color-surface-raised), 0 0 0 4px var(--color-line-strong); }
 .mk-hero-swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--color-surface-raised), 0 0 0 4px var(--color-heading); }
 
 @media (min-width: 640px) {
   .mk-hero-cover { min-height: 300px; padding: 96px 40px 30px; }
   .mk-hero-title { max-width: 24ch; font-size: clamp(44px, 6.4vw, 64px); }
-  .mk-hero-body { padding: 26px 40px 88px; }
+  .mk-hero-body { padding: 26px 40px 8px; }
   .mk-hero-actions { padding-inline: 40px; border-radius: var(--radius-panel); }
   .mk-hero-note { border-radius: var(--radius-panel); }
   .mk-hero-swatch { width: 36px; height: 36px; }
@@ -1406,3 +1439,8 @@ button.mk-check[data-checked="true"]:hover { filter: brightness(1.1); }
   box-shadow: var(--glass-edge), 0 1px 2px rgb(0 0 0 / 0.06), 0 10px 24px -12px rgb(0 0 0 / 0.28);
 }
 }
+
+/* The apps inside the hero note (home/GetApps.tsx HeroApps): the body's insets, on the note's paper. */
+.mk-hero-apps { padding: 28px 20px 32px; }
+@media (min-width: 640px) { .mk-hero-apps { padding: 36px 40px 44px; } }
+@media (min-width: 1024px) { .mk-hero-apps { padding: 40px 56px 56px; } }

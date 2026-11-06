@@ -172,7 +172,7 @@ export default function PrivacyPage() {
         <h2 id="security">Security</h2>
         <p>
           Data is encrypted in transit and at rest by our hosting providers, and you can add two-step verification to your account.
-          Folevi is not end-to-end encrypted. The details are on the <Link href="/security">Security</Link> page.
+          End-to-end encryption is off until you turn it on in Settings → Privacy. The details are on the <Link href="/security">Security</Link> page.
         </p>
 
         <h2 id="changes">Changes to this policy</h2>

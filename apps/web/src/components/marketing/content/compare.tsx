@@ -122,7 +122,7 @@ export const FOLEVI_ROWS: Record<FoleviRowKey, { label: string; value: string }>
   storage: { label: "Storage", value: `${gb(STORAGE_BYTES.free)} on Free, ${gb(STORAGE_BYTES.core)} on Core and Pro, ${gb(STORAGE_BYTES.pro_ai)} on Pro AI. Files up to 50 MB.` },
   encryption: {
     label: "Encryption",
-    value: "Folevi Cloud: encrypted in transit and at rest, not end-to-end encrypted. Without an account, you can encrypt the synced copy of your notes with a passphrase only you know.",
+    value: "Encrypted in transit and at rest, and end-to-end encrypted when you turn it on in Settings → Privacy, on every plan. Without an account, you can encrypt the synced copy of your notes with a passphrase only you know.",
   },
   templates: { label: "Templates", value: `${TEMPLATE_COUNT} built-in templates, plus your own` },
   history: { label: "Version history", value: `${VERSION_DAYS} days on every plan` },
@@ -430,14 +430,13 @@ export const COMPETITORS: Competitor[] = [
     suitsBetter: [
       { title: "You want nothing to install", body: <p>Apple Notes is on your iPhone, iPad and Mac already, at no extra price. Folevi is a download from the App Store or folevi.com. {PLATFORMS_HONEST}</p> },
       { title: "You scan, sketch or write by hand", body: <p>Apple Notes scans documents, recognises handwriting from Apple Pencil, solves maths as you write and records audio with a transcript. Folevi has a whiteboard block for sketches and none of the rest.</p> },
-      { title: "You want end-to-end encryption", body: <p>With Advanced Data Protection turned on, Apple Notes in iCloud are end-to-end encrypted. Folevi Cloud encrypts data in transit and at rest, and isn’t end-to-end encrypted. Without an account, Folevi’s servers never see your notes, and you can encrypt the synced copy with a passphrase.</p> },
     ],
     switching: importSteps(<>In Apple Notes on a Mac, select the notes and choose File → Export To → Markdown. On iPhone, a note’s Export as Markdown does the same.</>),
     faq: [
       { q: "Is Folevi a good Apple Notes alternative?", a: "It is if you want tasks with dates, linked pages, note themes, or notes as files you can also open in any browser. Folevi has apps for Mac, iPhone and iPad that are free with no account." },
       { q: "Can I move my Apple Notes to Folevi?", a: "Yes. Export your notes as Markdown from Apple Notes on a Mac or iPhone, then import the files in Folevi under Settings → Import & export." },
       { q: "Does Folevi have an iPhone app?", a: `Yes, for iPhone and iPad (${IOS_REQUIREMENT}), on the App Store. Without an account, your notes can sync through iCloud Drive across your iPhone, iPad and Mac.` },
-      { q: "Is Folevi end-to-end encrypted like Apple Notes?", a: "Folevi Cloud isn’t: it encrypts data in transit and at rest, and its servers can process your content so search, sharing and sync work. Without an account, Folevi’s servers never see your notes, and you can encrypt the synced copy with a passphrase. Apple Notes is end-to-end encrypted when you turn on Advanced Data Protection." },
+      { q: "Is Folevi end-to-end encrypted like Apple Notes?", a: "Yes, when you turn it on. Folevi Cloud is end-to-end encrypted when you turn it on in Settings → Privacy, on every plan, and you choose which features may still read your notes. Without an account, Folevi’s servers never see your notes, and you can encrypt the synced copy with a passphrase. Apple Notes is end-to-end encrypted when you turn on Advanced Data Protection." },
     ],
     sources: [
       src("platforms", "Apple Support: Use Notes on iCloud.com and your devices", "https://support.apple.com/en-us/118308"),
@@ -509,7 +508,7 @@ export const COMPETITORS: Competitor[] = [
       { title: "You want plain Markdown files", body: <p>Obsidian’s vault is a folder of Markdown files that any text editor can open. Folevi’s library is a folder of files too, in Folevi’s own format, and it exports pages as Markdown, HTML or PDF.</p> },
       { title: "You want to shape the app", body: <p>Obsidian has thousands of community plugins and themes, and Canvas. Folevi has no plugins.</p> },
       { title: "You need Windows, Linux or Android apps", body: <p>Obsidian has apps for Mac, Windows, Linux, iOS and Android. {PLATFORMS_HONEST}</p> },
-      { title: "You want end-to-end encrypted sync as a service", body: <p>Obsidian Sync is end-to-end encrypted by default. Folevi Cloud encrypts data in transit and at rest, and isn’t end-to-end encrypted. Without an account, you can encrypt Folevi’s synced copy with your own passphrase.</p> },
+      { title: "You want end-to-end encrypted sync as a service", body: <p>Obsidian Sync is end-to-end encrypted by default. In Folevi Cloud, end-to-end encryption is a choice you turn on in Settings → Privacy. Without an account, you can encrypt Folevi’s synced copy with your own passphrase.</p> },
     ],
     switching: (
       <>
@@ -525,7 +524,7 @@ export const COMPETITORS: Competitor[] = [
       { q: "Can I import my Obsidian vault?", a: "Yes. Choose the vault folder, or a ZIP of it, in Settings → Import & export. Wiki links come in as plain text." },
       { q: "Does Folevi have backlinks?", a: "Yes. Type [[ to link a page. The linked page lists every page that links to it, with a line of text around each link." },
       { q: "Does Folevi have mobile apps?", a: `Yes, for iPhone and iPad (${IOS_REQUIREMENT}), on the App Store. There is no Android app.` },
-      { q: "Is Folevi end-to-end encrypted?", a: "Folevi Cloud isn’t: data is encrypted in transit and at rest, and its servers can process your content so search, sharing and sync work. Without an account, Folevi’s servers never see your notes, and you can encrypt the synced copy with a passphrase." },
+      { q: "Is Folevi end-to-end encrypted?", a: "Yes, when you turn it on. Folevi Cloud is end-to-end encrypted when you turn it on in Settings → Privacy, on every plan, and you choose which features may still read your notes. Without an account, Folevi’s servers never see your notes, and you can encrypt the synced copy with a passphrase." },
     ],
     sources: [
       src("license", "Obsidian: License", "https://obsidian.md/license"),

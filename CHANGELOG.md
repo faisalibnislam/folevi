@@ -4,6 +4,31 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.37: Small update
+
+Released 2026-11-06 11:08:28+06:00 (build 49, tag v1.2.37)
+
+A shorter Share dialog with real folevi.com links, a polished Foli DNA with a floating card and a time-lapse bar, folder paths like Finder, and a hover on every button.
+
+### Added
+
+- Foli DNA plays how your notes grew with a time-lapse bar: play and pause, drag to any date, and see how many notes existed then.
+- In a subfolder, a path button lists the folders above it, as Finder does, and opens any of them.
+
+### Improved
+
+- The Share dialog is about half as tall: access is one dropdown, the public link is a switch, and its settings fold away.
+- Foli DNA shows connections and Insights in one floating card grouped by reason, with zoom controls in a small bar.
+- List pages have more room at the top, and their controls sit in one quiet tray.
+- Every button and control shows a hover effect.
+
+### Fixed
+
+- Public links are always folevi.com addresses, including links copied in the Mac app.
+- Insights in Foli DNA did nothing while the map was centred on a note.
+- Pointing at a note in Foli DNA no longer hides the names of the notes around it, and its card no longer covers the dot.
+- Notes no longer offer Open in new tab, since they always open in a tab of their own.
+
 ## Version 1.2.36: Small update
 
 Released 2026-11-06 06:28:32+06:00 (build 48, tag v1.2.36)

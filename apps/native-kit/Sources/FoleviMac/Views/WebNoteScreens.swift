@@ -1024,9 +1024,13 @@ struct WebNoteBrowser: View {
     /// top bar's makes the note in the open folder (FrameModel.newNote).
     private var folderHeader: some View {
         let id = model.kind.folderId ?? ""
-        let path = model.ancestors.map { a in WebPageStep(id: a.id, label: a.name) { frame.open(.folder(a.id)) } }
-        return WebListPageHeader(title: model.title, mark: .some(model.folder?.color), count: model.isLoading ? "" : countText, path: path) {
+        let path = model.ancestors.map { a in WebPageStep(id: a.id, label: a.name, color: a.color) { frame.open(.folder(a.id)) } }
+        return WebListPageHeader(title: model.title, mark: .some(model.folder?.color), count: model.isLoading ? "" : countText) {
             WebRowTray {
+                if !path.isEmpty {
+                    WebPathMenuButton(title: model.title, color: model.folder?.color, path: path) { frame.open(.web("/folders")) }
+                    WebRowTrayDivider()
+                }
                 WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
                 WebRowTrayDivider()
                 WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.compact, .rows3, "Compact cards"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar", height: WebListPageHeaderMetrics.trayItemHeight)
@@ -1760,7 +1764,6 @@ struct WebListPageHeader<Controls: View>: View {
     /// The folder's colour (`.some(nil)`: the default colour); nil for no glyph.
     var mark: String?? = nil
     let count: String
-    var path: [WebPageStep] = []
     @ViewBuilder let controls: () -> Controls
     @Environment(\.colorScheme) private var scheme
 
@@ -1787,7 +1790,6 @@ struct WebListPageHeader<Controls: View>: View {
     private var name: some View {
         HStack(alignment: .center, spacing: 10) {
             if let mark { FolderGlyph(colorId: mark, size: 22) }
-            if !path.isEmpty { pathSteps }
             // Title 1 on the Mac (24), Title 2 in the iPad's iOS scale (22): the size of a folder card's name.
             Text(title).webText(.display(WebStyles.isPad ? .title2 : .title1)).lineLimit(1).truncationMode(.tail)
                 .foregroundStyle(webVar("color-heading", scheme).color)
@@ -1805,38 +1807,50 @@ struct WebListPageHeader<Controls: View>: View {
         HStack(spacing: 8) { controls() }
             .fixedSize()
     }
-
-    /// "Work › Clients ›": quiet links in muted text before the name, each opening that level.
-    private var pathSteps: some View {
-        HStack(spacing: 2) {
-            ForEach(path) { step in
-                Button(action: step.open) {
-                    Text(step.label).webText(.role(.body)).lineLimit(1)
-                        .foregroundStyle(webVar("color-ink-muted", scheme).color)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 2)
-                        .frame(maxWidth: 192, alignment: .leading)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(WebHoverRowStyle(radius: FoleviTokens.Radius.chip, hover: WebStyles.vars["color-accent-soft"], press: nil, selected: false))
-                .accessibilityAddTraits(.isLink)
-                WebIconView(.chevronRight, size: 13).foregroundStyle(webVar("color-ink-faint", scheme).color)
-                    .accessibilityHidden(true)
-            }
-        }
-        // (Each step as wide as its name, up to 192: the web's `max-w-[12rem]`.)
-        .fixedSize()
-        .padding(.trailing, -4)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Breadcrumb")
-    }
 }
 
 /// A step of the way up before a nested folder's name ("Work ›").
 struct WebPageStep: Identifiable {
     let id: String
     let label: String
+    /// The folder's colour, for its glyph in the path menu.
+    var color: String? = nil
     let open: () -> Void
+}
+
+/// Where a nested folder sits, as Finder's path menu shows it (ListPageHeader.tsx PathMenu; the owner, 6 November
+/// 2026): a button at the start of the title row's tray listing this folder, each folder above it, and All folders;
+/// choosing one opens it.
+struct WebPathMenuButton: View {
+    let title: String
+    let color: String?
+    /// From the top level down.
+    let path: [WebPageStep]
+    let allFolders: () -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let h = WebListPageHeaderMetrics.trayItemHeight
+        WebMenuButton(width: 220, entries: {
+            var out = [WebMenuEntry(.item(title, checked: true, swatch: FolderColor.resolve(color).color.color, id: "here"))]
+            for step in path.reversed() {
+                out.append(WebMenuEntry(.item(step.label, swatch: FolderColor.resolve(step.color).color.color, id: "up:\(step.id)")) { step.open() })
+            }
+            out.append(WebMenuEntry(.item("All folders", icon: .layoutGrid, id: "all")) { allFolders() })
+            return out
+        }) {
+            HStack(spacing: 2) {
+                WebIconView(.folderTree, size: 15)
+                WebIconView(.chevronDown, size: 12).foregroundStyle(webVar("color-ink-faint", scheme).color)
+            }
+            .foregroundStyle(webVar("color-ink-muted", scheme).color)
+            .padding(.horizontal, 6)
+            .frame(height: h)
+            .contentShape(Rectangle())
+        }
+        .foleviTooltip("Enclosing folders")
+        .accessibilityLabel("Where \(title) is")
+    }
 }
 
 /// An icon-only button in a title row (Share): a secondary button's square at the row's height, with the app's own

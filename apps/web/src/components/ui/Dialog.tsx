@@ -6,6 +6,20 @@ import { IconButton } from "./Button";
 import { useIphoneApp } from "@/lib/iphone";
 import { Sheet } from "@/components/iphone/Sheet";
 import { confirmAction, hasNative } from "@/lib/native/ui";
+import { nativeChrome } from "@/lib/nativeApp";
+
+/**
+ * Folevi for Mac's note page (native chrome mode): the window's tab strip is drawn over the page's top
+ * (--native-inset-top) and the note's floating dock sits at its bottom, so a dialog keeps between the two (and
+ * scrolls inside when the window is short). Null elsewhere: the dialog centres in the whole window.
+ */
+function macFrameRoom(): { top: number; bottom: number } | null {
+  if (typeof window === "undefined" || nativeChrome()?.platform !== "macos") return null;
+  const inset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--native-inset-top"));
+  const dock = document.querySelector<HTMLElement>('[role="toolbar"][aria-label="Page tools"]')?.getBoundingClientRect();
+  const bottom = dock && dock.height ? Math.max(0, window.innerHeight - dock.top) : 0;
+  return { top: (Number.isFinite(inset) ? inset : 0) + 12, bottom: bottom + 12 };
+}
 
 /**
  * A dialog that only asks before doing something (Delete, Sign out): inside the iOS and Android apps it's the
@@ -55,9 +69,11 @@ export function Dialog({
   // takes the focus. Rendered with the dialog still closed, its focus went nowhere and the browser then
   // put it on the Close button, ringed, every time a dialog opened.
   const [shown, setShown] = useState(false);
+  const [room, setRoom] = useState<{ top: number; bottom: number } | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (open) setRoom(macFrameRoom());
     if (open && !el.open) el.showModal();
     if (!open && el.open) el.close();
     setShown(open);
@@ -103,9 +119,10 @@ export function Dialog({
       }}
       onKeyDown={(e) => macDialogKeys(e, ref.current, onClose)}
       className={`m-auto w-[calc(100%-2rem)] ${width} ui-pop ui-modal rounded-panel p-0 text-ink outline-none shadow-[var(--glass-edge),0_16px_48px_rgb(0_0_0/0.1),0_2px_8px_rgb(0_0_0/0.1)] open:animate-[folio-pop_520ms_var(--spring-pop)]`}
+      style={room ? { top: room.top, bottom: room.bottom, maxHeight: `calc(100dvh - ${room.top + room.bottom}px)` } : undefined}
     >
       {open && shown ? (
-        <div className="flex max-h-[85dvh] flex-col">
+        <div className="flex max-h-[85dvh] flex-col" style={room ? { maxHeight: `min(85dvh, calc(100dvh - ${room.top + room.bottom}px))` } : undefined}>
           <header className="flex items-start gap-3 px-6 pb-2 pt-5">
             <div className="min-w-0 flex-1">
               <h2 id={titleId} className="ui-display text-title-2 leading-snug">

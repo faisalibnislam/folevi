@@ -149,4 +149,6 @@ public enum FoleviLinks {
     public static let origin = "https://app.folevi.com"
     public static func folder(_ id: String) -> String { "\(origin)/folders/\(id)" }
     public static func note(_ id: String) -> String { "\(origin)/d/\(id)" }
+    /// Where public links (/s/…) are given out, as the web's SHARE_ORIGIN (lib/env.ts): folevi.com.
+    public static let shareHost = "folevi.com"
 }

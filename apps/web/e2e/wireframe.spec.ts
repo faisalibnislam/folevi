@@ -107,8 +107,8 @@ test.describe("Wireframe", () => {
     // The public share page draws the screens read-only, with zoom.
     await openShare(page);
     const share = page.getByRole("dialog", { name: /Share/ });
-    await share.getByRole("button", { name: "Create link" }).click();
-    const link = await share.getByLabel("Public link").inputValue();
+    await share.getByRole("switch", { name: "Public link" }).click();
+    const link = await share.getByLabel("Public link address").inputValue();
     const anon = await browser.newContext();
     const anonPage = await anon.newPage();
     await anonPage.goto(link);

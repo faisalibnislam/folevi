@@ -87,7 +87,7 @@ describe("sharing and invitations", () => {
     expect(await command("sharing.invite", { noteId: "d1", email: "a@b.c", role: "viewer" })).toEqual({ status: "shared" });
     expect(await code({ kind: "command", place: PLACE, name: "sharing.invite", args: { noteId: "d1", email: "a@b.c", role: "owner" } })).toBe("invalid_args");
     r.client.answer("documents:get", { document: {} });
-    expect(await command("publicLink.create", { noteId: "d1", theme: "docs" })).toEqual({ id: "l1", url: "https://app.folevi.com/s/abc" });
+    expect(await command("publicLink.create", { noteId: "d1", theme: "docs" })).toEqual({ id: "l1", url: "https://folevi.com/s/abc" });
     await command("sharing.setAccessMode", { noteId: "d1", mode: "restricted" });
     await command("sharing.revoke", { noteId: "d1", profileId: "p1" });
     await command("publicLink.revoke", { linkId: "l1" });

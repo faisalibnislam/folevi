@@ -2,7 +2,7 @@
 // users.updateProfile (the page's profile updates by itself), sessions, a note's sharing and public links,
 // and invitation links.
 import { api } from "@/lib/convex/api";
-import { APP_URL } from "@/lib/env";
+import { onShareOrigin, publicLinkUrl } from "@/lib/env";
 import type { EngineDeps } from "./context";
 import type { CommandDef } from "./commands";
 import { EDITOR_ZOOMS, setEditorZoom, topicEmailPatch, type NotificationPrefs } from "./viewsAccount";
@@ -11,11 +11,6 @@ import { AI_PREF_KEYS, type CommandName } from "./protocol";
 
 const THEMES = ["note", "article", "docs", "minimal"] as const;
 
-/** A link on Folevi's own address (the apps' pages run on capacitor://localhost or app://folevi). */
-export function onAppOrigin(url: string): string {
-  const u = new URL(url);
-  return `${APP_URL.replace(/\/$/, "")}${u.pathname}${u.search}${u.hash}`;
-}
 const ROLES = ["editor", "commenter", "viewer"] as const;
 const TOPICS = ["comments", "replies", "mentions", "shares", "access", "reminders"] as const;
 
@@ -160,7 +155,8 @@ export const ACCOUNT_COMMANDS = {
               ...(args.password !== undefined ? { password: text(args, "password", { max: 200 }) } : {}),
               ...(args.theme !== undefined ? { theme: oneOf(args, "theme", THEMES) } : {}),
             });
-        return { id: made.linkId, url: onAppOrigin(made.url) };
+        // (The real web address, folevi.com, on every platform: lib/env.ts SHARE_ORIGIN.)
+        return { id: made.linkId, url: onShareOrigin(made.url) };
       }
       const r = (await deps.client.mutation(api.sharing.createPublicLink, {
         documentId: noteId,
@@ -169,7 +165,7 @@ export const ACCOUNT_COMMANDS = {
         ...(args.allowIndexing !== undefined ? { allowIndexing: bool(args, "allowIndexing") } : {}),
         ...(args.theme !== undefined ? { theme: oneOf(args, "theme", THEMES) } : {}),
       })) as { id: string; token: string };
-      return { id: r.id, url: `${APP_URL.replace(/\/$/, "")}/s/${r.token}` };
+      return { id: r.id, url: publicLinkUrl(r.token) };
     },
   },
 

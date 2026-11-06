@@ -119,8 +119,8 @@ test("columns from the slash menu: typing in each, resizing, after a reload, on 
   // A share page shows the columns side by side, and stacked on a phone.
   await openShare(page);
   const share = page.getByRole("dialog", { name: /Share/ });
-  await share.getByRole("button", { name: "Create link" }).click();
-  const link = await share.getByLabel("Public link").inputValue();
+  await share.getByRole("switch", { name: "Public link" }).click();
+  const link = await share.getByLabel("Public link address").inputValue();
   await page.keyboard.press("Escape");
   const anon = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const reader = await anon.newPage();

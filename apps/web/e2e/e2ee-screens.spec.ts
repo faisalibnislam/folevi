@@ -282,8 +282,8 @@ test("sharing an encrypted note: the dialog says the key is in the link", async 
   await page.goto(`${APP}${welcomePath}`);
   await page.getByRole("group", { name: "Page" }).getByRole("button", { name: /^Share/ }).click({ timeout: 30_000 });
   const dialog = page.getByRole("dialog", { name: /^Share/ });
-  await expect(dialog.getByText("Encrypted link: the key is in the link itself.", { exact: false })).toBeVisible({ timeout: 30_000 });
-  await expect(dialog.getByText("They'll get the key on their devices.", { exact: false })).toBeVisible();
+  await expect(dialog.getByRole("img", { name: /^Encrypted link: the key is in the link itself\./ })).toBeVisible({ timeout: 30_000 });
+  await expect(dialog.getByRole("img", { name: /They.ll get the key on their devices\./ })).toBeVisible();
   await expect(dialog.getByRole("heading", { name: "Publish to the web: makes a readable copy" })).toBeVisible();
   await expect(dialog.getByRole("switch", { name: "Let search engines find it" })).toBeHidden();
   await context.close();
@@ -296,8 +296,8 @@ test("an encrypted link opens signed out and needs its fragment; publishing make
   await page.goto(`${APP}${welcomePath}`);
   await page.getByRole("group", { name: "Page" }).getByRole("button", { name: /^Share/ }).click({ timeout: 30_000 });
   const dialog = page.getByRole("dialog", { name: /^Share/ });
-  await dialog.getByRole("button", { name: "Create link" }).click();
-  const link = dialog.getByLabel("Public link");
+  await dialog.getByRole("switch", { name: "Public link" }).click();
+  const link = dialog.getByLabel("Public link address");
   await expect(link).toHaveValue(/\/s\/[^#]+#k=/, { timeout: 30_000 });
   const url = await link.inputValue();
   const anon = await browser.newContext();
@@ -458,7 +458,7 @@ test("screenshots of every screen, light and dark, desktop and phone", async ({ 
 
       await page.goto(`${APP}${welcome}`);
       await page.getByRole("group", { name: "Page" }).getByRole("button", { name: /^Share/ }).click({ timeout: 30_000 });
-      await expect(page.getByText("Encrypted link: the key is in the link itself.", { exact: false })).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByRole("img", { name: /^Encrypted link: the key is in the link itself\./ })).toBeVisible({ timeout: 30_000 });
       await shoot(page)("24-share-sealed");
       await page.getByRole("button", { name: "Publish…" }).click();
       await shoot(page)("25-publish-readable-copy");

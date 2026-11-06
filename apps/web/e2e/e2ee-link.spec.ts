@@ -15,9 +15,9 @@ test("an encrypted link opens signed out, needs its fragment, and can be revoked
   await page.goto(url);
   await openShare(page);
   const share = page.getByRole("dialog", { name: /^Share/ });
-  await expect(share.getByText("Encrypted link: the key is in the link itself.", { exact: false })).toBeVisible();
-  await share.getByRole("button", { name: "Create link" }).click();
-  const link = await share.getByLabel("Public link").inputValue();
+  await expect(share.getByRole("img", { name: /^Encrypted link: the key is in the link itself\./ })).toBeVisible();
+  await share.getByRole("switch", { name: "Public link" }).click();
+  const link = await share.getByLabel("Public link address").inputValue();
   expect(link).toMatch(/\/s\/[A-Za-z0-9_-]+#k=[A-Za-z0-9_-]+$/);
 
   const anon = await browser.newContext();

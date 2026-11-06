@@ -142,7 +142,7 @@ async function headers() {
     },
     // The home page's showcase frames: static HTML snapshots of the app (no scripts), framed by the site itself only.
     {
-      source: "/marketing/showcase/web-html/:file*",
+      source: "/marketing/showcase/:dir(web-html|iphone-html)/:file*",
       headers: [
         { key: "Content-Security-Policy", value: staticCsp.replace("frame-ancestors 'none'", "frame-ancestors 'self'") },
         { key: "X-Frame-Options", value: "SAMEORIGIN" },
@@ -161,6 +161,11 @@ async function headers() {
     {
       source: "/:dir(covers|marketing|brand|icons)/:file*",
       headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }],
+    },
+    // The showcase's HTML frames keep their names when they're captured again: checked after five minutes.
+    {
+      source: "/marketing/showcase/:dir(web-html|iphone-html)/:file*",
+      headers: [{ key: "Cache-Control", value: "public, max-age=300, stale-while-revalidate=86400" }],
     },
     { source: "/:file(icon.svg|apple-icon.png)", headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }] },
     // Downloads (rewrites() below). A file whose name carries its version never changes; the appcast and the

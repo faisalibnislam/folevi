@@ -1,6 +1,5 @@
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, readdirSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
@@ -8,22 +7,22 @@ import { APP, completeOnboarding, createAccount, createWorkspace, openTool, pick
 
 // Frames of the real web app for the marketing home page's showcase (components/marketing/home/DeviceShowcase.tsx):
 // a demo workspace ("Studio", Maya Patel and Sam Okafor) built through the UI on the dev deployment, then one PNG
-// per chapter step in public/marketing/showcase/web/. Run it on purpose only:
+// per chapter step as static HTML in public/marketing/showcase/web-html/ and iphone-html/ (PNGs for checking go to SHOWCASE_PNG_DIR). Run it on purpose only:
 //   SHOWCASE_CAPTURE=1 E2E_BASE_URL=http://app.localhost:3002 E2E_NO_SERVER=1 npx playwright test e2e/showcase-capture.spec.ts --project=account
 // SHOWCASE_ACCOUNT_FILE (optional) is where the test accounts' sign-in details are written (never in the repo).
 // The iPhone beside the Mac window gets its own frames: the web app's iPhone interface (components/iphone, what
 // the iPhone app shows) on a second device signed in as Maya, in public/marketing/showcase/iphone(-html)/.
 test.skip(!process.env.SHOWCASE_CAPTURE, "Set SHOWCASE_CAPTURE=1 to capture the showcase frames.");
 
-const OUT = fileURLToPath(new URL("../public/marketing/showcase/web/", import.meta.url));
 /** Each frame as plain HTML (the live DOM, no scripts) with the app's CSS in one shared file. */
 const HTML_OUT = fileURLToPath(new URL("../public/marketing/showcase/web-html/", import.meta.url));
 /** The iPhone's frames: WebP, and HTML like the Mac window's. */
-const PHONE_OUT = fileURLToPath(new URL("../public/marketing/showcase/iphone/", import.meta.url));
 const PHONE_HTML_OUT = fileURLToPath(new URL("../public/marketing/showcase/iphone-html/", import.meta.url));
 /** PNG originals, kept out of the repo (only WebP is committed). */
 const PNG_OUT = process.env.SHOWCASE_PNG_DIR;
 const PHONE_PNG = `${PNG_OUT ?? `${tmpdir()}/showcase-png`}/iphone`;
+/** The Mac frames' PNGs, for checking the HTML against (never in the repo). */
+const OUT = `${PNG_OUT ?? `${tmpdir()}/showcase-png`}/`;
 const DEBUG = process.env.SHOWCASE_DEBUG; // a folder for extra screenshots while working on this spec
 /** Studio's logo, uploaded in Settings right after the workspace is made. */
 const LOGO = fileURLToPath(new URL("./fixtures/studio-logo.png", import.meta.url));
@@ -208,7 +207,10 @@ async function snapshot(page: Page, name: string, t: Target = MAC_HTML) {
       if (!field) return;
       if (n.tagName === "TEXTAREA") n.textContent = field.value;
       else if (n.tagName === "SELECT") n.querySelectorAll("option").forEach((o, k) => (k === (field as HTMLSelectElement).selectedIndex ? o.setAttribute("selected", "") : o.removeAttribute("selected")));
-      else if ((field as HTMLInputElement).type === "checkbox" || (field as HTMLInputElement).type === "radio") (field as HTMLInputElement).checked ? n.setAttribute("checked", "") : n.removeAttribute("checked");
+      else if ((field as HTMLInputElement).type === "checkbox" || (field as HTMLInputElement).type === "radio") {
+        if ((field as HTMLInputElement).checked) n.setAttribute("checked", "");
+        else n.removeAttribute("checked");
+      }
       else n.setAttribute("value", field.value);
     });
     clone.querySelectorAll("script, noscript, link, style, iframe").forEach((n) => n.remove());
@@ -788,29 +790,6 @@ test("capture the showcase frames from the real app", async ({ browser }) => {
   }
   await phoneContext.close();
 
-  // A WebP copy of each frame (quality 82), when cwebp is installed.
-  for (const file of readdirSync(OUT).filter((f) => f.endsWith(".png"))) {
-    try {
-      execFileSync("cwebp", ["-quiet", "-q", "82", `${OUT}${file}`, "-o", `${OUT}${file.replace(/\.png$/, ".webp")}`]);
-    } catch {
-      console.log("cwebp isn't installed: PNG frames only.");
-      break;
-    }
-  }
-  // The iPhone's, from its PNGs (kept out of the repo like the Mac's).
-  mkdirSync(PHONE_OUT, { recursive: true });
-  for (const file of readdirSync(PHONE_PNG).filter((f) => f.endsWith(".png"))) {
-    try {
-      execFileSync("cwebp", ["-quiet", "-q", "82", `${PHONE_PNG}/${file}`, "-o", `${PHONE_OUT}${file.replace(/\.png$/, ".webp")}`]);
-    } catch {
-      break;
-    }
-  }
   writeCss(MAC_HTML);
   writeCss(PHONE_HTML);
-  // The PNG originals leave the repo's folder (only WebP is committed).
-  if (PNG_OUT) {
-    mkdirSync(PNG_OUT, { recursive: true });
-    for (const file of readdirSync(OUT).filter((f) => f.endsWith(".png"))) renameSync(`${OUT}${file}`, `${PNG_OUT}/${file}`);
-  }
 });

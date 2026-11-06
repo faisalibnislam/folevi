@@ -17,11 +17,11 @@ type ChapterId = "write" | "together" | "tasks" | "board" | "ai" | "vault";
 /** Each chapter's Mac frames, and the iPhone frame shown at each of those steps. */
 const CHAPTERS: Array<{ id: ChapterId; label: string; frames: string[]; phone: string[]; says: string }> = [
   { id: "write", label: "Write with /", frames: ["write-1", "write-2", "write-3"], phone: ["write-1", "write-1", "write-1"], says: "A page called Spring launch: the / menu adds a table of who does what." },
-  { id: "together", label: "Write together", frames: ["together-1", "together-2", "together-3", "together-4"], phone: ["write-1", "together-1", "together-1", "together-2"], says: "Sam edits the same page live, Maya leaves a comment for him, he replies and the thread is resolved." },
+  { id: "together", label: "Write together", frames: ["together-1", "together-2", "together-3", "together-4"], phone: ["write-1", "together-1", "together-1", "together-1"], says: "Sam edits the same page live, Maya leaves a comment for him, he replies and the thread is resolved." },
   { id: "tasks", label: "Tasks and calendar", frames: ["tasks-1", "tasks-2", "tasks-3"], phone: ["tasks-1", "tasks-1", "tasks-2"], says: "This week's tasks with their dates, one ticked off, then the same tasks on the calendar." },
-  { id: "board", label: "Databases", frames: ["board-1", "board-2"], phone: ["board-2", "board-1"], says: "The Content plan collection as a table, then as a board grouped by status." },
+  { id: "board", label: "Databases", frames: ["board-1", "board-2"], phone: ["board-1", "board-2"], says: "The Content plan collection as a table, then as a board grouped by status." },
   { id: "ai", label: "Foli AI", frames: ["ai-1", "ai-2"], phone: ["ai-1", "ai-2"], says: "Foli AI is asked what's left before the launch and answers with sources from the workspace." },
-  { id: "vault", label: "Vault", frames: ["vault-1", "vault-2"], phone: ["vault-1", "vault-1"], says: "The Vault opens with a passcode and shows passwords, an API key and a 2FA code." },
+  { id: "vault", label: "Vault", frames: ["vault-1", "vault-2"], phone: ["vault-1", "vault-2"], says: "The Vault opens with a passcode and shows passwords, an API key and a 2FA code." },
 ];
 /** Each tab's icon, before its name. */
 const ICONS: Record<ChapterId, ReactNode> = {
@@ -34,8 +34,35 @@ const ICONS: Record<ChapterId, ReactNode> = {
 };
 const STEP_MS = 2200;
 /** The same frame as static HTML (the app's own DOM and CSS, no scripts), drawn at 1280 × 800 and scaled. */
-const HTML = (f: string) => `/marketing/showcase/web-html/${f}.html`;
-const PHONE = (f: string) => `/marketing/showcase/iphone/${f}.webp`;
+/** Bumped whenever the frames are captured again, so browsers fetch the new ones. */
+const FRAMES_VERSION = "2026-11-06b";
+const HTML = (f: string) => `/marketing/showcase/web-html/${f}.html?v=${FRAMES_VERSION}`;
+/** The iPhone's frames: the app's own iPhone interface as HTML, drawn at 402 × 874 points (iPhone 17 Pro). */
+const PHONE = (f: string) => `/marketing/showcase/iphone-html/${f}.html?v=${FRAMES_VERSION}`;
+const PHONE_W = 402;
+const PHONE_H = 874;
+
+/** The iPhone's status bar (the app leaves its 62 points free): the time, the Dynamic Island, signal, Wi-Fi, battery. */
+function StatusBar() {
+  return (
+    <div className="absolute inset-x-0 top-0 h-[62px] text-black">
+      <span className="absolute text-[17px] font-semibold tracking-[-0.01em]" style={{ left: 50, top: 21, fontFamily: "-apple-system, 'SF Pro Text', system-ui, sans-serif" }}>
+        9:41
+      </span>
+      <span className="absolute h-[37px] w-[126px] rounded-chip bg-black" style={{ left: 138, top: 11 }} />
+      <svg className="absolute" style={{ right: 26, top: 26 }} width="78" height="13" viewBox="0 0 78 13" aria-hidden="true">
+        <rect x="0" y="9" width="3" height="4" rx="1" fill="currentColor" />
+        <rect x="4.5" y="6.5" width="3" height="6.5" rx="1" fill="currentColor" />
+        <rect x="9" y="4" width="3" height="9" rx="1" fill="currentColor" />
+        <rect x="13.5" y="1" width="3" height="12" rx="1" fill="currentColor" />
+        <path d="M30.5 3.2a9.6 9.6 0 0 1 12.9 0l1.2-1.2a11.3 11.3 0 0 0-15.3 0Zm2.4 2.4a6.2 6.2 0 0 1 8.1 0l1.2-1.2a7.9 7.9 0 0 0-10.5 0Zm2.4 2.4a2.8 2.8 0 0 1 3.3 0L37 10.4Z" fill="currentColor" />
+        <rect x="50.5" y="0.5" width="24" height="12" rx="3.8" fill="none" stroke="currentColor" strokeOpacity=".4" />
+        <rect x="52.5" y="2.5" width="20" height="8" rx="2.2" fill="currentColor" />
+        <path d="M76 4.5v4a2.2 2.2 0 0 0 0-4Z" fill="currentColor" fillOpacity=".45" />
+      </svg>
+    </div>
+  );
+}
 
 export function DeviceShowcase() {
   const [chapter, setChapter] = useState(0);
@@ -45,6 +72,16 @@ export function DeviceShowcase() {
   const [scale, setScale] = useState(0);
   const [loaded, setLoaded] = useState<Record<string, boolean>>({});
   const win = useRef<HTMLDivElement>(null);
+  const screen = useRef<HTMLDivElement>(null);
+  const [phoneScale, setPhoneScale] = useState(0);
+
+  useEffect(() => {
+    const el = screen.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setPhoneScale((e?.contentRect.width ?? PHONE_W) / PHONE_W));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const el = win.current;
@@ -114,20 +151,26 @@ export function DeviceShowcase() {
           </div>
           {/* The iPhone: the captured screen in a minimal frame, in front of the window's lower right corner. */}
           <div className="mk-phone absolute bottom-0 right-0 w-[24%] bg-[#111113] p-[0.6%] shadow-[0_30px_60px_-18px_rgb(0_0_0/0.5),0_0_0_1px_rgb(255_255_255/0.08)_inset]">
-            <div className="mk-phone-screen relative aspect-[1206/2622] overflow-hidden bg-(--color-surface)">
-              {[...new Set(c.phone)].map((f) => (
-                // eslint-disable-next-line @next/next/no-img-element -- captured frames, already sized; cross-faded by opacity
-                <img
-                  key={f}
-                  src={PHONE(f)}
-                  alt=""
-                  width={1206}
-                  height={2622}
-                  decoding="async"
-                  className={cx("absolute inset-0 size-full object-cover transition-opacity duration-700 ease-out", f === c.phone[step] ? "opacity-100" : "opacity-0")}
-                />
-              ))}
-              <span className="absolute left-1/2 top-[1.6%] h-[3.6%] w-[31%] -translate-x-1/2 rounded-chip bg-black" />
+            <div ref={screen} className="mk-phone-screen relative aspect-[402/874] overflow-hidden bg-(--color-surface)">
+              {phoneScale ? (
+                <div className="absolute left-0 top-0 origin-top-left" style={{ width: PHONE_W, height: PHONE_H, transform: `scale(${phoneScale})` }}>
+                  {[...new Set([...c.phone, ...next.phone])].map((f) => (
+                    <iframe
+                      key={`phone-${f}`}
+                      src={PHONE(f)}
+                      title=""
+                      tabIndex={-1}
+                      sandbox="allow-same-origin"
+                      onLoad={() => setLoaded((l) => ({ ...l, [`phone-${f}`]: true }))}
+                      className={cx("pointer-events-none absolute inset-0 border-0 transition-opacity duration-700 ease-out", f === c.phone[step] && loaded[`phone-${f}`] ? "opacity-100" : "opacity-0")}
+                      style={{ width: PHONE_W, height: PHONE_H }}
+                    />
+                  ))}
+                  <StatusBar />
+                  {/* The home indicator. */}
+                  <span className="absolute bottom-2 left-1/2 h-[5px] w-[140px] -translate-x-1/2 rounded-chip bg-black" />
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

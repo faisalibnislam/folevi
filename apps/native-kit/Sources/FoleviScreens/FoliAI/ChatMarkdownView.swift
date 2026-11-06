@@ -135,6 +135,7 @@ struct CodeBlockView: View {
                         .frame(width: 32, height: 28).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .webHover(radius: 6)
                 .foregroundStyle(Folevi.color.inkMuted)
                 .accessibilityLabel("Copy code")
             }

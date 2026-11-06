@@ -154,6 +154,7 @@ public struct FoliThreadView: View {
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    .webHover(radius: 18)
                     .padding(.bottom, bottomInset + 12)
                     .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
                 }
@@ -279,9 +280,9 @@ struct FoliIntroView: View {
     }
 }
 
-/// Fades a little while pressed (rows and small buttons).
+/// Fades a little while pressed (rows and small buttons); under a pointer (Mac, iPad) the glass hover fill.
 struct PressFade: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.opacity(configuration.isPressed ? 0.55 : 1)
+        configuration.label.webHover(radius: 8).opacity(configuration.isPressed ? 0.55 : 1)
     }
 }

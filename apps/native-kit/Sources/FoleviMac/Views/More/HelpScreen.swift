@@ -121,7 +121,7 @@ struct HelpScreen: View {
                 Text(account ? "Contact support" : "Email support").webText(b.text).lineLimit(1).fixedSize()
                     .webElement(button)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.webHover(radius: b.radius))
             .padding(.top, b.margin.top)
         }
     }

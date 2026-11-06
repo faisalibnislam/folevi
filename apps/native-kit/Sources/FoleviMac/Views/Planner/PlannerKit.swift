@@ -412,7 +412,7 @@ final class PlannerPanel: NSPanel {
         var panel: PlannerPanel?
         let close: @MainActor () -> Void = { panel?.close() }
         let view = ZStack(alignment: top == nil ? .center : .top) {
-            Color.black.opacity(0.001).onTapGesture { close() }
+            Color.black.opacity(0.001).onTapGesture { close() } // (no hover: the scrim)
             content(close).webSheetIn().padding(.top, top ?? 0)
         }
         .frame(width: window.frame.width, height: window.frame.height, alignment: top == nil ? .center : .top)
@@ -544,7 +544,7 @@ final class PlannerPanel {
         let p = PlannerPanel()
         let close: @MainActor () -> Void = { [weak p] in p?.close() }
         let view = ZStack(alignment: .top) {
-            Color.black.opacity(0.001).onTapGesture { close() }
+            Color.black.opacity(0.001).onTapGesture { close() } // (no hover: the scrim)
             content(close).padding(.top, top + window.safeAreaInsets.top)
         }
         .frame(width: window.bounds.width, height: window.bounds.height, alignment: .top)

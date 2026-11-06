@@ -61,6 +61,7 @@ public struct PlacesMenuContent: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .webHover(radius: 8)
                     .accessibilityIdentifier("places-sign-out")
                 }
             }
@@ -123,6 +124,7 @@ public struct PlacesMenuContent: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .webHover(radius: 8)
         .accessibilityLabel([item.title, item.subtitle, item.detail].compactMap { $0 }.joined(separator: ", "))
         .accessibilityAddTraits(item.checked ? [.isSelected, .isButton] : .isButton)
         .accessibilityIdentifier("place-\(item.id)")
@@ -159,6 +161,7 @@ public struct PlacesMenuContent: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .webHover(radius: 8)
         .accessibilityIdentifier(id)
     }
 }

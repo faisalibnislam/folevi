@@ -79,7 +79,7 @@ struct AiThreadView: View {
                         .background(RoundedRectangle(cornerRadius: 10, style: .circular).fill(look.color("color-surface-raised")).shadow(color: .black.opacity(0.25), radius: 7, y: 4))
                         .overlay(RoundedRectangle(cornerRadius: 10, style: .circular).strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.webHover(radius: 10))
                     .padding(.bottom, 12)
                     .transition(.opacity)
                 }
@@ -441,7 +441,7 @@ struct AiContextChips: View {
             }
             if !disabled {
                 let add = look.s("ai.chip.add")
-                WebMenuButton(width: 240, entries: { addEntries() }) {
+                WebMenuButton(width: 240, hover: add.radius, entries: { addEntries() }) {
                     HStack(spacing: add.gap) {
                         WebIconView(.plus, size: 13)
                         Text("Add").webText(add.text).lineLimit(1)
@@ -580,7 +580,7 @@ struct AiComposer: View {
                         .background(RoundedRectangle(cornerRadius: send.radius).fill(send.background.color))
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.webHover(radius: send.radius, selected: !canSend))
                 // (Not `.disabled`: AppKit would dim it again; the web's `disabled:opacity-30` is the whole look.)
                 .compositingGroup()
                 .opacity(canSend ? 1 : send.opacity)
@@ -601,7 +601,7 @@ struct AiComposer: View {
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture { focused.wrappedValue = true }
+        .onTapGesture { focused.wrappedValue = true } // (no hover: a field, the click puts the cursor in it)
     }
 
     private var placeholder: String {

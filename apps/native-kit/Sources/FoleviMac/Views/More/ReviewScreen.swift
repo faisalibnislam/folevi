@@ -170,7 +170,7 @@ struct ReviewScreen: View {
                     }
                     .foregroundStyle(muted)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.webLink)
                 .padding(.top, 24)
             }
             .padding(32)
@@ -188,7 +188,8 @@ struct ReviewScreen: View {
                             .frame(maxWidth: .infinity)
                             .webElement(WebStyles.named("button.primary.md"))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.webPlain)
+                    .webBrightHover()
                 }
                 Text(verbatim: model.revealed ? "Keys: 1 Again, 2 Hard, 3 Good, 4 Easy." : "Key: Space shows the answer.")
                     .webText(.role(.footnote)).lineLimit(1).foregroundStyle(moreVar("color-ink-faint", scheme))
@@ -228,7 +229,8 @@ private struct RatingButton: View {
             .foregroundStyle(s.color.color)
             .webBox(style)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webHover(radius: s.radius, selected: primary))
+        .webBrightHover(active: primary)
     }
 }
 #endif

@@ -227,6 +227,7 @@ struct FoliHistoryView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .webHover(radius: 8)
         .listRowBackground(Color.clear)
         .contextMenu { menu(r) }
         .swipeActions(edge: .trailing) {

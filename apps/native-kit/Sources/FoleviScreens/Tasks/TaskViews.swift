@@ -106,6 +106,7 @@ public struct TaskLineView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .webHover(radius: 8)
             .padding(.top, facts.isEmpty && task.repeat == nil ? 9 : 5)
             .accessibilityLabel(task.status == "done" ? "Mark \(task.title) as not done" : task.status == "canceled" ? "Reopen canceled task \(task.title)" : "Mark \(task.title) as done")
             .accessibilityAddTraits(.isToggle)
@@ -134,6 +135,7 @@ public struct TaskLineView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .webHover(radius: 8)
             .accessibilityLabel(TaskFacts.accessibility(task, today: today))
             .accessibilityHint("Opens the task's details")
             .accessibilityIdentifier("task-row-\(task.id)")
@@ -163,6 +165,7 @@ struct TaskSectionHeader: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .webHover(radius: 8)
                 .accessibilityLabel("Open \(section.title)")
             } else {
                 title.accessibilityAddTraits(.isHeader)
@@ -181,6 +184,7 @@ struct TaskSectionHeader: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .webHover(radius: 8)
             .accessibilityLabel(section.folded ? "Show \(section.title)" : "Fold \(section.title)")
             .accessibilityIdentifier("task-fold-\(section.id)")
         }
@@ -219,10 +223,11 @@ struct TaskChipsRow: View {
                             .padding(.trailing, 14)
                             .frame(minHeight: 34)
                             .background(Capsule().fill(on ? Folevi.color.heading : Folevi.color.ink.opacity(0.065)))
+                            .webHover(radius: 17, active: !on)
                             .frame(minHeight: 44)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.plain) // (hover: on the capsule, above)
                         .id(chip.id)
                         .accessibilityLabel(count.map { "\(chip.title), \($0)" } ?? chip.title)
                         .accessibilityAddTraits(on ? [.isSelected, .isButton] : .isButton)
@@ -257,6 +262,7 @@ struct QuickAddTaskField: View {
                         Image(systemName: "arrow.up.circle.fill").font(.system(size: 24)).foregroundStyle(Folevi.color.heading)
                     }
                     .buttonStyle(.plain)
+                    .webLinkHover()
                     .accessibilityLabel("Add task")
                     .keyboardShortcut(.return, modifiers: .command)
                 }
@@ -283,6 +289,7 @@ struct QuickAddTaskField: View {
                 Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).frame(width: 22, height: 22).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .webHover(radius: 6)
             .accessibilityLabel("Keep \(text) as text")
         }
         .foregroundStyle(Folevi.color.ink)
@@ -309,7 +316,7 @@ struct PendingTaskRow: View {
             Spacer(minLength: 0)
             if isFailed {
                 Button("Retry", action: onRetry).buttonStyle(.folevi(.secondary, size: .small))
-                Button(action: onDiscard) { Image(systemName: "xmark").frame(width: 32, height: 32) }.buttonStyle(.plain).accessibilityLabel("Discard")
+                Button(action: onDiscard) { Image(systemName: "xmark").frame(width: 32, height: 32) }.buttonStyle(.plain).webHover(radius: 8).accessibilityLabel("Discard")
             } else if case .sending = item.state {
                 ProgressView().controlSize(.small)
             }

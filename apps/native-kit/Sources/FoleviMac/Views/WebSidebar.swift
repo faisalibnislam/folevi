@@ -145,7 +145,7 @@ public struct WebSidebar: View {
                 Button { model.open(.home, .replace) } label: {
                     WebFoleviLogo(height: 26, color: Folevi.color.heading).padding(4)
                 }
-                .buttonStyle(.webPlain)
+                .buttonStyle(.webHover(radius: 8))
                 .accessibilityLabel("Folevi")
             }
             Spacer(minLength: 0)
@@ -179,7 +179,7 @@ public struct WebSidebar: View {
             .webBox(s)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.webPlain)
+        .buttonStyle(.webHover(radius: r.radius))
     }
 
     // MARK: destinations
@@ -209,7 +209,7 @@ public struct WebSidebar: View {
                             .contentShape(Rectangle())
                             .fingerTarget(width: t.width, height: t.height)
                     }
-                    .buttonStyle(.webPlain)
+                    .buttonStyle(.webHover(radius: FoleviTokens.Radius.chip))
                     .padding(.trailing, 4)
                 }
             }
@@ -385,7 +385,7 @@ public struct WebSidebar: View {
                             .foregroundStyle(hovered ? Folevi.color.heading : toggle.color.color)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.webPlain)
+                    .buttonStyle(.webHover(radius: FoleviTokens.Radius.chip))
                 }
                 item(.folder(f.id), icon: .folder, title: f.name, glyph: AnyView(FolderGlyph(colorId: f.color, size: 18)), inRow: true)
                     .onMiddleClick { model.openInBackground(.folder(f.id), title: f.name) }
@@ -572,7 +572,7 @@ public struct WebSidebar: View {
                         .foregroundStyle(chevron.color.color)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.webPlain)
+                .buttonStyle(.webHover(radius: FoleviTokens.Radius.chip))
                 Button { model.open(route, .replace) } label: {
                     Text(title.uppercased())
                         .webText(titleStyle.text)
@@ -584,7 +584,7 @@ public struct WebSidebar: View {
                         .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular).fill(here ? (WebStyles.vars["glass-hover"]?.resolve(scheme).color ?? .clear) : .clear))
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.webPlain)
+                .buttonStyle(.webHover(radius: FoleviTokens.Radius.chip, selected: here))
                 if let action { action }
             }
             .padding(header.padding.edgeInsets)
@@ -710,13 +710,14 @@ struct WebHoverRowStyle: ButtonStyle {
         let selected: Bool
         @State private var over = false
         @Environment(\.colorScheme) private var scheme
+        @Environment(\.isEnabled) private var enabled
 
         var body: some View {
             label
                 .background {
-                    if pressed, let press {
+                    if pressed, enabled, let press {
                         RoundedRectangle(cornerRadius: radius, style: .circular).fill(press.resolve(scheme).color)
-                    } else if over, !selected, let hover {
+                    } else if over, enabled, !selected, let hover {
                         RoundedRectangle(cornerRadius: radius, style: .circular).fill(hover.resolve(scheme).color)
                     }
                 }
@@ -779,7 +780,7 @@ struct SidebarToggleButton: View {
                 .contentShape(Rectangle())
                 .fingerTarget(width: 40, height: 40)
         }
-        .buttonStyle(.webPlain)
+        .buttonStyle(.webHover(radius: 8))
         .accessibilityLabel(model.sidebarOverlayShown ? "Hide sidebar" : "Show sidebar")
     }
 }

@@ -56,6 +56,7 @@ public struct NewFolderSheet: View {
                                         .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.small, style: .continuous).strokeBorder(color == c.id ? Folevi.color.lineStrong : .clear, lineWidth: 1.5))
                                 }
                                 .buttonStyle(.plain)
+                                .webHover(radius: FoleviTokens.Radius.small, active: color != c.id)
                                 .accessibilityLabel(c.name)
                                 .accessibilityAddTraits(color == c.id ? [.isButton, .isSelected] : .isButton)
                             }

@@ -13,7 +13,7 @@ struct AiExportButton: View {
 
     var body: some View {
         let s = AiLook(scheme: scheme).s("ai.rowbtn")
-        WebMenuButton(side: .top, entries: entries) {
+        WebMenuButton(side: .top, hover: nil, entries: entries) {
             HStack(spacing: s.gap) {
                 WebIconView(.ellipsis, size: 12)
                 Text("Export").webText(s.text).lineLimit(1)

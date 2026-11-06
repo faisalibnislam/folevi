@@ -507,6 +507,7 @@ struct SelectionBar: View {
             ForEach(model.bulkActions) { action in
                 Button { Task { await model.runBulk(action) } } label: { barLabel(action) }
                     .buttonStyle(.plain)
+                    .webHover(radius: 8)
                     .disabled(model.selection.isEmpty)
             }
         }

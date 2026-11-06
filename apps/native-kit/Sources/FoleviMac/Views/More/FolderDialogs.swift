@@ -288,7 +288,7 @@ struct FolderColorSheet: View {
                                 }
                             }
                     }
-                    .buttonStyle(.webPlain)
+                    .buttonStyle(.webHover(radius: 6, selected: on))
                     .foleviTooltip(c.name)
                     .accessibilityLabel(c.name)
                     .accessibilityAddTraits(on ? .isSelected : [])
@@ -412,7 +412,7 @@ struct FolderPickerView: View {
                         Text(verbatim: "Back to folders").webText(.role(.subheadline)).foregroundStyle(moreVar("color-heading", scheme))
                             .padding(.horizontal, 8).padding(.vertical, 4).contentShape(Rectangle())
                     }
-                    .buttonStyle(.webPlain)
+                    .buttonStyle(.webHover(radius: 6))
                 }
                 .padding(.horizontal, 8).padding(.vertical, 8)
             } else {

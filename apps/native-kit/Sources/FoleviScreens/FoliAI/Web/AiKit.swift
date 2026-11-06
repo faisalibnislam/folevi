@@ -225,6 +225,7 @@ public struct AiRunStatus: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .webHover(radius: 12)
                 .padding(.leading, 4)
                 .keyboardShortcut(".", modifiers: .command)
             }

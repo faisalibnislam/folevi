@@ -386,7 +386,7 @@ struct WebCalendarScreen: View {
                 Button { frame.open(.tasks(.all)) } label: {
                     Text("\(n) more undated task\(n == 1 ? "" : "s") in Tasks").webText(.role(.subheadline)).underline().foregroundStyle(PV("color-accent").c(scheme))
                 }
-                .buttonStyle(PlainPress())
+                .buttonStyle(.webLink)
                 .padding(.top, 8)
             }
         }
@@ -525,6 +525,7 @@ struct MonthCell: View {
         .overlay(alignment: .bottom) { Rectangle().fill(line).frame(height: 1) }
         .overlay(alignment: .trailing) { if !last { Rectangle().fill(line).frame(width: 1) } }
         .contentShape(Rectangle())
+        .webHover(radius: 0)
         .onTapGesture { state.selected = day }
         .onDrop(of: [.text], isTargeted: $targeted) { providers in
             dropTask(providers) { id in reschedule(id) }
@@ -586,7 +587,7 @@ struct MonthChip: View {
                 .background(RoundedRectangle(cornerRadius: s.radius, style: .circular).fill(open ? s.background.color : PV("color-surface-sunken").c(scheme)))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(PlainPress())
+        .buttonStyle(.webHover(radius: s.radius))
         .foleviTooltip(task.title)
         .onDrag { NSItemProvider(object: task.id as NSString) }
     }
@@ -738,6 +739,7 @@ struct AllDayCell: View {
         .background(targeted ? PV("color-accent-soft").c(scheme) : .clear)
         .overlay(alignment: .leading) { Rectangle().fill(PV("color-line").c(scheme)).frame(width: 1) }
         .contentShape(Rectangle())
+        .webHover(radius: 0)
         .onTapGesture { state.selected = day }
         .onDrop(of: [.text], isTargeted: $targeted) { providers in
             dropTask(providers) { id in
@@ -905,7 +907,7 @@ struct HourGrid: View {
                 .background(RoundedRectangle(cornerRadius: 5, style: .circular).fill(PV("color-canvas").c(scheme)).padding(-1))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(PlainPress())
+        .buttonStyle(.webHover(radius: 4))
         .foleviTooltip("\(t.dueTime ?? "") \(t.title)")
         .onDrag { NSItemProvider(object: t.id as NSString) }
         .offset(x: r.minX, y: r.minY)

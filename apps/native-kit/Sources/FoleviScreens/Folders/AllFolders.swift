@@ -246,6 +246,7 @@ public struct AllFoldersTrailingItems: View {
             }
             .menuStyle(.button)
             .buttonStyle(.plain)
+            .webHover(radius: 8)
             .menuIndicator(.hidden)
             .fixedSize()
             .accessibilityLabel("Folders options")

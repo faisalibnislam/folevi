@@ -366,7 +366,7 @@ struct WebNoteSidebar: View {
                     .webBox(top)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(WebPressStyleLocal())
+            .buttonStyle(.webHover(radius: t.radius))
             .padding(.bottom, t.margin.bottom)
             if items.isEmpty {
                 emptyText("Add headings or nested pages and they’ll appear here.", "contents.empty", centered: true)
@@ -482,7 +482,7 @@ struct WebNoteSidebar: View {
                 .contentShape(Rectangle())
                 .fingerTarget(width: 16, height: 16)
             }
-            .buttonStyle(WebPressStyleLocal())
+            .buttonStyle(.webHover(radius: 6))
             .disabled(!canEdit)
             .padding(.top, 3)
             .accessibilityLabel("\(t.checked ? "Mark as not done" : "Mark as done"): \(t.text)")
@@ -492,7 +492,7 @@ struct WebNoteSidebar: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(WebPressStyleLocal())
+            .buttonStyle(WebPressStyleLocal()) // (hover: the row fill, HoverFillModifier below)
         }
         .padding(.horizontal, 6).padding(.vertical, 4)
         .modifier(HoverFillModifier(radius: 6, fill: v("color-accent-soft").opacity(0.6)))
@@ -565,7 +565,7 @@ struct WebNoteSidebar: View {
             .overlay(RoundedRectangle(cornerRadius: 10, style: .circular).strokeBorder(v("color-line", Folevi.color.line), lineWidth: 1))
             .contentShape(Rectangle())
         }
-        .buttonStyle(WebPressStyleLocal())
+        .buttonStyle(.webHover(radius: 10))
         .foleviTooltip(l.href)
     }
 
@@ -607,7 +607,7 @@ struct WebNoteSidebar: View {
                         Button { find.clear(model) } label: {
                             WebIconView(.x, size: 13).frame(width: 24, height: 24).foregroundStyle(v("color-ink-faint")).contentShape(Rectangle()).fingerTarget(width: 24, height: 24)
                         }
-                        .buttonStyle(WebPressStyleLocal())
+                        .buttonStyle(.webHover(radius: 6))
                         .foleviTooltip("Clear search")
                         .padding(.trailing, 8)
                     }
@@ -700,7 +700,7 @@ private struct CommentsList: View {
                 .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(on ? v("glass-active", .white) : .clear))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(WebPressStyleLocal())
+        .buttonStyle(.webHover(radius: 6, selected: on))
     }
 
     private func row(_ t: NoteToolsThread) -> some View {

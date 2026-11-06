@@ -52,7 +52,7 @@ struct PlannerSelect: View {
             .contentShape(Rectangle())
             .plannerAnchor(anchor)
         }
-        .buttonStyle(PlainPress())
+        .buttonStyle(.webHover(radius: s.radius))
         .accessibilityLabel("\(label): \(title)")
     }
 }
@@ -100,7 +100,7 @@ struct PlannerDateField: View {
                 .contentShape(Rectangle())
                 .plannerAnchor(anchor)
             }
-            .buttonStyle(PlainPress())
+            .buttonStyle(.webHover(radius: s.radius))
             .accessibilityLabel("\(label): \(has ? PlannerDates.fieldLabel(value) : placeholder)")
             if clearable && has {
                 ClearButton { value = "" }.padding(.trailing, 6).accessibilityLabel("Clear \(label)")
@@ -366,7 +366,7 @@ struct PlannerTimeField: View {
             .contentShape(Rectangle())
             .plannerAnchor(anchor)
         }
-        .buttonStyle(PlainPress())
+        .buttonStyle(.webHover(radius: s.radius))
         .accessibilityLabel("Due time: \(value.isEmpty ? emptyLabel : PlannerDates.timeLabel(value))")
     }
 

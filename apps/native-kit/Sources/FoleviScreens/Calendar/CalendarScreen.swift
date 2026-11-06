@@ -77,10 +77,10 @@ public struct CalendarScreen: View {
             Spacer(minLength: 8)
             if !compact {
                 Button { model.page(-1, layout: layout) } label: { Image(systemName: "chevron.left").frame(width: 32, height: 32) }
-                    .buttonStyle(.plain).accessibilityLabel("Previous")
+                    .buttonStyle(.plain).webHover(radius: 8).accessibilityLabel("Previous")
                 Button("Today") { model.goToday() }.buttonStyle(.folevi(.secondary, size: .small)).disabled(model.selected == model.today)
                 Button { model.page(1, layout: layout) } label: { Image(systemName: "chevron.right").frame(width: 32, height: 32) }
-                    .buttonStyle(.plain).accessibilityLabel("Next")
+                    .buttonStyle(.plain).webHover(radius: 8).accessibilityLabel("Next")
                 SegmentedControl(selection: Binding(get: { layout }, set: { model.choose($0) }), options: CalendarLayout.allCases.map { ($0, $0.title) })
                     .frame(width: 240)
                     .accessibilityIdentifier("calendar-layout")
@@ -218,6 +218,7 @@ public struct CalendarToolbarItems: View {
             }
             .menuStyle(.button)
             .buttonStyle(.plain)
+            .webHover(radius: 8)
             .menuIndicator(.hidden)
             .fixedSize()
             .accessibilityLabel("More")

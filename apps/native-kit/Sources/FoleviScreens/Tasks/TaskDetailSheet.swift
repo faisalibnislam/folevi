@@ -31,6 +31,7 @@ struct TaskDetailSheet: View {
                             TaskBox(status: t.status).frame(width: 44, height: 44).contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .webHover(radius: 8)
                         .accessibilityLabel(t.status == "done" ? "Mark as not done" : "Mark as done")
                         Text(t.title.isEmpty ? "Untitled task" : t.title)
                             .foleviFont(.bodyStrong)
@@ -88,6 +89,7 @@ struct TaskDetailSheet: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .webHover(radius: 8)
                         .accessibilityIdentifier("task-open-note")
                     }
                 }
@@ -133,6 +135,7 @@ struct TaskDetailSheet: View {
             detailRow("calendar", "Date", value: t.dueDate.map { TaskDates.whenLabel($0, today: today) } ?? "None", tone: overdue ? Folevi.color.destructive : Folevi.color.inkMuted, chevron: true)
         }
         .buttonStyle(.plain)
+        .webHover(radius: 8)
         .accessibilityIdentifier("task-date")
     }
 
@@ -164,6 +167,7 @@ struct TaskDetailSheet: View {
             detailRow("clock", "Time", value: t.dueTime.map { TaskDates.timeLabel($0) } ?? "All day", chevron: true)
         }
         .buttonStyle(.plain)
+        .webHover(radius: 8)
         .accessibilityIdentifier("task-time")
     }
 
@@ -203,6 +207,7 @@ struct TaskDetailSheet: View {
                         .background(Capsule().fill(on ? Folevi.color.heading : Folevi.color.ink.opacity(0.07)))
                 }
                 .buttonStyle(.plain)
+                .webHover(radius: 17, active: !on)
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
@@ -229,6 +234,7 @@ struct TaskDetailSheet: View {
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
+        .webHover(radius: 8)
         .menuIndicator(.hidden)
         .accessibilityIdentifier("task-priority")
     }
@@ -252,6 +258,7 @@ struct TaskDetailSheet: View {
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
+        .webHover(radius: 8)
         .menuIndicator(.hidden)
         .accessibilityIdentifier("task-assignee")
     }

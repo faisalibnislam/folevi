@@ -182,6 +182,7 @@ struct GateChoice<Icon: View>: View {
             .contentShape(RoundedRectangle(cornerRadius: box.radius, style: .continuous))
         }
         .buttonStyle(ChoicePress())
+        .webHover(radius: box.radius, active: enabled)
         .opacity(enabled ? 1 : 0.6)
     }
 
@@ -655,6 +656,7 @@ struct WebSwitch: View {
             .animation(.easeOut(duration: 0.15), value: on)
         }
         .buttonStyle(GatePressStyle())
+        .webHover(radius: track.radius)
         .accessibilityLabel(label)
         .accessibilityValue(on ? "On" : "Off")
         .accessibilityAddTraits(.isToggle)
@@ -1138,6 +1140,7 @@ struct GateCheckboxStyle: ToggleStyle {
             }
         }
         .buttonStyle(.plain)
+        .webHover(radius: 6)
         .accessibilityAddTraits(configuration.isOn ? .isSelected : [])
         #endif
     }

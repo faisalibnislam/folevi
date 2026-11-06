@@ -24,6 +24,7 @@ public struct WebButton: View {
     let height: CGFloat?
     let action: () -> Void
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.colorScheme) private var scheme
 
     /// `iconSize`: the icon's size where the web gives it one (`<Upload size={14} />`); 15 otherwise.
     /// `styleName`: the button's own measured style where it has one (the top bar's New note), and `iconOpacity`
@@ -55,6 +56,8 @@ public struct WebButton: View {
             WebButtonLabel(title: title, icon: icon, style: style, iconSize: iconSize, iconOpacity: iconOpacity)
         }
         .buttonStyle(WebPressStyle())
+        // Its hover (globals.css): a primary or danger button a touch brighter, the others the glass hover fill.
+        .modifier(WebButtonHover(variant: variant, radius: style.resolve(scheme).radius))
         // (CSS opacity fades the button as one picture, not its fill and label each.)
         .compositingGroup()
         .opacity(enabled ? 1 : Self.disabledOpacity)
@@ -67,6 +70,19 @@ public struct WebButton: View {
         #else
         0.5
         #endif
+    }
+}
+
+/// `.ui-btn-*:hover:not(:disabled)`: `filter: brightness(1.05)` on a filled button, the glass hover elsewhere.
+struct WebButtonHover: ViewModifier {
+    let variant: WebButtonVariant
+    let radius: CGFloat
+
+    func body(content: Content) -> some View {
+        switch variant {
+        case .primary, .danger: content.webBrightHover()
+        case .secondary, .ghost, .quiet: content.webHover(radius: radius)
+        }
     }
 }
 
@@ -482,7 +498,7 @@ public struct WebMenuPanel: View {
                     }
                 }
             }
-            .buttonStyle(WebPressStyle())
+            .buttonStyle(WebPressStyle()) // (hover: the row highlight, onHover below)
             // A disabled row (MAC-01): faded, never highlighted, takes no click (the menu stays open, as the web's).
             .disabled(item.disabled)
             .opacity(item.disabled ? Self.disabledOpacity : 1)

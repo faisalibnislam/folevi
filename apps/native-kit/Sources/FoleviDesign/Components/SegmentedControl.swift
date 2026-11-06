@@ -26,6 +26,7 @@ public struct SegmentedControl<Value: Hashable>: View {
                         .foregroundStyle(selected ? Folevi.color.ink : Folevi.color.inkMuted)
                         .padding(.horizontal, 12)
                         .frame(maxWidth: .infinity, minHeight: 28)
+                        .webHover(radius: FoleviTokens.Radius.chip, active: !selected)
                         .background {
                             if selected {
                                 RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .continuous)
@@ -36,7 +37,7 @@ public struct SegmentedControl<Value: Hashable>: View {
                         }
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.plain) // (hover: on the segment, above)
                 .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
             }
         }

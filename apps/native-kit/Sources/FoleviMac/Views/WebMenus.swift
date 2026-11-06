@@ -689,7 +689,7 @@ public struct RowMoreButton: View {
     }
 
     public var body: some View {
-        WebMenuButton(entries: entries) {
+        WebMenuButton(hover: nil, entries: entries) {
             RowMoreFace(hover: hover, shown: shown, size: size, iconSize: iconSize)
         }
         .onHover { hover = $0 }
@@ -768,10 +768,13 @@ public struct WebMenuButton<Label: View>: View {
     let select: Bool
     let side: WebMenuWindow.Side
     let label: Label
+    /// The radius of its hover fill (the glass hover over the label's box); nil for a label that draws its own hover.
+    let hover: CGFloat?
     @State private var anchor: NSView?
 
-    public init(width: CGFloat = 200, align: WebMenuWindow.Align = .end, side: WebMenuWindow.Side = .bottom, select: Bool = false, entries: @escaping @MainActor () -> [WebMenuEntry], @ViewBuilder label: () -> Label) {
+    public init(width: CGFloat = 200, align: WebMenuWindow.Align = .end, side: WebMenuWindow.Side = .bottom, select: Bool = false, hover: CGFloat? = FoleviTokens.Radius.chip, entries: @escaping @MainActor () -> [WebMenuEntry], @ViewBuilder label: () -> Label) {
         self.entries = entries
+        self.hover = hover
         self.width = width
         self.align = align
         self.side = side
@@ -794,6 +797,8 @@ public struct WebMenuButton<Label: View>: View {
                 .background {
                     if open, !select { WebMenuOpenFill() }
                 }
+                // Under the pointer the glass hover over its box (hover everywhere, 2026-11-06); not while it's open.
+                .webHover(radius: hover ?? 0, active: hover != nil && !open)
         }
         #if os(macOS)
         .buttonStyle(.webPlain)

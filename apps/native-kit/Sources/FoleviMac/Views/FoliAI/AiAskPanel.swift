@@ -181,7 +181,7 @@ struct AiAskPanelView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityAddTraits(.isHeader)
                 if let id = model.conversationId, model.info != nil {
-                    WebMenuButton(width: 240, entries: { AiConversationMenu.entries(model: model, host: host, id: id, title: model.title, shared: model.info?.shared ?? false, ephemeral: model.info?.ephemeral ?? false, includeRows: false) }) {
+                    WebMenuButton(width: 240, hover: look.s("ai.panel.button").radius, entries: { AiConversationMenu.entries(model: model, host: host, id: id, title: model.title, shared: model.info?.shared ?? false, ephemeral: model.info?.ephemeral ?? false, includeRows: false) }) {
                         headerIcon(.ellipsis, look: look)
                     }
                     .buttonStyle(AiHoverStyle(radius: look.s("ai.panel.button").radius))

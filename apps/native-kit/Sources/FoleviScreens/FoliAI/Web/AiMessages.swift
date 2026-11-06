@@ -55,6 +55,7 @@ public struct AiUserMessage: View {
                             .foregroundStyle(look.canvas).background(RoundedRectangle(cornerRadius: 6).fill(look.heading))
                     }
                     .buttonStyle(.plain)
+                    .webBrightHover()
                     .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }

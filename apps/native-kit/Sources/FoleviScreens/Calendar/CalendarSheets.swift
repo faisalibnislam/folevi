@@ -116,6 +116,7 @@ struct CalendarsSheet: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .webHover(radius: 8)
             .accessibilityLabel(cal.visible ? "Hide \(cal.name)" : "Show \(cal.name)")
             VStack(alignment: .leading, spacing: 2) {
                 Text(cal.name).foleviFont(.body).foregroundStyle(Folevi.color.ink).lineLimit(1)
@@ -140,6 +141,7 @@ struct CalendarsSheet: View {
             }
             .menuStyle(.button)
             .buttonStyle(.plain)
+            .webHover(radius: 8)
             .menuIndicator(.hidden)
             .accessibilityLabel("Options for \(cal.name)")
         }
@@ -168,6 +170,7 @@ struct CalendarsSheet: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .webHover(radius: 8)
                 .accessibilityLabel(c.label)
                 .accessibilityAddTraits(selection.wrappedValue == c.id ? .isSelected : [])
             }

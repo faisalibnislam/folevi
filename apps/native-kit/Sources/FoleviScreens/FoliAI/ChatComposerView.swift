@@ -233,6 +233,7 @@ struct FoliNotePicker: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .webHover(radius: 8)
             }
             .listStyle(.plain)
             .overlay {

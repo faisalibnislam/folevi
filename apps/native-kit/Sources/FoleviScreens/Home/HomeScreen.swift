@@ -73,6 +73,7 @@ public struct HomeScreen: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .webHover(radius: FoleviTokens.Radius.control)
         .accessibilityLabel(model.searchPrompt)
         .accessibilityAddTraits(.isSearchField)
         .accessibilityIdentifier("home-search")
@@ -230,6 +231,7 @@ public struct HomeScreen: View {
                 }
                 .menuStyle(.button)
                 .buttonStyle(.plain)
+                .webHover(radius: 8)
                 .menuIndicator(.hidden)
                 .fixedSize()
                 .accessibilityLabel("Folder options")
@@ -358,6 +360,8 @@ struct RowPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(configuration.isPressed ? Folevi.color.accentSoft.opacity(0.6) : Color.clear)
+            // Under a pointer (Mac, iPad): the glass hover fill over the row.
+            .webHover(radius: 0)
             .contentShape(Rectangle())
             .onChange(of: configuration.isPressed) { _, pressed in if pressed { onPress() } }
     }

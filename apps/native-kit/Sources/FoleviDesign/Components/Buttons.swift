@@ -36,6 +36,9 @@ public struct FoleviButtonStyle: ButtonStyle {
             .frame(minHeight: size.height)
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .background { background(pressed: pressed).clipShape(shape) }
+            // Under the pointer (Mac, iPad): a primary button a touch brighter, the others the glass hover fill.
+            .webBrightHover(active: kind == .primary)
+            .webHover(radius: radius, active: kind != .primary)
             .modifier(ButtonDepth(kind: kind, radius: radius))
             .contentShape(Rectangle().inset(by: -max(0, (minTouch - size.height) / 2)))
             .opacity(isEnabled ? 1 : 0.45)

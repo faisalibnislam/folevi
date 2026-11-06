@@ -233,7 +233,7 @@ public struct WebQuickAddPanel: View {
             .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(v("mac-hover")))
             .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
-        .buttonStyle(PlainPress())
+        .buttonStyle(.webHover(radius: 8))
         .accessibilityLabel("Adds to \(label), change")
         .accessibilityIdentifier("quick-add-place")
     }
@@ -253,7 +253,7 @@ public struct WebQuickAddPanel: View {
                 Button { toggle(.date) } label: {
                     chipLabel(.calendarDays, dateLabel.map { "Due \($0)" } ?? "Date", tone: nil)
                 }
-                .buttonStyle(PlainPress())
+                .buttonStyle(.webHover(radius: 8))
                 .accessibilityIdentifier("quick-add-date")
             }
             let p = Self.priorities.first { $0.0 == model.effectivePriority } ?? Self.priorities[0]
@@ -261,7 +261,7 @@ public struct WebQuickAddPanel: View {
                 Button { toggle(.priority) } label: {
                     chipLabel(.flag, model.effectivePriority == nil ? "Priority" : p.1, tone: p.2)
                 }
-                .buttonStyle(PlainPress())
+                .buttonStyle(.webHover(radius: 8))
                 .accessibilityIdentifier("quick-add-priority")
             }
             Spacer(minLength: 0)
@@ -370,7 +370,7 @@ public struct WebQuickAddPanel: View {
                     .webBox(style)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(PlainPress())
+                .buttonStyle(.webHover(radius: s.radius, selected: on))
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
@@ -699,7 +699,7 @@ private struct QuickAddDateField: View {
             .contentShape(Rectangle())
             .plannerAnchor(anchor)
         }
-        .buttonStyle(PlainPress())
+        .buttonStyle(.webHover(radius: WebStyles.named("input").resolve(scheme).radius))
         .accessibilityLabel("Due date: \(date ?? "No date")")
     }
 
@@ -754,7 +754,7 @@ private struct QuickAddTimeField: View {
             .contentShape(Rectangle())
             .plannerAnchor(anchor)
         }
-        .buttonStyle(PlainPress())
+        .buttonStyle(.webHover(radius: WebStyles.named("input").resolve(scheme).radius))
         .accessibilityLabel("Due time: \(time ?? "All day")")
     }
 

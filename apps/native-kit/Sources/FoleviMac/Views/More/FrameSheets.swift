@@ -223,7 +223,7 @@ private struct SheetLayer<Content: View>: View {
         ZStack(alignment: alignment) {
             Color.black.opacity(scrim && dimmed ? Self.scrimOpacity(scheme) : 0.0001)
                 .contentShape(Rectangle())
-                .onTapGesture { close() }
+                .onTapGesture { close() } // (no hover: the scrim)
                 .onAppear { withAnimation(.easeOut(duration: WebMotion.sheetIn)) { dimmed = true } }
             // A dialog drops in from above (`mac-sheet-in`), a popover rises (`mac-pop-in`).
             Group {
@@ -390,7 +390,8 @@ struct WebSheetButton: View {
                 .foregroundStyle(s.color.color)
                 .webBox(style)
         }
-        .buttonStyle(.webPlain)
+        .buttonStyle(.webHover(radius: s.radius, selected: !enabled || primary || danger))
+        .webBrightHover(active: enabled && (primary || danger))
         .modifier(DialogKey(key: Self.key(primary: primary, danger: danger)))
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)

@@ -467,7 +467,7 @@ struct SettingsSelect: View {
         let chevron = SettingsStyle.pair("select.chevron").resolve(scheme)
         let chosen = pending.shown(value)
         let current = options.first { $0.value == chosen }?.label ?? chosen
-        WebMenuButton(select: true, entries: {
+        WebMenuButton(select: true, hover: s.radius, entries: {
             options.map { o in WebMenuEntry(.item(o.label, checked: o.value == chosen, id: o.value)) { choose(o.value) } }
         }) {
             HStack(spacing: s.gap) {
@@ -530,7 +530,7 @@ struct SettingsField: View {
         .foregroundStyle(s.color.color)
         .webBox(focused ? webFocused(pair) : pair)
         .contentShape(Rectangle())
-        .onTapGesture { focused = true }
+        .onTapGesture { focused = true } // (no hover: a field, the click puts the cursor in it)
         .animation(.easeOut(duration: 0.12), value: focused)
     }
 }

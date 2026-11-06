@@ -36,6 +36,7 @@ public struct SearchField: View {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(Folevi.color.inkFaint)
                 }
                 .buttonStyle(.plain)
+                .webLinkHover()
                 .accessibilityLabel("Clear search")
             }
         }

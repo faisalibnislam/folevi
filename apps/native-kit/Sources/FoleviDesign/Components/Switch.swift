@@ -40,6 +40,7 @@ public struct FoleviSwitch: View {
                     .offset(x: on ? 18 : 2)
             }
             .frame(width: 40, height: 24)
+            .webHover(radius: FoleviTokens.Radius.chip)
             .animation(reduceMotion ? .easeOut(duration: 0.12) : FoleviSpring.press, value: on)
             // The touch target reaches 44 tall on a touch screen; the switch is drawn the web's size.
             #if os(iOS)
@@ -47,7 +48,7 @@ public struct FoleviSwitch: View {
             #endif
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plain) // (hover: on the track, above)
         .disabled(disabled)
         .opacity(disabled || !enabled ? 0.5 : 1)
         .accessibilityLabel(label)

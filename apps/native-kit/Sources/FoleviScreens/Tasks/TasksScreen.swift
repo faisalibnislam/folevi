@@ -184,6 +184,7 @@ public struct TasksTrailingMenu: View {
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
+        .webHover(radius: 8)
         .menuIndicator(.hidden)
         .fixedSize()
         .accessibilityLabel("More")

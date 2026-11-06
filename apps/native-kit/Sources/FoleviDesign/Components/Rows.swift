@@ -118,6 +118,7 @@ public struct SectionHeader: View {
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
                     .buttonStyle(.plain)
+                    .webLinkHover()
                     .foleviFont(.callout)
                     .foregroundStyle(Folevi.color.inkMuted)
             }

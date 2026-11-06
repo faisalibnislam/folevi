@@ -60,6 +60,7 @@ public struct QuickAddView: View {
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
+                .webBrightHover()
                 .disabled(!model.canSave)
                 .accessibilityLabel(model.mode == .task ? "Add task" : "Add note")
                 .accessibilityIdentifier("quick-add-save")
@@ -160,6 +161,7 @@ public struct QuickAddView: View {
                 if model.parsedLine != nil {
                     Button { model.keepDateAsText() } label: { Image(systemName: "xmark").font(.system(size: 11, weight: .semibold)).frame(width: 28, height: 28) }
                         .buttonStyle(.plain)
+                        .webLinkHover()
                         .foregroundStyle(Folevi.color.inkFaint)
                         .accessibilityLabel("Keep \u{201C}\(model.parsed?.dateText ?? "")\u{201D} as text")
                         .accessibilityIdentifier("quick-add-keep-text")
@@ -217,6 +219,7 @@ public struct QuickAddView: View {
             chipLabel(model.effectiveDueDate.map { QuickAddModel.dayLabel($0, today: model.session.value?.today) } ?? "Date", "calendar", active: model.effectiveDueDate != nil)
         }
         .buttonStyle(.plain)
+        .webHover(radius: 17)
         .accessibilityIdentifier("quick-add-date")
         .popover(isPresented: $pickingDate) {
             VStack(spacing: 10) {
@@ -249,6 +252,7 @@ public struct QuickAddView: View {
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
+        .webHover(radius: 17)
         .menuIndicator(.hidden)
         .fixedSize()
         .accessibilityIdentifier("quick-add-time")
@@ -265,6 +269,7 @@ public struct QuickAddView: View {
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
+        .webHover(radius: 17)
         .menuIndicator(.hidden)
         .fixedSize()
         .accessibilityIdentifier("quick-add-priority")
@@ -295,6 +300,7 @@ public struct QuickAddView: View {
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
+        .webHover(radius: 17)
         .menuIndicator(.hidden)
         .fixedSize()
         .onTapGesture { if model.mode == .note { model.loadFolders() } }

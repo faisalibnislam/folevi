@@ -267,7 +267,7 @@ struct CommandPaletteView: View {
     private func filter(label: String, options: [(String, String)], selected: String, onSelect: @escaping @MainActor (String) -> Void) -> some View {
         let f = WebStyles.named("more.palette.filter")
         let fs = f.resolve(scheme), l = s("filter.label"), c = s("filter.chevron")
-        return WebMenuButton(select: true, entries: {
+        return WebMenuButton(select: true, hover: fs.radius, entries: {
             options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == selected, id: "f:\(o.0)")) { onSelect(o.0) } }
         }) {
             HStack(spacing: fs.gap) {

@@ -60,6 +60,7 @@ public struct SearchScreen: View {
                 } else if !model.text.isEmpty {
                     Button { model.text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Folevi.color.inkFaint) }
                         .buttonStyle(.plain)
+                        .webLinkHover()
                         .accessibilityLabel("Clear search")
                 }
             }
@@ -69,6 +70,7 @@ public struct SearchScreen: View {
             if showsCancel {
                 Button("Cancel") { send(.dismiss) }
                     .buttonStyle(.plain)
+                    .webLinkHover()
                     .foleviFont(.body)
                     .foregroundStyle(Folevi.color.ink)
                     .accessibilityIdentifier("search-cancel")
@@ -134,10 +136,11 @@ public struct SearchScreen: View {
             .padding(.horizontal, 13)
             .frame(minHeight: 32)
             .background(Capsule().fill(on ? Folevi.color.heading : Folevi.color.ink.opacity(0.065)))
+            .webHover(radius: 16, active: !on)
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plain) // (hover: on the capsule, above)
         .accessibilityAddTraits(on ? [.isSelected, .isButton] : .isButton)
     }
 
@@ -154,11 +157,12 @@ public struct SearchScreen: View {
             .padding(.trailing, 10)
             .frame(minHeight: 32)
             .background(Capsule().fill(chosen != nil ? Folevi.color.heading : Folevi.color.ink.opacity(0.065)))
+            .webHover(radius: 16, active: chosen == nil)
             .frame(maxWidth: 200, minHeight: 44)
             .contentShape(Rectangle())
         }
         .menuStyle(.button)
-        .buttonStyle(.plain)
+        .buttonStyle(.plain) // (hover: on the capsule, above)
         .menuIndicator(.hidden)
         .fixedSize()
         .disabled(disabled)
@@ -197,7 +201,7 @@ public struct SearchScreen: View {
                             Text(section.title).foleviFont(.caps).foregroundStyle(Folevi.color.inkFaint)
                             Spacer()
                             if section.id == "recent-searches" {
-                                Button("Clear") { model.clearRecents() }.buttonStyle(.plain).foleviFont(.footnote).foregroundStyle(Folevi.color.inkMuted)
+                                Button("Clear") { model.clearRecents() }.buttonStyle(.plain).webLinkHover().foleviFont(.footnote).foregroundStyle(Folevi.color.inkMuted)
                             }
                         }
                         .padding(.horizontal, 20)
@@ -281,6 +285,7 @@ struct SearchRowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .webHover(radius: 0, active: !selected)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier("search-row-\(item.id)")

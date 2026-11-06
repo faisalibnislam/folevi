@@ -122,6 +122,7 @@ struct AppleButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .webBrightHover()
         .disabled(busy)
         .accessibilityIdentifier("sign-in-apple")
     }
@@ -198,6 +199,7 @@ struct ChoiceCard<Icon: View>: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PressScale())
+        .webHover(radius: Folevi.radius.container)
         .accessibilityElement(children: .combine)
         .accessibilityHint(recommended ? "Recommended" : "")
         .accessibilityIdentifier(identifier)
@@ -255,6 +257,7 @@ public struct LabeledField: View {
                         Image(systemName: reveal ? "eye.slash" : "eye").foregroundStyle(Folevi.color.inkMuted)
                     }
                     .buttonStyle(.plain)
+                    .webLinkHover()
                     .accessibilityLabel(reveal ? "Hide password" : "Show password")
                 }
             }
@@ -359,6 +362,7 @@ struct TextLinkButton: View {
                 .frame(minHeight: 44)
         }
         .buttonStyle(.plain)
+        .webLinkHover()
         .accessibilityIdentifier(identifier)
     }
 }

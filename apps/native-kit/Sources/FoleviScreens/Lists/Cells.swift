@@ -235,6 +235,7 @@ struct FolderCardCell: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(CardPressStyle())
+        .webHover(radius: 16)
         .modifier(RecordsFrame(id: folder.id, kind: .folderCard))
         .overlay(alignment: .topTrailing) {
             if hovering {

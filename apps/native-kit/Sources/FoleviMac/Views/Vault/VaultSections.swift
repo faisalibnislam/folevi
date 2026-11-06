@@ -95,7 +95,7 @@ struct VaultRow<Trailing: View>: View {
         .contentShape(Rectangle())
         .onHover { over = $0 }
         if let action {
-            Button(action: action) { content }.buttonStyle(.plain)
+            Button(action: action) { content }.buttonStyle(.plain) // (hover: the row draws its own, `over`)
         } else {
             content
         }
@@ -135,7 +135,7 @@ struct VaultSelect: View {
 
     var body: some View {
         let s = VS.style(style, scheme)
-        WebMenuButton(select: true, entries: { options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == selected)) { onSelect(o.0) } } }) {
+        WebMenuButton(select: true, hover: s.radius, entries: { options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == selected)) { onSelect(o.0) } } }) {
             let row = HStack(spacing: s.gap) {
                 Text(label).webText(s.text).lineLimit(1)
                 Spacer(minLength: 0)
@@ -241,7 +241,7 @@ struct VaultFiles: View {
                 .webBox(VS.pair(on ? "vault.files.seg.on" : "vault.files.seg.off"))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webHover(radius: s.radius, selected: on))
         .foleviTooltip(label)
         .accessibilityLabel(label)
         .accessibilityAddTraits(on ? .isSelected : [])
@@ -268,7 +268,7 @@ struct VaultFiles: View {
                             .padding(.vertical, 10)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.webHover(radius: 0))
                     }
                 }
             }
@@ -290,7 +290,7 @@ struct VaultFiles: View {
             .webBox(VS.pair("vault.files.folder"))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webHover(radius: VS.style("vault.files.folder", scheme).radius))
     }
 
     private func card(_ e: VaultItemRow, all: [VaultItemRow]) -> some View {
@@ -311,7 +311,7 @@ struct VaultFiles: View {
             .webBox(VS.pair("vault.files.card"))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webHover(radius: VS.style("vault.files.card", scheme).radius))
     }
 
     private func openFolder(_ f: VaultFolderRow) {
@@ -376,7 +376,7 @@ private struct VaultFileLine: View {
             .padding(VS.style("vault.row", scheme).padding.edgeInsets)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webHover(radius: 0))
     }
 }
 

@@ -56,6 +56,7 @@ struct WeekGridView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .contentShape(Rectangle())
+                .webHover(radius: 8)
                 .onTapGesture { model.select(d) }
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isHeader)
@@ -166,6 +167,7 @@ struct WeekGridView: View {
             .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .continuous).strokeBorder(Folevi.color.line))
         }
         .buttonStyle(.plain)
+        .webHover(radius: FoleviTokens.Radius.tiny)
         .draggable(t.id)
         .accessibilityLabel(TaskFacts.accessibility(t, today: model.today))
     }
@@ -185,6 +187,7 @@ struct WeekGridView: View {
             .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.tiny, style: .continuous).fill(CalendarMath.color(e.color).opacity(0.12)))
         }
         .buttonStyle(.plain)
+        .webHover(radius: FoleviTokens.Radius.tiny)
         .accessibilityLabel("\(e.title), \(CalendarMath.eventWhen(e, timeZone: model.timeZone)), from \(e.calendarName)")
     }
 

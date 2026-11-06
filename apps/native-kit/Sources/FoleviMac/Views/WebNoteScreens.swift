@@ -118,7 +118,7 @@ struct WebCardMenuButton: View {
         let raised = WebStyles.named("notes.card.menu")
         let r = raised.resolve(scheme)
         let button = notesStyle("card.menu.button", scheme)
-        WebMenuButton(width: 200, entries: entries) {
+        WebMenuButton(width: 200, hover: nil, entries: entries) {
             WebIconView(.ellipsis, size: 16)
                 .foregroundStyle(button.color.color)
                 .frame(width: r.width, height: r.height)
@@ -371,7 +371,7 @@ struct WebSortSelect<T: Hashable>: View {
         let select = notesStyle("toolbar.select", scheme)
         HStack(spacing: sort.gap) {
             Text("Sort").webText(label.text).lineLimit(1).foregroundStyle(label.color.color)
-            WebMenuButton(select: true, entries: {
+            WebMenuButton(select: true, hover: nil, entries: {
                 options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == value)) { value = o.0 } }
             }) {
                 trigger(options.first { $0.0 == value }?.1 ?? "")
@@ -411,7 +411,7 @@ struct WebRowSort<T: Hashable>: View {
         let style = WebStyles.named("notes.toolbar.select")
         let s = style.resolve(scheme)
         let chevron = WebStyles.named("select.trigger.chevron").resolve(scheme)
-        WebMenuButton(select: true, entries: {
+        WebMenuButton(select: true, hover: nil, entries: {
             options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == value)) { value = o.0 } }
         }) {
             HStack(spacing: s.gap) {
@@ -920,7 +920,7 @@ struct WebNoteBrowser: View {
                     .frame(maxWidth: 1180, alignment: .topLeading)
                     .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
-                    .onTapGesture { if !model.selection.isEmpty { model.selection.removeAll() } }
+                    .onTapGesture { if !model.selection.isEmpty { model.selection.removeAll() } } // (no hover: a click on the empty list clears the selection)
                 }
                 if !model.selection.isEmpty {
                     WebSelectionBar(count: model.selection.count, total: model.selectableOrder.count, actions: model.bulkActions(tabs: true), label: selectionLabel, run: runBulk, selectAll: { model.selectAll() }, clear: { model.selection.removeAll() })
@@ -1063,7 +1063,7 @@ struct WebNoteBrowser: View {
                         }
                         .webElement(WebStyles.named("button.secondary.md"))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.webHover(radius: WebStyles.named("button.secondary.md").resolve(scheme).radius))
                 }
                 WebButton("New template", icon: .plus, variant: .primary) {
                     Task { if let id = await model.actions.createTemplate() { frame.open(.note(id)) } }
@@ -1128,7 +1128,7 @@ struct WebNoteBrowser: View {
                         .webBox(card)
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.webHover(radius: 10))
                     .accessibilityLabel("New page from \(t.name)")
                 }
             }
@@ -1598,7 +1598,7 @@ struct WebFoldersIndex: View {
             .frame(maxWidth: .infinity)
             // A click on empty space clears the selection.
             .contentShape(Rectangle())
-            .onTapGesture { if !selection.isEmpty { selection.clear() } }
+            .onTapGesture { if !selection.isEmpty { selection.clear() } } // (no hover: a click on the empty list clears the selection)
         }
         if !picked(shown).isEmpty {
             WebSelectionBar(count: picked(shown).count, total: shown.count, actions: actions(shown), label: "Selected folders", run: { run($0, shown: shown) }, selectAll: { selection.selectAll(shown.map(\.id)) }, clear: { selection.clear() })
@@ -1644,7 +1644,7 @@ struct WebFoldersIndex: View {
                 .webBox(b)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.webHover(radius: bs.radius))
             .fixedSize()
         }
     }
@@ -1856,7 +1856,7 @@ struct WebRowIconButton: View {
                 .foregroundStyle(inTray ? webVar("color-ink-muted", scheme).color : style.resolve(scheme).color.color)
                 .frame(width: h, height: h)
                 .webBox(style, unless: inTray)
-                .listHoverTint(radius: WebListPageHeaderMetrics.trayItemRadius, enabled: inTray)
+                .listHoverTint(radius: inTray ? WebListPageHeaderMetrics.trayItemRadius : style.resolve(scheme).radius)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -1877,12 +1877,12 @@ struct WebPageMenuButton: View {
         let style = WebStyles.named("button.secondary.sm")
         let s = style.resolve(scheme)
         let h = inTray ? WebListPageHeaderMetrics.trayItemHeight : WebListPageHeaderMetrics.controlHeight
-        WebMenuButton(width: 220, entries: entries) {
+        WebMenuButton(width: 220, hover: nil, entries: entries) {
             WebIconView(.ellipsis, size: 15)
                 .foregroundStyle(inTray ? webVar("color-ink-muted", scheme).color : s.color.color)
                 .frame(width: h, height: h)
                 .webBox(style, unless: inTray)
-                .listHoverTint(radius: WebListPageHeaderMetrics.trayItemRadius, enabled: inTray)
+                .listHoverTint(radius: inTray ? WebListPageHeaderMetrics.trayItemRadius : s.radius)
                 .contentShape(Rectangle())
         }
         .foleviTooltip("More")
@@ -1931,7 +1931,7 @@ struct WebIndexSearch: View {
                 Button { text = "" } label: {
                     WebIconView(.x, size: 13).foregroundStyle(webVar("color-ink-faint", scheme).color).frame(width: 24, height: 24).contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.webHover(radius: 6))
                 .padding(.trailing, 8)
                 .accessibilityLabel("Clear search")
             }
@@ -2092,7 +2092,7 @@ struct WebCatchUpCard: View {
                                 .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular).fill(webVar("glass-hover", scheme).color))
                                 .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.webHover(radius: FoleviTokens.Radius.chip))
                         }
                     }
                     .padding(.top, 12)

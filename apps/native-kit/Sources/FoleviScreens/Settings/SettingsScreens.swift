@@ -83,6 +83,7 @@ public struct SettingsList: View {
         if s.webPage != nil {
             Button { model.showWeb(s) } label: { label().contentShape(Rectangle()) }
                 .buttonStyle(.plain)
+                .webHover(radius: 8)
                 .accessibilityIdentifier("settings-row-\(s.rawValue)")
         } else if let open {
             Button { open(s) } label: {
@@ -90,6 +91,7 @@ public struct SettingsList: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .webHover(radius: 8)
             .accessibilityIdentifier("settings-row-\(s.rawValue)")
         } else {
             NavigationLink(value: s) { label() }
@@ -317,6 +319,7 @@ struct AppearanceSettingsSection: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .webHover(radius: 8)
                 .accessibilityAddTraits(model.currentAppearance == a ? .isSelected : [])
                 .accessibilityIdentifier("settings-appearance-\(a.rawValue)")
             }

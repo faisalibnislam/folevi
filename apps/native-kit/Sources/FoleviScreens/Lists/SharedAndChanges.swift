@@ -276,6 +276,7 @@ public struct ChangesScreen: View {
                 Text(p.title.isEmpty ? "Untitled" : p.title).foleviFont(.bodyStrong).foregroundStyle(Folevi.color.ink)
             }
             .buttonStyle(.plain)
+            .webLinkHover()
             Text("\(p.sourceName) proposed · \(AgeText.relative(Date(timeIntervalSince1970: p.createdAt / 1000), now: ScreenClock.now()))").foleviFont(.caption).foregroundStyle(Folevi.color.inkFaint)
             Text(p.summary).foleviFont(.callout).foregroundStyle(Folevi.color.mossInk).lineLimit(6)
                 .padding(10)

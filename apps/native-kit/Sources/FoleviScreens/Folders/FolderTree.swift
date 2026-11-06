@@ -39,6 +39,7 @@ struct FolderRowCell: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .webHover(radius: 6)
                 .accessibilityLabel(disclosure ? "Collapse \(node.name)" : "Expand \(node.name)")
             } else {
                 Color.clear.frame(width: 20)
@@ -200,6 +201,7 @@ public struct FolderTreeView: View {
                     Text("+\(result.hidden.formatted()) more").foleviFont(.footnote).foregroundStyle(Folevi.color.inkMuted).padding(.leading, 30).frame(minHeight: 36)
                 }
                 .buttonStyle(.plain)
+                .webLinkHover()
                 .accessibilityLabel("\(result.hidden) more folders")
                 // A drag held on "+N more" shows every folder, so it can reach one that was hidden (web data-drop-expand).
                 .onDrop(of: [.foleviNoteRef, .foleviFolderRef], isTargeted: Binding(get: { false }, set: { if $0 { state.showAll = true } })) { _ in false }
@@ -208,6 +210,7 @@ public struct FolderTreeView: View {
                     Text("Show less").foleviFont(.footnote).foregroundStyle(Folevi.color.inkMuted).padding(.leading, 30).frame(minHeight: 36)
                 }
                 .buttonStyle(.plain)
+                .webLinkHover()
                 .accessibilityLabel("Show fewer folders")
             }
         }
@@ -267,11 +270,11 @@ struct FolderPathBar: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 4) {
                 Button { navigator.open(.allFolders, nil) } label: {
-                    Image(systemName: "folder").font(.system(size: 13, weight: .medium)).foregroundStyle(Folevi.color.inkMuted).frame(width: 30, height: 30)
+                    Image(systemName: "folder").font(.system(size: 13, weight: .medium)).foregroundStyle(Folevi.color.inkMuted).frame(width: 30, height: 30).webHover(radius: 8)
                         .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.plain) // (hover: on the icon box, above)
                 .accessibilityLabel("All folders")
                 .onDrop(of: [.foleviFolderRef], delegate: SectionDrop { item in
                     Task { await FolderDrops.drop(item, targetId: nil, targetName: nil, zone: .after, links: links, actions: actions) }
@@ -306,10 +309,11 @@ private struct PathChip: View {
             .padding(.horizontal, 8)
             .frame(minHeight: 28)
             .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .continuous).fill(zone != nil ? Folevi.color.emberSoft : Folevi.color.accentSoft))
+            .webHover(radius: FoleviTokens.Radius.chip)
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plain) // (hover: on the chip, above)
         .onDrop(of: [.foleviNoteRef, .foleviFolderRef], delegate: FolderDrop(folderId: node.id, axis: .horizontal, length: 0, zone: $zone, spring: spring, onSpring: onOpen, onNotes: { items in
             Task { await FolderDrops.dropNotes(items, into: node, actions: actions) }
         }, onFolder: { item, _ in

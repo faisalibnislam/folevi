@@ -83,7 +83,7 @@ struct AiPageScreen: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
             if !model.isNew, model.info != nil {
-                WebMenuButton(width: 240, entries: { AiConversationMenu.entries(model: model, host: host, id: model.conversationId ?? "", title: title, shared: model.info?.shared ?? false, ephemeral: model.info?.ephemeral ?? false, includeRows: false) }) {
+                WebMenuButton(width: 240, hover: more.radius, entries: { AiConversationMenu.entries(model: model, host: host, id: model.conversationId ?? "", title: title, shared: model.info?.shared ?? false, ephemeral: model.info?.ephemeral ?? false, includeRows: false) }) {
                     WebIconView(.ellipsis, size: 16).frame(width: more.width, height: more.height).foregroundStyle(more.color.color).contentShape(Rectangle())
                 }
                 .buttonStyle(AiHoverStyle(radius: more.radius))
@@ -235,7 +235,7 @@ struct AiConversationList: View {
                     .webBox(WebStyles.named("ai.list.new"))
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.webHover(radius: new.radius))
                 HStack(spacing: well.gap) {
                     WebIconView(.search, size: 14).foregroundStyle(look.muted)
                     ZStack(alignment: .leading) {
@@ -388,7 +388,7 @@ struct AiConversationRowView: View {
             .accessibilityValue(AiAge.text(row.lastMessageAt))
             .accessibilityAddTraits(active ? [.isSelected] : [])
             // (Always there for VoiceOver, its own element; drawn only under the pointer.)
-            WebMenuButton(width: 240, entries: menu) {
+            WebMenuButton(width: 240, hover: more.radius, entries: menu) {
                 WebIconView(.ellipsis, size: 14).frame(width: more.width, height: more.height).foregroundStyle(more.color.color).contentShape(Rectangle())
             }
             .buttonStyle(AiHoverStyle(radius: more.radius, hover: "glass-active"))

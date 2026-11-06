@@ -40,6 +40,7 @@ public struct IconButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: FoleviTokens.Radius.small, style: .continuous)
                     .fill(configuration.isPressed ? Folevi.color.accentSoft : .clear)
             }
+            .webHover(radius: FoleviTokens.Radius.small)
             .contentShape(Rectangle().inset(by: touchInset))
             .foleviAnimation(FoleviTokens.Motion.fast, value: configuration.isPressed)
     }

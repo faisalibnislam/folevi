@@ -145,7 +145,7 @@ private struct VaultHeader: View {
                 HStack(spacing: VS.style("vault.header.actions", scheme).gap) {
                     WebButton("Lock", icon: .lock, variant: .primary, size: .sm) { model.lock() }
                         .foleviTooltip("Lock the Vault")
-                    WebMenuButton(width: 200, entries: { menu }) {
+                    WebMenuButton(width: 200, hover: VS.style("vault.header.more", scheme).radius, entries: { menu }) {
                         let more = VS.style("vault.header.more", scheme)
                         WebIconView(.ellipsis, size: 15)
                             .frame(width: more.width, height: more.height)
@@ -383,7 +383,7 @@ struct NewPasscodeFields: View {
                                 .background(RoundedRectangle(cornerRadius: 6).fill(on ? VS.style("vault.gate.card", scheme).background.color : .clear))
                                 .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.webHover(radius: 6, selected: on))
                         .accessibilityAddTraits(on ? .isSelected : [])
                     }
                 }
@@ -515,7 +515,7 @@ private struct VaultGateView: View {
                                 model.toast("Asked. A custodian's device shares the key with you again when they next open the Vault.", tone: .success)
                             }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.webLink)
                         .underline()
                         .webText(VS.style("vault.health.body", scheme).text)
                     }
@@ -735,7 +735,8 @@ private struct WideButton: View {
             .webBox(pair)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webHover(radius: s.radius, selected: primary))
+        .webBrightHover(active: primary)
     }
 }
 

@@ -31,6 +31,7 @@ public struct Chip: View {
         if let action {
             Button(action: action) { label }
                 .buttonStyle(.plain)
+                .webHover(radius: FoleviTokens.Radius.chip)
                 .contentShape(Rectangle().inset(by: -10))
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
         } else {
@@ -120,9 +121,10 @@ public struct Checkbox: View {
                 if isOn { Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundStyle(.white) }
             }
             .frame(width: 20, height: 20)
+            .webHover(radius: FoleviTokens.Radius.tiny + 1)
             .contentShape(Rectangle().inset(by: -12))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plain) // (hover: on the box, above)
         .accessibilityLabel(label)
         .accessibilityValue(isOn ? "Done" : "Not done")
         .accessibilityAddTraits(.isButton)

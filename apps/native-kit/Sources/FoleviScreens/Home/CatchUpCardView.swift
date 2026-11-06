@@ -73,6 +73,7 @@ public struct CatchUpCardView: View {
                                 .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .continuous).fill(Folevi.color.accentSoft))
                             }
                             .buttonStyle(.plain)
+                            .webHover(radius: FoleviTokens.Radius.chip)
                             .accessibilityLabel("Source \(i + 1), \(source.title.isEmpty ? "Untitled" : source.title)")
                         }
                     }

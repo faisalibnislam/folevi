@@ -78,7 +78,7 @@ public struct TabOverviewLayer: View {
                 color("color-canvas").opacity(0.82)
             }
             .contentShape(Rectangle())
-            .onTapGesture { dismiss() }
+            .onTapGesture { dismiss() } // (no hover: the scrim behind the overview)
         }
         .opacity(shownIn || reduceMotion ? 1 : 0)
         .onAppear {
@@ -111,7 +111,7 @@ public struct TabOverviewLayer: View {
                     Button { query = "" } label: {
                         WebIconView(.x, size: 12).frame(width: 20, height: 20).foregroundStyle(color("color-ink-faint")).contentShape(Rectangle())
                     }
-                    .buttonStyle(.webPlain)
+                    .buttonStyle(.webHover(radius: 6))
                     .accessibilityLabel("Clear search")
                 }
             }
@@ -169,7 +169,7 @@ public struct TabOverviewLayer: View {
             Button { open(e) } label: {
                 TabPicture(tab: e.tab, model: model).aspectRatio(16 / 10, contentMode: .fit).contentShape(Rectangle())
             }
-            .buttonStyle(.webPlain)
+            .buttonStyle(.webPlain) // (hover: the whole card lifts, below)
             .accessibilityLabel("Open \(label(e))")
         }
         .background(color("color-surface-raised"))

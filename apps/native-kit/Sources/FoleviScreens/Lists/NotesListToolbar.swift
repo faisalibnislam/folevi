@@ -33,6 +33,7 @@ public struct NotesListTrailingItems: View {
                     }
                     .menuStyle(.button)
                     .buttonStyle(.plain)
+                    .webHover(radius: 15)
                     .menuIndicator(.hidden)
                     .fixedSize()
                     .accessibilityLabel("\(model.title) options")

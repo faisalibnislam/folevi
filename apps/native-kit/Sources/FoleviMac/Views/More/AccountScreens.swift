@@ -220,10 +220,10 @@ struct SharedFolderScreen: View {
                 MoreEmptyState(icon: .folderX, title: "You can’t open this folder", message: "It may have been unshared, moved or deleted. Folders shared with you are in Shared with Me.")
             } else {
                 HStack(spacing: 4) {
-                    Button { frame.open(.shared) } label: { Text(verbatim: "Shared with Me") }.buttonStyle(.plain)
+                    Button { frame.open(.shared) } label: { Text(verbatim: "Shared with Me") }.buttonStyle(.webLink)
                     ForEach(d.path, id: \.id) { p in
                         WebIconView(.chevronRight, size: 12)
-                        Button { frame.open(.web("/shared/\(p.id)")) } label: { Text(verbatim: p.name.isEmpty ? "Untitled" : p.name) }.buttonStyle(.plain)
+                        Button { frame.open(.web("/shared/\(p.id)")) } label: { Text(verbatim: p.name.isEmpty ? "Untitled" : p.name) }.buttonStyle(.webLink)
                     }
                     WebIconView(.chevronRight, size: 12)
                     Text(verbatim: d.name.isEmpty ? "Untitled" : d.name).foregroundStyle(heading)
@@ -248,7 +248,7 @@ struct SharedFolderScreen: View {
                                 .webBox(WebStyles.named("more.help.table"))
                                 .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.webHover(radius: WebStyles.named("more.help.table").resolve(scheme).radius))
                         }
                     }
                     .padding(.bottom, 24)
@@ -382,7 +382,7 @@ struct ChangesWebScreen: View {
         return card {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Button { if let id = p.noteId { frame.open(.note(id)) } } label: { Text(verbatim: p.title).webText(.role(.headline)).lineLimit(1).foregroundStyle(moreVar("color-heading", scheme)) }.buttonStyle(.plain)
+                    Button { if let id = p.noteId { frame.open(.note(id)) } } label: { Text(verbatim: p.title).webText(.role(.headline)).lineLimit(1).foregroundStyle(moreVar("color-heading", scheme)) }.buttonStyle(.webLink)
                     (Text(verbatim: p.sourceName).foregroundColor(moreVar("color-ink", scheme)) + Text(verbatim: " proposed this \(Roles.updated(p.createdAt))")).webText(.role(.footnote)).foregroundStyle(muted).padding(.top, 4)
                     Text(verbatim: p.summary).webText(.role(.footnote)).lineLimit(1).foregroundStyle(muted).padding(.top, 2)
                 }
@@ -409,7 +409,7 @@ struct ChangesWebScreen: View {
         return card {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Button { frame.open(.note(n.id)) } label: { Text(verbatim: n.title.isEmpty ? "Untitled" : n.title).webText(.role(.headline)).lineLimit(1).foregroundStyle(moreVar("color-heading", scheme)) }.buttonStyle(.plain)
+                    Button { frame.open(.note(n.id)) } label: { Text(verbatim: n.title.isEmpty ? "Untitled" : n.title).webText(.role(.headline)).lineLimit(1).foregroundStyle(moreVar("color-heading", scheme)) }.buttonStyle(.webLink)
                     (Text(verbatim: n.who).foregroundColor(moreVar("color-ink", scheme)) + Text(verbatim: " · \(Roles.updated(n.changedAt))")).webText(.role(.footnote)).foregroundStyle(muted).padding(.top, 4)
                     Text(verbatim: n.counts).webText(.role(.footnote)).foregroundStyle(muted).padding(.top, 2)
                 }

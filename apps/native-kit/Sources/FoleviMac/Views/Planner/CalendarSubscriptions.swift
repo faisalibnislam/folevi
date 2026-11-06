@@ -99,7 +99,7 @@ struct ColorPicker: View {
                         .background { if value == id { RoundedRectangle(cornerRadius: item.radius, style: .circular).fill(PV("color-accent-soft").c(scheme)) } }
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(PlainPress())
+                    .buttonStyle(.webHover(radius: item.radius, selected: value == id))
                     .accessibilityAddTraits(value == id ? .isSelected : [])
                 }
             }

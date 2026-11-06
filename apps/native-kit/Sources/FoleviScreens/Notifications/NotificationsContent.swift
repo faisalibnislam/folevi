@@ -55,6 +55,7 @@ public struct NotificationsContent: View {
                 Image(systemName: "gearshape").font(.system(size: 15, weight: .medium)).frame(width: 32, height: 32).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .webHover(radius: 8)
             .foregroundStyle(Folevi.color.inkMuted)
             .accessibilityLabel("Notification settings")
             .accessibilityIdentifier("notifications-settings")
@@ -151,6 +152,7 @@ struct NotificationRowView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .webHover(radius: 8)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(sentence)\(row.body.isEmpty ? "" : ". \(row.body)"), \(AgeText.relative(Date(timeIntervalSince1970: row.at / 1000), now: ScreenClock.now()))\(row.read ? "" : ", unread")")
             .accessibilityIdentifier("notification-\(row.id)")

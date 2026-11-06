@@ -41,6 +41,7 @@ struct WeekStripView: View {
                 .padding(.vertical, 6)
                 .frame(maxWidth: .infinity, minHeight: 22)
                 .contentShape(Rectangle())
+                .webHover(radius: 8)
                 .onTapGesture { toggleMonth() }
                 .accessibilityLabel(monthOpen ? "Hide the month" : "Show the month")
                 .accessibilityAddTraits(.isButton)
@@ -107,6 +108,7 @@ struct WeekStripView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .webHover(radius: 8)
                 .accessibilityLabel(dayAccessibility(day, today: today))
                 .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : .isButton)
                 .accessibilityIdentifier("calendar-day-\(day)")
@@ -143,6 +145,7 @@ struct CalendarDayHeader: View {
                     Image(systemName: "plus").font(.system(size: 15, weight: .semibold)).foregroundStyle(Folevi.color.inkMuted).frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .webHover(radius: 8)
                 .accessibilityLabel("Add a task on \(h.name)")
                 .accessibilityIdentifier("calendar-add-\(day)")
             }
@@ -174,6 +177,7 @@ struct CalendarEventRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .webHover(radius: 0)
         .accessibilityLabel("\(e.title.isEmpty ? "Untitled event" : e.title), \(CalendarMath.eventTimeOnDay(placed)), from \(e.calendarName)")
         .accessibilityIdentifier("calendar-event-\(e.id)")
     }
@@ -256,6 +260,7 @@ struct MonthGridView: View {
         .background(isSelected ? Folevi.color.ink.opacity(0.06) : .clear)
         .overlay(alignment: .top) { Rectangle().fill(Folevi.color.line).frame(height: 1) }
         .contentShape(Rectangle())
+        .webHover(radius: 0)
         .onTapGesture(count: 2) { if model.canEdit { onAdd(day) } }
         .onTapGesture { model.select(day); model.feedback.haptic(.selection) }
         .dropDestination(for: String.self) { ids, _ in

@@ -16,6 +16,7 @@ public struct HomeAvatarButton: View {
             Avatar(name: model.profileName.isEmpty ? "Folevi" : model.profileName, size: 30)
         }
         .buttonStyle(.plain)
+        .webHover(radius: 15)
         .accessibilityLabel("Account and places")
         .accessibilityIdentifier("home-avatar")
     }
@@ -54,6 +55,7 @@ public struct HomeTrailingPill: View {
             }
             .menuStyle(.button)
             .buttonStyle(.plain)
+            .webHover(radius: 8)
             .menuIndicator(.hidden)
             .fixedSize()
             .accessibilityLabel("More")

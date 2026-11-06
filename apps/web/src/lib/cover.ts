@@ -2,6 +2,7 @@
 import type { DocumentCover, DocumentStyle } from "@folevi/editor-schema";
 import type { StylePalette } from "@/lib/palette";
 import { allThemes, BUILT_IN_THEMES, themeById, type NoteTheme } from "@/lib/themes";
+import { inShowcaseFrame } from "@/lib/showcaseFrame";
 
 /**
  * One note theme: an image (packages/design-tokens/covers/source, or one an admin uploaded) and the colours
@@ -30,10 +31,14 @@ function resolveArt(id: string | undefined): CoverArt | null {
   if (!n || !builtIns.length) return null;
   return builtIns[(Number(n) - 1) % builtIns.length] ?? null;
 }
-/** A theme's image as a CSS image: 1600 px on regular screens, 3200 px on Retina (2×) ones. */
+/**
+ * A theme's image as a CSS image: 1600 px on regular screens, 3200 px on Retina (2×) ones. The home page's
+ * showcase shows the app small, so there it's the 640 px thumbnail (the 1600 px one alone is up to 0.8 MB).
+ */
 const artUrl = (id: string | undefined) => {
   const a = resolveArt(id);
   if (!a) return null;
+  if (inShowcaseFrame()) return `url(${JSON.stringify(coverArtThumbUrl(a.id))})`;
   if (a.image) return `image-set(url(${JSON.stringify(a.image.half)}) 1x, url(${JSON.stringify(a.image.full)}) 2x)`;
   return `image-set("/covers/${a.id}-1x.webp" 1x, "/covers/${a.id}.webp" 2x)`;
 };

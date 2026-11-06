@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar, PEOPLE, type PersonId } from "../people";
 
 /*
- * The hero's title, being edited by a few people at once: "Folevi is a digital workspace for …", and each in
+ * The hero's title, being edited by a few people at once: "Folevi is a free notes app for …", and each in
  * turn deletes the ending and types their own, with their cursor and name where they type (as collaborators
  * show in a shared note). Assistive tech and search engines read the whole sentence once (the typing is
  * hidden from them). The title can be edited too: while someone's in it the others wait, and once they've
@@ -12,17 +12,16 @@ import { Avatar, PEOPLE, type PersonId } from "../people";
  */
 
 /** The first line stays; the second ("for …") is the one people change. Endings fit on one line. */
-const LEAD = "Folevi is a digital workspace";
+const LEAD = "Folevi is a free notes app";
 const TURNS: { text: string; who: PersonId }[] = [
-  { text: "notes", who: "maya" },
-  { text: "documentation", who: "sam" },
-  { text: "collaboration", who: "ines" },
-  { text: "publishing", who: "maya" },
-  { text: "team wikis", who: "sam" },
-  { text: "planning your week", who: "ines" },
+  { text: "your Mac", who: "maya" },
+  { text: "your iPhone", who: "sam" },
+  { text: "your iPad", who: "ines" },
+  { text: "your ideas", who: "maya" },
+  { text: "planning your week", who: "sam" },
 ];
 /** What the sentence says, for screen readers and the page's text. */
-export const HERO_TITLE_TEXT = `${LEAD} for notes, documentation, collaboration and publishing.`;
+export const HERO_TITLE_TEXT = `${LEAD} for Mac, iPhone and iPad.`;
 
 const HOLD_MS = 2400;
 const DELETE_MS = 38;

@@ -18,13 +18,13 @@ export const HERO_SEED: SeedBlock[] = [
     type: "paragraph",
     text: [
       {
-        text: "Write notes, keep your tasks next to them and link pages together. Folevi saves every change on your device first, so you can write offline, and it syncs when you reconnect.",
+        text: "Folevi is free forever on your Mac, iPhone and iPad, with no account. Your notes are files in a folder you pick, in iCloud Drive, Dropbox, Google Drive or just on your device, so they stay yours.",
       },
     ],
   },
   { id: "hero-try", type: "heading", level: 1, text: [{ text: "First things to try" }] },
-  { id: "hero-todo-offline", type: "todo", checked: true, text: [{ text: "Write a page while offline" }] },
   { id: "hero-todo-style", type: "todo", checked: true, text: [{ text: "Pick a theme for this note" }] },
+  { id: "hero-todo-apps", type: "todo", checked: false, text: [{ text: "Get Folevi on your Mac, iPhone and iPad" }] },
   { id: "hero-todo-link", type: "todo", checked: false, text: [{ text: "Link another page with " }, { text: "[[", code: true }] },
   { id: "hero-todo-date", type: "todo", checked: false, text: [{ text: "Give a to-do a due date" }] },
 ];

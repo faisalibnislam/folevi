@@ -74,9 +74,9 @@ export function Included() {
       <div className="mk-box relative px-5 py-9 sm:px-10 sm:py-12 lg:px-14 lg:py-14">
         <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
           <div>
-            <Eyebrow>Included in every plan</Eyebrow>
+            <Eyebrow>Included for free</Eyebrow>
             <h2 id="included-title" className="mk-h2 mt-5 max-w-[16ch]">
-              The good stuff is on <Mark kind="circle">Free</Mark> too.
+              The good stuff is <Mark kind="circle">free</Mark>.
             </h2>
           </div>
           <div className="relative pb-2 max-sm:hidden">

@@ -59,7 +59,7 @@ const ROWS: Row[] = [
   { label: "Foli AI", href: "/foli-ai", icon: AiIcon },
   { label: "Template gallery", href: "/template-gallery", icon: LayoutTemplate },
   { label: "Pricing", href: "/pricing", icon: CreditCard },
-  { label: "Mac app", href: "/mac", icon: Monitor },
+  { label: "Apps", href: "/apps", icon: Monitor },
   { label: "Docs", href: "/docs", icon: BookOpen },
   { label: "Blog", href: "/blog", icon: Newspaper },
   { label: "Compare", href: "/compare", icon: Scale },

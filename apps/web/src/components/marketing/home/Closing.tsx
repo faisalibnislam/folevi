@@ -3,7 +3,7 @@ import { AiIcon } from "@/components/ai/AiIcon";
 import Link from "next/link";
 import { FoleviMark } from "@/components/brand/FoleviMark";
 import { Icon, type IconName } from "../icons";
-import { SIGN_UP_URL } from "../site";
+import { APP_STORE_URL, MAC_DOWNLOAD_URL, WEB_APP_URL } from "../site";
 import { ButtonLink, SectionHeading, box, container, cx } from "../ui";
 import { Float, Mark, Sticker } from "../fun";
 import { AiPiece, TaskPiece } from "../pieces";
@@ -61,12 +61,40 @@ export function PricingSection() {
           eyebrow="Pricing"
           title={
             <>
-              Start <Mark>free</Mark>. Upgrade for room or AI.
+              Free on your devices. <Mark>Cloud</Mark> when you want it.
             </>
           }
-          lede={`Every new account gets ${TIER_NAMES[TRIAL_TIER]} free for ${TRIAL_DAYS} days, no card.`}
+          lede={`The apps cost nothing with no account. Folevi Cloud adds the web app, sharing and Foli AI, and every new account gets ${TIER_NAMES[TRIAL_TIER]} free for ${TRIAL_DAYS} days, no card.`}
         />
-        <ul className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mk-card mt-10 flex flex-col gap-5 p-6 sm:p-7 lg:flex-row lg:items-center">
+          <div className="flex-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h3 className="text-[16px] font-semibold text-(--color-heading)">Folevi apps, on your devices</h3>
+              <Sticker shine tone="violet" rotate={-4} className="text-[12px]">
+                No account
+              </Sticker>
+            </div>
+            <p className="mt-3 flex flex-wrap items-baseline gap-x-1.5">
+              <span className="mk-display text-[36px] leading-none">{formatPrice(0)}</span>
+              <span className="text-[14px] text-muted">forever</span>
+            </p>
+            <p className="mt-3 max-w-[60ch] text-[15px] leading-snug text-muted">
+              Mac, iPhone and iPad. Unlimited notes in iCloud Drive, Dropbox, Google Drive or any folder, offline, with Foli AI on your Mac.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2.5">
+            <ButtonLink href={MAC_DOWNLOAD_URL} icon="arrow-down">
+              Download for Mac
+            </ButtonLink>
+            <ButtonLink href={APP_STORE_URL} variant="secondary">
+              App Store
+            </ButtonLink>
+          </div>
+        </div>
+        <div className="mt-10 text-center">
+          <p className="mk-eyebrow">Folevi Cloud</p>
+        </div>
+        <ul className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {PLAN_ORDER.map((tier) => {
             const plan = PLANS[tier];
             const badge = BADGES[tier];
@@ -129,13 +157,16 @@ export function FinalCta() {
         >
           Start with one <Mark kind="circle">note</Mark>.
         </h2>
-        <p className="mk-lede mx-auto mt-5 max-w-[46ch]">The Free plan has no time limit.</p>
+        <p className="mk-lede mx-auto mt-5 max-w-[46ch]">Free forever on your Mac, iPhone and iPad. No account.</p>
         <div className="mt-9 flex flex-wrap justify-center gap-2.5">
-          <ButtonLink href={SIGN_UP_URL} icon="arrow-right" size="lg">
-            Start writing
+          <ButtonLink href={MAC_DOWNLOAD_URL} icon="arrow-down" size="lg">
+            Download for Mac
           </ButtonLink>
-          <ButtonLink href="/docs" variant="secondary" size="lg">
-            Read the docs
+          <ButtonLink href={APP_STORE_URL} icon="arrow-right" size="lg">
+            Get it on the App Store
+          </ButtonLink>
+          <ButtonLink href={WEB_APP_URL} variant="secondary" size="lg">
+            Open the web app
           </ButtonLink>
         </div>
       </div>

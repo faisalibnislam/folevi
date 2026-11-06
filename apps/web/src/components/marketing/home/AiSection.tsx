@@ -21,7 +21,7 @@ export function AiSection() {
             <>
               Ask, write and draw with <Mark>your notes</Mark>.
             </>
-          } lede="It only reads notes you can open, and asks before changes." />
+          } lede="It only reads notes you can open, and asks before changes. In the Mac app it can run on Apple Intelligence or your own key." />
 
         <div className="mt-12 grid gap-12 lg:grid-cols-2 lg:gap-x-10 lg:gap-y-8">
           <Feature

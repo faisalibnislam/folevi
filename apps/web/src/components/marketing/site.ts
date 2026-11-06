@@ -27,11 +27,12 @@ export function signUpWithTemplate(key: string): string {
  * dates next to their content (content/features.tsx, content/templates.ts, content/docs.tsx).
  */
 export const MARKETING_ROUTES = [
-  { path: "/", priority: 1, changeFrequency: "weekly", updated: "2026-09-30" },
-  { path: "/features", priority: 0.9, changeFrequency: "monthly", updated: "2026-09-30" },
-  { path: "/mac", priority: 0.8, changeFrequency: "monthly", updated: "2026-10-23" },
+  { path: "/", priority: 1, changeFrequency: "weekly", updated: "2026-11-06" },
+  { path: "/apps", priority: 0.9, changeFrequency: "monthly", updated: "2026-11-06" },
+  { path: "/features", priority: 0.9, changeFrequency: "monthly", updated: "2026-11-06" },
+  { path: "/mac", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-06" },
   { path: "/security", priority: 0.8, changeFrequency: "monthly", updated: "2026-09-30" },
-  { path: "/pricing", priority: 0.8, changeFrequency: "monthly", updated: "2026-09-30" },
+  { path: "/pricing", priority: 0.8, changeFrequency: "monthly", updated: "2026-11-06" },
   { path: "/template-gallery", priority: 0.7, changeFrequency: "monthly", updated: "2026-09-30" },
   { path: "/docs", priority: 0.7, changeFrequency: "weekly", updated: "2026-09-30" },
   { path: "/support", priority: 0.6, changeFrequency: "monthly", updated: "2026-09-30" },

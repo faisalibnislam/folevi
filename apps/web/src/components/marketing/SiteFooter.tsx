@@ -12,6 +12,7 @@ const columns: Array<{ title: string; links: Array<{ label: string; href: string
     links: [
       { label: "Features", href: "/features" },
       { label: "Template gallery", href: "/template-gallery" },
+      { label: "Apps", href: "/apps" },
       { label: "Mac app", href: "/mac" },
       { label: "Pricing", href: "/pricing" },
       { label: "Changelog", href: "/changelog" },

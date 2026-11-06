@@ -146,9 +146,9 @@ export function softwareLd(): Record<string, unknown> {
     name: "Folevi",
     url: absoluteUrl("/"),
     applicationCategory: "ProductivityApplication",
-    operatingSystem: "Web",
+    operatingSystem: "macOS 15, iOS 18, iPadOS 18, Web",
     description:
-      "A calm writing and notes workspace with block documents, nested pages, tasks, offline editing and real-time sync. It runs on the web and on Mac.",
+      "A calm notes app for Mac, iPhone and iPad, free forever with no account: notes are files in iCloud Drive, Dropbox, Google Drive or any folder. Folevi Cloud adds the web app, sharing and Foli AI.",
     // The Personal plans, one offer per price, from the plan catalog (team plans cost the same per member).
     offers: PLAN_ORDER.flatMap((tier) => {
       const plan = PLANS[tier];

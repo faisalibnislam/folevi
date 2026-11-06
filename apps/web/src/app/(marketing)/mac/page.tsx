@@ -4,16 +4,16 @@ import { ShortcutTable } from "@/components/marketing/mac/ShortcutTable";
 import { Checks } from "@/components/marketing/Checks";
 import { AppWindow, READING_NOTE, artById, artThumb } from "@/components/marketing/product/Replica";
 import { JsonLd, pageMetadata, softwareLd } from "@/components/marketing/seo";
-import { MAC_DOWNLOAD_URL, SIGN_UP_URL, WEB_APP_URL } from "@/components/marketing/site";
+import { APP_STORE_URL, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT, SIGN_UP_URL, WEB_APP_URL } from "@/components/marketing/site";
+import { LibraryPlaces } from "@/components/marketing/mac/LibraryPlaces";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { ButtonLink, Eyebrow, SectionHeading, cx } from "@/components/marketing/ui";
 import { Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
 import { KeysPiece, SyncPiece } from "@/components/marketing/pieces";
 
 export const metadata = pageMetadata({
-  title: "Folevi for Mac: notes, Quick Add and offline",
-  description:
-    "Folevi for Mac is the full Folevi app in its own window, plus Quick Add from any app, a menu bar icon, Mac notifications and offline editing. Free to download. Requires macOS 15 or later.",
+  title: "Folevi for Mac: a free notes app for Mac, no account",
+  description: `A free notes app for Mac with no account. Notes are files in iCloud Drive or any folder you pick. Quick Add, a menu bar icon, offline. ${MAC_REQUIREMENT}.`,
   path: "/mac",
 });
 
@@ -39,7 +39,7 @@ export default function MacPage() {
               <h1 className="mk-display mt-5 max-w-[13ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
                 Folevi, in a window of <Mark>its own</Mark>.
               </h1>
-              <p className="mk-lede mt-6 max-w-[50ch]">Quick Add, a menu bar icon and Mac notifications.</p>
+              <p className="mk-lede mt-6 max-w-[50ch]">Free forever, no account. Quick Add, a menu bar icon and Mac notifications.</p>
             </div>
             <div className="mk-card relative p-6 pt-12 sm:p-7 sm:pt-14">
               <p className="absolute -top-5 left-5 sm:-left-4">
@@ -56,7 +56,7 @@ export default function MacPage() {
                   Open the web app
                 </ButtonLink>
               </div>
-              <p className="mt-5 text-[13px] text-muted">macOS 15 or later, Apple silicon or Intel.</p>
+              <p className="mt-5 text-[13px] text-muted">{MAC_REQUIREMENT}, Apple silicon or Intel.</p>
             </div>
           </div>
           <Float depth={0.14} delay={300} className="right-[5%] top-5 hidden xl:block [--tilt:4deg]">
@@ -104,7 +104,38 @@ export default function MacPage() {
           </ul>
         </Card>
 
-        <Card aria-labelledby="glass-title">
+        <Card aria-labelledby="local-title">
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-center lg:gap-16">
+            <div className="relative">
+              <SectionHeading
+                id="local-title"
+                eyebrow="No account"
+                title={
+                  <>
+                    Your notes, in a folder <Mark kind="squiggle">you pick</Mark>.
+                  </>
+                }
+                lede="Choose Keep notes on my devices when Folevi opens. Free forever. No account."
+              />
+              <Checks
+                className="mt-6"
+                items={[
+                  <>Each note is a file in your folder, with a small index beside them</>,
+                  <>iCloud Drive syncs it to your iPhone and iPad; Dropbox and Google Drive work too</>,
+                  <>Folevi’s servers never see these notes</>,
+                  <>Foli AI runs on Apple Intelligence, or on your own OpenAI, Anthropic or Google key, sent straight from your Mac</>,
+                ]}
+              />
+              <p className="mt-6 max-w-[54ch] text-[14px] leading-relaxed text-muted">
+                Sharing, public pages, workspaces and AI credits need a Folevi account. You can sign in and upload your
+                library later, or export it back into a folder.
+              </p>
+            </div>
+            <LibraryPlaces className="mx-auto w-full max-w-[420px]" />
+          </div>
+        </Card>
+
+        <Card tint aria-labelledby="glass-title">
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
             <div className="relative">
               <SectionHeading id="glass-title" eyebrow="On your Mac" title="A clean window and a menu bar icon." />
@@ -122,9 +153,9 @@ export default function MacPage() {
               <h3 className="mk-caps">System requirements</h3>
               <dl className="mk-card mt-4 px-5 text-[15px]">
                 {[
-                  ["macOS", "macOS 15 or later"],
+                  ["macOS", MAC_REQUIREMENT],
                   ["Mac", "Apple silicon or Intel"],
-                  ["Account", "Optional: notes can stay on this Mac"],
+                  ["Account", "Not needed: notes can live in a folder you pick"],
                   ["Download", "Free, from this page. Updates install themselves"],
                 ].map(([term, detail], index) => (
                   <div key={term} className={cx("grid gap-1 py-4 sm:grid-cols-[110px_1fr] sm:gap-4", index > 0 && "border-t mk-hair")}>
@@ -137,7 +168,7 @@ export default function MacPage() {
           </div>
         </Card>
 
-        <Card tint aria-labelledby="keys-title">
+        <Card aria-labelledby="keys-title">
           <div className="grid gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16">
             <div className="lg:sticky lg:top-12 lg:self-start">
               <SectionHeading
@@ -162,6 +193,32 @@ export default function MacPage() {
           </div>
         </Card>
 
+        <Card tint aria-labelledby="ios-title">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-end lg:gap-16">
+            <SectionHeading
+              id="ios-title"
+              eyebrow="Also on iPhone and iPad"
+              title={
+                <>
+                  The same library in your <Mark>pocket</Mark>.
+                </>
+              }
+              lede="Folevi for iPhone and iPad is free on the App Store, with no account. Put your library in iCloud Drive and it’s on every device."
+            />
+            <div>
+              <div className="flex flex-wrap gap-2.5">
+                <ButtonLink href={APP_STORE_URL} icon="arrow-right">
+                  Get it on the App Store
+                </ButtonLink>
+                <ButtonLink href="/apps" variant="secondary">
+                  All the apps
+                </ButtonLink>
+              </div>
+              <p className="mt-4 text-[13px] text-muted">{IOS_REQUIREMENT}.</p>
+            </div>
+          </div>
+        </Card>
+
         <Card aria-labelledby="web-title">
           <SectionHeading
             align="center"
@@ -172,7 +229,7 @@ export default function MacPage() {
                 The same notes in <Mark kind="squiggle">any browser</Mark>.
               </>
             }
-            lede="Syncs in real time with your Mac, and works offline once loaded."
+            lede="With a Folevi account, your notes sync in real time with your Mac and work offline once loaded."
           />
           <div className="mx-auto mt-12 max-w-[1080px]">
             <AppWindow

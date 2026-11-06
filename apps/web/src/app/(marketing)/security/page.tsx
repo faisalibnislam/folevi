@@ -177,7 +177,7 @@ export default function SecurityPage() {
           }
           lead="A verified email, passkeys, and an optional second step."
           items={[
-            <>Email verified before you can open Folevi</>,
+            <>Email verified before you can use your account</>,
             <>Passwords found in known data breaches are refused</>,
             <>Passkeys: sign in with your fingerprint, face or screen lock</>,
             <>Two-step codes from an authenticator app (TOTP)</>,
@@ -197,7 +197,7 @@ export default function SecurityPage() {
             id="e2ee"
             title={<KeepHyphens text="Not end-to-end encrypted" />}
             lead="Our servers process your notes, so search, sharing and sync work."
-            items={[<>For notes no provider may ever read, use an end-to-end encrypted tool</>]}
+            items={[<>For notes our servers never see, keep them on your devices in the Mac, iPhone or iPad app, with no account</>, <>For notes no provider may ever read, use an end-to-end encrypted tool</>]}
             className="relative"
           >
             <div aria-hidden="true" className="pointer-events-none absolute right-8 top-8 max-xl:hidden">

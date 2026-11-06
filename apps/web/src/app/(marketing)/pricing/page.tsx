@@ -17,21 +17,23 @@ import {
   sizeLabel,
 } from "@/lib/plans";
 import { pageMetadata, type FaqItem } from "@/components/marketing/seo";
+import { APP_STORE_URL, IOS_REQUIREMENT, MAC_DOWNLOAD_URL, MAC_REQUIREMENT } from "@/components/marketing/site";
+import { LibraryPlaces } from "@/components/marketing/mac/LibraryPlaces";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { Checks } from "@/components/marketing/Checks";
 import { FaqSection } from "@/components/marketing/parts";
 import { Play } from "@/components/marketing/Play";
 import { Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
 import { CursorPiece, TaskPiece } from "@/components/marketing/pieces";
-import { Eyebrow, cx } from "@/components/marketing/ui";
+import { ButtonLink, Eyebrow, cx } from "@/components/marketing/ui";
 
 const trialName = TIER_NAMES[TRIAL_TIER];
 const gb = sizeLabel;
 const credits = (n: number) => n.toLocaleString("en-US");
 
 export const metadata = pageMetadata({
-  title: `Pricing: a free notes app, with plans from ${formatPrice(PRICES.core.month)}`,
-  description: `Folevi is free to start. Core is ${formatPrice(PRICES.core.month)} a month with no AI, Pro is ${formatPrice(PRICES.pro.month)} with ${MONTHLY_CREDITS.pro} AI credits, and Pro AI is ${formatPrice(PRICES.pro_ai.month)} with ${MONTHLY_CREDITS.pro_ai} AI credits. Try it free.`,
+  title: `Pricing: free apps, and Folevi Cloud from ${formatPrice(PRICES.core.month)} a month`,
+  description: `Folevi for Mac, iPhone and iPad is free forever with no account. Folevi Cloud adds the web app, sharing and Foli AI, from ${formatPrice(PRICES.core.month)} a month.`,
   path: "/pricing",
 });
 
@@ -48,11 +50,27 @@ const saving = (tier: "core" | "pro" | "pro_ai") =>
 // Plain answers: the same text feeds the FAQPage structured data. They open on click.
 const faqs: FaqItem[] = [
   {
+    q: "Are the apps free?",
+    a: `Yes. Folevi for Mac, iPhone and iPad is free forever when you keep notes on your devices, with no account and no limit on notes. The Mac app is a download from folevi.com (${MAC_REQUIREMENT}); the iPhone and iPad app is on the App Store (${IOS_REQUIREMENT}).`,
+  },
+  {
+    q: "Do I need an account?",
+    a: "Not for the apps. Choose Keep notes on my devices and your notes are a folder of files in a place you pick: iCloud Drive, Dropbox, Google Drive, any folder, or this device only. Folevi’s servers never see them. You need a Folevi account for the web app and for sharing.",
+  },
+  {
+    q: "What do paid plans add?",
+    a: `A Folevi account (free to make) adds the web app, sharing and public pages, comments with others, workspaces, email-in, the web clipper and the API. Paid plans add room and AI credits: ${TIER_NAMES.core} has more storage and no device limit, ${TIER_NAMES.pro} and ${TIER_NAMES.pro_ai} add Foli AI credits every month.`,
+  },
+  {
+    q: "Can I move my notes between the two?",
+    a: "Yes. From a library on your devices you can sign in and upload it to your account, and from an account you can export everything into a folder. Your notes are never stuck in one place.",
+  },
+  {
     q: "How does the free trial work?",
     a: `Every new account gets ${trialName} free for ${TRIAL_DAYS} days, with ${TRIAL_CREDITS} AI credits and no card. When the trial ends you move to Free, which has no AI, unless you choose a plan. Nothing is charged automatically.`,
   },
   {
-    q: "How much AI does ${TIER_NAMES.pro_ai} include?",
+    q: `How much AI does ${TIER_NAMES.pro_ai} include?`,
     a: `${TIER_NAMES.pro_ai} is for people who use AI every day: ${credits(MONTHLY_CREDITS.pro_ai)} credits a month for each person, which is about ${credits(Math.floor(MONTHLY_CREDITS.pro_ai / 2))} questions to Foli AI. If you reach it, buy a credit pack or wait for your credits to reset. There is also an hourly limit that stops automated use.`,
   },
   {
@@ -112,8 +130,8 @@ const faqs: FaqItem[] = [
     a: "They stay yours. You can export any page as Markdown, HTML or PDF, or everything in your Personal as a ZIP (owners and admins can export a whole workspace), at any time.",
   },
   {
-    q: "Is the Mac app included?",
-    a: "Folevi runs on the web and on Mac, on every plan, including Free.",
+    q: "Can I use my account in the apps?",
+    a: `Yes. Every plan works in the web app and in the Mac, iPhone and iPad apps. On ${TIER_NAMES.free}, an account works on ${PLANS.free.devices} devices at a time.`,
   },
 ];
 
@@ -135,14 +153,68 @@ export default function PricingPage() {
         </div>
         <Eyebrow>Pricing</Eyebrow>
         <h1 className="mk-display mt-5 max-w-[15ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
-          Start <Mark kind="circle">free.</Mark> Pay for room, or for AI.
+          <Mark kind="circle">Free</Mark> forever on your devices.
         </h1>
         <p className="mk-lede mt-6 max-w-[60ch]">
-          Try {trialName} free for {TRIAL_DAYS} days, with {TRIAL_CREDITS} AI credits. No card.
+          The Mac, iPhone and iPad apps are free, with no account. Folevi Cloud adds the web app, sharing and Foli AI
+          when you want them.
         </p>
       </HeaderCard>
-      <Card aria-label="Plans">
-        <PlanPicker headingLevel="h2" />
+
+      <Card aria-labelledby="apps-title" className="relative">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-center lg:gap-16">
+          <div className="relative">
+            <p className="absolute -top-3 right-0 sm:right-4" aria-hidden="true">
+              <Sticker tone="violet" rotate={6}>
+                No account
+              </Sticker>
+            </p>
+            <Eyebrow>Folevi for Mac, iPhone and iPad</Eyebrow>
+            <h2 id="apps-title" className="mt-4 flex items-baseline gap-3">
+              <span className="mk-display text-[56px] leading-none sm:text-[64px]">$0</span>{" "}
+              <span className="text-[17px] font-semibold text-(--color-heading)">forever</span>
+            </h2>
+            <p className="mk-lede mt-4 max-w-[52ch]">
+              Choose Keep notes on my devices. Your notes are files in a folder you pick, and Folevi’s servers never see them.
+            </p>
+            <Checks
+              className="mt-6"
+              items={[
+                <>No account, no limit on notes</>,
+                <>iCloud Drive, Dropbox, Google Drive or any folder, synced by your own cloud</>,
+                <>Tasks, note themes, Foli DNA and search</>,
+                <>Foli AI on your Mac, with Apple Intelligence or your own API key</>,
+              ]}
+            />
+            <p className="mt-6 text-[14px] leading-relaxed text-muted">
+              Sharing, public pages, comments with others, workspaces, email-in, the web clipper, the API and AI credits
+              need a Folevi account. You can move a library to an account later, or export it back into a folder.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-2.5">
+              <ButtonLink href={MAC_DOWNLOAD_URL} icon="arrow-down">
+                Download for Mac
+              </ButtonLink>
+              <ButtonLink href={APP_STORE_URL} variant="secondary">
+                App Store
+              </ButtonLink>
+            </div>
+            <p className="mt-4 text-[13px] text-muted">
+              Mac: {MAC_REQUIREMENT}. iPhone and iPad: {IOS_REQUIREMENT}.
+            </p>
+          </div>
+          <LibraryPlaces className="mx-auto w-full max-w-[420px]" />
+        </div>
+      </Card>
+
+      <Card aria-labelledby="cloud-title">
+        <h2 id="cloud-title" className="mk-h2">
+          Folevi <Mark>Cloud</Mark>
+        </h2>
+        <p className="mk-lede mt-3 mb-8 max-w-[60ch]">
+          An account for the web app, sharing and teams. Try {trialName} free for {TRIAL_DAYS} days, with {TRIAL_CREDITS} AI
+          credits. No card.
+        </p>
+        <PlanPicker headingLevel="h3" />
         <p className="mt-5 text-[14px] text-muted">
           Prices in US dollars. Any sales tax or VAT is added at checkout.
         </p>

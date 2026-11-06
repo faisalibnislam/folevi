@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FEATURES, featurePath } from "@/components/marketing/content/features";
 import { GALLERY_TEMPLATES } from "@/components/marketing/content/templates";
 import { FeatureCover } from "@/components/marketing/features/FeatureCover";
+import { LibraryPlaces } from "@/components/marketing/mac/LibraryPlaces";
 import { AppWindow, READING_NOTE, artById, artThumb } from "@/components/marketing/product/Replica";
 import { Card, HeaderCard, PageFrame } from "@/components/marketing/cards";
 import { LinkCard, SignUpPanel } from "@/components/marketing/parts";
@@ -12,9 +13,9 @@ import { Doodle, Float, Hand, Mark, Sticker } from "@/components/marketing/fun";
 import { SearchPiece, TaskPiece } from "@/components/marketing/pieces";
 
 export const metadata = pageMetadata({
-  title: "Notes app features: tasks, offline sync and AI",
+  title: "Notes app features: no account, tasks, sync and AI",
   description:
-    "Everything the Folevi notes app does: offline sync, tasks and a calendar, the / menu, search, comments, flowcharts, audio, sharing, templates and AI.",
+    "Everything Folevi does on Mac, iPhone, iPad and the web: notes with no account, offline sync, tasks, search, flowcharts, sharing, templates and AI.",
   path: "/features",
   ogImage: "segment",
 });
@@ -38,6 +39,15 @@ function MacCover() {
   );
 }
 
+/** The no-account card's cover: the apps' "Where should your library live?" step. */
+function LocalCover() {
+  return (
+    <div className="mk-stage p-7" style={{ ["--stage-art" as string]: artThumb(artById("art-13")) }}>
+      <LibraryPlaces />
+    </div>
+  );
+}
+
 /**
  * The index's mixed grid, most important first. On large screens it has six tracks: a card spans all six
  * (one wide card on its row, cover beside the text), three (two on a row), two (three on a row) or four
@@ -47,6 +57,8 @@ function MacCover() {
 type Size = "wide" | "half" | "third" | "twoThirds";
 const LAYOUT: { slug: string; size: Size }[] = [
   { slug: "ai-notes", size: "wide" },
+  { slug: "notes-on-your-devices", size: "twoThirds" },
+  { slug: "mac", size: "third" },
   { slug: "offline-notes", size: "twoThirds" },
   { slug: "tasks", size: "third" },
   { slug: "blocks", size: "third" },
@@ -64,13 +76,13 @@ const LAYOUT: { slug: string; size: Size }[] = [
   { slug: "templates", size: "half" },
   { slug: "folders", size: "twoThirds" },
   { slug: "import-and-export", size: "third" },
-  { slug: "security-and-privacy", size: "half" },
-  { slug: "mac", size: "half" },
+  { slug: "security-and-privacy", size: "wide" },
 ];
 
 /** A sticker on a few cards, placed after the card so it sits on top. Decorative. */
 const STICKERS: Record<string, { text: string; tone: "paper" | "violet" | "ink"; rotate: number }> = {
-  "offline-notes": { text: "Most loved", tone: "violet", rotate: -7 },
+  "notes-on-your-devices": { text: "No account", tone: "violet", rotate: -6 },
+  "offline-notes": { text: "Most loved", tone: "paper", rotate: -7 },
   tasks: { text: "Due today", tone: "paper", rotate: 6 },
   mac: { text: "New", tone: "ink", rotate: -5 },
 };
@@ -120,7 +132,7 @@ export default function FeaturesPage() {
           <h1 className="mk-display mt-5 max-w-[14ch] text-[44px] leading-[0.98] sm:text-[64px] lg:text-[72px] xl:text-[80px]">
             Everything Folevi does, <Mark>one page</Mark> each.
           </h1>
-          <p className="mk-lede mt-6 max-w-[60ch]">Notes, tasks and linked pages that work offline.</p>
+          <p className="mk-lede mt-6 max-w-[60ch]">Notes, tasks and linked pages that work offline, on Mac, iPhone, iPad and the web.</p>
           <div aria-hidden="true" className="pointer-events-none absolute bottom-[72px] right-[24%] hidden xl:block">
             <Hand rotate={-6} arrow="down-left">
               pick one, any one
@@ -143,7 +155,7 @@ export default function FeaturesPage() {
                     <LinkCard
                       href="/mac"
                       title="Mac app"
-                      body="Quick Add, a menu bar icon and notifications."
+                      body="Free with no account. Quick Add and a menu bar icon. Also on iPhone and iPad."
                       cover={<FeatureCover picture={{ width: 1000, node: <MacCover /> }} className={COVER[size]} />}
                       headingLevel="h2"
                       layout={layout}
@@ -160,7 +172,13 @@ export default function FeaturesPage() {
                     href={featurePath(slug)}
                     title={feature.name}
                     body={feature.summary}
-                    cover={<FeatureCover feature={feature} className={COVER[size]} />}
+                    cover={
+                      slug === "notes-on-your-devices" ? (
+                        <FeatureCover picture={{ width: 520, node: <LocalCover /> }} className={COVER[size]} />
+                      ) : (
+                        <FeatureCover feature={feature} className={COVER[size]} />
+                      )
+                    }
                     headingLevel="h2"
                     layout={layout}
                   />
@@ -189,7 +207,7 @@ export default function FeaturesPage() {
             </Link>
           </div>
         </div>
-        <SignUpPanel body="Free has no time limit and includes every feature here." secondary={{ label: "See pricing", href: "/pricing" }} />
+        <SignUpPanel body="Free has no time limit. The Mac, iPhone and iPad apps are free with no account, too." secondary={{ label: "See pricing", href: "/pricing" }} />
       </PageFrame>
     </>
   );

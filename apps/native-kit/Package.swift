@@ -79,7 +79,7 @@ let package = Package(
         ),
         .testTarget(
             name: "FoleviScreensTests",
-            dependencies: ["FoleviScreens", "FoleviEngine", "FoleviDesign"],
+            dependencies: ["FoleviScreens", "FoleviEngine", "FoleviDesign", "FoleviPhone"],
             exclude: ["__Snapshots__"],
             swiftSettings: strict
         ),

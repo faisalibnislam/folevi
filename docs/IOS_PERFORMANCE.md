@@ -191,3 +191,60 @@ launch within 1.5 s, a note's first frame within 600 ms and a list's within 250 
   edge swipe after a zoom (WebKit's own back gesture still slides).
 - Startup code: 2.97 MB is still read at every launch (above, "Second pass"); the editor schema's index and the
   iPhone Home's catch-up card are the next splits.
+
+# Simulator audit, 2026-11-08 (native rebuild, version 1.2.38)
+
+No physical iPhone or iPad was available, so **everything here was measured on Simulators**. Simulator numbers show
+what work was removed; they are not frame rates on a phone. Nothing below claims a phone is smooth.
+
+Setup: iPhone 14 Pro and iPhone 17 Simulators (iOS 27.2), this Mac (M5) while other projects compiled on it (load
+average 12 to 200). Timings of single runs were affected by that load, so comparisons below are alternating runs of
+the old and new code, and main-thread CPU time and message counts are preferred to wall-clock times.
+
+## Scenario results
+
+| Scenario | Before | After | How |
+| --- | --- | --- | --- |
+| Keyboard up, nothing happening (12 s, 3,000-block note) | main thread busy all 12 s: about 8.6 billion cycles in Core Animation's per-frame update (2 runs) | at most 1 main-thread sample (3 runs; screen pictured the same) | CPU Profiler on the app (Debug build) |
+| Scrolling a 3,000-block note, 300 frames | 302 messages from the page to native | 8 | counted in the page |
+| Native screen scrolling, iPhone cards, 5,000 notes, 360 frames (Release-optimised test) | total main-thread CPU 2,111 and 2,664 ms; median frame 3.6 and 4.1 ms | 1,775 and 2,287 ms; median 2.6 and 3.2 ms (14 to 16% less in total, 21 to 29% at the median) | `PhoneScrollPerformanceTests` run twice each, alternating |
+| The same scrolled back up | 2,019 and 2,466 ms | 1,838 and 2,121 ms | same |
+| The heaviest frames there (p95) | 15.4 and 18.5 ms | 14.9 and 18.6 ms | unchanged (cards drawn for the first time) |
+
+(An earlier capture of the old code, with the keyboard's first-use tutorial still on screen, showed only about 82
+million cycles, so the idle cost depends on what is up; the before and after above are the same state.)
+
+Measured and left alone, because the numbers don't call for a change:
+
+- **Typing in a 3,000-block note** (Simulator WebKit, 200 characters, 3 runs): 4.1 to 4.9 ms of JavaScript per
+  keystroke; 8 to 9 bridge messages (about 72 KB) for the 200 keys. No full-document serialisation per keystroke.
+- **Caret moves**: about 0.4 ms each, no messages. **Note scrolling** in the page: p95 frame gap 17 to 18 ms.
+- Text line memoisation for cards: tried, no measurable gain, removed again.
+
+## What changed (no pixels or behaviour)
+
+- `KeyboardBridge`: the per-frame timer that follows a finger dragging the keyboard is paused until a finger pans one
+  of the page's scroll views. It used to run all the time the keyboard was up. Checked: dragging still sends the
+  page frames following the finger (312, 142, 122, 102, 82, 72, 0 pt).
+- `PageScroll` (note top bar): the page stops reading layout and posting each frame once the note is well past its
+  title, where the bars can't change; it resumes when it scrolls back near the title.
+- `PhoneScreen`: the scroll offset state stops at the point where the header stops changing.
+- `PhoneNotesListScreen`: each card's frame and each pressable's place are kept out of view state; the list's slots
+  are worked out once per list change instead of once per reader.
+
+Parity: the native snapshot tests (iOS Simulator, 68 tests with this change) fail the same 11 tests with the same
+pixel differences on the unchanged 1.2.38 commit, and nothing else differs. Those 11 were already out of date; the
+new test passes. Snapshots picture screens at rest, so a header part-way through collapsing was checked by reading
+the code (the clamp is past the last offset where the bars change), not pixel-compared.
+
+## Still needs a real device
+
+Connect an iPhone (ideally also an older 60 Hz iPhone and an iPad), with a Release build, then in Instruments
+("Animation Hitches" and "SwiftUI" templates, plus Safari Web Inspector's Timelines for the page):
+
+1. Home and note-grid scrolling, opening and closing a note, keyboard up and down: hitch ratio, against the same
+   capture of 1.2.38.
+2. Typing and selection in a long note, in Bangla too, with Web Inspector: long tasks, layout and paint.
+3. Style sheet presentation, theme changes, iPad window resizing: not exercised here at all.
+4. Refresh rate while the keyboard is up (was held at maximum by the timer, on ProMotion; not observable in a
+   Simulator), memory growth, and GPU cost of glass, blur and shadows.

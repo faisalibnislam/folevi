@@ -1,6 +1,19 @@
 {
   "releases": [
     {
+      "version": "1.2.38",
+      "build": 50,
+      "released": "2026-11-08T12:53:34+06:00",
+      "type": "patch",
+      "summary": "Folders look like real folders, and folevi.com shows the real app",
+      "improved": [
+        "Folder cards on the web, Mac, iPhone and iPad look like a folder: a tab with a sloped shoulder, softer colour, and the name with how many notes and when it last changed under it",
+        "Home: the AI credits note under Catch me up runs the full width",
+        "folevi.com: a new home page with the Mac and iPhone apps playing in the hero, plus updated features, pricing, apps and compare pages"
+      ],
+      "tag": "v1.2.38"
+    },
+    {
       "version": "1.2.37",
       "build": 49,
       "released": "2026-11-06T11:08:28+06:00",

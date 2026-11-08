@@ -4,6 +4,18 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.38: Small update
+
+Released 2026-11-08 12:53:34+06:00 (build 50, tag v1.2.38)
+
+Folders look like real folders, and folevi.com shows the real app
+
+### Improved
+
+- Folder cards on the web, Mac, iPhone and iPad look like a folder: a tab with a sloped shoulder, softer colour, and the name with how many notes and when it last changed under it
+- Home: the AI credits note under Catch me up runs the full width
+- folevi.com: a new home page with the Mac and iPhone apps playing in the hero, plus updated features, pricing, apps and compare pages
+
 ## Version 1.2.37: Small update
 
 Released 2026-11-06 11:08:28+06:00 (build 49, tag v1.2.37)

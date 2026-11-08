@@ -20,6 +20,8 @@ final class KeyboardBridge {
     private var observers: [NSObjectProtocol] = []
     private let tracker = UIView()
     private var link: CADisplayLink?
+    /// Told when a finger starts or stops panning one of the page's scrolling views.
+    private lazy var panTarget = DisplayTarget { KeyboardBridge.shared.followFinger() }
     private var lastHeight: CGFloat = -1
     private(set) var interactiveDismiss = false
     private var visible = false
@@ -96,7 +98,11 @@ final class KeyboardBridge {
         guard let webView = plugin?.bridge?.webView else { return }
         let mode: UIScrollView.KeyboardDismissMode = interactiveDismiss ? .interactive : .none
         func walk(_ view: UIView) {
-            if let scroll = view as? UIScrollView { scroll.keyboardDismissMode = mode }
+            if let scroll = view as? UIScrollView {
+                scroll.keyboardDismissMode = mode
+                scroll.panGestureRecognizer.removeTarget(panTarget, action: #selector(DisplayTarget.fire))
+                scroll.panGestureRecognizer.addTarget(panTarget, action: #selector(DisplayTarget.fire))
+            }
             view.subviews.forEach(walk)
         }
         walk(webView.scrollView)
@@ -120,8 +126,15 @@ final class KeyboardBridge {
             ])
         }
         let link = CADisplayLink(target: DisplayTarget { KeyboardBridge.shared.tick() }, selector: #selector(DisplayTarget.fire))
+        // (Paused until a finger pans: a link that runs keeps the screen at its full refresh rate and wakes the
+        // app every frame for as long as the keyboard is up.)
+        link.isPaused = !Self.dragging(in: plugin?.bridge?.webView)
         link.add(to: .main, forMode: .common)
         self.link = link
+    }
+
+    private func followFinger() {
+        link?.isPaused = !Self.dragging(in: plugin?.bridge?.webView)
     }
 
     private func stopTracking() {

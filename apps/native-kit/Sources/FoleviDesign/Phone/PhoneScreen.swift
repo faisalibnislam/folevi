@@ -113,7 +113,13 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                         try? await Task.sleep(for: .seconds(2.5))
                         position.scrollTo(y: y)
                     }
-                    .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in offset = y }
+                    // (Past the point where the title has gone under the bar nothing here changes any more, so the state
+                    // stops there and a long scroll doesn't draw this screen again each frame. A pinned header follows
+                    // the offset all the way down.)
+                    .onScrollGeometryChange(for: CGFloat.self) { [pins = options.pinsHeader] geo in
+                        let y = geo.contentOffset.y + geo.contentInsets.top
+                        return pins ? y : min(y, at + 1)
+                    } action: { _, y in offset = y }
                     .onChange(of: scrollToTop) { withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo("top", anchor: .top) } }
                 }
                 .ignoresSafeArea()

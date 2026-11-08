@@ -482,17 +482,23 @@ final class PageScroll: NSObject, WKScriptMessageHandler {
     (() => {
       if (window.__foleviPageScroll) return;
       let frame = 0;
-      const send = () => {
+      // Well past the title the bars have nothing to change (RebuildNote's NotePage stops there too): no reading
+      // the page's layout and no message each frame, until the scroll comes back near it.
+      let foot = 72;
+      let past = false;
+      const send = (forced) => {
         frame = 0;
         const s = document.getElementById("doc-scroll");
         if (!s) return;
+        if (forced !== true && past && s.scrollTop > foot + 64) return;
         const t = s.querySelector("h1");
         // (Measured from the bar's foot: the page runs under the bar with the bar's room as its padding.)
         const top = s.getBoundingClientRect().top + (parseFloat(getComputedStyle(s).paddingTop) || 0);
-        const foot = t ? t.getBoundingClientRect().bottom - top + s.scrollTop : 72;
+        foot = t ? t.getBoundingClientRect().bottom - top + s.scrollTop : 72;
+        past = s.scrollTop > foot + 64;
         window.webkit.messageHandlers.\(PageScroll.name).postMessage({ y: s.scrollTop, foot });
       };
-      window.__foleviPageScroll = send;
+      window.__foleviPageScroll = () => send(true);
       document.addEventListener("scroll", () => { if (!frame) frame = requestAnimationFrame(send); }, { capture: true, passive: true });
     })();
     """

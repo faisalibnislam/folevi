@@ -94,6 +94,14 @@ public final class NotesListModel {
     public let client: EngineClient
     public let kind: NotesListKind
     public let actions: NoteActions
+    private struct SlotsMemo {
+        let version: Int
+        let filter: String
+        let hidden: Set<String>
+        let slots: [NoteSlot]
+        let identity: Int
+    }
+    @ObservationIgnored private var slotsMemo: SlotsMemo?
     public private(set) var store: ListStore<NoteRow>
     public let tree: ValueStore<FoldersTreeValue>
     public let session: ValueStore<SessionValue>
@@ -245,9 +253,31 @@ public final class NotesListModel {
 
     /// Every position of the list (placeholders where the window hasn't loaded), or the loaded rows that match
     /// the filter. Notes that just left the list are skipped until the engine's update arrives.
-    public var slots: [NoteSlot] {
-        let state = store.state
+    public var slots: [NoteSlot] { currentSlots().slots }
+
+    /// Changes exactly when the slots' ids do (their position, or a placeholder turning into a note), without
+    /// making anyone compare the ids of every position.
+    public var slotIdentity: Int { currentSlots().identity }
+
+    /// The slots are worked out once per change of the list, not once per reader per update (a list of thousands
+    /// builds that many slots each time, and several places read them in one update).
+    private func currentSlots() -> SlotsMemo {
+        let version = store.version
         let q = filter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let hidden = actions.hidden
+        if let m = slotsMemo, m.version == version, m.filter == q, m.hidden == hidden { return m }
+        let made = buildSlots(q)
+        var hasher = Hasher()
+        for slot in made {
+            if let row = slot.row { hasher.combine(row.id) } else { hasher.combine(slot.index) }
+        }
+        let memo = SlotsMemo(version: version, filter: q, hidden: hidden, slots: made, identity: hasher.finalize())
+        slotsMemo = memo
+        return memo
+    }
+
+    private func buildSlots(_ q: String) -> [NoteSlot] {
+        let state = store.state
         if !q.isEmpty {
             var out: [NoteSlot] = []
             for (i, row) in state.rows.enumerated() where !actions.isHidden(row.id) {

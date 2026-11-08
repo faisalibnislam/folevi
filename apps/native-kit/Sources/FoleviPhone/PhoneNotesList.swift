@@ -54,7 +54,9 @@ public struct PhoneNotesListScreen: View {
     /// The order on show while arranging (the cards' ids), until the list has the new one.
     @State private var order: [String]?
     /// Each card's frame in the grid, laid out (not where a drag has it).
-    @State private var frames: [String: CGRect] = [:]
+    @State private var frames = PhoneCardFrames()
+    /// Bumped as the frames change while arranging, the only time the view reads them to draw.
+    @State private var framesMoved = 0
     @Environment(\.colorScheme) private var scheme
 
     private struct CardDrag: Equatable {
@@ -140,7 +142,7 @@ public struct PhoneNotesListScreen: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.9), value: model.selecting)
         // (The finger moves the card, not the list, while one is held.)
         .scrollDisabled(drag != nil)
-        .onChange(of: model.slots.map(\.id)) { _, _ in if drag == nil, !(arranging && model.sort != .manual) { order = nil } }
+        .onChange(of: model.slotIdentity) { _, _ in if drag == nil, !(arranging && model.sort != .manual) { order = nil } }
         .onChange(of: canArrange) { _, can in if !can { stopArranging() } }
         .notesListSheets(model)
         // Pull to refresh: iOS's own control on the screen's scroll view.
@@ -259,6 +261,7 @@ public struct PhoneNotesListScreen: View {
 
     /// Where a held card is drawn: under the finger, from its laid-out place.
     private func liftOffset(_ id: String) -> CGSize {
+        _ = framesMoved
         guard let drag, drag.id == id, let f = frames[id] else { return .zero }
         return CGSize(width: drag.location.x - drag.grab.width - f.minX, height: drag.location.y - drag.grab.height - f.minY)
     }
@@ -343,7 +346,11 @@ public struct PhoneNotesListScreen: View {
                             .shadow(color: .black.opacity(held ? 0.22 : 0), radius: held ? 18 : 0, y: held ? 10 : 0)
                             .offset(liftOffset(row.id))
                             .zIndex(held ? 1 : 0)
-                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.grid)) } action: { frames[row.id] = $0 }
+                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.grid)) } action: {
+                                frames[row.id] = $0
+                                // (Kept quietly otherwise: each card laid out while scrolling would draw the whole screen again.)
+                                if arranging { framesMoved &+= 1 }
+                            }
                             // (Only while arranging: a drag on the cards at other times keeps iOS's swipe from the screen's edge from
                             // going Back.)
                             .gesture(CardHold(enabled: arrangeable && arranging, duration: 0.2, space: Self.grid, onMove: { start, now in arrangeMoved(row, start: start, now: now) }, onEnd: drop))
@@ -468,7 +475,9 @@ struct PhonePressable<Content: View>: View {
     @State private var pressed = false
     /// Counts touches down and up, so a press shown late belongs to the touch still down.
     @State private var pressGeneration = 0
-    @State private var frame: CGRect = .zero
+    /// Where it is on screen, for a long press's menu; kept out of the view's state, which would draw it again each
+    /// frame of a scroll for something only a press reads.
+    @State private var place = PhonePressPlace()
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -480,7 +489,7 @@ struct PhonePressable<Content: View>: View {
             .animation(.easeOut(duration: pressed ? 0 : 0.15), value: pressed)
             // (An iPad's pointer: a row lights up under it, a card lifts. IPAD-21.)
             .hoverEffect(highlight ? .highlight : .lift)
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { place.frame = $0 }
             .onTapGesture(perform: onTap)
             .onLongPressGesture(minimumDuration: 0.45) {
                 guard let onLongPress else { return }
@@ -488,7 +497,7 @@ struct PhonePressable<Content: View>: View {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 #endif
                 // (A moment later: a menu opened in the same update as the press ending can be lost.)
-                let at = frame
+                let at = place.frame
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { onLongPress(at) }
             } onPressingChanged: { down in
                 // (As UIKit's scroll views delay a touch: the press shows only once the finger has stayed 80 ms, so
@@ -501,7 +510,21 @@ struct PhonePressable<Content: View>: View {
                 }
             }
             .accessibilityAddTraits(.isButton)
-            .accessibilityAction(named: "More actions") { onLongPress?(frame) }
+            .accessibilityAction(named: "More actions") { onLongPress?(place.frame) }
+    }
+}
+
+/// A pressable's place on screen (a box, so writing it doesn't redraw).
+final class PhonePressPlace {
+    var frame: CGRect = .zero
+}
+
+/// Each card's frame in the grid (a box, so writing it doesn't redraw).
+final class PhoneCardFrames {
+    private var frames: [String: CGRect] = [:]
+    subscript(id: String) -> CGRect? {
+        get { frames[id] }
+        set { frames[id] = newValue }
     }
 }
 

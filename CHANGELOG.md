@@ -4,6 +4,16 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.2.39: Small update
+
+Released 2026-11-08 17:50:18+06:00 (build 51, tag v1.2.39)
+
+Less work while scrolling on iPhone and iPad
+
+### Improved
+
+- iPhone and iPad: less work while scrolling notes, cards and long notes, and the app now rests when the keyboard is up and nothing is moving
+
 ## Version 1.2.38: Small update
 
 Released 2026-11-08 12:53:34+06:00 (build 50, tag v1.2.38)

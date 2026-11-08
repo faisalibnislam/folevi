@@ -1,6 +1,17 @@
 {
   "releases": [
     {
+      "version": "1.2.39",
+      "build": 51,
+      "released": "2026-11-08T17:50:18+06:00",
+      "type": "patch",
+      "summary": "Less work while scrolling on iPhone and iPad",
+      "improved": [
+        "iPhone and iPad: less work while scrolling notes, cards and long notes, and the app now rests when the keyboard is up and nothing is moving"
+      ],
+      "tag": "v1.2.39"
+    },
+    {
       "version": "1.2.38",
       "build": 50,
       "released": "2026-11-08T12:53:34+06:00",

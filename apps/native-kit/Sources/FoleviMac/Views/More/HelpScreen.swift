@@ -70,18 +70,32 @@ struct HelpScreen: View {
 
     var body: some View {
         let column = s("title")
-        ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: s("support").margin.bottom) {
-                header
-                support
-                shortcuts
-                statuses
+        ScrollViewReader { proxy in
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: s("support").margin.bottom) {
+                    header
+                    support
+                    shortcuts.id(Self.shortcutsAnchor)
+                    statuses
+                }
+                .padding(column.padding.edgeInsets)
+                .frame(width: column.width, alignment: .topLeading)
+                .frame(maxWidth: .infinity)
             }
-            .padding(column.padding.edgeInsets)
-            .frame(width: column.width, alignment: .topLeading)
-            .frame(maxWidth: .infinity)
+            // Help > Keyboard Shortcuts opens the page at its shortcuts table (the web's /help#h-shortcuts).
+            .onAppear { showShortcuts(proxy) }
+            .onChange(of: model.helpAtShortcuts) { _, _ in showShortcuts(proxy) }
         }
         .accessibilityIdentifier("screen.help")
+    }
+
+    private static let shortcutsAnchor = "shortcuts"
+
+    private func showShortcuts(_ proxy: ScrollViewProxy) {
+        guard model.helpAtShortcuts else { return }
+        model.helpAtShortcuts = false
+        // (A turn later: the page has its size by then.)
+        DispatchQueue.main.async { proxy.scrollTo(Self.shortcutsAnchor, anchor: .top) }
     }
 
     private var header: some View {

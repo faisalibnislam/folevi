@@ -46,6 +46,7 @@ enum Capabilities {
             "spotlightState": { router, _ in Spotlight.shared.state(place: router.context.place() ?? "default") },
             "clipboardRead": { _, _ in Clipboard.read() },
             "clipboardWrite": { _, o in try Clipboard.write(o); return [:] },
+            "clipboardPaste": { router, _ in ["value": Clipboard.paste(into: try view(router))] },
             "quickLook": quickLook,
             "commandDone": { _, o in commandDone(o); return [:] },
         ]

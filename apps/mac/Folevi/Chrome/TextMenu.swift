@@ -26,24 +26,62 @@ enum TextMenu {
         return w
     }
 
-    static func spelling(_ raw: String, view: FoleviWebView?) -> [String: Any] {
-        guard let w = word(raw) else { return ["misspelled": false, "guesses": [String]()] }
+    /// Whether `raw` is misspelt, and the guesses for it. `context` is the text around the word (its paragraph, from
+    /// chrome-page.js): the word is checked there, so its language is told from its sentence, as WebKit tells it
+    /// for the page's red underline, and by the person's own spelling settings (one language, or Automatic by
+    /// Language). A word on its own says little: with several languages on, "teh" alone passes as a word of one
+    /// of them, so the menu had no guesses for a word the page had underlined.
+    static func spelling(_ raw: String, context: String = "", view: FoleviWebView?) -> [String: Any] {
+        let none: [String: Any] = ["misspelled": false, "guesses": [String]()]
+        guard let w = word(raw) else { return none }
         let checker = NSSpellChecker.shared
         let t = tag(view)
+        if context.contains(w) {
+            let text = context as NSString
+            var orthography: NSOrthography?
+            let found = checker.check(context, range: NSRange(location: 0, length: text.length), types: NSTextCheckingResult.CheckingType.spelling.rawValue, options: nil, inSpellDocumentWithTag: t, orthography: &orthography, wordCount: nil)
+            if let hit = found.first(where: { $0.resultType == .spelling && text.substring(with: $0.range) == w }) {
+                let language = checker.language(forWordRange: hit.range, in: context, orthography: orthography)
+                let guesses = checker.guesses(forWordRange: hit.range, in: context, language: language, inSpellDocumentWithTag: t) ?? []
+                return ["misspelled": true, "guesses": Array(guesses.prefix(8))]
+            }
+        }
+        // No text around it (or the checker split the word another way): the word alone, in the language of the
+        // Spelling settings (`language: nil`; with Automatic by Language, a word of any of the person's languages).
         let range = checker.checkSpelling(of: w, startingAt: 0, language: nil, wrap: false, inSpellDocumentWithTag: t, wordCount: nil)
-        guard range.location != NSNotFound else { return ["misspelled": false, "guesses": [String]()] }
+        guard range.location != NSNotFound else { return none }
         let guesses = checker.guesses(forWordRange: NSRange(location: 0, length: (w as NSString).length), in: w, language: nil, inSpellDocumentWithTag: t) ?? []
         return ["misspelled": true, "guesses": Array(guesses.prefix(8))]
     }
 
-    static func learn(_ raw: String) {
+    /// "Learn Spelling": the word joins the Mac's dictionary, and the page stops underlining it.
+    static func learn(_ raw: String, view: FoleviWebView? = nil) {
         guard let w = word(raw) else { return }
         NSSpellChecker.shared.learnWord(w)
+        clearUnderline(w, view: view)
     }
 
+    /// "Ignore Spelling": the word passes for this page (in Folevi's own check and in WebKit's).
     static func ignore(_ raw: String, view: FoleviWebView?) {
         guard let w = word(raw) else { return }
         NSSpellChecker.shared.ignoreWord(w, inSpellDocumentWithTag: tag(view))
+        clearUnderline(w, view: view)
+    }
+
+    /// Takes the red underline off the word in the page. The underline is WebKit's, from a spell document of its
+    /// own that the app can't reach, so learning or ignoring the word above left it there until the word was
+    /// typed again. WebKit's own Ignore Spelling (`ignoreSpelling:`) removes the mark and has its document pass
+    /// the word from then on; it acts on the selected word, so the page selects it first (chrome-page.js, where
+    /// the right-click landed) and says whether it could.
+    private static func clearUnderline(_ w: String, view: FoleviWebView?) {
+        guard let view else { return }
+        let action = #selector(NSIgnoreMisspelledWords.ignoreSpelling(_:))
+        guard view.responds(to: action) else { return }
+        let script = "return typeof window.__foleviSelectWord === 'function' && window.__foleviSelectWord(word) === true;"
+        view.callAsyncJavaScript(script, arguments: ["word": w], in: nil, in: .page) { [weak view] result in
+            guard case .success(let value) = result, (value as? Bool) == true else { return }
+            view?.perform(action, with: nil)
+        }
     }
 
     /// The page's point (CSS px) in the view's own coordinates.

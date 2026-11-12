@@ -193,6 +193,12 @@
           return out;
         });
       },
+      /** Pastes into the page as ⌘V does (everything on the clipboard, files included). Resolves false when it could not. */
+      paste: function () {
+        return quietly(desk("clipboardPaste")).then(function (r) {
+          return !!(r && r.value === true);
+        });
+      },
       write: function (data) {
         var d = data || {};
         var out = {};

@@ -172,6 +172,9 @@ final class MacAppLock {
 
     private var logic: LockLogic?
     private var covers: [ObjectIdentifier: (window: NSWindow, view: LockCoverView)] = [:]
+    /// What had each window's keyboard when its cover went up (a native screen's field or list, the note's page).
+    private var keyboards: [ObjectIdentifier: WeakResponder] = [:]
+    private struct WeakResponder { weak var responder: NSResponder? }
     private var up = false
 
     /// Electron's systemPreferences.canPromptTouchID.
@@ -229,15 +232,23 @@ final class MacAppLock {
 
     private func hide() {
         up = false
-        for (_, c) in covers {
+        for (id, c) in covers {
             c.view.removeFromSuperview()
-            if let main = WindowManager.shared.mains.first(where: { $0.window === c.window }) {
-                c.window.makeFirstResponder(main.view)
-            } else if let floating = FloatingNotes.controller(for: c.window) {
-                c.window.makeFirstResponder(floating.view)
+            // The keyboard goes back to what had it before the lock, if that is still on screen. Otherwise to
+            // the note's page, but only while a note is what the window shows: with a native screen in front
+            // (Home, Tasks, a list) the page is hidden behind it, and typing would have gone into a note nobody
+            // can see.
+            let main = WindowManager.shared.mains.first { $0.window === c.window }
+            let page = main?.view ?? FloatingNotes.controller(for: c.window)?.view
+            let showsNote = main.map { NativeFrame.showsNote($0.view) } ?? true
+            if let view = keyboards[id]?.responder as? NSView, view.window === c.window, !view.isHiddenOrHasHiddenAncestor, view !== page || showsNote {
+                c.window.makeFirstResponder(view)
+            } else if let page, showsNote {
+                c.window.makeFirstResponder(page)
             }
         }
         covers.removeAll()
+        keyboards.removeAll()
     }
 
     private func attachAll() {
@@ -254,6 +265,10 @@ final class MacAppLock {
             let view = LockCoverView(frame: content.bounds) { MacAppLock.shared.current.unlock() }
             view.autoresizingMask = [.width, .height]
             content.addSubview(view, positioned: .above, relativeTo: nil)
+            // (A text field for its field editor, which can't take the keyboard back on its own.)
+            var keyboard = window.firstResponder
+            if let editor = keyboard as? NSTextView, editor.isFieldEditor, let field = editor.delegate as? NSView { keyboard = field }
+            if !(keyboard is LockCoverView), keyboard !== window { keyboards[ObjectIdentifier(window)] = WeakResponder(responder: keyboard) }
             window.makeFirstResponder(view)
             covers[ObjectIdentifier(window)] = (window, view)
         }

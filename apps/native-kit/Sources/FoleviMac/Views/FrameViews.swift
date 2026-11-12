@@ -14,6 +14,7 @@
 import AppKit
 import CoreImage
 import SwiftUI
+import WebKit
 import FoleviDesign
 import FoleviEngine
 import FoleviScreens
@@ -297,6 +298,7 @@ public final class ContentViewController: NSViewController {
     init(model: FrameModel, pageView: NSView) {
         self.model = model
         self.pageView = pageView
+        FrameSheets.attach(model, page: pageView)
         topBar = ClickThroughHostingView(rootView: WebTopBar(model: model))
         super.init(nibName: nil, bundle: nil)
     }
@@ -445,8 +447,22 @@ public final class ContentViewController: NSViewController {
         pageView.frame = clip.bounds
         pageView.autoresizingMask = [.width, .height]
         clip.addSubview(pageView, positioned: .below, relativeTo: body)
-        model.editor(.insets(top: Double(Self.barHeight), bottom: 0))
+        sendInsets()
         if model.route.isNote { view.window?.makeFirstResponder(pageView) }
+    }
+
+    /// Tells the note page how much room to leave at its top for the bar. The page counts in its own pixels,
+    /// and View > Zoom (the view's pageZoom) makes each of them that many points: at 75% a 56 px inset came out
+    /// 42 pt tall and the note's title slid under the bar. So the bar's height is sent divided by the zoom.
+    private func sendInsets() {
+        let zoom = max(0.1, (pageView as? WKWebView)?.pageZoom ?? 1)
+        model.editor(.insets(top: Double(Self.barHeight / zoom), bottom: 0))
+    }
+
+    /// View > Zoom changed the page's zoom (the app says so): the page's top inset is sent again at the new size.
+    public func pageZoomChanged() {
+        guard isViewLoaded, pageView.superview === clip else { return }
+        sendInsets()
     }
 
     /// Uncovers the page if the native screen still covers it while a note draws (see `show`).
@@ -459,7 +475,7 @@ public final class ContentViewController: NSViewController {
         let changed = shownRoute != route
         if route.isNote {
             if changed {
-                model.editor(.insets(top: Double(Self.barHeight), bottom: 0))
+                sendInsets()
                 if pageView.superview === clip { view.window?.makeFirstResponder(pageView) }
             }
             // What was on screen stays over the page until the note's first frame is drawn (it opened as a blank

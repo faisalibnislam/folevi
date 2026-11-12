@@ -354,6 +354,8 @@ enum Zoom {
     static func apply(to view: FoleviWebView? = nil) {
         let views = view.map { [$0] } ?? WindowManager.shared.allViews.filter { $0.role != .runner }
         for v in views { v.pageZoom = level }
+        // A framed window's page leaves the bar's room at its top in its own pixels: told again at the new zoom.
+        for v in views { NativeFrame.controller(for: v)?.root.split.content.pageZoomChanged() }
         // The window buttons follow the page's top bar at its new size.
         if view == nil { TitleBar.relayoutAll() }
     }

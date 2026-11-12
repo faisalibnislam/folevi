@@ -19,6 +19,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             UserDefaults.standard.setVolatileDomain(args, forName: UserDefaults.argumentDomain)
         }
         #endif
+        // Red underlines while typing in a note. WebKit checks spelling as you type only when its own setting
+        // says so (`WebContinuousSpellCheckingEnabled` in the app's defaults), and with nothing saved it reads
+        // off, so notes showed no underlines until someone found Edit > Spelling and Grammar > Check Spelling
+        // While Typing. On unless that item turned it off: a registered default, so the choice made there is the
+        // one that's saved and kept. Before any web view is made (WebKit reads it once). Correcting spelling
+        // automatically is left as it was: the Mac's own Keyboard setting until the menu says otherwise.
+        UserDefaults.standard.register(defaults: ["WebContinuousSpellCheckingEnabled": true])
         let app = NSApplication.shared
         let delegate = AppDelegate()
         app.delegate = delegate
@@ -118,6 +125,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    // MARK: Quitting
+
+    private var savedForQuit = false
+
+    /// Quitting (⌘Q, an update's restart, logging out) ends the pages without the events a browser sends a
+    /// closing page, and those events are what save the last words typed: the note's own pending save, a
+    /// canvas's, the title's, the "On this Mac" library's files. So each page is told it is closing, as a
+    /// browser would tell it, and the app waits for that (two seconds at most) before it goes.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let views = WindowManager.shared.allViews.filter { $0.loaded }
+        guard !savedForQuit, !views.isEmpty else { return .terminateNow }
+        savedForQuit = true
+        var waiting = views.count
+        var replied = false
+        let reply = {
+            guard !replied else { return }
+            replied = true
+            NSApp.reply(toApplicationShouldTerminate: true)
+        }
+        // The closing event saves at once where it can (the engine's journal is written before it returns);
+        // the short wait after it is for what is written a moment later (the device's database, files).
+        for view in views {
+            view.callAsyncJavaScript(PageClosing.script, arguments: [:], in: nil, in: .page) { _ in
+                waiting -= 1
+                if waiting == 0 { reply() }
+            }
+        }
+        // While the app waits to quit the run loop is in its modal mode: the timer has to be in it too.
+        let limit = Timer(timeInterval: 2, repeats: false) { _ in MainActor.assumeIsolated { reply() } }
+        RunLoop.main.add(limit, forMode: .common)
+        RunLoop.main.add(limit, forMode: .modalPanel)
+        return .terminateLater
+    }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
 

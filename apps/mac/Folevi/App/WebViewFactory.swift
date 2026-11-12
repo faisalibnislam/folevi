@@ -4,6 +4,7 @@
 // the owner chose (Writing Tools off in notes, decision M5).
 import AppKit
 import WebKit
+import FoleviMac
 
 /// What a view is for: a main window's page, a place's hidden runner (WM1), Quick Add's panel (WM2).
 enum ViewRole: String {
@@ -46,6 +47,101 @@ final class FoleviWebView: WKWebView {
     /// WKWebView's own answer is yes only over a selection being dragged. The hidden runner takes no clicks anyway.
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         role == .runner ? super.acceptsFirstMouse(for: event) : true
+    }
+
+    // MARK: Edit > Undo and Redo
+
+    /// The frame model of the note this view shows: a main window's Page View with a note on screen, or a
+    /// floating note. Nil for any other view (Quick Add, a window without the native frame) and off a note.
+    private var noteModel: FrameModel? {
+        let model = NativeFrame.controller(for: self)?.model ?? FloatingNotes.open.first { $0.view === self }?.model
+        return model?.route.isNote == true ? model : nil
+    }
+
+    /// Edit > Undo with the page as the window's first responder. The system's `undo:` drives WebKit's undo
+    /// stack, which is not the editor's history (the one ⌘Z in the note and the note's bars use): the two came
+    /// apart, so the menu undid something else and showed off while the editor still had steps. On a note the
+    /// menu runs the editor's own undo. A plain field of the page (the title, a caption, a cell) keeps WebKit's,
+    /// the one that knows its typing; so does a view that shows no note. (A native text field never asks here:
+    /// it is the first responder itself, and the window answers for it as before.)
+    @objc func undo(_ sender: Any?) { history(undo: true) }
+
+    @objc func redo(_ sender: Any?) { history(undo: false) }
+
+    private func history(undo: Bool) {
+        let system = { [weak self] in
+            guard let manager = self?.undoManager else { return }
+            if undo { if manager.canUndo { manager.undo() } } else if manager.canRedo { manager.redo() }
+        }
+        guard let model = noteModel else { return system() }
+        FrameCommands.pageKeyboard(self) { place in
+            if place == .field { return system() }
+            if undo { model.editor(.undo) } else { model.editor(.redo) }
+        }
+    }
+
+    /// Undo and Redo show on while the editor has a step to undo or redo (`editor.state`), on a note.
+    override func validateUserInterfaceItem(_ item: any NSValidatedUserInterfaceItem) -> Bool {
+        let undo = item.action == #selector(undo(_:))
+        guard undo || item.action == #selector(redo(_:)) else { return super.validateUserInterfaceItem(item) }
+        let menuItem = item as? NSMenuItem
+        guard let model = noteModel else {
+            // (As the window words and answers them for a view of its own: "Undo Typing".)
+            menuItem?.title = (undo ? undoManager?.undoMenuItemTitle : undoManager?.redoMenuItemTitle) ?? (undo ? "Undo" : "Redo")
+            return (undo ? undoManager?.canUndo : undoManager?.canRedo) ?? false
+        }
+        menuItem?.title = undo ? "Undo" : "Redo"
+        return (undo ? model.editorState?.undo : model.editorState?.redo) ?? false
+    }
+
+    // MARK: WebKit's own menu
+
+    /// What WebKit's menu offers that would leave or reload the page, by the items' identifiers.
+    private static let leavingItems: Set<String> = [
+        "WKMenuItemIdentifierReload", "WKMenuItemIdentifierGoBack", "WKMenuItemIdentifierGoForward",
+        "WKMenuItemIdentifierOpenLink", "WKMenuItemIdentifierOpenLinkInNewWindow", "WKMenuItemIdentifierOpenFrameInNewWindow",
+        "WKMenuItemIdentifierOpenImageInNewWindow", "WKMenuItemIdentifierOpenMediaInNewWindow",
+        "WKMenuItemIdentifierDownloadLinkedFile", "WKMenuItemIdentifierDownloadImage", "WKMenuItemIdentifierDownloadMedia",
+    ]
+
+    /// A right-click where the page draws no menu of its own (the title, a caption, the cover, the margins) shows
+    /// WebKit's. Reload, Back and Forward, opening a link in a window of WebKit's and the downloads come out of
+    /// it: the page is the window's engine as well as its note, and links open through the app. Copy, Paste,
+    /// Look Up, spelling, Share and Services stay. (The menus the page draws itself never come through here.)
+    override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
+        super.willOpenMenu(menu, with: event)
+        for item in menu.items where Self.leavingItems.contains(item.identifier?.rawValue ?? "") { menu.removeItem(item) }
+        // No separator first, last, or after another.
+        for item in menu.items.reversed() where item.isSeparatorItem {
+            let at = menu.index(of: item)
+            if at == 0 || at == menu.numberOfItems - 1 || menu.item(at: at - 1)?.isSeparatorItem == true { menu.removeItem(item) }
+        }
+    }
+}
+
+/// A page that is about to go away (its window closed, its place switched, the app quitting). WebKit ends it
+/// without the events a browser sends a closing page, and those events are what save the last words typed: the
+/// note's own pending save (it waits a moment after each key), a canvas's, the title's, the "On this Mac"
+/// library's files. So the page is told it is closing, as a browser would tell it, and is kept until it has saved.
+@MainActor
+enum PageClosing {
+    /// The closing event saves at once where it can; the short wait after it is for what is written a moment
+    /// later (the device's database, files).
+    static let script = "window.dispatchEvent(new Event('pagehide')); await new Promise((r) => setTimeout(r, 250));"
+
+    /// Tells `view`'s page it is closing and keeps the view alive until the page answers, one second at most;
+    /// `then` runs once after that (what lets the page go: a blank page loaded, or nothing more than the view's
+    /// release). The window is off the screen already: nothing here waits on it.
+    static func flush(_ view: FoleviWebView, then: @escaping @MainActor () -> Void = {}) {
+        guard view.loaded else { return then() }
+        var kept: FoleviWebView? = view
+        let finish: @MainActor () -> Void = {
+            guard kept != nil else { return }
+            kept = nil
+            then()
+        }
+        view.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { _ in finish() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { finish() }
     }
 }
 

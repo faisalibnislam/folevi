@@ -163,10 +163,10 @@ final class DesktopRouter {
             return [:]
 
         case "spelling":
-            return TextMenu.spelling(Self.text(options["word"], 100), view: view)
+            return TextMenu.spelling(Self.text(options["word"], 100), context: Self.text(options["context"], 700), view: view)
 
         case "learnWord":
-            TextMenu.learn(Self.text(options["word"], 100))
+            TextMenu.learn(Self.text(options["word"], 100), view: view)
             return [:]
 
         case "ignoreWord":

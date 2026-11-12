@@ -355,7 +355,7 @@ struct QuickAddDialog: View {
 
 extension FrameModel {
     /// Quick Add task (the web's dialog), over this window; `due` starts it on a day.
-    func showQuickAdd(in window: NSWindow?, due: String? = nil) {
+    public func showQuickAdd(in window: NSWindow?, due: String? = nil) {
         guard let window = window ?? NSApp.keyWindow else { return }
         PlannerPanel.dialog(in: window) { close in
             QuickAddDialog(frame: self, initialDue: due, close: close)

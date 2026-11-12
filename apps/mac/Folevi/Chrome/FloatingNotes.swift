@@ -253,6 +253,8 @@ final class FloatingNoteController: NSWindowController, NSWindowDelegate, FrameH
     func windowWillClose(_ notification: Notification) {
         model.stop()
         transport?.detach()
+        // The note's page saves what was typed a moment ago before its view is let go (PageClosing).
+        PageClosing.flush(view)
         FloatingNotes.closed(self)
     }
 

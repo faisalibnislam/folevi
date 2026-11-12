@@ -30,6 +30,15 @@ enum Clipboard {
         if let image, NSImage(data: image) != nil { board.setData(image, forType: .png) }
     }
 
+    /// Pastes into the page the way Edit > Paste and ⌘V do: WebKit's own paste, so the page is handed everything
+    /// on the clipboard (files copied in the Finder, Folevi's own blocks), not only the text, HTML and picture
+    /// `read` can carry. For Paste in Folevi's own context menu. False when the page did not take it.
+    static func paste(into view: NSView) -> Bool {
+        guard let window = view.window else { return false }
+        if window.firstResponder !== view, !window.makeFirstResponder(view) { return false }
+        return NSApp.sendAction(#selector(NSText.paste(_:)), to: view, from: nil)
+    }
+
     /// The clipboard's image as PNG (a PNG as it is; TIFF and the rest converted).
     static func imagePNG(_ board: NSPasteboard) -> Data? {
         if let png = board.data(forType: .png) { return png }

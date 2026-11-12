@@ -791,6 +791,19 @@ public final class FrameModel {
     /// The note's "..." menu actions: native commands where the engine has them, the note page otherwise.
     public func noteMenu(_ action: NoteMenuAction) { editor(.noteMenu(action: action)) }
 
+    /// The sidebar's Find tab while it shows: steps to the next (1) or the previous (-1) match and says true, or
+    /// says false when it has no search going (Find Next and Find Previous then go to the page's own find bar).
+    @ObservationIgnored public var stepSidebarFind: (@MainActor (Int) -> Bool)?
+
+    /// Help is to open at its keyboard shortcuts (Help > Keyboard Shortcuts); the Help screen takes it as it shows.
+    public var helpAtShortcuts = false
+
+    /// Help > Keyboard Shortcuts: the Help page, scrolled to its shortcuts table.
+    public func openHelpShortcuts() {
+        helpAtShortcuts = true
+        open(.web("/help"))
+    }
+
     public var focusMode: Bool { editorState?.focus ?? false }
     public var noteLocked: Bool { editorState?.locked ?? false }
     public var canLockNote: Bool { editorState?.canLock ?? false }

@@ -15,6 +15,7 @@ import AppKit
 import UIKit
 #endif
 import SwiftUI
+import WebKit
 import FoleviDesign
 import FoleviEngine
 import FoleviScreens
@@ -628,6 +629,15 @@ struct WebNoteSidebar: View {
                 .padding(.top, 8)
             }
         }
+        // Find Next and Find Previous (⌘G, ⇧⌘G) step this search while the tab shows and has one going.
+        .onAppear {
+            model.stepSidebarFind = { [find, weak model] delta in
+                guard let model, (find.result?.count ?? 0) > 0 else { return false }
+                find.step(model, by: delta)
+                return true
+            }
+        }
+        .onDisappear { model.stepSidebarFind = nil }
     }
 
     private func stepButton(_ icon: WebIcon, _ label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
@@ -879,9 +889,10 @@ private struct FindField: NSViewRepresentable {
         func controlTextDidEndEditing(_ n: Notification) { parent.onFocus(false) }
 
         /// The note's page view in this window (the web view the editor draws in), to give the keyboard back to.
+        /// (The app's own class is a subclass of WKWebView, so it is found by what it is, not by its name.)
         private static func page(in view: NSView?) -> NSView? {
             guard let view else { return nil }
-            if String(describing: type(of: view)).contains("WKWebView") { return view }
+            if view is WKWebView { return view }
             for sub in view.subviews { if let p = page(in: sub) { return p } }
             return nil
         }

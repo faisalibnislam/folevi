@@ -43,7 +43,7 @@ final class NativeFrameTests: XCTestCase {
         XCTAssertTrue(FrameCommands.run("file.reopen-closed-tab", frame: frame))
         XCTAssertTrue(frame.model.route.isNote)
         XCTAssertTrue(FrameCommands.run("go.back", frame: frame))
-        XCTAssertFalse(FrameCommands.run("help.whats-new", frame: frame), "unknown to the frame: the page's")
+        XCTAssertFalse(FrameCommands.run("edit.no-such-command", frame: frame), "unknown to the frame: the page's")
         // Revision 8's editor menu commands.
         XCTAssertTrue(FrameCommands.run("go.tab-9", frame: frame))
         for id in ["format.move-up", "format.duplicate", "view.focus", "note.lock"] { XCTAssertTrue(FrameCommands.run(id, frame: frame), id) }

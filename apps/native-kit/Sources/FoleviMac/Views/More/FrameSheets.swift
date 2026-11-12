@@ -11,6 +11,7 @@ import UIKit
 import CoreImage
 import SwiftUI
 import FoleviDesign
+import FoleviScreens
 
 @MainActor
 public enum FrameSheets {
@@ -22,6 +23,12 @@ public enum FrameSheets {
         var keep: AnyObject?
         /// The window's resize notifications (the backdrop drawn again).
         var observers: [Any] = []
+        #if os(macOS)
+        /// What had the window's keyboard before the dialog took it (the note's page, a field of the frame), and
+        /// the route on screen then: the keyboard goes back there when the dialog closes.
+        weak var returnTo: NSResponder?
+        var route: FrameRoute?
+        #endif
         init(host: NSView, monitor: Any?, onClose: (() -> Void)?) {
             self.host = host
             self.monitor = monitor
@@ -32,6 +39,38 @@ public enum FrameSheets {
     private struct WeakWindow { weak var window: NSWindow? }
     private static var windows: [ObjectIdentifier: WeakWindow] = [:]
     private static var shown: [ObjectIdentifier: Shown] = [:]
+    #if os(macOS)
+    private struct WeakView { weak var view: NSView? }
+    private static var pages: [ObjectIdentifier: WeakView] = [:]
+
+    /// The frame's Page View (its content registers it): a dialog closed over a note gives it the keyboard back.
+    static func attach(_ model: FrameModel, page: NSView) {
+        pages[ObjectIdentifier(model)] = WeakView(view: page)
+    }
+
+    /// What has the window's keyboard, as something that can take it again (a text field for its field editor);
+    /// nil when nothing has.
+    private static func keyboardOwner(_ window: NSWindow) -> NSResponder? {
+        let responder = window.firstResponder
+        if let editor = responder as? NSTextView, editor.isFieldEditor, let field = editor.delegate as? NSView { return field }
+        return responder === window ? nil : responder
+    }
+
+    /// A dialog is closing: the keyboard goes back to what had it before (⌘K over a note, then Escape, and typing
+    /// goes on in the note). Only while the dialog still has it, or nothing has: what closed the dialog may have
+    /// given it to something already (a note opened from the palette takes it itself). On another route by now,
+    /// or with that view gone, the note's page takes it when a note is on screen.
+    private static func returnKeyboard(from s: Shown, model: FrameModel) {
+        guard let window = s.host.window else { return }
+        let now = window.firstResponder
+        guard now === window || now === s.host || (now as? NSView)?.isDescendant(of: s.host) == true else { return }
+        if s.route == model.route, let view = s.returnTo as? NSView, view.window === window, !view.isHiddenOrHasHiddenAncestor, !view.isDescendant(of: s.host) {
+            window.makeFirstResponder(view)
+        } else if model.route.isNote, let page = pages[ObjectIdentifier(model)]?.view, page.window === window {
+            window.makeFirstResponder(page)
+        }
+    }
+    #endif
 
     /// The window a frame draws in (its sidebar registers it).
     static func attach(_ model: FrameModel, window: NSWindow?) {
@@ -49,10 +88,15 @@ public enum FrameSheets {
     /// 5 November 2026), or attached at `top` (the command palette, a popover at `leading`).
     /// `scrim`: the window behind dims (the command palette: it stands apart from the sidebar's labels, MAC-45).
     static func present<Content: View>(_ model: FrameModel, top: CGFloat? = nil, leading: CGFloat? = nil, scrim: Bool = false, onClose: (() -> Void)? = nil, @ViewBuilder content: (_ close: @escaping @MainActor () -> Void) -> Content) {
-        dismiss(model, notify: false)
         #if os(macOS)
+        // (A dialog that replaces another hands on what the first one took the keyboard from.)
+        let replaced = shown[ObjectIdentifier(model)]
+        dismiss(model, notify: false, returnKeyboard: false)
         guard let window = window(for: model), let root = window.contentView else { return }
+        let returnTo = replaced != nil ? replaced?.returnTo : keyboardOwner(window)
+        let route = replaced?.route ?? model.route
         #else
+        dismiss(model, notify: false)
         guard let window = window(for: model) else { return }
         let root: UIView = window
         #endif
@@ -105,6 +149,10 @@ public enum FrameSheets {
         let entry = Shown(host: host, monitor: monitor, onClose: onClose)
         entry.keep = keep
         entry.observers = observers
+        #if os(macOS)
+        entry.returnTo = returnTo
+        entry.route = route
+        #endif
         shown[key] = entry
     }
 
@@ -166,11 +214,15 @@ public enum FrameSheets {
         #endif
     }
 
-    static func dismiss(_ model: FrameModel, notify: Bool = true) {
+    /// `returnKeyboard`: false when another dialog is about to take this one's place.
+    static func dismiss(_ model: FrameModel, notify: Bool = true, returnKeyboard: Bool = true) {
         let key = ObjectIdentifier(model)
         guard let s = shown.removeValue(forKey: key) else { return }
         s.observers.forEach(NotificationCenter.default.removeObserver)
         if let m = s.monitor { NSEvent.removeMonitor(m) }
+        #if os(macOS)
+        if returnKeyboard { Self.returnKeyboard(from: s, model: model) }
+        #endif
         fadeAway(s.host)
         if notify { s.onClose?() }
     }

@@ -82,7 +82,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
             old.stop()
             let previous = view
             let next = WebViewFactory.make(place: place, role: .main, bootstrap: WindowManager.shared.bootstrapOf(place, .main), frame: previous.frame, nativeFrame: true, window: { [weak self] in self?.window })
-            previous.load(URLRequest(url: URL(string: "about:blank")!))
+            // The old page saves what was typed a moment ago, then leaves (PageClosing); the new one is on its
+            // way meanwhile.
+            PageClosing.flush(previous) { previous.load(URLRequest(url: URL(string: "about:blank")!)) }
             previous.removeFromSuperview()
             view = next
             frame = nil
@@ -98,8 +100,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
         } ?? "/"
         let old = view
         let next = WebViewFactory.make(place: place, role: .main, bootstrap: WindowManager.shared.bootstrapOf(place, .main), frame: old.frame, window: { [weak self] in self?.window })
-        // The old page leaves first (its databases and locks close), then the new one takes its spot.
-        old.load(URLRequest(url: URL(string: "about:blank")!))
+        // The old page saves what was typed a moment ago and leaves (its databases and locks close, PageClosing);
+        // the new one takes its spot.
+        PageClosing.flush(old) { old.load(URLRequest(url: URL(string: "about:blank")!)) }
         install(next)
         old.removeFromSuperview()
         view = next
@@ -112,6 +115,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         frame?.stop()
+        // The window goes from the screen now; its page stays a moment longer, told that it is closing, so the
+        // words typed just before (still waiting for their save) are written. Then the view is let go.
+        PageClosing.flush(view)
         WindowManager.shared.closed(self)
     }
 

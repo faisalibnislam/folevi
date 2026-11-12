@@ -140,11 +140,14 @@ final class FrameController: FrameHost {
     let transport: MacEngineTransport?
     private(set) var demoEngine: DemoEngine?
     weak var window: NSWindow?
+    /// The window's Page View (the note page and the engine).
+    private(set) weak var page: FoleviWebView?
     let place: String?
 
     /// `demo`: a scripted engine instead of the page's (tests; FOLEVI_FRAME_DEMO=1 in Debug runs).
     init(window: NSWindow, view: FoleviWebView, place: String?, start: String?, tabs: TabsModel.Saved?, demo forced: DemoEngine? = nil) {
         self.window = window
+        self.page = view
         self.place = place
         let client: EngineClient
         if forced != nil || NativeFrame.demo {
@@ -339,13 +342,72 @@ final class FrameController: FrameHost {
 /// the page (false), which in native chrome mode ignores most of them.
 @MainActor
 enum FrameCommands {
+    /// Runs a command. A Format item chosen from the menu always runs. Pressed as its key (⌘B, ⌥⇧↑, ⌘D) it means
+    /// the note only while the note's own text has the keyboard: with the keyboard in a field of the window (Find,
+    /// the palette, a dialog), in a list, or in another field of the page (the title, a caption, a cell, a canvas)
+    /// the key does nothing to the note.
     static func run(_ id: String, frame: FrameController) -> Bool {
+        guard id.hasPrefix("format."), pressedAsKey else { return perform(id, frame: frame) }
+        guard let page = keyboardPage(frame) else { return true }
+        pageKeyboard(page) { place in
+            if place == .body { _ = perform(id, frame: frame) }
+        }
+        return true
+    }
+
+    /// The command came from its key, not from a click on its menu item. (Return on an item of an open menu
+    /// carries none of ⌘, ⌥ and ⌃, so it counts as the click it stands for.)
+    static var pressedAsKey: Bool {
+        guard let event = NSApp.currentEvent, event.type == .keyDown else { return false }
+        return !event.modifierFlags.intersection([.command, .option, .control]).isEmpty
+    }
+
+    /// The window's page, when it is what has the window's keyboard (nil with the keyboard in a native field,
+    /// a list or a dialog).
+    static func keyboardPage(_ frame: FrameController) -> FoleviWebView? {
+        guard let page = frame.page, let view = frame.window?.firstResponder as? NSView, view === page || view.isDescendant(of: page) else { return nil }
+        return page
+    }
+
+    /// What has the keyboard inside a page: the note's own text, another field of the page (the title, a
+    /// caption, a table cell, a canvas or a note inside the note), or nothing.
+    enum PageKeyboard: String {
+        case body, field, none
+    }
+
+    /// Asks a page what has its keyboard now. (`editor.state`'s `focused` is true for the title and for any field
+    /// of the page as well, so it can't say.) The note's body is the element with the class `fb-editor`; a field
+    /// or an editor inside one of the note's blocks sits in a `data-node-view-wrapper`.
+    static func pageKeyboard(_ page: WKWebView, then: @escaping @MainActor (PageKeyboard) -> Void) {
+        let script = """
+        const a = document.activeElement;
+        if (!a || a === document.body || a === document.documentElement) return "none";
+        return a.classList.contains("fb-editor") && !a.closest("[data-node-view-wrapper]") ? "body" : "field";
+        """
+        page.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { result in
+            var place = PageKeyboard.none
+            if case .success(let value) = result, let name = value as? String, let known = PageKeyboard(rawValue: name) { place = known }
+            then(place)
+        }
+    }
+
+    /// A menu command the note page answers itself (lib/engine/editorCommands.ts hears it as the menu bar's
+    /// `{ type: "menu", id }`): straight to the page, past the frame.
+    private static func sendToPage(_ id: String, frame: FrameController) {
+        frame.page?.events.emit("FoleviDesktop", "command", ["type": "menu", "id": id])
+    }
+
+    private static func perform(_ id: String, frame: FrameController) -> Bool {
         let m = frame.model
         let noteOpen = m.route.isNote
         func block(_ b: EditorBlock) { m.editor(.format(block: b)) }
         switch id {
         case "file.new-note": m.newNote()
+        // The Templates page: its built-in gallery and the person's own, each a click from a new note.
+        case "file.new-from-template": m.open(.notes(.templates))
         case "file.new-folder": m.newFolder()
+        // The Tasks page's Quick add dialog, over this window.
+        case "file.quick-add-task": m.showQuickAdd(in: frame.window)
         case "file.new-tab":
             m.open(.home)
             frame.sidebar.focusSearch()
@@ -364,7 +426,7 @@ enum FrameCommands {
         case "note.move": if noteOpen { m.noteMenu(.move) }
         case "note.duplicate": if noteOpen { m.noteMenu(.duplicate) }
         case "note.history": if noteOpen { m.noteMenu(.history) }
-        case "note.trash": if let id = m.route.noteId { m.trash([id]) }
+        case "note.trash": if let id = m.route.noteId { trash(id, frame: frame) }
         case "note.copy-link":
             if let id = m.route.noteId {
                 NSPasteboard.general.clearContents()
@@ -377,6 +439,8 @@ enum FrameCommands {
         case "format.strikethrough": m.editor(.format(mark: .strike))
         case "format.code": m.editor(.format(mark: .code))
         case "format.highlight": m.editor(.format(mark: .highlight))
+        // The selection's link field (the page's own ⇧⌘K), opened by the page.
+        case "format.link": if noteOpen { sendToPage(id, frame: frame) }
         case "format.heading-1": block(.heading1)
         case "format.heading-2": block(.heading2)
         case "format.heading-3": block(.heading3)
@@ -398,8 +462,13 @@ enum FrameCommands {
         case "view.cards", "view.list":
             guard frame.root.split.content.listShowsCards != nil else { return true }
             frame.root.split.content.setListCards(id == "view.cards")
-        case "edit.find", "edit.find-next", "edit.find-previous", "edit.find-selection":
+        case "edit.find", "edit.find-selection":
             if noteOpen { m.noteMenu(.find) } else { frame.sidebar.focusSearch() }
+        // The next or the previous match: of the sidebar's Find tab while it has a search going, else of the
+        // page's own find bar (which opens when there's no search yet).
+        case "edit.find-next", "edit.find-previous":
+            guard noteOpen else { return true }
+            if m.stepSidebarFind?(id == "edit.find-next" ? 1 : -1) != true { sendToPage(id, frame: frame) }
         case "view.sidebar": frame.root.split.toggleSidebar(nil)
         case "view.inspector":
             if noteOpen { if m.editorPanel == .info { m.editor(.panelClose) } else { m.editor(.panelOpen(panel: .info)) } }
@@ -415,6 +484,10 @@ enum FrameCommands {
         case "go.next-tab": m.nextTab(1)
         case "go.previous-tab": m.nextTab(-1)
         case "help.help": frame.frameOpenHelp()
+        case "help.shortcuts": m.openHelpShortcuts()
+        // As the web's menu bar opened them: the changelog in the browser, a message to support in Mail.
+        case "help.whats-new": if let url = URL(string: "https://folevi.com/changelog") { frame.frameOpenExternal(url) }
+        case "help.feedback": if let url = URL(string: "mailto:support@folevi.com?subject=Folevi%20for%20Mac") { frame.frameOpenExternal(url) }
         default:
             if id.hasPrefix("go.tab-"), let n = Int(id.dropFirst("go.tab-".count)) {
                 m.selectTab(number: n)
@@ -425,10 +498,33 @@ enum FrameCommands {
         return true
     }
 
+    /// Move to Trash for the open note. Chosen from the menu it always runs. Pressed as ⌘⌫ it means the note
+    /// only when nothing is being edited: with the keyboard in a field of the window (Find, the palette, a
+    /// dialog) or in something inside the page (a sticky, a canvas, a cell) the key is that thing's, and the
+    /// note stays where it is.
+    private static func trash(_ id: String, frame: FrameController) {
+        let m = frame.model
+        guard NSApp.currentEvent?.type == .keyDown else { return m.trash([id]) }
+        if frame.window?.firstResponder is NSText { return }
+        guard let page = keyboardPage(frame) else { return m.trash([id]) }
+        pageKeyboard(page) { place in
+            if place == .none, m.route.noteId == id { m.trash([id]) }
+        }
+    }
+
     /// Whether a page command can run now in a framed window (note commands need a note on screen).
     static func isEnabled(_ id: String, frame: FrameController) -> Bool? {
         let noteOpen = frame.model.route.isNote
         if id == "note.lock" { return noteOpen && frame.model.canLockNote }
+        // A key that isn't the note's now is off while it is pressed, so it goes on to what has the keyboard
+        // instead of being taken here: ⌘B, ⌘E, ⌥⇧↑ and the rest of Format with the keyboard in a native field or
+        // a list, and ⌘⌫ in a native field (where it deletes to the start of the line).
+        if pressedAsKey {
+            if id.hasPrefix("format."), keyboardPage(frame) == nil { return false }
+            if id == "note.trash", frame.window?.firstResponder is NSText { return false }
+        }
+        // Find Next, Find Previous and Use Selection for Find are the note's (Find… alone searches all notes elsewhere).
+        if ["edit.find-next", "edit.find-previous", "edit.find-selection"].contains(id) { return noteOpen }
         if id.hasPrefix("format.") || id.hasPrefix("note.") || id == "file.export" || id == "view.inspector" || id == "view.focus" { return noteOpen }
         if id == "view.cards" || id == "view.list" { return frame.root.split.content.listShowsCards != nil }
         switch id {

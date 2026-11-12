@@ -1,5 +1,6 @@
 "use client";
 
+import { ownSpelling } from "@/lib/spelling/web";
 import "@/components/editor/insert-blocks.css";
 // The visual blocks the demo's Insert panel and slash menu can add.
 import "@/components/editor/flowchart/flowchart.css";
@@ -166,7 +167,7 @@ function DemoNote({ staticBody, art, styles, onPickStyle, dockSlot, describedBy,
           "aria-multiline": "true",
           "aria-label": "Try the editor",
           "aria-describedby": describedBy,
-          spellcheck: "true",
+          spellcheck: ownSpelling() ? "false" : "true", // (as the app's editor: Folevi's own marks where it has them)
         },
         // Pasting works as in the app: Markdown, web pages and several lines become blocks.
         handlePaste: (view: EditorView, event: ClipboardEvent, slice: Slice) => {

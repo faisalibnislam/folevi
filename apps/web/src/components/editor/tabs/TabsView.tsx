@@ -4,6 +4,7 @@
 // open a tab (each viewer's own choice); in an editable note, + adds one, a double-click or F2 renames, a drag
 // or Option+Shift+arrows reorders, and the tab's menu (right-click, a long press, or the … button) renames,
 // moves and deletes. Many tabs scroll sideways.
+import { imeKey } from "../canvas/wheel";
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowLeft, ArrowRight, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
@@ -91,13 +92,41 @@ export function TabsView({ node, editor, selected }: ReactNodeViewProps) {
     return () => list.removeEventListener("contextmenu", onContext);
   }, [editable]);
 
+  // A menu's item goes away as it's chosen, and the tab the menu was opened on can go with it (deleted) or be
+  // put somewhere else in the strip (moved). The keyboard is then on nothing at all, and no key reaches the note:
+  // not even ⌘Z to bring the tab back. So once the change has been drawn, a keyboard left on nothing goes to
+  // the tab named, else the open one, else the note. Focus that is already somewhere real (the note's text, the
+  // … button the menu gives it back to) is left alone.
+  const keepKeyboard = (tabId?: string) =>
+    requestAnimationFrame(() => {
+      if (editor.isDestroyed) return;
+      const active = document.activeElement;
+      if (active && active !== document.body && active.isConnected) return;
+      const list = listRef.current;
+      const tab = (tabId ? list?.querySelector<HTMLElement>(`[data-tab-id="${CSS.escape(tabId)}"]`) : null) ?? list?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      if (tab) tab.focus({ preventScroll: true });
+      else editor.view.focus();
+    });
+
   const itemsFor = (tabId: string): MenuItem[] => {
     const i = strip.tabs.findIndex((t) => t.id === tabId);
+    const move = (to: number) => {
+      moveTab(view, tabsId, tabId, to);
+      keepKeyboard(tabId);
+    };
     return [
       { label: "Rename", icon: <Pencil size={14} />, shortcut: "F2", onSelect: () => setRenaming(tabId) },
-      { label: "Move left", icon: <ArrowLeft size={14} />, shortcut: "⌥⇧←", disabled: i <= 0, onSelect: () => moveTab(view, tabsId, tabId, i - 1) },
-      { label: "Move right", icon: <ArrowRight size={14} />, shortcut: "⌥⇧→", disabled: i < 0 || i >= strip.tabs.length - 1, onSelect: () => moveTab(view, tabsId, tabId, i + 1) },
-      { label: strip.tabs.length === 1 ? "Delete tabs" : "Delete tab", icon: <Trash2 size={14} />, danger: true, onSelect: () => deleteTab(view, tabsId, tabId) },
+      { label: "Move left", icon: <ArrowLeft size={14} />, shortcut: "⌥⇧←", disabled: i <= 0, onSelect: () => move(i - 1) },
+      { label: "Move right", icon: <ArrowRight size={14} />, shortcut: "⌥⇧→", disabled: i < 0 || i >= strip.tabs.length - 1, onSelect: () => move(i + 1) },
+      {
+        label: strip.tabs.length === 1 ? "Delete tabs" : "Delete tab",
+        icon: <Trash2 size={14} />,
+        danger: true,
+        onSelect: () => {
+          deleteTab(view, tabsId, tabId);
+          keepKeyboard();
+        },
+      },
     ];
   };
 
@@ -199,7 +228,9 @@ export function TabsView({ node, editor, selected }: ReactNodeViewProps) {
   const openTabInfo = strip.tabs.find((t) => t.id === strip.open);
 
   return (
-    <NodeViewWrapper className={`fb-tabs ${selected ? "fb-tabs-selected" : ""}`} contentEditable={false} data-tabs-id={tabsId}>
+    // data-tabs-strip: undo and redo pressed on the block's tabs and buttons are the note's (isHistoryKey in
+    // NodeViews.tsx). The rename field is an input, so it keeps its own undo while a name is typed.
+    <NodeViewWrapper className={`fb-tabs ${selected ? "fb-tabs-selected" : ""}`} contentEditable={false} data-tabs-id={tabsId} data-tabs-strip="">
       <div className="fb-tabs-bar">
         <div ref={listRef} role="tablist" aria-label="Tabs" aria-orientation="horizontal" className="fb-tabs-list">
           {strip.tabs.map((t, i) => {
@@ -321,7 +352,7 @@ function RenameField({ name, onDone }: { name: string; onDone: (name: string | n
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={(e) => {
         e.stopPropagation();
-        if (e.nativeEvent.isComposing) return;
+        if (imeKey(e)) return;
         if (e.key === "Enter") {
           e.preventDefault();
           finish(value.trim() ? value : null);

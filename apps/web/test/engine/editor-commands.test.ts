@@ -1,7 +1,7 @@
 // The editor command API (src/lib/engine/editorCommands.ts) on its edges: what it refuses, and the commands that
 // don't need the editor's own functions (panels, the note menu, insets, state).
 import { describe, expect, it } from "vitest";
-import { runEditorCommand, editorState, type NativeNoteOptions } from "@/lib/engine/editorCommands";
+import { runEditorCommand, runNoteMenuCommand, editorState, type NativeNoteOptions } from "@/lib/engine/editorCommands";
 import { BridgeError } from "@/lib/engine/validate";
 
 function options(over: Partial<NativeNoteOptions> = {}): NativeNoteOptions & { log: string[] } {
@@ -96,6 +96,23 @@ describe("editor commands", () => {
     runEditorCommand(options({ editor: editor as never }), "focus", {});
     expect(focused).toEqual(["body"]);
     title.remove();
+  });
+
+  it("the Mac's menu bar: Link… opens the link field, Find Next opens Find when no search is going", () => {
+    const dom = document.createElement("div");
+    const heard: string[] = [];
+    dom.addEventListener("folevi:edit-link", () => heard.push("link"));
+    const editor = { ...fakeEditor, view: { ...fakeEditor.view, dom } } as never;
+    const o = options({ editor, menu: { find: () => heard.push("find") } });
+    expect(runNoteMenuCommand(o, "format.link")).toBe(true);
+    expect(runNoteMenuCommand(o, "edit.find-next")).toBe(true);
+    expect(runNoteMenuCommand(o, "edit.find-previous")).toBe(true);
+    expect(heard).toEqual(["link", "find", "find"]);
+    // A note that can only be read has no link field; other commands aren't the page's; no editor, nothing runs.
+    expect(runNoteMenuCommand(options({ editor, readOnly: true }), "format.link")).toBe(true);
+    expect(heard).toEqual(["link", "find", "find"]);
+    expect(runNoteMenuCommand(o, "format.bold")).toBe(false);
+    expect(runNoteMenuCommand(options(), "format.link")).toBe(false);
   });
 
   it("note.prepare, note.show and note.close belong to the host", () => {

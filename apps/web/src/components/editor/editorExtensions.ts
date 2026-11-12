@@ -1,4 +1,5 @@
-import { Placeholder, UndoRedo, Dropcursor, Gapcursor } from "@tiptap/extensions";
+import { Placeholder, Dropcursor, Gapcursor } from "@tiptap/extensions";
+import { NoteHistory } from "./noteHistory";
 import { isIphoneApp } from "@/lib/iphone";
 import { coarsePointer } from "@/lib/hooks/useMediaQuery";
 import { ALL_MARKS, ALL_NODES, BlockFormat } from "./extensions";
@@ -13,6 +14,7 @@ import { RemoteCarets } from "./remoteCarets";
 import { ColumnBlock, ColumnsBlock, ColumnsExtension } from "./columns/columnsExtension";
 import { TabsExtension } from "./tabs/tabsExtension";
 import { SafeFocus } from "./safeFocus";
+import { Spellcheck } from "./spellcheck";
 
 /**
  * The editor's extensions: every block and mark, their node views, undo, the drop and gap cursors, the
@@ -37,7 +39,7 @@ export function editorExtensions({
     ColumnBlock,
     ...ALL_MARKS,
     BlockFormat,
-    UndoRedo.configure({ depth: 200, newGroupDelay: 600 }),
+    NoteHistory.configure({ depth: 200, newGroupDelay: 600 }),
     Dropcursor.configure({ color: "var(--color-accent)", width: 2 }),
     Gapcursor,
     Placeholder.configure({
@@ -71,6 +73,8 @@ export function editorExtensions({
     BlockHighlight,
     RemoteCarets,
     PageLinkStatus,
+    // Red lines under misspelt words, where Folevi does the spelling itself (the website, in English).
+    Spellcheck,
     Triggers.configure({ onChange: onTrigger }),
   ];
 }

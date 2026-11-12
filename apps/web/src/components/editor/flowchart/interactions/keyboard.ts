@@ -2,6 +2,7 @@
 // interactions/textEditing.tsx). Listed last, so a new interaction placed before it can take a key first.
 //
 //   ⌘Z / ⇧⌘Z / ⌘Y undo and redo · ⌘D duplicate · ⌘A select all · ⇧⌘F full canvas · ⌫ delete
+//   ⌘C / ⌘X / ⌘V copy, cut and paste shapes (interactions/clipboard.ts)
 //   Esc closes the Foli AI panel, then clears the selection, then leaves full canvas, then goes back to the note
 //   arrows nudge (⇧ more; the view when nothing is selected) · Enter edits · +/− zoom · ⇧1 fit
 //   typing on one selected shape replaces its text
@@ -12,7 +13,7 @@ import type { TextEditing } from "./textEditing";
 
 const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 
-export function keyboardInteraction(ctrl: FlowController, { actions, startEdit }: { actions: FlowActions; startEdit: TextEditing["startEdit"] }): Interaction {
+export function keyboardInteraction(ctrl: FlowController, { actions, startEdit, clipboardKey }: { actions: FlowActions; startEdit: TextEditing["startEdit"]; /** ⌘C, ⌘X, ⌘V (interactions/clipboard.ts). */ clipboardKey?: (e: React.KeyboardEvent<HTMLDivElement>) => void }): Interaction {
   const { undo, redo, docRef, selRef, setSel, fullKey, aiOpen, setAiOpen, full, toggleFull, zoomBy, fitView } = ctrl;
   return {
     keyDown: (e) => {
@@ -37,7 +38,11 @@ export function keyboardInteraction(ctrl: FlowController, { actions, startEdit }
         return true;
       }
       if (mod && e.shiftKey && key === "f") return fullKey(e);
-      if (mod) return false;
+      if (mod) {
+        // Copy, cut and paste: the key is left to the browser, whose copy or paste event follows where it sends one.
+        clipboardKey?.(e);
+        return false;
+      }
       if (e.key === "Delete" || e.key === "Backspace") {
         actions.removeSelection();
         return true;

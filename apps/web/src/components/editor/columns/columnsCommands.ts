@@ -2,7 +2,7 @@
 // row), resize, and the repair that keeps rows in shape after any local edit (repairColumnLines in
 // packages/editor-schema/src/columns.ts).
 import type { Editor } from "@tiptap/core";
-import { TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
+import { NodeSelection, TextSelection, type EditorState, type Selection, type Transaction } from "@tiptap/pm/state";
 import { Fragment, type Node as PMNode } from "@tiptap/pm/model";
 import { closeHistory } from "@tiptap/pm/history";
 import { LIMITS, MIN_COLUMN_WIDTH, repairColumnLines, ulid } from "@folevi/editor-schema";
@@ -84,6 +84,19 @@ export function caretBelowRow(tr: Transaction, doc: PMNode, row: ColumnRow, reus
   if (reuse && next?.type.name === "paragraph" && next.content.size === 0 && depthOf(next) === row.depth) return tr.setSelection(TextSelection.create(tr.doc, at + 1));
   tr.insert(at, tr.doc.type.schema.nodes.paragraph!.create({ id: ulid(), depth: row.depth }));
   return tr.setSelection(TextSelection.create(tr.doc, at + 1));
+}
+
+/**
+ * What a press in the empty space under a column selects: the caret at the end of the column's last line that
+ * shows (`last`, its index among the note's lines), or that line itself when it has no text of its own (a
+ * picture, a table). Null when the line is neither (nothing to select there).
+ */
+export function columnEndSelection(doc: PMNode, last: number): Selection | null {
+  const node = doc.maybeChild(last);
+  if (!node) return null;
+  const pos = positionOf(doc, last);
+  if (node.isTextblock) return TextSelection.create(doc, pos + node.nodeSize - 1);
+  return NodeSelection.isSelectable(node) ? NodeSelection.create(doc, pos) : null;
 }
 
 /** A new empty line right after the row the line at `index` is in (or is), with the caret in it. */

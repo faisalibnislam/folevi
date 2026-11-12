@@ -61,11 +61,18 @@ export const mermaidFocusPlugin = new Plugin({
 
 const isFlowchartSource = (s: string) => /^\s*(?:%%[^\n]*\n\s*)*(flowchart|graph)\b/i.test(s);
 
+/**
+ * Code is written as typed: no spelling marks, no autocorrect, no capital after a full stop and no curly
+ * quotes from the system (set on a code block's element, here and in extensions.ts, and on inline code).
+ */
+export const CODE_TEXT_ATTRS = { spellcheck: "false", autocorrect: "off", autocapitalize: "off", autocomplete: "off" } as const;
+
 export const codeBlockNodeView: NodeViewRenderer = ({ node, getPos, editor, decorations }) => {
   let current: PMNode = node;
   const dom = document.createElement("pre");
   dom.className = "fb fb-code";
   dom.dataset.block = "code";
+  for (const [name, value] of Object.entries(CODE_TEXT_ATTRS)) dom.setAttribute(name, value);
   const content = document.createElement("code");
   dom.append(content);
   const copyBtn = copyButton(() => current.textContent);

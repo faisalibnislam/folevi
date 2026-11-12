@@ -2,14 +2,16 @@
 // Only structure and safe inline formatting survive; scripts, styles and unknown markup are dropped.
 import { LIMITS, SCHEMA_VERSION, flattenTree, markdownToBlocks, normalizeLanguage, normalizeInline, rankSequence, sanitizeHref, splitInline, ulid, type InlineNode, type Mark, type WireBlock } from "@folevi/editor-schema";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { closeHistory } from "@tiptap/pm/history";
 import type { Node as PMNode, Slice } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
-import { blockToNode } from "./convert";
+import { TEXT_NODES, blockToNode } from "./convert";
 import { normalizeDepths } from "./commands";
 import { afterSubtree, deleteVisibleRange } from "./plugins";
 import { hiddenIndices } from "./blockSelectionState";
 import { gridFromText, gridFromHtmlTable } from "./table/sheetPaste";
 import { readBlockClip } from "./blockClipboard";
+import { pasteAddress } from "./autolink";
 
 /**
  * Before any paste: a range through a collapsed toggle loses only its visible part (the hidden blocks stay),
@@ -420,6 +422,17 @@ export function looksLikeMarkdown(text: string): boolean {
   return /\*\*[^*\s][^*]*\*\*|\[[^\]]+\]\([^)\s]+\)/.test(text);
 }
 
+/** A line that starts like a Markdown block ("# ", "- ", "1. ", "> ", a code fence, "[ ] "). */
+const BLOCK_MARKER = /^(#{1,3} |[-*+] |\d+[.)] |> |```|\[[ x]\] )/m;
+
+/** Whether the caret (or the selection) is inside a line that keeps some of its text: part of a sentence. */
+function inSentence(view: EditorView): boolean {
+  const { $from, $to } = view.state.selection;
+  const line = $from.parent;
+  if ($from.depth < 1 || !TEXT_NODES.has(line.type.name) || line.content.size === 0) return false;
+  return !($from.sameParent($to) && $from.parentOffset === 0 && $to.parentOffset === line.content.size);
+}
+
 /**
  * The blocks a paste should become when it carries structure the editor handles itself (another app's
  * HTML, Markdown, several lines of text), or null to let ProseMirror paste it (Folevi's own copies, one
@@ -437,26 +450,124 @@ export function clipboardBlocks(view: EditorView, data: DataTransfer | null): Wi
   // other ProseMirror editors', is normalised.
   const ours = html.includes("data-pm-slice") && /data-block="/.test(html);
   if (html && !ours) blocks = htmlToBlocks(html);
-  else if (!html && text && /\t/.test(text) && /\n./.test(text.trim()) ? (blocks = tsvTable(text)) : false) {
-    // Rows of tab-separated cells (a spreadsheet's plain copy): a table.
-  } else if (!html && text && (/\n/.test(text) || /^(#{1,3} |[-*+] |\d+[.)] |> |```|\[[ x]\] )/m.test(text))) {
-    // Pasted text keeps its lines: a line break inside a paragraph stays one (a letter's "Dear John," and the next line stay two lines).
-    blocks = looksLikeMarkdown(text) ? markdownToBlocks(text, { titleFromHeading: false, lineBreaks: true }).blocks : linesToBlocks(text);
-  }
+  else if (!html && text) blocks = textBlocks(view, text);
   return blocks?.length ? blocks : null;
 }
 
-/** Tab-separated rows as a table block, or null. */
+/** Plain text as blocks: a table, Markdown, or its lines. Null for one ordinary line (ProseMirror pastes it). */
+function textBlocks(view: EditorView, text: string): WireBlock[] | null {
+  // Rows of tab-separated cells (a spreadsheet's plain copy): a table.
+  const table = /\t/.test(text) && /\n./.test(text.trim()) ? tsvTable(text) : null;
+  if (table) return table;
+  const marked = BLOCK_MARKER.test(text);
+  if (!/\n/.test(text) && !marked) return null;
+  // One line that only looks like a heading or a list item, pasted into a sentence: its characters as they
+  // are ("see - 5 degrees"), never a new block in the middle of the sentence.
+  if (marked && !/\n/.test(text.replace(/\r\n?/g, "\n").replace(/\n+$/, "")) && inSentence(view)) return linesToBlocks(text);
+  // Pasted text keeps its lines: a line break inside a paragraph stays one (a letter's "Dear John," and the next line stay two lines).
+  return looksLikeMarkdown(text) ? markdownToBlocks(text, { titleFromHeading: false, lineBreaks: true }).blocks : linesToBlocks(text);
+}
+
+/** Tab-separated rows as a table block, or null (see gridFromText for what counts as rows of cells). */
 function tsvTable(text: string): WireBlock[] | null {
   const grid = gridFromText(text);
   if (!grid || grid.rows.length < 2) return null;
   return [{ id: ulid(), type: "table", parentId: null, rank: rankSequence(1)[0]!, schemaVersion: SCHEMA_VERSION, text: [], props: { headerRow: grid.headerRow, rows: grid.rows } }];
 }
 
+/**
+ * Whether a paste that carries files should go in as those files. Word, Excel and PowerPoint put a picture of
+ * what was copied beside its HTML and text, and the words are what was meant; so files win only when there
+ * is nothing to read beside them: no text at all (a screenshot), HTML that is only a picture ("Copy image" in
+ * a browser), or text that is just the files' own names (files copied in Finder or Explorer).
+ */
+export function pasteIsFiles(data: DataTransfer | null): boolean {
+  const files = [...(data?.files ?? [])];
+  if (!data || !files.length) return false;
+  const html = data.getData("text/html");
+  if (html) return !new DOMParser().parseFromString(html, "text/html").body.textContent?.trim();
+  const text = data.getData("text/plain").trim();
+  if (!text) return true;
+  const names = new Set(files.map((f) => f.name));
+  return text.split(/\r?\n/).every((raw) => {
+    const entry = raw.trim();
+    if (!entry || names.has(entry)) return true;
+    // A path or a file address: its last part is the name.
+    const last = entry.split(/[\\/]/).pop() ?? "";
+    try {
+      return names.has(last) || names.has(decodeURIComponent(last));
+    } catch {
+      return false;
+    }
+  });
+}
+
+/**
+ * Whether this paste was asked for as plain text: Shift held with the paste shortcut (⇧⌘V, Ctrl+Shift+V).
+ * ProseMirror notes the Shift key on each key press; Shift+Insert is an ordinary paste.
+ */
+export function pasteIsPlain(view: EditorView): boolean {
+  const input = (view as unknown as { input?: { shiftKey?: boolean; lastKeyCode?: number | null } }).input;
+  return Boolean(input?.shiftKey && input.lastKeyCode !== 45);
+}
+
+/**
+ * Pastes text and nothing else: its lines, without formatting, links or blocks (in code, as it is). False
+ * when there is no text to paste.
+ */
+export function pastePlainText(view: EditorView, text: string): boolean {
+  if (!text.trim()) return false;
+  const { $from, $to } = view.state.selection;
+  if ($from.parent.type.name === "codeBlock" && $from.sameParent($to)) view.dispatch(view.state.tr.insertText(text.replace(/\r\n?/g, "\n")).scrollIntoView());
+  else insertPastedBlocks(view, linesToBlocks(text));
+  return true;
+}
+
+/**
+ * A paste into the note, in the order things are tried: code takes plain text; a plain-text paste takes the
+ * clipboard's text only; blocks copied in Folevi come back as they were; files with nothing to read beside
+ * them are inserted; one web address becomes a link; anything else with structure becomes blocks. False
+ * leaves the paste to ProseMirror (one line of text, Folevi's own copied text).
+ */
+export function handleEditorPaste(view: EditorView, event: ClipboardEvent, slice: Slice | null, options: { editable: boolean; insertFiles: (files: File[]) => void }): boolean {
+  const data = event.clipboardData;
+  prepareForPaste(view, slice);
+  if (pasteIntoCode(view, data)) {
+    event.preventDefault();
+    return true;
+  }
+  if (options.editable && pasteIsPlain(view) && pastePlainText(view, data?.getData("text/plain") ?? "")) {
+    event.preventDefault();
+    return true;
+  }
+  // Blocks copied in a Folevi note (they may come with a picture of themselves for other apps).
+  const clip = readBlockClip(data);
+  if (clip) {
+    event.preventDefault();
+    if (options.editable) insertPastedBlocks(view, clip.blocks, { whole: true });
+    return true;
+  }
+  if (options.editable && pasteIsFiles(data)) {
+    event.preventDefault();
+    options.insertFiles([...(data?.files ?? [])]);
+    return true;
+  }
+  // A plain web address: a link (over the selected text, if any).
+  if (pasteAddress(view, data)) {
+    event.preventDefault();
+    return true;
+  }
+  const blocks = clipboardBlocks(view, data);
+  if (!blocks) return false;
+  event.preventDefault();
+  insertPastedBlocks(view, blocks);
+  return true;
+}
+
 /** Block styling that follows the text onto a new line, as with Enter (splitAttrs in plugins.ts). */
 const CARRIED_FORMAT = ["decoration", "color", "align", "font", "group"] as const;
 /** What the second half needs to stay the same kind of block. */
-const KIND_ATTRS = ["level", "textStyle", "tone", "icon", "collapsed"] as const;
+const KIND_ATTRS = ["level", "textStyle", "tone", "icon", "collapsed", "language"] as const;
 
 /**
  * The second half of a line a paste splits: a fresh id, the same depth, kind and styling, but none of the
@@ -468,67 +579,149 @@ function secondHalfAttrs(from: PMNode): Record<string, unknown> {
   return attrs;
 }
 
+/** Lines a pasted plain paragraph becomes one of, when it lands in a line of that kind. */
+const LIST_LINES = new Set(["bulleted", "numbered", "todo"]);
+
+const sizeOf = (nodes: PMNode[]) => nodes.reduce((n, node) => n + node.nodeSize, 0);
+
 /**
- * Inserts pasted blocks where the caret is: replacing the selection, filling an empty line, or splitting
- * the line at the caret so the pasted blocks land between its two halves. A single pasted paragraph goes
- * into the line itself. Pasted blocks get fresh ids and nest under the caret's block depth.
+ * The empty line a paste lands on, holding the first pasted block's text. A plain pasted line leaves the line
+ * what it was (a heading stays a heading, a to-do keeps its details); any other kind of block gives the line
+ * its own kind. Either way the line keeps its id.
  */
-export function insertPastedBlocks(view: EditorView, blocks: WireBlock[]): void {
+function filledLine(line: PMNode, first: PMNode, plain: boolean): PMNode {
+  if (!plain) return first.type.create({ ...first.attrs, id: line.attrs.id ?? first.attrs.id }, first.content);
+  const attrs: Record<string, unknown> = { ...line.attrs };
+  // Two paragraphs: the pasted one's own styling comes along.
+  if (line.type.name === "paragraph") for (const [k, v] of Object.entries(first.attrs)) if (v != null && k !== "id" && k !== "depth") attrs[k] = v;
+  return line.type.create(attrs, first.content);
+}
+
+/**
+ * Inserts pasted blocks where the caret is, the way a sentence is pasted into a sentence:
+ *
+ * - The first pasted block, when it holds text, continues the caret's line, which stays the kind of line it
+ *   was. An empty line becomes the first block instead (see filledLine).
+ * - The text after the caret joins the end of the last pasted block, when that one holds text. At the very
+ *   start of a line the last pasted block's text goes in front of the line's own, so the line keeps its id.
+ * - In a list item or a to-do, pasted plain lines are items of that list.
+ * - Around a block without text (an image, a table, a divider, code) the line is split as before: the block
+ *   lands between its two halves.
+ *
+ * One block of text therefore goes into the line itself, whatever kind it was. Pasted blocks get fresh ids
+ * and nest under the caret's block depth, and the whole paste is one undo step of its own.
+ *
+ * `whole`: blocks copied as blocks in a Folevi note (blockClipboard.ts). Those come back exactly as they
+ * were, each a block of its own with its kind and details (a to-do's date, a heading's level): they never
+ * join the line, which is split around them as around a block without text. Only a single plain paragraph
+ * still goes into the line.
+ */
+export function insertPastedBlocks(view: EditorView, blocks: WireBlock[], options: { whole?: boolean } = {}): void {
   const { schema } = view.state;
+  const flat = flattenTree(blocks);
+  if (!flat.length) return;
   // Over a range through a collapsed toggle, only what's visible is replaced.
   const visible = deleteVisibleRange(view.state);
   // Marked as a paste, so files in pasted blocks are shared with this note (Editor.tsx).
-  const tr = (visible ?? view.state.tr).setMeta("uiEvent", "paste").setMeta("paste", true);
+  const tr = closeHistory(visible ?? view.state.tr).setMeta("uiEvent", "paste").setMeta("paste", true);
   if (!tr.selection.empty) tr.deleteSelection();
   const $from = tr.selection.$from;
-  const flat = flattenTree(blocks);
-  let baseDepth = $from.depth >= 1 ? Number($from.node(1).attrs.depth ?? 0) : 0;
-  const inText = $from.depth >= 1 && $from.parent.isTextblock;
+  const line = $from.depth >= 1 && $from.parent.isTextblock ? $from.parent : null;
+  const lineDepth = $from.depth >= 1 ? Number($from.node(1).attrs.depth ?? 0) : 0;
+  let baseDepth = lineDepth;
   // At the end of a line with nested blocks: like Enter, the pasted blocks become its first nested lines,
   // or (a collapsed toggle) go after its hidden blocks.
   let afterHidden: number | null = null;
-  if (inText && $from.parentOffset === $from.parent.content.size && $from.parent.content.size > 0) {
+  if (line && $from.parentOffset === line.content.size && line.content.size > 0) {
     const index = $from.index(0);
     const next = tr.doc.maybeChild(index + 1);
     if (next && Number(next.attrs.depth ?? 0) > baseDepth) {
-      if ($from.parent.type.name === "toggle" && $from.parent.attrs.collapsed) {
+      if (line.type.name === "toggle" && line.attrs.collapsed) {
         let end = $from.after(1);
         for (let i = index + 1; i < tr.doc.childCount && Number(tr.doc.child(i).attrs.depth ?? 0) > baseDepth; i++) end += tr.doc.child(i).nodeSize;
         afterHidden = end;
       } else baseDepth += 1;
     }
   }
-  const nodes = flat.map(({ block, depth }) => schema.nodeFromJSON(blockToNode({ ...block, id: ulid() }, baseDepth + depth)));
-  if (inText && nodes.length === 1 && nodes[0]!.type.name === "paragraph" && $from.parent.type.name !== "codeBlock") {
-    // One plain paragraph: its text (with its formatting) goes into the current line.
-    tr.insert($from.pos, nodes[0]!.content);
-    view.dispatch(tr.scrollIntoView());
-    return;
+  const nodeAt = (i: number, base: number) => schema.nodeFromJSON(blockToNode({ ...flat[i]!.block, id: ulid() }, base + flat[i]!.depth));
+  const nodes = flat.map((_entry, i) => nodeAt(i, baseDepth));
+  // Text joins text: never code (it holds no formatting), and never past a collapsed toggle's hidden lines.
+  const asBlocks = options.whole && !(nodes.length === 1 && nodes[0]!.type.name === "paragraph");
+  const joins = line !== null && TEXT_NODES.has(line.type.name) && afterHidden === null && !asBlocks;
+  const joinFirst = joins && TEXT_NODES.has(nodes[0]!.type.name);
+  const joinLast = joins && TEXT_NODES.has(nodes[nodes.length - 1]!.type.name);
+  // What was nested under the first pasted block is nested under the caret's line, which takes its place.
+  if (joinFirst && baseDepth !== lineDepth) for (let i = 1; i < flat.length && flat[i]!.depth > 0; i++) nodes[i] = nodeAt(i, lineDepth);
+  const plainFirst = nodes[0]!.type.name === "paragraph";
+  if (joins && LIST_LINES.has(line.type.name)) {
+    flat.forEach(({ depth }, i) => {
+      const node = nodes[i]!;
+      if (depth > 0 || node.type.name !== "paragraph") return;
+      const attrs: Record<string, unknown> = { id: node.attrs.id, depth: node.attrs.depth };
+      for (const k of CARRIED_FORMAT) if (node.attrs[k] != null) attrs[k] = node.attrs[k];
+      nodes[i] = line.type.create(attrs, node.content);
+    });
   }
-  let at: number;
-  let replaceEmpty = false;
-  if (!inText) {
-    at = $from.depth >= 1 ? $from.after(1) : $from.pos;
-  } else if ($from.parent.content.size === 0) {
-    at = $from.before(1);
-    replaceEmpty = true;
-  } else if ($from.parentOffset === 0) {
-    at = $from.before(1);
-  } else if ($from.parentOffset === $from.parent.content.size) {
-    at = afterHidden ?? $from.after(1);
-  } else {
-    // Split the line at the caret; the second half keeps the block's type on a new line.
-    tr.split($from.pos, 1, [{ type: $from.parent.type, attrs: secondHalfAttrs($from.parent) }]);
-    // Between the two halves: just after the first one closes.
-    at = tr.mapping.map($from.pos, -1) + 1;
-  }
-  if (replaceEmpty) tr.replaceWith(at, at + $from.parent.nodeSize, nodes);
-  else tr.insert(at, nodes);
-  const end = at + nodes.reduce((n, node) => n + node.nodeSize, 0);
-  // Caret at the end of the last pasted block (or just after it, for a block without text).
+  const first = nodes[0]!;
   const last = nodes[nodes.length - 1]!;
-  const caret = last.isTextblock ? end - 1 : Math.min(end + 1, tr.doc.content.size);
-  tr.setSelection(TextSelection.near(tr.doc.resolve(caret), -1));
-  normalizeDepths(tr);
-  view.dispatch(tr.scrollIntoView());
+  /** The caret at the end of the last pasted block (or just after it, for a block without text). */
+  const caretAfter = (end: number) => tr.setSelection(TextSelection.near(tr.doc.resolve(last.isTextblock ? end - 1 : Math.min(end + 1, tr.doc.content.size)), -1));
+  const finish = () => {
+    normalizeDepths(tr);
+    view.dispatch(tr.scrollIntoView());
+  };
+  if (!line) {
+    const at = $from.depth >= 1 ? $from.after(1) : $from.pos;
+    tr.insert(at, nodes);
+    caretAfter(at + sizeOf(nodes));
+    return finish();
+  }
+  const pos = $from.pos;
+  const linePos = $from.before(1);
+  if (line.content.size === 0) {
+    // An empty line: the pasted blocks take its place.
+    const all = joinFirst ? [filledLine(line, first, plainFirst), ...nodes.slice(1)] : nodes;
+    tr.replaceWith(linePos, linePos + line.nodeSize, all);
+    caretAfter(linePos + sizeOf(all));
+    return finish();
+  }
+  if ($from.parentOffset === 0) {
+    // The start of a line: the blocks go above it. The line stays itself, with the last block's text in front.
+    if (!joinLast) {
+      tr.insert(linePos, nodes);
+      caretAfter(linePos + sizeOf(nodes));
+      return finish();
+    }
+    const above = nodes.slice(0, -1);
+    tr.insert(pos, last.content);
+    tr.insert(linePos, above);
+    tr.setSelection(TextSelection.create(tr.doc, pos + sizeOf(above) + last.content.size));
+    return finish();
+  }
+  // In a line, or at its end: the first block's text goes in at the caret.
+  let caret = pos;
+  let rest = nodes;
+  if (joinFirst) {
+    tr.insert(pos, first.content);
+    caret = pos + first.content.size;
+    rest = nodes.slice(1);
+  }
+  if (!rest.length) {
+    tr.setSelection(TextSelection.create(tr.doc, caret));
+    return finish();
+  }
+  const tail = line.content.cut($from.parentOffset);
+  let below = rest;
+  if (tail.size) {
+    tr.delete(caret, caret + tail.size);
+    // What followed the caret ends the last pasted block, or (after a block without text) stays the kind
+    // of line it was, on a line of its own.
+    below = joinLast ? [...rest.slice(0, -1), last.copy(last.content.append(tail))] : [...rest, line.type.create(secondHalfAttrs(line), tail)];
+  }
+  // Just after the line closes (or after a collapsed toggle's hidden blocks).
+  const at = afterHidden ?? caret + 1;
+  tr.insert(at, below);
+  if (tail.size && joinLast) tr.setSelection(TextSelection.create(tr.doc, at + sizeOf(below) - 1 - tail.size));
+  else caretAfter(at + sizeOf(rest));
+  finish();
 }

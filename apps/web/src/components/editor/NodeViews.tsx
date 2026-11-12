@@ -4,7 +4,7 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from 
 import { NodeSelection } from "@tiptap/pm/state";
 import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   Download,
   ExternalLink,
@@ -55,6 +55,7 @@ import { AudioPlayer } from "./AudioPlayer";
 import { EmbedFrame } from "./EmbedFrame";
 import { TranscribeButton, useCanTranscribe, useTranscription } from "@/components/ai/AudioTranscribe";
 import { SyncedBlock } from "./extensions";
+import "./image.css";
 
 // The whiteboard, flowchart, the other visual blocks and collections are large and most notes have none: each
 // loads the first time a note shows one, in a placeholder of the block's own height so nothing moves when it
@@ -226,6 +227,29 @@ function Frame({
   );
 }
 
+/** The narrowest an image is saved: a fifth of the text column (the schema's own lower bound). */
+const MIN_IMAGE_WIDTH = 0.2;
+/** The air between an image and its tools when they float above it. */
+const IMAGE_TOOLS_GAP = 8;
+
+/** A dragged width as it's saved: a share of the text column in hundredths, a fifth at least; null for all of it. */
+export function imageWidthAttr(share: number): number | null {
+  const w = Math.round(Math.min(1, Math.max(MIN_IMAGE_WIDTH, share)) * 100) / 100;
+  return w >= 1 ? null : w;
+}
+
+/**
+ * Where the part of the page an element scrolls in starts, in the window's coordinates: the top of the nearest
+ * thing that scrolls or clips it, past what that keeps clear at its top (the page's own bar).
+ */
+function visibleTop(el: Element): number {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const cs = getComputedStyle(p);
+    if (/auto|scroll|hidden|clip/.test(cs.overflowY)) return Math.max(0, p.getBoundingClientRect().top + (parseFloat(cs.scrollPaddingTop) || 0));
+  }
+  return 0;
+}
+
 function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNodeViewProps) {
   const a = node.attrs as {
     id: string;
@@ -240,6 +264,10 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
   const upload = useUploadState(a.id);
   const preview = useLocalPreview(a.fileId, upload?.uploadId, file?.url);
   const src = file?.url ?? (a.url ? sanitizeHref(a.url) : null) ?? preview;
+  // Nothing to show yet, and a picture is on its way: its address is being asked for, or it's being uploaded
+  // from this device (the copy kept here is read a moment after the block appears, and the file's id only
+  // arrives once the upload is done). "Unavailable" is for a picture that is really gone.
+  const loading = Boolean(upload) || (Boolean(a.fileId) && !missing);
   const width = a.width ?? 1;
   // What the person wrote about the image. Older uploads carry their file's name as alt; that isn't a
   // description, so it's neither read out nor shown in the Description field. Without a description the picture
@@ -252,18 +280,173 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
   const update = (attrs: Record<string, unknown>) => {
     if (editor.isEditable) updateAttributes(attrs);
   };
+
+  const figureRef = useRef<HTMLElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const toolsRef = useRef<HTMLDivElement>(null);
+  // The width drawn while a handle is dragged: nothing is saved until it's let go. (Letting go clears this and
+  // writes the width in the same breath: both are drawn before the browser paints again, so the old width
+  // never shows in between.)
+  const [live, setLive] = useState<number | null>(null);
+  const shown = live ?? width;
+  const [gripHeld, setGripHeld] = useState<"left" | "right" | null>(null);
+  // A picture narrower than a fifth of the column at its own size can't be made any smaller: no handles.
+  const [tiny, setTiny] = useState(false);
+  const checkTiny = () => {
+    const column = figureRef.current?.parentElement?.getBoundingClientRect().width ?? 0;
+    const natural = boxRef.current?.querySelector("img")?.naturalWidth ?? 0;
+    setTiny(column > 0 && natural > 0 && natural <= column * MIN_IMAGE_WIDTH);
+  };
+  const endResize = useRef<((save: boolean) => void) | null>(null);
+  useEffect(() => () => endResize.current?.(false), []);
+
+  // Dragging a handle. The picture keeps its left edge (the figure starts at the column's), so a handle moved
+  // by some distance changes the width by that distance: the right one outward to widen, the left one the other
+  // way round. One write when it's let go (one step to undo); Escape, or the press being taken away, puts
+  // the width back.
+  const startResize = (e: React.PointerEvent<HTMLElement>, side: "left" | "right") => {
+    if (e.button !== 0 || !editor.isEditable || endResize.current) return;
+    const column = figureRef.current?.parentElement?.getBoundingClientRect().width ?? 0;
+    const picture = boxRef.current?.getBoundingClientRect().width ?? 0;
+    if (!column || !picture) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const grip = e.currentTarget;
+    const pointer = e.pointerId;
+    const startX = e.clientX;
+    const from = a.width;
+    // A small picture is never stretched: it's drawn narrower than its share of the column, the drag starts from
+    // what is drawn, and past its own size there's nothing wider to drag to.
+    const natural = boxRef.current?.querySelector("img")?.naturalWidth ?? 0;
+    const most = natural > 0 && natural < column ? natural / column : 1;
+    const start = Math.min(width, picture / column);
+    let next = start;
+    let moved = false;
+    const move = (m: PointerEvent) => {
+      if (m.pointerId !== pointer) return;
+      const dx = (m.clientX - startX) * (side === "right" ? 1 : -1);
+      if (!moved && Math.abs(dx) < 2) return;
+      moved = true;
+      next = Math.max(Math.min(MIN_IMAGE_WIDTH, most), Math.min(most, start + dx / column));
+      setLive(next);
+    };
+    const end = (save: boolean) => {
+      window.removeEventListener("pointermove", move, true);
+      window.removeEventListener("pointerup", up, true);
+      window.removeEventListener("pointercancel", up, true);
+      window.removeEventListener("keydown", key, true);
+      if (grip.hasPointerCapture?.(pointer)) grip.releasePointerCapture(pointer);
+      document.documentElement.classList.remove("fb-image-resizing");
+      endResize.current = null;
+      setGripHeld(null);
+      // As wide as the picture goes is "full width": saved as a share, it would shrink the picture on a narrower screen.
+      const saved = next >= most - 0.004 ? null : imageWidthAttr(next);
+      setLive(null);
+      if (save && moved && editor.isEditable && saved !== from) updateAttributes({ width: saved });
+      // A press let go where it began is a click on the picture: the block is selected, as anywhere else on it.
+      if (save && !moved) selectBlock(editor, getPos);
+    };
+    const up = (u: PointerEvent) => {
+      if (u.pointerId === pointer) end(u.type === "pointerup");
+    };
+    const key = (k: KeyboardEvent) => {
+      if (k.key !== "Escape") return;
+      // Only the drag ends: the block stays selected and no dialog around the note closes.
+      k.preventDefault();
+      k.stopPropagation();
+      end(false);
+    };
+    endResize.current = end;
+    // The handle keeps the pointer (so the drag carries on outside the window too); the window is listened to
+    // all the same, for a pointer that can't be kept (one already gone by now).
+    try {
+      grip.setPointerCapture?.(pointer);
+    } catch {
+      // Not kept: the window's own events still follow it.
+    }
+    window.addEventListener("pointermove", move, true);
+    window.addEventListener("pointerup", up, true);
+    window.addEventListener("pointercancel", up, true);
+    window.addEventListener("keydown", key, true);
+    document.documentElement.classList.add("fb-image-resizing");
+    setGripHeld(side);
+  };
+  const grip = (side: "left" | "right") => (
+    // (Not a button: the Width buttons in the image's tools are the same thing for the keyboard and a screen reader.)
+    <span
+      data-image-grip={side}
+      data-active={gripHeld === side ? "" : undefined}
+      className={`fb-image-grip fb-image-grip-${side}`}
+      aria-hidden
+      title="Drag to resize. Double-click for full width"
+      onPointerDown={(e) => startResize(e, side)}
+      // The press is the handle's alone: no caret, no selection, no drag of the block.
+      onMouseDown={(e) => e.preventDefault()}
+      onDoubleClick={(e) => {
+        e.preventDefault();
+        update({ width: null });
+      }}
+    />
+  );
+
+  // The tools float above the picture, clear of it, when there's room for them there (the picture's top is in
+  // sight with space over it); otherwise over its bottom edge, as they always did. Sideways they stay centred
+  // on the picture as far as the note's own width allows, so a narrow picture's tools aren't cut off at the
+  // page's edge. They are placed, never laid out: nothing below the image moves when it's selected.
+  const toolsShown = selected && editable && Boolean(src);
+  const [place, setPlace] = useState<{ above: boolean; left: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!toolsShown) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const box = boxRef.current;
+      const tools = toolsRef.current;
+      if (!box || !tools || editor.isDestroyed) return;
+      const picture = box.getBoundingClientRect();
+      const size = tools.getBoundingClientRect();
+      const page = editor.view.dom.getBoundingClientRect();
+      const above = picture.top - visibleTop(box) >= size.height + IMAGE_TOOLS_GAP * 2;
+      const left = Math.round(Math.max(page.left, Math.min(page.right - size.width, picture.left + picture.width / 2 - size.width / 2)) - picture.left);
+      setPlace((had) => (had && had.above === above && had.left === left ? had : { above, left }));
+    };
+    const soon = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    measure();
+    // The picture loading or being resized, the window changing, and anything scrolling under it.
+    const sized = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(soon);
+    if (boxRef.current) sized?.observe(boxRef.current);
+    window.addEventListener("scroll", soon, { capture: true, passive: true });
+    window.addEventListener("resize", soon);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      sized?.disconnect();
+      window.removeEventListener("scroll", soon, true);
+      window.removeEventListener("resize", soon);
+    };
+  }, [toolsShown, editor]);
+
   return (
     <Frame selected={selected} label="Image">
-      <figure className="my-2" style={{ width: `${Math.round(width * 100)}%` }}>
+      <figure ref={figureRef} className="my-2" style={{ width: `${Math.round(shown * 10000) / 100}%` }}>
         {src ? (
-          // Never wider than the image itself (a small image isn't stretched); while it's selected its tools
-          // float over it, centred, so nothing below moves and a small image's tools stay inside the page.
-          <div className="relative mx-auto w-fit max-w-full">
+          // Never wider than the image itself (a small image isn't stretched), so the handles on its edges
+          // hug the picture as it is drawn.
+          <div ref={boxRef} className="fb-image-box relative mx-auto w-fit max-w-full" data-selected={selected ? "" : undefined} onPointerEnter={checkTiny}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt={description} className="block h-auto max-w-full rounded-chip border border-line bg-sunken" draggable={false} />
-            {selected && editable ? (
+            <img src={src} alt={description} className="block h-auto max-w-full rounded-chip border border-line bg-sunken" draggable={false} onLoad={checkTiny} />
+            {editable && !tiny ? (
+              <>
+                {grip("left")}
+                {grip("right")}
+              </>
+            ) : null}
+            {toolsShown ? (
               <div
-                className="ui-pop absolute bottom-2 left-1/2 z-20 flex w-max -translate-x-1/2 max-w-[min(32rem,calc(100vw-2rem))] flex-wrap items-center gap-2 px-2 py-1.5 text-footnote text-muted"
+                ref={toolsRef}
+                className={`ui-pop absolute z-20 flex w-max max-w-[min(32rem,calc(100vw-2rem))] flex-wrap items-center gap-2 px-2 py-1.5 text-footnote text-muted ${place ? "" : "bottom-2 left-1/2 -translate-x-1/2"}`}
+                style={place ? { left: place.left, bottom: place.above ? `calc(100% + ${IMAGE_TOOLS_GAP}px)` : IMAGE_TOOLS_GAP } : undefined}
                 contentEditable={false}
               >
                 <label className="flex items-center gap-1">
@@ -293,8 +476,8 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
             ) : null}
           </div>
         ) : (
-          <div className="grid h-40 place-items-center rounded-chip border border-dashed border-line-strong text-subheadline text-muted">
-            {a.fileId && !missing ? (
+          <div className="grid h-40 place-items-center rounded-chip border border-dashed border-line-strong text-subheadline text-muted" aria-busy={loading || undefined}>
+            {loading ? (
               "Loading image…"
             ) : (
               <span className="flex items-center gap-2">
@@ -540,10 +723,25 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
   const card = useRef<HTMLDivElement>(null);
   const firstField = useRef<HTMLInputElement>(null);
 
+  // Sets this bookmark's attributes without a step of their own to undo (as a pasted file's copy does when it
+  // arrives: pastedFiles.ts). What a page says about itself comes a moment after its link is pasted; as a step,
+  // the first ⌘Z after pasting would only take the preview off again and leave the bookmark standing. It is
+  // still this person's note changing, so it's saved like any edit (it isn't marked "remote").
+  const setQuietly = useCallback(
+    (attrs: Record<string, unknown>) => {
+      const pos = typeof getPos === "function" ? getPos() : undefined;
+      const live = typeof pos === "number" ? editor.state.doc.nodeAt(pos) : null;
+      if (typeof pos !== "number" || !live || live.type.name !== "bookmark") return;
+      editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...live.attrs, ...attrs }).setMeta("addToHistory", false));
+    },
+    [editor, getPos],
+  );
+
   // The page's own title, description, image and icon, read once per address (on the server). Fields the
-  // person wrote themselves are kept; a title that is just the address is replaced.
+  // person wrote themselves are kept; a title that is just the address is replaced. Read by itself (a new
+  // bookmark, a changed address) it's no step to undo; asked for with "Refresh preview" (`undoable`) it is one.
   const loadPreview = useCallback(
-    async (url: string, replaceAll: boolean) => {
+    async (url: string, replaceAll: boolean, undoable = false) => {
       // (Local mode reads previews once bookmarks.preview is ported there: lib/local/registry.ts.)
       if (env.demo || !/^https?:\/\//i.test(url) || !canCallHere(api.bookmarks.preview)) return;
       previewed.add(url);
@@ -562,22 +760,25 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
         if (p.siteName && (replaceAll || !now.siteName)) patch.siteName = p.siteName;
         if (replaceAll || !now.image) patch.image = p.image;
         if (replaceAll || !now.icon) patch.icon = p.icon;
-        if (Object.keys(patch).length) updateAttributes(patch);
+        if (!Object.keys(patch).length) return;
+        if (undoable) updateAttributes(patch);
+        else setQuietly(patch);
       } catch {
         // No preview (offline, the site didn't answer): the bookmark keeps what it has.
       }
     },
-    [env.demo, fetchPreview, getPos, editor, updateAttributes],
+    [env.demo, fetchPreview, getPos, editor, updateAttributes, setQuietly],
   );
   // An address saved broken ("https://Address:https://site.com/", from text pasted after the "https://"
-  // the field started with) is repaired, and its page read again.
+  // the field started with) is repaired, and its page read again. (No step to undo either: undone, the repair
+  // would only run again, and ⌘Z could never get past it.)
   useEffect(() => {
     if (!editable || !a.url) return;
     const fixed = webAddressIn(a.url);
     if (!fixed || fixed === a.url || webAddressIn(a.url) === sanitizeHref(a.url)) return;
-    updateAttributes({ url: fixed, title: hostOf(fixed), description: null, siteName: null, image: null, icon: null });
+    setQuietly({ url: fixed, title: hostOf(fixed), description: null, siteName: null, image: null, icon: null });
     void loadPreview(fixed, true);
-  }, [editable, a.url, updateAttributes, loadPreview]);
+  }, [editable, a.url, setQuietly, loadPreview]);
   useEffect(() => {
     if (!editable || !a.url || previewed.has(a.url)) return;
     // A new bookmark, or one saved before previews (or their images and icons) existed.
@@ -721,7 +922,7 @@ function BookmarkView({ node, selected, updateAttributes, editor, getPos }: Reac
                 type="button"
                 className="ui-btn ui-btn-quiet h-8 px-3 text-footnote"
                 onClick={() => {
-                  if (a.url) void loadPreview(a.url, true);
+                  if (a.url) void loadPreview(a.url, true, true);
                 }}
               >
                 Refresh preview
@@ -799,12 +1000,20 @@ function UnknownView({ node, selected, deleteNode, editor }: ReactNodeViewProps)
 function isHistoryKey(event: Event): boolean {
   if (!(event instanceof KeyboardEvent) || event.type !== "keydown" || !(event.metaKey || event.ctrlKey) || event.altKey) return false;
   // Only fields bound to the block (captions, cells, a formula); a collection's own inputs keep their own undo.
-  if (!(event.target instanceof Element) || !event.target.closest("[data-draft]")) return false;
+  // And a tabs block's own tabs and buttons (TabsView marks the block with data-tabs-strip): after a tab is
+  // deleted or moved from its menu the keyboard is on one of them, and ⌘Z has to bring the tab back. The field
+  // a tab is renamed in is an input, not one of these: its ⌘Z undoes the typing in it.
+  if (!(event.target instanceof Element) || !event.target.closest("[data-draft], [data-tabs-strip] button, [data-tabs-strip] [role=tab]")) return false;
   const key = event.key.toLowerCase();
   return key === "z" || (key === "y" && !event.shiftKey);
 }
 
 type StopEvent = (props: { event: Event }) => boolean;
+
+/** A press, drag or double click on one of an image's resize handles (ImageView). */
+function onImageGrip(event: Event): boolean {
+  return /^(pointer|mouse|touch|click|dblclick)/.test(event.type) && event.target instanceof Element && Boolean(event.target.closest("[data-image-grip]"));
+}
 
 /**
  * A React block view whose outer element carries the block's id and depth like every other block, so it
@@ -867,7 +1076,9 @@ function EmbedView({ node, selected, editor, getPos }: ReactNodeViewProps) {
 
 export const NODE_VIEW_EXTENSIONS = [
   ImageBlock.extend({
-    addNodeView: () => blockView(ImageView, ({ event }) => event.target instanceof HTMLInputElement || event.target instanceof HTMLButtonElement),
+    // Its fields, its buttons and its resize handles (a press or drag on one is never the note's, or the block
+    // would be picked up and dragged away) handle their own input.
+    addNodeView: () => blockView(ImageView, ({ event }) => event.target instanceof HTMLInputElement || event.target instanceof HTMLButtonElement || onImageGrip(event)),
   }),
   FileBlock.extend({ addNodeView: () => blockView(FileView) }),
   // The player's buttons, slider and link handle their own input.

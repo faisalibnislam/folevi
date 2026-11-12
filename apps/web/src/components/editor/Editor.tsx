@@ -5,7 +5,7 @@ import type { EditorOptions } from "@tiptap/core";
 import { NodeSelection, Selection, TextSelection, type EditorState } from "@tiptap/pm/state";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { LIMITS, ulid, type WireBlock } from "@folevi/editor-schema";
+import { LIMITS, SCHEMA_VERSION, rankBetween, ulid, type WireBlock } from "@folevi/editor-schema";
 import { useMutation } from "convex/react";
 import { api } from "@/lib/convex/api";
 import type { SyncEngine } from "@/lib/sync/engine";
@@ -14,21 +14,24 @@ import { MAX_FILE_BYTES, MAX_IMAGE_BYTES } from "@folevi/editor-schema/fileBytes
 import { decorationsKey, type DecorationInputs, type TriggerState } from "./plugins";
 import { editorExtensions } from "./editorExtensions";
 import { blocksToDoc, docToBlocks, localChanges } from "./convert";
-import { clipboardBlocks, insertPastedBlocks, pasteIntoCode, prepareForPaste } from "./paste";
+import { clipboardBlocks, handleEditorPaste, insertPastedBlocks } from "./paste";
 import { readBlockClip } from "./blockClipboard";
 import { usePastedFiles } from "./pastedFiles";
 import { useClipboardImageFiles } from "./canvas/imageFiles";
 import { remoteTransaction } from "./remoteApply";
 import { PageLinkStatusWatcher } from "./PageLinkStatusWatcher";
-import { pasteAddress } from "./autolink";
 import { DOCK_SCROLL_MARGIN, DOCK_SCROLL_THRESHOLD } from "./scrollEdges";
 import { EditorMenus } from "./EditorMenus";
+import { focusBlockById } from "./findReplace";
 import { insertBlockAfterCurrent, subtreeRange, moveSubtreeTo } from "./commands";
 import { applySideDrop } from "./columns/columnsCommands";
 import type { SideDrop } from "./columns/columnsLayout";
 import { closeHistory } from "@tiptap/pm/history";
 import { SYNCED_BODY_ATTR } from "./synced/nested";
 import { useAiEnabled } from "@/components/ai/useAi";
+import { flushBlocks } from "./canvas/leaveFlush";
+import { ownSpelling } from "@/lib/spelling/web";
+import { keepNoteHistory, restoreNoteHistory } from "./historyKeep";
 
 export interface EditorHandle {
   /** Pushes pending local edits into the sync engine immediately. */
@@ -159,39 +162,13 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
         role: "textbox",
         "aria-multiline": "true",
         "aria-label": label ?? "Document body",
-        spellcheck: "true",
+        // Where Folevi marks misspelt words itself (spellcheck.ts) the browser's own marks are off, or every
+        // slip would be underlined twice; everywhere else the browser's, or the Mac's, stay on.
+        spellcheck: ownSpelling() ? "false" : "true",
       },
       scrollMargin: DOCK_SCROLL_MARGIN, scrollThreshold: DOCK_SCROLL_THRESHOLD, // the caret scrolls clear of the floating page tools
-      handlePaste: (view, event, slice) => {
-        prepareForPaste(view, slice);
-        if (pasteIntoCode(view, event.clipboardData)) {
-          event.preventDefault();
-          return true;
-        }
-        // Blocks copied in a Folevi note (they may come with a picture of themselves for other apps).
-        const clip = readBlockClip(event.clipboardData);
-        if (clip) {
-          event.preventDefault();
-          if (editable) insertPastedBlocks(view, clip.blocks);
-          return true;
-        }
-        const files = [...(event.clipboardData?.files ?? [])];
-        if (files.length && editable) {
-          event.preventDefault();
-          void insertFilesRef.current(files);
-          return true;
-        }
-        // A plain web address: a link (over the selected text, if any).
-        if (pasteAddress(view, event.clipboardData)) {
-          event.preventDefault();
-          return true;
-        }
-        const blocks = clipboardBlocks(view, event.clipboardData);
-        if (!blocks) return false;
-        event.preventDefault();
-        insertPastedBlocks(view, blocks);
-        return true;
-      },
+      // What a paste becomes is decided in paste.ts (code, plain text, Folevi blocks, files, a link, blocks).
+      handlePaste: (view, event, slice) => handleEditorPaste(view, event, slice, { editable, insertFiles: (files) => void insertFilesRef.current(files) }),
       handleKeyDown: (view, event) => {
         // Ctrl+Home / Ctrl+End (Windows and Linux) in a synced block's editor: the browser's own move left the
         // nested editor and put the caret at the start of the note around it. Its own start or end instead.
@@ -222,7 +199,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
           const blocks = clipboardBlocks(view, event.dataTransfer);
           if (!blocks) return false;
           event.preventDefault();
-          insertPastedBlocks(view, blocks);
+          // (Blocks copied as blocks in Folevi stay whole blocks, as when pasted.)
+          insertPastedBlocks(view, blocks, { whole: Boolean(readBlockClip(event.dataTransfer)) });
           return true;
         }
         event.preventDefault();
@@ -244,6 +222,8 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     editorProps,
     onCreate: ({ editor: ed }) => {
       if (!hydrated.current) hydrate(ed.state.doc);
+      // Back in a note that was left a moment ago and has not changed: Cmd+Z still works (historyKeep.ts).
+      restoreNoteHistory(`${accountKey}:${documentId}`, ed);
       // A note that starts with an image (or any media) opens with nothing selected: ProseMirror would
       // select that block, and its tools (alt text, size) would show before anyone touched it.
       const plain = unselectedMedia(ed.state);
@@ -274,6 +254,13 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
 
   const editorRef = useRef<TiptapEditor | null>(null);
   editorRef.current = editor;
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (editor) onEditorReady?.(editor);
@@ -355,10 +342,20 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
     return () => {
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", onHide);
+      // The note is closing: its canvases write what they still hold (their views are already down, so
+      // they write by block id), and the last save below takes it along.
+      flushBlocks();
       onHide();
       engine.setEditing(documentId, false);
+      // The undo history outlives this editor for a while (historyKeep.ts).
+      const leaving = editorRef.current;
+      try {
+        if (leaving && !leaving.isDestroyed) keepNoteHistory(`${accountKey}:${documentId}`, leaving.state);
+      } catch {
+        // The editor is already gone: the note opens with no history, as it always did.
+      }
     };
-  }, [flushLocal, engine, documentId]);
+  }, [flushLocal, engine, documentId, accountKey]);
 
   const insertFiles = useCallback(
     async (files: File[]) => {
@@ -424,14 +421,20 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       const blockId = ulid();
       // Register the upload before the block exists so its sync op is held until the upload finishes.
       await enqueueUpload(accountKey, engine, { documentId, blockId, file, kind: "audio" });
+      const props = { name: file.name, size: file.size, mimeType: file.type, duration: Math.round(duration * 10) / 10 };
+      // The note was left while recording (the recorder stores what it has, AudioRecorder.tsx): this editor
+      // is gone, so the recording goes at the end of the note, straight into the saved copy.
+      if (ed.isDestroyed || !mounted.current) {
+        const last = engine
+          .documentBlocks(documentId)
+          .filter((b) => b.parentId === null)
+          .reduce<string | null>((m, b) => (m === null || b.rank > m ? b.rank : m), null);
+        engine.upsertBlock(documentId, { id: blockId, type: "audio", parentId: null, rank: rankBetween(last, null), schemaVersion: SCHEMA_VERSION, text: [], props: { fileId: "", ...props } }, ["content", "position"], null);
+        window.dispatchEvent(new CustomEvent("folevi:uploads-changed"));
+        return;
+      }
       // Takes the place of the empty line the "/" was typed on.
-      insertBlockAfterCurrent(ed, "audio", {
-        id: blockId,
-        name: file.name,
-        size: file.size,
-        mimeType: file.type,
-        duration: Math.round(duration * 10) / 10,
-      });
+      insertBlockAfterCurrent(ed, "audio", { id: blockId, ...props });
       window.dispatchEvent(new CustomEvent("folevi:uploads-changed"));
     },
     [accountKey, engine, documentId],
@@ -443,18 +446,11 @@ export const Editor = forwardRef<EditorHandle, Props>(function Editor(
       flush: () => flushLocal(editorRef.current),
       applyFromEngine,
       editor: editorRef.current,
+      // The caret in that block, in view: a block folded away in a toggle or a tab is shown first, and a
+      // block without text (an image, a table) is selected (findReplace.ts).
       focusBlock: (blockId: string) => {
         const ed = editorRef.current;
-        if (!ed) return;
-        ed.state.doc.forEach((n, offset) => {
-          if (n.attrs.id === blockId) {
-            ed.chain()
-              .focus()
-              .setTextSelection(offset + 1)
-              .scrollIntoView()
-              .run();
-          }
-        });
+        if (ed && !ed.isDestroyed) focusBlockById(ed, blockId);
       },
     }),
     [flushLocal, applyFromEngine],

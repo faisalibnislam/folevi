@@ -5,10 +5,11 @@ import { AddMarkStep, RemoveMarkStep, ReplaceStep } from "@tiptap/pm/transform";
 import { closeHistory, undo } from "@tiptap/pm/history";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { LIMITS, normalizeLanguage, ulid } from "@folevi/editor-schema";
-import { blocksInSelection, changeDepth, deleteBlocks, duplicateBlocks, moveBlock, normalizeDepths, turnInto } from "./commands";
+import { blocksInSelection, changeDepth, deleteBlocks, duplicateBlocks, endHistoryGroup, moveBlock, normalizeDepths, turnInto } from "./commands";
 import { TEXT_NODES } from "./convert";
 import { hiddenIndices, neighbourIndex, syncDomSelection } from "./blockSelectionState";
 import { layoutOf, tabFloor, tabsKey, type TabLayout } from "./tabs/tabsState";
+import { baseDepth as columnDepth, rowOf } from "./columns/columnsModel";
 import { setBlockSelection } from "./blockSelection";
 import { sliceToText } from "./clipboardText";
 import { clipboardSerializer } from "./clipboardHtml";
@@ -695,6 +696,39 @@ function extendToEdge(editor: Editor, dir: -1 | 1): boolean {
   return setBlockSelection(view, anchorIndex, index);
 }
 
+/** The shallowest depth the line at `index` can step out to: the page's edge, or its tab's or column's own level. */
+function depthFloor(state: EditorState, index: number): number {
+  const inRow = rowOf(state.doc, index);
+  return Math.max(tabFloor(state, index), inRow ? columnDepth(inRow.row) : 0);
+}
+
+/**
+ * ⌘A in two steps, as in other block editors: first the text of the block the caret is in (a line, or a
+ * whole code block), then the whole note. Straight to the whole note when the block is empty, when its text
+ * is selected already, or when the selection is not inside one block of text.
+ */
+function selectBlockText(editor: Editor): boolean {
+  const { state, view } = editor;
+  const { $from, $to } = state.selection;
+  if (!(state.selection instanceof TextSelection) || $from.depth < 1 || !$from.sameParent($to) || !$from.parent.isTextblock) return false;
+  const size = $from.parent.content.size;
+  if (size === 0 || ($from.parentOffset === 0 && $to.parentOffset === size)) return false;
+  view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, $from.start(), $from.end())));
+  return true;
+}
+
+/**
+ * A divider in place of the paragraph at `pos`. Text after the marker moves below the divider and keeps the
+ * line's id (and its comments); on an otherwise empty line the divider takes the line's place and a new line
+ * follows it.
+ */
+function dividerInPlace(tr: Transaction, state: EditorState, pos: number, node: PMNode, rest: Fragment): void {
+  const divider = state.schema.nodes.divider!.create({ id: rest.size ? ulid() : node.attrs.id, depth: node.attrs.depth });
+  const para = state.schema.nodes.paragraph!.create({ ...(rest.size ? node.attrs : {}), id: rest.size ? node.attrs.id : ulid(), depth: node.attrs.depth }, rest);
+  tr.replaceWith(pos, pos + node.nodeSize, [divider, para]);
+  tr.setSelection(TextSelection.near(tr.doc.resolve(pos + divider.nodeSize + 1)));
+}
+
 export const BlockKeymap = Extension.create({
   name: "blockKeymap",
   priority: 1000,
@@ -721,9 +755,11 @@ export const BlockKeymap = Extension.create({
           const at = afterSubtree(st, sel0.$from.index(0));
           const tr = st.tr.insert(at, st.schema.nodes.paragraph!.create({ id: null, depth: node.attrs.depth }));
           tr.setSelection(TextSelection.create(tr.doc, at + 1));
-          editor.view.dispatch(tr.scrollIntoView());
+          editor.view.dispatch(closeHistory(tr).scrollIntoView());
           return true;
         }
+        // A new line starts a new undo step (closeHistory below): lines typed one after another are taken
+        // back one at a time, not all at once because they were typed quickly.
         // Enter over a range: the range goes first, in the same transaction (one undo step for both).
         let base: Transaction | null = null;
         if (!editor.state.selection.empty) {
@@ -731,7 +767,7 @@ export const BlockKeymap = Extension.create({
           base = deleteVisibleRange(editor.state) ?? editor.state.tr.deleteSelection();
         }
         const state = base ? editor.state.apply(base) : editor.state;
-        const start = () => base ?? state.tr;
+        const start = () => closeHistory(base ?? state.tr);
         const cur = currentBlock(state);
         if (!cur) {
           if (base) editor.view.dispatch(base);
@@ -752,6 +788,10 @@ export const BlockKeymap = Extension.create({
           if (depth > tabFloor(state, index)) return changeDepth(editor, -1);
           return turnInto(editor, "paragraph");
         }
+        // An empty indented line steps out one level too, instead of adding one more indented empty line
+        // (never out of its tab or column; at the page's edge Enter adds a line as always).
+        const below = state.doc.maybeChild(index + 1);
+        if (cur.empty && !base && type === "paragraph" && depth > depthFloor(state, index) && !(below && Number(below.attrs.depth ?? 0) > depth)) return changeDepth(editor, -1);
         // At the start of a line with text: a new empty line above. The block itself keeps its id, type,
         // task details and styling (so comments and links to it stay attached).
         if (cur.atStart && !cur.empty) {
@@ -765,6 +805,14 @@ export const BlockKeymap = Extension.create({
         if (fence) {
           const tr = start().replaceWith(cur.pos, cur.pos + cur.node.nodeSize, state.schema.nodes.codeBlock!.create({ id: cur.node.attrs.id, depth, language: normalizeLanguage(fence[1] || "plaintext") }));
           tr.setSelection(TextSelection.create(tr.doc, cur.pos + 1));
+          editor.view.dispatch(tr.scrollIntoView());
+          return true;
+        }
+        // "***" then Enter is a divider ("---" becomes one as it is typed; "***" may be the start of bold
+        // italic text, so it waits for Enter).
+        if (type === "paragraph" && atEnd && cur.node.textContent === "***") {
+          const tr = start();
+          dividerInPlace(tr, state, cur.pos, cur.node, Fragment.empty);
           editor.view.dispatch(tr.scrollIntoView());
           return true;
         }
@@ -864,6 +912,7 @@ export const BlockKeymap = Extension.create({
       },
       "Mod-d": () => duplicateBlocks(editor),
       "Mod-Shift-Backspace": () => deleteBlocks(editor),
+      "Mod-a": () => selectBlockText(editor),
     };
 
     /** Backspace (and its word/line variants): the block rules at the start of a line or over a range. */
@@ -925,9 +974,22 @@ export const BlockKeymap = Extension.create({
         if (cur.node.content.size && tNode.type.name !== "codeBlock") tr.insert(end, cur.node.content);
         tr.setSelection(TextSelection.create(tr.doc, end));
         normalizeDepths(tr);
-        editor.view.dispatch(tr.scrollIntoView());
+        editor.view.dispatch(closeHistory(tr).scrollIntoView());
         return true;
       }
+      // An empty line above simply goes. Joining the two would give this line's text the empty line's kind
+      // (a heading, a bullet) and its id; this way the text stays the line it was.
+      if (TEXT_NODES.has(prev.type.name) && prev.content.size === 0) {
+        const from = cur.pos - prev.nodeSize;
+        const tr = state.tr.delete(from, cur.pos);
+        tr.setSelection(TextSelection.create(tr.doc, from + 1));
+        normalizeDepths(tr);
+        editor.view.dispatch(closeHistory(tr).scrollIntoView());
+        return true;
+      }
+      // Joining the line above (the editor's own Backspace) is an undo step of its own, apart from the typing
+      // before it.
+      endHistoryGroup(editor);
       return false;
     }
 
@@ -980,9 +1042,22 @@ export const BlockKeymap = Extension.create({
         editor.view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, cur.pos + cur.node.nodeSize)).scrollIntoView());
         return true;
       }
+      // An empty line simply goes when the line below holds text: joining would give that text this empty
+      // line's kind (a heading, a bullet) and its id.
+      if (cur.empty && TEXT_NODES.has(cur.node.type.name) && nextBlock && TEXT_NODES.has(nextBlock.type.name) && !hiddenIndices(state).has(index + 1) && Number(nextBlock.attrs.depth ?? 0) <= Number(cur.node.attrs.depth ?? 0)) {
+        const tr = state.tr.delete(cur.pos, cur.pos + cur.node.nodeSize);
+        tr.setSelection(TextSelection.create(tr.doc, cur.pos + 1));
+        normalizeDepths(tr);
+        editor.view.dispatch(closeHistory(tr).scrollIntoView());
+        return true;
+      }
       // At the end of a collapsed toggle the next block in the document is hidden: join the next visible
       // line (when it has nothing nested under it) instead of pulling hidden text into the toggle.
-      if (cur.node.type.name !== "toggle" || !cur.node.attrs.collapsed) return false;
+      if (cur.node.type.name !== "toggle" || !cur.node.attrs.collapsed) {
+        // Joining the line below (the editor's own Delete) is an undo step of its own.
+        if (nextBlock) endHistoryGroup(editor);
+        return false;
+      }
       const target = neighbourIndex(state, index, 1);
       if (target === null) return true;
       let tPos = 0;
@@ -993,7 +1068,7 @@ export const BlockKeymap = Extension.create({
       const end = state.selection.from;
       const tr = state.tr.delete(tPos, tPos + tNode.nodeSize).insert(end, tNode.content);
       tr.setSelection(TextSelection.create(tr.doc, end));
-      editor.view.dispatch(tr.scrollIntoView());
+      editor.view.dispatch(closeHistory(tr).scrollIntoView());
       return true;
     }
 
@@ -1050,6 +1125,9 @@ function ruleStep(tr: Transaction) {
   tr.setMeta(RULE_META, true);
 }
 
+/** What an inline Markdown mark may follow: the start of the line, a space, or an opening bracket or quote. */
+const OPENS = "(?:^|[\\s(\\[{\"'\u201c\u2018\u00ab])";
+
 /** Markdown-style shortcuts at the start of a block. */
 export const MarkdownShortcuts = Extension.create({
   name: "markdownShortcuts",
@@ -1066,54 +1144,55 @@ export const MarkdownShortcuts = Extension.create({
     return [
       blockRule(/^(#{1,3})\s$/, "heading", (m) => ({ level: m[1]!.length })),
       blockRule(/^[-*+]\s$/, "bulleted"),
-      blockRule(/^1[.)]\s$/, "numbered"),
+      // Any number starts a numbered list ("3. "); the list itself always counts from 1 (a numbered line
+      // has nowhere to keep another first number).
+      blockRule(/^\d{1,3}[.)]\s$/, "numbered"),
       blockRule(/^\[( |x)?\]\s$/, "todo", (m) => ({ checked: m[1] === "x" })),
       blockRule(/^>\s$/, "quote"),
       blockRule(/^!!\s$/, "callout", () => ({ tone: "note" })),
       blockRule(/^```([\w+#.-]*)\s$/, "codeBlock", (m) => ({ language: normalizeLanguage(m[1] || "plaintext") })),
+      // "---" is a divider as soon as it is typed. So is an em dash followed by "-": the Mac's smart dashes
+      // turn the first two hyphens into one before the third is typed. ("***" waits for Enter, see BlockKeymap:
+      // it may be the start of bold italic text.)
       new InputRule({
-        find: /^(---|\*\*\*)$/,
+        find: /^(?:---|\u2014-)$/,
         handler: ({ state, range }) => {
           ruleStep(state.tr);
           const $start = state.doc.resolve(range.from);
           if ($start.depth !== 1 || $start.parent.type.name !== "paragraph") return null;
-          const pos = $start.before(1);
           const node = $start.parent;
-          const tr = state.tr;
-          // Text after the caret moves below the divider and keeps the line's id (and its comments); on an
-          // empty line the divider takes its place.
-          const rest = node.content.cut(range.to - $start.start());
-          const divider = state.schema.nodes.divider!.create({ id: rest.size ? ulid() : node.attrs.id, depth: node.attrs.depth });
-          const para = state.schema.nodes.paragraph!.create({ ...(rest.size ? node.attrs : {}), id: rest.size ? node.attrs.id : ulid(), depth: node.attrs.depth }, rest);
-          tr.replaceWith(pos, pos + node.nodeSize, [divider, para]);
-          tr.setSelection(TextSelection.near(tr.doc.resolve(pos + divider.nodeSize + 1)));
+          dividerInPlace(state.tr, state, $start.before(1), node, node.content.cut(range.to - $start.start()));
         },
       }),
-      // Inline marks: **bold**, _italic_, `code`, ~~strike~~
-      markRule(/(?:^|\s)(\*\*([^*]+)\*\*)$/, "bold"),
-      markRule(/(?:^|\s)(_([^_]+)_)$/, "italic"),
-      markRule(/(?:^|\s)(`([^`]+)`)$/, "code"),
-      markRule(/(?:^|\s)(~~([^~]+)~~)$/, "strike"),
+      // Inline marks: ***bold italic***, **bold**, *italic*, _italic_, `code`, ~~strike~~. They start at the
+      // start of a line, after a space, or after an opening bracket or quote ("(**bold**)"), never inside a
+      // word (snake_case_names and 2*3*4 stay as typed).
+      markRule(new RegExp(`${OPENS}(\\*\\*\\*([^*\\s](?:[^*]*[^*\\s])?)\\*\\*\\*)$`), ["bold", "italic"]),
+      markRule(new RegExp(`${OPENS}(\\*\\*([^*]+)\\*\\*)$`), ["bold"]),
+      markRule(new RegExp(`${OPENS}(\\*([^*\\s](?:[^*]*[^*\\s])?)\\*)$`), ["italic"]),
+      markRule(new RegExp(`${OPENS}(_([^_]+)_)$`), ["italic"]),
+      markRule(new RegExp(`${OPENS}(\`([^\`]+)\`)$`), ["code"]),
+      markRule(new RegExp(`${OPENS}(~~([^~]+)~~)$`), ["strike"]),
     ];
   },
 });
 
-function markRule(find: RegExp, mark: string) {
+function markRule(find: RegExp, marks: string[]) {
   return new InputRule({
     find,
     handler: ({ state, range, match }) => {
       ruleStep(state.tr);
       const full = match[1]!;
       const inner = match[2]!;
-      // range.from is where the whole match (including a leading space) starts in the document; the
-      // last typed character is part of the match but not yet in the document, so start from `from`.
+      // range.from is where the whole match (including a leading space or bracket) starts in the document;
+      // the last typed character is part of the match but not yet in the document, so start from `from`.
       const start = range.from + (match[0].length - full.length);
-      const markType = state.schema.marks[mark]!;
       const tr = state.tr;
-      // The text keeps the formatting it already had (italic, a colour, a link) and gains this one.
-      const existing = state.doc.resolve(Math.min(start + 1, range.to)).marks();
-      tr.replaceWith(start, range.to, state.schema.text(inner, markType.create().addToSet(existing)));
-      tr.removeStoredMark(markType);
+      // The text keeps the formatting it already had (italic, a colour, a link) and gains these.
+      let set = state.doc.resolve(Math.min(start + 1, range.to)).marks();
+      for (const mark of marks) set = state.schema.marks[mark]!.create().addToSet(set);
+      tr.replaceWith(start, range.to, state.schema.text(inner, set));
+      for (const mark of marks) tr.removeStoredMark(state.schema.marks[mark]!);
     },
   });
 }
@@ -1128,7 +1207,65 @@ export interface TriggerState {
 
 export const triggerKey = new PluginKey<TriggerState | null>("foleviTrigger");
 
-/** Detects "/" (block menu), "[[" (page link) and "@" (mention/date) while typing. */
+/**
+ * Whether an open "/" or "@" menu should close by itself: it has nothing to offer and a space was just
+ * typed, so what was typed is text ("/zzz ", "@nobody "). Not while its choices are still loading, and never
+ * the page menu (its last row creates a page of that name, so it always has something).
+ */
+export function triggerRunsDry(trigger: TriggerState | null, choices: number, loading: boolean): boolean {
+  return Boolean(trigger && trigger.kind !== "page" && choices === 0 && !loading && /\s$/.test(trigger.query));
+}
+
+/** The "/", "[[" or "@" the caret is right after (with what has been typed since), or null. */
+function triggerAt(state: EditorState): TriggerState | null {
+  const sel = state.selection;
+  if (!sel.empty || !sel.$from.parent.isTextblock || sel.$from.parent.type.name === "codeBlock") return null;
+  const text = sel.$from.parent.textBetween(0, sel.$from.parentOffset, "\n", "￼");
+  const start = sel.from - sel.$from.parentOffset;
+  let found: TriggerState | null = null;
+  // "/" and "@" also in their full-width forms (Japanese and Chinese keyboards); queries in any script.
+  // A query can have a few words ("/page break", "/heading 1").
+  let m = /(?:^|\s)[/／]((?:[\p{L}\p{N}_-]{1,24} ?){0,4})$/u.exec(text);
+  if (m) found = { kind: "slash", query: m[1]!.normalize("NFKC"), from: start + text.length - m[1]!.length - 1, to: sel.from };
+  m = /\[\[([^\]\n]{0,60})$/.exec(text);
+  if (m) found = { kind: "page", query: m[1]!, from: start + text.length - m[1]!.length - 2, to: sel.from };
+  m = /(?:^|\s)[@＠]([\p{L}\p{M}\p{N}' .-]{0,30})$/u.exec(text);
+  if (m && !found) found = { kind: "mention", query: m[1]!.normalize("NFKC"), from: start + text.length - m[1]!.length - 1, to: sel.from };
+  return found;
+}
+
+/** Whether a transaction put text in over `from`..`to` (positions in the document it made). */
+function wroteOver(tr: Transaction, from: number, to: number): boolean {
+  let wrote = false;
+  tr.mapping.maps.forEach((map, i) => {
+    const rest = tr.mapping.slice(i + 1);
+    map.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+      const start = rest.map(newStart, -1);
+      const end = rest.map(newEnd, 1);
+      if (end > start && start < to && end > from) wrote = true;
+    });
+  });
+  return wrote;
+}
+
+/**
+ * The trigger after a transaction. One that is open stays open while the caret is still in what follows its
+ * "/", "[[" or "@" (typing on, deleting back, moving inside it). A new one opens only when the transaction
+ * itself wrote that character: typing it, or a toolbar putting it in. Never because the caret came to rest
+ * next to an old "/word" (arrow keys, a click), nor from a paste, an undo or someone else's edit: a menu that
+ * opens by itself there takes Enter, Tab and the arrows away from the text.
+ */
+function nextTrigger(tr: Transaction, prev: TriggerState | null, state: EditorState): TriggerState | null {
+  const found = triggerAt(state);
+  if (!found) return null;
+  if (prev && prev.kind === found.kind && tr.mapping.map(prev.from) === found.from) return found;
+  if (!tr.docChanged || tr.getMeta("remote") || tr.getMeta("paste") || tr.getMeta("history$")) return null;
+  const event = tr.getMeta("uiEvent") as string | undefined;
+  if (event === "paste" || event === "drop" || event === "cut") return null;
+  return wroteOver(tr, found.from, found.from + (found.kind === "page" ? 2 : 1)) ? found : null;
+}
+
+/** Detects "/" (block menu), "[[" (page link) and "@" (mention/date) as they are typed. */
 export const Triggers = Extension.create<{ onChange: (t: TriggerState | null) => void }>({
   name: "triggers",
   addOptions: () => ({ onChange: () => undefined }),
@@ -1136,26 +1273,16 @@ export const Triggers = Extension.create<{ onChange: (t: TriggerState | null) =>
     const onChange = this.options.onChange;
     let last: string | null = null;
     return [
-      new Plugin({
+      new Plugin<TriggerState | null>({
         key: triggerKey,
+        state: {
+          init: () => null,
+          apply: (tr, prev, _old, state) => nextTrigger(tr, prev, state),
+        },
         view: () => ({
           update: (view) => {
-            const { state } = view;
-            const sel = state.selection;
-            let found: TriggerState | null = null;
-            if (sel.empty && sel.$from.parent.isTextblock && sel.$from.parent.type.name !== "codeBlock") {
-              const text = sel.$from.parent.textBetween(0, sel.$from.parentOffset, "\n", "￼");
-              const start = sel.from - sel.$from.parentOffset;
-              // "/" and "@" also in their full-width forms (Japanese and Chinese keyboards); queries in any script.
-              // A query can have a few words ("/page break", "/heading 1").
-              let m = /(?:^|\s)[/／]((?:[\p{L}\p{N}_-]{1,24} ?){0,4})$/u.exec(text);
-              if (m) found = { kind: "slash", query: m[1]!.normalize("NFKC"), from: start + text.length - m[1]!.length - 1, to: sel.from };
-              m = /\[\[([^\]\n]{0,60})$/.exec(text);
-              if (m) found = { kind: "page", query: m[1]!, from: start + text.length - m[1]!.length - 2, to: sel.from };
-              m = /(?:^|\s)[@＠]([\p{L}\p{M}\p{N}' .-]{0,30})$/u.exec(text);
-              if (m && !found) found = { kind: "mention", query: m[1]!.normalize("NFKC"), from: start + text.length - m[1]!.length - 1, to: sel.from };
-            }
-            const key = found ? `${found.kind}:${found.from}:${found.query}` : null;
+            const found = triggerKey.getState(view.state) ?? null;
+            const key = found ? `${found.kind}:${found.from}:${found.to}:${found.query}` : null;
             if (key !== last) {
               last = key;
               onChange(found);

@@ -1,0 +1,83 @@
+/* The table block as a grid (table/TableView.tsx): a selected range of cells, column widths and the line that
+   drags them, the handles that move rows and columns, and where the keyboard is while cells are selected.
+   The table's own look (cells, totals, the formula hints) is in editor.css with the other blocks'. */
+
+/* ---- Column widths. A column with a width is exactly that wide: the <col> carries the width (the column
+   doesn't grow with its content) and its cells carry it as their least width (set on each cell by the view,
+   and on what is in it here, less the cell's border), so a table wider than the note scrolls sideways
+   instead of squeezing them.
+   The 6rem every cell is otherwise at least as wide as gives way: a column can be dragged narrower. */
+.fb-table .fb-col-sized .fb-cell, .fb-table .fb-col-sized .fb-cell-editor { min-width: calc(var(--fb-col-w, 1px) - 1px); }
+/* Every column with a width: the table is as wide as they add up to (wider than the note, it scrolls
+   sideways) instead of stretching them to fill the note. */
+.fb-table.fb-table-sized { width: auto; }
+
+/* The iPhone layout sizes every cell by its content, between a least and a most (editor-phone.css): a column
+   with a width has that width there too. */
+:root[data-iphone] .fb-editor .fb-table .fb-col-sized .fb-cell, :root[data-iphone] .fb-editor .fb-table .fb-col-sized .fb-cell-editor { width: auto; min-width: calc(var(--fb-col-w, 1px) - 1px); max-width: none; }
+:root[data-iphone] .fb-editor .fb-table.fb-table-sized { min-width: 0; }
+
+/* The line between two columns. It sits in the tools row above each column but runs the full height of the
+   table: the table is what it is placed against (the tools row's cells aren't), and it has no left or right
+   of its own, so it stays where it would sit in the empty line that holds it. That line reads right to left,
+   which puts it at the line's right end: the column's right edge. */
+.fb-table { position: relative; }
+.fb-table > thead > tr > td { position: static; }
+.fb-col-resize-at { display: block; height: 0; margin-right: -0.25rem; direction: rtl; }
+.fb-col-resize {
+  display: block; position: absolute; top: 0; bottom: 0; z-index: 3; width: 9px; transform: translateX(50%);
+  /* Seen and dragged whether or not the tools row is showing. */
+  visibility: visible; cursor: col-resize; touch-action: pan-y;
+}
+.fb-col-resize::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px;
+  background: var(--color-accent); opacity: 0; transition: opacity 120ms;
+}
+.fb-col-resize:hover::after { opacity: 0.55; }
+.fb-col-resize.is-on::after { opacity: 1; }
+/* A finger needs more to land on than a mouse pointer does. */
+@media (pointer: coarse) { .fb-col-resize { width: 20px; } }
+
+/* ---- The handles that drag a row or a column to another place: its number or letter with a grip. */
+.fb-table-grip {
+  display: inline-flex; align-items: center; justify-content: center; gap: 1px; flex: none;
+  min-width: 1.5rem; height: 1.5rem; padding: 0 2px; border-radius: var(--radius-chip);
+  color: var(--color-ink-faint); cursor: grab; touch-action: none; transition: background-color 140ms, color 140ms;
+}
+.fb-table-grip-row { min-width: 2rem; justify-content: flex-end; }
+.fb-table-grip:hover:enabled { background: var(--color-accent-soft); color: var(--color-heading); }
+.fb-table-grip:active:enabled { cursor: grabbing; }
+.fb-table-grip:disabled { cursor: default; }
+.fb-table-grip:disabled > svg { opacity: 0.3; }
+/* Where the dragged row or column would land, and the one being dragged. */
+.fb-table-dropline { position: absolute; z-index: 4; pointer-events: none; background: var(--color-accent); }
+.fb-table-dropline[data-kind="row"] { min-height: 2px; margin-top: -1px; }
+.fb-table-dropline[data-kind="col"] { min-width: 2px; margin-left: -1px; }
+.fb-table .fb-table-moving > td, .fb-table .fb-table-moving > th, .fb-table td.fb-table-moving, .fb-table th.fb-table-moving { opacity: 0.45; }
+
+/* ---- A selected range of cells: tinted with the accent, an outline round the rectangle (each cell draws the
+   sides of it that are the rectangle's edge). The cell the range started at is lighter, as in a spreadsheet:
+   it is the one Enter or typing opens. */
+.fb-table .fb-cell-selected {
+  --sel-line: color-mix(in oklab, var(--color-accent) 70%, transparent);
+  background: color-mix(in oklab, var(--color-accent-soft) 70%, transparent);
+  box-shadow:
+    inset 0 var(--sel-t, 0px) 0 0 var(--sel-line), inset 0 calc(-1 * var(--sel-b, 0px)) 0 0 var(--sel-line),
+    inset var(--sel-l, 0px) 0 0 0 var(--sel-line), inset calc(-1 * var(--sel-r, 0px)) 0 0 0 var(--sel-line);
+}
+.fb-table .fb-cell-selected.fb-sel-anchor { background: color-mix(in oklab, var(--color-accent-soft) 25%, transparent); }
+.fb-table .fb-sel-t { --sel-t: 1.5px; }
+.fb-table .fb-sel-b { --sel-b: 1.5px; }
+.fb-table .fb-sel-l { --sel-l: 1.5px; }
+.fb-table .fb-sel-r { --sel-r: 1.5px; }
+/* While cells are selected the pointer picks cells, not the text in them. */
+.fb-table.fb-table-ranging tbody { -webkit-user-select: none; user-select: none; }
+.fb-table.fb-table-ranging tbody .fb-cell { cursor: cell; }
+
+/* Where the keyboard is while cells are selected: a field that holds nothing and is never seen. Its text is
+   the note's own size, not a form field's small one, so an iPad doesn't zoom the page in when it takes focus. */
+.fb-table-keys {
+  position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: 0; padding: 0; border: 0;
+  opacity: 0; overflow: hidden; resize: none; pointer-events: none; font: inherit; background: transparent;
+  outline: none; caret-color: transparent;
+}

@@ -4,6 +4,7 @@
 import { resizeNode, updateNodes, type ResizeHandle } from "../ops";
 import type { FlowNode, Pt } from "../schema";
 import type { FlowController, Interaction } from "../controller/types";
+import { isCoarse } from "./connect";
 
 const HANDLES: ResizeHandle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 const handlePos = (n: FlowNode, h: ResizeHandle): Pt => ({
@@ -43,7 +44,15 @@ export function useResize(ctrl: FlowController) {
     ? HANDLES.map((h) => {
         const p = handlePos(single, h);
         const s = 8 / k;
-        return <rect key={h} className="fc-resize" data-fc-resize={h} data-node={single.id} data-dir={h} x={p.x - s / 2} y={p.y - s / 2} width={s} height={s} rx={2 / k} />;
+        // What takes the press is wider than what shows (a finger needs more): a press on the shape's edge
+        // resizes, and the connection dot just outside it (interactions/connect.tsx) starts a connector.
+        const hit = (isCoarse() ? 22 : 12) / k;
+        return (
+          <g key={h}>
+            <rect className="fc-resize fc-resize-hit" data-fc-resize={h} data-node={single.id} data-dir={h} x={p.x - hit / 2} y={p.y - hit / 2} width={hit} height={hit} />
+            <rect className="fc-resize" data-fc-resize={h} data-node={single.id} data-dir={h} x={p.x - s / 2} y={p.y - s / 2} width={s} height={s} rx={2 / k} />
+          </g>
+        );
       })
     : null;
 

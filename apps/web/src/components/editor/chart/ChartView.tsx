@@ -8,6 +8,7 @@
 // (its table, edited in place), Data from (its own table, a table in this note, a collection, CSV or pasted
 // rows), Style (colors, legend, labels, order, axes) and Foli AI. Under the toolbar: the title, the chart
 // (ChartCanvas: hover, tap or arrow keys for tooltips) and the takeaway line.
+import { imeKey } from "../canvas/wheel";
 import type { ReactNodeViewProps } from "@tiptap/react";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -141,7 +142,7 @@ function InlineField({
       e.stopPropagation();
       if (e.key === "Escape")
         (e.currentTarget.closest(".fb-canvas-body") as HTMLElement | null)?.focus();
-      if (e.key === "Enter" && !multiline) {
+      if (e.key === "Enter" && !multiline && !imeKey(e)) {
         e.preventDefault();
         (e.currentTarget as HTMLElement).blur();
       }
@@ -530,6 +531,15 @@ export function ChartView(props: ReactNodeViewProps) {
       tools={tools}
       onRefit={() => remeasure()}
       onKey={(e) => {
+        // A chart has no undo of its own: its changes are the note's, so ⌘Z here is the note's undo (the
+        // block swallows the key before the note could hear it).
+        const key = e.key.toLowerCase();
+        if ((e.metaKey || e.ctrlKey) && !e.altKey && (key === "z" || key === "y")) {
+          e.preventDefault();
+          if (key === "y" || e.shiftKey) editor.commands.redo();
+          else editor.commands.undo();
+          return true;
+        }
         if ((e.key === "ArrowRight" || e.key === "ArrowDown") && canvas.current?.step(1))
           return (e.preventDefault(), true);
         if ((e.key === "ArrowLeft" || e.key === "ArrowUp") && canvas.current?.step(-1))

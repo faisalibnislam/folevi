@@ -1,9 +1,10 @@
 // Block-level multi-selection (see blockSelectionState.ts for the state shape).
 //
-// Enter it with Escape (selects the current block), Shift+↑/↓ at the edge of a block, or Shift-click on
-// a block's grip. While active: Shift+↑/↓ extend or shrink it, ⌥⇧↑/↓ move, ⌘D duplicates, Tab/⇧Tab
-// indent, Backspace/Delete delete, ⌘C/⌘X copy/cut, ⌘. opens the block menu for all selected blocks,
-// Escape/↑/↓/click/typing return to normal text editing. The text caret stays collapsed meanwhile.
+// Enter it with Escape (selects the current block), Shift+↑/↓ once the text selection reaches the block's
+// end or start, or Shift-click on a block's grip. While active: Shift+↑/↓ extend or shrink it, ⌥⇧↑/↓ move,
+// ⌘D duplicates, Tab/⇧Tab indent, Backspace/Delete delete, ⌘C/⌘X copy/cut, ⌘. opens the block menu for
+// all selected blocks, Escape/↑/↓/click/typing return to normal text editing. The text caret stays collapsed
+// meanwhile; Escape and typing put it back where it was before the blocks were selected.
 import { Extension, type Editor } from "@tiptap/core";
 import { NodeSelection, Plugin, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
@@ -11,7 +12,7 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import { sliceHasBlocks, writeBlocksToEvent } from "./blockClipboard";
 import { deleteVisibleRange } from "./plugins";
 import { blockAt, changeDepth, deleteBlocks, duplicateBlocks, moveBlock, normalizeDepths, subtreeRange } from "./commands";
-import { blockSelectionKey, blockSelectionRange, hiddenIndices, indexOfBlock, neighbourIndex, syncDomSelection, type BlockSelection, type BlockSelectionMeta } from "./blockSelectionState";
+import { blockSelectionKey, blockSelectionRange, hiddenIndices, indexOfBlock, neighbourIndex, syncDomSelection, type BlockSelection, type BlockSelectionMeta, type TextPoint } from "./blockSelectionState";
 
 export { blockSelectionKey, blockSelectionRange };
 
@@ -19,14 +20,30 @@ function idAt(state: EditorState, index: number): string | null {
   return (state.doc.maybeChild(index)?.attrs.id as string | null | undefined) ?? null;
 }
 
+/** The text selection as two places in the text, or null when it isn't one (a selected image, no ids yet). */
+function textOrigin(state: EditorState): BlockSelection["origin"] {
+  const { selection } = state;
+  if (!(selection instanceof TextSelection)) return null;
+  const point = ($pos: typeof selection.$head): TextPoint | null => {
+    const id = $pos.depth >= 1 && $pos.parent.isTextblock ? ($pos.node(1).attrs.id as string | null) : null;
+    return id ? { id, offset: $pos.parentOffset } : null;
+  };
+  const anchor = point(selection.$anchor);
+  const head = point(selection.$head);
+  return anchor && head ? { anchor, head } : null;
+}
+
 /** Selects blocks `anchor`..`head` (top-level indices). */
 export function setBlockSelection(view: EditorView, anchor: number, head: number): boolean {
   const a = idAt(view.state, anchor);
   const h = idAt(view.state, head);
   if (!a || !h) return false;
+  // Where the text selection was when the block selection began, to go back to (kept while it grows).
+  const current = blockSelectionKey.getState(view.state);
+  const origin = current ? (current.origin ?? null) : textOrigin(view.state);
   // Park the caret inside the head block so "leaving" the selection lands somewhere sensible.
   const ref = blockAt(view.state, head)!;
-  const tr = view.state.tr.setMeta(blockSelectionKey, { set: { anchor: a, head: h } } satisfies BlockSelectionMeta);
+  const tr = view.state.tr.setMeta(blockSelectionKey, { set: { anchor: a, head: h, origin } } satisfies BlockSelectionMeta);
   if (ref.node.isTextblock) tr.setSelection(TextSelection.create(tr.doc, ref.pos + 1 + ref.node.content.size));
   view.dispatch(tr.setMeta("addToHistory", false));
   return true;
@@ -52,8 +69,11 @@ function placeCaret(state: EditorState, index: number, atEnd: boolean, tr: Trans
   tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(pos, tr.doc.content.size)), atEnd ? -1 : 1));
 }
 
-/** The selected blocks with everything nested under them (shown or folded inside a toggle). */
-function copiedRange(state: EditorState): { from: number; to: number } | null {
+/**
+ * The selected blocks with everything nested under them (shown or folded inside a toggle): what Delete, cut,
+ * copy, move and duplicate act on, and so what is drawn as selected.
+ */
+export function actedRange(state: EditorState): { from: number; to: number } | null {
   const range = blockSelectionRange(state);
   if (!range) return null;
   let to = range.to;
@@ -62,7 +82,7 @@ function copiedRange(state: EditorState): { from: number; to: number } | null {
 }
 
 function copySelection(view: EditorView, event: ClipboardEvent): boolean {
-  const range = copiedRange(view.state);
+  const range = actedRange(view.state);
   if (!range || !event.clipboardData) return false;
   const nodes: PMNode[] = [];
   for (let i = range.from; i <= range.to; i++) nodes.push(view.state.doc.child(i));
@@ -118,8 +138,9 @@ export const BlockSelectionExtension = Extension.create({
           },
         },
         props: {
+          // Everything the commands will act on is drawn selected: a picked block with what is nested under it.
           decorations: (state) => {
-            const range = blockSelectionRange(state);
+            const range = actedRange(state);
             if (!range) return null;
             const decos: Decoration[] = [];
             state.doc.forEach((node, offset, index) => {
@@ -132,7 +153,7 @@ export const BlockSelectionExtension = Extension.create({
             copy: (view, event) => copySelection(view, event),
             cut: (view, event) => {
               if (!copySelection(view, event)) return false;
-              const range = copiedRange(view.state)!;
+              const range = actedRange(view.state)!;
               const indices: number[] = [];
               for (let i = range.from; i <= range.to; i++) indices.push(i);
               // Only what was copied (the selected blocks) is removed.
@@ -141,7 +162,7 @@ export const BlockSelectionExtension = Extension.create({
             },
             // Pasting while blocks are selected replaces them.
             paste: (view, event) => {
-              const range = copiedRange(view.state);
+              const range = actedRange(view.state);
               if (!range) return false;
               // Nothing usable on the clipboard: leave the blocks alone.
               const data = event.clipboardData;
@@ -193,10 +214,14 @@ export const BlockSelectionExtension = Extension.create({
                 const last = state.doc.resolve(Math.max(from, to - 1)).index(0);
                 return setBlockSelection(view, state.doc.resolve(from).index(0), Math.min(last, state.doc.childCount - 1));
               }
-              // Shift+↑/↓ at the edge of a block grows the selection to whole blocks.
+              // Shift+↑/↓ grows the selection to whole blocks only once it already reaches the block's end (↓) or
+              // start (↑). Until then the text selection grows as it does anywhere, so part of a line (or of a
+              // one-line block) can be selected with the keyboard.
               if (event.shiftKey && !mod && !event.altKey && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
                 const dir = event.key === "ArrowDown" ? 1 : -1;
-                if (!view.endOfTextblock(dir > 0 ? "down" : "up")) return false;
+                const { $head } = state.selection;
+                if ($head.depth < 1 || !$head.parent.isTextblock) return false;
+                if (dir > 0 ? $head.parentOffset < $head.parent.content.size : $head.parentOffset > 0) return false;
                 const anchorIndex = state.selection.$anchor.index(0);
                 const headIndex = state.selection.$head.index(0);
                 const next = neighbourIndex(state, headIndex, dir);
@@ -216,10 +241,27 @@ export const BlockSelectionExtension = Extension.create({
               view.dispatch(tr.scrollIntoView());
               return true;
             };
+            // Back to the text selection the block selection began from, when its line is still among the
+            // selected blocks: as it was (Escape), or as a caret at its moving end (typing).
+            const backToText = (collapse: boolean) => {
+              const acted = actedRange(state)!;
+              const hidden = hiddenIndices(state);
+              const place = (point: TextPoint) => {
+                const index = indexOfBlock(state, point.id);
+                const ref = index >= acted.from && index <= acted.to && !hidden.has(index) ? blockAt(state, index) : null;
+                return ref?.node.isTextblock ? ref.pos + 1 + Math.min(point.offset, ref.node.content.size) : null;
+              };
+              const to = sel.origin ? place(sel.origin.head) : null;
+              if (to === null) return false;
+              const from = collapse ? to : (place(sel.origin!.anchor) ?? to);
+              const tr = state.tr.setMeta(blockSelectionKey, { clear: true } satisfies BlockSelectionMeta).setMeta("addToHistory", false);
+              view.dispatch(tr.setSelection(TextSelection.create(tr.doc, from, to)).scrollIntoView());
+              return true;
+            };
             switch (event.key) {
               case "Escape":
                 event.preventDefault();
-                return leave(headIndex, true);
+                return backToText(false) || leave(headIndex, true);
               case "ArrowUp":
               case "ArrowDown": {
                 const dir = event.key === "ArrowDown" ? 1 : -1;
@@ -298,7 +340,14 @@ export const BlockSelectionExtension = Extension.create({
             }
             // Copy/cut are handled by the clipboard events; ⌘. by the block menu; other shortcuts pass through.
             if (mod) return false;
-            // Anything else (typing) goes back to text editing at the end of the selection.
+            // Anything else (typing) goes back to text editing where the caret was before the blocks were selected.
+            if (backToText(true)) return false;
+            // Blocks picked without a caret among them (by their grips, or all of them): a letter has nowhere
+            // it was meant to go, so it changes nothing and the blocks stay selected.
+            if (event.key.length === 1 && !event.isComposing && event.keyCode !== 229) {
+              event.preventDefault();
+              return true;
+            }
             const tr = state.tr.setMeta(blockSelectionKey, { clear: true } satisfies BlockSelectionMeta).setMeta("addToHistory", false);
             view.dispatch(tr);
             return false;

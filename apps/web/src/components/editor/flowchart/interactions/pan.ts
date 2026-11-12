@@ -19,6 +19,7 @@ export function usePan(ctrl: FlowController) {
       const start = viewRef.current;
       setPanning(true);
       return {
+        ownsView: true,
         move: (m) => setView({ ...start, x: start.x + (m.clientX - sx), y: start.y + (m.clientY - sy) }),
         end: () => setPanning(false),
         cancel: () => setPanning(false),

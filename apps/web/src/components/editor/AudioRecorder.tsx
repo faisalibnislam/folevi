@@ -146,6 +146,10 @@ export function AudioRecorder({
   const now = () =>
     clock.current.total + (clock.current.since ? performance.now() - clock.current.since : 0);
 
+  /** The panel is gone (see the unmount below): a recording still running is stored, not dropped. */
+  const left = useRef(false);
+  /** A recording that stopped by itself and waits for Save. */
+  const kept = useRef<{ file: File; seconds: number } | null>(null);
   const release = useCallback(() => {
     cancelAnimationFrame(frame.current);
     streams.current.forEach((s) => s.getTracks().forEach((t) => t.stop()));
@@ -157,9 +161,12 @@ export function AudioRecorder({
   // The panel closes only once the recording is in the note; if that fails it stays open to try again.
   const store = useCallback(async (file: File, seconds: number) => {
     setPhase({ kind: "saving" });
+    kept.current = null;
     try {
       await handlers.current.onSave(file, seconds);
+      if (left.current) handlers.current.toast.show("Your recording was saved in the note you made it in.");
     } catch (error) {
+      kept.current = { file, seconds };
       handlers.current.toast.show(errorMessage(error), { tone: "error" });
       setPhase({ kind: "stopped", file, seconds, message: "The recording couldn’t be added to the note. Try saving again." });
       return;
@@ -188,7 +195,8 @@ export function AudioRecorder({
       const seconds = now() / 1000;
       setElapsed(now());
       if (requested.current) void store(file, seconds);
-      else
+      else {
+        kept.current = { file, seconds };
         setPhase({
           kind: "stopped",
           file,
@@ -197,6 +205,7 @@ export function AudioRecorder({
             ? "The call’s sound or the microphone stopped (sharing ended, or a permission was turned off). What was recorded so far is kept."
             : "The microphone stopped (it was disconnected or its permission was turned off). What was recorded so far is kept.",
         });
+      }
     };
 
     /** Recording now: the clock, the meter (from `level`, 0 to 1) and the length limits. */
@@ -330,15 +339,20 @@ export function AudioRecorder({
 
   // Without a choice to make, ask for the microphone and start at once: the slash command was the "record" click.
   useEffect(() => {
+    left.current = false;
     if (canRecordAudio() && !calls) void begin("mic");
     return () => {
       // A counter, meant to have moved on: a start still waiting sees it and gives up.
       // eslint-disable-next-line react-hooks/exhaustive-deps
       generation.current++;
-      // Unmounting without Save discards the recording.
-      if (recorder.current && recorder.current.state !== "inactive" && !requested.current) {
-        discard.current = true;
-        throwAway(recorder.current);
+      // The panel went away without Save or Cancel (another note was opened, the tab closed): the recording
+      // is kept. It is stopped and stored in the note it was made in, like Save (only Cancel discards one).
+      left.current = true;
+      if (recorder.current && recorder.current.state !== "inactive" && !requested.current && !discard.current) {
+        requested.current = true;
+        recorder.current.stop();
+      } else if (kept.current && !discard.current) {
+        void store(kept.current.file, kept.current.seconds);
       }
       release();
     };
@@ -394,6 +408,7 @@ export function AudioRecorder({
   };
   const cancel = () => {
     discard.current = true;
+    kept.current = null;
     if (recorder.current && recorder.current.state !== "inactive") throwAway(recorder.current);
     release();
     onClose();

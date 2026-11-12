@@ -5,11 +5,19 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { flowchartBounds, type FlowchartData, type Pt } from "../schema";
 import { useFullCanvas } from "../../canvas/useFullCanvas";
+import { listenPinch, useWheelArmed, wheelZoomRate } from "../../canvas/wheel";
 import type { View } from "./types";
 
 export const MIN_K = 0.2;
 export const MAX_K = 2.5;
 export const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+/**
+ * How far above a selection its floating bar sits (screen pixels, to the bar's top), and how much room it
+ * needs under the toolbar to go there. High enough to clear the selected shape's top connection point, whose
+ * press area reaches 26 px above the shape.
+ */
+export const BAR_LIFT = 64;
+export const BAR_ROOM = 56;
 
 export function useViewport({
   docRef,
@@ -38,6 +46,8 @@ export function useViewport({
       if (el) fitView(docRef.current, el.clientWidth, on ? el.clientHeight : liveHeight ?? savedHeight);
     },
   });
+  const fullRef = useRef(full);
+  fullRef.current = full;
   const height = full && fullHeight ? fullHeight : (liveHeight ?? savedHeight);
   const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
   const viewRef = useRef(view);
@@ -102,8 +112,10 @@ export function useViewport({
     return { x: (width / 2 - v.x) / v.k, y: (height / 2 + 20 - v.y) / v.k };
   };
 
-  // Wheel: ⌘/ctrl (and trackpad pinch) zooms; plain scrolling pans once the canvas is active, and
-  // otherwise scrolls the page as usual.
+  // Wheel: ⌘/ctrl (and trackpad pinch) zooms. Plain scrolling pans the canvas only while it is being worked
+  // in: it has the keyboard and the pointer was pressed in it and has not left since (canvas/wheel.ts).
+  // Otherwise it scrolls the page as usual, so a canvas passed on the way down a note never traps the wheel.
+  const wheelHere = useWheelArmed(wrapRef);
   useEffect(() => {
     const el = svgRef.current;
     if (!el) return;
@@ -112,8 +124,8 @@ export function useViewport({
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const r = el.getBoundingClientRect();
-        zoomAt(viewRef.current.k * Math.exp(-e.deltaY * unit * 0.0022), e.clientX - r.left, e.clientY - r.top);
-      } else if (activeRef.current) {
+        zoomAt(viewRef.current.k * Math.exp(-e.deltaY * unit * wheelZoomRate(e)), e.clientX - r.left, e.clientY - r.top);
+      } else if (activeRef.current && (wheelHere.current || fullRef.current)) {
         e.preventDefault();
         const dx = e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX;
         const dy = e.shiftKey && !e.deltaX ? 0 : e.deltaY;
@@ -121,8 +133,13 @@ export function useViewport({
       }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [zoomAt, svgRef, activeRef]);
+    // Safari and the Mac app report a trackpad pinch as gesture events, not as a wheel.
+    const stopPinch = listenPinch(el, { scale: () => viewRef.current.k, zoomAt: (k, x, y) => zoomAt(k, x, y) });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      stopPinch();
+    };
+  }, [zoomAt, svgRef, activeRef, wheelHere]);
 
   return { width, height, setLiveHeight, view, viewRef, setView, fitView, toWorld, zoomAt, zoomBy, viewCenter, full, toggleFull, fullCardProps: cardProps, fullKey: handleKey };
 }

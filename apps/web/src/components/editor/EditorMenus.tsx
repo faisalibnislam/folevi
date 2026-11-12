@@ -102,7 +102,7 @@ import {
 import { blockSelectionRange, clearBlockSelection, extendBlockSelectionTo, setBlockSelection } from "./blockSelection";
 import { syncDomSelection } from "./blockSelectionState";
 import { insertTabs } from "./tabs/tabsExtension";
-import { blockElements, type TriggerState } from "./plugins";
+import { blockElements, triggerRunsDry, type TriggerState } from "./plugins";
 import { insertColumns } from "./columns/columnsCommands";
 import { columnsBlockAt, columnsGripOnly, type SideDrop } from "./columns/columnsLayout";
 import { UnsplashDialog, unsplashCredit, useStockPhotos } from "./UnsplashDialog";
@@ -124,6 +124,7 @@ import { Select } from "@/components/ui/Select";
 import { Calendar, DateField, DateTimeField, TimeField } from "@/components/ui/DateField";
 import { EDIT_LINK_EVENT, EditorContextMenu } from "./EditorContextMenu";
 import { inNestedNote } from "./synced/nested";
+import { BLOCK_FIELD } from "./blockField";
 import { syncedMenuItems, useSyncedMenus, type SyncedEnv } from "./synced/actions";
 import { keyLabel, withKeyLabels } from "@/lib/shortcuts";
 import { webAddressIn } from "./autolink";
@@ -413,13 +414,14 @@ function handleLine(el: HTMLElement): { top: number; height: number } {
 }
 
 /**
- * A key pressed in a block's own field (a table cell, an image's caption or alt text, a formula's source):
- * the note's shortcuts aren't for it (the caret in the note is somewhere else).
+ * A key pressed in a block's own field (a table cell, an image's caption or alt text, a formula's source) or
+ * in a canvas that has the keyboard (a flowchart, a mind map, a whiteboard): the note's shortcuts aren't for
+ * it (the caret in the note is somewhere else, where it was before the block was clicked).
  */
 function inBlockField(e: Event): boolean {
   const t = e.target;
   // A synced block's own editor inside this note (synced/nested.ts) handles its own keys too.
-  return t instanceof Element && (Boolean(t.closest("input, textarea, select, [data-draft]")) || inNestedNote(t, e.currentTarget instanceof Element ? e.currentTarget : null));
+  return t instanceof Element && (Boolean(t.closest(BLOCK_FIELD)) || inNestedNote(t, e.currentTarget instanceof Element ? e.currentTarget : null));
 }
 
 /** Top-level block index → its rendered element. */
@@ -1084,6 +1086,13 @@ export function EditorMenus({
     if (!open) queuedEnter.current = false;
   }, [open]);
   const menuLabel = open?.kind === "slash" ? "Insert block" : open?.kind === "page" ? "Link to page" : "Mention a person or date";
+  // A "/" or "@" menu with nothing to offer closes at the next space, for that "/" or "@" only: "/zzz " and
+  // "@nobody " are text (plugins.ts). Not while people or the date reader are still loading.
+  const stillLoading = open?.kind === "mention" && ((mentionPeople && people === undefined) || !datesReady);
+  const nothingToOffer = triggerRunsDry(open, items.length, stillLoading);
+  useEffect(() => {
+    if (nothingToOffer) setDismissed(triggerKey);
+  }, [nothingToOffer, triggerKey]);
 
   const run = useCallback(
     (item: MenuItem) => {
@@ -1100,11 +1109,12 @@ export function EditorMenus({
       if (inBlockField(e)) return;
       // Keys that confirm or move an input method's composition belong to it, not to the menu.
       if (e.isComposing || e.keyCode === 229) return;
-      if (e.key === "ArrowDown") {
+      // (A list with nothing in it has nothing to move through: the arrows stay the text's.)
+      if (e.key === "ArrowDown" && items.length) {
         e.preventDefault();
         e.stopImmediatePropagation();
         setActive((a) => Math.max(0, Math.min(items.length - 1, a + 1)));
-      } else if (e.key === "ArrowUp") {
+      } else if (e.key === "ArrowUp" && items.length) {
         e.preventDefault();
         e.stopImmediatePropagation();
         setActive((a) => Math.max(0, a - 1));

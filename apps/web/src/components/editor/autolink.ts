@@ -6,11 +6,31 @@ import type { EditorView } from "@tiptap/pm/view";
 import { sanitizeHref } from "@folevi/editor-schema";
 
 // Bare names ("involets.com") only count with a common top-level domain, so "notes.txt" or "v2.final" stay text.
-const TLDS = "com|org|net|io|co|app|dev|ai|edu|gov|me|xyz|info|biz|us|uk|ca|de|fr|es|it|nl|se|no|dk|fi|ch|at|be|au|nz|in|bd|jp|cn|kr|sg|hk|br|mx|ru|pl|cz|ie|pt|eu|tv|so|gg|sh|fm|ly|to|page|site|online|store|tech|blog|design|studio|cloud|link";
+const LONG_TLDS = "com|org|net|app|dev|edu|gov|xyz|info|biz|page|site|online|store|tech|blog|design|studio|cloud|link";
+// Two-letter endings are also everyday words ("it", "in", "so", "to", "me"), file types ("install.sh",
+// "lib.so", "script.pl") and the start of a sentence after a missing space ("Thanks.It"). A bare name ending
+// in one is an address only when something else says so: a path or a port after it ("bit.ly/abc"), a second
+// level before it ("bbc.co.uk"), or one of the few endings that are hardly anything but addresses, typed in
+// lower case ("github.io", "claude.ai"). With "https://" or "www." in front, anything goes.
+const SHORT_TLDS = "io|co|ai|me|us|uk|ca|de|fr|es|it|nl|se|no|dk|fi|ch|at|be|au|nz|in|bd|jp|cn|kr|sg|hk|br|mx|ru|pl|cz|ie|pt|eu|tv|so|gg|sh|fm|ly|to";
+const PLAIN_SHORT_TLDS = /\.(?:io|co|ai|tv|fm|gg|eu|uk)$/;
+const HOST = "(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+";
+const REST = '[^\\s<>"]*';
 const ADDRESS = new RegExp(
-  `^(?:https?:\\/\\/[^\\s<>"]+|mailto:[^\\s<>"]+@[^\\s<>"]+|www\\.[^\\s<>"]+\\.[^\\s<>"]+|(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+(?:${TLDS})(?::\\d+)?(?:[/?#][^\\s<>"]*)?)$`,
+  "^(?:" +
+    [
+      `https?:\\/\\/[^\\s<>"]+`,
+      `mailto:[^\\s<>"]+@[^\\s<>"]+`,
+      `www\\.[^\\s<>"]+\\.[^\\s<>"]+`,
+      `${HOST}(?:${LONG_TLDS})(?::\\d+)?(?:[/?#]${REST})?`,
+      `${HOST}(?:co|com|org|net|gov|ac|edu)\\.[a-z]{2}(?::\\d+)?(?:[/?#]${REST})?`,
+      `${HOST}(?:${SHORT_TLDS})(?::\\d+(?:[/?#]${REST})?|\\/${REST})`,
+    ].join("|") +
+    ")$",
   "i",
 );
+/** A bare name with a two-letter ending and nothing after it ("github.io"): see PLAIN_SHORT_TLDS. */
+const BARE_SHORT = new RegExp(`^${HOST}[a-z]{2}$`, "i");
 
 /** The address a word stands for (trailing punctuation dropped), or null when it isn't one. */
 export function addressIn(word: string): { text: string; href: string } | null {
@@ -21,7 +41,7 @@ export function addressIn(word: string): { text: string; href: string } | null {
     if (text.endsWith(")") && (text.match(/\(/g)?.length ?? 0) >= (text.match(/\)/g)?.length ?? 0)) break;
     text = text.slice(0, -1);
   }
-  if (text.length < 4 || !ADDRESS.test(text)) return null;
+  if (text.length < 4 || !(ADDRESS.test(text) || (BARE_SHORT.test(text) && PLAIN_SHORT_TLDS.test(text)))) return null;
   const href = sanitizeHref(text);
   return href ? { text, href } : null;
 }
@@ -49,21 +69,24 @@ export function webAddressIn(input: string): string | null {
   return at > 0 ? sound(text.slice(at).split(/\s/)[0]!) : null;
 }
 
-/** Links the address just before `pos` (the caret) in its line, if there is one not linked yet. */
-export function linkWordBefore(state: EditorState, pos: number, tr: Transaction): boolean {
+/**
+ * Links the address just before `pos` (the caret) in its line, if there is one not linked yet. Returns
+ * the range it linked, or null.
+ */
+export function linkWordBefore(state: EditorState, pos: number, tr: Transaction): { from: number; to: number } | null {
   const $pos = state.doc.resolve(pos);
   const parent = $pos.parent;
-  if (!parent.isTextblock || parent.type.spec.code) return false;
+  if (!parent.isTextblock || parent.type.spec.code) return null;
   const linkType = state.schema.marks.link;
-  if (!linkType) return false;
+  if (!linkType) return null;
   const before = parent.textBetween(0, $pos.parentOffset, undefined, "￼");
   const word = /(\S+)$/.exec(before)?.[1];
-  if (!word) return false;
+  if (!word) return null;
   const found = addressIn(word);
-  if (!found) return false;
+  if (!found) return null;
   const start = pos - word.length + word.indexOf(found.text);
   const end = start + found.text.length;
-  if (state.doc.rangeHasMark(start, end, state.schema.marks.code!)) return false;
+  if (state.doc.rangeHasMark(start, end, state.schema.marks.code!)) return null;
   if (state.doc.rangeHasMark(start, end, linkType)) {
     // Typed on from an address that was linked automatically ("example.com" then "/path"): the link grows
     // with it. A link someone set up themselves (other text, another address) is left alone.
@@ -72,11 +95,11 @@ export function linkWordBefore(state: EditorState, pos: number, tr: Transaction)
     state.doc.nodesBetween(start, end, (n, pos) => {
       if (n.isText && linkType.isInSet(n.marks)) linkedText += n.text!.slice(Math.max(0, start - pos), Math.max(0, end - pos));
     });
-    if (!existing || !found.text.startsWith(linkedText) || sanitizeHref(linkedText) !== existing.attrs.href || existing.attrs.href === found.href) return false;
+    if (!existing || !found.text.startsWith(linkedText) || sanitizeHref(linkedText) !== existing.attrs.href || existing.attrs.href === found.href) return null;
     tr.removeMark(start, end, linkType);
   }
   tr.addMark(start, end, linkType.create({ href: found.href }));
-  return true;
+  return { from: start, to: end };
 }
 
 /**
@@ -105,26 +128,57 @@ export function pasteAddress(view: EditorView, data: DataTransfer | null): boole
   return true;
 }
 
+/** The link the last key made by itself, and where the caret was left: Backspace right there takes it back. */
+interface MadeLink {
+  from: number;
+  to: number;
+  caret: number;
+}
+const autolinkKey = new PluginKey<MadeLink | null>("autolink");
+
 export const Autolink = Extension.create({
   name: "autolink",
   // Before the block keymap, so Enter links the address before splitting the line.
   priority: 1200,
   addProseMirrorPlugins() {
     return [
-      new Plugin({
-        key: new PluginKey("autolink"),
+      new Plugin<MadeLink | null>({
+        key: autolinkKey,
+        state: {
+          init: () => null,
+          // Remembered only until the next edit or move of the caret.
+          apply: (tr, made) => {
+            const meta = tr.getMeta(autolinkKey) as MadeLink | null | undefined;
+            if (meta !== undefined) return meta;
+            if (!made) return null;
+            // (A follow-up the editor adds to the same key press, such as a new line's id, moves it along.)
+            if (tr.getMeta("appendedTransaction")) return { from: tr.mapping.map(made.from), to: tr.mapping.map(made.to), caret: tr.mapping.map(made.caret) };
+            return !tr.docChanged && !tr.selectionSet ? made : null;
+          },
+        },
         props: {
           handleTextInput: (view, from, to, text) => {
             if (from !== to || !/^\s$/.test(text) || view.composing) return false;
             const tr = view.state.tr;
-            if (!linkWordBefore(view.state, from, tr)) return false;
+            const linked = linkWordBefore(view.state, from, tr);
+            if (!linked) return false;
             tr.insertText(text, from, to);
-            view.dispatch(tr);
+            view.dispatch(tr.setMeta(autolinkKey, { ...linked, caret: from + text.length } satisfies MadeLink));
             return true;
           },
           handleKeyDown: (view, event) => {
+            if (event.metaKey || event.ctrlKey || event.altKey || event.isComposing) return false;
+            // Backspace right after a word became a link by itself: the link goes, the text (and the space)
+            // stays. The next Backspace deletes as usual.
+            if (event.key === "Backspace" && !event.shiftKey) {
+              const made = autolinkKey.getState(view.state);
+              const { selection, schema } = view.state;
+              if (!made || !selection.empty || selection.from !== made.caret || !view.state.doc.rangeHasMark(made.from, made.to, schema.marks.link!)) return false;
+              view.dispatch(view.state.tr.removeMark(made.from, made.to, schema.marks.link!).setMeta(autolinkKey, null));
+              return true;
+            }
             // Enter, Shift+Enter (a line break) and Tab end an address too.
-            if ((event.key !== "Enter" && event.key !== "Tab") || event.metaKey || event.ctrlKey || event.altKey || event.isComposing) return false;
+            if (event.key !== "Enter" && event.key !== "Tab") return false;
             const { selection } = view.state;
             if (!selection.empty) return false;
             const tr = view.state.tr;

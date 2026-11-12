@@ -73,7 +73,8 @@
 .fc-edge-line { fill: none; stroke: var(--fc-ec, var(--fc-edge)); stroke-width: var(--fc-ew, 1.5px); stroke-linecap: round; stroke-linejoin: round; }
 .fc-edge-head { fill: var(--fc-ec, var(--fc-edge)); stroke: var(--fc-ec, var(--fc-edge)); stroke-width: 1px; stroke-linejoin: round; }
 .fc-edge-head-open { fill: none; stroke-width: var(--fc-ew, 1.5px); stroke-linecap: round; }
-.fc-edge-hit { fill: none; stroke: transparent; stroke-width: 14px; stroke-linecap: round; stroke-linejoin: round; pointer-events: stroke; cursor: pointer; }
+/* (non-scaling: the line stays as easy to hit zoomed out as at 100%, and doesn't swallow presses zoomed in) */
+.fc-edge-hit { fill: none; stroke: transparent; stroke-width: 14px; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; pointer-events: stroke; cursor: pointer; }
 .fc-edge-halo { fill: none; stroke: color-mix(in oklab, var(--fc-select) 32%, transparent); stroke-width: calc(var(--fc-ew, 1.5px) + 6px); stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .fc-edge-label-bg { fill: var(--color-surface); stroke: color-mix(in oklab, var(--color-ink) 10%, transparent); stroke-width: 1px; }
 .fc-edge-label { fill: color-mix(in oklab, var(--color-ink) 78%, var(--color-surface)); font-weight: 500; user-select: none; }
@@ -113,6 +114,7 @@
 .fc-overlay * { vector-effect: non-scaling-stroke; }
 .fc-sel-box { fill: none; stroke: var(--fc-select); stroke-width: 1.5px; pointer-events: none; }
 .fc-resize { fill: var(--color-surface-raised); stroke: var(--fc-select); stroke-width: 1.5px; }
+.fc-resize.fc-resize-hit { fill: transparent; stroke: none; }
 .fc-resize[data-dir="n"], .fc-resize[data-dir="s"] { cursor: ns-resize; }
 .fc-resize[data-dir="e"], .fc-resize[data-dir="w"] { cursor: ew-resize; }
 .fc-resize[data-dir="nw"], .fc-resize[data-dir="se"] { cursor: nwse-resize; }
@@ -160,6 +162,13 @@
   font: 500 var(--type-subheadline)/1 var(--font-sans); color: var(--color-ink);
 }
 .fc-bar-main { top: 10px; left: 10px; max-width: calc(100% - 20px); overflow-x: auto; scrollbar-width: none; }
+/* Wider than the chart (a narrow note): the edge it is cut at fades while there is more that way. */
+.fc-bar-main[data-more-start] { --fc-fade-start: 26px; }
+.fc-bar-main[data-more-end] { --fc-fade-end: 26px; }
+.fc-bar-main:is([data-more-start], [data-more-end]) {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fc-fade-start, 0px), #000 calc(100% - var(--fc-fade-end, 0px)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fc-fade-start, 0px), #000 calc(100% - var(--fc-fade-end, 0px)), transparent 100%);
+}
 .fc-bar-zoom { right: 10px; bottom: 10px; }
 .fc-bar-float { transform: translateX(-50%); white-space: nowrap; }
 .fc-group { display: inline-flex; align-items: center; gap: 2px; }

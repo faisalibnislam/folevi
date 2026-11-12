@@ -51,11 +51,11 @@ describe("editor fixes", () => {
     e.destroy();
   });
 
-  test("pasted blocks land at the caret, splitting the line", () => {
+  test("pasted blocks land at the caret, joining the line: the first continues it, the rest of it ends the last", () => {
     const e = make([p("HelloWorld")]);
     e.commands.setTextSelection(6);
     insertPastedBlocks(e.view, markdownToBlocks("- a\n- b", { titleFromHeading: false }).blocks);
-    expect(texts(e)).toEqual(["paragraph:Hello@0", "bulleted:a@0", "bulleted:b@0", "paragraph:World@0"]);
+    expect(texts(e)).toEqual(["paragraph:Helloa@0", "bulleted:bWorld@0"]);
     e.destroy();
   });
 

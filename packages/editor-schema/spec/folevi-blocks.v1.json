@@ -105,7 +105,7 @@
       "kind": "CoverKind",
       "value": "string?"
     },
-    "TableColumn": { "format": "TableColumnFormat?", "currency": "string?", "decimals": "int?" },
+    "TableColumn": { "format": "TableColumnFormat?", "currency": "string?", "decimals": "int?", "width": "int?" },
     "TableSort": { "column": "int", "desc": "bool?" },
     "TableFilter": { "column": "int", "op": "TableFilterOp", "value": "string?" },
     "TableViewSettings": { "sort": "TableSort?", "filters": "TableFilter[]?" }
@@ -305,6 +305,8 @@
     "maxDepth": 8,
     "maxTableRows": 200,
     "maxTableColumns": 20,
+    "minTableColumnWidth": 60,
+    "maxTableColumnWidth": 800,
     "maxBlocksPerDocument": 5000,
     "maxRankLength": 128,
     "maxFormulaLength": 10000,

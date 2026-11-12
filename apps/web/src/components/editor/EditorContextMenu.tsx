@@ -73,9 +73,11 @@ import { liftController } from "@/lib/native/lift";
 import { feel } from "@/lib/native/ui";
 import { nativeApp } from "@/lib/nativeApp";
 import { inNestedNote } from "./synced/nested";
+import { inBlockControls } from "./blockField";
 import { insertBelowColumns } from "./columns/columnsCommands";
 import { rowOf } from "./columns/columnsModel";
 import { macTextActions, macTextServices, wordAround, type MacTextItems } from "@/lib/desktop/textMenu";
+import { pastePlainText } from "./paste";
 
 /** Asks the selection toolbar to open its link field (the "Edit link…" item). */
 export const EDIT_LINK_EVENT = "folevi:edit-link";
@@ -245,9 +247,23 @@ export function EditorContextMenu({ editor, editable, onCommentBlock }: { editor
       } else setMenu({ x: e.clientX, y: e.clientY, top: e.clientY, target, keyboard: false });
     };
     const onKey = (e: KeyboardEvent) => {
+      // ⇧⌘V in Folevi for Mac: WebKit has no key of its own for pasting as plain text there, so the app's
+      // clipboard is read and its text pasted (paste.ts). In a browser the key is the browser's, and what it
+      // pastes arrives as a paste event (Editor.tsx).
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "v") {
+        const clipboard = macTextServices()?.clipboard;
+        // (Not over selected blocks: a paste replaces those, which is the paste event's doing.)
+        if (!clipboard || !editor.isEditable || blockSelectionRange(editor.state) || inBlockControls(e.target) || inNestedNote(e.target, dom)) return;
+        e.preventDefault();
+        syncDomSelection(editor.view);
+        void clipboard.read().then((read) => {
+          if (!editor.isDestroyed && typeof read?.text === "string") pastePlainText(editor.view, read.text);
+        });
+        return;
+      }
       if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
       // A field inside a block (a caption, a cell) keeps the browser's menu; a synced block's editor has its own.
-      if ((e.target as HTMLElement | null)?.closest?.("input, textarea, select") || inNestedNote(e.target, dom)) return;
+      if (inBlockControls(e.target) || inNestedNote(e.target, dom)) return;
       e.preventDefault();
       syncDomSelection(editor.view);
       const { from } = editor.state.selection;
@@ -810,10 +826,39 @@ function clipboardCommand(editor: Editor, command: "copy" | "cut", toast: Return
   if (!ok) toast.show(`Your browser blocked ${command === "cut" ? "cutting" : "copying"} from the menu. Press ${command === "cut" ? "⌘X" : "⌘C"} instead.`, { tone: "error" });
 }
 
+/**
+ * Paste in the Mac app, done by the app as ⌘V is: the note is handed everything on the clipboard (files
+ * copied in the Finder, Folevi's own blocks), where reading the clipboard through the app carries only text,
+ * HTML and one picture. Resolves whether a paste reached the page; when none did (an older app, the keyboard
+ * somewhere the app could not paste into) the caller reads the clipboard as before.
+ */
+function pasteAsTheAppDoes(editor: Editor, paste: () => Promise<boolean>): Promise<boolean> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener("paste", seen, true);
+      clearTimeout(timer);
+      resolve(ok);
+    };
+    const seen = () => done(true);
+    // (The paste arrives before the app's answer does; without one, not long after the answer.)
+    const timer = setTimeout(() => done(false), 1500);
+    document.addEventListener("paste", seen, true);
+    editor.view.focus();
+    paste().then(
+      (ok) => (ok ? setTimeout(() => done(false), 250) : done(false)),
+      () => done(false),
+    );
+  });
+}
+
 async function pasteFromClipboard(editor: Editor, plain: boolean, toast: ReturnType<typeof useToast>) {
   const data = new DataTransfer();
   // Folevi for Mac reads the clipboard itself (WebKit asks with a "Paste" bubble when a page does, outside ⌘V).
   const mac = macTextServices()?.clipboard;
+  if (!plain && mac?.paste && (await pasteAsTheAppDoes(editor, mac.paste))) return;
   try {
     const fromMac = mac ? await mac.read() : null;
     if (fromMac) {

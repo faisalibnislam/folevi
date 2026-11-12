@@ -29,6 +29,8 @@ export function useMove(ctrl: FlowController) {
         nodes = [id];
         setSel({ nodes, edges: [] });
       }
+      // A shape just taken out of the selection isn't picked up with the rest.
+      if (toggled && !nodes.includes(id)) return "handled";
       const before = docRef.current;
       const moving = before.nodes.filter((n) => nodes.includes(n.id));
       if (!moving.length) return "handled";

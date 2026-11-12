@@ -1,7 +1,8 @@
 // Columns in the editor (packages/editor-schema/src/columns.ts): the row's line (it reserves the row's height
 // and holds the handles that resize the columns), each column's own line (never seen), the layout that puts
 // the columns side by side (columnsLayout.ts), the repair after local edits, the keys that keep typing
-// inside a column and the ones that leave it (Enter on an empty last line, ↓ at the end of the last column).
+// inside a column and the ones that leave it (Enter on an empty last line, ↓ at the end of the last column),
+// and the click under a short column that writes at its end.
 import "./columns.css";
 import { Extension, Node, mergeAttributes, type Editor } from "@tiptap/core";
 import { NodeSelection, Plugin, PluginKey, Selection, TextSelection, type EditorState } from "@tiptap/pm/state";
@@ -11,8 +12,8 @@ import { MIN_COLUMN_WIDTH } from "@folevi/editor-schema";
 import { blocksInSelection, turnInto } from "../commands";
 import { neighbourIndex } from "../blockSelectionState";
 import { COLUMN, ROW, baseDepth, columnsModel, rowOf } from "./columnsModel";
-import { ColumnsLayoutView, columnsLayoutOf, columnsSnapshot } from "./columnsLayout";
-import { caretBelowRow, repairColumns, setColumnShares } from "./columnsCommands";
+import { ColumnsLayoutView, columnSpaceAt, columnsLayoutOf, columnsSnapshot } from "./columnsLayout";
+import { caretBelowRow, columnEndSelection, repairColumns, setColumnShares } from "./columnsCommands";
 import { haptic } from "@/lib/nativeApp";
 
 const lineAttrs = {
@@ -80,10 +81,7 @@ class RowView implements NodeView {
     this.dom.addEventListener("pointerdown", this.onDown);
     this.dom.addEventListener("dblclick", this.onDouble);
     this.dom.addEventListener("keydown", this.onKey);
-    // A press on the row's empty space (under a short column) leaves the caret where it was.
-    this.dom.addEventListener("mousedown", (e) => {
-      if (e.target === this.dom) e.preventDefault();
-    });
+    this.dom.addEventListener("mousedown", this.onPress);
   }
 
   private render() {
@@ -109,7 +107,31 @@ class RowView implements NodeView {
 
   destroy() {
     this.dom.removeEventListener("pointerdown", this.onDown);
+    this.dom.removeEventListener("mousedown", this.onPress);
   }
+
+  /**
+   * A press on the row's own line is a press on empty space: every line of every column is drawn over it, and
+   * the handles in the gaps are elements of their own (a press on one never gets here as the row's). Under a
+   * short column (beside a taller one) it puts the caret at the end of that column, as a click under the last
+   * line of a page does; a picture or table that ends the column is selected. Anywhere else (between two lines,
+   * beside them in a gap) the caret stays where it was. The browser's own answer is always turned down: it
+   * would put the caret in whatever text is nearest in the page's order, usually another column's.
+   */
+  private onPress = (e: MouseEvent) => {
+    if (e.target !== this.dom) return;
+    e.preventDefault();
+    if (e.button !== 0 || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || !this.editor.isEditable) return;
+    const pos = this.getPos();
+    if (typeof pos !== "number") return;
+    const view = this.editor.view;
+    const space = columnSpaceAt(view, view.state.doc.resolve(pos).index(0), e.clientX, e.clientY);
+    const selection = space ? columnEndSelection(view.state.doc, space.last) : null;
+    if (!selection) return;
+    // ("pointer": a press elsewhere ends a selection of whole blocks, as any click in the note does.)
+    view.dispatch(view.state.tr.setSelection(selection).setMeta("pointer", true));
+    view.focus();
+  };
 
   /** The row (its index among the note's lines) and its drawn columns. */
   private rowNow() {

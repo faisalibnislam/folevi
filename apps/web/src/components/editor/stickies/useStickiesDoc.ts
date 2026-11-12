@@ -15,16 +15,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LIMITS, mergeStickies, parseStickies, serializeStickies, type StickiesData } from "@folevi/editor-schema";
 import type { SyncEngine } from "@/lib/sync/engine";
 import { StickyHistory } from "./ops";
+import { useLeaveFlush, type CanvasWrite } from "../canvas/leaveFlush";
 
 const SAVE_DELAY = 400;
 
-export function useStickiesDoc({ data, write, me, blockId, engine }: { data: string; write: (data: string) => void; me: string; blockId: string | null; engine: SyncEngine | null }) {
+export function useStickiesDoc({ data, write, me, blockId, engine }: { data: string; write: (data: string, how?: CanvasWrite) => void; me: string; blockId: string | null; engine: SyncEngine | null }) {
   const [doc, setDocState] = useState<StickiesData>(() => parseStickies(data));
   const docRef = useRef(doc);
   const lastWritten = useRef(data);
   const baseData = useRef(data);
   /** Changes here not written to the block yet (live gestures and the save delay). */
   const dirty = useRef(false);
+  /** Everything unsaved here came from the board's own undo or redo (the write is then no step of the note's). */
+  const undoing = useRef(false);
   const history = useRef(new StickyHistory());
   const [, setTick] = useState(0);
   const timer = useRef<number | null>(null);
@@ -46,9 +49,11 @@ export function useStickiesDoc({ data, write, me, blockId, engine }: { data: str
     }
     setTooLarge(false);
     dirty.current = false;
+    const undo = undoing.current;
+    undoing.current = false;
     if (s === lastWritten.current) return;
     lastWritten.current = s;
-    writeRef.current(s);
+    writeRef.current(s, undo ? { kind: "undo" } : undefined);
   }, []);
 
   const schedule = useCallback(() => {
@@ -79,6 +84,7 @@ export function useStickiesDoc({ data, write, me, blockId, engine }: { data: str
     show(next);
     setTick((t) => t + 1);
     if (next !== outside && serializeStickies(next) !== data) {
+      undoing.current = false;
       dirty.current = true;
       schedule();
     }
@@ -122,16 +128,19 @@ export function useStickiesDoc({ data, write, me, blockId, engine }: { data: str
     return engine.subscribe(check);
   }, [engine, blockId, schedule, show]);
 
-  // Write any pending change when the block goes away.
+  // Write any pending change when the block goes away, and whenever the block, the page or the app is
+  // being left (canvas/leaveFlush.ts).
+  useLeaveFlush(() => {
+    if (dirty.current || timer.current !== null) flush();
+  });
   useEffect(
     () => () => {
-      if (timer.current !== null) flush();
+      if (dirty.current || timer.current !== null) flush();
     },
     [flush],
   );
 
-  /** Shows a state without recording it (live dragging and typing); `save` also schedules a write. */
-  const setLive = useCallback(
+  const apply = useCallback(
     (next: StickiesData, save = false) => {
       if (next === docRef.current && !save) return;
       dirty.current = true;
@@ -139,6 +148,15 @@ export function useStickiesDoc({ data, write, me, blockId, engine }: { data: str
       if (save) schedule();
     },
     [schedule, show],
+  );
+
+  /** Shows a state without recording it (live dragging and typing); `save` also schedules a write. */
+  const setLive = useCallback(
+    (next: StickiesData, save = false) => {
+      if (next !== docRef.current || save) undoing.current = false;
+      apply(next, save);
+    },
+    [apply],
   );
 
   /** A finished change: recorded for undo (from `before`, default the current board) and saved. */
@@ -157,18 +175,21 @@ export function useStickiesDoc({ data, write, me, blockId, engine }: { data: str
   const undo = useCallback(() => {
     const step = history.current.undo();
     if (!step) return false;
-    setLive(mergeStickies(step.after, docRef.current, step.before, meRef.current), true);
+    // (Mixed with a change not yet saved, the write is a step like any other.)
+    if (!dirty.current) undoing.current = true;
+    apply(mergeStickies(step.after, docRef.current, step.before, meRef.current), true);
     setTick((t) => t + 1);
     return true;
-  }, [setLive]);
+  }, [apply]);
 
   const redo = useCallback(() => {
     const step = history.current.redo();
     if (!step) return false;
-    setLive(mergeStickies(step.before, docRef.current, step.after, meRef.current), true);
+    if (!dirty.current) undoing.current = true;
+    apply(mergeStickies(step.before, docRef.current, step.after, meRef.current), true);
     setTick((t) => t + 1);
     return true;
-  }, [setLive]);
+  }, [apply]);
 
   return {
     doc,

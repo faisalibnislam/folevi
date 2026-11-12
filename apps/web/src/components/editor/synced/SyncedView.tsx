@@ -25,6 +25,7 @@ import { Editor, type EditorHandle } from "../Editor";
 import type { DecorationInputs } from "../plugins";
 import { useEditable } from "../useEditable";
 import { SYNCED_BODY_ATTR } from "./nested";
+import { useCaretCrossing } from "./caretCrossing";
 import { UNSYNC_EVENT, copySyncedBlock, focusWhenShown, pendingFileShares, unsyncBlock } from "./actions";
 import { shownSyncedContent } from "./expand";
 import "./synced.css";
@@ -138,6 +139,9 @@ export function SyncedView({ node, editor, getPos, selected, deleteNode }: React
       innerRef.current?.applyFromEngine();
     });
   }, [engine, inner, sourceId]);
+
+  // The arrow keys carry the caret into and out of the block (caretCrossing.ts).
+  useCaretCrossing(editor, inner, getPos);
 
   // A new synced block takes the caret.
   useEffect(() => {

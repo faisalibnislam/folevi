@@ -13,7 +13,9 @@ import {
   type FlowShape,
 } from "./schema";
 import { AiIcon } from "@/components/ai/AiIcon";
+import { useRef } from "react";
 import { MenuButton } from "@/components/ui/Menu";
+import { useScrollEdges } from "../scrollEdges";
 import { ShapeThumb } from "./chrome/ShapeLibrary";
 
 /** A small outline of each shape for buttons and menus. */
@@ -73,8 +75,12 @@ export function MainToolbar({
   /** The Check button (chrome/CheckPanel.tsx), after Foli AI. */
   checkControl?: React.ReactNode;
 }) {
+  // At a narrow note the bar is wider than the chart and scrolls sideways: its cut edge fades while there is
+  // more that way (flowchart.css), so the last buttons do not just look missing.
+  const barRef = useRef<HTMLDivElement>(null);
+  useScrollEdges(barRef);
   return (
-    <div className="fc-bar fc-bar-main" role="toolbar" aria-label="Flowchart tools" onPointerDown={(e) => e.stopPropagation()}>
+    <div ref={barRef} className="fc-bar fc-bar-main" role="toolbar" aria-label="Flowchart tools" onPointerDown={(e) => e.stopPropagation()}>
       <span role="group" aria-label="Add a shape" className="fc-group">
         {FLOWCHART_QUICK_SHAPES.map((s) => (
           <button key={s} type="button" className="fc-btn" aria-label={`Add ${FLOWCHART_SHAPE_LABEL[s].toLowerCase()}`} title={FLOWCHART_SHAPE_LABEL[s]} onClick={() => onAdd(s)}>

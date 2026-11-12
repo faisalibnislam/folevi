@@ -469,6 +469,10 @@ mark[class^="fb-hl-"], .fb-hl-yellow, .fb-hl-green, .fb-hl-blue, .fb-hl-pink { c
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-marigold) 90%, transparent);
 }
 
+/* A match in a block's own fields (an image's caption, a table's cells): the block is marked. */
+.fb-editor > .fb-find-block { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-marigold) 45%, transparent); border-radius: var(--radius-tiny); }
+.fb-editor > .fb-find-block.fb-find-current { background-color: transparent; color: inherit; box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-marigold) 90%, transparent); }
+
 /* Find in page (DocumentSidebar → Find): every match, and the current one. */
 ::highlight(folevi-find) {
   background-color: color-mix(in oklab, var(--color-marigold) 32%, transparent);

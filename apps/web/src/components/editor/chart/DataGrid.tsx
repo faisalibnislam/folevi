@@ -5,6 +5,7 @@
 // pasting rows from a spreadsheet or CSV fills cells from the one you're in. Each column and row has a menu
 // (insert, move, delete). A cell keeps what you type while you're in it ("1,2" on the way to "1,200") and
 // is saved as you go. When the rows come from a table or a collection the grid is read-only and says where.
+import { imeKey } from "../canvas/wheel";
 import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal, Plus } from "lucide-react";
 import { CHART_LIMITS, chartCell, chartCellText, chartNumber, parseDelimited, type ChartCell, type ChartKind } from "@folevi/editor-schema";
@@ -139,6 +140,8 @@ export function DataGrid({ data, kind, readOnly, note, onChange }: { data: GridD
       el.select();
       return true;
     };
+    // (Enter that picks an input method's candidate is not the grid's.)
+    if (imeKey(e)) return;
     if (e.key === "Enter" && !e.shiftKey) {
       if (!go(r + 1, c) && !readOnly && r >= 0) addRow(r + 1);
       else e.preventDefault();

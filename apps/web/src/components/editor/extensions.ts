@@ -5,7 +5,7 @@ import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { Node as PMNode } from "@tiptap/pm/model";
 import { CHART_DEFAULT_HEIGHT, MINDMAP_DEFAULT_HEIGHT, STICKIES_DEFAULT_HEIGHT, WIREFRAME_DEFAULT_HEIGHT, normalizeLanguage, sanitizeHref, describeRepeat, repeatRule } from "@folevi/editor-schema";
-import { codeBlockNodeView, mermaidFocusPlugin } from "./codeView";
+import { CODE_TEXT_ATTRS, codeBlockNodeView, mermaidFocusPlugin } from "./codeView";
 import { haptic } from "@/lib/nativeApp";
 
 const blockAttrs = (extra: Attributes = {}): Attributes => ({
@@ -434,14 +434,15 @@ export const Code = Node.create({
   defining: true,
   addAttributes: () => blockAttrs({ language: { default: "plaintext", parseHTML: (el) => normalizeLanguage(el.getAttribute("data-language") ?? el.querySelector("code")?.className.replace(/^language-/, "") ?? "plaintext"), renderHTML: (a) => ({ "data-language": a.language }) } }),
   parseHTML: () => [{ tag: "pre", preserveWhitespace: "full" }],
-  renderHTML: ({ HTMLAttributes }) => ["pre", mergeAttributes(HTMLAttributes, { "data-block": "code", class: "fb fb-code" }), ["code", {}, 0]],
+  renderHTML: ({ HTMLAttributes }) => ["pre", mergeAttributes(HTMLAttributes, { "data-block": "code", class: "fb fb-code", ...CODE_TEXT_ATTRS }), ["code", {}, 0]],
   // Same DOM as renderHTML; Mermaid blocks become a diagram card with foldable source (codeView.ts).
   addNodeView: () => codeBlockNodeView,
   addProseMirrorPlugins: () => [mermaidFocusPlugin],
   addKeyboardShortcuts() {
     return {
       // Two spaces at the caret, or at the start of every selected line.
-      Tab: () => (this.editor.isActive("codeBlock") ? indentCode(this.editor) : false),
+      // (Asked of the block the selection starts in: one that runs on into other blocks is still code's.)
+      Tab: () => (this.editor.state.selection.$from.parent.type.name === "codeBlock" ? indentCode(this.editor) : false),
       // Leaving code: ↓ or → at the very end of the last block, or Enter on a second empty last line,
       // continues with a text line below.
       ArrowDown: () => exitCode(this.editor, "down"),
@@ -474,7 +475,7 @@ export const Code = Node.create({
 function indentCode(editor: Editor): boolean {
   const { state } = editor;
   const { $from, $to, empty } = state.selection;
-  if (empty || $from.parent !== $to.parent) {
+  if (empty) {
     editor.view.dispatch(state.tr.insertText("  "));
     return true;
   }
@@ -482,8 +483,10 @@ function indentCode(editor: Editor): boolean {
   const text = $from.parent.textContent;
   const lines: number[] = [];
   let at = text.lastIndexOf("\n", $from.parentOffset - 1) + 1;
-  // A selection ending at the very start of a line doesn't include that line.
-  const last = text[$to.parentOffset - 1] === "\n" ? $to.parentOffset - 1 : $to.parentOffset;
+  // A selection that runs on into the blocks below indents the code's lines from where it starts (it never
+  // replaces what is selected). One ending at the very start of a line doesn't include that line.
+  const endOffset = $from.parent === $to.parent ? $to.parentOffset : text.length;
+  const last = $from.parent === $to.parent && text[endOffset - 1] === "\n" ? endOffset - 1 : endOffset;
   for (;;) {
     lines.push(at);
     const nl = text.indexOf("\n", at);
@@ -706,7 +709,7 @@ export const InlineCode = Mark.create({
   excludes: "_",
   code: true,
   parseHTML: () => [{ tag: "code" }],
-  renderHTML: () => ["code", { class: "fb-inline-code" }, 0],
+  renderHTML: () => ["code", { class: "fb-inline-code", ...CODE_TEXT_ATTRS }, 0],
   addKeyboardShortcuts() {
     return { "Mod-e": () => this.editor.commands.toggleMark("code") };
   },

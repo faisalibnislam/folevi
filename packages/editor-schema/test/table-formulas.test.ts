@@ -297,6 +297,19 @@ describe("the table block's settings", () => {
     expect(block.props.view).toEqual({ filters: [{ column: 1, op: "gt", value: "5" }] });
     expect(block.props.totalsRow).toBeUndefined();
   });
+  it("takes a column's width in whole pixels, within its limits", () => {
+    const codes = (props: Record<string, unknown>) => validateWireBlock(table(props)).map((i) => i.path);
+    expect(validateWireBlock(table({ columns: [{ width: 60 }, { format: "currency", currency: "EUR", width: 800 }] }))).toEqual([]);
+    expect(codes({ columns: [{ width: 59 }] })).toContain("props.columns[0].width");
+    expect(codes({ columns: [{}, { width: 801 }] })).toContain("props.columns[1].width");
+    expect(codes({ columns: [{ width: 120.5 }] })).toContain("props.columns[0].width");
+    // Repair keeps the column about as wide as it was: clamped and rounded, or automatic when it says nothing.
+    const { block, issues } = repairWireBlock(table({ columns: [{ width: 2000, format: "number" }, { width: 12.4 }], view: { sort: { column: 9 } } }));
+    expect(issues).toEqual([]);
+    expect(block.props.columns).toEqual([{ format: "number", width: 800 }, { width: 60 }]);
+    expect(repairWireBlock(table({ columns: [{ width: "wide" }, { decimals: 1 }] })).block.props.columns).toEqual([{}, { decimals: 1 }]);
+    expect(repairWireBlock(table({ columns: [{ width: "wide" }] })).block.props.columns).toBeUndefined();
+  });
   it("exports and searches what the cells show", () => {
     const b = table({ totalsRow: true, columns: [{}, { format: "currency", currency: "USD" }] });
     const md = blocksToMarkdown([b]);

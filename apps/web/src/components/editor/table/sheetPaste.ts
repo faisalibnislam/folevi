@@ -5,12 +5,18 @@
 // in A1 (x:fmla) as they are in the sheet, which may not start at A1: the copied block's place in the sheet is
 // worked out from the values Excel shows next to them, and the formulas are kept only when they give those
 // values back. Anything else (or a formula that can't be placed) keeps the value it showed.
-import { LIMITS, columnLetter, evaluateTable, isFormula, parseDelimited, parseTableNumber, remapFormulaReferences, type InlineNode } from "@folevi/editor-schema";
+import { LIMITS, columnLetter, evaluateTable, isFormula, normalizeInline, parseDelimited, parseTableNumber, plainText, remapFormulaReferences, sanitizeHref, validateInline, type InlineNode } from "@folevi/editor-schema";
+import { OWN_CELL_ATTR, OWN_ORIGIN_ATTR } from "./tableClipboard";
 
 export interface SheetGrid {
   rows: InlineNode[][][];
   /** The first row reads as column names (text over numbers). */
   headerRow: boolean;
+  /**
+   * Cells copied from a Folevi table: the row and column the first one was at. Their formulas are as they
+   * were written there, so whoever pastes them elsewhere moves the references by how far the cells moved.
+   */
+  origin?: { r: number; c: number };
 }
 
 const text = (t: string): InlineNode[] => (t ? [{ type: "text", text: t }] : []);
@@ -100,10 +106,31 @@ function looksLikeHeader(rows: InlineNode[][][]): boolean {
 }
 
 /**
- * A pasted HTML table as cells: each cell's formatting (from `cellInline`), and formulas from Google
- * Sheets or Excel where they can be kept.
+ * What a cell copied from a Folevi table really holds (tableClipboard.ts puts it on the cell), or null when
+ * it isn't there or isn't content a cell may hold. It comes from the clipboard, which any page can write:
+ * nothing is taken on trust.
  */
-export function gridFromHtmlTable(table: HTMLTableElement, cellInline: (el: Element) => InlineNode[]): SheetGrid {
+function ownCell(td: Element): InlineNode[] | null {
+  const raw = td.getAttribute(OWN_CELL_ATTR);
+  if (!raw || raw.length > LIMITS.maxTextLength * 4) return null;
+  try {
+    const nodes = JSON.parse(raw) as InlineNode[];
+    if (!Array.isArray(nodes) || validateInline(nodes).length) return null;
+    if (plainText(nodes).length > LIMITS.maxTextLength) return null;
+    for (const n of nodes) if (n.type === "text") for (const m of n.marks ?? []) if (m.type === "link" && !sanitizeHref(m.href)) return null;
+    return normalizeInline(nodes);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A pasted HTML table as cells: each cell's formatting (from `cellInline`), and formulas from Google
+ * Sheets or Excel where they can be kept. With `own`, cells copied from a Folevi table come back as they
+ * were stored (their formulas, mentions and colours) and the grid says where they were (`origin`); without
+ * it they are what they showed, as for any other app.
+ */
+export function gridFromHtmlTable(table: HTMLTableElement, cellInline: (el: Element) => InlineNode[], own = false): SheetGrid {
   const trs = [...table.rows].slice(0, LIMITS.maxTableRows);
   const width = Math.min(LIMITS.maxTableColumns, Math.max(1, ...trs.map((tr) => [...tr.cells].reduce((n, c) => n + Math.max(1, c.colSpan || 1), 0))));
   const rows: InlineNode[][][] = [];
@@ -115,7 +142,7 @@ export function gridFromHtmlTable(table: HTMLTableElement, cellInline: (el: Elem
     const excelRow: (string | null)[] = [];
     for (const td of tr.cells) {
       if (row.length >= width) break;
-      const inline = cellInline(td);
+      const inline = (own ? ownCell(td) : null) ?? cellInline(td);
       const value = inline.map((n) => (n.type === "text" ? n.text : "")).join("");
       const sheets = td.getAttribute("data-sheets-formula");
       const formula = sheets ? r1c1ToA1(sheets, r, row.length) : null;
@@ -143,7 +170,8 @@ export function gridFromHtmlTable(table: HTMLTableElement, cellInline: (el: Elem
     if (placed) placed.forEach((row, r) => row.forEach((f, c) => f && (rows[r]![c] = text(f))));
   }
   const th = trs[0]?.cells[0]?.tagName === "TH";
-  return { rows, headerRow: th || looksLikeHeader(rows) };
+  const at = own ? /^(\d{1,4}):(\d{1,4})$/.exec(table.getAttribute(OWN_ORIGIN_ATTR) ?? "") : null;
+  return { rows, headerRow: th || looksLikeHeader(rows), ...(at ? { origin: { r: Number(at[1]), c: Number(at[2]) } } : {}) };
 }
 
 /** Whether HTML came from a spreadsheet (Google Sheets, Excel, Numbers, LibreOffice). */
@@ -151,22 +179,37 @@ export function isSpreadsheetHtml(html: string): boolean {
   return /google-sheets-html-origin|data-sheets-|urn:schemas-microsoft-com:office:excel|x:str|x:num|ProgId" content="Excel|Numbers|LibreOffice/i.test(html);
 }
 
+/**
+ * Whether text is rows of tab-separated cells, as a spreadsheet copies them: every row with something in it
+ * has the same number of cells (two or more) and none starts with a tab. Indented code, a Makefile or
+ * a sentence with a tab in it are text, not a table.
+ */
+export function isTabSeparated(value: string): boolean {
+  const rows = value.replace(/\r\n?/g, "\n").split("\n").filter((row) => row.trim() !== "");
+  if (!rows.length) return false;
+  const cells = rows[0]!.split("\t").length;
+  return cells >= 2 && rows.every((row) => !row.startsWith("\t") && row.split("\t").length === cells);
+}
+
 /** Rows and columns from pasted text: tab-separated (a spreadsheet's plain copy). Null when it isn't. */
 export function gridFromText(value: string): SheetGrid | null {
-  if (!value.includes("\t")) return null;
+  if (!isTabSeparated(value)) return null;
   const cells = parseDelimited(value, LIMITS.maxTableRows, LIMITS.maxTableColumns);
   if (!cells.length) return null;
   const rows = cells.map((r) => r.map(text));
   return { rows, headerRow: looksLikeHeader(rows) };
 }
 
-/** A spreadsheet's cells on the clipboard (its HTML table, or its tab-separated text), or null. */
-export function clipboardGrid(data: DataTransfer, cellInline: (el: Element) => InlineNode[]): SheetGrid | null {
+/**
+ * A spreadsheet's cells on the clipboard (its HTML table, or its tab-separated text), or null. `own` is for
+ * a paste into a table: cells copied from a Folevi table then keep what they held (see gridFromHtmlTable).
+ */
+export function clipboardGrid(data: DataTransfer, cellInline: (el: Element) => InlineNode[], own = false): SheetGrid | null {
   const html = data.getData("text/html");
   if (html) {
     const doc = new DOMParser().parseFromString(html, "text/html");
     const table = doc.querySelector("table");
-    if (table && (isSpreadsheetHtml(html) || doc.body.textContent?.trim() === table.textContent?.trim())) return gridFromHtmlTable(table, cellInline);
+    if (table && (isSpreadsheetHtml(html) || doc.body.textContent?.trim() === table.textContent?.trim())) return gridFromHtmlTable(table, cellInline, own);
     if (table) return null;
   }
   return gridFromText(data.getData("text/plain"));

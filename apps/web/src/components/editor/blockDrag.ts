@@ -5,10 +5,11 @@
 // nesting, and the page auto-scrolls near its edges. Nothing here mutates ProseMirror's DOM (the
 // source fade and the drop glow are injected CSS rules), so the editor never re-parses mid-drag.
 import type { Editor } from "@tiptap/core";
+import type { Node as PMNode } from "@tiptap/pm/model";
 import { dropTarget, subtreeRange } from "./commands";
 import { blockElements } from "./plugins";
 import { clampDropToColumns, columnsDropAt, type SideDrop } from "./columns/columnsLayout";
-import { layoutOf, tabsDrop } from "./tabs/tabsState";
+import { layoutOf, tabsDrop, type TabLayout } from "./tabs/tabsState";
 import { haptic } from "@/lib/nativeApp";
 
 export type DragPayload =
@@ -135,6 +136,17 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
   let originRect: DOMRect | null = null;
   let target: DropResult | null = null;
   const scroller = scrollParent(dom);
+  // Where every block is on screen, measured once and kept until something can have moved them: the page
+  // scrolled or resized, or the note (or the open tab) changed. Measuring every block of a long note on
+  // every frame, pointer moving or not, made dragging stutter.
+  let layout: { doc: PMNode; tabs: TabLayout; children: HTMLElement[]; boxes: { top: number; bottom: number; depth: number; hidden: boolean }[]; edRect: DOMRect } | null = null;
+  const forgetLayout = () => {
+    layout = null;
+  };
+  const sizeWatch = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(forgetLayout);
+  // The pointer's place when the target was last worked out (nothing to do on a frame it hasn't moved in).
+  let measuredX = NaN;
+  let measuredY = NaN;
 
   // What's being dragged: the block (or selected run of blocks) and everything nested under it. Found by
   // id each time, so an edit from someone else mid-drag doesn't swap in a different block.
@@ -202,14 +214,19 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
   };
 
   const measure = () => {
-    const children = blockElements(dom);
+    measuredX = px;
+    measuredY = py;
     // Depths as drawn: a tab's lines sit at their tabs block's indent (tabs/tabsState.ts).
     const tabs = layoutOf(view.state);
-    const boxes = children.map((c, i) => {
-      const r = c.getBoundingClientRect();
-      return { top: r.top, bottom: r.bottom, depth: Number(c.dataset.depth ?? 0) - (tabs.lift.get(i) ?? 0), hidden: c.classList.contains("fb-hidden") };
-    });
-    const edRect = dom.getBoundingClientRect();
+    if (!layout || layout.doc !== view.state.doc || layout.tabs !== tabs) {
+      const children = blockElements(dom);
+      const boxes = children.map((c, i) => {
+        const r = c.getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom, depth: Number(c.dataset.depth ?? 0) - (tabs.lift.get(i) ?? 0), hidden: c.classList.contains("fb-hidden") };
+      });
+      layout = { doc: view.state.doc, tabs, children, boxes, edRect: dom.getBoundingClientRect() };
+    }
+    const { children, boxes, edRect } = layout;
     // Inserting from the inspector: only while the pointer is over the page column.
     if (payload.kind === "insert" && (px < edRect.left - 96 || px > edRect.right + 96 || py < edRect.top - 48 || py > edRect.bottom + 24)) {
       target = null;
@@ -261,7 +278,10 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
     let dy = 0;
     if (py < r.top + EDGE) dy = -Math.ceil(((r.top + EDGE - py) / EDGE) * 18);
     else if (py > r.bottom - EDGE) dy = Math.ceil(((py - (r.bottom - EDGE)) / EDGE) * 18);
-    if (dy) scroller.scrollTop += dy;
+    if (dy) {
+      scroller.scrollTop += dy;
+      forgetLayout();
+    }
   };
 
   const frame = () => {
@@ -269,7 +289,8 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
     if (!started) return;
     place();
     autoScroll();
-    measure();
+    // The target only needs working out again when the pointer moved or the blocks did.
+    if (px !== measuredX || py !== measuredY || !layout || layout.doc !== view.state.doc) measure();
     raf = requestAnimationFrame(frame);
   };
 
@@ -287,6 +308,9 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
     document.body.appendChild(line);
     if (source) unfade = blocksRule(dom, idsOf(editor, source.index, source.count), "opacity: 0.35; transition: opacity 120ms;");
     document.documentElement.classList.add("fb-dragging");
+    window.addEventListener("scroll", forgetLayout, { capture: true, passive: true });
+    window.addEventListener("resize", forgetLayout);
+    sizeWatch?.observe(dom);
     raf = requestAnimationFrame(frame);
   };
 
@@ -302,6 +326,9 @@ export function beginPointerDrag({ editor, payload, event, onDrop, onStart, onEn
     window.removeEventListener("touchmove", onTouchMove, true);
     window.removeEventListener("touchend", onTouchEnd, true);
     window.removeEventListener("touchcancel", onTouchEnd, true);
+    window.removeEventListener("scroll", forgetLayout, true);
+    window.removeEventListener("resize", forgetLayout);
+    sizeWatch?.disconnect();
     document.documentElement.classList.remove("fb-dragging");
     line?.remove();
     unfade?.();

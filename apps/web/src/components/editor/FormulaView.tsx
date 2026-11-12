@@ -8,6 +8,7 @@ import { FormulaRender } from "./RichBlocks";
 import { useDraft } from "./useDraft";
 import { useEditable } from "./useEditable";
 import { coarsePointer } from "@/lib/hooks/useMediaQuery";
+import { inBlockControls } from "./blockField";
 
 /** Formula blocks inserted by this person open straight into editing. */
 const OPEN_ON_MOUNT = new Set<string>();
@@ -52,6 +53,9 @@ export function FormulaView({ node, selected, updateAttributes, editor, getPos }
     const dom = editor.view.dom as HTMLElement;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter" || e.shiftKey || e.altKey || e.metaKey || e.ctrlKey) return;
+      // Enter pressed in another block's field or canvas is that block's (this formula is only still
+      // selected because the note's selection stays where it was).
+      if (inBlockControls(e.target)) return;
       const sel = editor.state.selection;
       if (!(sel instanceof NodeSelection) || sel.node !== node) return;
       e.preventDefault();

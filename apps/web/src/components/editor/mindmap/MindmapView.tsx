@@ -15,6 +15,10 @@
 //
 // The card, its toolbar, Full canvas, Export (./svg.ts) and the height handle are canvas/CanvasCard.tsx.
 // While the block has focus it owns ⌘Z; outside it the note's undo reverts whole mind map edits.
+import { imeKey, listenPinch, useWheelArmed, wheelZoomRate } from "../canvas/wheel";
+import { useBlockDataWriter } from "../canvas/leaveFlush";
+import { useEditable } from "../useEditable";
+import { typingUndoKey, useTypingHistory } from "../canvas/typingHistory";
 import type { ReactNodeViewProps } from "@tiptap/react";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Waypoints, X } from "lucide-react";
@@ -79,7 +83,10 @@ type Drag =
 type Editing = { id: string; before: MindmapData; typed?: boolean; fresh?: boolean; from?: string; selectAll?: boolean };
 
 export function MindmapView(props: ReactNodeViewProps) {
-  return props.editor.isEditable ? <MindmapEditor {...props} /> : <MindmapReadOnly {...props} />;
+  // (Kept current: a note that turns read-only shows the map as a picture at once, instead of a canvas
+  // that still takes changes it can no longer save.)
+  const editable = useEditable(props.editor);
+  return editable ? <MindmapEditor {...props} /> : <MindmapReadOnly {...props} />;
 }
 
 /** In a read-only note: the drawing with zoom and pan, in the same card. */
@@ -100,9 +107,9 @@ function MindmapReadOnly(props: ReactNodeViewProps) {
 }
 
 function MindmapEditor(props: ReactNodeViewProps) {
-  const { node, editor, getPos, updateAttributes } = props;
+  const { node, editor, getPos } = props;
   const data = String(node.attrs.data ?? "");
-  const write = useCallback((s: string) => updateAttributes({ data: s }), [updateAttributes]);
+  const write = useBlockDataWriter(props);
   const { doc: map, docRef, setLive, commit, undo, redo, flush, canUndo, canRedo, tooLarge } = useMindDoc(data, write);
   const aiOn = useAiEnabled();
   const ai = useMindmapAi();
@@ -249,8 +256,10 @@ function MindmapEditor(props: ReactNodeViewProps) {
   }, []);
   const zoomBy = (f: number) => zoomAt(viewRef.current.k * f, size.w / 2, size.h / 2);
 
-  // ⌘/ctrl-scroll (and a trackpad pinch) zooms; plain scrolling pans once the block is active, and scrolls
+  // ⌘/ctrl-scroll (and a trackpad pinch) zooms; plain scrolling pans while the map is being worked in (it has
+  // the keyboard, and the pointer was pressed in it and has not left since: canvas/wheel.ts), and scrolls
   // the note otherwise.
+  const wheelHere = useWheelArmed(svgRef, ".fb-canvas-card");
   useEffect(() => {
     const el = svgRef.current;
     if (!el) return;
@@ -259,8 +268,8 @@ function MindmapEditor(props: ReactNodeViewProps) {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const r = el.getBoundingClientRect();
-        zoomAt(viewRef.current.k * Math.exp(-e.deltaY * unit * 0.0022), e.clientX - r.left, e.clientY - r.top);
-      } else if (activeRef.current) {
+        zoomAt(viewRef.current.k * Math.exp(-e.deltaY * unit * wheelZoomRate(e)), e.clientX - r.left, e.clientY - r.top);
+      } else if (activeRef.current && wheelHere.current) {
         e.preventDefault();
         const dx = e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX;
         const dy = e.shiftKey && !e.deltaX ? 0 : e.deltaY;
@@ -268,8 +277,12 @@ function MindmapEditor(props: ReactNodeViewProps) {
       }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [zoomAt, outline]);
+    const stopPinch = listenPinch(el, { scale: () => viewRef.current.k, zoomAt });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      stopPinch();
+    };
+  }, [zoomAt, outline, wheelHere]);
 
   // ------------------------------------------------------------------------------ edits
 
@@ -744,6 +757,9 @@ function MindmapEditor(props: ReactNodeViewProps) {
       if (focusId) return (setFocus(null), fitView(layoutMindmap(docRef.current)), done());
       return false;
     }
+    // ⌘A and ⌘D mean nothing on a map (one idea is selected at a time), but must not reach the page (which
+    // would select all its text) or the browser (which would offer to bookmark it).
+    if (mod && !e.altKey && !outline && (key === "a" || key === "d")) return done();
     if (mod || outline) return false;
     const m = docRef.current;
     if (!m.nodes.length) {
@@ -814,10 +830,15 @@ function MindmapEditor(props: ReactNodeViewProps) {
     if (editing && !editBox) setEditing(null);
   }, [editing, editBox]);
 
-  const onEditText = (value: string) => {
+  // What has been typed in this idea, a step at a time, for Cmd+Z (canvas/typingHistory.ts).
+  const typing = useTypingHistory(editing && editBox ? editing.id : null, editing ? (byId(map, editing.id)?.text ?? "") : "");
+  /** The idea being written in now says `value`; `typed` when a key did it (an undo step of the writing). */
+  const onEditText = (value: string, typed = true) => {
     const ed = editingRef.current;
     if (!ed) return;
-    setLive(setText(docRef.current, ed.id, value.replace(/\n{2,}/g, "\n")));
+    const text = value.replace(/\n{2,}/g, "\n");
+    if (typed) typing?.record(text);
+    setLive(setText(docRef.current, ed.id, text));
     reveal.current = true;
   };
 
@@ -862,12 +883,18 @@ function MindmapEditor(props: ReactNodeViewProps) {
           const key = e.key.toLowerCase();
           if (mod && (key === "z" || key === "y")) {
             e.preventDefault();
+            // First what was typed here, a step at a time; with none of that left, the map's own undo.
+            const text = typingUndoKey(e, typing);
+            if (text !== null) {
+              onEditText(text, false);
+              return;
+            }
             finishEdit();
             if (key === "y" || e.shiftKey) redo();
             else undo();
             return;
           }
-          if (e.nativeEvent.isComposing) return;
+          if (imeKey(e)) return;
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             // Enter on an empty new idea just stops; otherwise the next idea follows.

@@ -5,7 +5,7 @@ import { NodeSelection, TextSelection, type EditorState, type Transaction } from
 import { closeHistory } from "@tiptap/pm/history";
 import { LIMITS, sanitizeHref, ulid } from "@folevi/editor-schema";
 import { TEXT_NODES } from "./convert";
-import { blockSelectionRange } from "./blockSelectionState";
+import { blockSelectionRange, hiddenIndices } from "./blockSelectionState";
 import { tabCeiling, tabFloor } from "./tabs/tabsState";
 import { announce } from "@/lib/a11y/announce";
 
@@ -132,7 +132,11 @@ export function turnInto(editor: Editor, type: string, attrs: Record<string, unk
       for (const k of FORMAT_ATTRS) if (b.node.attrs[k] != null) kept[k] = b.node.attrs[k];
       if (type === "paragraph" && b.node.type.name === "paragraph" && b.node.attrs.textStyle != null && !("textStyle" in attrs)) kept.textStyle = b.node.attrs.textStyle;
     }
-    const baseAttrs = { id: b.node.attrs.id, depth: b.node.attrs.depth, ...kept, ...attrs };
+    // Already that kind of block: everything it holds stays (a to-do's date, reminder, assignee and tick),
+    // and only what was asked for changes. Nothing asked for, nothing done.
+    const same = b.node.type === schemaType;
+    if (same && Object.entries(attrs).every(([k, v]) => b.node.attrs[k] === v)) continue;
+    const baseAttrs = same ? { ...b.node.attrs, ...attrs } : { id: b.node.attrs.id, depth: b.node.attrs.depth, ...kept, ...attrs };
     const from = tr.mapping.map(b.pos);
     const to = tr.mapping.map(b.pos + b.node.nodeSize);
     if (schemaType.name === "codeBlock" && b.node.type.name !== "codeBlock") {
@@ -297,8 +301,11 @@ export function moveBlock(editor: Editor, dir: -1 | 1): boolean {
   return true;
 }
 
-/** Opens any collapsed toggle the block at `index` now sits under, so a moved block never lands out of sight. */
-function openAncestors(tr: Transaction, index: number) {
+/**
+ * Opens any collapsed toggle the block at `index` sits under, so a block that was moved, found or jumped to
+ * is never out of sight.
+ */
+export function openAncestors(tr: Transaction, index: number) {
   let depth = Number(tr.doc.maybeChild(index)?.attrs.depth ?? 0);
   for (let i = index - 1; i >= 0 && depth > 0; i--) {
     const node = tr.doc.child(i);
@@ -322,35 +329,50 @@ export function normalizeDepths(tr: Transaction): void {
   });
 }
 
+/**
+ * Inserts a block of `type` at the current line: in place of it when the line is empty, otherwise right
+ * after it, or after what is nested under it when it has nested blocks (they stay with their line). The
+ * caret ends in the new block; for a block without text, on the line right after it, or on the block itself
+ * (selected) when no line of text follows, never further down the note. Returns where the block went.
+ */
 export function insertBlockAfterCurrent(editor: Editor, type: string, attrs: Record<string, unknown> = {}, text?: string): number {
   const { state } = editor;
   const [current] = blocksInSelection(state);
   const depth = current ? Number(current.node.attrs.depth ?? 0) : 0;
-  // An empty line (a paragraph, or an empty list item, to-do, heading…) is replaced by what's inserted,
-  // unless blocks are nested under it.
   const next = current ? state.doc.maybeChild(current.index + 1) : null;
   const hasChildren = Boolean(current && next && Number(next.attrs.depth ?? 0) > depth);
-  const empty = current && TEXT_NODES.has(current.node.type.name) && current.node.type.name !== "codeBlock" && current.node.content.size === 0 && !hasChildren;
   const schemaType = state.schema.nodes[type === "code" ? "codeBlock" : type]!;
   const node = schemaType.create({ id: ulid(), depth, ...attrs }, text ? state.schema.text(text) : null);
+  // An empty line (a paragraph, or an empty list item, to-do, heading…) is replaced by what's inserted. One
+  // with blocks nested under it only by another line of text, which they can stay nested under.
+  const emptyLine = current && TEXT_NODES.has(current.node.type.name) && current.node.content.size === 0;
+  const replace = emptyLine && (!hasChildren || TEXT_NODES.has(node.type.name));
   const tr = state.tr;
   let at: number;
-  if (current && empty) {
+  // The block that will follow the new one, as it is numbered now.
+  let followingIndex: number;
+  if (current && replace) {
     at = current.pos;
+    followingIndex = current.index + 1;
     tr.replaceWith(current.pos, current.pos + current.node.nodeSize, node);
   } else {
     // After the block's nested blocks, so they stay with it.
-    at = current ? subtreeRange(state, current.index).end : state.doc.content.size;
+    const range = current ? subtreeRange(state, current.index) : null;
+    at = range ? range.end : state.doc.content.size;
+    followingIndex = current && range ? current.index + range.count : state.doc.childCount;
     tr.insert(at, node);
   }
-  // Keep a text block after an atom so writing can continue.
-  if (!node.isTextblock) {
-    const after = at + node.nodeSize;
-    const nextNode = tr.doc.nodeAt(after);
-    if (!nextNode) tr.insert(after, state.schema.nodes.paragraph!.create({ id: ulid(), depth }));
-    tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(tr.doc.content.size, after + 1))));
-  } else {
+  if (node.isTextblock) {
     tr.setSelection(TextSelection.near(tr.doc.resolve(at + 1)));
+  } else {
+    // Keep a text block after it so writing can continue.
+    const after = at + node.nodeSize;
+    const following = state.doc.maybeChild(followingIndex);
+    if (!following) tr.insert(after, state.schema.nodes.paragraph!.create({ id: ulid(), depth }));
+    // The caret goes to the line right after the block. When what follows is not a line of text (another
+    // image, a table) or is folded away, the block itself is selected: typing then starts a line under it.
+    if (!following || (following.isTextblock && !hiddenIndices(state).has(followingIndex))) tr.setSelection(TextSelection.create(tr.doc, after + 1));
+    else tr.setSelection(NodeSelection.create(tr.doc, at));
   }
   editor.view.dispatch(tr.scrollIntoView());
   editor.view.focus();
@@ -451,7 +473,10 @@ function posOfIndex(doc: EditorState["doc"], index: number): number {
 /**
  * Moves the block at `fromIndex` (with its nested children) so it lands before the block currently at
  * `toIndex` (childCount = the end), re-indented to `depth`. Children keep their depth relative to it.
- * Returns the new index of the moved block, or null when the move is a no-op or impossible.
+ * It never lands shallower than the block that will follow it: that block (and its siblings) would become
+ * the moved block's children without anyone asking, so between a parent and its first child the moved block
+ * becomes the first child. Returns the new index of the moved block, or null when the move is a no-op or
+ * impossible.
  */
 export function moveSubtreeTo(state: EditorState, fromIndex: number, toIndex: number, depth: number, lastIndex = fromIndex): { tr: Transaction; index: number } | null {
   if (fromIndex < 0 || fromIndex >= state.doc.childCount || lastIndex < fromIndex || lastIndex >= state.doc.childCount) return null;
@@ -461,6 +486,9 @@ export function moveSubtreeTo(state: EditorState, fromIndex: number, toIndex: nu
   if (toIndex > fromIndex && toIndex < fromIndex + range.count) return null; // into itself
   const baseDepth = Number(state.doc.child(fromIndex).attrs.depth ?? 0);
   const newIndex = toIndex > fromIndex ? toIndex - range.count : toIndex;
+  // The block that will come right after the moved ones (not one of them).
+  const follows = state.doc.maybeChild(toIndex === fromIndex ? fromIndex + range.count : toIndex);
+  depth = Math.max(depth, follows ? Number(follows.attrs.depth ?? 0) : 0);
   if ((toIndex === fromIndex || toIndex === fromIndex + range.count) && depth === baseDepth) return null;
   const delta = depth - baseDepth;
   const nodes: PMNode[] = [];
@@ -516,7 +544,8 @@ export function insertBlockAt(editor: Editor, index: number, depth: number, type
 /**
  * Where a dragged block would land, given each top-level block's vertical box. Blocks in `skip`
  * (the dragged subtree) and hidden blocks are ignored. `desiredDepth` is clamped to what the block
- * above allows (at most one deeper). Pure, so it is unit-tested.
+ * above allows (at most one deeper) and to what the block below needs (no shallower than it, or that block
+ * and its siblings would silently become the dropped block's children). Pure, so it is unit-tested.
  */
 export function dropTarget(
   boxes: { top: number; bottom: number; depth: number; hidden?: boolean }[],
@@ -538,7 +567,10 @@ export function dropTarget(
   // The block that would end up directly above the drop point.
   const above = [...visible].reverse().find((b) => b.i < index);
   const maxDepth = above ? Math.min(LIMITS.maxDepth, above.depth + 1) : 0;
-  return { index, depth: Math.max(0, Math.min(maxDepth, desiredDepth)), lineY };
+  // The block that would end up directly below it.
+  const below = visible.find((b) => b.i >= index);
+  const minDepth = Math.min(maxDepth, below ? below.depth : 0);
+  return { index, depth: Math.max(minDepth, Math.min(maxDepth, desiredDepth)), lineY };
 }
 
 /**

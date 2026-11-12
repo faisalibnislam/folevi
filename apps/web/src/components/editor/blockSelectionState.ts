@@ -15,9 +15,20 @@ export function syncDomSelection(view: EditorView): void {
   (view as unknown as { domObserver?: { flush?: () => void } }).domObserver?.flush?.();
 }
 
+/** A place in the text, as a block and an offset into it (so it survives moves, and edits elsewhere). */
+export interface TextPoint {
+  id: string;
+  offset: number;
+}
+
 export interface BlockSelection {
   anchor: string;
   head: string;
+  /**
+   * The text selection the block selection was started from (Escape, Shift+arrow at a block's edge): leaving
+   * the block selection with Escape or by typing goes back to it. Absent when there was none to go back to.
+   */
+  origin?: { anchor: TextPoint; head: TextPoint } | null;
 }
 
 export type BlockSelectionMeta = { set: BlockSelection } | { clear: true };

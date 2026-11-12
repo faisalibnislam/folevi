@@ -105,15 +105,16 @@ describe("plain text read as Markdown", () => {
 });
 
 describe("pasting into the middle of a to-do", () => {
-  test("the second half is a fresh to-do without the task details", () => {
+  test("around a block without text, the second half is a fresh to-do without the task details", () => {
     const e = make([{ type: "todo", attrs: { id: "T1", depth: 0, checked: true, dueDate: "2026-10-05", reminderAt: 123, color: "blue" }, content: [{ type: "text", text: "HelloWorld" }] }]);
     e.commands.setTextSelection(6);
-    insertPastedBlocks(e.view, markdownToBlocks("- a\n- b", { titleFromHeading: false }).blocks);
+    // A list item, then a divider: the item's text continues the to-do, the divider splits it.
+    insertPastedBlocks(e.view, markdownToBlocks("- a\n\n---", { titleFromHeading: false }).blocks);
     const nodes: { type: string; text: string; attrs: Record<string, unknown> }[] = [];
     e.state.doc.forEach((n) => nodes.push({ type: n.type.name, text: n.textContent, attrs: n.attrs }));
-    expect(nodes.map((n) => `${n.type}:${n.text}`)).toEqual(["todo:Hello", "bulleted:a", "bulleted:b", "todo:World"]);
+    expect(nodes.map((n) => `${n.type}:${n.text}`)).toEqual(["todo:Helloa", "divider:", "todo:World"]);
     expect(nodes[0]!.attrs).toMatchObject({ id: "T1", checked: true, dueDate: "2026-10-05", reminderAt: 123 });
-    const second = nodes[3]!.attrs;
+    const second = nodes[2]!.attrs;
     expect(second.id).not.toBe("T1");
     expect(second.checked).toBe(false);
     expect(second.dueDate ?? null).toBeNull();

@@ -1,0 +1,45 @@
+/* An image's resize handles (ImageView in NodeViews.tsx): a strip down each edge of the picture as it is drawn,
+   with a small upright pill in its middle. They show while the pointer is over the picture or the block is
+   selected (a touch screen has no hover: a tap selects the block), in a note that can be edited. Dragging one
+   changes the width; a double click gives the picture its full width back. */
+.fb-image-grip {
+  position: absolute; top: 0; bottom: 0; z-index: 10;
+  width: 20px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: ew-resize; touch-action: none;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  opacity: 0; transition: opacity 120ms var(--motion-easing, ease);
+}
+.fb-image-grip-left { left: 0; }
+.fb-image-grip-right { right: 0; }
+/* The pill. A picture can be any colour, so it doesn't take the theme's: dark with a light rim, which reads on
+   a white page of a document as well as on a night sky, in light and dark alike. */
+.fb-image-grip::after {
+  content: "";
+  width: 6px; height: 48px; max-height: 50%;
+  border-radius: var(--radius-tiny);
+  background: rgb(20 18 16 / 0.6);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.85), 0 1px 4px rgb(0 0 0 / 0.25);
+  transition: background-color 120ms var(--motion-easing, ease), transform 120ms var(--motion-easing, ease);
+}
+.fb-image-box:hover > .fb-image-grip,
+.fb-image-box[data-selected] > .fb-image-grip,
+.fb-image-grip[data-active] { opacity: 1; }
+/* Under the pointer, and while it's held: the pill fills in and thickens. */
+.fb-image-grip:hover::after,
+.fb-image-grip[data-active]::after { background: rgb(20 18 16 / 0.9); transform: scaleX(1.35); }
+/* While a handle is dragged the pointer keeps its shape wherever it goes, and nothing gets selected on the way. */
+.fb-image-resizing, .fb-image-resizing * { cursor: ew-resize !important; user-select: none !important; -webkit-user-select: none !important; }
+
+/* Touch screens: a wider strip to catch a finger, and a bigger pill to see past it. */
+@media (pointer: coarse) {
+  .fb-image-grip { width: 32px; }
+  .fb-image-grip::after { width: 8px; height: 56px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fb-image-grip, .fb-image-grip::after { transition: none; }
+}
+@media (prefers-contrast: more) {
+  .fb-image-grip::after { background: rgb(0 0 0 / 0.9); box-shadow: 0 0 0 2px rgb(255 255 255); }
+}
+@media print { .fb-image-grip { display: none; } }

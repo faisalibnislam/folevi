@@ -350,17 +350,19 @@ const MAX_TABLE_FILTERS = 20;
 
 /**
  * A table's optional settings (src/tableFormulas.ts) against its shape: a format per column at most, a
- * three-letter currency, 0 to 6 decimals, a sort and filters on columns it has, and a totals row only under
- * at least one other row.
+ * three-letter currency, 0 to 6 decimals, a column width in whole pixels within its limits, a sort and
+ * filters on columns it has, and a totals row only under at least one other row.
  */
 function tableSettingsIssues(p: Record<string, unknown>, height: number, width: number): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  const columns = p.columns as { currency?: string; decimals?: number }[] | undefined;
+  const columns = p.columns as { currency?: string; decimals?: number; width?: number }[] | undefined;
   if (columns) {
     if (columns.length > width) issues.push({ path: "props.columns", code: "shape", message: "more column settings than columns" });
     columns.forEach((c, i) => {
       if (c.currency !== undefined && !/^[A-Z]{3}$/.test(c.currency)) issues.push({ path: `props.columns[${i}].currency`, code: "format", message: "expected a currency code" });
       if (c.decimals !== undefined && (c.decimals < 0 || c.decimals > 6)) issues.push({ path: `props.columns[${i}].decimals`, code: "range", message: "decimals must be 0 to 6" });
+      if (c.width !== undefined && c.width !== null && (c.width < LIMITS.minTableColumnWidth || c.width > LIMITS.maxTableColumnWidth))
+        issues.push({ path: `props.columns[${i}].width`, code: "range", message: `width must be ${LIMITS.minTableColumnWidth} to ${LIMITS.maxTableColumnWidth}` });
     });
   }
   const view = p.view as { sort?: { column: number }; filters?: { column: number; value?: string }[] } | undefined;
@@ -457,6 +459,9 @@ function repairTableSettings(props: Record<string, unknown>, height: number, wid
       if (typeof c.currency === "string" && /^[A-Z]{3}$/.test(c.currency.toUpperCase())) out.currency = c.currency.toUpperCase();
       const decimals = int(c.decimals, 0, 6);
       if (decimals !== undefined) out.decimals = decimals;
+      // A width out of range is brought to the nearest one allowed (the column stays about as wide as it was
+      // dragged); one that isn't a number goes, and the column is automatic again.
+      if (typeof c.width === "number" && Number.isFinite(c.width)) out.width = Math.min(LIMITS.maxTableColumnWidth, Math.max(LIMITS.minTableColumnWidth, Math.round(c.width)));
       return out;
     });
     if (columns.some((c) => Object.keys(c).length)) props.columns = columns;

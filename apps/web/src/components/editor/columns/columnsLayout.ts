@@ -328,6 +328,25 @@ function nearestColumn(row: RowSnapshot, x: number) {
   return best;
 }
 
+/**
+ * The empty space of a column under (x, y), for the row whose own line is at `index` (drawn side by side): the
+ * column nearest x, when y is below the last of its lines that shows (under a short column, beside a taller
+ * one). `last` is that line's index among the note's lines. Null beside or between a column's lines (those are
+ * the lines' own), and for a stacked row.
+ */
+export function columnSpaceAt(view: EditorView, index: number, x: number, y: number): { column: number; last: number } | null {
+  const dom = view.dom as HTMLElement;
+  const row = registry.get(dom)?.rows.find((r) => r.index === index);
+  if (!row || row.stacked) return null;
+  const col = nearestColumn(row, x - dom.getBoundingClientRect().left - dom.clientLeft);
+  const last = col?.items[col.items.length - 1];
+  const pos = last === undefined ? undefined : columnsModel(view.state.doc).starts[last];
+  if (!col || last === undefined || pos === undefined) return null;
+  const el = view.nodeDOM(pos);
+  if (!(el instanceof HTMLElement) || y <= el.getBoundingClientRect().bottom) return null;
+  return { column: row.columns.indexOf(col), last };
+}
+
 /** Making a row, or adding a column to one, by dropping a block beside another (see columnsCommands.ts). */
 export type SideDrop = { kind: "new"; target: number; side: "left" | "right" } | { kind: "add"; row: number; at: number };
 

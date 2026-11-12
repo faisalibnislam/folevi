@@ -144,9 +144,16 @@ describe("block selection", () => {
     expect(key(e, "ArrowDown")).toBe(true);
     expect(blockSelectionRange(e.state)).toBeNull();
     expect(e.state.selection.$from.parent.textContent).toBe("B");
+    // Typing goes back to the text where the caret was when its block was selected.
+    e.commands.setTextSelection(1);
     setBlockSelection(e.view, 0, 0);
     expect(key(e, "x")).toBe(false);
     expect(blockSelectionRange(e.state)).toBeNull();
+    expect(e.state.selection.from).toBe(1);
+    // With no caret among the selected blocks (picked by their grips), a letter changes nothing.
+    setBlockSelection(e.view, 1, 2);
+    expect(key(e, "x")).toBe(true);
+    expect(blockSelectionRange(e.state)).toEqual({ from: 1, to: 2 });
     e.destroy();
   });
 

@@ -141,6 +141,8 @@ export type Press = CanvasHit<React.PointerEvent<SVGSVGElement>>;
  * cancels the pointer or a second finger starts a pinch (put things back as they were).
  */
 export interface Gesture {
+  /** A gesture that moves the view itself (panning): the router never pans under it at the canvas's edge. */
+  ownsView?: boolean;
   move?(e: PointerEvent): void;
   end?(e: React.PointerEvent<SVGSVGElement>): void;
   cancel?(): void;
@@ -157,8 +159,11 @@ export type ActiveDrag = { kind: "gesture"; pointer: number; gesture: Gesture } 
 export interface Interaction {
   /** A CSS selector for the canvas items this interaction draws and owns (presses there aren't background). */
   handles?: string;
-  /** Every press, before routing (also a second finger or another mouse button). */
-  beforePress?(e: React.PointerEvent<SVGSVGElement>): void;
+  /**
+   * Every press, before routing (also a second finger or another mouse button). "keep" stops the press
+   * there: nothing else sees it and the keyboard stays where it is (a press inside the shape being written in).
+   */
+  beforePress?(e: React.PointerEvent<SVGSVGElement>): void | "keep";
   /** A primary or middle press: start a gesture, or say it was "handled" (a click), or pass. */
   press?(p: Press): Gesture | "handled" | null | void;
   /** The pointer moved over the canvas while no gesture runs (hover effects). */

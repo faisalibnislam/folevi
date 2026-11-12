@@ -10,8 +10,11 @@ import type { Editor } from "@tiptap/core";
 import { HIGHLIGHT_COLORS, TEXT_COLORS, applyLink, changeDepth, clearFormatting, duplicateBlocks, insertBlockAfterCurrent, moveBlock, removeLink, selectedBlockFormat, setBlockFormat, setHighlight, setTextColor, turnInto } from "@/components/editor/commands";
 import { insertKind } from "@/components/doc/InsertPanel";
 import { requestSpecialInsert, type SpecialInsert } from "@/components/editor/EditorMenus";
+import { EDIT_LINK_EVENT } from "@/components/editor/EditorContextMenu";
+import { findState, setFind } from "@/components/editor/findReplace";
 import { AI_FOCUS_EVENT, askNoteAi } from "@/components/ai/chat/events";
 import { nativeChrome } from "@/lib/nativeApp";
+import { desktop } from "@/lib/desktop";
 import { blockFullScreen, bridgeListening, emitNoteEvent, focusMode, markNoteReady, onNoteHost, registerNote, setFocusMode, type NoteHandle } from "./noteHost";
 import { clearMatches, findMatches, MAX_MATCHES, paintMatches, revealMatch } from "@/components/doc/findInNote";
 import { BridgeError, id, num, oneOf, only, text } from "./validate";
@@ -373,6 +376,32 @@ export function runEditorCommand(o: NativeNoteOptions, name: EditorCommandName, 
   }
 }
 
+/**
+ * The Mac's menu bar commands that the note page answers itself in native chrome mode (the frame sends them here
+ * as foleviDesktop's `{ type: "menu", id }`, apps/mac FrameCommands): Format > Link… opens the selection's link
+ * field, as ⇧⌘K and the right-click menu's "Link…" do; Find Next and Find Previous step through the find bar's
+ * matches, or open Find when no search is going. False for any other command.
+ */
+export function runNoteMenuCommand(o: NativeNoteOptions, id: string): boolean {
+  const editor = o.editor;
+  if (!editor || editor.isDestroyed) return false;
+  switch (id) {
+    case "format.link":
+      if (!o.readOnly) editor.view.dom.dispatchEvent(new CustomEvent(EDIT_LINK_EVENT));
+      return true;
+    case "edit.find-next":
+    case "edit.find-previous": {
+      const find = findState(editor);
+      // (The plugin wraps the index round the matches; the bar follows the plugin.)
+      if (find.matches.length) setFind(editor, { index: find.index + (id === "edit.find-next" ? 1 : -1) });
+      else o.menu.find?.();
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+
 /** DocumentView in native chrome mode: registers the note with the bridge and keeps native told. */
 export function useNativeNote(o: NativeNoteOptions): void {
   const latest = useRef(o);
@@ -393,6 +422,14 @@ export function useNativeNote(o: NativeNoteOptions): void {
     };
     return registerNote(handle);
   }, [on, documentId, primary]);
+
+  // The Mac's menu bar commands this page answers (joined notes: the one with focus).
+  useEffect(() => {
+    if (!on || !primary) return;
+    return desktop()?.onCommand((command) => {
+      if (command.type === "menu") runNoteMenuCommand(latest.current, command.id);
+    });
+  }, [on, primary]);
 
   // note.ready: a frame after the note's first blocks are on screen.
   useEffect(() => {

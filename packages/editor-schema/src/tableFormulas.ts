@@ -27,6 +27,8 @@ export interface TableColumnSettings {
   format?: TableColumnFormat | string | null;
   currency?: string | null;
   decimals?: number | null;
+  /** How wide the column is drawn, in whole pixels (none: as wide as its content needs). Formulas ignore it. */
+  width?: number | null;
 }
 
 export const TABLE_FILTER_OPS: readonly TableFilterOp[] = TableFilterOpValues;

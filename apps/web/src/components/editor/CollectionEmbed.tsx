@@ -1,5 +1,6 @@
 "use client";
 
+import { imeKey } from "./canvas/wheel";
 import { DateField } from "@/components/ui/DateField";
 import { useQuery } from "convex/react";
 import type { AnchorHTMLAttributes } from "react";
@@ -23,6 +24,8 @@ import { formatCalendarDate, t } from "@/i18n";
 import { NO_VALUE_OPS, OPS, TITLE_ID, applyView, exportValue, filterTargets, formatPropertyNumber, formulaGroupKey, formulaGroups, isEmptyValue, isFormulaResult, opLabel, resolveOption, rowsByDate, withFormulaValues, type FilterTarget, type ViewSummary } from "@/components/views/collectionView";
 import { FormulaEditor, FormulaValue, NumberFormatFields } from "./collection/FormulaEditor";
 import { ExportMenu, SummaryRow, useExportItems } from "./collection/CollectionTools";
+import { boardDropAfter, cardBelowPointer } from "./collection/boardDrop";
+import { LiveInput } from "./collection/LiveInput";
 import { MenuButton, type MenuEntry } from "@/components/ui/Menu";
 import { useIphoneApp } from "@/lib/iphone";
 import { feel } from "@/lib/native/ui";
@@ -176,31 +179,15 @@ function rememberView(collectionId: string, viewId: string) {
 
 /** A text field that edits in place and commits on Enter/blur (Escape cancels). */
 function InlineText({ value, onCommit, label, placeholder, className, maxLength = 300 }: { value: string; onCommit: (next: string) => void; label: string; placeholder?: string; className?: string; maxLength?: number }) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const cancelled = useRef(false);
   return (
-    <input
+    <LiveInput
       aria-label={label}
-      value={draft ?? value}
+      value={value}
       placeholder={placeholder}
       maxLength={maxLength}
-      onFocus={() => {
-        cancelled.current = false;
-        setDraft(value);
-      }}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => {
-        const next = (draft ?? value).trim();
-        if (!cancelled.current && next !== value.trim()) onCommit(next);
-        setDraft(null);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") e.currentTarget.blur();
-        if (e.key === "Escape") {
-          e.stopPropagation();
-          cancelled.current = true;
-          e.currentTarget.blur();
-        }
+      onCommit={(typed) => {
+        const next = typed.trim();
+        if (next !== value.trim()) onCommit(next);
       }}
       className={`min-w-0 text-ellipsis rounded-chip border border-transparent bg-transparent px-1 outline-none hover:border-line focus:border-line-strong focus:bg-surface ${className ?? ""}`}
     />
@@ -248,7 +235,7 @@ function NewRowTitle({ rowId, className }: { rowId: string; className?: string }
       onChange={(e) => setText(e.target.value)}
       onBlur={() => end("save")}
       onKeyDown={(e) => {
-        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+        if (e.key === "Enter" && !imeKey(e)) {
           e.preventDefault();
           e.stopPropagation();
           end(text.trim() ? "next" : "save");
@@ -729,14 +716,12 @@ function PropertyEditor({
       );
     case "number":
       return (
-        <input
-          key={String(value ?? "")}
+        <LiveInput
           type="number"
           aria-label={label}
-          defaultValue={typeof value === "number" ? value : ""}
-          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-          onBlur={(e) => {
-            const next = e.target.value === "" ? null : Number(e.target.value);
+          value={typeof value === "number" ? String(value) : ""}
+          onCommit={(typed) => {
+            const next = typed === "" ? null : Number(typed);
             if (next !== (typeof value === "number" ? value : null)) void save(next);
           }}
           className="w-full bg-transparent outline-none"
@@ -786,13 +771,11 @@ function PropertyEditor({
       return <RelationEditor label={label} scope={collection.isMember ? documentScope(collection) : null} value={Array.isArray(value) ? (value as string[]) : []} onChange={(v) => void save(v)} />;
     default:
       return (
-        <input
-          key={String(value ?? "")}
+        <LiveInput
           aria-label={label}
-          defaultValue={typeof value === "string" ? value : ""}
-          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-          onBlur={(e) => {
-            const v = e.target.value.trim();
+          value={typeof value === "string" ? value : ""}
+          onCommit={(typed) => {
+            const v = typed.trim();
             if (v !== (value ?? "")) void save(v || null);
           }}
           className="w-full text-ellipsis bg-transparent outline-none"
@@ -1070,6 +1053,9 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
   const toast = useToast();
   const group = data.properties.find((p) => p.id === view.config.groupBy && p.type === "select");
   const [dragging, setDragging] = useState<string | null>(null);
+  // Where the dragged card would land: the column (by its option, "" for the one without), and the card it
+  // would go above (null: under the column's last).
+  const [drop, setDrop] = useState<{ column: string; before: string | null } | null>(null);
   const freshId = useContext(FreshRow)?.id;
   const formulaGroup = data.properties.find((p) => p.id === view.config.groupBy && p.type === "formula");
   if (formulaGroup) return <FormulaBoard data={data} group={formulaGroup} rows={rows} visible={visible} />;
@@ -1077,26 +1063,55 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
   const columns = [...group.options.map((o) => ({ id: o.id as string | null, name: o.name, color: o.color })), { id: null, name: "No " + group.name.toLowerCase(), color: "muted" }];
   const move = (rowId: string, to: string | null, after: string | null) =>
     moveRow({ collectionId: data.id, rowId, afterRowId: after, groupPropertyId: group.id, groupValue: to }).catch((e) => toast.show(errorMessage(e), { tone: "error" }));
+  // A sorted view puts its cards in the sort's order: a drop there only changes the column. Otherwise the cards
+  // are in the collection's own order, and a card lands where it's dropped (collection/boardDrop.ts).
+  const sorted = view.config.sorts.length > 0;
+  /** Where the dragged card would go, dropped at height `y` over a column (null: it's already there). */
+  const landing = (column: Element, y: number, rowId: string, items: Row[]) => {
+    if (sorted) return items.some((r) => r.id === rowId) ? null : { before: null, afterRowId: items[items.length - 1]?.id ?? null };
+    const before = cardBelowPointer(column, y, rowId);
+    const to = boardDropAfter(data.rows, items, rowId, before);
+    return to ? { before, afterRowId: to.afterRowId } : null;
+  };
   return (
     <div className="flex gap-3 overflow-x-auto p-3">
       {columns.map((col) => {
         const items = rows.filter((r) => ((r.values[group.id] as string | undefined) ?? null) === col.id);
+        const key = col.id ?? "";
+        const target = drop?.column === key ? drop : null;
+        // The card the drop line is drawn on: above the one it would go before, else under the column's last.
+        const others = dragging ? items.filter((r) => r.id !== dragging) : items;
+        const lineOn = !target || sorted ? null : (target.before ?? others[others.length - 1]?.id ?? null);
         return (
           <section
             key={col.id ?? "none"}
             aria-label={t("collection.board.column", { name: col.name, count: items.length })}
-            className="flex w-64 flex-none flex-col rounded-chip bg-sunken p-2"
-            onDragOver={(e) => canEdit && e.preventDefault()}
+            // (A column with no card to draw the line on, or whose order is the sort's, is outlined instead.)
+            className={`flex w-64 flex-none flex-col rounded-chip bg-sunken p-2 ${target && !lineOn ? "shadow-[inset_0_0_0_2px_var(--color-ember)]" : ""}`}
+            onDragOver={(e) => {
+              if (!canEdit) return;
+              e.preventDefault();
+              if (!dragging) return;
+              const to = landing(e.currentTarget, e.clientY, dragging, items);
+              setDrop((had) => (to ? (had && had.column === key && had.before === to.before ? had : { column: key, before: to.before }) : had?.column === key ? null : had));
+            }}
+            onDragLeave={(e) => {
+              // Moving between a column's own cards also "leaves" things: only leaving the column itself counts.
+              // (By where the pointer is: Safari doesn't say what it moved on to.)
+              const box = e.currentTarget.getBoundingClientRect();
+              if (e.clientX > box.left && e.clientX < box.right && e.clientY > box.top && e.clientY < box.bottom) return;
+              setDrop((had) => (had?.column === key ? null : had));
+            }}
             onDrop={(e) => {
               e.preventDefault();
               const rowId = dragging;
               setDragging(null);
+              setDrop(null);
               if (!rowId) return;
-              // A drop goes to the end of the column. The card itself doesn't count (the server orders it
-              // after the row named), and a card that's already last in its own column stays put.
-              const last = items[items.length - 1];
-              if (last?.id === rowId) return;
-              void move(rowId, col.id, last?.id ?? null);
+              // Between the cards under the pointer. The card itself doesn't count (the server orders it after
+              // the row named), and a card dropped where it already is stays put.
+              const to = landing(e.currentTarget, e.clientY, rowId, items);
+              if (to) void move(rowId, col.id, to.afterRowId);
             }}
           >
             <h4 className="mb-2 flex items-center gap-2 px-1 text-footnote font-semibold">
@@ -1109,6 +1124,7 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
               {items.map((row) => (
                 <li
                   key={row.id}
+                  data-row-id={row.id}
                   draggable={canEdit && row.id !== freshId}
                   onDragStart={(e) => {
                     // Firefox only starts a drag that carries some data. Its own type, so dropping the card on
@@ -1117,8 +1133,14 @@ function BoardCollection({ data, view, rows, visible, canEdit, onAdd }: { data: 
                     e.dataTransfer.effectAllowed = "move";
                     setDragging(row.id);
                   }}
-                  onDragEnd={() => setDragging(null)}
-                  className="rounded-chip border border-line bg-raised p-2.5 text-subheadline shadow-[0_1px_0_var(--color-line)]">
+                  onDragEnd={() => {
+                    setDragging(null);
+                    setDrop(null);
+                  }}
+                  className={`relative rounded-chip border border-line bg-raised p-2.5 text-subheadline shadow-[0_1px_0_var(--color-line)] ${dragging === row.id ? "opacity-50" : ""}`}>
+                  {/* The drop line, in the gap above this card (or under it, for a drop at the column's end): drawn
+                      over the gap, so no card moves while another is dragged past. */}
+                  {lineOn === row.id ? <span aria-hidden className={`pointer-events-none absolute inset-x-0 h-[3px] rounded-tiny bg-ember ${target?.before === row.id ? "-top-1.5" : "-bottom-1.5"}`} /> : null}
                   {row.id === freshId ? (
                     <NewRowTitle rowId={row.id} className="h-7 w-full font-medium" />
                   ) : (
@@ -1438,7 +1460,7 @@ function FilterValueEditor({ target, filter, people, onChange }: { target: Filte
           type="number"
           aria-label="Value"
           defaultValue={typeof value === "number" || typeof value === "string" ? String(value) : ""}
-          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+          onKeyDown={(e) => e.key === "Enter" && !imeKey(e) && e.currentTarget.blur()}
           onBlur={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
           className={cls}
         />
@@ -1449,7 +1471,7 @@ function FilterValueEditor({ target, filter, people, onChange }: { target: Filte
           key={String(value ?? "")}
           aria-label="Value"
           defaultValue={String(value ?? "")}
-          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+          onKeyDown={(e) => e.key === "Enter" && !imeKey(e) && e.currentTarget.blur()}
           onBlur={(e) => onChange(e.target.value || undefined)}
           className={cls}
         />

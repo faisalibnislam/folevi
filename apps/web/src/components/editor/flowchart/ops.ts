@@ -21,7 +21,7 @@ import {
   type Pt,
   type Rect,
 } from "./schema";
-import { carryEdges } from "./connectors";
+import { carryEdges, resideAfterMove } from "./connectors";
 
 export interface Selection {
   nodes: string[];
@@ -136,7 +136,7 @@ export function updateEdges(fc: FlowchartData, ids: readonly string[], patch: (e
  */
 export function moveNodes(fc: FlowchartData, origin: ReadonlyMap<string, { x: number; y: number }>, dx: number, dy: number): FlowchartData {
   const L = FLOWCHART_LIMITS.maxCoord;
-  return {
+  const moved = {
     ...fc,
     nodes: fc.nodes.map((n) => {
       const o = origin.get(n.id);
@@ -144,6 +144,9 @@ export function moveNodes(fc: FlowchartData, origin: ReadonlyMap<string, { x: nu
     }),
     edges: carryEdges(fc, new Set(origin.keys()), Math.round(dx), Math.round(dy)),
   };
+  // Connectors the move would send out, around and back in face the shapes' new places instead.
+  const edges = resideAfterMove(fc, moved, new Set(origin.keys()));
+  return edges === moved.edges ? moved : { ...moved, edges };
 }
 
 export function setColor(fc: FlowchartData, ids: readonly string[], color: FlowColor): FlowchartData {
@@ -181,6 +184,49 @@ export function duplicate(fc: FlowchartData, ids: readonly string[], offset = 24
     .filter((e) => map.has(e.from) && map.has(e.to))
     .slice(0, Math.max(0, FLOWCHART_LIMITS.maxEdges - fc.edges.length))
     .map((e) => ({ ...e, id: flowId("e"), from: map.get(e.from)!, to: map.get(e.to)!, bends: e.bends.map((p) => ({ x: p.x + offset, y: p.y + offset })) }));
+  return { doc: { ...fc, nodes: [...fc.nodes, ...nodes], edges: [...fc.edges, ...edges] }, ids: nodes.map((n) => n.id) };
+}
+
+/**
+ * What Copy takes: the selected shapes, the connectors between them, and selected connectors whose ends are
+ * all among those shapes or free. A chart of its own (shapes leave their frame or lane behind). Null with
+ * no shape selected.
+ */
+export function copySelection(fc: FlowchartData, sel: Selection): FlowchartData | null {
+  const ids = new Set(sel.nodes);
+  const nodes = fc.nodes.filter((n) => ids.has(n.id)).map(({ parent: _parent, ...n }) => n);
+  if (!nodes.length) return null;
+  const picked = new Set(sel.edges);
+  const held = (end: string) => end === "" || ids.has(end);
+  const edges = fc.edges.filter((e) => (ids.has(e.from) && ids.has(e.to)) || (picked.has(e.id) && held(e.from) && held(e.to)));
+  return { v: 2, nodes, edges, frames: [], pools: [] };
+}
+
+/**
+ * Adds a copied chart's shapes and connectors, with new ids, moved by (dx, dy) on the grid. As many as fit
+ * under the limits; null when none does.
+ */
+export function pasteChart(fc: FlowchartData, clip: FlowchartData, dx: number, dy: number): { doc: FlowchartData; ids: string[] } | null {
+  const room = FLOWCHART_LIMITS.maxNodes - fc.nodes.length;
+  const picked = clip.nodes.slice(0, Math.max(0, room));
+  if (!picked.length) return null;
+  const ox = snap(dx);
+  const oy = snap(dy);
+  const map = new Map(picked.map((n) => [n.id, flowId("n")]));
+  const moved = (p: Pt) => ({ x: p.x + ox, y: p.y + oy });
+  const nodes = picked.map(({ parent: _parent, ...n }) => ({ ...n, id: map.get(n.id)!, x: n.x + ox, y: n.y + oy }));
+  const edges = clip.edges
+    .filter((e) => (e.from === "" || map.has(e.from)) && (e.to === "" || map.has(e.to)))
+    .slice(0, Math.max(0, FLOWCHART_LIMITS.maxEdges - fc.edges.length))
+    .map((e) => ({
+      ...e,
+      id: flowId("e"),
+      from: e.from ? map.get(e.from)! : "",
+      to: e.to ? map.get(e.to)! : "",
+      bends: e.bends.map(moved),
+      ...(e.fromPoint ? { fromPoint: moved(e.fromPoint) } : {}),
+      ...(e.toPoint ? { toPoint: moved(e.toPoint) } : {}),
+    }));
   return { doc: { ...fc, nodes: [...fc.nodes, ...nodes], edges: [...fc.edges, ...edges] }, ids: nodes.map((n) => n.id) };
 }
 

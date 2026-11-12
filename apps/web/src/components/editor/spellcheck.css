@@ -1,0 +1,12 @@
+/* A misspelt word in the note (spellcheck.ts): the wavy red line every writing app draws. */
+.fb-editor .fb-misspelt {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: var(--color-danger, #d92d20);
+  text-decoration-thickness: 1px;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 0.22em;
+}
+@media print {
+  .fb-editor .fb-misspelt { text-decoration: none; }
+}

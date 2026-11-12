@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useId, useState, type RefObject } from "react";
-import { ArrowDownWideNarrow, ArrowUpNarrowWide, Columns2, Trash2 } from "lucide-react";
-import { TABLE_CURRENCIES, columnLetter, type TableColumn, type TableFilterOp, type TableViewSettings } from "@folevi/editor-schema";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, Columns2, Minus, Plus, Trash2 } from "lucide-react";
+import { LIMITS, TABLE_CURRENCIES, columnLetter, type TableColumn, type TableFilterOp, type TableViewSettings } from "@folevi/editor-schema";
 import { Popover } from "@/components/ui/Popover";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
@@ -20,6 +20,8 @@ const FILTER_LABEL: Record<TableFilterOp, string> = {
   lte: "At most",
 };
 const NO_VALUE: TableFilterOp[] = ["empty", "notEmpty"];
+/** How much "Narrower" and "Wider" change a column's width by, in pixels. */
+const WIDTH_STEP = 20;
 
 /** The column's name for people: its header text, or its letter. */
 export function columnName(name: string, c: number): string {
@@ -27,9 +29,10 @@ export function columnName(name: string, c: number): string {
 }
 
 /**
- * A column's options: how its numbers show (number, currency, percent, date and decimals), sorting and
- * filtering the table by it (a saved view everyone sees; the rows themselves stay where they are), and
- * adding or deleting columns.
+ * A column's options: how its numbers show (number, currency, percent, date and decimals), how wide it is
+ * (the same width its right edge drags to, here for the keyboard and for a finger), sorting and filtering the
+ * table by it (a saved view everyone sees; the rows themselves stay where they are), and adding or deleting
+ * columns.
  */
 export function TableColumnMenu({
   open,
@@ -42,6 +45,8 @@ export function TableColumnMenu({
   canDelete,
   canAdd,
   onSettings,
+  shownWidth,
+  onWidth,
   onView,
   onInsert,
   onDelete,
@@ -56,6 +61,10 @@ export function TableColumnMenu({
   canDelete: boolean;
   canAdd: boolean;
   onSettings: (next: TableColumn) => void;
+  /** How wide the column is drawn now, in pixels (where "Narrower" and "Wider" start from when it's automatic). */
+  shownWidth: () => number;
+  /** A width in pixels, or null for automatic (as wide as its content needs). */
+  onWidth: (px: number | null) => void;
   onView: (next: TableViewSettings | null) => void;
   onInsert: (side: "left" | "right") => void;
   onDelete: () => void;
@@ -91,6 +100,9 @@ export function TableColumnMenu({
   };
   const row = "flex items-center justify-between gap-3";
   const caps = "ui-caps mb-1.5 px-0.5";
+  const widthNow = settings.width ?? null;
+  const stepWidth = (by: number) => onWidth((widthNow ?? (shownWidth() || LIMITS.minTableColumnWidth * 2)) + by);
+  const stepBtn = "grid h-8 w-8 place-items-center rounded-chip bg-sunken/80 text-ink hover:bg-accent-soft/70 disabled:opacity-40 disabled:hover:bg-sunken/80";
 
   return (
     <Popover open={open} onClose={onClose} anchor={anchor} label={`${label} options`} className="w-72">
@@ -159,6 +171,28 @@ export function TableColumnMenu({
               </div>
             ) : null}
           </div>
+        </section>
+        <section aria-labelledby={`${id}-width`}>
+          <h3 id={`${id}-width`} className={caps}>
+            Width
+          </h3>
+          <div className={row}>
+            <span className="text-muted" aria-live="polite">
+              {widthNow === null ? "Automatic" : `${widthNow} px`}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <button type="button" className={stepBtn} disabled={widthNow !== null && widthNow <= LIMITS.minTableColumnWidth} onClick={() => stepWidth(-WIDTH_STEP)} aria-label="Narrower" title="Narrower">
+                <Minus size={14} aria-hidden />
+              </button>
+              <button type="button" className={stepBtn} disabled={widthNow !== null && widthNow >= LIMITS.maxTableColumnWidth} onClick={() => stepWidth(WIDTH_STEP)} aria-label="Wider" title="Wider">
+                <Plus size={14} aria-hidden />
+              </button>
+              <Button size="sm" variant="quiet" disabled={widthNow === null} onClick={() => onWidth(null)} aria-label="Reset to automatic width">
+                Reset
+              </Button>
+            </span>
+          </div>
+          <p className="mt-1.5 px-0.5 text-footnote text-muted">Or drag the line at the column&apos;s right edge. Automatic is as wide as its content needs.</p>
         </section>
         <section aria-labelledby={`${id}-sort`}>
           <h3 id={`${id}-sort`} className={caps}>

@@ -102,8 +102,16 @@ export function useTextEditing(ctrl: FlowController, { onImage }: { /** An image
 
   const interaction: Interaction = {
     // A press anywhere on the canvas ends the edit (without taking the keyboard back: the press decides).
-    beforePress: () => {
-      if (editingRef.current) finishEdit(false);
+    // Except inside the shape being written in: its whole face belongs to the writing, so a press beside the
+    // line of text (the box is only as tall as the text) keeps the edit and the keyboard where they are.
+    beforePress: (e) => {
+      const ed = editingRef.current;
+      if (!ed) return;
+      if (ed.kind === "node" && e.button === 0 && (e.target as Element).closest?.("[data-fc-node]")?.getAttribute("data-fc-node") === ed.id) {
+        e.preventDefault();
+        return "keep";
+      }
+      finishEdit(false);
     },
   };
 

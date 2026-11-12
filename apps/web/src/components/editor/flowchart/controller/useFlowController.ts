@@ -3,6 +3,7 @@
 // The flowchart editor's state in one place: the chart and its history (useFlowDoc), the selection, text
 // editing state, the viewport, and the canvas elements. Interactions, the renderer and the chrome all
 // receive this controller; none of them keeps a second copy of the chart or the selection.
+import { useBlockDataWriter } from "../../canvas/leaveFlush";
 import { useCallback, useId, useMemo, useRef, useState } from "react";
 import type { ReactNodeViewProps } from "@tiptap/react";
 import { settleContainers, type FlowNode } from "../schema";
@@ -15,10 +16,10 @@ import { useRouted } from "./useRouted";
 import type { ActiveDrag, DropInEmpty, Editing, FlowController } from "./types";
 
 export function useFlowController(props: ReactNodeViewProps): FlowController {
-  const { node, updateAttributes } = props;
+  const { node } = props;
   const data = String(node.attrs.data ?? "");
   const savedHeight = clampFlowHeight(node.attrs.height);
-  const write = useCallback((s: string) => updateAttributes({ data: s }), [updateAttributes]);
+  const write = useBlockDataWriter(props);
   const { doc, docRef, setLive, commit: commitDoc, undo, redo, canUndo, canRedo, tooLarge, flush } = useFlowDoc(data, write);
   // Frames and swimlanes follow every finished edit: what it added or moved joins the frame or lane it was
   // dropped in (or leaves the one it was dragged out of), frames grow to hold it, lanes keep it inside. Moved

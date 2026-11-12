@@ -2,9 +2,13 @@
 // text shows Folevi's menu, never the system's, with what the system's would have added on a Mac: spelling
 // suggestions (with Learn and Ignore), Look Up and Share. The native app answers them (apps/mac/Folevi/Chrome/
 // chrome-page.js: foleviDesktop.spelling, learnWord, ignoreWord, lookUp; Bridge/capabilities.js: share,
-// clipboard); without them (today's Electron app, the website) these items simply aren't there. Pasting from
-// Folevi's menus reads the Mac's clipboard through the app (no "Paste" bubble in WebKit) when it can.
+// clipboard); without them (the website) Look Up and Share simply aren't there. Pasting from Folevi's menus
+// reads the Mac's clipboard through the app (no "Paste" bubble in WebKit) when it can.
+//
+// On the website the spelling is Folevi's own (lib/spelling/web.ts): the same checker that underlines misspelt
+// words in the note (components/editor/spellcheck.ts) gives the guesses here.
 import { desktop } from "@/lib/desktop";
+import { ignoreWebSpelling, learnWebSpelling, ownSpelling, warmWebSpelling, webSpelling } from "@/lib/spelling/web";
 
 export interface MacTextServices {
   spelling?(word: string): Promise<{ misspelled: boolean; guesses: string[] } | null>;
@@ -15,13 +19,31 @@ export interface MacTextServices {
   clipboard?: {
     read(): Promise<{ text?: string; html?: string; image?: Uint8Array } | null>;
     write(data: { text?: string; html?: string }): Promise<boolean>;
+    /** Pastes into the page as ⌘V does (everything on the clipboard, files included). False when it could not. */
+    paste?(): Promise<boolean>;
   };
 }
 
-/** The Mac app's text services, or null outside it. */
+/** The website's stand-in: spelling only, from Folevi's own checker. */
+const WEB_SERVICES: MacTextServices = { spelling: webSpelling, learnWord: learnWebSpelling, ignoreWord: ignoreWebSpelling };
+let warmed = false;
+
+/**
+ * The text services for Folevi's own text menu: the Mac app's, or on the website (where there is a
+ * dictionary for the browser's language) Folevi's own spelling. Null when there are none.
+ */
 export function macTextServices(): MacTextServices | null {
   const d = desktop() as (ReturnType<typeof desktop> & MacTextServices) | null;
-  return d ?? null;
+  if (d) return d;
+  if (!ownSpelling()) return null;
+  // Asked for when a menu is about to open, or an editor mounts: the dictionary loads once, ahead of the first question.
+  if (!warmed) {
+    warmed = true;
+    const idle = (window as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+    if (idle) idle(warmWebSpelling, { timeout: 4000 });
+    else setTimeout(warmWebSpelling, 1500);
+  }
+  return WEB_SERVICES;
 }
 
 const WORD = /[\p{L}\p{N}\p{M}'’-]/u;

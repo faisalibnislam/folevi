@@ -10,6 +10,9 @@
   border-radius: 0;
   background: none;
 }
+/* The row's own line is the empty space under a short column: a click there writes at the end of that column
+   (columnsExtension.ts), so it points like text does. */
+.fb-editor[contenteditable="true"] > .fb.fb-columns { cursor: text; }
 .fb-editor > .fb.fb-columns[data-stacked] { height: 0; }
 .fb-editor > .fb.fb-column { margin: 0; padding: 0; min-height: 0; height: 0; overflow: hidden; pointer-events: none; }
 

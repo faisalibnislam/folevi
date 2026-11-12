@@ -9,7 +9,8 @@
 // A shape added here and the text then typed into it are one undo step: the chart is shown with the new
 // shape (setLive) and the text edit starts from the chart before it, so finishing the edit records both.
 import { useEffect, useMemo, useState } from "react";
-import { FLOWCHART_SHAPE_LABEL, autoSides, nearestSide, orthogonalRoute, portPoint, roundedPolyline, type FlowchartData, type FlowNode, type FlowShape, type FlowSide, type Pt, type Rect } from "../schema";
+import { FLOWCHART_SHAPE_LABEL, autoSides, nearestAlong, nearestSide, orthogonalRoute, portPoint, roundedPolyline, type FlowchartData, type FlowNode, type FlowShape, type FlowSide, type Pt, type Rect } from "../schema";
+import { BAR_LIFT, BAR_ROOM } from "../controller/useViewport";
 import { NO_SELECTION, connect, nodeAt, type Selection } from "../ops";
 import { addConnectedAt, circleHitsRect, containerGrabRects, quickAdd, type Added } from "../building";
 import { ShapePicker, rememberShape } from "../chrome/ShapePicker";
@@ -185,7 +186,7 @@ export function useQuickAdd(ctrl: FlowController) {
   // The selection bar floats above a selected shape (chrome/SelectionBar.tsx), over its top arrow, which
   // then stays hidden; when the bar sits below, it keeps clear of the bottom arrow (the flow's way on).
   // Neither depends on the pointer, so the bar never jumps while it's being reached for.
-  const barAbove = single && single.y * k + view.y - 52 > 56;
+  const barAbove = single && single.y * k + view.y - BAR_LIFT > BAR_ROOM;
   const clearance = single && !editing && !picker && !barAbove ? (touch ? OUT.touch : OUT.mouse) + 4 : 0;
   const out = (touch ? OUT.touch : OUT.mouse) / k;
   const hitR = (touch ? 24 : 14) / k;
@@ -199,6 +200,15 @@ export function useQuickAdd(ctrl: FlowController) {
           const cy = owner.y + owner.h / 2;
           const p = { top: { x: cx, y: owner.y - out }, right: { x: owner.x + owner.w + out, y: cy }, bottom: { x: cx, y: owner.y + owner.h + out }, left: { x: owner.x - out, y: cy } }[side];
           if (side === "top" && barAbove && single?.id === owner.id) return null;
+          // A connector of this shape already runs through that spot (the step it leads to, with its label
+          // halfway): the arrow steps aside, along the shape's side, so the line and its label can still be
+          // pressed and the arrow still adds a branch.
+          const aside = hitR + 8 / k;
+          const taken = ctrl.routed.some((x) => (x.edge.from === owner.id || x.edge.to === owner.id) && nearestAlong(x.points, p).distance < hitR + 4 / k);
+          if (taken) {
+            if (side === "top" || side === "bottom") p.x += Math.min(aside + 12 / k, owner.w / 2);
+            else p.y += Math.min(aside + 12 / k, owner.h / 2);
+          }
           // An arrow that would sit on another shape, or on a frame's or lane's title (pressed to move it),
           // stays hidden.
           const under = nodeAt(ctrl.doc, p, r);

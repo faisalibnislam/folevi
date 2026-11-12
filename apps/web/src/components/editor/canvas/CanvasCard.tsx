@@ -8,6 +8,7 @@
 // (canvas/ToolFold.tsx), the tools that don't fit a narrow card or a phone fold into a More menu instead of
 // the toolbar scrolling sideways (the block's name goes first, for screen readers only). Styles: canvas.css.
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
+import { useEditable } from "../useEditable";
 import { NodeSelection } from "@tiptap/pm/state";
 import { Expand, Shrink } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
@@ -61,12 +62,14 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
   const bodyRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLSpanElement>(null);
   const [active, setActive] = useState(false);
+  /** The bar button that has the keyboard got it from a click, not from Tab (see onKeyDown). */
+  const barByPointer = useRef(false);
   const fullCanvas = useFullCanvas({ cardRef, focusRef: bodyRef, onRefit });
   const { full, toggleFull, cardProps, handleKey } = fullCanvas;
   const savedHeight = clampHeight(node.attrs.height, minHeight, maxHeight, defaultHeight);
   const [liveHeight, setLiveHeight] = useState<number | null>(null);
   const height = liveHeight ?? savedHeight;
-  const editable = editor.isEditable;
+  const editable = useEditable(editor);
 
   const exitToNote = () => {
     const pos = typeof getPos === "function" ? getPos() : null;
@@ -84,7 +87,15 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
       e.stopPropagation();
       return;
     }
-    if (t instanceof HTMLTextAreaElement || t instanceof HTMLInputElement || t.closest(".fb-vc-bar")) return;
+    if (t instanceof HTMLTextAreaElement || t instanceof HTMLInputElement || t.isContentEditable) return;
+    if (e.key === "Tab") barByPointer.current = false;
+    if (t.closest(".fb-vc-bar")) {
+      // A bar's button that was clicked keeps the keyboard in some browsers (not in Safari or the Mac app).
+      // The person is still working in the block: its keys go on working, all but the button's own. A
+      // button reached with Tab keeps every key.
+      if (!barByPointer.current || !(t instanceof HTMLButtonElement) || e.key === "Enter" || e.key === " " || e.key === "Tab" || e.key === "Escape") return;
+      bodyRef.current?.focus({ preventScroll: true });
+    }
     if (onKey?.(e)) return;
     if (handleKey(e)) return;
     if (e.key === "Escape" && !full) {
@@ -114,6 +125,11 @@ export function CanvasCard({ view, type, name, icon, minHeight, maxHeight, defau
           tabIndex={0}
           role="group"
           aria-label={name}
+          // Enter on the selected block comes in here (plugins.ts), as it goes into a table's first cell.
+          data-enter-focus={editable ? "" : undefined}
+          onPointerDownCapture={(e) => {
+            barByPointer.current = Boolean((e.target as Element).closest?.(".fb-vc-bar"));
+          }}
           onKeyDown={onKeyDown}
           onFocus={() => setActive(true)}
           onBlur={(e) => {

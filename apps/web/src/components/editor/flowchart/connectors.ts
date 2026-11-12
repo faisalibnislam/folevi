@@ -14,10 +14,12 @@ import {
   FLOWCHART_HEAD_LABEL,
   FLOWCHART_LIMITS,
   FLOWCHART_SHAPE_LABEL,
+  autoSides,
   nearestAlong,
   newEdge,
   outlinePoint,
   pointAlong,
+  portPoint,
   routeFlowchart,
   sidePosition,
   type FlowchartData,
@@ -458,4 +460,52 @@ export function describeEdgeStyle(patch: EdgeStylePatch, count: number): string 
   if (patch.color !== undefined) parts.push(`colour ${patch.color === "neutral" || !patch.color ? "grey" : (FLOWCHART_COLOR_LABEL[patch.color as keyof typeof FLOWCHART_COLOR_LABEL] ?? "custom").toLowerCase()}`);
   const what = parts.join(", ") || "unchanged";
   return `${what.charAt(0).toUpperCase()}${what.slice(1)}${count > 1 ? `, ${count} connectors` : ""}.`;
+}
+
+// ------------------------------------------------------------------------------------------ sides after a move
+
+const AHEAD: Record<FlowSide, (from: Pt, to: Pt) => boolean> = {
+  top: (a, b) => b.y < a.y,
+  bottom: (a, b) => b.y > a.y,
+  left: (a, b) => b.x < a.x,
+  right: (a, b) => b.x > a.x,
+};
+const FACING: Record<FlowSide, FlowSide> = { top: "bottom", bottom: "top", left: "right", right: "left" };
+
+/** A connector leaves its side toward the other shape and arrives from where it came: no turning back on itself. */
+function runsForward(a: FlowNode, sa: FlowSide, b: FlowNode, sb: FlowSide): boolean {
+  const pa = portPoint(a, sa);
+  const pb = portPoint(b, sb);
+  return AHEAD[sa](pa, pb) && AHEAD[FACING[sb]](pa, pb);
+}
+
+/**
+ * Connectors after shapes moved. A connector keeps the sides it was given (out of the bottom, into the top),
+ * and that is right while the shapes stay roughly where they were. Moved past each other, the same sides
+ * would send the line out, around and back in. So a connector that ran forward before the move and would
+ * turn back after it takes the sides that face each other now. One that already doubled back (a loop drawn
+ * on purpose), has bend points of its own, or a free end, is left exactly as it is.
+ */
+export function resideAfterMove(before: FlowchartData, after: FlowchartData, moved: ReadonlySet<string>): FlowEdge[] {
+  if (!moved.size) return after.edges;
+  const was = new Map(before.nodes.map((n) => [n.id, n]));
+  const now = new Map(after.nodes.map((n) => [n.id, n]));
+  let changed = false;
+  const edges = after.edges.map((e) => {
+    if (!e.from || !e.to || e.from === e.to || e.bends.length || !e.fromSide || !e.toSide) return e;
+    if (!moved.has(e.from) && !moved.has(e.to)) return e;
+    const a0 = was.get(e.from);
+    const b0 = was.get(e.to);
+    const a1 = now.get(e.from);
+    const b1 = now.get(e.to);
+    if (!a0 || !b0 || !a1 || !b1) return e;
+    if (!runsForward(a0, e.fromSide, b0, e.toSide) || runsForward(a1, e.fromSide, b1, e.toSide)) return e;
+    const [fromSide, toSide] = autoSides(a1, b1);
+    if (fromSide === e.fromSide && toSide === e.toSide) return e;
+    changed = true;
+    // (A place along the old side means nothing on the new one.)
+    const { fromAt: _fromAt, toAt: _toAt, ...rest } = e;
+    return { ...rest, fromSide, toSide };
+  });
+  return changed ? edges : after.edges;
 }

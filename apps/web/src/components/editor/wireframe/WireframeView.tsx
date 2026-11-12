@@ -19,6 +19,10 @@
 // The card, Export (all screens; one screen from its own bar), Full canvas and the height handle come from
 // canvas/CanvasCard.tsx. While the canvas has focus it owns ⌘Z (its own history, useWireDoc); outside it the
 // editor's undo reverts whole wireframe edits, and the canvas follows.
+import { imeKey, listenPinch, useWheelArmed, wheelZoomRate } from "../canvas/wheel";
+import { useBlockDataWriter } from "../canvas/leaveFlush";
+import { useEditable } from "../useEditable";
+import { typingUndoKey, useTypingHistory } from "../canvas/typingHistory";
 import type { ReactNodeViewProps } from "@tiptap/react";
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Copy, PanelsTopLeft, Pencil, Trash2 } from "lucide-react";
@@ -133,7 +137,9 @@ const TEXT_HINT: Partial<Record<WireframeComponent, string>> = {
 
 /** The wireframe block's node view: the editor, or a pannable picture in read-only notes. */
 export function WireframeView(props: ReactNodeViewProps) {
-  if (!props.editor.isEditable) return <WireframeReadOnly {...props} />;
+  // (Kept current: a note that turns read-only shows the picture at once.)
+  const editable = useEditable(props.editor);
+  if (!editable) return <WireframeReadOnly {...props} />;
   return <WireframeEditor {...props} />;
 }
 
@@ -190,9 +196,9 @@ const ScreenNode = memo(function ScreenNode({ s, items, style, clipId, onFocusIt
 // ------------------------------------------------------------------------------------------ the editor
 
 function WireframeEditor(props: ReactNodeViewProps) {
-  const { node, updateAttributes } = props;
+  const { node } = props;
   const data = String(node.attrs.data ?? "");
-  const write = useCallback((s: string) => updateAttributes({ data: s }), [updateAttributes]);
+  const write = useBlockDataWriter(props);
   const { doc, docRef, setLive, commit, undo, redo, canUndo, canRedo, tooLarge } = useWireDoc(data, write);
   const demo = useEditorEnvironment().demo;
   // The small on-device model can't draw screens (WP11, lib/local/ai/features.ts).
@@ -290,6 +296,8 @@ function WireframeEditor(props: ReactNodeViewProps) {
   /** Whether the keyboard is in this block (plain scrolling then pans the canvas, not the note). */
   const active = () => Boolean(stageRef.current?.closest(".fb-canvas-card")?.contains(document.activeElement));
 
+  // (And only while it is being worked in: the pointer was pressed in it and has not left since, canvas/wheel.ts.)
+  const wheelHere = useWheelArmed(svgRef, ".fb-canvas-card");
   useEffect(() => {
     const el = svgRef.current;
     if (!el) return;
@@ -298,8 +306,8 @@ function WireframeEditor(props: ReactNodeViewProps) {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const r = el.getBoundingClientRect();
-        zoomAt(viewRef.current.k * Math.exp(-e.deltaY * unit * 0.0022), e.clientX - r.left, e.clientY - r.top);
-      } else if (active()) {
+        zoomAt(viewRef.current.k * Math.exp(-e.deltaY * unit * wheelZoomRate(e)), e.clientX - r.left, e.clientY - r.top);
+      } else if (active() && wheelHere.current) {
         e.preventDefault();
         const dx = e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX;
         const dy = e.shiftKey && !e.deltaX ? 0 : e.deltaY;
@@ -307,8 +315,12 @@ function WireframeEditor(props: ReactNodeViewProps) {
       }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [zoomAt]);
+    const stopPinch = listenPinch(el, { scale: () => viewRef.current.k, zoomAt });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      stopPinch();
+    };
+  }, [zoomAt, wheelHere]);
 
   const focusCanvas = () => {
     const body = stageRef.current?.closest<HTMLElement>(".fb-canvas-body");
@@ -472,19 +484,30 @@ function WireframeEditor(props: ReactNodeViewProps) {
     [commit, docRef],
   );
 
-  const onEditText = (value: string) => {
+  // What has been typed in this part or screen name, a step at a time, for Cmd+Z (canvas/typingHistory.ts).
+  const editingText = !editing ? "" : editing.kind === "item" ? (doc.items.find((i) => i.id === editing.id)?.text ?? "") : (screenOf(doc, editing.id)?.name ?? "");
+  const typing = useTypingHistory(editing ? `${editing.kind}:${editing.id}` : null, editingText);
+  /** What is being edited now says `value`; `typed` when a key did it (an undo step of the writing). */
+  const onEditText = (value: string, typed = true) => {
     const ed = editingRef.current;
     if (!ed) return;
-    if (ed.kind === "item") setLive(updateItems(docRef.current, [ed.id], (it) => ({ ...it, text: value.slice(0, WIREFRAME_LIMITS.maxText) })));
-    else setLive(updateScreens(docRef.current, [ed.id], (s) => ({ ...s, name: value.replace(/\n+/g, " ").slice(0, WIREFRAME_LIMITS.maxName) })));
+    const text = ed.kind === "item" ? value.slice(0, WIREFRAME_LIMITS.maxText) : value.replace(/\n+/g, " ").slice(0, WIREFRAME_LIMITS.maxName);
+    if (typed) typing?.record(text);
+    if (ed.kind === "item") setLive(updateItems(docRef.current, [ed.id], (it) => ({ ...it, text })));
+    else setLive(updateScreens(docRef.current, [ed.id], (s) => ({ ...s, name: text })));
   };
 
-  // ⌘Z while typing: finish the edit as one step and use the wireframe's history (the browser's own undo
-  // would reach the note).
+  // ⌘Z while typing: what was typed is taken back a step at a time; with none of that left the edit is
+  // finished as one step and the wireframe's history has the key (the browser's own undo would reach the note).
   const historyKey = (e: React.KeyboardEvent) => {
     const key = e.key.toLowerCase();
     if (!(e.metaKey || e.ctrlKey) || (key !== "z" && key !== "y")) return false;
     e.preventDefault();
+    const text = typingUndoKey(e, typing);
+    if (text !== null) {
+      onEditText(text, false);
+      return true;
+    }
     finishEdit();
     if (key === "y" || e.shiftKey) redo();
     else undo();
@@ -1092,7 +1115,7 @@ function WireframeEditor(props: ReactNodeViewProps) {
           onBlur={() => finishEdit(false)}
           onKeyDown={(e) => {
             e.stopPropagation();
-            if (historyKey(e)) return;
+            if (historyKey(e) || imeKey(e)) return;
             if (e.key === "Escape" || (e.key === "Enter" && (!multiline ? !e.shiftKey : e.metaKey || e.ctrlKey))) {
               e.preventDefault();
               finishEdit();
@@ -1119,7 +1142,7 @@ function WireframeEditor(props: ReactNodeViewProps) {
         onBlur={() => finishEdit(false)}
         onKeyDown={(e) => {
           e.stopPropagation();
-          if (historyKey(e)) return;
+          if (historyKey(e) || imeKey(e)) return;
           if (e.key === "Enter" || e.key === "Escape") {
             e.preventDefault();
             finishEdit();

@@ -58,7 +58,8 @@
 //      (world coordinates, under the transform) or its HTML next to the other chrome.
 //   Panels: add their open state to the controller (like aiOpen) and their element to the chrome below.
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEditable } from "../useEditable";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { GitBranchPlus, ListChecks, ListPlus, Workflow } from "lucide-react";
 import { useAiEnabled, useNoteAi } from "@/components/ai/useAi";
 import { insertAiMarkdown } from "@/components/ai/insert";
@@ -82,6 +83,7 @@ import { useResize } from "./interactions/resize";
 import { useMove } from "./interactions/move";
 import { useSelect } from "./interactions/select";
 import { useTextEditing } from "./interactions/textEditing";
+import { useShapeClipboard } from "./interactions/clipboard";
 import { doubleClickInteraction } from "./interactions/doubleClick";
 import { useContextMenu } from "./interactions/contextMenu";
 import { useShapeContent } from "./interactions/content";
@@ -110,7 +112,10 @@ import { coarsePointer } from "@/lib/hooks/useMediaQuery";
 /** The flowchart block's node view: the editable canvas, or a static picture in read-only notes. */
 export function FlowchartView(props: ReactNodeViewProps) {
   const { node, selected, editor } = props;
-  if (!editor.isEditable) {
+  // (Kept current: a note that turns read-only shows the chart as a picture at once, instead of a canvas
+  // that still takes changes it can no longer save.)
+  const editable = useEditable(editor);
+  if (!editable) {
     return (
       <NodeViewWrapper className={`fb-atom fb-flowchart ${selected ? "fb-atom-selected" : ""}`} aria-label="Flowchart">
         <div contentEditable={false} className="fc-card fc-card-static">
@@ -140,7 +145,9 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   const flowAi = useFlowAi(ctrl, { preview, client: aiOn ? aiClient : null });
   const tidy = useTidy(ctrl, { preview, ai: aiOn ? aiClient : null });
   const [checkOpen, setCheckOpen] = useState(false);
-  const issueCount = useMemo(() => checkFlowchart(doc).length, [doc]);
+  // Counted a moment behind the chart: a drag redraws every frame, and the count can wait for it to settle.
+  const settledDoc = useDeferredValue(doc);
+  const issueCount = useMemo(() => checkFlowchart(settledDoc).length, [settledDoc]);
   // Made from the note ("Flowchart with Foli AI" in the block menu, "Flowchart" in the Foli AI panel): draw it once.
   useEffect(() => {
     const p = takePendingFlowchart(String(props.node.attrs.id ?? ""));
@@ -173,6 +180,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
   const quick = useQuickAdd(ctrl);
   const flow = useKeyboardFlow(ctrl, { actions, finishEdit: text.finishEdit });
   const connectorKeys = useConnectorKeys(ctrl);
+  const clipboard = useShapeClipboard(ctrl);
   const events = useInteractions(ctrl, [
     walk.interaction, // Present and Follow a path: while one runs, every press and key is its own
     text.interaction, // any press ends writing first
@@ -193,7 +201,7 @@ function FlowchartEditor(props: ReactNodeViewProps) {
     doubleClickInteraction({ startEdit: text.startEdit, add: actions.add }),
     menu.interaction,
     flow.interaction, // Tab and ⇧Tab grow the flow, arrows move between shapes
-    keyboardInteraction(ctrl, { actions, startEdit: text.startEdit }),
+    keyboardInteraction(ctrl, { actions, startEdit: text.startEdit, clipboardKey: clipboard.keyDown }),
     select.area, // empty canvas: takes every press that reaches it, so it stays last
   ]);
 
@@ -213,12 +221,19 @@ function FlowchartEditor(props: ReactNodeViewProps) {
           aria-roledescription="flowchart editor"
           aria-label={`Flowchart, ${nodeCount} shape${nodeCount === 1 ? "" : "s"}`}
           aria-describedby={`${uid}-help`}
+          // Enter on the selected block comes in here (plugins.ts), as it goes into a table's first cell.
+          data-enter-focus=""
           // The canvas has its own right-click menu, not the note's.
           data-native-menu=""
           data-panning={pan.panning || undefined}
           data-space={pan.spaceDown || undefined}
           {...events.canvas}
           {...content.canvasProps}
+          {...clipboard.canvasProps}
+          // Shapes and text first; a pasted image is the shape content's.
+          onPaste={(e) => {
+            if (!clipboard.onPaste(e)) content.canvasProps.onPaste(e);
+          }}
           {...walk.canvasProps}
         >
           <p id={`${uid}-help`} className="sr-only">
@@ -234,9 +249,10 @@ function FlowchartEditor(props: ReactNodeViewProps) {
                 {boxes.overlay}
                 {move.overlay}
                 {connect.previewOverlay}
-                {resize.overlay}
                 {bends.overlay}
                 {connect.handlesOverlay}
+                {/* Over the connection dots: on the shape's very edge a press resizes. */}
+                {resize.overlay}
                 {quick.overlay}
                 {select.overlay}
                 {content.overlay}

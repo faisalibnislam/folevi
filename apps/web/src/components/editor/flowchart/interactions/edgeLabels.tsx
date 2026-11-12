@@ -144,6 +144,9 @@ export function EdgeLabelInput({
       onKeyDown={(e) => {
         e.stopPropagation();
         if (onHistoryKey(e)) return;
+        // Enter that picks an input method's candidate is the input method's (Safari sends it after the
+        // composition ended, with key code 229).
+        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
         if (e.key === "Enter" || e.key === "Escape") {
           e.preventDefault();
           onFinish();

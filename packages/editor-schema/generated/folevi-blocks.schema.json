@@ -1050,6 +1050,9 @@
         },
         "decimals": {
           "type": "integer"
+        },
+        "width": {
+          "type": "integer"
         }
       },
       "required": [],

@@ -11,12 +11,14 @@ import { isCoarse } from "./connect";
 import type { FlowController, Gesture, Interaction } from "../controller/types";
 
 const DRAG = 4;
+/** Further for a new bend dragged out of the line: a press that slips a little is still a click. */
+const DRAG_NEW = 8;
 
 export function useBends(ctrl: FlowController, { hidden = false }: { hidden?: boolean } = {}) {
   const { docRef, setLive, commit, selRef, setSel, toWorld, viewRef, editing, view } = ctrl;
 
   /** Drags bend `index` of `orig` (already in `start`, the chart shown when the drag began). */
-  const dragBend = (before: FlowchartData, orig: FlowEdge, index: number, points: readonly Pt[], e: React.PointerEvent, opts: { insertAt?: Pt; onClick?: () => void } = {}): Gesture => {
+  const dragBend = (before: FlowchartData, orig: FlowEdge, index: number, points: readonly Pt[], e: React.PointerEvent, opts: { insertAt?: Pt; /** Pressed on a point drawn for adding a bend (not on the bare line). */ handle?: boolean; onClick?: () => void } = {}): Gesture => {
     const sx = e.clientX;
     const sy = e.clientY;
     let moved = false;
@@ -24,7 +26,7 @@ export function useBends(ctrl: FlowController, { hidden = false }: { hidden?: bo
     let at = index;
     return {
       move: (m) => {
-        if (!moved && Math.hypot(m.clientX - sx, m.clientY - sy) < DRAG) return;
+        if (!moved && Math.hypot(m.clientX - sx, m.clientY - sy) < (opts.insertAt && !opts.handle ? DRAG_NEW : DRAG)) return;
         if (!moved && opts.insertAt) {
           if (orig.bends.length >= FLOWCHART_LIMITS.maxBends) return;
           base = insertBend(orig, index, opts.insertAt);
@@ -57,7 +59,7 @@ export function useBends(ctrl: FlowController, { hidden = false }: { hidden?: bo
         if (!orig || !r) return "handled";
         const add = bendEl.hasAttribute("data-fc-bend-add");
         const index = Number(bendEl.getAttribute(add ? "data-fc-bend-add" : "data-fc-bend"));
-        return dragBend(before, orig, index, r.points, e, add ? { insertAt: at } : {});
+        return dragBend(before, orig, index, r.points, e, add ? { insertAt: at, handle: true } : {});
       }
       // The line itself (not a label: interactions/edgeLabels.tsx takes those first).
       const edgeEl = target.closest("[data-fc-edge]");

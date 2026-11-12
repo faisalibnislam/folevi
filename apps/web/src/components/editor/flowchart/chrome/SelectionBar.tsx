@@ -8,7 +8,7 @@ import { ConnectorBar, connectorBarSpot } from "./ConnectorBar";
 import { AlignMenu } from "./AlignMenu";
 import { ContentTools } from "./ContentTools";
 import type { ShapeContent } from "../interactions/content";
-import { clamp } from "../controller/useViewport";
+import { BAR_LIFT, BAR_ROOM, clamp } from "../controller/useViewport";
 import type { FlowController } from "../controller/types";
 import type { FlowActions } from "../controller/useFlowActions";
 import type { TextEditing } from "../interactions/textEditing";
@@ -34,12 +34,13 @@ export function SelectionBar({ ctrl, actions, clearance = 0, content }: { ctrl: 
   const compact = width < 760;
   const margin = content && !compact ? 260 : 150;
   const cx = clamp((sBox.x + sBox.w / 2) * k + view.x, margin, Math.max(margin, width - margin));
-  const above = top - 52 > 56;
-  const style: React.CSSProperties = { left: cx, top: above ? top - 52 : Math.min(height - 48, bottom + 12 + clearance) };
+  const above = top - BAR_LIFT > BAR_ROOM;
+  const style: React.CSSProperties = { left: cx, top: above ? top - BAR_LIFT : Math.min(height - 48, bottom + 12 + clearance) };
 
   // While one of the shape panels is open it does the bar's job (and the bar would sit under it).
   if (selNodes.length && !selEdges.length && content?.panelOpen) return null;
-  if (selNodes.length && !selEdges.length) {
+  // Shapes and connectors together (an area, ⌘A): the shapes' bar, whose duplicate and delete act on all of it.
+  if (selNodes.length) {
     return (
       <NodeBar
         style={style}

@@ -1,5 +1,6 @@
 "use client";
 
+import { setBlockAttrs, useLeaveFlush } from "./canvas/leaveFlush";
 import { NodeViewWrapper, type ReactNodeViewProps } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -112,6 +113,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
   // Each entry undoes one of this person's own changes (removes the stroke they drew, brings back what they
   // erased), so undo never touches what someone else drew.
   const undoStack = useRef<Edit[]>([]);
+  const redoStack = useRef<Edit[]>([]);
   const [canUndo, setCanUndo] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -178,12 +180,16 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     if (t !== "select") setPicked([]);
   };
 
+  /** Everything waiting to be saved came from the board's own undo or redo. */
+  const undoing = useRef(false);
   // Writes the waiting edit onto the block as it is now (the view re-renders a moment after each change, so
   // `committed` can be a step behind a collaborator's stroke).
   const write = () => {
     const edit = pendingRef.current;
     if (!edit) return;
     pendingRef.current = null;
+    const undone = undoing.current;
+    undoing.current = false;
     if (!editor.isEditable) return;
     let base = committedRef.current;
     try {
@@ -198,12 +204,22 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     const box = strokesBounds(next);
     const bottom = box ? box.y + box.h : 0;
     const grown = bottom > savedHeight ? clampHeight(Math.ceil(bottom + 24)) : null;
-    updateAttributes({ data: next.length ? serializeWhiteboard({ strokes: next }) : "", ...(grown ? { height: grown } : {}) });
+    const text = next.length ? serializeWhiteboard({ strokes: next }) : "";
+    // Over the limit the drawing could not be saved or read back (it would come back empty, and the next
+    // stroke would replace all of it): this change is not made, and the board stays as it was.
+    if (text.length > LIMITS.maxWhiteboardDataLength) {
+      toast.show("This whiteboard is full. Erase something to make room.", { tone: "error" });
+      return;
+    }
+    // One step of the note's undo for each save; none when it is the board taking back (or redoing) its own
+    // change, or the note's undo would first undo the undo (canvas/leaveFlush.ts, useBlockDataWriter).
+    setBlockAttrs(editor, getPos, node.attrs.id, { data: text, ...(grown ? { height: grown } : {}) }, undone ? "none" : "step");
   };
   const writeRef = useRef(write);
   writeRef.current = write;
 
-  const save = useCallback((edit: Edit) => {
+  const save = useCallback((edit: Edit, own = false) => {
+    undoing.current = own && (pendingRef.current === null || undoing.current);
     const next = composeEdits(pendingRef.current, edit);
     pendingRef.current = next;
     setPendingState(next);
@@ -224,6 +240,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     write();
     setPending(null);
   };
+  useLeaveFlush(() => flushRef.current());
   useEffect(
     () => () => {
       flushRef.current();
@@ -232,9 +249,11 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     [],
   );
 
-  const pushUndo = (inverse: Edit) => {
+  const pushUndo = (inverse: Edit, redoing = false) => {
     undoStack.current.push(inverse);
     if (undoStack.current.length > 100) undoStack.current.shift();
+    // A new change ends what could be redone.
+    if (!redoing) redoStack.current = [];
     setCanUndo(true);
   };
 
@@ -481,10 +500,23 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     setPicked(at < 0 ? [] : [keys[at] ?? strokeKey(latest.current[at]!)]);
   };
 
+  /** The edit that takes `edit` back, on the drawing as it is now. */
+  const inverseOf = (edit: Edit): Edit => {
+    const gone = new Set(edit.remove);
+    return { add: latest.current.filter((s) => gone.has(strokeKey(s))), remove: edit.add.map(strokeKey) };
+  };
   const undo = () => {
     const inverse = undoStack.current.pop();
     setCanUndo(undoStack.current.length > 0);
-    if (inverse) save(inverse);
+    if (!inverse) return;
+    redoStack.current.push(inverseOf(inverse));
+    save(inverse, true);
+  };
+  const redo = () => {
+    const again = redoStack.current.pop();
+    if (!again) return;
+    pushUndo(inverseOf(again), true);
+    save(again, true);
   };
   const clear = () => {
     const all = latest.current;
@@ -539,6 +571,7 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
     const arrows: Record<string, Point> = { arrowleft: [-step, 0], arrowright: [step, 0], arrowup: [0, -step], arrowdown: [0, step] };
     let used = true;
     if (mod && k === "z" && !e.shiftKey) undo();
+    else if (mod && ((k === "z" && e.shiftKey) || k === "y")) redo();
     else if (mod && k === "a") {
       setToolState("select");
       setPicked(latest.current.map(strokeKey));
@@ -676,6 +709,8 @@ export function WhiteboardView({ node, selected, updateAttributes, editor, getPo
           ref={bodyRef}
           className="fb-wb-body fb-canvas-body"
           tabIndex={-1}
+          // Enter on the selected block comes in here (plugins.ts), as it goes into a table's first cell.
+          data-enter-focus={editable ? "" : undefined}
           // The drawing has its own right-click menu (a stroke's), never the note's.
           data-native-menu=""
         >

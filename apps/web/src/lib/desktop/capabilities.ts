@@ -81,6 +81,8 @@ export interface MacCapabilities {
   clipboard?: {
     read(): Promise<{ text?: string; html?: string; image?: Uint8Array } | null>;
     write(data: { text?: string; html?: string; image?: Uint8Array }): Promise<boolean>;
+    /** Pastes into the page as ⌘V does (everything on the clipboard, files included). False when it could not. */
+    paste?(): Promise<boolean>;
   };
   /** Quick Look on files. */
   quickLook?(files: { name: string; bytes: Uint8Array }[]): Promise<boolean>;

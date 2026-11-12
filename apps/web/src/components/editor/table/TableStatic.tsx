@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { evaluateTable, tableRowOrder, type EvaluatedCell, type InlineNode, type Mark } from "@folevi/editor-schema";
 import { CellContent, marked } from "./CellContent";
 import { tableData, tableOptions } from "./tableModel";
+import "./table.css";
 
 /** Today as YYYY-MM-DD where the reader is (TODAY() in formulas). */
 export function localToday(): string {
@@ -40,9 +41,17 @@ export function TableStatic({ props }: { props: Record<string, unknown> }) {
   const today = localToday();
   const evaluated = useMemo(() => evaluateTable(t.rows, tableOptions(t, today)), [t, today]);
   const order = useMemo(() => tableRowOrder(evaluated, tableOptions(t), t.view), [evaluated, t]);
+  // Columns given a width keep it here too (see TableView, and table.css for why it is set on the column and on
+  // its cells): all of them, and the table is as wide as they add up to.
+  const widths = t.rows[0]!.map((_, c) => t.columns[c]?.width ?? null);
   return (
     <div className="fb-hscroll my-3 overflow-x-auto">
-      <table className="fb-table w-full border-collapse text-subheadline">
+      <table className={`fb-table border-collapse text-subheadline ${widths.every((w) => w !== null) ? "fb-table-sized" : "w-full"}`}>
+        <colgroup>
+          {widths.map((w, c) => (
+            <col key={c} style={w === null ? undefined : { width: w }} />
+          ))}
+        </colgroup>
         <tbody>
           {order.map((r) => {
             const row = t.rows[r]!;
@@ -54,7 +63,7 @@ export function TableStatic({ props }: { props: Record<string, unknown> }) {
                   const shown = evaluated.cells[r]?.[c];
                   const Tag = header ? "th" : "td";
                   return (
-                    <Tag key={c} scope={header ? "col" : undefined} className={`border border-line px-2.5 py-1.5 text-left align-top ${header ? "font-semibold" : ""} ${cellClass(shown, header, total)}`}>
+                    <Tag key={c} scope={header ? "col" : undefined} style={widths[c] === null ? undefined : { minWidth: widths[c]! }} className={`border border-line px-2.5 py-1.5 text-left align-top ${widths[c] === null ? "" : "fb-col-sized"} ${header ? "font-semibold" : ""} ${cellClass(shown, header, total)}`}>
                       <StaticCell cell={cell} shown={shown} />
                     </Tag>
                   );

@@ -17,6 +17,10 @@
 // The card, its toolbar, Full canvas, Export (./svg.ts) and the height handle are canvas/CanvasCard.tsx.
 // Votes are per person (profile id), the timer is a start time and a duration everyone counts down from,
 // and several people can work on the board at once (useStickiesDoc.ts merges their changes).
+import { imeKey, listenPinch, useWheelArmed, wheelZoomRate } from "../canvas/wheel";
+import { useBlockDataWriter } from "../canvas/leaveFlush";
+import { useEditable } from "../useEditable";
+import { typingUndoKey, useTypingHistory } from "../canvas/typingHistory";
 import type { ReactNodeViewProps } from "@tiptap/react";
 import { useQuery } from "convex/react";
 import { useCapabilities } from "@/lib/mode";
@@ -113,7 +117,9 @@ export function StickiesView(props: ReactNodeViewProps) {
   const me = env.demo ? "demo" : (profile?.id ?? "");
   const { people, list } = usePeople(documentId, env.demo);
   const board = useMemo(() => parseStickies(data), [data]);
-  if (!editor.isEditable) {
+  // (Kept current: a note that turns read-only shows the board as a picture at once.)
+  const editable = useEditable(editor);
+  if (!editable) {
     const empty = !board.notes.length && !board.groups.length;
     return (
       <CanvasCard view={props} type="stickies" name="Sticky notes" icon={<StickyNotes size={14} />} minHeight={LIMITS.minStickiesHeight} maxHeight={LIMITS.maxStickiesHeight} defaultHeight={STICKIES_DEFAULT_HEIGHT} empty={empty} hint="No notes on this board yet.">
@@ -138,11 +144,11 @@ type Editing = { kind: "note" | "group"; id: string; before: StickiesData; typed
 type PanelKind = "bulk" | "tags" | "ai" | null;
 
 function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People; peopleList: { profileId: string; displayName: string; isYou: boolean }[]; documentId?: string; demo: boolean }) {
-  const { node, editor, getPos, updateAttributes, me, people, peopleList, documentId, demo } = props;
+  const { node, editor, getPos, me, people, peopleList, documentId, demo } = props;
   const data = String(node.attrs.data ?? "");
   const blockId = typeof node.attrs.id === "string" ? node.attrs.id : null;
   const { engine } = useAppState();
-  const write = useCallback((s: string) => updateAttributes({ data: s }), [updateAttributes]);
+  const write = useBlockDataWriter(props, true);
   const { doc, docRef, setLive, commit, undo, redo, canUndo, canRedo, tooLarge } = useStickiesDoc({ data, write, me, blockId, engine: demo ? null : engine });
   const aiOn = useAiEnabled() && !demo;
   // The workshop timer counts in server time: learn this device's offset from it once per session.
@@ -224,7 +230,9 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
 
   // Wheel: ⌘/ctrl (and a trackpad pinch) zooms; plain scrolling pans once the board is active, and
   // otherwise scrolls the page as usual.
+  // (Only while the board is being worked in: the pointer was pressed in it and has not left since, canvas/wheel.ts.)
   const active = useRef(false);
+  const wheelHere = useWheelArmed(wrapRef, ".fb-canvas-card");
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -244,8 +252,8 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const r = el.getBoundingClientRect();
-        zoomAt(viewRef.current.k * Math.exp(-e.deltaY * unit * 0.0022), e.clientX - r.left, e.clientY - r.top);
-      } else if (active.current) {
+        zoomAt(viewRef.current.k * Math.exp(-e.deltaY * unit * wheelZoomRate(e)), e.clientX - r.left, e.clientY - r.top);
+      } else if (active.current && wheelHere.current) {
         e.preventDefault();
         const dx = e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX;
         const dy = e.shiftKey && !e.deltaX ? 0 : e.deltaY;
@@ -253,12 +261,14 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
       }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
+    const stopPinch = listenPinch(el, { scale: () => viewRef.current.k, zoomAt });
     return () => {
       el.removeEventListener("wheel", onWheel);
+      stopPinch();
       body?.removeEventListener("focusin", onFocus);
       body?.removeEventListener("focusout", onBlur);
     };
-  }, [zoomAt]);
+  }, [zoomAt, wheelHere]);
 
   // ------------------------------------------------------------------------------ edits
 
@@ -818,12 +828,30 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
     if (editing && !editNote && !editGroup) setEditing(null);
   }, [editing, editNote, editGroup]);
 
+  // What has been typed in this note or group name, a step at a time, for Cmd+Z (canvas/typingHistory.ts).
+  const typing = useTypingHistory(editNote ? `note:${editNote.id}` : editGroup ? `group:${editGroup.id}` : null, editNote ? editNote.text : (editGroup?.label ?? ""));
+  /** What is being written on now says `value`; `typed` when a key did it (an undo step of the writing). */
+  const setEditText = (value: string, typed = true) => {
+    const ed = editingRef.current;
+    if (!ed) return;
+    const text = ed.kind === "note" ? value.slice(0, STICKIES_LIMITS.maxText) : value.replace(/\n+/g, " ").slice(0, STICKIES_LIMITS.maxLabel);
+    if (typed) typing?.record(text);
+    if (ed.kind === "note") setLive(updateNotes(docRef.current, [ed.id], (n) => ({ ...n, text })));
+    else setLive(updateGroups(docRef.current, [ed.id], (g) => ({ ...g, label: text })));
+  };
+
   // ⌘Z while writing: the fields are controlled, so the browser's own undo would reach the note's
-  // contenteditable. Finish the writing as one step and use the board's history instead.
+  // contenteditable. What was typed is taken back a step at a time; with none of that left, the writing is
+  // finished as one step and the board's history has the key.
   const historyKey = (e: React.KeyboardEvent) => {
     const key = e.key.toLowerCase();
     if (!(e.metaKey || e.ctrlKey) || (key !== "z" && key !== "y")) return false;
     e.preventDefault();
+    const text = typingUndoKey(e, typing);
+    if (text !== null) {
+      setEditText(text, false);
+      return true;
+    }
     finishEdit();
     if (key === "y" || e.shiftKey) redo();
     else undo();
@@ -842,10 +870,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
         maxLength={STICKIES_LIMITS.maxText}
         aria-label="Note text"
         style={{ left: editNote.x, top: editNote.y, width: editNote.w, height: editNote.h, fontSize: noteFontSize(editNote) }}
-        onChange={(e) => {
-          const id = editNote.id;
-          setLive(updateNotes(docRef.current, [id], (n) => ({ ...n, text: e.target.value.slice(0, STICKIES_LIMITS.maxText) })));
-        }}
+        onChange={(e) => setEditText(e.target.value)}
         onFocus={(e) => {
           const el = e.currentTarget;
           el.setSelectionRange(el.value.length, el.value.length);
@@ -853,7 +878,7 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
         onBlur={() => finishEdit(false)}
         onKeyDown={(e) => {
           e.stopPropagation();
-          if (historyKey(e)) return;
+          if (historyKey(e) || imeKey(e)) return;
           if ((e.key === "Enter" && !e.shiftKey) || e.key === "Escape") {
             e.preventDefault();
             finishEdit();
@@ -878,15 +903,12 @@ function StickiesEditor(props: ReactNodeViewProps & { me: string; people: People
         placeholder="Group name"
         aria-label="Group name"
         style={{ left: editGroup.x, top: editGroup.y, width: Math.max(160, editGroup.w) }}
-        onChange={(e) => {
-          const id = editGroup.id;
-          setLive(updateGroups(docRef.current, [id], (g) => ({ ...g, label: e.target.value.replace(/\n+/g, " ").slice(0, STICKIES_LIMITS.maxLabel) })));
-        }}
+        onChange={(e) => setEditText(e.target.value)}
         onFocus={(e) => e.currentTarget.select()}
         onBlur={() => finishEdit(false)}
         onKeyDown={(e) => {
           e.stopPropagation();
-          if (historyKey(e)) return;
+          if (historyKey(e) || imeKey(e)) return;
           if (e.key === "Enter" || e.key === "Escape") {
             e.preventDefault();
             finishEdit();

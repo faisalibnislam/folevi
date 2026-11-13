@@ -1,6 +1,36 @@
 {
   "releases": [
     {
+      "version": "1.3.39",
+      "build": 52,
+      "released": "2026-11-13T07:01:29+06:00",
+      "type": "update",
+      "summary": "A sturdier note editor: nothing typed or drawn is lost, one undo, tables that work like a grid, and spell check",
+      "added": [
+        "Spell check in notes: misspelt words are underlined, with guesses, Learn and Ignore in the text menu (on from the start on the Mac; English on the website)",
+        "Tables: select a range of cells, copy and paste with spreadsheets, drag a column's edge to resize it, and drag rows and columns to a new place",
+        "Flowcharts: copy, cut and paste shapes, pinch to zoom on a trackpad, and the canvas follows when you drag to its edge",
+        "Images resize by dragging their edges",
+        "The arrow keys move into and out of a synced block"
+      ],
+      "improved": [
+        "Undo: a flowchart, mind map or wireframe shares one undo with its note, Cmd+Z in a label takes back the typing first, and undo still works after switching tabs or notes",
+        "Pasted text joins the line you are on, and Cmd+Shift+V pastes plain text",
+        "The / and @ menus open only when typed and close when nothing matches",
+        "Mac: Edit > Undo and Redo use the note's own history, the keyboard returns to the note with the caret where it was after the Cmd+K palette or a dialog, and Paste from the right-click menu keeps files and Folevi blocks"
+      ],
+      "fixed": [
+        "Mac: what you just typed or drew is saved before the app quits or a window closes",
+        "Text being typed in a flowchart, mind map, sticky note or wireframe is saved as you type and when you leave",
+        "Changes to a canvas from another device merge with yours instead of replacing them",
+        "A recording is kept when you leave its note",
+        "Table rows no longer jump or vanish while you type under a sort or filter",
+        "Format shortcuts no longer change the note while you are working in a canvas or another field",
+        "Tab in a code block no longer deletes a selection, and Turn into To-do keeps a task's details"
+      ],
+      "tag": "v1.3.39"
+    },
+    {
       "version": "1.2.39",
       "build": 51,
       "released": "2026-11-08T17:50:18+06:00",

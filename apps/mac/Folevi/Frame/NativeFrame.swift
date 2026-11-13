@@ -342,15 +342,18 @@ final class FrameController: FrameHost {
 /// the page (false), which in native chrome mode ignores most of them.
 @MainActor
 enum FrameCommands {
-    /// Runs a command. A Format item chosen from the menu always runs. Pressed as its key (⌘B, ⌥⇧↑, ⌘D) it means
-    /// the note only while the note's own text has the keyboard: with the keyboard in a field of the window (Find,
-    /// the palette, a dialog), in a list, or in another field of the page (the title, a caption, a cell, a canvas)
-    /// the key does nothing to the note.
+    /// Runs a command. A Format item means the note's own text, where its caret or selection is. Pressed as its key
+    /// (⌘B, ⌥⇧↑, ⌘D) it runs only while that text has the keyboard: with the keyboard in a field of the window
+    /// (Find, the palette, a dialog), in a list, or in another field of the page (the title, a caption, a cell,
+    /// a canvas) the key does nothing to the note. Chosen from the menu it runs unless another field of the page
+    /// has the keyboard: with a flowchart or a table cell being worked in, the note's selection is wherever it
+    /// was left, and bolding that would change text nobody is looking at.
     static func run(_ id: String, frame: FrameController) -> Bool {
-        guard id.hasPrefix("format."), pressedAsKey else { return perform(id, frame: frame) }
-        guard let page = keyboardPage(frame) else { return true }
+        guard id.hasPrefix("format.") else { return perform(id, frame: frame) }
+        let key = pressedAsKey
+        guard let page = keyboardPage(frame) else { return key ? true : perform(id, frame: frame) }
         pageKeyboard(page) { place in
-            if place == .body { _ = perform(id, frame: frame) }
+            if place == .body || (!key && place == .none) { _ = perform(id, frame: frame) }
         }
         return true
     }

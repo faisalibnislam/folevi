@@ -1,5 +1,6 @@
 import { Placeholder, Dropcursor, Gapcursor } from "@tiptap/extensions";
 import { NoteHistory } from "./noteHistory";
+import { KeepCaret } from "./keepCaret";
 import { isIphoneApp } from "@/lib/iphone";
 import { coarsePointer } from "@/lib/hooks/useMediaQuery";
 import { ALL_MARKS, ALL_NODES, BlockFormat } from "./extensions";
@@ -61,6 +62,8 @@ export function editorExtensions({
     // Focus that never keeps an editor waiting for a frame a hidden window won't draw.
     SafeFocus,
     CaretAfterClick,
+    // The caret where it was when the keyboard comes back from the window's own fields (the Mac app).
+    KeepCaret,
     BlockIdentity,
     BlockDecorations,
     BlockKeymap,

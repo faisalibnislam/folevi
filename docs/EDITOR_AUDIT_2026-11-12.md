@@ -390,3 +390,37 @@ Not run: the Mac app itself, Safari, Playwright specs, anything on a touch scree
 Still open after both passes: B3 in full (stable row ids need a data-model change), the table's reserved
 tool row and column, image alignment (needs a schema field), undo for collection edits, F13 (arrow keys in
 the flowchart, as designed), M12, M13, M15, M16, and a finger-drag cell range on touch screens.
+
+## 13. Run in the Mac app (2026-11-13)
+
+Sections 11 and 12 were pushed to `main` on 2026-11-13 (website and backend deployed). The Mac side had only
+been compiled, so it was then run: the Debug build with a freshly built web copy, on a scratch data folder and
+a scratch library of its own (`apps/mac/build/run/audit*`, local mode), driven through the app's script hook
+and, for menus and keys, the system's accessibility interface.
+
+Seen working in the app:
+
+- Text typed in a note, then Quit at once: there after relaunch. The same for a mind map idea still being
+  typed and not yet saved (D1, D2).
+- One undo: text saved while it is typed, Cmd+Z in the field a step at a time, the canvas's Cmd+Z taking the
+  whole edit back through the note's history, the note's own undo and redo after it bringing nothing back.
+- Undo after opening another note and coming back (M4).
+- Edit > Undo and Edit > Redo from the menu bar, enabled and acting on the note's history (M2).
+- Spell check: misspelt words underlined as typed; guesses from the app ("definately" to "definitely").
+- Paste asked for by the page arrives as a real paste event in the note (M14).
+- The pinch listener zooms a canvas when WebKit's gesture events arrive (F3).
+- 116 of the 118 Mac unit tests pass. The two that fail read text in a picture with the system's vision
+  model, which does not load in the virtual machine the run was made on.
+
+Found by running it, and fixed:
+
+- **Format from the menu bar with a canvas focused** still bolded the note's old selection (only the key had
+  been fixed). A Format item now leaves the note alone while another field of the page has the keyboard,
+  from the menu and from its key (`FrameCommands.run`). Seen: both ways, with a canvas focused and with the
+  note focused.
+- **After the Cmd+K palette (or any dialog) closed, the caret was at the very start of the note**, not where
+  it had been: WebKit resets it when the page is handed the keyboard back. The selection is now remembered
+  when the window loses the keyboard and put back when it returns (`keepCaret.ts`). Seen: caret at the same
+  place, the next key typed there.
+
+Not run: the stock right-click menu's contents, zoom, an input method, a real trackpad pinch, Safari.

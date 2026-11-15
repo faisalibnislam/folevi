@@ -1,7 +1,7 @@
 // Tabs inside a note, in the editor (components/editor/tabs): what's shown and how far in, keeping a tabs
 // block in shape after edits, the keys that mustn't reach into hidden tabs, drag and drop, and the round trip
 // to wire blocks.
-import { describe, expect, test, beforeEach } from "vitest";
+import { describe, expect, test, beforeEach, afterEach } from "vitest";
 import { Editor } from "@tiptap/core";
 import { UndoRedo } from "@tiptap/extensions";
 import { TextSelection } from "@tiptap/pm/state";
@@ -21,9 +21,15 @@ const tabs = (id: string, depth = 0) => ({ type: "tabs", attrs: { id, depth } })
 const tab = (id: string, name: string, depth = 1) => ({ type: "tab", attrs: { id, depth, name } });
 const doc = (...nodes: object[]) => ({ type: "doc", content: nodes });
 
+const editors: Editor[] = [];
 function makeEditor(content: object) {
-  return new Editor({ extensions: [...ALL_NODES, ...ALL_MARKS, UndoRedo, BlockIdentity, BlockKeymap, TabsExtension], content });
+  const editor = new Editor({ extensions: [...ALL_NODES, ...ALL_MARKS, UndoRedo, BlockIdentity, BlockKeymap, TabsExtension], content });
+  editors.push(editor);
+  return editor;
 }
+afterEach(() => {
+  for (const editor of editors.splice(0)) editor.destroy();
+});
 
 /** intro, tabs [A: a1, a2] [B: b1], outro */
 const sample = () => doc(para("intro", "Intro"), tabs("T"), tab("A", "Alpha"), para("a1", "One", 2), para("a2", "Two", 2), tab("B", "Beta"), para("b1", "Bee", 2), para("outro", "Outro"));

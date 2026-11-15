@@ -90,6 +90,102 @@ func longAnswer(words: Int) -> String {
 
 @Suite("Foli AI chat model") @MainActor
 struct FoliChatModelTests {
+    @Test func aSendReplyCannotReopenAConversationAfterNavigation() async {
+        let engine = chatEngine()
+        let model = FoliChatModel(client: engine.client(), defaults: scratchDefaults())
+        await eventually { model.caps != nil }
+        engine.onCommand = { _, _ in
+            model.open(conversationId: "chosen_chat")
+            model.draft = "A different question"
+            return .object(["conversationId": .string("old_chat"), "messageId": .string("old_reply")])
+        }
+        model.send("First question")
+        await eventually { !model.sending }
+        #expect(model.conversationId == "chosen_chat")
+        #expect(model.draft == "A different question")
+        #expect(model.pending == nil)
+    }
+
+    @Test func aFailedSendRestoresTheDraftForRetry() async {
+        let engine = chatEngine()
+        let model = FoliChatModel(client: engine.client(), defaults: scratchDefaults())
+        await eventually { model.caps != nil }
+        engine.onCommand = { _, _ in throw EngineFailure.transport("Offline") }
+        model.draft = "Keep these words"
+        model.send()
+        await eventually { !model.sending }
+        #expect(model.draft == "Keep these words")
+        #expect(model.problem != nil)
+        #expect(model.canSend)
+    }
+
+    @Test func aFailedSendDoesNotOverwriteNewerWords() async {
+        let engine = chatEngine()
+        let model = FoliChatModel(client: engine.client(), defaults: scratchDefaults())
+        await eventually { model.caps != nil }
+        engine.onCommand = { _, _ in
+            model.draft = "Newer words"
+            throw EngineFailure.transport("Offline")
+        }
+        model.draft = "Original question"
+        model.send()
+        await eventually { !model.sending }
+        #expect(model.draft == "Newer words")
+    }
+
+    @Test func openingHistoryClearsThePreviousChatsEditTarget() async {
+        let engine = chatEngine()
+        let model = FoliChatModel(client: engine.client(), defaults: scratchDefaults())
+        engine.values["ai.conversation"] = conversationValue("first", [chatMessage("user_first", .user, "First question")])
+        model.open(conversationId: "first")
+        await eventually { model.messages.count == 1 }
+        model.edit(model.messages[0])
+        model.open(conversationId: "second")
+        #expect(model.editingMessageId == nil)
+        #expect(model.draft.isEmpty)
+        #expect(model.problem == nil && model.problemError == nil)
+    }
+
+    @Test func anOldFailureDoesNotAffectANewChat() async {
+        let engine = chatEngine()
+        let model = FoliChatModel(client: engine.client(), defaults: scratchDefaults())
+        await eventually { model.caps != nil }
+        engine.onCommand = { _, _ in
+            model.newChat()
+            model.draft = "New conversation"
+            throw EngineFailure.transport("Offline")
+        }
+        model.send("Old question")
+        await eventually { !model.sending }
+        #expect(model.isNew)
+        #expect(model.problem == nil)
+        #expect(model.draft == "New conversation")
+    }
+
+    @Test func aFailedEditCanBeRetriedAsAnEdit() async {
+        let engine = chatEngine()
+        let model = FoliChatModel(client: engine.client(), defaults: scratchDefaults())
+        engine.values["ai.conversation"] = conversationValue("first", [chatMessage("user_first", .user, "First question")])
+        model.open(conversationId: "first")
+        await eventually { model.messages.count == 1 && model.caps != nil }
+        model.edit(model.messages[0])
+        model.draft = "Revised question"
+        engine.onCommand = { _, _ in throw EngineFailure.transport("Offline") }
+        model.send()
+        await eventually { !model.sending }
+        #expect(model.draft == "Revised question")
+        #expect(model.editingMessageId == "user_first")
+        engine.onCommand = { name, args in
+            #expect(name == "ai.edit")
+            #expect(args["messageId"]?.string == "user_first")
+            return .object(["conversationId": .string("first"), "messageId": .string("reply")])
+        }
+        model.send()
+        await eventually { !model.sending }
+        #expect(engine.commands(named: "ai.edit").count == 2)
+        #expect(engine.commands(named: "ai.send").isEmpty)
+    }
+
     @Test func opensAConversationAndFollowsItsLiveAnswer() async {
         let engine = chatEngine()
         let model = FoliChatModel(client: engine.client(), defaults: scratchDefaults())

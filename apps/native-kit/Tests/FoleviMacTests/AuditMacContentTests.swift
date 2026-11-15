@@ -50,6 +50,15 @@ struct AuditMacContentLogicTests {
         #expect(AiFollow.following(false, old: up, new: AiFollow.Reading(offset: 900, atEnd: true)))
     }
 
+    @Test func growthAloneIsANewReadingSoTheCatchUpRuns() {
+        // The end has slipped (a long chunk on a busy Mac). More text then changes neither the offset nor atEnd:
+        // only the height. That must still be a new reading, or the thread's catch-up scroll never runs.
+        let slipped = AiFollow.Reading(offset: 400, atEnd: false, height: 2000)
+        let more = AiFollow.Reading(offset: 400, atEnd: false, height: 2400)
+        #expect(slipped != more)
+        #expect(AiFollow.following(true, old: slipped, new: more))
+    }
+
     @Test func timeZonesReadAsPlacesWithOffsets() {
         #expect(TimeZoneChoices.offset(0) == "UTC")
         #expect(TimeZoneChoices.offset(19_800) == "UTC+5:30")

@@ -58,10 +58,11 @@ export const PRODUCTION_ENV = {
 /**
  * Files and folders from public/ the shell leaves out: the marketing site's art, the website's service worker,
  * search-console verification, the PWA manifest's icons and the browser-tab icons (the shell has neither), the
- * images only server-rendered emails and Open Graph cards use. Note covers, the brand marks and everything
- * else stay. A path ending in "/" is a folder.
+ * images only server-rendered emails and Open Graph cards use, and the website's spelling dictionaries (the
+ * apps use the system's own checker: lib/spelling/web.ts ownSpelling). Note covers, the brand marks and
+ * everything else stay. A path ending in "/" is a folder.
  */
-export const PRUNE = ["marketing/", "sw.js", /^google[0-9a-f]+\.html$/, "icons/", "favicon.ico", "favicon-16x16.png", "favicon-32x32.png", "apple-icon.png", "icon.svg", "brand/email/", "brand/folevi-mark-256.png"];
+export const PRUNE = ["marketing/", "sw.js", /^google[0-9a-f]+\.html$/, "icons/", "favicon.ico", "favicon-16x16.png", "favicon-32x32.png", "apple-icon.png", "icon.svg", "brand/email/", "brand/folevi-mark-256.png", "spelling/"];
 
 const ENV_FILES = [".env.production.local", ".env.local", ".env.production", ".env", ".env.development", ".env.development.local"];
 

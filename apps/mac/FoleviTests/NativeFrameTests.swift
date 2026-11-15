@@ -19,20 +19,21 @@ final class NativeFrameTests: XCTestCase {
         return (frame, demo, window)
     }
 
-    private func wait(_ what: String, _ condition: @escaping () -> Bool) {
+    private func wait(_ what: String, _ condition: @escaping () -> Bool) async {
         let end = Date().addingTimeInterval(3)
-        while !condition() && Date() < end { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
+        // Yield the main actor so the engine's Tasks can answer; pumping its run loop is not an actor yield.
+        while !condition() && Date() < end { try? await Task.sleep(for: .milliseconds(10)) }
         XCTAssertTrue(condition(), what)
     }
 
-    func testMenuCommandsDriveTheFrame() {
+    func testMenuCommandsDriveTheFrame() async {
         let (frame, demo, _) = makeFrame()
-        wait("engine ready") { frame.model.isEngineReady && frame.model.home.value != nil }
+        await wait("engine ready") { frame.model.isEngineReady && frame.model.home.value != nil }
         XCTAssertFalse(frame.root.showsGate)
         XCTAssertTrue(FrameCommands.run("file.new-note", frame: frame))
-        wait("new note tab") { frame.model.route.noteId?.hasPrefix("doc_new") == true }
+        await wait("new note tab") { frame.model.route.noteId?.hasPrefix("doc_new") == true }
         XCTAssertTrue(FrameCommands.run("format.bold", frame: frame))
-        wait("bold sent") { demo.editorLog.contains("format") }
+        await wait("bold sent") { demo.editorLog.contains("format") }
         XCTAssertTrue(FrameCommands.run("go.tab-1", frame: frame))
         XCTAssertEqual(frame.model.route, .home)
         XCTAssertEqual(FrameCommands.isEnabled("format.bold", frame: frame), false, "formatting needs a note on screen")
@@ -47,27 +48,27 @@ final class NativeFrameTests: XCTestCase {
         // Revision 8's editor menu commands.
         XCTAssertTrue(FrameCommands.run("go.tab-9", frame: frame))
         for id in ["format.move-up", "format.duplicate", "view.focus", "note.lock"] { XCTAssertTrue(FrameCommands.run(id, frame: frame), id) }
-        wait("editor commands") { ["block.move", "block.duplicate", "focus.toggle", "note.lock"].allSatisfy(demo.editorLog.contains) }
+        await wait("editor commands") { ["block.move", "block.duplicate", "focus.toggle", "note.lock"].allSatisfy(demo.editorLog.contains) }
         XCTAssertTrue(FrameCommands.run("view.appearance-dark", frame: frame))
-        wait("appearance") { demo.commandLog.contains("settings.update") }
+        await wait("appearance") { demo.commandLog.contains("settings.update") }
         frame.stop()
     }
 
-    func testAppCommandsReachTheFrame() {
+    func testAppCommandsReachTheFrame() async {
         let (frame, demo, _) = makeFrame()
-        wait("ready") { frame.model.isEngineReady }
+        await wait("ready") { frame.model.isEngineReady }
         XCTAssertTrue(frame.handle(["type": "navigate", "path": "/folders/fld_trips"]))
         XCTAssertEqual(frame.model.route, .folder("fld_trips"))
         XCTAssertTrue(frame.handle(["type": "notification", "action": "open", "path": "/d/doc_kyoto"]))
         XCTAssertEqual(frame.model.route, .note("doc_kyoto"))
         // Services and Shortcuts: a note from text (revision 8), opened in its tab.
         XCTAssertTrue(frame.handle(["type": "new-note-with-text", "text": "Groceries\nMilk"]))
-        wait("note from text") { demo.notes.contains { $0.title == "Groceries" } && frame.model.route.noteId?.hasPrefix("doc_new") == true }
+        await wait("note from text") { demo.notes.contains { $0.title == "Groceries" } && frame.model.route.noteId?.hasPrefix("doc_new") == true }
         XCTAssertTrue(frame.handle(["type": "add-task", "text": "Call Lina"]))
-        wait("task") { demo.commandLog.contains("task.create") }
+        await wait("task") { demo.commandLog.contains("task.create") }
         // A banner's action goes to the engine; "open" stays native.
         XCTAssertTrue(frame.handle(["type": "notification", "action": "snooze-hour", "id": "n4", "kind": "local-reminder"]))
-        wait("notification.act") { demo.commandLog.contains("notification.act") }
+        await wait("notification.act") { demo.commandLog.contains("notification.act") }
         XCTAssertFalse(frame.handle(["type": "print"]), "unknown to the frame: the page's")
         frame.stop()
     }

@@ -10,7 +10,7 @@
     "build:shell": "node scripts/build-shell.mjs",
     "start": "next start --port 3000",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
     "test:shell": "node scripts/build-shell.mjs --no-copy && playwright test --config playwright.shell.config.ts"

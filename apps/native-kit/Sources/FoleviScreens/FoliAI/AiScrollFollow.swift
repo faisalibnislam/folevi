@@ -7,8 +7,10 @@ public enum AiScrollFollow {
     public struct Reading: Equatable {
         public var offset: CGFloat
         public var atEnd: Bool
+        /// The content's height, so growth alone is a new reading (the thread's catch-up runs on new readings).
+        public var height: CGFloat
 
-        public init(offset: CGFloat, atEnd: Bool) { self.offset = offset; self.atEnd = atEnd }
+        public init(offset: CGFloat, atEnd: Bool, height: CGFloat = 0) { self.offset = offset; self.atEnd = atEnd; self.height = height }
     }
 
     public static func following(_ was: Bool, old: Reading, new: Reading) -> Bool {

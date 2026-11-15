@@ -63,7 +63,8 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
     private var nativeHost: NSHostingView<AnyView>?
     private var nativeModel: QuickAddModel?
     private var nativeTransport: MacEngineTransport?
-    private static let nativeQueue = QuickAddQueue()
+    // Match the app's data scope: Debug and scratch runs must not open the installed app's capture queue.
+    private static let nativeQueue = QuickAddQueue(url: Paths.supportFolder.appendingPathComponent("quick-add-queue.json"))
 
     /// How long its page stays after it closes (FOLEVI_QUICK_ADD_RELEASE seconds for test runs).
     static let releaseAfter: TimeInterval = ProcessInfo.processInfo.environment["FOLEVI_QUICK_ADD_RELEASE"].flatMap(TimeInterval.init).map { max(1, $0) } ?? 60

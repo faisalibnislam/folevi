@@ -116,6 +116,11 @@ public struct FoliThreadView: View {
                 // Lazy rows refine their height as an answer grows. The size-change anchor alone can leave
                 // the end off screen on either platform. Follow on actual height changes, never per word.
                 guard pinned else { return }
+                #if os(iOS)
+                // UIKit's size-change anchor usually already holds the end. Only correct an actual gap;
+                // scrolling again for every height change forces another lazy-stack layout while streaming.
+                guard !userScrolling, sentinel - viewport + bottomInset > 24 else { return }
+                #endif
                 proxy.scrollTo("end", anchor: .bottom)
             }
             .onChange(of: model.shownPending) { _, p in

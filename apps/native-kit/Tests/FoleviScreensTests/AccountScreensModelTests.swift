@@ -578,6 +578,27 @@ struct SharingModelTests {
 
 @Suite("Quick Add") @MainActor
 struct QuickAddModelTests {
+    @Test func aQueueWriteFailureKeepsTheDraftAndDoesNotClaimItWasSaved() async throws {
+        let engine = AccountEngine()
+        engine.fake.onCommand = { _, _ in throw EngineFailure.notReady }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("qa-unwritable-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        // A regular file cannot be a queue's parent directory, even when tests run as an administrator.
+        let blocker = dir.appendingPathComponent("file")
+        try Data("occupied".utf8).write(to: blocker)
+        let model = QuickAddModel(client: engine.client(), queue: QuickAddQueue(url: blocker.appendingPathComponent("queue.json")))
+        var closed = false
+        model.onSaved = { _, _ in closed = true }
+        model.text = "Do not lose this task"
+        await model.save()
+        #expect(model.text == "Do not lose this task")
+        #expect(model.error != nil)
+        #expect(model.confirmation == nil)
+        #expect(model.queue.count == 0)
+        #expect(!closed && !model.busy)
+    }
+
     @Test func reopeningCaptureRetainsTheUnfinishedDraft() {
         let model = make(AccountEngine())
         model.text = "Call Sam"

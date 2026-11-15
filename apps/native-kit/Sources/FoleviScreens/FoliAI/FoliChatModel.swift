@@ -148,6 +148,8 @@ public final class FoliChatModel {
     @ObservationIgnored private var ticker: Task<Void, Never>?
     @ObservationIgnored private var observing = false
     @ObservationIgnored private var wasWorking = false
+    /// Replies belong to the conversation that sent them, even if the person navigates while awaiting them.
+    @ObservationIgnored private var conversationGeneration = 0
 
     static let modeKey = "folevi.ai.chatMode"
 
@@ -273,20 +275,23 @@ public final class FoliChatModel {
         let q = (text ?? draft).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty, available, !isWorking else { return }
         if let editing = editingMessageId, let id = conversationId, text == nil {
+            let submittedDraft = draft
+            let web = webOn ? true : nil
             editingMessageId = nil
             draft = ""
-            run(pendingText: nil, after: messages.count) {
-                try await self.client.command(.aiEdit(conversationId: id, messageId: editing, text: q, web: self.webOn ? true : nil))
+            run(pendingText: nil, after: messages.count, restoreDraft: submittedDraft, restoreEditing: editing) {
+                try await self.client.command(.aiEdit(conversationId: id, messageId: editing, text: q, web: web))
             }
             return
         }
+        let submittedDraft = text == nil ? draft : nil
         if text == nil { draft = "" }
         let mode: ChatSendArgs.Mode? = forced ?? (effectiveMode == .research ? .research : nil)
         let isNew = conversationId == nil
         let ctx = isNew ? contextArgs : nil
         let id = conversationId
         let web = webOn && mode != .research ? true : nil
-        run(pendingText: q, after: messages.count) {
+        run(pendingText: q, after: messages.count, restoreDraft: submittedDraft) {
             try await self.client.command(.aiSend(conversationId: id, text: q, context: ctx, web: web, mode: mode))
         }
     }
@@ -298,21 +303,29 @@ public final class FoliChatModel {
         return ChatContextArgs(kind: ids.count == 1 ? .note : .notes, ids: ids)
     }
 
-    private func run(pendingText: String?, after: Int, _ work: @escaping @MainActor () async throws -> ChatSendResult) {
+    private func run(pendingText: String?, after: Int, restoreDraft: String? = nil, restoreEditing: String? = nil, _ work: @escaping @MainActor () async throws -> ChatSendResult) {
+        let generation = conversationGeneration
         problem = nil
         problemError = nil
         sending = true
         if let pendingText { pending = FoliPendingQuestion(text: pendingText, after: after) }
         feedback.haptic(.impactLight)
         Task {
+            guard generation == conversationGeneration else { return }
             do {
                 let r = try await work()
+                guard generation == conversationGeneration else { return }
                 lastSentMessageId = r.messageId
                 if conversationId != r.conversationId { show(conversationId: r.conversationId) }
             } catch {
+                guard generation == conversationGeneration else { return }
                 problem = Self.message(error)
                 if case .engine(let e)? = error as? EngineFailure { problemError = e } else { problemError = nil }
                 pending = nil
+                if draft.isEmpty, let restoreDraft {
+                    draft = restoreDraft
+                    editingMessageId = restoreEditing
+                }
             }
             sending = false
             // The pending question goes once the conversation has it (shownPending); clear it after that.
@@ -413,6 +426,14 @@ public final class FoliChatModel {
     }
 
     private func switchTo(_ id: String?) {
+        conversationGeneration &+= 1
+        sending = false
+        if editingMessageId != nil { draft = "" }
+        editingMessageId = nil
+        problem = nil
+        problemError = nil
+        announcement = nil
+        wasWorking = false
         conversation?.cancel()
         research?.cancel()
         for s in streams.values { s.cancel() }

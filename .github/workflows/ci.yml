@@ -46,7 +46,7 @@ jobs:
           pnpm --filter @folevi/email typecheck
           pnpm --filter @folevi/local-store typecheck
           pnpm --filter @folevi/ai-prompts typecheck
-          pnpm --filter @folevi/web exec tsc --noEmit
+          pnpm --filter @folevi/web typecheck
       - name: Schema, sync reducer, email contract, cloud provider, local store and AI prompt tests
         run: |
           pnpm --filter @folevi/editor-schema test

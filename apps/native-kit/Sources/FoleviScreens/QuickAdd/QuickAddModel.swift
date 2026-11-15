@@ -357,7 +357,11 @@ public final class QuickAddModel {
                 added = nil
             }
         } catch let f as EngineFailure where Self.shouldQueue(f) {
-            queue.enqueue(item)
+            guard queue.enqueue(item) else {
+                error = "That couldn't be saved on this device. Keep this draft and try again."
+                feedback.haptic(.error)
+                return
+            }
             feedback.haptic(.success)
             confirm("Saved on this device. It's added when Folevi is ready.")
             if draft == submitted {
@@ -525,9 +529,15 @@ public final class QuickAddQueue {
 
     public var count: Int { items.count }
 
-    public func enqueue(_ item: Item) {
+    /// Only confirm capture after the queue is durable. A disk/protection failure leaves the draft editable.
+    @discardableResult
+    public func enqueue(_ item: Item) -> Bool {
         items.append(item)
-        save()
+        guard save() else {
+            items.removeLast()
+            return false
+        }
+        return true
     }
 
     public func remove(_ id: String) {
@@ -535,10 +545,17 @@ public final class QuickAddQueue {
         save()
     }
 
-    private func save() {
-        guard let url else { return }
-        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if let data = try? JSONEncoder().encode(items) { try? data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]) }
+    @discardableResult
+    private func save() -> Bool {
+        guard let url else { return true }
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(items)
+            try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            return true
+        } catch {
+            return false
+        }
     }
 }
 

@@ -105,8 +105,10 @@ struct AiThreadView: View {
             // answer is followed, its growth keeps the end in view (the one mechanism that follows it, MAC-30), and
             // once you've scrolled up to read, what you read stays put.
             .defaultScrollAnchor(model.isEmpty || !following ? .top : .bottom, for: .sizeChanges)
+            // The reading includes the content's height: once the anchor has let the end slip (a long chunk on a busy
+            // machine), growth alone changes neither the offset nor atEnd, and the catch-up below must still run.
             .onScrollGeometryChange(for: AiFollow.Reading.self) { g in
-                AiFollow.Reading(offset: g.contentOffset.y, atEnd: g.contentSize.height - g.contentOffset.y - g.containerSize.height < 56)
+                AiFollow.Reading(offset: g.contentOffset.y, atEnd: g.contentSize.height - g.contentOffset.y - g.containerSize.height < 56, height: g.contentSize.height)
             } action: { old, new in
                 following = AiFollow.following(following, old: old, new: new)
                 atEnd = new.atEnd

@@ -2,7 +2,7 @@
 
 import { DateField, TimeField } from "@/components/ui/DateField";
 import { useMutation, useQuery } from "convex/react";
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Inbox, X, FileText, CalendarDays } from "lucide-react";
 import { naturalDateLabel, parseNaturalDate, useNaturalDatesReady } from "@/lib/nlDate";
 import { describeRepeat, parseRepeatPhrase, repeatProps, stepOccurrence, type RepeatRule } from "@folevi/editor-schema";
@@ -100,6 +100,19 @@ export function useQuickAdd({ onClose, currentDoc, onAdded, initialDue }: { onCl
   // Default: the open page (if it's a normal page you can see), otherwise the Inbox.
   const effective: Target = target !== undefined ? target : currentDoc && currentInfo && !currentInfo.inTrash ? { id: currentDoc, title: currentInfo.title, icon: currentInfo.icon } : null;
 
+  // A save belongs to the submitted draft and this mounted form. A slow reply must not dismiss
+  // newer input, or a different capture opened after this one was dismissed.
+  const draftKey = JSON.stringify([title, due, time, priority, effective?.id, keptAsText, repeatKept, scope, profile.id]);
+  const latestDraft = useRef(draftKey);
+  const mounted = useRef(false);
+  useLayoutEffect(() => {
+    latestDraft.current = draftKey;
+  }, [draftKey]);
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
   const submit = async () => {
     if (submitting.current) return;
     if (!title.trim()) {
@@ -124,15 +137,18 @@ export function useQuickAdd({ onClose, currentDoc, onAdded, initialDue }: { onCl
         !online && engine
           ? await quickAddOnDevice({ engine, profileId: profile.id, deviceId }, scope, task)
           : await quickAdd({ scope, today, ...task, deviceId: deviceId ?? undefined });
-      onClose();
+      if (!mounted.current) return;
+      const unchanged = latestDraft.current === draftKey;
+      if (unchanged) onClose();
       const where = effective ? effective.title || "Untitled" : "Inbox";
-      if (onAdded) onAdded({ documentId: r.documentId, where });
+      // Mac's onAdded callback also resets/closes its field. Keep that draft intact too.
+      if (onAdded && unchanged) onAdded({ documentId: r.documentId, where });
       else toast.show(`Task added to ${where}`, { tone: "success", action: { label: "Open", onClick: () => navigate(`/d/${r.documentId}`) } });
     } catch (err) {
-      setError(errorMessage(err));
+      if (mounted.current) setError(errorMessage(err));
     } finally {
       submitting.current = false;
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   };
 

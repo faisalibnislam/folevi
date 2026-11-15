@@ -10,6 +10,7 @@ import { useAppState } from "@/lib/app/state";
 import { NativeTabsProvider, TabsProvider, useViewTab, useWarmTabs } from "@/lib/app/tabs";
 import { NotePanes } from "./NotePanes";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
+import { localDb } from "@/lib/sync/db";
 import { useDocumentTitle } from "@/lib/hooks/useTitle";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { IconButton } from "@/components/ui/Button";
@@ -791,7 +792,10 @@ function JoinedBar({ joined, primary, title, tabTitle, sync, actions }: { joined
   );
 }
 
-/** Keeps the recent tabs' note details and page tree loaded, so switching to one needs no round trip. */
+/**
+ * Keeps the recent tabs' note details and page tree loaded, and their lines in the engine from this device's
+ * copy, so switching to one needs no round trip and doesn't wait on the device's store either.
+ */
 function WarmNotes() {
   const warm = useWarmTabs();
   return (
@@ -806,5 +810,20 @@ function WarmNotes() {
 function WarmNote({ documentId }: { documentId: string }) {
   useQuery(api.documents.get, { documentId });
   useQuery(api.documents.pageTree, { documentId });
+  const { engine, profile } = useAppState();
+  // After a reload the engine holds only the note on screen: the device copy of a recent tab's lines goes in
+  // now (as DocumentView does when the note opens), so its first switch draws the note, not the placeholder.
+  useEffect(() => {
+    if (!engine || engine.documentBlocks(documentId).length) return;
+    let live = true;
+    void (async () => {
+      const db = await localDb(profile.id);
+      const cached = await db.get("blocks", documentId).catch(() => undefined);
+      if (live && cached && !engine.documentBlocks(documentId).length) engine.reconcileDocument(documentId, cached.blocks);
+    })().catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [engine, profile.id, documentId]);
   return null;
 }

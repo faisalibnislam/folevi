@@ -39,7 +39,7 @@ async function openFolderShare(page: Page, folder: string, from: "menu" | "page"
 
 async function shareFolder(page: Page, folder: string, email: string, role: "Can view" | "Can comment" | "Can edit", from: "menu" | "page" = "menu") {
   const dialog = await openFolderShare(page, folder, from);
-  await dialog.getByLabel("Email address").fill(email);
+  await dialog.getByLabel("Email address", { exact: true }).fill(email);
   await pick(dialog.getByLabel("Role"), role);
   await dialog.getByRole("button", { name: "Share", exact: true }).click();
   return dialog;

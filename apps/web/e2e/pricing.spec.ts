@@ -1,16 +1,17 @@
 import { expect, test } from "@playwright/test";
 import { APP } from "./helpers";
 
-// The public pricing page: four plans for Personal or Team, monthly or yearly, then AI credits, credit packs
-// and the questions. Prices come from the plan catalog (convex/lib/plans.ts).
+// The public pricing page: the free apps first, then Folevi Cloud's four plans for Personal or Team, monthly or
+// yearly, then AI credits, credit packs and the questions. Prices come from the plan catalog (convex/lib/plans.ts).
 const SITE = APP.replace("://app.", "://");
 
 test("the pricing page switches between Personal and Team, monthly and yearly", async ({ page }) => {
   await page.goto(`${SITE}/pricing`);
-  await expect(page.getByRole("heading", { level: 1, name: "Start free. Pay for room, or for AI." })).toBeVisible();
-  const plans = page.getByRole("region", { name: "Plans" });
+  await expect(page.getByRole("heading", { level: 1, name: "Free forever on your devices." })).toBeVisible();
+  // The plans are Folevi Cloud's, under the free apps (d5bbd276).
+  const plans = page.getByRole("region", { name: "Folevi Cloud" });
   const card = (name: string) => plans.getByRole("group", { name: `${name} plan` });
-  for (const name of ["Free", "Core", "Pro", "Pro AI"]) await expect(plans.getByRole("heading", { level: 2, name, exact: true })).toBeVisible();
+  for (const name of ["Free", "Core", "Pro", "Pro AI"]) await expect(plans.getByRole("heading", { level: 3, name, exact: true })).toBeVisible();
 
   const audience = plans.getByRole("radiogroup", { name: "Plans for" });
   const billing = plans.getByRole("radiogroup", { name: "Billing" });
@@ -24,10 +25,10 @@ test("the pricing page switches between Personal and Team, monthly and yearly", 
   await expect(card("Pro AI").getByText("$13.99", { exact: true })).toBeVisible();
   await expect(card("Core").getByText("/ month", { exact: true })).toBeVisible();
   await expect(card("Core").getByText("or $19 a year (save 20%)")).toBeVisible();
-  // Core has no AI, said plainly; Pro AI is unlimited with fair use, and is the trial.
+  // Core has no AI, said plainly; Pro AI has the most credits (550 a month, not "unlimited": bc3a5855), and is the trial.
   await expect(card("Core").getByText("No AI. Your notes stay yours: nothing is sent to an AI model")).toBeVisible();
   await expect(card("Core").getByText("No AI", { exact: true })).toBeVisible();
-  await expect(card("Pro AI").getByText("Unlimited AI, fair use (550 credits a month)")).toBeVisible();
+  await expect(card("Pro AI").getByText("550 AI credits a month, the most of any plan")).toBeVisible();
   await expect(card("Pro AI").getByRole("link", { name: /^Try 7 days free/ })).toBeVisible();
 
   // Yearly.
@@ -48,7 +49,7 @@ test("the pricing page switches between Personal and Team, monthly and yearly", 
   await expect(card("Core").getByText("$19", { exact: true })).toBeVisible();
   await expect(card("Core").getByText("per member / year", { exact: true })).toBeVisible();
   await expect(card("Pro").getByText("10 GB per member")).toBeVisible();
-  await expect(card("Pro AI").getByText("Unlimited AI, fair use (550 credits per member a month)")).toBeVisible();
+  await expect(card("Pro AI").getByText("550 AI credits per member a month, the most of any plan")).toBeVisible();
   await expect(card("Free").getByText("Nobody is billed")).toBeVisible();
 
   await billing.getByRole("radio", { name: "Monthly" }).click();
@@ -77,7 +78,7 @@ test("the pricing page explains AI credits and credit packs, answers questions, 
   const faq = page.getByRole("region", { name: "Questions" });
   for (const q of [
     "How does the free trial work?",
-    "What does “Unlimited AI, fair use” mean?",
+    "How much AI does Pro AI include?",
     "When do AI credits reset?",
     "Do credit packs expire?",
     "What happens when I run out of AI credits?",

@@ -62,12 +62,17 @@ test("a new note on a folder page starts in that folder; the tab strip shows the
   // The folder's title row names it too.
   await expect(page.getByRole("main").getByRole("heading", { name: "Recipes", level: 1 })).toBeVisible();
 
-  // The top bar's New note makes the note in the open folder (the page has none of its own).
-  await page.getByRole("button", { name: "New note", exact: true }).click();
+  // The folder is empty: its empty state offers New note. The top bar's New note makes the note in the open folder
+  // too, and says so.
+  await expect(page.getByRole("main").getByRole("button", { name: "New note", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "New note", exact: true, description: "New note in this folder (⌘⌥N)" }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}\?new=1/);
   await page.getByRole("textbox", { name: "Title" }).fill("Soup");
   await waitForSaved(page);
-  await page.getByRole("group", { name: "History" }).getByRole("button", { name: "Back" }).click();
+  // The note opened in a tab of its own (each tab keeps its own Back and Forward, so it has nothing to go back to);
+  // the folder's tab shows it.
+  await expect(page.getByRole("group", { name: "History" }).getByRole("button", { name: "Back" })).toBeDisabled();
+  await strip.getByRole("link", { name: "Recipes" }).click();
   await expect(page.getByRole("main").getByText("Soup")).toBeVisible();
 });
 

@@ -253,7 +253,8 @@ test.describe("Flowchart Foli AI", () => {
     await page.keyboard.press("Enter");
     await page.keyboard.type("Ship it");
     await waitForSaved(page);
-    const first = page.locator(".fb-editor > .fb").filter({ hasText: /^Write the draft$/ });
+    // (A bulleted line starts with hidden words for screen readers: "Bullet, ".)
+    const first = page.locator(".fb-editor > .fb").filter({ hasText: /^Bullet, Write the draft$/ });
     const fb = (await first.boundingBox())!;
     await page.mouse.move(fb.x + 40, fb.y + fb.height / 2);
     const grip = page.getByRole("button", { name: /Drag to move, click for block options/ });
@@ -270,7 +271,7 @@ test.describe("Flowchart Foli AI", () => {
     await preview.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByRole("application", { name: "Flowchart, 4 shapes" })).toBeVisible();
     // The list stays in the note above the chart.
-    await expect(page.locator(".fb-editor > .fb-bulleted")).toHaveText(["Write the draft", "Get it approved", "Ship it"]);
+    await expect(page.locator(".fb-editor > .fb-bulleted")).toHaveText(["Bullet, Write the draft", "Bullet, Get it approved", "Bullet, Ship it"]);
 
     // The note's Foli AI panel: "Flowchart" draws the whole note (read on the server) in a new block below the caret.
     await page.locator(".fb-editor > .fb-bulleted").last().click();

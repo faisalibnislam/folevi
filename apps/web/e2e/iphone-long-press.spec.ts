@@ -87,10 +87,11 @@ test("iPhone: holding a folder tile, the more button, and the Notifications shee
   const tile = page.getByRole("list", { name: "Folders" }).getByRole("listitem").filter({ hasText: "Brainstorming" });
   await tile.evaluate((el) => el.scrollIntoView({ block: "center", inline: "center" }));
   await page.waitForTimeout(400);
-  // Its name is on the front cover at rest, drawn by the cover itself (not under its frosted layer).
+  // Its name is on the front cover at rest, drawn by the cover itself (a child of the flat front pocket, which
+  // has had no frosted glass since the owner's review of 5 November 2026).
   const name = tile.getByText("Brainstorming", { exact: true });
   await expect(name).toBeVisible();
-  expect(await name.evaluate((el) => getComputedStyle(el.parentElement!).backdropFilter.includes("blur"))).toBe(true);
+  expect(await name.evaluate((el) => el.parentElement!.getAttribute("data-fc"))).toBe("front");
 
   const box = (await tile.boundingBox())!;
   const at = { x: box.x + box.width / 2, y: box.y + box.height * 0.6 };

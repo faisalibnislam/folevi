@@ -12,8 +12,11 @@ let loading: Promise<PdfJs> | null = null;
 export function pdfjs(): Promise<PdfJs> {
   loading ??= import("pdfjs-dist/legacy/build/pdf.mjs").then((lib) => {
     const pdf = lib as unknown as PdfJs;
-    if (typeof Worker !== "undefined" && !pdf.GlobalWorkerOptions.workerPort) {
-      pdf.GlobalWorkerOptions.workerPort = new Worker(new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url), { type: "module" });
+    // pdf.js starts its worker from the file's address itself. Written as new Worker(new URL(...)) here, the
+    // bundler started it through its shared worker bootstrap, which the spelling worker (lib/spelling/web.ts)
+    // also uses, and the browser ran the spelling worker in its place: PDFs were never read.
+    if (typeof Worker !== "undefined" && !pdf.GlobalWorkerOptions.workerSrc) {
+      pdf.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).href;
     }
     return pdf;
   });

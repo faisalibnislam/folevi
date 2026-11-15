@@ -36,12 +36,20 @@ test("collection formulas: suggestions, live preview, loops refused, errors expl
   await pick(settings.getByLabel("Property type"), "Number");
   await settings.getByRole("button", { name: "Add", exact: true }).click();
   await settings.getByRole("button", { name: "Close" }).click();
+  // New puts the caret in the new row's name: Enter names it and starts another, Escape on an empty one removes it.
+  await coll.getByRole("button", { name: "New row" }).click();
   for (const [i, name] of ["Apples", "Pears", "Plums"].entries()) {
-    await coll.getByRole("button", { name: "New row" }).click();
-    await expect(coll.getByRole("textbox", { name: "Row name" })).toHaveCount(i + 1);
-    await coll.getByRole("textbox", { name: "Row name" }).nth(i).fill(name);
-    await coll.getByRole("textbox", { name: "Row name" }).nth(i).press("Enter");
+    const fresh = coll.getByRole("textbox", { name: "New row name" });
+    await expect(fresh).toBeFocused();
+    await fresh.fill(name);
+    await fresh.press("Enter");
+    await expect(coll.getByRole("textbox", { name: "Row name", exact: true })).toHaveCount(i + 1);
+    await expect(coll.getByRole("textbox", { name: "Row name", exact: true }).nth(i)).toHaveValue(name);
   }
+  await expect(coll.getByRole("textbox", { name: "New row name" })).toBeFocused();
+  await coll.getByRole("textbox", { name: "New row name" }).press("Escape");
+  await expect(coll.getByRole("textbox", { name: "New row name" })).toHaveCount(0);
+  await expect(coll.locator("tbody tr")).toHaveCount(3);
   await setNumber(coll, "Price for Apples", "2");
   await setNumber(coll, "Qty for Apples", "3");
   await setNumber(coll, "Price for Pears", "5");

@@ -29,7 +29,7 @@ test("share a page with a new address → they sign up, accept, and see only tha
   const guestEmail = uniqueEmail("guest");
   await openShare(owner.page);
   const share = owner.page.getByRole("dialog", { name: /Share/ });
-  await share.getByLabel("Email address").fill(guestEmail);
+  await share.getByLabel("Email address", { exact: true }).fill(guestEmail);
   await pick(share.getByLabel("Role"), "Can edit");
   await share.getByRole("button", { name: "Share", exact: true }).click();
   await expect(owner.page.getByRole("status").filter({ hasText: `Invitation sent to ${guestEmail}` })).toBeVisible();
@@ -66,8 +66,10 @@ test("share a page with a new address → they sign up, accept, and see only tha
   await guest.goto(sharedUrl);
   await openShare(guest);
   const guestShare = guest.getByRole("dialog", { name: /Share/ });
-  await expect(guestShare.getByText(/You’re a guest on this page/)).toBeVisible();
-  await expect(guestShare.getByLabel("Email address")).toHaveCount(0);
+  // Compact dialog (ae8b2c60): one short line, the owner and who can share are in its (i) tip.
+  await expect(guestShare.getByText("You’re a guest, shared by Studio Owner.", { exact: true })).toBeVisible();
+  await expect(guestShare.getByRole("img", { name: "It belongs to Studio Owner. Only its owner and the workspace’s members can share it." })).toBeVisible();
+  await expect(guestShare.getByLabel("Email address", { exact: true })).toHaveCount(0);
   await guestShare.getByRole("button", { name: "Close" }).click();
 
   // The owner sees the guest in Settings → Guests (not billed), with the page and its access.

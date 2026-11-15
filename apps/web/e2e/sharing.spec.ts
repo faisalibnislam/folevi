@@ -12,7 +12,7 @@ test("share a page with another person, comment, and publish a revocable public 
   await owner.page.getByRole("link", { name: /Project Atlas Brief/ }).first().click();
   await openShare(owner.page);
   const share = owner.page.getByRole("dialog", { name: /Share/ });
-  await share.getByLabel("Email address").fill(guest.email);
+  await share.getByLabel("Email address", { exact: true }).fill(guest.email);
   await pick(share.getByLabel("Role"), "Can comment");
   await share.getByRole("button", { name: "Share", exact: true }).click();
   await expect(share.getByText("Guest Person")).toBeVisible();

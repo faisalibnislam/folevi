@@ -122,12 +122,14 @@ test("mouse: notes onto folders from a list, a folder page's chips, Home, search
 
   // On the folder's page: the note onto its subfolder's card.
   const inner = page.getByRole("list", { name: "Folders inside" }).getByRole("link", { name: /^Inner,/ });
-  const card = page.getByRole("main").locator("[data-card-id]").filter({ hasText: title }).first();
+  // Note cards only: a folder card is selectable too ([data-card-id]) and shows previews of the notes inside it.
+  const noteCards = page.getByRole("main").locator('[data-card-id]:not([aria-label="Folders inside"] > *)');
+  const card = noteCards.filter({ hasText: title }).first();
   d = await drag(page, card, inner, 0.5);
   await expect(page.getByRole("list", { name: "Folders inside" }).locator('[data-drop-key^="card:"]')).toHaveAttribute("data-drop-state", "inside");
   await d.drop();
   await expect(toast(page, "Moved to Inner")).toBeVisible();
-  await expect(page.getByRole("main").locator("[data-card-id]").filter({ hasText: title })).toHaveCount(0);
+  await expect(noteCards.filter({ hasText: title })).toHaveCount(0);
 
   // Several selected notes go together (from the list).
   await folderLink(page, "All notes").click();
@@ -174,7 +176,9 @@ test("mouse: notes onto folders from a list, a folder page's chips, Home, search
   const homeCard = page.getByRole("main").locator('[draggable="true"]:has(a[href^="/d/"])').first();
   await expect(homeCard).toBeVisible();
   const homeTitle = (await homeCard.innerText()).split("\n")[0]!.trim();
-  await drag(page, homeCard, row(page, "Inner"), 0.5).then((x) => x.drop());
+  // That card by its title: Recent notes can still be reordering after the moves above.
+  const homeNote = page.getByRole("main").locator('[draggable="true"]:has(a[href^="/d/"])').filter({ hasText: homeTitle }).first();
+  await drag(page, homeNote, row(page, "Inner"), 0.5).then((x) => x.drop());
   await expect(toast(page, "Moved to Inner")).toBeVisible();
 
   // And it's there after a reload.

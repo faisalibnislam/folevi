@@ -208,13 +208,23 @@ test.describe("Whiteboard", () => {
     const canvas = page.locator(".fb-editor .fb-whiteboard svg.fb-whiteboard-canvas");
     await expect(canvas.locator("[data-wb-stroke]")).toHaveCount(1, { timeout: 30_000 });
     await canvas.scrollIntoViewIfNeeded();
+    // In the note it's a picture under a header with Open, the whole card one target; a tap opens it full
+    // screen, where its tools show and Done brings the note back (the toolbar's own exit button steps aside).
     const tools = page.getByRole("toolbar", { name: "Whiteboard tools" });
-    for (const name of ["Pen", "Full canvas", "Export"]) {
-      const b = (await tools.getByRole("button", { name, exact: true }).boundingBox())!;
+    await expect(tools).toBeHidden();
+    await page.getByRole("button", { name: "Open Whiteboard" }).tap();
+    await expect(page.locator(".fb-whiteboard .fb-canvas-card")).toHaveAttribute("data-full", "true");
+    await expect(tools).toBeVisible();
+    await expect(tools.getByRole("button", { name: "Exit full canvas" })).toBeHidden();
+    const done = page.getByRole("button", { name: "Done", exact: true });
+    for (const target of [tools.getByRole("button", { name: "Pen", exact: true }), tools.getByRole("button", { name: "Export", exact: true }), done]) {
+      const b = (await target.boundingBox())!;
       expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(44);
     }
+    // The colours and sizes take the second row, a little narrower than 44 so nine fit across, still 44 tall.
     const swatch = (await tools.getByRole("button", { name: "Blue" }).boundingBox())!;
-    expect(Math.min(swatch.width, swatch.height)).toBeGreaterThanOrEqual(44);
+    expect(swatch.height).toBeGreaterThanOrEqual(44);
+    expect(swatch.width).toBeGreaterThanOrEqual(36);
 
     // A finger draws (touch events, as the iPhone sends them).
     const box = (await canvas.boundingBox())!;
@@ -232,7 +242,18 @@ test.describe("Whiteboard", () => {
       await select.tap();
       await expect(select).toHaveAttribute("aria-pressed", "true", { timeout: 1_000 });
     }).toPass({ timeout: 15_000 });
-    const y = (await canvas.locator("[data-wb-stroke]").first().boundingBox())!;
+    // Select has no colours or sizes, so the full screen's bar drops its second row and the sheet moves up under
+    // it a moment later: hold where the stroke is once it's still.
+    const stroke = canvas.locator("[data-wb-stroke]").first();
+    let y = (await stroke.boundingBox())!;
+    await expect
+      .poll(async () => {
+        const before = (await stroke.boundingBox())!;
+        await page.waitForTimeout(150);
+        y = (await stroke.boundingBox())!;
+        return before.x === y.x && before.y === y.y;
+      })
+      .toBe(true);
     const hold = [{ x: y.x + y.width / 2, y: y.y + y.height / 2 }];
     await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: hold });
     await page.waitForTimeout(700);
@@ -245,6 +266,10 @@ test.describe("Whiteboard", () => {
     expect(del.height).toBeGreaterThanOrEqual(44);
     await menu.getByRole("menuitem", { name: /Delete/ }).tap();
     await expect(canvas.locator("[data-wb-stroke]")).toHaveCount(1);
+    // Done brings the note back.
+    await done.tap();
+    await expect(page.locator(".fb-whiteboard .fb-canvas-card")).not.toHaveAttribute("data-full", "true");
+    await expect(page.getByRole("button", { name: "Open Whiteboard" })).toBeVisible();
     await context.close();
   });
 });

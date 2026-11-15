@@ -179,7 +179,8 @@ test.describe("Mind map", () => {
     await page.keyboard.type("Hotel");
     await waitForSaved(page);
     // Select the three items (caret in the last, Shift-click the first one's grip), then open the menu.
-    const first = page.locator(".fb-editor > .fb").filter({ hasText: /^Trip$/ });
+    // (A bulleted line starts with hidden words for screen readers: "Bullet, ", "Bullet, level 2, ".)
+    const first = page.locator(".fb-editor > .fb").filter({ hasText: /^Bullet, Trip$/ });
     const fb = (await first.boundingBox())!;
     await page.mouse.move(fb.x + 40, fb.y + fb.height / 2);
     const grip = page.getByRole("button", { name: /Drag to move, click for block options/ });
@@ -195,7 +196,7 @@ test.describe("Mind map", () => {
     await card.getByRole("toolbar", { name: "Mind map tools" }).getByRole("button", { name: "More mind map actions" }).click();
     await page.getByRole("menuitem", { name: "Turn into bulleted list" }).click();
     await expect(page.locator(".fb-editor .fb-mindmap")).toHaveCount(0);
-    await expect(page.locator(".fb-editor > .fb-bulleted")).toHaveText(["Trip", "Food", "Hotel"]);
+    await expect(page.locator(".fb-editor > .fb-bulleted")).toHaveText(["Bullet, Trip", "Bullet, level 2, Food", "Bullet, level 2, Hotel"]);
     await context.close();
   });
 
@@ -255,22 +256,28 @@ test.describe("Mind map", () => {
     const card = await insertMindmap(page);
     await page.setViewportSize({ width: 390, height: 844 });
     await card.scrollIntoViewIfNeeded();
+    // The card is too narrow to work in at this width: a fitted picture with Open canvas, which opens the full
+    // canvas to work in.
+    await expect(card.getByRole("toolbar", { name: "Mind map tools" })).toBeHidden();
+    await page.getByRole("button", { name: /^Open canvas/ }).click();
+    await expect(card).toHaveAttribute("data-full", "true");
     await card.getByRole("button", { name: "Add the central idea" }).click();
     await page.keyboard.type("Ideas");
     await page.keyboard.press("Escape");
     const box = (await card.boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(390);
-    // The toolbar never scrolls sideways: what doesn't fit folds into one More (the map's own menu first).
+    // The toolbar never scrolls sideways. The full canvas has the phone's whole width, where every tool fits
+    // (the block's name steps aside): nothing folds into More, and the map's own menu stays in the bar.
     const tools = card.getByRole("toolbar", { name: "Mind map tools" });
     const fits = () => tools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && [...el.querySelectorAll("button")].filter((b) => b.offsetParent).every((b) => b.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1));
     await expect.poll(fits).toBe(true);
-    await expect(tools.getByRole("button", { name: "More mind map actions" })).toBeHidden();
-    const moreTools = tools.getByRole("button", { name: "More mind map tools" });
+    await expect(tools.getByRole("button", { name: "More mind map tools" })).toBeHidden();
+    const moreTools = tools.getByRole("button", { name: "More mind map actions" });
     await expect(moreTools).toBeVisible();
     await expect(tools.getByRole("button", { name: "Undo" })).toBeVisible();
     await moreTools.click();
-    const moreMenu = page.getByRole("menu", { name: "More mind map tools" });
+    const moreMenu = page.getByRole("menu", { name: "More mind map actions" });
     await expect(moreMenu.getByRole("menuitem", { name: "Expand all" })).toBeVisible();
     await moreMenu.getByRole("menuitem", { name: "Fit to view" }).click();
     await expect(moreMenu).toHaveCount(0);

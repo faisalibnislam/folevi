@@ -143,7 +143,9 @@ test("buying a test credit pack adds extra credits, used after the monthly ones"
   // Monthly credits used up: the AI panel says so, and on Pro more can be bought.
   exhaustCredits(email);
   await expect(personal.getByText(/^0 AI credits left/)).toBeVisible({ timeout: 30_000 });
-  await launcher(page).click();
+  // Settings has no floating Ask Foli AI button (e292487d); ⌘J opens the chat over it.
+  await expect(launcher(page)).toHaveCount(0);
+  await page.keyboard.press("Meta+j");
   const chat = page.getByRole("dialog", { name: "Foli AI" });
   const note = chat.getByTestId("ai-credits-note");
   await expect(note).toContainText("No AI credits left.");
@@ -166,7 +168,7 @@ test("buying a test credit pack adds extra credits, used after the monthly ones"
   await expect(page.getByRole("cell", { name: "$7.99 USD" })).toBeVisible();
 
   // With extra credits to fall back on, the panel no longer warns.
-  await launcher(page).click();
+  await page.keyboard.press("Meta+j");
   await expect(chat).toBeVisible();
   await expect(chat.getByTestId("ai-credits-note")).toHaveCount(0);
   await context.close();

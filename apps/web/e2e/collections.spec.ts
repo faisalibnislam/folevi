@@ -123,25 +123,33 @@ test("collections: a calendar view places rows by date; drag to move, New on a d
     return `${y}-${String(m).padStart(2, "0")}-${d === 10 ? "20" : "10"}`;
   }, today);
 
-  // New on a day adds a row dated that day.
+  // New on a day adds a row dated that day, with the caret in its title: Enter names it and starts another
+  // there, Escape on that empty one removes it.
   await day(today).hover();
   await day(today).getByRole("button", { name: /^New row on / }).click();
-  await expect(day(today).getByRole("link", { name: "Untitled" })).toBeVisible();
+  await expect(day(today).getByRole("textbox", { name: "New row name" })).toBeFocused();
+  await page.keyboard.type("Kickoff");
+  await page.keyboard.press("Enter");
+  await expect(day(today).getByRole("link", { name: "Kickoff" })).toBeVisible();
+  await expect(day(today).getByRole("textbox", { name: "New row name" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(day(today).getByRole("textbox", { name: "New row name" })).toHaveCount(0);
+  await expect(day(today).getByRole("link")).toHaveCount(1);
 
   // Drag it to another day: its date changes.
-  await day(today).getByRole("link", { name: "Untitled" }).dragTo(day(other));
-  await expect(day(other).getByRole("link", { name: "Untitled" })).toBeVisible();
-  await expect(day(today).getByRole("link", { name: "Untitled" })).toHaveCount(0);
+  await day(today).getByRole("link", { name: "Kickoff" }).dragTo(day(other));
+  await expect(day(other).getByRole("link", { name: "Kickoff" })).toBeVisible();
+  await expect(day(today).getByRole("link", { name: "Kickoff" })).toHaveCount(0);
 
   // Dropped on the No date tray, it loses its date.
   const tray = coll.getByRole("region", { name: "No date" });
-  await day(other).getByRole("link", { name: "Untitled" }).dragTo(tray);
-  await expect(tray.getByRole("link", { name: "Untitled" })).toBeVisible();
-  await expect(day(other).getByRole("link", { name: "Untitled" })).toHaveCount(0);
+  await day(other).getByRole("link", { name: "Kickoff" }).dragTo(tray);
+  await expect(tray.getByRole("link", { name: "Kickoff" })).toBeVisible();
+  await expect(day(other).getByRole("link", { name: "Kickoff" })).toHaveCount(0);
   // Saved, not just shown.
   await page.waitForTimeout(1000);
   await page.reload();
-  await expect(tray.getByRole("link", { name: "Untitled" })).toBeVisible({ timeout: 20_000 });
+  await expect(tray.getByRole("link", { name: "Kickoff" })).toBeVisible({ timeout: 20_000 });
 
   // The table view shows the same rows.
   await pick(coll.getByRole("combobox", { name: "Add view" }), "Table");
@@ -149,6 +157,6 @@ test("collections: a calendar view places rows by date; drag to move, New on a d
   await coll.getByRole("button", { name: /Calendar/ }).click();
 
   // A chip opens the row's page.
-  await tray.getByRole("link", { name: "Untitled" }).click();
+  await tray.getByRole("link", { name: "Kickoff" }).click();
   await expect(page.getByRole("region", { name: "Properties in Calendar" })).toBeVisible();
 });

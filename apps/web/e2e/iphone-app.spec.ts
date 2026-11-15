@@ -205,7 +205,7 @@ test("the iPad app in a narrow window (Slide Over, a third of Split View) takes 
   await page.goto(`${APP}/settings/account`);
   const sections = page.getByRole("navigation", { name: "Settings sections" });
   await expect(sections.getByRole("link", { name: "Account", exact: true })).toHaveAttribute("aria-current", "page", { timeout: 30_000 });
-  for (const name of ["Account", "AI", "Security", "Appearance", "Notifications"]) {
+  for (const name of ["Account", "Foli AI", "Security", "Appearance", "Notifications"]) {
     await sections.getByRole("link", { name, exact: true }).click();
     await expect(page.locator("main").getByRole("heading", { level: 2, name, exact: true })).toBeVisible();
     await expect(page.locator("main select, main input[type=range], main input[type=checkbox]")).toHaveCount(0);

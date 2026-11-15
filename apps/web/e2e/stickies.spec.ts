@@ -184,8 +184,13 @@ test.describe("Sticky notes", () => {
     await expect(bulk).toHaveCount(0);
     await expect(page.locator(".fb-stickies .fb-canvas-body")).toBeFocused();
 
-    // A phone's width: the toolbar fits the card (no sideways scrolling), and what doesn't fit is in More.
+    // A phone's width: the card is too narrow to work in, so it's a fitted picture with Open canvas; in the full
+    // canvas the toolbar fits (no sideways scrolling), and what doesn't fit is in More.
     await page.setViewportSize({ width: 375, height: 812 });
+    await expect(tools).toBeHidden();
+    await page.getByRole("button", { name: /^Open canvas/ }).click();
+    const fullCard = page.locator(".fb-stickies .fb-canvas-card[data-full]");
+    await expect(fullCard).toBeVisible();
     const fits = () => tools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && [...el.querySelectorAll("button")].filter((b) => b.offsetParent).every((b) => b.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1));
     await expect.poll(fits).toBe(true);
     const more = tools.getByRole("button", { name: "More sticky notes tools" });
@@ -201,9 +206,14 @@ test.describe("Sticky notes", () => {
     await expect(page.getByRole("menuitemcheckbox", { name: "Group area" })).toHaveAttribute("aria-checked", "true");
     await page.keyboard.press("Escape");
     await expect(more).toBeFocused();
-    // Escape on the board ends the group tool.
-    await board.click({ position: { x: 60, y: 200 } });
+    // Escape on the board ends the group tool (it has something to end, so the full canvas stays).
+    await page.locator(".fb-stickies .fb-canvas-body").focus();
     await page.keyboard.press("Escape");
+    await expect(fullCard).toBeVisible();
+    await more.click();
+    await expect(page.getByRole("menuitemcheckbox", { name: "Group area" })).toHaveAttribute("aria-checked", "false");
+    await page.keyboard.press("Escape");
+    await expect(more).toBeFocused();
 
     // A timer started from More shows its countdown in the bar (a running timer always stays in sight).
     await more.click();
@@ -236,10 +246,9 @@ test.describe("Sticky notes", () => {
     await expect.poll(() => selBar.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().left >= el.parentElement!.getBoundingClientRect().left - 1 && el.getBoundingClientRect().right <= el.parentElement!.getBoundingClientRect().right + 1)).toBe(true);
     await expect(selBar.getByRole("button", { name: "Delete" })).toBeVisible();
 
-    // Full canvas at a phone's width: the toolbar fits the window.
+    // Still in the full canvas, the toolbar fits the window; Escape on the board brings the note back.
     await board.click({ position: { x: 20, y: 300 } });
-    await page.keyboard.press("ControlOrMeta+Shift+f");
-    await expect(page.locator(".fb-stickies .fb-canvas-card[data-full]")).toBeVisible();
+    await expect(fullCard).toBeVisible();
     await expect.poll(fits).toBe(true);
     await page.keyboard.press("Escape");
     await context.close();
@@ -302,6 +311,15 @@ test.describe("Sticky notes", () => {
     await expect(page.locator("html")).toHaveAttribute("data-iphone", "", { timeout: 30_000 });
     const board = page.getByRole("application", { name: "Sticky notes, 2 notes" });
     await expect(board).toBeVisible({ timeout: 30_000 });
+    // In the note the board is a picture under a header with Open, the whole card one target; a tap opens it
+    // full screen, where its tools show and Done brings the note back.
+    const tools = page.getByRole("toolbar", { name: "Sticky notes tools" });
+    await expect(tools).toBeHidden();
+    await page.getByRole("button", { name: "Open Sticky notes" }).tap();
+    await expect(page.locator(".fb-stickies .fb-canvas-card")).toHaveAttribute("data-full", "true");
+    const done = page.getByRole("button", { name: "Done", exact: true });
+    await expect(done).toBeVisible();
+    expect((await done.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     const note = board.getByRole("button", { name: /^Call the bank/ });
     await note.tap();
     await expect(note).toHaveAttribute("aria-pressed", "true");
@@ -318,7 +336,6 @@ test.describe("Sticky notes", () => {
     await expect.poll(async () => (await note.boundingBox())!.x - before!.x).toBeGreaterThan(40);
     expect(await page.evaluate(() => (window as unknown as { __haptics: string[] }).__haptics)).toContain("light");
     // The toolbar fits the phone: what doesn't fit is in More, with 44 point rows.
-    const tools = page.getByRole("toolbar", { name: "Sticky notes tools" });
     await expect.poll(() => tools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
     const more = tools.getByRole("button", { name: "More sticky notes tools" });
     expect((await more.boundingBox())!.height).toBeGreaterThanOrEqual(44);

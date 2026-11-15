@@ -30,7 +30,9 @@ test("present a note: slides at dividers and page breaks, keys and clicks move, 
 
   // From the note's … menu.
   await page.getByRole("group", { name: "Page" }).getByRole("button", { name: "Document actions" }).click();
-  await (await noteMenuItem(page, "Present")).click();
+  // (Under Share and export; the row's name ends with its shortcut, "Present ⌘⌥P".)
+  await noteMenuItem(page, "Present");
+  await page.getByRole("menu", { name: "Share and export" }).getByRole("menuitem", { name: /^Present(\s|$)/ }).click();
   await expect(deck(page)).toBeVisible();
   await expect(deck(page)).toHaveAttribute("aria-label", "Presenting Team update");
   await expect(counter(page)).toHaveText("1 / 3");

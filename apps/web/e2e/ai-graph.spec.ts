@@ -58,11 +58,18 @@ test("the graph shows notes and links, the list reads it as text, and a note lis
   await expect(tips).toContainText("This is Foli DNA");
   await tips.getByRole("button", { name: "Skip" }).click();
   await expect(tips).toHaveCount(0);
-  // A fresh map hides the unlinked note and says so.
-  await expect(page.getByText("1 unlinked note hidden.")).toBeVisible();
+  // A fresh map hides the unlinked notes and says so. (New accounts come with sample notes, so "Lonely thought"
+  // isn't the only unlinked one: the count is whatever the seed brings, read from the message.)
+  const hiddenNote = page.getByText(/^\d+ unlinked notes? hidden\./);
+  await expect(hiddenNote).toBeVisible();
+  await expect(hiddenNote.getByRole("button", { name: "Show", exact: true })).toBeVisible();
+  const hiddenCount = Number((await hiddenNote.textContent())!.match(/^(\d+)/)![1]);
+  expect(hiddenCount).toBeGreaterThanOrEqual(1);
+  // The map's Show menu (the hidden-notes message has its own Show button).
+  const showMenu = page.getByRole("button", { name: "Show", exact: true }).and(page.locator('[aria-haspopup="menu"]'));
   await expect(page.getByRole("region", { name: "Key" })).toBeVisible();
   // No entity filters below Pro: the Show menu has only the map's own choices.
-  await page.getByRole("button", { name: "Show", exact: true }).click();
+  await showMenu.click();
   await expect(page.getByRole("menuitemcheckbox", { name: /^Unlinked notes/ })).toBeVisible();
   await expect(page.getByRole("menuitemcheckbox", { name: "People" })).toHaveCount(0);
   await page.keyboard.press("Escape");
@@ -88,7 +95,11 @@ test("the graph shows notes and links, the list reads it as text, and a note lis
   await page.getByRole("group", { name: "View" }).getByRole("button", { name: "Map" }).click();
   await expect(page.getByText("Around")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("application", { name: /Foli DNA of 2 notes/ })).toBeVisible();
-  await expect(page.getByRole("complementary", { name: "Connections" }).getByText("links to")).toBeVisible();
+  // The connections are grouped by why in a floating card (cc8edaca): Packing list under Links, its row saying
+  // why ("links to") as it's pointed at.
+  const around = page.getByRole("complementary", { name: "Connections" });
+  await expect(around.getByRole("heading", { name: /^Links\b/ })).toBeVisible();
+  await expect(around.getByRole("button", { name: "Packing list", exact: true })).toHaveAttribute("title", /links to/);
   await page.getByRole("button", { name: "Whole map", exact: true }).click();
   await page.waitForURL(/\/graph$/);
   // Two linked notes make no cluster (three is the least): nothing is shaded behind the map.
@@ -97,10 +108,14 @@ test("the graph shows notes and links, the list reads it as text, and a note lis
   await page.getByRole("button", { name: "Insights" }).click();
   const insights = page.getByRole("complementary", { name: "Insights" });
   await expect(insights.getByRole("link", { name: "Lonely thought" })).toBeVisible();
-  await expect(page.getByRole("application", { name: /Foli DNA of 2 notes/ })).toBeVisible();
-  await page.getByRole("button", { name: "Show", exact: true }).click();
+  const map = page.getByRole("application", { name: /Foli DNA of \d+ notes/ });
+  await expect(map).toBeVisible();
+  const linkedCount = Number((await map.getAttribute("aria-label"))!.match(/of (\d+) notes/)![1]);
+  // The two linked notes are on it (sample notes that link to each other may be too).
+  expect(linkedCount).toBeGreaterThanOrEqual(2);
+  await showMenu.click();
   await page.getByRole("menuitemcheckbox", { name: /^Unlinked notes/ }).click();
-  await expect(page.getByRole("application", { name: /Foli DNA of 3 notes/ })).toBeVisible();
+  await expect(page.getByRole("application", { name: new RegExp(`Foli DNA of ${linkedCount + hiddenCount} notes`) })).toBeVisible();
   await expect(page.getByRole("button", { name: "Show, 1 changed", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Show, 1 changed", exact: true }).click();
   await page.getByRole("menuitemcheckbox", { name: /^Unlinked notes/ }).click();

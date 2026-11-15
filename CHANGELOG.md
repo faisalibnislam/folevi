@@ -4,6 +4,17 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.3.41: Small update
+
+Released 2026-11-15 18:17:40+06:00 (build 54, tag v1.3.41)
+
+Shared folder invitations on iPhone and iPad, and encrypted notes that keep their card's look
+
+### Fixed
+
+- iPhone and iPad: an invitation to a shared folder can be accepted or declined from Notifications, and accepting opens it under Shared with Me
+- End-to-end encrypted notes keep their card's look on every device
+
 ## Version 1.3.40: Small update
 
 Released 2026-11-15 13:47:35+06:00 (build 53, tag v1.3.40)

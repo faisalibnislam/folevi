@@ -1,6 +1,18 @@
 {
   "releases": [
     {
+      "version": "1.3.41",
+      "build": 54,
+      "released": "2026-11-15T18:17:40+06:00",
+      "type": "patch",
+      "summary": "Shared folder invitations on iPhone and iPad, and encrypted notes that keep their card's look",
+      "fixed": [
+        "iPhone and iPad: an invitation to a shared folder can be accepted or declined from Notifications, and accepting opens it under Shared with Me",
+        "End-to-end encrypted notes keep their card's look on every device"
+      ],
+      "tag": "v1.3.41"
+    },
+    {
       "version": "1.3.40",
       "build": 53,
       "released": "2026-11-15T13:47:35+06:00",

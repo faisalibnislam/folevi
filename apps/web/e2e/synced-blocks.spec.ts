@@ -173,7 +173,7 @@ test.describe("synced blocks", () => {
     await waitForSaved(page);
     await openShare(page);
     const share = page.getByRole("dialog", { name: /Share/ });
-    await share.getByLabel("Email address").fill(reader.email);
+    await share.getByLabel("Email address", { exact: true }).fill(reader.email);
     await pick(share.getByLabel("Role"), "Can view");
     await share.getByRole("button", { name: "Share", exact: true }).click();
     await expect(share.getByText("Sync Reader")).toBeVisible();

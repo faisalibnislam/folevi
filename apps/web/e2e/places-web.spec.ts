@@ -147,7 +147,7 @@ test("another account's notifications arrive in the open one, labelled, and Open
   // Ana shares the note with Ben: Ben's notification shows here, in Ana's tab, saying it's Ben's.
   await openShare(page);
   const share = page.getByRole("dialog", { name: /Share/ });
-  await share.getByLabel("Email address").fill(ben.email);
+  await share.getByLabel("Email address", { exact: true }).fill(ben.email);
   await pick(share.getByLabel("Role"), "Can edit");
   await share.getByRole("button", { name: "Share", exact: true }).click();
   await expect(share.getByText(ben.name)).toBeVisible({ timeout: 20_000 });

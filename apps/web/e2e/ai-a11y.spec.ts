@@ -153,14 +153,19 @@ test("keyboard: focus comes back when panels close, the graph moves node to node
   await page.keyboard.press("Escape");
   await expect(launcher).toBeFocused();
 
-  // Reduced motion: the chat opens without its rise animation.
+  // Reduced motion: the chat opens without its rise. It still fades in (the owner, 68f5d52d: a .ui-pop panel
+  // keeps a 120 ms linear fade with Reduce Motion), but nothing moves or scales it.
   await page.emulateMedia({ reducedMotion: "reduce" });
   await launcher.click();
-  const moving = await chat.evaluate((el) => {
+  const motion = await chat.evaluate((el) => {
     const cs = getComputedStyle(el);
-    return cs.animationName !== "none" && parseFloat(cs.animationDuration) > 0.01;
+    const animated = cs.animationName !== "none" && parseFloat(cs.animationDuration) > 0.01;
+    // Every keyframe of what plays on it: only opacity may change.
+    const moves = el.getAnimations().some((a) => (a.effect as KeyframeEffect | null)?.getKeyframes().some((k) => ("transform" in k && k.transform !== "none") || "translate" in k || "scale" in k));
+    return { name: animated ? cs.animationName : "none", moves };
   });
-  expect(moving).toBe(false);
+  expect(motion.name).toBe("folio-fade");
+  expect(motion.moves).toBe(false);
   await page.keyboard.press("Escape");
   await page.emulateMedia({ reducedMotion: "no-preference" });
 

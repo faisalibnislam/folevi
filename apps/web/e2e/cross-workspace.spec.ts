@@ -7,7 +7,7 @@ import { createWorkspace, newPerson, waitForSaved, showFolders, pick, openShare 
 async function shareWith(page: Page, email: string, name: string) {
   await openShare(page);
   const share = page.getByRole("dialog", { name: /Share/ });
-  await share.getByLabel("Email address").fill(email);
+  await share.getByLabel("Email address", { exact: true }).fill(email);
   await pick(share.getByLabel("Role"), "Can edit");
   await share.getByRole("button", { name: "Share", exact: true }).click();
   await expect(share.getByText(name)).toBeVisible();
@@ -42,8 +42,10 @@ test("an outsider with “Can edit” edits a page shared from someone's Persona
   const docUrl = owner.page.url();
   const share = await shareWith(owner.page, guest.email, "Outside Editor");
   // Personal has no members: only the owner and the people added can open it.
-  await expect(share.getByText(/This page is in a Personal space/)).toBeVisible();
-  await expect(share.getByRole("radiogroup", { name: "Access" })).toHaveCount(0);
+  // Compact Share dialog (ae8b2c60): Access reads as a fixed line with the explanation in its (i) tip, no dropdown.
+  await expect(share.getByText("Only the owner and people added here", { exact: true })).toBeVisible();
+  await expect(share.getByRole("img", { name: /^This page is in a Personal space/ })).toBeVisible();
+  await expect(share.getByRole("combobox", { name: "Access", exact: true })).toHaveCount(0);
   await share.getByRole("button", { name: "Close" }).click();
 
   // The guest opens it from Shared with Me while their own Personal stays open; it says whose Personal it's from.
@@ -75,7 +77,8 @@ test("an outsider with “Can edit” edits a page shared from a workspace they'
   await waitForSaved(owner.page);
   const docUrl = owner.page.url().replace(/\?.*$/, "");
   const share = await shareWith(owner.page, guest.email, "Studio Guest");
-  await expect(share.getByRole("radiogroup", { name: "Access" })).toBeVisible();
+  // Access is one dropdown since the compact Share dialog (ae8b2c60); a workspace page starts at Workspace.
+  await expect(share.getByRole("combobox", { name: "Access", exact: true })).toContainText("Workspace");
   await share.getByRole("button", { name: "Close" }).click();
 
   // The guest isn't a member: the page shows the workspace's name, and edits sync from their Personal.

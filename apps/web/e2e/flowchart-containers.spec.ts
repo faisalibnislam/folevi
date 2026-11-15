@@ -212,6 +212,10 @@ test.describe("Flowchart frames and swimlanes", () => {
     await page.keyboard.press("Enter");
     const deliver = canvas.getByRole("button", { name: "Process: Deliver" });
     await expect(lane(laneIds[2]!)).toHaveAccessibleName(/1 shape/);
+    // Quote selected first: the bar of the selection (Deliver, just added) floats 64 px above it and can sit over
+    // Quote's bottom connection point; once Quote is selected its bar goes above Quote instead.
+    await quote.click();
+    await expect(quote).toHaveAttribute("aria-pressed", "true");
     await quote.hover();
     const quoteId = await quote.getAttribute("data-fc-node");
     const handle = await centre(canvas.locator(`[data-fc-handle][data-node="${quoteId}"][data-side="bottom"]`));
@@ -290,9 +294,13 @@ test.describe("Flowchart frames and swimlanes", () => {
 
     await axe(page);
 
-    // Phone width: the canvas and its bars still fit.
+    // Phone width: the card is too narrow to work in, so it's a fitted picture with Open canvas; in the full
+    // canvas its bars still fit.
     await page.setViewportSize({ width: 390, height: 844 });
     await settle(page);
+    await expect(tools).toBeHidden();
+    await page.getByRole("button", { name: /^Open canvas/ }).click();
+    await expect(page.locator(".fb-flowchart .fb-canvas-card")).toHaveAttribute("data-full", "true");
     await page.getByRole("button", { name: "Fit to content" }).click();
     await lane(laneIds[1]!).focus();
     await expect(page.getByRole("toolbar", { name: "Selected lane" })).toBeVisible();

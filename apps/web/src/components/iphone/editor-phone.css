@@ -156,7 +156,7 @@
 :root[data-iphone] .fb-canvas-card[data-full] :is(.fc-warning, .mm-warning, .st-warning, .wf-warning) { left: 16px; bottom: calc(var(--fb-full-foot) + 56px); }
 :root[data-iphone] .fb-canvas-card[data-full] .fc-status { bottom: calc(var(--fb-full-foot) + 56px); }
 /* The block's own toolbar along the top: 16 in from the sides like the bottom row. */
-:root[data-iphone] .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) { top: 8px; max-width: calc(100% - 32px); }
+:root[data-iphone] .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) { top: 8px; --fold-inset: 32px; max-width: calc(100% - var(--fold-inset)); }
 /* ------------------------------------------------------------------------------------------------
  * Tables (table/TableView.tsx) on the phone: a card with rounded corners and hairline rules, the header row on a
  * soft wash in the sans face, cells in the note's face a size down with room for a finger, numbers lined up.

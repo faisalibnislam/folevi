@@ -6,7 +6,7 @@ import { APP, newPerson, openShare, pick, showFolders, waitForSaved } from "./he
 async function shareWith(page: Page, email: string, name: string) {
   await openShare(page);
   const share = page.getByRole("dialog", { name: /Share/ });
-  await share.getByLabel("Email address").fill(email);
+  await share.getByLabel("Email address", { exact: true }).fill(email);
   await pick(share.getByLabel("Role"), "Can edit");
   await share.getByRole("button", { name: "Share", exact: true }).click();
   await expect(share.getByText(name)).toBeVisible();

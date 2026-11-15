@@ -31,14 +31,18 @@ test("a folder inside a folder: make it, file a note in it, and it's all still t
   await picker.getByRole("option", { name: /^Clients/ }).click();
   await expect(page.getByRole("status").filter({ hasText: "Moved to Clients" })).toBeVisible();
 
-  // The folder page: breadcrumbs up to Work, and the note.
+  // The folder page: the note, and a path menu (Finder style) with Clients, then Work above it, then All folders.
   await showFolders(page);
   await inWork.getByRole("link", { name: "Clients" }).click();
   await expect(page.getByRole("main").getByText("Kickoff notes")).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Work" })).toBeVisible();
+  await page.getByRole("main").getByRole("button", { name: "Where Clients is" }).click();
+  const where = page.getByRole("menu", { name: "Where Clients is" });
+  await expect(where.getByRole("menuitemradio", { name: "Clients" })).toBeChecked();
+  await expect(where.getByRole("menuitem")).toHaveText(["Work", "All folders"]);
 
-  // Work's page lists the folder inside it.
-  await nav.getByRole("link", { name: "Work", exact: true }).click();
+  // Choosing Work there opens it; Work's page lists the folder inside it.
+  await where.getByRole("menuitem", { name: "Work" }).click();
+  await expect(page.getByRole("main").getByRole("heading", { name: "Work", level: 1 })).toBeVisible();
   await page.getByRole("list", { name: "Folders inside" }).getByRole("link", { name: /^Clients,/ }).click();
   await expect(page.getByRole("main").getByText("Kickoff notes")).toBeVisible();
 

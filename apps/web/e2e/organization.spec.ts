@@ -19,11 +19,11 @@ test("folders, bookmarks, archive, trash and restore", async ({ browser }) => {
   const recent = page.getByRole("region", { name: "Recent notes" });
   const card = recent.getByRole("listitem").filter({ hasText: "Field Notes: A Quiet Morning" });
   await card.hover();
-  await card.getByRole("button", { name: /Actions for Field Notes/ }).click();
+  await card.getByRole("button", { name: /^More actions for Field Notes/ }).click();
   await page.getByRole("menuitem", { name: "Bookmark" }).click();
   await expect(page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: /Field Notes: A Quiet Morning/ })).toBeVisible();
   await card.hover();
-  await card.getByRole("button", { name: /Actions for Field Notes/ }).click();
+  await card.getByRole("button", { name: /^More actions for Field Notes/ }).click();
   await page.getByRole("menuitem", { name: "Move to folder…" }).click();
   await page.getByRole("dialog", { name: "Move to folder" }).getByRole("option", { name: "Letters" }).click();
   await nav.getByRole("link", { name: "Letters" }).click();
@@ -33,12 +33,12 @@ test("folders, bookmarks, archive, trash and restore", async ({ browser }) => {
   await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Home" }).click();
   const trip = recent.getByRole("listitem").filter({ hasText: "Trip Sketch: Coastal Weekend" });
   await trip.hover();
-  await trip.getByRole("button", { name: /Actions for Trip Sketch/ }).click();
+  await trip.getByRole("button", { name: /^More actions for Trip Sketch/ }).click();
   await page.getByRole("menuitem", { name: "Move to Trash" }).click();
   await expect(recent.getByRole("listitem").filter({ hasText: "Trip Sketch: Coastal Weekend" })).toHaveCount(0);
   await page.getByRole("link", { name: "Trash" }).click();
   await expect(page.getByRole("main").getByText("Trip Sketch: Coastal Weekend")).toBeVisible();
-  await page.getByRole("button", { name: /Actions for Trip Sketch/ }).click();
+  await page.getByRole("button", { name: /^More actions for Trip Sketch/ }).click();
   await page.getByRole("menuitem", { name: "Restore" }).click();
   await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Home" }).click();
   await expect(recent.getByRole("listitem").filter({ hasText: "Trip Sketch: Coastal Weekend" })).toHaveCount(1);

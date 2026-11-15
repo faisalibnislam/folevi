@@ -38,7 +38,8 @@ test.describe("editor", () => {
     const reloaded = page.getByRole("textbox", { name: "Document body" });
     await expect(page.getByRole("textbox", { name: "Title" })).toHaveValue("Harbor notes");
     await expect(reloaded.locator("h3")).toHaveText("Plan");
-    await expect(reloaded.locator('[data-block="bulleted"]').nth(1)).toHaveText("Thermos");
+    // A bulleted line starts with hidden words for screen readers ("Bullet, ").
+    await expect(reloaded.locator('[data-block="bulleted"]').nth(1)).toHaveText("Bullet, Thermos");
     await expect(reloaded.locator('[data-block="todo"]')).toContainText("Book the ferry");
     await expect(reloaded.locator("blockquote")).toHaveText("Slow is smooth.");
   });
@@ -62,13 +63,14 @@ test.describe("editor", () => {
     await page.keyboard.press("Tab");
     const body = page.getByRole("textbox", { name: "Document body" });
     await expect(body.locator("strong")).toHaveText("bold");
-    await expect(body.locator('[data-block="bulleted"][data-depth="1"]')).toHaveText("child");
+    // A bulleted line starts with hidden words for screen readers ("Bullet, ", "Bullet, level 2, ").
+    await expect(body.locator('[data-block="bulleted"][data-depth="1"]')).toHaveText("Bullet, level 2, child");
     // Move the nested block up with Alt+Shift+Up: it becomes the first list item group's leader.
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Alt+Shift+ArrowUp");
-    await expect(body.locator('[data-block="bulleted"]').first()).toHaveText("child");
+    await expect(body.locator('[data-block="bulleted"]').first()).toHaveText("Bullet, child");
     await page.keyboard.press(`${mod}+z`);
-    await expect(body.locator('[data-block="bulleted"]').first()).toHaveText("parent");
+    await expect(body.locator('[data-block="bulleted"]').first()).toHaveText("Bullet, parent");
     await waitForSaved(page);
   });
 
@@ -91,7 +93,7 @@ test.describe("editor", () => {
     });
     const image = body.locator(".fb-atom").first();
     await expect(image).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByPlaceholder("Describe the image")).toBeVisible();
+    await expect(page.getByPlaceholder("What the image shows")).toBeVisible();
     await page.keyboard.press("Alt+Shift+ArrowUp");
     await expect(body.locator("p").first()).toHaveText("Under the photo.");
     expect(await body.evaluate((el) => (el.firstElementChild?.querySelector(".fb-atom") ? "image" : el.firstElementChild?.tagName))).toBe("image");
@@ -99,7 +101,7 @@ test.describe("editor", () => {
     await page.reload();
     await expect(body.locator(".fb-atom").first()).toBeVisible({ timeout: 20_000 });
     await page.waitForTimeout(800);
-    await expect(page.getByPlaceholder("Describe the image")).toHaveCount(0);
+    await expect(page.getByPlaceholder("What the image shows")).toHaveCount(0);
     await expect(body.locator(".fb-atom-selected")).toHaveCount(0);
   });
 });

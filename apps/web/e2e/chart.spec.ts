@@ -262,13 +262,28 @@ test.describe("Chart", () => {
     await expect(iphone.locator("html")).toHaveAttribute("data-iphone", "", { timeout: 30_000 });
     const phoneCard = iphone.locator(".fb-editor .fb-chart").first();
     await expect(phoneCard.getByRole("img", { name: /^Bar: Sales by region/ })).toBeVisible({ timeout: 20_000 });
-    // The iPhone's 44 point toolbar folds what doesn't fit into More; Style opens from there as a sheet.
+    // In the note the chart is a picture under a header with Open, the whole card one target; its tools show
+    // only once it's open full screen.
     const phoneTools = phoneCard.getByRole("toolbar", { name: "Chart tools" });
-    await expect.poll(() => phoneTools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    await expect(phoneTools).toBeHidden();
+    await phoneCard.getByRole("button", { name: "Open Chart" }).tap();
+    await expect(phoneCard.locator(".fb-canvas-card")).toHaveAttribute("data-full", "true");
+    const done = phoneCard.getByRole("button", { name: "Done", exact: true });
+    await expect(done).toBeVisible();
+    // The iPhone's 44 point toolbar never scrolls sideways: what doesn't fit folds into More (the full screen
+    // has the phone's whole width, where every tool can fit once the block's name steps aside). Style opens
+    // from the bar or from More as a sheet.
+    await expect.poll(() => phoneTools.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && [...el.querySelectorAll("button")].filter((b) => b.offsetParent).every((b) => b.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1))).toBe(true);
     const phoneMore = phoneTools.getByRole("button", { name: "More chart tools" });
-    await expect(phoneMore).toBeVisible();
-    await phoneMore.tap();
-    await iphone.getByRole("menu", { name: "More chart tools" }).getByRole("menuitem", { name: "Style" }).tap();
+    const phoneStyle = phoneTools.getByRole("button", { name: "Style", exact: true });
+    if (await phoneMore.isVisible()) {
+      expect((await phoneMore.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      await phoneMore.tap();
+      await iphone.getByRole("menu", { name: "More chart tools" }).getByRole("menuitem", { name: "Style" }).tap();
+    } else {
+      expect((await phoneStyle.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      await phoneStyle.tap();
+    }
     const sheet = iphone.getByRole("dialog", { name: "Chart style" });
     await expect(sheet).toBeVisible();
     await expect(sheet.getByRole("switch", { name: "Value labels" })).toBeVisible();
@@ -276,8 +291,12 @@ test.describe("Chart", () => {
     await phoneCard.getByRole("button", { name: "Data", exact: true }).tap();
     const cell = phoneCard.getByRole("textbox", { name: "Sales, row 1" });
     expect((await cell.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    expect((await phoneMore.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     expect((await phoneTools.getByRole("button", { name: "Data", exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    // Done brings the note back.
+    expect((await done.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await done.tap();
+    await expect(phoneCard.locator(".fb-canvas-card")).not.toHaveAttribute("data-full", "true");
+    await expect(phoneCard.getByRole("button", { name: "Open Chart" })).toBeVisible();
     await phone.close();
     await context.close();
   });

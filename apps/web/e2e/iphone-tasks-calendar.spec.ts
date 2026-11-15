@@ -211,8 +211,10 @@ test("iPhone Tasks, Calendar and Search: capsules, the box, the details sheet, t
   await scopes.getByRole("button", { name: "Edited" }).click();
   await page.getByRole("menuitemradio", { name: "Past week" }).click();
   await expect(scopes.getByRole("button", { name: "Edited: Past week" })).toBeVisible();
-  // Results are list rows: caption caps over them.
-  await search.getByRole("combobox").fill("plumber");
+  // Results are list rows: caption caps over them. (The Notes heading shows only over notes found, 7a28ac73, so
+  // the search is for a note every new account has.)
+  await search.getByRole("combobox").fill("Welcome");
+  await expect(search.getByRole("option", { name: /^Welcome to Folevi, note/ })).toBeVisible();
   await expect(search.getByText("Notes", { exact: true })).toHaveCSS("text-transform", "uppercase");
   await context.close();
 });

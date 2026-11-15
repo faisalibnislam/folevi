@@ -36,7 +36,8 @@
 /* A phone's browser: the zoom bar and notices 16 in from the edges and clear of the home indicator. */
 @media (max-width: 767px) {
   .fb-canvas-card[data-full] :is(.fc-bar-zoom, .mm-zoom, .st-bar-zoom, .wf-bar-zoom, .fb-chart-zoom-bar) { right: 16px; bottom: 16px; opacity: 1; }
-  .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) { max-width: calc(100% - 32px); }
+  /* 16 in from each side; ToolFold.tsx reads the same inset, so what doesn't fit folds into More instead of scrolling. */
+  .fb-canvas-card[data-full] :is(.fb-vc-bar, .fc-bar-main) { --fold-inset: 32px; max-width: calc(100% - var(--fold-inset)); }
 }
 .fb-canvas-card[data-full] .fb-wb-resize { display: none; }
 

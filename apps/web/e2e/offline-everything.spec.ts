@@ -130,20 +130,31 @@ test("a cell edited and a row added offline reach the server once", async ({ bro
   await page.keyboard.press("Enter");
   const coll = page.getByRole("region", { name: /^Collection / });
   await expect(coll).toBeVisible();
+  // New puts the caret in the new row's name: Enter names it and starts another, Escape on an empty one removes it.
+  const fresh = coll.getByRole("textbox", { name: "New row name" });
   await coll.getByRole("button", { name: "New row" }).click();
-  await coll.getByRole("textbox", { name: "Row name" }).fill("Dune");
-  await coll.getByRole("textbox", { name: "Row name" }).press("Enter");
+  await expect(fresh).toBeFocused();
+  await fresh.fill("Dune");
+  await fresh.press("Enter");
   await expect(coll.getByRole("combobox", { name: "Status for Dune" })).toBeVisible();
+  await expect(fresh).toBeFocused();
+  await fresh.press("Escape");
+  await expect(fresh).toHaveCount(0);
+  await expect(coll.getByRole("textbox", { name: "Row name", exact: true })).toHaveCount(1);
   await waitForSaved(page);
 
   await goOffline(page, context);
   await pick(coll.getByRole("combobox", { name: "Status for Dune" }), "In progress");
   await coll.getByRole("button", { name: "New row" }).click();
-  await expect(coll.getByRole("textbox", { name: "Row name" })).toHaveCount(2);
+  await expect(fresh).toBeFocused();
   await expect(coll.getByText("Waiting to send")).toBeVisible();
-  await coll.getByRole("textbox", { name: "Row name" }).nth(1).fill("Middlemarch");
-  await coll.getByRole("textbox", { name: "Row name" }).nth(1).press("Enter");
+  await fresh.fill("Middlemarch");
+  await fresh.press("Enter");
   await expect(coll.getByRole("combobox", { name: "Status for Middlemarch" })).toBeVisible();
+  await expect(fresh).toBeFocused();
+  await fresh.press("Escape");
+  await expect(fresh).toHaveCount(0);
+  await expect(coll.getByRole("textbox", { name: "Row name", exact: true })).toHaveCount(2);
   await pick(coll.getByRole("combobox", { name: "Status for Middlemarch" }), "Done");
   await expect(page.getByTestId("sync-status")).toHaveAccessibleName(/Sync status: Offline, [3-9] changes waiting/);
 
@@ -153,7 +164,7 @@ test("a cell edited and a row added offline reach the server once", async ({ bro
 
   const { other, page: page2 } = await elsewhere(browser, context, url);
   const coll2 = page2.getByRole("region", { name: /^Collection / });
-  await expect(coll2.getByRole("textbox", { name: "Row name" })).toHaveCount(2);
+  await expect(coll2.getByRole("textbox", { name: "Row name", exact: true })).toHaveCount(2);
   await expect(coll2.getByRole("combobox", { name: "Status for Dune" })).toContainText("In progress");
   await expect(coll2.getByRole("combobox", { name: "Status for Middlemarch" })).toContainText("Done");
   await other.close();
@@ -183,9 +194,16 @@ test("reopened with no connection, the sidebar, comments and a collection read a
   await expect(page.getByRole("option", { name: /Database/ })).toBeVisible();
   await page.keyboard.press("Enter");
   const coll = page.getByRole("region", { name: /^Collection / });
+  // New puts the caret in the new row's name: Enter names it and starts another, Escape on an empty one removes it.
+  const fresh = coll.getByRole("textbox", { name: "New row name" });
   await coll.getByRole("button", { name: "New row" }).click();
-  await coll.getByRole("textbox", { name: "Row name" }).fill("Kept row");
-  await coll.getByRole("textbox", { name: "Row name" }).press("Enter");
+  await expect(fresh).toBeFocused();
+  await fresh.fill("Kept row");
+  await fresh.press("Enter");
+  await expect(coll.getByRole("textbox", { name: "Row name", exact: true })).toHaveValue("Kept row");
+  await expect(fresh).toBeFocused();
+  await fresh.press("Escape");
+  await expect(fresh).toHaveCount(0);
   await waitForSaved(page);
   await showDocument(page);
   await page.getByRole("tab", { name: /^Comments/ }).click();
@@ -201,7 +219,7 @@ test("reopened with no connection, the sidebar, comments and a collection read a
   await page.reload();
   await expect(page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Archive box" })).toBeVisible({ timeout: 20_000 });
   const coll2 = page.getByRole("region", { name: /^Collection / });
-  await expect(coll2.getByRole("textbox", { name: "Row name" })).toHaveValue("Kept row", { timeout: 20_000 });
+  await expect(coll2.getByRole("textbox", { name: "Row name", exact: true })).toHaveValue("Kept row", { timeout: 20_000 });
   await expect(page.locator(".fb-comment-chip")).toBeVisible();
   await showDocument(page);
   await page.getByRole("tab", { name: /^Comments/ }).click();
@@ -306,9 +324,16 @@ test("a row added offline opens as a page, and what's typed there is saved after
   await waitForSaved(page);
 
   await goOffline(page, context);
+  // New puts the caret in the new row's name: Enter names it and starts another, Escape on an empty one removes it.
+  const fresh = coll.getByRole("textbox", { name: "New row name" });
   await coll.getByRole("button", { name: "New row" }).click();
-  await coll.getByRole("textbox", { name: "Row name" }).fill("Soup");
-  await coll.getByRole("textbox", { name: "Row name" }).press("Enter");
+  await expect(fresh).toBeFocused();
+  await fresh.fill("Soup");
+  await fresh.press("Enter");
+  await expect(coll.getByRole("textbox", { name: "Row name", exact: true })).toHaveValue("Soup");
+  await expect(fresh).toBeFocused();
+  await fresh.press("Escape");
+  await expect(fresh).toHaveCount(0);
   await expect(coll.getByText("Waiting to send")).toBeVisible();
   await coll.getByRole("link", { name: "Open Soup" }).click();
   await page.waitForURL(/\/d\/[0-9A-Z]{26}$/);
@@ -326,7 +351,7 @@ test("a row added offline opens as a page, and what's typed there is saved after
   // One line: the page didn't get a second, empty one from the server.
   await expect(page2.getByRole("textbox", { name: "Document body" }).locator("p")).toHaveCount(1);
   await page2.goto(url);
-  await expect(page2.getByRole("region", { name: /^Collection / }).getByRole("textbox", { name: "Row name" })).toHaveCount(1);
+  await expect(page2.getByRole("region", { name: /^Collection / }).getByRole("textbox", { name: "Row name", exact: true })).toHaveCount(1);
   await other.close();
   await context.close();
 });

@@ -58,7 +58,7 @@ test("the iPhone app's Settings: every section a native list, choices and edits 
   await expect(title(page, "Settings")).toBeVisible({ timeout: 30_000 });
 
   // Every section opens as its own screen with Back, and is made of the app's rows only.
-  const sections = ["Account", "AI", "Plan & billing", "Security", "Devices", "Connected apps", "Appearance", "Notifications", "Offline & sync", "Import & export", "This device"];
+  const sections = ["Account", "Foli AI", "Plan & billing", "Security", "Devices", "Connected apps", "Appearance", "Notifications", "Offline & sync", "Import & export", "This device"];
   for (const name of sections) {
     await page.locator("main:visible").getByRole("link", { name, exact: true }).click();
     await expect(title(page, name)).toBeVisible();

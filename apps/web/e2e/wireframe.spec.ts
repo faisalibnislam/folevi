@@ -153,8 +153,12 @@ test.describe("Wireframe", () => {
     await expect.poll(icons).toBe(tabs - 1);
     expect(await value()).toBe(tabs - 1);
 
-    // A phone's width: the toolbar and the selection bar fit (no sideways scrolling); the rest is in More.
+    // A phone's width: the card is too narrow to work in, so it's a fitted picture with Open canvas; in the full
+    // canvas the toolbar and the selection bar fit (no sideways scrolling); the rest is in More.
     await page.setViewportSize({ width: 375, height: 812 });
+    await expect(tools).toBeHidden();
+    await card.getByRole("button", { name: /^Open canvas/ }).click();
+    await expect(card.locator(".fb-canvas-card")).toHaveAttribute("data-full", "true");
     const fits = (el: HTMLElement | SVGElement) => {
       const box = el.parentElement!.getBoundingClientRect();
       const r = el.getBoundingClientRect();
@@ -209,6 +213,14 @@ test.describe("Wireframe", () => {
     await expect(iphone.locator("html")).toHaveAttribute("data-iphone", "", { timeout: 30_000 });
     const phoneCard = iphone.locator(".fb-editor .fb-wireframe").first();
     await expect(phoneCard.getByRole("application", { name: /1 screen, 0 parts/ })).toBeVisible({ timeout: 20_000 });
+    // In the note it's a picture under a header with Open, the whole card one target; a tap opens it full
+    // screen, where its tools show and Done brings the note back.
+    await expect(phoneCard.getByRole("toolbar", { name: "Wireframe tools" })).toBeHidden();
+    await phoneCard.getByRole("button", { name: "Open Wireframe" }).tap();
+    await expect(phoneCard.locator(".fb-canvas-card")).toHaveAttribute("data-full", "true");
+    const done = phoneCard.getByRole("button", { name: "Done", exact: true });
+    await expect(done).toBeVisible();
+    expect((await done.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     const parts = phoneCard.getByRole("button", { name: "Parts", exact: true });
     expect((await parts.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await parts.tap();
@@ -231,6 +243,9 @@ test.describe("Wireframe", () => {
       await expect(iphone.getByRole("menuitemcheckbox", { name: "Select several" })).toHaveAttribute("aria-checked", "false");
       await iphone.keyboard.press("Escape");
     }
+    await done.tap();
+    await expect(phoneCard.locator(".fb-canvas-card")).not.toHaveAttribute("data-full", "true");
+    await expect(phoneCard.getByRole("button", { name: "Open Wireframe" })).toBeVisible();
     await phone.close();
     await context.close();
   });

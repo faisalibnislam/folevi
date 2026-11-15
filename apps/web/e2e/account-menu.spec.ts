@@ -58,6 +58,8 @@ test.describe("account mode", { tag: "@account-menu" }, () => {
     await expect(me).toHaveAttribute("aria-checked", "true");
     await expect(me).toContainText("Faisal Menu");
     await expect(me).toHaveAttribute("aria-description", /@example\.com/);
+    // Sizes are measured once the menu has grown into place (it springs in from 90% scale, 68f5d52d).
+    await menu.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
     expect((await me.boundingBox())!.height).toBeGreaterThanOrEqual(50);
     // Then the actions, then Sign out; the rest lives in Settings.
     const names = await menu.getByRole("menuitem").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label") ?? e.querySelector("[data-menu-part=label]")?.textContent?.trim() ?? ""));

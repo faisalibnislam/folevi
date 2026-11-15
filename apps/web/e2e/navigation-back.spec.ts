@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { newPerson } from "./helpers";
 
-test("Back and Forward work like a browser's, across tabs, and are greyed out with nowhere to go", async ({ browser }) => {
+test("Back and Forward: each tab keeps its own, and they are greyed out with nowhere to go", async ({ browser }) => {
   const { page, context } = await newPerson(browser, "Back Walker");
   await page.goto("/documents");
   const history = page.getByRole("group", { name: "History" });
@@ -10,31 +10,46 @@ test("Back and Forward work like a browser's, across tabs, and are greyed out wi
   await expect(back).toBeDisabled();
   await expect(forward).toBeDisabled();
 
-  // A note, then Graph: each keeps its tab.
+  // A note, then Graph: each opens in a tab of its own, and each tab keeps its own Back and Forward (Finder
+  // style), so a page just opened in a new tab has nowhere to go back to.
   await page.getByRole("link", { name: /Trip Sketch: Coastal Weekend/ }).first().click();
   await expect(page).toHaveURL(/\/d\//);
-  const note = page.url();
+  await expect(back).toBeDisabled();
   await page.getByRole("link", { name: "Home", exact: true }).first().click();
-  await page.getByRole("navigation", { name: "Folio" }).getByRole("link", { name: "Foli DNA", exact: true }).click();
+  const nav = page.getByRole("navigation", { name: "Folio" });
+  await nav.getByRole("link", { name: "Foli DNA", exact: true }).click();
   await expect(page).toHaveURL(/\/graph$/);
   const strip = page.getByRole("navigation", { name: "Open pages" });
   await expect(strip.getByRole("link", { name: "Foli DNA" })).toBeVisible();
   await expect(strip.getByRole("link", { name: /Trip Sketch/ })).toBeVisible();
+  await expect(back).toBeDisabled();
+  await expect(forward).toBeDisabled();
 
-  // Back: Home, then the note (its tab); Forward: Home again.
+  // A folder tab goes from folder to folder in place: Back and Forward step through that tab's own history.
+  await nav.getByRole("link", { name: "Projects", exact: true }).click();
+  await expect(page).toHaveURL(/\/folders\/[0-9A-Z]{26}$/);
+  const projects = page.url();
+  await expect(back).toBeDisabled();
+  await nav.getByRole("link", { name: "Personal", exact: true }).click();
+  await expect(page).toHaveURL(/\/folders\/[0-9A-Z]{26}$/);
+  await expect(page).not.toHaveURL(projects);
+  const personal = page.url();
+  await expect(strip.getByRole("link", { name: "Personal", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(strip.getByRole("link", { name: "Projects", exact: true })).toHaveCount(0);
   await back.click();
-  await expect(page).toHaveURL(/\/documents$/);
-  await back.click();
-  await expect(page).toHaveURL(note);
-  await expect(strip.locator('[aria-current="page"]')).toHaveText(/Trip Sketch/);
+  await expect(page).toHaveURL(projects);
+  await expect(strip.locator('[aria-current="page"]')).toHaveText("Projects");
+  await expect(back).toBeDisabled();
   await forward.click();
-  await expect(page).toHaveURL(/\/documents$/);
+  await expect(page).toHaveURL(personal);
+  await expect(forward).toBeDisabled();
   // ⌘[ / ⌘] too.
   await page.locator("body").click({ position: { x: 5, y: 300 } });
-  await page.keyboard.press("ControlOrMeta+BracketRight");
-  await expect(page).toHaveURL(/\/graph$/);
-  await expect(forward).toBeDisabled();
   await page.keyboard.press("ControlOrMeta+BracketLeft");
-  await expect(page).toHaveURL(/\/documents$/);
+  await expect(page).toHaveURL(projects);
+  await expect(forward).toBeEnabled();
+  await page.keyboard.press("ControlOrMeta+BracketRight");
+  await expect(page).toHaveURL(personal);
+  await expect(forward).toBeDisabled();
   await context.close();
 });

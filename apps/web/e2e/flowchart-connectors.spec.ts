@@ -318,9 +318,13 @@ test.describe("Flowchart connectors", () => {
     await page.getByRole("menu", { name: "Connector" }).getByRole("menuitem", { name: "Remove label" }).click();
     await expect.poll(async () => (await labelsOf(page, "ab")).length).toBe(1);
 
-    // Phone width: the bar fits.
+    // Phone width: the card is too narrow to work in, so it's a fitted picture with Open canvas; in the full
+    // canvas the bar fits.
     await page.setViewportSize({ width: 390, height: 844 });
     await canvas.scrollIntoViewIfNeeded();
+    await expect(page.getByRole("toolbar", { name: "Flowchart tools" })).toBeHidden();
+    await page.getByRole("button", { name: /^Open canvas/ }).click();
+    await expect(page.locator(".fb-flowchart .fb-canvas-card")).toHaveAttribute("data-full", "true");
     await page.mouse.click(...Object.values(await along(canvas, "ac", 0.5)) as [number, number]);
     const one = page.getByRole("toolbar", { name: "Selected connectors" });
     await expect(one).toBeVisible();

@@ -25,8 +25,10 @@ test("turning the AI Assistant off hides every AI entry point; turning it on bri
   await expect(toggle).toHaveAttribute("aria-checked", "true");
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-checked", "false");
-  await expect(launcher).toHaveCount(0);
+  // (Settings never shows the floating button, e292487d: it's checked on Home, once Home has drawn.)
   await page.goto("/documents");
+  await expect(page.getByRole("heading", { level: 1, name: "Home" })).toBeAttached({ timeout: 30_000 });
+  await expect(launcher).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Catch me up" })).toHaveCount(0);
 
   // A note: no AI in the floating bar, the selection toolbar or the slash menu; ⌘J does nothing.
@@ -52,7 +54,8 @@ test("turning the AI Assistant off hides every AI entry point; turning it on bri
   // Back on.
   await page.goto("/settings/account");
   await page.getByRole("switch", { name: "Foli AI", exact: true }).click();
-  await expect(launcher).toBeVisible();
+  await expect(page.getByRole("switch", { name: "Foli AI", exact: true })).toHaveAttribute("aria-checked", "true");
   await page.goto("/documents");
+  await expect(launcher).toBeVisible();
   await expect(page.getByRole("button", { name: "Catch me up" })).toBeVisible();
 });

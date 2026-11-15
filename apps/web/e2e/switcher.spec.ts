@@ -76,7 +76,7 @@ test("a new account starts in Personal with no workspaces, and each context show
   await expect(recent.getByRole("link", { name: /Welcome to Folevi/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Studio plans/ })).toHaveCount(0);
   let palette = await searchFor(page, "Studio plans");
-  await expect(palette.getByText("No documents match “Studio plans”.")).toBeVisible();
+  await expect(palette.getByText("No notes match “Studio plans”.")).toBeVisible();
   await page.keyboard.press("Escape");
 
   // And to the workspace again; a reload keeps the choice.
@@ -84,7 +84,7 @@ test("a new account starts in Personal with no workspaces, and each context show
   await expect(recent.getByRole("link", { name: /Studio plans/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Welcome to Folevi/ })).toHaveCount(0);
   palette = await searchFor(page, "Welcome to Folevi");
-  await expect(palette.getByText("No documents match “Welcome to Folevi”.")).toBeVisible();
+  await expect(palette.getByText("No notes match “Welcome to Folevi”.")).toBeVisible();
   await page.keyboard.press("Escape");
   await page.reload();
   await expect(switcher(page)).toHaveAccessibleName("Switch Studio: Personal, workspaces and account");

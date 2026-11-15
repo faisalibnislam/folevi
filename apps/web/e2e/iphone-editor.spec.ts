@@ -104,6 +104,31 @@ async function finger(page: Page, x: number, y: number, ms: number, path: { x: n
 const keyboard = (page: Page, height: number) => page.evaluate((h) => (window as unknown as { __native: { keyboard: (h: number) => void } }).__native.keyboard(h), height);
 const body = (page: Page) => page.getByRole("textbox", { name: "Document body" });
 
+test("iPhone capture: an interrupted sheet drag preserves the draft @local", async ({ browser }, testInfo) => {
+  const { context, page } = await iphone(browser, testInfo);
+  await page.goto("/tasks/inbox");
+  await expect(page.locator("html")).toHaveAttribute("data-iphone", "", { timeout: 60_000 });
+  await page.getByRole("button", { name: "Quick task", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "Quick add task" });
+  await expect(sheet).toBeVisible();
+  const field = sheet.getByRole("textbox", { name: "Task", exact: true });
+  await field.fill("Keep this unfinished thought");
+  // Deliver a system cancellation after pulling far enough that release would dismiss the sheet.
+  await sheet.locator("[data-sheet-handle]").first().evaluate((handle) => {
+    const send = (type: string, y: number, ended = false) => {
+      const touch = new Touch({ identifier: 1, target: handle, clientX: 200, clientY: y });
+      handle.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches: ended ? [] : [touch], changedTouches: [touch] }));
+    };
+    send("touchstart", 400);
+    send("touchmove", 420);
+    send("touchmove", 850);
+    send("touchcancel", 850, true);
+  });
+  await expect(sheet).toBeVisible();
+  await expect(field).toHaveValue("Keep this unfinished thought");
+  await context.close();
+});
+
 test("iPhone note: the bar on the keyboard, the top bar with Done while writing, Insert and Format from it @local", async ({ browser }, testInfo) => {
   test.setTimeout(240_000);
   const { context, page } = await iphone(browser, testInfo);

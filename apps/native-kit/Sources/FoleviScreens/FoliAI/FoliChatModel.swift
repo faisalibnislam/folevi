@@ -33,24 +33,42 @@ public struct FoliContextItem: Hashable, Sendable, Identifiable {
     public var name: String
 }
 
-/// One answer's display: its reveal while it streams and its Markdown blocks (observed per answer, so a
-/// streaming answer redraws only itself).
+/// A stable row whose text is observed by the row's view, independently of the thread's structure.
+@MainActor
+@Observable
+final class FoliAnswerBlock: Identifiable, Equatable {
+    nonisolated let id: Int
+    private(set) var block: MDBlock
+
+    init(_ block: MDBlock) { id = block.id; self.block = block }
+    func update(_ next: MDBlock) { if block != next { block = next } }
+    nonisolated static func == (lhs: FoliAnswerBlock, rhs: FoliAnswerBlock) -> Bool { lhs === rhs }
+}
+
+/// One answer's display: its reveal while it streams and its Markdown blocks.
 @MainActor
 @Observable
 public final class FoliAnswer {
     public let messageId: String
     public private(set) var blocks: [MDBlock] = []
+    /// Changes only when rows are inserted or removed. A growing paragraph updates its own observable row.
+    private(set) var renderedBlocks: [FoliAnswerBlock] = []
     /// The text on screen now (what the reveal has shown, or the whole answer).
     public private(set) var shownText = ""
     /// Whether any of it is on screen yet: what the status line and the placeholder follow (it changes once,
     /// not on every reveal tick, so they don't redraw the chat with each word).
     public private(set) var hasText = false
-    @ObservationIgnored var reveal: StreamReveal?
+    @ObservationIgnored var reveal: StreamReveal? {
+        didSet {
+            let active = reveal != nil
+            if revealing != active { revealing = active }
+        }
+    }
     @ObservationIgnored var markdown = IncrementalMarkdown()
 
     init(messageId: String) { self.messageId = messageId }
 
-    public var revealing: Bool { reveal != nil }
+    public private(set) var revealing = false
 
     func show(_ text: Substring) {
         // Same bytes, nothing to do (compared as memory, not character by character).
@@ -59,7 +77,16 @@ public final class FoliAnswer {
         shownText = next
         if hasText == next.isEmpty { hasText = !next.isEmpty }
         markdown.update(shownText)
-        if markdown.blocks != blocks { blocks = markdown.blocks }
+        if markdown.blocks != blocks {
+            blocks = markdown.blocks
+            let existing = Dictionary(uniqueKeysWithValues: renderedBlocks.map { ($0.id, $0) })
+            let nextRows = blocks.map { block in
+                let row = existing[block.id] ?? FoliAnswerBlock(block)
+                row.update(block)
+                return row
+            }
+            if nextRows != renderedBlocks { renderedBlocks = nextRows }
+        }
     }
 }
 

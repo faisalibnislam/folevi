@@ -179,9 +179,9 @@
 :root[data-iphone] .fb-editor .fb-table th .fb-cell { font: 600 var(--type-footnote)/20px var(--font-sans); letter-spacing: 0.01em; color: var(--color-ink-muted); padding-block: 12px; }
 :root[data-iphone] .fb-editor .fb-table .fb-cell-host .fb-cell-editor { min-height: 44px; padding: 12px; }
 /* Adding: a quiet "+" row under the last row, inside the card's width, and a slim "+" column at the end. */
-:root[data-iphone] .fb-editor .fb-table tfoot .fb-table-add { height: 40px; place-items: center start; padding-left: 12px; background: transparent; color: var(--color-ink-faint); }
+:root[data-iphone] .fb-editor .fb-table tfoot .fb-table-add { height: 44px; place-items: center start; padding-left: 12px; background: transparent; color: var(--color-ink-faint); }
 :root[data-iphone] .fb-editor .fb-table tfoot .fb-table-add:active { background: color-mix(in oklab, var(--color-ink) 6%, transparent); }
-:root[data-iphone] .fb-editor .fb-table .fb-table-add-col .fb-table-add { width: 36px; background: color-mix(in oklab, var(--color-ink) 3%, transparent); color: var(--color-ink-faint); }
+:root[data-iphone] .fb-editor .fb-table .fb-table-add-col .fb-table-add { width: 44px; background: color-mix(in oklab, var(--color-ink) 3%, transparent); color: var(--color-ink-faint); }
 /* The / menu and mentions (EditorMenus.tsx, Popover dock): across the screen, rows a finger's height, no
    keyboard hints (there's no keyboard shortcut to show on a phone). */
 :root[data-iphone] .ui-pop[data-dock] { padding: 6px; border-radius: var(--radius-container); }

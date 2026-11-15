@@ -47,13 +47,19 @@ public final class TaskEdits {
     /// reopens. `leaves` says whether the task leaves the list it's in once its status changes.
     public func toggle(_ task: TaskRow, leaves: @escaping (String) -> Bool) {
         let t = shown(task)
-        if holds[t.id] != nil { return }
+        if let hold = holds.removeValue(forKey: t.id) {
+            hold.cancel()
+            status[t.id] = nil
+            feedback.haptic(.selection)
+            return
+        }
         if t.status == "open" {
             status[t.id] = "done"
             feedback.haptic(.success)
             holds[t.id] = Task { [weak self] in
                 guard let self else { return }
                 try? await Task.sleep(for: self.checkHold)
+                guard !Task.isCancelled else { return }
                 self.holds[t.id] = nil
                 await self.complete(t, leaves: leaves("done"))
             }

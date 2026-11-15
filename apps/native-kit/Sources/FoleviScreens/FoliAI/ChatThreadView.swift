@@ -14,7 +14,7 @@ enum ThreadRow: Identifiable, Equatable {
     case user(ChatMessage)
     /// An answer's top: agent steps, a refusal, research progress.
     case answerHead(ChatMessage)
-    case block(messageId: String, MDBlock)
+    case block(messageId: String, FoliAnswerBlock)
     case answerFoot(ChatMessage)
     case pending(String)
     case problem(String)
@@ -47,7 +47,7 @@ func threadRows(_ model: FoliChatModel) -> [ThreadRow] {
         }
         rows.append(.answerHead(m))
         if m.status != "error" || !m.text.isEmpty {
-            for b in model.answer(m.id)?.blocks ?? [] { rows.append(.block(messageId: m.id, b)) }
+            for b in model.answer(m.id)?.renderedBlocks ?? [] { rows.append(.block(messageId: m.id, b)) }
         }
         rows.append(.answerFoot(m))
     }
@@ -77,15 +77,10 @@ public struct FoliThreadView: View {
     }
 
     public var body: some View {
-        let metrics = AnswerMetrics.current(compact)
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 0) {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(threadRows(model)) { row in
-                            rowView(row, metrics: metrics)
-                        }
-                    }
+                    FoliThreadRows(model: model, compact: compact)
                     .padding(.horizontal, compact ? 18 : 22)
                     .padding(.top, 12)
                     // Always alive (outside the lazy column), so "at the bottom" is always known.
@@ -118,15 +113,9 @@ public struct FoliThreadView: View {
             .modifier(ScrollPhaseWatch(scrolling: $userScrolling))
             .modifier(FollowEnd(pinned: pinned))
             .onChange(of: contentHeight) { _, _ in
-                // iOS 17: follow the end while pinned, only when the content got taller (a new line, a new
-                // block), never per word. iOS 18 and the Mac anchor the bottom instead (FollowEnd).
-                // On the Mac the anchor alone lets a lazy column's end drift off screen as it grows (it
-                // estimates the rows it hasn't measured): follow there too.
-                #if os(macOS)
+                // Lazy rows refine their height as an answer grows. The size-change anchor alone can leave
+                // the end off screen on either platform. Follow on actual height changes, never per word.
                 guard pinned else { return }
-                #else
-                guard pinned, !FollowEnd.anchored else { return }
-                #endif
                 proxy.scrollTo("end", anchor: .bottom)
             }
             .onChange(of: model.shownPending) { _, p in
@@ -162,9 +151,34 @@ public struct FoliThreadView: View {
             .foleviAnimation(FoleviTokens.Motion.base, value: pinned)
         }
     }
+}
 
-    @ViewBuilder
-    func rowView(_ row: ThreadRow, metrics: AnswerMetrics) -> some View {
+/// Scroll geometry changes independently of the conversation. Keep them out of the row builder so a scroll
+/// or an expanding paragraph doesn't make SwiftUI reconstruct every row in a long answer.
+private struct FoliThreadRows: View {
+    let model: FoliChatModel
+    let compact: Bool
+
+    var body: some View {
+        LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(threadRows(model)) { row in
+                // Exactly one subview per identity, including heads/feet whose contents can be empty.
+                // Otherwise the lazy stack has to evaluate every conditional row to discover its size.
+                VStack(alignment: .leading, spacing: 0) {
+                    FoliThreadRow(row: row, model: model, compact: compact)
+                }
+            }
+        }
+    }
+}
+
+private struct FoliThreadRow: View {
+    let row: ThreadRow
+    let model: FoliChatModel
+    let compact: Bool
+
+    var body: some View {
+        let metrics = AnswerMetrics.current(compact)
         switch row {
         case .intro:
             FoliIntroView(model: model, compact: compact).padding(.top, compact ? 4 : 16)
@@ -178,7 +192,7 @@ public struct FoliThreadView: View {
         case .answerHead(let m):
             AnswerHeadView(model: model, message: m)
         case .block(_, let b):
-            MDBlockView(block: b, metrics: metrics).equatable()
+            FoliAnswerBlockView(row: b, metrics: metrics)
                 .padding(.vertical, 5)
                 .textSelection(.enabled)
                 .environment(\.openURL, OpenURLAction { url in citeOrOpen(url) })
@@ -206,6 +220,16 @@ public struct FoliThreadView: View {
             return .discarded
         }
         return model.openLink(url) ? .handled : .systemAction
+    }
+}
+
+/// Read the changing Markdown inside the individual row, never while constructing the thread's ForEach.
+private struct FoliAnswerBlockView: View {
+    let row: FoliAnswerBlock
+    let metrics: AnswerMetrics
+
+    var body: some View {
+        MDBlockView(block: row.block, metrics: metrics).equatable()
     }
 }
 

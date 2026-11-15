@@ -10,6 +10,26 @@ import FoleviEngine
 import FoleviPhone
 import FoleviScreens
 
+/// The same capture flow from the tab bar, a shortcut or a widget, on either device layout.
+struct RebuildQuickAddSheet: View {
+    let phone: PhoneModel
+    @MadeOnce private var model: QuickAddModel
+
+    init(phone: PhoneModel) {
+        self.phone = phone
+        _model = MadeOnce(wrappedValue: QuickAddModel(client: phone.client, feedback: RebuildFeedback.make(phone)))
+    }
+
+    var body: some View {
+        PhoneSheetPanel(title: "Quick add", close: { if !model.busy { phone.quickAddShown = false } }) {
+            FoleviScreens.QuickAddView(model: model, style: .sheet)
+        }
+        .interactiveDismissDisabled(model.busy)
+        .onAppear { model.onSaved = { _, _ in phone.quickAddShown = false } }
+        .onDisappear { model.stop() }
+    }
+}
+
 /// Toasts (with Undo) and haptics for the kit's models, played by the frame.
 enum RebuildFeedback {
     static func make(_ phone: PhoneModel) -> ScreenFeedback {

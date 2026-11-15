@@ -74,7 +74,7 @@ public struct PhoneAiThread: View {
 
     private var scroller: some View {
         let t = look.s(variant == .page ? "ai.page.thread" : "ai.thread")
-        let streamLength = model.streamingMessage.flatMap { model.answer($0.id)?.shownText.count } ?? 0
+        let streamLength = following || behind ? 0 : (model.streamingMessage.flatMap { model.answer($0.id)?.shownText.utf8.count } ?? 0)
         return ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -92,12 +92,13 @@ public struct PhoneAiThread: View {
             .scrollDismissesKeyboard(.interactively)
             .defaultScrollAnchor(.top, for: .alignment)
             .defaultScrollAnchor(model.isEmpty ? .top : .bottom, for: .initialOffset)
-            .defaultScrollAnchor(model.isEmpty ? .top : .bottom, for: .sizeChanges)
-            .onScrollGeometryChange(for: Bool.self) { g in
-                g.contentSize.height - g.contentOffset.y - g.containerSize.height < 56
-            } action: { _, atEnd in
-                following = atEnd
-                if atEnd { behind = false }
+            .defaultScrollAnchor(model.isEmpty || !following ? .top : .bottom, for: .sizeChanges)
+            .onScrollGeometryChange(for: AiScrollFollow.Reading.self) { g in
+                AiScrollFollow.Reading(offset: g.contentOffset.y, atEnd: g.contentSize.height - g.contentOffset.y - g.containerSize.height < 56)
+            } action: { old, new in
+                following = AiScrollFollow.following(following, old: old, new: new)
+                if new.atEnd { behind = false }
+                if following, !model.isEmpty, !new.atEnd, new.offset >= old.offset { proxy.scrollTo("end", anchor: .bottom) }
             }
             .onChange(of: model.messages.count + (model.shownPending == nil ? 0 : 1)) { _, _ in
                 guard !model.isEmpty else { return }
@@ -106,7 +107,7 @@ public struct PhoneAiThread: View {
                 withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo("end", anchor: .bottom) }
             }
             .onChange(of: streamLength) { _, _ in
-                if following { proxy.scrollTo("end", anchor: .bottom) } else { behind = true }
+                if !following { behind = true }
             }
             .onAppear {
                 scrollProxy = proxy

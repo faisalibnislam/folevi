@@ -578,6 +578,55 @@ struct SharingModelTests {
 
 @Suite("Quick Add") @MainActor
 struct QuickAddModelTests {
+    @Test func reopeningCaptureRetainsTheUnfinishedDraft() {
+        let model = make(AccountEngine())
+        model.text = "Call Sam"
+        model.priority = .high
+        model.dueDate = "2026-11-16"
+        model.destination = .init(noteId: "doc_trip", noteTitle: "Trip")
+        let round = model.round
+        model.resumeDraft()
+        #expect(model.text == "Call Sam")
+        #expect(model.priority == .high && model.dueDate == "2026-11-16")
+        #expect(model.destination.noteId == "doc_trip")
+        #expect(model.round == round + 1)
+    }
+
+    @Test func savingKeepsWordsTypedWhileTheEngineAnswers() async {
+        let engine = AccountEngine()
+        let model = make(engine)
+        await eventually("session") { model.session.value != nil }
+        var closed = false
+        model.onSaved = { _, _ in closed = true }
+        engine.fake.onCommand = { _, args in
+            #expect(args["text"]?.string == "First task")
+            model.text = "Second task"
+            return .object(["id": .string("blk_first"), "noteId": .string("doc_inbox"), "where": .string("Inbox")])
+        }
+        model.text = "First task"
+        await model.save()
+        #expect(model.text == "Second task")
+        #expect(!closed)
+        #expect(model.added == nil)
+        #expect(!model.busy)
+    }
+
+    @Test func overlappingQueueFlushesSendEachItemOnce() async {
+        let engine = AccountEngine()
+        let model = make(engine)
+        await eventually("session") { model.session.value != nil }
+        engine.fake.onCommand = { _, _ in
+            .object(["id": .string("blk_new"), "noteId": .string("doc_inbox"), "where": .string("Inbox")])
+        }
+        model.text = "Queued task"
+        model.queue.enqueue(model.makeItem())
+        async let first: Void = model.flushQueue()
+        async let second: Void = model.flushQueue()
+        _ = await (first, second)
+        #expect(engine.fake.commands(named: "task.create").count == 1)
+        #expect(model.queue.count == 0)
+    }
+
     func make(_ engine: AccountEngine, mode: QuickAddModel.Mode = .task, log: FeedbackLog = FeedbackLog()) -> QuickAddModel {
         let m = QuickAddModel(client: engine.client(), mode: mode, queue: QuickAddQueue(url: nil), feedback: log.feedback)
         m.parseDelay = .milliseconds(1)

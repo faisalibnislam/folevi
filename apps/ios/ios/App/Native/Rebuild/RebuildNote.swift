@@ -47,7 +47,7 @@ struct RebuildNoteScreen: View {
                 titleFoot: titleFoot,
                 back: back,
                 openPlace: openPlace,
-                share: { model.toast("Sharing comes to this screen soon.") },
+                share: { model.router?.share(noteId: noteId) },
                 more: { showMenu(from: $0, meta: meta) },
                 done: done
             )

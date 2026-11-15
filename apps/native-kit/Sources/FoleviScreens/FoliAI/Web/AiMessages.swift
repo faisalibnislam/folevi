@@ -225,7 +225,7 @@ public struct AiAssistantMessage: View {
     public var body: some View {
         let look = AiLook(scheme: scheme, phone: phone)
         let answer = model.answer(message.id)
-        let shown = answer?.shownText ?? ""
+        let hasText = answer?.hasText ?? false
         let streaming = message.status == "streaming"
         let job = model.job(for: message.id)
         let busy = model.isWorking
@@ -236,9 +236,9 @@ public struct AiAssistantMessage: View {
                     AiProblemNotice(problem: AiProblem(error), purchases: purchases, onBilling: onBilling)
                     if last { AiRowButton(icon: .rotateCcw, title: "Try again") { model.regenerate() }.disabled(busy) }
                 }
-            } else if streaming, shown.isEmpty, let job, job.status == "running" {
+            } else if streaming, !hasText, let job, job.status == "running" {
                 AiResearchProgress(job: job) { model.cancelResearch(job) }
-            } else if streaming, shown.isEmpty {
+            } else if streaming, !hasText {
                 VStack(alignment: .leading, spacing: 8) {
                     AiRunStatus(label: Self.phase(message.phase, hasText: false)) { model.stop() }
                     if !message.agentSteps.isEmpty { AiAgentSteps(steps: message.agentSteps) }
@@ -247,8 +247,8 @@ public struct AiAssistantMessage: View {
             } else if answer?.revealing == true || streaming {
                 box {
                     VStack(alignment: .leading, spacing: 0) {
-                        AiAnswerText(blocks: answer?.blocks ?? [], cited: cited)
-                        if streaming { AiRunStatus(label: Self.phase(message.phase, hasText: !shown.trimmingCharacters(in: .whitespaces).isEmpty)) { model.stop() }.padding(.top, 8) }
+                        AiAnswerText(answer: answer, cited: cited, onCite: cite, onLink: { model.openLink($0) })
+                        if streaming { AiRunStatus(label: Self.phase(message.phase, hasText: hasText)) { model.stop() }.padding(.top, 8) }
                     }
                 }
                 .accessibilityElement(children: .contain)
@@ -305,8 +305,10 @@ public struct AiAssistantMessage: View {
                     if !message.agentSteps.isEmpty { AiAgentSteps(steps: message.agentSteps).padding(.bottom, 8) }
                     if message.text.isEmpty {
                         Text("Stopped before it said anything.").webText(.role(.body)).foregroundStyle(look.muted)
+                    } else if let answer {
+                        AiAnswerText(answer: answer, cited: cited, onCite: cite, onLink: { model.openLink($0) })
                     } else {
-                        AiAnswerText(blocks: answer?.blocks ?? MarkdownBlocks.parse(message.text[...]), cited: cited, onCite: cite, onLink: { model.openLink($0) })
+                        AiAnswerText(blocks: MarkdownBlocks.parse(message.text[...]), cited: cited, onCite: cite, onLink: { model.openLink($0) })
                     }
                     if let run = message.agentRun { AiAgentRunCard(model: model, run: run).padding(.top, 12) }
                     if !message.actions.isEmpty { AiActionsCard(model: model, message: message).padding(.top, 12) }

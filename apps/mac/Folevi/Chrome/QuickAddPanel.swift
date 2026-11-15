@@ -104,8 +104,8 @@ final class QuickAddPanel: NSObject, NSWindowDelegate {
         } else {
             panel.alphaValue = 1
         }
-        // Shown again: a fresh field, as the web's panel starts each time; keys typed meanwhile wait for it.
-        if let model = nativeModel, model.added == nil { model.startOver() }
+        // Accidental dismissal must not discard a capture. A successful save already clears the field.
+        if let model = nativeModel, model.added == nil { model.resumeDraft() }
         replayWhenNativeFieldReady()
         if let first = nativeHost ?? view { panel.makeFirstResponder(first) }
         if let view { Chrome.whenLoaded(view) { Events.command(["type": "quick-add-shown"], to: $0) } }

@@ -483,32 +483,39 @@ export function Sheet({
     settle(d.visible, target, velocity, d.ds);
   }, [size, settle]);
 
+  const cancelDrag = useCallback(() => {
+    const d = drag.current;
+    drag.current = null;
+    if (d) settle(d.visible, restingDetent(d.ds, expandedRef.current), 0, d.ds);
+  }, [settle]);
+
   useEffect(() => {
     const p = panel.current;
     if (!p || !shown || card) return;
     const onStart = (e: TouchEvent) => {
       const t = e.touches[0];
-      if (!t || e.touches.length > 1) return;
+      if (!t || e.touches.length > 1) return cancelDrag();
       const target = e.target as Element;
       const handle = Boolean(target.closest?.("[data-sheet-handle]"));
       if (!handle && target.closest?.(NO_DRAG)) return;
       begin(t.clientY, handle, handle ? null : scrollerOf(target, p));
     };
     const onMove = (e: TouchEvent) => {
+      if (e.touches.length > 1) return cancelDrag();
       const t = e.touches[0];
       if (t) move(t.clientY, e);
     };
     p.addEventListener("touchstart", onStart, { passive: true });
     p.addEventListener("touchmove", onMove, { passive: false });
     p.addEventListener("touchend", end);
-    p.addEventListener("touchcancel", end);
+    p.addEventListener("touchcancel", cancelDrag);
     return () => {
       p.removeEventListener("touchstart", onStart);
       p.removeEventListener("touchmove", onMove);
       p.removeEventListener("touchend", end);
-      p.removeEventListener("touchcancel", end);
+      p.removeEventListener("touchcancel", cancelDrag);
     };
-  }, [shown, card, begin, move, end]);
+  }, [shown, card, begin, move, end, cancelDrag]);
 
   // A mouse (or a pen) on the grabber drags too.
   const onHandlePointerDown = (e: React.PointerEvent) => {

@@ -159,6 +159,16 @@ final class NativeUITests: XCTestCase {
         // A hardware keyboard's bar only.
         XCTAssertEqual(KeyboardBridge.coveredHeight(keyboard: CGRect(x: 0, y: 1321, width: 1032, height: 55), bounds: CGRect(x: 0, y: 0, width: 1032, height: 1376)), 55)
     }
+
+    func testFloatingAndOtherWindowKeyboardsDoNotMoveTheEditor() {
+        let bounds = CGRect(x: 0, y: 0, width: 700, height: 800)
+        // A floating keyboard can touch the bottom without being docked.
+        XCTAssertEqual(KeyboardBridge.coveredHeight(keyboard: CGRect(x: 350, y: 540, width: 320, height: 260), bounds: bounds), 0)
+        XCTAssertEqual(KeyboardBridge.coveredHeight(keyboard: CGRect(x: 800, y: 500, width: 700, height: 300), bounds: bounds), 0)
+        // The keyboard may be larger than a resized window. Report only the actual overlap.
+        XCTAssertEqual(KeyboardBridge.coveredHeight(keyboard: CGRect(x: -100, y: -100, width: 1000, height: 1000), bounds: bounds), 800)
+        XCTAssertEqual(KeyboardBridge.coveredHeight(keyboard: CGRect(x: -100, y: 500, width: 1000, height: 400), bounds: bounds), 300)
+    }
 }
 
 /// A web view for the lift's calls (nothing is loaded in it).

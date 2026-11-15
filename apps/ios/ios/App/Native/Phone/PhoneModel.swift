@@ -55,6 +55,8 @@ final class PhoneModel {
     var keyboardVisible = false
     /// How much of the window's bottom the keyboard covers (points).
     var keyboardOverlap: CGFloat = 0
+    /// Shared by the + button, keyboard shortcut, widgets and deep links.
+    var quickAddShown = false
 
     @ObservationIgnored weak var router: PhoneRouting?
     @ObservationIgnored private var eventsTask: Task<Void, Never>?

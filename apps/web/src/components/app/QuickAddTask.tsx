@@ -64,6 +64,8 @@ export function useQuickAdd({ onClose, currentDoc, onAdded, initialDue }: { onCl
   const [priority, setPriority] = useState<Priority>("none");
   const [target, setTarget] = useState<Target | undefined>(undefined); // undefined = not chosen yet
   const [busy, setBusy] = useState(false);
+  // React batches state updates; two submits in the same event turn must still create only one task.
+  const submitting = useRef(false);
   const [error, setError] = useState<string | null>(null);
   // An empty title, submitted: said under the title field (not with the other errors), until the title has words.
   const [missingTitle, setMissingTitle] = useState(false);
@@ -99,11 +101,12 @@ export function useQuickAdd({ onClose, currentDoc, onAdded, initialDue }: { onCl
   const effective: Target = target !== undefined ? target : currentDoc && currentInfo && !currentInfo.inTrash ? { id: currentDoc, title: currentInfo.title, icon: currentInfo.icon } : null;
 
   const submit = async () => {
-    if (busy) return;
+    if (submitting.current) return;
     if (!title.trim()) {
       setMissingTitle(true);
       return;
     }
+    submitting.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -128,6 +131,7 @@ export function useQuickAdd({ onClose, currentDoc, onAdded, initialDue }: { onCl
     } catch (err) {
       setError(errorMessage(err));
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   };

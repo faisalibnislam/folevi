@@ -91,7 +91,7 @@ public struct PhoneSwipeRow<Content: View>: View {
         #if canImport(UIKit)
         // UIKit's pan, begun only by a sideways move: a SwiftUI drag took every move, so an up or down swipe on a
         // sheet's list (Notifications) couldn't raise or lower the sheet.
-        .gesture(PhoneSideways(changed: { dragged($0) }, ended: dragEnded))
+        .gesture(PhoneSideways(changed: { dragged($0) }, ended: dragEnded, cancelled: dragCancelled))
         #else
         .simultaneousGesture(drag)
         #endif
@@ -157,6 +157,13 @@ public struct PhoneSwipeRow<Content: View>: View {
         if open != 0 { state.open = id }
     }
 
+    private func dragCancelled() {
+        guard horizontal != nil else { return }
+        horizontal = nil
+        full = false
+        settle(base)
+    }
+
     private func run(_ a: PhoneSwipeAction) {
         settle(0)
         if a.danger { tap(.rigid) }
@@ -183,9 +190,11 @@ public struct PhoneSwipeRow<Content: View>: View {
 private struct PhoneSideways: UIGestureRecognizerRepresentable {
     let changed: (CGFloat) -> Void
     let ended: () -> Void
+    let cancelled: () -> Void
 
     func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
         let pan = UIPanGestureRecognizer()
+        pan.maximumNumberOfTouches = 1
         pan.delegate = context.coordinator
         return pan
     }
@@ -195,7 +204,8 @@ private struct PhoneSideways: UIGestureRecognizerRepresentable {
     func handleUIGestureRecognizerAction(_ pan: UIPanGestureRecognizer, context: Context) {
         switch pan.state {
         case .began, .changed: changed(pan.translation(in: pan.view).x)
-        case .ended, .cancelled, .failed: ended()
+        case .ended: ended()
+        case .cancelled, .failed: cancelled()
         default: break
         }
     }

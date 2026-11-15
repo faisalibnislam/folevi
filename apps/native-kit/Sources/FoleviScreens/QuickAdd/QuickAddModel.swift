@@ -84,6 +84,7 @@ public final class QuickAddModel {
     @ObservationIgnored private var parseTask: Task<Void, Never>?
     @ObservationIgnored private var searchTask: Task<Void, Never>?
     @ObservationIgnored private var listener: Task<Void, Never>?
+    @ObservationIgnored private var flushing = false
     @ObservationIgnored var parseDelay: Duration = .milliseconds(120)
     /// Called after a save that closes Quick Add (Return), with the new task's or note's id.
     @ObservationIgnored public var onSaved: (@MainActor (_ id: String?, _ open: Bool) -> Void)?
@@ -341,20 +342,28 @@ public final class QuickAddModel {
         busy = true
         error = nil
         defer { busy = false }
+        let submitted = draft
         let item = makeItem()
         do {
             let (id, where_, noteId) = try await send(item)
             feedback.haptic(.success)
             if item.kind == .task { added = Added(label: where_, noteId: noteId) }
-            confirm(mode == .task ? "Added to \(where_)" : "Note added to \(where_)")
-            reset()
-            if !keepOpen { onSaved?(id, open) }
+            confirm(item.kind == .task ? "Added to \(where_)" : "Note added to \(where_)")
+            if draft == submitted {
+                reset()
+                if !keepOpen { onSaved?(id, open) }
+            } else {
+                // Typing can continue while the engine saves. Never erase or close over those newer words.
+                added = nil
+            }
         } catch let f as EngineFailure where Self.shouldQueue(f) {
             queue.enqueue(item)
             feedback.haptic(.success)
             confirm("Saved on this device. It's added when Folevi is ready.")
-            reset()
-            if !keepOpen { onSaved?(nil, false) }
+            if draft == submitted {
+                reset()
+                if !keepOpen { onSaved?(nil, false) }
+            }
         } catch let f as EngineFailure {
             error = f.message
             feedback.haptic(.error)
@@ -362,6 +371,22 @@ public final class QuickAddModel {
             self.error = "That didn't save. Try again."
             feedback.haptic(.error)
         }
+    }
+
+    private struct Draft: Equatable {
+        var mode: Mode
+        var text: String
+        var destination: Destination
+        var dueDate: String?
+        var dueTime: String?
+        var priority: TaskCreateArgs.Priority?
+        var keepText: Bool
+        var keptTokens: Set<String>
+    }
+
+    private var draft: Draft {
+        Draft(mode: mode, text: text, destination: destination, dueDate: dueDate, dueTime: dueTime,
+              priority: priority, keepText: keepText, keptTokens: keptTokens)
     }
 
     /// Failures that mean no engine answered (not a refusal): the item waits on the device.
@@ -406,6 +431,9 @@ public final class QuickAddModel {
 
     /// Sends what waited, oldest first; stops at the first that still can't go.
     public func flushQueue() async {
+        guard !flushing else { return }
+        flushing = true
+        defer { flushing = false }
         for item in queue.items {
             do {
                 _ = try await send(item)
@@ -450,6 +478,11 @@ public final class QuickAddModel {
         reset()
         error = nil
         added = nil
+        round &+= 1
+    }
+
+    /// Reopening a dismissed capture panel returns to the unfinished draft and gives it the keyboard.
+    public func resumeDraft() {
         round &+= 1
     }
 

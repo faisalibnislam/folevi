@@ -51,6 +51,7 @@ public struct PhoneTaskSheet: View {
                     PhoneTaskBox(status: t.status).frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .disabled(!host.canEdit)
                 .padding(.leading, -11)
                 .padding(.top, -11)
                 .accessibilityLabel(t.status == "done" ? "Mark as not done" : "Mark as done")
@@ -258,6 +259,7 @@ public struct PhoneTaskSheet: View {
     }
 
     private func save(_ patch: TaskPatchArgs) {
+        guard host.canEdit else { return }
         let t = task
         Task { _ = await host.edits.update(t, patch) }
     }

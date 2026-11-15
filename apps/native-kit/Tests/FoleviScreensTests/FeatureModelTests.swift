@@ -194,6 +194,24 @@ struct TasksModelTests {
         #expect(model.sections.flatMap(\.tasks).contains { $0.id == "blk_t3" && $0.status == "open" })
     }
 
+    @Test func tappingAgainCancelsPendingCompletion() async throws {
+        let engine = featureEngine()
+        answerCommands(engine)
+        let model = make(engine)
+        model.edits.checkHold = .milliseconds(80)
+        await eventually("tasks") { !model.sections.isEmpty }
+        let task = model.sections[0].tasks[0]
+        model.toggle(task)
+        #expect(model.shown(task).status == "done")
+        model.toggle(task)
+        #expect(model.shown(task).status == "open")
+        try await Task.sleep(for: .milliseconds(120))
+        #expect(engine.commands(named: "task.update").isEmpty)
+        #expect(!model.edits.isGone(task.id))
+        model.toggle(task)
+        await eventually("completed after retry") { engine.commands(named: "task.update").count == 1 }
+    }
+
     @Test func refusedCheckOffComesBack() async {
         let engine = featureEngine()
         answerCommands(engine, failing: ["task.update"])

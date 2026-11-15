@@ -45,15 +45,24 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
     let x = 0;
     let crossed = false;
     const width = () => el.offsetWidth;
+    const onCancel = () => {
+      start = null;
+      mode = null;
+      crossed = false;
+      setDragging(false);
+      setFull(false);
+      setOffset(openRef.current);
+    };
     const onStart = (e: TouchEvent) => {
       const t = e.touches[0];
-      if (!t || e.touches.length > 1) return;
+      if (!t || e.touches.length > 1) return onCancel();
       start = { x: t.clientX, y: t.clientY, base: openRef.current };
       mode = null;
       crossed = false;
       prepareFeel("threshold");
     };
     const onMove = (e: TouchEvent) => {
+      if (e.touches.length > 1) return onCancel();
       const t = e.touches[0];
       if (!start || !t) return;
       const dx = t.clientX - start.x;
@@ -111,13 +120,14 @@ export function SwipeRow({ children, leading = [], trailing = [], className = ""
     el.addEventListener("touchstart", onStart, { passive: true });
     el.addEventListener("touchmove", onMove, { passive: false });
     el.addEventListener("touchend", onEnd);
-    el.addEventListener("touchcancel", onEnd);
+    // A system interruption (or a second finger) cancels intent, even beyond the full-swipe threshold.
+    el.addEventListener("touchcancel", onCancel);
     return () => {
       window.removeEventListener(OPEN_EVENT, onOtherOpen);
       el.removeEventListener("touchstart", onStart);
       el.removeEventListener("touchmove", onMove);
       el.removeEventListener("touchend", onEnd);
-      el.removeEventListener("touchcancel", onEnd);
+      el.removeEventListener("touchcancel", onCancel);
     };
   }, []);
 

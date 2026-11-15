@@ -10,6 +10,8 @@
     "dev": { "cache": false, "persistent": true },
     "lint": { "dependsOn": ["^build"] },
     "typecheck": { "dependsOn": ["^build"] },
-    "test": { "dependsOn": ["^build"], "outputs": ["coverage/**"] }
+    "test": { "dependsOn": ["^build"], "outputs": ["coverage/**"] },
+    "@folevi/design-tokens#test": { "dependsOn": ["build"] },
+    "@folevi/design-tokens#typecheck": { "dependsOn": ["build"] }
   }
 }

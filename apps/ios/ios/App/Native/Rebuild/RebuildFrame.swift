@@ -126,10 +126,21 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         root.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(root.view)
         root.didMove(toParent: self)
-        // No note on screen any more: the page view goes back behind the screens and lets the note go.
+        // Tab stacks stay mounted behind opacity. The controller owns page attachment because a retained
+        // destination need not receive onAppear (or view-level observation) when its tab becomes active.
         observers.append(Observer { [weak self] in
             guard let self else { return }
-            if case .note = self.frame.top { return }
+            let route = self.frame.top
+            guard !self.wide else { return }
+            if case .note(let id) = route {
+                let owner = NotePageRegistry.controller(for: id)
+                _ = owner.view
+                if !self.pageHost.isOwned(by: owner) {
+                    self.pageHost.adopt(by: owner)
+                    self.model.show(id)
+                }
+                return
+            }
             if self.model.shownNote != nil {
                 self.pageHost.park()
                 self.model.closeNote()
@@ -205,7 +216,8 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
 
     private func keyboardMoved(to end: CGRect, hiding: Bool) {
         guard let window = view.window else { return }
-        let overlap = hiding ? 0 : KeyboardBridge.coveredHeight(keyboard: end, bounds: window.bounds)
+        let keyboard = window.convert(end, from: window.screen.coordinateSpace)
+        let overlap = hiding ? 0 : KeyboardBridge.coveredHeight(keyboard: keyboard, bounds: window.bounds)
         model.keyboardOverlap = overlap
         let appeared = overlap > 0 && !model.keyboardVisible
         model.keyboardVisible = overlap > 0
@@ -215,18 +227,32 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
     // MARK: PhoneRouting
 
     func open(_ route: ScreenRoute, source: CardSource?) {
+        let destination: FrameRoute
         switch route {
-        case .home: frame.open(.home)
-        case .folder(let id): frame.open(.folder(id))
-        case .tag(let id): frame.open(.tag(id))
-        case .notes(let v): frame.open(.notes(v))
-        case .shared: frame.open(.shared)
-        case .changes: frame.open(.changes)
-        default: model.toast("That screen comes to the new app soon.")
+        case .home: destination = .home
+        case .folder(let id): destination = .folder(id)
+        case .tag(let id): destination = .tag(id)
+        case .notes(let v): destination = .notes(v)
+        case .shared: destination = .shared
+        case .changes: destination = .changes
+        case .allFolders: destination = .web("/folders")
+        case .reviews: destination = .web("/reviews")
+        case .graph: destination = .web("/graph")
+        case .search(let text): destination = .search(text)
+        case .web(let path): destination = FrameRoute(path: path)
+        case .note(let id), .noteInNewTab(let id): return openNote(id, source: source, focus: false)
+        default:
+            model.toast("That screen comes to the new app soon.")
+            return
         }
+        if wide { desk.open(destination) } else { frame.open(destination) }
     }
 
     func openNote(_ id: String, source: CardSource?, focus: Bool) {
+        if wide {
+            desk.open(.note(id))
+            return
+        }
         if case .note(let top) = frame.top, top == id { return }
         if model.shownNote != id { model.prepare(id) }
         frame.open(.note(id))
@@ -244,15 +270,19 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         }
     }
 
-    func share(noteId: String) { model.toast("Sharing comes to this screen soon.") }
+    func share(noteId: String) {
+        FrameSheets.attach(desk, window: view.window)
+        FrameDialogs.share(desk, noteId: noteId, title: model.noteMeta[noteId]?.title ?? "Share")
+    }
 
     /// A folevi:// link (another app, a widget, an App Intent, Spotlight, Handoff): its screen, in the layout on
     /// screen (the iPad's wide one opens it in the desk's tab).
     func openLink(_ url: URL) {
         switch DeepLink.parse(url.absoluteString) {
-        case .newNote?: return model.newNote()
-        // Quick Add (the widget, the control, the intent): the Tasks tab, where a task is added.
-        case .quickAdd?: return openLink(DeepLink.tasksURL)
+        case .newNote?: return wide ? desk.newNote() : model.newNote()
+        case .quickAdd?:
+            model.quickAddShown = true
+            return
         default: break
         }
         guard let path = DeepLink.path(of: url) else { return }
@@ -295,18 +325,31 @@ private struct RebuildRoot: View {
         // The iPad in a window wide enough for the sidebar: the web's desktop layout (lib/iphone.ts
         // isIpadLayout, under 700 pt the phone's); the iPhone always the phone's.
         GeometryReader { g in
-            if UIDevice.current.userInterfaceIdiom == .pad, g.size.width >= RebuildIPad.minWidth {
-                RebuildIPadRoot(desk: desk, phone: phone, pageHost: pageHost, gate: gate)
-            } else {
-                phoneBody
+            let wide = UIDevice.current.userInterfaceIdiom == .pad && g.size.width >= RebuildIPad.minWidth
+            Group {
+                if wide {
+                    RebuildIPadRoot(desk: desk, phone: phone, pageHost: pageHost, gate: gate)
+                } else {
+                    phoneBody
+                }
+            }
+            .onChange(of: wide) { _, isWide in
+                // Keep the open screen when Split View or Stage Manager crosses the layout boundary.
+                if isWide { desk.open(model.top) } else { model.open(desk.route) }
             }
         }
         .ignoresSafeArea(.keyboard)
         .environment(\.sheetZoom, zoom)
+        .phoneSheet(isPresented: Bindable(phone).quickAddShown, size: .fit) {
+            RebuildQuickAddSheet(phone: phone)
+        }
     }
 
     private var phoneBody: some View {
-        PhoneFrameView(model: model, menus: menus, aiOn: phone.aiOn, tabBarHidden: selecting || model.top.isSearch, actions: PhoneFrameActions(openAI: { ai.ask() }, newNote: { phone.newNote() }, fromTemplate: { model.open(FrameRoute(path: "/templates")) })) { route in
+        PhoneFrameView(model: model, menus: menus, aiOn: phone.aiOn, tabBarHidden: selecting || model.top.isSearch, actions: PhoneFrameActions(openAI: { ai.ask() }, newNote: { phone.newNote() }, fromTemplate: { model.open(FrameRoute(path: "/templates")) }, newFolder: {
+            let parent: String? = if case .folder(let id) = model.top { id } else { nil }
+            newFolder = NewFolderRequest(parent: parent)
+        }, quickTask: { phone.quickAddShown = true })) { route in
             if case .note(let id) = route {
                 RebuildNoteScreen(noteId: id, model: phone, pageHost: pageHost, frame: model, menus: menus)
             } else if route == .home {

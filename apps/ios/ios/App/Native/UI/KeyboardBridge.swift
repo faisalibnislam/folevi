@@ -41,8 +41,12 @@ final class KeyboardBridge {
 
     /// How much of the bottom of `bounds` the keyboard covers: 0 when it's away, undocked or floating (iPad).
     nonisolated static func coveredHeight(keyboard: CGRect, bounds: CGRect) -> CGFloat {
-        guard !keyboard.isEmpty, keyboard.maxY >= bounds.maxY - 1 else { return 0 }
-        return max(0, (bounds.maxY - keyboard.minY).rounded())
+        guard !keyboard.isEmpty, !bounds.isEmpty,
+              keyboard.maxY >= bounds.maxY - 1,
+              keyboard.minX <= bounds.minX + 1,
+              keyboard.maxX >= bounds.maxX - 1 else { return 0 }
+        let overlap = bounds.intersection(keyboard)
+        return overlap.isNull ? 0 : max(0, overlap.height.rounded())
     }
 
     func attach(_ plugin: FoleviNativePlugin) {
@@ -69,7 +73,12 @@ final class KeyboardBridge {
     }
 
     private func willChange(_ info: [AnyHashable: Any], hiding: Bool) {
-        let frame = Self.frame(userInfo: info, bounds: screenBounds, hiding: hiding)
+        var localInfo = info
+        if let window = plugin?.bridge?.viewController?.view.window,
+           let end = (info[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue {
+            localInfo[UIResponder.keyboardFrameEndUserInfoKey] = NSValue(cgRect: window.convert(end, from: window.screen.coordinateSpace))
+        }
+        let frame = Self.frame(userInfo: localInfo, bounds: screenBounds, hiding: hiding)
         let height = CGFloat((frame["height"] as? Double) ?? 0)
         visible = height > 0
         send(frame, height: height)

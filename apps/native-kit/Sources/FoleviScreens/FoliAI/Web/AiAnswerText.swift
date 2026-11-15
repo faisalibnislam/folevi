@@ -14,26 +14,36 @@ import FoleviEngine
 
 public struct AiAnswerText: View {
     let blocks: [MDBlock]
+    private let answer: FoliAnswer?
     /// The citation numbers this answer has (others stay as typed).
     var cited: Set<Int> = []
     var onCite: (Int) -> Void = { _ in }
     var onLink: (URL) -> Bool = { _ in false }
-    @Environment(\.aiPhone) private var phone
     @State private var width: CGFloat = 0
 
     public init(blocks: [MDBlock], cited: Set<Int> = [], onCite: @escaping (Int) -> Void = { _ in }, onLink: @escaping (URL) -> Bool = { _ in false }) {
         self.blocks = blocks
+        self.answer = nil
         self.cited = cited
         self.onCite = onCite
         self.onLink = onLink
     }
-    @Environment(\.colorScheme) private var scheme
+    init(answer: FoliAnswer?, cited: Set<Int> = [], onCite: @escaping (Int) -> Void = { _ in }, onLink: @escaping (URL) -> Bool = { _ in false }) {
+        self.blocks = []
+        self.answer = answer
+        self.cited = cited
+        self.onCite = onCite
+        self.onLink = onLink
+    }
 
     public var body: some View {
-        let look = AiLook(scheme: scheme, phone: phone)
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(blocks) { b in
-                block(b, look: look)
+            if let answer {
+                AiObservedAnswerBlocks(answer: answer, cited: cited, width: width)
+            } else {
+                ForEach(blocks) { block in
+                    AiAnswerBlockContent(value: block, cited: cited, width: width).equatable()
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -49,6 +59,48 @@ public struct AiAnswerText: View {
         })
         .textSelection(.enabled)
     }
+}
+
+/// Observe insertions below the link environment: recreating OpenURLAction for every new block would
+/// invalidate the Text views in all the settled blocks as well.
+private struct AiObservedAnswerBlocks: View {
+    let answer: FoliAnswer
+    let cited: Set<Int>
+    let width: CGFloat
+
+    var body: some View {
+        LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(answer.renderedBlocks) { row in
+                VStack(alignment: .leading, spacing: 0) {
+                    AiObservedAnswerBlock(row: row, cited: cited, width: width)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+}
+
+/// Only the growing block reads its observable value. Settled paragraphs keep their layout and attributed text.
+private struct AiObservedAnswerBlock: View {
+    let row: FoliAnswerBlock
+    let cited: Set<Int>
+    let width: CGFloat
+
+    var body: some View { AiAnswerBlockContent(value: row.block, cited: cited, width: width).equatable() }
+}
+
+private struct AiAnswerBlockContent: View, Equatable {
+    let value: MDBlock
+    let cited: Set<Int>
+    let width: CGFloat
+    @Environment(\.aiPhone) private var phone
+    @Environment(\.colorScheme) private var scheme
+
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.value == rhs.value && lhs.cited == rhs.cited && lhs.width == rhs.width
+    }
+
+    var body: some View { block(value, look: AiLook(scheme: scheme, phone: phone)) }
 
     @ViewBuilder
     private func block(_ b: MDBlock, look: AiLook) -> some View {

@@ -73,7 +73,7 @@ public enum FrameSheets {
     #endif
 
     /// The window a frame draws in (its sidebar registers it).
-    static func attach(_ model: FrameModel, window: NSWindow?) {
+    public static func attach(_ model: FrameModel, window: NSWindow?) {
         windows[ObjectIdentifier(model)] = WeakWindow(window: window)
     }
 

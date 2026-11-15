@@ -78,12 +78,26 @@ enum DebugHooks {
             let title = input["title"] as? String ?? ""
             guard let shortcut = FoleviShortcut.all.first(where: { $0.title == title }) else { return ["error": "No shortcut called \(title)", "titles": FoleviShortcut.all.map(\.title)] }
             await MainActor.run {
+                if let frame = RebuildFrameController.current {
+                    frame.pressRebuildShortcut(shortcut.keyCommand(action: #selector(RebuildFrameController.pressRebuildShortcut(_:))))
+                    return
+                }
                 let root = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow?.rootViewController }.first
                 (root as? FoleviViewController)?.press(shortcut)
             }
             return ["pressed": title]
         case "frame":
             // The native frame's state (Native/Phone): what the bars are drawn from.
+            if let f = RebuildFrameController.current {
+                let m = f.model
+                return [
+                    "frame": true, "rebuild": true, "client": String(describing: m.client.state),
+                    "route": String(describing: f.frame.top), "deskRoute": String(describing: f.desk.route),
+                    "shownNote": m.shownNote ?? NSNull(), "editorNote": m.editorState?.noteId ?? NSNull(),
+                    "ready": Array(m.readyNotes), "gate": m.gate?.gate ?? NSNull(),
+                    "toasts": m.toasts.map(\.message),
+                ]
+            }
             guard let f = PhoneFrameController.current else { return ["frame": false] }
             let m = f.model
             return [

@@ -16,22 +16,7 @@ import FoleviScreens
 
 enum AiVariant { case page, floating }
 
-/// Whether the thread follows the answer as it streams (MAC-30). Only you scrolling up stops it: an answer that
-/// grows by a tall chunk in one go (a table, a code block) moves the end away without anyone scrolling, and that
-/// must not. Reaching the end again follows again.
-enum AiFollow {
-    struct Reading: Equatable {
-        var offset: CGFloat
-        var atEnd: Bool
-    }
-
-    static func following(_ was: Bool, old: Reading, new: Reading) -> Bool {
-        if new.atEnd { return true }
-        // Scrolled up (the top moved back): you're reading.
-        if new.offset < old.offset - 1 { return false }
-        return was
-    }
-}
+typealias AiFollow = AiScrollFollow
 
 /// The window's facts the chat needs from the frame: the session (mode, place, purchases) and what to open.
 @MainActor
@@ -100,7 +85,8 @@ struct AiThreadView: View {
 
     private func scroller(look: AiLook) -> some View {
         let t = look.s(page ? "ai.thread" : "ai.panel.thread")
-        let streamLength = model.streamingMessage.flatMap { model.answer($0.id)?.shownText.count } ?? 0
+        // Once the unread indicator is visible, no per-word observation is needed in the scroll container.
+        let streamLength = following || behind ? 0 : (model.streamingMessage.flatMap { model.answer($0.id)?.shownText.utf8.count } ?? 0)
         return ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {

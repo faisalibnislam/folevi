@@ -108,7 +108,7 @@ private struct IPadNotePage: UIViewControllerRepresentable {
                let end = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue,
                let window = view.window {
                 let frame = view.convert(view.bounds, to: window.coordinateSpace)
-                covered = frame.intersection(window.convert(end, from: window.screen.coordinateSpace)).height
+                covered = KeyboardBridge.coveredHeight(keyboard: window.convert(end, from: window.screen.coordinateSpace), bounds: frame)
             }
             softKeyboard = covered > 120
             showBar()
@@ -234,7 +234,7 @@ extension RebuildFrameController {
         }
     }
 
-    private var wide: Bool { UIDevice.current.userInterfaceIdiom == .pad && (view.window?.bounds.width ?? 0) >= RebuildIPad.minWidth }
+    var wide: Bool { UIDevice.current.userInterfaceIdiom == .pad && view.bounds.width >= RebuildIPad.minWidth }
 
     @objc func pressRebuildShortcut(_ command: UIKeyCommand) {
         guard let shortcut = FoleviShortcut.matching(command) else { return }
@@ -248,7 +248,7 @@ extension RebuildFrameController {
                 EarlyKeys.start(in: view.window)
                 frame.open(FrameRoute(path: "/search"))
             }
-        case "a": openLink(DeepLink.tasksURL)
+        case "a": model.quickAddShown = true
         case "j": wide ? desk.askAI() : RebuildFrame.ai.ask()  // (the phone: the sheet, as the web's openAsk)
         case "t": openLink(DeepLink.todayURL)
         case "\\": if wide { desk.toggleSidebar() }

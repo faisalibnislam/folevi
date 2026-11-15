@@ -4,6 +4,31 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.3.40: Small update
+
+Released 2026-11-15 13:47:35+06:00 (build 53, tag v1.3.40)
+
+Steadier capture, sharing and Foli AI on iPhone and iPad, and interrupted gestures that no longer act on their own
+
+### Improved
+
+- Foli AI: long answers stream with less work per word, and the chat follows new text at the end but keeps your place when you scroll up to read
+- iPad: the open screen stays when Split View or Stage Manager moves the window between the narrow and wide layouts
+- iPhone tables: the add-row and add-column buttons are a full finger's size
+
+### Fixed
+
+- iPhone and iPad: New folder and Quick task in the Create menu work, and Quick Add from a widget, the control, a link or Cmd+Shift+A opens the capture sheet
+- iPhone: Share on a note opens sharing instead of a placeholder
+- iPhone: going back to a note's tab shows that note again
+- Quick capture keeps words typed while a task is saving, and an item saved on the device for later is sent only once
+- Website: pressing Add twice quickly makes one task
+- Tasks: tapping a task again while it is being checked off leaves it open
+- Tasks you can only view can no longer be marked done from the task sheet
+- Swipe rows and sheets: an interrupted swipe or drag, or a second finger, no longer runs the swipe action or closes the sheet with your typing
+- iPad: a floating keyboard, or one in another window, no longer pushes the note up
+- Mac: reopening Quick Add brings back what you had started typing
+
 ## Version 1.3.39: Big update
 
 Released 2026-11-13 07:01:29+06:00 (build 52, tag v1.3.39)

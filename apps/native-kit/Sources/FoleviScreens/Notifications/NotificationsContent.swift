@@ -164,7 +164,7 @@ struct NotificationRowView: View {
                     }
                     if let kind {
                         Button(action: onAccept) {
-                            if accepting { ProgressView().controlSize(.small) } else { Text(kind == .page ? "Accept and open" : "Accept invitation") }
+                            if accepting { ProgressView().controlSize(.small) } else { Text(kind == .workspace ? "Accept invitation" : "Accept and open") }
                         }
                         .buttonStyle(.folevi(.primary, size: phone ? .medium : .small))
                         .disabled(accepting)

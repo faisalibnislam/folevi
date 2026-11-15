@@ -122,7 +122,8 @@ async function openTitleOf(env: RouterEnv, documentId: string, sealed: SealedDoc
   }
 }
 
-const DERIVED_FIELDS = ["excerpt", "preview", "wordCount", "charCount", "blockCount"] as const;
+/** What a note's content decides (its card's look, `shape`, too): the server derives none of it for a sealed note. */
+const DERIVED_FIELDS = ["excerpt", "preview", "shape", "wordCount", "charCount", "blockCount"] as const;
 
 /** Copies a sealed note's derived fields from the replica that holds it, for the keys the result has. */
 async function fillDerived(env: RouterEnv, documentId: string, obj: Obj, out: Obj): Promise<void> {
@@ -176,7 +177,7 @@ export async function openDeep(value: unknown, env: RouterEnv, hint: DecodeHint 
         if ("style" in obj) out.style = opened.style;
         if ("templateKey" in obj) out.templateKey = opened.templateKey;
       }
-      // What the server can't derive for a sealed note (excerpt, preview, counts) comes from the replica.
+      // What the server can't derive for a sealed note (excerpt, preview, card shape, counts) comes from the replica.
       await fillDerived(env, id, obj, out);
       here.documentId = str(obj.documentId) ?? (here.documentId || id);
       for (const [k, v] of Object.entries(out)) if (v && typeof v === "object") out[k] = await openDeep(v, env, { ...here, documentId: id }, depth + 1);

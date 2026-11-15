@@ -86,19 +86,28 @@ public final class NotificationsModel {
 
     // MARK: Invitations
 
-    public enum InviteKind: Sendable { case workspace, page }
+    public enum InviteKind: Sendable { case workspace, page, folder }
 
     public func inviteKind(_ r: NotificationRow) -> InviteKind? {
+        if r.folderInviteId != nil { return .folder }
         if r.pageInviteId != nil { return .page }
         if r.kind == "invite", r.inviteId != nil { return .workspace }
         return nil
     }
 
-    /// Accepts; a page opens (its note id comes back), a workspace says you joined.
+    /// Accepts; a page or a shared folder opens (its id comes back), a workspace says you joined.
     public func accept(_ r: NotificationRow) async -> ScreenIntent? {
         accepting.insert(r.id)
         defer { accepting.remove(r.id) }
         do {
+            // A folder shared with you (as the Mac's notifications panel): it opens under Shared with Me.
+            if let fid = r.folderInviteId {
+                let res = try await client.command(.folderInviteAccept(inviteId: fid))
+                feedback.haptic(.success)
+                feedback.toast(ScreenToast("The folder was added to Shared with Me.", tone: .success))
+                shownRead[r.id] = true
+                return .openRoute("/shared/\(res.folderId)")
+            }
             if let pid = r.pageInviteId {
                 let res = try await client.command(.pageInviteAccept(inviteId: pid))
                 feedback.haptic(.success)
@@ -120,10 +129,14 @@ public final class NotificationsModel {
 
     /// Declines (R11.2); until the engine has `invite.decline`, the notification is removed instead.
     public func decline(_ r: NotificationRow) async {
-        guard let kind = inviteKind(r), let id = r.pageInviteId ?? r.inviteId else { return }
+        guard let kind = inviteKind(r), let id = r.folderInviteId ?? r.pageInviteId ?? r.inviteId else { return }
         removed.insert(r.id)
         do {
-            try await client.command(.inviteDecline(inviteId: id, kind: kind == .page ? "page" : "workspace"))
+            if kind == .folder {
+                try await client.command(.inviteDecline(kind: .folder, inviteId: id))
+            } else {
+                try await client.command(.inviteDecline(inviteId: id, kind: kind == .page ? "page" : "workspace"))
+            }
             feedback.toast(ScreenToast("Invitation declined"))
         } catch let EngineFailure.engine(e) where e.code == BridgeErrorCode.unknownCommand.rawValue {
             await remove(r)

@@ -460,6 +460,30 @@ describe("public links", () => {
     expect((await openE("correct horse")).status).toBe("expired");
     vi.useRealTimers();
   });
+
+  test("link previews show a card only for a link anyone can open as it is", async () => {
+    vi.useFakeTimers();
+    const t = setup();
+    const a = await person(t, "card@example.com");
+    const docId = await newDoc(a, "Card page");
+    await upsert(a, docId, para(ulid(), "First line"), null);
+    const card = (token: string, serverSecret = secret) => t.query(api.sharing.publicLinkCard, { token, serverSecret });
+    const open = await a.as.mutation(api.sharing.createPublicLink, { documentId: docId });
+    expect((await card(open.token))?.title).toBe("Card page");
+    await expect(card(open.token, "b".repeat(64))).rejects.toThrow(/forbidden/);
+    expect(await card(`${open.token}x`)).toBeNull();
+    // Password protected: nothing of the note before its password.
+    const locked = await a.as.mutation(api.sharing.createPublicLink, { documentId: docId, password: "correct horse" });
+    expect(await card(locked.token)).toBeNull();
+    // Expired and revoked links show nothing.
+    const expiring = await a.as.mutation(api.sharing.createPublicLink, { documentId: docId, expiresAt: Date.now() + 60_000 });
+    expect((await card(expiring.token))?.title).toBe("Card page");
+    vi.advanceTimersByTime(120_000);
+    expect(await card(expiring.token)).toBeNull();
+    await a.as.mutation(api.sharing.revokePublicLink, { linkId: open.id });
+    expect(await card(open.token)).toBeNull();
+    vi.useRealTimers();
+  });
 });
 
 describe("deletion", () => {

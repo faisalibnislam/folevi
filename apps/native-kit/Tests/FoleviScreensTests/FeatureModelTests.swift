@@ -41,6 +41,7 @@ func answerCommands(_ engine: FakeEngine, failing: Set<String> = []) {
         switch name {
         case "task.create": return .object(["id": .string("blk_new"), "noteId": .string("doc_inbox"), "where": .string("Inbox")])
         case "pageInvite.accept": return .object(["noteId": .string("doc_shared")])
+        case "folderInvite.accept": return .object(["folderId": .string("fld_recipes")])
         case "calendar.add": return .object(["id": .string("cal_new")])
         case "space.switch": return .object(["space": args["space"] ?? .null])
         default: return okResult
@@ -614,6 +615,13 @@ struct NotificationsModelTests {
         page.id = "n_page"
         page.pageInviteId = "pinv_1"
         #expect(await model.accept(page) == .openNote(id: "doc_shared", blockId: nil))
+        // A folder shared with you accepts and opens under Shared with Me, or declines, as on the Mac.
+        let folder = try #require(model.rows.first { $0.folderInviteId != nil })
+        #expect(model.inviteKind(folder) == .folder)
+        #expect(await model.accept(folder) == .openRoute("/shared/fld_recipes"))
+        #expect(engine.commands(named: "folderInvite.accept")[0] == .object(["inviteId": .string("finv_1")]))
+        await model.decline(folder)
+        #expect(engine.commands(named: "invite.decline").last == .object(["kind": .string("folder"), "inviteId": .string("finv_1")]))
         let comment = model.rows[0]
         #expect(await model.tap(comment) == .openRoute("/d/doc_00002#comment-th_1"))
         // The tap opens at once and marks it read in the background (MAC-32): read straight away on screen, the

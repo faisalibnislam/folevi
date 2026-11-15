@@ -123,6 +123,9 @@ export const E2EE_ROUTES: Record<string, Route> = {
   // Not called by the app today (no local handler); the server's answer carries sealed fields, opened here.
   "documents:daily": decode,
   "documents:dailyDates": pass,
+  // The Mac's Spotlight index: end-to-end encrypted and locked notes never go into Spotlight, so the server's
+  // answer (no text for a sealed note) is the right one; nothing is opened on the device for it.
+  "documents:spotlightText": pass,
 
   // ---- the replica ------------------------------------------------------------------------------------------
   "documents:list": device,

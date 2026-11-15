@@ -869,10 +869,12 @@ export const revokePublicLink = mutation({
   },
 });
 
-/**
- * Resolves a public link for the share page. Called only by the Next.js server route, which proves
- * itself with FOLEVI_SERVER_SECRET and passes a client key (hashed IP) for rate limiting.
- */
+/** The Next.js server proves itself with FOLEVI_SERVER_SECRET (the share page and its link previews). */
+function checkServerSecret(given: string): void {
+  const secret = process.env.FOLEVI_SERVER_SECRET;
+  if (!secret || given.length !== secret.length || !timingSafeEqualHex(given, secret)) fail("forbidden", "Not allowed.");
+}
+
 /**
  * What a public link's preview shows in messages and on social sites (app/s/[token]/opengraph-image.tsx): the
  * note's card (title, its first lines, its theme and look). Only for a link anyone can open as it is: none
@@ -882,10 +884,7 @@ export const revokePublicLink = mutation({
 export const publicLinkCard = query({
   args: { token: v.string(), serverSecret: v.string() },
   handler: async (ctx, args) => {
-    const secret = process.env.FOLEVI_SERVER_SECRET;
-    if (!secret || args.serverSecret.length !== secret.length || !timingSafeEqualHex(args.serverSecret, secret)) {
-      fail("forbidden", "Not allowed.");
-    }
+    checkServerSecret(args.serverSecret);
     if (!(await isFeatureEnabled(ctx, "public_links"))) return null;
     if (!/^[A-Za-z0-9_-]{20,100}$/.test(args.token)) return null;
     const tokenHash = await sha256Hex(args.token);
@@ -902,13 +901,14 @@ export const publicLinkCard = query({
   },
 });
 
+/**
+ * Resolves a public link for the share page. Called only by the Next.js server route, which proves
+ * itself with FOLEVI_SERVER_SECRET and passes a client key (hashed IP) for rate limiting.
+ */
 export const openPublicLink = mutation({
   args: { token: v.string(), password: v.optional(v.string()), serverSecret: v.string(), clientKey: v.string() },
   handler: async (ctx, args) => {
-    const secret = process.env.FOLEVI_SERVER_SECRET;
-    if (!secret || args.serverSecret.length !== secret.length || !timingSafeEqualHex(args.serverSecret, secret)) {
-      fail("forbidden", "Not allowed.");
-    }
+    checkServerSecret(args.serverSecret);
     const client = await keyedHash(args.clientKey, "client");
     await consume(ctx, "publicLinkOpen", client);
     if (!(await isFeatureEnabled(ctx, "public_links"))) return { status: "unavailable" as const };

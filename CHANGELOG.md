@@ -4,6 +4,21 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.3.42: Small update
+
+Released 2026-11-16 05:27:29+06:00 (build 55, tag v1.3.42)
+
+Steadier Foli AI and Quick Add: replies stay in their own chat, failed sends keep your words, and late saves never clear newer typing
+
+### Fixed
+
+- Foli AI on iPhone, iPad and Mac: an answer that arrives after you open another chat stays in its own conversation
+- Foli AI: a question or edit that fails to send is put back in the box, ready to try again
+- Quick Add: a save that finishes late no longer closes or clears what you typed after it
+- Quick Add on iPhone, iPad and Mac: if a capture can't be kept on the device, it says so and keeps your draft
+- Mac: Foli AI keeps following a long answer to its end while it streams
+- iPhone and iPad: less scrolling work while a Foli AI answer streams
+
 ## Version 1.3.41: Small update
 
 Released 2026-11-15 18:17:40+06:00 (build 54, tag v1.3.41)

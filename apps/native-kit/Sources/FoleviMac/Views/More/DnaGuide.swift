@@ -414,7 +414,7 @@ struct DnaLegendCard: View {
                 .padding(.horizontal, 12).padding(.vertical, 8)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.webHover(radius: 8))
             .accessibilityLabel("Key")
             .accessibilityValue(open ? "Open" : "Folded")
             if open {
@@ -558,7 +558,7 @@ struct DnaCardHead<Glyph: View>: View {
                 .contentShape(Rectangle())
                 .dnaHover(radius: 6, selected: false)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
@@ -634,7 +634,7 @@ struct DnaPanelCard: View {
                                     .contentShape(Rectangle())
                                     .dnaHover()
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(.webPlain)
                             }
                             if g.ids.count > 8 { Text(verbatim: "and \(g.ids.count - 8) more").webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-faint", scheme)).padding(.horizontal, 6) }
                         }
@@ -726,7 +726,7 @@ private struct DnaConnectionRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.webPlain)
             .foleviTooltip(why)
             .accessibilityLabel(title)
             .accessibilityHint(why)

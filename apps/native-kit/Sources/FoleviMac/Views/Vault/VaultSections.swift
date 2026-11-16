@@ -95,7 +95,7 @@ struct VaultRow<Trailing: View>: View {
         .contentShape(Rectangle())
         .onHover { over = $0 }
         if let action {
-            Button(action: action) { content }.buttonStyle(.plain) // (hover: the row draws its own, `over`)
+            Button(action: action) { content }.buttonStyle(.webPlain) // (hover: the row draws its own, `over`)
         } else {
             content
         }

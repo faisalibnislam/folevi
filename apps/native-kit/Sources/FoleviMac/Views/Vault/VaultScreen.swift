@@ -215,7 +215,7 @@ private struct VaultTabs: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .onHover { hovered = $0 ? s : (hovered == s ? nil : hovered) }
         .accessibilityAddTraits(on ? .isSelected : [])
     }

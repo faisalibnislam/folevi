@@ -150,7 +150,7 @@ struct AiLauncher: View {
             // (No lift on hover, MAC-58: nothing moves under the pointer on the Mac, and the click area stays put.)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .onHover { over = $0 }
         .animation(.easeOut(duration: 0.2), value: over)
         // It says "Ask Foli AI": the tooltip is its shortcut alone (or what a click does while it is open).

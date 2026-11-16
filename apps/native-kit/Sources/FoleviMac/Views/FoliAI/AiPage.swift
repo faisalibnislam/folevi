@@ -382,7 +382,7 @@ struct AiConversationRowView: View {
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.webPlain)
             .webContextMenu(menu)
             .accessibilityLabel(row.title.isEmpty ? "New chat" : row.title)
             .accessibilityValue(AiAge.text(row.lastMessageAt))

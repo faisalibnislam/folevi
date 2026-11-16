@@ -101,7 +101,7 @@ struct ToastStack: View {
         .padding(p.padding.edgeInsets)
         .background(RoundedRectangle(cornerRadius: p.radius, style: .circular).fill(fill))
         .webBox(WebStylePair(light: Self.clear(pill.light), dark: Self.clear(pill.dark)))
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .offset(y: 8).combined(with: .opacity)))
         .accessibilityElement(children: .combine)
     }
 

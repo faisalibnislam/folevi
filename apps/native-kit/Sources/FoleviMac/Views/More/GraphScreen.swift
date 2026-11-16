@@ -813,7 +813,7 @@ struct GraphScreen: View {
                 .contentShape(Rectangle())
                 .dnaHover(radius: 6, selected: false)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
@@ -1001,7 +1001,7 @@ struct GraphScreen: View {
                     Text(verbatim: c.label.isEmpty ? "Untitled" : c.label).webText(.role(.subheadline, weight: 500)).foregroundStyle(moreVar("color-heading", scheme)).lineLimit(1)
                         .dnaHover(radius: 6, outset: 4)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.webPlain)
                 .foleviTooltip("Open it")
             } else {
                 Text(verbatim: "a note that isn’t here").webText(.role(.subheadline)).foregroundStyle(moreVar("color-heading", scheme))
@@ -1223,7 +1223,7 @@ struct GraphCanvasView: View {
                 if side == nil, hiddenOrphans > 0, !model.list {
                     HStack(spacing: 4) {
                         Text(verbatim: hiddenOrphans == 1 ? "1 unlinked note hidden." : "\(hiddenOrphans) unlinked notes hidden.").webText(.role(.footnote)).foregroundStyle(moreVar("color-ink-muted", scheme))
-                        Button { model.settings.filter.hideOrphans = false } label: { Text(verbatim: "Show").webText(.role(.footnote)).underline().foregroundStyle(moreVar("color-heading", scheme)) }.buttonStyle(.plain)
+                        Button { model.settings.filter.hideOrphans = false } label: { Text(verbatim: "Show").webText(.role(.footnote)).underline().foregroundStyle(moreVar("color-heading", scheme)) }.buttonStyle(.webLink)
                     }
                     .padding(.horizontal, 12).padding(.vertical, 4)
                     .background(RoundedRectangle(cornerRadius: 10, style: .circular).fill(moreVar("glass-hover", scheme)))
@@ -2019,7 +2019,7 @@ struct DnaInsightsView: View {
             .contentShape(Rectangle())
             .dnaHover()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .foleviTooltip(tip ?? "")
     }
 
@@ -2115,7 +2115,7 @@ struct GraphListView: View {
                         Text(verbatim: e.node.label.isEmpty ? "Untitled" : e.node.label).webText(.role(.body, weight: 500)).lineLimit(1).foregroundStyle(heading)
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.webLink)
             } else {
                 HStack(spacing: 6) {
                     KindGlyph(kind: e.node.kind)

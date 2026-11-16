@@ -77,7 +77,7 @@ struct WebHoverRow<Content: View>: View {
                 .background(hovering ? moreVar("color-surface", scheme) : .clear)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .onHover { hovering = $0 }
     }
 }

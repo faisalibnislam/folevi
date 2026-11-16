@@ -312,10 +312,14 @@ struct WebAskFoliPill: View {
             .frame(height: s.height)
             .background(RoundedRectangle(cornerRadius: s.radius, style: .circular).fill(hovered ? RGBA(28, 28, 31).color : s.background.color))
             .webBox(WebStylePair(light: Self.shadowOnly(style.light), dark: Self.shadowOnly(style.dark)))
+            #if !os(macOS)
+            // (No lift on the Mac, MAC-58 and globals.css `.ui-fab:hover { translate: none }`: nothing moves under
+            // the pointer there, and the click area stays put.)
             .offset(y: hovered ? -2 : 0)
+            #endif
             .animation(.easeOut(duration: 0.2), value: hovered)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .onHover { hovered = $0 }
         .accessibilityLabel("Ask Foli AI")
     }
@@ -366,7 +370,7 @@ struct WebSegmented<T: Hashable>: View {
                         .listHoverTint(radius: bs.radius, enabled: !on)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.webPlain)
                 .foleviTooltip(option.2)
                 .accessibilityLabel(option.2)
                 .accessibilityAddTraits(on ? .isSelected : [])
@@ -469,7 +473,7 @@ struct WebSelectionBar: View {
 
     var body: some View {
         HStack(spacing: 2) {
-            Text("\(count.formatted()) selected").webText(.role(.subheadline, weight: 600)).lineLimit(1).foregroundStyle(webVar("color-heading", scheme).color).padding(.horizontal, 10)
+            Text("\(count.formatted()) selected").webText(.role(.subheadline, weight: 600)).monospacedDigit().lineLimit(1).foregroundStyle(webVar("color-heading", scheme).color).padding(.horizontal, 10)
             if count < total {
                 barButton("Select all", icon: nil, muted: true, action: selectAll)
             }
@@ -658,10 +662,15 @@ struct WebHomeScreen: View {
                 .padding(s.padding.edgeInsets)
                 .frame(height: s.height)
                 .webBox(style)
+                #if os(macOS)
+                // (No lift on the Mac, MAC-58: nothing moves under the pointer there; the glass hover answers instead.)
+                .webHover(radius: s.radius)
+                #else
                 .offset(y: hovered ? -1 : 0)
+                #endif
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.webPlain)
             .onHover { hovered = $0 }
         }
     }
@@ -861,7 +870,7 @@ struct WebNoteCarousel: View {
                 .listHoverTint(radius: pair.resolve(scheme).radius)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .accessibilityLabel(label)
     }
 
@@ -947,7 +956,7 @@ struct WebNoteBrowser: View {
                 if !model.selection.isEmpty {
                     WebSelectionBar(count: model.selection.count, total: model.selectableOrder.count, actions: model.bulkActions(tabs: true), label: selectionLabel, run: runBulk, selectAll: { model.selectAll() }, clear: { model.selection.removeAll() })
                         .padding(.bottom, 20)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .offset(y: 8).combined(with: .opacity)))
                 }
             }
         }
@@ -1629,7 +1638,7 @@ struct WebFoldersIndex: View {
         if !picked(shown).isEmpty {
             WebSelectionBar(count: picked(shown).count, total: shown.count, actions: actions(shown), label: "Selected folders", run: { run($0, shown: shown) }, selectAll: { selection.selectAll(shown.map(\.id)) }, clear: { selection.clear() })
                 .padding(.bottom, 20)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .offset(y: 8).combined(with: .opacity)))
         }
         }
         }
@@ -1895,7 +1904,7 @@ struct WebRowIconButton: View {
                 .listHoverTint(radius: inTray ? WebListPageHeaderMetrics.trayItemRadius : style.resolve(scheme).radius)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .foleviTooltip(label)
         .accessibilityLabel(label)
     }
@@ -2036,7 +2045,7 @@ struct WebTagsIndex: View {
                                 .listHoverTint(radius: WebStyles.named("notes.card.menu").resolve(scheme).radius)
                                 .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.webPlain)
                         }
                     }
                     .padding(.top, 24)
@@ -2094,6 +2103,7 @@ struct WebCatchUpCard: View {
     let home: HomeModel
     @State private var pulse = false
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let dark = scheme == .dark
@@ -2147,7 +2157,11 @@ struct WebCatchUpCard: View {
                     }
                 }
                 .padding(.vertical, 4)
-                .onAppear { withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: true)) { pulse = true } }
+                // (Still under Reduce Motion, as the other loading shapes are: ListHover, SyncStatus.)
+                .onAppear {
+                    guard !reduceMotion else { return }
+                    withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: true)) { pulse = true }
+                }
                 .accessibilityLabel("Reading this week’s notes")
             }
         }

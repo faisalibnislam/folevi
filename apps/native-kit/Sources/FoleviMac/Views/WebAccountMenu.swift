@@ -180,7 +180,7 @@ struct AccountMenuPanel: View {
                     Text(d).webText(gst("acct.item.shortcut").text).lineLimit(1).foregroundStyle(detail.color.color)
                 }
                 if row.badge > 0 {
-                    Text(row.badge > 99 ? "99+" : "\(row.badge)").webText(gst("acct.item.shortcut").text).lineLimit(1).foregroundStyle(detail.color.color)
+                    Text(row.badge > 99 ? "99+" : "\(row.badge)").webText(gst("acct.item.shortcut").text).monospacedDigit().lineLimit(1).foregroundStyle(detail.color.color)
                 } else if row.dot {
                     Circle().fill(name.color.color).frame(width: 6, height: 6)
                 }

@@ -31,7 +31,7 @@ const MEASURED: Record<string, { values: number[]; why: string }> = {
   "components/iphone/Grouped.tsx": { values: [15], why: "52 pt rows around a 22 pt line" },
   // The 34 pt send button inside its 44 pt target: (44 - 34) / 2.
   "components/ai/chat/ChatThread.tsx": { values: [5], why: "send button hit target" },
-  "components/iphone/Rows.tsx": { values: [5], why: "the chevron's 34 pt button inside the row's 44 pt edge" },
+  "components/iphone/Rows.tsx": { values: [5, 15], why: "the chevron's 34 pt button inside the row's 44 pt edge; See all ends 20 in (5 + 15), where the title starts" },
   "components/iphone/Sheet.tsx": { values: [5], why: "the grabber's place under the sheet's top edge" },
   // The row's actions start under its text: the 16 px inset, the avatar (28 / 46) and its gap (6).
   "components/app/NotificationsButton.tsx": { values: [50], why: "aligned with the row's text column" },

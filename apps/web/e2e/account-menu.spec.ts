@@ -162,7 +162,8 @@ test.describe("account mode", { tag: "@account-menu" }, () => {
     await expect(sheet.getByRole("button", { name: "Faisal Menu" })).toBeVisible({ timeout: 20_000 });
     for (const row of ["Settings", "Sign in to another account…", "Move or copy notes…", "Help", "Sign out of Ben Second"]) {
       const b = (await sheet.getByRole("button", { name: row, exact: true }).boundingBox())!;
-      expect(b.height).toBeGreaterThanOrEqual(44);
+      // Rounded: a sheet that settles from a transform can measure 43.9999 for a 44 pt row.
+      expect(Math.round(b.height)).toBeGreaterThanOrEqual(44);
     }
     for (const moved of ["Contact support", "Admin console", "Members", "Workspace settings", "Invite people"]) await expect(sheet.getByRole("button", { name: moved, exact: true })).toHaveCount(0);
     await expect(sheet.getByRole("radiogroup", { name: "Appearance" })).toHaveCount(0);

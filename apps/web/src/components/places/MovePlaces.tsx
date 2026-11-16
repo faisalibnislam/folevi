@@ -382,7 +382,7 @@ function MoveProgress({ p, trashing }: { p: MigrationProgress | null; trashing: 
       <div className="h-1.5 overflow-hidden rounded-tiny bg-sunken" role="progressbar" aria-label="Moving notes" aria-valuemin={0} aria-valuemax={total || 1} aria-valuenow={done}>
         <div className="h-full rounded-tiny bg-heading transition-[width] duration-300" style={{ width: `${pct}%` }} />
       </div>
-      <p className="mt-3 text-subheadline text-muted" role="status" aria-live="polite">
+      <p className="mt-3 text-subheadline tabular-nums text-muted" role="status" aria-live="polite">
         {trashing
           ? `Putting the originals in Trash: ${trashing.done} of ${trashing.total}`
           : !p || p.phase === "organizing"

@@ -50,7 +50,7 @@ export function IdentityImageField({
     <div role="group" aria-label={label} className="flex items-center gap-4">
       {shown ? (
         // eslint-disable-next-line @next/next/no-img-element -- a small signed storage URL, not an optimisable asset
-        <img src={shown} alt="" width={56} height={56} onError={() => setFailedSrc(shown)} className={`size-14 flex-none object-cover ${radius} border border-line`} />
+        <img src={shown} alt="" width={56} height={56} onError={() => setFailedSrc(shown)} className={`ui-img-outline size-14 flex-none object-cover ${radius}`} />
       ) : (
         <span aria-hidden className={`grid size-14 flex-none place-items-center bg-heading text-title-2 font-semibold text-canvas ${radius}`}>
           {initial.trim().slice(0, 1).toUpperCase() || "·"}

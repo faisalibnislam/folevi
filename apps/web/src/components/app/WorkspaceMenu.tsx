@@ -42,7 +42,7 @@ function Mark({ src, initial, shape, size, className }: { src: string | null; in
   const [broken, setBroken] = useState<string | null>(null);
   return src && broken !== src ? (
     // eslint-disable-next-line @next/next/no-img-element -- a tiny signed storage URL, not an optimisable asset
-    <img src={src} alt="" width={size} height={size} onError={() => setBroken(src)} className={`flex-none object-cover ${shape} ${className}`} style={{ width: size, height: size }} />
+    <img src={src} alt="" width={size} height={size} onError={() => setBroken(src)} className={`ui-img-outline flex-none object-cover ${shape} ${className}`} style={{ width: size, height: size }} />
   ) : (
     <span
       aria-hidden

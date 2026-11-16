@@ -435,7 +435,7 @@ function ImageView({ node, selected, updateAttributes, editor, getPos }: ReactNo
           // hug the picture as it is drawn.
           <div ref={boxRef} className="fb-image-box relative mx-auto w-fit max-w-full" data-selected={selected ? "" : undefined} onPointerEnter={checkTiny}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt={description} className="block h-auto max-w-full rounded-chip border border-line bg-sunken" draggable={false} onLoad={checkTiny} />
+            <img src={src} alt={description} className="ui-img-outline block h-auto max-w-full rounded-chip bg-sunken" draggable={false} onLoad={checkTiny} />
             {editable && !tiny ? (
               <>
                 {grip("left")}

@@ -42,7 +42,7 @@ export function AwayBanner({ away, showing, onToggle, onDismiss }: { away: Away;
       <button type="button" aria-pressed={showing} onClick={onToggle} className={`rounded-chip px-2 py-0.5 font-medium text-heading outline-none hover:bg-accent-soft focus-visible:ring-2 focus-visible:ring-focus ${showing ? "bg-accent-soft" : ""}`}>
         Show changes
       </button>
-      <button type="button" onClick={onDismiss} aria-label="Dismiss" title="Dismiss" className="grid h-6 w-6 place-items-center rounded-chip text-muted outline-none hover:bg-accent-soft hover:text-heading focus-visible:ring-2 focus-visible:ring-focus">
+      <button type="button" onClick={onDismiss} aria-label="Dismiss" title="Dismiss" className="relative grid size-6 place-items-center rounded-chip text-muted outline-none pointer-coarse:after:absolute pointer-coarse:after:-inset-2.5 hover:bg-accent-soft hover:text-heading focus-visible:ring-2 focus-visible:ring-focus">
         <X size={13} aria-hidden />
       </button>
     </div>

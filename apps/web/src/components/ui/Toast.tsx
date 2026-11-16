@@ -11,13 +11,22 @@ interface Toast {
   message: string;
   tone: Tone;
   action?: { label: string; onClick: () => void };
+  /** Fading out: kept for the exit's 150ms, then removed. */
+  leaving?: boolean;
 }
+
+/** How long a dismissed toast takes to fade out before it's removed. */
+const EXIT_MS = 150;
 
 const ToastContext = createContext<{ show: (message: string, opts?: { tone?: Tone; action?: Toast["action"]; duration?: number }) => void } | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const dismiss = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
+  // A dismissed toast fades and drops a little (softer than its rise in), then goes.
+  const dismiss = useCallback((id: number) => {
+    setToasts((t) => t.map((x) => (x.id === id ? { ...x, leaving: true } : x)));
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), EXIT_MS);
+  }, []);
   const show = useCallback(
     (message: string, opts?: { tone?: Tone; action?: Toast["action"]; duration?: number }) => {
       // The native apps show toasts themselves (native chrome mode, lib/engine/toasts.ts).
@@ -47,7 +56,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div
               key={t.id}
               role={t.tone === "error" ? "alert" : "status"}
-              className={`pointer-events-auto flex max-w-md items-center gap-3 rounded-chip py-2 pl-5 pr-2.5 text-subheadline font-medium shadow-[var(--shadow-pop)] animate-[folio-rise_180ms_var(--ease-folio)] ${
+              aria-hidden={t.leaving || undefined}
+              // Panel corners: the action button's 6px corners sit 8px in (6 + 8 = 14).
+              className={`flex max-w-md items-center gap-3 rounded-panel py-2 pl-5 pr-2.5 text-subheadline font-medium shadow-[var(--shadow-pop)] animate-[folio-rise_180ms_var(--ease-folio)] transition-[opacity,translate] duration-150 ease-out ${
+                t.leaving ? "pointer-events-none translate-y-1 opacity-0" : "pointer-events-auto"
+              } ${
                 t.tone === "error" ? "bg-danger-soft text-ink" : t.tone === "success" ? "bg-success-soft text-ink" : "bg-[var(--color-accent-strong)] text-[var(--color-accent-ink)]"
               }`}
             >
@@ -64,7 +77,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   {t.action.label}
                 </button>
               ) : null}
-              <button type="button" aria-label="Dismiss" title="Dismiss" className="opacity-70 hover:opacity-100" onClick={() => dismiss(t.id)}>
+              {/* 24px, and 44px to a finger (an invisible edge around it, so the toast keeps its height). */}
+              <button
+                type="button"
+                aria-label="Dismiss"
+                title="Dismiss"
+                className="relative grid size-6 flex-none place-items-center rounded-chip opacity-70 transition-[opacity,background-color] hover:bg-[color-mix(in_oklab,currentColor_14%,transparent)] hover:opacity-100 pointer-coarse:after:absolute pointer-coarse:after:-inset-2.5"
+                onClick={() => dismiss(t.id)}
+              >
                 <X size={14} aria-hidden />
               </button>
             </div>

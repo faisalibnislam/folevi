@@ -242,7 +242,7 @@
   transition: background 140ms, border-color 140ms, box-shadow 140ms, transform 120ms; grid-area: 1 / 1;
 }
 .fb-check:hover::before { border-color: var(--color-moss); }
-.fb-check:active::before { transform: scale(0.92); }
+.fb-check:active::before { transform: scale(0.96); }
 .fb-check:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 0; }
 .fb-check:disabled { opacity: 1; }
 .fb-todo[data-checked="true"] .fb-check::before {

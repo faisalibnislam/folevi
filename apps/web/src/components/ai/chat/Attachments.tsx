@@ -183,7 +183,7 @@ export function AttachmentProblems({ problems, onDismiss }: { problems: { name: 
           <li key={`${p.name}-${i}`}>{p.reason}</li>
         ))}
       </ul>
-      <button type="button" aria-label="Dismiss" title="Dismiss" onClick={onDismiss} className="grid h-5 w-5 flex-none place-items-center rounded-chip hover:bg-[var(--glass-active)]">
+      <button type="button" aria-label="Dismiss" title="Dismiss" onClick={onDismiss} className="relative grid size-6 flex-none place-items-center rounded-chip hover:bg-[var(--glass-active)] pointer-coarse:after:absolute pointer-coarse:after:-inset-2.5">
         <X size={12} aria-hidden />
       </button>
     </div>

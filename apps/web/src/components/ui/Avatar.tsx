@@ -9,7 +9,7 @@ export function Avatar({ name, url, size = 24, label, className = "", ring }: { 
   const a11y = label ? { role: "img", "aria-label": label, title: label } : { "aria-hidden": true };
   if (url) {
     // eslint-disable-next-line @next/next/no-img-element -- signed file URL from our own backend
-    return <img src={url} alt="" {...a11y} style={style} className={`flex-none rounded-chip object-cover ${className}`} />;
+    return <img src={url} alt="" {...a11y} style={style} className={`ui-img-outline flex-none rounded-chip object-cover ${className}`} />;
   }
   return (
     <span {...a11y} style={style} className={`grid flex-none select-none place-items-center rounded-chip bg-sunken font-semibold uppercase text-heading shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_8%,transparent)] ${className}`}>

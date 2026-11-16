@@ -401,6 +401,11 @@
   /* Surfaces */
   .ui-card { background: var(--color-surface); border-radius: var(--radius-container); box-shadow: var(--shadow-card); }
   .ui-sheet { border-radius: var(--radius-container); box-shadow: var(--shadow-sheet); }
+  /* Pictures (note images, avatars, workspace marks): a 1px edge inside the picture, pure black at 10% in light and
+     pure white at 10% in dark. A grey border picked up the page's tint and drew a halo on the picture's edge. */
+  .ui-img-outline { outline: 1px solid oklch(0 0 0 / 0.1); outline-offset: -1px; }
+  :root[data-theme="dark"] .ui-img-outline { outline-color: oklch(1 0 0 / 0.1); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ui-img-outline { outline-color: oklch(1 0 0 / 0.1); } }
   /* Popovers, menus, dialogs: strong glass, with enough tint for text to read on anything behind. */
   /* Half the pop glass, half the raised surface, and only a little saturation: a menu over a coloured folder
      card or a date chip reads as one calm surface instead of picking up a smear of that colour. */
@@ -590,13 +595,14 @@
 }
 
 :root {
-  /* Folevi's springs (the owner, 2026-11-01: playful, as iOS 26's own; FoleviSpring on the native apps). A sheet,
-   popover or menu growing out of what opened it settles with a visible overshoot; a press springs back. */
+  /* Folevi's springs (the owner, 2026-11-01: playful, as iOS 26's own; FoleviSpring on the native apps). A sheet or
+   dialog growing in settles with a visible overshoot; a press springs back. Menus and popovers open often, so they
+   rise in quickly (folio-rise, 150ms) without the spring. */
   --spring-pop: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.004 83.8%, 1);
   --spring-press: linear(0, 0.25 8%, 0.72 20%, 1.08 34%, 1.12 40%, 1.06 50%, 0.99 64%, 1);
 }
 
-/* A dialog, popover or menu growing in (on --spring-pop: it overshoots a touch, then settles). */
+/* A dialog growing in (on --spring-pop: it overshoots a touch, then settles). */
 @keyframes folio-pop { from { opacity: 0; transform: translateY(6px) scale(0.9); } 30% { opacity: 1; } to { opacity: 1; transform: none; } }
 @keyframes folio-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes folio-rise {

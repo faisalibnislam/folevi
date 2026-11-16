@@ -33,7 +33,7 @@ export function MigrationBar({ progress }: { progress: Progress }) {
   const { line, fraction } = summary(progress);
   return (
     <div className="space-y-1.5">
-      <p className="text-subheadline font-medium text-heading">{line}</p>
+      <p className="text-subheadline font-medium tabular-nums text-heading">{line}</p>
       <div role="progressbar" aria-label={line} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(fraction * 100)} className="h-1.5 overflow-hidden rounded-tiny bg-[color-mix(in_oklab,var(--color-ink)_12%,transparent)]">
         <div className="h-full rounded-tiny bg-heading transition-[width] duration-300" style={{ width: `${Math.max(fraction * 100, 3)}%` }} />
       </div>
@@ -66,7 +66,7 @@ export function MigrationRow({ scope }: { scope: WireScope }) {
         {open ? <ChevronDown size={13} aria-hidden /> : <ChevronRight size={13} aria-hidden />} {m.details}
       </button>
       {open ? (
-        <p id={`${uid}-details`} className="mt-1 text-subheadline text-muted">
+        <p id={`${uid}-details`} className="mt-1 text-subheadline tabular-nums text-muted">
           {details(progress)}
         </p>
       ) : null}

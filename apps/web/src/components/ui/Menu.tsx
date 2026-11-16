@@ -581,7 +581,7 @@ function MenuPanel({
       data-submenu={nested || undefined}
       onPointerEnter={onPointerIn}
       style={pos ?? { position: "fixed", left: 0, top: 0, margin: 0, right: "auto", bottom: "auto", visibility: "hidden" }}
-      className={`ui-pop z-[100] min-w-56 overflow-y-auto border-0 p-1.5 text-ink origin-top animate-[folio-pop_420ms_var(--spring-pop)] ${(menuClassName ?? "").replace(/(^|\s)w-full(?=\s|$)/g, " ")}`}
+      className={`ui-pop z-[100] min-w-56 overflow-y-auto border-0 p-1.5 text-ink origin-top animate-[folio-rise_150ms_var(--ease-folio)] ${(menuClassName ?? "").replace(/(^|\s)w-full(?=\s|$)/g, " ")}`}
       onContextMenu={(e) => e.preventDefault()}
       onKeyDown={(e) => {
         // Keys pressed in an open submenu are its own (React passes them on through its portal to this panel).

@@ -652,7 +652,7 @@ function PhoneCollection({
                   <NewRowTitle rowId={row.id} className="h-9 w-full text-subheadline font-semibold text-heading" />
                 </div>
               ) : (
-                <RowLink row={row} className="block overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-hairline)] outline-none transition-transform active:scale-[0.98]">
+                <RowLink row={row} className="block overflow-hidden rounded-container bg-[var(--color-surface-raised)] shadow-[var(--shadow-hairline)] outline-none transition-transform active:scale-[0.96]">
                   {view.config.cardPreview !== "none" ? (
                     <GalleryCover cover={row.cover}>
                       {view.config.cardPreview === "content" ? <p className="line-clamp-4 p-3 text-subheadline leading-[18px] text-muted">{row.excerpt}</p> : <div className="grid h-full place-items-center text-faint"><FileText size={26} aria-hidden /></div>}

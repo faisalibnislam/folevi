@@ -45,7 +45,7 @@ function Progress({ p, verb }: { p: MigrationProgress | null; verb: string }) {
       <div className="h-1.5 overflow-hidden rounded-tiny bg-sunken" role="progressbar" aria-label={verb} aria-valuemin={0} aria-valuemax={total || 1} aria-valuenow={done}>
         <div className="h-full rounded-tiny bg-heading transition-[width] duration-300" style={{ width: `${p?.phase === "done" ? 100 : pct}%` }} />
       </div>
-      <p className="mt-3 text-subheadline text-muted" role="status" aria-live="polite">
+      <p className="mt-3 text-subheadline tabular-nums text-muted" role="status" aria-live="polite">
         {!p || p.phase === "organizing"
           ? "Bringing folders and tags…"
           : p.phase === "trash"

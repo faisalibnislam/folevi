@@ -265,7 +265,7 @@ function useInsertDrag(editor: Editor | null, disabled: boolean, action: InsertA
 // The picture card: the same soft fill as the Format panel's buttons (bg-sunken/80, accent wash on hover), so the
 // two tools read as one set on any note theme, light or dark.
 const PICTURE = "grid h-14 w-full place-items-center overflow-hidden rounded-chip bg-sunken/80 transition-[background-color,transform] duration-150";
-const PICTURE_LIVE = "group-hover:bg-accent-soft/70 group-active:scale-[0.97]";
+const PICTURE_LIVE = "group-hover:bg-accent-soft/70 group-active:scale-[0.96]";
 
 
 function PhoneTile({ tile, editor, disabled, onDone }: { tile: Tile; editor: Editor | null; disabled: boolean; onDone?: () => void }) {

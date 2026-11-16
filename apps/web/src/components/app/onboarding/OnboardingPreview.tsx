@@ -366,7 +366,7 @@ function Dock({ ai, highlight, compact }: { ai: boolean; highlight: "style" | "a
         return (
           <span
             key={item.id}
-            className={`flex h-8 items-center gap-1.5 overflow-hidden rounded-chip text-subheadline font-medium transition-all duration-500 ${hidden ? "max-w-0 px-0 opacity-0" : "max-w-[100px] px-2.5"} ${highlight === item.id ? "ob-dock-on" : "text-ink"}`}
+            className={`flex h-8 items-center gap-1.5 overflow-hidden rounded-control text-subheadline font-medium transition-[max-width,padding,opacity] duration-300 ease-out ${hidden ? "max-w-0 px-0 opacity-0" : "max-w-[100px] px-2.5"} ${highlight === item.id ? "ob-dock-on" : "text-ink"}`}
           >
             {item.icon}
             <span className={compact && highlight !== item.id ? "hidden" : ""}>{item.label}</span>

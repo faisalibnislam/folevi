@@ -125,8 +125,9 @@ public struct WebIconButton: View {
         let style = WebStyles.named(pressed ? "button.quiet.icon.pressed" : "button.quiet.icon")
         let s = style.resolve(scheme)
         Button(action: action) {
+            // (On the iPad as wide as it is tall: touchSized only makes the box 44 points tall.)
             WebIconView(icon, size: 16)
-                .frame(width: s.width, height: s.height)
+                .frame(width: WebStyles.touchSide(s.width), height: s.height)
                 .webBox(style)
         }
         .buttonStyle(WebIconButtonStyle(radius: s.radius, ink: s.color, pressedLook: pressed))
@@ -178,7 +179,7 @@ struct WebIconButtonStyle: ButtonStyle {
                 }
                 .contentShape(Rectangle())
                 #if !os(macOS)
-                .pressDip(pressed, scale: 0.94)
+                .pressDip(pressed)
                 #endif
                 .onHover { over = $0 }
         }
@@ -188,7 +189,7 @@ struct WebIconButtonStyle: ButtonStyle {
 /// No system highlight: the web shows its own hover and press states (pressed: darker on the Mac, a dip elsewhere).
 struct WebPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.contentShape(Rectangle()).pressDip(configuration.isPressed, scale: 0.94)
+        configuration.label.contentShape(Rectangle()).pressDip(configuration.isPressed)
     }
 }
 

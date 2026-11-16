@@ -316,10 +316,9 @@ public struct WebSidebar: View {
                     }
                 }) {
                     WebIconView(.arrowDownUp, size: 14)
-                        .frame(width: 28, height: 28)
+                        .frame(width: WebStyles.touchSide(28), height: WebStyles.touchSide(28))
                         .foregroundStyle(Folevi.color.inkMuted)
                         .contentShape(Rectangle())
-                        .fingerTarget(width: 28, height: 28)
                 }
                 .foleviTooltip("Sort folders")
                 .accessibilityLabel("Sort folders")
@@ -736,10 +735,9 @@ struct SidebarMenuButton: View {
     var body: some View {
         WebMenuButton(align: .start, entries: { entries }) {
             WebIconView(.panelLeft, size: 16)
-                .frame(width: 32, height: 32)
+                .frame(width: WebStyles.touchSide(32), height: WebStyles.touchSide(32))
                 .foregroundStyle(Folevi.color.inkMuted)
                 .contentShape(Rectangle())
-                .fingerTarget(width: 32, height: 32)
         }
         .foleviTooltip("Sidebar")
         .accessibilityLabel("Sidebar")
@@ -793,8 +791,7 @@ struct SyncDot: View {
             WebIconView(.cloud, size: 16).foregroundStyle(Folevi.color.inkMuted)
             Circle().fill(Folevi.color.success).frame(width: 6, height: 6).offset(x: 1, y: 1)
         }
-        .frame(width: 28, height: 28)
-        .fingerTarget(width: 28, height: 28)
+        .frame(width: WebStyles.touchSide(28), height: WebStyles.touchSide(28))
         .foleviTooltip("Saved")
     }
 }

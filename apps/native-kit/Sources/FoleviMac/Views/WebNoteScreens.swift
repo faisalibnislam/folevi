@@ -33,6 +33,8 @@ struct WebNoteCell: View {
     var select: (@MainActor (_ range: Bool) -> Void)?
     var useTemplate: (@MainActor () -> Void)?
     @State private var hovered = false
+    /// The card's width (a bookmarked card's "…" sits clear of its ribbon, 11% in).
+    @State private var cardWidth: CGFloat = 0
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -47,10 +49,12 @@ struct WebNoteCell: View {
                         WebCompactNoteCard(card, hovered: hovered)
                     } else {
                         WebNoteCard(card, unsynced: unsynced, hovered: hovered)
+                            // The "…" is always there on the iPad: the title wraps short of it.
+                            .environment(\.webCardMenuRoom, TouchReveal.always ? menuInset + Self.menuWidth(useTemplate != nil) : 0)
                     }
                 }
                 .offset(y: hovered ? -2 : 0)
-                .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2), value: hovered)
+                .animation(Self.lift, value: hovered)
             }
             .buttonStyle(PressDipButtonStyle())
             #if os(iOS)
@@ -67,8 +71,11 @@ struct WebNoteCell: View {
                 }
                 .fixedSize()
                 // Clear of a bookmarked card's ribbon (DocumentCard.tsx: right 11cqw + 4px).
-                .position(x: geo.size.width - (card.starred && !compact ? geo.size.width * 0.11 + 4 : 8) - Self.menuWidth(useTemplate != nil) / 2, y: 8 + WebCardMenuButton.size / 2)
+                .position(x: geo.size.width - menuInset(width: geo.size.width) - Self.menuWidth(useTemplate != nil) / 2, y: 8 + WebCardMenuButton.size / 2)
             }
+            // It rises with the card it belongs to.
+            .offset(y: hovered ? -2 : 0)
+            .animation(Self.lift, value: hovered)
             .opacity(hovered || TouchReveal.always ? 1 : 0)
             .allowsHitTesting(hovered || TouchReveal.always)
             if selected {
@@ -80,12 +87,22 @@ struct WebNoteCell: View {
             }
         }
         .aspectRatio(compact ? nil : WebNoteCard.aspect, contentMode: .fit)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { cardWidth = $0 }
         .onHover { hovered = $0 }
         .webContextMenu(menu)
     }
 
     /// The width of the "…" (and Use, for a template) row, to place it by its right edge.
     private static func menuWidth(_ withUse: Bool) -> CGFloat { WebCardMenuButton.size + (withUse ? 64 : 0) }
+
+    /// The card's hover lift, which its "…" shares.
+    private static let lift = Animation.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.2)
+
+    /// How far the "…" row sits in from the card's right edge: 8 points, or clear of a bookmarked card's ribbon.
+    private func menuInset(width: CGFloat) -> CGFloat { card.starred && !compact ? width * 0.11 + 4 : 8 }
+
+    /// The same, for the card's title (the ribbon's share taken at the card's usual width; only the iPad asks).
+    private var menuInset: CGFloat { menuInset(width: cardWidth) }
 }
 
 /// The check in a selected card's top-left corner (SelectionBar.tsx SelectedCheck).

@@ -279,6 +279,18 @@ struct WebBackdropBlur: View {
     var body: some View { Color.clear }
 }
 
+extension WebStyles {
+    /// A small square control's side under a finger: at least 44 points on the iPad (its drawn icon unchanged, the
+    /// box and hover fill around it that big), as measured on the Mac. Neighbours laid out at this size never share
+    /// a tap, as an enlarged hit shape over a smaller box can.
+    public static func touchSide(_ side: CGFloat) -> CGFloat {
+        #if os(iOS)
+        if isPad { return max(side, 44) }
+        #endif
+        return side
+    }
+}
+
 extension WebStylePair {
     /// A control (a button, field, picker or menu trigger) at least 44 points tall, as the web's
     /// `pointer-coarse:h-11` makes them on a touch screen; anything else as measured. For an iPad's styles that fall

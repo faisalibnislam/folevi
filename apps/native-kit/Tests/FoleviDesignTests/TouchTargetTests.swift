@@ -43,4 +43,27 @@ struct TouchTargetTests {
         #expect(pair.light.height == 44)
         #expect(WebStylePair(light: short, dark: short).touchSized("notes.section.title").light.height == 28)
     }
+    /// A small icon button is a whole 44-point square on the iPad (not a 32-wide box with a bigger hit shape, which
+    /// overlapped its neighbour's); the Mac keeps its measured size.
+    @Test func touchSideIsASquareFingerOnTheIPad() {
+        #if os(iOS)
+        let was = WebStyles.isPad
+        defer { WebStyles.isPad = was }
+        WebStyles.isPad = true
+        #expect(WebStyles.touchSide(28) == 44)
+        #expect(WebStyles.touchSide(48) == 48)
+        WebStyles.isPad = false
+        #endif
+        #expect(WebStyles.touchSide(28) == 28)
+    }
+
+    /// A card's title stops 4 points short of the iPad's always-shown "…" (52 in from the edge: 44 and its 8),
+    /// and keeps its whole width where the "…" only comes on hover.
+    @Test func noteTitleClearsTheMenu() {
+        let cq: CGFloat = 2.6
+        #expect(WebNoteCard.titleClearance(menuRoom: 0, cq: cq) == 0)
+        #expect(abs(WebNoteCard.titleClearance(menuRoom: 52, cq: cq) - (52 + 4 - 14 * cq)) < 0.001)
+        // A big card already ends its title clear of the "…".
+        #expect(WebNoteCard.titleClearance(menuRoom: 52, cq: 5) == 0)
+    }
 }

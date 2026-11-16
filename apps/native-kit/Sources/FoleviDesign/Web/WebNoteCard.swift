@@ -178,6 +178,17 @@ public extension EnvironmentValues {
         get { self[WebPhoneCardsKey.self] }
         set { self[WebPhoneCardsKey.self] = newValue }
     }
+
+    /// How far in from the card's right edge a "…" (and Use) sits over the title: on the iPad, where a finger can't
+    /// hover, it is always there, so the title wraps short of it instead of running under it. 0 on the Mac.
+    var webCardMenuRoom: CGFloat {
+        get { self[WebCardMenuRoomKey.self] }
+        set { self[WebCardMenuRoomKey.self] = newValue }
+    }
+}
+
+public struct WebCardMenuRoomKey: EnvironmentKey {
+    public static let defaultValue: CGFloat = 0
 }
 
 // MARK: the note card
@@ -190,6 +201,7 @@ public struct WebNoteCard: View {
     let hovered: Bool
     @Environment(\.colorScheme) private var scheme
     @Environment(\.webPhoneCards) private var phone
+    @Environment(\.webCardMenuRoom) private var menuRoom
 
     public static let aspect: CGFloat = 25.0 / 27.0
 
@@ -218,6 +230,12 @@ public struct WebNoteCard: View {
             return nil
         }
         return (paper, ink, ink.oklabMix(paper, 0.62), ink.oklabMix(paper, 0.74), ink.oklabMix(paper, 0.12).opacity(0.75))
+    }
+
+    /// How much shorter the title's lines are so they end 4 pt before a "…" `menuRoom` in from the card's right edge
+    /// (the title already stops about 14 cq short of that edge).
+    static func titleClearance(menuRoom: CGFloat, cq: CGFloat) -> CGFloat {
+        menuRoom > 0 ? max(0, menuRoom + 4 - 14 * cq) : 0
     }
 
     public var body: some View {
@@ -288,7 +306,7 @@ public struct WebNoteCard: View {
                     .frame(width: sheetW * 0.06, height: sheetH)
                     .clipped()
                     .overlay(alignment: .trailing) { Rectangle().fill(Color.black.opacity(0.06)).frame(width: 1) }
-                content(cq: cq, titleWidth: sheetW * 0.94 - 20 * cq, heading: heading, faint: faint, muted: muted, chip: chip, look: look, tint: tint)
+                content(cq: cq, titleWidth: sheetW * 0.94 - 20 * cq - Self.titleClearance(menuRoom: menuRoom, cq: cq), heading: heading, faint: faint, muted: muted, chip: chip, look: look, tint: tint)
                     .background {
                         if look == .graph { GraphPaper(step: 6 * cq, line: tint(9).color) }
                     }
@@ -660,6 +678,8 @@ public struct WebFolderCard: View {
     @Environment(\.webPhoneCards) private var phone
 
     public static let aspect: CGFloat = 820.0 / 912.0
+    /// Where the front pocket starts, as a share of the card's height.
+    public static let frontTop: CGFloat = 0.5
 
     public init(_ model: FolderCardModel, labelScale: CGFloat = 1, hovered: Bool = false, menuRoom: Bool = false) {
         self.model = model
@@ -725,8 +745,8 @@ public struct WebFolderCard: View {
         return ZStack(alignment: .topLeading) {
             backLayer
             notes
-            front(w: w, h: h * 0.5, cq: cq, base: base, tone: tone)
-                .offset(y: h * 0.5)
+            front(w: w, h: h * (1 - Self.frontTop), cq: cq, base: base, tone: tone)
+                .offset(y: h * Self.frontTop)
         }
         .frame(width: w, height: h, alignment: .topLeading)
         // The whole card in one picture too: its shadows were blurred again on every frame while Home or Folders
@@ -950,10 +970,12 @@ public struct WebEmptyState<Action: View>: View {
                     .padding(.bottom, page ? tile.margin.bottom : 12)
             }
             let textWidth: CGFloat = page ? 448 - box.padding.left - box.padding.right : 448 - 32
-            WebClampedText(title, style: page ? t.text : WebTextStyle.role(.body, weight: 600), maxLines: 4, width: textWidth, alignment: .center)
+            WebClampedText(title, style: page ? t.text : WebTextStyle.role(.body, weight: 600), maxLines: 4, width: textWidth, alignment: .center, balance: true)
                 .foregroundStyle(t.color.color)
             if let message {
-                WebClampedText(message, style: page ? b.text : WebTextStyle.role(.subheadline).leading(17.875), maxLines: 6, width: textWidth, alignment: .center)
+                // `text-wrap: pretty`, as globals.css sets it on every <p>: no word left alone on the last line.
+                WebPrettyText(message, style: page ? b.text : WebTextStyle.role(.subheadline).leading(17.875), alignment: .center, width: textWidth)
+                    .frame(width: textWidth)
                     .foregroundStyle(b.color.color)
                     .padding(.top, page ? b.margin.top : 4)
             }

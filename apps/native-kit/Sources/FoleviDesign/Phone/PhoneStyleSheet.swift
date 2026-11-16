@@ -398,7 +398,7 @@ public struct PhoneStyleSheetContent: View {
     }
 
     /// --glass-edge: a light inner line and a faint outer one.
-    static func glassEdge(_ scheme: ColorScheme) -> [ShadowLayer] {
+    public static func glassEdge(_ scheme: ColorScheme) -> [ShadowLayer] {
         scheme == .dark
             ? [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.08), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.4))]
             : [ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(255, 255, 255, 0.6), inset: true), ShadowLayer(x: 0, y: 0, blur: 0, spread: 1, color: RGBA(0, 0, 0, 0.06))]

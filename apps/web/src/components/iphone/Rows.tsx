@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import { ChevronRight, MoreHorizontal, Search, type LucideIcon } from "lucide-react";
 import { AppLink } from "@/lib/app/router";
 import { useLocalStorage } from "@/lib/hooks/useEngine";
@@ -11,15 +11,33 @@ export function RowChevron() {
   return <ChevronRight size={20} strokeWidth={2.4} absoluteStrokeWidth aria-hidden className="-mr-1 flex-none text-faint" />;
 }
 
+/** Rows inside a RowGroup: Home's rounded cards (Bookmarks, Tags, Templates). */
+const Grouped = createContext(false);
+
+/**
+ * Home's rows in one rounded card, 16 in from the screen's edges, in the sunken surface: hairlines only between
+ * the rows inside it, from the label to the card's edge (none under the last).
+ */
+export function RowGroup({ label, children }: { label?: string; children: ReactNode }) {
+  return (
+    <Grouped.Provider value={true}>
+      <div role={label ? "group" : undefined} aria-label={label} data-iphone-tappable="" className="ui-row-group mx-4 overflow-hidden rounded-container bg-sunken">
+        {children}
+      </div>
+    </Grouped.Provider>
+  );
+}
+
 /**
  * A plain list row, as on Home (All notes, a folder): an icon, the label, a count and a chevron, with a
- * hairline under it that starts where the label does.
+ * hairline under it that starts where the label does. In a RowGroup: 48 tall, 14 in from the card's edge.
  */
 export function ListRow({ href, onClick, icon, label, detail, chevron = true, onContextMenu, ariaLabel, children }: { href?: string; onClick?: () => void; icon?: ReactNode; label: ReactNode; detail?: ReactNode; chevron?: boolean; onContextMenu?: (e: React.MouseEvent) => void; ariaLabel?: string; children?: ReactNode }) {
+  const grouped = useContext(Grouped);
   const inner = (
     <>
       {icon ? <span aria-hidden className="grid w-7 flex-none place-items-center text-muted [&_svg]:h-[22px] [&_svg]:w-[22px]">{icon}</span> : null}
-      <span className="ui-row-sep flex min-h-[52px] min-w-0 flex-1 items-center gap-2 pr-1">
+      <span className={`ui-row-sep flex min-w-0 flex-1 items-center gap-2 pr-1 ${grouped ? "min-h-12" : "min-h-[52px]"}`}>
         <span className="min-w-0 flex-1 truncate text-body leading-[22px] text-ink">{label}</span>
         {detail !== undefined && detail !== null && detail !== "" ? <span className="flex-none text-body leading-[22px] tabular-nums text-muted">{detail}</span> : null}
         {chevron ? <RowChevron /> : null}
@@ -27,7 +45,7 @@ export function ListRow({ href, onClick, icon, label, detail, chevron = true, on
       {children}
     </>
   );
-  const cls = "ui-key-focus flex w-full items-center gap-3 pl-5 pr-4 text-left outline-none transition-colors duration-150 active:bg-[var(--liquid-press)] active:duration-0";
+  const cls = `ui-key-focus flex w-full items-center gap-3 text-left outline-none transition-colors duration-150 active:bg-[var(--liquid-press)] active:duration-0 ${grouped ? "pl-3.5 pr-3 [--row-sep-overhang:12px] hover:bg-[var(--glass-hover)]" : "pl-5 pr-4"}`;
   if (href)
     return (
       <AppLink href={href} onClick={onClick} onContextMenu={onContextMenu} aria-label={ariaLabel} data-iphone-tappable="" className={cls}>
@@ -46,7 +64,7 @@ export function ListRow({ href, onClick, icon, label, detail, chevron = true, on
  * one-line note saying what will be here. `collapsible` sections fold away (remembered on this device): folded,
  * the section is just its 44-point heading row.
  */
-export function HomeSection({ id, title, href, menu, children, empty, collapsible, defaultOpen = true }: { id: string; title: string; href?: string; menu?: MenuEntry[]; children?: ReactNode; empty?: ReactNode; collapsible?: boolean; defaultOpen?: boolean }) {
+export function HomeSection({ id, title, href, menu, seeAll, children, empty, collapsible, defaultOpen = true }: { id: string; title: string; href?: string; menu?: MenuEntry[]; /** "See all" at the heading's right, to this list. */ seeAll?: string; children?: ReactNode; empty?: ReactNode; collapsible?: boolean; defaultOpen?: boolean }) {
   const [stored, setStored] = useLocalStorage<boolean | null>(`folevi:iphone-home:${id}`, null);
   const open = collapsible ? (stored ?? defaultOpen) : true;
   const chevron = <ChevronRight size={20} strokeWidth={2.6} absoluteStrokeWidth aria-hidden className={`mt-px flex-none text-faint transition-transform duration-200 motion-reduce:transition-none ${collapsible && open ? "rotate-90" : ""}`} />;
@@ -74,6 +92,11 @@ export function HomeSection({ id, title, href, menu, children, empty, collapsibl
             <span className="flex h-11 items-center gap-1">{heading}</span>
           )}
         </h2>
+        {seeAll ? (
+          <AppLink href={seeAll} className="flex h-11 flex-none items-center rounded-chip px-[15px] text-body text-muted outline-none transition-colors hover:text-heading active:opacity-60">
+            See all
+          </AppLink>
+        ) : null}
         {menu?.length ? (
           <MenuButton
             label={`${title} options`}
@@ -86,6 +109,29 @@ export function HomeSection({ id, title, href, menu, children, empty, collapsibl
       </div>
       {open ? <div>{empty ?? children}</div> : null}
     </section>
+  );
+}
+
+/**
+ * One of Home's places (All notes, Drafts, Shared with Me, Changes) as a tile in a two-column grid: the icon and
+ * its count on top, the name under them, in the sunken surface with the search field's corners.
+ */
+export function HomeTile({ href, icon, label, count }: { href: string; icon: ReactNode; label: string; count?: number }) {
+  return (
+    <AppLink
+      href={href}
+      aria-label={count ? `${label}, ${count}` : label}
+      data-iphone-tappable=""
+      className="ui-key-focus flex min-h-[80px] min-w-0 flex-col justify-between gap-2.5 rounded-panel bg-sunken p-3 outline-none transition-[background-color,transform] duration-150 hover:bg-[var(--glass-hover)] active:scale-[0.97] active:bg-[var(--liquid-press)] active:duration-0 motion-reduce:active:scale-100 [&:nth-child(odd):last-child]:col-span-2"
+    >
+      <span className="flex items-center justify-between gap-2">
+        <span aria-hidden className="grid h-6 w-6 flex-none place-items-center text-muted [&_svg]:h-[22px] [&_svg]:w-[22px]">
+          {icon}
+        </span>
+        {count ? <span className="text-title-3 font-semibold leading-6 tabular-nums text-heading">{count}</span> : null}
+      </span>
+      <span className="truncate text-body font-medium leading-[22px] text-ink">{label}</span>
+    </AppLink>
   );
 }
 

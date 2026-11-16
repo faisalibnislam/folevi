@@ -15,6 +15,8 @@ public enum PhonePress {
 }
 
 /// ListRow: 52 tall at least, 20 in from the left and 16 from the right, the icon in a 28 column, 12 to the label.
+/// In a `PhoneRowGroup` (Home's rounded cards): 48 tall, 14 in from the card's left and 12 from its right, the
+/// hairline from the label to the card's edge, none under the last row (`.phoneRowSeparator(false)`).
 public struct PhoneListRow<Icon: View>: View {
     let label: String
     let detail: String?
@@ -24,6 +26,8 @@ public struct PhoneListRow<Icon: View>: View {
     /// Held (a note's row on Home): its menu, from the row's frame on screen; a tap still opens.
     let onLongPress: ((CGRect) -> Void)?
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.phoneRowGrouped) private var grouped
+    @Environment(\.phoneRowSeparator) private var separator
     @State private var pressed = false
     @State private var pressGeneration = 0
     @State private var frame: CGRect = .zero
@@ -63,11 +67,11 @@ public struct PhoneListRow<Icon: View>: View {
                 }
             }
             .padding(.trailing, body.padding.right)
-            .frame(minHeight: body.height)
-            .overlay(alignment: .bottom) { PhoneRowHairlineView() }
+            .frame(minHeight: grouped ? PhoneRowGroupMetrics.rowHeight : body.height)
+            .overlay(alignment: .bottom) { if separator { PhoneRowHairlineView(overhang: grouped ? PhoneRowGroupMetrics.trailing : 16) } }
         }
-        .padding(.leading, row.padding.left)
-        .padding(.trailing, row.padding.right)
+        .padding(.leading, grouped ? PhoneRowGroupMetrics.leading : row.padding.left)
+        .padding(.trailing, grouped ? PhoneRowGroupMetrics.trailing : row.padding.right)
         .contentShape(Rectangle())
         #if os(iOS)
         // (An iPad's pointer lights the row under it: IPAD-21.)
@@ -113,12 +117,68 @@ public extension PhoneListRow where Icon == EmptyView {
 
 /// `.ui-row-sep::after`: half a point of --iphone-separator from the label to past the row's right padding (16).
 public struct PhoneRowHairlineView: View {
+    let overhang: CGFloat
     @Environment(\.colorScheme) private var scheme
-    public init() {}
+    public init(overhang: CGFloat = 16) { self.overhang = overhang }
     public var body: some View {
         PhoneSurface.separator.resolve(scheme).color
             .frame(height: 0.5)
-            .padding(.trailing, -16)
+            .padding(.trailing, -overhang)
+    }
+}
+
+/// A grouped row's measures (Rows.tsx RowGroup: `pl-3.5 pr-3 min-h-12`, `--row-sep-overhang: 12px`).
+public enum PhoneRowGroupMetrics {
+    public static let leading: CGFloat = 14
+    public static let trailing: CGFloat = 12
+    public static let rowHeight: CGFloat = 48
+    /// The card's inset from the screen's edges (`mx-4`).
+    public static let inset: CGFloat = 16
+}
+
+private struct PhoneRowGroupedKey: EnvironmentKey { static let defaultValue = false }
+private struct PhoneRowSeparatorKey: EnvironmentKey { static let defaultValue = true }
+
+public extension EnvironmentValues {
+    /// Rows inside a `PhoneRowGroup`.
+    var phoneRowGrouped: Bool {
+        get { self[PhoneRowGroupedKey.self] }
+        set { self[PhoneRowGroupedKey.self] = newValue }
+    }
+    /// Whether a row draws its hairline (the last row in a group doesn't).
+    var phoneRowSeparator: Bool {
+        get { self[PhoneRowSeparatorKey.self] }
+        set { self[PhoneRowSeparatorKey.self] = newValue }
+    }
+}
+
+public extension View {
+    /// A row without its hairline: the last one in a `PhoneRowGroup`.
+    func phoneRowSeparator(_ shown: Bool) -> some View { environment(\.phoneRowSeparator, shown) }
+}
+
+/// RowGroup: Home's rows in one rounded card in the sunken surface, 16 in from the screen's edges, the rows
+/// clipped to its corners (a pressed row's fill too).
+public struct PhoneRowGroup<Content: View>: View {
+    let label: String
+    let content: Content
+    @Environment(\.colorScheme) private var scheme
+
+    /// `label` names the card for VoiceOver ("Bookmarks").
+    public init(_ label: String, @ViewBuilder content: () -> Content) {
+        self.label = label
+        self.content = content()
+    }
+
+    public var body: some View {
+        let shape = RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous)
+        VStack(spacing: 0) { content }
+            .environment(\.phoneRowGrouped, true)
+            .background(shape.fill(FoleviTokens.Chrome.surfaceSunken.resolve(scheme).color))
+            .clipShape(shape)
+            .padding(.horizontal, PhoneRowGroupMetrics.inset)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(label)
     }
 }
 
@@ -137,15 +197,18 @@ public struct PhoneHomeSection<Content: View>: View {
     let more: ((CGRect) -> Void)?
     /// A section that folds: whether it's open (its chevron turns down).
     let opened: Bool?
+    /// "See all" at the heading's right (Bookmarks, when Home shows only some).
+    let seeAll: (() -> Void)?
     let content: Content
     @State private var moreFrame: CGRect = .zero
     @Environment(\.colorScheme) private var scheme
 
-    public init(_ title: String, open: (() -> Void)? = nil, more: ((CGRect) -> Void)? = nil, opened: Bool? = nil, @ViewBuilder content: () -> Content) {
+    public init(_ title: String, open: (() -> Void)? = nil, more: ((CGRect) -> Void)? = nil, opened: Bool? = nil, seeAll: (() -> Void)? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
         self.open = open
         self.more = more
         self.opened = opened
+        self.seeAll = seeAll
         self.content = content()
     }
 
@@ -175,6 +238,22 @@ public struct PhoneHomeSection<Content: View>: View {
                 .disabled(open == nil)
                 .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 0)
+                if let seeAll {
+                    // (`px-[15px]` in the heading row's 5 pt right padding: the words end 20 in, as the title starts.)
+                    Button(action: seeAll) {
+                        Text("See all")
+                            .webText(WebTextStyle(size: WebTypeRole.body.metrics.size, leading: WebTypeRole.body.metrics.leading))
+                            .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
+                            .padding(.horizontal, 15)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    #if os(iOS)
+                    .hoverEffect(.highlight)
+                    #endif
+                    .accessibilityLabel("See all \(title.lowercased())")
+                }
                 if let more {
                     Button { more(moreFrame) } label: {
                         WebIconView(.ellipsis, size: 22, strokeWidth: 2.2)

@@ -67,7 +67,7 @@ export function FolderCard({
         title={parentName ? `${f.name} (in ${parentName})` : f.name}
         className={`${FOLDER_CARD_FRAME} focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-4 focus-visible:ring-offset-canvas`}
       >
-        <FolderCardArt name={f.name} color={f.color} count={f.documentCount} age={ageText(f.updatedAt)} previews={f.previews} />
+        <FolderCardArt name={f.name} color={f.color} count={f.documentCount} age={ageText(f.updatedAt)} previews={f.previews} menuRoom />
       </AppLink>
       <FolderMenu
         folder={f}

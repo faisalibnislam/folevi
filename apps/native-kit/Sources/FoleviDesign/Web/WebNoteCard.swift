@@ -654,15 +654,27 @@ public struct WebFolderCard: View {
     /// `--fc-text`: the cover's labels at a bigger card's size (a folder page's 152 pt subfolders).
     let labelScale: CGFloat
     let hovered: Bool
+    /// The card has a "…" in the front pocket's top-right corner (WebFolderCell): the name stops 8 pt short of it.
+    let menuRoom: Bool
     @Environment(\.colorScheme) private var scheme
     @Environment(\.webPhoneCards) private var phone
 
     public static let aspect: CGFloat = 820.0 / 912.0
 
-    public init(_ model: FolderCardModel, labelScale: CGFloat = 1, hovered: Bool = false) {
+    public init(_ model: FolderCardModel, labelScale: CGFloat = 1, hovered: Bool = false, menuRoom: Bool = false) {
         self.model = model
         self.labelScale = labelScale
         self.hovered = hovered
+        self.menuRoom = menuRoom
+    }
+
+    /// How wide the name may be on a card `w` wide: 74% (8% in from the left, 18% from the right), and with a "…" in
+    /// the corner no further right than 8 pt left of it (the chip is 8% in from the right edge; FolderCardArt.tsx
+    /// `max(18%, 8cqw + 40px)`). The same as 74% on cards 400 pt wide or more.
+    static func nameWidth(_ w: CGFloat, menuRoom: Bool) -> CGFloat {
+        guard menuRoom else { return w * 0.74 }
+        let chip = WebStyles.named("notes.card.menu").light.width
+        return max(0, min(w * 0.74, w * 0.84 - chip - 8))
     }
 
     public var body: some View {
@@ -788,9 +800,10 @@ public struct WebFolderCard: View {
             WebShapeBox(shape: shape, fill: nil, shadows: inset)
             // The words in a box of the pocket's own size: a line taller or wider than its place mustn't grow it.
             ZStack(alignment: .topLeading) {
-                WebClampedText(model.name, style: nameStyle, maxLines: 2, width: w * 0.74)
+                let nameW = Self.nameWidth(w, menuRoom: menuRoom)
+                WebClampedText(model.name, style: nameStyle, maxLines: 2, width: nameW)
                     .foregroundStyle((dark ? RGBA(246, 246, 248) : RGBA(18, 19, 24)).color)
-                    .frame(width: w * 0.74, height: frontH * 0.7, alignment: .bottomLeading)
+                    .frame(width: nameW, height: frontH * 0.7, alignment: .bottomLeading)
                     // (webText's own top guide would otherwise place this box by its text's baseline.)
                     .alignmentGuide(.top) { _ in 0 }
                     .offset(x: w * 0.08)

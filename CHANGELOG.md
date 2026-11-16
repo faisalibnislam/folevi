@@ -4,6 +4,30 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.3.43: Small update
+
+Released 2026-11-16 09:19:04+06:00 (build 56, tag v1.3.43)
+
+A new iPhone Home with tiles and rounded cards, the folder menu in each card's corner, and a polish pass on every platform
+
+### Improved
+
+- iPhone Home: Catch me up is its own card, All notes, Drafts, Shared with Me and Changes are tiles, and Bookmarks, Tags and the rest sit in rounded cards without long hairline lists
+- Folder cards on the web, Mac and iPad: the "..." button sits in the front pocket's top-right corner, clear of the folder name
+- iPhone and iPad: Reduce Motion is respected everywhere, including Foli AI answers, which appear whole
+- Every platform: buttons press the same gentle way, numbers that change (counts, timers, task times) no longer shift their neighbours, and small buttons are easier to tap
+- iPad: icon buttons are full 44-point targets, and note and folder card menus stay clear of their titles
+- Menus and popovers open faster on the web and Mac, and close with a short fade on iPhone
+- Pictures, avatars and workspace logos get a soft outline that works in light and dark
+- Toasts fade out gently, and the selection bar leaves with a fade instead of sliding off
+- Mac: Ask Foli AI and Catch me up no longer lift on hover
+
+### Fixed
+
+- PDF text is searchable on the web again
+- Full-screen canvases at phone width: tools fold into More instead of scrolling sideways
+- Switching to a recent tab after a reload shows its note right away instead of a loading placeholder
+
 ## Version 1.3.42: Small update
 
 Released 2026-11-16 05:27:29+06:00 (build 55, tag v1.3.42)

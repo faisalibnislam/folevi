@@ -848,7 +848,7 @@
 /* A card's or row's "…" (shown on touch elsewhere) stays out of sight: a long press opens the same menu
    (AppContextMenu, through [data-ctx-host]). It stays in place for that and for VoiceOver, and shows only for
    keyboard focus (the focus a closing menu hands back after a tap doesn't bring it back). Out of sight it takes
-   no taps either: a folder tile's sits in the middle of its cover, so a plain tap there opened the menu instead
+   no taps either: a folder tile's sits on its cover, so a plain tap there opened the menu instead
    of the folder. */
 :root[data-iphone] [data-ctx-host] .pointer-coarse\:opacity-100:not(:has(:focus-visible)) { opacity: 0; pointer-events: none; }
 /* What a held finger opened a menu on lifts while the menu is open (lib/touchContextMenu.ts): a card or a row
@@ -1013,10 +1013,11 @@
 :root[data-iphone] [data-card="memo"] { font-size: var(--type-caption-1); line-height: var(--type-caption-1-leading); padding: 4px 8px; }
 :root[data-iphone][data-theme="dark"] [data-card="edge"] { box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.08); }
 /* Folder tiles (FolderCardArt.tsx) on the phone: the name at Headline size, 17/22 (so a 13-letter word such as
-   "Brainstorming" fits the 142 px tile; longer ones end in "…"). In dark, on every platform (the web and the Mac
+   "Brainstorming" fits the 142 px tile; longer ones end in "…"), and its full width (the phone shows no "…" in
+   the corner to make room for). In dark, on every platform (the web and the Mac
    too: the full pastel was the brightest thing on a dark page), the folder's darker tone with light words on it
    (4.5:1 on every colour). */
-:root[data-iphone] [data-fc="name"] { font-size: var(--type-headline); line-height: 22px; }
+:root[data-iphone] [data-fc="name"] { font-size: var(--type-headline); line-height: 22px; right: 18%; }
 :root[data-theme="dark"] [data-fc="back"] { background: linear-gradient(to bottom, color-mix(in oklab, var(--fc) 44%, #2c2e35), color-mix(in oklab, var(--fc) 34%, #202228)) !important; }
 :root[data-theme="dark"] [data-fc="front"] {
   background: linear-gradient(to bottom, color-mix(in oklab, var(--fc) 50%, #1a1b21), color-mix(in oklab, var(--fc) 42%, #121318)) !important;

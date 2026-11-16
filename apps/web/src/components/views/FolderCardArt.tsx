@@ -38,9 +38,13 @@ const BACK_SHADOW = "0 4px 8px rgb(20 20 30 / 0.05), 0 1px 2px rgb(20 20 30 / 0.
 const BACK_PATH =
   "M0 7C0 2.5 2 0 6.5 0H31C35 0 36.5 1 38.5 3.2C40.5 5.4 42 6 45 6H93.5C98 6 100 8.5 100 13V93C100 97.5 98 100 93.5 100H6.5C2 100 0 97.5 0 93Z";
 const BACK_MASK = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><path d='${BACK_PATH}'/></svg>`)}") 0 0 / 100% 100% no-repeat`;
-/** Where the folder's "…" menu appears on hover, at the right of the name on the front: the same raised chip as a note card's "…". */
+/**
+ * Where the folder's "…" menu appears on hover: the front pocket's top-right corner (the pocket starts halfway down
+ * the card), in from its top and right edges by the name's left margin, 8% of the card's width (the owner, 16
+ * November 2026). The same raised chip as a note card's "…".
+ */
 export const FOLDER_CARD_MENU =
-  "ui-raised absolute bottom-[8%] right-[4%] z-10 rounded-chip opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100";
+  "ui-raised absolute top-[calc(50%+8cqw)] right-[8cqw] z-10 rounded-chip opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100";
 
 /** The "…" button's look inside FOLDER_CARD_MENU, for pictures of the card (the app uses its MenuButton). */
 export function FolderCardMenuLook() {
@@ -86,7 +90,22 @@ function FolderNote({ note, index }: { note: FolderPreview; index: number }) {
  * folder's colour over their lower half, with the name and, under it, the count and last update. Goes inside an
  * element with FOLDER_CARD_FRAME, inside one with FOLDER_CARD_BOX.
  */
-export function FolderCardArt({ name, color, count, age, previews = [] }: { name: string; color: string | null; count: number; age: string; previews?: FolderPreview[] }) {
+export function FolderCardArt({
+  name,
+  color,
+  count,
+  age,
+  previews = [],
+  menuRoom = false,
+}: {
+  name: string;
+  color: string | null;
+  count: number;
+  age: string;
+  previews?: FolderPreview[];
+  /** The card has its "…" in the pocket's top-right corner (FOLDER_CARD_MENU): the name stops 8 px short of the 32 px chip (the same as 18% on cards 400 px wide or more; globals.css keeps 18% on the iPhone, which has no "…"). */
+  menuRoom?: boolean;
+}) {
   const base = folderHex(color);
   // The palette colour a little greyed, so a page of folders stays calm, then lightened (the owner, 7 November 2026: "lighter color overall"); the back is a lighter tint still.
   const tone = `color-mix(in oklab, ${base} 84%, #9a9fab)`;
@@ -120,7 +139,7 @@ export function FolderCardArt({ name, color, count, age, previews = [] }: { name
           ["--fc" as string]: base,
         }}
       >
-        <span data-fc="name" className="absolute bottom-[30%] left-[8%] right-[18%] line-clamp-2 text-ellipsis wrap-normal break-normal text-[clamp(16px,calc(8.4cqw*var(--fc-text,1)),34px)] font-serif font-medium leading-[1.15] text-[#121318]">
+        <span data-fc="name" className={`absolute bottom-[30%] left-[8%] ${menuRoom ? "right-[max(18%,calc(8cqw+40px))]" : "right-[18%]"} line-clamp-2 text-ellipsis wrap-normal break-normal text-[clamp(16px,calc(8.4cqw*var(--fc-text,1)),34px)] font-serif font-medium leading-[1.15] text-[#121318]`}>
           {name}
         </span>
         {/* count and last update (dark enough for 4.5:1 on every folder colour) */}

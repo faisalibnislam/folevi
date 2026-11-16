@@ -174,7 +174,7 @@ struct WebFolderCell: View {
                     let flags = NSEvent.modifierFlags
                     if let select, let click = ListSelection.click(command: flags.contains(.command), shift: flags.contains(.shift), option: flags.contains(.option)) { select(click == .range) } else { open() }
                 } label: {
-                    WebFolderCard(card, labelScale: labelScale, hovered: hovered)
+                    WebFolderCard(card, labelScale: labelScale, hovered: hovered, menuRoom: true)
                 }
                 .buttonStyle(PressDipButtonStyle())
                 if let selectionDrag {
@@ -188,9 +188,14 @@ struct WebFolderCell: View {
                 }
             }
             if selected { WebSelectedCheck().offset(x: -8, y: -8) }
+            // The "…" in the front pocket's top-right corner (the pocket starts halfway down the card), in from its top
+            // and right edges by the name's left margin, 8% of the card's width (FolderCardArt.tsx FOLDER_CARD_MENU;
+            // the owner, 16 November 2026). It rises with the card on hover.
             GeometryReader { geo in
+                let inset = geo.size.width * 0.08
+                let half = WebCardMenuButton.size / 2
                 WebCardMenuButton(label: "Folder options for \(card.name)", entries: menu)
-                    .position(x: geo.size.width / 2, y: geo.size.height * 0.7 + (hovered ? -4 : 0))
+                    .position(x: geo.size.width - inset - half, y: geo.size.height * 0.5 + inset + half + (hovered ? -4 : 0))
                     .opacity(hovered || TouchReveal.always ? 1 : 0)
                     .allowsHitTesting(hovered || TouchReveal.always)
             }

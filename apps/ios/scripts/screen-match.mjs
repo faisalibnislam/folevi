@@ -44,6 +44,8 @@ const sim = simulator(device);
 const VAULT_PIN = "246810";
 /** Types the scratch PIN into every field of the web's Vault card (React's own value setter, then its input event). */
 const FILL_PIN = `const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; for (const i of document.querySelectorAll("main input")) { set.call(i, "${VAULT_PIN}"); i.dispatchEvent(new Event("input", { bubbles: true })); } return true;`;
+/** Folders as a list (its ⋯ menu's "List", remembered on the device), and back to tiles: the plain list rows. */
+const foldersLayout = (label) => `document.querySelector("button[aria-label='Folders options']").click(); await new Promise((r) => setTimeout(r, 700)); [...document.querySelectorAll("[role^=menuitem]")].find((b) => b.textContent.trim() === ${JSON.stringify(label)}).click(); await new Promise((r) => setTimeout(r, 900)); return true;`;
 const CHIPS_IN_SIGHT = `const n = document.querySelector("nav[aria-label='Task views']"); const on = n.querySelector("[aria-current=page]"); n.scrollLeft = Math.max(0, on.offsetLeft + on.offsetWidth + 16 - n.clientWidth); return true;`;
 
 /** The screens, by route. `ready` is text the web shows once the screen is drawn. */
@@ -57,6 +59,9 @@ export const SCREENS = [
   { id: "archive", path: "/archive", ready: "Old receipts" },
   { id: "trash", path: "/trash", ready: "Trash is empty" },
   { id: "folders", path: "/folders", ready: "Projects" },
+  // `stylesOnly`: measured (--styles), never shot. Folders as a list holds the phone's plain rows (an icon, the name,
+  // a count, the chevron) since Home's rows went into cards; `restoreJs` puts its tiles back once measured.
+  { id: "folders-list", path: "/folders", ready: "Projects", stylesOnly: true, measureJs: foldersLayout("List"), restoreJs: foldersLayout("Tiles") },
   // A folder by its name (`folder`): its id is looked up in the web frame first.
   { id: "folder", folder: "Personal", ready: "Reading Shelf" },
   // Search: the web opens it from Home's field (`press`), types (`type`) and lets go of the keyboard; the new frame
@@ -355,6 +360,11 @@ if (styles) {
         sim.sleep(1200);
         Object.assign(out[scheme], sim.evalJs(`return (${extract.toString()})(${JSON.stringify(tags)})`));
       }
+      if (screen.restoreJs) {
+        sim.appearance("light");
+        sim.evalJs(screen.restoreJs);
+        sim.sleep(500);
+      }
     }
     sim.appearance("light");
     const wanted = Object.entries(spec.styles).filter(([, t]) => screens.some((s) => s.id === t.screen)).map(([id]) => id);
@@ -401,7 +411,8 @@ const shoot = (screen) => {
   console.log(`${screen.id}: shot`);
 };
 const seeding = !process.argv.includes("--no-seed");
-const shooting = process.argv.includes("--diff-only") ? [] : screens;
+const shown = screens.filter((s) => !s.stylesOnly);
+const shooting = process.argv.includes("--diff-only") ? [] : shown;
 for (const screen of shooting.filter((s) => s.beforeVault && seeding)) shoot(screen);
 if (seeding && screens.some((s) => s.path === "/vault")) seedVault();
 for (const screen of shooting.filter((s) => !s.beforeVault)) shoot(screen);
@@ -413,6 +424,6 @@ const { diffAll, writeReport } = await import(join(repo, "apps/mac/scripts/diff.
 const spec = JSON.parse(readFileSync(join(repo, "packages/design-tokens/match/specimens.json"), "utf8"));
 const threshold = { ...spec.threshold, sizeSlack: 1 };
 const browser = await webkit.launch();
-const results = await diffAll(browser, outDir, screens.flatMap((s) => ["light", "dark"].map((scheme) => ({ id: s.id, scheme }))), threshold);
+const results = await diffAll(browser, outDir, shown.flatMap((s) => ["light", "dark"].map((scheme) => ({ id: s.id, scheme }))), threshold);
 await browser.close();
 writeReport(outDir, { title: "iPhone screens", note: "Whole screens in the Simulator, one seeded scratch library; the status bar and home indicator are left out.", threshold, results });

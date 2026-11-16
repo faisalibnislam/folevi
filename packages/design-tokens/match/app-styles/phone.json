@@ -5,7 +5,8 @@
     "home": "/documents",
     "notes": "/notes",
     "archive": "/archive",
-    "trash": "/trash"
+    "trash": "/trash",
+    "folders-list": "/folders"
   },
   "styles": {
     "phone.search.box": {
@@ -37,36 +38,36 @@
       "selector": "ul[aria-label='Recent notes'] > li"
     },
     "phone.row": {
-      "screen": "home",
-      "selector": "nav[aria-label='Notes'] > a[href='/notes']"
+      "screen": "folders-list",
+      "selector": "ul[aria-label='Folders'] > li:first-child > a"
     },
     "phone.row.icon": {
-      "screen": "home",
-      "selector": "nav[aria-label='Notes'] > a[href='/notes'] > span:first-child"
+      "screen": "folders-list",
+      "selector": "ul[aria-label='Folders'] > li:first-child > a > span:first-child"
     },
     "phone.row.icon.svg": {
       "screen": "home",
-      "selector": "nav[aria-label='Notes'] > a[href='/notes'] > span:first-child > svg"
+      "selector": "nav[aria-label='More'] a[href='/templates'] > span:first-child > svg"
     },
     "phone.row.body": {
-      "screen": "home",
-      "selector": "nav[aria-label='Notes'] > a[href='/notes'] > span.ui-row-sep"
+      "screen": "folders-list",
+      "selector": "ul[aria-label='Folders'] > li:first-child > a > span.ui-row-sep"
     },
     "phone.row.label": {
-      "screen": "home",
-      "selector": "nav[aria-label='Notes'] > a[href='/notes'] > span.ui-row-sep > span"
+      "screen": "folders-list",
+      "selector": "ul[aria-label='Folders'] > li:first-child > a > span.ui-row-sep > span"
     },
     "phone.row.chevron": {
-      "screen": "home",
-      "selector": "nav[aria-label='Notes'] > a[href='/notes'] > span.ui-row-sep > svg"
+      "screen": "folders-list",
+      "selector": "ul[aria-label='Folders'] > li:first-child > a > span.ui-row-sep > svg"
     },
     "phone.row.detail": {
-      "screen": "home",
-      "selector": "nav[aria-label='Notes'] > a[href='/drafts'] > span.ui-row-sep > span:nth-child(2)"
+      "screen": "folders-list",
+      "selector": "ul[aria-label='Folders'] > li:first-child > a > span.ui-row-sep > span:nth-child(2)"
     },
     "phone.catchup.icon": {
       "screen": "home",
-      "selector": "nav[aria-label='Notes'] > div > button > span:first-child > svg"
+      "selector": "button[aria-label='Catch me up'] > span:first-child > svg"
     },
     "phone.section": {
       "screen": "home",

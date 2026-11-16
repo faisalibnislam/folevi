@@ -819,6 +819,8 @@
      (--row-sep-overhang, the rows' 16 px), so it runs on under a row that's swiped open, as on iOS. */
   .ui-row-sep { position: relative; }
   .ui-row-sep::after { content: ""; position: absolute; left: 0; bottom: 0; right: calc(-1 * var(--row-sep-overhang, 16px)); height: 0.5px; background: var(--iphone-separator); pointer-events: none; }
+  /* Home's rounded cards of rows (RowGroup): no hairline under the last row. */
+  .ui-row-group > :last-child .ui-row-sep::after { display: none; }
 }
 @keyframes iphone-sheet-in { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes iphone-card-in { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }

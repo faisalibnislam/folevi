@@ -23,10 +23,10 @@ import { NOTE_CARD_LINK, NoteCardFace } from "@/components/views/DocumentCard";
 import { NoteContextMenu, contextPoint, type Summary } from "@/components/views/DocumentBrowser";
 import { RootAvatar, RootPill } from "./RootBar";
 import { useIphoneActions } from "./IphoneShell";
-import { EmptyBox, HomeSection, ListRow, SearchField } from "./Rows";
+import { EmptyBox, HomeSection, HomeTile, ListRow, RowGroup, SearchField } from "./Rows";
 
 const CAROUSEL = 10;
-const SHOWN = 6;
+const SHOWN = 5;
 
 /** A recent note in Home's row: the note's own card (its look and opening text), a long press for its actions. */
 function RecentCard({ doc }: { doc: Summary }) {
@@ -84,8 +84,9 @@ export function NoteRow({ doc }: { doc: Summary }) {
 
 /**
  * Home in the iPhone app: the avatar (account and places) and notifications at the top, a large title, the
- * search field, recent notes as cards in a row, then All notes, Drafts, Shared with Me and Changes as rows,
- * Bookmarks, Folders and Tags sections, and Templates, Archive and Trash at the end.
+ * search field, recent notes as cards in a row, Catch me up as its own card, All notes, Drafts, Shared with Me
+ * and Changes as tiles two by two, Bookmarks, Folders and Tags sections (rows in rounded cards), and Templates,
+ * Archive and Trash in a card at the end.
  */
 export function IphoneHome() {
   const { scope, workspace, outbox } = useAppState();
@@ -159,20 +160,24 @@ export function IphoneHome() {
         </div>
       )}
 
-      <nav aria-label="Notes" data-iphone-tappable="">
-        {aiOn ? <CatchUp row /> : null}
-        <ListRow href="/notes" icon={<Files />} label="All notes" />
-        <ListRow href="/drafts" icon={<Inbox />} label="Drafts" detail={drafts || undefined} />
-        {caps.sharing ? <ListRow href="/shared" icon={<Share2 />} label="Shared with Me" /> : null}
-        {caps.changes ? <ListRow href="/changes" icon={<FileDiff />} label="Changes" detail={changeCount || undefined} /> : null}
-        {reviews?.hasCards ? <ListRow href="/review" icon={<Layers />} label="Reviews" detail={waitingReviews || undefined} /> : null}
+      {aiOn ? <CatchUp row /> : null}
+      {/* Two by two; an odd last tile (Reviews) takes the whole row. */}
+      <nav aria-label="Notes" data-iphone-tappable="" className={`grid grid-cols-2 gap-2.5 px-4 ${aiOn ? "pt-2.5" : ""}`}>
+        <HomeTile href="/notes" icon={<Files />} label="All notes" />
+        <HomeTile href="/drafts" icon={<Inbox />} label="Drafts" count={drafts || undefined} />
+        {caps.sharing ? <HomeTile href="/shared" icon={<Share2 />} label="Shared with Me" /> : null}
+        {caps.changes ? <HomeTile href="/changes" icon={<FileDiff />} label="Changes" count={changeCount || undefined} /> : null}
+        {reviews?.hasCards ? <HomeTile href="/review" icon={<Layers />} label="Reviews" count={waitingReviews || undefined} /> : null}
       </nav>
 
-      <HomeSection id="starred" title="Bookmarks" href="/starred" empty={starred && !starred.page.length ? <EmptyBox>Bookmark notes to keep them close</EmptyBox> : undefined}>
-        {(starred?.page ?? []).slice(0, SHOWN).map((d) => (
-          <NoteRow key={d.id} doc={d} />
-        ))}
-        {starred && starred.page.length > SHOWN ? <ListRow href="/starred" label={<span className="text-muted">See all bookmarks</span>} /> : null}
+      <HomeSection id="starred" title="Bookmarks" href="/starred" seeAll={starred && starred.page.length > SHOWN ? "/starred" : undefined} empty={starred && !starred.page.length ? <EmptyBox>Bookmark notes to keep them close</EmptyBox> : undefined}>
+        {starred?.page.length ? (
+          <RowGroup label="Bookmarks">
+            {starred.page.slice(0, SHOWN).map((d) => (
+              <NoteRow key={d.id} doc={d} />
+            ))}
+          </RowGroup>
+        ) : null}
       </HomeSection>
 
       <HomeSection
@@ -200,16 +205,20 @@ export function IphoneHome() {
 
       {tags.length ? (
         <HomeSection id="tags" title="Tags" collapsible defaultOpen={false}>
-          {tags.map((t) => (
-            <ListRow key={t.id} href={`/tags/${t.id}`} icon={<Hash style={{ color: `var(--color-${t.color === "muted" ? "ink-muted" : t.color})` }} />} label={t.name} />
-          ))}
+          <RowGroup label="Tags">
+            {tags.map((t) => (
+              <ListRow key={t.id} href={`/tags/${t.id}`} icon={<Hash style={{ color: `var(--color-${t.color === "muted" ? "ink-muted" : t.color})` }} />} label={t.name} />
+            ))}
+          </RowGroup>
         </HomeSection>
       ) : null}
 
-      <nav aria-label="More" data-iphone-tappable="" className="mt-5">
-        <ListRow href="/templates" icon={<LayoutTemplate />} label="Templates" />
-        <ListRow href="/archive" icon={<Archive />} label="Archive" />
-        <ListRow href="/trash" icon={<Trash2 />} label="Trash" />
+      <nav aria-label="More" data-iphone-tappable="" className="mt-7">
+        <RowGroup>
+          <ListRow href="/templates" icon={<LayoutTemplate />} label="Templates" />
+          <ListRow href="/archive" icon={<Archive />} label="Archive" />
+          <ListRow href="/trash" icon={<Trash2 />} label="Trash" />
+        </RowGroup>
       </nav>
     </ViewChrome>
   );

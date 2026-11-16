@@ -80,17 +80,24 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
 
   if (!data && !busy && row) {
     return (
-      <div>
-        {/* One line, as Home's other rows; what it does is said in its brief (and to screen readers here). */}
-        <button type="button" onClick={() => void run()} aria-description="A quick AI brief of this week’s notes and what’s due" className="ui-key-focus flex w-full items-center gap-3 pl-5 pr-4 text-left outline-none transition-colors duration-150 hover:bg-[var(--glass-hover)] active:bg-[var(--liquid-press)] active:duration-0">
-          <span aria-hidden className="grid w-7 flex-none place-items-center">
-            <AiIcon size={22} />
+      <div className="mx-4">
+        {/* Its own raised card on Home, the Foli AI flower and what it does in a line under its name. */}
+        <button
+          type="button"
+          onClick={() => void run()}
+          aria-label="Catch me up"
+          aria-description="A quick Foli AI brief of this week’s notes and what’s due"
+          className="ui-key-focus flex min-h-[68px] w-full items-center gap-3 rounded-container bg-[var(--glass-active)] px-4 py-3 text-left shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)] outline-none transition-[background-color,transform] duration-150 hover:bg-[var(--glass-hover)] active:scale-[0.98] active:bg-[var(--liquid-press)] active:duration-0 motion-reduce:active:scale-100"
+        >
+          <span aria-hidden className="grid h-9 w-9 flex-none place-items-center">
+            <AiIcon size={28} />
           </span>
-          <span className="ui-row-sep flex min-h-[52px] min-w-0 flex-1 items-center">
-            <span className="text-body leading-[22px] text-ink">Catch me up</span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="text-body font-semibold leading-[22px] text-heading">Catch me up</span>
+            <span className="text-subheadline leading-5 text-muted">A quick brief of this week’s notes</span>
           </span>
         </button>
-        {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mx-5 mt-2 text-subheadline text-danger" : "mx-5 mt-2"} /> : null}
+        {error ? <AiProblemNotice problem={error} className={error.kind === "other" ? "mx-1 mt-2 text-subheadline text-danger" : "mx-1 mt-2"} /> : null}
       </div>
     );
   }
@@ -112,7 +119,7 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
   }
 
   return (
-    <section aria-label="Catch-up brief" className={`${row ? "mx-4 mb-2" : ""} mt-6 rounded-container bg-[var(--glass-active)] p-5 shadow-[var(--glass-edge),var(--glass-shadow)]`}>
+    <section aria-label="Catch-up brief" className={`${row ? "mx-4" : "mt-6"} rounded-container bg-[var(--glass-active)] p-5 shadow-[var(--glass-edge),var(--glass-shadow)]`}>
       <div className="mb-2 flex items-center gap-2">
         <AiIcon size={15} aria-hidden className="text-[#7c6cf0]" />
         <h2 className="ui-display flex-1 text-title-3">Your week</h2>

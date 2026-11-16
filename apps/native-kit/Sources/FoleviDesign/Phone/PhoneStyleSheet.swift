@@ -467,7 +467,7 @@ struct ThemeChip<Art: View>: View {
                 art
                     .frame(width: 64, height: 80)
                     .clipShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular))
-                    .overlay { if !on { RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).strokeBorder(.black.opacity(0.16), lineWidth: 0.5) } }
+                    .overlay { if !on { Color.clear.imageOutline(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular)) } }
                     .overlay {
                         if loading {
                             ZStack {
@@ -505,7 +505,7 @@ struct ThemeChip<Art: View>: View {
 
 private struct SwatchPress: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.scaleEffect(configuration.isPressed ? 0.95 : 1).animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+        configuration.label.scaleEffect(configuration.isPressed && !WebMotion.reduced ? 0.96 : 1).animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 

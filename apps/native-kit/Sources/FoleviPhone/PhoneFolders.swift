@@ -241,6 +241,7 @@ public struct PhoneCardSheet<Content: View>: View {
     let close: () -> Void
     let content: Content
     @State private var shown = false
+    @State private var leaving = false
     @Environment(\.colorScheme) private var scheme
 
     public init(title: String, close: @escaping () -> Void, @ViewBuilder content: () -> Content) {
@@ -254,10 +255,10 @@ public struct PhoneCardSheet<Content: View>: View {
             ZStack {
                 Color.black.opacity(shown ? 0.25 : 0)
                     .ignoresSafeArea()
-                    .onTapGesture(perform: close)
+                    .onTapGesture(perform: dismiss)
                     .accessibilityHidden(true)
                 VStack(spacing: 0) {
-                    PhoneSheetHeader(title: title, close: close, leading: { EmptyView() }, trailing: { EmptyView() })
+                    PhoneSheetHeader(title: title, close: dismiss, leading: { EmptyView() }, trailing: { EmptyView() })
                         .padding(.top, 4)
                     content
                 }
@@ -268,14 +269,22 @@ public struct PhoneCardSheet<Content: View>: View {
                         .shadow(color: .black.opacity(0.18), radius: 24, y: 10)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.sheet, style: .continuous))
-                .scaleEffect(shown ? 1 : 0.94)
+                .scaleEffect(shown || WebMotion.reduced ? 1 : leaving ? 0.97 : 0.94)
                 .opacity(shown ? 1 : 0)
                 .accessibilityAddTraits(.isModal)
-                .accessibilityAction(.escape, close)
+                .accessibilityAction(.escape, dismiss)
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
-        .onAppear { withAnimation(.timingCurve(0.2, 0.9, 0.25, 1.05, duration: 0.26)) { shown = true } }
+        .onAppear { withAnimation(WebMotion.reduced ? .easeOut(duration: 0.15) : .timingCurve(0.2, 0.9, 0.25, 1.05, duration: 0.26)) { shown = true } }
+    }
+
+    /// Closing fades the card out (150 ms, ease-out, settling only to 0.97) before the host removes it, so it
+    /// never vanishes at once; softer than its way in.
+    private func dismiss() {
+        guard shown else { return }
+        leaving = true
+        withAnimation(.easeOut(duration: 0.15)) { shown = false } completion: { close() }
     }
 }
 
@@ -401,7 +410,7 @@ public struct PhoneNewFolderForm: View {
 /// A swatch pressed: it shrinks to 90%.
 struct PhoneSwatchPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.scaleEffect(configuration.isPressed ? 0.9 : 1).animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+        configuration.label.scaleEffect(configuration.isPressed && !WebMotion.reduced ? 0.96 : 1).animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 #endif

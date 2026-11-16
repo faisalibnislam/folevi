@@ -153,7 +153,7 @@ export function WeekStrip({ today, selected, onSelect, marked }: { today: string
         className="group flex h-12 min-w-0 flex-1 flex-col items-center pt-0.5 outline-none"
       >
         <span
-          className={`grid h-[34px] w-[34px] place-items-center rounded-capsule text-body leading-none tabular-nums transition-[background-color,color,transform] duration-200 group-active:scale-90 group-focus-visible:ring-2 group-focus-visible:ring-focus motion-reduce:transition-none ${
+          className={`grid h-[34px] w-[34px] place-items-center rounded-capsule text-body leading-none tabular-nums transition-[background-color,color,transform] duration-200 group-active:scale-[0.96] group-focus-visible:ring-2 group-focus-visible:ring-focus motion-reduce:transition-none ${
             isSelected ? "bg-heading font-semibold text-canvas" : isToday ? "bg-[color-mix(in_oklab,var(--color-ink)_9%,transparent)] font-semibold text-heading" : "text-ink"
           }`}
           style={!inMonth && !isSelected ? { opacity: 1 - 0.6 * fade } : undefined}

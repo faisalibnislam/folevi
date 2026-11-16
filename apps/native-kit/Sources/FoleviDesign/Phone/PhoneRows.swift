@@ -500,9 +500,10 @@ public struct PhoneSegmented: View {
         HStack(spacing: 2) {
             ForEach(options, id: \.id) { o in
                 let on = selection == o.id
-                Button { withAnimation(FoleviSpring.slide) { selection = o.id } } label: {
+                Button { withAnimation(WebMotion.reduced ? nil : FoleviSpring.slide) { selection = o.id } } label: {
                     Text(o.label)
                         .webText(WebTextStyle(size: WebTypeRole.callout.metrics.size, leading: WebTypeRole.callout.metrics.leading, weight: 550))
+                        .monospacedDigit()
                         .lineLimit(1)
                         .foregroundStyle(c(on ? FoleviTokens.Chrome.heading : FoleviTokens.Chrome.inkMuted))
                         // .ui-seg button: 0.6rem (10 pt) either side of the label, so a fitted control (Foli AI's Chat or

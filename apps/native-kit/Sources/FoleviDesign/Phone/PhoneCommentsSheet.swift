@@ -244,6 +244,7 @@ public struct PhoneCommentsSheetContent: View {
                 Button { filter = id } label: {
                     Text(n > 0 ? "\(label) · \(n)" : label)
                         .webText(WebTextStyle(size: WebTypeRole.callout.metrics.size, leading: WebTypeRole.callout.metrics.leading, weight: 550))
+                        .monospacedDigit()
                         .lineLimit(1)
                         .foregroundStyle(c(on ? FoleviTokens.Chrome.heading : FoleviTokens.Chrome.inkMuted))
                         .frame(maxWidth: .infinity, minHeight: 32)
@@ -442,7 +443,7 @@ public struct PhoneAvatar: View {
         Group {
             if let url, let u = URL(string: url) {
                 AsyncImage(url: u) { phase in
-                    if let image = phase.image { image.resizable().scaledToFill().frame(width: size, height: size).clipShape(shape) } else { initial }
+                    if let image = phase.image { image.resizable().scaledToFill().frame(width: size, height: size).clipShape(shape).imageOutline(shape) } else { initial }
                 }
             } else {
                 initial

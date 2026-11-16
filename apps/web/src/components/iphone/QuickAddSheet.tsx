@@ -80,7 +80,7 @@ export function PhoneQuickAdd({ onClose, currentDoc, initialDue }: { onClose: ()
           aria-busy={q.busy || undefined}
           className={`-mr-1.5 grid h-11 w-11 flex-none place-items-center rounded-capsule outline-none ${ready ? "" : "pointer-events-none"}`}
         >
-          <span className={`grid h-[34px] w-[34px] place-items-center rounded-capsule bg-heading text-canvas transition-[opacity,transform] active:scale-90 ${ready ? "" : "opacity-30"}`}>
+          <span className={`grid h-[34px] w-[34px] place-items-center rounded-capsule bg-heading text-canvas transition-[opacity,transform] active:scale-[0.96] ${ready ? "" : "opacity-30"}`}>
             <ArrowUp size={19} strokeWidth={2.6} aria-hidden />
           </span>
         </button>

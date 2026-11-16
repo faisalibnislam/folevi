@@ -120,7 +120,7 @@ public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: 
                         let y = geo.contentOffset.y + geo.contentInsets.top
                         return pins ? y : min(y, at + 1)
                     } action: { _, y in offset = y }
-                    .onChange(of: scrollToTop) { withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo("top", anchor: .top) } }
+                    .onChange(of: scrollToTop) { withAnimation(WebMotion.reduced ? nil : .easeInOut(duration: 0.35)) { proxy.scrollTo("top", anchor: .top) } }
                 }
                 .ignoresSafeArea()
                 barFade(height: safe.top + Self.barRoom)

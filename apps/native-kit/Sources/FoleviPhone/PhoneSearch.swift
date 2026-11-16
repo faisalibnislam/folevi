@@ -282,7 +282,8 @@ struct PhoneScopeChip: View {
         Button { action(frame) } label: {
             HStack(spacing: 4) {
                 Text(label).webText(WebTextStyle(size: 15, leading: 20)).lineLimit(1)
-                WebIconView(.chevronDown, size: 14).foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
+                WebIconView(.chevronDown, size: 14, strokeWidth: 2.4)
+                    .foregroundStyle(on ? FoleviTokens.Chrome.canvas.resolve(scheme).color.opacity(0.7) : FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
             }
             .foregroundStyle((on ? FoleviTokens.Chrome.canvas : FoleviTokens.Chrome.ink).resolve(scheme).color)
             .padding(.leading, 14)
@@ -293,7 +294,7 @@ struct PhoneScopeChip: View {
             .frame(height: 44)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PhoneChipPressStyle())
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
         .accessibilityLabel(label)
     }

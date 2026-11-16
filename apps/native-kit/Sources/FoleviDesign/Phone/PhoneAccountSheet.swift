@@ -170,6 +170,7 @@ public struct PhonePlaceRowView: View {
                 if row.badge > 0 {
                     Text(row.badge > 99 ? "99+" : "\(row.badge)")
                         .webText(WebTextStyle(size: WebTypeRole.caption1.metrics.size, leading: WebTypeRole.caption1.metrics.size, weight: FoleviTokens.FontWeight.semibold))
+                        .monospacedDigit()
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
                         .frame(minWidth: 20, minHeight: 20)
@@ -252,8 +253,11 @@ public struct PhonePlaceMarkView: View {
             switch mark {
             case .avatar(let name, let url):
                 picture(name: name, url: url).clipShape(Circle())
+                    .overlay { if url != nil { Color.clear.imageOutline(Circle()) } }
             case .workspace(let name, let url):
-                picture(name: name, url: url).clipShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular))
+                let corners = RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip, style: .circular)
+                picture(name: name, url: url).clipShape(corners)
+                    .overlay { if url != nil { Color.clear.imageOutline(corners) } }
             case .library(let icon):
                 WebIconView(icon, size: 20)
                     .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)

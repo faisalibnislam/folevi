@@ -213,6 +213,7 @@ struct PhoneSettingsRow<Icon: View, Trailing: View>: View {
                 // `max-w-[55%] flex-none truncate`: as wide as it needs, up to 55% of the row's content.
                 Text(value)
                     .webText(PhoneType.body())
+                    .monospacedDigit()
                     .lineLimit(1)
                     // (A place's path keeps both ends: "On My iPhone › … › Folevi", IPHONE-20.)
                     .truncationMode(value.contains("›") || value.contains("/") ? .middle : .tail)

@@ -115,7 +115,7 @@ public struct PhoneVaultScreen: View {
                             .webBox(PV.pair("header.more"))
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.webPlain)
                     .accessibilityLabel("More in the Vault")
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
                 }
@@ -167,7 +167,7 @@ public struct PhoneVaultScreen: View {
                     .padding(12)
                     .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip).stroke(PV.color("warning", scheme).opacity(0.4)))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.webPlain)
             .padding(.bottom, 12)
         }
         if v.accessReviewDue {
@@ -179,7 +179,7 @@ public struct PhoneVaultScreen: View {
                     .padding(12)
                     .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip).stroke(FoleviTokens.Chrome.line.resolve(scheme).color))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.webPlain)
             .padding(.bottom, 12)
         }
     }
@@ -498,7 +498,7 @@ struct PhoneNewPasscode: View {
                                 .webBox(PV.pair(on ? "setup.seg.on" : "setup.seg.off"))
                                 .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.webPlain)
                         .accessibilityAddTraits(on ? .isSelected : [])
                     }
                 }
@@ -638,7 +638,7 @@ private struct PhoneVaultGate: View {
                                 model.toast("Asked. A custodian's device shares the key with you again when they next open the Vault.", tone: .success)
                             }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.webPlain)
                         .underline()
                         .webText(PV.style("health.body", scheme).text)
                     }
@@ -784,7 +784,7 @@ private struct PhoneVaultEncryptionStep: View {
             .webBox(pair)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
     }
 
     private var secretForm: some View {

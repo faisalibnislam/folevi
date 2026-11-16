@@ -562,7 +562,7 @@ function MenuPanel({
         ? ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: "ease-out", fill: "forwards" })
         : prefersReducedMotion()
         ? ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: "linear", fill: "forwards" })
-        : ghost.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.9)" }], { duration: 160, easing: "ease-in", fill: "forwards" });
+        : ghost.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(0.96)" }], { duration: 150, easing: "ease-out", fill: "forwards" });
       fade.onfinish = () => ghost.remove();
       fade.oncancel = () => ghost.remove();
     };

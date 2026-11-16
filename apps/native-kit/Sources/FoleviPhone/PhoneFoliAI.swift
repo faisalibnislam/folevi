@@ -45,6 +45,7 @@ public struct PhoneAiThread: View {
     let host: PhoneAiHost
     let menus: PhoneMenus
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var following = true
     @State private var behind = false
     @State private var scrollProxy: ScrollViewProxy?
@@ -64,12 +65,16 @@ public struct PhoneAiThread: View {
             ZStack(alignment: .bottom) {
                 scroller
                 if behind {
-                    jump.padding(.bottom, 12).transition(.opacity)
+                    jump.padding(.bottom, 12)
+                        .transition(reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 8)))
                 }
             }
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: behind)
             PhoneAiDock(model: model, variant: variant, host: host, menus: menus, focused: $focused)
         }
         .environment(\.aiPhone, true)
+        // (As the Mac's chat: with Reduce Motion an answer appears whole instead of word by word.)
+        .onChange(of: reduceMotion, initial: true) { _, r in model.reduceMotion = r }
     }
 
     private var scroller: some View {
@@ -104,7 +109,7 @@ public struct PhoneAiThread: View {
                 guard !model.isEmpty else { return }
                 following = true
                 behind = false
-                withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo("end", anchor: .bottom) }
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { proxy.scrollTo("end", anchor: .bottom) }
             }
             .onChange(of: streamLength) { _, _ in
                 if !following { behind = true }
@@ -179,7 +184,7 @@ public struct PhoneAiThread: View {
         Button {
             following = true
             behind = false
-            withAnimation(.easeOut(duration: 0.25)) { scrollProxy?.scrollTo("end", anchor: .bottom) }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { scrollProxy?.scrollTo("end", anchor: .bottom) }
         } label: {
             HStack(spacing: 6) {
                 WebIconView(.arrowDown, size: 16)
@@ -189,6 +194,7 @@ public struct PhoneAiThread: View {
             .foregroundStyle(look.heading)
             .background(Capsule().fill(look.color("color-surface-raised")).shadow(color: .black.opacity(0.25), radius: 7, y: 4))
             .overlay(Capsule().strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
+            .padding(.vertical, 4).contentShape(Rectangle()).padding(.vertical, -4)
         }
         .buttonStyle(PhonePressFade())
     }
@@ -508,7 +514,8 @@ struct PhoneAiChips: View {
             .padding(.horizontal, s.padding.left)
             .frame(height: s.height)
             .foregroundStyle(s.color.color)
-            .contentShape(Rectangle())
+            // (Drawn 28 tall; the tap reaches 44, up and down only.)
+            .padding(.vertical, max(0, (44 - s.height) / 2)).contentShape(Rectangle()).padding(.vertical, -max(0, (44 - s.height) / 2))
         }
         .buttonStyle(PhonePressFade())
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { addFrame = $0 }
@@ -552,7 +559,8 @@ struct PhoneAiChips: View {
             label()
             if let remove {
                 Button(action: remove) {
-                    WebIconView(.x, size: 12).frame(width: 24, height: 24).foregroundStyle(look.muted).contentShape(Rectangle())
+                    WebIconView(.x, size: 12).frame(width: 24, height: 24).foregroundStyle(look.muted)
+                        .padding(.vertical, 10).contentShape(Rectangle()).padding(.vertical, -10)
                 }
                 .buttonStyle(PhonePressFade())
                 .padding(.trailing, 2)
@@ -795,7 +803,8 @@ public struct PhoneAiPage: View {
                 .padding(.horizontal, c.padding.left)
                 .frame(height: c.height)
                 .foregroundStyle(c.color.color)
-                .contentShape(Rectangle())
+                // (Drawn 32 tall in a 44 row; the tap fills the row's height.)
+                .padding(.vertical, max(0, (44 - c.height) / 2)).contentShape(Rectangle()).padding(.vertical, -max(0, (44 - c.height) / 2))
             }
             .buttonStyle(PhonePressFade())
             Text(title).webText(t.text).lineLimit(1).truncationMode(.tail).foregroundStyle(t.color.color)
@@ -1027,10 +1036,10 @@ struct PhonePressFade: ButtonStyle {
     }
 }
 
-/// `group-active:scale-90` (Send).
+/// `group-active:scale-[0.96]` (Send).
 struct PhonePressScale: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.scaleEffect(configuration.isPressed ? 0.9 : 1).animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+        configuration.label.scaleEffect(configuration.isPressed && !WebMotion.reduced ? 0.96 : 1).animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 #endif

@@ -98,7 +98,7 @@ export function NewFolderSheet({ open, onClose }: { open: boolean; onClose: () =
               >
                 <span
                   style={{ background: c.hex }}
-                  className={`grid h-[34px] w-[34px] place-items-center rounded-capsule shadow-[inset_0_0_0_0.5px_rgb(0_0_0/0.16)] transition-transform group-active:scale-90 group-focus-visible:ring-2 group-focus-visible:ring-focus ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--liquid-fill-strong)]" : ""}`}
+                  className={`grid h-[34px] w-[34px] place-items-center rounded-capsule shadow-[inset_0_0_0_0.5px_rgb(0_0_0/0.16)] transition-transform group-active:scale-[0.96] group-focus-visible:ring-2 group-focus-visible:ring-focus ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--liquid-fill-strong)]" : ""}`}
                 >
                   {on ? <Check size={17} strokeWidth={2.6} className="text-[#17171a]" aria-hidden /> : null}
                 </span>

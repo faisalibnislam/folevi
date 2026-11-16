@@ -99,7 +99,7 @@ public struct PhoneFrameView<Screen: View>: View {
                     .padding(.leading, geo.safeAreaInsets.leading)
                     .padding(.trailing, geo.safeAreaInsets.trailing)
                     .padding(.bottom, max(10, geo.safeAreaInsets.bottom - 10))
-                    .offset(y: hidden ? 64 * 1.4 + 20 : 0)
+                    .offset(y: hidden && !WebMotion.reduced ? 64 * 1.4 + 20 : 0)
                     .opacity(hidden ? 0 : 1)
                     .animation(FoleviSpring.slide, value: hidden)
                     .allowsHitTesting(!hidden)

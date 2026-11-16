@@ -193,6 +193,30 @@ struct WebPressStyle: ButtonStyle {
     }
 }
 
+/// A menu row pressed. iOS: the ink at 10% under it at once, fading back over 150 ms, and no dip (globals.css
+/// `.ui-menu-item:active` under data-iphone/data-native="ios": a full-width row that shrank read as the menu
+/// moving). Elsewhere the usual press (the Mac darkens).
+struct WebMenuRowPressStyle: ButtonStyle {
+    let radius: CGFloat
+    @Environment(\.colorScheme) private var scheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        #if os(iOS)
+        configuration.label
+            .contentShape(Rectangle())
+            .background {
+                if configuration.isPressed {
+                    RoundedRectangle(cornerRadius: radius, style: .circular)
+                        .fill(FoleviTokens.Chrome.ink.resolve(scheme).color.opacity(0.10))
+                }
+            }
+            .animation(configuration.isPressed ? nil : .easeOut(duration: 0.15), value: configuration.isPressed)
+        #else
+        configuration.label.contentShape(Rectangle()).pressDip(configuration.isPressed)
+        #endif
+    }
+}
+
 /// The Select trigger (ui/Select.tsx) in an input well: the chosen label and a chevron.
 public struct WebSelectTrigger: View {
     let label: String
@@ -499,7 +523,7 @@ public struct WebMenuPanel: View {
                     }
                 }
             }
-            .buttonStyle(WebPressStyle()) // (hover: the row highlight, onHover below)
+            .buttonStyle(WebMenuRowPressStyle(radius: s.radius)) // (hover: the row highlight, onHover below)
             // A disabled row (MAC-01): faded, never highlighted, takes no click (the menu stays open, as the web's).
             .disabled(item.disabled)
             .opacity(item.disabled ? Self.disabledOpacity : 1)

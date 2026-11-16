@@ -330,7 +330,7 @@ struct PhoneSheetRowLabel: View {
             Text(label).webText(PhoneType.body()).lineLimit(1).foregroundStyle(C(FoleviTokens.Chrome.ink, scheme))
                 .frame(maxWidth: .infinity, alignment: .leading)
             // (The value keeps its width, up to 55% of the row, as `max-w-[55%] flex-none`.)
-            Text(value).webText(PhoneType.body()).lineLimit(1)
+            Text(value).webText(PhoneType.body()).lineLimit(1).monospacedDigit()
                 .foregroundStyle(C(danger ? FoleviTokens.Chrome.destructive : FoleviTokens.Chrome.inkMuted, scheme))
                 .layoutPriority(1)
             if let chevron { PhoneSheetChevron(turned: chevron) }

@@ -22,7 +22,7 @@ export function RootAvatar() {
       type="button"
       aria-label={`${workspace ? workspace.name : "Personal"}: account and places`}
       onClick={openAccount}
-      className="grid h-11 w-11 place-items-center rounded-capsule outline-none transition-transform active:scale-[0.92] focus-visible:ring-2 focus-visible:ring-focus"
+      className="grid h-11 w-11 place-items-center rounded-capsule outline-none transition-transform active:scale-[0.96] focus-visible:ring-2 focus-visible:ring-focus"
     >
       {workspace ? <WorkspaceLogo workspace={workspace} size={34} className="shadow-[0_0_0_0.5px_rgb(0_0_0/0.12)]" /> : <PersonalMark size={34} className="!rounded-capsule shadow-[0_0_0_0.5px_rgb(0_0_0/0.12)]" />}
     </button>
@@ -64,7 +64,7 @@ export function MoreMenu({ items, label = "More" }: { items: MenuEntry[]; label?
     <MenuButton
       label={label}
       align="end"
-      triggerClassName="grid h-11 min-w-11 place-items-center rounded-capsule px-2.5 text-heading outline-none transition-transform active:scale-[0.92] focus-visible:ring-2 focus-visible:ring-focus"
+      triggerClassName="grid h-11 min-w-11 place-items-center rounded-capsule px-2.5 text-heading outline-none transition-transform active:scale-[0.96] focus-visible:ring-2 focus-visible:ring-focus"
       trigger={<MoreHorizontal size={24} strokeWidth={2.2} aria-hidden />}
       items={items}
     />

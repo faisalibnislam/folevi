@@ -136,10 +136,10 @@ public struct PhoneNotesListScreen: View {
                         if action != .move && action != .copy { setSelecting(false) }
                     }
                 }
-                .transition(.move(edge: .bottom))
+                .transition(WebMotion.reduced ? .opacity : .move(edge: .bottom))
             }
         }
-        .animation(.spring(response: 0.35, dampingFraction: 0.9), value: model.selecting)
+        .animation(WebMotion.reduced ? .easeOut(duration: 0.15) : .spring(response: 0.35, dampingFraction: 0.9), value: model.selecting)
         // (The finger moves the card, not the list, while one is held.)
         .scrollDisabled(drag != nil)
         .onChange(of: model.slotIdentity) { _, _ in if drag == nil, !(arranging && model.sort != .manual) { order = nil } }
@@ -199,7 +199,7 @@ public struct PhoneNotesListScreen: View {
     /// A card's long-press menu, with Arrange notes when the cards can be arranged.
     private func cardMenu(_ row: NoteRow, _ frame: CGRect) {
         if canArrange, let arrangeMenu = actions.arrangeMenu {
-            arrangeMenu(row, frame) { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { arranging = true } }
+            arrangeMenu(row, frame) { withAnimation(WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.8)) { arranging = true } }
         } else {
             actions.rowMenu(row, frame)
         }
@@ -216,7 +216,7 @@ public struct PhoneNotesListScreen: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             #endif
             order = order ?? model.slots.map(\.id)
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+            withAnimation(WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.75)) {
                 arranging = true
                 drag = CardDrag(id: row.id, grab: CGSize(width: start.x - f.minX, height: start.y - f.minY), location: now)
             }
@@ -237,13 +237,13 @@ public struct PhoneNotesListScreen: View {
         #if canImport(UIKit)
         UISelectionFeedbackGenerator().selectionChanged()
         #endif
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) { order = next }
+        withAnimation(WebMotion.reduced ? nil : .spring(response: 0.32, dampingFraction: 0.82)) { order = next }
     }
 
     /// Let go: the card settles in its place, and the list keeps the order.
     private func drop() {
         guard let held = drag else { return }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { drag = nil }
+        withAnimation(WebMotion.reduced ? nil : .spring(response: 0.3, dampingFraction: 0.8)) { drag = nil }
         // (In another sort the order is kept on show and saved at Done, as the manual order.)
         guard model.sort == .manual else { return }
         let ids = model.slots.map(\.id)
@@ -342,7 +342,7 @@ public struct PhoneNotesListScreen: View {
                             }
                             .phoneZoomSource(row.id)
                             .modifier(PhoneWiggle(on: arranging && !held, clockwise: at.isMultiple(of: 2)))
-                            .scaleEffect(held ? 1.06 : 1)
+                            .scaleEffect(held && !WebMotion.reduced ? 1.06 : 1)
                             .shadow(color: .black.opacity(held ? 0.22 : 0), radius: held ? 18 : 0, y: held ? 10 : 0)
                             .offset(liftOffset(row.id))
                             .zIndex(held ? 1 : 0)
@@ -485,7 +485,7 @@ struct PhonePressable<Content: View>: View {
             .background {
                 if highlight && pressed { WebStyles.vars["liquid-press"]?.resolve(scheme).color ?? Color.black.opacity(0.06) }
             }
-            .scaleEffect(pressed ? scale : 1)
+            .scaleEffect(pressed && !WebMotion.reduced ? scale : 1)
             .animation(.easeOut(duration: pressed ? 0 : 0.15), value: pressed)
             // (An iPad's pointer: a row lights up under it, a card lifts. IPAD-21.)
             .hoverEffect(highlight ? .highlight : .lift)

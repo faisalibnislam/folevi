@@ -11,9 +11,9 @@ public struct GlassPressStyle: ButtonStyle {
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .contentShape(Rectangle())
-            .scaleEffect(configuration.isPressed ? 1.07 : 1)
+            .scaleEffect(configuration.isPressed && !WebMotion.reduced ? 1.07 : 1)
             .brightness(configuration.isPressed ? 0.06 : 0)
-            .animation(configuration.isPressed ? .easeOut(duration: 0.16) : .timingCurve(0.34, 1.56, 0.64, 1, duration: 0.38), value: configuration.isPressed)
+            .animation(WebMotion.reduced ? .linear(duration: 0.08) : configuration.isPressed ? .easeOut(duration: 0.16) : .timingCurve(0.34, 1.56, 0.64, 1, duration: 0.38), value: configuration.isPressed)
     }
 }
 
@@ -201,7 +201,7 @@ public struct PhoneTabBar: View {
                     .frame(width: 64, height: 56)
                     .scaleEffect(x: stretch, y: 2 - stretch, anchor: .center)
                     .offset(x: CGFloat(i) * 66)
-                    .animation(FoleviSpring.slide, value: i)
+                    .animation(WebMotion.reduced ? nil : FoleviSpring.slide, value: i)
             }
         }
         .padding(4)

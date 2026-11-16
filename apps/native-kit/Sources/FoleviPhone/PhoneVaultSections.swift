@@ -164,9 +164,9 @@ struct PhoneVaultSelect: View {
             .fixedSize(horizontal: !fixedWidth, vertical: false)
             .foregroundStyle(s.color.color)
             .webBox(PV.pair(style))
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        // (36 drawn, 44 to tap.)
+        .buttonStyle(PhoneTallPress(grow: max(0, (44 - s.height) / 2)))
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame = $0 }
         .accessibilityValue(label)
     }
@@ -266,9 +266,9 @@ struct PhoneVaultFiles: View {
                 .foregroundStyle(s.color.color)
                 .frame(width: s.width, height: s.height)
                 .webBox(PV.pair(on ? "files.seg.on" : "files.seg.off"))
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        // (32 drawn, 44 to tap.)
+        .buttonStyle(PhoneTallPress(grow: max(0, (44 - s.height) / 2)))
         .accessibilityLabel(label)
         .accessibilityAddTraits(on ? .isSelected : [])
     }
@@ -316,7 +316,7 @@ struct PhoneVaultFiles: View {
             .webBox(PV.pair("files.folder"))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
     }
 
     private func card(_ e: VaultItemRow, all: [VaultItemRow]) -> some View {
@@ -337,7 +337,7 @@ struct PhoneVaultFiles: View {
             .webBox(PV.pair("files.card"))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
     }
 
     private func openFolder(_ f: VaultFolderRow) {
@@ -439,10 +439,12 @@ struct PhoneVaultPasswords: View {
                         PhoneVaultList {
                             ForEach(shown, id: \.id) { o in
                                 PhoneVaultRow(title: o.title, detail: o.detail, selected: model.selected == o.id, action: { model.selected = model.selected == o.id ? nil : o.id }) { PhoneVaultTime(ms: o.updatedAt) }
-                                    .contextMenu {
-                                        Button("Open", systemImage: "key") { model.selected = o.id }
-                                        Button("Duplicate", systemImage: "plus.square.on.square") { duplicate(o.id) }
-                                    }
+                                    .modifier(PhoneVaultHoldMenu(menus: menus) {
+                                        [
+                                            PhoneMenuEntry(.item("Open", icon: .keyRound)) { model.selected = o.id },
+                                            PhoneMenuEntry(.item("Duplicate", icon: .copyPlus)) { duplicate(o.id) },
+                                        ]
+                                    })
                             }
                         }
                     }
@@ -567,7 +569,7 @@ struct PhoneVaultItemPanel: View {
                 .webBox(PV.pair("item.icon"))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.webPlain)
         .accessibilityLabel(label)
     }
 
@@ -635,7 +637,9 @@ struct PhoneVaultTotp: View {
                     .font(.system(size: 20, design: .monospaced))
                     .tracking(2.4)
                     .foregroundStyle(FoleviTokens.Chrome.heading.resolve(scheme).color)
-                Text(code == nil ? "" : "\(seconds)s").webText(PV.style("item.sub", scheme).text).foregroundStyle(PV.style("item.sub", scheme).color.color)
+                Text(code == nil ? "" : "\(seconds)s").webText(PV.style("item.sub", scheme).text).monospacedDigit()
+                    .frame(minWidth: 26, alignment: .trailing)
+                    .foregroundStyle(PV.style("item.sub", scheme).color.color)
                 WebIconButton(.copy, label: "Copy the code") { if let code { model.copy("2FA code", code, itemId: itemId, event: "totp.copy") } }
             }
             Spacer(minLength: 0)
@@ -997,20 +1001,55 @@ struct PhoneVaultPeople: View {
                                 Text(person.role == "custodian" ? "Custodian" : "Member").webText(detail.text).foregroundStyle(detail.color.color)
                             }
                         }
-                        .contextMenu {
-                            if person.role != "owner" && (p.canAdd || person.isYou) {
-                                Button(person.isYou ? "Leave" : "Remove", systemImage: "person.badge.minus", role: .destructive) {
+                        .modifier(PhoneVaultHoldMenu(menus: menus) {
+                            guard person.role != "owner" && (p.canAdd || person.isYou) else { return [] }
+                            return [
+                                PhoneMenuEntry(.item(person.isYou ? "Leave" : "Remove", icon: person.isYou ? .logOut : .userMinus, danger: true)) {
                                     model.run {
                                         _ = try await model.client.command(.vaultPeopleRemove(vaultId: vaultId, profileId: person.profileId))
                                         model.toast(person.isYou ? "You left the Vault" : "Removed. The Vault's key changes when a custodian next opens it.")
                                     }
-                                }
-                            }
-                        }
+                                },
+                            ]
+                        })
                     }
                 }
             }
         }
+    }
+}
+/// Held: Folevi's own menu with its icons, as every other menu in the app (IPHONE-09: not the system's context menu
+/// with SF Symbols). Nothing happens when there's nothing to offer.
+struct PhoneVaultHoldMenu: ViewModifier {
+    let menus: PhoneMenus
+    let entries: () -> [PhoneMenuEntry]
+    /// Where it is on screen (a box, so writing it doesn't redraw).
+    @State private var place = PhonePressPlace()
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { place.frame = $0 }
+            .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in
+                let list = entries()
+                guard !list.isEmpty else { return }
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                menus.show(list, from: place.frame, side: .bottom, align: .start)
+            })
+            .accessibilityAction(named: "More actions") {
+                let list = entries()
+                if !list.isEmpty { menus.show(list, from: place.frame, side: .bottom, align: .start) }
+            }
+    }
+}
+/// The app's press (a 0.96 dip, none under Reduce Motion) for a control drawn under 44 pt tall: its tap grows
+/// `grow` points up and down only, so controls side by side never take each other's taps.
+struct PhoneTallPress: ButtonStyle {
+    var grow: CGFloat
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.vertical, grow).contentShape(Rectangle()).padding(.vertical, -grow)
+            .pressDip(configuration.isPressed)
     }
 }
 #endif

@@ -313,7 +313,7 @@ function Choice({ label, on, onPick, children, wide }: { label: string; on: bool
       }}
       className={
         phone
-          ? `relative mx-auto h-11 w-11 overflow-hidden iphone-round transition-transform active:scale-95 ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--iphone-solid)]" : "shadow-[inset_0_0_0_0.5px_rgb(0_0_0/0.16)]"}`
+          ? `relative mx-auto h-11 w-11 overflow-hidden iphone-round transition-transform active:scale-[0.96] ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--iphone-solid)]" : "ui-img-outline"}`
           : `relative overflow-hidden rounded-chip transition-transform hover:-translate-y-px ${wide ? "h-12" : "h-9"} ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--color-surface)]" : "shadow-[var(--shadow-hairline)]"}`
       }
     >
@@ -338,7 +338,7 @@ function ThemeChip({ label, art, on, locked, onPick }: { label: string; art: str
     >
       <span
         aria-hidden
-        className={`relative block h-20 w-16 overflow-hidden rounded-panel transition-[transform,filter] group-hover:brightness-95 active:scale-95 ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--iphone-solid)]" : "shadow-[inset_0_0_0_0.5px_rgb(0_0_0/0.16)]"}`}
+        className={`relative block h-20 w-16 overflow-hidden rounded-panel transition-[transform,filter] group-hover:brightness-95 active:scale-[0.96] ${on ? "ring-2 ring-heading ring-offset-2 ring-offset-[var(--iphone-solid)]" : "ui-img-outline"}`}
         style={{ background: art }}
       >
         {locked ? (

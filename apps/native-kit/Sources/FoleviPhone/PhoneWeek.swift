@@ -227,6 +227,7 @@ public struct PhoneWeekGrid: View {
             ZStack(alignment: .topLeading) {
                 Text(Date.now.formatted(date: .omitted, time: .shortened))
                     .webText(WebTextStyle(size: 10, leading: 12, weight: FoleviTokens.FontWeight.semibold))
+                    .monospacedDigit()
                     .lineLimit(1)
                     .fixedSize()
                     .foregroundStyle(ember)

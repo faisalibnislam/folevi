@@ -10,7 +10,7 @@ import { ArrowUp } from "lucide-react";
 export function SendButton({ label, className = "", ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
   return (
     <button type="button" aria-label={label} {...rest} className={`group grid h-11 w-11 flex-none place-items-center rounded-capsule outline-none disabled:pointer-events-none ${className}`}>
-      <span className="grid h-[34px] w-[34px] place-items-center rounded-capsule bg-heading text-canvas transition-[opacity,transform] duration-150 group-active:scale-90 group-disabled:opacity-30 group-focus-visible:ring-2 group-focus-visible:ring-focus">
+      <span className="grid h-[34px] w-[34px] place-items-center rounded-capsule bg-heading text-canvas transition-[opacity,transform] duration-150 group-active:scale-[0.96] group-disabled:opacity-30 group-focus-visible:ring-2 group-focus-visible:ring-focus">
         <ArrowUp size={19} strokeWidth={2.4} aria-hidden />
       </span>
     </button>

@@ -253,9 +253,14 @@ struct PhoneAccountSettings: View {
                     PhoneSettingsRow(s.label, description: "\(s.client) · Last active \(ago(s.lastSeenAt))") {
                         PhoneRowIcon(.monitorSmartphone)
                     } trailing: {
-                        Button("Sign out") { Task { await model.perform(.sessionRevoke(id: s.id), done: "Signed out") } }
-                            .webText(PhoneType.body())
-                            .foregroundStyle(FoleviTokens.Chrome.destructive.resolve(scheme).color)
+                        // (The whole 44 pt around the word takes the tap, not just its letters.)
+                        Button { Task { await model.perform(.sessionRevoke(id: s.id), done: "Signed out") } } label: {
+                            Text("Sign out")
+                                .webText(PhoneType.body())
+                                .foregroundStyle(FoleviTokens.Chrome.destructive.resolve(scheme).color)
+                                .frame(minHeight: 44).padding(.horizontal, 8).contentShape(Rectangle())
+                        }
+                        .buttonStyle(PhoneChipPressStyle())
                     }
                 }
             }

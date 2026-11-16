@@ -113,13 +113,13 @@ public struct PhoneMenuLayer: View {
                     // (IPHONE-25).
                     .overlay {
                         if scheme == .dark {
-                            RoundedRectangle(cornerRadius: WebStyles.named("menu.panel").resolve(scheme).radius, style: .continuous)
+                            RoundedRectangle(cornerRadius: WebStyles.named("menu.panel").resolve(scheme).radius, style: .circular)
                                 .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5)
                                 .allowsHitTesting(false)
                         }
                     }
                     .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
-                    .scaleEffect(reduceMotion ? 1 : leaving ? 0.9 : grown ? 1 : 0.5, anchor: spot.anchorPoint)
+                    .scaleEffect(reduceMotion ? 1 : leaving ? 0.96 : grown ? 1 : 0.5, anchor: spot.anchorPoint)
                     .opacity(leaving ? 0 : grown ? 1 : 0)
                     .offset(x: spot.origin.x, y: spot.origin.y)
                     .opacity(size == .zero ? 0 : 1)
@@ -146,7 +146,7 @@ public struct PhoneMenuLayer: View {
                 }
             } else if shown != nil {
                 let gone = shown?.id
-                withAnimation(reduceMotion ? .linear(duration: 0.15) : .easeIn(duration: 0.16)) { leaving = true } completion: {
+                withAnimation(reduceMotion ? .linear(duration: 0.15) : .easeOut(duration: 0.15)) { leaving = true } completion: {
                     if shown?.id == gone {
                         shown = nil
                         size = .zero

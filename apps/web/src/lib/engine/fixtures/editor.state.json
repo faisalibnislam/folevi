@@ -27,6 +27,26 @@
       "calloutTone": null,
       "codeLanguage": null,
       "blockTools": true
+    },
+    "menu": {
+      "actions": [
+        "share",
+        "move",
+        "duplicate",
+        "export",
+        "history",
+        "present",
+        "print",
+        "find",
+        "delete",
+        "moveToVault",
+        "saveAsTemplate",
+        "showEditors"
+      ],
+      "related": true,
+      "showingEditors": false,
+      "readImages": 0,
+      "readingImages": false
     }
   }
 }

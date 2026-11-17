@@ -89,6 +89,8 @@ public struct IPadFrameView<Page: View>: View {
             .ignoresSafeArea(.container, edges: .vertical)
             // A swipe in from the left edge brings the floating sidebar out (IPAD-16: only its button did).
             .gesture(SidebarEdgePan { if model.sidebarFloats && !model.sidebarOverlayShown { model.sidebarOverlayShown = true } })
+            // A secondary click where nothing has a menu of its own: New note, Search, Ask Foli AI, Back, Forward.
+            .appContextMenu(model)
             .onChange(of: g.size.width, initial: true) { _, width in
                 let floats = width < IPadFrameMetrics.floatingSidebarBelow
                 if floats != model.sidebarFloats {

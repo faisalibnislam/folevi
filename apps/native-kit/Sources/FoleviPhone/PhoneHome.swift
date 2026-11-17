@@ -1,7 +1,7 @@
 // Home on the iPhone, as the web draws it (apps/web/src/components/iphone/IphoneHome.tsx): recent notes as cards
 // in a row, Catch me up as its own card, All notes, Drafts, Shared with Me, Changes and Reviews as tiles two by
 // two, Bookmarks (rows in a rounded card), Folders (their cards in a row) and Tags (folded at first), and
-// Templates, Archive and Trash in a card at the end. Everything
+// the Vault (for someone with one), Templates, Archive and Trash in a card at the end. Everything
 // comes from the engine's `home` view (HomeModel); the frame draws the bar, the large title and the search field.
 #if os(iOS)
 import SwiftUI
@@ -20,6 +20,9 @@ public struct PhoneHomeActions {
     public var folderMenu: (FolderCard, CGRect) -> Void = { _, _ in }
     /// A note's menu (its long press on a recent card or a Starred row), from where it was held.
     public var noteMenu: (NoteRow, CGRect) -> Void = { _, _ in }
+    /// A tag row's menu (its long press: Edit tag…, its colours, Delete tag…), from the row; nil where tags can't
+    /// be changed.
+    public var tagMenu: ((TagRow, CGRect) -> Void)?
 
     public init(open: @escaping (String) -> Void, openNote: @escaping (String) -> Void, foldersMenu: @escaping (CGRect) -> Void) {
         self.open = open
@@ -53,9 +56,13 @@ public struct PhoneHomeContent: View {
             folders
             if !model.tags.isEmpty { tags }
             PhoneRowGroup("More") {
+                // Only for someone with a Vault, as the web's sidebar lists it (the phone has no sidebar).
+                if model.hasVault {
+                    PhoneListRow("Vault", action: { actions.open("/vault") }) { PhoneRowGlyph(.lock) }
+                }
                 PhoneListRow("Templates", action: { actions.open("/templates") }) { PhoneRowGlyph(.layoutTemplate) }
                 PhoneListRow("Archive", action: { actions.open("/archive") }) { PhoneRowGlyph(.archive) }
-                PhoneListRow("Trash", action: { actions.open("/trash") }) { PhoneRowGlyph(.trash) }.phoneRowSeparator(false)
+                PhoneListRow("Trash", action: { actions.open("/trash") }) { PhoneRowGlyph(.trash) }
             }
             .padding(.top, 28)
         }
@@ -151,7 +158,6 @@ public struct PhoneHomeContent: View {
                 PhoneRowGroup("Bookmarks") {
                     ForEach(shown, id: \.id) { row in
                         PhoneListRow(row.title.isEmpty ? "Untitled" : row.title, action: { actions.openNote(row.id) }, onLongPress: { actions.noteMenu(row, $0) }) { PhoneRowGlyph(.fileText) }
-                            .phoneRowSeparator(row.id != shown.last?.id)
                     }
                 }
             }
@@ -189,14 +195,14 @@ public struct PhoneHomeContent: View {
 
     private var tags: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PhoneHomeSection("Tags", open: { withAnimation(.easeOut(duration: 0.2)) { tagsOpen.toggle() } }, opened: tagsOpen) {
+            // The heading folds the rows; See all opens every tag (/tags).
+            PhoneHomeSection("Tags", open: { withAnimation(.easeOut(duration: 0.2)) { tagsOpen.toggle() } }, opened: tagsOpen, seeAll: { actions.open("/tags") }) {
                 if tagsOpen {
                     PhoneRowGroup("Tags") {
                         ForEach(model.tags, id: \.id) { tag in
-                            PhoneListRow(tag.name, action: { actions.open("/tags/\(tag.id)") }) {
+                            PhoneListRow(tag.name, action: { actions.open("/tags/\(tag.id)") }, onLongPress: actions.tagMenu.map { menu in { menu(tag, $0) } }) {
                                 PhoneRowGlyph(.hash).foregroundStyle(Self.tagColor(tag.color, scheme).color)
                             }
-                            .phoneRowSeparator(tag.id != model.tags.last?.id)
                         }
                     }
                 }
@@ -205,14 +211,14 @@ public struct PhoneHomeContent: View {
     }
 
     /// `var(--color-<color>)`, the muted ink for "muted".
-    static func tagColor(_ color: String, _ scheme: ColorScheme) -> RGBA {
+    public static func tagColor(_ color: String, _ scheme: ColorScheme) -> RGBA {
         if color == "muted" { return FoleviTokens.Chrome.inkMuted.resolve(scheme) }
         return (WebStyles.vars["color-\(color)"] ?? FoleviTokens.Chrome.inkMuted).resolve(scheme)
     }
 }
 
 /// HomeTile: one of Home's places in the grid, the icon and its count on top, the name under them, in the sunken
-/// surface with the search field's corners (`rounded-panel bg-sunken p-3 min-h-[80px]`).
+/// card fill with the search field's corners (`rounded-panel bg-[var(--iphone-card)] p-3 min-h-[80px]`).
 struct PhoneHomeTile: View {
     let title: String
     let icon: WebIcon
@@ -249,7 +255,7 @@ struct PhoneHomeTile: View {
             }
             .padding(12)
             .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
-            .background(shape.fill(ink(FoleviTokens.Chrome.surfaceSunken)))
+            .background(shape.fill(ink(PhoneSurface.card)))
             .contentShape(shape)
         }
         .buttonStyle(PhoneTilePressStyle(shape: shape))
@@ -260,8 +266,8 @@ struct PhoneHomeTile: View {
     }
 }
 
-/// Catch me up on Home: its own raised card (the glass, its edge and a soft shadow), Foli AI's flower and what it
-/// does in a line under its name.
+/// Catch me up on Home: its own card in the tiles' light fill (no edge or shadow), Foli AI's flower and what it does
+/// in a line under its name.
 struct PhoneCatchUpCard: View {
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
@@ -287,9 +293,7 @@ struct PhoneCatchUpCard: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .frame(minHeight: 68)
-            .background {
-                WebShapeBox(shape: WebCornersShape(topLeft: r, topRight: r, bottomRight: r, bottomLeft: r), fill: ink(FoleviTokens.Glass.active), shadows: PhoneStyleSheetContent.glassEdge(scheme) + [ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.06))])
-            }
+            .background(shape.fill(ink(PhoneSurface.card)))
             .contentShape(shape)
         }
         .buttonStyle(PhoneTilePressStyle(shape: shape, scale: 0.98))

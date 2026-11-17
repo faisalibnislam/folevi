@@ -278,7 +278,7 @@ final class PhoneFrameController: UIViewController, PhoneRouting, PhoneNavigatio
         case .places: presentAccount(from: nil)
         case .note(let id), .noteInNewTab(let id): openNote(id, source: source, focus: false)
         case .foliAI: presentFoliAI()
-        case .invite, .movePlaces: model.toast("That comes to the app with the next update.")
+        case .invite, .movePlaces, .shareFolder: model.toast("That comes to the app with the next update.")
         case .web(let path):
             if let f = FeatureRoute(webRoute: path) { open(f) } else { model.toast("That page comes to the app with the next update.") }
         }

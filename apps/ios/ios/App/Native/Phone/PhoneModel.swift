@@ -57,6 +57,8 @@ final class PhoneModel {
     var keyboardOverlap: CGFloat = 0
     /// Shared by the + button, keyboard shortcut, widgets and deep links.
     var quickAddShown = false
+    /// "Move or copy notes" asked for (the account sheet, a folder's menu): its sheet shows while set.
+    var movePlaces: MovePlacesRequest?
 
     @ObservationIgnored weak var router: PhoneRouting?
     @ObservationIgnored private var eventsTask: Task<Void, Never>?
@@ -221,6 +223,22 @@ final class PhoneModel {
 
     func star(_ id: String, _ on: Bool) { perform { try await self.client.command(.noteStar(ids: [id], starred: on)) } }
     func archive(_ id: String, _ on: Bool) { perform { try await self.client.command(.noteArchive(ids: [id], archived: on)) } }
+
+    /// Move to Trash from the note's menu (the web's: "Moved to Trash", with Undo).
+    func trash(_ id: String) {
+        perform {
+            _ = try await self.client.command(.noteTrash(ids: [id]))
+            self.toast("Moved to Trash", tone: .success, actionTitle: "Undo") { [weak self] in self?.restore(id, quietly: true) }
+        }
+    }
+
+    /// Restore from Trash ("Restored").
+    func restore(_ id: String, quietly: Bool = false) {
+        perform {
+            _ = try await self.client.command(.noteRestore(ids: [id]))
+            if !quietly { self.toast("Restored", tone: .success) }
+        }
+    }
 
     func retrySync() {
         perform { try await self.client.command(.engineRefresh) }

@@ -96,6 +96,13 @@ public enum FrameRoute: Hashable, Sendable {
             c.path = "/graph"
             if !keep.isEmpty { c.queryItems = keep }
             self = .web(c.string ?? "/graph")
+        // Reviews keeps the note it reviews (`/review?note=<id>`, a note menu's "Review 3 cards in this note").
+        case "review":
+            let note = comps?.queryItems?.first { $0.name == "note" }?.value.flatMap { $0.isEmpty ? nil : $0 }
+            var c = URLComponents()
+            c.path = "/review"
+            if let note { c.queryItems = [URLQueryItem(name: "note", value: note)] }
+            self = .web(c.string ?? "/review")
         default: self = .web(comps?.path ?? trimmed)
         }
     }

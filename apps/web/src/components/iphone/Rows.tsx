@@ -15,13 +15,13 @@ export function RowChevron() {
 const Grouped = createContext(false);
 
 /**
- * Home's rows in one rounded card, 16 in from the screen's edges, in the sunken surface: hairlines only between
- * the rows inside it, from the label to the card's edge (none under the last).
+ * Home's rows in one rounded card, 16 in from the screen's edges, in Home's light card fill, with no hairlines
+ * between them (4 px of air above the first row and under the last).
  */
 export function RowGroup({ label, children }: { label?: string; children: ReactNode }) {
   return (
     <Grouped.Provider value={true}>
-      <div role={label ? "group" : undefined} aria-label={label} data-iphone-tappable="" className="ui-row-group mx-4 overflow-hidden rounded-container bg-sunken">
+      <div role={label ? "group" : undefined} aria-label={label} data-iphone-tappable="" className="ui-row-group mx-4 overflow-hidden rounded-container bg-[var(--iphone-card)] py-1">
         {children}
       </div>
     </Grouped.Provider>
@@ -122,7 +122,7 @@ export function HomeTile({ href, icon, label, count }: { href: string; icon: Rea
       href={href}
       aria-label={count ? `${label}, ${count}` : label}
       data-iphone-tappable=""
-      className="ui-key-focus flex min-h-[80px] min-w-0 flex-col justify-between gap-2.5 rounded-panel bg-sunken p-3 outline-none transition-[background-color,transform] duration-150 hover:bg-[var(--glass-hover)] active:scale-[0.97] active:bg-[var(--liquid-press)] active:duration-0 motion-reduce:active:scale-100 [&:nth-child(odd):last-child]:col-span-2"
+      className="ui-key-focus flex min-h-[80px] min-w-0 flex-col justify-between gap-2.5 rounded-panel bg-[var(--iphone-card)] p-3 outline-none transition-[background-color,transform] duration-150 hover:bg-[var(--glass-hover)] active:scale-[0.97] active:bg-[var(--liquid-press)] active:duration-0 motion-reduce:active:scale-100 [&:nth-child(odd):last-child]:col-span-2"
     >
       <span className="flex items-center justify-between gap-2">
         <span aria-hidden className="grid h-6 w-6 flex-none place-items-center text-muted [&_svg]:h-[22px] [&_svg]:w-[22px]">

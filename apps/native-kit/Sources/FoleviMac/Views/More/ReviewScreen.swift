@@ -21,15 +21,24 @@ final class ReviewModel {
     static let ratings: [(id: String, label: String, key: Character)] = [("again", "Again", "1"), ("hard", "Hard", "2"), ("good", "Good", "3"), ("easy", "Easy", "4")]
     static let newPerDayOptions = [0, 10, 20, 30, 50, 100]
 
-    init(client: EngineClient, feedback: ScreenFeedback) {
+    /// One note's cards (`/review?note=<id>`, a note menu's "Review 3 cards in this note"), else everywhere.
+    let noteId: String?
+
+    init(client: EngineClient, feedback: ScreenFeedback, noteId: String? = nil) {
         self.client = client
         self.feedback = feedback
-        store = client.watch(.reviews())
+        self.noteId = noteId
+        store = client.watch(.reviews(noteId: noteId))
+    }
+
+    /// The note `/review?note=<id>` asks for, if any.
+    static func noteId(in path: String) -> String? {
+        URLComponents(string: path)?.queryItems?.first { $0.name == "note" }?.value.flatMap { $0.isEmpty ? nil : $0 }
     }
 
     /// A fresh session with the queue as of now (the day by this Mac's clock).
     func restart() {
-        store = client.watch(.reviews())
+        store = client.watch(.reviews(noteId: noteId))
         done = []
         reviewed = 0
         revealed = false

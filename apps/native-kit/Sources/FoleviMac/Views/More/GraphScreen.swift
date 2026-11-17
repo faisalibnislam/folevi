@@ -1183,10 +1183,10 @@ struct GraphCanvasView: View {
                 .onContinuousHover { phase in
                     if case .active(let p) = phase { hover = hit(p) } else { hover = nil }
                 }
-                .background(ScrollWheelCatcher { delta, at in
+                .scrollWheelZoom { delta, at in
                     moved = true
                     t = GraphMath.zoom(t, exp(delta * 0.0015), around: at)
-                })
+                }
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel("Foli DNA of \(notes) notes and \(nodes.count - notes) people, projects and topics")
                 .accessibilityChildren {
@@ -1536,21 +1536,10 @@ struct GraphCanvasView: View {
 
     // MARK: input
 
-    private var shiftHeld: Bool {
-        #if os(macOS)
-        NSEvent.modifierFlags.contains(.shift)
-        #else
-        false
-        #endif
-    }
+    /// (On the iPad, the hardware keyboard's keys held now: Platform.swift's NSEvent.modifierFlags.)
+    private var shiftHeld: Bool { NSEvent.modifierFlags.contains(.shift) }
 
-    private var commandHeld: Bool {
-        #if os(macOS)
-        NSEvent.modifierFlags.contains(.command)
-        #else
-        false
-        #endif
-    }
+    private var commandHeld: Bool { NSEvent.modifierFlags.contains(.command) }
 
     /// Drag a node to pin it; with Shift or in Select mode draw a box that picks notes; else pan.
     private var drag: some Gesture {
@@ -1884,12 +1873,53 @@ private struct ScrollWheelCatcher: NSViewRepresentable {
     }
 }
 #else
-/// (The iPad zooms the map by pinching: nothing to catch for a wheel.)
-private struct ScrollWheelCatcher: View {
+/// The iPad's scroll wheel or two-finger trackpad scroll over the map zooms around the pointer, as the Mac's wheel
+/// (fingers on the glass pan and pinch instead): a pan that takes scroll events only.
+private struct ScrollWheelPan: UIGestureRecognizerRepresentable {
     let onScroll: (CGFloat, CGPoint) -> Void
-    var body: some View { Color.clear.allowsHitTesting(false) }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var last: CGFloat = 0
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+    }
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.allowedScrollTypesMask = .all
+        pan.allowedTouchTypes = []
+        pan.cancelsTouchesInView = false
+        pan.delegate = context.coordinator
+        return pan
+    }
+
+    func handleUIGestureRecognizerAction(_ pan: UIPanGestureRecognizer, context: Context) {
+        switch pan.state {
+        case .began:
+            context.coordinator.last = 0
+        case .changed:
+            let y = pan.translation(in: pan.view).y
+            let delta = y - context.coordinator.last
+            context.coordinator.last = y
+            if delta != 0 { onScroll(delta, context.converter.localLocation) }
+        default:
+            context.coordinator.last = 0
+        }
+    }
 }
 #endif
+
+private extension View {
+    /// The scroll wheel over this view zooms the map: `onScroll` gets the wheel's vertical travel and the pointer.
+    func scrollWheelZoom(_ onScroll: @escaping (CGFloat, CGPoint) -> Void) -> some View {
+        #if os(macOS)
+        background(ScrollWheelCatcher(onScroll: onScroll))
+        #else
+        gesture(ScrollWheelPan(onScroll: onScroll))
+        #endif
+    }
+}
 
 // MARK: - Insights
 

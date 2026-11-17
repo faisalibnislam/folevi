@@ -191,7 +191,7 @@ extension RebuildFrameController: FrameHost {
 
     func frameSignOutConfirmed(place: String) { signOutNow() }
 
-    func frameDownloadFile(_ id: String) { model.toast("Downloads come to the iPad with the next update.") }
+    func frameDownloadFile(_ id: String) { desk.downloadDeliveredFile(id) }
 
     func frameMoveOrCopy() {
         PlaceMove.present(from: self, model: desk)
@@ -201,37 +201,64 @@ extension RebuildFrameController: FrameHost {
 
     func frameOpenExternal(_ url: URL) { openExternal(url) }
 
-    func frameOpenInNewWindow(_ route: FrameRoute) {
-        let activity = NSUserActivity(activityType: RebuildFrame.restorationType)
-        activity.userInfo = ["path": route.path]
-        UIApplication.shared.requestSceneSessionActivation(nil, userActivity: activity, options: nil)
+    /// The app has one window (docs/IOS.md, iPad, "Windows": the engine, the Page View and the frame's state belong to
+    /// the process, not to a scene), so "Open in New Window" from the shared views opens the route in a tab here.
+    func frameOpenInNewWindow(_ route: FrameRoute) { desk.open(route) }
+
+    /// The wide layout's tabs are kept a moment after they change (DeskTabs), as the Mac keeps its windows'.
+    func frameStateChanged() {
+        if UIDevice.current.userInterfaceIdiom == .pad { DeskTabs.changed(desk) }
     }
 
-    func frameStateChanged() {}
+    /// Settings > This device: the app lock (the iPhone's Settings has the same, RebuildSettings).
+    var frameDeviceLock: FrameDeviceLock? {
+        FrameDeviceLock(
+            state: { (LockSettings.enabled, LockSettings.after, LockSettings.method()) },
+            set: { on in
+                if on {
+                    guard LockSettings.method() != "none" else { return }
+                    guard await AppLock.confirm(reason: "Turn on the lock for Folevi") else { return }
+                }
+                LockSettings.enabled = on
+            },
+            setAfter: { after in if LockSettings.choices.contains(after) { LockSettings.after = after } }
+        )
+    }
 }
 
-/// Folevi's shortcuts with a hardware keyboard (KeyCommands.swift's list, in the ⌘ overlay): done natively, on the
-/// desk in the iPad's wide layout and on the phone's frame otherwise. A note's page still gets its own keys.
+/// The wide layout's tabs and screen, back after a relaunch (docs/IOS_REBUILD_PLAN.md I7; the Mac's WindowRestore).
 extension RebuildFrameController {
-    override var keyCommands: [UIKeyCommand]? {
-        let app = FoleviShortcut.all.map { $0.keyCommand(action: #selector(pressRebuildShortcut(_:))) }
-        // The iPad's wide layout has the Mac's tabs, so the Mac's keys for them (and Settings, Search All Notes).
-        let desk = wide ? IPadShortcut.all.map { $0.keyCommand(action: #selector(pressDeskShortcut(_:))) } : []
-        return (super.keyCommands ?? []) + app + desk
+    /// The desk's tabs for the scene's restoration activity (SceneDelegate); nil on an iPhone.
+    var deskRestorationData: Data? {
+        UIDevice.current.userInterfaceIdiom == .pad ? DeskTabs.data(desk) : nil
     }
 
-    @objc func pressDeskShortcut(_ command: UIKeyCommand) {
-        guard wide, let shortcut = IPadShortcut.all.first(where: { $0.input == command.input && $0.modifiers == command.modifierFlags }) else { return }
-        switch shortcut.action {
-        case .settings: desk.open(FrameRoute(path: "/settings"))
-        case .searchAll: desk.open(FrameRoute(path: "/search"))
-        case .closeTab: desk.closeTab()
-        case .reopenTab: desk.reopenClosedTab()
-        case .nextTab: desk.nextTab(1)
-        case .previousTab: desk.nextTab(-1)
-        case .allTabs: desk.overviewShown.toggle()
-        case .tab(let n): desk.selectTab(number: n)
-        }
+    /// Saves the desk's tabs now (the app going to the background), not a moment later.
+    func saveDesk() {
+        if UIDevice.current.userInterfaceIdiom == .pad { DeskTabs.save(desk) }
+    }
+
+    /// Puts the desk's tabs back: the scene's own when iOS kept it, else (the app was closed) the last saved, unless
+    /// another window is open already. Not when launched to open routes (FOLEVI_REBUILD_OPEN).
+    func restoreDesk(from activity: NSUserActivity?) {
+        guard UIDevice.current.userInterfaceIdiom == .pad, (ProcessInfo.processInfo.environment["FOLEVI_REBUILD_OPEN"] ?? "").isEmpty else { return }
+        let kept = (activity?.userInfo?[RebuildFrame.deskRestorationKey] as? Data).flatMap(DeskTabs.decode)
+        let alone = UIApplication.shared.connectedScenes.count <= 1
+        guard let saved = kept ?? (alone ? DeskTabs.saved() : nil) else { return }
+        desk.restore(saved)
+        // The phone's layout doesn't follow this to the restored screen (it has its own restored stacks).
+        RebuildDeskBridge.placed = desk.route
+    }
+}
+
+/// Folevi's shortcuts with a hardware keyboard on the iPhone (KeyCommands.swift's list, in the ⌘ overlay): done
+/// natively on the phone's frame. The iPad has them in its menu bar instead (RebuildMenuBar.swift, with the Mac's keys
+/// for the tabs, Settings and the rest), on the desk in its wide layout and on this frame in a narrow window. A note's
+/// page still gets its own keys.
+extension RebuildFrameController {
+    override var keyCommands: [UIKeyCommand]? {
+        guard !IPadMenuBar.installed else { return super.keyCommands }
+        return (super.keyCommands ?? []) + FoleviShortcut.all.map { $0.keyCommand(action: #selector(pressRebuildShortcut(_:))) }
     }
 
     var wide: Bool { UIDevice.current.userInterfaceIdiom == .pad && view.bounds.width >= RebuildIPad.minWidth }
@@ -256,33 +283,5 @@ extension RebuildFrameController {
         case "]": if wide { desk.goForward() }
         default: break
         }
-    }
-}
-
-/// The Mac's keys for the iPad's wide layout (apps/mac/Folevi/Chrome/MenuModel.swift): Settings, Search All Notes and
-/// the tabs. Listed in the overlay iPadOS shows while ⌘ is held.
-struct IPadShortcut {
-    enum Action: Equatable { case settings, searchAll, closeTab, reopenTab, nextTab, previousTab, allTabs, tab(Int) }
-
-    let title: String
-    let input: String
-    let modifiers: UIKeyModifierFlags
-    let action: Action
-
-    static let all: [IPadShortcut] = [
-        IPadShortcut(title: "Settings", input: ",", modifiers: .command, action: .settings),
-        IPadShortcut(title: "Search All Notes", input: "f", modifiers: [.command, .shift], action: .searchAll),
-        IPadShortcut(title: "Close Tab", input: "w", modifiers: .command, action: .closeTab),
-        IPadShortcut(title: "Reopen Closed Tab", input: "t", modifiers: [.command, .shift], action: .reopenTab),
-        IPadShortcut(title: "Show Next Tab", input: "\t", modifiers: .control, action: .nextTab),
-        IPadShortcut(title: "Show Previous Tab", input: "\t", modifiers: [.control, .shift], action: .previousTab),
-        IPadShortcut(title: "Show All Tabs", input: "\\", modifiers: [.command, .shift], action: .allTabs),
-    ] + (1...9).map { IPadShortcut(title: "Tab \($0)", input: "\($0)", modifiers: .command, action: .tab($0)) }
-
-    func keyCommand(action selector: Selector) -> UIKeyCommand {
-        let command = UIKeyCommand(title: title, action: selector, input: input, modifierFlags: modifiers)
-        command.discoverabilityTitle = title
-        command.wantsPriorityOverSystemBehavior = true
-        return command
     }
 }

@@ -18,7 +18,7 @@ import { desktop } from "@/lib/desktop";
 import { blockFullScreen, bridgeListening, emitNoteEvent, focusMode, markNoteReady, onNoteHost, registerNote, setFocusMode, type NoteHandle } from "./noteHost";
 import { clearMatches, findMatches, MAX_MATCHES, paintMatches, revealMatch } from "@/components/doc/findInNote";
 import { BridgeError, id, num, oneOf, only, text } from "./validate";
-import { EDITOR_BLOCKS, EDITOR_MARKS, EDITOR_PANELS, NOTE_MENU_ACTIONS, type BlockAlign, type CalloutTone, type EditorBlock, type EditorCommandName, type EditorFormatState, type EditorMark, type EditorPanel, type EditorStateEvent, type FindResult, type NoteMenuAction, type TextStyleName } from "./protocol";
+import { EDITOR_BLOCKS, EDITOR_MARKS, EDITOR_PANELS, NOTE_MENU_ACTIONS, type BlockAlign, type CalloutTone, type EditorBlock, type EditorCommandName, type EditorFormatState, type EditorMark, type EditorPanel, type EditorStateEvent, type FindResult, type NoteMenuAction, type NoteMenuState, type TextStyleName } from "./protocol";
 
 const SPECIAL: readonly SpecialInsert[] = ["image", "unsplash", "file", "record", "scan", "scanPhotos", "page", "card", "bookmark", "embed", "collection", "gallery", "board", "calendarView", "date", "pickDate", "columns2", "columns3", "columns4", "tabs"];
 
@@ -37,6 +37,8 @@ export interface NativeNoteOptions {
   closePanel(): void;
   /** The "..." menu's actions this note offers now (missing ones are refused). */
   menu: Partial<Record<NoteMenuAction, () => void>>;
+  /** Revision 31: the rest of what the page's "..." menu shows (`editor.state`'s `menu`, with `menu`'s actions). */
+  menuState?: Omit<NoteMenuState, "actions">;
   scrollEl: HTMLElement | null;
   /** The note is always fully encrypted. */
   locked?: boolean;
@@ -158,8 +160,8 @@ function setFormat(editor: Editor, args: Record<string, unknown>) {
   if (args.clear === true) clearFormatting(editor);
 }
 
-export function editorState(editor: Editor | null, noteId: string, readOnly: boolean, lock: { locked?: boolean; canLock?: boolean } = {}): EditorStateEvent {
-  const extra = { focus: focusMode() || blockFullScreen(), locked: Boolean(lock.locked), canLock: Boolean(lock.canLock) };
+export function editorState(editor: Editor | null, noteId: string, readOnly: boolean, lock: { locked?: boolean; canLock?: boolean } = {}, menu: NoteMenuState | null = null): EditorStateEvent {
+  const extra = { focus: focusMode() || blockFullScreen(), locked: Boolean(lock.locked), canLock: Boolean(lock.canLock), menu };
   if (!editor || editor.isDestroyed) return { noteId, focused: typingOnPage(), canEdit: !readOnly, block: "paragraph", marks: [], link: false, undo: false, redo: false, ...extra, format: null };
   return {
     ...extra,
@@ -320,7 +322,7 @@ export function runEditorCommand(o: NativeNoteOptions, name: EditorCommandName, 
       return ok;
     case "state":
       only(args, []);
-      return editorState(editor, o.documentId, o.readOnly, { locked: o.locked, canLock: Boolean(o.lock) });
+      return editorState(editor, o.documentId, o.readOnly, { locked: o.locked, canLock: Boolean(o.lock) }, noteMenuState(o));
     case "block.move":
       only(args, ["dir"]);
       moveBlock(editing(), oneOf(args, "dir", ["up", "down"] as const) === "up" ? -1 : 1);
@@ -402,6 +404,18 @@ export function runNoteMenuCommand(o: NativeNoteOptions, id: string): boolean {
   }
 }
 
+/** What the "..." menu offers now (`editor.state`'s `menu`, revision 31): the actions given, in the protocol's order. */
+export function noteMenuState(o: Pick<NativeNoteOptions, "menu" | "menuState">): NoteMenuState {
+  const s = o.menuState;
+  return {
+    actions: NOTE_MENU_ACTIONS.filter((a) => typeof o.menu[a] === "function"),
+    related: Boolean(s?.related),
+    showingEditors: Boolean(s?.showingEditors),
+    readImages: Math.max(0, Math.trunc(s?.readImages ?? 0)),
+    readingImages: Boolean(s?.readingImages),
+  };
+}
+
 /** DocumentView in native chrome mode: registers the note with the bridge and keeps native told. */
 export function useNativeNote(o: NativeNoteOptions): void {
   const latest = useRef(o);
@@ -417,7 +431,7 @@ export function useNativeNote(o: NativeNoteOptions): void {
     const handle: NoteHandle = {
       noteId: documentId,
       run: (name, args) => runEditorCommand(latest.current, name, args),
-      state: () => editorState(latest.current.editor, documentId, latest.current.readOnly, { locked: latest.current.locked, canLock: Boolean(latest.current.lock) }),
+      state: () => editorState(latest.current.editor, documentId, latest.current.readOnly, { locked: latest.current.locked, canLock: Boolean(latest.current.lock) }, noteMenuState(latest.current)),
       panel: () => latest.current.panel,
     };
     return registerNote(handle);
@@ -444,6 +458,9 @@ export function useNativeNote(o: NativeNoteOptions): void {
     emitNoteEvent("editor.panel", { panel });
   }, [on, panel]);
 
+  // What the "..." menu offers, as one key: a change (a Vault found, images read) sends editor.state again.
+  const menuKey = on ? JSON.stringify(noteMenuState(o)) : "";
+
   // editor.state: at most once a frame, only when it changed (as the web keyboard bar reads it).
   useEffect(() => {
     if (!on || !editor) return;
@@ -452,7 +469,7 @@ export function useNativeNote(o: NativeNoteOptions): void {
     const send = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const state = editorState(editor, documentId, latest.current.readOnly, { locked: latest.current.locked, canLock: Boolean(latest.current.lock) });
+        const state = editorState(editor, documentId, latest.current.readOnly, { locked: latest.current.locked, canLock: Boolean(latest.current.lock) }, noteMenuState(latest.current));
         const json = JSON.stringify(state);
         if (json === last) return;
         last = json;
@@ -479,5 +496,5 @@ export function useNativeNote(o: NativeNoteOptions): void {
       editor.off("focus", send);
       editor.off("blur", send);
     };
-  }, [on, editor, documentId, readOnly]);
+  }, [on, editor, documentId, readOnly, menuKey]);
 }

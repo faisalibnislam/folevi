@@ -164,7 +164,7 @@ describe("R8.9 editor commands", () => {
 
   it("the host sends them to the open note", async () => {
     const seen: string[] = [];
-    registerNote({ noteId: "d1", run: (name) => (seen.push(name), { ok: true }), state: () => ({ noteId: "d1", focused: true, canEdit: true, block: "paragraph", marks: [], link: false, undo: false, redo: false, focus: false, locked: false, canLock: false, format: null }), panel: () => null });
+    registerNote({ noteId: "d1", run: (name) => (seen.push(name), { ok: true }), state: () => ({ noteId: "d1", focused: true, canEdit: true, block: "paragraph", marks: [], link: false, undo: false, redo: false, focus: false, locked: false, canLock: false, format: null, menu: null }), panel: () => null });
     for (const name of ["block.move", "block.duplicate", "focus.toggle", "note.lock"]) await ok({ kind: "editor", name, args: name === "block.move" ? { dir: "down" } : {} });
     expect(seen).toEqual(["block.move", "block.duplicate", "focus.toggle", "note.lock"]);
   });

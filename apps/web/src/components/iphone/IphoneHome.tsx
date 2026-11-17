@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useCanCall, useCapabilities } from "@/lib/mode";
+import { useBackendMode, useCanCall, useCapabilities } from "@/lib/mode";
 import { useQuery } from "convex/react";
-import { Archive, FileDiff, FileText, Files, FolderPlus, Hash, Inbox, Layers, LayoutTemplate, Share2, Trash2, Waypoints } from "lucide-react";
+import { Archive, FileDiff, FileText, Files, FolderPlus, Hash, Inbox, Layers, LayoutTemplate, Lock, Share2, Trash2, Waypoints } from "lucide-react";
 import { api } from "@/lib/convex/api";
 import { useAppState } from "@/lib/app/state";
 import { useFolderTree } from "@/lib/app/folders";
@@ -85,8 +85,8 @@ export function NoteRow({ doc }: { doc: Summary }) {
 /**
  * Home in the iPhone app: the avatar (account and places) and notifications at the top, a large title, the
  * search field, recent notes as cards in a row, Catch me up as its own card, All notes, Drafts, Shared with Me
- * and Changes as tiles two by two, Bookmarks, Folders and Tags sections (rows in rounded cards), and Templates,
- * Archive and Trash in a card at the end.
+ * and Changes as tiles two by two, Bookmarks, Folders and Tags sections (rows in rounded cards), and the Vault
+ * (for someone with one), Templates, Archive and Trash in a card at the end.
  */
 export function IphoneHome() {
   const { scope, workspace, outbox } = useAppState();
@@ -108,6 +108,11 @@ export function IphoneHome() {
   const minute = useMinute();
   const proposed = useQuery(api.proposals.count, caps.changes ? { now: minute } : "skip");
   const reviews = useQuery(api.study.summary, useReviewWindow(5 * 60_000));
+  // The Vault, for whoever has one here, as the sidebar lists it (Sidebar.tsx): the phone has no sidebar.
+  const mode = useBackendMode();
+  const canVault = useCanCall(api.vault.get);
+  const vaultHere = caps.sharing || (mode === "local" && canVault);
+  const vault = useQuery(api.vault.get, vaultHere ? { scope } : "skip");
   const org = useFolderTree(scope);
   // Folders with how many notes each holds (the folder index, with what's waiting to sync laid over it).
   const served = useOfflineQuery(api.organization.index, { scope, only: "folders" });
@@ -215,6 +220,7 @@ export function IphoneHome() {
 
       <nav aria-label="More" data-iphone-tappable="" className="mt-7">
         <RowGroup>
+          {vaultHere && vault !== null && vault !== undefined ? <ListRow href="/vault" icon={<Lock />} label="Vault" /> : null}
           <ListRow href="/templates" icon={<LayoutTemplate />} label="Templates" />
           <ListRow href="/archive" icon={<Archive />} label="Archive" />
           <ListRow href="/trash" icon={<Trash2 />} label="Trash" />

@@ -13,6 +13,8 @@ import FoleviEngine
 public final class SharedListModel {
     public let client: EngineClient
     public let shared: ValueStore<SharedValue>
+    /// Folders shared with this person (`shared.folders`, revision 12), listed first.
+    public let folders: ValueStore<SharedFoldersValue>
     public private(set) var refreshing = false
     @ObservationIgnored let feedback: ScreenFeedback
 
@@ -20,11 +22,31 @@ public final class SharedListModel {
         self.client = client
         self.feedback = feedback
         self.shared = client.watch(.sharedList)
+        self.folders = client.watch(.sharedFolders)
     }
 
     public var title: String { "Shared with Me" }
     public var rows: [SharedRow] { shared.value?.rows ?? [] }
-    public var isLoading: Bool { shared.value == nil && shared.error == nil }
+    public var folderRows: [SharedFolderRow] { folders.value?.rows ?? [] }
+    /// Until both lists have answered (or failed), as the web waits for both.
+    public var isLoading: Bool { (shared.value == nil && shared.error == nil) || (folders.value == nil && folders.error == nil) }
+
+    /// The web's counts (SharedView.tsx): "2 folders · 3 pages"; pages only when there are some or no folders.
+    public var counts: String? {
+        guard !isLoading else { return nil }
+        let f = folderRows.count, p = rows.count
+        return [f > 0 ? "\(f) \(f == 1 ? "folder" : "folders")" : nil, p > 0 || f == 0 ? "\(p) \(p == 1 ? "page" : "pages")" : nil].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// A shared folder's line under its name, up to "updated" (SharedView.tsx: who, where, role, notes); the
+    /// screen adds when, in its own words.
+    public static func folderDetail(_ f: SharedFolderRow) -> String {
+        let role = f.role == "editor" ? "Can edit" : f.role == "commenter" ? "Can comment" : "Can view"
+        let notes = f.noteCount == 1 ? "1 note" : "\(f.noteCount.formatted(.number.locale(Locale(identifier: "en_US")))) notes"
+        // (lib/app/folderSharing.ts sharedPlace: the workspace, or whose Personal.)
+        let place = f.workspaceName ?? "Personal · \(f.ownerName ?? "someone")"
+        return "Shared by \(f.sharedBy) · \(place) · \(role) · \(notes)"
+    }
     public var subtitle: String? {
         guard !rows.isEmpty else { return nil }
         return rows.count == 1 ? "1 page" : "\(rows.count.formatted()) pages"

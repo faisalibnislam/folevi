@@ -4,6 +4,8 @@
 // the folder instead (multi-select, ListSelection) and only the middle-click opens its tab.
 #if os(macOS)
 import AppKit
+#else
+import UIKit
 #endif
 import SwiftUI
 import FoleviScreens
@@ -18,28 +20,49 @@ extension FrameModel {
 }
 
 enum FolderTabClicks {
-    /// Whether ⌘ is down now (the click being handled).
-    @MainActor static var commandHeld: Bool {
-        #if os(macOS)
-        NSEvent.modifierFlags.contains(.command)
-        #else
-        false
-        #endif
-    }
+    /// Whether ⌘ is down now (the click being handled): on the iPad, the hardware keyboard's (Platform.swift).
+    @MainActor static var commandHeld: Bool { NSEvent.modifierFlags.contains(.command) }
 }
 
 extension View {
-    /// Runs `run` on a middle-click while the pointer is over this view (the Mac; SwiftUI buttons only see the left
-    /// button). Elsewhere it does nothing.
+    /// Runs `run` on a middle-click while the pointer is over this view (SwiftUI buttons only see the main button):
+    /// the Mac's mouse, or a mouse's middle button on the iPad.
     @ViewBuilder
     func onMiddleClick(_ run: @escaping @MainActor () -> Void) -> some View {
         #if os(macOS)
         modifier(MiddleClick(run: run))
         #else
-        self
+        gesture(MiddleClick(run: run))
         #endif
     }
 }
+
+#if os(iOS)
+/// A pointer's middle-button click (a mouse's wheel pressed), beside the view's other gestures.
+private struct MiddleClick: UIGestureRecognizerRepresentable {
+    let run: @MainActor () -> Void
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+        // (Only a pointer's click: a finger's tap never counts.)
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool { touch.type == .indirectPointer }
+    }
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UITapGestureRecognizer {
+        let click = UITapGestureRecognizer()
+        click.buttonMaskRequired = .button(3)
+        click.cancelsTouchesInView = false
+        click.delegate = context.coordinator
+        return click
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UITapGestureRecognizer, context: Context) {
+        if recognizer.state == .ended { run() }
+    }
+}
+#endif
 
 #if os(macOS)
 private struct MiddleClick: ViewModifier {

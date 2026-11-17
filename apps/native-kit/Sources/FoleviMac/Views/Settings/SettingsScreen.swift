@@ -19,9 +19,12 @@ import FoleviEngine
 public enum MacSettingsSection: String, CaseIterable, Sendable {
     case account, ai, billing, security, privacy, devices, connectedApps = "connected-apps", appearance, notifications, sync, library, data, desktop, about
     case workspace, members, workspacePrivacy = "workspace-privacy", workspaceGuests = "workspace-guests", workspaceBilling = "workspace-billing", workspaceData = "workspace-data"
+    /// The iPad's own: its app lock (the iPhone's This device). Listed where the app has a lock (FrameHost.frameDeviceLock).
+    case thisDevice = "this-device"
 
     var label: String {
         switch self {
+        case .thisDevice: "This device"
         case .account: "Account"
         case .ai: "Foli AI"
         case .billing: "Plan & billing"
@@ -58,6 +61,7 @@ public enum MacSettingsSection: String, CaseIterable, Sendable {
     var icon: WebIcon? {
         switch self {
         case .account: .userRound
+        case .thisDevice: .tablet
         case .ai: nil
         case .billing, .workspaceBilling: .creditCard
         case .security: .shieldCheck
@@ -195,6 +199,8 @@ public final class MacSettingsModel {
         #if os(iOS)
         you.removeAll { $0 == .desktop }
         #endif
+        // The device's own lock, last, as the iPhone lists it.
+        if frame.host?.frameDeviceLock != nil { you.append(.thisDevice) }
         var out: [(String, [MacSettingsSection])] = [("You", you)]
         if let w = workspace, !isLocal {
             var items: [MacSettingsSection] = [.workspace, .members, .workspacePrivacy]
@@ -405,6 +411,8 @@ struct SettingsContent: View {
         case .privacy, .billing, .connectedApps, .workspace, .members, .workspacePrivacy, .workspaceGuests, .workspaceBilling:
             AccountOnlySettings(model: model, section: section)
         case .workspaceData: DataSettings(model: model, workspace: model.workspace)
+        case .thisDevice:
+            if let lock = model.frame.host?.frameDeviceLock { ThisDeviceSettingsView(lock: lock) } else { SMuted("This device has no settings of its own here.") }
         }
     }
 }

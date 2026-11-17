@@ -73,6 +73,7 @@ export function NoteBars({ editor, ai, open, tab, onPick, readOnly }: { editor: 
   );
   return (
     <div
+      data-note-bars=""
       // Back once the keyboard has gone (the bar on it rode down with it): faded in at the bottom, where the web
       // view ends again, rather than drawn halfway up the screen while the keyboard is still leaving.
       className={`pointer-events-none fixed inset-x-0 bottom-0 z-30 flex items-end justify-between gap-3 px-4 pb-[max(10px,calc(env(safe-area-inset-bottom)-10px))] pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))] animate-[iphone-fade-in_160ms_ease-out] motion-reduce:animate-none ${keyboard ? "hidden" : ""}`}
@@ -359,6 +360,7 @@ function KeyboardBar({ editor, ai, onPick, ride, leaving = false }: { editor: Ed
   return (
     <div
       data-iphone-keyboard-bar=""
+      data-note-bars=""
       aria-hidden={leaving || undefined}
       inert={leaving || undefined}
       className="fixed inset-x-0 bottom-0 z-40 px-2 pb-2 pl-[calc(8px+env(safe-area-inset-left))] pr-[calc(8px+env(safe-area-inset-right))]"

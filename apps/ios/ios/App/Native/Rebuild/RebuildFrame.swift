@@ -41,6 +41,8 @@ enum RebuildFrame {
     /// The scene's restoration activity (SceneDelegate): its type and the snapshot's key in it.
     static let restorationType = "com.folevi.ios.frame"
     static let restorationKey = "frame"
+    /// The iPad's wide layout's tabs in the same activity (RebuildIPad.swift restoreDesk).
+    static let deskRestorationKey = "desk"
 
     /// Back where the scene was, unless launched to open routes (FOLEVI_REBUILD_OPEN).
     static func restore(_ data: Data) {
@@ -146,6 +148,14 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
                 self.model.closeNote()
             }
         })
+        // The status bar over a note follows its page (a dark clock over a light page, whatever the phone's
+        // appearance; RebuildNote's NotePageTones); everywhere else, and in the iPad's wide layout, the phone's own.
+        observers.append(Observer { [weak self] in
+            guard let self else { return }
+            var style = UIStatusBarStyle.default
+            if case .note(let id) = self.frame.top, !self.wide, let page = NotePageTones.shared.statusBar(for: id) { style = page }
+            self.setStatusBarStyle(style)
+        })
         // The phone's fallback screens are the desk's: where they go, the phone goes (the iPad's wide layout
         // shows the desk itself).
         observers.append(Observer { [weak self] in
@@ -203,6 +213,22 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         }
     }
 
+    // MARK: status bar
+
+    private var statusBarStyle: UIStatusBarStyle = .default
+    override var preferredStatusBarStyle: UIStatusBarStyle { statusBarStyle }
+    override var preferredStatusBarUpdateAnimation: UIStatusBarAnimation { .fade }
+
+    private func setStatusBarStyle(_ style: UIStatusBarStyle) {
+        guard style != statusBarStyle else { return }
+        statusBarStyle = style
+        if UIAccessibility.isReduceMotionEnabled {
+            setNeedsStatusBarAppearanceUpdate()
+        } else {
+            UIView.animate(withDuration: 0.2) { self.setNeedsStatusBarAppearanceUpdate() }
+        }
+    }
+
     /// Before a new mode's web view (FoleviViewController.restart): the engine stops and the page goes away first.
     func retire(then done: @escaping () -> Void) {
         model.stop()
@@ -227,21 +253,19 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
     // MARK: PhoneRouting
 
     func open(_ route: ScreenRoute, source: CardSource?) {
-        let destination: FrameRoute
         switch route {
-        case .home: destination = .home
-        case .folder(let id): destination = .folder(id)
-        case .tag(let id): destination = .tag(id)
-        case .notes(let v): destination = .notes(v)
-        case .shared: destination = .shared
-        case .changes: destination = .changes
-        case .allFolders: destination = .web("/folders")
-        case .reviews: destination = .web("/reviews")
-        case .graph: destination = .web("/graph")
-        case .search(let text): destination = .search(text)
-        case .web(let path): destination = FrameRoute(path: path)
         case .note(let id), .noteInNewTab(let id): return openNote(id, source: source, focus: false)
-        default:
+        case .movePlaces(let folders, let notes): return moveToAnotherPlace(folders: folders, notes: notes)
+        case .shareFolder(let id, let name): return shareFolder(id, name: name)
+        // Invite people: the workspace's Members, as the Mac opens it.
+        case .invite: return open(.web("/settings/members"), source: nil)
+        case .foliAI(let about):
+            if let about { RebuildFrame.ai.ask(about: about) } else { RebuildFrame.ai.ask() }
+            return
+        case .web(let path) where FrameRoute.opensInboxPage(path): return openInboxPage()
+        default: break
+        }
+        guard let destination = FrameRoute(phone: route) else {
             model.toast("That screen comes to the new app soon.")
             return
         }
@@ -286,6 +310,7 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         default: break
         }
         guard let path = DeepLink.path(of: url) else { return }
+        if FrameRoute.opensInboxPage(path) { return openInboxPage() }
         let route = FrameRoute(path: path)
         if UIDevice.current.userInterfaceIdiom == .pad, (view.window?.bounds.width ?? 0) >= RebuildIPad.minWidth {
             desk.open(route)
@@ -293,6 +318,19 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
         }
         if case .note(let id) = route { return openNote(id, source: nil, focus: false) }
         frame.open(route)
+    }
+
+    /// The person's Inbox page in the open space (folevi://inbox, `/inbox`), as the web opens it: the engine finds
+    /// it (or makes it on this device) and the note opens.
+    func openInboxPage() {
+        Task { @MainActor in
+            do {
+                let r = try await model.client.command(.inboxOpen())
+                openNote(r.id, source: nil, focus: false)
+            } catch {
+                model.toast(ScreenErrors.message(error), tone: .error)
+            }
+        }
     }
 }
 
@@ -359,13 +397,15 @@ private struct RebuildRoot: View {
             } else if case .calendar(let date) = route {
                 RebuildCalendarScreen(date: date, frame: model, menus: menus, home: home, phone: phone, openAccount: { account = true }, openNotifications: { notifications = true })
             } else if case .web(let path) = route, path == "/settings" || path.hasPrefix("/settings/") || path.hasPrefix("/settings?") {
-                RebuildSettingsScreen(path: path, frame: model, phone: phone, signIn: { accountAction(.signInAnother) {} })
+                RebuildSettingsScreen(path: path, frame: model, phone: phone, signIn: { accountAction(.signInAnother) {} }, newWorkspace: { newWorkspace = true })
             } else if route == .shared {
                 RebuildSharedScreen(frame: model, phone: phone)
             } else if route == .changes {
                 RebuildChangesScreen(frame: model, phone: phone)
             } else if route == .web("/folders") {
                 RebuildAllFoldersScreen(frame: model, menus: menus, phone: phone) { newFolder = NewFolderRequest(parent: $0) }
+            } else if route == .web("/tags") {
+                RebuildTagsScreen(frame: model, menus: menus, phone: phone)
             } else if case .web(let path) = route, path == "/ai" || path.hasPrefix("/ai/") || path.hasPrefix("/ai?") {
                 RebuildAiPage(ai: ai, frame: model, path: path)
             } else if case .web(let p) = route, p == "/vault" || p.hasPrefix("/vault/") {
@@ -432,6 +472,21 @@ private struct RebuildRoot: View {
         .phoneSheet(isPresented: $notifications, size: .medium) {
             RebuildNotificationsSheet(frame: model, menus: menus, phone: phone) { notifications = false }
         }
+        // Move or copy notes (the account sheet, a folder's "Move to another place…").
+        .phoneSheet(isPresented: Binding(get: { phone.movePlaces != nil }, set: { if !$0 { phone.movePlaces = nil } }), size: .fit) {
+            if let request = phone.movePlaces {
+                RebuildMovePlacesSheet(phone: phone, request: request) { phone.movePlaces = nil }
+                    .id(request.id)
+            }
+        }
+        #if DEBUG
+        // FOLEVI_REBUILD_SHEET=move: Move or copy notes at launch, once the engine is up (for checking it headlessly).
+        .onChange(of: phone.client.state == .ready, initial: true) { _, ready in
+            if ready, ProcessInfo.processInfo.environment["FOLEVI_REBUILD_SHEET"] == "move", phone.movePlaces == nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { phone.movePlaces = MovePlacesRequest() }
+            }
+        }
+        #endif
         .phoneSheet(isPresented: $account, size: .medium, snapToBlocks: true) {
             // (A library with no account at all is "Your library", not an "Account": IPHONE-22.)
             PhoneSheetPanel(title: places.hasAccount ? "Account" : "Your library", close: { account = false }) {

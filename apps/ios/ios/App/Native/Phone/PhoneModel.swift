@@ -57,6 +57,8 @@ final class PhoneModel {
     var keyboardOverlap: CGFloat = 0
     /// Shared by the + button, keyboard shortcut, widgets and deep links.
     var quickAddShown = false
+    /// "Move or copy notes" asked for (the account sheet, a folder's menu): its sheet shows while set.
+    var movePlaces: MovePlacesRequest?
 
     @ObservationIgnored weak var router: PhoneRouting?
     @ObservationIgnored private var eventsTask: Task<Void, Never>?

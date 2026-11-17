@@ -29,6 +29,8 @@ public struct FolderMenuContext: Sendable {
     /// A team workspace this person manages (Personal has no members to invite).
     public var inviteSpace: SpaceRef?
     public var aiOn: Bool
+    /// Sharing is on in this place (an account): the folder's Share dialog.
+    public var sharing: Bool
     /// Another place exists (another account or the library).
     public var otherPlaces: Bool
     public var links: [FolderRules.Link]
@@ -37,10 +39,11 @@ public struct FolderMenuContext: Sendable {
     /// The space's level, "standard" or "encrypted" (the stop wording differs).
     public var level: String
     public var lockedIds: Set<String>
-    public init(canEdit: Bool, inviteSpace: SpaceRef?, aiOn: Bool, otherPlaces: Bool, links: [FolderRules.Link], canLock: Bool = false, level: String = "standard", lockedIds: Set<String> = []) {
+    public init(canEdit: Bool, inviteSpace: SpaceRef?, aiOn: Bool, otherPlaces: Bool, links: [FolderRules.Link], canLock: Bool = false, level: String = "standard", lockedIds: Set<String> = [], sharing: Bool = false) {
         self.canEdit = canEdit
         self.inviteSpace = inviteSpace
         self.aiOn = aiOn
+        self.sharing = sharing
         self.otherPlaces = otherPlaces
         self.links = links
         self.canLock = canLock
@@ -59,7 +62,8 @@ public struct FolderMenuContext: Sendable {
             links: links,
             canLock: locks?.canLock ?? false,
             level: locks?.level ?? "standard",
-            lockedIds: Set(locks?.locked ?? [])
+            lockedIds: Set(locks?.locked ?? []),
+            sharing: session?.capabilities.sharing ?? false
         )
     }
 
@@ -69,7 +73,7 @@ public struct FolderMenuContext: Sendable {
 }
 
 public enum FolderMenuItem: Hashable, Sendable {
-    case newNote, newFolderInside, rename, color, move, movePlaces, moveToTop, askAI, lock, copyLink, invite, delete
+    case newNote, newFolderInside, rename, color, move, movePlaces, moveToTop, askAI, lock, share, copyLink, invite, delete
 
     public var title: String {
         switch self {
@@ -82,6 +86,7 @@ public enum FolderMenuItem: Hashable, Sendable {
         case .moveToTop: "Move to top level"
         case .askAI: "Ask Foli AI about this folder…"
         case .lock: "Always fully encrypted"
+        case .share: "Share…"
         case .copyLink: "Copy link"
         case .invite: "Invite people…"
         case .delete: "Delete folder…"
@@ -99,6 +104,7 @@ public enum FolderMenuItem: Hashable, Sendable {
         case .moveToTop: "arrow.uturn.up"
         case .askAI: "bubble.left"
         case .lock: "lock"
+        case .share: "square.and.arrow.up"
         case .copyLink: "link"
         case .invite: "person.badge.plus"
         case .delete: "trash"
@@ -120,6 +126,8 @@ public enum FolderMenuItem: Hashable, Sendable {
         var share: [FolderMenuItem] = []
         if context.aiOn { share.append(.askAI) }
         if context.canLock { share.append(.lock) }
+        // Everyone in the place sees who has access; the dialog lets its managers change it (FolderMenu.tsx).
+        if context.sharing { share.append(.share) }
         share.append(.copyLink)
         if context.inviteSpace != nil { share.append(.invite) }
         groups.append(share)
@@ -229,6 +237,7 @@ public struct FolderMenuItems: View {
         case .moveToTop:
             Task { await actions.moveFolder(folder.id, to: FolderRules.Place(parentId: nil, afterId: context.links.filter { $0.parentId == nil }.last?.id), message: "Moved to the top level") }
         case .askAI: navigator.open(.foliAI(about: .folder(id: folder.id, name: folder.name)), nil)
+        case .share: navigator.open(.shareFolder(id: folder.id, name: folder.name), nil)
         case .copyLink:
             feedback.copy(FoleviLinks.folder(folder.id))
             feedback.toast(ScreenToast("Link copied", tone: .success))

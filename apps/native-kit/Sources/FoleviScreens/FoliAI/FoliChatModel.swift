@@ -552,7 +552,8 @@ public final class FoliChatModel {
     public func openLink(_ url: URL) -> Bool {
         if url.scheme == "folevi-cite" { return false }
         if url.scheme == nil || url.host == "app.folevi.com" {
-            onOpen(ScreenRoute(webRoute: url.path))
+            // (With its query: Foli DNA around a note is `/graph?note=<id>`.)
+            onOpen(ScreenRoute(webRoute: url.path + (url.query.map { "?\($0)" } ?? "")))
             return true
         }
         return false

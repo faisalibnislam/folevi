@@ -17,7 +17,8 @@ struct RebuildSharedScreen: View {
     }
 
     var body: some View {
-        PhoneSharedScreen(model: model, openNote: { phone.router?.openNote($0, source: nil, focus: false) }, back: { frame.back() })
+        // A shared folder opens on its own screen (the Mac's and iPad's, `/shared/<id>`).
+        PhoneSharedScreen(model: model, openNote: { phone.router?.openNote($0, source: nil, focus: false) }, openFolder: { frame.open(FrameRoute(path: "/shared/\($0)")) }, back: { frame.back() })
     }
 }
 

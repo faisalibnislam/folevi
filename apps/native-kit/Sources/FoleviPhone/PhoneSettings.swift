@@ -106,6 +106,8 @@ public struct PhoneSettingsHost {
     /// Contact support (the account's form, or an email from a library).
     public var contactSupport: @MainActor () -> Void
     public var openURL: @MainActor (URL) -> Void
+    /// New workspace's card (the account sheet's New workspace…): Create a workspace opens it.
+    public var newWorkspace: @MainActor () -> Void = {}
 
     public init(lock: @escaping @MainActor () -> (on: Bool, after: Int, method: String), setLock: @escaping @MainActor (Bool) async -> Void, setLockAfter: @escaping @MainActor (Int) -> Void, signIn: @escaping @MainActor () -> Void, contactSupport: @escaping @MainActor () -> Void, openURL: @escaping @MainActor (URL) -> Void) {
         self.lock = lock
@@ -157,7 +159,7 @@ public struct PhoneSettingsList: View {
             }
             if model.workspace == nil && !model.isLocal {
                 PhoneSettingsGroup(footer: "Share folders and notes with your team, each in its own workspace.") {
-                    PhoneSettingsRow("Create a workspace", action: { model.open("/workspaces/new") }) { PhoneRowIcon(.buildingComplex) }
+                    PhoneSettingsRow("Create a workspace", action: { host.newWorkspace() }) { PhoneRowIcon(.buildingComplex) }
                 }
             }
             PhoneSettingsGroup("Support") {

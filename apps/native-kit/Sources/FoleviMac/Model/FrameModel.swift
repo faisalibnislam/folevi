@@ -33,11 +33,31 @@ public protocol FrameHost: AnyObject {
     var frameCanFloatNotes: Bool { get }
     /// Floats a note in its own small window, on top of other apps (the Mac), or brings its window forward.
     func frameFloatNote(_ id: String)
+    /// This device's own app lock (the iPad's Face ID, Touch ID or passcode), shown as Settings > This device; nil
+    /// where the app has none (the Mac).
+    var frameDeviceLock: FrameDeviceLock? { get }
 }
 
 public extension FrameHost {
     var frameCanFloatNotes: Bool { false }
     func frameFloatNote(_ id: String) {}
+    var frameDeviceLock: FrameDeviceLock? { nil }
+}
+
+/// A device's app lock as Settings > This device changes it (the iPhone's PhoneSettingsHost.lock).
+public struct FrameDeviceLock {
+    /// On, after how many seconds in the background it asks again, and how it unlocks ("faceID", "touchID",
+    /// "opticID", "passcode", or "none" when the device has no passcode).
+    public var state: @MainActor () -> (on: Bool, after: Int, method: String)
+    /// Turns it on or off (on asks to unlock once first).
+    public var set: @MainActor (Bool) async -> Void
+    public var setAfter: @MainActor (Int) -> Void
+
+    public init(state: @escaping @MainActor () -> (on: Bool, after: Int, method: String), set: @escaping @MainActor (Bool) async -> Void, setAfter: @escaping @MainActor (Int) -> Void) {
+        self.state = state
+        self.set = set
+        self.setAfter = setAfter
+    }
 }
 
 public struct FrameToast: Identifiable, Equatable, Sendable {

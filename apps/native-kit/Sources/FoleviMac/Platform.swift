@@ -240,8 +240,10 @@ extension Image {
 #if os(iOS)
 import UniformTypeIdentifiers
 
-/// The Mac's open panel runs modally and returns its answer; the iPad has no modal file panel, so this one
-/// answers Cancel and the iPad's own screens use SwiftUI's `fileImporter`.
+/// The Mac's open panel, as the Files app's picker on the iPad (UIDocumentPickerViewController). AppKit's runs modally
+/// and answers at once; this one answers once the person has picked, so the shared views ask through `choose`, which
+/// is `runModal()` on the Mac. Files come as copies the app may read; a folder is copied into the app's temporary
+/// folder under its own name (its provider's access ends with the picker), so its paths read as the Mac's.
 @MainActor
 final class NSOpenPanel {
     enum Response { case OK, cancel }
@@ -251,7 +253,101 @@ final class NSOpenPanel {
     var allowedContentTypes: [UTType] = []
     var urls: [URL] = []
     var url: URL? { urls.first }
-    func runModal() -> Response { .cancel }
+
+    /// What the picker offers: a folder, or files of the allowed types (any file when none are given).
+    var pickerTypes: [UTType] {
+        if canChooseDirectories && !canChooseFiles { return [.folder] }
+        return allowedContentTypes.isEmpty ? [.item] : allowedContentTypes
+    }
+
+    /// Shows the Files app's picker; `done` gets OK with `urls` filled in, or cancel.
+    func choose(_ done: @escaping @MainActor (Response) -> Void) {
+        let folder = pickerTypes == [.folder]
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: pickerTypes, asCopy: !folder)
+        picker.allowsMultipleSelection = allowsMultipleSelection && !folder
+        DocumentPickerRelay.present(picker) { [self] picked in
+            guard !picked.isEmpty else { return done(.cancel) }
+            guard folder else {
+                urls = picked
+                return done(.OK)
+            }
+            Task { @MainActor in
+                let copies = await Task.detached { picked.compactMap(FilePanelFiles.copyFolder) }.value
+                urls = copies
+                done(copies.isEmpty ? .cancel : .OK)
+            }
+        }
+    }
+}
+
+/// The files the iPad's panels hand around.
+enum FilePanelFiles {
+    /// A picked folder copied into a new temporary folder under its own name, read while its provider allows; nil
+    /// when it can't be read.
+    nonisolated static func copyFolder(_ folder: URL) -> URL? {
+        let scoped = folder.startAccessingSecurityScopedResource()
+        defer { if scoped { folder.stopAccessingSecurityScopedResource() } }
+        guard let dir = newTemporaryFolder() else { return nil }
+        let copy = dir.appendingPathComponent(folder.lastPathComponent, isDirectory: true)
+        var failed: NSError?
+        var copied = false
+        NSFileCoordinator().coordinate(readingItemAt: folder, options: [], error: &failed) { at in
+            copied = (try? FileManager.default.copyItem(at: at, to: copy)) != nil
+        }
+        return copied ? copy : nil
+    }
+
+    /// A folder of its own in the app's temporary folder.
+    nonisolated static func newTemporaryFolder() -> URL? {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("panel-\(UUID().uuidString)", isDirectory: true)
+        return (try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)) != nil ? dir : nil
+    }
+
+    /// A name a file can have: no slashes or colons, never empty or hidden, at most about 120 characters, with the
+    /// type's extension when it has none (a save panel's `allowedContentTypes`).
+    nonisolated static func fileName(_ name: String, type: UTType? = nil) -> String {
+        var clean = name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-").trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean.isEmpty || clean.hasPrefix(".") { clean = "Folevi file" + clean }
+        if clean.count > 120 {
+            let ext = (clean as NSString).pathExtension
+            let stem = String((clean as NSString).deletingPathExtension.prefix(ext.isEmpty ? 120 : 110))
+            clean = ext.isEmpty ? stem : "\(stem).\(ext)"
+        }
+        if (clean as NSString).pathExtension.isEmpty, let ext = type?.preferredFilenameExtension { clean += ".\(ext)" }
+        return clean
+    }
+}
+
+/// Presents a Files app picker over everything on screen and hands what it picked (nothing when cancelled) to `done`.
+@MainActor
+public final class DocumentPickerRelay: NSObject, UIDocumentPickerDelegate {
+    private static var live: [DocumentPickerRelay] = []
+    private var done: (@MainActor ([URL]) -> Void)?
+
+    private init(_ done: @escaping @MainActor ([URL]) -> Void) { self.done = done }
+
+    public static func present(_ picker: UIDocumentPickerViewController, done: @escaping @MainActor ([URL]) -> Void) {
+        guard let top = NSApp.keyWindow?.rootViewController?.topmostPresented else { return done([]) }
+        let relay = DocumentPickerRelay(done)
+        live.append(relay)
+        picker.delegate = relay
+        top.present(picker, animated: true)
+    }
+
+    /// Saves a copy of a file where the person picks in the Files app; `done` says whether it was saved.
+    public static func export(_ file: URL, done: @escaping @MainActor (Bool) -> Void = { _ in }) {
+        present(UIDocumentPickerViewController(forExporting: [file], asCopy: true)) { done(!$0.isEmpty) }
+    }
+
+    private func finish(_ urls: [URL]) {
+        Self.live.removeAll { $0 === self }
+        let f = done
+        done = nil
+        f?(urls)
+    }
+
+    public func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) { finish(urls) }
+    public func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { finish([]) }
 }
 #endif
 
@@ -277,14 +373,27 @@ enum ContentViewController {
     @MainActor static var barHeight: CGFloat { WebStyles.named("frame.main").light.padding.top }
 }
 
-/// The Mac's save panel runs modally; the iPad answers Cancel here and shares the file from its own screens.
+/// The Mac's save panel, as the Files app's export picker on the iPad. `choose` hands its answer a file in a
+/// temporary folder under the panel's name (OK at once: the iPad asks where only once the file exists); once it is
+/// written there, the picker saves a copy where the person chooses, and the temporary one goes.
 @MainActor
 final class NSSavePanel {
     enum Response { case OK, cancel }
     var nameFieldStringValue = ""
     var allowedContentTypes: [UTType] = []
     var url: URL?
-    func runModal() -> Response { .cancel }
+
+    func choose(_ write: (Response) throws -> Void) rethrows {
+        guard let dir = FilePanelFiles.newTemporaryFolder() else { return try write(.cancel) }
+        let file = dir.appendingPathComponent(FilePanelFiles.fileName(nameFieldStringValue, type: allowedContentTypes.first))
+        url = file
+        try write(.OK)
+        guard FileManager.default.fileExists(atPath: file.path) else {
+            try? FileManager.default.removeItem(at: dir)
+            return
+        }
+        DocumentPickerRelay.export(file) { _ in try? FileManager.default.removeItem(at: dir) }
+    }
 }
 #endif
 
@@ -313,6 +422,12 @@ enum WebSidebarController {
 #if os(macOS)
 import AppKit
 import FoleviDesign
+
+extension NSSavePanel {
+    /// The panel, modally, and its answer at once (the iPad's stand-in answers once the Files app's picker is done).
+    /// An open panel's too (NSOpenPanel is a save panel).
+    func choose(_ done: (NSApplication.ModalResponse) throws -> Void) rethrows { try done(runModal()) }
+}
 
 extension NSWindow {
     /// Fades the window away, macOS's own for a menu, a popover or a sheet going (at once with Reduce Motion), then

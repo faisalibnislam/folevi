@@ -112,9 +112,11 @@ struct AccountSettingsView: View {
     private func pickAvatar() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.jpeg, .png, .webP, .gif]
-        guard panel.runModal() == .OK, let url = panel.url, let data = try? Data(contentsOf: url) else { return }
-        let types = ["jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp", "gif": "image/gif"]
-        Task { await model.perform(.settingsSetAvatar(data: data.base64EncodedString(), mimeType: types[url.pathExtension.lowercased()] ?? "image/jpeg", name: url.lastPathComponent), done: "Saved") }
+        panel.choose { response in
+            guard response == .OK, let url = panel.url, let data = try? Data(contentsOf: url) else { return }
+            let types = ["jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp", "gif": "image/gif"]
+            Task { await model.perform(.settingsSetAvatar(data: data.base64EncodedString(), mimeType: types[url.pathExtension.lowercased()] ?? "image/jpeg", name: url.lastPathComponent), done: "Saved") }
+        }
     }
 }
 

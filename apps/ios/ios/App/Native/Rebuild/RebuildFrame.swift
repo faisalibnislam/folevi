@@ -41,6 +41,8 @@ enum RebuildFrame {
     /// The scene's restoration activity (SceneDelegate): its type and the snapshot's key in it.
     static let restorationType = "com.folevi.ios.frame"
     static let restorationKey = "frame"
+    /// The iPad's wide layout's tabs in the same activity (RebuildIPad.swift restoreDesk).
+    static let deskRestorationKey = "desk"
 
     /// Back where the scene was, unless launched to open routes (FOLEVI_REBUILD_OPEN).
     static func restore(_ data: Data) {

@@ -96,9 +96,11 @@ struct DataSettings: View {
         panel.canChooseDirectories = folder
         panel.allowsMultipleSelection = !folder
         if !folder { panel.allowedContentTypes = ["md", "markdown", "txt", "zip", "enex", "docx", "html", "htm", "csv", "png", "jpg", "jpeg", "gif", "webp"].compactMap { UTType(filenameExtension: $0) } }
-        guard panel.runModal() == .OK else { return }
-        let files = folder ? panel.urls.first.map(Self.files(inFolder:)) ?? [] : panel.urls.map { ($0, "") }
-        run(files)
+        panel.choose { response in
+            guard response == .OK else { return }
+            let files = folder ? panel.urls.first.map(Self.files(inFolder:)) ?? [] : panel.urls.map { ($0, "") }
+            run(files)
+        }
     }
 
     /// Every file in a folder, with its path from the folder's own name ("Vault/Notes/a.md"), as a picked folder gives it.
@@ -143,13 +145,15 @@ struct DataSettings: View {
     private func pickTakeout() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.zip]
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        takeoutBusy = true
-        takeoutStatus = "Importing: folders and tags…"
-        Task {
-            let r = await model.run(.takeoutImport, ["files": Self.payload([(url, "")])])
-            takeoutBusy = false
-            if case .object(let o)? = r, case .string(let s)? = o["status"] { takeoutStatus = s } else { takeoutStatus = nil }
+        panel.choose { response in
+            guard response == .OK, let url = panel.url else { return }
+            takeoutBusy = true
+            takeoutStatus = "Importing: folders and tags…"
+            Task {
+                let r = await model.run(.takeoutImport, ["files": Self.payload([(url, "")])])
+                takeoutBusy = false
+                if case .object(let o)? = r, case .string(let s)? = o["status"] { takeoutStatus = s } else { takeoutStatus = nil }
+            }
         }
     }
 

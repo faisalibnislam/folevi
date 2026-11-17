@@ -527,8 +527,10 @@ private struct PreviewDialog: View {
             let v = try await model.client.command(.vaultFileOpen(vaultId: vaultId, itemId: f.id, purpose: .download))
             let panel = NSSavePanel()
             panel.nameFieldStringValue = v.name
-            guard panel.runModal() == .OK, let url = panel.url, let data = Data(base64Encoded: v.data) else { return }
-            try data.write(to: url)
+            try panel.choose { response in
+                guard response == .OK, let url = panel.url, let data = Data(base64Encoded: v.data) else { return }
+                try data.write(to: url)
+            }
         }
     }
 }

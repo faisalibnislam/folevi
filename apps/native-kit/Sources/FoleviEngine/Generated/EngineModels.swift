@@ -1451,7 +1451,9 @@ public enum EditorPanel: String, Codable, Hashable, Sendable, CaseIterable {
 /// "divider-strong", ...: the ids the native Insert sheet is generated with), and "quick-table-<rows>x<cols>".
 public typealias EditorInsertKind = String
 
-/// Actions of the note's "..." menu that need the note page (its dialogs and panels).
+/// Actions of the note's "..." menu that need the note page (its dialogs and panels). Revision 31: "moveToVault"
+/// ("Move to the Vault…"), "saveAsTemplate", "showEditors" (Show or Hide editors) and "readImages" ("Make text in
+/// images searchable"), offered only where `editor.state`'s `menu` lists them.
 public enum NoteMenuAction: String, Codable, Hashable, Sendable, CaseIterable {
     case share
     case move
@@ -1463,6 +1465,33 @@ public enum NoteMenuAction: String, Codable, Hashable, Sendable, CaseIterable {
     case print
     case find
     case delete
+    case moveToVault
+    case saveAsTemplate
+    case showEditors
+    case readImages
+}
+
+/// Revision 31: what the note's "..." menu offers now, as the page's own menu decides it (DocumentView's
+/// useDocumentActions), for native to show the same items.
+public struct NoteMenuState: Codable, Hashable, Sendable {
+    /// The `note.menu` actions this note takes now (any other is refused).
+    public var actions: [NoteMenuAction]
+    /// "Related notes" (`panel.open { panel: "related" }`) is offered.
+    public var related: Bool
+    /// The editors' colours are on ("Hide editors" rather than "Show editors").
+    public var showingEditors: Bool
+    /// Images Foli AI can read for "Make text in images searchable" (0 when it isn't offered).
+    public var readImages: Int
+    /// Foli AI is reading them now (the item is shown but not offered).
+    public var readingImages: Bool
+
+    public init(actions: [NoteMenuAction], related: Bool, showingEditors: Bool, readImages: Int, readingImages: Bool) {
+        self.actions = actions
+        self.related = related
+        self.showingEditors = showingEditors
+        self.readImages = readImages
+        self.readingImages = readingImages
+    }
 }
 
 public struct NotePrepareArgs: Codable, Hashable, Sendable {
@@ -2225,8 +2254,10 @@ public struct EditorStateEvent: Codable, Hashable, Sendable {
     public var canLock: Bool
     /// Revision 21: the line's formatting (null with no note open).
     public var format: EditorFormatState?
+    /// Revision 31: what the note's "..." menu offers (null with no note open; an older page leaves it out).
+    public var menu: NoteMenuState?
 
-    public init(noteId: String? = nil, focused: Bool, canEdit: Bool, block: String, marks: [EditorMark], link: Bool, undo: Bool, redo: Bool, focus: Bool, locked: Bool, canLock: Bool, format: EditorFormatState? = nil) {
+    public init(noteId: String? = nil, focused: Bool, canEdit: Bool, block: String, marks: [EditorMark], link: Bool, undo: Bool, redo: Bool, focus: Bool, locked: Bool, canLock: Bool, format: EditorFormatState? = nil, menu: NoteMenuState? = nil) {
         self.noteId = noteId
         self.focused = focused
         self.canEdit = canEdit
@@ -2239,6 +2270,7 @@ public struct EditorStateEvent: Codable, Hashable, Sendable {
         self.locked = locked
         self.canLock = canLock
         self.format = format
+        self.menu = menu
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -2255,6 +2287,7 @@ public struct EditorStateEvent: Codable, Hashable, Sendable {
         try container.encode(self.locked, forKey: .locked)
         try container.encode(self.canLock, forKey: .canLock)
         try container.encode(self.format, forKey: .format)
+        try container.encode(self.menu, forKey: .menu)
     }
 }
 

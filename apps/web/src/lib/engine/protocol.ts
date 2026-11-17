@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 30;
+export const CONTRACT_REVISION = 31;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -844,8 +844,29 @@ export type EditorPanel = "format" | "insert" | "style" | "comments" | "ai" | "i
  */
 export type EditorInsertKind = string;
 
-/** Actions of the note's "..." menu that need the note page (its dialogs and panels). */
-export type NoteMenuAction = "share" | "move" | "copyTo" | "duplicate" | "export" | "history" | "present" | "print" | "find" | "delete";
+/**
+ * Actions of the note's "..." menu that need the note page (its dialogs and panels). Revision 31: "moveToVault"
+ * ("Move to the Vault…"), "saveAsTemplate", "showEditors" (Show or Hide editors) and "readImages" ("Make text in
+ * images searchable"), offered only where `editor.state`'s `menu` lists them.
+ */
+export type NoteMenuAction = "share" | "move" | "copyTo" | "duplicate" | "export" | "history" | "present" | "print" | "find" | "delete" | "moveToVault" | "saveAsTemplate" | "showEditors" | "readImages";
+
+/**
+ * Revision 31: what the note's "..." menu offers now, as the page's own menu decides it (DocumentView's
+ * useDocumentActions), for native to show the same items.
+ */
+export interface NoteMenuState {
+  /** The `note.menu` actions this note takes now (any other is refused). */
+  actions: NoteMenuAction[];
+  /** "Related notes" (`panel.open { panel: "related" }`) is offered. */
+  related: boolean;
+  /** The editors' colours are on ("Hide editors" rather than "Show editors"). */
+  showingEditors: boolean;
+  /** Images Foli AI can read for "Make text in images searchable" (0 when it isn't offered). */
+  readImages: number;
+  /** Foli AI is reading them now (the item is shown but not offered). */
+  readingImages: boolean;
+}
 
 export interface NotePrepareArgs {
   id: string;
@@ -1177,6 +1198,8 @@ export interface EditorStateEvent {
   canLock: boolean;
   /** Revision 21: the line's formatting (null with no note open). */
   format: EditorFormatState | null;
+  /** Revision 31: what the note's "..." menu offers (null with no note open; an older page leaves it out). */
+  menu: NoteMenuState | null;
 }
 
 export interface EditorPanelEvent {
@@ -4474,7 +4497,7 @@ export const EVENT_NAMES: Exhaustive<EventName, typeof eventNames> = eventNames;
 export const EDITOR_MARKS: readonly EditorMark[] = ["bold", "italic", "underline", "strike", "code", "highlight"];
 export const EDITOR_BLOCKS: readonly EditorBlock[] = ["paragraph", "heading1", "heading2", "heading3", "bulleted", "numbered", "todo", "toggle", "quote", "callout", "code"];
 export const EDITOR_PANELS: readonly EditorPanel[] = ["format", "insert", "style", "comments", "ai", "info", "related"];
-export const NOTE_MENU_ACTIONS: readonly NoteMenuAction[] = ["share", "move", "copyTo", "duplicate", "export", "history", "present", "print", "find", "delete"];
+export const NOTE_MENU_ACTIONS: readonly NoteMenuAction[] = ["share", "move", "copyTo", "duplicate", "export", "history", "present", "print", "find", "delete", "moveToVault", "saveAsTemplate", "showEditors", "readImages"];
 export const NOTES_LIST_VIEWS: readonly NotesListView[] = ["all", "starred", "archive", "trash", "templates", "unsorted", "folder", "tag"];
 export const NOTES_SORTS: readonly NotesSort[] = ["updated", "created", "title", "manual"];
 export const WEB_PAGES: readonly WebPage[] = ["settings.connectedApps", "settings.workspaceData", "settings.data", "settings.aiExport", "reviews", "graph", "settings.security", "settings.privacy", "settings.workspace", "settings.deleteAccount"];

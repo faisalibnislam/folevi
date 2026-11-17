@@ -24,6 +24,7 @@
       "calloutTone": null,
       "codeLanguage": null,
       "blockTools": true
-    }
+    },
+    "menu": null
   }
 }

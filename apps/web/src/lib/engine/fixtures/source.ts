@@ -1445,6 +1445,7 @@ export const FIXTURES: Record<string, Fixture> = {
       locked: false,
       canLock: true,
       format: { textStyle: null, textColor: "moss", highlight: null, align: "left", group: "page", decoration: null, calloutTone: null, codeLanguage: null, blockTools: true },
+      menu: { actions: ["share", "move", "duplicate", "export", "history", "present", "print", "find", "delete", "moveToVault", "saveAsTemplate", "showEditors"], related: true, showingEditors: false, readImages: 0, readingImages: false },
     },
   }),
 
@@ -1590,7 +1591,7 @@ export const FIXTURES: Record<string, Fixture> = {
       sync: "waiting",
     },
   }),
-  "event.editor.state": event({ name: "editor.state", description: "The caret moved into a heading.", data: { noteId: "doc_00001", focused: true, canEdit: true, block: "heading2", marks: [], link: false, undo: true, redo: true, focus: true, locked: false, canLock: false, format: { textStyle: "subtitle", textColor: null, highlight: null, align: "center", group: "card", decoration: null, calloutTone: null, codeLanguage: null, blockTools: true } } }),
+  "event.editor.state": event({ name: "editor.state", description: "The caret moved into a heading.", data: { noteId: "doc_00001", focused: true, canEdit: true, block: "heading2", marks: [], link: false, undo: true, redo: true, focus: true, locked: false, canLock: false, format: { textStyle: "subtitle", textColor: null, highlight: null, align: "center", group: "card", decoration: null, calloutTone: null, codeLanguage: null, blockTools: true }, menu: null } }),
   "event.editor.panel": event({ name: "editor.panel", description: "The Format panel opened.", data: { panel: "format" } }),
   "event.editor.panel.closed": event({ name: "editor.panel", description: "The panel closed.", data: { panel: null } }),
   "event.memory.relieved": event({ name: "memory.relieved", description: "Memory was short: the editor and caches were dropped.", data: { dropped: ["editor", "caches"] } }),

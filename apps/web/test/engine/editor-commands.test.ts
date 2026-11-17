@@ -1,7 +1,7 @@
 // The editor command API (src/lib/engine/editorCommands.ts) on its edges: what it refuses, and the commands that
 // don't need the editor's own functions (panels, the note menu, insets, state).
 import { describe, expect, it } from "vitest";
-import { runEditorCommand, runNoteMenuCommand, editorState, type NativeNoteOptions } from "@/lib/engine/editorCommands";
+import { runEditorCommand, runNoteMenuCommand, editorState, noteMenuState, type NativeNoteOptions } from "@/lib/engine/editorCommands";
 import { BridgeError } from "@/lib/engine/validate";
 
 function options(over: Partial<NativeNoteOptions> = {}): NativeNoteOptions & { log: string[] } {
@@ -69,8 +69,25 @@ describe("editor commands", () => {
     expect(document.documentElement.style.getPropertyValue("--native-inset-top")).toBe("96px");
     expect(document.documentElement.style.getPropertyValue("--native-inset-bottom")).toBe("44px");
     expect(code(() => runEditorCommand(options(), "insets", { top: -1, bottom: 0 }))).toBe("invalid_args");
-    expect(editorState(null, "doc_1", false)).toEqual({ noteId: "doc_1", focused: false, canEdit: true, block: "paragraph", marks: [], link: false, undo: false, redo: false, focus: false, locked: false, canLock: false, format: null });
+    expect(editorState(null, "doc_1", false)).toEqual({ noteId: "doc_1", focused: false, canEdit: true, block: "paragraph", marks: [], link: false, undo: false, redo: false, focus: false, locked: false, canLock: false, menu: null, format: null });
     expect(runEditorCommand(options({ editor: fakeEditor as never }), "state", {})).toMatchObject({ noteId: "doc_1", undo: true, redo: false, format: { textStyle: null, align: "left", group: "page", blockTools: false } });
+  });
+
+  it("state says what the note's menu offers (revision 31): its actions and the page's own items", () => {
+    const o = options({
+      menu: { history: () => undefined, saveAsTemplate: () => undefined, moveToVault: undefined },
+      menuState: { related: true, showingEditors: true, readImages: 2.7, readingImages: false },
+    });
+    expect(noteMenuState(o)).toEqual({ actions: ["history", "saveAsTemplate"], related: true, showingEditors: true, readImages: 2, readingImages: false });
+    expect(runEditorCommand(o, "state", {})).toMatchObject({ menu: { actions: ["history", "saveAsTemplate"], related: true } });
+    expect(noteMenuState(options({ menu: {} }))).toEqual({ actions: [], related: false, showingEditors: false, readImages: 0, readingImages: false });
+    // The new actions run what the page gave, and are refused where it gave nothing.
+    const log: string[] = [];
+    const p = options({ menu: { showEditors: () => log.push("editors"), readImages: () => log.push("images") } });
+    runEditorCommand(p, "note.menu", { action: "showEditors" });
+    runEditorCommand(p, "note.menu", { action: "readImages" });
+    expect(log).toEqual(["editors", "images"]);
+    expect(code(() => runEditorCommand(p, "note.menu", { action: "moveToVault" }))).toBe("unavailable");
   });
 
   it("insert slash types / where the caret is (the slash menu)", () => {

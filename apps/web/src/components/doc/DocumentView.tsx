@@ -863,7 +863,20 @@ export function DocumentView({ documentId }: { documentId: string }) {
       print: () => window.print(),
       find: editor ? () => openFind(!readOnly) : undefined,
       delete: meta && !readOnly ? () => setDeleteOpen(true) : undefined,
+      // Revision 31: the rest of the page's own menu, where it offers them (useDocumentActions decides the same).
+      moveToVault: vaultHere && (meta?.access === "manage" || meta?.access === "write") ? () => setVaultMoveOpen(true) : undefined,
+      saveAsTemplate:
+        meta && !meta.inTrash && meta.document.kind !== "template"
+          ? () =>
+              void duplicateNote({ documentId, asTemplate: true }).then(
+                () => void nativeToast("Saved to Templates", { tone: "success" }),
+                (e) => void nativeToast(errorMessage(e), { tone: "error" }),
+              )
+          : undefined,
+      showEditors: canEditPage && meta && !meta.inTrash ? () => setShowEditors((on) => !on) : undefined,
+      readImages: readImages && !readImages.busy ? readImages.run : undefined,
     },
+    menuState: { related: Boolean(canRelate && meta && !meta.inTrash), showingEditors: showEditors, readImages: readImages?.count ?? 0, readingImages: readImages?.busy ?? false },
     scrollEl,
     locked: Boolean((meta?.document as { locked?: boolean } | undefined)?.locked),
     lock: lockItem?.onSelect ? () => lockItem.onSelect?.() : undefined,

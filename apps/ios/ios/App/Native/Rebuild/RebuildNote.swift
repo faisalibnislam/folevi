@@ -24,6 +24,8 @@ struct RebuildNoteScreen: View {
     @State private var safe = EdgeInsets()
     /// Format, Insert, Style or Comments, drawn natively in a sheet (Foli AI is still the page's own).
     @State private var nativeTool: PhoneNoteTool?
+    /// The note's flashcards (`reviews { noteId }`), for the menu's "Review 3 cards in this note".
+    @State private var reviews: ValueStore<ReviewsValue>?
 
     var body: some View {
         let meta = model.noteMeta[noteId]
@@ -75,6 +77,7 @@ struct RebuildNoteScreen: View {
         .onAppear {
             pageHost.adopt(by: NotePageRegistry.controller(for: noteId))
             model.show(noteId)
+            if reviews == nil { reviews = model.client.watch(.reviews(noteId: noteId)) }
             KeyboardBridge.shared.setInteractiveDismiss(true)
             sendInsets(insets)
             // FOLEVI_REBUILD_SHEET=format or insert: that tool's sheet once the note is up (headless checks).
@@ -309,40 +312,110 @@ struct RebuildNoteScreen: View {
         model.editor(EditorCommands.FormatSet(a))
     }
 
-    /// "…": the note's actions, as the web's menu lists them (DocumentView's noteActions), where the page can run
-    /// them; in Folevi's menu.
+    /// "…": the note's actions, as the web's note page lists them (NoteMenuPlan: DocumentView's useDocumentActions
+    /// in noteMenu.tsx's groups, Restore and Delete permanently for a note in Trash), in Folevi's menu. A group of
+    /// two or more opens as its own menu in the same place, under its name.
     private func showMenu(from anchor: CGRect, meta: NoteMeta?) {
-        let canEdit = meta?.canEdit ?? true
-        let full = canEdit && (meta.map { !["read", "comment"].contains($0.access) } ?? true)
-        func page(_ title: String, _ icon: WebIcon, _ action: NoteMenuAction, danger: Bool = false) -> PhoneMenuEntry {
-            PhoneMenuEntry(.item(title, icon: icon, danger: danger)) { model.editor(.noteMenu(action: action)) }
-        }
+        let state = model.editorState?.noteId == noteId ? model.editorState?.menu : nil
+        let reviewCards: Int? = reviews?.value.flatMap { $0.found && $0.total > 0 ? $0.due + $0.new : nil }
+        let input = NoteMenuPlan.Input(meta: meta, menu: state, reviewCards: reviewCards, graph: model.session.value?.capabilities.graph == true)
         var entries: [PhoneMenuEntry] = []
-        if let meta, meta.found, meta.space != nil {
-            let starred = meta.starred
-            entries.append(PhoneMenuEntry(.item(starred ? "Remove bookmark" : "Bookmark", icon: starred ? .bookmarkOff : .bookmark)) { model.star(noteId, !starred) })
-        }
-        entries.append(page("Version history…", .rotateCcwClock, .history))
-        // Foli DNA around this note (the web menu's "Foli DNA of this note").
-        if model.session.value?.capabilities.graph == true {
-            entries.append(PhoneMenuEntry(.item("Foli DNA of this note", icon: .waypoints)) { [frame, noteId] in frame.open(FrameRoute(path: "/graph?note=\(noteId)")) })
-        }
-        entries.append(page(full ? "Find and replace…" : "Find in note…", .search, .find))
-        if full { entries.append(page("Move…", .folderInput, .move)) }
-        entries.append(page("Export…", .download, .export))
-        entries.append(page("Present", .presentation, .present))
-        var last: [PhoneMenuEntry] = []
-        if full { last += [page("Duplicate", .copy, .duplicate), page("Copy to…", .copyPlus, .copyTo)] }
-        if let meta, meta.found, full, meta.space != nil {
-            let archived = meta.archived
-            last.append(PhoneMenuEntry(.item(archived ? "Unarchive" : "Archive", icon: archived ? .archiveRestore : .archive)) { model.archive(noteId, !archived) })
-        }
-        if full { last.append(page("Move to Trash", .trash, .delete, danger: true)) }
-        if !last.isEmpty {
-            entries.append(PhoneMenuEntry(.separator(1)))
-            entries += last
+        for (i, section) in NoteMenuPlan.sections(input).enumerated() {
+            if i > 0 { entries.append(PhoneMenuEntry(.separator(i))) }
+            for row in section {
+                switch row {
+                case .item(let item):
+                    entries.append(entry(item))
+                case .submenu(let group, let items):
+                    entries.append(PhoneMenuEntry(.item(group.rawValue, icon: Self.icon(group), id: "group:\(group.rawValue)")) { [menus] in
+                        // (After this menu has gone: the group's own grows out of the same place.)
+                        DispatchQueue.main.async {
+                            menus.show([PhoneMenuEntry(.heading(group.rawValue))] + items.map(entry), from: anchor, side: .bottom, align: .end)
+                        }
+                    })
+                }
+            }
         }
         menus.show(entries, from: anchor, side: .bottom, align: .end)
+    }
+
+    private func entry(_ item: NoteMenuItem) -> PhoneMenuEntry {
+        var row = WebMenuItem.item(item.title, icon: Self.icon(item), danger: item.danger, description: item.description, id: "note:\(item.title)")
+        row.disabled = item.disabled
+        return PhoneMenuEntry(row) { run(item) }
+    }
+
+    private func run(_ item: NoteMenuItem) {
+        func page(_ action: NoteMenuAction) { model.editor(.noteMenu(action: action)) }
+        switch item {
+        case .bookmark(let on): model.star(noteId, !on)
+        case .info: model.editor(.panelOpen(panel: .info))
+        case .related: model.editor(.panelOpen(panel: .related))
+        case .find: page(.find)
+        case .review: frame.open(FrameRoute(path: "/review?note=\(noteId)"))
+        case .readImages: page(.readImages)
+        case .dna: frame.open(FrameRoute(path: "/graph?note=\(noteId)"))
+        case .history: page(.history)
+        case .showEditors: page(.showEditors)
+        case .move: page(.move)
+        case .copyTo: page(.copyTo)
+        case .duplicate: page(.duplicate)
+        case .moveToVault: page(.moveToVault)
+        case .export: page(.export)
+        case .present: page(.present)
+        case .print: printNote()
+        case .saveAsTemplate: page(.saveAsTemplate)
+        case .archive(let on, _): model.archive(noteId, !on)
+        case .trash: model.trash(noteId)
+        case .restore: model.restore(noteId)
+        // The page asks first, the title typed to confirm (PermanentDeleteDialog), as the web's menu does.
+        case .deleteForever: page(.delete)
+        }
+    }
+
+    /// Print…: the note as the page prints it (its print styles), in iOS's print sheet.
+    private func printNote() {
+        let printer = UIPrintInteractionController.shared
+        let info = UIPrintInfo.printInfo()
+        info.outputType = .general
+        info.jobName = (model.noteMeta[noteId]?.title).flatMap { $0.isEmpty ? nil : $0 } ?? "Untitled"
+        printer.printInfo = info
+        printer.printFormatter = pageHost.pageView.viewPrintFormatter()
+        printer.present(animated: true)
+    }
+
+    /// The web menu's icons (lucide).
+    static func icon(_ item: NoteMenuItem) -> WebIcon {
+        switch item {
+        case .bookmark(let on): on ? .bookmarkOff : .bookmark
+        case .info: .info
+        case .find: .search
+        case .review: .layers
+        case .readImages: .scanText
+        case .related, .dna: .waypoints
+        case .history: .rotateCcwClock
+        case .showEditors: .users
+        case .move: .folderInput
+        case .copyTo: .copyPlus
+        case .duplicate: .copy
+        case .moveToVault: .lock
+        case .export: .download
+        case .present: .presentation
+        case .print: .printer
+        case .saveAsTemplate: .layoutTemplate
+        case .archive(let on, _): on ? .archiveRestore : .archive
+        case .trash, .deleteForever: .trash
+        case .restore: .undo2
+        }
+    }
+
+    static func icon(_ group: NoteMenuGroup) -> WebIcon {
+        switch group {
+        case .connections: .waypoints
+        case .history: .rotateCcwClock
+        case .moveCopy: .folderInput
+        case .shareExport: .share
+        }
     }
 }
 

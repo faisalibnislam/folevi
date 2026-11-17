@@ -34,7 +34,7 @@ public struct NoteSlot: Identifiable, Hashable, Sendable {
 /// What can be done to several notes (and, on the Mac and iPad, folders) at once (the selection bar), in the web's
 /// order. Which a selection offers: ListSelection.actions.
 public enum BulkAction: String, CaseIterable, Sendable, Identifiable {
-    case openTabs, move, copy, star, unstar, color, archive, unarchive, trash, restore, deleteForever, deleteFolders
+    case openTabs, move, copy, star, unstar, tags, color, archive, unarchive, trash, restore, deleteForever, deleteFolders
     public var id: String { rawValue }
 
     public var title: String {
@@ -42,6 +42,7 @@ public enum BulkAction: String, CaseIterable, Sendable, Identifiable {
         case .openTabs: "Open in new tabs"
         case .move: "Move"
         case .copy: "Copy to"
+        case .tags: "Add tag"
         case .color: "Change color"
         case .deleteFolders: "Delete folders"
         case .star: "Bookmark"
@@ -59,6 +60,7 @@ public enum BulkAction: String, CaseIterable, Sendable, Identifiable {
         case .openTabs: "plus.rectangle.on.rectangle"
         case .move: "folder"
         case .copy: "plus.square.on.square"
+        case .tags: "number"
         case .color: "paintpalette"
         case .deleteFolders: "trash"
         case .star: FoleviGlyph.name(.bookmark)
@@ -71,6 +73,16 @@ public enum BulkAction: String, CaseIterable, Sendable, Identifiable {
     }
 
     public var destructive: Bool { self == .trash || self == .deleteForever || self == .deleteFolders }
+}
+
+/// A note Add tag is for, with the tags it has now (a tag is added to them, `graph.tag`).
+public struct TagTarget: Hashable, Sendable {
+    public var id: String
+    public var tagIds: [String]
+    public init(id: String, tagIds: [String]) {
+        self.id = id
+        self.tagIds = tagIds
+    }
 }
 
 /// What a confirmation asks before a destructive step.
@@ -154,6 +166,8 @@ public final class NotesListModel {
     public var moving: [String]?
     /// Notes the Copy to sheet is open for.
     public var copying: [String]?
+    /// Notes the Add tag picker is open for, with the tags each has now (the selection's Add tag).
+    public var tagging: [TagTarget]?
     /// A host that draws its own Move and Copy dialogs (the Mac's, matched to the web's): set, `moving` and
     /// `copying` go to it instead of the sheets (NotesListSheets).
     public var presentMove: (@MainActor ([String]) -> Void)?
@@ -594,12 +608,12 @@ public final class NotesListModel {
         selectionAnchor = id
     }
 
-    /// The selection bar's actions without tabs (the iPhone).
-    public var bulkActions: [BulkAction] { bulkActions(tabs: false) }
+    /// The selection bar's actions on the iPhone: no tabs, and Add tag as the web's phone bar has it.
+    public var bulkActions: [BulkAction] { bulkActions(tabs: false, tags: true) }
 
     /// The selection bar's actions: only those every selected item can take (ListSelection.actions). `tabs`: there's
-    /// a tab strip to open tabs in (the Mac and iPad).
-    public func bulkActions(tabs: Bool) -> [BulkAction] {
+    /// a tab strip to open tabs in (the Mac and iPad); `tags`: Add tag is offered.
+    public func bulkActions(tabs: Bool, tags: Bool = false) -> [BulkAction] {
         let rows = loadedRows.filter { selection.contains($0.id) }
         var items = rows.map { SelectedItem(.note, starred: actions.isStarred($0), archived: $0.archived, template: $0.kind == "template") }
         items += selectedFolderIds.map { _ in SelectedItem.folder }
@@ -608,7 +622,27 @@ public final class NotesListModel {
         if unloaded > 0 { items += Array(repeating: SelectedItem(.note), count: unloaded) }
         // (Select mode with nothing picked yet, the iPhone's: the bar shows what notes take.)
         if items.isEmpty { items = [SelectedItem(.note)] }
-        return ListSelection.actions(items, trash: isTrash, canEdit: canEdit, canCopy: !copyTargets.isEmpty, tabs: tabs)
+        return ListSelection.actions(items, trash: isTrash, canEdit: canEdit, canCopy: !copyTargets.isEmpty, tabs: tabs, tags: tags)
+    }
+
+    /// The tags Add tag offers: the space's, in the sidebar's order.
+    public var tagChoices: [TagRow] { tree.value?.tags ?? [] }
+
+    /// Add tag picked `tag` for `notes` (useSelectionActions addTag): each note that hasn't it gets it, then one
+    /// toast ("Tagged 2 notes #travel", or "Already tagged #travel").
+    public func addTag(_ tag: TagRow, to notes: [TagTarget]) async {
+        tagging = nil
+        let picked = notes.filter { !$0.tagIds.contains(tag.id) }
+        guard !picked.isEmpty else {
+            actions.feedback.toast(ScreenToast("Already tagged #\(tag.name)"))
+            return
+        }
+        do {
+            let r = try await client.command(.graphTag(notes: picked.map { GraphTagNote(id: $0.id, tagIds: $0.tagIds) }, tagId: tag.id))
+            actions.feedback.toast(ScreenToast(r.tagged > 0 ? "Tagged \(ListSelection.noun(notes: r.tagged, folders: 0)) #\(tag.name)" : "Already tagged #\(tag.name)", tone: .success))
+        } catch {
+            actions.feedback.toast(ScreenToast(ScreenErrors.message(error), tone: .error))
+        }
     }
 
     public var selectionStatus: String {
@@ -634,6 +668,11 @@ public final class NotesListModel {
             return
         case .copy:
             copying = ids
+            return
+        case .tags:
+            // (Notes picked but not loaded yet have no tags known: they're tagged as having none.)
+            let rows = Dictionary(loadedRows.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+            tagging = ids.map { TagTarget(id: $0, tagIds: rows[$0]?.tags.map(\.id) ?? []) }
             return
         case .star: await actions.star(ids, true)
         case .unstar: await actions.star(ids, false)

@@ -20,6 +20,9 @@ public struct PhoneHomeActions {
     public var folderMenu: (FolderCard, CGRect) -> Void = { _, _ in }
     /// A note's menu (its long press on a recent card or a Starred row), from where it was held.
     public var noteMenu: (NoteRow, CGRect) -> Void = { _, _ in }
+    /// A tag row's menu (its long press: Edit tag…, its colours, Delete tag…), from the row; nil where tags can't
+    /// be changed.
+    public var tagMenu: ((TagRow, CGRect) -> Void)?
 
     public init(open: @escaping (String) -> Void, openNote: @escaping (String) -> Void, foldersMenu: @escaping (CGRect) -> Void) {
         self.open = open
@@ -192,11 +195,12 @@ public struct PhoneHomeContent: View {
 
     private var tags: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PhoneHomeSection("Tags", open: { withAnimation(.easeOut(duration: 0.2)) { tagsOpen.toggle() } }, opened: tagsOpen) {
+            // The heading folds the rows; See all opens every tag (/tags).
+            PhoneHomeSection("Tags", open: { withAnimation(.easeOut(duration: 0.2)) { tagsOpen.toggle() } }, opened: tagsOpen, seeAll: { actions.open("/tags") }) {
                 if tagsOpen {
                     PhoneRowGroup("Tags") {
                         ForEach(model.tags, id: \.id) { tag in
-                            PhoneListRow(tag.name, action: { actions.open("/tags/\(tag.id)") }) {
+                            PhoneListRow(tag.name, action: { actions.open("/tags/\(tag.id)") }, onLongPress: actions.tagMenu.map { menu in { menu(tag, $0) } }) {
                                 PhoneRowGlyph(.hash).foregroundStyle(Self.tagColor(tag.color, scheme).color)
                             }
                         }
@@ -207,7 +211,7 @@ public struct PhoneHomeContent: View {
     }
 
     /// `var(--color-<color>)`, the muted ink for "muted".
-    static func tagColor(_ color: String, _ scheme: ColorScheme) -> RGBA {
+    public static func tagColor(_ color: String, _ scheme: ColorScheme) -> RGBA {
         if color == "muted" { return FoleviTokens.Chrome.inkMuted.resolve(scheme) }
         return (WebStyles.vars["color-\(color)"] ?? FoleviTokens.Chrome.inkMuted).resolve(scheme)
     }

@@ -13,7 +13,8 @@ final class MoreModels {
     let frame: FrameModel
     let feedback: ScreenFeedback
     private var graph: GraphModel?
-    private var review: ReviewModel?
+    /// Reviews everywhere (key ""), or one note's (its id): a session each.
+    private var reviews: [String: ReviewModel] = [:]
     private var sharedFolders: [String: SharedFolderModel] = [:]
     private var shared: SharedWithMeModel?
     private var changes: ChangesWebModel?
@@ -44,10 +45,10 @@ final class MoreModels {
         return m
     }
 
-    func reviewModel() -> ReviewModel {
-        if let review { return review }
-        let m = ReviewModel(client: frame.client, feedback: feedback)
-        review = m
+    func reviewModel(noteId: String? = nil) -> ReviewModel {
+        if let m = reviews[noteId ?? ""] { return m }
+        let m = ReviewModel(client: frame.client, feedback: feedback, noteId: noteId)
+        reviews[noteId ?? ""] = m
         return m
     }
 
@@ -79,7 +80,7 @@ struct MoreScreen: View {
         switch head.first {
         case "help": HelpScreen(model: model)
         case "graph": GraphScreen(model: more.graphModel(), frame: model, path: path)
-        case "review": ReviewScreen(model: more.reviewModel(), frame: model)
+        case "review": ReviewScreen(model: more.reviewModel(noteId: ReviewModel.noteId(in: path)), frame: model)
         case "shared" where head.count > 1: SharedFolderScreen(model: more.sharedFolder(head[1].removingPercentEncoding ?? head[1]), frame: model)
         // Folevi's empty state, in plain words with a way back, never the raw path (MAC-65).
         default:

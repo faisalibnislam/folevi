@@ -145,6 +145,13 @@ public struct PhoneNotesListScreen: View {
         .onChange(of: model.slotIdentity) { _, _ in if drag == nil, !(arranging && model.sort != .manual) { order = nil } }
         .onChange(of: canArrange) { _, can in if !can { stopArranging() } }
         .notesListSheets(model)
+        // Select mode's Add tag: the space's tags to pick from (useSelectionActions' "Add tag" dialog).
+        .phoneSheet(isPresented: Binding(get: { model.tagging != nil }, set: { if !$0 { model.tagging = nil } }), size: .fit) {
+            PhoneAddTagSheet(tags: model.tagChoices, count: model.tagging?.count ?? 0, close: { model.tagging = nil }) { tag in
+                let notes = model.tagging ?? []
+                Task { await model.addTag(tag, to: notes) }
+            }
+        }
         // Pull to refresh: iOS's own control on the screen's scroll view.
         .refreshable { await model.refresh() }
         .onAppear { model.setVisible(true) }
@@ -582,6 +589,39 @@ struct PhoneSelectCircle: View {
     }
 }
 
+/// Add tag (useSelectionActions' dialog): "Pick a tag for 2 notes.", then the space's tags as rows, each with its
+/// coloured #; with no tags yet, where tags are added.
+struct PhoneAddTagSheet: View {
+    let tags: [TagRow]
+    let count: Int
+    let close: () -> Void
+    let pick: (TagRow) -> Void
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        PhoneSheetPanel(title: "Add tag", description: "Pick a tag for \(count == 1 ? "1 note" : "\(count.formatted()) notes").", close: close) {
+            if tags.isEmpty {
+                Text("No tags yet. Add tags to a note from its Info panel.")
+                    .webText(.role(.subheadline))
+                    .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+            } else {
+                PhoneRowGroup("Tags") {
+                    ForEach(tags, id: \.id) { tag in
+                        PhoneListRow(tag.name, chevron: false, action: { pick(tag) }) {
+                            PhoneRowGlyph(.hash).foregroundStyle(PhoneHomeContent.tagColor(tag.color, scheme).color)
+                        }
+                        .phoneRowSeparator(tag.id != tags.last?.id)
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+        }
+    }
+}
+
 /// SelectBar: Select mode's bar in the tab bar's place and shape, what to do with the picked notes.
 struct PhoneSelectBar: View {
     let actions: [BulkAction]
@@ -626,6 +666,7 @@ struct PhoneSelectBar: View {
         case .copy: .copyPlus
         case .star: .bookmark
         case .unstar: .bookmarkOff
+        case .tags: .hash
         case .archive: .archive
         case .unarchive: .archiveRestore
         case .trash, .deleteForever, .deleteFolders: .trash

@@ -16,6 +16,11 @@ struct RebuildHomeScreen: View {
     let openNotifications: () -> Void
     let newFolder: (String?) -> Void
     @State private var moreFrame: CGRect = .zero
+    /// A tag's Edit tag… and Delete tag… (its long-press menu).
+    @State private var editingTag: TagRow?
+    @State private var deletingTag: TagRow?
+    @State private var tagName = ""
+    @Environment(\.colorScheme) private var scheme
 
     private var signedIn: Bool { home.session.value?.mode == .account }
 
@@ -48,6 +53,18 @@ struct RebuildHomeScreen: View {
         }
         .folderDialogs(home.dialogs, actions: home.actions, tree: home.tree.value?.folders ?? [])
         .homeNoteSheets(home)
+        // Edit tag (the web's dialog: its name; the colours are the menu's own rows).
+        .alert("Edit tag", isPresented: Binding(get: { editingTag != nil }, set: { if !$0 { editingTag = nil } }), presenting: editingTag) { tag in
+            TextField("Name", text: $tagName)
+            Button("Cancel", role: .cancel) { editingTag = nil }
+            Button("Save") { saveTag(tag) }
+        }
+        .alert(deletingTag.map { "Delete #\($0.name)?" } ?? "", isPresented: Binding(get: { deletingTag != nil }, set: { if !$0 { deletingTag = nil } }), presenting: deletingTag) { tag in
+            Button("Cancel", role: .cancel) { deletingTag = nil }
+            Button("Delete tag", role: .destructive) { deleteTag(tag) }
+        } message: { _ in
+            Text("The tag is removed from every document. The documents themselves are not affected.")
+        }
         .refreshable { await home.refresh() }
         .onAppear { home.setVisible(true) }
         .onDisappear { home.setVisible(false) }
@@ -64,7 +81,46 @@ struct RebuildHomeScreen: View {
             PhoneFolderMenu.show(MenuFolder(card), from: anchor, context: context, actions: home.actions, dialogs: home.dialogs, menus: menus, hooks: RebuildFolderHooks.make(frame: frame, phone: phone, newFolder: newFolder))
         }
         a.noteMenu = { row, anchor in showNoteMenu(row, from: anchor) }
+        if home.canEdit {
+            a.tagMenu = { tag, anchor in showTagMenu(tag, from: anchor) }
+        }
         return a
+    }
+
+    /// The tag colours, in the web's order and words (Sidebar.tsx TAG_COLORS).
+    static let tagColors: [(id: String, label: String)] = [("accent", "Cocoa"), ("moss", "Moss"), ("marigold", "Marigold"), ("plum", "Plum"), ("coral", "Coral"), ("muted", "Gray")]
+
+    /// A tag row's long press (the web's TagMenu): Edit tag…, the other colours, Delete tag….
+    private func showTagMenu(_ tag: TagRow, from anchor: CGRect) {
+        var entries = [PhoneMenuEntry(.item("Edit tag…")) {
+            tagName = tag.name
+            editingTag = tag
+        }]
+        for c in Self.tagColors where c.id != tag.color {
+            entries.append(PhoneMenuEntry(.item("Color: \(c.label)", swatch: PhoneHomeContent.tagColor(c.id, scheme).color, id: "color:\(c.id)")) {
+                phone.perform { _ = try await phone.client.command(.tagUpdate(id: tag.id, color: c.id)) }
+            })
+        }
+        entries.append(PhoneMenuEntry(.separator(1)))
+        entries.append(PhoneMenuEntry(.item("Delete tag…", danger: true)) { deletingTag = tag })
+        menus.show(entries, from: anchor, side: .bottom, align: .start)
+    }
+
+    private func saveTag(_ tag: TagRow) {
+        let name = String(tagName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+        guard !name.isEmpty, name != tag.name else { return }
+        phone.perform {
+            _ = try await phone.client.command(.tagUpdate(id: tag.id, name: name))
+            phone.toast("Tag updated", tone: .success)
+        }
+    }
+
+    private func deleteTag(_ tag: TagRow) {
+        phone.perform {
+            _ = try await phone.client.command(.tagDelete(id: tag.id))
+            phone.toast("Deleted #\(tag.name)", tone: .success)
+            if frame.top == .tag(tag.id) { frame.back() }
+        }
     }
 
     /// A note's long press on Home (a recent card, a Starred row): the lists' menu, the same items and icons.

@@ -1,7 +1,7 @@
 // Home on the iPhone, as the web draws it (apps/web/src/components/iphone/IphoneHome.tsx): recent notes as cards
 // in a row, Catch me up as its own card, All notes, Drafts, Shared with Me, Changes and Reviews as tiles two by
 // two, Bookmarks (rows in a rounded card), Folders (their cards in a row) and Tags (folded at first), and
-// Templates, Archive and Trash in a card at the end. Everything
+// the Vault (for someone with one), Templates, Archive and Trash in a card at the end. Everything
 // comes from the engine's `home` view (HomeModel); the frame draws the bar, the large title and the search field.
 #if os(iOS)
 import SwiftUI
@@ -53,6 +53,10 @@ public struct PhoneHomeContent: View {
             folders
             if !model.tags.isEmpty { tags }
             PhoneRowGroup("More") {
+                // Only for someone with a Vault, as the web's sidebar lists it (the phone has no sidebar).
+                if model.hasVault {
+                    PhoneListRow("Vault", action: { actions.open("/vault") }) { PhoneRowGlyph(.lock) }
+                }
                 PhoneListRow("Templates", action: { actions.open("/templates") }) { PhoneRowGlyph(.layoutTemplate) }
                 PhoneListRow("Archive", action: { actions.open("/archive") }) { PhoneRowGlyph(.archive) }
                 PhoneListRow("Trash", action: { actions.open("/trash") }) { PhoneRowGlyph(.trash) }.phoneRowSeparator(false)

@@ -19,6 +19,12 @@ public final class HomeModel {
     public let tree: ValueStore<FoldersTreeValue>
     /// Which folders are Always fully encrypted (R9.1; an error hides the menu item).
     public let locks: ValueStore<FolderLocksValue>
+    #if os(iOS)
+    /// Whether this person has a Vault here (vault.summary), for the phone Home's Vault row: the iPad and Mac show
+    /// it in the sidebar instead (web Sidebar.tsx `vault !== null`).
+    public let vault: ValueStore<VaultSummaryValue>
+    public var hasVault: Bool { vault.value.map { $0.state != .none } ?? false }
+    #endif
     /// The folder menu's open dialog (rename, new folder, move, delete), shared by the screen and its toolbar.
     public let dialogs = FolderDialogState()
 
@@ -37,6 +43,9 @@ public final class HomeModel {
         self.sync = client.watch(.syncStatus)
         self.tree = client.watch(.foldersTree(space: space))
         self.locks = client.watch(PendingN7Views.FolderLocks(SpaceArgs(space: space)))
+        #if os(iOS)
+        self.vault = client.watch(.vaultSummary())
+        #endif
     }
 
     // MARK: A note's long-press menu (Recent notes and Starred): the lists' menu (web NoteContextMenu), less Open

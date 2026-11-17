@@ -39,6 +39,41 @@ struct PhoneHomeSnapshotTests {
         }
         }
     }
+
+    /// The More card lists the Vault only for someone with one (vault.summary not "none"), as the web's sidebar does:
+    /// the phone has no sidebar, so Home is where it's found.
+    @Test func theVaultRowIsForSomeoneWithAVault() async {
+        for (fixture, expected) in [("view.vault.summary.json", true), ("view.vault.summary.locked.json", true), ("view.vault.summary.none.json", false)] {
+            let engine = FakeEngine()
+            engine.values["vault.summary"] = Fixtures.value(fixture)
+            let model = HomeModel(client: engine.client())
+            await eventually("vault summary", timeout: .seconds(8)) { model.vault.value != nil }
+            #expect(model.hasVault == expected, "\(fixture)")
+        }
+        // No answer (an engine without the Vault): no row.
+        let bare = HomeModel(client: FakeEngine().client())
+        await eventually("home", timeout: .seconds(8)) { bare.value != nil }
+        #expect(!bare.hasVault)
+    }
+
+    @Test func phoneHomeWithAVault() async {
+        let engine = FakeEngine()
+        engine.values["vault.summary"] = Fixtures.value("view.vault.summary.json")
+        let model = HomeModel(client: engine.client())
+        for scheme in [ColorScheme.light, .dark] {
+            let view = ScrollView {
+                PhoneHomeContent(model: model, actions: PhoneHomeActions(open: { _ in }, openNote: { _ in }, foldersMenu: { _ in }))
+                    .padding(.bottom, 24)
+            }
+            .defaultScrollAnchor(.bottom)
+            .background(FoleviTokens.Chrome.canvas.resolve(scheme).color)
+            let host = ScreenHost(view, size: .iphone, scheme: scheme)
+            await eventually("phone home with a Vault", timeout: .seconds(8)) { model.value != nil && model.session.value != nil && model.hasVault }
+            await host.settle(0.6)
+            checkScreen(host, named: "phone-home-vault-iphone-\(scheme == .dark ? "dark" : "light")-\(hostPlatform)")
+            host.close()
+        }
+    }
 }
 }
 #endif

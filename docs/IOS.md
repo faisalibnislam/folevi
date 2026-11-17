@@ -485,14 +485,41 @@ sheets) as iPad apps do in a compact-width window, and goes back to the sidebar 
 window widens (`isIpadApp()`, `useIphoneApp()` follows the width; e2e `iphone-app.spec.ts`).
 
 - **Multitasking**: all four orientations and no `UIRequiresFullScreen`, so Split View, Slide Over and Stage
-  Manager's resizable windows work. One window: Capacitor has one scene
-  (`UIApplicationSupportsMultipleScenes` false), so two Folevi windows side by side aren't possible.
-- **Hardware keyboard** (`Native/KeyCommands.swift`): New Note (⌘N), Search (⌘K), Quick Add Task (⇧⌘A), Ask
-  Foli AI (⌘J), Today's Tasks (⌥⌘T), Show or Hide Sidebar (⌘\), Back (⌘[) and Forward (⌘]) are UIKeyCommands,
-  listed in the overlay iPadOS shows while ⌘ is held, and handed to the page as the same key press on what has
-  focus, so the web app does what it does for them anywhere (plain ⌘N makes a note in the app; a browser keeps
-  it for a new window). Editing keys (⌘B, ⌘I, ⌘Z, ⌘C) stay with the web view. `native '{"command":"key",
-  "title":"Search"}'` presses one in a Debug build.
+  Manager's resizable windows work. One window (`UIApplicationSupportsMultipleScenes` false), so two Folevi
+  windows side by side aren't possible yet; see "Windows" below for why and what it takes.
+- **Menu bar** (iPadOS 26; the ⌘ overlay before it; `Native/Rebuild/RebuildMenuBar.swift`): the Mac's menus
+  (`apps/mac/Folevi/Chrome/MenuModel.swift`) with the same ids, titles and shortcuts: File, Edit (iPadOS's own
+  Undo to Select All, plus Find and Search All Notes), Format, Note, View, Go, Window (iPadOS's own) and Help, and
+  Settings (⌘,) in the app menu. Each item does what the Mac's FrameCommands does, on the desk in the wide layout;
+  in a narrow window (the phone's layout) only New Note, Quick Add Task, Search, Settings, Back, Home, Today,
+  Calendar, Inbox, Ask Foli AI and Help run, the rest are off. Left out as Mac-only: Quick Add from Any App, New
+  Window and Close Window, Services, Share, Hide and Quit, Check for Updates, Float Note, Minimize and Zoom, Full
+  Screen, As Cards and As List, Debug. The note page answers many of the same keys itself (⌘B, ⌥⌘1, ⇧⌘8, ⌘D, ⌥⇧↑,
+  ⌘F, and ⌘⌫ in its text): pressed while the page has the keyboard, such a key goes on to the page as before
+  (the item reports it can't run while its key is held, seen through GameController's GCKeyboard), so the page
+  does what it does for it in the note, the title or a cell; chosen with the pointer, the item runs natively.
+  Print (⌘P) is iOS's print sheet on the note's web view. View > Zoom (⌘0, ⌘+, ⌘-) steps the note's text size on
+  this device (Settings > Appearance's editor text size, `settings.update { editorZoom }`) rather than the whole
+  page as on the Mac: WKWebView's `pageZoom` on iOS scales the page without laying it out again, so a zoomed note
+  ran off the card. `IPadMenuTests` reads the Mac's MenuModel.swift and checks the
+  titles and keys match. In a Debug build `native '{"command":"menu"}'` lists the items and whether each can run,
+  `native '{"command":"menu","id":"go.calendar"}'` runs one. The iPhone keeps `KeyCommands.swift`'s list (New Note
+  (⌘N), Search (⌘K), Quick Add Task (⇧⌘A), Ask Foli AI (⌘J), Today's Tasks (⌥⌘T), Show or Hide Sidebar (⌘\), Back
+  (⌘[) and Forward (⌘])) as UIKeyCommands; `native '{"command":"key","title":"Search"}'` presses one.
+- **Windows** (why there's one): every scene would make its own web view and engine (`WebHost.take()`), but the
+  rest of the app is the process's: `RebuildFrame.model` (the phone layout's tab stacks), `RebuildFrame.ai`,
+  `RebuildFrameController.current` and `WebHost.current` (where links, intents, notifications and the debug hooks
+  go), `NotePageRegistry` (one note page controller per note id), `KeyboardHost.shared`, `AppLock.shared` (one
+  window), `ShellPlaces.state` (the open place: switching place restarts only the key window's engine,
+  `FoleviViewController.restart()`, so another window would keep running the old place's engine), and the scene's
+  saved state (`stateRestorationActivity` saves the one shared model). Two windows would share tab stacks and
+  note controllers and could run two places' engines at once. To add windows: one frame per scene (the phone
+  model, the AI sheet, the note page registry and the keyboard host per scene, `current` as the key scene's), place
+  switching per scene (or every scene restarted together), the local library's host election across web views
+  (lib/local/host.ts's Web Lock, which the Mac relies on) checked on iOS, a scene activation that opens the route
+  (`frameOpenInNewWindow` would pass it in the activity), then `UIApplicationSupportsMultipleScenes` on and "Open in
+  New Window" in the note, folder and tab menus and the Window menu. Until then the shared views' "Open in New
+  Window" opens the route in a tab.
 - **Pointer**: WebKit turns the trackpad and mouse into hover and mouse events, so the web app's hover states,
   cursors and right-click menus work as on a Mac.
 - **Apple Pencil**: the whiteboard draws with a pen, a finger or a mouse; once a pen has drawn on a whiteboard,

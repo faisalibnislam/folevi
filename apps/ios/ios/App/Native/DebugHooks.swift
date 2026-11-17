@@ -86,6 +86,21 @@ enum DebugHooks {
                 (root as? FoleviViewController)?.press(shortcut)
             }
             return ["pressed": title]
+        case "menu":
+            // The iPad's menu bar (Rebuild/RebuildMenuBar.swift): its items and whether each can run now, or one run
+            // by its id as a click on it would ('{"command":"menu","id":"go.calendar"}').
+            return await MainActor.run {
+                if let id = input["id"] as? String {
+                    let enabled = IPadMenuBar.isEnabled(id, sender: nil)
+                    IPadMenuBar.perform(id)
+                    return ["ran": id, "enabled": enabled]
+                }
+                let items = IPadMenuModel.allItems.filter { !$0.alternate }
+                return [
+                    "installed": IPadMenuBar.installed,
+                    "items": items.map { ["id": $0.id, "title": $0.title, "key": $0.key?.label ?? "", "enabled": IPadMenuBar.isEnabled($0.id, sender: nil)] },
+                ]
+            }
         case "frame":
             // The native frame's state (Native/Phone): what the bars are drawn from.
             if let f = RebuildFrameController.current {

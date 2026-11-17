@@ -563,3 +563,18 @@ account-mode sign-out and place switching want a run with a scratch test account
   is a sidebar row, and the phone has no sidebar); the native frame opens `/vault` the same way. A Vault row on the
   phone's Home (web and native together) is a decision for the owner. Import and export stay on the web, as on the
   Mac.
+
+- **A note's top bar follows its page** (2026-11-17, the owner's design A): once a note scrolls under the bar, a short
+  frosted edge in the page's own colour (`PhoneNoteTopEdge`: the lightest material plus the page's colour at 90%,
+  fully on to 40 pt under the status bar, then a 52 pt cosine fade in 16 stops, no hairline), and the bar's glass and
+  ink and the status bar's text follow the page's brightness, not the phone's (`PhoneNotePage`, WCAG luminance under
+  0.179 reads dark; the status bar from `RebuildFrameController`'s observer, the phone's own everywhere else).
+  The page's colour comes from the page: RebuildNote's `PageScroll` script composites the background colours at the
+  bar's foot in the note's side margins (`elementsFromPoint`, any CSS colour through a 1 px canvas; pictures such as a
+  theme's cover are content, the colour behind them counts) and posts it when it changes: on scroll (at most every
+  150 ms), when the page's look changes in place (a page colour, a theme, the app's appearance) and when a note is
+  shown; `NotePageTones` keeps it per note. Reduce Transparency: the page's colour, no blur; Increase Contrast: opaque
+  and a shorter fade. Apple's iOS 26 soft scroll edge (`UIScrollEdgeElementContainerInteraction` on the page view's
+  scroll view) was tried: it draws over the note, but tinted for the phone's appearance (a grey haze over a light note
+  in dark mode), so it isn't used. The web's phone layout does the same over a note (Screen.tsx's `page` edge,
+  `pagePaint`, globals.css `.iphone-bar[data-surface="page"]` and `header[data-page-tone]`).

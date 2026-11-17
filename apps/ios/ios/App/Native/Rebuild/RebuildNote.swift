@@ -45,6 +45,7 @@ struct RebuildNoteScreen: View {
                 shared: false,
                 scrolled: scrolled,
                 titleFoot: titleFoot,
+                page: NotePageTones.shared.pages[noteId],
                 back: back,
                 openPlace: openPlace,
                 share: { model.router?.share(noteId: noteId) },
@@ -399,7 +400,9 @@ final class NotePageController: UIViewController, PageViewOwner {
         guard PageScroll.shared.owner !== self else { return }
         PageScroll.shared.install(on: pageView)
         PageScroll.shared.owner = self
-        // iOS 26 softens a scroll view's edges under bars; the note's bars are the web's, over a plain page.
+        // iOS 26 softens a scroll view's edges under bars; the note's bars are the web's, over a plain page. (Its soft
+        // top edge does draw over the note, but tinted for the phone's appearance, not the page's: a grey haze over a
+        // light note in dark mode. The bar draws its own edge in the page's colour, PhoneNoteTopEdge.)
         if #available(iOS 26.0, *) {
             pageView.scrollView.topEdgeEffect.isHidden = true
             pageView.scrollView.bottomEdgeEffect.isHidden = true
@@ -468,9 +471,29 @@ private struct NotePage: UIViewControllerRepresentable {
     }
 }
 
+/// The page under each note's top bar (PhoneNotePage: its colour where it meets the bar, and whether it reads dark),
+/// as PageScroll measures it. The bar's frosted edge and glass, and the status bar (RebuildFrameController), follow it.
+@MainActor @Observable
+final class NotePageTones {
+    static let shared = NotePageTones()
+    private(set) var pages: [String: PhoneNotePage] = [:]
+
+    func set(_ page: PhoneNotePage, for noteId: String) {
+        guard pages[noteId] != page else { return }
+        pages[noteId] = page
+    }
+
+    /// The status bar's text over a note: dark on a light page, light on a dark one; nil until the page has said.
+    func statusBar(for noteId: String) -> UIStatusBarStyle? {
+        pages[noteId].map { $0.dark ? .lightContent : .darkContent }
+    }
+}
+
 /// The note's scroll, from the page: the note scrolls in its own element (#doc-scroll), not the web view's scroll
 /// view, so a script in the page reports how far it has scrolled and where the note's title ends, once a frame
-/// while it moves, to the note on screen.
+/// while it moves, to the note on screen. It also says what the page paints where it meets the top bar (the bar's
+/// foot, 2 pt into the note, in its side margins clear of the text): the colours there composited. Pictures (a
+/// theme's cover) are content passing under the bar, not the page: the colour behind them counts.
 @MainActor
 final class PageScroll: NSObject, WKScriptMessageHandler {
     static let shared = PageScroll()
@@ -486,6 +509,54 @@ final class PageScroll: NSObject, WKScriptMessageHandler {
       // the page's layout and no message each frame, until the scroll comes back near it.
       let foot = 72;
       let past = false;
+      // The page's colour under the bar: any CSS colour to sRGB bytes through a 1 px canvas.
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = 1;
+      const cx = cv.getContext("2d", { willReadFrequently: true });
+      const bytes = (c) => {
+        if (!c || c === "transparent" || c === "rgba(0, 0, 0, 0)") return null;
+        cx.clearRect(0, 0, 1, 1);
+        cx.fillStyle = "rgba(0, 0, 0, 0)";
+        cx.fillStyle = c;
+        cx.fillRect(0, 0, 1, 1);
+        const d = cx.getImageData(0, 0, 1, 1).data;
+        return d[3] ? [d[0], d[1], d[2], d[3] / 255] : null;
+      };
+      // The page's colour at (x, y): the backgrounds there, front to back until opaque (pictures left out).
+      const paintAt = (x, y) => {
+        let rgb = [0, 0, 0], a = 0;
+        for (const el of document.elementsFromPoint(x, y)) {
+          const cs = getComputedStyle(el);
+          const c = bytes(cs.backgroundColor);
+          if (!c) continue;
+          const w = (1 - a) * c[3];
+          rgb = rgb.map((v, i) => v + w * c[i]);
+          a += w;
+          if (a > 0.995) return rgb;
+        }
+        const base = bytes(getComputedStyle(document.documentElement).backgroundColor) ?? [255, 255, 255, 1];
+        return rgb.map((v, i) => v + (1 - a) * base[i]);
+      };
+      let lastTone = "", toneAt = 0, toneTimer = 0;
+      const tone = (forced) => {
+        const now = performance.now();
+        if (forced !== true && now - toneAt < 150) {
+          if (!toneTimer) toneTimer = setTimeout(() => { toneTimer = 0; tone(true); }, 160);
+          return;
+        }
+        toneAt = now;
+        const s = document.getElementById("doc-scroll");
+        if (!s) return;
+        const r = s.getBoundingClientRect();
+        const y = r.top + (parseFloat(getComputedStyle(s).paddingTop) || 0) + 2;
+        const sides = [paintAt(r.left + 6, y), paintAt(r.right - 6, y)];
+        const value = sides[0].map((v, i) => Math.round((v + sides[1][i]) / 2));
+        const note = (location.pathname.match(/^\\/d\\/([^/?#]+)/) ?? [])[1] ?? null;
+        const key = JSON.stringify([value, note]);
+        if (forced !== true && key === lastTone) return;
+        lastTone = key;
+        window.webkit.messageHandlers.\(PageScroll.name).postMessage({ tone: value, note });
+      };
       const send = (forced) => {
         frame = 0;
         const s = document.getElementById("doc-scroll");
@@ -497,9 +568,15 @@ final class PageScroll: NSObject, WKScriptMessageHandler {
         foot = t ? t.getBoundingClientRect().bottom - top + s.scrollTop : 72;
         past = s.scrollTop > foot + 64;
         window.webkit.messageHandlers.\(PageScroll.name).postMessage({ y: s.scrollTop, foot });
+        tone(forced);
       };
       window.__foleviPageScroll = () => send(true);
       document.addEventListener("scroll", () => { if (!frame) frame = requestAnimationFrame(send); }, { capture: true, passive: true });
+      // The page's look changing in place (a page colour or theme picked, the app's appearance): measured again.
+      const restyled = () => { if (!frame) frame = requestAnimationFrame(() => { frame = 0; tone(); }); };
+      new MutationObserver(restyled).observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style", "data-theme"] });
+      const watchBody = () => new MutationObserver(restyled).observe(document.body, { attributes: true, subtree: true, attributeFilter: ["style", "data-palette", "data-background", "data-backdrop"] });
+      if (document.body) watchBody(); else document.addEventListener("DOMContentLoaded", watchBody);
     })();
     """
 
@@ -511,9 +588,9 @@ final class PageScroll: NSObject, WKScriptMessageHandler {
         v.evaluateJavaScript(Self.script, in: nil, in: .page)
     }
 
-    /// Asks the page where the note is now (a note just shown starts at its top).
+    /// Asks the page where the note is now (a note just shown starts at its top), and what it paints under the bar.
     func ask(_ v: WKWebView) {
-        for delay in [0.0, 0.3, 0.8] {
+        for delay in [0.0, 0.3, 0.8, 1.6] {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 v.evaluateJavaScript("window.__foleviPageScroll && window.__foleviPageScroll(); 0", in: nil, in: .page)
             }
@@ -522,9 +599,22 @@ final class PageScroll: NSObject, WKScriptMessageHandler {
 
     nonisolated func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let body = message.body as? [String: Any] else { return }
+        if let tone = body["tone"] as? [NSNumber] {
+            let rgb = tone.map(\.doubleValue)
+            let note = body["note"] as? String
+            MainActor.assumeIsolated { measured(rgb, note: note) }
+            return
+        }
         let y = (body["y"] as? NSNumber)?.doubleValue ?? 0
         let foot = (body["foot"] as? NSNumber)?.doubleValue ?? 72
         MainActor.assumeIsolated { owner?.onScroll?(CGFloat(y), CGFloat(foot)) }
+    }
+
+    /// The page's colour under the bar, for the note on screen (a reading from another note's page, while the page
+    /// changes notes, is left out).
+    private func measured(_ rgb: [Double], note: String?) {
+        guard let owner, note == nil || note == owner.noteId, rgb.count >= 3 else { return }
+        NotePageTones.shared.set(PhoneNotePage(color: RGBA(rgb[0], rgb[1], rgb[2])), for: owner.noteId)
     }
 }
 

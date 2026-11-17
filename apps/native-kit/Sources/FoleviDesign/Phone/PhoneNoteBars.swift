@@ -81,28 +81,53 @@ private struct ChipPressStyle: ButtonStyle {
     }
 }
 
+/// The note's page where it meets the top bar, as the page paints it there (RebuildNote measures it): its colour, and
+/// whether it reads dark. The bar takes both: its edge is frosted in the page's colour, and the status bar's text and
+/// the glass buttons follow the page's brightness, not the phone's appearance (a light note on a phone in dark mode
+/// keeps a dark clock and light glass).
+public struct PhoneNotePage: Equatable, Sendable {
+    public var color: RGBA
+    public var dark: Bool
+
+    public init(color: RGBA) {
+        self.color = RGBA(color.r, color.g, color.b, 1)
+        dark = Self.readsDark(color)
+    }
+
+    /// Dark when white text has more contrast on it than black (WCAG relative luminance under 0.179).
+    public static func readsDark(_ c: RGBA) -> Bool {
+        func lin(_ v: Double) -> Double {
+            let s = max(0, min(255, v)) / 255
+            return s <= 0.04045 ? s / 12.92 : pow((s + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b) < 0.179
+    }
+}
+
 /// The note's top bar (Screen.tsx's header with NoteTrailing): Back, the place chip in the middle until the small
-/// title takes its place, Share and "…" (Done while writing). Over a blur that fades out downward once the note
-/// has scrolled 4 pt.
+/// title takes its place, Share and "…" (Done while writing). Once the note has scrolled 4 pt, a short frosted edge
+/// in the page's own colour behind them (PhoneNoteTopEdge). Over a note the bar follows the page (`page`): its glass
+/// and ink are the page's light or dark, whatever the phone's appearance.
 public struct PhoneNoteTopBar: View {
     let title: String
     let place: PhoneNotePlace?
     let writing: Bool
     let canShare: Bool
     let shared: Bool
-    /// How far the note has scrolled (points), for the bar's fade and the small title.
+    /// How far the note has scrolled (points), for the bar's edge and the small title.
     let scrolled: CGFloat
     /// Where the note's title ends under the bar: the small title fades in over its last 12 pt.
     let titleFoot: CGFloat
+    /// The page under the bar; nil until the page has said (the phone's canvas meanwhile).
+    let page: PhoneNotePage?
     let back: () -> Void
     let openPlace: () -> Void
     let share: () -> Void
     let more: (CGRect) -> Void
     let done: () -> Void
     @Environment(\.colorScheme) private var scheme
-    @State private var moreFrame: CGRect = .zero
 
-    public init(title: String, place: PhoneNotePlace?, writing: Bool, canShare: Bool, shared: Bool, scrolled: CGFloat, titleFoot: CGFloat = 72, back: @escaping () -> Void, openPlace: @escaping () -> Void, share: @escaping () -> Void, more: @escaping (CGRect) -> Void, done: @escaping () -> Void) {
+    public init(title: String, place: PhoneNotePlace?, writing: Bool, canShare: Bool, shared: Bool, scrolled: CGFloat, titleFoot: CGFloat = 72, page: PhoneNotePage? = nil, back: @escaping () -> Void, openPlace: @escaping () -> Void, share: @escaping () -> Void, more: @escaping (CGRect) -> Void, done: @escaping () -> Void) {
         self.title = title
         self.place = place
         self.writing = writing
@@ -110,6 +135,7 @@ public struct PhoneNoteTopBar: View {
         self.shared = shared
         self.scrolled = scrolled
         self.titleFoot = titleFoot
+        self.page = page
         self.back = back
         self.openPlace = openPlace
         self.share = share
@@ -118,42 +144,44 @@ public struct PhoneNoteTopBar: View {
     }
 
     public var body: some View {
+        // (A view of its own under the page's appearance, so everything in the bar reads the page's light or dark.)
+        PhoneNoteTopBarContent(bar: self, pageColor: page?.color ?? FoleviTokens.Chrome.canvas.resolve(scheme))
+            .environment(\.colorScheme, page.map { $0.dark ? .dark : .light } ?? scheme)
+    }
+}
+
+private struct PhoneNoteTopBarContent: View {
+    let bar: PhoneNoteTopBar
+    let pageColor: RGBA
+    @Environment(\.colorScheme) private var scheme
+    @State private var moreFrame: CGRect = .zero
+
+    var body: some View {
         GeometryReader { geo in
             let top = geo.safeAreaInsets.top
-            let titleIn = min(1, max(0, (scrolled - (titleFoot - 12)) / 12))
+            let titleIn = min(1, max(0, (bar.scrolled - (bar.titleFoot - 12)) / 12))
             ZStack(alignment: .top) {
-                // What scrolls under the bar blurs, the blur fading out below the buttons (no hard edge, and the
-                // material's own tint, so it suits a note's coloured page too).
-                let solid = top + 56, fade: CGFloat = 40
-                Rectangle().fill(.regularMaterial)
-                    .frame(height: solid + fade)
-                    .mask {
-                        // Full under the status bar and the buttons, then fading out over 40 pt.
-                        LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: solid / (solid + fade)), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom)
-                    }
-                    .opacity(scrolled > 4 ? 1 : 0)
-                    .animation(.easeOut(duration: 0.12), value: scrolled > 4)
-                    .allowsHitTesting(false)
+                PhoneNoteTopEdge(color: pageColor, top: top, on: bar.scrolled > 4)
                 ZStack {
-                    Text(title.isEmpty ? "Untitled" : title)
+                    Text(bar.title.isEmpty ? "Untitled" : bar.title)
                         .webText(.role(.headline, weight: FoleviTokens.FontWeight.semibold))
                         .lineLimit(1)
                         .foregroundStyle(FoleviTokens.Chrome.heading.resolve(scheme).color)
                         // (Centred, and short of the buttons on both sides: Share and "…" take 104 pt, Done about 80.)
-                        .frame(maxWidth: max(80, geo.size.width - 2 * (16 + (writing ? 84 : 108) + 8)))
+                        .frame(maxWidth: max(80, geo.size.width - 2 * (16 + (bar.writing ? 84 : 108) + 8)))
                         .opacity(titleIn)
-                        .offset(y: (1 - titleIn) * 4)
+                        .offset(y: WebMotion.reduced ? 0 : (1 - titleIn) * 4)
                         .accessibilityHidden(titleIn < 0.5)
                     HStack(spacing: 8) {
-                        WebGlassCircle("Back", action: back) {
+                        WebGlassCircle("Back", action: bar.back) {
                             WebIconView(.chevronLeft, size: 24, strokeWidth: 2.2).offset(x: -2)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         Group {
-                            if let place {
-                                PhoneNotePlaceChip(place, action: openPlace)
+                            if let place = bar.place {
+                                PhoneNotePlaceChip(place, action: bar.openPlace)
                                     .opacity(titleIn > 0 ? 0 : 1)
-                                    .offset(y: titleIn > 0 ? -4 : 0)
+                                    .offset(y: titleIn > 0 && !WebMotion.reduced ? -4 : 0)
                                     .animation(.easeOut(duration: 0.2), value: titleIn > 0)
                                     .allowsHitTesting(titleIn == 0)
                             }
@@ -161,22 +189,22 @@ public struct PhoneNoteTopBar: View {
                         .frame(maxWidth: geo.size.width * 0.56)
                         .fixedSize(horizontal: true, vertical: false)
                         HStack(spacing: 8) {
-                            if writing {
-                                WebGlassTextButton("Done", semibold: true, action: done)
+                            if bar.writing {
+                                WebGlassTextButton("Done", semibold: true, action: bar.done)
                             } else {
                                 WebGlassPill {
-                                    if canShare {
-                                        WebPillButton(shared ? "Shared: sharing settings" : "Share", action: share) {
+                                    if bar.canShare {
+                                        WebPillButton(bar.shared ? "Shared: sharing settings" : "Share", action: bar.share) {
                                             WebIconView(.share, size: 20, strokeWidth: 1.9)
                                                 .offset(y: -2)
                                                 .overlay(alignment: .topTrailing) {
-                                                    if shared {
+                                                    if bar.shared {
                                                         Circle().fill(FoleviTokens.Chrome.heading.resolve(scheme).color).frame(width: 8, height: 8).offset(x: 2, y: -2)
                                                     }
                                                 }
                                         }
                                     }
-                                    WebPillButton("Document actions", action: { more(moreFrame) }) {
+                                    WebPillButton("Document actions", action: { bar.more(moreFrame) }) {
                                         WebIconView(.ellipsis, size: 24, strokeWidth: 2.2)
                                     }
                                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { moreFrame = $0 }
@@ -193,6 +221,66 @@ public struct PhoneNoteTopBar: View {
             .ignoresSafeArea(edges: .top)
         }
         .frame(height: 0, alignment: .top)
+    }
+}
+
+/// The frosted edge behind a note's top bar once the note has scrolled under it: what passes under blurs and takes
+/// the page's own colour, strong through the status bar and the buttons (they end 48 under the status bar), then
+/// eases out just below them over many stops, so there's no band and no edge. Reduce Transparency: the page's colour
+/// alone, no blur. Increase Contrast: the colour fully opaque and the fade shorter, so the buttons sit on the page's
+/// colour rather than on text.
+public struct PhoneNoteTopEdge: View {
+    let color: RGBA
+    let top: CGFloat
+    let on: Bool
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    public init(color: RGBA, top: CGFloat, on: Bool) {
+        self.color = color
+        self.top = top
+        self.on = on
+    }
+
+    /// Where the edge is fully on (under the status bar and down the buttons) and how far below it it eases out.
+    static func extent(top: CGFloat, increaseContrast: Bool) -> (solid: CGFloat, fade: CGFloat) {
+        increaseContrast ? (top + 50, 22) : (top + 40, 52)
+    }
+
+    /// The edge's opacity from its top (0) to its foot (1): fully on to `solid`, then an ease-in-out to nothing (a
+    /// cosine, sampled every 1/16 of the fade: no visible step).
+    public static func fadeStops(solid: CGFloat, fade: CGFloat, steps: Int = 16) -> [Gradient.Stop] {
+        let height = solid + fade
+        var stops: [Gradient.Stop] = [.init(color: .black, location: 0)]
+        for i in 0...steps {
+            let t = Double(i) / Double(steps)
+            let alpha = 0.5 * (1 + cos(Double.pi * t))
+            stops.append(.init(color: .black.opacity(alpha), location: (solid + fade * t) / height))
+        }
+        return stops
+    }
+
+    public var body: some View {
+        let strong = contrast == .increased
+        let (solid, fade) = Self.extent(top: top, increaseContrast: strong)
+        let solidOnly = reduceTransparency || strong
+        ZStack {
+            if !solidOnly {
+                // The blur: the lightest system material, in the page's appearance (the bar sets it).
+                Rectangle().fill(.ultraThinMaterial)
+            }
+            Rectangle().fill(color.opacity(solidOnly ? 1 : 0.9).color)
+        }
+        .frame(height: solid + fade)
+        .mask {
+            LinearGradient(stops: Self.fadeStops(solid: solid, fade: fade), startPoint: .top, endPoint: .bottom)
+        }
+        .opacity(on ? 1 : 0)
+        .animation(.easeOut(duration: 0.12), value: on)
+        // A different page (or its colour changed) crossfades to the new colour.
+        .animation(WebMotion.reduced ? nil : .easeOut(duration: 0.2), value: color)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 

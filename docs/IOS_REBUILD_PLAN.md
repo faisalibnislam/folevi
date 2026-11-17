@@ -568,7 +568,8 @@ account-mode sign-out and place switching want a run with a scratch test account
   frosted edge in the page's own colour (`PhoneNoteTopEdge`: the lightest material plus the page's colour at 90%,
   fully on to 40 pt under the status bar, then a 52 pt cosine fade in 16 stops, no hairline), and the bar's glass and
   ink and the status bar's text follow the page's brightness, not the phone's (`PhoneNotePage`, WCAG luminance under
-  0.179 reads dark; the status bar from `RebuildFrameController`'s observer, the phone's own everywhere else).
+  0.179 reads dark; the note's floating tool bars and the bar on the keyboard follow it too, `notePageAppearance`;
+  the status bar from `RebuildFrameController`'s observer, the phone's own everywhere else).
   The page's colour comes from the page: RebuildNote's `PageScroll` script composites the background colours at the
   bar's foot in the note's side margins (`elementsFromPoint`, any CSS colour through a 1 px canvas; pictures such as a
   theme's cover are content, the colour behind them counts) and posts it when it changes: on scroll (at most every
@@ -577,4 +578,4 @@ account-mode sign-out and place switching want a run with a scratch test account
   and a shorter fade. Apple's iOS 26 soft scroll edge (`UIScrollEdgeElementContainerInteraction` on the page view's
   scroll view) was tried: it draws over the note, but tinted for the phone's appearance (a grey haze over a light note
   in dark mode), so it isn't used. The web's phone layout does the same over a note (Screen.tsx's `page` edge,
-  `pagePaint`, globals.css `.iphone-bar[data-surface="page"]` and `header[data-page-tone]`).
+  `pagePaint`, globals.css `.iphone-bar[data-surface="page"]` and `[data-page-tone]` on the header and NoteBars.tsx's bars).

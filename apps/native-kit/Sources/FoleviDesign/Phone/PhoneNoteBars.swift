@@ -94,6 +94,9 @@ public struct PhoneNotePage: Equatable, Sendable {
         dark = Self.readsDark(color)
     }
 
+    /// The appearance chrome over this page takes: dark over a dark page, light over a light one.
+    public var scheme: ColorScheme { dark ? .dark : .light }
+
     /// Dark when white text has more contrast on it than black (WCAG relative luminance under 0.179).
     public static func readsDark(_ c: RGBA) -> Bool {
         func lin(_ v: Double) -> Double {
@@ -101,6 +104,23 @@ public struct PhoneNotePage: Equatable, Sendable {
             return s <= 0.04045 ? s / 12.92 : pow((s + 0.055) / 1.055, 2.4)
         }
         return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b) < 0.179
+    }
+}
+
+public extension View {
+    /// A note's chrome over its page (the top bar, the floating tool bars, the bar on the keyboard): its glass and ink
+    /// in the page's light or dark rather than the phone's; the phone's own until the page has said (`page` nil).
+    func notePageAppearance(_ page: PhoneNotePage?) -> some View {
+        modifier(NotePageAppearance(page: page))
+    }
+}
+
+private struct NotePageAppearance: ViewModifier {
+    let page: PhoneNotePage?
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        content.environment(\.colorScheme, page?.scheme ?? scheme)
     }
 }
 
@@ -146,7 +166,7 @@ public struct PhoneNoteTopBar: View {
     public var body: some View {
         // (A view of its own under the page's appearance, so everything in the bar reads the page's light or dark.)
         PhoneNoteTopBarContent(bar: self, pageColor: page?.color ?? FoleviTokens.Chrome.canvas.resolve(scheme))
-            .environment(\.colorScheme, page.map { $0.dark ? .dark : .light } ?? scheme)
+            .notePageAppearance(page)
     }
 }
 

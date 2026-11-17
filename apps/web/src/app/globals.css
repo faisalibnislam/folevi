@@ -960,9 +960,11 @@
   --bar-fade: linear-gradient(#000 0, #000 var(--bar-top), rgb(0 0 0 / 0.5) calc(var(--bar-top) + 11px), transparent calc(var(--bar-top) + 22px));
 }
 @media (prefers-reduced-motion: reduce) { .iphone-bar[data-surface="page"] { transition: opacity 120ms ease-out; } }
-/* ...and the bar's glass and ink are the page's light or dark, whatever the app's appearance (Screen.tsx sets
-   data-page-tone on the bar's header): a dark clock-side and light glass over a light page, and the reverse. */
-:root[data-iphone] header[data-page-tone="light"] {
+/* ...and the bar's glass and ink, and the note's own bars at the bottom (NoteBars.tsx, the floating tools and the bar on
+   the keyboard), are the page's light or dark, whatever the app's appearance (Screen.tsx sets data-page-tone on the
+   screen): light glass and dark icons over a light page, dark glass over a dark one. */
+:root[data-iphone] [data-page-tone="light"] > header,
+:root[data-iphone] [data-page-tone="light"] [data-note-bars] {
   --liquid-fill: rgb(255 255 255 / 0.3);
   --liquid-fill-strong: rgb(252 252 253 / 0.8);
   --liquid-edge: inset 0 1px 0 rgb(255 255 255 / 0.85), inset 0 -1px 1px rgb(255 255 255 / 0.35), 0 0 0 0.5px rgb(0 0 0 / 0.09);
@@ -973,9 +975,12 @@
   --liquid-active: rgb(0 0 0 / 0.075);
   --liquid-press: rgb(0 0 0 / 0.1);
   --iphone-solid: #f7f7f8;
+  --iphone-separator: rgb(60 60 67 / 0.16);
+  --color-canvas: #ffffff;
   --color-ink: #18181b; --color-heading: #0b0b0c; --color-ink-muted: #56565e; --color-ink-faint: #67676f;
 }
-:root[data-iphone] header[data-page-tone="dark"] {
+:root[data-iphone] [data-page-tone="dark"] > header,
+:root[data-iphone] [data-page-tone="dark"] [data-note-bars] {
   --liquid-fill: rgb(44 44 50 / 0.36);
   --liquid-fill-strong: rgb(36 36 40 / 0.84);
   --liquid-edge: inset 0 1px 0 rgb(255 255 255 / 0.14), inset 0 -1px 1px rgb(255 255 255 / 0.04), 0 0 0 0.5px rgb(0 0 0 / 0.55);
@@ -986,6 +991,8 @@
   --liquid-active: rgb(255 255 255 / 0.12);
   --liquid-press: rgb(255 255 255 / 0.16);
   --iphone-solid: #2c2c2e;
+  --iphone-separator: rgb(84 84 88 / 0.5);
+  --color-canvas: #101011;
   --color-ink: #f2f2f3; --color-heading: #fafafa; --color-ink-muted: #a6a6ae; --color-ink-faint: #93939b;
 }
 /* The small title in the bar fades in with the scroll (Screen.tsx sets --title-in from 0 to 1). */

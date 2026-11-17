@@ -58,9 +58,11 @@ struct RebuildNoteScreen: View {
             if immersive {
             } else if editing, panel == nil, canEdit {
                 PhoneKeyboardBar(state: PhoneKeyboardBarState(block: model.editorState?.block, link: model.editorState?.link ?? false, undo: model.editorState?.undo ?? false, redo: model.editorState?.redo ?? false), aiOn: model.aiOn, run: run)
+                    .notePageAppearance(NotePageTones.shared.pages[noteId])
                     .transition(.opacity)
             } else if !model.keyboardVisible, panel == nil {
                 PhoneNoteToolBars(open: nativeTool ?? panel.flatMap { PhoneNoteTool(rawValue: $0.rawValue) }, canEdit: canEdit, aiOn: model.aiOn) { toggle($0) }
+                    .notePageAppearance(NotePageTones.shared.pages[noteId])
                     .padding(.bottom, max(10, safe.bottom - 10))
                     .ignoresSafeArea(.container, edges: .bottom)
                     .transition(.opacity.animation(.easeOut(duration: 0.16).delay(0.05)))

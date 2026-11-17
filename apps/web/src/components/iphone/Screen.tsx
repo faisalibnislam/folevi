@@ -296,6 +296,9 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
   return (
     <div
       ref={rootRef}
+      // Over a note the bar's glass and ink, and the note's own bars at the bottom, are the page's light or dark,
+      // whatever the app's appearance (globals.css, [data-page-tone]).
+      data-page-tone={edge === "page" && page ? (page.dark ? "dark" : "light") : undefined}
       className={`relative flex min-h-0 flex-1 flex-col pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ${tint ? "ui-view-tint" : ""} ${grouped ? "bg-[var(--iphone-grouped)]" : ""}`}
       style={tint ? ({ ["--view-tint" as string]: tint } as React.CSSProperties) : undefined}
     >
@@ -310,8 +313,7 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
         style={edge === "page" && page ? ({ ["--bar-page" as string]: page.color } as React.CSSProperties) : undefined}
         className="iphone-bar"
       />
-      {/* Over a note the bar's glass and ink are the page's light or dark, whatever the app's appearance. */}
-      <header data-page-tone={edge === "page" && page ? (page.dark ? "dark" : "light") : undefined} className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 px-4 pt-[calc(env(safe-area-inset-top)+4px)] pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))]">
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 px-4 pt-[calc(env(safe-area-inset-top)+4px)] pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))]">
         <div ref={leadRef} className="pointer-events-auto flex min-w-11 flex-1 basis-0 items-center">
           {(stacked ? null : leading) ??
             (showBack ? (

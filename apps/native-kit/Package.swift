@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 // FoleviKit: the Swift shared by Folevi for iPhone, iPad and Mac (docs/NATIVE_APP_PLAN.md section 6.1).
 // apps/ios (App.xcodeproj, a local package reference) and apps/mac (project.yml) both use it.
 //
@@ -17,7 +17,7 @@ let strict: [SwiftSetting] = [
 let package = Package(
     name: "FoleviKit",
     defaultLocalization: "en",
-    platforms: [.iOS(.v18), .macOS(.v15)],
+    platforms: [.iOS(.v18), .macOS(.v26)],
     products: [
         .library(name: "FoleviEngine", targets: ["FoleviEngine"]),
         .library(name: "FoleviDesign", targets: ["FoleviDesign"]),

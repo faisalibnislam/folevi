@@ -143,7 +143,7 @@ export function verify(app, { version, build, universal = false, notarized = fal
   if (version && plist(app, "CFBundleShortVersionString") !== version) problems.push(`Info.plist says ${plist(app, "CFBundleShortVersionString")}, version.json ${version}`);
   // The hidden build number is what Sparkle compares (sparkle:version); the version is only shown.
   if (build !== undefined && plist(app, "CFBundleVersion") !== String(build)) problems.push(`CFBundleVersion is ${plist(app, "CFBundleVersion")}, version.json's build ${build}`);
-  if (plist(app, "LSMinimumSystemVersion") !== "15.0") problems.push(`minimum macOS ${plist(app, "LSMinimumSystemVersion")}`);
+  if (plist(app, "LSMinimumSystemVersion") !== "26.0") problems.push(`minimum macOS ${plist(app, "LSMinimumSystemVersion")}`);
   // The built-in interface, production, for this version.
   try {
     const info = JSON.parse(readFileSync(join(app, "Contents", "Resources", "web", "shell", "build.json"), "utf8"));

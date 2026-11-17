@@ -191,7 +191,7 @@ extension RebuildFrameController: FrameHost {
 
     func frameSignOutConfirmed(place: String) { signOutNow() }
 
-    func frameDownloadFile(_ id: String) { model.toast("Downloads come to the iPad with the next update.") }
+    func frameDownloadFile(_ id: String) { desk.downloadDeliveredFile(id) }
 
     func frameMoveOrCopy() {
         PlaceMove.present(from: self, model: desk)
@@ -207,7 +207,50 @@ extension RebuildFrameController: FrameHost {
         UIApplication.shared.requestSceneSessionActivation(nil, userActivity: activity, options: nil)
     }
 
-    func frameStateChanged() {}
+    /// The wide layout's tabs are kept a moment after they change (DeskTabs), as the Mac keeps its windows'.
+    func frameStateChanged() {
+        if UIDevice.current.userInterfaceIdiom == .pad { DeskTabs.changed(desk) }
+    }
+
+    /// Settings > This device: the app lock (the iPhone's Settings has the same, RebuildSettings).
+    var frameDeviceLock: FrameDeviceLock? {
+        FrameDeviceLock(
+            state: { (LockSettings.enabled, LockSettings.after, LockSettings.method()) },
+            set: { on in
+                if on {
+                    guard LockSettings.method() != "none" else { return }
+                    guard await AppLock.confirm(reason: "Turn on the lock for Folevi") else { return }
+                }
+                LockSettings.enabled = on
+            },
+            setAfter: { after in if LockSettings.choices.contains(after) { LockSettings.after = after } }
+        )
+    }
+}
+
+/// The wide layout's tabs and screen, back after a relaunch (docs/IOS_REBUILD_PLAN.md I7; the Mac's WindowRestore).
+extension RebuildFrameController {
+    /// The desk's tabs for the scene's restoration activity (SceneDelegate); nil on an iPhone.
+    var deskRestorationData: Data? {
+        UIDevice.current.userInterfaceIdiom == .pad ? DeskTabs.data(desk) : nil
+    }
+
+    /// Saves the desk's tabs now (the app going to the background), not a moment later.
+    func saveDesk() {
+        if UIDevice.current.userInterfaceIdiom == .pad { DeskTabs.save(desk) }
+    }
+
+    /// Puts the desk's tabs back: the scene's own when iOS kept it, else (the app was closed) the last saved, unless
+    /// another window is open already. Not when launched to open routes (FOLEVI_REBUILD_OPEN).
+    func restoreDesk(from activity: NSUserActivity?) {
+        guard UIDevice.current.userInterfaceIdiom == .pad, (ProcessInfo.processInfo.environment["FOLEVI_REBUILD_OPEN"] ?? "").isEmpty else { return }
+        let kept = (activity?.userInfo?[RebuildFrame.deskRestorationKey] as? Data).flatMap(DeskTabs.decode)
+        let alone = UIApplication.shared.connectedScenes.count <= 1
+        guard let saved = kept ?? (alone ? DeskTabs.saved() : nil) else { return }
+        desk.restore(saved)
+        // The phone's layout doesn't follow this to the restored screen (it has its own restored stacks).
+        RebuildDeskBridge.placed = desk.route
+    }
 }
 
 /// Folevi's shortcuts with a hardware keyboard (KeyCommands.swift's list, in the ⌘ overlay): done natively, on the

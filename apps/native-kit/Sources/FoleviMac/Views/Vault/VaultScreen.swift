@@ -827,8 +827,10 @@ private struct RecoveryKeyCard: View {
     private func save() {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "Folevi Vault recovery key.txt"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        try? "Folevi Vault recovery key\n\n\(key)\n\nIf you forget your Vault passcode, this key opens the Vault. Keep it somewhere safe.\n".write(to: url, atomically: true, encoding: .utf8)
+        panel.choose { response in
+            guard response == .OK, let url = panel.url else { return }
+            try? "Folevi Vault recovery key\n\n\(key)\n\nIf you forget your Vault passcode, this key opens the Vault. Keep it somewhere safe.\n".write(to: url, atomically: true, encoding: .utf8)
+        }
     }
 }
 #endif

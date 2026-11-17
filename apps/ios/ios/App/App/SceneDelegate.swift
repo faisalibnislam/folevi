@@ -16,6 +16,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
         let window = UIWindow(windowScene: windowScene)
         window.rootViewController = RebuildFrame.enabled ? RebuildFrame.controller() : PhoneFrame.enabled ? PhoneFrameController() : FoleviViewController()
+        // The iPad's wide layout's tabs too (kept with the scene, or saved when the app last ran).
+        (window.rootViewController as? RebuildFrameController)?.restoreDesk(from: session.stateRestorationActivity)
         window.makeKeyAndVisible()
         self.window = window
         AppLock.shared.attach(to: window)
@@ -38,15 +40,20 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidEnterBackground(_ scene: UIScene) {
         PhoneFrameController.current?.snapshot.flush()
+        (window?.rootViewController as? RebuildFrameController)?.saveDesk()
         AppLock.shared.didEnterBackground()
         AppServices.enteredBackground()
     }
 
-    /// What iOS keeps for the scene: the new frame's tabs and screens.
+    /// What iOS keeps for the scene: the new frame's tabs and screens, the phone layout's and the iPad's wide one's.
     func stateRestorationActivity(for scene: UIScene) -> NSUserActivity? {
-        guard RebuildFrame.enabled, let data = RebuildFrame.model.snapshotData else { return nil }
+        guard RebuildFrame.enabled else { return nil }
+        var info: [String: Any] = [:]
+        if let data = RebuildFrame.model.snapshotData { info[RebuildFrame.restorationKey] = data }
+        if let data = (window?.rootViewController as? RebuildFrameController)?.deskRestorationData { info[RebuildFrame.deskRestorationKey] = data }
+        guard !info.isEmpty else { return nil }
         let activity = NSUserActivity(activityType: RebuildFrame.restorationType)
-        activity.userInfo = [RebuildFrame.restorationKey: data]
+        activity.userInfo = info
         return activity
     }
 

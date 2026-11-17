@@ -333,8 +333,10 @@ struct VaultFiles: View {
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        send(url)
+        panel.choose { response in
+            guard response == .OK, let url = panel.url else { return }
+            send(url)
+        }
     }
 
     /// A file sent to the engine, which seals it before it goes anywhere (50 MB at most, as any attachment).

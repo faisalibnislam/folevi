@@ -4,14 +4,22 @@
 //   (lib/desktop/textMenu.ts);
 // - anywhere else: New note, Search or jump to…, Ask Foli AI, then Back, Forward and Reload.
 // The note page draws its own menus (the editor's), so a right click over it is left to the page.
+// The iPad's wide layout has the "anywhere" menu too, from a pointer's secondary click (a two-finger click on a
+// trackpad, a mouse's right button); its text fields keep the system's own edit menu.
+#if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
+#else
+import UIKit
+import SwiftUI
+#endif
 import WebKit
 import FoleviDesign
 import FoleviScreens
 
 @MainActor
 enum AppContextMenu {
+    #if os(macOS)
     private struct Attached {
         weak var window: NSWindow?
         weak var model: FrameModel?
@@ -174,6 +182,29 @@ enum AppContextMenu {
         let r = NSRange(location: start, length: end - start)
         return s.substring(with: r).unicodeScalars.contains(where: { $0.properties.isAlphabetic }) ? r : nil
     }
+    #endif
+
+    #if os(iOS)
+    /// The iPad's menu for a secondary click at `point` that no view nearer answered, or nil to leave the click alone:
+    /// over the note's page (its own menus) or a text field (the system's edit menu).
+    static func entries(at point: CGPoint, in window: UIWindow, model: FrameModel) -> [WebMenuEntry]? {
+        var v = window.hitTest(point, with: nil)
+        while let view = v {
+            if view is WKWebView || view is UITextField || (view as? UITextView)?.isEditable == true { return nil }
+            v = view.superview
+        }
+        return anywhereEntries(model, window: window)
+    }
+    #endif
+
+    /// New note's key: ⌘⌥N on the Mac (⌘N is a new window there), ⌘N on the iPad.
+    static var newNoteShortcut: String {
+        #if os(macOS)
+        "⌘⌥N"
+        #else
+        "⌘N"
+        #endif
+    }
 
     // MARK: anywhere
 
@@ -190,7 +221,7 @@ enum AppContextMenu {
 
     static func anywhereEntries(_ model: FrameModel, window: NSWindow) -> [WebMenuEntry] {
         var out: [WebMenuEntry] = [
-            WebMenuEntry(.item("New note", icon: .filePlusCorner, shortcut: "⌘⌥N")) { model.newNote() },
+            WebMenuEntry(.item("New note", icon: .filePlusCorner, shortcut: newNoteShortcut)) { model.newNote() },
         ]
         // On the Folders page and a folder's page, New folder too (as the top bar has it): inside the folder shown.
         if let place = newFolderPlace(model) {
@@ -217,4 +248,21 @@ enum AppContextMenu {
         return out
     }
 }
+
+#if os(iOS)
+extension View {
+    /// The frame's own menu on a pointer's secondary click where nothing nearer has one (AppContextMenu). A row's
+    /// menu (webContextMenu) answers the same click first; this one waits a turn and stays away when it did.
+    func appContextMenu(_ model: FrameModel) -> some View {
+        gesture(SecondaryClick { point, window in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard WebMenuWindow.shown == nil, let entries = AppContextMenu.entries(at: point, in: window, model: model), !entries.isEmpty else { return }
+                    WebMenuWindow.show(entries, at: point, in: window)
+                }
+            }
+        })
+    }
+}
+#endif
 #endif

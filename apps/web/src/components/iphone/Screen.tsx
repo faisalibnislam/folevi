@@ -32,14 +32,59 @@ export interface IphoneScreenOptions {
   back?: string;
   /** How far the content scrolls before the small title shows (defaults to the large title's height). */
   collapseAt?: number;
-  /** The fade behind the bar once content scrolls under it: the canvas colour, or only a blur (over a note). */
-  edge?: "canvas" | "clear";
+  /**
+   * The fade behind the bar once content scrolls under it: the canvas colour, only a blur, or (over a note, "page")
+   * a short frost in the note page's own colour that eases out below the buttons, with the bar's glass and ink in
+   * the page's light or dark (pagePaint).
+   */
+  edge?: "canvas" | "clear" | "page";
   /** Content under the large title that scrolls with it (a search field, chips). */
   header?: ReactNode;
   /** The screen scrolls inside its content (a note's page) instead of as a whole. */
   innerScroll?: boolean;
   /** The grey of grouped lists behind the content (Settings). */
   grouped?: boolean;
+}
+
+/** A CSS colour as sRGB bytes (through a 1 px canvas, which takes any CSS colour); null when transparent. */
+function colorBytes(css: string): [number, number, number, number] | null {
+  if (!css || css === "transparent") return null;
+  const cx = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+  if (!cx) return null;
+  cx.fillStyle = "rgba(0, 0, 0, 0)";
+  cx.fillStyle = css;
+  cx.fillRect(0, 0, 1, 1);
+  const d = cx.getImageData(0, 0, 1, 1).data;
+  return d[3] ? [d[0]!, d[1]!, d[2]!, d[3]! / 255] : null;
+}
+
+/**
+ * What a note's page paints where it meets the bar (the sheet, else the scroller, else the canvas behind), and
+ * whether it reads dark (white text has more contrast on it than black: WCAG luminance under 0.179). The same rule
+ * as the iOS app's (RebuildNote's PageScroll, FoleviDesign's PhoneNotePage).
+ */
+export function pagePaint(root: HTMLElement): { color: string; dark: boolean } | null {
+  const scroller = root.querySelector<HTMLElement>("[data-iphone-scroll]");
+  if (!scroller) return null;
+  const layers = [scroller.querySelector<HTMLElement>(":scope > .fb-sheet"), scroller, document.body, document.documentElement];
+  let rgb = [0, 0, 0];
+  let a = 0;
+  for (const el of layers) {
+    if (!el || a > 0.995) continue;
+    const c = colorBytes(getComputedStyle(el).backgroundColor);
+    if (!c) continue;
+    const w = (1 - a) * c[3];
+    rgb = rgb.map((v, i) => v + w * c[i]!);
+    a += w;
+  }
+  if (a < 0.5) return null;
+  rgb = rgb.map((v) => v / a);
+  const lin = (v: number) => {
+    const s = v / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = 0.2126 * lin(rgb[0]!) + 0.7152 * lin(rgb[1]!) + 0.0722 * lin(rgb[2]!);
+  return { color: `rgb(${rgb.map((v) => Math.round(v)).join(" ")})`, dark: luminance < 0.179 };
 }
 
 /** Where Back leads without history: a note's folder is unknown here, so Home (lists) or the tab's root. */
@@ -73,7 +118,36 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
   const trailRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [page, setPage] = useState<{ color: string; dark: boolean } | null>(null);
   const { pathname, search } = useAppRouter();
+
+  // Over a note: what its page paints under the bar, measured again when its look changes in place (a page colour
+  // or theme picked, the app's appearance).
+  useEffect(() => {
+    const el = rootRef.current;
+    if (edge !== "page" || !el) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const next = pagePaint(el);
+      setPage((prev) => (prev?.color === next?.color && prev?.dark === next?.dark ? prev : next));
+    };
+    const soon = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    soon();
+    const late = window.setTimeout(soon, 400);
+    const inPage = new MutationObserver(soon);
+    inPage.observe(el, { attributes: true, subtree: true, attributeFilter: ["style", "data-sheet", "data-palette", "data-text"] });
+    const app = new MutationObserver(soon);
+    app.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme", "style"] });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(late);
+      inPage.disconnect();
+      app.disconnect();
+    };
+  }, [edge, pathname]);
   const href = `${pathname}${search.size ? `?${search.toString()}` : ""}`;
   const hrefRef = useRef(href);
   useEffect(() => {
@@ -226,9 +300,18 @@ export function IphoneScreen({ options, fallbackTitle, children, overlay, tint }
       style={tint ? ({ ["--view-tint" as string]: tint } as React.CSSProperties) : undefined}
     >
       {/* The bar's material once content scrolls under it: frosted, in the screen's own colour (a folder's
-          tint, Settings' grey), with a hairline at its foot (globals.css, .iphone-bar). */}
-      <div aria-hidden data-iphone-bar-fade="" data-surface={tint ? "tint" : grouped ? "grouped" : edge === "clear" ? "clear" : "canvas"} data-on={scrolled ? "" : undefined} className="iphone-bar" />
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 px-4 pt-[calc(env(safe-area-inset-top)+4px)] pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))]">
+          tint, Settings' grey), with a hairline at its foot; over a note, a short frost in its page's colour
+          easing out below the buttons (globals.css, .iphone-bar). */}
+      <div
+        aria-hidden
+        data-iphone-bar-fade=""
+        data-surface={tint ? "tint" : grouped ? "grouped" : edge === "clear" ? "clear" : edge === "page" && page ? "page" : "canvas"}
+        data-on={scrolled ? "" : undefined}
+        style={edge === "page" && page ? ({ ["--bar-page" as string]: page.color } as React.CSSProperties) : undefined}
+        className="iphone-bar"
+      />
+      {/* Over a note the bar's glass and ink are the page's light or dark, whatever the app's appearance. */}
+      <header data-page-tone={edge === "page" && page ? (page.dark ? "dark" : "light") : undefined} className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 px-4 pt-[calc(env(safe-area-inset-top)+4px)] pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))]">
         <div ref={leadRef} className="pointer-events-auto flex min-w-11 flex-1 basis-0 items-center">
           {(stacked ? null : leading) ??
             (showBack ? (

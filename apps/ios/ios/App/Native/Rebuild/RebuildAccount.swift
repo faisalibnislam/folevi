@@ -8,6 +8,7 @@ import SwiftUI
 import UIKit
 import FoleviDesign
 import FoleviEngine
+import FoleviMac
 import FoleviPhone
 import FoleviScreens
 
@@ -73,6 +74,22 @@ struct RebuildNewWorkspace: View {
     }
 }
 
+/// "Move or copy notes" (FoleviPhone's PhoneMovePlacesSheet) with its model, kept while the sheet is up.
+struct RebuildMovePlacesSheet: View {
+    let close: () -> Void
+    @MadeOnce private var model: MovePlacesModel
+
+    init(phone: PhoneModel, request: MovePlacesRequest, close: @escaping () -> Void) {
+        self.close = close
+        let feedback = ScreenFeedback(toast: { [weak phone] t in phone?.toast(t.message, tone: t.tone == .error ? .error : t.tone == .success ? .success : .info) })
+        _model = MadeOnce(wrappedValue: MovePlacesModel(client: phone.client, request: request, feedback: feedback))
+    }
+
+    var body: some View {
+        PhoneMovePlacesSheet(model: model, close: close)
+    }
+}
+
 /// The sheet's content, live: the rows follow the engine, a pick goes to `pick`.
 struct RebuildAccountSheet: View {
     let places: PlacesModel
@@ -112,10 +129,12 @@ extension RebuildFrameController {
             }
         case .movePlaces:
             close()
-            model.toast("Moving notes between places comes to the app with the next update.")
+            // (Once the account sheet has gone: one sheet comes up as the other leaves.)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in self?.moveToAnotherPlace(folders: [], notes: []) }
         case .help:
+            // Help in the app, as Settings › Help opens it (the web's /help).
             close()
-            if let url = URL(string: "https://folevi.com/help") { openExternal(url) }
+            open(.web("/help"), source: nil)
         case .signOut:
             // As the web's safe sign-out: a warning only when changes here haven't synced (they'd be lost).
             if places.unsynced > 0 {
@@ -125,6 +144,19 @@ extension RebuildFrameController {
                 signOutNow()
             }
         }
+    }
+
+    /// "Move or copy notes…" (the account sheet: everything here) and "Move to another place…" (a folder's menu:
+    /// that folder): the phone's sheet over the frame; the iPad's wide layout keeps the desk's.
+    func moveToAnotherPlace(folders: [String], notes: [String]) {
+        if wide { return PlaceMove.present(from: self, model: desk) }
+        model.movePlaces = MovePlacesRequest(folders: folders, notes: notes)
+    }
+
+    /// A folder's Share dialog (who has access, people and roles): the Mac's and iPad's, over the window.
+    func shareFolder(_ id: String, name: String) {
+        FrameSheets.attach(desk, window: view.window)
+        FrameDialogs.folderShare(desk, folderId: id, name: name)
     }
 
     /// Another place on this device: it becomes the current one and the app opens again in it.

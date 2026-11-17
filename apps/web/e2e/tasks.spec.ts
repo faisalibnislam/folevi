@@ -153,7 +153,11 @@ test("calendar week view: a timed task sits at its time and moves by drag", asyn
   const block = page.getByRole("button", { name: /^Stretch break, 15:00/ });
   await expect(block).toBeVisible();
 
-  // Dropped on the 17:00 slot of the same day: the time moves, the date stays.
+  // Dropped on the 17:00 slot of the same day: the time moves, the date stays. (The week opens an hour before now,
+  // so early in the day 15:00 and 17:00 are below the visible hours: bring 17:00 into view first, or the drag
+  // scrolls under the pointer and drops somewhere else.)
+  await page.locator(`[data-day-column="${today}"] [data-hour="17"]`).scrollIntoViewIfNeeded();
+  await expect(block).toBeInViewport();
   await block.dragTo(page.locator(`[data-day-column="${today}"] [data-hour="17"]`), { targetPosition: { x: 12, y: 6 } });
   await expect(page.getByRole("status").filter({ hasText: /Moved to .*17:00/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Stretch break, 17:00/ })).toBeVisible();

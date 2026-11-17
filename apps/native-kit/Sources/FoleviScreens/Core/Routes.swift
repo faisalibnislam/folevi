@@ -28,6 +28,8 @@ public enum ScreenRoute: Hashable, Sendable {
     case invite(space: SpaceRef)
     /// Move folders and notes to another place (another account or the library).
     case movePlaces(folders: [String], notes: [String])
+    /// A folder's Share dialog (who has access, people and roles; `folderSharing.*`).
+    case shareFolder(id: String, name: String)
     /// Opens a note in a new tab (iPad and Mac).
     case noteInNewTab(id: String)
     /// A web route native doesn't know (opens in the Page View with native bars).
@@ -47,7 +49,9 @@ public enum ScreenRoute: Hashable, Sendable {
         case "shared": self = .shared
         case "changes": self = .changes
         case "review", "reviews": self = .reviews
-        case "graph": self = .graph
+        // Foli DNA around a note or on a saved view (`/graph?note=<id>`, `?view=<id>`) keeps its query: the frames
+        // read it from the path (FrameRoute(path:)). Plain `/graph` is the whole map.
+        case "graph": self = route.contains("?") ? .web(route) : .graph
         case "folders": self = parts.count > 1 ? .folder(id: parts[1]) : .allFolders
         case "tags" where parts.count > 1: self = .tag(id: parts[1])
         case "d" where parts.count > 1: self = .note(id: parts[1])

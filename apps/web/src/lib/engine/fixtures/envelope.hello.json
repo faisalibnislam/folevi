@@ -11,7 +11,7 @@
         "version": "1.1.00",
         "build": "1100",
         "protocol": 1,
-        "schemaHash": "a01f05cb"
+        "schemaHash": "92b90614"
       }
     }
   ],
@@ -22,9 +22,9 @@
       "ok": true,
       "value": {
         "protocol": 1,
-        "revision": 31,
+        "revision": 32,
         "build": "dev",
-        "schemaHash": "a01f05cb",
+        "schemaHash": "92b90614",
         "ready": true,
         "place": "acct:user_1",
         "features": [
@@ -253,7 +253,8 @@
           "account.signOut",
           "text.layout",
           "workspace.create",
-          "folder.setSidebarOrder"
+          "folder.setSidebarOrder",
+          "inbox.open"
         ],
         "editorCommands": [
           "note.prepare",

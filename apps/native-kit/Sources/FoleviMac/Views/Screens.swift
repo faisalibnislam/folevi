@@ -271,6 +271,7 @@ enum FrameNavigation {
             switch r {
             case .movePlaces: frame.host?.frameMoveOrCopy()
             case .invite: frame.host?.frameOpenSettings(section: "members")
+            case .shareFolder(let id, let name): FrameDialogs.folderShare(frame, folderId: id, name: name)
             case .places, .notifications: frame.toast("They're at the bottom of the sidebar: the account button and the bell.")
             case .foliAI: frame.askAI()
             default: break

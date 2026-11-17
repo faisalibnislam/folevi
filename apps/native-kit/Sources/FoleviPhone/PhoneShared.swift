@@ -35,21 +35,23 @@ private func relative(_ ms: Double) -> String {
 public struct PhoneSharedScreen: View {
     let model: SharedListModel
     let openNote: (String) -> Void
+    let openFolder: (String) -> Void
     let back: () -> Void
     @Environment(\.colorScheme) private var scheme
 
-    public init(model: SharedListModel, openNote: @escaping (String) -> Void, back: @escaping () -> Void) {
+    /// `openFolder` opens a folder shared with this person (`/shared/<id>`).
+    public init(model: SharedListModel, openNote: @escaping (String) -> Void, openFolder: @escaping (String) -> Void = { _ in }, back: @escaping () -> Void) {
         self.model = model
         self.openNote = openNote
+        self.openFolder = openFolder
         self.back = back
     }
 
     public var body: some View {
-        let ink = FoleviTokens.Chrome.ink.resolve(scheme)
-        let muted = FoleviTokens.Chrome.inkMuted.resolve(scheme)
-        let faint = FoleviTokens.Chrome.inkFaint.resolve(scheme)
         let rows = model.rows
-        PhoneScreen(PhoneScreenOptions(title: "Shared with Me", subtitle: model.isLoading || rows.isEmpty ? nil : "\(rows.count) \(rows.count == 1 ? "page" : "pages")"), root: false, back: back) {
+        let folders = model.folderRows
+        // (The web's phone subtitle: the counts, once there's anything.)
+        PhoneScreen(PhoneScreenOptions(title: "Shared with Me", subtitle: model.isLoading || (rows.isEmpty && folders.isEmpty) ? nil : model.counts), root: false, back: back) {
             EmptyView()
         } trailing: {
             EmptyView()
@@ -57,38 +59,83 @@ public struct PhoneSharedScreen: View {
             VStack(alignment: .leading, spacing: 0) {
                 if model.isLoading {
                     RoundedRectangle(cornerRadius: FoleviTokens.Radius.chip).fill(FoleviTokens.Chrome.surface.resolve(scheme).color).frame(height: 96).padding(.top, 24)
-                } else if rows.isEmpty {
+                } else if rows.isEmpty && folders.isEmpty {
                     PhoneScreenEmpty(icon: .share2, title: "Nothing has been shared with you yet", message: "Folders and pages people share with you, from their Personal or from any workspace, show up here.")
                 } else {
-                    VStack(spacing: 0) {
-                        ForEach(Array(rows.enumerated()), id: \.element.id) { i, d in
-                            Button { openNote(d.id) } label: {
-                                HStack(alignment: .top, spacing: 12) {
-                                    WebIconView(.fileText, size: 16).foregroundStyle(muted.color).padding(.top, 4)
-                                    VStack(alignment: .leading, spacing: 0) {
-                                        Text(d.title.isEmpty ? "Untitled" : d.title).webText(WebTextStyle(size: 16, leading: 24.8, weight: 500)).foregroundStyle(ink.color)
-                                        if !d.excerpt.isEmpty {
-                                            Text(d.excerpt).webText(WebTextStyle(size: 15, leading: 20)).lineLimit(1).foregroundStyle(muted.color)
-                                        }
-                                        Text("Shared by \(d.sharedBy) · \(d.workspaceName ?? "Personal · \(d.ownerName ?? "someone")") · \(Self.role(d.role)) · updated \(relative(d.updatedAt))")
-                                            .webText(WebTextStyle(size: 13, leading: 18)).foregroundStyle(faint.color)
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(PhoneRowPressStyle())
-                            if i < rows.count - 1 { FoleviTokens.Chrome.line.resolve(scheme).color.frame(height: 1) }
-                        }
+                    // Folders first, then the pages shared one by one (SharedView.tsx); "Pages" is named only under folders.
+                    if !folders.isEmpty {
+                        sectionTitle("Folders").padding(.top, 24)
+                        card(folders) { folderRow($0) }
+                            .accessibilityIdentifier("shared-folders")
                     }
-                    .phoneCard()
-                    .padding(.top, 24)
+                    if !rows.isEmpty {
+                        if !folders.isEmpty { sectionTitle("Pages").padding(.top, 24) }
+                        card(rows) { pageRow($0) }
+                            .padding(.top, folders.isEmpty ? 24 : 0)
+                    }
                 }
             }
             .padding(.horizontal, 16)
         }
+    }
+
+    /// `mb-2 text-footnote font-semibold text-muted`.
+    private func sectionTitle(_ text: String) -> some View {
+        Text(text).webText(WebTextStyle(size: 13, leading: 18, weight: 600))
+            .foregroundStyle(FoleviTokens.Chrome.inkMuted.resolve(scheme).color)
+            .padding(.bottom, 8)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    /// `divide-y divide-line ui-card rounded-control`: rows in a card with a line between them.
+    private func card<Item, Row: View>(_ items: [Item], @ViewBuilder row: @escaping (Item) -> Row) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(items.enumerated()), id: \.offset) { i, item in
+                row(item)
+                if i < items.count - 1 { FoleviTokens.Chrome.line.resolve(scheme).color.frame(height: 1) }
+            }
+        }
+        .phoneCard()
+    }
+
+    private func folderRow(_ f: SharedFolderRow) -> some View {
+        Button { openFolder(f.id) } label: {
+            HStack(alignment: .top, spacing: 12) {
+                FolderGlyph(colorId: f.color, size: 18).padding(.top, 2)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(f.name.isEmpty ? "Untitled" : f.name).webText(WebTextStyle(size: 16, leading: 24.8, weight: 500)).foregroundStyle(FoleviTokens.Chrome.ink.resolve(scheme).color)
+                    Text("\(SharedListModel.folderDetail(f)) · updated \(relative(f.updatedAt))")
+                        .webText(WebTextStyle(size: 13, leading: 18)).foregroundStyle(FoleviTokens.Chrome.inkFaint.resolve(scheme).color)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PhoneRowPressStyle())
+    }
+
+    private func pageRow(_ d: SharedRow) -> some View {
+        let muted = FoleviTokens.Chrome.inkMuted.resolve(scheme)
+        return Button { openNote(d.id) } label: {
+            HStack(alignment: .top, spacing: 12) {
+                WebIconView(.fileText, size: 16).foregroundStyle(muted.color).padding(.top, 4)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(d.title.isEmpty ? "Untitled" : d.title).webText(WebTextStyle(size: 16, leading: 24.8, weight: 500)).foregroundStyle(FoleviTokens.Chrome.ink.resolve(scheme).color)
+                    if !d.excerpt.isEmpty {
+                        Text(d.excerpt).webText(WebTextStyle(size: 15, leading: 20)).lineLimit(1).foregroundStyle(muted.color)
+                    }
+                    Text("Shared by \(d.sharedBy) · \(d.workspaceName ?? "Personal · \(d.ownerName ?? "someone")") · \(Self.role(d.role)) · updated \(relative(d.updatedAt))")
+                        .webText(WebTextStyle(size: 13, leading: 18)).foregroundStyle(FoleviTokens.Chrome.inkFaint.resolve(scheme).color)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PhoneRowPressStyle())
     }
 
     static func role(_ r: String) -> String {

@@ -93,6 +93,7 @@ public extension FolderMenuItems {
         case .moveToTop:
             Task { await actions.moveFolder(folder.id, to: FolderRules.Place(parentId: nil, afterId: context.links.filter { $0.parentId == nil }.last?.id), message: "Moved to the top level") }
         case .askAI: navigator.open(.foliAI(about: .folder(id: folder.id, name: folder.name)), nil)
+        case .share: navigator.open(.shareFolder(id: folder.id, name: folder.name), nil)
         case .copyLink:
             feedback.copy(FoleviLinks.folder(folder.id))
             feedback.toast(ScreenToast("Link copied", tone: .success))

@@ -1,14 +1,15 @@
 // Revision 5's commands (docs/NATIVE_APP_PLAN.md sections 5.8 and 5.12): Quick Add's task (dates read as the web
 // reads them; kept on the device and sent later when offline, like the web's Quick Add), task changes and moves,
-// and calendar subscriptions.
-import { parseRepeatPhrase, type RepeatRule, type WireBlock } from "@folevi/editor-schema";
+// and calendar subscriptions. Revision 31: the Inbox page to open (folevi://inbox).
+import { parseRepeatPhrase, type RepeatRule, type WireBlock, type WireScope } from "@folevi/editor-schema";
 import { api } from "@/lib/convex/api";
 import { quickAddOnDevice } from "@/lib/quickAddOffline";
+import { inboxPage } from "@/lib/share/save";
 import type { EngineDeps } from "./context";
 import { spaceArg, type CommandDef } from "./commands";
 import { datesReady, planQuickTask, repeatProps } from "./quickTask";
 import { BridgeError, bool, id, invalid, num, oneOf, only, optionalId, text } from "./validate";
-import type { CommandName, TaskCreateResult } from "./protocol";
+import type { CommandName, InboxOpenResult, TaskCreateResult } from "./protocol";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^\d{2}:\d{2}$/;
@@ -92,6 +93,28 @@ export const WORK_COMMANDS = {
           ? await quickAddOnDevice({ engine, profileId: deps.app.accountKey, deviceId }, space.scope, task)
           : ((await deps.client.mutation(api.tasks.quickAdd, { scope: space.scope, today: deps.app.today, ...task, ...(deviceId ? { deviceId } : {}) })) as { blockId: string; documentId: string });
       return { id: r.blockId, noteId: r.documentId, where: noteId ? await noteTitle(deps, noteId) : "Inbox" };
+    },
+  },
+
+  // The person's Inbox page, as /inbox finds it (RouteView.tsx OpenInbox): the server's when it answers, else
+  // its own id, made here if this device never had it.
+  "inbox.open": {
+    async run(deps, args): Promise<InboxOpenResult> {
+      only(args, ["space"]);
+      const space = spaceArg(deps, args);
+      const engine = deps.app.engine;
+      if (!engine) throw new BridgeError("engine_not_ready", "Folevi is still opening. Try again in a moment.");
+      const inbox = await inboxPage(
+        {
+          engine,
+          profileId: deps.app.accountKey,
+          deviceId: engine.deviceId ?? null,
+          online: deps.app.online,
+          prepareInbox: (a: { scope: WireScope; deviceId?: string }) => deps.client.mutation(api.tasks.inbox, a) as Promise<{ documentId: string; lastRank: string | null }>,
+        },
+        space.scope,
+      );
+      return { id: inbox.documentId };
     },
   },
 

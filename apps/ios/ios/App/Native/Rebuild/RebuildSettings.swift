@@ -33,9 +33,11 @@ struct RebuildSettingsScreen: View {
     let frame: PhoneFrameModel
     let phone: PhoneModel
     let signIn: () -> Void
+    /// New workspace's card, over the frame (Create a workspace).
+    var newWorkspace: () -> Void = {}
 
     private var host: PhoneSettingsHost {
-        PhoneSettingsHost(
+        var host = PhoneSettingsHost(
             lock: { (LockSettings.enabled, LockSettings.after, LockSettings.method()) },
             setLock: { on in
                 if on {
@@ -49,6 +51,8 @@ struct RebuildSettingsScreen: View {
             contactSupport: { if let url = URL(string: "mailto:support@folevi.com") { UIApplication.shared.open(url) } },
             openURL: { phone.router?.openExternal($0) }
         )
+        host.newWorkspace = newWorkspace
+        return host
     }
 
     var body: some View {

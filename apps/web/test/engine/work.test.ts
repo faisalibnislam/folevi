@@ -98,6 +98,13 @@ describe("task and calendar commands", () => {
     expect(await code({ kind: "command", place: PLACE, name: "task.create", args: { text: "   " } })).toBe("invalid_args");
   });
 
+  it("inbox.open: the Inbox page the server finds, as /inbox opens it", async () => {
+    r.client.mutate = (name) => (name === "tasks:inbox" ? { documentId: "doc_inbox", lastRank: null } : null);
+    expect(await command("inbox.open")).toEqual({ id: "doc_inbox" });
+    expect(r.client.mutations.at(-1)).toMatchObject({ name: "tasks:inbox", args: { scope: { kind: "personal" } } });
+    expect(await code({ kind: "command", place: PLACE, name: "inbox.open", args: { nope: 1 } })).toBe("invalid_args");
+  });
+
   it("task.create keeps the words when asked, and takes a date given", async () => {
     r.client.mutate = () => ({ blockId: "t9", documentId: "inbox" });
     await command("task.create", { text: "read by friday", keepText: true });

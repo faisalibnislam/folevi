@@ -16,6 +16,10 @@ public struct PhoneFolderMenuHooks {
     public var newFolder: (String) -> Void
     public var askAI: (String, String) -> Void
     public var toast: (String) -> Void
+    /// The folder's Share dialog (its id and name).
+    public var share: (String, String) -> Void = { _, _ in }
+    /// "Move or copy notes" with these folders picked.
+    public var movePlaces: ([String]) -> Void = { _ in }
 
     public init(open: @escaping (String) -> Void, openNote: @escaping (String) -> Void, newFolder: @escaping (String) -> Void, askAI: @escaping (String, String) -> Void, toast: @escaping (String) -> Void) {
         self.open = open
@@ -61,7 +65,7 @@ public enum PhoneFolderMenu {
                 }, from: anchor, side: .bottom, align: .start)
             }
         case .move: dialogs.open(.move(folder))
-        case .movePlaces: hooks.toast("Moving folders between places comes to the app with the next update.")
+        case .movePlaces: hooks.movePlaces([folder.id])
         case .moveToTop:
             Task { await actions.moveFolder(folder.id, to: FolderRules.Place(parentId: nil, afterId: context.links.filter { $0.parentId == nil }.last?.id), message: "Moved to the top level") }
         case .askAI: hooks.askAI(folder.id, folder.name)
@@ -69,7 +73,9 @@ public enum PhoneFolderMenu {
         case .copyLink:
             UIPasteboard.general.string = FoleviLinks.folder(folder.id)
             hooks.toast("Link copied")
-        case .invite: hooks.toast("Inviting people comes to the app with the next update.")
+        // The workspace's Members (as the Mac's menu opens it).
+        case .invite: hooks.open("/settings/members")
+        case .share: hooks.share(folder.id, folder.name)
         case .delete: dialogs.open(.delete(folder, subfolders: context.subfolderCount(folder.id)))
         }
     }
@@ -85,6 +91,7 @@ public enum PhoneFolderMenu {
         case .moveToTop: .arrowUpToLine
         case .askAI: nil
         case .lock: .lock
+        case .share: .share2
         case .copyLink: .link
         case .invite: .userPlus
         case .delete: .trash

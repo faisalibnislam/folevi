@@ -1,0 +1,9 @@
+{
+  "kind": "command",
+  "name": "inbox.open",
+  "description": "The Inbox page to open (folevi://inbox), as the web's /inbox finds it (revision 31).",
+  "args": {},
+  "result": {
+    "id": "doc_inbox"
+  }
+}

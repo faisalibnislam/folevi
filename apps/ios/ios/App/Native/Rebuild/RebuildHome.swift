@@ -21,6 +21,8 @@ struct RebuildHomeScreen: View {
     @State private var deletingTag: TagRow?
     @State private var tagName = ""
     @Environment(\.colorScheme) private var scheme
+    /// Foli DNA's saved views (`graph.views`, small: it doesn't load the map), watched once Foli DNA is on here.
+    @State private var dnaViews: ValueStore<GraphViewsValue>?
 
     private var signedIn: Bool { home.session.value?.mode == .account }
 
@@ -68,6 +70,9 @@ struct RebuildHomeScreen: View {
         .refreshable { await home.refresh() }
         .onAppear { home.setVisible(true) }
         .onDisappear { home.setVisible(false) }
+        .onChange(of: home.graphOn, initial: true) { _, on in
+            if on, dnaViews == nil { dnaViews = phone.client.watch(.graphViews()) }
+        }
     }
 
     private var homeActions: PhoneHomeActions {
@@ -149,7 +154,8 @@ struct RebuildHomeScreen: View {
         }
     }
 
-    /// The pill's More and the Folders section's "…": New folder, All folders (and Graph, from the pill).
+    /// The pill's More and the Folders section's "…": New folder, All folders (and Foli DNA with its saved views,
+    /// as the sidebar lists them under it, from the pill).
     private func showMore(from anchor: CGRect, graph: Bool = true) {
         var entries = [
             PhoneMenuEntry(.item("New folder", icon: .folderPlus)) { newFolder(nil) },
@@ -157,7 +163,16 @@ struct RebuildHomeScreen: View {
         ]
         if graph && home.graphOn {
             entries.append(PhoneMenuEntry(.item("Foli DNA", icon: .waypoints)) { frame.open(FrameRoute(path: "/graph")) })
+            for view in Self.dnaMenuViews(dnaViews?.value) {
+                let id = view.id.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? view.id
+                entries.append(PhoneMenuEntry(.item(view.name, icon: .waypoints, id: "dna-view:\(view.id)")) { frame.open(FrameRoute(path: "/graph?view=\(id)")) })
+            }
         }
         menus.show(entries, from: anchor, side: .bottom, align: .end)
+    }
+
+    /// The saved views the menu lists: the sidebar's first five (Sidebar.tsx SIDEBAR_LIMIT).
+    static func dnaMenuViews(_ value: GraphViewsValue?) -> [GraphSavedView] {
+        Array((value?.views ?? []).prefix(5))
     }
 }

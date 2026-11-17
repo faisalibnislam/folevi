@@ -10,13 +10,16 @@ import FoleviScreens
 @MainActor
 enum RebuildFolderHooks {
     static func make(frame: PhoneFrameModel, phone: PhoneModel, newFolder: @escaping (String?) -> Void) -> PhoneFolderMenuHooks {
-        PhoneFolderMenuHooks(
+        var hooks = PhoneFolderMenuHooks(
             open: { frame.open(FrameRoute(path: $0)) },
             openNote: { phone.router?.openNote($0, source: nil, focus: true) },
             newFolder: { newFolder($0) },
             askAI: { id, name in RebuildFrame.ai.ask(about: .folder(id: id, name: name)) },
             toast: { phone.toast($0) }
         )
+        hooks.share = { id, name in phone.router?.open(.shareFolder(id: id, name: name), source: nil) }
+        hooks.movePlaces = { folders in phone.router?.open(.movePlaces(folders: folders, notes: []), source: nil) }
+        return hooks
     }
 }
 
@@ -67,6 +70,33 @@ struct RebuildAllFoldersScreen: View {
         ]
         for (sort, label) in model.sortOptions {
             entries.append(PhoneMenuEntry(.item(label, checked: model.sort == sort)) { model.sort = sort })
+        }
+        menus.show(entries, from: anchor, side: .bottom, align: .end)
+    }
+}
+
+/// Tags (`/tags`): FoleviPhone's PhoneTagsScreen, the web's phone layout of the tags index (the Mac's page is too
+/// wide for a phone); a tag opens its notes (`/tags/<id>`).
+struct RebuildTagsScreen: View {
+    let frame: PhoneFrameModel
+    let menus: PhoneMenus
+    @MadeOnce private var model: TagsIndexModel
+
+    init(frame: PhoneFrameModel, menus: PhoneMenus, phone: PhoneModel) {
+        self.frame = frame
+        self.menus = menus
+        _model = MadeOnce(wrappedValue: TagsIndexModel(client: phone.client))
+    }
+
+    var body: some View {
+        PhoneTagsScreen(model: model, open: { frame.open(FrameRoute(path: $0)) }, back: { frame.back() }, menu: { showMenu(from: $0) }, scrollToTop: frame.scrollToTop)
+    }
+
+    /// IphoneTags' menu: Sort by.
+    private func showMenu(from anchor: CGRect) {
+        var entries = [PhoneMenuEntry(.heading("Sort by"))]
+        for sort in TagsIndexModel.Sort.allCases {
+            entries.append(PhoneMenuEntry(.item(sort.label, checked: model.sort == sort)) { model.sort = sort })
         }
         menus.show(entries, from: anchor, side: .bottom, align: .end)
     }

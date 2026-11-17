@@ -84,7 +84,8 @@ public struct SelectedItem: Sendable, Hashable {
 public extension ListSelection {
     /// The actions a selection offers, in the bar's order: only those every selected item can take. Notes: bookmark,
     /// archive, trash (and copy elsewhere); folders: colour and delete; both: open in new tabs and move.
-    static func actions(_ items: [SelectedItem], trash: Bool = false, canEdit: Bool, canCopy: Bool = false, tabs: Bool = false) -> [BulkAction] {
+    /// `tags`: Add tag is offered (the iPhone's bar, as the web's phone bar has it; notes only, where they can be edited).
+    static func actions(_ items: [SelectedItem], trash: Bool = false, canEdit: Bool, canCopy: Bool = false, tabs: Bool = false, tags: Bool = false) -> [BulkAction] {
         guard !items.isEmpty else { return [] }
         let notes = items.filter { $0.kind == .note }
         let allNotes = notes.count == items.count
@@ -96,6 +97,7 @@ public extension ListSelection {
         if canEdit && !notes.contains(where: \.template) { out.append(.move) }
         if allNotes && canCopy { out.append(.copy) }
         if allNotes { out.append(notes.allSatisfy(\.starred) ? .unstar : .star) }
+        if tags && allNotes && canEdit { out.append(.tags) }
         if allFolders && canEdit { out.append(.color) }
         if allNotes { out.append(notes.allSatisfy(\.archived) ? .unarchive : .archive) }
         if allNotes { out.append(.trash) }

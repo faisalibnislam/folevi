@@ -533,6 +533,7 @@ func bulkIcon(_ a: BulkAction) -> WebIcon {
     case .copy: .copyPlus
     case .star: .bookmark
     case .unstar: .bookmarkOff
+    case .tags: .hash
     case .color: .palette
     case .archive: .archive
     case .unarchive: .archiveRestore

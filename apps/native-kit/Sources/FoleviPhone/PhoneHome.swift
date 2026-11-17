@@ -59,7 +59,7 @@ public struct PhoneHomeContent: View {
                 }
                 PhoneListRow("Templates", action: { actions.open("/templates") }) { PhoneRowGlyph(.layoutTemplate) }
                 PhoneListRow("Archive", action: { actions.open("/archive") }) { PhoneRowGlyph(.archive) }
-                PhoneListRow("Trash", action: { actions.open("/trash") }) { PhoneRowGlyph(.trash) }.phoneRowSeparator(false)
+                PhoneListRow("Trash", action: { actions.open("/trash") }) { PhoneRowGlyph(.trash) }
             }
             .padding(.top, 28)
         }
@@ -155,7 +155,6 @@ public struct PhoneHomeContent: View {
                 PhoneRowGroup("Bookmarks") {
                     ForEach(shown, id: \.id) { row in
                         PhoneListRow(row.title.isEmpty ? "Untitled" : row.title, action: { actions.openNote(row.id) }, onLongPress: { actions.noteMenu(row, $0) }) { PhoneRowGlyph(.fileText) }
-                            .phoneRowSeparator(row.id != shown.last?.id)
                     }
                 }
             }
@@ -200,7 +199,6 @@ public struct PhoneHomeContent: View {
                             PhoneListRow(tag.name, action: { actions.open("/tags/\(tag.id)") }) {
                                 PhoneRowGlyph(.hash).foregroundStyle(Self.tagColor(tag.color, scheme).color)
                             }
-                            .phoneRowSeparator(tag.id != model.tags.last?.id)
                         }
                     }
                 }
@@ -216,7 +214,7 @@ public struct PhoneHomeContent: View {
 }
 
 /// HomeTile: one of Home's places in the grid, the icon and its count on top, the name under them, in the sunken
-/// surface with the search field's corners (`rounded-panel bg-sunken p-3 min-h-[80px]`).
+/// card fill with the search field's corners (`rounded-panel bg-[var(--iphone-card)] p-3 min-h-[80px]`).
 struct PhoneHomeTile: View {
     let title: String
     let icon: WebIcon
@@ -253,7 +251,7 @@ struct PhoneHomeTile: View {
             }
             .padding(12)
             .frame(maxWidth: .infinity, minHeight: 80, alignment: .leading)
-            .background(shape.fill(ink(FoleviTokens.Chrome.surfaceSunken)))
+            .background(shape.fill(ink(PhoneSurface.card)))
             .contentShape(shape)
         }
         .buttonStyle(PhoneTilePressStyle(shape: shape))
@@ -264,8 +262,8 @@ struct PhoneHomeTile: View {
     }
 }
 
-/// Catch me up on Home: its own raised card (the glass, its edge and a soft shadow), Foli AI's flower and what it
-/// does in a line under its name.
+/// Catch me up on Home: its own card in the tiles' light fill (no edge or shadow), Foli AI's flower and what it does
+/// in a line under its name.
 struct PhoneCatchUpCard: View {
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
@@ -291,9 +289,7 @@ struct PhoneCatchUpCard: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .frame(minHeight: 68)
-            .background {
-                WebShapeBox(shape: WebCornersShape(topLeft: r, topRight: r, bottomRight: r, bottomLeft: r), fill: ink(FoleviTokens.Glass.active), shadows: PhoneStyleSheetContent.glassEdge(scheme) + [ShadowLayer(x: 0, y: 1, blur: 3, spread: 0, color: RGBA(0, 0, 0, 0.06))])
-            }
+            .background(shape.fill(ink(PhoneSurface.card)))
             .contentShape(shape)
         }
         .buttonStyle(PhoneTilePressStyle(shape: shape, scale: 0.98))

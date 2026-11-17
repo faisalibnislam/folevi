@@ -44,6 +44,8 @@ public enum PhoneSurface {
     public static let grouped = ColorPair(light: RGBA(242, 242, 244), dark: RGBA(0, 0, 0))
     public static let row = ColorPair(light: RGBA(255, 255, 255), dark: RGBA(28, 28, 30))
     public static let separator = ColorPair(light: RGBA(60, 60, 67, 0.16), dark: RGBA(84, 84, 88, 0.5))
+    /// Home's cards and tiles (--iphone-card): a whisper of grey, lighter than the sunken surface.
+    public static let card = ColorPair(light: RGBA(0, 0, 0, 0.03), dark: RGBA(255, 255, 255, 0.055))
 }
 
 public struct PhoneScreen<Leading: View, Trailing: View, Header: View, Content: View>: View {

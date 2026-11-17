@@ -81,13 +81,13 @@ export function CatchUp({ row = false }: { /** A list row (the iPhone app's Home
   if (!data && !busy && row) {
     return (
       <div className="mx-4">
-        {/* Its own raised card on Home, the Foli AI flower and what it does in a line under its name. */}
+        {/* Its own card on Home in the tiles' light fill (no edge or shadow), the Foli AI flower and what it does in a line under its name. */}
         <button
           type="button"
           onClick={() => void run()}
           aria-label="Catch me up"
           aria-description="A quick Foli AI brief of this week’s notes and what’s due"
-          className="ui-key-focus flex min-h-[68px] w-full items-center gap-3 rounded-container bg-[var(--glass-active)] px-4 py-3 text-left shadow-[var(--glass-edge),0_1px_3px_rgb(0_0_0/0.06)] outline-none transition-[background-color,transform] duration-150 hover:bg-[var(--glass-hover)] active:scale-[0.98] active:bg-[var(--liquid-press)] active:duration-0 motion-reduce:active:scale-100"
+          className="ui-key-focus flex min-h-[68px] w-full items-center gap-3 rounded-container bg-[var(--iphone-card)] px-4 py-3 text-left outline-none transition-[background-color,transform] duration-150 hover:bg-[var(--glass-hover)] active:scale-[0.98] active:bg-[var(--liquid-press)] active:duration-0 motion-reduce:active:scale-100"
         >
           <span aria-hidden className="grid h-9 w-9 flex-none place-items-center">
             <AiIcon size={28} />

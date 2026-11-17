@@ -722,6 +722,8 @@
   --iphone-grouped: #f2f2f4;
   --iphone-row: #ffffff;
   --iphone-separator: rgb(60 60 67 / 0.16);
+  /* Home's cards and tiles: a whisper of grey, lighter than the sunken surface. */
+  --iphone-card: rgb(0 0 0 / 0.03);
   --iphone-scrim: rgb(0 0 0 / 0.22);
   /* Glass made solid (Reduce Transparency, Increase Contrast). */
   --iphone-solid: #f7f7f8;
@@ -739,6 +741,7 @@
   --iphone-grouped: #000000;
   --iphone-row: #1c1c1e;
   --iphone-separator: rgb(84 84 88 / 0.5);
+  --iphone-card: rgb(255 255 255 / 0.055);
   --iphone-scrim: rgb(0 0 0 / 0.45);
   --iphone-solid: #2c2c2e;
 }
@@ -825,8 +828,8 @@
      (--row-sep-overhang, the rows' 16 px), so it runs on under a row that's swiped open, as on iOS. */
   .ui-row-sep { position: relative; }
   .ui-row-sep::after { content: ""; position: absolute; left: 0; bottom: 0; right: calc(-1 * var(--row-sep-overhang, 16px)); height: 0.5px; background: var(--iphone-separator); pointer-events: none; }
-  /* Home's rounded cards of rows (RowGroup): no hairline under the last row. */
-  .ui-row-group > :last-child .ui-row-sep::after { display: none; }
+  /* Home's rounded cards of rows (RowGroup): no hairlines; the rows' own height and the card set them apart. */
+  .ui-row-group .ui-row-sep::after { display: none; }
 }
 @keyframes iphone-sheet-in { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes iphone-card-in { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }

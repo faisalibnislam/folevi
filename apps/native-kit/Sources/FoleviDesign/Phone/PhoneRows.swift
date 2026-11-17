@@ -15,8 +15,8 @@ public enum PhonePress {
 }
 
 /// ListRow: 52 tall at least, 20 in from the left and 16 from the right, the icon in a 28 column, 12 to the label.
-/// In a `PhoneRowGroup` (Home's rounded cards): 48 tall, 14 in from the card's left and 12 from its right, the
-/// hairline from the label to the card's edge, none under the last row (`.phoneRowSeparator(false)`).
+/// In a `PhoneRowGroup` (Home's rounded cards): 48 tall, 14 in from the card's left and 12 from its right, and
+/// no hairline (the card and the rows' height set them apart).
 public struct PhoneListRow<Icon: View>: View {
     let label: String
     let detail: String?
@@ -68,7 +68,7 @@ public struct PhoneListRow<Icon: View>: View {
             }
             .padding(.trailing, body.padding.right)
             .frame(minHeight: grouped ? PhoneRowGroupMetrics.rowHeight : body.height)
-            .overlay(alignment: .bottom) { if separator { PhoneRowHairlineView(overhang: grouped ? PhoneRowGroupMetrics.trailing : 16) } }
+            .overlay(alignment: .bottom) { if separator && !grouped { PhoneRowHairlineView(overhang: grouped ? PhoneRowGroupMetrics.trailing : 16) } }
         }
         .padding(.leading, grouped ? PhoneRowGroupMetrics.leading : row.padding.left)
         .padding(.trailing, grouped ? PhoneRowGroupMetrics.trailing : row.padding.right)
@@ -157,8 +157,8 @@ public extension View {
     func phoneRowSeparator(_ shown: Bool) -> some View { environment(\.phoneRowSeparator, shown) }
 }
 
-/// RowGroup: Home's rows in one rounded card in the sunken surface, 16 in from the screen's edges, the rows
-/// clipped to its corners (a pressed row's fill too).
+/// RowGroup: Home's rows in one rounded card in Home's light card fill, 16 in from the screen's edges, 4 pt of air
+/// above the first row and under the last, the rows clipped to its corners (a pressed row's fill too).
 public struct PhoneRowGroup<Content: View>: View {
     let label: String
     let content: Content
@@ -174,7 +174,8 @@ public struct PhoneRowGroup<Content: View>: View {
         let shape = RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous)
         VStack(spacing: 0) { content }
             .environment(\.phoneRowGrouped, true)
-            .background(shape.fill(FoleviTokens.Chrome.surfaceSunken.resolve(scheme).color))
+            .padding(.vertical, 4)
+            .background(shape.fill(PhoneSurface.card.resolve(scheme).color))
             .clipShape(shape)
             .padding(.horizontal, PhoneRowGroupMetrics.inset)
             .accessibilityElement(children: .contain)

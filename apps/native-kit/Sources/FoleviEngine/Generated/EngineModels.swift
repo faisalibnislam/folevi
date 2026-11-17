@@ -3348,6 +3348,26 @@ public struct TaskCreateResult: Codable, Hashable, Sendable {
     }
 }
 
+/// `inbox.open` (revision 31): the person's Inbox page in a space, as the web's /inbox opens it (folevi://inbox,
+/// RouteView.tsx OpenInbox): the server's when it answers (brought back from Trash, an older one found), else its
+/// own id, made on this device if it never had it. Native opens the note it names.
+public struct InboxOpenArgs: Codable, Hashable, Sendable {
+    public var space: SpaceRef?
+
+    public init(space: SpaceRef? = nil) {
+        self.space = space
+    }
+}
+
+public struct InboxOpenResult: Codable, Hashable, Sendable {
+    /// The Inbox page's note id.
+    public var id: String
+
+    public init(id: String) {
+        self.id = id
+    }
+}
+
 /// Changes one task; fields left out stay as they are.
 public struct TaskUpdateArgs: Codable, Hashable, Sendable {
     public enum Priority: String, Codable, Hashable, Sendable, CaseIterable {

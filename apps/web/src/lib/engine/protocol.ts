@@ -35,7 +35,7 @@
 export const PROTOCOL_VERSION = 1 as const;
 
 /** Bumps with every added view, command, editor command, event or field. */
-export const CONTRACT_REVISION = 30;
+export const CONTRACT_REVISION = 31;
 
 /** The `WKScriptMessageHandler` name the engine posts to. */
 export const MESSAGE_HANDLER = "foleviEngine";
@@ -1649,6 +1649,20 @@ export interface TaskCreateResult {
   noteId: string;
   /** "Inbox" or the note's title, for "Task added to …". */
   where: string;
+}
+
+/**
+ * `inbox.open` (revision 31): the person's Inbox page in a space, as the web's /inbox opens it (folevi://inbox,
+ * RouteView.tsx OpenInbox): the server's when it answers (brought back from Trash, an older one found), else its
+ * own id, made on this device if it never had it. Native opens the note it names.
+ */
+export interface InboxOpenArgs {
+  space?: SpaceRef;
+}
+
+export interface InboxOpenResult {
+  /** The Inbox page's note id. */
+  id: string;
 }
 
 /** Changes one task; fields left out stay as they are. */
@@ -4204,6 +4218,7 @@ export interface CommandMap {
   "account.signOut": { args: EmptyArgs; result: OkResult };
   "text.layout": { args: TextLayoutArgs; result: TextLayoutResult };
   "workspace.create": { args: WorkspaceCreateArgs; result: WorkspaceCreateResult };
+  "inbox.open": { args: InboxOpenArgs; result: InboxOpenResult };
 }
 
 export interface EditorCommandMap {
@@ -4430,6 +4445,7 @@ const commandNames = [
   "text.layout",
   "workspace.create",
   "folder.setSidebarOrder",
+  "inbox.open",
 ] as const;
 const editorCommandNames = [
   "note.prepare",

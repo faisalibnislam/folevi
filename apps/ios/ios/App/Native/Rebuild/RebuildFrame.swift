@@ -146,6 +146,14 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
                 self.model.closeNote()
             }
         })
+        // The status bar over a note follows its page (a dark clock over a light page, whatever the phone's
+        // appearance; RebuildNote's NotePageTones); everywhere else, and in the iPad's wide layout, the phone's own.
+        observers.append(Observer { [weak self] in
+            guard let self else { return }
+            var style = UIStatusBarStyle.default
+            if case .note(let id) = self.frame.top, !self.wide, let page = NotePageTones.shared.statusBar(for: id) { style = page }
+            self.setStatusBarStyle(style)
+        })
         // The phone's fallback screens are the desk's: where they go, the phone goes (the iPad's wide layout
         // shows the desk itself).
         observers.append(Observer { [weak self] in
@@ -200,6 +208,22 @@ final class RebuildFrameController: UIViewController, PhoneRouting {
                 guard let self else { return }
                 if UIDevice.current.userInterfaceIdiom == .pad, (self.view.window?.bounds.width ?? 0) >= RebuildIPad.minWidth { self.desk.newNote() } else { self.model.newNote() }
             }
+        }
+    }
+
+    // MARK: status bar
+
+    private var statusBarStyle: UIStatusBarStyle = .default
+    override var preferredStatusBarStyle: UIStatusBarStyle { statusBarStyle }
+    override var preferredStatusBarUpdateAnimation: UIStatusBarAnimation { .fade }
+
+    private func setStatusBarStyle(_ style: UIStatusBarStyle) {
+        guard style != statusBarStyle else { return }
+        statusBarStyle = style
+        if UIAccessibility.isReduceMotionEnabled {
+            setNeedsStatusBarAppearanceUpdate()
+        } else {
+            UIView.animate(withDuration: 0.2) { self.setNeedsStatusBarAppearanceUpdate() }
         }
     }
 

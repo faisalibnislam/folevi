@@ -980,7 +980,7 @@ export function DocumentView({ documentId }: { documentId: string }) {
         title: pageTitle,
         large: false,
         innerScroll: true,
-        edge: "canvas",
+        edge: "page",
         collapseAt: 96,
         center: meta ? (
           <NotePlaceChip

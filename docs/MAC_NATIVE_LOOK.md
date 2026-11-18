@@ -77,6 +77,24 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
 - **A screen in the other theme** (the Vault: dark in a light window, light in a dark one): the card's own chrome
   over it (fill, scroll edge effect, glass controls, Ask Foli AI, toasts) takes that theme too
   (`ContentViewController.syncChromeAppearance`).
+- **One light shadow scale** (the owner, 2026-11-18: "shadows are inconsistent ... I prefer less shadows"). A
+  surface is told apart by its hairline edge first and its shadow second. Four levels, the same on both sides:
+  `NativeShadow` in `FoleviDesign/Web/NativeChrome.swift` (`.nativeShadow(.card)`) and `--mac-shadow-*` in
+  `globals.css`:
+
+  | Level | For | Light window |
+  | --- | --- | --- |
+  | raised | a chosen pill in its track, a knob | black 12%, blur 1.5, y 0.5 |
+  | card | content on the page: a thumbnail, a tab's picture | black 5%, blur 4, y 1.5 |
+  | floating | a control over content: the note's bar, a dragged tab, a tooltip | black 9%, blur 9, y 4 |
+  | overlay | a menu, popover, dialog, the floating chat | black 13%, blur 20, y 9 |
+
+  The web's own drawn shadows (a note card's lift, a web-styled dialog's drop) are kept at half strength
+  (`MacLook.webShadowScale`, the `nativeShadowScale` environment). Never write a shadow's numbers by hand
+  (`NativeShadowTests` fails on one heavier than the overlay level).
+- **The Vault** follows the same look: its sections are a pill track (a section from the ⋯ menu is a third pill
+  with its close), its view switch a pill, its Settings named groups of rows in cards as the Settings window's,
+  and a section never repeats its tab's name as a heading.
 - **One segmented design, the pill** (the owner, 2026-11-18: the left tools were pills, the right panel's tabs
   rounded rectangles): a capsule track 34 pt tall (`MacLook.segmentHeight`, the title bar's tab track's height) with
   a 28 pt pill 3 pt inside it, the chosen one raised and semibold, no edge on the track. Native: `CapsuleTrack`

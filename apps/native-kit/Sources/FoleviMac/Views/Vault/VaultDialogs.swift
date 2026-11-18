@@ -26,7 +26,7 @@ struct VaultDialogHost: View {
         content
             // The Mac's native look: system type, native buttons and fields (the panel keeps this shadow).
             .nativeDialogContent()
-            .shadow(color: .black.opacity(0.25), radius: 24, y: 12)
+            .nativeShadow(.overlay)
             .uiInvert()
     }
 

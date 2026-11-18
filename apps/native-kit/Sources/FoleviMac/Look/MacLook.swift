@@ -70,6 +70,8 @@ public enum MacLook {
     public static var barHeight: CGFloat { barPaddingTop + barControlHeight + barPaddingBottom }
     /// The inset of a selected capsule inside its capsule track (selectedHeight = trackHeight - 2 * inset).
     public static let capsuleInset: CGFloat = 3
+    /// How much of the web's own drawn shadows the native look keeps (FoleviDesign's `nativeShadowScale`).
+    public static let webShadowScale: Double = 0.5
     /// A segmented control's track, everywhere (the owner, 2026-11-18: "settle on one design", the pill): the title
     /// bar's tab track's height, a 28 pt pill inside it. The note page's own segmented controls match it in CSS
     /// (`:root[data-mac-native] .ui-seg`).
@@ -248,6 +250,9 @@ struct MacNativeChromeModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .environment(\.nativeChrome, native ? MacLook.chrome : nil)
+            // Half of the web's drawn shadows (a note card's lift, a dialog's drop): the owner, 2026-11-18, "less
+            // shadows ... looks better on the Mac app".
+            .environment(\.nativeShadowScale, native ? MacLook.webShadowScale : 1)
             // One control size across the app (the owner, 2026-11-18: no small buttons, one size and weight): the
             // system's large controls, 28 pt push buttons, pop-up buttons and fields with 13 pt labels. A control
             // that must be smaller says so itself (a spinner inside a button, a row's inline action).

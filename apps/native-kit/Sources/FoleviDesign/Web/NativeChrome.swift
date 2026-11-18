@@ -252,3 +252,69 @@ public extension View {
     /// itself (a fixed-width one for a secret) is kept.
     func nativeTextField(height: CGFloat = NativeField.height) -> some View { modifier(NativeTextFieldModifier(height: height)) }
 }
+
+// MARK: - The Mac's shadows
+
+/// The four shadows of Folevi for Mac's native look (the owner, 2026-11-18: "shadows are inconsistent ... I prefer
+/// less shadows"). Every shadow was its own numbers, from 5% to 25% and 1 to 28 pt. Each is now one of these, all
+/// of them light; a surface is told apart by its hairline edge first and its shadow second.
+public enum NativeShadow: Sendable {
+    /// A chosen pill in its track, a knob: just enough to lift it off the track.
+    case raised
+    /// Content sitting on the page: a thumbnail, a picture of a tab.
+    case card
+    /// A control or tip floating over content: a tab being dragged, a card under the pointer, a tooltip.
+    case floating
+    /// A surface over the window: a dialog, a popover, the floating chat.
+    case overlay
+
+    public var opacity: Double {
+        switch self {
+        case .raised: 0.12
+        case .card: 0.05
+        case .floating: 0.09
+        case .overlay: 0.13
+        }
+    }
+    public var radius: CGFloat {
+        switch self {
+        case .raised: 1.5
+        case .card: 4
+        case .floating: 9
+        case .overlay: 20
+        }
+    }
+    public var y: CGFloat {
+        switch self {
+        case .raised: 0.5
+        case .card: 1.5
+        case .floating: 4
+        case .overlay: 9
+        }
+    }
+    /// Black at the level's strength; a dark window needs more of it to show at all.
+    public func color(_ scheme: ColorScheme) -> Color { Color.black.opacity(min(0.5, opacity * (scheme == .dark ? 2.4 : 1))) }
+}
+
+struct NativeShadowModifier: ViewModifier {
+    let level: NativeShadow?
+    @Environment(\.colorScheme) private var scheme
+    func body(content: Content) -> some View {
+        if let level {
+            content.shadow(color: level.color(scheme), radius: level.radius, y: level.y)
+        } else {
+            content.shadow(color: .clear, radius: 0)
+        }
+    }
+}
+
+public extension View {
+    /// One of the Mac look's four shadows (nil: none, with the same view identity so a change animates).
+    func nativeShadow(_ level: NativeShadow?) -> some View { modifier(NativeShadowModifier(level: level)) }
+}
+
+public extension EnvironmentValues {
+    /// How much of the web's drawn shadows (a note card's lift, a dialog's drop) the Mac's native look keeps: 1
+    /// everywhere else. The Mac sets it with its chrome; note and folder cards keep it though they reset the chrome.
+    @Entry var nativeShadowScale: Double = 1
+}

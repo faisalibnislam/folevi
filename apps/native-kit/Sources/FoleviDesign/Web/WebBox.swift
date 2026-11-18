@@ -145,6 +145,7 @@ struct WebElementModifier: ViewModifier {
 struct WebBoxModifier: ViewModifier {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.nativeChrome) private var chrome
+    @Environment(\.nativeShadowScale) private var shadowScale
     let pair: WebStylePair
 
     /// The style in this theme. The Mac's native look (NativeChrome): fills, borders and hairline edges stay, as
@@ -154,6 +155,13 @@ struct WebBoxModifier: ViewModifier {
         var s = pair.resolve(scheme)
         if chrome != nil {
             s.shadows = s.shadows.filter { !$0.inset && ($0.blur >= 16 || ($0.blur == 0 && $0.spread <= 1)) }
+            // (A floating surface's drop at the look's strength: nativeShadowScale. Hairline edges stay whole.)
+            if shadowScale != 1 {
+                s.shadows = s.shadows.map { l in
+                    guard l.blur > 0 else { return l }
+                    return ShadowLayer(x: l.x, y: l.y, blur: l.blur, spread: l.spread, color: RGBA(l.color.r, l.color.g, l.color.b, l.color.a * shadowScale), inset: l.inset)
+                }
+            }
             s.gradient = nil
         }
         return s

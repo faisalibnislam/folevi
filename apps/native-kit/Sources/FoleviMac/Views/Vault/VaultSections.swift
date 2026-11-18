@@ -181,7 +181,9 @@ struct VaultFiles: View {
     @Bindable var model: VaultModel
     let vaultId: String
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     @State private var busy = false
+    @State private var hoveredLayout: String?
 
     var body: some View {
         let folders = model.store("folders") { .vaultFolders(vaultId: vaultId) }
@@ -197,7 +199,14 @@ struct VaultFiles: View {
                     let parent = all.first { $0.id == current }?.parentId
                     WebButton(parent.flatMap { name($0) } ?? "Files & Notes", icon: .chevronLeft, variant: .quiet) { model.folderId = parent }
                 }
-                Text(name(model.folderId) ?? "Files & Notes").webText(title.text).lineLimit(1).foregroundStyle(title.color.color)
+                if chrome != nil, model.folderId == nil {
+                    // The native look: the tab above already says "Files & Notes"; what's here, not its name again.
+                    let count = here.count + (items.value?.items.count ?? 0)
+                    Text(count == 1 ? "1 item" : "\(count) items").webText(.role(.subheadline)).lineLimit(1)
+                        .foregroundStyle(VS.color("ink-muted", scheme))
+                } else {
+                    Text(name(model.folderId) ?? "Files & Notes").webText(title.text).lineLimit(1).foregroundStyle(title.color.color)
+                }
                 Spacer(minLength: 0)
                 layoutSwitch
                 WebButton("Folder", icon: .folderPlus) { model.dialog = .newFolder }
@@ -238,7 +247,33 @@ struct VaultFiles: View {
         [GridItem(.adaptive(minimum: 180), spacing: VS.style("vault.files.cards", scheme).gap, alignment: .top)]
     }
 
-    private var layoutSwitch: some View {
+    @ViewBuilder private var layoutSwitch: some View {
+        if chrome != nil {
+            // The native look: the app's pill, an icon in each segment.
+            HStack(spacing: 0) {
+                pillButton("grid", .layoutGrid, "Grid")
+                pillButton("list", .rows3, "Lines")
+            }
+            .modifier(VaultPill.Track())
+        } else {
+            webLayoutSwitch
+        }
+    }
+
+    private func pillButton(_ value: String, _ icon: WebIcon, _ label: String) -> some View {
+        let on = model.filesLayout == value
+        return Button { model.filesLayout = value } label: {
+            WebIconView(icon, size: 15)
+                .modifier(VaultPill.Segment(on: on, hovered: hoveredLayout == value, icon: true))
+        }
+        .buttonStyle(.webPlain)
+        .onHover { hoveredLayout = $0 ? value : (hoveredLayout == value ? nil : hoveredLayout) }
+        .foleviTooltip(label)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    private var webLayoutSwitch: some View {
         let seg = VS.style("vault.files.seg", scheme)
         return HStack(spacing: seg.gap) {
             segButton("grid", .layoutGrid, "Grid")
@@ -677,7 +712,8 @@ struct VaultHealth: View {
         let health = model.store("health") { .vaultHealth(vaultId: vaultId) }
         if let h = health.value {
             let lead = VS.style("vault.health.lead", scheme)
-            VStack(alignment: .leading, spacing: lead.margin.bottom) {
+            // (The native look: a clear step between groups, and a little room between a group's words and its list.)
+            VStack(alignment: .leading, spacing: chrome != nil ? 24 : lead.margin.bottom) {
                 VaultLead(text: "\(h.needsLook > 0 ? "\(h.needsLook) \(h.needsLook == 1 ? "item needs" : "items need") a look." : "Nothing needs a look.") Checked on this device: only the first 5 characters of a password's SHA-1 ever leave it.")
                     .frame(maxWidth: .infinity, alignment: h.groups.isEmpty ? .center : .leading)
                 if h.groups.isEmpty {
@@ -691,7 +727,9 @@ struct VaultHealth: View {
                         (Text(g.title + " ").foregroundStyle(g.tone == "danger" ? VS.color("danger", scheme) : heading.color.color)
                             + Text("(\(g.items.count))").font(WebFont.interface(chrome, size: count.fontSize)).foregroundStyle(count.color.color))
                             .webText(heading.text)
-                        Text(g.body).webText(body.text).foregroundStyle(body.color.color).padding(.bottom, body.margin.bottom)
+                        Text(g.body).webText(body.text).foregroundStyle(body.color.color)
+                            .padding(.top, chrome != nil ? 2 : 0)
+                            .padding(.bottom, chrome != nil ? 8 : body.margin.bottom)
                         VaultList {
                             ForEach(g.items, id: \.id) { o in
                                 VaultRow(title: o.title, detail: o.detail, action: {
@@ -756,8 +794,106 @@ struct VaultSettingsView: View {
     @Bindable var model: VaultModel
     let vaultId: String
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
+        if chrome != nil { grouped } else { webBody }
+    }
+
+    // MARK: the native look: named groups, each a card of rows (as the Settings window's)
+
+    private var grouped: some View {
+        let v = model.value
+        let member = v?.role == "member"
+        return VStack(alignment: .leading, spacing: 28) {
+            if !member {
+                group("Locking") {
+                    row("Lock after", "Idle minutes before the Vault locks itself on a device.") {
+                        let m = v?.autoLockMinutes ?? 5
+                        VaultSelect(style: "vault.settings.select", label: "\(m) \(m == 1 ? "minute" : "minutes")", options: [1, 2, 5, 10, 15, 30].map { ("\($0)", "\($0) \($0 == 1 ? "minute" : "minutes")") }, selected: "\(m)") { value in
+                            model.run {
+                                _ = try await model.client.command(.vaultSettingsUpdate(vaultId: vaultId, autoLockMinutes: Int(value)))
+                                model.toast("Saved")
+                            }
+                        }
+                    }
+                    row("Lock now", "Close the Vault on this device until the passcode is typed again.") {
+                        WebButton("Lock now") { model.lock() }
+                    }
+                }
+            } else {
+                group("Locking") {
+                    row("Lock now", "Close the Vault on this device until the passcode is typed again.") {
+                        WebButton("Lock now") { model.lock() }
+                    }
+                }
+            }
+            if v?.role == "owner", v?.personal == false {
+                group("People") {
+                    row("Custodians can name custodians", "Otherwise only you do. Custodians always add and remove members.") {
+                        FoleviSwitch("Custodians can name custodians", on: v?.custodiansNameCustodians ?? false) { on in
+                            model.run {
+                                _ = try await model.client.command(.vaultSettingsUpdate(vaultId: vaultId, custodiansNameCustodians: on))
+                                model.toast("Saved")
+                            }
+                        }
+                    }
+                }
+            }
+            group("Passcode and recovery") {
+                row("Passcode", "What you type to open the Vault.") {
+                    WebButton("Change passcode…") { model.dialog = .changePasscode }
+                }
+                row("Recovery key", "Opens the Vault if you forget the passcode.") {
+                    WebButton("Make a new recovery key") {
+                        model.run { _ = try await model.client.command(.vaultNewRecoveryKey(vaultId: vaultId)) }
+                    }
+                }
+            }
+            group("Import and export") {
+                row("Import", "A CSV from 1Password, Bitwarden, LastPass, Chrome, Safari or Firefox, or a Folevi Vault backup. Items are encrypted on this device before they're sent.") {
+                    WebButton("Import…", icon: .upload) { importExportLater() }
+                }
+                if !member {
+                    row("Export", "An encrypted backup of the whole Vault, or a CSV anyone can read.") {
+                        HStack(spacing: 8) {
+                            WebButton("Encrypted backup…", icon: .download) { importExportLater() }
+                            WebButton("Readable CSV…", icon: .download) { importExportLater() }
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: 720, alignment: .leading)
+    }
+
+    /// A named group: its name, then one card holding its rows.
+    private func group<Rows: View>(_ title: String, @ViewBuilder rows: () -> Rows) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.primary)
+                .padding(.leading, 2)
+            VaultList { rows() }
+        }
+    }
+
+    /// A row: what it is and a line about it leading, its control trailing.
+    private func row<Control: View>(_ title: String, _ hint: String, @ViewBuilder control: () -> Control) -> some View {
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 13)).foregroundStyle(Color.primary)
+                Text(hint).font(.system(size: 11)).foregroundStyle(Color.primary.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            control()
+        }
+        .padding(.horizontal, 16).padding(.vertical, 12)
+        .frame(minHeight: 56)
+    }
+
+    // MARK: the web's look
+
+    @ViewBuilder private var webBody: some View {
         let label = VS.style("vault.settings.label", scheme)
         let hint = VS.style("vault.settings.hint", scheme)
         let v = model.value

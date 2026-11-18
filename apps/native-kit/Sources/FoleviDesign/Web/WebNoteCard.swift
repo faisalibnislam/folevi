@@ -92,6 +92,9 @@ public struct WebShapeBox: View {
     let fill: Color?
     let shadows: [ShadowLayer]
 
+    /// (The Mac's native look keeps half of a card's lift: nativeShadowScale.)
+    @Environment(\.nativeShadowScale) private var shadowScale
+
     public init(shape: WebCornersShape, fill: Color?, shadows: [ShadowLayer]) {
         self.shape = shape
         self.fill = fill
@@ -107,7 +110,7 @@ public struct WebShapeBox: View {
                     let w = geo.size.width, h = geo.size.height
                     ZStack {
                         shape.grown(l.spread)
-                            .fill(l.color.color)
+                            .fill(l.color.color.opacity(l.blur > 0 ? shadowScale : 1))
                             .frame(width: w, height: h)
                             .offset(x: l.x, y: l.y)
                             .blur(radius: l.blur / 2, opaque: false)

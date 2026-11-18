@@ -177,7 +177,7 @@ public struct TabOverviewLayer: View {
         .overlay {
             if hovered { shape.strokeBorder(color("color-focus"), lineWidth: 2) } else if on { shape.strokeBorder(color("color-heading").opacity(0.3), lineWidth: 1.5) }
         }
-        .shadow(color: .black.opacity(hovered ? 0.14 : 0.08), radius: hovered ? 13 : 5, y: hovered ? 8 : 2)
+        .nativeShadow(hovered ? .floating : .card)
         .offset(y: hovered ? -2 : 0)
         .animation(.easeOut(duration: 0.15), value: hovered)
         .onHover { if $0 { sel = i } }

@@ -220,11 +220,65 @@ private struct VaultHeader: View {
 private struct VaultTabs: View {
     @Bindable var model: VaultModel
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     @State private var hovered: VaultSection?
 
     var body: some View {
+        if chrome != nil { pills } else { underlined }
+    }
+
+    // MARK: the native look: the app's one segmented design, the pill (VaultPill)
+
+    /// The sections in a capsule track, a section opened from the ⋯ menu as a third pill with its close.
+    private var pills: some View {
+        HStack(spacing: 0) {
+            HStack(spacing: 0) {
+                pill(.files)
+                pill(.passwords)
+                if let s = model.fromMenu { menuPill(s) }
+            }
+            .modifier(VaultPill.Track())
+            Spacer(minLength: 0)
+        }
+        .padding(.bottom, VaultPill.below)
+    }
+
+    private func pill(_ s: VaultSection) -> some View {
+        let on = model.section == s
+        return Button { model.open(s) } label: {
+            HStack(spacing: 6) {
+                WebIconView(s.icon, size: 14)
+                Text(s.label).lineLimit(1).fixedSize()
+            }
+            .modifier(VaultPill.Segment(on: on, hovered: hovered == s))
+        }
+        .buttonStyle(.webPlain)
+        .onHover { hovered = $0 ? s : (hovered == s ? nil : hovered) }
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    private func menuPill(_ s: VaultSection) -> some View {
+        HStack(spacing: 6) {
+            WebIconView(s.icon, size: 14)
+            Text(s.label).lineLimit(1).fixedSize()
+            Button { model.open(.files) } label: {
+                WebIconView(.x, size: 11, strokeWidth: 2.4)
+                    .frame(width: 18, height: 18)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.webHover(radius: 9))
+            .foleviTooltip("Close")
+            .accessibilityLabel("Close \(s.label)")
+            .padding(.trailing, -6)
+        }
+        .modifier(VaultPill.Segment(on: true, hovered: false))
+    }
+
+    // MARK: the web's look: underlined tabs
+
+    private var underlined: some View {
         let tabs = VS.style("vault.tabs", scheme)
-        HStack(alignment: .bottom, spacing: tabs.gap) {
+        return HStack(alignment: .bottom, spacing: tabs.gap) {
             tab(.files)
             tab(.passwords)
             if let s = model.fromMenu { menuTab(s) }
@@ -282,6 +336,45 @@ private struct VaultTabs: View {
         .padding(st.padding.edgeInsets)
         .padding(.bottom, 2)
         .overlay(alignment: .bottom) { Rectangle().fill(st.color.color).frame(height: 2) }
+    }
+}
+
+/// The Vault's segmented control in the native look: the Mac's pill (a 34 pt capsule track, a 28 pt pill 3 pt
+/// inside it), in colours that follow the Vault's own theme (it is dark in a light window).
+enum VaultPill {
+    static let height: CGFloat = 28
+    static let inset: CGFloat = 3
+    /// The room under the tabs before the section starts.
+    static let below: CGFloat = 20
+
+    struct Track: ViewModifier {
+        func body(content: Content) -> some View {
+            content.padding(inset).background(Color.primary.opacity(0.09), in: Capsule())
+        }
+    }
+
+    struct Segment: ViewModifier {
+        let on: Bool
+        let hovered: Bool
+        var icon = false
+        @Environment(\.colorScheme) private var scheme
+
+        func body(content: Content) -> some View {
+            content
+                .font(.system(size: 13, weight: on ? .semibold : .regular))
+                .foregroundStyle(on ? Color.primary : Color.primary.opacity(0.62))
+                .padding(.horizontal, icon ? 0 : 12)
+                .frame(width: icon ? 34 : nil, height: height)
+                .background {
+                    if on {
+                        Capsule().fill(scheme == .dark ? Color.white.opacity(0.17) : Color.white)
+                            .shadow(color: NativeShadow.raised.color(scheme), radius: NativeShadow.raised.radius, y: NativeShadow.raised.y)
+                    } else if hovered {
+                        Capsule().fill(Color.primary.opacity(0.07))
+                    }
+                }
+                .contentShape(Capsule())
+        }
     }
 }
 

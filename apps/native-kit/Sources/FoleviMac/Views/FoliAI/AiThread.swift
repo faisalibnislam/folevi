@@ -62,7 +62,7 @@ struct AiThreadView: View {
                         }
                         .padding(.horizontal, 12).frame(height: 32)
                         .foregroundStyle(look.heading)
-                        .background(RoundedRectangle(cornerRadius: 10, style: .circular).fill(look.color("color-surface-raised")).shadow(color: .black.opacity(0.25), radius: 7, y: 4))
+                        .background(RoundedRectangle(cornerRadius: 10, style: .circular).fill(look.color("color-surface-raised")).shadow(color: .black.opacity(NativeShadow.floating.opacity), radius: NativeShadow.floating.radius, y: NativeShadow.floating.y))
                         .overlay(RoundedRectangle(cornerRadius: 10, style: .circular).strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
                     }
                     .buttonStyle(.webHover(radius: 10))

@@ -1489,14 +1489,14 @@
   --mac-pop: rgb(242 242 245 / 0.66);
   --mac-glass-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.12) 46%, rgb(255 255 255 / 0) 100%);
   --mac-glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 0 0 0.5px rgb(255 255 255 / 0.7);
-  --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.16), 0 1px 3px rgb(0 0 0 / 0.07), 0 14px 36px rgb(0 0 0 / 0.17);
+  --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.14), 0 9px 20px rgb(0 0 0 / 0.13);
   --mac-highlight: rgb(0 0 0 / 0.075);
 }
 :root[data-mac-native][data-theme="dark"] {
   --mac-pop: rgb(52 52 56 / 0.62);
   --mac-glass-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.02) 46%, rgb(255 255 255 / 0) 100%);
   --mac-glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.2), inset 0 0 0 0.5px rgb(255 255 255 / 0.11);
-  --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.75), 0 1px 3px rgb(0 0 0 / 0.3), 0 14px 36px rgb(0 0 0 / 0.5);
+  --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), 0 9px 20px rgb(0 0 0 / 0.32);
   --mac-highlight: rgb(255 255 255 / 0.13);
 }
 @media (prefers-color-scheme: dark) {
@@ -1504,7 +1504,7 @@
     --mac-pop: rgb(52 52 56 / 0.62);
     --mac-glass-sheen: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.02) 46%, rgb(255 255 255 / 0) 100%);
     --mac-glass-edge: inset 0 1px 0 rgb(255 255 255 / 0.2), inset 0 0 0 0.5px rgb(255 255 255 / 0.11);
-    --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.75), 0 1px 3px rgb(0 0 0 / 0.3), 0 14px 36px rgb(0 0 0 / 0.5);
+    --mac-pop-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), 0 9px 20px rgb(0 0 0 / 0.32);
     --mac-highlight: rgb(255 255 255 / 0.13);
   }
 }
@@ -1544,3 +1544,31 @@
 }
 :root[data-mac-native][data-theme="dark"] { --mac-seg-raised: rgb(255 255 255 / 0.16); }
 @media (prefers-color-scheme: dark) { :root[data-mac-native]:not([data-theme="light"]) { --mac-seg-raised: rgb(255 255 255 / 0.16); } }
+
+/* Folevi for Mac's native look: one light shadow scale (the owner, 2026-11-18: "shadows are inconsistent ... I
+   prefer less shadows"), the same four levels as the native side's NativeShadow: raised (a pill in its track),
+   card (content on the page), floating (a control over content), overlay (a menu, popover or dialog). The page's
+   menus and popovers are the overlay (--mac-pop-shadow above); these are the rest. */
+:root[data-mac-native] {
+  --mac-shadow-card: 0 0 0 0.5px rgb(0 0 0 / 0.08), 0 1.5px 4px rgb(0 0 0 / 0.05);
+  --mac-shadow-floating: 0 0 0 0.5px rgb(0 0 0 / 0.12), 0 4px 9px rgb(0 0 0 / 0.09);
+  --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.14), 0 9px 20px rgb(0 0 0 / 0.13);
+  --shadow-card: var(--mac-shadow-card);
+  --glass-shadow: var(--mac-shadow-card);
+}
+:root[data-mac-native][data-theme="dark"] {
+  --mac-shadow-card: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 1.5px 4px rgb(0 0 0 / 0.12);
+  --mac-shadow-floating: 0 0 0 0.5px rgb(0 0 0 / 0.6), 0 4px 9px rgb(0 0 0 / 0.22);
+  --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), 0 9px 20px rgb(0 0 0 / 0.32);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-mac-native]:not([data-theme="light"]) {
+    --mac-shadow-card: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 1.5px 4px rgb(0 0 0 / 0.12);
+    --mac-shadow-floating: 0 0 0 0.5px rgb(0 0 0 / 0.6), 0 4px 9px rgb(0 0 0 / 0.22);
+    --mac-sheet-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.7), 0 9px 20px rgb(0 0 0 / 0.32);
+  }
+}
+/* The note's floating bar is a control over the page, not an overlay: the floating level. */
+:root[data-mac-native] [role="toolbar"][aria-label="Page tools"].ui-pop { box-shadow: var(--mac-glass-edge), var(--mac-shadow-floating); }
+/* A dialog over the note: the overlay level, with the glass's edge. */
+:root[data-mac-native] dialog.ui-pop { box-shadow: var(--mac-glass-edge), var(--mac-sheet-shadow); }

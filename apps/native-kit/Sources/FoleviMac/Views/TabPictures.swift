@@ -405,7 +405,7 @@ private struct PreviewCard: ViewModifier {
             .background(MacLook.Colors.container)
             .clipShape(shape)
             .overlay(shape.strokeBorder(MacLook.Colors.separator, lineWidth: 1))
-            .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
+            .nativeShadow(.overlay)
         #else
         let line = WebStyles.vars["color-line"]?.resolve(scheme).color ?? .clear
         content

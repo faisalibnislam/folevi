@@ -146,6 +146,32 @@ are unchanged).
 
 ![segments-style](segments-style.jpg)
 
+## Shadows and the Vault (sixth pass, the owner: "I prefer less shadows ... especially in the Vault")
+
+Every shadow had its own numbers (5% to 25% of black, 1 to 28 pt). There is now one scale of four light levels,
+used by the native side and the note page alike, and the web's own drawn shadows are kept at half strength. The
+Vault's tabs and view switch are pills, its Settings are grouped cards, and its sections have clearer spacing.
+
+### Vault settings: named groups of rows in cards, pill tabs
+
+![vault-settings](vault-settings.jpg)
+
+### Vault files: pill tabs and view switch, no repeated heading
+
+![vault-files](vault-files.jpg)
+
+### Vault health: clearer steps between groups
+
+![vault-health](vault-health.jpg)
+
+### A dialog's shadow: lighter, on the same scale as every other overlay
+
+![shadows-dialog](shadows-dialog.jpg)
+
+### Note cards: half the lift
+
+![shadows-home](shadows-home.jpg)
+
 Also fixed, without a picture: the Import card in Settings had more padding under its buttons than above them; the
 Vault's Add dialog took its height from whichever window was key, so it cut off its Notes field when Settings was
 open or the app was behind another.

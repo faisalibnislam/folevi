@@ -64,7 +64,7 @@ struct PlaceMoveSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Move or copy notes").font(FoleviFonts.font(.display, size: 22, weight: .semibold)).foregroundStyle(Folevi.color.heading)
+            title
             if let p = model.preview {
                 Picker("To", selection: Binding(get: { model.destination ?? "" }, set: { v in
                     model.destination = v
@@ -79,14 +79,14 @@ struct PlaceMoveSheet: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                Text(summary(p)).foleviFont(.callout).foregroundStyle(Folevi.color.inkMuted).fixedSize(horizontal: false, vertical: true)
+                note(summary(p), danger: false)
                 if p.fits == false {
-                    Text("It doesn't fit in that account's storage.").foleviFont(.callout).foregroundStyle(Folevi.color.coralInk)
+                    note("It doesn't fit in that account's storage.", danger: true)
                 }
             } else if model.error == nil {
                 ProgressView().controlSize(.small)
             }
-            if let e = model.error { Text(e).foleviFont(.callout).foregroundStyle(Folevi.color.coralInk) }
+            if let e = model.error { note(e, danger: true) }
             HStack {
                 Spacer()
                 Button("Cancel", action: close).keyboardShortcut(.cancelAction)
@@ -99,6 +99,24 @@ struct PlaceMoveSheet: View {
         .padding(24)
         .frame(width: 420)
         .task { await model.load() }
+    }
+
+    /// The sheet's title: the system's 13 pt bold on the Mac (a sheet, 2026-11-18), the display face on the iPad.
+    @ViewBuilder private var title: some View {
+        #if os(macOS)
+        Text("Move or copy notes").font(MacLook.Text.headline).foregroundStyle(MacLook.Colors.label)
+        #else
+        Text("Move or copy notes").font(FoleviFonts.font(.display, size: 22, weight: .semibold)).foregroundStyle(Folevi.color.heading)
+        #endif
+    }
+
+    /// What will happen, or a problem (red).
+    @ViewBuilder private func note(_ text: String, danger: Bool) -> some View {
+        #if os(macOS)
+        Text(text).font(MacLook.Text.body).foregroundStyle(danger ? MacLook.Colors.red : MacLook.Colors.secondary).fixedSize(horizontal: false, vertical: true)
+        #else
+        Text(text).foleviFont(.callout).foregroundStyle(danger ? Folevi.color.coralInk : Folevi.color.inkMuted).fixedSize(horizontal: false, vertical: true)
+        #endif
     }
 
     private func summary(_ p: PlaceMovePreview) -> String {

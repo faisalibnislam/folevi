@@ -10,8 +10,70 @@ struct SyncPopover: View {
     let model: FrameModel
 
     var body: some View {
+        #if os(macOS)
+        mac
+        #else
+        drawn
+        #endif
+    }
+
+    #if os(macOS)
+    /// The Mac's: in an NSPopover, the system's type and colours: the state's symbol in its status colour, the
+    /// headline, what it means, what's waiting, a download's progress, and Retry as the system's button.
+    private var mac: some View {
         let s = model.sync.value
-        VStack(alignment: .leading, spacing: 10) {
+        let state = s?.indicator ?? .syncing()
+        return VStack(alignment: .leading, spacing: MacLook.Space.s) {
+            HStack(spacing: MacLook.Space.s) {
+                Image(systemName: Self.symbol(state))
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Self.tone(state))
+                    .accessibilityHidden(true)
+                Text(s?.headline ?? "Connecting…").font(MacLook.Text.headline).foregroundStyle(MacLook.Colors.label)
+            }
+            Text(s?.detail ?? "Folevi is starting.").font(MacLook.Text.body).foregroundStyle(MacLook.Colors.secondary).fixedSize(horizontal: false, vertical: true)
+            if let s, s.pending > 0 {
+                Text("\(s.pending) waiting on this \(ThisDevice.noun)").font(MacLook.Text.small).foregroundStyle(MacLook.Colors.tertiary)
+            }
+            if let spaces = s?.spaces, let d = spaces.first(where: { $0.state == .downloading }), let total = d.total, total > 0 {
+                ProgressView(value: Double(d.have), total: Double(total)) { Text("Downloading notes to this \(ThisDevice.noun)").font(MacLook.Text.small) }
+                    .tint(MacLook.Colors.accent)
+            }
+            if s?.canRetry == true {
+                Button("Retry") { model.retrySync() }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("sync.retry")
+            }
+        }
+        .padding(MacLook.Space.l)
+        .frame(width: 280, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("popover.sync")
+    }
+
+    static func symbol(_ state: SyncIndicator) -> String {
+        switch state {
+        case .saved: "checkmark.icloud"
+        case .saving, .syncing: "arrow.triangle.2.circlepath.icloud"
+        case .offline: "icloud.slash"
+        case .conflict, .error: "exclamationmark.icloud"
+        }
+    }
+
+    /// The system's status colours: green, orange, red; offline is quiet.
+    static func tone(_ state: SyncIndicator) -> Color {
+        switch state {
+        case .saved: MacLook.Colors.green
+        case .saving, .syncing: MacLook.Colors.orange
+        case .offline: MacLook.Colors.secondary
+        case .conflict, .error: MacLook.Colors.red
+        }
+    }
+    #endif
+
+    private var drawn: some View {
+        let s = model.sync.value
+        return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 SyncStatusView(s?.indicator ?? .syncing())
                 Text(s?.headline ?? "Connecting…").foleviFont(.bodyStrong).foregroundStyle(Folevi.color.heading)
@@ -34,9 +96,10 @@ struct SyncPopover: View {
     }
 }
 
-/// The toasts as the web draws them (components/ui/Toast.tsx, "more.toast.*"): a pill at the bottom, the message
-/// (13 pt medium), an optional action in a soft capsule and a Dismiss cross. Neutral toasts are the accent
-/// (black on light, white on dark), success and error their soft colours with the ink.
+/// The toasts (components/ui/Toast.tsx): a pill at the bottom, the message, an optional action and a Dismiss cross.
+/// On the Mac a small floating control in the system's type: regular glass, the status symbol in the system's
+/// green or red, the action as a capsule button. On the iPad as the web draws them ("more.toast.*"): neutral toasts
+/// the accent, success and error their soft colours with the ink.
 struct ToastStack: View {
     let model: FrameModel
     @Environment(\.colorScheme) private var scheme
@@ -67,6 +130,41 @@ struct ToastStack: View {
     static let noteDockClearance: CGFloat = 96
 
     private func toast(_ t: FrameToast) -> some View {
+        #if os(macOS)
+        macToast(t)
+        #else
+        drawnToast(t)
+        #endif
+    }
+
+    #if os(macOS)
+    private func macToast(_ t: FrameToast) -> some View {
+        HStack(spacing: MacLook.Space.s + 2) {
+            switch t.tone {
+            case .success: Image(systemName: "checkmark.circle.fill").foregroundStyle(MacLook.Colors.green).accessibilityHidden(true)
+            case .error: Image(systemName: "exclamationmark.circle.fill").foregroundStyle(MacLook.Colors.red).accessibilityHidden(true)
+            case .info: EmptyView()
+            }
+            Text(verbatim: t.message).font(MacLook.Text.body).foregroundStyle(MacLook.Colors.label)
+                .fixedSize(horizontal: false, vertical: true)
+                .layoutPriority(1)
+            if let title = t.actionTitle {
+                ToastControl(label: title) { model.runToastAction(t) }
+            }
+            ToastControl(symbol: "xmark", label: "Dismiss") { model.dismissToast(t.id) }
+                .help("Dismiss")
+        }
+        // (The width is held before the padding, so the padding stays inside the 448 pt pill: MAC-36.)
+        .frame(maxWidth: Self.maxWidth - 32)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.leading, MacLook.Space.l).padding(.trailing, MacLook.Space.s + 2).padding(.vertical, MacLook.Space.s + 2)
+        .glassEffect(.regular, in: .capsule)
+        .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .offset(y: 8).combined(with: .opacity)))
+        .accessibilityElement(children: .combine)
+    }
+    #endif
+
+    private func drawnToast(_ t: FrameToast) -> some View {
         let pill = WebStyles.named("more.toast")
         let p = pill.resolve(scheme)
         let text = moreStyle("more.toast.text", scheme)
@@ -112,4 +210,39 @@ struct ToastStack: View {
         return c
     }
 }
+#if os(macOS)
+/// A toast's action (a capsule with its title) or its Dismiss (an xmark), with the quaternary hover fill.
+private struct ToastControl: View {
+    var symbol: String?
+    let label: String
+    let action: () -> Void
+    @State private var hovered = false
+
+    init(symbol: String? = nil, label: String, action: @escaping () -> Void) {
+        self.symbol = symbol
+        self.label = label
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Group {
+                if let symbol {
+                    Image(systemName: symbol).font(.system(size: 10, weight: .semibold)).foregroundStyle(MacLook.Colors.secondary)
+                        .frame(width: 20, height: 20)
+                        .background(Circle().fill(hovered ? MacLook.Colors.hover : .clear))
+                } else {
+                    Text(verbatim: label).font(MacLook.Text.body.weight(.semibold)).lineLimit(1).fixedSize()
+                        .padding(.horizontal, 10).padding(.vertical, 3)
+                        .background(Capsule().fill(MacLook.Colors.hover.opacity(hovered ? 1.6 : 1)))
+                }
+            }
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .accessibilityLabel(label)
+    }
+}
+#endif
 #endif

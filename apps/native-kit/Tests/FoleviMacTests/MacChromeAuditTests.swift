@@ -58,6 +58,9 @@ struct MacChromeAuditTests {
         let state = WebMenuState([WebMenuEntry(.item("Cut"), disabled: true), WebMenuEntry(.item("Paste"))])
         #expect(state.panelItems.map(\.disabled) == [true, false])
         #expect(state.selectable.map(\.item.title) == ["Paste"])
+        // The Mac's system menu: the same row shown but not offered.
+        let menu = NativeMenu.build(state.entries)
+        #expect(menu.items.map(\.isEnabled) == [false, true])
     }
 
     @Test func backAndForwardNeedSomewhereToGo() {
@@ -192,17 +195,16 @@ struct MacChromeAuditTests {
     }
 
     @Test func pictures() async {
-        // MAC-01: disabled rows (Cut and Copy with nothing selected, a spelling row with no guesses).
-        await draw("menu-disabled-rows", size: CGSize(width: 280, height: 240)) { _ in
-            WebMenuContent(state: WebMenuState([
-                WebMenuEntry(.item("No guesses found", id: "spell-none"), disabled: true),
-                .separator(1),
-                WebMenuEntry(.item("Cut", icon: .scissors, shortcut: "⌘X"), disabled: true),
-                WebMenuEntry(.item("Copy", icon: .copy, shortcut: "⌘C"), disabled: true),
-                WebMenuEntry(.item("Paste", icon: .clipboardPaste, shortcut: "⌘V")),
-            ]), width: 220) { _ in }
-            .padding(20)
-        }
+        // MAC-01: disabled rows (Cut and Copy with nothing selected, a spelling row with no guesses) are the system
+        // menu's disabled items now (the menu draws itself; NativeMenusTests checks its items).
+        let disabled = NativeMenu.build([
+            WebMenuEntry(.item("No guesses found", id: "spell-none"), disabled: true),
+            .separator(1),
+            WebMenuEntry(.item("Cut", icon: .scissors, shortcut: "⌘X"), disabled: true),
+            WebMenuEntry(.item("Copy", icon: .copy, shortcut: "⌘C"), disabled: true),
+            WebMenuEntry(.item("Paste", icon: .clipboardPaste, shortcut: "⌘V")),
+        ])
+        #expect(disabled.items.filter { !$0.isSeparatorItem }.map(\.isEnabled) == [false, false, false, true])
         // MAC-36: a long toast.
         let frame = FrameModel(client: DemoEngine().client())
         frame.toast("Couldn't move \u{201C}A very long note title that goes on and on\u{201D} to the folder you picked. Please try again.", tone: .error)

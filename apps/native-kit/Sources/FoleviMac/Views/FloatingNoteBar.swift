@@ -1,6 +1,8 @@
 // The floating note window's bar (the Mac's Float Note, apps/mac Chrome/FloatingNotes.swift), as Apple Notes'
 // floating note: room for the window buttons, the note's emoji and title, and the pin that keeps the window on
-// top of other apps. Dragging the bar moves the window. The note page under it brings its own bottom bar.
+// top of other apps. Dragging the bar moves the window. The note page under it brings its own bottom bar. The
+// title and the pin are the system's type, symbol and colours (2026-11-18); the bar keeps the note's canvas so it
+// reads as the note's own title bar.
 import SwiftUI
 import Observation
 #if os(macOS)
@@ -51,6 +53,7 @@ public struct FloatingNoteBar: View {
     let state: FloatingNoteState
     let toggleOnTop: () -> Void
     @Environment(\.colorScheme) private var scheme
+    @State private var pinHover = false
 
     public init(model: FrameModel, state: FloatingNoteState, toggleOnTop: @escaping () -> Void) {
         self.model = model
@@ -81,8 +84,7 @@ public struct FloatingNoteBar: View {
             if let emoji {
                 Text(emoji).font(.system(size: 13))
             }
-            TruncatingLabel(text: title, style: WebTextStyle(size: 13, leading: 16, weight: 600, letterSpacing: 0))
-                .foregroundStyle(color("color-ink", .primary))
+            titleLabel
                 .frame(maxWidth: .infinity, alignment: .leading)
             pinButton
         }
@@ -99,8 +101,41 @@ public struct FloatingNoteBar: View {
         .simultaneousGesture(TapGesture(count: 2).onEnded { FloatingNoteState.titleBarDoubleClick() })
     }
 
+    /// The note's title as a window title: the system font's 13 pt semibold in the label colour on the Mac.
+    @ViewBuilder private var titleLabel: some View {
+        #if os(macOS)
+        Text(verbatim: title).font(MacLook.Text.headline).foregroundStyle(MacLook.Colors.label).lineLimit(1).truncationMode(.tail)
+        #else
+        TruncatingLabel(text: title, style: WebTextStyle(size: 13, leading: 16, weight: 600, letterSpacing: 0))
+            .foregroundStyle(color("color-ink", .primary))
+        #endif
+    }
+
     /// The pin: filled while the window stays on top of other apps.
     private var pinButton: some View {
+        #if os(macOS)
+        let on = state.onTop
+        let hint = on ? "Stop keeping on top" : "Keep on top"
+        // The system's: the pin symbol (filled while on top), the quaternary hover fill, a tooltip.
+        return Button(action: toggleOnTop) {
+            Image(systemName: on ? "pin.fill" : "pin")
+                .font(.system(size: 11, weight: .medium))
+                .frame(width: 24, height: 22)
+                .foregroundStyle(on ? MacLook.Colors.label : MacLook.Colors.secondary)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(pinHover ? MacLook.Colors.hover : .clear))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { pinHover = $0 }
+        .accessibilityLabel(hint)
+        .accessibilityAddTraits(on ? .isSelected : [])
+        .help(hint)
+        #else
+        drawnPin
+        #endif
+    }
+
+    private var drawnPin: some View {
         let on = state.onTop
         let hint = on ? "Stop keeping on top" : "Keep on top"
         return Button(action: toggleOnTop) {

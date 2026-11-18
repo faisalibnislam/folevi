@@ -1,7 +1,8 @@
-// ⌘K, search and commands (apps/web/src/components/app/CommandPalette.tsx as Folevi for Mac shows it): the
-// field, the filters (folder, tag, updated, the space), then the notes (Recent before typing: the notes opened
-// last, `recent.viewed`; then the engine's `search` answers), Ask Foli AI, and the actions. Arrow keys move,
-// Return opens, Escape closes. The sidebar's "Search or jump to…", ⌘K and Open Quickly open it.
+// ⌘K, search and commands (apps/web/src/components/app/CommandPalette.tsx's contents): the field, the filters
+// (folder, tag, updated, the space), then the notes (Recent before typing: the notes opened last, `recent.viewed`;
+// then the engine's `search` answers), Ask Foli AI, and the actions. Arrow keys move, Return opens, Escape closes.
+// The sidebar's "Search or jump to…", ⌘K, Open Quickly and the top bar's search field open it. On the Mac it's a
+// system sheet in the system's type (MacCommandPaletteView, 2026-11-18); on the iPad it's drawn as the web's.
 #if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
@@ -135,6 +136,14 @@ public enum CommandPalette {
     public static func show(_ frame: FrameModel, query: String = "") {
         let model = PaletteModel(frame: frame)
         if !query.isEmpty { model.search.text = query }
+        #if os(macOS)
+        // A sheet on the frame's window, in the system's type and colours.
+        FrameSheets.present(frame) { close in
+            MacCommandPaletteView(model: model, close: close)
+        }
+        // What's typed from now on waits for the field's focus, never reaching the note underneath (F04).
+        if let window = FrameSheets.sheetWindow(for: frame) ?? FrameSheets.window(for: frame) { model.early = EarlyKeys.start(in: window) }
+        #else
         // 12vh of the window, as `mt-[12vh]` puts it.
         let top = (FrameSheets.window(for: frame)?.contentView?.bounds.height ?? 820) * 0.12
         FrameSheets.present(frame, top: top, scrim: true) { close in
@@ -142,8 +151,191 @@ public enum CommandPalette {
         }
         // What's typed from now on waits for the field's focus, never reaching the note underneath (F04).
         if let window = FrameSheets.window(for: frame) { model.early = EarlyKeys.start(in: window) }
+        #endif
     }
 }
+
+#if os(macOS)
+/// ⌘K on the Mac: a sheet with the search field, the filters as pop-up buttons, then the results as a list in the
+/// system's type (13 pt rows, 11 pt section headings and details), the keyboard's row in the selection fill. Up and
+/// Down move, Return opens, Escape closes (the sheet's), a click opens.
+struct MacCommandPaletteView: View {
+    @Bindable var model: PaletteModel
+    let close: @MainActor () -> Void
+    @FocusState private var fieldFocused: Bool
+
+    static let width: CGFloat = 620
+
+    var body: some View {
+        let items = model.items
+        VStack(spacing: 0) {
+            field
+            Divider()
+            filters
+            Divider()
+            ScrollViewReader { proxy in
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        status
+                        let docCount = items.filter(\.isNote).count
+                        // (A heading only over rows: no "Recent" over nothing.)
+                        if docCount > 0 { heading(model.typed.isEmpty ? "Recent" : "Documents") }
+                        ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
+                            if i == docCount, !item.isNote { heading("Actions") }
+                            if item.isMeaning, !(i > 0 && items[i - 1].isMeaning) { heading("By meaning") }
+                            row(item, selected: i == model.active)
+                                .id(item.id)
+                                // (Only a real move of the pointer takes the selection, MAC-12.)
+                                .onHover { if $0, model.pointer.moved() { model.active = i } }
+                                .onTapGesture { choose(item) }
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(item.accessibilityName)
+                                .accessibilityValue(item.accessibilityDetail)
+                                .accessibilityAddTraits(i == model.active ? [.isButton, .isSelected] : .isButton)
+                                .accessibilityIdentifier("palette.result.\(i)")
+                                .accessibilityAction { choose(item) }
+                        }
+                    }
+                    .padding(.horizontal, MacLook.Space.s)
+                    .padding(.vertical, MacLook.Space.s)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel("Results")
+                }
+                .frame(maxHeight: (FrameSheets.window(for: model.frame)?.contentView?.bounds.height ?? 820) * 0.55)
+                .fixedSize(horizontal: false, vertical: true)
+                .onChange(of: model.active) { _, i in if items.indices.contains(i) { proxy.scrollTo(items[i].id) } }
+            }
+        }
+        .frame(width: Self.width)
+        .task {
+            try? await Task.sleep(for: .milliseconds(60))
+            fieldFocused = true
+            await model.early?.settle { [model] text in model.search.text += text }
+        }
+        .onDisappear { model.early?.cancel() }
+        .onChange(of: model.search.text) { _, _ in model.active = 0 }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("sheet.palette")
+    }
+
+    private var field: some View {
+        HStack(spacing: MacLook.Space.s + 2) {
+            Image(systemName: "magnifyingglass")
+                .font(MacLook.Text.title3)
+                .foregroundStyle(MacLook.Colors.secondary)
+            TextField("Search documents or type a command…", text: $model.search.text)
+                .textFieldStyle(.plain)
+                .font(MacLook.Text.title3)
+                .focused($fieldFocused)
+                .onKeyPress(.downArrow) { model.move(1); return .handled }
+                .onKeyPress(.upArrow) { model.move(-1); return .handled }
+                .onSubmit { let items = model.items; if items.indices.contains(model.active) { choose(items[model.active]) } }
+                .accessibilityLabel("Search documents or type a command")
+        }
+        .padding(.horizontal, MacLook.Space.l)
+        .frame(height: 50)
+    }
+
+    private var filters: some View {
+        let folders = flatten(model.search.folders)
+        return HStack(spacing: MacLook.Space.s) {
+            filter("Folder", options: [("", "Any folder")] + folders.map { ($0.0.id, String(repeating: "\u{00a0}\u{00a0}\u{00a0}", count: $0.1) + $0.0.name) },
+                   selection: Binding(get: { model.search.folderId ?? "" }, set: { model.search.folderId = $0.isEmpty ? nil : $0 }))
+            filter("Tag", options: [("", "Any tag")] + model.search.tags.map { ($0.id, "#\($0.name)") },
+                   selection: Binding(get: { model.search.tagId ?? "" }, set: { model.search.tagId = $0.isEmpty ? nil : $0 }))
+            filter("Updated", options: [("", "Any time")] + SearchUpdated.allCases.map { ($0.rawValue, $0.title) },
+                   selection: Binding(get: { model.search.updated?.rawValue ?? "" }, set: { model.search.updated = SearchUpdated(rawValue: $0) }))
+            Spacer(minLength: 0)
+            Text(verbatim: model.search.spaceName).font(MacLook.Text.small).foregroundStyle(MacLook.Colors.secondary).lineLimit(1)
+        }
+        .padding(.horizontal, MacLook.Space.m)
+        .frame(height: 36)
+    }
+
+    /// A filter as the system's pop-up button.
+    private func filter(_ label: String, options: [(String, String)], selection: Binding<String>) -> some View {
+        Picker(label, selection: selection) {
+            ForEach(options, id: \.0) { o in Text(verbatim: o.1).tag(o.0) }
+        }
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .controlSize(.small)
+        .fixedSize()
+        .accessibilityLabel(label)
+    }
+
+    private func flatten(_ nodes: [FolderNode]) -> [(FolderNode, Int)] {
+        var out: [(FolderNode, Int)] = []
+        func walk(_ parent: String?, _ d: Int) {
+            for n in nodes where n.parentId == parent {
+                out.append((n, d))
+                walk(n.id, d + 1)
+            }
+        }
+        walk(nil, 0)
+        return out
+    }
+
+    @ViewBuilder
+    private var status: some View {
+        if !model.typed.isEmpty, !model.answered {
+            Text(verbatim: "Searching…").font(MacLook.Text.body).foregroundStyle(MacLook.Colors.secondary).padding(.horizontal, MacLook.Space.s).padding(.vertical, MacLook.Space.s)
+        } else if !model.typed.isEmpty, model.answered, model.search.result?.hits.isEmpty ?? true {
+            Text(verbatim: "No documents match “\(model.typed)”.").font(MacLook.Text.body).foregroundStyle(MacLook.Colors.secondary).padding(.horizontal, MacLook.Space.s).padding(.vertical, MacLook.Space.s)
+        }
+    }
+
+    private func heading(_ title: String) -> some View {
+        Text(verbatim: title).font(MacLook.Text.smallStrong).foregroundStyle(MacLook.Colors.secondary).lineLimit(1)
+            .padding(.horizontal, MacLook.Space.s).padding(.top, MacLook.Space.s).padding(.bottom, MacLook.Space.xs)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func symbol(_ icon: WebIcon?, ai: Bool) -> Image? {
+        if ai, let image = NativeMenu.aiImage { return Image(nsImage: image).renderingMode(.template) }
+        guard let icon else { return nil }
+        if let name = NativeMenu.symbols[icon] { return Image(systemName: name) }
+        return Image(nsImage: icon.nsImage(size: 15)).renderingMode(.template)
+    }
+
+    private func row(_ item: PaletteModel.Item, selected: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: MacLook.rowIconGap) {
+            switch item {
+            case .note(_, let title, let snippet, let updatedAt, _, _):
+                Image(systemName: "doc.text").font(.system(size: MacLook.rowSymbolSize)).foregroundStyle(MacLook.Colors.secondary).frame(width: MacLook.rowIconSlot)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: title.isEmpty ? "Untitled" : title).font(MacLook.Text.body).foregroundStyle(MacLook.Colors.label).lineLimit(1)
+                    if let snippet {
+                        Text(verbatim: snippet).font(MacLook.Text.small).foregroundStyle(MacLook.Colors.secondary).lineLimit(2)
+                    } else if let updatedAt {
+                        Text(verbatim: "Edited \(AgeText.relative(Date(timeIntervalSince1970: updatedAt / 1000)))").font(MacLook.Text.small).foregroundStyle(MacLook.Colors.tertiary).lineLimit(1)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if selected { Image(systemName: "return").font(MacLook.Text.small).foregroundStyle(MacLook.Colors.secondary) }
+            case .action(_, let title, let hint, let icon, let ai, _):
+                Group { symbol(icon, ai: ai) }
+                    .font(.system(size: MacLook.rowSymbolSize))
+                    .foregroundStyle(MacLook.Colors.secondary)
+                    .frame(width: MacLook.rowIconSlot)
+                Text(verbatim: title).font(MacLook.Text.body).foregroundStyle(MacLook.Colors.label).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                if let hint { Text(verbatim: hint).font(MacLook.Text.body).foregroundStyle(MacLook.Colors.secondary).lineLimit(1) }
+            }
+        }
+        .padding(.horizontal, MacLook.Space.s)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, minHeight: MacLook.rowHeight, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: MacLook.rowRadius, style: .continuous).fill(selected ? MacLook.Colors.selection : .clear))
+        .contentShape(Rectangle())
+    }
+
+    private func choose(_ item: PaletteModel.Item) {
+        close()
+        model.run(item)
+    }
+}
+#endif
 
 struct CommandPaletteView: View {
     @Bindable var model: PaletteModel

@@ -1,5 +1,6 @@
-// Quick Add in Folevi for Mac (the floating panel, apps/mac QuickAddPanel.swift), drawn as the web draws it
-// (components/app/MacQuickAdd.tsx, measured live in the web frame's panel): one field that grows. A 56 pt row holds
+// Quick Add in Folevi for Mac (the floating panel, apps/mac QuickAddPanel.swift), as the web's
+// components/app/MacQuickAdd.tsx works, in the system's type, colours, symbols and controls (owner decision
+// 2026-11-18: the priority a segmented control, the place a pop-up button): one field that grows. A 56 pt row holds
 // an empty checkbox, the task's words and, at the end, where it goes ("Inbox", or a page). Words become chips as
 // they're typed: a day or time ("tomorrow 9am"), a repeat, a priority ("!high") and a page ("#Atlas"), each with a
 // × that keeps its words as text. A second row (the chips, then their editors) appears only once there's
@@ -28,6 +29,115 @@ func qaColor(_ name: String, _ scheme: ColorScheme) -> RGBA {
     case "color-ink-muted" where dark: return RGBA(255, 255, 255, 0.66)
     case "color-ink-faint" where dark: return RGBA(255, 255, 255, 0.48)
     default: return PV(name).resolve(scheme)
+    }
+}
+
+/// A colour of the panel as a SwiftUI colour: on the Mac the system's semantic colours (owner decision 2026-11-18,
+/// docs/MAC_NATIVE_LOOK.md), elsewhere the panel's web colours (qaColor).
+func qaInk(_ name: String, _ scheme: ColorScheme) -> Color {
+    #if os(macOS)
+    switch name {
+    case "color-heading", "color-ink": return MacLook.Colors.label
+    case "color-ink-muted": return MacLook.Colors.secondary
+    case "color-ink-faint": return MacLook.Colors.tertiary
+    case "color-line": return MacLook.Colors.separator
+    case "color-line-strong": return MacLook.Colors.tertiary
+    case "mac-hover": return MacLook.Colors.hover.opacity(0.7)
+    case "mac-press": return MacLook.Colors.hover
+    case "color-danger": return MacLook.Colors.red
+    case "color-canvas": return MacLook.Colors.onAccent
+    default: return qaColor(name, scheme).color
+    }
+    #else
+    return qaColor(name, scheme).color
+    #endif
+}
+
+/// Quick Add's text roles: the system font on the Mac (11, 13 or 15 pt), the web's styles elsewhere.
+enum QAText {
+    case small, body, bodyStrong, title3
+
+    var web: WebTextStyle {
+        switch self {
+        case .small: .role(.footnote)
+        case .body: .role(.subheadline)
+        case .bodyStrong: .role(.body, weight: 600)
+        case .title3: .role(.title3)
+        }
+    }
+
+    #if os(macOS)
+    var font: Font {
+        switch self {
+        case .small: MacLook.Text.small
+        case .body: MacLook.Text.body
+        case .bodyStrong: MacLook.Text.body.weight(.semibold)
+        case .title3: MacLook.Text.title3
+        }
+    }
+    #endif
+}
+
+extension View {
+    /// Quick Add's text in `role` (the system font on the Mac); `web` overrides the web style off the Mac.
+    func qaText(_ role: QAText, web: WebTextStyle? = nil) -> some View {
+        #if os(macOS)
+        font(role.font)
+        #else
+        webText(web ?? role.web)
+        #endif
+    }
+}
+
+/// Quick Add's icons: the closest SF Symbol on the Mac, the web's drawing elsewhere.
+struct QAIcon: View {
+    let icon: WebIcon
+    let size: CGFloat
+    var strokeWidth: CGFloat = 2
+    init(_ icon: WebIcon, size: CGFloat, strokeWidth: CGFloat = 2) {
+        self.icon = icon
+        self.size = size
+        self.strokeWidth = strokeWidth
+    }
+
+    var body: some View {
+        #if os(macOS)
+        if let name = NativeMenu.symbols[icon] {
+            Image(systemName: name).font(.system(size: size, weight: strokeWidth > 2 ? .bold : .medium))
+        } else {
+            WebIconView(icon, size: size, strokeWidth: strokeWidth)
+        }
+        #else
+        WebIconView(icon, size: size, strokeWidth: strokeWidth)
+        #endif
+    }
+}
+
+/// A button style for Quick Add's chips: plain on the Mac (the chip draws the system's hover), the glass hover
+/// elsewhere.
+struct QAChipStyle: ButtonStyle {
+    var radius: CGFloat = 8
+    var selected = false
+    func makeBody(configuration: Configuration) -> some View {
+        #if os(macOS)
+        configuration.label.opacity(configuration.isPressed ? 0.7 : 1)
+        #else
+        WebHoverButtonStyle.webHover(radius: radius, selected: selected).makeBody(configuration: configuration)
+        #endif
+    }
+}
+
+/// An input's box: on the Mac a quiet rounded fill with the separator's hairline (the panel's material shows
+/// through), elsewhere the web's `.ui-input`.
+struct QAFieldBox: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        content
+            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(MacLook.Colors.hover.opacity(0.45)))
+            .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(MacLook.Colors.separator))
+        #else
+        content.webBox(WebStyles.named("input"))
+        #endif
     }
 }
 
@@ -88,7 +198,7 @@ public struct WebQuickAddPanel: View {
         (nil, "None", nil), (.low, "Low", RGBA(0x5B, 0x6A, 0xD0)), (.medium, "Medium", RGBA(0xC5, 0x8A, 0x12)), (.high, "High", RGBA(0xD6, 0x45, 0x3D)),
     ]
 
-    private func v(_ name: String) -> Color { qaColor(name, scheme).color }
+    private func v(_ name: String) -> Color { qaInk(name, scheme) }
     /// `text-subheadline leading-none` (the chips).
     static let chipText = WebTextStyle(size: 13, leading: 13)
 
@@ -167,7 +277,7 @@ public struct WebQuickAddPanel: View {
             }
             if !hintSeen, !second, editor == nil {
                 Text("Return adds it, \u{2318}Return opens it too. Try \u{201C}tomorrow 9am\u{201D}, \u{201C}!high\u{201D} or \u{201C}#page\u{201D}.")
-                    .webText(.role(.footnote))
+                    .qaText(.small)
                     .lineLimit(1)
                     .foregroundStyle(v("color-ink-faint"))
                     .padding(.leading, 48).padding(.trailing, 16).padding(.bottom, 10)
@@ -184,6 +294,7 @@ public struct WebQuickAddPanel: View {
                 .strokeBorder(v("color-line-strong"), lineWidth: 1.5)
                 .frame(width: 20, height: 20)
                 .accessibilityHidden(true)
+                .accessibilityHidden(true)
             PanelField(text: $model.text, placeholder: "New task", ink: qaColor("color-heading", scheme), faint: qaColor("color-ink-faint", scheme), focusTick: focusTick, submit: { key in
                 switch key {
                 case .plain: add(.close)
@@ -197,7 +308,7 @@ public struct WebQuickAddPanel: View {
                 .background(alignment: .leading) {
                     // The placeholder where the typed words stand (the cell's own sits 2 pt higher).
                     if model.text.isEmpty {
-                        Text("New task").webText(.role(.title3)).lineLimit(1)
+                        Text("New task").qaText(.title3).lineLimit(1)
                             .foregroundStyle(v("color-ink-faint"))
                             .padding(.leading, PanelField.inset)
                             .allowsHitTesting(false)
@@ -222,8 +333,8 @@ public struct WebQuickAddPanel: View {
         let label = model.pageTokenMissing ? "No page \u{201C}\(model.tokens.page?.query ?? "")\u{201D}" : model.destinationLabel
         return Button { toggle(.page) } label: {
             HStack(spacing: 6) {
-                WebIconView(target ? .fileText : .inbox, size: 14)
-                Text(label).webText(Self.chipText).lineLimit(1).truncationMode(.tail)
+                QAIcon(target ? .fileText : .inbox, size: 14)
+                Text(label).qaText(.body, web: Self.chipText).lineLimit(1).truncationMode(.tail)
             }
             .padding(.leading, 10).padding(.trailing, model.tokens.page != nil ? 6 : 10)
             .frame(height: 28)
@@ -233,7 +344,7 @@ public struct WebQuickAddPanel: View {
             .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(v("mac-hover")))
             .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
-        .buttonStyle(.webHover(radius: 8))
+        .buttonStyle(QAChipStyle())
         .accessibilityLabel("Adds to \(label), change")
         .accessibilityIdentifier("quick-add-place")
     }
@@ -244,8 +355,8 @@ public struct WebQuickAddPanel: View {
             if let r = repeatLabel {
                 chip(set: true, trailing: -6, remove: removeButton("Keep the repeat as text") { model.keepDateAsText() }) {
                     HStack(spacing: 6) {
-                        WebIconView(.repeat, size: 13)
-                        Text(r).webText(Self.chipText).lineLimit(1)
+                        QAIcon(.repeat, size: 13)
+                        Text(r).qaText(.body, web: Self.chipText).lineLimit(1)
                     }
                 }
             }
@@ -253,7 +364,7 @@ public struct WebQuickAddPanel: View {
                 Button { toggle(.date) } label: {
                     chipLabel(.calendarDays, dateLabel.map { "Due \($0)" } ?? "Date", tone: nil)
                 }
-                .buttonStyle(.webHover(radius: 8))
+                .buttonStyle(QAChipStyle())
                 .accessibilityIdentifier("quick-add-date")
             }
             let p = Self.priorities.first { $0.0 == model.effectivePriority } ?? Self.priorities[0]
@@ -261,12 +372,12 @@ public struct WebQuickAddPanel: View {
                 Button { toggle(.priority) } label: {
                     chipLabel(.flag, model.effectivePriority == nil ? "Priority" : p.1, tone: p.2)
                 }
-                .buttonStyle(.webHover(radius: 8))
+                .buttonStyle(QAChipStyle())
                 .accessibilityIdentifier("quick-add-priority")
             }
             Spacer(minLength: 0)
             if let e = model.error {
-                Text(e).webText(.role(.footnote)).lineLimit(1).foregroundStyle(v("color-danger"))
+                Text(e).qaText(.small).lineLimit(1).foregroundStyle(v("color-danger"))
                     .accessibilityIdentifier("quick-add-error")
             }
         }
@@ -315,8 +426,8 @@ public struct WebQuickAddPanel: View {
 
     private func chipLabel(_ icon: WebIcon, _ title: String, tone: RGBA?) -> some View {
         HStack(spacing: 6) {
-            WebIconView(icon, size: 13).foregroundStyle(tone.map { AnyShapeStyle($0.color) } ?? AnyShapeStyle(.foreground))
-            Text(title).webText(Self.chipText).lineLimit(1)
+            QAIcon(icon, size: 13).foregroundStyle(tone.map { AnyShapeStyle($0.color) } ?? AnyShapeStyle(.foreground))
+            Text(title).qaText(.body, web: Self.chipText).lineLimit(1)
         }
         .padding(.horizontal, 10)
         .frame(height: 28)
@@ -346,6 +457,27 @@ public struct WebQuickAddPanel: View {
     }
 
     private var priorityEditor: some View {
+        #if os(macOS)
+        // The system's segmented control.
+        Picker("Priority", selection: Binding(get: { model.effectivePriority?.rawValue ?? "" }, set: { raw in
+            let level = Self.priorities.first { ($0.0?.rawValue ?? "") == raw }?.0
+            if let t = model.tokens.priority, t.level.rawValue != level?.rawValue { model.keep(t.text) }
+            model.priority = level
+            editor = nil
+            focusTick += 1
+        })) {
+            ForEach(Self.priorities, id: \.1) { p in Text(p.1).tag(p.0?.rawValue ?? "") }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .padding(.horizontal, 16).padding(.bottom, 12).padding(.top, 10)
+        .accessibilityLabel("Priority")
+        #else
+        priorityEditorDrawn
+        #endif
+    }
+
+    private var priorityEditorDrawn: some View {
         let base = "edit.seg"
         let box = PS(base).resolve(scheme)
         return HStack(spacing: box.gap) {
@@ -360,7 +492,7 @@ public struct WebQuickAddPanel: View {
                     focusTick += 1
                 } label: {
                     HStack(spacing: 6) {
-                        if let tone = p.2 { WebIconView(.flag, size: 12).foregroundStyle(tone.color) }
+                        if let tone = p.2 { QAIcon(.flag, size: 12).foregroundStyle(tone.color) }
                         Text(p.1).webText(s.text).lineLimit(1).fixedSize()
                     }
                     .padding(s.padding.edgeInsets)
@@ -387,16 +519,29 @@ public struct WebQuickAddPanel: View {
             // `mb-3 flex items-center gap-2 text-subheadline text-muted`, its Select `min-w-0 flex-1` (DesktopQuickAdd.tsx).
             if let places, places.options.count > 1 {
                 HStack(spacing: 8) {
-                    Text("Add to").webText(.role(.subheadline)).fixedSize()
+                    Text("Add to").qaText(.body).fixedSize()
+                    #if os(macOS)
+                    // The system's pop-up button.
+                    Picker("Add to", selection: Binding(get: { places.current ?? "" }, set: { places.pick($0) })) {
+                        ForEach(places.options, id: \.id) { o in Text(o.label).tag(o.id) }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .controlSize(.small)
+                    .fixedSize()
+                    .accessibilityLabel("Add to")
+                    .accessibilityIdentifier("quick-add-place")
+                    Spacer(minLength: 0)
+                    #else
                     // The web's Select with no box of its own here: the label, then its chevron at the far end.
                     GeometryReader { g in
                         WebMenuButton(select: true, entries: {
                             places.options.map { o in WebMenuEntry(.item(o.label, checked: o.id == places.current, id: o.id)) { places.pick(o.id) } }
                         }) {
                             HStack(spacing: 6) {
-                                Text(places.options.first { $0.id == places.current }?.label ?? "").webText(.role(.subheadline)).lineLimit(1).truncationMode(.tail)
+                                Text(places.options.first { $0.id == places.current }?.label ?? "").qaText(.body).lineLimit(1).truncationMode(.tail)
                                 Spacer(minLength: 0)
-                                WebIconView(.chevronDown, size: 14).opacity(0.6)
+                                QAIcon(.chevronDown, size: 14).opacity(0.6)
                             }
                             .contentShape(Rectangle())
                         }
@@ -404,6 +549,7 @@ public struct WebQuickAddPanel: View {
                     .frame(height: WebTextStyle.role(.subheadline).leading)
                     .accessibilityLabel("Add to")
                     .accessibilityIdentifier("quick-add-place")
+                    #endif
                 }
                 .foregroundStyle(v("color-ink-muted"))
                 // (Its mb-3 collapses with the picker's mt-3: the picker's own top padding is the gap.)
@@ -423,26 +569,39 @@ public struct WebQuickAddPanel: View {
 
     private func addedRow(_ added: QuickAddModel.Added) -> some View {
         HStack(spacing: 12) {
-            WebIconView(.check, size: 13, strokeWidth: 3)
+            QAIcon(.check, size: 13, strokeWidth: 3)
                 .foregroundStyle(v("color-canvas"))
                 .frame(width: 20, height: 20)
                 .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(v("color-heading")))
                 .accessibilityHidden(true)
             HStack(spacing: 0) {
-                Text("Added to ").webText(.role(.body)).foregroundStyle(v("color-ink")).fixedSize()
-                Text(added.label).webText(.role(.body, weight: 600)).foregroundStyle(v("color-heading")).lineLimit(1)
+                Text("Added to ").qaText(.body, web: .role(.body)).foregroundStyle(v("color-ink")).fixedSize()
+                Text(added.label).qaText(.bodyStrong).foregroundStyle(v("color-heading")).lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
-            WebButton("Open", variant: .secondary, size: .sm) {
-                model.clearAdded()
-                openPage(added.noteId)
-            }
+            openButton(added)
             .accessibilityIdentifier("quick-add-open")
         }
         .padding(.horizontal, 16)
         .frame(height: 56)
         .accessibilityIdentifier("quick-add-confirmation")
+    }
+
+    @ViewBuilder
+    private func openButton(_ added: QuickAddModel.Added) -> some View {
+        #if os(macOS)
+        Button("Open") {
+            model.clearAdded()
+            openPage(added.noteId)
+        }
+        .controlSize(.small)
+        #else
+        WebButton("Open", variant: .secondary, size: .sm) {
+            model.clearAdded()
+            openPage(added.noteId)
+        }
+        #endif
     }
 
     // MARK: Keys
@@ -522,9 +681,8 @@ public struct WebQuickAddPanel: View {
 }
 
 #if os(macOS)
-/// The task's field: an AppKit text field, so the web's letter spacing (`-0.096px`) holds while typing (SwiftUI's
-/// TextField drops tracking on the Mac), in Instrument Sans 17 (`text-title-3`), heading ink, the faint
-/// placeholder. It reads Return, Shift-Return, Command-Return and Escape itself.
+/// The task's field: an AppKit text field in the system font (15 pt, the label colour; the placeholder tertiary),
+/// reading Return, Shift-Return, Command-Return and Escape itself.
 private struct PanelField: NSViewRepresentable {
     enum Key { case plain, shift, command }
 
@@ -536,10 +694,11 @@ private struct PanelField: NSViewRepresentable {
     let submit: (Key) -> Void
     let escape: () -> Void
 
-    static let font = WebFont.nsFont(.sans, size: 17)
-    /// Where the field editor starts the text, measured against the web's input (it lines up as it is).
+    /// The system font at 15 pt (MacLook.Text.title3), the system's tracking (2026-11-18).
+    static let font = NSFont.preferredFont(forTextStyle: .title3)
+    /// Where the field editor starts the text.
     static let inset: CGFloat = 0
-    static let kern = WebTextStyle.bodyLetterSpacing
+    static let kern: CGFloat = 0
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -576,8 +735,10 @@ private struct PanelField: NSViewRepresentable {
         }
     }
 
-    static func ns(_ c: RGBA) -> NSColor { NSColor(srgbRed: c.r / 255, green: c.g / 255, blue: c.b / 255, alpha: c.a) }
+    /// The text's colour: the system's label colour (the panel's own ink is no longer used on the Mac).
+    static func ns(_ c: RGBA) -> NSColor { .labelColor }
 
+    @MainActor
     final class Coordinator: NSObject, NSTextFieldDelegate {
         var parent: PanelField
         var tick = Int.min
@@ -666,9 +827,9 @@ private struct RemoveButton: View {
 
     var body: some View {
         Button(action: action) {
-            WebIconView(.x, size: 12)
+            QAIcon(.x, size: 12)
                 .frame(width: 20, height: 20)
-                .foregroundStyle(hover ? qaColor("color-heading", scheme).color : qaColor("color-ink-faint", scheme).color)
+                .foregroundStyle(hover ? qaInk("color-heading", scheme) : qaInk("color-ink-faint", scheme))
                 .contentShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
         }
         .buttonStyle(PlainPress())
@@ -687,19 +848,19 @@ private struct QuickAddDateField: View {
         let date = model.dueDate ?? model.effectiveDueDate
         Button { open(date) } label: {
             HStack(spacing: 8) {
-                WebIconView(.calendarDays, size: 14).foregroundStyle(qaColor("color-ink-muted", scheme).color)
+                QAIcon(.calendarDays, size: 14).foregroundStyle(qaInk("color-ink-muted", scheme))
                 Text(date.map { WebQuickAddPanel.dayLabel($0, today: model.session.value?.today) } ?? "No date")
-                    .webText(.role(.subheadline)).lineLimit(1)
-                    .foregroundStyle(date == nil ? qaColor("color-ink-faint", scheme).color : qaColor("color-ink", scheme).color)
+                    .qaText(.body).lineLimit(1)
+                    .foregroundStyle(date == nil ? qaInk("color-ink-faint", scheme) : qaInk("color-ink", scheme))
                 Spacer(minLength: 0)
             }
             .padding(.leading, 10).padding(.trailing, 32)
             .frame(width: 160, height: 32)
-            .webBox(WebStyles.named("input"))
+            .modifier(QAFieldBox())
             .contentShape(Rectangle())
             .plannerAnchor(anchor)
         }
-        .buttonStyle(.webHover(radius: WebStyles.named("input").resolve(scheme).radius))
+        .buttonStyle(QAChipStyle(radius: WebStyles.named("input").resolve(scheme).radius))
         .accessibilityLabel("Due date: \(date ?? "No date")")
     }
 
@@ -742,19 +903,19 @@ private struct QuickAddTimeField: View {
         let time = model.dueDate != nil ? model.dueTime : model.effectiveDueTime
         Button { open(time) } label: {
             HStack(spacing: 8) {
-                WebIconView(.clock, size: 14).foregroundStyle(qaColor("color-ink-muted", scheme).color)
+                QAIcon(.clock, size: 14).foregroundStyle(qaInk("color-ink-muted", scheme))
                 Text(time.map(WebQuickAddPanel.clock) ?? "All day")
-                    .webText(.role(.subheadline)).lineLimit(1)
-                    .foregroundStyle(time == nil ? qaColor("color-ink-faint", scheme).color : qaColor("color-ink", scheme).color)
+                    .qaText(.body).lineLimit(1)
+                    .foregroundStyle(time == nil ? qaInk("color-ink-faint", scheme) : qaInk("color-ink", scheme))
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 10)
             .frame(width: 112, height: 32)
-            .webBox(WebStyles.named("input"))
+            .modifier(QAFieldBox())
             .contentShape(Rectangle())
             .plannerAnchor(anchor)
         }
-        .buttonStyle(.webHover(radius: WebStyles.named("input").resolve(scheme).radius))
+        .buttonStyle(QAChipStyle(radius: WebStyles.named("input").resolve(scheme).radius))
         .accessibilityLabel("Due time: \(time ?? "All day")")
     }
 
@@ -806,16 +967,16 @@ private struct QuickAddPagePicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Add to").webText(.role(.subheadline)).foregroundStyle(qaColor("color-ink-muted", scheme).color)
+            Text("Add to").qaText(.body).foregroundStyle(qaInk("color-ink-muted", scheme))
             // (Its placeholder is Tailwind's own: the text's colour at 50 %, over the field. A prompt draws an
             // opaque colour as given but not a translucent one, so it gets the two already mixed.)
             TextField("", text: $query, prompt: Text(model.destination.noteId == nil ? "Inbox, or search a page…" : "Search another page…").foregroundStyle(placeholder.color))
                 .textFieldStyle(.plain)
-                .font(Font(WebFont.ctFont(.sans, size: 13)))
-                .foregroundStyle(qaColor("color-ink", scheme).color)
+                .qaText(.body, web: WebTextStyle(size: 13, leading: 18))
+                .foregroundStyle(qaInk("color-ink", scheme))
                 .padding(.horizontal, 12)
                 .frame(height: 36)
-                .webBox(WebStyles.named("input"))
+                .modifier(QAFieldBox())
                 .focused($focused)
                 .onChange(of: query) { _, q in model.searchPages(q) }
                 .onSubmit { pick(query.isEmpty ? nil : model.pageHits.first) }
@@ -861,14 +1022,14 @@ private struct PickerRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                WebIconView(icon, size: 14).foregroundStyle(qaColor("color-ink-muted", scheme).color)
-                Text(title).webText(.role(.subheadline)).lineLimit(1).foregroundStyle(qaColor("color-ink", scheme).color)
+                QAIcon(icon, size: 14).foregroundStyle(qaInk("color-ink-muted", scheme))
+                Text(title).qaText(.body).lineLimit(1).foregroundStyle(qaInk("color-ink", scheme))
                 Spacer(minLength: 0)
-                if selected { WebIconView(.check, size: 14).foregroundStyle(qaColor("color-heading", scheme).color) }
+                if selected { QAIcon(.check, size: 14).foregroundStyle(qaInk("color-heading", scheme)) }
             }
             .padding(.horizontal, 10)
             .frame(height: 32)
-            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hover ? qaColor("mac-hover", scheme).color : .clear))
+            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hover ? qaInk("mac-hover", scheme) : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(PlainPress())

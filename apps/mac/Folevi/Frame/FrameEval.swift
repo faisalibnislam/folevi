@@ -214,7 +214,7 @@ extension NativeFrame {
             let mains = WindowManager.shared.mains
             let i = req["window"] as? Int ?? 0
             guard mains.indices.contains(i), let path = req["out"] as? String,
-                  let window = req["menu"] as? Bool == true ? AccountMenuWindow.shown : mains[i].window else { return done(["error": "no window (or no account menu open) or no out"]) }
+                  let window = req["menu"] as? Bool == true ? AccountMenuWindow.shown?.menuWindow : mains[i].window else { return done(["error": "no window (or no account menu open) or no out"]) }
             guard let view = window.contentView?.superview ?? window.contentView, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return done(["error": "no image"]) }
             view.cacheDisplay(in: view.bounds, to: rep)
             guard let png = rep.representation(using: .png, properties: [:]) else { return done(["error": "no png"]) }

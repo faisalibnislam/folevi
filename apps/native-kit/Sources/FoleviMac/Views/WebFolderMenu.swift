@@ -2,7 +2,7 @@
 // web's app/FolderMenu.tsx builds it: New note in folder and New folder inside…; then Rename…, Change color…,
 // Move folder…, Move to another place…, Move to top level, Ask Foli AI about this folder…, Always fully
 // encrypted, Share…, Copy link and Invite people…; then Delete folder…. Its dialogs are the web's (Dialog,
-// PromptDialog, FolderColorDialog, MoveFolderDialog, LockDialog) drawn by the frame, never the system's alerts.
+// PromptDialog, FolderColorDialog, MoveFolderDialog, LockDialog), shown by the frame (system sheets on the Mac).
 #if os(macOS) || os(iOS)
 #if os(macOS)
 import AppKit
@@ -144,12 +144,23 @@ extension FrameDialogs {
     }
 }
 
-/// A dialog's footer (ui/Dialog.tsx): its buttons at the end, on the sunken surface under a hairline.
+/// A dialog's footer (ui/Dialog.tsx): its buttons at the end (on the iPad on the sunken surface under a hairline).
 struct WebSheetFooter<Content: View>: View {
     @ViewBuilder let content: () -> Content
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
+        #if os(macOS)
+        // A sheet's buttons: at the end, on the sheet itself (no band, no hairline).
+        HStack(spacing: MacLook.Space.s) {
+            Spacer(minLength: 0)
+            content()
+        }
+        .padding(.horizontal, MacLook.Space.l + 4)
+        .padding(.bottom, MacLook.Space.l + 4)
+        .padding(.top, MacLook.Space.xs)
+        .frame(maxWidth: .infinity)
+        #else
         HStack(spacing: 8) {
             Spacer(minLength: 0)
             content()
@@ -159,6 +170,7 @@ struct WebSheetFooter<Content: View>: View {
         .frame(maxWidth: .infinity)
         .background(moreVar("color-surface-sunken", scheme).opacity(0.6))
         .overlay(alignment: .top) { Rectangle().fill(moreVar("color-line", scheme)).frame(height: 1) }
+        #endif
     }
 }
 

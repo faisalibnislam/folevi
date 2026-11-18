@@ -208,6 +208,39 @@ struct AiLauncher: View {
     }
 }
 
+/// The floating chat's surface. The Mac's native look: Liquid Glass (a panel floating over the page, the owner,
+/// 2026-11-18) with a soft shadow of its own. Elsewhere the web's `ui-pop`: its translucent fill over a backdrop
+/// blur, the hairlines and the soft shadow.
+struct AiAskSurface: ViewModifier {
+    let radius: CGFloat
+    #if os(macOS)
+    @Environment(\.macNativeLook) private var native
+    #endif
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        if native {
+            let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+            content
+                .clipShape(shape)
+                .glassEffect(.regular, in: shape)
+                .shadow(color: .black.opacity(0.16), radius: 24, x: 0, y: 12)
+        } else {
+            web(content)
+        }
+        #else
+        web(content)
+        #endif
+    }
+
+    private func web(_ content: Content) -> some View {
+        content
+            .clipShape(RoundedRectangle(cornerRadius: radius))
+            .background { Color.clear.webBox(WebStyles.named("ai.panel")) }
+            .background { RoundedRectangle(cornerRadius: radius).fill(.regularMaterial) }
+    }
+}
+
 /// The chat (AskAiPanel.tsx): header with the flower, "Foli AI", the conversation's options, New chat, Open in
 /// full view and Close, then the thread.
 struct AiAskPanelView: View {
@@ -249,10 +282,7 @@ struct AiAskPanelView: View {
             AiThreadView(model: model, variant: .floating, host: host)
         }
         .frame(width: p.width, height: height)
-        .clipShape(RoundedRectangle(cornerRadius: p.radius))
-        // The web's `ui-pop`: its translucent fill over a 24 pt backdrop blur, the hairlines and the soft shadow.
-        .background { Color.clear.webBox(WebStyles.named("ai.panel")) }
-        .background { RoundedRectangle(cornerRadius: p.radius).fill(.regularMaterial) }
+        .modifier(AiAskSurface(radius: p.radius))
         .onKeyPress(.escape) {
             frame.askAiOpen = false
             return .handled

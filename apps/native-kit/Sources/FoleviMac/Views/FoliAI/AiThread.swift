@@ -40,6 +40,7 @@ struct AiThreadView: View {
     let host: AiHost
     var autoFocus = true
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     @State private var following = true
     @State private var behind = false
     /// The thread is scrolled to its end (no fade over the dock then).
@@ -89,7 +90,8 @@ struct AiThreadView: View {
         let streamLength = following || behind ? 0 : (model.streamingMessage.flatMap { model.answer($0.id)?.shownText.utf8.count } ?? 0)
         return ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                // (The Mac's native look: a question and its answer sit closer, as one exchange.)
+                VStack(alignment: .leading, spacing: chrome == nil ? 20 : 12) {
                     content(look: look)
                     Color.clear.frame(height: 0).id("end")
                 }
@@ -520,6 +522,7 @@ struct AiComposer: View {
     let variant: AiVariant
     var focused: FocusState<Bool>.Binding
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     #if os(macOS)
     @Environment(\.controlActiveState) private var controlActive
     #else
@@ -541,9 +544,10 @@ struct AiComposer: View {
                 }
                 TextField("", text: $model.draft, axis: .vertical)
                     .textFieldStyle(.plain)
-                    .font(Font(input.text.ctFont))
-                    .tracking(input.letterSpacing)
-                    .lineSpacing(max(0, line - 17))
+                    // (The system font under the Mac's native look, as the placeholder over it.)
+                    .font(chrome.map { .system(size: $0.body) } ?? Font(input.text.ctFont))
+                    .tracking(chrome == nil ? input.letterSpacing : 0)
+                    .lineSpacing(chrome == nil ? max(0, line - 17) : 2)
                     .foregroundStyle(look.ink)
                     .lineLimit(2...6)
                     .focused(focused)
@@ -562,11 +566,20 @@ struct AiComposer: View {
             HStack(spacing: bar.gap) {
                 Spacer(minLength: 0)
                 Button { if canSend { model.send() } } label: {
-                    WebIconView(.arrowUp, size: 16)
-                        .frame(width: send.width, height: send.height)
-                        .foregroundStyle(send.color.color)
-                        .background(RoundedRectangle(cornerRadius: send.radius).fill(send.background.color))
-                        .contentShape(Rectangle())
+                    if let chrome {
+                        // The Mac's native look: a round send button in the accent (grey with nothing to send).
+                        WebIconView(.arrowUp, size: 15, strokeWidth: 2.4)
+                            .frame(width: 28, height: 28)
+                            .foregroundStyle(chrome.onAccent)
+                            .background(Circle().fill(chrome.accent))
+                            .contentShape(Circle())
+                    } else {
+                        WebIconView(.arrowUp, size: 16)
+                            .frame(width: send.width, height: send.height)
+                            .foregroundStyle(send.color.color)
+                            .background(RoundedRectangle(cornerRadius: send.radius).fill(send.background.color))
+                            .contentShape(Rectangle())
+                    }
                 }
                 .buttonStyle(.webHover(radius: send.radius, selected: !canSend))
                 // (Not `.disabled`: AppKit would dim it again; the web's `disabled:opacity-30` is the whole look.)
@@ -582,7 +595,11 @@ struct AiComposer: View {
             // `focus-within:shadow-[inset_0_0_0_1.5px_...heading 22%]`, only while the window has the keys (as
             // WebKit draws it); without it, the box's 1 pt hairline (`--glass-border`).
             let ring = box.shadows.first { $0.inset && $0.color.a > 0 }
-            if focused.wrappedValue, controlActive == .key || controlActive == .active, let ring {
+            if let chrome {
+                // (The Mac's native look: a hairline that darkens with the keyboard's focus, never a thick ring.)
+                let on = focused.wrappedValue && (controlActive == .key || controlActive == .active)
+                RoundedRectangle(cornerRadius: box.radius).strokeBorder(on ? chrome.accent.opacity(0.35) : look.glassBorder, lineWidth: 1)
+            } else if focused.wrappedValue, controlActive == .key || controlActive == .active, let ring {
                 RoundedRectangle(cornerRadius: box.radius).strokeBorder(ring.color.color, lineWidth: ring.spread)
             } else {
                 RoundedRectangle(cornerRadius: box.radius).strokeBorder(look.glassBorder, lineWidth: 1)

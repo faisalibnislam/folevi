@@ -220,6 +220,8 @@ public struct AiAssistantMessage: View {
     }
     @Environment(\.colorScheme) private var scheme
     @Environment(\.aiPhone) private var phone
+    /// The Mac's native look (system type, quiet fills instead of the web's outlined boxes).
+    @Environment(\.nativeChrome) private var chrome
     @State private var copied = false
 
     public var body: some View {
@@ -288,6 +290,13 @@ public struct AiAssistantMessage: View {
             content()
                 .padding(.horizontal, look.s("ai.answer").padding.left)
                 .frame(maxWidth: .infinity, alignment: .leading)
+        } else if let chrome {
+            // The Mac's native look: the answer in a quiet filled bubble (no outline), as Messages sets a reply.
+            content()
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(chrome.hover.opacity(0.45), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         } else {
             let s = look.pair("ai.answer").resolve(scheme)
             content()
@@ -345,7 +354,8 @@ public struct AiAssistantMessage: View {
         let chip = look.s("ai.source")
         return VStack(alignment: .leading, spacing: 0) {
             Rectangle().fill(look.line70).frame(height: 1)
-            Text("SOURCES").webText(look.text("ai.sources.title")).lineLimit(1).foregroundStyle(look.s("ai.sources.title").color.color)
+            // (A small sentence-case heading on the Mac, capitals on the web.)
+            Text(chrome == nil ? "SOURCES" : "Sources").webText(look.text("ai.sources.title")).lineLimit(1).foregroundStyle(look.s("ai.sources.title").color.color)
                 .padding(.top, sec.padding.top).padding(.bottom, 6)
             AiFlow(spacing: look.s("ai.sources.list").gap) {
                 ForEach(message.citations, id: \.n) { c in

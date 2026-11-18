@@ -59,9 +59,12 @@ public enum MacLook {
     public static let barControlHeight: CGFloat = 36
     /// The gap between controls.
     public static let barSpacing: CGFloat = 8
-    /// A screen's title with no control before it: inset from the controls' leading edge so that it starts where
-    /// the screens' content does (34 pt from the card's edge).
+    /// A screen's title: inset from the controls' leading edge so that it starts where the screens' content does
+    /// (34 pt from the card's edge).
     public static let titleInset: CGFloat = 22
+    /// The room a note's page keeps at its top: none for controls (nothing floats over a note), only what makes
+    /// the gap over the sheet the same as beside it (the page adds 24 pt of its own).
+    public static let notePageTop: CGFloat = 10
     /// The room the controls take at the card's top: screens and the note page leave this much space (their top
     /// inset) and run on under the controls.
     public static var barHeight: CGFloat { barPaddingTop + barControlHeight + barPaddingBottom }
@@ -171,6 +174,8 @@ public enum MacLook {
         public static let hover = Color(nsColor: .quaternaryLabelColor)
         /// A selected sidebar or list row (neutral, as Folevi's selection is black and white).
         public static let selection = Color(nsColor: .quaternaryLabelColor)
+        /// A capsule track's fill on the window's material (the title bar's tab track, its round buttons).
+        public static let track = Color(nsColor: .quaternaryLabelColor).opacity(0.7)
         /// A raised selection inside a track (the selected segment): white in light, a lighter grey in dark. Never
         /// the card's own dark fill there, which reads as a hole in the track.
         public static let raised = Color(nsColor: NSColor(name: "FoleviRaised") { $0.isDark ? NSColor(white: 1, alpha: 0.16) : .white })

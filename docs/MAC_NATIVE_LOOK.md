@@ -30,17 +30,20 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
   follows the window's active state): the title bar strip, the sidebar and the card's margins, with no divider
   between them. Everything else is one opaque card: `controlBackgroundColor`, 12 pt continuous corners, 8 pt margin
   trailing and bottom, shadow black 2%, radius 5, y 1.
-- **Title bar strip** (52 pt): the traffic lights, the sidebar's button at the sidebar's trailing end, Folevi's tabs
-  from the card's leading edge, a + after the last tab, the bell and (on a note) the inspector's button at the end.
-  A tab is a 28 pt capsule, its title centred; the open tab is a Liquid Glass capsule that slides between tabs. The
-  list keeps room round its tabs inside its clip (`WebTopBar.tabBleed`) so that capsule is never cut, and fades out
-  before the scroll arrows (`EdgeFade(trailingInset:)`): nothing is ever drawn under them.
-- **The card's controls** float in Liquid Glass at its top (`CardControls`), 36 pt, 12 pt in, 8 pt apart, in one
-  `GlassEffectContainer`: Back and Forward while there's history, the screen's title, the screen's own controls
-  (`CardItems`), search. The note page's top inset is their room (60 pt).
+- **Title bar strip** (52 pt): the traffic lights, the sidebar's button at the sidebar's trailing end; then, from
+  the card's leading edge, Back and Forward (always there, dimmed with nowhere to go), and the tab bar drawn as
+  Finder's (the owner, 2026-11-18): Home in a round button, the tabs in a grey capsule track (34 pt, `MacLook.Colors.track`)
+  with a hairline between two tabs that have no fill, each tab a 28 pt capsule of its own width (90 to 180 pt)
+  with its icon and title centred, the open one a Liquid Glass capsule inset 3 pt in the track, and a round + after
+  the track. With only Home open there is no track. The track clips its tabs, the list fades out before the scroll
+  arrows (`EdgeFade(trailingInset:)`), and hovering a tab's × hides the tab's picture so the × keeps its tooltip.
+  The bell and (on a note) the inspector's button are at the strip's end.
+- **The card's controls** float in Liquid Glass at a screen's top (`CardControls`), 36 pt, 12 pt in, 8 pt apart, in
+  one `GlassEffectContainer`: the screen's title, the screen's own controls (`CardItems`), search. Screens leave
+  their room (60 pt). **Nothing floats over a note**, so a note's page keeps no band for controls
+  (`MacLook.notePageTop`): the gap over the sheet is the same as beside it.
 - **No control twice.** Nothing in the card repeats a control already on screen: New note is the sidebar's row (its
-  glass button shows only while the sidebar is hidden), a note's Share is in the note's own bar, Tasks has no
-  shortcut to Calendar.
+  row, ⌘N and File > New Note), a note's Share is in the note's own bar, Tasks has no shortcut to Calendar.
 - **Sidebar** (240 pt, hidden by its button, ⌘\ and Focus mode): drawn directly in a scroll view (not `List`, not
   `NavigationSplitView`), 12 pt side inset. Rows are 32 pt with 2 pt between them, 8 pt corners, 13 pt labels,
   15 pt symbols in a 20 pt column, 10 pt content inset, 8 pt gap; folders indent 16 pt a level. Section headings
@@ -69,6 +72,13 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
 - **A screen in the other theme** (the Vault: dark in a light window, light in a dark one): the card's own chrome
   over it (fill, scroll edge effect, glass controls, Ask Foli AI, toasts) takes that theme too
   (`ContentViewController.syncChromeAppearance`).
+- **Settings groups** read as System Settings': the group's name (13 pt semibold), what it is for in small
+  secondary words under the name, then one rounded surface holding only the rows and controls
+  (`NativeSettingsCard`). A row is its name and helper leading, its control trailing. The category list shows no
+  focus ring, and the window doesn't open with the cursor in the search field.
+- **Foli AI's answers** in the native look are the system font laid out by the system (never snapped to the web's
+  line height, which set paragraphs over each other), in a quiet filled bubble; the floating chat is a Liquid Glass
+  panel; the composer has a hairline focus and a round accent send button.
 - **Menus and popovers** are the system's (`NSMenu`, `NSPopover`), not Folevi's own drawn menus.
 - **Other windows** (Settings, Quick Add, floating notes, sheets, alerts) keep their own native presentation and are
   never wrapped in the main window's shell.

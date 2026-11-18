@@ -538,16 +538,30 @@ private struct KeyRow: View {
     @State private var value = ""
     @State private var result: (ok: Bool, text: String)?
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.settingsNative) private var native
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: SettingsStyle.pair("key.name").light.gap) {
-                        SIcon(.keyRound, size: 14).foregroundStyle(SettingsStyle.pair("key.icon").resolve(scheme).color.color)
-                        SText(key.label, "key.name", lines: 1)
+                Group {
+                    if native {
+                        // The native look: the icon in the rows' icon column, the name and its state beside it.
+                        HStack(alignment: .center, spacing: 8) {
+                            SIcon(.keyRound, size: 14).foregroundStyle(SettingsStyle.pair("key.icon").resolve(scheme).color.color)
+                            VStack(alignment: .leading, spacing: 2) {
+                                SText(key.label, "key.name", lines: 1)
+                                SText(key.status, "key.status")
+                            }
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack(spacing: SettingsStyle.pair("key.name").light.gap) {
+                                SIcon(.keyRound, size: 14).foregroundStyle(SettingsStyle.pair("key.icon").resolve(scheme).color.color)
+                                SText(key.label, "key.name", lines: 1)
+                            }
+                            SText(key.status, "key.status").padding(.top, 2)
+                        }
                     }
-                    SText(key.status, "key.status").padding(.top, 2)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: 8) {
@@ -894,7 +908,11 @@ struct DesktopSettingsView: View {
         } else if let s = d?.settings {
             VStack(alignment: .leading, spacing: SettingsStyle.pair("card").light.margin.bottom) {
                 SettingsCard("Quick Add", description: "Add a task from any app without switching to Folevi. Write “tomorrow 9am”, “!high” or “#page” as you type; tasks without a page go to your Inbox.") {
+                    #if os(macOS)
+                    if native { nativeShortcut(s) } else { shortcut(s) }
+                    #else
                     shortcut(s)
+                    #endif
                 }
                 SettingsCard("On this Mac") {
                     SettingsDivided(rows(s), gap: 12, line: "row") { r in
@@ -930,6 +948,38 @@ struct DesktopSettingsView: View {
         }
         return true
     }
+
+    #if os(macOS)
+    /// The shortcut as a settings row (the native look): its name and what to do leading, the recorder and its
+    /// buttons trailing, as every other row.
+    private func nativeShortcut(_ s: DesktopData.Settings) -> some View {
+        let error = hint ?? s.error
+        return HStack(alignment: .center, spacing: MacLook.Space.s) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Shortcut").font(MacLook.Text.body).foregroundStyle(MacLook.Colors.label)
+                Text(error ?? (recording ? "Press the keys together. Esc cancels." : "Click, then press the keys you want."))
+                    .font(MacLook.Text.small)
+                    .foregroundStyle(error != nil ? MacLook.Colors.red : MacLook.Colors.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: MacLook.Space.m)
+            // The shortcut as a push button that records the next keys pressed (the accent ring while it does).
+            Button { recording ? stop() : start() } label: {
+                Text(recording ? "Press keys…" : s.shortcutLabel)
+                    .foregroundStyle(recording ? MacLook.Colors.secondary : MacLook.Colors.label)
+                    .frame(minWidth: 64)
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .overlay(Capsule().strokeBorder(MacLook.Colors.accent, lineWidth: recording ? 2 : 0).padding(-2))
+            .accessibilityLabel(recording ? "Press the new shortcut" : "Quick Add shortcut: \(s.shortcutLabel). Change")
+            if !s.quickAddShortcut.isEmpty { SButton("Turn off") { set("quickAddShortcut", .string("")) } }
+            if s.quickAddShortcut != s.defaultShortcut { SButton("Use \(s.defaultLabel)") { set("quickAddShortcut", .string(s.defaultShortcut)) } }
+        }
+        .frame(minHeight: 36)
+        .onDisappear { stop() }
+    }
+    #endif
 
     private func shortcut(_ s: DesktopData.Settings) -> some View {
         let field = SettingsStyle.pair("shortcut")

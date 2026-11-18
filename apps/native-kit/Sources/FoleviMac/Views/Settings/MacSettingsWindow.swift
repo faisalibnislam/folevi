@@ -336,6 +336,9 @@ struct MacSettingsSidebar: View {
             }
             .scrollIndicators(.automatic)
             .focusable()
+            // (The list takes the arrow keys, but shows no focus ring: the system drew a heavy frame round the whole
+            // column. The selected row is the cue, as in System Settings.)
+            .focusEffectDisabled()
             .focused($listFocused)
             .onKeyPress(.downArrow) { state.moveSelection(1); return .handled }
             .onKeyPress(.upArrow) { state.moveSelection(-1); return .handled }
@@ -421,7 +424,11 @@ struct SettingsSearchField: NSViewRepresentable {
         let field = NSSearchField()
         field.placeholderString = "Search"
         field.font = .systemFont(ofSize: NSFont.systemFontSize)
-        field.controlSize = .regular
+        field.controlSize = .large
+        // (The window doesn't open with the cursor in the search field and its focus ring lit: System Settings
+        // doesn't either. ⌘F and a click put it there.)
+        field.refusesFirstResponder = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak field] in field?.refusesFirstResponder = false }
         field.sendsSearchStringImmediately = true
         field.sendsWholeSearchString = false
         field.delegate = context.coordinator

@@ -1,11 +1,14 @@
 // The Mac's title bar in the native look (docs/MAC_NATIVE_LOOK.md; the owner's layout, 2026-11-18): the window's
 // top strip, with no toolbar inside the card:
 //
-//   ● ● ●  [sidebar]   [⌂] [Calendar] [× Kyoto in November] [Recipes] [+]  ..................  [bell] [inspector]
+//   ● ● ●  [sidebar]   ‹ ›  (⌂) [ Calendar | (× Kyoto in November) | Recipes ] (+)  .......  [bell] [inspector]
 //
-// The traffic lights; the sidebar's button at the sidebar's trailing end; Folevi's tabs from the content card's
-// leading edge: compact capsules, an SF Symbol and the title, the open one raised; a + after the last; the bell and,
-// on a note, the inspector's button at the strip's end. Empty strip space moves the window.
+// The traffic lights; the sidebar's button at the sidebar's trailing end; then, from the content card's leading
+// edge, Back and Forward and the tab bar drawn as Finder's (the owner, 2026-11-18): Home in a round button, the tabs in a grey capsule
+// track with a hairline between them, each its own width with its icon and title centred, the open one a Liquid
+// Glass capsule inset in the track, and a round + after the track. With only Home open there is no track, just the
+// two round buttons. The bell and, on a note, the inspector's button sit at the strip's end. Empty strip space
+// moves the window.
 //
 // Folevi's tab model is unchanged (WebTopBar.swift keeps it: pinned, joined and per-place tabs, folder tabs, close,
 // middle click, dragging to reorder, sideways scrolling, a picture on hover, the Tab Overview, the tab's menu); only
@@ -50,9 +53,20 @@ extension WebTopBar {
         .frame(width: hidden ? MacLook.trafficLightsRoom + 38 : MacLook.sidebarWidth)
     }
 
-    /// The tabs and the strip's trailing buttons, after its leading part.
+    /// Back and Forward, the tabs, and the strip's trailing buttons, after its leading part.
     private var tail: some View {
         HStack(spacing: 6) {
+            // Back and Forward stay put, dimmed with nowhere to go (Finder's and Safari's), so the tabs never shift
+            // and nothing floats over the page for them.
+            HStack(spacing: 0) {
+                stripButton("chevron.left", label: "Back", help: "Back (⌘[)") { model.goBack() }
+                    .disabled(!model.history.canGoBack)
+                    .opacity(model.history.canGoBack ? 1 : 0.35)
+                stripButton("chevron.right", label: "Forward", help: "Forward (⌘])") { model.goForward() }
+                    .disabled(!model.history.canGoForward)
+                    .opacity(model.history.canGoForward ? 1 : 0.35)
+            }
+            .padding(.trailing, 2)
             tabStrip
             Spacer(minLength: 8)
             stripButton("bell", label: "Notifications", help: "Notifications", anchored: true) { model.showNotifications?(bellAnchor) }
@@ -85,25 +99,34 @@ extension WebTopBar {
 
     // MARK: the tabs
 
-    /// Home, pinned; then the tabs, the only part that scrolls; a + after the last.
+    /// Home in its round button; then the tabs in their track, the only part that scrolls; a round + after it.
     private var tabStrip: some View {
-        HStack(spacing: 2) {
-            HStack(spacing: tabGap) {
+        HStack(spacing: MacLook.barSpacing) {
+            HStack(spacing: MacLook.barSpacing) {
                 if let home = model.tabs.tabs.first(where: \.isHome) {
                     macTab(home).fixedSize()
                 }
-                macTabs
-                    .layoutPriority(1)
-                    // The arrows while the tabs overflow, over the list's trailing end (the list keeps their room
-                    // after its last tab, so its width never depends on them).
-                    .overlay(alignment: .trailing) {
-                        if overflow.start || overflow.end {
-                            HStack(spacing: 0) {
-                                scrollChevron("chevron.left", "Scroll tabs left", enabled: overflow.start) { scrollTabs(-1) }
-                                scrollChevron("chevron.right", "Scroll tabs right", enabled: overflow.end) { scrollTabs(1) }
+                // (No empty track while Home is the only tab.)
+                if model.tabs.tabs.contains(where: { !$0.isHome }) {
+                    macTabs
+                        // The arrows while the tabs overflow, over the list's trailing end (the list keeps their
+                        // room after its last tab, so its width never depends on them).
+                        .overlay(alignment: .trailing) {
+                            if overflow.start || overflow.end {
+                                HStack(spacing: 0) {
+                                    scrollChevron("chevron.left", "Scroll tabs left", enabled: overflow.start) { scrollTabs(-1) }
+                                    scrollChevron("chevron.right", "Scroll tabs right", enabled: overflow.end) { scrollTabs(1) }
+                                }
                             }
                         }
-                    }
+                        // The track: a grey capsule round the tabs, each inset in it on every side (Finder's tab bar).
+                        // Nothing shows outside it: a tab scrolling away leaves under its rounded end.
+                        .padding(.horizontal, Self.trackInset)
+                        .frame(height: Self.trackHeight)
+                        .background(MacLook.Colors.track)
+                        .clipShape(Capsule())
+                        .layoutPriority(1)
+                }
             }
             .coordinateSpace(name: Self.strip)
             .animation(MacLook.animation(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion), value: model.tabs.activeID)
@@ -118,11 +141,29 @@ extension WebTopBar {
             #endif
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Tabs")
-            stripButton("plus", label: "New tab", help: "New Tab (⌘T)") {
+            trackCircle("plus", label: "New tab", help: "New Tab (⌘T)") {
                 model.open(.home)
                 model.barSearchFocus += 1
             }
         }
+    }
+
+    /// A tab's inset inside the track, and the track's height round the tabs.
+    static let trackInset = MacLook.capsuleInset
+    static var trackHeight: CGFloat { MacLook.tabHeight + trackInset * 2 }
+
+    /// A round button beside the track, on the track's own fill (Finder's +): a symbol, its tooltip and its name.
+    private func trackCircle(_ symbol: String, label: String, help: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            MacSymbol(symbol, size: 14, weight: .medium)
+                .frame(width: Self.trackHeight, height: Self.trackHeight)
+                .contentShape(Circle())
+        }
+        .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
+        .background(MacLook.Colors.track, in: Circle())
+        .foregroundStyle(MacLook.Colors.secondary)
+        .foleviTooltip(help)
+        .accessibilityLabel(label)
     }
 
     /// The arrows' room after the last tab while the tabs overflow (two 20 pt chevrons and a little air).
@@ -151,8 +192,9 @@ extension WebTopBar {
             // (Only the measures made at the width the list really has: see TabScroller.shownWidth.)
             if scroller.shownWidth == 0 || abs(m.visible - scroller.shownWidth) < 0.5 { measured(m) }
         }) {
-            ForEach(model.tabs.tabs.filter { !$0.isHome }) { t in
-                macTab(t)
+            let listed = model.tabs.tabs.filter { !$0.isHome }
+            ForEach(Array(listed.enumerated()), id: \.element.id) { i, t in
+                macTab(t, separator: i > 0 && !lit(t) && !lit(listed[i - 1]))
                     // Each tab its own width up to 180 pt, all shrinking together to 90 before the strip scrolls;
                     // Home and pinned tabs their icon's width, joined notes as wide as two.
                     .layoutValue(key: TabRoleKey.self, value: t.isHome || t.pinned ? .own : t.isJoined ? .joined : .other)
@@ -180,9 +222,16 @@ extension WebTopBar {
         .onChange(of: model.tabs.tabs.map(\.id)) { revealSoon() }
     }
 
-    /// One tab: a compact capsule, its symbol (the × in its place on the open tab and under the pointer) and its
-    /// title; the open one raised on the card's fill. Home and pinned tabs are their icon alone.
-    func macTab(_ t: FrameTab) -> some View {
+    /// A tab that draws a fill of its own (the open one, the one under the pointer, the one being dragged): the
+    /// hairlines beside it are hidden, as Finder's.
+    private func lit(_ t: FrameTab) -> Bool {
+        t.id == model.tabs.activeID || t.id == hoveredTab || t.id == dragging?.id
+    }
+
+    /// One tab: a capsule in the track, its icon (the × in its place on the open tab and under the pointer) and its
+    /// title, centred; the open one in Liquid Glass. Pinned tabs are their icon alone; Home is its icon in a round
+    /// button before the track. `separator`: a hairline in the gap before it.
+    func macTab(_ t: FrameTab, separator: Bool = false) -> some View {
         let active = t.id == model.tabs.activeID
         let label = model.tabs.label(t)
         let hovered = hoveredTab == t.id
@@ -219,10 +268,27 @@ extension WebTopBar {
         .padding(.horizontal, compact ? 0 : 10)
         .foregroundStyle(active ? MacLook.Colors.label : MacLook.Colors.secondary)
         // (A tab wider than its title keeps the title in its middle, so the strip's rhythm stays even.)
-        .frame(width: compact ? (t.isJoined ? 52 : 34) : nil, height: MacLook.tabHeight, alignment: .center)
+        // (Home is a circle as tall as the track; every other tab a capsule inside it.)
+        .frame(width: compact ? (t.isJoined ? 52 : Self.trackHeight) : nil, height: t.isHome ? Self.trackHeight : MacLook.tabHeight, alignment: .center)
         .frame(maxWidth: compact ? nil : .infinity, alignment: .center)
         .background {
-            if !active && hovered { Capsule().fill(MacLook.Colors.hover.opacity(0.5)) }
+            if t.isHome, !active {
+                // Home's own round button, on the track's fill.
+                Capsule().fill(MacLook.Colors.track)
+                if hovered { Capsule().fill(MacLook.Colors.hover.opacity(0.5)) }
+            } else if !active && hovered {
+                Capsule().fill(MacLook.Colors.hover.opacity(0.5))
+            }
+        }
+        // The hairline between two tabs, in the middle of the gap before this one.
+        .overlay(alignment: .leading) {
+            if separator {
+                Capsule().fill(MacLook.Colors.separator)
+                    .frame(width: 1, height: 14)
+                    .offset(x: -(tabGap + 1) / 2)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
         }
         // The open tab's capsule, in Liquid Glass on the window's material, slides here from the tab that had it (one
         // shape, matched across the strip).
@@ -299,6 +365,8 @@ extension WebTopBar {
         .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
         .foregroundStyle(MacLook.Colors.secondary)
         .opacity(visible ? 1 : 0)
+        // (On the ×, the tab's picture goes: it lay over the button's tooltip.)
+        .onHover { if $0 { model.preview.hide() } }
         // (Hidden, it takes no clicks: they select the tab.)
         .allowsHitTesting(visible)
         .accessibilityLabel("Close \(label)")

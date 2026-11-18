@@ -238,7 +238,7 @@ enum MacSettingsLook {
     /// The column's least margin from the pane's edges.
     static let contentMargin: CGFloat = MacLook.Space.xl
     /// The gap between groups on a page.
-    static let groupGap: CGFloat = MacLook.Space.l + MacLook.Space.xs
+    static let groupGap: CGFloat = MacLook.Space.xl + MacLook.Space.xs
     /// The window's first size, and the smallest it can be (the column and the list both still read whole).
     static let defaultSize = CGSize(width: 880, height: 640)
     static let minSize = CGSize(width: 660, height: 460)
@@ -303,7 +303,10 @@ struct SettingsFoundHighlight: ViewModifier {
     }
 }
 
-/// A Settings card in the native look: a FormGroup whose surface holds the card's words and controls.
+/// A Settings group in the native look, laid out as System Settings lays one out (the owner, 2026-11-18: "redo
+/// the settings page"): the group's name as a 13 pt semibold heading, what it is for in small secondary words
+/// under the name, and then one rounded surface that holds only the group's rows and controls. The explanation
+/// used to sit inside the surface, over the controls, which made every group a wall of grey text.
 struct NativeSettingsCard<Content: View>: View {
     let title: String
     let description: String?
@@ -311,18 +314,27 @@ struct NativeSettingsCard<Content: View>: View {
     let content: Content
 
     var body: some View {
-        FormGroup(title) {
-            VStack(alignment: .leading, spacing: MacLook.Space.s + 2) {
-                if let description {
-                    Text(description).font(MacLook.Text.small).foregroundStyle(MacLook.Colors.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                content.frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title).font(MacLook.Text.headline).foregroundStyle(MacLook.Colors.label)
+                .padding(.horizontal, MacLook.Space.xs)
+                .accessibilityAddTraits(.isHeader)
+            if let description {
+                Text(description).font(MacLook.Text.small).foregroundStyle(MacLook.Colors.secondary)
+                    .lineSpacing(1)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 520, alignment: .leading)
+                    .padding(.horizontal, MacLook.Space.xs)
+                    .padding(.top, 3)
             }
-            .padding(MacLook.Space.m)
+            content
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, MacLook.Space.m)
+                .padding(.vertical, MacLook.Space.s + 2)
+                .background(MacLook.Colors.hover.opacity(0.35), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(MacLook.Colors.separator.opacity(0.5)))
+                .padding(.top, MacLook.Space.s)
         }
-        .modifier(SettingsFoundHighlight(anchor: SettingsAnchor.card(anchor)))
+        .modifier(SettingsFoundHighlight(anchor: SettingsAnchor.card(anchor), radius: 12))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(title)
     }

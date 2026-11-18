@@ -585,7 +585,8 @@ public final class ContentViewController: NSViewController {
     /// 42 pt tall and the note's title slid under the bar. So the bar's height is sent divided by the zoom.
     private func sendInsets() {
         let zoom = max(0.1, (pageView as? WKWebView)?.pageZoom ?? 1)
-        model.editor(.insets(top: Double(model.barHeight / zoom), bottom: 0))
+        // (Nothing floats over a note, so the page keeps only MacLook.notePageTop, not the controls' room.)
+        model.editor(.insets(top: Double(MacLook.notePageTop / zoom), bottom: 0))
     }
 
     /// View > Zoom changed the page's zoom (the app says so): the page's top inset is sent again at the new size.

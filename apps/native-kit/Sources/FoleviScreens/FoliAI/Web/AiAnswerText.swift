@@ -95,6 +95,11 @@ private struct AiAnswerBlockContent: View, Equatable {
     let width: CGFloat
     @Environment(\.aiPhone) private var phone
     @Environment(\.colorScheme) private var scheme
+    /// The Mac's native look: the answer is set in the system font, with the system's own line height.
+    @Environment(\.nativeChrome) private var chrome
+
+    /// Extra room between an answer's lines in the system font (13 pt on 16 reads cramped over several lines).
+    private var nativeLineSpacing: CGFloat { chrome == nil ? 0 : 3 }
 
     nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.value == rhs.value && lhs.cited == rhs.cited && lhs.width == rhs.width
@@ -108,14 +113,25 @@ private struct AiAnswerBlockContent: View, Equatable {
         let body = WebTextStyle(size: p.fontSize, leading: p.lineHeight ?? 21.7, weight: 400, letterSpacing: p.letterSpacing)
         switch b.kind {
         case .paragraph:
-            AiLineSnap(leading: body.leading) {
-                paragraph(phone && width > 0 ? AiPrettyBreaks.source(b.source, style: body, width: width - p.padding.left - p.padding.right) : b.source, look: look, size: p.fontSize)
+            if chrome != nil {
+                // The system font lays its own lines out: snapping the paragraph to the web's line height cut it
+                // short and set the next block over its last lines.
+                paragraph(b.source, look: look, size: p.fontSize)
                     .webText(body)
+                    .lineSpacing(nativeLineSpacing)
+                    .foregroundStyle(look.ink)
+                    .padding(.vertical, 4)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                AiLineSnap(leading: body.leading) {
+                    paragraph(phone && width > 0 ? AiPrettyBreaks.source(b.source, style: body, width: width - p.padding.left - p.padding.right) : b.source, look: look, size: p.fontSize)
+                        .webText(body)
+                }
+                    .foregroundStyle(look.ink)
+                    .padding(.vertical, p.padding.top)
+                    .padding(.horizontal, p.padding.left)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-                .foregroundStyle(look.ink)
-                .padding(.vertical, p.padding.top)
-                .padding(.horizontal, p.padding.left)
-                .fixedSize(horizontal: false, vertical: true)
         case .heading(let level):
             // The note's headings (fb-heading): Instrument Sans, semibold, larger for the first levels.
             let size: CGFloat = level <= 1 ? 22 : level == 2 ? 18 : 16
@@ -140,14 +156,16 @@ private struct AiAnswerBlockContent: View, Equatable {
                 .frame(minWidth: 14, alignment: .trailing)
                 Text(inline(b.source, look: look, size: p.fontSize))
                     .webText(body)
+                    .lineSpacing(nativeLineSpacing)
                     .foregroundStyle(look.ink)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.leading, CGFloat(level) * 24 + 4)
-            .padding(.vertical, 1)
+            .padding(.leading, CGFloat(level) * 24 + (chrome == nil ? 4 : 0))
+            .padding(.vertical, chrome == nil ? 1 : 2)
         case .quote:
             Text(inline(b.source, look: look, size: p.fontSize))
                 .webText(body)
+                .lineSpacing(nativeLineSpacing)
                 .foregroundStyle(look.muted)
                 .padding(.leading, 14)
                 .overlay(alignment: .leading) { Rectangle().fill(look.color("color-line")).frame(width: 3) }

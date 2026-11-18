@@ -225,7 +225,8 @@ public struct WebTopBar: View {
     /// The room between two tabs in the list (the Mac's capsule track keeps them close).
     var tabGap: CGFloat {
         #if os(macOS)
-        2
+        // (Room for the hairline between two tabs, with air on both sides of it.)
+        5
         #else
         style("frame.tabs").gap
         #endif

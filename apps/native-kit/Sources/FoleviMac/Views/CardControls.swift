@@ -1,17 +1,17 @@
 // The content card's own controls on the Mac (docs/MAC_NATIVE_LOOK.md; the owner's layout, 2026-11-18): Liquid
 // Glass floating at the card's top, with no bar behind them. Content runs on under them.
 //
-//   (‹) (›)  Calendar  ..............................................  (🔍 ˅)      a screen
-//   (‹) (›)                                                                         a note
+//   Calendar  ......................................................  (🔍 ˅)      a screen
+//                                                                                   a note: nothing
 //
-// Leading: Back (and Forward) while there's history; on a screen its title. Trailing: on a screen its own controls
-// and the search control (it opens into the field on a click or ⌘K, and closes again on Escape while empty; typing
-// opens the palette with the query). ContentViewController hosts them over the card, letting every click outside
-// them through.
+// On a screen: its title, then trailing its own controls and the search control (it opens into the field on a click
+// or ⌘K, and closes again on Escape while empty; typing opens the palette with the query). ContentViewController
+// hosts them over the card, letting every click outside them through.
 //
-// Nothing here repeats a control that is already on screen (the owner, 2026-11-18: no unnecessary buttons): New
-// note is the sidebar's row (and ⌘N), so its glass button shows only while the sidebar is hidden; a note's Share is
-// in the note's own bar at the page's foot, so the card has none.
+// Nothing here repeats a control that is already on screen (the owner, 2026-11-18: no unnecessary buttons), and
+// nothing floats over a note: Back and Forward are in the title bar strip, New note is the sidebar's row (and ⌘N,
+// and File > New Note), a note's Share is in the note's own bar at the page's foot. So a note needs no empty band
+// at its top for controls (the owner, 2026-11-18: "weird empty space on the note page").
 #if os(macOS)
 import AppKit
 import SwiftUI
@@ -50,7 +50,6 @@ struct CardControls: View {
         .padding(.trailing, MacLook.barPaddingSides + (Self.panelBeside(model, width: width) ? MacLook.inspectorWidth : 0))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width = $0 }
-        .animation(MacLook.animation(reduceMotion), value: model.history.canGoBack)
         .animation(MacLook.animation(reduceMotion), value: searching)
         // ⌘K and Edit > Search All Notes: the search control opens and takes the keyboard.
         .onChange(of: model.barSearchFocus) {
@@ -63,16 +62,6 @@ struct CardControls: View {
     /// One line of the controls at a fit.
     private func row(note: Bool, items: CardItems?, fit: CardFit) -> some View {
         HStack(spacing: MacLook.barSpacing) {
-            if model.history.canGoBack {
-                circle("chevron.left", label: "Back", help: "Back (⌘[)") { model.goBack() }
-            }
-            if model.history.canGoForward {
-                circle("chevron.right", label: "Forward", help: "Forward (⌘])") { model.goForward() }
-            }
-            // (The sidebar's New note, here only while the sidebar is hidden.)
-            if model.sidebarHidden {
-                circle("plus", label: "New note", help: "New Note (⌘N)") { model.newNote() }
-            }
             if !note {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(Self.title(model))
@@ -85,8 +74,8 @@ struct CardControls: View {
                 }
                 .lineLimit(1)
                 .truncationMode(.tail)
-                // (With no button before it, the title starts on the page's own content edge.)
-                .padding(.leading, model.history.canGoBack || model.history.canGoForward || model.sidebarHidden ? 4 : MacLook.titleInset)
+                // (The title starts on the page's own content edge.)
+                .padding(.leading, MacLook.titleInset)
                 .layoutPriority(-1)
                 .allowsHitTesting(false)
                 if let items, !items.leading.isEmpty, fit != .folded {
@@ -101,20 +90,6 @@ struct CardControls: View {
                 search
             }
         }
-    }
-
-    /// A round glass button: a symbol, its tooltip (with the shortcut) and its accessible name.
-    private func circle(_ symbol: String, label: String, help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            MacSymbol(symbol, size: 15, weight: .medium)
-                .frame(width: MacLook.barControlHeight, height: MacLook.barControlHeight)
-                .contentShape(Circle())
-        }
-        .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
-        .foregroundStyle(MacLook.Colors.label)
-        .glassEffect(.regular.interactive(), in: .circle)
-        .foleviTooltip(help)
-        .accessibilityLabel(label)
     }
 
     /// The search control: a glass capsule with the magnifier that opens into the field.

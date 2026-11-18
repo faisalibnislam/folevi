@@ -40,6 +40,8 @@ struct WebTasksScreen: View {
     @Environment(\.colorScheme) private var scheme
     /// The Mac's native look (NativeChrome): a page title, small headings.
     @Environment(\.nativeChrome) private var chrome
+    /// The card's glass controls take the views and actions (the Mac's native look).
+    @Environment(\.cardSlot) private var slot
 
     init(model: TasksModel, frame: FrameModel) {
         self.model = model
@@ -72,10 +74,13 @@ struct WebTasksScreen: View {
                 VStack(alignment: .leading, spacing: 0) {
                     // The count and the actions on the list's own column (QA F15), lined up with the views, the
                     // filter and the tasks at any window width.
-                    header(count: loading ? nil : shown.count)
-                    seg
+                    if slot == nil {
+                        header(count: loading ? nil : shown.count)
+                        seg
+                    }
+                    // (The Mac's native look: the views, Calendar and Add task are in the card's glass controls.)
                     PlannerField(placeholder: "Filter by task or page", text: $model.filter, style: "tasks.filter", focused: $filterFocused)
-                        .padding(.top, 16)
+                        .padding(.top, slot == nil ? 16 : 12)
                         .accessibilityLabel("Filter tasks")
                     if loading {
                         VStack(spacing: 8) {
@@ -126,6 +131,24 @@ struct WebTasksScreen: View {
         .onAppear { model.setVisible(true) }
         .onDisappear { model.setVisible(false) }
         .accessibilityIdentifier("tasks-screen")
+        .cardItems(key: "\(model.view.rawValue)|\(loading ? -1 : shown.count)|\(WebTaskView.all.map { "\(model.count(for: $0.0) ?? -1)" }.joined(separator: ","))") {
+            cardItems(count: loading ? nil : shown.count)
+        }
+    }
+
+    /// The card's glass controls (CardItems.swift): the view's facts, the views with their counts, Calendar and
+    /// Add task (⌘N, as before).
+    private func cardItems(count: Int?) -> CardItems {
+        let label = WebTaskView.label(model.view)
+        var items = CardItems(subtitle: count.map { "\(label) · \($0) \(model.view == .completed ? "done" : "open")" } ?? label)
+        let frame = self.frame, tasks = self.tasks
+        items.trailing.append(.segmented("views", "Tasks views", WebTaskView.all.map { v, title in CardOption(id: v.rawValue, title: title, count: model.count(for: v)) }, selected: model.view.rawValue,
+                                         help: "Every task lives in a note. Open its page to see the context it was written in.") { id in
+            if let v = TaskViewName(rawValue: id) { frame.open(.tasks(v), .replace) }
+        })
+        items.trailing.append(.button("calendar", "Calendar", symbol: "calendar", help: "Open Calendar") { _ in frame.open(.calendar(nil)) })
+        items.trailing.append(.button("addTask", "Add task", symbol: "plus", help: "Add task (⌘N)") { _ in frame.showQuickAdd(in: tasks.window) })
+        return items
     }
 
     private func header(count: Int?) -> some View {

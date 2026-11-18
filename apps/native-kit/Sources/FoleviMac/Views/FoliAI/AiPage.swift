@@ -23,6 +23,8 @@ struct AiPageScreen: View {
     @State private var history: FoliHistoryModel?
     @State private var deleting: ChatConversationRow?
     @Environment(\.colorScheme) private var scheme
+    /// The card's glass controls take the conversation's title and options (the Mac's native look).
+    @Environment(\.cardSlot) private var slot
 
     var host: AiHost {
         AiHost(session: frame.session.value, frame: frame, openSettings: { [weak frame] section in frame?.host?.frameOpenSettings(section: section) })
@@ -43,7 +45,7 @@ struct AiPageScreen: View {
                             .overlay(alignment: .trailing) { Rectangle().fill(look.line70).frame(width: 1) }
                     }
                     VStack(spacing: 0) {
-                        header(look: look)
+                        if slot == nil { header(look: look) }
                         AiThreadView(model: model, variant: .page, host: host)
                     }
                     .frame(maxWidth: .infinity)
@@ -63,6 +65,20 @@ struct AiPageScreen: View {
         }
         .onChange(of: model.title) { _, t in frame.tabs.setTitle(model.isNew ? "New chat" : t, for: "view:ai") }
         .accessibilityIdentifier("screen.ai")
+        .cardItems(key: "\(model.conversationId ?? "")|\(model.isNew)|\(model.info?.title ?? "")|\(model.info?.shared ?? false)|\(model.info?.ephemeral ?? false)") { cardItems }
+    }
+
+    /// The conversation's options ("…") in the card's glass controls; its title is the tab's, after the card's +.
+    private var cardItems: CardItems {
+        var items = CardItems()
+        if !model.isNew, model.info != nil {
+            let model = self.model, host = self.host
+            let title = model.info?.title ?? ""
+            items.trailing.append(.more("Conversation options") {
+                AiConversationMenu.entries(model: model, host: host, id: model.conversationId ?? "", title: title, shared: model.info?.shared ?? false, ephemeral: model.info?.ephemeral ?? false, includeRows: false)
+            })
+        }
+        return items
     }
 
     private func sync() {

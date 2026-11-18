@@ -27,28 +27,16 @@ struct CardControls: View {
 
     var body: some View {
         let note = model.route.isNote
+        // The screen's own controls (CardItems.swift), when it handed any.
+        let items = note ? nil : model.cardItems[model.route.tabKey]
         GlassEffectContainer(spacing: MacLook.barSpacing) {
-            HStack(spacing: MacLook.barSpacing) {
-                if model.history.canGoBack {
-                    circle("chevron.left", label: "Back", help: "Back (⌘[)") { model.goBack() }
+            if let items {
+                // As much as fits beside the title: everything; segmented groups as pull-downs; all in "…".
+                ViewThatFits(in: .horizontal) {
+                    ForEach(CardFit.allCases, id: \.self) { fit in row(note: note, items: items, fit: fit) }
                 }
-                if model.history.canGoForward {
-                    circle("chevron.right", label: "Forward", help: "Forward (⌘])") { model.goForward() }
-                }
-                circle("plus", label: "New note", help: "New Note (⌘N)") { model.newNote() }
-                if !note {
-                    Text(Self.title(model))
-                        .font(MacLook.Text.title3Strong)
-                        .foregroundStyle(MacLook.Colors.label)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .padding(.leading, 4)
-                        .layoutPriority(-1)
-                        .allowsHitTesting(false)
-                        .accessibilityAddTraits(.isHeader)
-                }
-                Spacer(minLength: MacLook.barSpacing)
-                if note { share } else { search }
+            } else {
+                row(note: note, items: nil, fit: .full)
             }
         }
         .padding(.top, MacLook.barPaddingTop)
@@ -66,6 +54,47 @@ struct CardControls: View {
             DispatchQueue.main.async { focused = true }
         }
         .macClickThrough()
+    }
+
+    /// One line of the controls at a fit.
+    private func row(note: Bool, items: CardItems?, fit: CardFit) -> some View {
+        HStack(spacing: MacLook.barSpacing) {
+            if model.history.canGoBack {
+                circle("chevron.left", label: "Back", help: "Back (⌘[)") { model.goBack() }
+            }
+            if model.history.canGoForward {
+                circle("chevron.right", label: "Forward", help: "Forward (⌘])") { model.goForward() }
+            }
+            circle("plus", label: "New note", help: "New Note (⌘N)") { model.newNote() }
+            if !note {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(Self.title(model))
+                        .font(MacLook.Text.title3Strong)
+                        .foregroundStyle(MacLook.Colors.label)
+                        .accessibilityAddTraits(.isHeader)
+                    if let sub = items?.subtitle, !sub.isEmpty {
+                        Text(sub).font(MacLook.Text.body).monospacedDigit().foregroundStyle(MacLook.Colors.secondary)
+                    }
+                }
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .padding(.leading, 4)
+                .layoutPriority(-1)
+                .allowsHitTesting(false)
+                if let items, !items.leading.isEmpty, fit != .folded {
+                    CardGroupsView(groups: items.leading, fit: fit)
+                }
+            }
+            Spacer(minLength: MacLook.barSpacing)
+            if note {
+                share
+            } else {
+                if let items {
+                    CardGroupsView(groups: fit == .folded ? items.leading + items.trailing : items.trailing, fit: fit)
+                }
+                search
+            }
+        }
     }
 
     /// A round glass button: a symbol, its tooltip (with the shortcut) and its accessible name.

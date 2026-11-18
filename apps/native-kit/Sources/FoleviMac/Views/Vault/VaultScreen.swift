@@ -149,11 +149,32 @@ private struct VaultHeader: View {
     @Bindable var model: VaultModel
     @Environment(\.colorScheme) private var scheme
     @Environment(\.nativeChrome) private var chrome
+    @Environment(\.cardSlot) private var slot
 
     var body: some View {
+        if slot != nil {
+            // The Mac's native look: the state after the title, Lock and "…" in the card's glass controls.
+            Color.clear.frame(height: 8)
+                .cardItems(key: "\(subtitle)|\(model.isOpen)|\(model.section)|\((model.value?.moreSections ?? []).count)") { cardItems }
+        } else {
+            row
+        }
+    }
+
+    private var cardItems: CardItems {
+        var items = CardItems(subtitle: subtitle)
+        if model.isOpen {
+            let model = self.model
+            items.trailing.append(.button("lock", "Lock", symbol: "lock", help: "Lock the Vault") { _ in model.lock() })
+            items.trailing.append(.more("More in the Vault") { [self] in menu })
+        }
+        return items
+    }
+
+    private var row: some View {
         let header = VS.style("vault.header", scheme)
         let sub = VS.style("vault.header.subtitle", scheme)
-        HStack(spacing: header.gap) {
+        return HStack(spacing: header.gap) {
             // (The Mac's native look: the page's title is the toolbar's, HIG toolbars; its state stays.)
             Text(subtitle).webText(sub.text).lineLimit(1).foregroundStyle(sub.color.color)
             Spacer(minLength: 0)

@@ -96,7 +96,13 @@ struct ReviewScreen: View {
         let v = model.value
         let region = moreStyle("more.review.region", scheme)
         VStack(spacing: 0) {
-            WebFactsRow(title: "Reviews", subtitle: v.map { _ in model.left > 0 ? "\(ReviewModel.cardCount(model.left)) to review" : "All caught up" }) {
+            WebFactsRow(title: "Reviews", subtitle: v.map { _ in model.left > 0 ? "\(ReviewModel.cardCount(model.left)) to review" : "All caught up" },
+                        card: v.map { v in
+                            let model = self.model
+                            return [.pullDown("newPerDay", "New cards a day", symbol: "rectangle.stack.badge.plus", help: v.newPerDay == 0 ? "No new cards" : "\(v.newPerDay) new cards a day") {
+                                ReviewModel.newPerDayOptions.map { n in WebMenuEntry(.item(n == 0 ? "No new cards" : "\(n) new cards a day", checked: n == v.newPerDay, id: "new.\(n)")) { model.setNewPerDay(n) } }
+                            }]
+                        } ?? [], cardKey: "\(v?.newPerDay ?? -1)") {
                 if let v {
                     WebBareSelect(label: v.newPerDay == 0 ? "No new cards" : "\(v.newPerDay) new cards a day",
                                   options: ReviewModel.newPerDayOptions.map { (String($0), $0 == 0 ? "No new cards" : "\($0) new cards a day") },

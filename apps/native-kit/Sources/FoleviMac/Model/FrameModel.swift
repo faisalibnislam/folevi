@@ -207,6 +207,9 @@ public final class FrameModel {
     /// The room the card's floating controls take at its top (MacLook.barHeight): screens and the note page start
     /// below it and run on under it.
     public var barHeight: CGFloat { MacLook.barHeight }
+    /// Each screen's own controls for the card's glass controls (CardItems.swift), by the screen's tab key: the one on
+    /// show is drawn before the search capsule.
+    var cardItems: [String: CardItems] = [:]
     /// The title bar's bell: the notifications popover, anchored to it (the sidebar's controller shows it).
     @ObservationIgnored public var showNotifications: (@MainActor (AppKit.NSView?) -> Void)?
     #endif

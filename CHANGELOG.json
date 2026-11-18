@@ -1,6 +1,20 @@
 {
   "releases": [
     {
+      "version": "1.4.48",
+      "build": 62,
+      "released": "2026-11-18T21:48:57+06:00",
+      "type": "patch",
+      "summary": "iPhone and iPad: plain notes with page breaks show each page as a card, as on the web and Mac.",
+      "improved": [
+        "iPhone: a plain note with page breaks shows its pages as cards on a light grey background with a soft shadow"
+      ],
+      "fixed": [
+        "iPhone and iPad: in dark mode, page cards stand out from the background"
+      ],
+      "tag": "v1.4.48"
+    },
+    {
       "version": "1.4.47",
       "build": 61,
       "released": "2026-11-18T21:29:47+06:00",

@@ -108,12 +108,14 @@ public enum TabStripMath {
     }
 
     /// Where to scroll so the open tab (`left`, `width`, in the content) is wholly in view and clear of the soft
-    /// edges, moving as little as possible (reveal); nil when it already is.
-    public static func reveal(left: CGFloat, width: CGFloat, scroll: CGFloat, visible: CGFloat, content: CGFloat) -> CGFloat? {
+    /// edges, moving as little as possible (reveal); nil when it already is. `trailingInset`: room at the list's
+    /// trailing end that controls drawn over it take (the Mac's arrows): the open tab stays clear of it too.
+    public static func reveal(left: CGFloat, width: CGFloat, scroll: CGFloat, visible: CGFloat, content: CGFloat, trailingInset: CGFloat = 0) -> CGFloat? {
         let right = left + width
-        let pad = max(0, min(fade + 4, (visible - width) / 2))
+        let room = max(0, visible - trailingInset)
+        let pad = max(0, min(fade + 4, (room - width) / 2))
         var to = scroll
-        if left - pad < to { to = left - pad } else if right + pad > to + visible { to = right + pad - visible }
+        if left - pad < to { to = left - pad } else if right + pad > to + room { to = right + pad - room }
         to = clamp(to.rounded(), visible: visible, content: content)
         return abs(to - scroll) < 1 ? nil : to
     }

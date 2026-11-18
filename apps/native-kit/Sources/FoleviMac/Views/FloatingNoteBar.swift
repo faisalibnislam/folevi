@@ -118,8 +118,7 @@ public struct FloatingNoteBar: View {
         let hint = on ? "Stop keeping on top" : "Keep on top"
         // The system's: the pin symbol (filled while on top), the quaternary hover fill, a tooltip.
         return Button(action: toggleOnTop) {
-            Image(systemName: on ? "pin.fill" : "pin")
-                .font(.system(size: 11, weight: .medium))
+            MacSymbol("pin", size: 12, weight: .medium)
                 .frame(width: 24, height: 22)
                 .foregroundStyle(on ? MacLook.Colors.label : MacLook.Colors.secondary)
                 .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(pinHover ? MacLook.Colors.hover : .clear))

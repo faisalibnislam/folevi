@@ -89,9 +89,13 @@ struct SIconButton: View {
         #if os(macOS)
         if native {
             Button(action: action) {
-                Image(systemName: SIcon.symbol(icon) ?? "circle").imageScale(.medium)
+                // (Folevi's own icon, as the web's Settings: the owner, 2026-11-18.)
+                WebIconView(icon, size: 16)
+                    .frame(width: MacLook.iconButton, height: MacLook.compactControlHeight)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
+            .foregroundStyle(MacLook.Colors.secondary)
             .foleviTooltip(label)
             .accessibilityLabel(label)
         } else {
@@ -117,7 +121,7 @@ struct SSpinner: View {
     }
 }
 
-/// A Folevi line icon, or its SF Symbol in the Settings window.
+/// A Folevi line icon (in the Settings window, sized to the rows' icon column).
 struct SIcon: View {
     let icon: WebIcon
     var size: CGFloat = 16
@@ -130,8 +134,9 @@ struct SIcon: View {
 
     var body: some View {
         #if os(macOS)
-        if native, let symbol = Self.symbol(icon) {
-            Image(systemName: symbol).font(.system(size: MacLook.rowSymbolSize)).frame(width: MacLook.rowIconSlot)
+        if native {
+            // (Folevi's own icon in the rows' icon column: the Mac's icons are the web's.)
+            WebIconView(icon, size: 17).frame(width: MacLook.rowIconSlot)
         } else {
             WebIconView(icon, size: size)
         }
@@ -336,7 +341,10 @@ struct NativeSettingsButton: View {
         let button = Button(role: variant == .danger ? .destructive : nil, action: action) {
             if let symbol { Label(title, systemImage: symbol) } else { Text(title) }
         }
-        .controlSize(small ? .small : .regular)
+        // (One size and shape for every push button, as the card's screens: the system's large, a capsule. A
+        // "small" one is the compact size, never the system's small.)
+        .controlSize(small ? .regular : MacLook.controlSize)
+        .buttonBorderShape(.capsule)
         .fixedSize()
         switch variant {
         case .primary:
@@ -360,14 +368,14 @@ struct NativeAccentButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(small ? MacLook.Text.small : MacLook.Text.body)
+            .font(MacLook.Text.body)
             .foregroundStyle(MacLook.Colors.onAccent)
             .lineLimit(1)
-            .padding(.horizontal, small ? MacLook.Space.s : MacLook.Space.m - 2)
-            .frame(minHeight: small ? 20 : 24)
-            .background(MacLook.Colors.accent, in: RoundedRectangle(cornerRadius: small ? 5 : 6, style: .continuous))
+            .padding(.horizontal, small ? MacLook.Space.m : 14)
+            .frame(minHeight: small ? MacLook.compactControlHeight : MacLook.controlHeight)
+            .background(MacLook.Colors.accent, in: Capsule())
             .opacity(enabled ? (configuration.isPressed ? 0.82 : 1) : 0.4)
-            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .contentShape(Capsule())
     }
 }
 

@@ -80,7 +80,8 @@ public final class FrameRootViewController: NSViewController {
         if on && native {
             if gateShown { leaveWebGate() }
             if gateHost == nil {
-                let host = ClickThroughHostingView(rootView: AnyView(WebGateScreen(model: gateModel).macClickThrough()))
+                // (System type and controls, as the rest of the app: docs/MAC_NATIVE_LOOK.md.)
+                let host = ClickThroughHostingView(rootView: AnyView(WebGateScreen(model: gateModel).macNativeChrome().macClickThrough()))
                 host.safeAreaRegions = []
                 host.frame = view.bounds
                 host.autoresizingMask = [.width, .height]
@@ -419,6 +420,8 @@ public final class ContentViewController: NSViewController {
     /// The card: its fill and quiet shadow behind (ContentCard), everything inside clipped to its corners.
     public override func loadView() {
         let root = ContentCard()
+        // (The window switched light and dark: the chrome over a screen in the other theme switches with it.)
+        root.onAppearanceChange = { [weak self] in self?.syncChromeAppearance() }
         view = root
         clip.wantsLayer = true
         clip.layer?.cornerRadius = MacLook.containerRadius
@@ -497,6 +500,28 @@ public final class ContentViewController: NSViewController {
         (view as? ContentCard)?.drawsCard = !note
         clip.layer?.masksToBounds = !note
         edge.isHidden = note || model.route.isNote
+        syncChromeAppearance()
+    }
+
+    /// A screen that draws itself in the other theme (the Vault: dark in a light window, light in a dark one).
+    static func drawsOtherTheme(_ route: FrameRoute) -> Bool {
+        if case .web(let path) = route { return path == "/vault" || path.hasPrefix("/vault/") }
+        return false
+    }
+
+    /// Over a screen in the other theme, the card's own chrome (its fill at the corners, the scroll edge effect, the
+    /// glass controls and their title, Ask Foli AI, toasts) takes that theme too: a light band and dark ink over the
+    /// dark Vault read as a stripe across it. The screen itself keeps the window's appearance (it flips its own
+    /// colours).
+    private func syncChromeAppearance() {
+        var look: NSAppearance?
+        if Self.drawsOtherTheme(model.route), !body.isHidden {
+            look = NSAppearance(named: view.effectiveAppearance.isDark ? .aqua : .darkAqua)
+        }
+        (view as? ContentCard)?.fillAppearance = look
+        for v in [edge, controls, askAiView, toasts] as [NSView?] where v?.appearance?.name != look?.name {
+            v?.appearance = look
+        }
     }
 
     /// Toasts sit at the bottom centre of the window, as the web's fixed toast region (not of the content card).
@@ -511,8 +536,9 @@ public final class ContentViewController: NSViewController {
 
     public override func viewDidLayout() {
         super.viewDidLayout()
-        // The floating chat is at most the window's height less 136 pt (the web's min(640px, 100dvh - 136px)).
-        let h = (view.window?.contentView?.bounds.height ?? view.bounds.height) - 136
+        // The floating chat ends under the card's own controls (it used to reach over the search control in a short
+        // window): the card's height less the controls' room and the chat's lift above the card's bottom edge.
+        let h = view.bounds.height - MacLook.barHeight - AiAskOverlay.panelLift
         if abs(askAi.maxHeight - h) > 0.5 { askAi.maxHeight = h }
     }
 
@@ -758,6 +784,11 @@ final class ContentCard: NSView {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not from a nib") }
 
+    /// The appearance the card's fill is drawn in when it isn't the window's (over a screen in the other theme).
+    var fillAppearance: NSAppearance? {
+        didSet { if fillAppearance?.name != oldValue?.name { needsDisplay = true } }
+    }
+
     /// Off on a note: the note's page draws its own card (and its panel beside it) on the window's material.
     var drawsCard = true {
         didSet {
@@ -767,11 +798,19 @@ final class ContentCard: NSView {
         }
     }
 
+    /// The window's appearance changed.
+    var onAppearanceChange: (() -> Void)?
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        onAppearanceChange?()
+    }
+
     override var wantsUpdateLayer: Bool { true }
 
     override func updateLayer() {
         var fill = NSColor.controlBackgroundColor.cgColor
-        effectiveAppearance.performAsCurrentDrawingAppearance { fill = NSColor.controlBackgroundColor.cgColor }
+        (fillAppearance ?? effectiveAppearance).performAsCurrentDrawingAppearance { fill = NSColor.controlBackgroundColor.cgColor }
         layer?.backgroundColor = drawsCard ? fill : NSColor.clear.cgColor
     }
 
@@ -866,7 +905,7 @@ final class ToastHostingView: ClickThroughHostingView<ToastStack> {
 struct TabOverviewHost: View {
     let model: FrameModel
     var body: some View {
-        if model.overviewShown { TabOverviewLayer(model: model) }
+        if model.overviewShown { TabOverviewLayer(model: model).macNativeChrome() }
     }
 }
 #endif

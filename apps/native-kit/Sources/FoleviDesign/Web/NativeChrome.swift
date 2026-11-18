@@ -111,16 +111,16 @@ public struct NativeBorderlessStyle: ButtonStyle {
         @Environment(\.isEnabled) private var enabled
 
         var body: some View {
+            // (As tall as a compact control, so a borderless action beside a push button isn't a sliver.)
             configuration.label
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
+                .padding(.horizontal, 8)
+                .frame(minHeight: 24)
                 .background {
                     if enabled, hovered || configuration.isPressed {
-                        RoundedRectangle(cornerRadius: radius, style: .continuous)
-                            .fill(chrome.hover.opacity(configuration.isPressed ? 1 : 0.6))
+                        Capsule().fill(chrome.hover.opacity(configuration.isPressed ? 1 : 0.6))
                     }
                 }
-                .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+                .contentShape(Capsule())
                 .opacity(enabled ? 1 : 0.4)
                 .onHover { hovered = $0 }
         }

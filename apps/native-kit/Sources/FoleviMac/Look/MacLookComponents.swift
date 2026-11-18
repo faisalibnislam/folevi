@@ -3,7 +3,7 @@
 //
 //   TopBar / BarGroup / BarButtonStyle / BarSearchField   the card's top bar: glass capsules, 36 pt
 //   CapsuleTrack                                          a capsule track with a capsule selection (H - 2 * inset)
-//   SidebarRow / SidebarHeading                           the compact row scale (13 pt, 14 pt symbol in 18 pt, 28 pt)
+//   SidebarRow / SidebarHeading                           the row scale (13 pt, 15 pt symbol in 20 pt, 32 pt + 2 pt)
 //   SidePanel                                             a flat, rounded panel in the card (the inspector)
 //   FormGroup / FormRow                                   grouped native settings rows
 //   EdgeFade                                              a scroll view's overflow cue, only while content continues
@@ -11,6 +11,76 @@
 import AppKit
 import SwiftUI
 import FoleviDesign
+
+// MARK: - Icons
+
+/// An interface icon. The Mac app's icons are Folevi's own, the web app's set, so the two match (the owner,
+/// 2026-11-18: "for the icons, use Folevi's from the web"); Foli AI wears its flower. `name` is an SF Symbol name
+/// (what the native look's views are written with): where Folevi's set has that icon it is drawn, and the system's
+/// symbol only where it has none (a filled status mark, a key cap).
+public struct MacSymbol: View {
+    let name: String
+    let size: CGFloat
+    let weight: Font.Weight
+
+    /// `size`: the point size an SF Symbol would be set at; Folevi's icon is drawn to the same visual size.
+    public init(_ name: String, size: CGFloat = MacLook.rowSymbolSize, weight: Font.Weight = .regular) {
+        self.name = name
+        self.size = size
+        self.weight = weight
+    }
+
+    public var body: some View {
+        if Self.flower.contains(name) {
+            AiMarkGlyph(size: size + 2)
+        } else if let icon = Self.icon(name) {
+            // (A lucide icon keeps 2 of its 24 units clear on every side: 15% larger, it is as big as the symbol.)
+            WebIconView(icon, size: (size * 1.15).rounded(), strokeWidth: stroke)
+        } else {
+            Image(systemName: name).font(.system(size: size, weight: weight))
+        }
+    }
+
+    /// The web's stroke (2 of 24 units), a touch heavier where the symbol was semibold or bold.
+    private var stroke: CGFloat {
+        switch weight {
+        case .semibold, .bold, .heavy, .black: 2.4
+        default: 2
+        }
+    }
+
+    /// Foli AI's own mark stands for these.
+    static let flower: Set<String> = ["sparkles", "wand.and.sparkles"]
+
+    /// Folevi's icon for an SF Symbol name: the ones the web app's own screens use for that meaning first, then the
+    /// menus' table (NativeMenu.symbols) read backwards.
+    static func icon(_ name: String) -> WebIcon? { preferred[name] ?? fromMenus[name] }
+
+    static let preferred: [String: WebIcon] = [
+        "house": .house, "tray": .inbox, "doc.on.doc": .files, "checkmark.square": .squareCheckBig, "calendar": .calendar,
+        "rectangle.stack": .layers, "person.2": .users, "lock": .lock, "plus.forwardslash.minus": .fileDiff,
+        "rectangle.3.group": .layoutTemplate, "archivebox": .archive, "trash": .trash, "folder": .folder, "number": .hash,
+        "doc.text": .fileText, "magnifyingglass": .search, "newspaper": .newspaper,
+        "point.3.connected.trianglepath.dotted": .waypoints, "gearshape": .settings, "questionmark.circle": .circleQuestionMark,
+        "list.bullet": .list, "bookmark": .bookmark, "sidebar.left": .panelLeft, "bell": .bell, "plus": .plus, "xmark": .x,
+        "chevron.left": .chevronLeft, "chevron.right": .chevronRight, "chevron.down": .chevronDown, "chevron.up": .chevronUp,
+        "chevron.up.chevron.down": .chevronsUpDown, "arrow.up.arrow.down": .arrowDownUp, "folder.badge.plus": .folderPlus,
+        "icloud": .cloud, "icloud.slash": .cloudOff, "ellipsis": .ellipsis, "macwindow": .appWindowMac,
+        "square.and.arrow.up": .share, "square.grid.2x2": .layoutGrid, "pin": .pin, "pin.slash": .pinOff,
+        "list.bullet.indent": .listTree, "bubble.left": .messageSquare, "checkmark.circle": .circleCheck,
+        "paperclip": .paperclip, "info.circle": .info, "paintpalette": .palette, "lifepreserver": .lifeBuoy,
+        "arrow.clockwise": .refreshCw, "arrow.triangle.2.circlepath": .refreshCw, "square.and.arrow.down": .download,
+    ]
+
+    static let fromMenus: [String: WebIcon] = {
+        var table: [String: WebIcon] = [:]
+        // (In the icons' own order, so a symbol that stands for several of them always gets the same one.)
+        for (icon, symbol) in NativeMenu.symbols.sorted(by: { $0.key.rawValue < $1.key.rawValue }) where table[symbol] == nil {
+            table[symbol] = icon
+        }
+        return table
+    }()
+}
 
 // MARK: - Top bar
 
@@ -85,7 +155,7 @@ public struct BarIconButton: View {
 
     public var body: some View {
         Button(action: action) {
-            Image(systemName: symbol).imageScale(.medium)
+            MacSymbol(symbol, size: 14)
         }
         .buttonStyle(BarButtonStyle())
         .foleviTooltip(label)
@@ -108,7 +178,7 @@ public struct BarSearchField: View {
 
     public var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass").foregroundStyle(MacLook.Colors.secondary)
+            MacSymbol("magnifyingglass", size: 13).foregroundStyle(MacLook.Colors.secondary)
             TextField(prompt, text: $text)
                 .textFieldStyle(.plain)
                 .font(MacLook.Text.body)
@@ -196,7 +266,7 @@ public struct CapsuleTrack<Item: Hashable, Label: View>: View {
                         .background {
                             if selected {
                                 Capsule()
-                                    .fill(MacLook.Colors.container)
+                                    .fill(MacLook.Colors.raised)
                                     .shadow(color: .black.opacity(0.12), radius: 1.5, y: 0.5)
                                     .matchedGeometryEffect(id: "selection", in: ns)
                             }
@@ -256,8 +326,7 @@ public struct SidebarRow<Trailing: View>: View {
                     .font(.system(size: MacLook.rowSymbolSize))
                     .frame(width: MacLook.rowIconSlot, height: MacLook.rowIconSlot, alignment: .center)
             } else if let symbol {
-                Image(systemName: symbol)
-                    .font(.system(size: MacLook.rowSymbolSize))
+                MacSymbol(symbol, size: MacLook.rowSymbolSize)
                     .foregroundStyle(selected ? MacLook.Colors.label : MacLook.Colors.secondary)
                     .frame(width: MacLook.rowIconSlot, alignment: .center)
             }
@@ -271,12 +340,15 @@ public struct SidebarRow<Trailing: View>: View {
                 .font(MacLook.Text.small)
                 .foregroundStyle(MacLook.Colors.secondary)
         }
-        .padding(.leading, 8 + CGFloat(level) * MacLook.rowIndent)
-        .padding(.trailing, 8)
+        .padding(.leading, MacLook.rowPadding + CGFloat(level) * MacLook.rowIndent)
+        .padding(.trailing, MacLook.rowPadding)
         .frame(height: MacLook.rowHeight)
         .background(background, in: RoundedRectangle(cornerRadius: MacLook.rowRadius, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: MacLook.rowRadius, style: .continuous))
         .onHover { hovered = $0 }
+        // (The air between rows is each row's own, so a list of them needs no spacing and has no dead strip wider
+        // than this between two hit targets.)
+        .padding(.vertical, MacLook.rowGap / 2)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(selected ? [.isSelected, .isButton] : [.isButton])
     }
@@ -316,9 +388,9 @@ public struct SidebarHeading<Trailing: View>: View {
             Spacer(minLength: 4)
             trailing.foregroundStyle(MacLook.Colors.secondary)
         }
-        .padding(.horizontal, 8)
-        .padding(.top, MacLook.Space.m)
-        .padding(.bottom, MacLook.Space.xs)
+        .padding(.horizontal, MacLook.rowPadding)
+        .padding(.top, MacLook.sectionGap)
+        .padding(.bottom, MacLook.headingGap)
         .accessibilityAddTraits(.isHeader)
     }
 }
@@ -406,13 +478,17 @@ public struct FormRow<Control: View>: View {
 // MARK: - Edge fade
 
 /// A soft fade at a horizontal scroll view's edge, shown only while content continues past that edge. Apply it as a
-/// mask to the scrolling layer (header and rows together), never to fixed controls.
+/// mask to the scrolling layer (header and rows together), never to fixed controls. `trailingInset`: room at the
+/// trailing end kept for controls drawn over the layer (the tab strip's arrows): the fade ends before it, and
+/// nothing shows under those controls while content continues there.
 public struct EdgeFade: ViewModifier {
     let leading: Bool
     let trailing: Bool
-    public init(leading: Bool, trailing: Bool) {
+    let trailingInset: CGFloat
+    public init(leading: Bool, trailing: Bool, trailingInset: CGFloat = 0) {
         self.leading = leading
         self.trailing = trailing
+        self.trailingInset = trailingInset
     }
 
     public func body(content: Content) -> some View {
@@ -423,6 +499,9 @@ public struct EdgeFade: ViewModifier {
                 Rectangle()
                 LinearGradient(colors: [.black, .black.opacity(trailing ? 0 : 1)], startPoint: .leading, endPoint: .trailing)
                     .frame(width: MacLook.edgeFadeWidth)
+                if trailingInset > 0 {
+                    Rectangle().opacity(trailing ? 0 : 1).frame(width: trailingInset)
+                }
             }
         }
     }

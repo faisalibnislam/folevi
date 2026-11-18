@@ -63,10 +63,12 @@ public struct WebButton: View {
     /// The Mac's native look (NativeChrome): the system's push button. Primary is the one prominent action, in the
     /// accent; danger a destructive button; secondary a bordered one; ghost and quiet borderless with a hover fill.
     @ViewBuilder private func nativeBody(_ chrome: NativeChrome) -> some View {
-        let label = HStack(spacing: 5) {
-            if let icon { WebIconView(icon, size: min(iconSize, 14)).opacity(iconOpacity) }
+        let label = HStack(spacing: 6) {
+            if let icon { WebIconView(icon, size: 14).opacity(iconOpacity) }
             Text(title).lineLimit(1).fixedSize()
         }
+        // One size and one shape for every push button (the owner, 2026-11-18): the control size the screen sets
+        // (the system's large, 28 pt), a capsule. The web's small buttons are the same size here: nothing is small.
         Group {
             switch variant {
             case .primary:
@@ -84,7 +86,7 @@ public struct WebButton: View {
                     .buttonStyle(NativeBorderlessStyle(chrome))
             }
         }
-        .controlSize(size == .sm ? .small : .regular)
+        .buttonBorderShape(.capsule)
     }
 
     @ViewBuilder private var webBody: some View {

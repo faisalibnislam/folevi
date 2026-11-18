@@ -24,7 +24,8 @@ extension WebTopBar {
             lead
             tail
         }
-        .padding(.trailing, 10)
+        // (The bell's hover capsule ends on the card's trailing edge.)
+        .padding(.trailing, MacLook.containerMargin)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         // (A tab's picture is placed from its tab's frame in the strip, and the strip starts at the window's top left.)
         .coordinateSpace(name: Self.space)
@@ -67,15 +68,16 @@ extension WebTopBar {
         }
     }
 
-    /// A button in the strip: a symbol in a 28 pt rounded square with the quiet hover, its tooltip and its name.
+    /// A button in the strip: a symbol in a 28 pt capsule (the tabs' shape) with the quiet hover, its tooltip and its
+    /// name.
     func stripButton(_ symbol: String, label: String, help: String, anchored: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol).font(.system(size: 14))
-                .frame(width: 30, height: MacLook.tabHeight)
+            MacSymbol(symbol, size: MacLook.iconButtonSymbol)
+                .frame(width: 32, height: MacLook.iconButton)
                 .contentShape(Rectangle())
                 .background { if anchored { MenuAnchor { bellAnchor = $0 } } }
         }
-        .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 7, style: .continuous))))
+        .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))
         .foregroundStyle(MacLook.Colors.secondary)
         .foleviTooltip(help)
         .accessibilityLabel(label)
@@ -125,10 +127,13 @@ extension WebTopBar {
 
     /// The arrows' room after the last tab while the tabs overflow (two 20 pt chevrons and a little air).
     static let arrowsRoom: CGFloat = 44
+    /// The room the list keeps round its tabs inside its clip, so the open tab's raised capsule (its glass and its
+    /// shadow) is never cut by the list's edge; the list is laid out as if it weren't there.
+    static let tabBleed = (x: CGFloat(6), y: CGFloat(10))
 
     private func scrollChevron(_ symbol: String, _ label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol).font(.system(size: 11, weight: .semibold))
+            MacSymbol(symbol, size: 12, weight: .semibold)
                 .frame(width: 20, height: MacLook.tabHeight)
                 .contentShape(Rectangle())
         }
@@ -140,7 +145,9 @@ extension WebTopBar {
     }
 
     private var macTabs: some View {
-        TabRow(gap: tabGap, padding: EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: overflow.start || overflow.end ? Self.arrowsRoom : 0), offset: scroller.scroll, titleBar: true, report: { m in
+        let arrows = overflow.start || overflow.end
+        let bleed = Self.tabBleed
+        return TabRow(gap: tabGap, padding: EdgeInsets(top: bleed.y, leading: bleed.x, bottom: bleed.y, trailing: bleed.x + (arrows ? Self.arrowsRoom : 0)), offset: scroller.scroll, titleBar: true, report: { m in
             // (Only the measures made at the width the list really has: see TabScroller.shownWidth.)
             if scroller.shownWidth == 0 || abs(m.visible - scroller.shownWidth) < 0.5 { measured(m) }
         }) {
@@ -158,11 +165,13 @@ extension WebTopBar {
         .animation(MacLook.animation(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion), value: model.tabs.tabs.map(\.id))
         .clipped()
         // Clipping only hides the tabs scrolled out of the list: they'd still take the pointer over Home and the
-        // arrows. The list takes the pointer only where it shows.
-        .contentShape(Rectangle())
-        // The soft edges, only while more tabs continue past that edge.
-        .modifier(EdgeFade(leading: overflow.start, trailing: overflow.end))
+        // arrows. The list takes the pointer only where it shows (never in the room kept for the open tab's shadow).
+        .contentShape(InsetRect(dx: bleed.x, dy: bleed.y))
+        // The soft edges, only while more tabs continue past that edge; nothing shows under the arrows.
+        .modifier(EdgeFade(leading: overflow.start, trailing: overflow.end, trailingInset: arrows ? Self.arrowsRoom : 0))
         .overlay(SidewaysScroll { dx in scrollTo(scroller.scroll + dx, animated: false) })
+        .padding(.horizontal, -bleed.x)
+        .padding(.vertical, -bleed.y)
         // The tab picture goes once the pointer leaves the strip (it stays while it moves between tabs).
         .onHover { if !$0 { model.preview.hide() } }
         .onAppear { scroller.pendingReveal = false }
@@ -182,11 +191,11 @@ extension WebTopBar {
         return HStack(spacing: 5) {
             if compact {
                 if t.isJoined, let panes = t.panes {
-                    ForEach(panes, id: \.self) { _ in Image(systemName: "doc.text").font(.system(size: 11)) }
+                    ForEach(panes, id: \.self) { _ in MacSymbol("doc.text", size: 11) }
                 } else if Self.wearsFlower(t.route) {
                     AiMarkGlyph(size: 13)
                 } else {
-                    Image(systemName: Self.symbol(for: t.route)).font(.system(size: 12, weight: active ? .semibold : .regular))
+                    WebIconView(Self.icon(for: t.route), size: 15, strokeWidth: active ? 2.3 : 2)
                 }
             } else {
                 ZStack {
@@ -195,7 +204,7 @@ extension WebTopBar {
                     } else if Self.wearsFlower(t.route) {
                         AiMarkGlyph(size: 12)
                     } else {
-                        Image(systemName: Self.symbol(for: t.route)).font(.system(size: 11))
+                        WebIconView(Self.icon(for: t.route), size: 14)
                     }
                 }
                 .frame(width: 16, height: 16)
@@ -209,18 +218,19 @@ extension WebTopBar {
         }
         .padding(.horizontal, compact ? 0 : 10)
         .foregroundStyle(active ? MacLook.Colors.label : MacLook.Colors.secondary)
-        .frame(width: compact ? (t.isJoined ? 52 : 34) : nil, height: MacLook.tabHeight, alignment: .leading)
-        .frame(maxWidth: compact ? nil : .infinity, alignment: .leading)
+        // (A tab wider than its title keeps the title in its middle, so the strip's rhythm stays even.)
+        .frame(width: compact ? (t.isJoined ? 52 : 34) : nil, height: MacLook.tabHeight, alignment: .center)
+        .frame(maxWidth: compact ? nil : .infinity, alignment: .center)
         .background {
             if !active && hovered { Capsule().fill(MacLook.Colors.hover.opacity(0.5)) }
         }
-        // The open tab's capsule slides here from the tab that had it (one shape, matched across the strip).
+        // The open tab's capsule, in Liquid Glass on the window's material, slides here from the tab that had it (one
+        // shape, matched across the strip).
         .background {
             if active {
                 Capsule()
-                    .fill(MacLook.Colors.container)
-                    .shadow(color: .black.opacity(0.14), radius: 0.5, y: 0.5)
-                    .shadow(color: .black.opacity(0.06), radius: 3, y: 1)
+                    .fill(.clear)
+                    .glassEffect(.regular, in: .capsule)
                     .matchedGeometryEffect(id: "open-tab", in: tabPill)
             }
         }
@@ -250,7 +260,7 @@ extension WebTopBar {
                 if i > 0 { Rectangle().fill(MacLook.Colors.separator).frame(width: 1, height: 14).padding(.horizontal, 4) }
                 let here = id == focus
                 HStack(spacing: 5) {
-                    Image(systemName: "doc.text").font(.system(size: 11))
+                    MacSymbol("doc.text", size: 11)
                     if !t.pinned {
                         MacTruncatingText(text: model.tabs.paneTitles[id] ?? "Untitled", font: here ? MacLook.Text.body.weight(.semibold) : MacLook.Text.body)
                             .opacity(active && !here ? 0.85 : 1)
@@ -269,7 +279,7 @@ extension WebTopBar {
     /// A note floating in its own window (Float note) says so on its tab; clicking brings that window forward.
     private func macFloatingBadge(_ id: String, label: String) -> some View {
         Button { model.floatNote(id) } label: {
-            Image(systemName: "macwindow").font(.system(size: 10)).frame(width: 18, height: 18).contentShape(Circle())
+            MacSymbol("macwindow", size: 10).frame(width: 18, height: 18).contentShape(Circle())
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
         .foregroundStyle(MacLook.Colors.secondary)
@@ -279,7 +289,7 @@ extension WebTopBar {
 
     private func macCloseButton(_ t: FrameTab, label: String, visible: Bool) -> some View {
         Button { model.closeTab(t.id) } label: {
-            Image(systemName: "xmark").font(.system(size: 9, weight: .semibold))
+            MacSymbol("xmark", size: 10, weight: .semibold)
                 .frame(width: 18, height: 18)
                 // (It takes clicks 3 points round it: a near miss no longer selects the tab instead, MAC-34.)
                 .padding(3)
@@ -294,40 +304,13 @@ extension WebTopBar {
         .accessibilityLabel("Close \(label)")
         .foleviTooltip("Close Tab (⌘W)")
     }
+}
 
-    /// The SF Symbol for a tab's page (WebTopBar.icon(for:) names the web's).
-    static func symbol(for route: FrameRoute) -> String {
-        switch route {
-        case .home: return "house"
-        case .notes(let v):
-            switch v {
-            case .starred: return "bookmark"
-            case .unsorted: return "tray"
-            case .templates: return "rectangle.3.group"
-            case .archive: return "archivebox"
-            case .trash: return "trash"
-            default: return "doc.on.doc"
-            }
-        case .folder: return "folder"
-        case .tag: return "number"
-        case .shared: return "person.2"
-        case .changes: return "plus.forwardslash.minus"
-        case .tasks: return "checkmark.square"
-        case .calendar: return "calendar"
-        case .note: return "doc.text"
-        case .search: return "magnifyingglass"
-        case .catchUp: return "newspaper"
-        case .web(let path):
-            if path.hasPrefix("/graph") { return "point.3.connected.trianglepath.dotted" }
-            if path.hasPrefix("/review") { return "rectangle.stack" }
-            if path.hasPrefix("/settings") { return "gearshape" }
-            if path.hasPrefix("/vault") { return "lock" }
-            if path == "/folders" { return "folder" }
-            if path == "/tags" { return "number" }
-            if path.hasPrefix("/help") { return "questionmark.circle" }
-            return "list.bullet"
-        }
-    }
+/// A rectangle inset by its own amounts on each axis (a hit shape smaller than what's drawn).
+struct InsetRect: Shape {
+    var dx: CGFloat
+    var dy: CGFloat
+    func path(in rect: CGRect) -> Path { Path(rect.insetBy(dx: dx, dy: dy)) }
 }
 
 /// A one-line label cut off at its end when it doesn't fit, with the whole of it as a tooltip only then (tooltips

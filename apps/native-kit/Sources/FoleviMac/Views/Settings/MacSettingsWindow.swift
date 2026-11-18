@@ -525,6 +525,8 @@ public struct MacSettingsNativePane: View {
         }
         .environment(\.settingsNative, true)
         .environment(\.settingsWindowed, true)
+        // (The same control size as the main window's screens.)
+        .controlSize(MacLook.controlSize)
         .environment(\.settingsHighlight, state.highlight)
         .environment(\.settingsLineBreaks, model.lineBreaks)
         .accessibilityElement(children: .contain)

@@ -34,7 +34,7 @@ public enum MacLook {
     public static let containerMargin: CGFloat = 8
     public static let containerRadius: CGFloat = 12
     /// Where the sidebar's content starts, under the strip.
-    public static let sidebarTop: CGFloat = 4
+    public static let sidebarTop: CGFloat = 2
     /// The sidebar's outer horizontal inset.
     public static let sidebarInset: CGFloat = 12
     /// The smallest window: sidebar, a usable card, and the card's controls without clipping.
@@ -59,6 +59,9 @@ public enum MacLook {
     public static let barControlHeight: CGFloat = 36
     /// The gap between controls.
     public static let barSpacing: CGFloat = 8
+    /// A screen's title with no control before it: inset from the controls' leading edge so that it starts where
+    /// the screens' content does (34 pt from the card's edge).
+    public static let titleInset: CGFloat = 22
     /// The room the controls take at the card's top: screens and the note page leave this much space (their top
     /// inset) and run on under the controls.
     public static var barHeight: CGFloat { barPaddingTop + barControlHeight + barPaddingBottom }
@@ -67,13 +70,26 @@ public enum MacLook {
 
     // MARK: Sidebar rows (the compact scale; Settings' category list reuses it)
 
-    public static let rowHeight: CGFloat = 28
+    // The owner asked for more breathing room in the sidebar (2026-11-18): rows 32 pt tall with 2 pt between
+    // them (macOS 26's own sidebars grew the same way), a larger symbol slot, wider gaps between sections.
+
+    /// A row's own height: its hover and selection fill.
+    public static let rowHeight: CGFloat = 32
+    /// The air between two rows' fills (half above, half below each row).
+    public static let rowGap: CGFloat = 2
+    /// From one row's top to the next row's.
+    public static var rowPitch: CGFloat { rowHeight + rowGap }
     public static let rowRadius: CGFloat = 8
-    public static let rowSymbolSize: CGFloat = 14
-    public static let rowIconSlot: CGFloat = 18
+    /// A row's content inset from its fill's leading and trailing edges.
+    public static let rowPadding: CGFloat = 10
+    public static let rowSymbolSize: CGFloat = 15
+    public static let rowIconSlot: CGFloat = 20
     public static let rowIconGap: CGFloat = 8
     /// One indentation step per hierarchy level (folders inside folders).
-    public static let rowIndent: CGFloat = 14
+    public static let rowIndent: CGFloat = 16
+    /// The air above a sidebar section's heading, and under it before its first row.
+    public static let sectionGap: CGFloat = 22
+    public static let headingGap: CGFloat = 6
 
     // MARK: Panels
 
@@ -89,7 +105,20 @@ public enum MacLook {
     public static let inspectorMinContent: CGFloat = 440
 
     /// A horizontal overflow fade at a scroll view's edge (only while content continues past that edge).
-    public static let edgeFadeWidth: CGFloat = 20
+    public static let edgeFadeWidth: CGFloat = 24
+
+    // MARK: Controls in the content (push buttons, pop-up buttons, text fields, segmented choices)
+
+    /// The one size of the system's controls in the card's screens, the Settings window, sheets and popovers.
+    public static let controlSize = ControlSize.large
+    /// That size's height: a push button, a field, a pop-up button. Folevi's own drawn buttons (the one prominent
+    /// action) match it.
+    public static let controlHeight: CGFloat = 28
+    /// A compact control's height, for an action inside a row.
+    public static let compactControlHeight: CGFloat = 24
+    /// An icon-only button's hit area and its symbol's size, everywhere outside the card's glass controls.
+    public static let iconButton: CGFloat = 28
+    public static let iconButtonSymbol: CGFloat = 15
 
     // MARK: Spacing scale
 
@@ -142,6 +171,9 @@ public enum MacLook {
         public static let hover = Color(nsColor: .quaternaryLabelColor)
         /// A selected sidebar or list row (neutral, as Folevi's selection is black and white).
         public static let selection = Color(nsColor: .quaternaryLabelColor)
+        /// A raised selection inside a track (the selected segment): white in light, a lighter grey in dark. Never
+        /// the card's own dark fill there, which reads as a hole in the track.
+        public static let raised = Color(nsColor: NSColor(name: "FoleviRaised") { $0.isDark ? NSColor(white: 1, alpha: 0.16) : .white })
         /// A side panel's flat fill.
         public static let panel = Color(nsColor: .quaternaryLabelColor).opacity(0.6)
         /// Folevi's accent: near black in light, near white in dark (the web's neutral chrome, tokens.css).
@@ -203,7 +235,12 @@ public extension View {
 struct MacNativeChromeModifier: ViewModifier {
     @Environment(\.macNativeLook) private var native
     func body(content: Content) -> some View {
-        content.environment(\.nativeChrome, native ? MacLook.chrome : nil)
+        content
+            .environment(\.nativeChrome, native ? MacLook.chrome : nil)
+            // One control size across the app (the owner, 2026-11-18: no small buttons, one size and weight): the
+            // system's large controls, 28 pt push buttons, pop-up buttons and fields with 13 pt labels. A control
+            // that must be smaller says so itself (a spinner inside a button, a row's inline action).
+            .controlSize(native ? MacLook.controlSize : .regular)
     }
 }
 

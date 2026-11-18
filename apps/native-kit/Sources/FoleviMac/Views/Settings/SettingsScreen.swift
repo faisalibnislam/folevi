@@ -298,7 +298,7 @@ struct SettingsInItsWindow: View {
 
     var body: some View {
         VStack(spacing: MacLook.Space.m) {
-            Image(systemName: "gearshape").font(.system(size: 28, weight: .regular)).foregroundStyle(MacLook.Colors.secondary)
+            MacSymbol("gearshape", size: 28, weight: .regular).foregroundStyle(MacLook.Colors.secondary)
             Text("Settings are in their own window").font(MacLook.Text.title3Strong).foregroundStyle(MacLook.Colors.label)
             Button("Open Settings") { open() }
                 .buttonStyle(.bordered)

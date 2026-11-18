@@ -275,7 +275,7 @@ struct WebNoteSidebar: View {
         let unread = tools?.comments.threads.contains { $0.unread && $0.status == .open } ?? false
         return CapsuleTrack(NoteToolTab.allCases, selection: Binding(get: { tab }, set: { choose($0) }), height: 30) { t, _ in
             ZStack(alignment: .topTrailing) {
-                Image(systemName: t.symbol).font(.system(size: 13))
+                MacSymbol(t.symbol, size: 13)
                 if t == .comments, unread {
                     Circle().fill(MacLook.Colors.red).frame(width: 6, height: 6).offset(x: 4, y: -2)
                 }

@@ -824,7 +824,7 @@ struct WebHomeScreen: View {
                 Button(action: action) {
                     HStack(spacing: 4) {
                         Text("See all")
-                        Image(systemName: "chevron.right").imageScale(.small)
+                        WebIconView(.chevronRight, size: 13)
                     }
                     .font(NativeLook.body)
                     .foregroundStyle(NativeLook.secondary)

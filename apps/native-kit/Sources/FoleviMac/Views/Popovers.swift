@@ -41,7 +41,7 @@ struct SyncPopover: View {
             }
             if s?.canRetry == true {
                 Button("Retry") { model.retrySync() }
-                    .controlSize(.small)
+                    .buttonBorderShape(.capsule)
                     .accessibilityIdentifier("sync.retry")
             }
         }
@@ -228,7 +228,7 @@ private struct ToastControl: View {
         Button(action: action) {
             Group {
                 if let symbol {
-                    Image(systemName: symbol).font(.system(size: 10, weight: .semibold)).foregroundStyle(MacLook.Colors.secondary)
+                    MacSymbol(symbol, size: 10, weight: .semibold).foregroundStyle(MacLook.Colors.secondary)
                         .frame(width: 20, height: 20)
                         .background(Circle().fill(hovered ? MacLook.Colors.hover : .clear))
                 } else {

@@ -1,13 +1,17 @@
 // The content card's own controls on the Mac (docs/MAC_NATIVE_LOOK.md; the owner's layout, 2026-11-18): Liquid
 // Glass floating at the card's top, with no bar behind them. Content runs on under them.
 //
-//   (‹) (›) (+)  Calendar  ..........................................  (🔍 ˅)      a screen
-//   (‹) (+)  ..........................................................  (Share)    a note
+//   (‹) (›)  Calendar  ..............................................  (🔍 ˅)      a screen
+//   (‹) (›)                                                                         a note
 //
-// Leading: Back (and Forward) while there's history, New note; on a screen its title. Trailing: on a screen the
-// search control (it opens into the field on a click or ⌘K, and closes again on Escape while empty; typing opens
-// the palette with the query), on a note Share (the note's own). ContentViewController hosts them over the card,
-// letting every click outside them through.
+// Leading: Back (and Forward) while there's history; on a screen its title. Trailing: on a screen its own controls
+// and the search control (it opens into the field on a click or ⌘K, and closes again on Escape while empty; typing
+// opens the palette with the query). ContentViewController hosts them over the card, letting every click outside
+// them through.
+//
+// Nothing here repeats a control that is already on screen (the owner, 2026-11-18: no unnecessary buttons): New
+// note is the sidebar's row (and ⌘N), so its glass button shows only while the sidebar is hidden; a note's Share is
+// in the note's own bar at the page's foot, so the card has none.
 #if os(macOS)
 import AppKit
 import SwiftUI
@@ -65,7 +69,10 @@ struct CardControls: View {
             if model.history.canGoForward {
                 circle("chevron.right", label: "Forward", help: "Forward (⌘])") { model.goForward() }
             }
-            circle("plus", label: "New note", help: "New Note (⌘N)") { model.newNote() }
+            // (The sidebar's New note, here only while the sidebar is hidden.)
+            if model.sidebarHidden {
+                circle("plus", label: "New note", help: "New Note (⌘N)") { model.newNote() }
+            }
             if !note {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(Self.title(model))
@@ -78,7 +85,8 @@ struct CardControls: View {
                 }
                 .lineLimit(1)
                 .truncationMode(.tail)
-                .padding(.leading, 4)
+                // (With no button before it, the title starts on the page's own content edge.)
+                .padding(.leading, model.history.canGoBack || model.history.canGoForward || model.sidebarHidden ? 4 : MacLook.titleInset)
                 .layoutPriority(-1)
                 .allowsHitTesting(false)
                 if let items, !items.leading.isEmpty, fit != .folded {
@@ -86,9 +94,7 @@ struct CardControls: View {
                 }
             }
             Spacer(minLength: MacLook.barSpacing)
-            if note {
-                share
-            } else {
+            if !note {
                 if let items {
                     CardGroupsView(groups: fit == .folded ? items.leading + items.trailing : items.trailing, fit: fit)
                 }
@@ -100,7 +106,7 @@ struct CardControls: View {
     /// A round glass button: a symbol, its tooltip (with the shortcut) and its accessible name.
     private func circle(_ symbol: String, label: String, help: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol).font(.system(size: 15, weight: .medium))
+            MacSymbol(symbol, size: 15, weight: .medium)
                 .frame(width: MacLook.barControlHeight, height: MacLook.barControlHeight)
                 .contentShape(Circle())
         }
@@ -109,26 +115,6 @@ struct CardControls: View {
         .glassEffect(.regular.interactive(), in: .circle)
         .foleviTooltip(help)
         .accessibilityLabel(label)
-    }
-
-    /// The note's Share (its own share sheet, as the note's menu opens it).
-    private var share: some View {
-        Button { model.noteMenu(.share) } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "square.and.arrow.up")
-                Text("Share")
-            }
-            .font(MacLook.Text.body.weight(.medium))
-            .padding(.horizontal, 14)
-            .frame(height: MacLook.barControlHeight)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule())))
-        .foregroundStyle(MacLook.Colors.label)
-        .glassEffect(.regular.interactive(), in: .capsule)
-        .fixedSize()
-        .foleviTooltip("Share this note")
-        .accessibilityLabel("Share")
     }
 
     /// The search control: a glass capsule with the magnifier that opens into the field.
@@ -151,8 +137,8 @@ struct CardControls: View {
                 DispatchQueue.main.async { focused = true }
             } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "magnifyingglass").font(.system(size: 14, weight: .medium))
-                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(MacLook.Colors.secondary)
+                    MacSymbol("magnifyingglass", size: 14, weight: .medium)
+                    MacSymbol("chevron.down", size: 9, weight: .semibold).foregroundStyle(MacLook.Colors.secondary)
                 }
                 .padding(.horizontal, 13)
                 .frame(height: MacLook.barControlHeight)

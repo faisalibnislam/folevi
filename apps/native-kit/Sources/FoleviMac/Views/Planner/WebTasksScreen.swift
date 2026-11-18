@@ -146,7 +146,8 @@ struct WebTasksScreen: View {
                                          help: "Every task lives in a note. Open its page to see the context it was written in.") { id in
             if let v = TaskViewName(rawValue: id) { frame.open(.tasks(v), .replace) }
         })
-        items.trailing.append(.button("calendar", "Calendar", symbol: "calendar", help: "Open Calendar") { _ in frame.open(.calendar(nil)) })
+        // (No shortcut to Calendar here: its row is right under Tasks in the sidebar. The owner, 2026-11-18: no
+        // button that repeats one already on screen.)
         items.trailing.append(.button("addTask", "Add task", symbol: "plus", help: "Add task (⌘N)") { _ in frame.showQuickAdd(in: tasks.window) })
         return items
     }

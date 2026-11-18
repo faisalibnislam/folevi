@@ -916,6 +916,7 @@ final class SettingsDialogWindow: NSPanel {
         let parent = window.sheetParent ?? window
         let host = ClickThroughHostingView(rootView: content()
             .environment(\.settingsNative, true)
+            .controlSize(MacLook.controlSize)
             .environment(\.settingsWindowed, true)
             .macClickThrough())
         let size = host.fittingSize

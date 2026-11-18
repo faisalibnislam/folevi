@@ -31,7 +31,8 @@ extension WebSidebar {
             .foleviTooltip("New Note (⌘N)")
             .accessibilityLabel("New note")
             .padding(.horizontal, MacLook.sidebarInset)
-            .padding(.bottom, MacLook.Space.xs)
+            .padding(.top, MacLook.Space.xs)
+            .padding(.bottom, MacLook.Space.s)
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     macDestinations
@@ -41,10 +42,10 @@ extension WebSidebar {
                         macItem(.notes(.archive), symbol: "archivebox", title: "Archive")
                         macItem(.notes(.trash), symbol: "trash", title: "Trash")
                     }
-                    .padding(.top, MacLook.Space.m)
+                    .padding(.top, MacLook.sectionGap)
                 }
                 .padding(.horizontal, MacLook.sidebarInset)
-                .padding(.bottom, MacLook.Space.s)
+                .padding(.bottom, MacLook.Space.m)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.automatic)
@@ -101,7 +102,12 @@ extension WebSidebar {
             if (count(.reviews) ?? 0) > 0 || model.route.tabKey == FrameRoute.web("/review").tabKey {
                 macItem(.web("/review"), symbol: "rectangle.stack", title: "Reviews", count: count(.reviews))
             }
-            if caps?.sharing ?? false { macItem(.shared, symbol: "person.2", title: "Shared with Me") }
+            if caps?.sharing ?? false {
+                // (The web's row icon: share-2.)
+                macItem(.shared, title: "Shared with Me") {
+                    WebIconView(.share2, size: 17).foregroundStyle(isSelected(.shared) ? MacLook.Colors.label : MacLook.Colors.secondary)
+                }
+            }
             // The Vault where there's one for this person (vault.summary; a library's own Vault too, plan 5.6).
             VaultSidebarRow(model: model) { macItem(.web("/vault"), symbol: "lock", title: "Vault") }
             if caps?.changes ?? false { macItem(.changes, symbol: "plus.forwardslash.minus", title: "Changes", count: count(.changes)) }
@@ -115,7 +121,7 @@ extension WebSidebar {
     /// tab behind this one (FolderTabClicks).
     func macItem(_ route: FrameRoute, symbol: String, title: String, level: Int = 0, count: Int? = nil, newTab: Bool = false) -> some View {
         macItem(route, title: title, level: level, count: count, newTab: newTab) {
-            Image(systemName: symbol).foregroundStyle(isSelected(route) ? MacLook.Colors.label : MacLook.Colors.secondary)
+            MacSymbol(symbol, size: MacLook.rowSymbolSize).foregroundStyle(isSelected(route) ? MacLook.Colors.label : MacLook.Colors.secondary)
         }
     }
 
@@ -135,10 +141,9 @@ extension WebSidebar {
     /// A disclosure chevron in a row or a heading: pointing right when closed, turned down when open.
     func disclosure(open: Bool, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: "chevron.right")
-                .font(.system(size: 10, weight: .semibold))
+            MacSymbol("chevron.right", size: 11, weight: .semibold)
                 .rotationEffect(.degrees(open ? 90 : 0))
-                .frame(width: 18, height: 18)
+                .frame(width: 22, height: 22)
                 .contentShape(Rectangle())
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
@@ -181,25 +186,25 @@ extension WebSidebar {
                     .transition(.opacity)
             }
         }
-        .padding(.top, MacLook.Space.s)
     }
 
     /// A quiet line in a section ("No folders yet"), at the rows' label edge.
     private func note(_ text: String) -> some View {
         Text(text).font(MacLook.Text.small).foregroundStyle(MacLook.Colors.secondary)
-            .padding(.leading, 8 + MacLook.rowIconSlot + MacLook.rowIconGap)
-            .frame(minHeight: MacLook.rowHeight, alignment: .leading)
+            .padding(.leading, MacLook.rowPadding + MacLook.rowIconSlot + MacLook.rowIconGap)
+            .frame(minHeight: MacLook.rowPitch, alignment: .leading)
     }
 
     /// Show more, Show less, "+3 more": a row of secondary text at the rows' label edge.
     private func linkRow(_ text: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(text).font(MacLook.Text.body).foregroundStyle(MacLook.Colors.secondary)
-                .padding(.leading, 8 + MacLook.rowIconSlot + MacLook.rowIconGap)
+                .padding(.leading, MacLook.rowPadding + MacLook.rowIconSlot + MacLook.rowIconGap)
                 .frame(maxWidth: .infinity, minHeight: MacLook.rowHeight, alignment: .leading)
                 .contentShape(Rectangle())
         }
         .buttonStyle(SidebarRowButtonStyle(hoverFill: true))
+        .padding(.vertical, MacLook.rowGap / 2)
     }
 
     // MARK: folders
@@ -217,17 +222,15 @@ extension WebSidebar {
                     WebMenuEntry(.item(o.title, checked: o == sort)) { folderSortRaw = o.rawValue }
                 }
             }) {
-                Image(systemName: "arrow.up.arrow.down")
-                    .font(.system(size: 11, weight: .medium))
-                    .frame(width: 18, height: 18)
+                MacSymbol("arrow.up.arrow.down", size: 13, weight: .medium)
+                    .frame(width: 24, height: 22)
                     .contentShape(Rectangle())
             }
             .foleviTooltip("Sort Folders")
             .accessibilityLabel("Sort folders")
             Button { FrameDialogs.newFolder(model) } label: {
-                Image(systemName: "folder.badge.plus")
-                    .font(.system(size: 11, weight: .medium))
-                    .frame(width: 18, height: 18)
+                MacSymbol("folder.badge.plus", size: 13, weight: .medium)
+                    .frame(width: 24, height: 22)
                     .contentShape(Rectangle())
             }
             .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
@@ -255,11 +258,11 @@ extension WebSidebar {
         let closed = Set(closedFolders.split(separator: ",").map(String.init))
         // The open folder's own ancestors are always open (Sidebar.tsx activePath).
         let open = !closed.contains(f.id) || activePath(all).contains(f.id)
-        let tint = FolderColor.resolve(f.color).color.color
         return AnyView(VStack(alignment: .leading, spacing: 0) {
             HoverReveal { hovered in
                 macItem(.folder(f.id), title: f.name, level: f.depth + 1) {
-                    Image(systemName: "folder.fill").foregroundStyle(tint)
+                    // (The web's folder glyph, in the folder's colour.)
+                    FolderGlyph(colorId: f.color, size: 18)
                 }
                 .onMiddleClick { model.openInBackground(.folder(f.id), title: f.name) }
                 .overlay(alignment: .leading) {
@@ -269,11 +272,11 @@ extension WebSidebar {
                             if open { next.insert(f.id) } else { next.remove(f.id) }
                             withAnimation(MacLook.animation(reduceMotion)) { closedFolders = next.sorted().joined(separator: ",") }
                         }
-                        .padding(.leading, 8 + CGFloat(f.depth) * MacLook.rowIndent - 4)
+                        .padding(.leading, MacLook.rowPadding + CGFloat(f.depth) * MacLook.rowIndent - 4)
                     }
                 }
                 .overlay(alignment: .trailing) {
-                    RowMoreButton(label: "Folder options for \(f.name)", shown: hovered, size: 20, iconSize: 12) { folderMenu(f) }
+                    RowMoreButton(label: "Folder options for \(f.name)", shown: hovered, size: 24, iconSize: 14) { folderMenu(f) }
                         .padding(.trailing, 4)
                 }
             }
@@ -287,14 +290,14 @@ extension WebSidebar {
                     case .before, .after:
                         Capsule().fill(MacLook.Colors.accent).frame(height: 2)
                             .frame(maxHeight: .infinity, alignment: zone == .before ? .top : .bottom)
-                            .padding(.leading, 8 + CGFloat(f.depth + 1) * MacLook.rowIndent)
+                            .padding(.leading, MacLook.rowPadding + CGFloat(f.depth + 1) * MacLook.rowIndent)
                             .allowsHitTesting(false)
                     }
                 }
             }
             // (One target for notes and folders: two stacked drop destinations only honour the outer one.)
             .onDrop(of: [.foleviNoteRef, .foleviFolderRef], delegate: FolderDrop(
-                folderId: f.id, axis: .vertical, length: canEdit ? MacLook.rowHeight : 0,
+                folderId: f.id, axis: .vertical, length: canEdit ? MacLook.rowPitch : 0,
                 zone: Binding(get: { dropTarget == f.id ? dropZone : nil }, set: { z in
                     if let z {
                         dropTarget = f.id
@@ -331,12 +334,13 @@ extension WebSidebar {
             if tags.isEmpty { note("Tag documents from the inspector") }
             ForEach(Array(tags.prefix(Self.limit)), id: \.id) { t in
                 let row = macItem(.tag(t.id), title: t.name) {
-                    Image(systemName: "number").foregroundStyle(isSelected(.tag(t.id)) ? MacLook.Colors.label : MacLook.Colors.secondary)
+                    // (The web's: the hash in the tag's colour.)
+                    WebIconView(.hash, size: 16).foregroundStyle(Self.tagColor(t.color))
                 }
                 if canEdit {
                     HoverReveal { hovered in
                         row.overlay(alignment: .trailing) {
-                            RowMoreButton(label: "Tag options for \(t.name)", shown: hovered, size: 20, iconSize: 12) { tagMenu(t) }
+                            RowMoreButton(label: "Tag options for \(t.name)", shown: hovered, size: 24, iconSize: 14) { tagMenu(t) }
                                 .padding(.trailing, 4)
                         }
                     }
@@ -361,13 +365,14 @@ extension WebSidebar {
         return Button { actions.account(accountAnchor) } label: {
             HStack(spacing: MacLook.rowIconGap) {
                 WebAvatar(name: foot.markName, url: foot.markUrl, size: 20)
-                    .frame(width: MacLook.rowIconSlot + 2)
+                    .frame(width: MacLook.rowIconSlot)
                 Text(foot.title).font(MacLook.Text.headline).foregroundStyle(MacLook.Colors.label).lineLimit(1)
-                Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(MacLook.Colors.secondary)
+                MacSymbol("chevron.down", size: 10, weight: .semibold).foregroundStyle(MacLook.Colors.secondary)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 6)
-            .frame(height: 32)
+            // (The picture sits in the rows' icon column, the name on their labels' edge.)
+            .padding(.horizontal, MacLook.rowPadding)
+            .frame(height: 36)
             .contentShape(Rectangle())
             .background(MenuAnchor { accountAnchor = $0 })
         }
@@ -378,14 +383,15 @@ extension WebSidebar {
 
     /// Small buttons at the bottom: the sync status, Settings, Help.
     private var macFooter: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 4) {
             MacSyncStatus(model: model) { actions.sync($0) }
             MacFooterButton(symbol: "gearshape", label: "Settings", help: "Settings (⌘,)") { _ in model.host?.frameOpenSettings(section: nil) }
             MacFooterButton(symbol: "questionmark.circle", label: "Help", help: "Help") { _ in model.host?.frameOpenHelp() }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, MacLook.sidebarInset - 2)
-        .padding(.vertical, 6)
+        // (The first button's symbol sits in the rows' icon column: 28 pt buttons round a 20 pt slot.)
+        .padding(.horizontal, MacLook.sidebarInset + MacLook.rowPadding - 4)
+        .padding(.vertical, MacLook.Space.s)
         .background {
             // The window's own material, so the list scrolls away under the footer rather than through it.
             WindowMaterial().allowsHitTesting(false)
@@ -397,26 +403,29 @@ extension WebSidebar {
     }
 }
 
-/// The sync state in the sidebar's footer: a cloud with the system's green when saved (the web's SyncStatus); it
-/// opens the sync details.
+/// The sync state in the sidebar's footer: a cloud with a dot in the state's status colour (green saved, orange
+/// while saving or syncing, red for a conflict or an error, quiet offline), as the popover it opens says it.
 private struct MacSyncStatus: View {
     let model: FrameModel
     let action: (NSView?) -> Void
     @State private var anchor: NSView?
 
     var body: some View {
-        Button { action(anchor) } label: {
+        let s = model.sync.value
+        let state = s?.indicator ?? .syncing()
+        let headline = s?.headline ?? "Connecting…"
+        return Button { action(anchor) } label: {
             ZStack(alignment: .bottomTrailing) {
-                Image(systemName: "icloud").font(.system(size: 13)).foregroundStyle(MacLook.Colors.secondary)
-                Circle().fill(MacLook.Colors.green).frame(width: 6, height: 6).offset(x: 1, y: 1)
+                MacSymbol("icloud", size: MacLook.iconButtonSymbol).foregroundStyle(MacLook.Colors.secondary)
+                Circle().fill(SyncPopover.tone(state)).frame(width: 6, height: 6).offset(x: 1, y: 1)
             }
-            .frame(width: 28, height: 28)
+            .frame(width: MacLook.iconButton, height: MacLook.iconButton)
             .contentShape(Rectangle())
             .background(MenuAnchor { anchor = $0 })
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
-        .foleviTooltip("Saved")
-        .accessibilityLabel("Sync status: saved")
+        .foleviTooltip(headline)
+        .accessibilityLabel("Sync status: \(headline)")
     }
 }
 
@@ -430,8 +439,8 @@ private struct MacFooterButton: View {
 
     var body: some View {
         Button { action(anchor) } label: {
-            Image(systemName: symbol).font(.system(size: 13))
-                .frame(width: 28, height: 28)
+            MacSymbol(symbol, size: MacLook.iconButtonSymbol)
+                .frame(width: MacLook.iconButton, height: MacLook.iconButton)
                 .contentShape(Rectangle())
                 .background(MenuAnchor { anchor = $0 })
         }

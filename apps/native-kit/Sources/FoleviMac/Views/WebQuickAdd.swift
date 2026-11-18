@@ -102,11 +102,8 @@ struct QAIcon: View {
 
     var body: some View {
         #if os(macOS)
-        if let name = NativeMenu.symbols[icon] {
-            Image(systemName: name).font(.system(size: size, weight: strokeWidth > 2 ? .bold : .medium))
-        } else {
-            WebIconView(icon, size: size, strokeWidth: strokeWidth)
-        }
+        // (Folevi's own icons, as the web's Quick Add: the owner, 2026-11-18.)
+        WebIconView(icon, size: size, strokeWidth: strokeWidth)
         #else
         WebIconView(icon, size: size, strokeWidth: strokeWidth)
         #endif

@@ -68,6 +68,17 @@ struct AiAskOverlay: View {
         return 820 - fab.y - cardInset + 24
     }
 
+    #if os(macOS)
+    /// How far above the card's bottom edge the chat's own bottom edge sits on the Mac (the button's inset, the
+    /// button, the gap between them), plus the air it keeps under the card's controls.
+    static var panelLift: CGFloat {
+        let fab = WebStyles.named("ai.fab").light
+        let panel = WebStyles.named("ai.panel").light
+        let inset = 820 - (fab.y + fab.height) - cardInset
+        return inset + MacLook.barControlHeight + 4 + (fab.y - (panel.y + panel.height)) + MacLook.Space.s
+    }
+    #endif
+
     private var shows: Bool {
         guard frame.session.value?.capabilities.ai ?? false else { return false }
         // Not over Settings either (MAC-21): it sat over the cards there, and Settings has its own Foli AI section.
@@ -109,6 +120,8 @@ struct AiAskOverlay: View {
             state.model.draft = question
             frame.askQuestion = nil
         }
+        // (System type and controls in the floating chat on the Mac, as the Foli AI page; the iPad keeps the web's.)
+        .nativeDialogContent()
     }
 
     private func close() {
@@ -148,7 +161,7 @@ struct AiLauncher: View {
     private var glass: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                if open { Image(systemName: "xmark").font(.system(size: 13, weight: .semibold)) } else { AiMarkGlyph(size: 16).rotationEffect(.degrees(thinking && !reduceMotion ? 20 : 0)) }
+                if open { MacSymbol("xmark", size: 13, weight: .semibold) } else { AiMarkGlyph(size: 16).rotationEffect(.degrees(thinking && !reduceMotion ? 20 : 0)) }
                 Text("Ask Foli AI").font(MacLook.Text.body.weight(.medium)).lineLimit(1)
             }
             .foregroundStyle(MacLook.Colors.label)

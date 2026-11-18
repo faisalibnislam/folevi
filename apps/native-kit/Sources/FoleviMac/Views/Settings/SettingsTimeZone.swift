@@ -85,7 +85,7 @@ struct SettingsTimeZoneSelect: View {
                 Text(c.name).lineLimit(1).truncationMode(.tail)
                 Text(c.offset).lineLimit(1).foregroundStyle(MacLook.Colors.secondary)
                 Spacer(minLength: MacLook.Space.xs)
-                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(MacLook.Colors.secondary)
+                MacSymbol("chevron.up.chevron.down", size: 9, weight: .semibold).foregroundStyle(MacLook.Colors.secondary)
             }
             .font(MacLook.Text.body)
             .frame(minWidth: 200, maxWidth: 280)

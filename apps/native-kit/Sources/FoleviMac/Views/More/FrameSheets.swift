@@ -647,8 +647,7 @@ struct WebSheetCloseButton: View {
         #if os(macOS)
         // The system's: a small xmark in the secondary label colour, the quaternary hover fill, a tooltip.
         Button(action: action) {
-            Image(systemName: "xmark")
-                .font(.system(size: 11, weight: .semibold))
+            MacSymbol("xmark", size: 11, weight: .semibold)
                 .foregroundStyle(over ? MacLook.Colors.label : MacLook.Colors.secondary)
                 .frame(width: 22, height: 22)
                 .background(Circle().fill(over ? MacLook.Colors.hover : .clear))

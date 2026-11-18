@@ -223,7 +223,7 @@ struct CardSegmented: View {
                 Button { pick(o.id) } label: {
                     Group {
                         if let symbol = o.symbol {
-                            Image(systemName: symbol).font(.system(size: 14, weight: .medium))
+                            MacSymbol(symbol, size: 14, weight: .medium)
                         } else {
                             HStack(spacing: 5) {
                                 Text(o.title).font(on ? MacLook.Text.body.weight(.semibold) : MacLook.Text.body)
@@ -271,9 +271,9 @@ struct CardMenuButton: View {
             WebMenuWindow.show(entries(anchor), width: 220, below: anchor, align: .end)
         } label: {
             HStack(spacing: 4) {
-                if let symbol { Image(systemName: symbol).font(.system(size: 14, weight: .medium)) }
+                if let symbol { MacSymbol(symbol, size: 14, weight: .medium) }
                 if let title { Text(title).font(MacLook.Text.body.weight(.medium)) }
-                if chevron { Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(MacLook.Colors.secondary) }
+                if chevron { MacSymbol("chevron.down", size: 9, weight: .semibold).foregroundStyle(MacLook.Colors.secondary) }
             }
             .padding(.horizontal, chevron || title != nil ? 13 : 0)
             .frame(minWidth: MacLook.barControlHeight, minHeight: MacLook.barControlHeight)
@@ -300,7 +300,7 @@ struct CardActionButton: View {
 
     var body: some View {
         Button { action(anchor) } label: {
-            Image(systemName: symbol).font(.system(size: 15, weight: .medium))
+            MacSymbol(symbol, size: 15, weight: .medium)
                 .frame(width: MacLook.barControlHeight, height: MacLook.barControlHeight)
                 .background(MenuAnchor { anchor = $0 })
                 .overlay(alignment: .topTrailing) {

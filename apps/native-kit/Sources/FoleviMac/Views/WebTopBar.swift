@@ -320,10 +320,19 @@ public struct WebTopBar: View {
         }
     }
 
+    /// The room at the list's trailing end the open tab keeps clear of (the Mac's arrows, drawn over the list).
+    private var revealInset: CGFloat {
+        #if os(macOS)
+        overflow.start || overflow.end ? Self.arrowsRoom : 0
+        #else
+        0
+        #endif
+    }
+
     func reveal(animated: Bool) {
         // On Home (pinned, always in view) the list stays where it is.
         guard !scroller.dragging, scroller.metrics.visible > 0, scroller.metrics.openWidth > 0,
-              let to = TabStripMath.reveal(left: scroller.metrics.openLeft, width: scroller.metrics.openWidth, scroll: scroller.scroll, visible: scroller.metrics.visible, content: scroller.metrics.content) else { return }
+              let to = TabStripMath.reveal(left: scroller.metrics.openLeft, width: scroller.metrics.openWidth, scroll: scroller.scroll, visible: scroller.metrics.visible, content: scroller.metrics.content, trailingInset: revealInset) else { return }
         scrollTo(to, animated: animated)
     }
 

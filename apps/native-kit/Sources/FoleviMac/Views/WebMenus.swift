@@ -939,8 +939,7 @@ private struct RowMoreFace: View {
         let hot = hover || open
         #if os(macOS)
         // The system's: the ellipsis symbol in the secondary label colour, the quaternary hover fill (MacLook).
-        Image(systemName: "ellipsis")
-            .font(.system(size: iconSize, weight: .medium))
+        MacSymbol("ellipsis", size: iconSize, weight: .medium)
             .foregroundStyle(hot ? MacLook.Colors.label : MacLook.Colors.secondary)
             .frame(width: size, height: size)
             .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hot ? MacLook.Colors.hover : .clear))

@@ -220,8 +220,7 @@ struct MacCommandPaletteView: View {
 
     private var field: some View {
         HStack(spacing: MacLook.Space.s + 2) {
-            Image(systemName: "magnifyingglass")
-                .font(MacLook.Text.title3)
+            MacSymbol("magnifyingglass", size: 15)
                 .foregroundStyle(MacLook.Colors.secondary)
             TextField("Search documents or type a command…", text: $model.search.text)
                 .textFieldStyle(.plain)
@@ -295,7 +294,7 @@ struct MacCommandPaletteView: View {
     private func symbol(_ icon: WebIcon?, ai: Bool) -> Image? {
         if ai, let image = NativeMenu.aiImage { return Image(nsImage: image).renderingMode(.template) }
         guard let icon else { return nil }
-        if let name = NativeMenu.symbols[icon] { return Image(systemName: name) }
+        if let name = NativeMenu.symbols[icon], MacSymbol.icon(name) == nil { return Image(systemName: name) }
         return Image(nsImage: icon.nsImage(size: 15)).renderingMode(.template)
     }
 
@@ -303,7 +302,7 @@ struct MacCommandPaletteView: View {
         HStack(alignment: .firstTextBaseline, spacing: MacLook.rowIconGap) {
             switch item {
             case .note(_, let title, let snippet, let updatedAt, _, _):
-                Image(systemName: "doc.text").font(.system(size: MacLook.rowSymbolSize)).foregroundStyle(MacLook.Colors.secondary).frame(width: MacLook.rowIconSlot)
+                MacSymbol("doc.text", size: MacLook.rowSymbolSize).foregroundStyle(MacLook.Colors.secondary).frame(width: MacLook.rowIconSlot)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: title.isEmpty ? "Untitled" : title).font(MacLook.Text.body).foregroundStyle(MacLook.Colors.label).lineLimit(1)
                     if let snippet {

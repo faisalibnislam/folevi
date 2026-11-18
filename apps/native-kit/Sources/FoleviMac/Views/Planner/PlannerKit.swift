@@ -504,7 +504,8 @@ final class PlannerPanel: NSPanel {
         var panel: PlannerPanel?
         let close: @MainActor () -> Void = { panel?.close() }
         let scheme: ColorScheme = window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light
-        let view = content(close).webPopIn().padding(margin).environment(\.colorScheme, scheme)
+        // (System type and controls in the popover, as the screen it opens from.)
+        let view = content(close).nativeDialogContent().webPopIn().padding(margin).environment(\.colorScheme, scheme)
         let host = NSHostingView(rootView: view)
         let size = host.fittingSize
         let r = window.convertToScreen(anchor.convert(anchor.bounds, to: nil))

@@ -295,7 +295,8 @@ final class LockCoverView: NSView {
     init(frame: NSRect, onUnlock: @escaping () -> Void) {
         self.onUnlock = onUnlock
         super.init(frame: frame)
-        let host = NSHostingView(rootView: WebLockCover(unlock: onUnlock))
+        // (System type and controls, as the rest of the app: docs/MAC_NATIVE_LOOK.md.)
+        let host = NSHostingView(rootView: WebLockCover(unlock: onUnlock).macNativeChrome())
         host.translatesAutoresizingMaskIntoConstraints = false
         addSubview(host)
         NSLayoutConstraint.activate([

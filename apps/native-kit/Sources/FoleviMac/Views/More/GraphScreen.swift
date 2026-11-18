@@ -665,6 +665,8 @@ enum DnaExport {
 // MARK: - Screen
 
 struct GraphScreen: View {
+    /// The Mac's native look (nil in the web-matched look and on the iPad): its segmented control is a pill.
+    @Environment(\.nativeChrome) private var segmentedChrome
     let model: GraphModel
     let frame: FrameModel
     var path: String = "/graph"
@@ -800,8 +802,23 @@ struct GraphScreen: View {
             segment("Map", on: !model.list) { model.list = false }
             segment("List", on: model.list) { model.list = true }
         }
-        .padding(2)
-        .webBox(WebStyles.named("input"))
+        .modifier(SegmentedTrack(pill: pill))
+    }
+
+    /// The Mac's native look draws its one segmented design, the pill (MacLook.segmentHeight); the web-matched look
+    /// and the iPad keep the web's rounded segments.
+    private var pill: Bool { segmentedChrome != nil }
+    private var segmentRadius: CGFloat { pill ? 14 : 6 }
+
+    private struct SegmentedTrack: ViewModifier {
+        let pill: Bool
+        func body(content: Content) -> some View {
+            if pill {
+                content.padding(3).background(Color.primary.opacity(0.07), in: Capsule())
+            } else {
+                content.padding(2).webBox(WebStyles.named("input"))
+            }
+        }
     }
 
     private func segment(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
@@ -809,9 +826,9 @@ struct GraphScreen: View {
             Text(verbatim: title).webText(.role(.subheadline, weight: on ? 550 : 400)).lineLimit(1)
                 .foregroundStyle(on ? moreVar("color-heading", scheme) : moreVar("color-ink-muted", scheme))
                 .padding(.horizontal, 12).frame(height: 28)
-                .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(on ? moreVar("color-surface", scheme) : .clear).shadow(color: .black.opacity(on ? 0.08 : 0), radius: 1, y: 0.5))
+                .background(RoundedRectangle(cornerRadius: segmentRadius, style: .circular).fill(on ? moreVar("color-surface", scheme) : .clear).shadow(color: .black.opacity(on ? 0.08 : 0), radius: 1, y: 0.5))
                 .contentShape(Rectangle())
-                .dnaHover(radius: 6, selected: false)
+                .dnaHover(radius: segmentRadius, selected: false)
         }
         .buttonStyle(.webPlain)
         .accessibilityAddTraits(on ? .isSelected : [])

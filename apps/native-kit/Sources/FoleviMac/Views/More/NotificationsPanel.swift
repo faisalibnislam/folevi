@@ -62,8 +62,8 @@ struct NotificationsPanel: View {
                 seg("All", model.filter == .all) { model.filter = .all }
                 seg("Unread", model.filter == .unread) { model.filter = .unread }
             }
-            .padding(2)
-            .background(RoundedRectangle(cornerRadius: 8).fill(moreVar("color-ink", scheme).opacity(0.06)))
+            .padding(Self.segInset)
+            .background(RoundedRectangle(cornerRadius: Self.segRadius + Self.segInset).fill(moreVar("color-ink", scheme).opacity(0.06)))
             .frame(width: 176)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16).padding(.bottom, 8)
@@ -113,12 +113,21 @@ struct NotificationsPanel: View {
         Button(action: action) {
             Text(verbatim: title).webText(.role(.footnote, weight: on ? 550 : 400)).lineLimit(1)
                 .foregroundStyle(on ? moreVar("color-heading", scheme) : moreVar("color-ink-muted", scheme))
-                .frame(maxWidth: .infinity).frame(height: 24)
-                .background(RoundedRectangle(cornerRadius: 6).fill(on ? moreVar("color-surface", scheme) : .clear))
+                .frame(maxWidth: .infinity).frame(height: Self.segHeight)
+                .background(RoundedRectangle(cornerRadius: Self.segRadius).fill(on ? moreVar("color-surface", scheme) : .clear)
+                    .shadow(color: .black.opacity(on ? Self.segShadow : 0), radius: 1.5, y: 0.5))
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.webHover(radius: 6, selected: on))
+        .buttonStyle(.webHover(radius: Self.segRadius, selected: on))
     }
+
+    // The Mac's one segmented design, the pill (MacLook.segmentHeight: a 28 pt pill, 3 pt inside its track); the
+    // iPad keeps the web's rounded segments.
+    #if os(macOS)
+    private static let segHeight = MacLook.tabHeight, segInset = MacLook.capsuleInset, segRadius = MacLook.tabHeight / 2, segShadow = 0.12
+    #else
+    private static let segHeight: CGFloat = 24, segInset: CGFloat = 2, segRadius: CGFloat = 6, segShadow = 0.0
+    #endif
 
     /// Who did what, where (the note's name emphasised).
     private func sentence(_ n: NotificationRow) -> Text {

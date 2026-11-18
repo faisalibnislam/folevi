@@ -240,7 +240,7 @@ public struct CapsuleTrack<Item: Hashable, Label: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var ns
 
-    public init(_ items: [Item], selection: Binding<Item>, height: CGFloat = 28, inset: CGFloat = MacLook.capsuleInset,
+    public init(_ items: [Item], selection: Binding<Item>, height: CGFloat = MacLook.segmentHeight, inset: CGFloat = MacLook.capsuleInset,
                 equalWidths: Bool = true, @ViewBuilder label: @escaping (Item, Bool) -> Label) {
         self.items = items
         _selection = selection

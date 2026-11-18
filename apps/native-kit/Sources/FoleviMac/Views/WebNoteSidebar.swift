@@ -273,7 +273,7 @@ struct WebNoteSidebar: View {
     /// The sections in a capsule track at the panel's top (the owner's inspector profile).
     private var tabs: some View {
         let unread = tools?.comments.threads.contains { $0.unread && $0.status == .open } ?? false
-        return CapsuleTrack(NoteToolTab.allCases, selection: Binding(get: { tab }, set: { choose($0) }), height: 30) { t, _ in
+        return CapsuleTrack(NoteToolTab.allCases, selection: Binding(get: { tab }, set: { choose($0) })) { t, _ in
             ZStack(alignment: .topTrailing) {
                 MacSymbol(t.symbol, size: 13)
                 if t == .comments, unread {

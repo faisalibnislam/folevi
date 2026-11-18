@@ -70,6 +70,10 @@ public enum MacLook {
     public static var barHeight: CGFloat { barPaddingTop + barControlHeight + barPaddingBottom }
     /// The inset of a selected capsule inside its capsule track (selectedHeight = trackHeight - 2 * inset).
     public static let capsuleInset: CGFloat = 3
+    /// A segmented control's track, everywhere (the owner, 2026-11-18: "settle on one design", the pill): the title
+    /// bar's tab track's height, a 28 pt pill inside it. The note page's own segmented controls match it in CSS
+    /// (`:root[data-mac-native] .ui-seg`).
+    public static var segmentHeight: CGFloat { tabHeight + capsuleInset * 2 }
 
     // MARK: Sidebar rows (the compact scale; Settings' category list reuses it)
 

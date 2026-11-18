@@ -1514,11 +1514,11 @@
   backdrop-filter: blur(30px) saturate(1.9);
   box-shadow: var(--mac-glass-edge), var(--mac-pop-shadow);
 }
-/* A menu's corners, as macOS 26's (13), and its rows' inside them (13 less the menu's 6 of padding). */
-:root[data-mac-native] :is([role="menu"], [data-menu-ghost], [role="listbox"]).ui-pop { border-radius: 13px; }
-:root[data-mac-native] :is([role="menu"], [data-menu-ghost], [role="listbox"]) :is(.ui-menu-item, [role="option"]) { border-radius: 7px; }
+/* A menu's corners, as macOS 26's (the panel radius, 14), and its rows' inside them (14 less the menu's 6 of padding). */
+:root[data-mac-native] :is([role="menu"], [data-menu-ghost], [role="listbox"]).ui-pop { border-radius: var(--radius-panel); }
+:root[data-mac-native] :is([role="menu"], [data-menu-ghost], [role="listbox"]) :is(.ui-menu-item, [role="option"]) { border-radius: var(--radius-small); }
 /* The note's floating bar: a glass capsule, its buttons capsules in it, as the window's own glass controls. */
-:root[data-mac-native] [role="toolbar"][aria-label="Page tools"].ui-pop { border-radius: var(--radius-capsule); padding: 5px; }
+:root[data-mac-native] [role="toolbar"][aria-label="Page tools"].ui-pop { border-radius: var(--radius-capsule); padding: 4px; }
 :root[data-mac-native] [role="toolbar"][aria-label="Page tools"].ui-pop button { border-radius: var(--radius-capsule); }
 /* A dialog is content: nearly opaque, with the glass's edge. */
 :root[data-mac-native] dialog.ui-pop { background: color-mix(in srgb, var(--color-surface-raised) 94%, transparent); }
@@ -1530,3 +1530,17 @@
 }
 /* A separator on glass: a hairline in the ink's own colour, so it shows in dark as it does in light. */
 :root[data-mac-native] :is([role="menu"], [data-menu-ghost], [role="listbox"]) [role="separator"] { background: color-mix(in srgb, var(--color-ink) 13%, transparent); }
+
+/* Folevi for Mac's native look: one segmented design, the pill (the owner, 2026-11-18: the left sidebar's tools
+   were pills and the right panel's tabs rounded rectangles). The page's segmented controls (the panel's tabs, Write
+   / Ask / Study, Separator, Font, Page width, the theme gallery's filter) are the look's capsule track
+   (MacLook.segmentHeight, CapsuleTrack): 34 px, a 28 px pill 3 px inside it on a quiet fill with no edge, the
+   chosen one raised and semibold. */
+:root[data-mac-native] .ui-seg { gap: 0; padding: 3px; border-radius: var(--radius-capsule); background: color-mix(in srgb, var(--color-ink) 7%, transparent); box-shadow: none; }
+:root[data-mac-native] .ui-seg > * { min-height: 28px !important; border-radius: var(--radius-capsule); font-size: var(--type-subheadline); font-weight: 400; color: var(--color-ink-muted); }
+:root[data-mac-native] .ui-seg > *:hover:not([data-active="true"], [aria-selected="true"], [aria-pressed="true"]) { background: color-mix(in srgb, var(--color-ink) 6%, transparent); }
+:root[data-mac-native] .ui-seg > :is([data-active="true"], [aria-selected="true"], [aria-pressed="true"]) {
+  background: var(--mac-seg-raised, #fff); color: var(--color-heading); font-weight: 600; box-shadow: 0 0.5px 1.5px rgb(0 0 0 / 0.12);
+}
+:root[data-mac-native][data-theme="dark"] { --mac-seg-raised: rgb(255 255 255 / 0.16); }
+@media (prefers-color-scheme: dark) { :root[data-mac-native]:not([data-theme="light"]) { --mac-seg-raised: rgb(255 255 255 / 0.16); } }

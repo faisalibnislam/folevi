@@ -127,6 +127,25 @@ taller rows and icons; 32 pt rows everywhere.
 
 Not pictured: a row lit under the pointer (the test tools can't move the pointer over a system menu).
 
+## Segmented controls (fifth pass, the owner: "settle on one design", the pill)
+
+The note's left tools were pills 30 pt tall; the right panel's tabs and choices were rounded rectangles 36 to 40
+pt tall. Every segmented control of the native look is now the pill at one size: a 34 pt track, a 28 pt pill.
+Twelve Mac reference pictures of Foli DNA were recorded again for its Map / List pill (the iPad's and iPhone's
+are unchanged).
+
+### One segmented design, the pill: the left tools and the right panel's tabs now match, at one height
+
+![segments-note](segments-note.jpg)
+
+### The same in dark mode
+
+![segments-note-dark](segments-note-dark.jpg)
+
+### The Style panel's choices
+
+![segments-style](segments-style.jpg)
+
 Also fixed, without a picture: the Import card in Settings had more padding under its buttons than above them; the
 Vault's Add dialog took its height from whichever window was key, so it cut off its Notes field when Settings was
 open or the app was behind another.

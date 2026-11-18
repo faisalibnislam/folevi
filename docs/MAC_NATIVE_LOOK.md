@@ -77,6 +77,12 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
 - **A screen in the other theme** (the Vault: dark in a light window, light in a dark one): the card's own chrome
   over it (fill, scroll edge effect, glass controls, Ask Foli AI, toasts) takes that theme too
   (`ContentViewController.syncChromeAppearance`).
+- **One segmented design, the pill** (the owner, 2026-11-18: the left tools were pills, the right panel's tabs
+  rounded rectangles): a capsule track 34 pt tall (`MacLook.segmentHeight`, the title bar's tab track's height) with
+  a 28 pt pill 3 pt inside it, the chosen one raised and semibold, no edge on the track. Native: `CapsuleTrack`
+  (the note's tools), the system's segmented picker, and the hand-drawn ones (Notifications' All / Unread, Foli
+  DNA's Map / List). The note page: `:root[data-mac-native] .ui-seg` in `globals.css`. The web-matched look and
+  the iPad keep the web's rounded segments (so the pill is chosen at run time by `nativeChrome`, not `#if`).
 - **A choice of look is shown, not named**: Settings > Appearance > Theme is three pictures of the window across
   the card (`ThemeTiles`), as System Settings shows its appearances, never a small segmented control.
 - **Settings groups** read as System Settings': the group's name (13 pt semibold), what it is for in small
@@ -94,7 +100,7 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
 - **What floats over a note is Liquid Glass** (the owner, 2026-11-18: the note's menu was "pure white"): the page's
   menus, its floating bar (a capsule) and its popovers share one material in `globals.css`
   (`:root[data-mac-native] .ui-pop`): a cool tint at 66% that blurs and saturates what's behind, a sheen from the
-  top edge, a bright rim inside, a hairline and two soft shadows outside; menus have 13 pt corners and 7 pt rows.
+  top edge, a bright rim inside, a hairline and two soft shadows outside; menus have 14 pt corners and 8 pt rows.
   Dialogs stay nearly opaque (glass is never content). Reduce Transparency makes them solid.
 - **Other windows** (Settings, Quick Add, floating notes, sheets, alerts) keep their own native presentation and are
   never wrapped in the main window's shell.

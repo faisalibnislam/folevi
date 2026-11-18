@@ -116,6 +116,7 @@ public struct BarSearchField: View {
             if !text.isEmpty {
                 Button { text = "" } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(MacLook.Colors.tertiary)
+                        .macHover(Circle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Clear search")
@@ -126,6 +127,27 @@ public struct BarSearchField: View {
         .frame(height: MacLook.barControlHeight)
         .frame(minWidth: 170, idealWidth: 240, maxWidth: 300)
         .glassEffect(.regular, in: .capsule)
+    }
+}
+
+// MARK: - Hover
+
+/// A hover fill for a control drawn with the plain button style (every button in the frame shows a hover).
+struct MacHoverFill<S: Shape>: ViewModifier {
+    let shape: S
+    let enabled: Bool
+    @State private var hovered = false
+    func body(content: Content) -> some View {
+        content
+            .background(hovered && enabled ? MacLook.Colors.hover.opacity(0.5) : .clear, in: shape)
+            .onHover { hovered = $0 }
+    }
+}
+
+extension View {
+    /// Shows a quiet hover fill in `shape` while the pointer is over the view.
+    public func macHover<S: Shape>(_ shape: S, when enabled: Bool = true) -> some View {
+        modifier(MacHoverFill(shape: shape, enabled: enabled))
     }
 }
 
@@ -174,6 +196,7 @@ public struct CapsuleTrack<Item: Hashable, Label: View>: View {
                             }
                         }
                         .contentShape(Capsule())
+                        .macHover(Capsule(), when: !selected)
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(selected ? [.isSelected] : [])

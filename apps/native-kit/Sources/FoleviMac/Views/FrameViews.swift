@@ -346,6 +346,9 @@ public final class ContentViewController: NSViewController {
     static var barHeight: CGFloat { WebStyles.named("frame.main").light.padding.top }
     /// The top bar's height, following the tab bar as it comes and goes.
     private var barHeightConstraint: NSLayoutConstraint?
+    /// The soft scroll edge effect under the bar while a note's page runs beneath it.
+    private let edge = ScrollEdgeBand()
+    private var edgeTrailing: NSLayoutConstraint?
     private var barShown: CGFloat = 0
 
     init(model: FrameModel, pageView: NSView) {
@@ -384,6 +387,10 @@ public final class ContentViewController: NSViewController {
         tools.isHidden = true
         clip.addSubview(tools)
         inspector = tools
+        // A note runs under the bar: the scroll edge effect keeps the bar's title and tabs legible over it.
+        edge.translatesAutoresizingMaskIntoConstraints = false
+        edge.isHidden = true
+        clip.addSubview(edge)
         clip.addSubview(topBar)
         let toastView = ToastHostingView(rootView: ToastStack(model: model))
         toastView.safeAreaRegions = []
@@ -423,6 +430,9 @@ public final class ContentViewController: NSViewController {
             topBar.topAnchor.constraint(equalTo: clip.topAnchor),
             topBar.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
             topBar.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
+            edge.topAnchor.constraint(equalTo: clip.topAnchor),
+            edge.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
+            edge.bottomAnchor.constraint(equalTo: topBar.bottomAnchor, constant: ScrollEdgeBand.fade),
             body.topAnchor.constraint(equalTo: clip.topAnchor),
             body.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
             body.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
@@ -457,6 +467,11 @@ public final class ContentViewController: NSViewController {
         }
         if showsInspector != (f.inspector != nil) { showsInspector = f.inspector != nil }
         if pageView.superview === clip, pageView.frame != f.page { pageView.frame = f.page }
+        // The edge effect spans the page only (the inspector has its own top below the bar).
+        edgeTrailing?.isActive = false
+        edgeTrailing = edge.widthAnchor.constraint(equalToConstant: f.page.width)
+        edgeTrailing?.isActive = true
+        edge.isHidden = !(model.route.isNote && pageView.superview === clip && body.isHidden)
     }
 
     /// Whether a note's tools are asked for now (the inspector shows when the card also has the room).
@@ -586,6 +601,7 @@ public final class ContentViewController: NSViewController {
             uncoverLater?.cancel()
             uncoverLater = nil
             body.isHidden = false
+            clip.needsLayout = true
             if changed { models.prepare(route) }
             if let s = screen {
                 if changed { s.rootView = ClickThrough(ScreenRoot(model: model, models: models, route: route)) }
@@ -629,6 +645,7 @@ public final class ContentViewController: NSViewController {
         uncoverLater = nil
         guard model.route.isNote, !body.isHidden else { return }
         body.isHidden = true
+        clip.needsLayout = true
         screen?.isHidden = true
         screen?.rootView = ClickThrough(ScreenRoot(model: model, models: models, route: model.route))
         syncPageAccessibility()
@@ -657,6 +674,41 @@ public final class ContentViewController: NSViewController {
 
     /// Whether a native screen covers the Page View now (tests).
     public var showsNativeScreen: Bool { screen.map { !$0.isHidden } ?? false }
+}
+
+/// The soft scroll edge effect behind the card's top bar (HIG Liquid Glass: "use a scroll edge effect instead of a
+/// solid or semi-opaque background color beneath them"): what runs under the bar (a note's cover, its text) is
+/// blurred within the window, fading out `fade` points below the bar so there is no hard line.
+@MainActor
+final class ScrollEdgeBand: NSVisualEffectView {
+    static let fade: CGFloat = 18
+    private let fadeMask = CAGradientLayer()
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        material = .headerView
+        blendingMode = .withinWindow
+        state = .active
+        wantsLayer = true
+        fadeMask.colors = [NSColor.black.cgColor, NSColor.black.cgColor, NSColor.clear.cgColor]
+        layer?.mask = fadeMask
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not from a nib") }
+
+    override func layout() {
+        super.layout()
+        // (AppKit's layer origin is the bottom left: the fade is the band's lowest `fade` points.)
+        fadeMask.frame = bounds
+        let h = max(bounds.height, 1)
+        fadeMask.startPoint = CGPoint(x: 0.5, y: 1)
+        fadeMask.endPoint = CGPoint(x: 0.5, y: 0)
+        fadeMask.locations = [0, NSNumber(value: Double(max(0, (h - Self.fade * 1.6) / h))), 1]
+    }
+
+    // Never takes a click: the bar's controls are above it, the page below.
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 /// The content card's clipped inside. A child it hides (the note's page while a native screen covers it) and

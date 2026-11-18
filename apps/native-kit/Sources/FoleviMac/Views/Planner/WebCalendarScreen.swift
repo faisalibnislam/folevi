@@ -149,6 +149,8 @@ struct WebCalendarScreen: View {
     @Environment(\.colorScheme) private var scheme
     /// The Mac's native look (NativeChrome).
     @Environment(\.nativeChrome) private var chrome
+    /// The card's glass controls take the views and actions (the Mac's native look).
+    @Environment(\.cardSlot) private var slot
 
     init(model: CalendarModel, frame: FrameModel) {
         self.frame = frame
@@ -162,7 +164,13 @@ struct WebCalendarScreen: View {
         let events = state.base.eventsByDay
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                toolbar
+                // (The Mac's native look: the range, ‹ Today ›, the views, Calendars and Subscribe are all in the card's
+                // glass controls, as the owner's reference has them; the calendar starts at the top.)
+                if slot == nil {
+                    toolbar
+                } else {
+                    Color.clear.frame(height: 12)
+                }
                 // Month, Week and Agenda trade places with a short crossfade.
                 Group {
                     switch state.layout {
@@ -191,6 +199,42 @@ struct WebCalendarScreen: View {
         .onDisappear { state.base.setVisible(false) }
         .onChange(of: state.tasks.value) { _, v in if let v { state.base.edits.reconcile(v.tasks) } }
         .accessibilityIdentifier("calendar-screen")
+        .cardItems(key: "\(state.layout.rawValue)|\(heading)|\(state.failing)|\(state.feeds)") { cardItems }
+    }
+
+    // MARK: The card's glass controls (CardItems.swift)
+
+    /// The range after the title, then ‹ Today ›; Month, Week and Agenda, Calendars, and Subscribe in "…" at the end.
+    /// (Tried both ways, 2026-11-18: the range and ‹ Today › at the top of the calendar too, and after the title; the
+    /// title's side read better and gave the grid the room.)
+    private var cardItems: CardItems {
+        var items = CardItems()
+        let state = self.state
+        do {
+            items.subtitle = shortHeading
+            if state.layout != .agenda {
+                let unit = state.layout == .month ? "month" : "week"
+                items.leading.append(.actions("step", "Go to", [CardOption(id: "prev", title: "Previous \(unit)", symbol: "chevron.left"), CardOption(id: "today", title: "Today"), CardOption(id: "next", title: "Next \(unit)", symbol: "chevron.right")]) { id in
+                    switch id {
+                    case "prev": state.move(-1)
+                    case "next": state.move(1)
+                    default: state.goToday()
+                    }
+                })
+            }
+        }
+        items.trailing.append(.segmented("layout", "Calendar view", WebCalendarLayout.allCases.map { CardOption(id: $0.rawValue, title: $0.rawValue.capitalized) }, selected: state.layout.rawValue) { id in
+            if let l = WebCalendarLayout(rawValue: id) { state.setLayout(l) }
+        })
+        let frame = self.frame
+        items.trailing.append(.button("calendars", "Calendars", symbol: "calendar", help: state.failing ? "Calendars (one isn't loading)" : "Calendars", badge: state.failing) { anchor in
+            guard let anchor else { return }
+            PlannerPanel.popover(below: anchor, alignEnd: true) { _ in CalendarsPopover(state: state, frame: frame) }
+        })
+        if state.feeds {
+            items.trailing.append(.more { [WebMenuEntry(.item("Subscribe in Another Calendar…", icon: .rss, id: "subscribe")) { openFeed() }] })
+        }
+        return items
     }
 
     // MARK: The toolbar

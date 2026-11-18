@@ -1007,6 +1007,8 @@ struct WebNoteBrowser: View {
     @Environment(\.nativeChrome) private var chrome
     /// The List layout's row under the pointer (its separators hide beside it).
     @State private var hoveredRow: String?
+    /// The card's glass controls take this page's controls (the Mac's native look): no header row here.
+    @Environment(\.cardSlot) private var slot
 
     init(frame: FrameModel, model: NotesListModel) {
         self.frame = frame
@@ -1023,13 +1025,18 @@ struct WebNoteBrowser: View {
         GeometryReader { geo in
             // The column's own width as the scroll view lays it out (a window's scroller can take some of the
             // window's): the grid fills exactly the title row's and toolbar's width, edge to edge.
-            let inner = columnWidth > 0 ? columnWidth : min(1180, geo.size.width) - content.padding.left - content.padding.right
+            // (With the page's controls in the card's glass controls there's no header row to measure: the column is
+            // the scroll view's own width, which a wide grid can't feed back into.)
+            let inner = columnWidth > 0 && slot == nil ? columnWidth : min(1180, geo.size.width) - content.padding.left - content.padding.right
             ZStack(alignment: .bottom) {
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 0) {
                         // A folder's page: one compact title row with Sort and the view switch, no toolbar under it.
                         Group {
-                            if model.kind.view == .folder { folderHeader } else { toolbar }
+                            if slot != nil {
+                                // (The page's controls are in the card's glass controls; this keeps the column's measure.)
+                                Color.clear.frame(maxWidth: .infinity).frame(height: 12)
+                            } else if model.kind.view == .folder { folderHeader } else { toolbar }
                         }
                         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { columnWidth = $0 }
                         if !model.subfolders.isEmpty { subfolders }
@@ -1087,6 +1094,69 @@ struct WebNoteBrowser: View {
         }
         .onDisappear { model.setVisible(false) }
         .accessibilityIdentifier("screen.list.\(model.kind.view.rawValue)")
+        .cardItems(key: cardKey) { cardItems }
+    }
+
+    // MARK: the card's glass controls (CardItems.swift)
+
+    /// Everything the card's controls show for this page.
+    private var cardKey: String {
+        [layoutRaw, "\(model.sort)", "\(model.total)", "\(model.isLoading)", "\(model.isFiltering ? model.slots.count : -1)", model.title,
+         model.ancestors.map(\.id).joined(separator: "/"), "\(frame.session.value?.capabilities.sharing ?? false)",
+         "\(model.screenActions.contains(.generateTemplate))", "\(builtIns.count)", "\(model.menuFolder(model.kind.folderId ?? "") != nil)"].joined(separator: "|")
+    }
+
+    /// The count after the title, the layout switch, Sort, a folder's way up and Share, New template, and the rest
+    /// (a folder's options, Empty Trash, Generate with Foli AI) in "…".
+    private var cardItems: CardItems {
+        let n = model.isFiltering ? model.slots.count : model.total
+        var items = CardItems()
+        if !model.isLoading {
+            items.subtitle = model.kind.view == .templates ? NotesListModel.templatesCountText(builtIn: builtIns.count, custom: n) : n.formatted()
+        }
+        let layouts: [(WebNotesLayout, WebIcon, String)] = [(.grid, .layoutGrid, "Grid"), (.compact, .rows3, "Compact cards"), (.list, .list, "List")]
+        items.trailing.append(.segmented("layout", "View as", layouts.map { CardOption(id: $0.0.rawValue, title: $0.2, symbol: WebSegmented<WebNotesLayout>.symbol($0.1)) }, selected: layout.rawValue) { id in
+            layoutRaw = id
+        })
+        let model = self.model
+        items.trailing.append(.sort(model.sortOptions.map { ($0.0, $0.1) }, value: model.sort) { model.sort = $0 })
+        let frame = self.frame
+        let id = model.kind.folderId ?? ""
+        if model.kind.view == .folder {
+            if !model.ancestors.isEmpty {
+                let path = model.ancestors.map { a in WebPageStep(id: a.id, label: a.name, color: a.color) { frame.open(.folder(a.id)) } }
+                let title = model.title, color = model.folder?.color
+                items.trailing.append(.pullDown("path", "Enclosing folders", symbol: "folder", help: "Enclosing folders") {
+                    WebPathMenuButton.entries(title: title, color: color, path: path) { frame.open(.web("/folders")) }
+                })
+            }
+            if frame.session.value?.capabilities.sharing ?? false {
+                let name = model.title
+                items.trailing.append(.button("share", "Share", symbol: "square.and.arrow.up", help: "Share this folder") { _ in FrameDialogs.folderShare(frame, folderId: id, name: name) })
+            }
+        }
+        if model.kind.view == .templates {
+            items.trailing.append(.button("newTemplate", "New template", symbol: "doc.badge.plus", help: "New template") { _ in
+                Task { if let id = await model.actions.createTemplate() { frame.open(.note(id)) } }
+            })
+        }
+        let navigator = self.navigator, feedback = self.feedback
+        var more: [WebMenuEntry] = []
+        if model.kind.view == .templates, model.screenActions.contains(.generateTemplate) {
+            more.append(WebMenuEntry(.item("Generate with Foli AI…", icon: .sparkles, id: "generate")) { model.startGenerating() })
+        }
+        if model.isTrash && model.total > 0 {
+            more.append(WebMenuEntry(.item("Empty Trash…", icon: .trash, danger: true, id: "emptyTrash")) { model.confirmation = .emptyTrash(model.total) })
+        }
+        if model.kind.view == .folder, model.menuFolder(id) != nil {
+            items.trailing.append(.more("Folder options for \(model.title)") {
+                guard let f = model.menuFolder(id) else { return [] }
+                return folderMenuEntries(f, context: model.folderContext, actions: model.actions, dialogs: model.dialogs, navigator: navigator, feedback: feedback, frame: frame)
+            })
+        } else if !more.isEmpty {
+            items.trailing.append(.more { more })
+        }
+        return items
     }
 
     // MARK: multi-select (ListSelection)
@@ -1612,6 +1682,8 @@ struct WebFoldersIndex: View {
     @Environment(\.screenFeedback) private var feedback
     /// The Mac's native look (NativeChrome).
     @Environment(\.nativeChrome) private var chrome
+    /// The card's glass controls take this page's controls (the Mac's native look).
+    @Environment(\.cardSlot) private var slot
     @State private var hoveredRow: String?
 
     private var sort: FoldersSort { FoldersSort(saved: sortRaw) }
@@ -1773,6 +1845,14 @@ struct WebFoldersIndex: View {
             VStack(alignment: .leading, spacing: 0) {
                 // One compact title row (the owner, 6 November 2026): Folders and its count, then the search, Sort, the
                 // view switch and New folder (the top bar keeps only New note here).
+                if slot != nil {
+                    // The Mac's native look: Sort, the view switch and New folder are in the card's glass controls;
+                    // the page's own filter stays here.
+                    NativeSearchField(placeholder: "Search folders", text: $query, width: 260)
+                        .frame(maxWidth: 260)
+                        .padding(.top, 12)
+                        .padding(.bottom, 24)
+                } else {
                 WebListPageHeader(title: "Folders", count: allFolders.value == nil ? "Loading…" : searching ? "\(shown.count) of \(total) folders" : "\(shown.count) \(shown.count == 1 ? "folder" : "folders")") {
                     // (Its width follows the window's, up to 300: the web's clamp(10rem, 26vw, 300px).)
                     WebIndexSearch(placeholder: "Search folders", text: $query, width: min(300, max(160, geo.size.width * 0.26)), height: WebListPageHeaderMetrics.controlHeight)
@@ -1782,6 +1862,7 @@ struct WebFoldersIndex: View {
                         WebSegmented(options: [("grid", WebIcon.layoutGrid, "Grid"), ("list", .rows3, "List")], value: $layoutRaw, prefix: "index", height: WebListPageHeaderMetrics.trayItemHeight)
                     }
                     newFolderButton
+                }
                 }
                 if allFolders.value != nil && shown.isEmpty {
                     WebEmptyState(icon: .folderOpen, title: query.isEmpty ? "No folders yet" : "No folders match “\(query.trimmingCharacters(in: .whitespaces))”", message: query.isEmpty ? "Create one to group related pages." : nil)
@@ -1859,6 +1940,24 @@ struct WebFoldersIndex: View {
         .animation(WebMotion.change(WebMotion.viewSwitch), value: layoutRaw)
         .folderDialogs(home.dialogs, actions: home.actions, tree: home.tree.value?.folders ?? [])
         .accessibilityIdentifier("screen.folders")
+        .cardItems(key: "\(sortRaw)|\(layoutRaw)|\(home.canEdit)|\(allFolders.value?.folders.count ?? -1)|\(list.count)|\(query)") { cardItems }
+    }
+
+    /// The card's glass controls (CardItems.swift): the count, the view switch, Sort and New folder.
+    private var cardItems: CardItems {
+        var items = CardItems()
+        if let total = allFolders.value?.folders.count {
+            items.subtitle = query.trimmingCharacters(in: .whitespaces).isEmpty ? total.formatted() : "\(list.count) of \(total)"
+        }
+        items.trailing.append(.segmented("layout", "View as", [CardOption(id: "grid", title: "Grid", symbol: "square.grid.2x2"), CardOption(id: "list", title: "List", symbol: "list.bullet")], selected: layoutRaw) { id in
+            layoutRaw = id
+        })
+        items.trailing.append(.sort(FoldersSort.options, value: sort) { sortRaw = $0.rawValue })
+        if home.canEdit {
+            let home = self.home
+            items.trailing.append(.button("newFolder", "New folder", symbol: "folder.badge.plus", help: "New folder") { _ in home.dialogs.open(.newFolder(parent: nil)) })
+        }
+        return items
     }
 
     /// New folder at the end of the title row, as tall as the row's other controls (it scrolls with the page; the top
@@ -2124,6 +2223,16 @@ struct WebPageStep: Identifiable {
 /// 2026): a button at the start of the title row's tray listing this folder, each folder above it, and All folders;
 /// choosing one opens it.
 struct WebPathMenuButton: View {
+    /// This folder (ticked), each folder above it, then All folders.
+    @MainActor static func entries(title: String, color: String?, path: [WebPageStep], allFolders: @escaping () -> Void) -> [WebMenuEntry] {
+        var out = [WebMenuEntry(.item(title, checked: true, swatch: FolderColor.resolve(color).color.color, id: "here"))]
+        for step in path.reversed() {
+            out.append(WebMenuEntry(.item(step.label, swatch: FolderColor.resolve(step.color).color.color, id: "up:\(step.id)")) { step.open() })
+        }
+        out.append(WebMenuEntry(.item("All folders", icon: .layoutGrid, id: "all")) { allFolders() })
+        return out
+    }
+
     let title: String
     let color: String?
     /// From the top level down.
@@ -2134,12 +2243,7 @@ struct WebPathMenuButton: View {
     var body: some View {
         let h = WebListPageHeaderMetrics.trayItemHeight
         WebMenuButton(width: 220, entries: {
-            var out = [WebMenuEntry(.item(title, checked: true, swatch: FolderColor.resolve(color).color.color, id: "here"))]
-            for step in path.reversed() {
-                out.append(WebMenuEntry(.item(step.label, swatch: FolderColor.resolve(step.color).color.color, id: "up:\(step.id)")) { step.open() })
-            }
-            out.append(WebMenuEntry(.item("All folders", icon: .layoutGrid, id: "all")) { allFolders() })
-            return out
+            Self.entries(title: title, color: color, path: path, allFolders: allFolders)
         }) {
             HStack(spacing: 2) {
                 WebIconView(.folderTree, size: 15)
@@ -2279,6 +2383,8 @@ struct WebTagsIndex: View {
     @Environment(\.colorScheme) private var scheme
     /// The Mac's native look (NativeChrome): the page's title row as Folders has it.
     @Environment(\.nativeChrome) private var chrome
+    /// The card's glass controls take Sort (the Mac's native look).
+    @Environment(\.cardSlot) private var slot
 
     /// OrganizeIndex.tsx: "1 page", "12 pages".
     private static func pages(_ n: Int) -> String { n == 1 ? "1 page" : "\(n.formatted()) pages" }
@@ -2296,7 +2402,12 @@ struct WebTagsIndex: View {
         let shown = all.filter { needle.isEmpty || $0.name.lowercased().contains(needle) }
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 0) {
-                if chrome != nil {
+                if slot != nil {
+                    // The Mac's native look: Sort is in the card's glass controls; the page's own filter stays here.
+                    NativeSearchField(placeholder: "Search tags", text: $query, width: 260)
+                        .frame(maxWidth: 260)
+                        .padding(.top, 12)
+                } else if chrome != nil {
                     WebListPageHeader(title: "Tags", count: tags.value == nil ? "Loading…" : !needle.isEmpty ? "\(shown.count) of \(all.count) tags" : "\(all.count) \(all.count == 1 ? "tag" : "tags")") {
                         WebIndexSearch(placeholder: "Search tags", text: $query, width: 220)
                         WebRowSort(options: [("name", "Name"), ("count", "Most used"), ("created", "Newest")], value: $sort)
@@ -2351,6 +2462,12 @@ struct WebTagsIndex: View {
             .frame(maxWidth: .infinity)
         }
         .accessibilityIdentifier("screen.tags")
+        .cardItems(key: "\(sort)|\(tags.value?.tags.count ?? -1)") {
+            var items = CardItems()
+            if let n = tags.value?.tags.count { items.subtitle = n.formatted() }
+            items.trailing.append(.sort([("name", "Name"), ("count", "Most used"), ("created", "Newest")], value: sort) { sort = $0 })
+            return items
+        }
     }
 }
 

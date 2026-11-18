@@ -226,7 +226,9 @@ struct SharedFolderScreen: View {
     var body: some View {
         let d = model.store.value
         VStack(spacing: 0) {
-            WebFactsRow(title: d.map { $0.name.isEmpty ? "Shared folder" : $0.name } ?? "Shared folder", subtitle: d.flatMap { $0.found ? "\(Roles.place(workspace: $0.workspaceName, owner: $0.ownerName, inYourPlace: $0.inYourPlace)) · \($0.roleLabel ?? Roles.access($0.access))" : nil }) {
+            WebFactsRow(title: d.map { $0.name.isEmpty ? "Shared folder" : $0.name } ?? "Shared folder",
+                        subtitle: d.flatMap { $0.found ? "\(Roles.place(workspace: $0.workspaceName, owner: $0.ownerName, inYourPlace: $0.inYourPlace)) · \($0.roleLabel ?? Roles.access($0.access))" : nil },
+                        card: people(d), cardKey: d.map { "\($0.id)|\($0.found)" } ?? "") {
                 if let d, d.found {
                     WebButton("People", icon: .users, variant: .quiet, size: .sm) { FrameDialogs.folderShare(frame, folderId: d.id, name: d.name) }
                 }
@@ -234,6 +236,13 @@ struct SharedFolderScreen: View {
             WebPageColumn { content(d) }
         }
         .accessibilityIdentifier("screen.sharedFolder")
+    }
+
+    /// People (who has the folder) as a glass button in the card's controls (the Mac's native look).
+    private func people(_ d: SharedFolderValue?) -> [CardGroup] {
+        guard let d, d.found else { return [] }
+        let frame = self.frame
+        return [.button("people", "People", symbol: "person.2", help: "People with access") { _ in FrameDialogs.folderShare(frame, folderId: d.id, name: d.name) }]
     }
 
     @ViewBuilder

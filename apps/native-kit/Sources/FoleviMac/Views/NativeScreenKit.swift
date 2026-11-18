@@ -181,5 +181,13 @@ struct NativeSearchField: NSViewRepresentable {
         }
     }
 }
+#else
+/// (Never drawn on iOS: only the Mac's native look uses it. A plain field keeps the shared screens compiling.)
+struct NativeSearchField: View {
+    let placeholder: String
+    @Binding var text: String
+    var width: CGFloat = 220
+    var body: some View { TextField(placeholder, text: $text).frame(maxWidth: width) }
+}
 #endif
 #endif

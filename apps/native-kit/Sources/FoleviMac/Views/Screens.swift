@@ -192,6 +192,11 @@ final class ScreenModels {
         if !routes.contains(where: { if case .calendar = $0 { return true } else { return false } }) { calendar = nil }
         if !routes.contains(where: { if case .search = $0 { return true } else { return false } }) { search = nil }
         if !routes.contains(where: { $0.tabKey == "view:ai" }) { aiPage?.closed(); aiPage = nil }
+        #if os(macOS)
+        // The card items of screens whose tabs closed.
+        let keys = Set(routes.map(\.tabKey))
+        frame.cardItems = frame.cardItems.filter { keys.contains($0.key) }
+        #endif
     }
 }
 
@@ -366,6 +371,8 @@ struct ScreenRoot: View {
         .environment(\.screenFeedback, models.feedback)
         #if os(macOS)
         .environment(\.macBarRoom, barRoom)
+        // The screen's own controls go up into the card's glass controls (CardItems.swift), on the native look only.
+        .environment(\.cardSlot, native ? CardSlot(frame: model, owner: route.tabKey) : nil)
         // System chrome, Folevi content: the screens' interface parts draw natively (note cards opt out).
         .macNativeChrome()
         #endif

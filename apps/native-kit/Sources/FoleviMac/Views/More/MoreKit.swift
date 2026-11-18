@@ -54,14 +54,28 @@ struct WebFactsRow<Actions: View>: View {
     /// The page's title, shown in the Mac's native look (the web's view names it in its glass bar).
     var title: String? = nil
     let subtitle: String?
+    /// The actions as the card's glass controls (CardItems.swift) on the Mac's native look, and what they show.
+    var card: [CardGroup] = []
+    var cardKey = ""
     @ViewBuilder let actions: () -> Actions
     @Environment(\.colorScheme) private var scheme
     @Environment(\.nativeChrome) private var chrome
+    @Environment(\.cardSlot) private var slot
 
     var body: some View {
+        if slot != nil, title != nil {
+            // The Mac's native look: the facts after the title and the actions in the card's glass controls.
+            Color.clear.frame(height: 8)
+                .cardItems(key: "\(subtitle ?? "")|\(cardKey)") { CardItems(subtitle: subtitle, trailing: card) }
+        } else {
+            row
+        }
+    }
+
+    private var row: some View {
         let row = moreStyle("more.review.header", scheme)
         let sub = moreStyle("more.review.subtitle", scheme)
-        HStack(spacing: row.gap) {
+        return HStack(spacing: row.gap) {
             if chrome != nil, title != nil {
                 // The Mac's native look: the page's title is the toolbar's (HIG toolbars); its facts stay.
                 Text(verbatim: subtitle ?? "").font(NativeLook.body).lineLimit(1).foregroundStyle(NativeLook.secondary)

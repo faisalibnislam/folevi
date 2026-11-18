@@ -6,7 +6,8 @@
 //   cmd frame {"do":"close","tab":"<id>"}           close a tab (the one on screen without "tab")
 //   cmd frame {"do":"next"} / {"do":"previous"}     ⌃Tab / ⌃⇧Tab
 //   cmd frame {"do":"back"} / {"do":"forward"}
-//   cmd frame {"do":"newNote"} / {"do":"sidebar"}   ⌘N / ⌘\ ; {"do":"moveOrCopy"} the Move or copy sheet
+//   cmd frame {"do":"newNote"} / {"do":"noteTools"} ⌘N / the top bar's Note Tools; {"do":"moveOrCopy"} the Move or copy sheet
+//   cmd frame {"do":"search"}                       ⌘K: the top bar's search field takes the keyboard
 //   cmd frame {"do":"popover","which":"sync"|"notifications"|"account"|"none"}
 //   cmd frame {"do":"menu","item":"go.next-tab"}    a menu bar item as if chosen
 //   cmd frame {"do":"post","name":"n","value":"v"}  posts a notification (a screen's own test hook)
@@ -94,7 +95,8 @@ extension NativeFrame {
             case "forward": m.goForward()
             case "newNote": m.newNote()
             case "moveOrCopy": frame.frameMoveOrCopy()
-            case "sidebar": frame.root.split.toggleSidebar(nil)
+            case "noteTools": WebSidebarController.setNoteTools(m, shown: !m.noteToolsShown)
+            case "search": frame.sidebar.focusSearch()
             case "popover":
                 switch req["which"] as? String {
                 case "sync": frame.sidebar.openSyncPopover()
@@ -243,7 +245,8 @@ extension NativeFrame {
             },
             "strip": m.debugStrip.mapValues { Double($0) },
             "sidebar": rows(m.sidebar),
-            "sidebarCollapsed": m.sidebarCollapsed,
+            "sidebarCollapsed": m.sidebarHidden,
+            "noteTools": frame.root.split.content.showsInspector,
             "gate": frame.root.showsGate,
             "nativeGate": frame.root.showsNativeGate,
             "gateKind": m.gateEvent?.gate ?? NSNull(),

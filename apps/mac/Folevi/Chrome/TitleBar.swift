@@ -9,8 +9,9 @@
 //   Control and VoiceOver;
 // - the system's translucent sidebar (decision M3): an NSVisualEffectView behind the page, which draws its
 //   sidebar clear under <html data-vibrancy="sidebar"> (the page's CSS, WM4).
-// A window with the native frame (N8) draws its own chrome: its buttons sit on the frame's 52 pt top bar (the
-// same spot rule, at zoom 1), the page's reports are ignored, and the frame names the window.
+// A window with the native frame (N8) draws its own chrome (docs/MAC_NATIVE_LOOK.md): its buttons stay where the
+// system puts them, over the sidebar's top strip (the sidebar's content starts below them, MacLook.sidebarTop),
+// the page's reports are ignored, and the frame names the window.
 import AppKit
 import FoleviDesign
 import WebKit
@@ -28,15 +29,8 @@ enum TitleBar {
     static var regions: [ObjectIdentifier: (drag: [CGRect], noDrag: [CGRect])] = [:]
     /// The page's spot for the window buttons, per window.
     static var spots: [ObjectIdentifier: ButtonSpot] = [:]
-    /// Windows with the native frame (their spot is the frame's, never the page's).
+    /// Windows with the native frame (their buttons stay in the system's place, never the page's spot).
     static var nativeWindows = Set<ObjectIdentifier>()
-    /// The frame's spot: the first button at x 20, centred on the 52 pt top bar (polish 2.1).
-    /// The native frame's spot: where the web's sidebar keeps its .ui-traffic-space (the sidebar's top bar, after
-    /// its padding), from the web's computed styles.
-    static var nativeSpot: ButtonSpot {
-        let bar = WebStyles.named("frame.sidebar.topbar").light
-        return ButtonSpot(x: Double(bar.x + bar.padding.left), y: Double(bar.y), height: Double(bar.height))
-    }
     private static var observations: [ObjectIdentifier: [NSKeyValueObservation]] = [:]
     private static var installed = false
 
@@ -73,11 +67,11 @@ enum TitleBar {
         }
     }
 
-    /// A window got the native frame: the buttons go on its top bar.
+    /// A window got the native frame: its buttons stay where the system puts them (a page's spot is forgotten).
     static func adoptNative(_ window: NSWindow) {
         let id = ObjectIdentifier(window)
         nativeWindows.insert(id)
-        spots[id] = nativeSpot
+        spots.removeValue(forKey: id)
         // A material a web frame left behind (a rebuild) would sit under the frame's own sidebar.
         window.contentView?.subviews.filter { $0 is SidebarMaterial }.forEach { $0.removeFromSuperview() }
         DispatchQueue.main.async { [weak window] in if let window { relayout(window) } }

@@ -211,6 +211,30 @@ struct TabPicture: View {
     }
 }
 
+/// The hover card's surface: the web's raised card on the iPad; on the Mac the system's control background with a
+/// popover's corners, hairline and shadow.
+private struct PreviewCard: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        let shape = RoundedRectangle(cornerRadius: MacLook.containerRadius, style: .continuous)
+        content
+            .background(MacLook.Colors.container)
+            .clipShape(shape)
+            .overlay(shape.strokeBorder(MacLook.Colors.separator, lineWidth: 1))
+            .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
+        #else
+        let line = WebStyles.vars["color-line"]?.resolve(scheme).color ?? .clear
+        content
+            .background(WebStyles.vars["color-surface-raised"]?.resolve(scheme).color ?? .clear)
+            .clipShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous).strokeBorder(line, lineWidth: 1))
+            .shadow(color: .black.opacity(0.18), radius: 18, y: 12)
+        #endif
+    }
+}
+
 /// The strip's hover card: the picture (16:10) and the tab's name, under the tab, kept inside the window. It takes no
 /// clicks. The tabs pictured lately stay drawn, hidden, so going back to one shows it already there.
 public struct TabPreviewLayer: View {
@@ -240,18 +264,25 @@ public struct TabPreviewLayer: View {
                     .aspectRatio(16 / 10, contentMode: .fit)
                     // The pictures stay in their box (a joined tab's pages ran on under its name).
                     .clipped()
+                    #if os(macOS)
+                    // The native look: the system's type and colours, a popover's corners and shadow.
+                    Divider()
+                    Text(model.tabs.label(tab)).font(MacLook.Text.headline)
+                        .foregroundStyle(MacLook.Colors.label)
+                        .lineLimit(1).truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                    #else
                     Rectangle().fill(color("color-line")).frame(height: 1)
                     Text(model.tabs.label(tab)).webText(WebTextStyle(size: 13, leading: 18, weight: 600))
                         .foregroundStyle(color("color-heading"))
                         .lineLimit(1).truncationMode(.tail)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 12).padding(.vertical, 8)
+                    #endif
                 }
                 .frame(width: 300)
-                .background(color("color-surface-raised"))
-                .clipShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous).strokeBorder(color("color-line"), lineWidth: 1))
-                .shadow(color: .black.opacity(0.18), radius: 18, y: 12)
+                .modifier(PreviewCard())
                 .offset(x: left, y: barOrigin.y + shown.frame.maxY + 8)
                 .onAppear { picture(tab.id) }
                 .onChange(of: tab.id) { picture(tab.id) }

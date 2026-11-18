@@ -115,10 +115,9 @@ public struct BarSearchField: View {
                 .onSubmit(onSubmit)
             if !text.isEmpty {
                 Button { text = "" } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(MacLook.Colors.tertiary)
-                        .macHover(Circle())
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(MacLook.Colors.tertiary).padding(2)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(QuietHoverStyle(shape: AnyShape(Circle())))
                 .accessibilityLabel("Clear search")
                 .help("Clear search")
             }
@@ -130,24 +129,30 @@ public struct BarSearchField: View {
     }
 }
 
-// MARK: - Hover
-
-/// A hover fill for a control drawn with the plain button style (every button in the frame shows a hover).
-struct MacHoverFill<S: Shape>: ViewModifier {
-    let shape: S
-    let enabled: Bool
-    @State private var hovered = false
-    func body(content: Content) -> some View {
-        content
-            .background(hovered && enabled ? MacLook.Colors.hover.opacity(0.5) : .clear, in: shape)
-            .onHover { hovered = $0 }
+/// A small control's quiet hover: the hover fill in its shape under the pointer, deeper while pressed (`active`
+/// false: none, for a control that shows its state another way).
+public struct QuietHoverStyle: ButtonStyle {
+    let shape: AnyShape
+    let active: Bool
+    public init(shape: AnyShape, active: Bool = true) {
+        self.shape = shape
+        self.active = active
     }
-}
 
-extension View {
-    /// Shows a quiet hover fill in `shape` while the pointer is over the view.
-    public func macHover<S: Shape>(_ shape: S, when enabled: Bool = true) -> some View {
-        modifier(MacHoverFill(shape: shape, enabled: enabled))
+    public func makeBody(configuration: Configuration) -> some View { Face(configuration: configuration, shape: shape, active: active) }
+
+    private struct Face: View {
+        let configuration: ButtonStyleConfiguration
+        let shape: AnyShape
+        let active: Bool
+        @State private var hovered = false
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .background(shape.fill(active && isEnabled && (hovered || configuration.isPressed) ? MacLook.Colors.hover.opacity(configuration.isPressed ? 0.9 : 0.5) : .clear))
+                .onHover { hovered = $0 }
+        }
     }
 }
 
@@ -196,9 +201,9 @@ public struct CapsuleTrack<Item: Hashable, Label: View>: View {
                             }
                         }
                         .contentShape(Capsule())
-                        .macHover(Capsule(), when: !selected)
                 }
-                .buttonStyle(.plain)
+                // (A hover fill on the others; the selected one has its capsule.)
+                .buttonStyle(QuietHoverStyle(shape: AnyShape(Capsule()), active: !selected))
                 .accessibilityAddTraits(selected ? [.isSelected] : [])
             }
         }
@@ -214,6 +219,8 @@ public struct CapsuleTrack<Item: Hashable, Label: View>: View {
 public struct SidebarRow<Trailing: View>: View {
     let title: String
     let symbol: String?
+    /// A row's own icon in place of a symbol (a folder's or a tag's colour, a brand mark), in the same slot.
+    let icon: AnyView?
     let selected: Bool
     let level: Int
     let trailing: Trailing
@@ -224,6 +231,18 @@ public struct SidebarRow<Trailing: View>: View {
                 @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.title = title
         self.symbol = symbol
+        self.icon = nil
+        self.selected = selected
+        self.level = level
+        self.trailing = trailing()
+    }
+
+    /// A row whose icon is drawn by the caller (kept to the symbol's size and slot).
+    public init<Icon: View>(_ title: String, selected: Bool = false, level: Int = 0, @ViewBuilder icon: () -> Icon,
+                            @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
+        self.title = title
+        self.symbol = nil
+        self.icon = AnyView(icon())
         self.selected = selected
         self.level = level
         self.trailing = trailing()
@@ -231,7 +250,11 @@ public struct SidebarRow<Trailing: View>: View {
 
     public var body: some View {
         HStack(spacing: MacLook.rowIconGap) {
-            if let symbol {
+            if let icon {
+                icon
+                    .font(.system(size: MacLook.rowSymbolSize))
+                    .frame(width: MacLook.rowIconSlot, height: MacLook.rowIconSlot, alignment: .center)
+            } else if let symbol {
                 Image(systemName: symbol)
                     .font(.system(size: MacLook.rowSymbolSize))
                     .foregroundStyle(selected ? MacLook.Colors.label : MacLook.Colors.secondary)
@@ -266,15 +289,29 @@ public struct SidebarRow<Trailing: View>: View {
 /// A sidebar section heading: 11 pt semibold, secondary, aligned with the rows' labels' leading edge.
 public struct SidebarHeading<Trailing: View>: View {
     let title: String
+    /// The heading's own page (Folders, Tags): its title opens it, in the label colour while it's open.
+    let action: (() -> Void)?
+    let selected: Bool
     let trailing: Trailing
-    public init(_ title: String, @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
+    public init(_ title: String, selected: Bool = false, action: (() -> Void)? = nil,
+                @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.title = title
+        self.action = action
+        self.selected = selected
         self.trailing = trailing()
     }
 
     public var body: some View {
         HStack {
-            Text(title).font(MacLook.Text.smallStrong).foregroundStyle(MacLook.Colors.secondary)
+            let label = Text(title).font(MacLook.Text.smallStrong)
+                .foregroundStyle(selected ? MacLook.Colors.label : MacLook.Colors.secondary)
+            if let action {
+                Button(action: action) { label.contentShape(Rectangle()) }
+                    .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 4, style: .continuous))))
+                    .help("Open \(title)")
+            } else {
+                label
+            }
             Spacer(minLength: 4)
             trailing.foregroundStyle(MacLook.Colors.secondary)
         }

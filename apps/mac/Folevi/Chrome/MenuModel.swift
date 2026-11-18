@@ -229,8 +229,7 @@ enum MenuModel {
                 page("note.trash", "Move to Trash", k(MenuKey.backspace), window: true),
             ]),
             MenuSpec(id: "view", title: "View", nodes: [
-                page("view.sidebar", "Hide Sidebar", k("\\"), window: true),
-                alt("view.sidebar", k("s", [.cmd, .ctrl]), .page("view.sidebar"), window: true),
+                // (No Hide Sidebar: the sidebar is always shown, docs/MAC_NATIVE_LOOK.md; Focus Mode hides it on a note.)
                 page("view.inspector", "Show Inspector", k("i", [.cmd, .opt]), window: true),
                 // ⇧⌘\ is Show All Tabs (the web's and Safari's), so Focus Mode is ⌥⌘\.
                 page("view.focus", "Focus Mode", k("\\", [.cmd, .opt]), window: true),

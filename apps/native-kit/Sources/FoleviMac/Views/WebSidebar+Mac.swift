@@ -1,0 +1,467 @@
+// The Mac's sidebar in the native look (docs/MAC_NATIVE_LOOK.md, the owner's window profile): drawn straight on the
+// window's translucent material (no card of its own, no divider), always shown (Focus mode alone hides it), its
+// content from `MacLook.sidebarTop` under the traffic lights, compact rows (SidebarRow, SidebarHeading):
+//
+//   Home, Work with Foli AI, Foli DNA (and its saved views), Bookmarks (and the first bookmarked notes), Drafts,
+//   All notes, Tasks, Calendar, Reviews, Shared with Me, Vault, Changes, Templates; Folders (the tree, sorting, New
+//   folder); Tags; Archive and Trash. The account, the sync status and the notifications pinned at the bottom, the
+//   list scrolling behind them with its last row reachable.
+//
+// Every row's behaviour is WebSidebar's (WebSidebar.swift): opening in place or in a tab behind (⌘-click, the middle
+// button), the folder tree's drag and drop (notes into a folder, folders above, below or inside one, onto the Folders
+// heading for the top level), the rows' menus, the counts. Search moved to the top bar (WebTopBar+Mac.swift), and
+// the sidebar has no hide button: the web's sidebar menu (hide it, Focus mode, folders or the note's tools) became
+// View > Focus Mode and the top bar's Note Tools button.
+#if os(macOS)
+import AppKit
+import SwiftUI
+import FoleviDesign
+import FoleviEngine
+import FoleviScreens
+
+extension WebSidebar {
+    var macBody: some View {
+        VStack(spacing: 0) {
+            // The room under the traffic lights: the window moves from here.
+            Color.clear
+                .frame(height: MacLook.sidebarTop)
+                .contentShape(Rectangle())
+                .windowDrag()
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: 0) {
+                    macDestinations
+                    macFolders
+                    macTags
+                    VStack(alignment: .leading, spacing: 0) {
+                        macItem(.notes(.archive), symbol: "archivebox", title: "Archive")
+                        macItem(.notes(.trash), symbol: "trash", title: "Trash")
+                    }
+                    .padding(.top, MacLook.Space.m)
+                }
+                .padding(.horizontal, MacLook.sidebarInset)
+                .padding(.bottom, MacLook.Space.s)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .scrollIndicators(.automatic)
+            // More below the account: a hairline over the footer marks the edge (MAC-64), only while there is.
+            .onScrollGeometryChange(for: Bool.self) { g in
+                g.contentOffset.y + g.containerSize.height < g.contentSize.height - 1
+            } action: { _, more in moreBelow = more }
+            .safeAreaInset(edge: .bottom, spacing: 0) { macFooter }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Sidebar")
+    }
+
+    // MARK: destinations
+
+    private var macDestinations: some View {
+        let caps = model.session.value?.capabilities
+        let home = model.home.value
+        let count = { (id: HomeRow.Id) -> Int? in home?.rows.first { $0.id == id }?.count }
+        let starred = home?.starred.rows ?? []
+        return VStack(alignment: .leading, spacing: 0) {
+            macItem(.home, symbol: "house", title: "Home")
+            if caps?.ai ?? false {
+                macItem(.web("/ai"), title: "Work with Foli AI") { AiMarkGlyph(size: MacLook.rowSymbolSize + 1) }
+            }
+            // Foli DNA (/graph), where this place has it, and its saved views under it.
+            if caps?.graph ?? false {
+                macItem(.web("/graph"), symbol: "point.3.connected.trianglepath.dotted", title: "Foli DNA")
+                DnaSidebarViews(model: model, indent: 0) { v in
+                    AnyView(macItem(.web("/graph?view=\(v.id)"), symbol: "point.3.connected.trianglepath.dotted", title: v.name, level: 1))
+                }
+            }
+            macItem(.notes(.starred), symbol: "bookmark", title: "Bookmarks")
+                .overlay(alignment: .trailing) {
+                    if !starred.isEmpty {
+                        disclosure(open: starredOpen, label: "bookmarked notes") {
+                            withAnimation(MacLook.animation(reduceMotion)) { starredOpen.toggle() }
+                        }
+                        .padding(.trailing, 4)
+                    }
+                }
+            if starredOpen, !starred.isEmpty {
+                ForEach(starred.prefix(Self.limit), id: \.id) { note in
+                    macItem(.note(note.id), symbol: "doc.text", title: note.title.isEmpty ? "Untitled" : note.title, level: 1, newTab: true)
+                }
+                .transition(.opacity)
+            }
+            macItem(.notes(.unsorted), symbol: "tray", title: "Drafts", count: count(.drafts))
+            macItem(.notes(.all), symbol: "doc.on.doc", title: "All notes")
+            macItem(.tasks(.today), symbol: "checkmark.square", title: "Tasks", count: tasks.value?.today)
+            macItem(.calendar(nil), symbol: "calendar", title: "Calendar")
+            // Listed once there's something to study, and while Reviews is open (Sidebar.tsx).
+            if (count(.reviews) ?? 0) > 0 || model.route.tabKey == FrameRoute.web("/review").tabKey {
+                macItem(.web("/review"), symbol: "rectangle.stack", title: "Reviews", count: count(.reviews))
+            }
+            if caps?.sharing ?? false { macItem(.shared, symbol: "person.2", title: "Shared with Me") }
+            // The Vault where there's one for this person (vault.summary; a library's own Vault too, plan 5.6).
+            VaultSidebarRow(model: model) { macItem(.web("/vault"), symbol: "lock", title: "Vault") }
+            if caps?.changes ?? false { macItem(.changes, symbol: "plus.forwardslash.minus", title: "Changes", count: count(.changes)) }
+            macItem(.notes(.templates), symbol: "rectangle.3.group", title: "Templates")
+        }
+    }
+
+    private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+
+    /// One row: a symbol, its label, an optional count; the page's own row selected. A folder ⌘-clicked opens in a
+    /// tab behind this one (FolderTabClicks).
+    func macItem(_ route: FrameRoute, symbol: String, title: String, level: Int = 0, count: Int? = nil, newTab: Bool = false) -> some View {
+        macItem(route, title: title, level: level, count: count, newTab: newTab) {
+            Image(systemName: symbol).foregroundStyle(isSelected(route) ? MacLook.Colors.label : MacLook.Colors.secondary)
+        }
+    }
+
+    func macItem<Icon: View>(_ route: FrameRoute, title: String, level: Int = 0, count: Int? = nil, newTab: Bool = false, @ViewBuilder icon: () -> Icon) -> some View {
+        let selected = isSelected(route)
+        return Button {
+            if case .folder = route, FolderTabClicks.commandHeld { model.openInBackground(route, title: title) } else { model.open(route, newTab ? .newTab : .replace) }
+        } label: {
+            SidebarRow(title, selected: selected, level: level, icon: icon) {
+                if let count, count > 0 { Text("\(count)").monospacedDigit() }
+            }
+        }
+        .buttonStyle(SidebarRowButtonStyle())
+        .accessibilityLabel(count.map { $0 > 0 ? "\(title), \($0)" : title } ?? title)
+    }
+
+    /// A disclosure chevron in a row or a heading: pointing right when closed, turned down when open.
+    func disclosure(open: Bool, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: "chevron.right")
+                .font(.system(size: 10, weight: .semibold))
+                .rotationEffect(.degrees(open ? 90 : 0))
+                .frame(width: 18, height: 18)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
+        .foregroundStyle(MacLook.Colors.secondary)
+        .help(open ? "Hide \(label)" : "Show \(label)")
+        .accessibilityLabel(open ? "Hide \(label)" : "Show \(label)")
+    }
+
+    // MARK: sections
+
+    /// A section: its heading (the title opens its page; the actions and the chevron that folds it at its end),
+    /// then its rows. `takesFolders`: a folder dropped on the heading goes to the top level.
+    private func macSection<Actions: View, Rows: View>(_ title: String, route: FrameRoute, open: Binding<Bool>, takesFolders: Bool = false,
+                                                       @ViewBuilder actions: () -> Actions, @ViewBuilder rows: () -> Rows) -> some View {
+        let here = model.route.tabKey == route.tabKey
+        return VStack(alignment: .leading, spacing: 0) {
+            SidebarHeading(title, selected: here, action: { model.open(route, .replace) }) {
+                HStack(spacing: 2) {
+                    actions()
+                    disclosure(open: open.wrappedValue, label: title) {
+                        withAnimation(MacLook.animation(reduceMotion)) { open.wrappedValue.toggle() }
+                    }
+                }
+            }
+            .background {
+                if takesFolders && dropTarget == Self.topLevel {
+                    RoundedRectangle(cornerRadius: MacLook.rowRadius, style: .continuous).strokeBorder(MacLook.Colors.accent, lineWidth: 2)
+                }
+            }
+            .dropDestination(for: FolderDragItem.self) { items, _ in
+                guard takesFolders, let dragged = items.first else { return false }
+                dropFolder(dragged, on: nil, zone: .inside, shown: shownFolders, sort: SidebarFolderSort(rawValue: folderSortRaw) ?? .manual)
+                return true
+            } isTargeted: { over in
+                guard takesFolders else { return }
+                dropTarget = over ? Self.topLevel : (dropTarget == Self.topLevel ? nil : dropTarget)
+            }
+            if open.wrappedValue {
+                VStack(alignment: .leading, spacing: 0) { rows() }
+                    .transition(.opacity)
+            }
+        }
+        .padding(.top, MacLook.Space.s)
+    }
+
+    /// A quiet line in a section ("No folders yet"), at the rows' label edge.
+    private func note(_ text: String) -> some View {
+        Text(text).font(MacLook.Text.small).foregroundStyle(MacLook.Colors.secondary)
+            .padding(.leading, 8 + MacLook.rowIconSlot + MacLook.rowIconGap)
+            .frame(minHeight: MacLook.rowHeight, alignment: .leading)
+    }
+
+    /// Show more, Show less, "+3 more": a row of secondary text at the rows' label edge.
+    private func linkRow(_ text: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(text).font(MacLook.Text.body).foregroundStyle(MacLook.Colors.secondary)
+                .padding(.leading, 8 + MacLook.rowIconSlot + MacLook.rowIconGap)
+                .frame(maxWidth: .infinity, minHeight: MacLook.rowHeight, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(SidebarRowButtonStyle(hoverFill: true))
+    }
+
+    // MARK: folders
+
+    private var macFolders: some View {
+        let sort = SidebarFolderSort(rawValue: folderSortRaw) ?? .manual
+        let all = shownFolders
+        let roots = all.filter { $0.parentId == nil }
+        // The first five top-level folders (and the one you're in); Show more lists them all, here.
+        let activeRoot = activeRootId(all)
+        let shown = allFoldersShown ? roots : roots.enumerated().filter { $0.offset < Self.limit || $0.element.id == activeRoot }.map(\.element)
+        return macSection("Folders", route: .web("/folders"), open: $foldersOpen, takesFolders: true) {
+            WebMenuButton(width: 180, entries: {
+                [WebMenuEntry.heading("Sort folders")] + SidebarFolderSort.allCases.map { o in
+                    WebMenuEntry(.item(o.title, checked: o == sort)) { folderSortRaw = o.rawValue }
+                }
+            }) {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.system(size: 11, weight: .medium))
+                    .frame(width: 18, height: 18)
+                    .contentShape(Rectangle())
+            }
+            .help("Sort Folders")
+            .accessibilityLabel("Sort folders")
+            Button { FrameDialogs.newFolder(model) } label: {
+                Image(systemName: "folder.badge.plus")
+                    .font(.system(size: 11, weight: .medium))
+                    .frame(width: 18, height: 18)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
+            .help("New Folder (⌃⌘N)")
+            .accessibilityLabel("New folder")
+        } rows: {
+            if roots.isEmpty { note("No folders yet") }
+            ForEach(shown, id: \.id) { f in macFolder(f, all: all, sort: sort) }
+            if shown.count < roots.count {
+                linkRow("Show more") { withAnimation(MacLook.animation(reduceMotion)) { allFoldersShown = true } }
+            } else if allFoldersShown && roots.count > Self.limit {
+                linkRow("Show less") { withAnimation(MacLook.animation(reduceMotion)) { allFoldersShown = false } }
+            }
+        }
+        .task(id: sort) {
+            if sort == .recent, folderChanges == nil { folderChanges = model.client.watch(.foldersCards(all: true)) }
+        }
+    }
+
+    /// A folder's row and, open, its folders under it: one indent step per level, the disclosure chevron in the
+    /// step before its icon, its "…" at the end under the pointer. Drop notes on it to move them in, a folder on its
+    /// upper or lower edge to put it beside, in the middle to put it inside.
+    private func macFolder(_ f: FolderNode, all: [FolderNode], sort: SidebarFolderSort) -> AnyView {
+        let children = all.filter { $0.parentId == f.id }
+        let closed = Set(closedFolders.split(separator: ",").map(String.init))
+        // The open folder's own ancestors are always open (Sidebar.tsx activePath).
+        let open = !closed.contains(f.id) || activePath(all).contains(f.id)
+        let tint = FolderColor.resolve(f.color).color.color
+        return AnyView(VStack(alignment: .leading, spacing: 0) {
+            HoverReveal { hovered in
+                macItem(.folder(f.id), title: f.name, level: f.depth + 1) {
+                    Image(systemName: "folder.fill").foregroundStyle(tint)
+                }
+                .onMiddleClick { model.openInBackground(.folder(f.id), title: f.name) }
+                .overlay(alignment: .leading) {
+                    if !children.isEmpty {
+                        disclosure(open: open, label: "folders in \(f.name)") {
+                            var next = closed
+                            if open { next.insert(f.id) } else { next.remove(f.id) }
+                            withAnimation(MacLook.animation(reduceMotion)) { closedFolders = next.sorted().joined(separator: ",") }
+                        }
+                        .padding(.leading, 8 + CGFloat(f.depth) * MacLook.rowIndent - 4)
+                    }
+                }
+                .overlay(alignment: .trailing) {
+                    RowMoreButton(label: "Folder options for \(f.name)", shown: hovered, size: 20, iconSize: 12) { folderMenu(f) }
+                        .padding(.trailing, 4)
+                }
+            }
+            .webContextMenu { folderMenu(f) }
+            .overlay {
+                if dropTarget == f.id, let zone = dropZone {
+                    switch zone {
+                    case .inside:
+                        RoundedRectangle(cornerRadius: MacLook.rowRadius, style: .continuous).strokeBorder(MacLook.Colors.accent, lineWidth: 2)
+                            .allowsHitTesting(false)
+                    case .before, .after:
+                        Capsule().fill(MacLook.Colors.accent).frame(height: 2)
+                            .frame(maxHeight: .infinity, alignment: zone == .before ? .top : .bottom)
+                            .padding(.leading, 8 + CGFloat(f.depth + 1) * MacLook.rowIndent)
+                            .allowsHitTesting(false)
+                    }
+                }
+            }
+            // (One target for notes and folders: two stacked drop destinations only honour the outer one.)
+            .onDrop(of: [.foleviNoteRef, .foleviFolderRef], delegate: FolderDrop(
+                folderId: f.id, axis: .vertical, length: canEdit ? MacLook.rowHeight : 0,
+                zone: Binding(get: { dropTarget == f.id ? dropZone : nil }, set: { z in
+                    if let z {
+                        dropTarget = f.id
+                        dropZone = z
+                    } else if dropTarget == f.id {
+                        dropTarget = nil
+                        dropZone = nil
+                    }
+                }),
+                spring: spring,
+                onSpring: children.isEmpty || open ? nil : { withAnimation(MacLook.animation(reduceMotion)) { closedFolders = closed.subtracting([f.id]).sorted().joined(separator: ",") } },
+                onNotes: { items in
+                    // (A multi-selection with folders in it: they go inside too.)
+                    if items.contains(where: { !$0.folders.isEmpty }) { return model.move(items: items, to: f.id, name: f.name) }
+                    let ids = items.flatMap(\.ids)
+                    if !ids.isEmpty { model.move(notes: ids, to: f.id) }
+                },
+                onFolder: { dragged, zone in dropFolder(dragged, on: f.id, zone: zone, shown: all, sort: sort) }
+            ))
+            .draggable(FolderDragItem(id: f.id, name: f.name, parentId: f.parentId))
+            if open {
+                ForEach(children, id: \.id) { c in macFolder(c, all: all, sort: sort).transition(.opacity) }
+            }
+        })
+    }
+
+    // MARK: tags
+
+    private var macTags: some View {
+        let tags = model.folders.value?.tags ?? model.home.value?.tags ?? []
+        return macSection("Tags", route: .web("/tags"), open: $tagsOpen) {
+            EmptyView()
+        } rows: {
+            if tags.isEmpty { note("Tag documents from the inspector") }
+            ForEach(Array(tags.prefix(Self.limit)), id: \.id) { t in
+                let row = macItem(.tag(t.id), title: t.name) {
+                    Image(systemName: "number").foregroundStyle(Self.tagColor(t.color))
+                }
+                if canEdit {
+                    HoverReveal { hovered in
+                        row.overlay(alignment: .trailing) {
+                            RowMoreButton(label: "Tag options for \(t.name)", shown: hovered, size: 20, iconSize: 12) { tagMenu(t) }
+                                .padding(.trailing, 4)
+                        }
+                    }
+                    .webContextMenu { tagMenu(t) }
+                } else {
+                    row
+                }
+            }
+            if tags.count > Self.limit {
+                linkRow("\(tags.count - Self.limit) more") { model.open(.web("/tags"), .replace) }
+            }
+        }
+    }
+
+    // MARK: the footer: the account, the sync status, notifications
+
+    private var macFooter: some View {
+        let name = model.accountName.isEmpty ? "You" : model.accountName
+        let foot = accountFoot(name)
+        let local = model.session.value?.mode == .local
+        return HStack(spacing: 2) {
+            Button { actions.account(accountAnchor) } label: {
+                HStack(spacing: MacLook.rowIconGap) {
+                    WebAvatar(name: foot.markName, url: foot.markUrl, size: 24)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(foot.title).font(MacLook.Text.headline).foregroundStyle(MacLook.Colors.label).lineLimit(1)
+                        if !foot.detail.isEmpty {
+                            Text(foot.detail).font(MacLook.Text.small).foregroundStyle(MacLook.Colors.secondary).lineLimit(1)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 10, weight: .medium)).foregroundStyle(MacLook.Colors.tertiary)
+                }
+                .padding(.horizontal, 6)
+                .frame(height: 40)
+                .contentShape(Rectangle())
+                .background(MenuAnchor { accountAnchor = $0 })
+            }
+            .buttonStyle(SidebarRowButtonStyle(hoverFill: true))
+            .help("Account, Places and Workspaces")
+            .accessibilityLabel("Account: \(foot.title)")
+            MacSyncStatus(model: model) { actions.sync($0) }
+            if !local {
+                MacFooterButton(symbol: "bell", label: "Notifications") { actions.notifications($0) }
+            }
+        }
+        .padding(.horizontal, MacLook.sidebarInset - 4)
+        .padding(.top, 6)
+        .padding(.bottom, 8)
+        .background {
+            // The window's own material, so the list scrolls away under the footer rather than through it.
+            WindowMaterial().allowsHitTesting(false)
+        }
+        .overlay(alignment: .top) {
+            if moreBelow {
+                Rectangle().fill(MacLook.Colors.separator).frame(height: 1).padding(.horizontal, MacLook.sidebarInset).allowsHitTesting(false)
+            }
+        }
+    }
+}
+
+/// The sync state in the sidebar's footer: a cloud with the system's green when saved (the web's SyncStatus); it
+/// opens the sync details.
+private struct MacSyncStatus: View {
+    let model: FrameModel
+    let action: (NSView?) -> Void
+    @State private var anchor: NSView?
+
+    var body: some View {
+        Button { action(anchor) } label: {
+            ZStack(alignment: .bottomTrailing) {
+                Image(systemName: "icloud").font(.system(size: 13)).foregroundStyle(MacLook.Colors.secondary)
+                Circle().fill(MacLook.Colors.green).frame(width: 6, height: 6).offset(x: 1, y: 1)
+            }
+            .frame(width: 28, height: 28)
+            .contentShape(Rectangle())
+            .background(MenuAnchor { anchor = $0 })
+        }
+        .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
+        .help("Saved")
+        .accessibilityLabel("Sync status: saved")
+    }
+}
+
+/// A footer icon button (Notifications), anchored for the panel it opens.
+private struct MacFooterButton: View {
+    let symbol: String
+    let label: String
+    let action: (NSView?) -> Void
+    @State private var anchor: NSView?
+
+    var body: some View {
+        Button { action(anchor) } label: {
+            Image(systemName: symbol).font(.system(size: 13))
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+                .background(MenuAnchor { anchor = $0 })
+        }
+        .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
+        .foregroundStyle(MacLook.Colors.secondary)
+        .help(label)
+        .accessibilityLabel(label)
+    }
+}
+
+/// A sidebar row's button: SidebarRow draws the hover and the selection itself, so this adds only a press fill (and,
+/// for rows without SidebarRow, the hover fill too).
+struct SidebarRowButtonStyle: ButtonStyle {
+    var hoverFill = false
+
+    func makeBody(configuration: Configuration) -> some View { Face(configuration: configuration, hoverFill: hoverFill) }
+
+    private struct Face: View {
+        let configuration: ButtonStyleConfiguration
+        let hoverFill: Bool
+        @State private var hovered = false
+
+        var body: some View {
+            configuration.label
+                .background {
+                    let shape = RoundedRectangle(cornerRadius: MacLook.rowRadius, style: .continuous)
+                    if configuration.isPressed {
+                        shape.fill(MacLook.Colors.hover.opacity(0.5))
+                    } else if hoverFill && hovered {
+                        shape.fill(MacLook.Colors.hover.opacity(0.5))
+                    }
+                }
+                .onHover { hovered = $0 }
+        }
+    }
+}
+
+#endif

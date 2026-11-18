@@ -1,4 +1,5 @@
-// The content's top bar drawn as the web app's (apps/web/src/components/app/TabStrip.tsx and BackForward.tsx,
+// The content's top bar. On the Mac, the native look (WebTopBar+Mac.swift, docs/MAC_NATIVE_LOOK.md): glass capsules
+// in the card's top bar. On the iPad, as the web app draws it (apps/web/src/components/app/TabStrip.tsx and BackForward.tsx,
 // as Folevi for Mac shows them), from the live app's computed styles ("frame.topbar.*", "frame.tab*"): a glass
 // bar inside the content's card with Back and Forward, a divider, the tabs (Home first, then one per open page,
 // the open one raised), and New note at the end. Home is pinned: it stays put after Back and Forward and only the
@@ -19,26 +20,45 @@ import FoleviScreens
 public struct WebTopBar: View {
     @Bindable var model: FrameModel
     @Environment(\.colorScheme) private var scheme
-    @State private var hoveredTab: String?
+    @State var hoveredTab: String?
     /// Each tab's frame in the strip (for dragging one among the others).
-    @State private var tabFrames: [String: CGRect] = [:]
+    @State var tabFrames: [String: CGRect] = [:]
     /// The tab being dragged: how far it's moved from its own place, and where the pointer took hold of it.
-    @State private var dragging: (id: String, dx: CGFloat, grab: CGFloat)?
+    @State var dragging: (id: String, dx: CGFloat, grab: CGFloat)?
     /// The list of tabs' scroll and measures, in one object the layout's reports and the timers change directly.
-    @State private var scroller = TabScroller()
+    @State var scroller = TabScroller()
     /// The open tab's raised pill, one view that slides from tab to tab (FoleviSpring.slide).
-    @Namespace private var tabPill
+    @Namespace var tabPill
+
+    /// The Mac's search field: what's typed (it opens the palette with it) and whether it has the keyboard.
+    @State var searchText = ""
+    @FocusState var searchFocused: Bool
+    /// The bar's width (the Mac's search field narrows in a narrow card).
+    @State var barWidth: CGFloat = 0
+    #if os(macOS)
+    /// Whether the window is active (the prominent New note follows the system's inactive look).
+    @Environment(\.controlActiveState) var barActive
+    #endif
 
     public init(model: FrameModel) { self.model = model }
 
     /// The bar's coordinate space (a tab's picture is placed from its tab's frame in it).
     static let space = "frame.topbar"
 
-    private func style(_ id: String) -> WebComputedStyle { WebStyles.named(id).resolve(scheme) }
+    func style(_ id: String) -> WebComputedStyle { WebStyles.named(id).resolve(scheme) }
 
     public var body: some View {
+        #if os(macOS)
+        macBody
+        #else
+        webBody
+        #endif
+    }
+
+    /// The web's bar (the iPad's).
+    var webBody: some View {
         let bar = style("frame.topbar")
-        HStack(spacing: bar.gap) {
+        return HStack(spacing: bar.gap) {
             if model.sidebarFloats {
                 // A narrow iPad: the sidebar slides over the content (IPadFrameView).
                 SidebarToggleButton(model: model)
@@ -107,7 +127,7 @@ public struct WebTopBar: View {
     /// Where the top bar's New folder makes one (the owner, 4 November 2026, "like Finder"): on a folder's page inside
     /// it; nil where there's no New folder (other pages, a workspace this person can't edit, a folder already as deep
     /// as folders go). The Folders page has its own New folder in its title row (the owner, 6 November 2026: not twice).
-    private var newFolderParent: String?? {
+    var newFolderParent: String?? {
         if let s = model.session.value, s.spaces.first(where: { $0.id == s.space })?.canEdit == false { return nil }
         switch model.route {
         case .folder(let id):
@@ -118,18 +138,18 @@ public struct WebTopBar: View {
         }
     }
 
-    private func newFolder(in parent: String?) {
+    func newFolder(in parent: String?) {
         FrameDialogs.newFolder(model, parent: parent.flatMap { id in model.folders.value?.folders.first { $0.id == id } }, open: parent == nil)
     }
 
     /// New note sits as far from the bar's right edge as from its top and bottom edges (the owner's ask, 1.1.04): the
     /// room the bar leaves round the button's height.
-    private var newNoteInset: CGFloat {
+    var newNoteInset: CGFloat {
         (style("frame.topbar").height - style("frame.tab").height) / 2
     }
 
     /// Home, pinned; the arrows while the tabs overflow; then the tabs, the only part that scrolls.
-    private var strip: some View {
+    var strip: some View {
         let list = style("frame.tabs")
         return HStack(spacing: 0) {
             if let home = model.tabs.tabs.first(where: \.isHome) {
@@ -163,7 +183,7 @@ public struct WebTopBar: View {
     }
 
     /// The Tab Overview's button (the web's `h-9 w-8` LayoutGrid by Back and Forward).
-    private var overviewButton: some View {
+    var overviewButton: some View {
         let s = style("frame.topbar.back")
         return Button { model.overviewShown.toggle() } label: {
             // (On the iPad as wide as Back and Forward, a finger's size: IPAD-06.)
@@ -177,12 +197,12 @@ public struct WebTopBar: View {
         .foleviTooltip("Show all tabs (⌘⇧\\)")
     }
 
-    private var divider: some View {
+    var divider: some View {
         let d = style("frame.topbar.divider")
         return Rectangle().fill(d.background.color).frame(width: d.width, height: d.height)
     }
 
-    private func historyButton(_ icon: WebIcon, _ label: String, enabled: Bool, style id: String, action: @escaping () -> Void) -> some View {
+    func historyButton(_ icon: WebIcon, _ label: String, enabled: Bool, style id: String, action: @escaping () -> Void) -> some View {
         let s = style("frame.topbar.back")
         return Button(action: action) {
             WebIconView(icon, size: 15)
@@ -200,12 +220,21 @@ public struct WebTopBar: View {
 
     // MARK: tabs
 
-    private var overflow: (start: Bool, end: Bool) {
+    /// The room between two tabs in the list (the Mac's capsule track keeps them close).
+    var tabGap: CGFloat {
+        #if os(macOS)
+        2
+        #else
+        style("frame.tabs").gap
+        #endif
+    }
+
+    var overflow: (start: Bool, end: Bool) {
         TabStripMath.overflow(scroll: scroller.scroll, visible: scroller.metrics.visible, content: scroller.metrics.content)
     }
 
     /// The web's ARROW: 24 by 36, the muted chevron, the accent's soft fill under the pointer.
-    private func scrollArrow(_ icon: WebIcon, _ label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+    func scrollArrow(_ icon: WebIcon, _ label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             WebIconView(icon, size: 15)
                 .frame(width: 24, height: 36)
@@ -219,7 +248,7 @@ public struct WebTopBar: View {
         .accessibilityLabel(label)
     }
 
-    private var tabs: some View {
+    var tabs: some View {
         let list = style("frame.tabs")
         let edge = TabStripMath.fade / max(1, scroller.metrics.visible)
         // Home, pinned before the list, has the list's left padding itself.
@@ -261,7 +290,7 @@ public struct WebTopBar: View {
     /// What the list measured: the scroll kept in range (tabs closing shorten it), and the open tab brought back into
     /// view, at once, when the list's width or the open tab's width changed (the window, the sidebar, the arrows
     /// coming or going, a title typed or loaded), or as asked after a change of tab.
-    private func measured(_ m: TabRowMetrics) {
+    func measured(_ m: TabRowMetrics) {
         defer { debugStrip() }
         guard m != scroller.metrics else { return }
         let resized = m.visible != scroller.metrics.visible || m.openWidth != scroller.metrics.openWidth
@@ -278,7 +307,7 @@ public struct WebTopBar: View {
 
     /// After a change of tab (a click, the keyboard, Back or Forward, a link, a new note, tabs opening or closing):
     /// without motion the first time, smoothly after, once the list has measured the change.
-    private func revealSoon() {
+    func revealSoon() {
         scroller.pendingReveal = scroller.shownOnce
         scroller.shownOnce = true
         // The list's next measure brings it (with the new tab's place); this only for a change that moves nothing.
@@ -289,7 +318,7 @@ public struct WebTopBar: View {
         }
     }
 
-    private func reveal(animated: Bool) {
+    func reveal(animated: Bool) {
         // On Home (pinned, always in view) the list stays where it is.
         guard !scroller.dragging, scroller.metrics.visible > 0, scroller.metrics.openWidth > 0,
               let to = TabStripMath.reveal(left: scroller.metrics.openLeft, width: scroller.metrics.openWidth, scroll: scroller.scroll, visible: scroller.metrics.visible, content: scroller.metrics.content) else { return }
@@ -297,17 +326,17 @@ public struct WebTopBar: View {
     }
 
     /// What scripts read of the strip (Debug only).
-    private func debugStrip() {
+    func debugStrip() {
         #if DEBUG
         model.debugStrip = ["scroll": scroller.scroll, "visible": scroller.metrics.visible, "content": scroller.metrics.content, "openLeft": scroller.metrics.openLeft, "openWidth": scroller.metrics.openWidth]
         #endif
     }
 
-    private func scrollTabs(_ dir: CGFloat) {
+    func scrollTabs(_ dir: CGFloat) {
         scrollTo(scroller.scroll + dir * TabStripMath.step(visible: scroller.metrics.visible), animated: true)
     }
 
-    private func scrollTo(_ x: CGFloat, animated: Bool) {
+    func scrollTo(_ x: CGFloat, animated: Bool) {
         defer { debugStrip() }
         let to = TabStripMath.clamp(x, visible: scroller.metrics.visible, content: scroller.metrics.content)
         guard to != scroller.scroll else { return }
@@ -320,7 +349,7 @@ public struct WebTopBar: View {
         }
     }
 
-    private func tab(_ t: FrameTab) -> some View {
+    func tab(_ t: FrameTab) -> some View {
         let active = t.id == model.tabs.activeID
         let on = WebStyles.named("frame.tab.home")
         let off = WebStyles.named("frame.tab.off")
@@ -375,7 +404,7 @@ public struct WebTopBar: View {
         // the bar's window drag is only for the space outside the tabs.
         .contentShape(RoundedRectangle(cornerRadius: s.radius, style: .continuous))
         .onTapGesture { model.selectTab(t.id) }
-        .overlay { MiddleClick { if !t.isHome && !t.pinned { model.closeTab(t.id) } } }
+        .overlay { TabMiddleClick { if !t.isHome && !t.pinned { model.closeTab(t.id) } } }
         .background(GeometryReader { g in Color.clear.preference(key: TabFrames.self, value: [t.id: g.frame(in: .named(Self.strip))]) })
         .modifier(TabDrag(id: t.id, enabled: !t.isHome, dragging: $dragging, drag: drag))
         .onHover { hoveredTab = $0 ? t.id : (hoveredTab == t.id ? nil : hoveredTab) }
@@ -387,14 +416,14 @@ public struct WebTopBar: View {
         .webContextMenu { tabMenu(t) }
     }
 
-    private func tabText(_ active: Bool) -> WebTextStyle {
+    func tabText(_ active: Bool) -> WebTextStyle {
         let label = style("frame.tab.label")
         return WebTextStyle(size: label.fontSize, leading: label.lineHeight ?? 18, weight: active ? 600 : 400, letterSpacing: label.letterSpacing)
     }
 
     /// Joined notes: one tab, a section per note (each opens the group with that note in focus), divided by a hairline.
     /// Pinned, just their icons.
-    private func joinedSections(_ t: FrameTab, _ panes: [String], active: Bool) -> some View {
+    func joinedSections(_ t: FrameTab, _ panes: [String], active: Bool) -> some View {
         let focus = active ? t.route.noteId : nil
         let line = WebStyles.vars["color-heading"]?.resolve(scheme).opacity(0.18).color ?? .gray
         return HStack(spacing: 0) {
@@ -418,7 +447,7 @@ public struct WebTopBar: View {
     }
 
     /// The web's pin: 20 square, shown on hover (filled while pinned, the crossed pin under the pointer to unpin).
-    private func pinButton(_ t: FrameTab, label: String, hovered: Bool) -> some View {
+    func pinButton(_ t: FrameTab, label: String, hovered: Bool) -> some View {
         Button { model.setTabPinned(t.id, !t.pinned) } label: {
             // A pinned tab's pin is filled (lucide's fill-current), the crossed pin under the pointer to unpin.
             ZStack {
@@ -436,7 +465,7 @@ public struct WebTopBar: View {
     }
 
     /// A note floating in its own window (Float note) says so on its tab; clicking brings that window forward.
-    private func floatingBadge(_ id: String, label: String) -> some View {
+    func floatingBadge(_ id: String, label: String) -> some View {
         Button { model.floatNote(id) } label: {
             WebIconView(.appWindowMac, size: 11)
                 .frame(width: 20, height: 20)
@@ -448,7 +477,7 @@ public struct WebTopBar: View {
         .foleviTooltip("Floating in its own window")
     }
 
-    private func closeButton(_ t: FrameTab, label: String, visible: Bool) -> some View {
+    func closeButton(_ t: FrameTab, label: String, visible: Bool) -> some View {
         let close = style("frame.tab.close")
         return Button { model.closeTab(t.id) } label: {
             WebIconView(.x, size: 12)
@@ -469,16 +498,16 @@ public struct WebTopBar: View {
 
     // MARK: dragging a tab (TabStrip.tsx's pointer drag)
 
-    private static let strip = "frame.tabs"
+    static let strip = "frame.tabs"
 
     /// Moves the dragged tab with the pointer, kept inside the strip, and swaps it with a neighbour once it passes
     /// that tab's middle, as the web does. Home stays first and doesn't move.
-    private func drag(_ id: String, _ value: DragGesture.Value) {
+    func drag(_ id: String, _ value: DragGesture.Value) {
         // The tabs after Home (pinned, first in the model's order: a tab's place there is one more than here).
         let tabs = model.tabs.tabs.filter { !$0.isHome }
         guard let i = tabs.firstIndex(where: { $0.id == id }), let first = tabFrames[tabs[0].id] else { return }
         // Where each tab sits in the order as it is now, from the widths (the frames lag a layout behind a swap).
-        let gap = style("frame.tabs").gap
+        let gap = tabGap
         let widths = tabs.map { tabFrames[$0.id]?.width ?? 0 }
         var lefts: [CGFloat] = []
         var x = first.minX
@@ -503,7 +532,7 @@ public struct WebTopBar: View {
 
     /// A tab's right-click menu (the web's tab ContextMenu): pin or unpin, unjoin, then the closes; pinned tabs stay
     /// through "close others" (unpin one to close it).
-    private func tabMenu(_ t: FrameTab) -> [WebMenuEntry] {
+    func tabMenu(_ t: FrameTab) -> [WebMenuEntry] {
         if t.isHome { return [] }
         let all = model.tabs.tabs.filter { !$0.isHome }
         let i = all.firstIndex { $0.id == t.id } ?? 0
@@ -571,7 +600,7 @@ public struct WebTopBar: View {
     }
 }
 /// Each tab's frame in the strip.
-private struct TabFrames: PreferenceKey {
+struct TabFrames: PreferenceKey {
     static let defaultValue: [String: CGRect] = [:]
     static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
         value.merge(nextValue()) { $1 }
@@ -580,7 +609,7 @@ private struct TabFrames: PreferenceKey {
 
 /// A tab's drag: after 5 points it follows the pointer (lifted, with the web's shadow) and, let go, settles in its
 /// new place. A press that doesn't move is a click.
-private struct TabDrag: ViewModifier {
+struct TabDrag: ViewModifier {
     let id: String
     let enabled: Bool
     @Binding var dragging: (id: String, dx: CGFloat, grab: CGFloat)?
@@ -608,7 +637,7 @@ private struct TabDrag: ViewModifier {
 
 #if os(macOS)
 /// Takes only middle clicks (a tab's close, as on the web and in browsers); every other click goes through.
-private struct MiddleClick: NSViewRepresentable {
+struct TabMiddleClick: NSViewRepresentable {
     let action: () -> Void
 
     final class View: NSView {
@@ -633,7 +662,7 @@ private struct MiddleClick: NSViewRepresentable {
 }
 #else
 /// (No middle button on the iPad.)
-private struct MiddleClick: View {
+struct TabMiddleClick: View {
     let action: () -> Void
     var body: some View { Color.clear.allowsHitTesting(false) }
 }
@@ -647,8 +676,8 @@ private struct MiddleClick: View {
 struct TruncatingLabel: View {
     let text: String
     let style: WebTextStyle
-    @State private var full: CGFloat = 0
-    @State private var shown: CGFloat = 0
+    @State var full: CGFloat = 0
+    @State var shown: CGFloat = 0
 
     var body: some View {
         Text(text).webText(style).lineLimit(1).truncationMode(.tail)

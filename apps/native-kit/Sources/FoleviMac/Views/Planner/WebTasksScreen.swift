@@ -79,9 +79,15 @@ struct WebTasksScreen: View {
                         seg
                     }
                     // (The Mac's native look: the views, Calendar and Add task are in the card's glass controls.)
-                    PlannerField(placeholder: "Filter by task or page", text: $model.filter, style: "tasks.filter", focused: $filterFocused)
-                        .padding(.top, slot == nil ? 16 : 12)
-                        .accessibilityLabel("Filter tasks")
+                    Group {
+                        if chrome != nil {
+                            PlannerFilterField(placeholder: "Filter by task or page", text: $model.filter, focused: $filterFocused)
+                        } else {
+                            PlannerField(placeholder: "Filter by task or page", text: $model.filter, style: "tasks.filter", focused: $filterFocused)
+                        }
+                    }
+                    .padding(.top, slot == nil ? 16 : 12)
+                    .accessibilityLabel("Filter tasks")
                     if loading {
                         VStack(spacing: 8) {
                             ForEach(0..<3, id: \.self) { _ in
@@ -98,7 +104,8 @@ struct WebTasksScreen: View {
                             VStack(alignment: .leading, spacing: 0) {
                                 let g = PS("tasks.group.title").resolve(scheme)
                                 if chrome != nil {
-                                    NativeHeading(label).padding(.bottom, 8).padding(.leading, 12)
+                                    // (On the boxes' own edge, the rows' leading padding.)
+                                    NativeHeading(label).padding(.bottom, 8).padding(.leading, PS("tasks.row").resolve(scheme).padding.left)
                                 } else {
                                     Text(label.uppercased()).webText(g.text).lineLimit(1).foregroundStyle(g.color.color).padding(.bottom, g.margin.bottom)
                                 }
@@ -119,11 +126,12 @@ struct WebTasksScreen: View {
         .background(TasksKeys(model: model, open: { frame.showQuickAdd(in: tasks.window) }, filter: { filterFocused = true }))
         .plannerAnchor(tasks.anchor)
         .onChange(of: model.list.value) { _, _ in model.reconcile() }
-        // Scripts open the dialogs (the Debug app's `frame {"do":"post"}`): "quick", "edit" (the first task).
+        // Scripts open the dialogs (the Debug app's `frame {"do":"post"}`): "quick", "edit" and "move" (the first task).
         .onReceive(NotificationCenter.default.publisher(for: .init("folevi.planner.show"))) { n in
             switch n.object as? String {
             case "quick": frame.showQuickAdd(in: tasks.window)
             case "edit": if let t = rows.first { tasks.edit(t) }
+            case "move": if let t = rows.first { tasks.move(t) }
             case "menu": if let t = rows.first, let w = tasks.window { WebMenuWindow.show(tasks.menu(t), at: NSPoint(x: 600, y: 520), in: w) }
             default: break
             }

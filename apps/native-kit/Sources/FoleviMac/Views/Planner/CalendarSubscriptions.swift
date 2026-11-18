@@ -82,10 +82,33 @@ struct CalendarsPopover: View {
 struct ColorPicker: View {
     @Binding var value: String
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
+        if chrome != nil { native } else { web }
+    }
+
+    /// The Mac's native look: the six colours as round swatches in one row, the chosen one ringed and named after
+    /// the label (as the Mac's own Calendar and Finder pick a colour). As named chips they took two rows, the last
+    /// with "Gray" alone on it.
+    private var native: some View {
+        VStack(alignment: .leading, spacing: NativeField.labelGap) {
+            HStack(spacing: 6) {
+                NativeFieldLabel("Color")
+                Text(colors.first { $0.0 == value }?.1 ?? "").font(.system(size: NativeField.labelSize)).foregroundStyle(Color.secondary)
+            }
+            HStack(spacing: 6) {
+                ForEach(colors, id: \.0) { id, label in
+                    ColorSwatch(color: calendarColor(id).c(scheme), selected: value == id, label: label) { value = id }
+                }
+            }
+            .padding(.leading, -4)
+        }
+    }
+
+    private var web: some View {
         let item = PS("cals.color").resolve(scheme)
-        VStack(alignment: .leading, spacing: 4) {
+        return VStack(alignment: .leading, spacing: 4) {
             StyledText("Color", "cals.color.legend")
             FlowRow(spacing: 4) {
                 ForEach(colors, id: \.0) { id, label in
@@ -104,6 +127,29 @@ struct ColorPicker: View {
                 }
             }
         }
+    }
+}
+
+/// One colour to pick: an 18 pt dot, a ring round it when chosen (a quiet one under the pointer).
+private struct ColorSwatch: View {
+    let color: Color
+    let selected: Bool
+    let label: String
+    let action: () -> Void
+    @State private var over = false
+
+    var body: some View {
+        Button(action: action) {
+            Circle().fill(color).frame(width: 18, height: 18)
+                .padding(4)
+                .overlay(Circle().strokeBorder(selected ? Color.primary.opacity(0.8) : over ? Color.primary.opacity(0.28) : Color.clear, lineWidth: selected ? 2 : 1.5))
+                .contentShape(Circle())
+        }
+        .buttonStyle(PlainPress())
+        .onHover { over = $0 }
+        .foleviTooltip(label)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 

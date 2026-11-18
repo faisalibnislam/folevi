@@ -145,6 +145,8 @@ struct WebCalendarScreen: View {
     @State private var tasks: PlannerTasks
     let frame: FrameModel
     @State private var bodyHeight: CGFloat = 748
+    /// The height the calendar has on screen, clear of the card's bar (the native look's month fits it).
+    @State private var visibleHeight: CGFloat = 0
     @FocusState private var gridFocused: Bool
     @Environment(\.colorScheme) private var scheme
     /// The Mac's native look (NativeChrome).
@@ -183,11 +185,13 @@ struct WebCalendarScreen: View {
                 .transition(.opacity)
                 .animation(WebMotion.change(WebMotion.viewSwitch), value: state.layout)
             }
-            .padding(content.padding.edgeInsets)
+            .padding(contentInsets(content))
             .frame(maxWidth: 1180)
             .frame(maxWidth: .infinity)
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bodyHeight = $0 }
+        // What shows of the calendar: the scroller's own height (it is laid out under the card's bar, in the safe area).
+        .onGeometryChange(for: CGFloat.self) { $0.size.height.rounded() } action: { visibleHeight = $0 }
         .plannerAnchor(tasks.anchor)
         .onReceive(NotificationCenter.default.publisher(for: .init("folevi.calendar.layout"))) { n in
             if let s = n.object as? String, let l = WebCalendarLayout(rawValue: s) { state.setLayout(l) }
@@ -200,6 +204,14 @@ struct WebCalendarScreen: View {
         .onChange(of: state.tasks.value) { _, v in if let v { state.base.edits.reconcile(v.tasks) } }
         .accessibilityIdentifier("calendar-screen")
         .cardItems(key: "\(state.layout.rawValue)|\(heading)|\(state.failing)|\(state.feeds)") { cardItems }
+    }
+
+    /// The page's padding. The native look's month ends `MonthFit.below` above the card's edge: with the web's 100 pt
+    /// under it, a month that fitted the window still scrolled.
+    private func contentInsets(_ content: WebComputedStyle) -> EdgeInsets {
+        var insets = content.padding.edgeInsets
+        if chrome != nil, state.layout == .month { insets.bottom = MonthFit.below }
+        return insets
     }
 
     // MARK: The card's glass controls (CardItems.swift)
@@ -321,8 +333,7 @@ struct WebCalendarScreen: View {
     }
 
     private func openFeed() {
-        guard let w = tasks.window else { return }
-        PlannerPanel.dialog(in: w) { close in CalendarFeedDialog(client: frame.client, frame: frame, close: close) }
+        PlannerSheet.present(frame, in: tasks.window) { close in CalendarFeedDialog(client: frame.client, frame: frame, close: close) }
     }
 
     // MARK: Month
@@ -333,9 +344,17 @@ struct WebCalendarScreen: View {
         let r = grid.resolve(scheme).radius
         let days = state.monthDays
         let line = PV("color-line").c(scheme)
+        // The Mac's native look: the six weeks share the height the window gives them (never less than the web's
+        // rows), and the day's tasks and the unscheduled ones scroll beside the month in a list of their own. As
+        // one long page, the month's card ran on empty under its last week to the end of that list, and a task far
+        // down it could not be dragged to a day: the month had scrolled away.
+        let native = chrome != nil
+        let wd = PS("cal.weekdays").resolve(scheme)
+        let base = PS("cal.cell").resolve(scheme).height
+        let content = PS("cal.content").resolve(scheme)
+        let rowHeight = native ? MonthFit.rowHeight(visible: visibleHeight - 12 - content.padding.top - MonthFit.below, header: wd.height, base: base) : base
         return HStack(alignment: .top, spacing: split.gap) {
             VStack(spacing: 0) {
-                let wd = PS("cal.weekdays").resolve(scheme)
                 HStack(spacing: 0) {
                     ForEach(0..<7, id: \.self) { i in
                         let day = TaskDates.add("2024-01-01", days: i)
@@ -354,13 +373,14 @@ struct WebCalendarScreen: View {
                     HStack(spacing: 0) {
                         ForEach(0..<7, id: \.self) { i in
                             let d = days[w * 7 + i]
-                            MonthCell(day: d, inMonth: d.hasPrefix(state.month), today: state.today, selected: state.selected == d, last: i == 6, items: byDate[d] ?? [], events: events[d] ?? [], state: state, tasks: tasks)
+                            MonthCell(day: d, inMonth: d.hasPrefix(state.month), today: state.today, selected: state.selected == d, last: i == 6, bottom: w == 5, items: byDate[d] ?? [], events: events[d] ?? [], state: state, tasks: tasks,
+                                      height: native ? rowHeight : nil, capacity: MonthFit.capacity(rowHeight: rowHeight, base: base))
                         }
                     }
                 }
-                Spacer(minLength: 0)
+                if !native { Spacer(minLength: 0) }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .frame(maxWidth: .infinity, maxHeight: native ? nil : .infinity, alignment: .top)
             .clipShape(RoundedRectangle(cornerRadius: r, style: .circular))
             .webBox(grid)
             .focusable()
@@ -372,7 +392,17 @@ struct WebCalendarScreen: View {
             .accessibilityElement(children: .contain)
             .accessibilityLabel(PlannerDates.format("\(state.month)-01", "MMMMyyyy"))
             .topAligned()
-            aside(byDate: byDate, events: events).frame(width: 300).topAligned()
+            if native {
+                ScrollView {
+                    // (Room under the last task for the Ask Foli AI button, which floats over this corner.)
+                    aside(byDate: byDate, events: events).padding(.bottom, 64)
+                }
+                .scrollIndicators(.automatic)
+                .frame(width: 300, height: wd.height + rowHeight * 6)
+                .topAligned()
+            } else {
+                aside(byDate: byDate, events: events).frame(width: 300).topAligned()
+            }
         }
         .fixedSize(horizontal: false, vertical: true)
     }
@@ -511,16 +541,30 @@ struct WebCalendarScreen: View {
         let overdue = state.base.overdue
         let days = state.agendaDays.filter { byDate[$0] != nil || events[$0] != nil || $0 == state.today }
         let title = PS("agenda.section.title").resolve(scheme)
+        // The Mac's native look: a day's heading as Tasks' Upcoming has it (NativeHeading, on the rows' own edge),
+        // Overdue alone in the warning colour. Every day's heading was in the web's accent, which on the Mac read
+        // as six warnings down the page.
+        let native = chrome != nil
         return VStack(alignment: .leading, spacing: 24) {
             if !overdue.isEmpty {
-                VStack(alignment: .leading, spacing: title.margin.bottom) {
-                    Text("Overdue").webText(title.text).foregroundStyle(PV("color-danger").c(scheme))
+                VStack(alignment: .leading, spacing: native ? 8 : title.margin.bottom) {
+                    if native {
+                        Text("Overdue").font(NativeLook.heading).foregroundStyle(PV("color-danger").c(scheme)).lineLimit(1)
+                            .accessibilityAddTraits(.isHeader)
+                            .padding(.leading, PS("tasks.row").resolve(scheme).padding.left)
+                    } else {
+                        Text("Overdue").webText(title.text).foregroundStyle(PV("color-danger").c(scheme))
+                    }
                     TaskCard { ForEach(overdue, id: \.id) { t in PlannerTaskRow(raw: t, tasks: tasks) } }
                 }
             }
             ForEach(days, id: \.self) { d in
-                VStack(alignment: .leading, spacing: title.margin.bottom) {
-                    StyledText(d == state.today ? "Today" : PlannerDates.long(d), "agenda.section.title")
+                VStack(alignment: .leading, spacing: native ? 8 : title.margin.bottom) {
+                    if native {
+                        NativeHeading(d == state.today ? "Today" : PlannerDates.long(d)).padding(.leading, PS("tasks.row").resolve(scheme).padding.left)
+                    } else {
+                        StyledText(d == state.today ? "Today" : PlannerDates.long(d), "agenda.section.title")
+                    }
                     TaskCard {
                         if (byDate[d] ?? []).isEmpty && events[d] == nil {
                             Text("Nothing due.").webText(.role(.subheadline)).foregroundStyle(PV("color-ink-muted").c(scheme))
@@ -538,16 +582,44 @@ struct WebCalendarScreen: View {
 
 // MARK: Month cells
 
+/// The month's rows when it fits the window (the Mac's native look).
+enum MonthFit {
+    /// A chip's height and the room between two.
+    static let chip: CGFloat = 22
+    /// The tallest a week gets: past it a tall window leaves room under the month instead of stretching it.
+    static let tallest: CGFloat = 172
+    /// The room kept under the month, to the card's edge.
+    static let below: CGFloat = 16
+
+    /// A week's height: a sixth of what is left under the weekday header, never less than the web's row (`base`:
+    /// a shorter window scrolls) and never more than `tallest`. `visible` 0: not measured yet.
+    static func rowHeight(visible: CGFloat, header: CGFloat, base: CGFloat) -> CGFloat {
+        guard visible > 0 else { return base }
+        return min(tallest, max(base, ((visible - header) / 6).rounded(.down)))
+    }
+
+    /// The tasks and events a day shows: the web's three, and one more for each chip of extra height.
+    static func capacity(rowHeight: CGFloat, base: CGFloat) -> Int {
+        3 + max(0, Int((rowHeight - base) / chip))
+    }
+}
+
 struct MonthCell: View {
     let day: String
     let inMonth: Bool
     let today: String
     let selected: Bool
     let last: Bool
+    /// The last week's row (the native look: its line is the grid's own edge, not drawn twice).
+    var bottom = false
     let items: [TaskRow]
     let events: [PlacedEvent]
     let state: WebCalendarState
     let tasks: PlannerTasks
+    /// The row's height when the month fits the window (the native look); nil: the web's.
+    var height: CGFloat?
+    /// How many tasks and events the day shows before "+N more".
+    var capacity = 3
     @State private var targeted = false
     @Environment(\.colorScheme) private var scheme
 
@@ -556,14 +628,14 @@ struct MonthCell: View {
         let isToday = day == today
         let num = PS(isToday ? "cal.cell.number.today" : inMonth ? "cal.cell.number" : "cal.cell.number.outside")
         let ns = num.resolve(scheme)
-        let room = max(0, 3 - items.count)
-        let hidden = max(0, items.count - 3) + max(0, events.count - room)
+        let room = max(0, capacity - items.count)
+        let hidden = max(0, items.count - capacity) + max(0, events.count - room)
         let line = PV("color-line").c(scheme)
         VStack(alignment: .leading, spacing: 0) {
             Text("\(Int(day.suffix(2)) ?? 0)").webText(ns.text).monospacedDigit().foregroundStyle(ns.color.color)
                 .padding(ns.padding.edgeInsets).frame(minWidth: 24, minHeight: 24).webBox(num)
             VStack(alignment: .leading, spacing: 2) {
-                ForEach(items.prefix(3), id: \.id) { t in
+                ForEach(items.prefix(capacity), id: \.id) { t in
                     MonthChip(task: t, tasks: tasks)
                 }
                 ForEach(events.prefix(room)) { p in EventChip(placed: p) }
@@ -574,10 +646,10 @@ struct MonthCell: View {
             .padding(.top, 4)
         }
         .padding(cell.padding.edgeInsets)
-        .frame(maxWidth: .infinity, minHeight: cell.height, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: height ?? cell.height, maxHeight: height, alignment: .topLeading)
         .background(cell.background.color)
         .background(targeted ? PV("color-accent-soft").c(scheme) : .clear)
-        .overlay(alignment: .bottom) { Rectangle().fill(line).frame(height: 1) }
+        .overlay(alignment: .bottom) { if !(bottom && height != nil) { Rectangle().fill(line).frame(height: 1) } }
         .overlay(alignment: .trailing) { if !last { Rectangle().fill(line).frame(width: 1) } }
         .contentShape(Rectangle())
         .webHover(radius: 0)
@@ -1048,6 +1120,7 @@ struct ScheduleButton: View {
     let label: String
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     @State private var over = false
 
     var body: some View {
@@ -1055,11 +1128,13 @@ struct ScheduleButton: View {
         Button(action: action) {
             HStack(spacing: s.gap) {
                 WebIconView(.calendarPlus, size: 13)
-                Text("Schedule for \(label)").webText(s.text).lineLimit(1).fixedSize()
+                // (The Mac's native look: a quiet 12 pt link under each task. In the web's bold it was the heaviest
+                // thing in a list of eight tasks, said eight times.)
+                Text("Schedule for \(label)").webText(chrome != nil ? WebTextStyle(size: 12, leading: 16, weight: 500) : s.text).lineLimit(1).fixedSize()
             }
             .padding(s.padding.edgeInsets)
             .frame(height: s.height)
-            .foregroundStyle(over ? PV("color-heading").c(scheme) : s.color.color)
+            .foregroundStyle(over ? PV("color-heading").c(scheme) : chrome != nil ? PV("color-ink-muted").c(scheme) : s.color.color)
             .background { if over { RoundedRectangle(cornerRadius: s.radius, style: .circular).fill(PV("glass-hover").c(scheme)) } }
             .contentShape(Rectangle())
         }

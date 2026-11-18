@@ -131,6 +131,8 @@ struct TaskEditDialog: View {
                                 dueTime = ""
                             }
                             .buttonStyle(.borderless)
+                            // (Its own width: the row offered it a third of itself and it came out as one letter.)
+                            .fixedSize()
                         }
                         PlannerDateField(value: $dueDate, clearable: false)
                     }
@@ -429,8 +431,7 @@ struct QuickAddDialog: View {
 extension FrameModel {
     /// Quick Add task (the web's dialog), over this window; `due` starts it on a day.
     public func showQuickAdd(in window: NSWindow?, due: String? = nil) {
-        guard let window = window ?? NSApp.keyWindow else { return }
-        PlannerPanel.dialog(in: window) { close in
+        PlannerSheet.present(self, in: window ?? NSApp.keyWindow) { close in
             QuickAddDialog(frame: self, initialDue: due, close: close)
         }
     }

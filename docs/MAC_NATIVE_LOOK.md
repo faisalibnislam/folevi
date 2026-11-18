@@ -172,6 +172,37 @@ uneven"):
   on a quiet band behind a hairline. A form's small actions (Generate) are 24 pt capsules under their field, never
   floating over a label. A scroller round a form keeps 4 pt at its sides so a focused field's halo isn't cut.
 
+## Tasks and the Calendar
+
+Rules from the 2026-11-19 pass (the owner: "polish Tasks and Calendar next"):
+
+- **Every dialog is the frame's sheet.** Edit task, Move task, Quick add and Subscribe are presented by
+  `PlannerSheet.present`, which is `FrameSheets.present` on the Mac, inside `WebSheetDialog`. Drawn by themselves
+  over the window (`PlannerPanel.dialog`) they had no panel at all on the Mac: the sheet is the surface there, so
+  their fields sat straight on the task list. `PlannerPanel` is for popovers only on the Mac.
+- **One control for one job in a task dialog.** A choice is the system's pop-up button (`PlannerSelect` is a
+  `Picker`), a date or a time is the system's push button holding the value (the calendar or the list of times
+  opens under it), words go in `NativeField`, and a label over a control is `NativeFieldLabel`. Edit task and Quick
+  add no longer mix web selects, white date wells and pop-up buttons.
+- **A box whose only fill is a gradient keeps a flat fill** (`WebBoxModifier.nativeStyle`). The native look drops
+  the web's gradients, and a done task's box is nothing but one: it drew a white tick on the page. A gradient that
+  fades to clear is a fade, not a fill, and still goes.
+- **A floating list has the panel's material under its fill** (`WebMaterial`, as the date's calendar): the fill
+  alone is see-through, and the dialog's controls showed between the times.
+- **A list of tasks**: a separator starts where the rows' words start (past the box) and ends 12 pt short of the
+  row; the facts under a title each follow a dot with the same room on both sides; a group's heading is
+  `NativeHeading` on the boxes' own edge, in Tasks' Upcoming and the Calendar's Agenda alike; only Overdue is in
+  the warning colour.
+- **A filter is a field with a magnifier** (`PlannerFilterField`: `NativeFieldBox`, Clear once there are words).
+- **The month fits the window** (`MonthFit`): the six weeks share the height under the weekday header, never
+  shorter than the web's row (a short window scrolls) nor taller than 172 pt, and a taller week shows more of its
+  day before "+N more". The day's tasks and the unscheduled ones scroll beside it in a list of their own, so a
+  task far down that list can still be dragged onto a day.
+- **A choice of colour is a row of dots**, the chosen one ringed and named after the label (`ColorSwatch`), never
+  named chips that wrap.
+- **A repeated action under every row is quiet** (the Calendar's "Schedule for today": 12 pt, the secondary
+  colour, the label's colour under the pointer).
+
 ## Checks before calling a part done
 
 Real pictures and two automatic checks (2026-11-18):
@@ -187,7 +218,11 @@ Real pictures and two automatic checks (2026-11-18):
 - `node apps/mac/scripts/mac.mjs eval @apps/mac/scripts/font-lint.js`: interface text of the page that isn't in the
   system font. It must answer `[]` too (the note's own text and theme previews aren't counted).
 - `apps/web/test/note-panels-polish.test.ts` and `TabStripTests.theOpenTabClearsTheArrowsWhenTheyFirstAppear` hold
-  the same rules in CI.
+  the same rules in CI; `PlannerPolishTests` holds the task dialogs' sheet, the done box's fill and the month's rows.
+- A click inside a dialog or a popover it opened: `mac.mjs cmd menus '{"do":"click","sheet":true,"x":..,"y":..}'`
+  (or `"child":true`), points from that window's top left. A pointer event posted to the app from outside never
+  reaches a sheet. `frame {"do":"post","name":"folevi.planner.show","value":"quick"|"edit"|"move"|"menu"}` opens
+  the task dialogs on the Tasks screen.
 
 
 Build with no new warnings; unit tests pass (update tests that encoded the old web-matched chrome and say which);

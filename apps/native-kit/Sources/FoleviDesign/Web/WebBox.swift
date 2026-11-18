@@ -148,22 +148,30 @@ struct WebBoxModifier: ViewModifier {
     @Environment(\.nativeShadowScale) private var shadowScale
     let pair: WebStylePair
 
-    /// The style in this theme. The Mac's native look (NativeChrome): fills, borders and hairline edges stay, as
-    /// does a floating surface's elevation (an outer shadow blurred 16 pt or more: a tip or panel over the page);
-    /// the web's card lifts, inset shadows and gradients go.
+    /// The style in this theme. The Mac's native look (NativeChrome): see `nativeStyle`.
     private var resolved: WebComputedStyle {
-        var s = pair.resolve(scheme)
-        if chrome != nil {
-            s.shadows = s.shadows.filter { !$0.inset && ($0.blur >= 16 || ($0.blur == 0 && $0.spread <= 1)) }
-            // (A floating surface's drop at the look's strength: nativeShadowScale. Hairline edges stay whole.)
-            if shadowScale != 1 {
-                s.shadows = s.shadows.map { l in
-                    guard l.blur > 0 else { return l }
-                    return ShadowLayer(x: l.x, y: l.y, blur: l.blur, spread: l.spread, color: RGBA(l.color.r, l.color.g, l.color.b, l.color.a * shadowScale), inset: l.inset)
-                }
+        let s = pair.resolve(scheme)
+        return chrome != nil ? Self.nativeStyle(s, shadowScale: shadowScale) : s
+    }
+
+    /// A web element's box in the Mac's native look: fills, borders and hairline edges stay, as does a floating
+    /// surface's elevation (an outer shadow blurred 16 pt or more: a tip or panel over the page); the web's card
+    /// lifts, inset shadows and gradients go.
+    static func nativeStyle(_ style: WebComputedStyle, shadowScale: Double) -> WebComputedStyle {
+        var s = style
+        s.shadows = s.shadows.filter { !$0.inset && ($0.blur >= 16 || ($0.blur == 0 && $0.spread <= 1)) }
+        // (A floating surface's drop at the look's strength: nativeShadowScale. Hairline edges stay whole.)
+        if shadowScale != 1 {
+            s.shadows = s.shadows.map { l in
+                guard l.blur > 0 else { return l }
+                return ShadowLayer(x: l.x, y: l.y, blur: l.blur, spread: l.spread, color: RGBA(l.color.r, l.color.g, l.color.b, l.color.a * shadowScale), inset: l.inset)
             }
-            s.gradient = nil
         }
+        // (A box whose only fill is a solid gradient keeps a flat fill, the gradient's end colour: without one a
+        // done task's box drew nothing at all, a white tick on the page. Found 2026-11-19. A gradient that fades to
+        // clear is a fade over other content, not a fill, and still goes.)
+        if let g = s.gradient, s.background.a == 0, let end = g.stops.last, g.stops.allSatisfy({ $0.a >= 1 }) { s.background = end }
+        s.gradient = nil
         return s
     }
 

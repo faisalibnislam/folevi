@@ -54,17 +54,15 @@ final class PlannerTasks {
 
     /// Edit task (TaskEditDialog).
     func edit(_ t: TaskRow) {
-        guard let window else { return }
         let task = edits.shown(t)
-        PlannerPanel.dialog(in: window) { close in
+        PlannerSheet.present(frame, in: window) { close in
             TaskEditDialog(tasks: self, task: task, close: close)
         }
     }
 
     /// Move to… (MoveTaskDialog).
     func move(_ t: TaskRow) {
-        guard let window else { return }
-        PlannerPanel.dialog(in: window) { close in
+        PlannerSheet.present(frame, in: window) { close in
             MoveTaskDialog(tasks: self, task: t, close: close)
         }
     }
@@ -233,7 +231,10 @@ struct PlannerTaskRow<Action: View>: View {
     private func meta(_ t: TaskRow) -> some View {
         let m = PS("tasks.meta").resolve(scheme)
         let link = PS("tasks.meta.link").resolve(scheme)
-        return HStack(spacing: m.gap) {
+        // The Mac's native look: each fact after a dot of its own, the same room on both sides of it ("Inbox · done
+        // 6 hours ago"). Joined to the fact after it, the dot had the row's gap before it and one space after.
+        let native = chrome != nil
+        return HStack(spacing: native ? 5 : m.gap) {
             Button { tasks.openNote(t) } label: {
                 HStack(spacing: link.gap) {
                     WebIconView(.fileText, size: 12)
@@ -245,14 +246,18 @@ struct PlannerTaskRow<Action: View>: View {
             .buttonStyle(PlainPress())
             .onHover { overLink = $0 }
             .layoutPriority(-1)
-            if let a = t.assigneeName { Text("· \(a)").webText(m.text).lineLimit(1).fixedSize() }
+            if let a = t.assigneeName {
+                if native { Text("·").webText(m.text) }
+                Text(native ? a : "· \(a)").webText(m.text).lineLimit(1).fixedSize()
+            }
             if t.status == "canceled" {
                 Text("Canceled").webText(WebTextStyle(size: 11, leading: 14, weight: 500)).lineLimit(1).fixedSize()
                     .padding(.horizontal, 6)
                     .background(RoundedRectangle(cornerRadius: 6, style: .circular).fill(PV("color-surface-sunken").c(scheme)))
             }
             if t.status == "done", let at = t.completedAt {
-                Text("· done \(PlannerDates.relative(at))").webText(m.text).lineLimit(1).fixedSize()
+                if native { Text("·").webText(m.text) }
+                Text("\(native ? "" : "· ")done \(PlannerDates.relative(at))").webText(m.text).lineLimit(1).fixedSize()
             }
         }
         .foregroundStyle(m.color.color)
@@ -329,8 +334,10 @@ struct TaskCard<Content: View>: View {
 
     var body: some View {
         if chrome != nil {
-            // The Mac's native look: the rows straight on the page, separators inset to their text.
-            _VariadicView.Tree(DividedLayout(line: NativeLook.separator, inset: 12)) { content() }
+            // The Mac's native look: the rows straight on the page, separators from where the rows' words start
+            // (past the box, as a Mac list's) to 12 pt short of the row's end.
+            let row = PS("tasks.row").resolve(scheme)
+            _VariadicView.Tree(DividedLayout(line: NativeLook.separator, inset: 12, leading: row.padding.left + PS("tasks.check").resolve(scheme).width + row.gap)) { content() }
                 .frame(maxWidth: .infinity)
         } else {
             web
@@ -351,13 +358,15 @@ struct TaskCard<Content: View>: View {
 struct DividedLayout: _VariadicView_MultiViewRoot {
     let line: Color
     var inset: CGFloat = 0
+    /// The line's start, when it isn't `inset` (a list whose rows begin with a box: the line starts at the words).
+    var leading: CGFloat?
 
     @ViewBuilder
     func body(children: _VariadicView.Children) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(children.enumerated()), id: \.element.id) { i, child in
                 child
-                if i < children.count - 1 { Rectangle().fill(line).frame(height: 1).padding(.horizontal, inset) }
+                if i < children.count - 1 { Rectangle().fill(line).frame(height: 1).padding(.leading, leading ?? inset).padding(.trailing, inset) }
             }
         }
     }

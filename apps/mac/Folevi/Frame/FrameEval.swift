@@ -59,7 +59,12 @@ extension NativeFrame {
             }
             switch req["do"] as? String {
             case "rightClick", "click":
-                guard let window = WindowManager.shared.frontMain?.window, let cv = window.contentView else { return done(["error": "no window"]) }
+                // {"sheet":true}: the click goes to the window's sheet (a dialog); {"child":true}: to the topmost
+                // child window of the sheet or the window (a popover a dialog opened). Points from that window's top left.
+                guard var window = WindowManager.shared.frontMain?.window else { return done(["error": "no window"]) }
+                if req["sheet"] as? Bool == true, let sheet = window.attachedSheet { window = sheet }
+                if req["child"] as? Bool == true, let child = (window.attachedSheet ?? window).childWindows?.last { window = child }
+                guard let cv = window.contentView else { return done(["error": "no window"]) }
                 let p = NSPoint(x: req["x"] as? Double ?? 0, y: cv.bounds.height - (req["y"] as? Double ?? 0))
                 let right = req["do"] as? String == "rightClick"
                 let types: [NSEvent.EventType] = right ? [.rightMouseDown, .rightMouseUp] : [.mouseMoved, .leftMouseDown, .leftMouseUp]

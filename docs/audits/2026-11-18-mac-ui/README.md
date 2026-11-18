@@ -210,6 +210,75 @@ Also fixed, without a picture: the Import card in Settings had more padding unde
 Vault's Add dialog took its height from whichever window was key, so it cut off its Notes field when Settings was
 open or the app was behind another.
 
+## Tasks and the Calendar (ninth pass, 2026-11-19, the owner: "polish Tasks and Calendar next")
+
+Every Tasks view, the Calendar's three layouts, the task dialogs, the task menu and the Calendars popover, light
+and dark, then the dialogs driven with clicks and keys on the scratch library. Three of the findings were faults,
+not polish:
+
+- **The task dialogs had no panel.** Edit task, Move task, Quick add and Subscribe were drawn over the window by
+  the planner's own presenter, which on the Mac leaves the surface to the system's sheet. There was no sheet, so
+  their titles and fields sat straight on the task list. They are now the frame's sheet, as every other dialog.
+- **A done task's box was invisible** in Completed, in the Calendar's day list and in the Agenda: its only fill is
+  a gradient and the native look drops gradients. It keeps a flat fill now.
+- **The list of times was see-through**: the dialog's controls showed between the times.
+
+The rest is polish: one kind of control in the task dialogs (pop-up buttons, a date button, a time button, the
+form's labels), a magnifier in the filter, the facts under a task evenly spaced, separators from the words, day
+headings alike in Upcoming and Agenda (only Overdue in the warning colour), a month that fits the window with its
+side list scrolling on its own, a quieter "Schedule for today", and the calendar's colour as a row of dots.
+
+### Edit task: it had no panel behind it, so its fields sat on the task list. Now the same sheet as every other dialog, with one kind of control
+
+![planner-edit](planner-edit.jpg)
+
+### Quick add task: the same fault and the same fix, with the form's own labels and pop-up button
+
+![planner-quick](planner-quick.jpg)
+
+### Edit task in dark mode
+
+![planner-edit-dark](planner-edit-dark.jpg)
+
+### Completed: a done task's box was invisible. It shows now, the facts under a title are evenly spaced, and the filter has its magnifier
+
+![planner-completed](planner-completed.jpg)
+
+### Upcoming: separators start at the words, a day's heading sits on the boxes' edge
+
+![planner-upcoming](planner-upcoming.jpg)
+
+### The month: its card ran on empty under the last week, and the whole page scrolled as one. Now the weeks fit the window and the side list scrolls on its own
+
+![planner-month](planner-month.jpg)
+
+### The month in dark mode
+
+![planner-month-dark](planner-month-dark.jpg)
+
+### Agenda: every day's heading was in the warning colour. Now only Overdue is
+
+![planner-agenda](planner-agenda.jpg)
+
+### Calendars: the six colours in one row of dots (the named chips wrapped, with Gray alone on a second row)
+
+![planner-colors](planner-colors.jpg)
+
+### The list of times: it was see-through over the dialog. Now it has a surface
+
+![planner-times](planner-times.jpg)
+
+Checked by hand in the running app: the date's calendar and the list of times open from the sheet and Escape
+closes only them, then the sheet; Clear removes the date and the Time row and the sheet resizes; Quick add reads
+"tomorrow" in the task's words, adds the task and says so; Edit task saves with Return ("Task updated"); Move
+task finds a page by its name and moves the task ("Task moved to Inbox"). Tests: 221 Mac frame tests (5 new in
+`PlannerPolishTests`), the whole Swift package (iPad and iPhone pictures unchanged), and the shared code compiled
+for iPad.
+
+Not checked in this pass: Subscribe (it needs an account; it uses the same sheet), the default button's accent (the
+test app is never the active app, so Save is drawn in the inactive colour in these pictures), dragging a task onto
+a day, and events from a subscribed calendar.
+
 ## Not covered, and why
 
 - **Hover states of the native parts** (sidebar rows, cards, tabs) could not be pictured: moving the pointer for

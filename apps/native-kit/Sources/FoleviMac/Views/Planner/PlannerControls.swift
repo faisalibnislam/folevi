@@ -25,14 +25,30 @@ struct PlannerSelect: View {
     var fill = false
     var label: String
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     @State private var anchor = PlannerAnchor()
 
     var body: some View {
+        if chrome != nil {
+            // The Mac's native look: the system's pop-up button, as every other choice in a task dialog (one
+            // control for one job: Quick add's Priority was a web select beside Edit task's pop-up button).
+            Picker(label, selection: $value) {
+                ForEach(options, id: \.id) { Text($0.title).tag($0.id) }
+            }
+            .labelsHidden()
+            .fixedSize()
+            .frame(maxWidth: fill ? .infinity : nil, alignment: .leading)
+        } else {
+            web
+        }
+    }
+
+    private var web: some View {
         let pair = PS("edit.select")
         let s = pair.resolve(scheme)
         let chevron = PS("edit.select.chevron").resolve(scheme)
         let title = options.first { $0.id == value }?.title ?? options.first?.title ?? ""
-        Button {
+        return Button {
             guard let v = anchor.view else { return }
             let entries = options.map { o in
                 WebMenuEntry(.item(o.title, checked: o.id == value, id: "opt:\(o.id)")) { value = o.id }
@@ -62,12 +78,21 @@ struct FieldLabel<Control: View>: View {
     let title: String
     @ViewBuilder let control: () -> Control
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
-        let l = PS("edit.label").resolve(scheme)
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title).webText(l.text).lineLimit(1).foregroundStyle(l.color.color)
-            control()
+        if chrome != nil {
+            // The Mac's native look: the form label every dialog has (NativeFieldLabel), 6 pt over its control.
+            VStack(alignment: .leading, spacing: NativeField.labelGap) {
+                NativeFieldLabel(title)
+                control()
+            }
+        } else {
+            let l = PS("edit.label").resolve(scheme)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).webText(l.text).lineLimit(1).foregroundStyle(l.color.color)
+                control()
+            }
         }
     }
 }
@@ -80,13 +105,38 @@ struct PlannerDateField: View {
     var clearable = true
     var width: CGFloat = 176
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     @State private var anchor = PlannerAnchor()
 
     var body: some View {
+        if chrome != nil { native } else { web }
+    }
+
+    /// The Mac's native look: the system's push button holding the date (the pop-up buttons beside it are the
+    /// system's too: one shape, one height, one fill), the month calendar under it. Clear sits after it.
+    private var native: some View {
+        let has = TaskDates.isDay(value)
+        return HStack(spacing: 4) {
+            Button { open() } label: {
+                HStack(spacing: 6) {
+                    WebIconView(.calendarDays, size: 14).foregroundStyle(Color.secondary)
+                    Text(has ? PlannerDates.fieldLabel(value) : placeholder).foregroundStyle(has ? Color.primary : Color.secondary).lineLimit(1)
+                }
+            }
+            .plannerAnchor(anchor)
+            .accessibilityLabel("\(label): \(has ? PlannerDates.fieldLabel(value) : placeholder)")
+            if clearable && has {
+                ClearButton { value = "" }.accessibilityLabel("Clear \(label)")
+            }
+        }
+        .fixedSize()
+    }
+
+    private var web: some View {
         let pair = PS("edit.datefield")
         let s = pair.resolve(scheme)
         let has = TaskDates.isDay(value)
-        ZStack(alignment: .trailing) {
+        return ZStack(alignment: .trailing) {
             Button { open() } label: {
                 HStack(spacing: s.gap) {
                     WebIconView(.calendarDays, size: 14).foregroundStyle(PS("edit.datefield.icon").resolve(scheme).color.color)
@@ -346,14 +396,33 @@ struct PlannerTimeField: View {
     var emptyLabel = "All day"
     var width: CGFloat = 128
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     @State private var anchor = PlannerAnchor()
 
     static let times: [String] = (0..<96).map { String(format: "%02d:%02d", $0 / 4, ($0 % 4) * 15) }
 
     var body: some View {
+        if chrome != nil { native } else { web }
+    }
+
+    /// The Mac's native look: the system's push button with the pop-up button's arrows, the list of times under it.
+    private var native: some View {
+        Button { open() } label: {
+            HStack(spacing: 6) {
+                Text(value.isEmpty ? emptyLabel : PlannerDates.timeLabel(value)).lineLimit(1)
+                // (The pop-up button's own arrows, so the row reads as the pop-up buttons above and below it.)
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 10, weight: .bold)).accessibilityHidden(true)
+            }
+        }
+        .plannerAnchor(anchor)
+        .fixedSize()
+        .accessibilityLabel("Due time: \(value.isEmpty ? emptyLabel : PlannerDates.timeLabel(value))")
+    }
+
+    private var web: some View {
         let pair = PS("edit.select")
         let s = pair.resolve(scheme)
-        Button { open() } label: {
+        return Button { open() } label: {
             HStack(spacing: s.gap) {
                 Text(value.isEmpty ? emptyLabel : PlannerDates.timeLabel(value)).webText(s.text).lineLimit(1)
                 Spacer(minLength: 0)
@@ -427,6 +496,10 @@ struct OptionList: View {
             }
             .scrollIndicators(.never)
             .frame(width: width, height: min(260, CGFloat(options.count) * 30 + 12))
+            // (The panel's material under its fill, as the date's calendar has: the fill alone is see-through, and
+            // the dialog's own controls showed between the times.)
+            .background(WebMaterial(radius: p.radius))
+            .clipShape(RoundedRectangle(cornerRadius: p.radius, style: .circular))
             .webBox(panel)
             .onAppear {
                 highlighted = selected
@@ -469,11 +542,12 @@ struct DocumentPicker: View {
     @State private var loaded = false
     @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
         let options: [PageTarget?] = [nil] + found.map { Optional($0) }
-        VStack(alignment: .leading, spacing: 4) {
-            StyledText(label, "edit.label")
+        VStack(alignment: .leading, spacing: chrome != nil ? NativeField.labelGap : 4) {
+            if chrome != nil { NativeFieldLabel(label) } else { StyledText(label, "edit.label") }
             HStack(spacing: 8) {
                 if let v = value, !open {
                     HStack(spacing: 4) {

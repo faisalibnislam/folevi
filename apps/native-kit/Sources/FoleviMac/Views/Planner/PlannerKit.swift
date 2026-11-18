@@ -450,6 +450,31 @@ struct PlannerField: View {
     }
 }
 
+/// A list's filter in the Mac's native look: the app's field (NativeField) with a magnifier before its words and
+/// Clear after them, as a search field has. (Without the magnifier it read as a box to type a new task into.)
+struct PlannerFilterField: View {
+    let placeholder: String
+    @Binding var text: String
+    var focused: FocusState<Bool>.Binding
+
+    var body: some View {
+        HStack(spacing: 8) {
+            WebIconView(.search, size: 14).foregroundStyle(Color.secondary)
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: NativeField.textSize))
+                .lineLimit(1)
+                .focused(focused)
+            if !text.isEmpty {
+                ClearButton { text = "" }.padding(.trailing, -4).accessibilityLabel("Clear the filter")
+            }
+        }
+        .modifier(NativeFieldBox(focused: focused.wrappedValue))
+        .contentShape(Rectangle())
+        .onTapGesture { focused.wrappedValue = true } // (no hover: a field, the click puts the cursor in it)
+    }
+}
+
 // MARK: Floating panels (dialogs and popovers above the window)
 
 #if os(macOS)
@@ -657,6 +682,20 @@ final class PlannerPanel {
 }
 #endif
 
+/// A planner dialog's presenter (Edit task, Move task, Quick add, Subscribe): the frame's own sheet on the Mac
+/// (FrameSheets, as every other dialog there), the drawn panel over the window on the iPad.
+@MainActor
+enum PlannerSheet {
+    static func present<V: View>(_ frame: FrameModel, in window: NSWindow?, @ViewBuilder _ content: (_ close: @escaping @MainActor () -> Void) -> V) {
+        #if os(macOS)
+        FrameSheets.present(frame, content: content)
+        #else
+        guard let window else { return }
+        PlannerPanel.dialog(in: window, content)
+        #endif
+    }
+}
+
 /// Holds the NSView a SwiftUI control sits on (to open a panel or a menu at it).
 final class PlannerAnchor {
     weak var view: NSView?
@@ -678,13 +717,33 @@ struct PlannerDialog<Content: View>: View {
     let close: () -> Void
     @ViewBuilder let content: () -> Content
     @Environment(\.colorScheme) private var scheme
+    #if os(macOS)
+    @Environment(\.macNativeLook) private var native
+    #endif
 
     var body: some View {
+        #if os(macOS)
+        if native {
+            // The Mac's native look: the frame's own sheet (FrameSheets presents it), as every other dialog. Drawn
+            // by itself over the window it had no panel at all behind its fields (found 2026-11-19).
+            WebSheetDialog(title: title, description: description, width: PS("dialog").resolve(scheme).width, close: close) {
+                content().nativeDialogContent()
+            }
+        } else {
+            drawn
+        }
+        #else
+        drawn
+        #endif
+    }
+
+    /// The web's dialog, drawn (the iPad, and the Mac's web-matched look).
+    private var drawn: some View {
         let panel = PS("dialog")
         let p = panel.resolve(scheme)
         let header = PS("dialog.header").resolve(scheme)
         let body = PS("dialog.body").resolve(scheme)
-        VStack(alignment: .leading, spacing: 0) {
+        return VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: header.gap) {
                 VStack(alignment: .leading, spacing: 0) {
                     StyledText(title, "dialog.title", lines: nil)

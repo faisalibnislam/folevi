@@ -1,6 +1,27 @@
 {
   "releases": [
     {
+      "version": "1.4.45",
+      "build": 59,
+      "released": "2026-11-18T18:36:09+06:00",
+      "type": "patch",
+      "summary": "Folevi for Mac uses less memory and battery, keeps tabs tidy and fixes a few rare glitches.",
+      "improved": [
+        "Short tabs are only as wide as their title",
+        "Show All Tabs sits right after Home",
+        "Closed tabs and windows give their memory back",
+        "Less battery use while Folevi sits idle or in the background",
+        "Foli DNA stays smooth while you pan and hover over large maps",
+        "Smoother scrolling through Home's cards"
+      ],
+      "fixed": [
+        "A note could stay covered, or Folevi could keep connecting, after one unreadable update from the editor",
+        "Switching tabs quickly while the editor reloaded could show the wrong note",
+        "Pressing the Quick Add shortcut twice quickly made the panel disappear"
+      ],
+      "tag": "v1.4.45"
+    },
+    {
       "version": "1.4.44",
       "build": 58,
       "released": "2026-11-18T13:23:31+06:00",

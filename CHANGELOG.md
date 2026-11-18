@@ -4,6 +4,27 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.4.45: Small update
+
+Released 2026-11-18 18:36:09+06:00 (build 59, tag v1.4.45)
+
+Folevi for Mac uses less memory and battery, keeps tabs tidy and fixes a few rare glitches.
+
+### Improved
+
+- Short tabs are only as wide as their title
+- Show All Tabs sits right after Home
+- Closed tabs and windows give their memory back
+- Less battery use while Folevi sits idle or in the background
+- Foli DNA stays smooth while you pan and hover over large maps
+- Smoother scrolling through Home's cards
+
+### Fixed
+
+- A note could stay covered, or Folevi could keep connecting, after one unreadable update from the editor
+- Switching tabs quickly while the editor reloaded could show the wrong note
+- Pressing the Quick Add shortcut twice quickly made the panel disappear
+
 ## Version 1.4.44: Big update
 
 Released 2026-11-18 13:23:31+06:00 (build 58, tag v1.4.44)

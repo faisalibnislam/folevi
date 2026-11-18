@@ -1,7 +1,7 @@
 // A tab's picture under the pointer (the web's TabStrip.tsx preview and TabPreview.tsx): 300 ms after the pointer
 // first rests on a tab, then at once while it moves along the strip from tab to tab, with nothing hidden in between
 // (no flicker); gone when the pointer leaves the strip, a tab is pressed or dragged, or it reaches the open tab.
-// The picture is the page drawn small (the note's top, as an export draws it) and the tab's name, nothing else.
+// The picture is the tab's thumbnail (a note's card, a folder's notes, a screen as last seen) and the tab's name.
 #if os(macOS) || os(iOS)
 import SwiftUI
 import FoleviDesign
@@ -15,6 +15,8 @@ public final class TabPreviewState {
     /// Whether a picture has shown since the pointer came onto the strip (from then on each tab's shows at once).
     private var previewing = false
     private var pending: Task<Void, Never>?
+    /// The tab the pending picture is for.
+    private var pendingID: String?
 
     public init() {}
 
@@ -23,6 +25,7 @@ public final class TabPreviewState {
     /// The pointer came onto a tab (`active`: the open one, which shows none).
     public func enter(_ id: String, frame: CGRect, active: Bool) {
         pending?.cancel()
+        pendingID = nil
         if active {
             shown = nil
             return
@@ -31,6 +34,7 @@ public final class TabPreviewState {
             shown = (id, frame)
             return
         }
+        pendingID = id
         pending = Task { [weak self] in
             try? await Task.sleep(for: Self.rest)
             guard let self, !Task.isCancelled else { return }
@@ -39,12 +43,19 @@ public final class TabPreviewState {
         }
     }
 
-    /// The pointer left a tab: only a picture that hasn't shown yet stops (the next tab's replaces this one).
-    public func leaveTab() { pending?.cancel() }
+    /// The pointer left a tab: only that tab's picture, if it hasn't shown yet, stops (the next tab's replaces a
+    /// shown one). Moving from one tab to the next, SwiftUI may say the pointer entered the next one before it left
+    /// this one: leaving used to cancel whatever was pending, the next tab's picture too, so it never showed.
+    public func leaveTab(_ id: String) {
+        guard pendingID == id else { return }
+        pending?.cancel()
+        pendingID = nil
+    }
 
     /// Gone: the pointer left the strip, or a tab was pressed, dragged or opened.
     public func hide() {
         pending?.cancel()
+        pendingID = nil
         previewing = false
         shown = nil
     }
@@ -62,7 +73,7 @@ struct TabPreviewHover: ViewModifier {
             // the Mac, which put the picture a sidebar's width to the right of its tab.
             .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .named(WebTopBar.space)) }) { frame = $0 }
             .onHover { inside in
-                if inside { model.preview.enter(id, frame: frame, active: active) } else { model.preview.leaveTab() }
+                if inside { model.preview.enter(id, frame: frame, active: active) } else { model.preview.leaveTab(id) }
             }
             .simultaneousGesture(TapGesture().onEnded { model.preview.hide() })
             .onChange(of: active) { if active { model.preview.hide() } }

@@ -26,9 +26,9 @@ public enum MacLook {
     public static let trafficLightsX: CGFloat = 18
     /// The traffic lights' room in the strip, the sidebar's button after it.
     public static let trafficLightsRoom: CGFloat = 78
-    /// The sidebar's width (under the strip). The sidebar's button, ⌘\ and View > Hide Sidebar hide it; so does
-    /// Focus mode on a note.
-    public static let sidebarWidth: CGFloat = 240
+    /// The sidebar's width (under the strip), the same as the page's tools column at the right (inspectorWidth: the
+    /// owner, 2026-11-18). The sidebar's button, ⌘\ and View > Hide Sidebar hide it; so does Focus mode on a note.
+    public static let sidebarWidth: CGFloat = 288
     /// The content card's margin on its trailing and bottom edges (the sidebar, or the margin when it's hidden, is
     /// its leading edge; the strip its top).
     public static let containerMargin: CGFloat = 8
@@ -102,9 +102,9 @@ public enum MacLook {
     public static let panelRadius: CGFloat = 18
     /// The gutter between the card's content and a side panel, and the panel's inset from the card's edges.
     public static let panelGutter: CGFloat = 10
-    /// The note's inspector: a column on the window's material at the right, under the strip (the page's own
-    /// panel takes the same column while it's open).
-    public static let inspectorWidth: CGFloat = 272
+    /// The page's own tools column at the right (Foli AI, Insert, Format, Style), under the strip: as wide as the
+    /// sidebar, its 8 pt gap and the page's 280 px panel (globals.css).
+    public static let inspectorWidth: CGFloat = 288
     /// The least room the content keeps beside the inspector: in a narrower card the inspector steps aside until
     /// the window is wider again (the page never runs under it).
     public static let inspectorMinContent: CGFloat = 440

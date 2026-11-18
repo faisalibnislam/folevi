@@ -214,7 +214,9 @@ const macFrame = typeof window !== "undefined" && nativeChrome()?.platform === "
 function NativeContentShell() {
   const { route } = useAppRouter();
   const { profile, context } = useAppState();
-  const [inspectorOpen, setInspectorOpen] = useState(false);
+  // The note's tools panel opens with every note until it's closed, and a close is remembered (the owner,
+  // 2026-11-18), as the website's Shell keeps it.
+  const [inspectorOpen, setInspectorOpen] = useLocalStorage("folevi:inspector-open", true);
   const isNarrow = useMediaQuery("(max-width: 767px)");
   const noteAi = useRef<((request: { view: "note" | "all"; question?: string }) => void) | null>(null);
   const setNoteAi = useCallback((open: ((request: { view: "note" | "all"; question?: string }) => void) | null) => {
@@ -312,7 +314,8 @@ function WebShell() {
   const { route, navigate, search } = useAppRouter();
   const [collapsed, setCollapsed] = useLocalStorage("folevi:sidebar-collapsed", false);
   const [width, setWidth] = useLocalStorage("folevi:sidebar-width", 248);
-  const [inspectorPref, setInspectorPref] = useLocalStorage("folevi:inspector-open", false);
+  // Open by default (each note opens on Foli AI, or Insert with it off); a close is remembered (the owner, 2026-11-18).
+  const [inspectorPref, setInspectorPref] = useLocalStorage("folevi:inspector-open", true);
   // The iPhone app has its own interface (components/iphone): a navigation stack and a floating tab bar.
   const iphone = useIphoneApp();
   const isNarrow = useMediaQuery("(max-width: 767px)") || iphone;

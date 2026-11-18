@@ -46,6 +46,40 @@ public final class TabPictureStore {
         }
     }
 
+    // MARK: the notes' cards (a note tab's thumbnail)
+
+    /// The rows of the notes edited last (each one's card: its colors, cover, title, preview, folder), watched only
+    /// while a note's thumbnail is on screen, then let go a little after the last one goes.
+    private var rowsStore: ListStore<NoteRow>?
+    private var rowUsers = 0
+    private var letGo: Task<Void, Never>?
+    /// How many of the latest notes are looked through: the notes open in tabs are nearly always among them.
+    private static let rowsWatched = 300
+
+    func useRows() {
+        rowUsers += 1
+        letGo?.cancel()
+        guard rowsStore == nil, let client = frame?.client else { return }
+        rowsStore = client.watchList(.notesList(view: .all, sort: .updated), window: ListWindow(start: 0, count: Self.rowsWatched))
+    }
+
+    func doneWithRows() {
+        rowUsers = max(0, rowUsers - 1)
+        guard rowUsers == 0 else { return }
+        letGo?.cancel()
+        letGo = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(20))
+            guard let self, !Task.isCancelled, self.rowUsers == 0 else { return }
+            self.rowsStore?.cancel()
+            self.rowsStore = nil
+        }
+    }
+
+    /// A note's row, if it's among the latest notes.
+    func row(_ id: String) -> NoteRow? { rowsStore?.rows.first { $0.id == id } }
+    /// The latest notes haven't come yet.
+    var rowsLoading: Bool { rowsStore == nil || rowsStore?.status == .loading }
+
     /// A tab's picture as it's drawn now (nil forgets it: a screen that mustn't be pictured, the Vault).
     func setShot(_ image: CGImage?, for tab: String) {
         shots[tab] = image
@@ -215,7 +249,11 @@ struct TabPicture: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        if let shot = model.pictures.shots[tab?.id ?? FrameTab.homeID] {
+        if let tab, let notes = tab.panes ?? tab.route.noteId.map({ [$0] }) {
+            // A note's thumbnail is its card, as the folder grid draws it (the owner, 2026-11-18): its colors and
+            // cover, title, a preview and its folder, whole, for every tab at once.
+            NoteCardPicture(ids: notes, title: { id in model.tabs.paneTitles[id] ?? (tab.panes == nil ? model.tabs.label(tab) : "Untitled") }, store: model.pictures)
+        } else if let shot = model.pictures.shots[tab?.id ?? FrameTab.homeID] {
             // The tab as it was last on screen (Safari's way): its page's own colours, its folder's notes.
             GeometryReader { g in
                 Image(decorative: shot, scale: 1)
@@ -226,13 +264,6 @@ struct TabPicture: View {
                     .clipped()
             }
             .accessibilityHidden(true)
-        } else if let tab, let notes = tab.panes ?? tab.route.noteId.map({ [$0] }) {
-            HStack(spacing: 1) {
-                ForEach(notes, id: \.self) { id in
-                    MiniPage(id: id, title: model.tabs.paneTitles[id] ?? (tab.panes == nil ? model.tabs.label(tab) : "Untitled"), store: model.pictures)
-                }
-            }
-            .background(WebStyles.vars["color-line"]?.resolve(scheme).color ?? .gray)
         } else if let tab, let list = FolderPicture.list(for: tab.route) {
             FolderPicture(view: list.view, folderId: list.folderId, tagId: list.tagId, label: model.tabs.label(tab), model: model)
         } else {
@@ -250,6 +281,48 @@ struct TabPicture: View {
                 }
             }
         }
+    }
+}
+
+/// A note tab's thumbnail: each note's card (WebNoteCard, the folder grid's) whole and centered on the canvas; joined
+/// notes side by side. A note not among the latest (shared with you, archived) shows its page drawn small instead.
+struct NoteCardPicture: View {
+    let ids: [String]
+    let title: (String) -> String
+    let store: TabPictureStore
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        GeometryReader { g in
+            let n = CGFloat(max(1, ids.count))
+            let pad = max(8, g.size.height * 0.07)
+            // As tall as the picture allows, narrower if several must fit side by side.
+            let w = min((g.size.height - pad * 2) * WebNoteCard.aspect, (g.size.width - pad * (n + 1)) / n)
+            let h = w / WebNoteCard.aspect
+            ZStack {
+                (WebStyles.vars["color-surface-sunken"]?.resolve(scheme).color ?? .clear)
+                HStack(spacing: pad) {
+                    ForEach(ids, id: \.self) { id in
+                        Group {
+                            if let row = store.row(id) {
+                                WebNoteCard(CardMapping.noteCard(row))
+                            } else if !store.rowsLoading {
+                                MiniPage(id: id, title: title(id), store: store)
+                                    .clipShape(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous))
+                            } else {
+                                RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous)
+                                    .fill(WebStyles.vars["color-surface-raised"]?.resolve(scheme).color ?? .white)
+                            }
+                        }
+                        .frame(width: w, height: h)
+                    }
+                }
+                .allowsHitTesting(false)
+            }
+        }
+        .onAppear { store.useRows() }
+        .onDisappear { store.doneWithRows() }
+        .accessibilityHidden(true)
     }
 }
 

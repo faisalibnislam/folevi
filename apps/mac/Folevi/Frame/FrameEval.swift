@@ -179,6 +179,19 @@ extension NativeFrame {
             let r = { (f: CGRect) in [f.minX, f.minY, f.width, f.height] }
             done(["value": ["open": true, "popover": r(pw.frame), "window": r(w.frame), "positioningRect": r(p.positioningRect)]])
         }
+        MacEval.commands["hover"] = { req, done in
+            // The pointer moved to a point of the front window's content (points, from its top left); then the tab
+            // whose picture shows, after `wait` seconds (the strip's hover card).
+            guard let main = WindowManager.shared.frontMain, let window = main.window, let cv = window.contentView, let frame = main.frame else { return done(["error": "no window"]) }
+            let p = NSPoint(x: req["x"] as? Double ?? 0, y: cv.bounds.height - (req["y"] as? Double ?? 0))
+            if let e = NSEvent.mouseEvent(with: .mouseMoved, location: p, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 0, pressure: 0) {
+                NSApp.postEvent(e, atStart: false)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + (req["wait"] as? Double ?? 0.6)) {
+                let frames = frame.model.debugTabFrames.mapValues { [$0.midX, $0.midY] }
+                done(["value": ["shown": frame.model.preview.shownID ?? NSNull(), "active": frame.model.tabs.activeID, "frames": frames]])
+            }
+        }
         MacEval.commands["hit"] = { req, done in
             // The view a click at a point of the front window's content (points, from its top left) goes to.
             guard let window = WindowManager.shared.frontMain?.window, let cv = window.contentView, let frameView = cv.superview ?? Optional(cv) else { return done(["error": "no window"]) }

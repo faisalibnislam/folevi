@@ -45,6 +45,8 @@ struct NativeShellTests {
         #expect(f.inspector == nil)
         #expect(f.card.maxX == b.maxX)
         #expect(f.card.minX == MacLook.sidebarWidth)
+        // ... and its bottom edge: the panel's list scrolls out of the window.
+        #expect(f.card.minY == 0)
     }
 
     @Test func narrowWindowsLetTheInspectorStepAside() {

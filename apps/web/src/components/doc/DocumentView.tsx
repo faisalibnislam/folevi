@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import { AiIcon } from "@/components/ai/AiIcon";
@@ -189,7 +189,18 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [editor, setEditor] = useState<TiptapEditor | null>(null);
   const [cacheLoaded, setCacheLoaded] = useState(false);
   const [reconciled, setReconciled] = useState(false);
-  const { inspectorOpen, setInspectorOpen, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode, docSidebarMode, setDocSidebarMode, setNoteAi } = useShell();
+  const { inspectorOpen: inspectorWanted, setInspectorOpen: setInspectorWanted, sidebarSlot, sidebarOpen, toggleSidebar, drawerMode, docSidebarMode, setDocSidebarMode, setNoteAi } = useShell();
+  // A note opens with its tools panel (Foli AI, or Insert with Foli AI off) until the panel is closed, which is
+  // remembered (the owner, 2026-11-18). Where the panel would lie over the note (a narrow window), a note doesn't
+  // open it by itself: `narrowHold` keeps it shut until it's asked for.
+  const [narrowHold, setNarrowHold] = useState(false);
+  const setInspectorOpen = useCallback(
+    (open: boolean) => {
+      if (open) setNarrowHold(false);
+      setInspectorWanted(open);
+    },
+    [setInspectorWanted],
+  );
   // Joined notes: only the pane with focus answers the keyboard shortcuts and Foli AI's requests.
   const primary = usePrimaryPane();
   const primaryRef = useRef(primary);
@@ -223,6 +234,13 @@ export function DocumentView({ documentId }: { documentId: string }) {
   const [noteRow, setNoteRow] = useState<HTMLDivElement | null>(null);
   const noteRowWidth = useElementWidth(noteRow);
   const panelOverlays = toolsPanelOverlays({ narrowWindow, rowWidth: noteRowWidth, panelWidth });
+  const inspectorOpen = inspectorWanted && !narrowHold;
+  // Each note asks again whether there's room (before it draws, so the panel never flashes over the note).
+  const holdRef = useRef(false);
+  holdRef.current = panelOverlays || drawerMode;
+  useLayoutEffect(() => {
+    setNarrowHold(holdRef.current);
+  }, [documentId]);
   // The comment thread floating under a block (threadId null: the block's latest open thread, or a new one).
   const [openThread, setOpenThread] = useState<{ blockId: string; threadId: string | null } | null>(null);
   // A thread to open inside the Comments panel (on the whole note or a deleted block).
@@ -667,10 +685,19 @@ export function DocumentView({ documentId }: { documentId: string }) {
     setInspectorTab("ai");
     setInspectorOpen(true);
   }, [setInspectorTab, setInspectorOpen]);
-  // AI turned off while its tool is open: show another one instead.
+  // AI turned off while its tool is open: Insert instead (the default without Foli AI).
   useEffect(() => {
-    if (!aiOn && inspectorTab === "ai") setInspectorTab("format");
+    if (!aiOn && inspectorTab === "ai") setInspectorTab("insert");
   }, [aiOn, inspectorTab, setInspectorTab]);
+  // Every note opens on Foli AI, or on Insert where Foli AI is off (once its details are in, so the choice is
+  // this note's). Foli DNA's `?panel=related` keeps Related notes.
+  const defaultedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!meta || defaultedFor.current === documentId) return;
+    defaultedFor.current = documentId;
+    if (wantsRelated) return;
+    setInspectorTab(aiOn ? "ai" : "insert");
+  }, [meta, documentId, aiOn, wantsRelated, setInspectorTab]);
   useEffect(() => {
     if (!aiOn) return;
     setNoteAi(() => openAi());

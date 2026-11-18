@@ -227,8 +227,10 @@ public final class FrameSplitViewController: NSViewController {
         let column = CGRect(x: b.width - MacLook.inspectorWidth, y: 0, width: MacLook.inspectorWidth, height: below)
         if pagePanel, column.minX - left >= MacLook.inspectorMinContent {
             // (The page draws its card in all but its last `inspectorWidth` points, and its panel there. Narrower,
-            // the card keeps its margin and the page lays its panel over the note.)
-            return (side, CGRect(x: left, y: m, width: max(0, b.width - left), height: max(0, below - m)), nil, strip)
+            // the card keeps its margin and the page lays its panel over the note.) The page runs down to the
+            // window's bottom edge, so the panel's list scrolls out of the window as the sidebar's does (it stopped
+            // `containerMargin` short and read as cut off); the note's card keeps that margin itself (globals.css).
+            return (side, CGRect(x: left, y: 0, width: max(0, b.width - left), height: below), nil, strip)
         }
         if inspector, column.minX - left >= MacLook.inspectorMinContent {
             return (side, CGRect(x: left, y: m, width: max(0, column.minX - left), height: max(0, below - m)), column, strip)
@@ -684,17 +686,9 @@ public final class ContentViewController: NSViewController {
         guard isViewLoaded, view.window != nil, let route = shownRoute else { return }
         let store = model.pictures
         if Self.unpictured(route) { return store.setShot(nil, for: tab) }
-        if route.isNote {
-            // (Only once the page shows this note: until then the screen before still covers it.)
-            guard body.isHidden, let web = pageView as? WKWebView, web.bounds.width > 0 else { return }
-            let config = WKSnapshotConfiguration()
-            config.snapshotWidth = NSNumber(value: Double(Self.pictureWidth / max(1, view.window?.backingScaleFactor ?? 2)))
-            config.rect = Self.pictureRect(in: web.bounds, flipped: web.isFlipped)
-            web.takeSnapshot(with: config) { image, _ in
-                guard let image, let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
-                MainActor.assumeIsolated { store.setShot(cg, for: tab) }
-            }
-        } else if let s = screen, !s.isHidden, s.bounds.width > 0 {
+        // (A note's thumbnail is its card, NoteCardPicture: no picture of its page.)
+        if route.isNote { return }
+        if let s = screen, !s.isHidden, s.bounds.width > 0 {
             let r = Self.pictureRect(in: s.bounds, flipped: s.isFlipped)
             guard let rep = s.bitmapImageRepForCachingDisplay(in: r) else { return }
             s.cacheDisplay(in: r, to: rep)

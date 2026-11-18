@@ -4,6 +4,24 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.4.47: Small update
+
+Released 2026-11-18 21:29:47+06:00 (build 61, tag v1.4.47)
+
+Notes open with Foli AI ready beside them, tab thumbnails show each note's real card, and the Mac's two sidebars match.
+
+### Improved
+
+- Every note opens with Foli AI on the right, or Insert when Foli AI is off; close it and it stays closed until you open a panel again
+- Mac: Show All Tabs and the tab preview show each note as its card, with its colors, cover, title and folder, never cut off
+- Mac: the left sidebar and the right panel are the same width
+- A lighter, softer shadow under the note's bottom bar
+
+### Fixed
+
+- Mac: the tab preview sometimes didn't show when moving from one tab to the next
+- Mac: the bottom of the right panel looked cut off
+
 ## Version 1.4.46: Small update
 
 Released 2026-11-18 20:55:50+06:00 (build 60, tag v1.4.46)

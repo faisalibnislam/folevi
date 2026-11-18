@@ -55,8 +55,24 @@ public struct WebCheckboxStyle: ToggleStyle {
         @State private var over = false
         @Environment(\.colorScheme) private var scheme
         @Environment(\.isEnabled) private var enabled
+        @Environment(\.nativeChrome) private var chrome
 
         var body: some View {
+            #if os(macOS)
+            if let chrome {
+                // The Mac's native look (NativeChrome): the system's checkbox, ticked in the accent.
+                Toggle(isOn: configuration.$isOn) { configuration.label.frame(maxWidth: .infinity, alignment: .leading) }
+                    .toggleStyle(.checkbox)
+                    .tint(chrome.accent)
+            } else {
+                webBody
+            }
+            #else
+            webBody
+            #endif
+        }
+
+        @ViewBuilder private var webBody: some View {
             let on = configuration.isOn
             Button { configuration.isOn.toggle() } label: {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {

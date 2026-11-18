@@ -80,7 +80,28 @@ public struct WebParagraph: View {
         self.init([WebRun(text)], style: style, width: width, alignment: alignment, wrap: wrap)
     }
 
+    @Environment(\.nativeChrome) private var chrome
+
     public var body: some View {
+        if let chrome, style.family != .mono {
+            // Interface text under the Mac's native look: the system font, wrapped as AppKit wraps it.
+            let system = chrome.text(style)
+            Text(runs.reduce(into: AttributedString()) { text, run in
+                var t = AttributedString(run.text)
+                if let w = run.weight { t.font = NativeChrome.font(system.weight(w)) }
+                if let c = run.color { t.foregroundColor = c.color }
+                text += t
+            })
+            .webText(system)
+            .multilineTextAlignment(alignment)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(width: width, alignment: alignment == .center ? .center : alignment == .trailing ? .trailing : .leading)
+        } else {
+            webBody
+        }
+    }
+
+    @ViewBuilder private var webBody: some View {
         let lines = WebLineBreaker.lines(runs, style: style, width: width, wrap: wrap)
         VStack(alignment: alignment == .center ? .center : alignment == .trailing ? .trailing : .leading, spacing: 0) {
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in

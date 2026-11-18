@@ -17,6 +17,7 @@ struct MoreEmptyState: View {
     var message: String? = nil
     var hint: String? = nil
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
         let box = moreStyle("more.empty", scheme)
@@ -33,7 +34,8 @@ struct MoreEmptyState: View {
                     .background(RoundedRectangle(cornerRadius: tile.radius, style: .circular).fill(tile.background.color))
                     .padding(.bottom, tile.margin.bottom)
             }
-            WebPrettyText(title, style: t.text, alignment: .center, wrap: .balance, width: inner).foregroundStyle(t.color.color)
+            // (Under the Mac's native look the heading is a section title, not a page title.)
+            WebPrettyText(title, style: chrome != nil ? .role(.title3, weight: 600) : t.text, alignment: .center, wrap: .balance, width: inner).foregroundStyle(t.color.color)
             if let message {
                 WebPrettyText(message, style: b.text, alignment: .center, width: inner).foregroundStyle(b.color.color).padding(.top, b.margin.top)
             }
@@ -49,20 +51,31 @@ struct MoreEmptyState: View {
 
 /// ViewChrome's facts row: the view's subtitle on the left (muted), its actions on the right.
 struct WebFactsRow<Actions: View>: View {
+    /// The page's title, shown in the Mac's native look (the web's view names it in its glass bar).
+    var title: String? = nil
     let subtitle: String?
     @ViewBuilder let actions: () -> Actions
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
         let row = moreStyle("more.review.header", scheme)
         let sub = moreStyle("more.review.subtitle", scheme)
         HStack(spacing: row.gap) {
-            Text(verbatim: subtitle ?? "").webText(sub.text).lineLimit(1).foregroundStyle(sub.color.color)
+            if chrome != nil, let title {
+                // The Mac's native look: the page's title (22 pt semibold), its facts secondary after it.
+                Text(verbatim: title).font(NativeLook.pageTitle).foregroundStyle(NativeLook.label).lineLimit(1).accessibilityAddTraits(.isHeader)
+                    .layoutPriority(1)
+                Text(verbatim: subtitle ?? "").font(NativeLook.body).lineLimit(1).foregroundStyle(NativeLook.secondary)
+            } else {
+                Text(verbatim: subtitle ?? "").webText(sub.text).lineLimit(1).foregroundStyle(sub.color.color)
+            }
             Spacer(minLength: 0)
             HStack(spacing: 6) { actions() }
         }
         .padding(.horizontal, row.padding.left)
-        .frame(height: row.height)
+        .frame(height: chrome != nil && title != nil ? 52 : row.height)
+        .padding(.top, chrome != nil && title != nil ? 8 : 0)
         .padding(.horizontal, row.margin.left)
     }
 }

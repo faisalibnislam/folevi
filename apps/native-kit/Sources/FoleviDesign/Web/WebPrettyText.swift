@@ -199,6 +199,7 @@ public struct WebPrettyText: View {
     /// The width to break for, when the caller knows it (the element's computed width); else what's offered.
     let fixedWidth: CGFloat?
     @State private var measured: CGFloat = 0
+    @Environment(\.nativeChrome) private var chrome
 
     public init(_ text: String, style: WebTextStyle, alignment: TextAlignment = .leading, wrap: WebWrap = .pretty, width: CGFloat? = nil) {
         self.text = text
@@ -226,6 +227,18 @@ public struct WebPrettyText: View {
     }
 
     public var body: some View {
+        if let chrome, style.family != .mono {
+            // Interface text under the Mac's native look: the system font, wrapped as AppKit wraps it.
+            let h: HorizontalAlignment = alignment == .center ? .center : alignment == .trailing ? .trailing : .leading
+            Text(verbatim: text).webText(chrome.text(style)).multilineTextAlignment(alignment)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: fixedWidth ?? .infinity, alignment: Alignment(horizontal: h, vertical: .top))
+        } else {
+            webBody
+        }
+    }
+
+    @ViewBuilder private var webBody: some View {
         let h: HorizontalAlignment = alignment == .center ? .center : alignment == .trailing ? .trailing : .leading
         // The width the paragraph is placed in (never the lines' own, nor an ideal-size query's): what the lines are
         // broken for.

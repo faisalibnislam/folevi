@@ -215,8 +215,40 @@ struct AiConversationList: View {
     @State private var name = ""
     @FocusState private var renameFocused: Bool
     @Environment(\.colorScheme) private var scheme
+    /// The Mac's native look (NativeChrome): a push button and the system's search field.
+    @Environment(\.nativeChrome) private var chrome
 
     var host: AiHost { AiHost(session: frame.session.value, frame: frame, openSettings: { [weak frame] s in frame?.host?.frameOpenSettings(section: s) }) }
+
+    /// New chat and the search well, as the web draws them.
+    @ViewBuilder private func webTop(look: AiLook, new: WebComputedStyle, well: WebComputedStyle) -> some View {
+        Button { frame.open(.web("/ai")); model.newChat() } label: {
+            HStack(spacing: new.gap) {
+                WebIconView(.plus, size: 15)
+                Text("New chat").webText(new.text).lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: new.height)
+            .foregroundStyle(new.color.color)
+            .webBox(WebStyles.named("ai.list.new"))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.webHover(radius: new.radius))
+        HStack(spacing: well.gap) {
+            WebIconView(.search, size: 14).foregroundStyle(look.muted)
+            ZStack(alignment: .leading) {
+                if history.search.isEmpty { Text("Search conversations").webText(look.text("ai.list.search.input")).lineLimit(1).foregroundStyle(look.faint) }
+                TextField("", text: $history.search)
+                    .textFieldStyle(.plain)
+                    .font(Font(look.text("ai.list.search.input").ctFont))
+                    .foregroundStyle(look.ink)
+                    .accessibilityLabel("Search conversations")
+            }
+        }
+        .padding(.horizontal, well.padding.left)
+        .frame(height: well.height)
+        .webBox(WebStyles.named("ai.list.search"))
+    }
 
     var body: some View {
         let look = AiLook(scheme: scheme)
@@ -226,32 +258,20 @@ struct AiConversationList: View {
         let scroll = look.s("ai.list.scroll")
         VStack(spacing: 0) {
             VStack(spacing: new.margin.bottom) {
-                Button { frame.open(.web("/ai")); model.newChat() } label: {
-                    HStack(spacing: new.gap) {
-                        WebIconView(.plus, size: 15)
-                        Text("New chat").webText(new.text).lineLimit(1)
+                #if os(macOS)
+                if chrome != nil {
+                    Button { frame.open(.web("/ai")); model.newChat() } label: {
+                        Label("New chat", systemImage: "plus").frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: new.height)
-                    .foregroundStyle(new.color.color)
-                    .webBox(WebStyles.named("ai.list.new"))
-                    .contentShape(Rectangle())
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    NativeSearchField(placeholder: "Search conversations", text: $history.search, width: 400)
+                } else {
+                    webTop(look: look, new: new, well: well)
                 }
-                .buttonStyle(.webHover(radius: new.radius))
-                HStack(spacing: well.gap) {
-                    WebIconView(.search, size: 14).foregroundStyle(look.muted)
-                    ZStack(alignment: .leading) {
-                        if history.search.isEmpty { Text("Search conversations").webText(look.text("ai.list.search.input")).lineLimit(1).foregroundStyle(look.faint) }
-                        TextField("", text: $history.search)
-                            .textFieldStyle(.plain)
-                            .font(Font(look.text("ai.list.search.input").ctFont))
-                            .foregroundStyle(look.ink)
-                            .accessibilityLabel("Search conversations")
-                    }
-                }
-                .padding(.horizontal, well.padding.left)
-                .frame(height: well.height)
-                .webBox(WebStyles.named("ai.list.search"))
+                #else
+                webTop(look: look, new: new, well: well)
+                #endif
             }
             .padding(top.padding.edgeInsets)
             ScrollView {
@@ -284,8 +304,13 @@ struct AiConversationList: View {
         .accessibilityLabel("Conversations")
     }
 
-    private func caps(_ t: String, look: AiLook) -> some View {
-        Text(t).webText(.caps).lineLimit(1).foregroundStyle(look.faint).padding(.horizontal, 10).padding(.bottom, 4)
+    @ViewBuilder private func caps(_ t: String, look: AiLook) -> some View {
+        if chrome != nil {
+            // The Mac's native look: a small heading, not capitals.
+            NativeHeading(t.capitalized).padding(.horizontal, 10).padding(.bottom, 4)
+        } else {
+            Text(t).webText(.caps).lineLimit(1).foregroundStyle(look.faint).padding(.horizontal, 10).padding(.bottom, 4)
+        }
     }
 
     private func rows(_ list: [ChatConversationRow]) -> some View {
@@ -352,6 +377,7 @@ struct AiConversationRowView: View {
     let menu: @MainActor () -> [WebMenuEntry]
     @State private var over = false
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
         let look = AiLook(scheme: scheme)
@@ -376,7 +402,10 @@ struct AiConversationRowView: View {
                 .padding(.trailing, s.padding.right)
                 .frame(height: s.height)
                 .background {
-                    if active {
+                    if chrome != nil {
+                        // The Mac's native look: the list's rounded selection and hover.
+                        NativeRowHighlight(selected: active, hovered: over)
+                    } else if active {
                         Color.clear.webBox(WebStyles.named("ai.row.active"))
                     } else if over {
                         RoundedRectangle(cornerRadius: s.radius).fill(look.glassHover)

@@ -24,6 +24,8 @@ struct VaultDialogHost: View {
     /// dimmed, a click outside or Escape closes it), in the Vault's inverted theme.
     var body: some View {
         content
+            // The Mac's native look: system type, native buttons and fields (the panel keeps this shadow).
+            .nativeDialogContent()
             .shadow(color: .black.opacity(0.25), radius: 24, y: 12)
             .uiInvert()
     }

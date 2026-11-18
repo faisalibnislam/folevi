@@ -119,12 +119,18 @@ public extension View {
 
 struct FoleviFontModifier: ViewModifier {
     @ScaledMetric private var scale: CGFloat = 1
+    @Environment(\.nativeChrome) private var chrome
     let style: FoleviTextStyle
 
     func body(content: Content) -> some View {
-        content
-            .font(style.font)
-            .tracking(style.trackingEm * style.size * scale)
-            .textCase(style == .caps ? .uppercase : nil)
+        if let chrome, style != .mono {
+            // Interface text under the Mac's native look (NativeChrome): the system font, no tracking, no capitals.
+            content.font(NativeChrome.font(chrome.text(style)))
+        } else {
+            content
+                .font(style.font)
+                .tracking(style.trackingEm * style.size * scale)
+                .textCase(style == .caps ? .uppercase : nil)
+        }
     }
 }

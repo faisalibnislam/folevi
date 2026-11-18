@@ -88,6 +88,16 @@ struct VaultScreen: View {
 private struct VaultBody: View {
     @Bindable var model: VaultModel
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
+
+    /// The room the card's top bar takes (the native look's bar is MacLook's).
+    private var barRoom: CGFloat {
+        #if os(macOS)
+        chrome != nil ? MacLook.barHeight : ContentViewController.barHeight
+        #else
+        ContentViewController.barHeight
+        #endif
+    }
 
     var body: some View {
         let view = VS.style("vault.view", scheme)
@@ -95,7 +105,7 @@ private struct VaultBody: View {
         ZStack(alignment: .top) {
             // The Vault's canvas reaches up under the glass bar, as the web's .ui-invert view does.
             view.background.color
-                .padding(.top, -ContentViewController.barHeight)
+                .padding(.top, -barRoom)
                 .allowsHitTesting(false)
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -134,11 +144,16 @@ private struct VaultBody: View {
 private struct VaultHeader: View {
     @Bindable var model: VaultModel
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
         let header = VS.style("vault.header", scheme)
         let sub = VS.style("vault.header.subtitle", scheme)
         HStack(spacing: header.gap) {
+            if chrome != nil {
+                // The Mac's native look: the page's title (22 pt semibold), then its state.
+                Text("Vault").font(NativeLook.pageTitle).lineLimit(1).accessibilityAddTraits(.isHeader)
+            }
             Text(subtitle).webText(sub.text).lineLimit(1).foregroundStyle(sub.color.color)
             Spacer(minLength: 0)
             if model.isOpen {

@@ -352,8 +352,28 @@ struct WebSegmented<T: Hashable>: View {
     var height: CGFloat? = nil
     @Environment(\.colorScheme) private var scheme
     @Environment(\.webRowTray) private var inTray
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
+        if chrome != nil {
+            // The Mac's native look: the system's segmented control.
+            NativeLayoutPicker(options.map { ($0.0, Self.symbol($0.1), $0.2) }, value: $value)
+        } else {
+            webBody
+        }
+    }
+
+    /// The layout switch's icons as SF Symbols.
+    static func symbol(_ icon: WebIcon) -> String {
+        switch icon {
+        case .layoutGrid: "square.grid.2x2"
+        case .rows3: "rectangle.grid.1x2"
+        case .list: "list.bullet"
+        default: "square"
+        }
+    }
+
+    @ViewBuilder private var webBody: some View {
         let seg = WebStyles.named("notes.\(prefix).seg")
         let s = seg.resolve(scheme)
         let inset: CGFloat? = height == nil ? nil : inTray ? 0 : 2
@@ -431,7 +451,11 @@ struct WebRowSort<T: Hashable>: View {
     let options: [(T, String)]
     @Binding var value: T
     @Environment(\.colorScheme) private var scheme
-    @Environment(\.webRowTray) private var inTray
+    @Environment(\.webRowTray) private var tray
+    @Environment(\.nativeChrome) private var chrome
+
+    /// In a web tray (the native look has none: the trigger keeps its own pop-up box, at a native control's height).
+    private var inTray: Bool { tray && chrome == nil }
 
     var body: some View {
         let style = WebStyles.named("notes.toolbar.select")
@@ -447,7 +471,7 @@ struct WebRowSort<T: Hashable>: View {
             }
             .padding(.leading, inTray ? 8 : 10)
             .padding(.trailing, inTray ? 6 : 8)
-            .frame(height: inTray ? WebListPageHeaderMetrics.trayItemHeight : WebListPageHeaderMetrics.controlHeight)
+            .frame(height: chrome != nil ? 24 : inTray ? WebListPageHeaderMetrics.trayItemHeight : WebListPageHeaderMetrics.controlHeight)
             .foregroundStyle(s.color.color)
             .webBox(style, unless: inTray)
             .listHoverTint(radius: inTray ? WebListPageHeaderMetrics.trayItemRadius : s.radius)
@@ -487,10 +511,33 @@ struct WebSelectionBar: View {
                 .accessibilityLabel("Clear selection")
         }
         .padding(6)
-        .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).fill(WebStyles.named("menu.panel").resolve(scheme).background.color))
-        .webBox(WebStyles.named("menu.panel"))
+        .modifier(SelectionBarSurface())
         .accessibilityElement(children: .contain)
         .accessibilityLabel(label)
+    }
+
+    /// The bar's surface: the web's menu panel, or (the Mac's native look) a glass capsule, as small floating
+    /// controls are.
+    private struct SelectionBarSurface: ViewModifier {
+        @Environment(\.colorScheme) private var scheme
+        @Environment(\.nativeChrome) private var chrome
+        func body(content: Content) -> some View {
+            #if os(macOS)
+            if chrome != nil {
+                content.padding(.horizontal, 6).glassEffect(.regular, in: .capsule)
+            } else {
+                web(content)
+            }
+            #else
+            web(content)
+            #endif
+        }
+
+        private func web(_ content: Content) -> some View {
+            content
+                .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.panel, style: .circular).fill(WebStyles.named("menu.panel").resolve(scheme).background.color))
+                .webBox(WebStyles.named("menu.panel"))
+        }
     }
 
     private var divider: some View {
@@ -563,6 +610,8 @@ struct WebHomeScreen: View {
     let list: NotesListModel
     let allFolders: ValueStore<FolderCardsValue>
     @Environment(\.colorScheme) private var scheme
+    /// The Mac's native look (NativeChrome): system type, native buttons, flat panels.
+    @Environment(\.nativeChrome) private var chrome
     @Environment(\.screenNavigator) private var navigator
     @Environment(\.screenFeedback) private var feedback
 
@@ -572,6 +621,13 @@ struct WebHomeScreen: View {
             let inner = min(1400, geo.size.width) - content.padding.left - content.padding.right
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
+                    if chrome != nil {
+                        // The Mac's native look: the page's title, as every page has (22 pt semibold).
+                        Text("Home").font(NativeLook.pageTitle).foregroundStyle(NativeLook.label).lineLimit(1)
+                            .accessibilityAddTraits(.isHeader)
+                            .frame(height: 32)
+                            .padding(.top, 20)
+                    }
                     catchUp
                     reviews
                     section("Recent notes", icon: .clock3, route: .notes(.all), top: 36, count: nil) {
@@ -626,7 +682,7 @@ struct WebHomeScreen: View {
         let hint = notesStyle("catchup.hint", scheme)
         return VStack(alignment: .leading, spacing: 8) {
             // `flex flex-wrap gap-3`: the words go under the button when the row is too narrow for both (the iPad).
-            let button = CatchUpButton(style: b) { frame.runCatchUp() }
+            let button = CatchUpButton(style: b, native: chrome != nil) { frame.runCatchUp() }
             let words = Text("A quick AI brief of this week’s notes and what’s due.").webText(hint.text).lineLimit(1).foregroundStyle(hint.color.color)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 12) {
@@ -648,12 +704,29 @@ struct WebHomeScreen: View {
 
     struct CatchUpButton: View {
         let style: WebStylePair
+        var native = false
         let action: () -> Void
         @State private var hovered = false
         @Environment(\.colorScheme) private var scheme
 
         var body: some View {
             let s = style.resolve(scheme)
+            if native {
+                // The Mac's native look: a bordered push button with Foli AI's mark.
+                Button(action: action) {
+                    HStack(spacing: 6) {
+                        WebAiMark(size: 13)
+                        Text("Catch me up")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .fixedSize()
+            } else {
+                web(s)
+            }
+        }
+
+        private func web(_ s: WebComputedStyle) -> some View {
             Button(action: action) {
                 HStack(spacing: s.gap) {
                     WebAiMark(size: 15)
@@ -696,7 +769,8 @@ struct WebHomeScreen: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .circular).fill(webVar("glass-active", scheme).color))
+            // (The Mac's native look: a flat panel fill, as the inspector's.)
+            .background(RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous).fill(chrome != nil ? NativeLook.hover.opacity(0.6) : webVar("glass-active", scheme).color))
             .padding(.top, 24)
         }
     }
@@ -710,22 +784,32 @@ struct WebHomeScreen: View {
         let c = notesStyle("section.count", scheme)
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: header.gap) {
-                HStack(spacing: t.gap) {
-                    WebIconView(icon, size: 17, strokeWidth: 1.9)
-                        .frame(width: tile.width, height: tile.height)
-                        .foregroundStyle(tile.color.color)
-                        .background(RoundedRectangle(cornerRadius: tile.radius, style: .circular).fill(tile.background.color))
-                    Text(title).webText(t.text).lineLimit(1).foregroundStyle(t.color.color)
-                    if let count {
-                        Text(count).webText(c.text).lineLimit(1).foregroundStyle(c.color.color).padding(.leading, c.margin.left)
+                if chrome != nil {
+                    // The Mac's native look: a section title (15 pt semibold) after its symbol, the count secondary.
+                    HStack(spacing: 8) {
+                        WebIconView(icon, size: 15).foregroundStyle(NativeLook.secondary)
+                        Text(title).font(NativeLook.sectionTitle).lineLimit(1).foregroundStyle(NativeLook.label)
+                        if let count { Text(count).font(NativeLook.body).monospacedDigit().lineLimit(1).foregroundStyle(NativeLook.secondary) }
                     }
+                    .accessibilityAddTraits(.isHeader)
+                } else {
+                    HStack(spacing: t.gap) {
+                        WebIconView(icon, size: 17, strokeWidth: 1.9)
+                            .frame(width: tile.width, height: tile.height)
+                            .foregroundStyle(tile.color.color)
+                            .background(RoundedRectangle(cornerRadius: tile.radius, style: .circular).fill(tile.background.color))
+                        Text(title).webText(t.text).lineLimit(1).foregroundStyle(t.color.color)
+                        if let count {
+                            Text(count).webText(c.text).lineLimit(1).foregroundStyle(c.color.color).padding(.leading, c.margin.left)
+                        }
+                    }
+                    .accessibilityAddTraits(.isHeader)
                 }
-                .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 0)
                 SeeAll(title: title) { frame.open(route, .newTab) }
             }
-            .frame(height: header.height)
-            .padding(.bottom, header.margin.bottom)
+            .frame(height: chrome != nil ? 32 : header.height)
+            .padding(.bottom, chrome != nil ? 12 : header.margin.bottom)
             body()
         }
         .padding(.top, top)
@@ -735,10 +819,29 @@ struct WebHomeScreen: View {
         let title: String
         let action: () -> Void
         @Environment(\.colorScheme) private var scheme
+        @Environment(\.nativeChrome) private var chrome
 
         var body: some View {
+            if let chrome {
+                // The Mac's native look: a borderless button, secondary, with a hover fill.
+                Button(action: action) {
+                    HStack(spacing: 4) {
+                        Text("See all")
+                        Image(systemName: "chevron.right").imageScale(.small)
+                    }
+                    .font(NativeLook.body)
+                    .foregroundStyle(NativeLook.secondary)
+                }
+                .buttonStyle(NativeBorderlessStyle(chrome))
+                .accessibilityLabel("See all \(title.lowercased())")
+            } else {
+                web
+            }
+        }
+
+        private var web: some View {
             let s = notesStyle("section.seeAll", scheme)
-            Button(action: action) {
+            return Button(action: action) {
                 HStack(spacing: s.gap) {
                     Text("See all").webText(s.text).lineLimit(1)
                     WebIconView(.arrowRight, size: 13)
@@ -903,6 +1006,10 @@ struct WebNoteBrowser: View {
     @FocusState private var focused: Bool
     /// The content column's width inside the scroll view (the toolbar spans it).
     @State private var columnWidth: CGFloat = 0
+    /// The Mac's native look (NativeChrome).
+    @Environment(\.nativeChrome) private var chrome
+    /// The List layout's row under the pointer (its separators hide beside it).
+    @State private var hoveredRow: String?
 
     init(frame: FrameModel, model: NotesListModel) {
         self.frame = frame
@@ -1030,7 +1137,8 @@ struct WebNoteBrowser: View {
 
     /// A folder's page takes a faint wash of its colour (`.ui-view-tint`).
     @ViewBuilder private var tint: some View {
-        if model.kind.view == .folder, let f = model.folder {
+        // (Not in the Mac's native look: the page is the card's own fill; the folder's colour is its glyph's.)
+        if chrome == nil, model.kind.view == .folder, let f = model.folder {
             FolderColor.resolve(f.color).color.opacity(scheme == .dark ? 0.16 : 0.1).color
         }
     }
@@ -1079,7 +1187,41 @@ struct WebNoteBrowser: View {
         }
     }
 
-    private var toolbar: some View {
+    /// The Mac's native look: every list's page title row (as a folder's), its count and controls on one line.
+    @ViewBuilder private var toolbar: some View {
+        if chrome != nil {
+            WebListPageHeader(title: model.title, count: model.isLoading ? "" : statusText) {
+                WebRowSort(options: model.sortOptions.map { ($0.0, $0.1) }, value: $model.sort)
+                WebSegmented(options: [(WebNotesLayout.grid, WebIcon.layoutGrid, "Grid"), (.compact, .rows3, "Compact cards"), (.list, .list, "List")], value: Binding(get: { layout }, set: { layoutRaw = $0.rawValue }), prefix: "toolbar")
+                toolbarActions
+            }
+        } else {
+            webToolbar
+        }
+    }
+
+    @ViewBuilder private var toolbarActions: some View {
+        if model.isTrash && model.total > 0 {
+            WebButton("Empty Trash", variant: .secondary) { model.confirmation = .emptyTrash(model.total) }
+        }
+        if model.kind.view == .templates {
+            if model.screenActions.contains(.generateTemplate) {
+                Button { model.startGenerating() } label: {
+                    HStack(spacing: 6) {
+                        WebAiMark(size: 13)
+                        Text("Generate with Foli AI")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .fixedSize()
+            }
+            WebButton("New template", icon: .plus, variant: .primary) {
+                Task { if let id = await model.actions.createTemplate() { frame.open(.note(id)) } }
+            }
+        }
+    }
+
+    private var webToolbar: some View {
         let bar = notesStyle("toolbar", scheme)
         let status = notesStyle("toolbar.status", scheme)
         return HStack(spacing: bar.gap) {
@@ -1179,7 +1321,15 @@ struct WebNoteBrowser: View {
         return c
     }
 
-    private func caps(_ t: String) -> some View {
+    @ViewBuilder private func caps(_ t: String) -> some View {
+        if chrome != nil {
+            NativeHeading(t).padding(.bottom, 8)
+        } else {
+            webCaps(t)
+        }
+    }
+
+    private func webCaps(_ t: String) -> some View {
         Text(t.uppercased())
             .webText(WebTextStyle.role(.footnote, weight: 600).tracking(em: 0.06))
             .lineLimit(1)
@@ -1265,7 +1415,38 @@ struct WebNoteBrowser: View {
 
     // MARK: list
 
-    private var listLayout: some View {
+    @ViewBuilder private var listLayout: some View {
+        if chrome != nil { nativeListLayout } else { webListLayout }
+    }
+
+    /// The Mac's native look: rows straight on the page with rounded highlights, separators inset to the text and
+    /// hidden beside a highlighted row (one shared boundary decided from both neighbours).
+    private var nativeListLayout: some View {
+        let count = model.isFiltering ? model.slots.count : model.total
+        let lit = NativeRowHighlights(hovered: hoveredRow, selected: model.selection)
+        return LazyVStack(spacing: 0) {
+            ForEach(0..<count, id: \.self) { i in
+                let slot = model.isFiltering ? model.slots[i] : model.slot(at: i)
+                VStack(spacing: 0) {
+                    if i > 0 {
+                        let above = model.isFiltering ? model.slots[i - 1].row?.id : model.slot(at: i - 1).row?.id
+                        NativeRowSeparator(hidden: lit.separatorHidden(above: above, id: slot.row?.id))
+                    }
+                    if let row = slot.row {
+                        WebNoteListRow(row: row, model: model, frame: frame, menu: menu(for: row.id) { noteMenuEntries(row, list: model, frame: frame) }, onHover: { on in
+                            if on { hoveredRow = row.id } else if hoveredRow == row.id { hoveredRow = nil }
+                        })
+                    } else {
+                        Color.clear.frame(height: notesStyle("list.row", scheme).height)
+                    }
+                }
+                .onAppear { model.slotAppeared(slot.index) }
+                .onDisappear { model.slotDisappeared(slot.index) }
+            }
+        }
+    }
+
+    private var webListLayout: some View {
         let list = WebStyles.named("notes.list")
         let count = model.isFiltering ? model.slots.count : model.total
         return LazyVStack(spacing: 0) {
@@ -1295,8 +1476,11 @@ struct WebNoteListRow: View {
     let frame: FrameModel
     /// Its right-click menu (the selection's when it's one of several selected).
     let menu: @MainActor () -> [WebMenuEntry]
+    /// Tells the list the pointer came or went (the native look hides the separators beside a hovered row).
+    var onHover: ((Bool) -> Void)? = nil
     @State private var hovered = false
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
         let r = notesStyle("list.row", scheme)
@@ -1307,8 +1491,11 @@ struct WebNoteListRow: View {
         let handle = notesStyle("list.handle", scheme)
         let on = model.selection.contains(row.id)
         HStack(spacing: r.gap) {
-            Text("⋮⋮").webText(handle.text).lineLimit(1).foregroundStyle(handle.color.color).opacity(hovered ? 1 : 0)
-                .accessibilityHidden(true)
+            // (The native look has no grip: the whole row drags, as in Finder.)
+            if chrome == nil {
+                Text("⋮⋮").webText(handle.text).lineLimit(1).foregroundStyle(handle.color.color).opacity(hovered ? 1 : 0)
+                    .accessibilityHidden(true)
+            }
             if on {
                 WebIconView(.check, size: 11, strokeWidth: 3)
                     .foregroundStyle(webVar("color-canvas", scheme).color)
@@ -1317,7 +1504,9 @@ struct WebNoteListRow: View {
             } else {
                 WebIconView(.fileText, size: 16).foregroundStyle(icon.color.color)
             }
+            // The note's title is the note's own: Folevi's font under the native look too.
             Text(row.title.isEmpty ? "Untitled" : row.title).webText(title.text).lineLimit(1).foregroundStyle(title.color.color)
+                .noteContent()
                 .frame(maxWidth: .infinity, alignment: .leading)
             if row.sync != .saved {
                 HStack(spacing: 4) {
@@ -1346,17 +1535,26 @@ struct WebNoteListRow: View {
             .foleviTooltip(moreActionsLabel(row.title))
             .accessibilityLabel(moreActionsLabel(row.title))
         }
-        .padding(r.padding.edgeInsets)
+        .padding(chrome != nil ? EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 4) : r.padding.edgeInsets)
         .frame(height: r.height)
         // Selected and hovered rows show on the list's own surface (MAC-19: glass-active and surface were white on
-        // white, #1C1C1E on #1C1C1E): the Mac's selected and hover fills.
-        .background(on ? webVar("mac-selected", scheme).color : hovered ? webVar("mac-hover", scheme).color : .clear)
+        // white, #1C1C1E on #1C1C1E): the Mac's selected and hover fills. The native look: a rounded highlight.
+        .background {
+            if chrome != nil {
+                NativeRowHighlight(selected: on, hovered: hovered)
+            } else {
+                (on ? webVar("mac-selected", scheme).color : hovered ? webVar("mac-hover", scheme).color : .clear)
+            }
+        }
         .contentShape(Rectangle())
         .onTapGesture {
             let flags = NSEvent.modifierFlags
             if model.selectable, let click = ListSelection.click(command: flags.contains(.command), shift: flags.contains(.shift), option: flags.contains(.option)) { model.select(row.id, range: click == .range) } else { frame.open(.note(row.id)) }
         }
-        .onHover { hovered = $0 }
+        .onHover { on in
+            hovered = on
+            onHover?(on)
+        }
         .draggable(model.dragItem(for: row))
         .webContextMenu(menu)
         // Each row is a group named for its note and when it changed, so notes of the same title (and their menu
@@ -1415,6 +1613,9 @@ struct WebFoldersIndex: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.screenNavigator) private var navigator
     @Environment(\.screenFeedback) private var feedback
+    /// The Mac's native look (NativeChrome).
+    @Environment(\.nativeChrome) private var chrome
+    @State private var hoveredRow: String?
 
     private var sort: FoldersSort { FoldersSort(saved: sortRaw) }
     private var searching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -1666,7 +1867,15 @@ struct WebFoldersIndex: View {
     /// New folder at the end of the title row, as tall as the row's other controls (it scrolls with the page; the top
     /// bar has none here, only New note).
     @ViewBuilder private var newFolderButton: some View {
-        if home.canEdit {
+        if home.canEdit, let chrome {
+            // The Mac's native look: a bordered push button.
+            Button { home.dialogs.open(.newFolder(parent: nil)) } label: {
+                Label("New folder", systemImage: "folder.badge.plus")
+            }
+            .buttonStyle(.bordered)
+            .tint(chrome.accent)
+            .fixedSize()
+        } else if home.canEdit {
             let b = WebStyles.named("notes.index.newFolder")
             let bs = b.resolve(scheme)
             Button { home.dialogs.open(.newFolder(parent: nil)) } label: {
@@ -1689,7 +1898,46 @@ struct WebFoldersIndex: View {
         folderMenuEntries(MenuFolder(f), context: FolderMenuContext(session: home.session.value, places: home.places.value, links: home.folderLinks, locks: home.locks.error == nil ? home.locks.value : nil), actions: home.actions, dialogs: home.dialogs, navigator: navigator, feedback: feedback, frame: frame)
     }
 
-    private func folderList(_ rows: [FolderCard]) -> some View {
+    @ViewBuilder private func folderList(_ rows: [FolderCard]) -> some View {
+        if chrome != nil { nativeFolderList(rows) } else { webFolderList(rows) }
+    }
+
+    /// The Mac's native look: rows on the page with rounded highlights and inset separators hidden beside them.
+    private func nativeFolderList(_ rows: [FolderCard]) -> some View {
+        let lit = NativeRowHighlights(hovered: hoveredRow, selected: Set(rows.map(\.id).filter { selection.contains($0) }))
+        return VStack(spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.element.id) { i, f in
+                if i > 0 { NativeRowSeparator(hidden: lit.separatorHidden(above: rows[i - 1].id, id: f.id)) }
+                let on = selection.contains(f.id)
+                Button {
+                    let flags = NSEvent.modifierFlags
+                    if let click = ListSelection.click(command: flags.contains(.command), shift: flags.contains(.shift), option: flags.contains(.option)) { select(f.id, range: click == .range, shown: rows) } else { frame.open(.folder(f.id), title: f.name) }
+                } label: {
+                    HStack(spacing: 10) {
+                        FolderGlyph(colorId: f.color, size: 20)
+                        HStack(spacing: 8) {
+                            Text(f.name).font(NativeLook.body).lineLimit(1).foregroundStyle(NativeLook.label)
+                            if let path = f.path { Text("in \(path)").font(NativeLook.small).lineLimit(1).foregroundStyle(NativeLook.secondary) }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Text(f.noteCount == 1 ? "1 page" : "\(f.noteCount.formatted()) pages").font(NativeLook.body).monospacedDigit().foregroundStyle(NativeLook.secondary).frame(width: 80, alignment: .trailing)
+                        Text(AgeText.age(ms: f.updatedAt)).font(NativeLook.body).foregroundStyle(NativeLook.secondary).frame(width: 128, alignment: .trailing)
+                    }
+                    .padding(.vertical, 7)
+                    .padding(.horizontal, 12)
+                    .background(NativeRowHighlight(selected: on, hovered: hoveredRow == f.id))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .onHover { over in if over { hoveredRow = f.id } else if hoveredRow == f.id { hoveredRow = nil } }
+                .accessibilityAddTraits(on ? .isSelected : [])
+                .webContextMenu { menu(f, shown: rows) }
+                .onMiddleClick { frame.openInBackground(.folder(f.id), title: f.name) }
+            }
+        }
+    }
+
+    private func webFolderList(_ rows: [FolderCard]) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.id) { i, f in
                 if i > 0 { Rectangle().fill(webVar("color-line", scheme).color).frame(height: 1) }
@@ -1763,10 +2011,22 @@ extension View {
 struct WebRowTray<Content: View>: View {
     @ViewBuilder let content: () -> Content
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
+        if chrome != nil {
+            // The Mac's native look: the controls side by side, each the system's own, no tray around them.
+            HStack(spacing: 8) { content() }
+                .environment(\.webRowTray, true)
+                .fixedSize()
+        } else {
+            web
+        }
+    }
+
+    private var web: some View {
         let ink = webVar("color-ink", scheme).color
-        HStack(spacing: 2) { content() }
+        return HStack(spacing: 2) { content() }
             .padding(2)
             .frame(height: WebListPageHeaderMetrics.controlHeight)
             .background(RoundedRectangle(cornerRadius: WebListPageHeaderMetrics.trayItemRadius + 2, style: .continuous).fill(ink.opacity(0.035)))
@@ -1779,9 +2039,13 @@ struct WebRowTray<Content: View>: View {
 /// The hairline between groups in a title row's tray.
 struct WebRowTrayDivider: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     var body: some View {
-        Rectangle().fill(webVar("color-line", scheme).color).frame(width: 1, height: 16).padding(.horizontal, 2)
-            .accessibilityHidden(true)
+        // (None in the Mac's native look: the row's spacing groups the controls.)
+        if chrome == nil {
+            Rectangle().fill(webVar("color-line", scheme).color).frame(width: 1, height: 16).padding(.horizontal, 2)
+                .accessibilityHidden(true)
+        }
     }
 }
 
@@ -1798,6 +2062,7 @@ struct WebListPageHeader<Controls: View>: View {
     let count: String
     @ViewBuilder let controls: () -> Controls
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -1822,14 +2087,26 @@ struct WebListPageHeader<Controls: View>: View {
     private var name: some View {
         HStack(alignment: .center, spacing: 10) {
             if let mark { FolderGlyph(colorId: mark, size: 22) }
-            // Title 1 on the Mac (24), Title 2 in the iPad's iOS scale (22): the size of a folder card's name.
-            Text(title).webText(.display(WebStyles.isPad ? .title2 : .title1)).lineLimit(1).truncationMode(.tail)
-                .foregroundStyle(webVar("color-heading", scheme).color)
-                .accessibilityAddTraits(.isHeader)
-                .layoutPriority(1)
-            if !count.isEmpty {
-                Text(count).webText(.role(.body)).lineLimit(1).fixedSize()
-                    .foregroundStyle(webVar("color-ink-muted", scheme).color)
+            if chrome != nil {
+                // The Mac's native look: every page title is 22 pt semibold in the system font, its count secondary.
+                Text(title).font(NativeLook.pageTitle).lineLimit(1).truncationMode(.tail)
+                    .foregroundStyle(NativeLook.label)
+                    .accessibilityAddTraits(.isHeader)
+                    .layoutPriority(1)
+                if !count.isEmpty {
+                    Text(count).font(NativeLook.body).monospacedDigit().lineLimit(1).fixedSize()
+                        .foregroundStyle(NativeLook.secondary)
+                }
+            } else {
+                // Title 1 on the Mac (24), Title 2 in the iPad's iOS scale (22): the size of a folder card's name.
+                Text(title).webText(.display(WebStyles.isPad ? .title2 : .title1)).lineLimit(1).truncationMode(.tail)
+                    .foregroundStyle(webVar("color-heading", scheme).color)
+                    .accessibilityAddTraits(.isHeader)
+                    .layoutPriority(1)
+                if !count.isEmpty {
+                    Text(count).webText(.role(.body)).lineLimit(1).fixedSize()
+                        .foregroundStyle(webVar("color-ink-muted", scheme).color)
+                }
             }
         }
         .frame(height: max(WebListPageHeaderMetrics.controlHeight, 30))
@@ -1897,7 +2174,7 @@ struct WebRowIconButton: View {
     var body: some View {
         let style = WebStyles.named("button.secondary.sm")
         let h = inTray ? WebListPageHeaderMetrics.trayItemHeight : WebListPageHeaderMetrics.controlHeight
-        Button(action: action) {
+        return Button(action: action) {
             WebIconView(icon, size: 15)
                 .foregroundStyle(inTray ? webVar("color-ink-muted", scheme).color : style.resolve(scheme).color.color)
                 .frame(width: h, height: h)
@@ -1946,11 +2223,26 @@ struct WebIndexSearch: View {
     var height: CGFloat? = nil
     @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
+        #if os(macOS)
+        if chrome != nil {
+            // The Mac's native look: the system's search field.
+            NativeSearchField(placeholder: placeholder, text: $text, width: min(width, 260))
+                .frame(maxWidth: min(width, 260))
+        } else {
+            web
+        }
+        #else
+        web
+        #endif
+    }
+
+    private var web: some View {
         let style = WebStyles.named("notes.index.search")
         let s = style.resolve(scheme)
-        HStack(spacing: 0) {
+        return HStack(spacing: 0) {
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
                 .focused($focused)
@@ -1992,6 +2284,8 @@ struct WebTagsIndex: View {
     /// The sort, kept as the web keeps it (`folevi:tags-sort`): Name, Most used or Newest.
     @AppStorage("folevi.tags-sort") private var sort = "name"
     @Environment(\.colorScheme) private var scheme
+    /// The Mac's native look (NativeChrome): the page's title row as Folders has it.
+    @Environment(\.nativeChrome) private var chrome
 
     /// OrganizeIndex.tsx: "1 page", "12 pages".
     private static func pages(_ n: Int) -> String { n == 1 ? "1 page" : "\(n.formatted()) pages" }
@@ -2009,12 +2303,19 @@ struct WebTagsIndex: View {
         let shown = all.filter { needle.isEmpty || $0.name.lowercased().contains(needle) }
         ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 0) {
+                if chrome != nil {
+                    WebListPageHeader(title: "Tags", count: tags.value == nil ? "Loading…" : !needle.isEmpty ? "\(shown.count) of \(all.count) tags" : "\(all.count) \(all.count == 1 ? "tag" : "tags")") {
+                        WebIndexSearch(placeholder: "Search tags", text: $query, width: 220)
+                        WebRowSort(options: [("name", "Name"), ("count", "Most used"), ("created", "Newest")], value: $sort)
+                    }
+                } else {
                 HStack(spacing: 12) {
                     WebIndexSearch(placeholder: "Search tags", text: $query)
                     Text(tags.value == nil ? "Loading…" : !needle.isEmpty ? "\(shown.count) of \(all.count) tags" : "\(all.count) \(all.count == 1 ? "tag" : "tags")")
                         .webText(notesStyle("tags.status", scheme).text).lineLimit(1).foregroundStyle(notesStyle("tags.status", scheme).color.color)
                     Spacer(minLength: 0)
                     WebSortSelect(options: [("name", "Name"), ("count", "Most used"), ("created", "Newest")], value: $sort)
+                }
                 }
                 if tags.value == nil {
                     ListSkeleton(shape: .chips).padding(.top, 24)
@@ -2105,6 +2406,7 @@ struct WebCatchUpCard: View {
     @State private var pulse = false
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
         let dark = scheme == .dark
@@ -2169,12 +2471,17 @@ struct WebCatchUpCard: View {
         .padding(20)
         .background {
             let shape = RoundedRectangle(cornerRadius: FoleviTokens.Radius.container, style: .continuous)
+            if chrome != nil {
+                // The Mac's native look: a flat panel fill, no glass edges or shadow.
+                shape.fill(NativeLook.hover.opacity(0.6))
+            } else {
             shape.fill(webVar("glass-active", scheme).color)
                 // --glass-edge (an inner and an outer hairline) and --glass-shadow
                 .overlay(shape.inset(by: 0.5).stroke(Color.white.opacity(dark ? 0.08 : 0.6), lineWidth: 1))
                 .overlay(shape.inset(by: -0.5).stroke(Color.black.opacity(dark ? 0.4 : 0.06), lineWidth: 1))
                 .shadow(color: .black.opacity(dark ? 0.3 : 0.04), radius: 1, y: 1)
                 .shadow(color: Color(red: dark ? 0 : 20 / 255, green: dark ? 0 : 20 / 255, blue: dark ? 0 : 40 / 255).opacity(dark ? 0.6 : 0.14), radius: dark ? 13 : 10, y: dark ? 16 : 12)
+            }
         }
         .padding(.top, 24)
         .accessibilityElement(children: .contain)

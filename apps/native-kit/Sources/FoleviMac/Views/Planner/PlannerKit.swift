@@ -167,11 +167,28 @@ struct WebSeg: View {
     var countStyle: String?
     let pick: (String) -> Void
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     @State private var hovered: String?
 
     var body: some View {
+        if chrome != nil {
+            // The Mac's native look: the system's segmented control (a count follows its view's name).
+            Picker("View", selection: Binding(get: { selected }, set: { pick($0) })) {
+                ForEach(items) { item in
+                    Text(item.count.map { $0 > 0 ? "\(item.title)  \($0)" : item.title } ?? item.title).tag(item.id)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+        } else {
+            web
+        }
+    }
+
+    private var web: some View {
         let box = PS(base).resolve(scheme)
-        HStack(spacing: box.gap) {
+        return HStack(spacing: box.gap) {
             ForEach(items) { item in
                 let on = item.id == selected
                 let style = PS(on ? "\(base).item.active" : "\(base).item")
@@ -225,6 +242,7 @@ struct PlannerButton: View {
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.nativeChrome) private var chrome
     @State private var over = false
 
     init(_ title: String, icon: WebIcon? = nil, iconSize: CGFloat = 14, style: String, hover: String? = "mac-hover", action: @escaping () -> Void) {
@@ -237,9 +255,41 @@ struct PlannerButton: View {
     }
 
     var body: some View {
+        if let chrome {
+            native(chrome)
+        } else {
+            web
+        }
+    }
+
+    /// The Mac's native look: the style's role as a system button. A filled style with a dark fill (Add task, Save)
+    /// is the screen's one prominent action; a clear one borderless; the rest bordered.
+    @ViewBuilder private func native(_ chrome: NativeChrome) -> some View {
+        let s = PS(style).light
+        let label = HStack(spacing: 5) {
+            if let icon { WebIconView(icon, size: min(iconSize, 13)) }
+            if !title.isEmpty { Text(title).lineLimit(1).fixedSize() }
+        }
+        if s.background.a > 0.5, s.background.luminance < 0.2 {
+            Button(action: action) { label.modifier(NativeAccentInk(chrome)) }
+                .buttonStyle(.borderedProminent)
+                .tint(chrome.accent)
+                .accessibilityLabel(title)
+        } else if s.background.a < 0.05, s.borderWidth == 0 {
+            Button(action: action) { label.foregroundStyle(.primary) }
+                .buttonStyle(NativeBorderlessStyle(chrome))
+                .accessibilityLabel(title)
+        } else {
+            Button(action: action) { label }
+                .buttonStyle(.bordered)
+                .accessibilityLabel(title)
+        }
+    }
+
+    private var web: some View {
         let pair = PS(style)
         let s = pair.resolve(scheme)
-        Button(action: action) {
+        return Button(action: action) {
             HStack(spacing: s.gap) {
                 if let icon { WebIconView(icon, size: iconSize) }
                 if !title.isEmpty { Text(title).webText(s.text).lineLimit(1).fixedSize() }
@@ -299,6 +349,7 @@ struct PlannerEmpty: View {
     var message: String?
     var inline = false
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
         let heading = PV("color-heading").c(scheme)
@@ -319,7 +370,8 @@ struct PlannerEmpty: View {
                 }
             } else {
                 let t = PS("empty.title").resolve(scheme)
-                Text(title).webText(t.text).foregroundStyle(t.color.color).multilineTextAlignment(.center)
+                // (Under the Mac's native look the heading is a section title, not a page title.)
+                Text(title).webText(chrome != nil ? .role(.title3, weight: 600) : t.text).foregroundStyle(t.color.color).multilineTextAlignment(.center)
                 if let message {
                     PrettyText(message, WebTextStyle(size: 14, leading: 14 * 1.625), center: true).foregroundStyle(muted).padding(.top, 8)
                 }
@@ -345,11 +397,32 @@ struct PlannerField: View {
     var hint: String?
     var onSubmit: () -> Void = {}
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     var body: some View {
+        if chrome != nil {
+            // The Mac's native look: the system's rounded text field, its placeholder the prompt.
+            nativeField
+                .textFieldStyle(.roundedBorder)
+                .onSubmit(onSubmit)
+                .accessibilityHint(hint ?? "")
+        } else {
+            web
+        }
+    }
+
+    @ViewBuilder private var nativeField: some View {
+        if let focused {
+            TextField(placeholder, text: $text).focused(focused)
+        } else {
+            TextField(placeholder, text: $text)
+        }
+    }
+
+    private var web: some View {
         let pair = PS(style)
         let s = pair.resolve(scheme)
-        ZStack(alignment: .leading) {
+        return ZStack(alignment: .leading) {
             if text.isEmpty {
                 Text(placeholder).webText(s.text).lineLimit(1).foregroundStyle(s.color.color.opacity(0.5)).allowsHitTesting(false)
             }
@@ -629,6 +702,9 @@ struct PlannerDialog<Content: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .foregroundStyle(p.color.color)
+        // The Mac's native look inside the dialog (system type, native buttons and fields); its panel stays the
+        // frame's sheet surface (WebSheetPanel).
+        .nativeDialogContent()
         // The frame's dialogs' panel: the same frosted glass, edge and shadow as WebSheetDialog (MAC-10).
         .modifier(WebSheetPanel(style: panel, width: p.width))
     }

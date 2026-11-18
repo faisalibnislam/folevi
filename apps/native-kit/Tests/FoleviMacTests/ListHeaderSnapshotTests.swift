@@ -34,6 +34,8 @@ struct ListHeaderSnapshotTests {
                     let frame = FrameModel(client: demo.client())
                     let models = ScreenModels(frame: frame)
                     let root = ScreenRoot(model: frame, models: models, route: route)
+                        // (The iPad's layout keeps the web's look: the native look is the Mac's only.)
+                        .environment(\.macNativeLook, name == "mac")
                         .background(WebStyles.vars["color-canvas"]?.resolve(scheme).color ?? .white)
                         .environment(\.colorScheme, scheme)
                         .frame(width: size.width, height: size.height)

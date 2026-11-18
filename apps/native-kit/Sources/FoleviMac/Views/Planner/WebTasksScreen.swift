@@ -38,6 +38,8 @@ struct WebTasksScreen: View {
     @State private var tasks: PlannerTasks
     @FocusState private var filterFocused: Bool
     @Environment(\.colorScheme) private var scheme
+    /// The Mac's native look (NativeChrome): a page title, small headings.
+    @Environment(\.nativeChrome) private var chrome
 
     init(model: TasksModel, frame: FrameModel) {
         self.model = model
@@ -90,7 +92,11 @@ struct WebTasksScreen: View {
                         ForEach(groups(shown), id: \.0) { key, label, items in
                             VStack(alignment: .leading, spacing: 0) {
                                 let g = PS("tasks.group.title").resolve(scheme)
-                                Text(label.uppercased()).webText(g.text).lineLimit(1).foregroundStyle(g.color.color).padding(.bottom, g.margin.bottom)
+                                if chrome != nil {
+                                    NativeHeading(label).padding(.bottom, 8).padding(.leading, 12)
+                                } else {
+                                    Text(label.uppercased()).webText(g.text).lineLimit(1).foregroundStyle(g.color.color).padding(.bottom, g.margin.bottom)
+                                }
                                 card(items)
                             }
                             .padding(.top, 24)
@@ -126,9 +132,17 @@ struct WebTasksScreen: View {
         let h = PS("header").resolve(scheme)
         let label = WebTaskView.label(model.view)
         return HStack(spacing: h.gap) {
-            StyledText(count.map { "\(label) · \($0) \(model.view == .completed ? "done" : "open")" } ?? label, "header.subtitle")
-                .accessibilityAddTraits(.updatesFrequently)
-                .lineLimit(1)
+            if chrome != nil {
+                // The Mac's native look: the page's title (22 pt semibold), then the view's facts, secondary.
+                Text("Tasks").font(NativeLook.pageTitle).foregroundStyle(NativeLook.label).lineLimit(1).accessibilityAddTraits(.isHeader)
+                Text(count.map { "\(label) · \($0) \(model.view == .completed ? "done" : "open")" } ?? label).font(NativeLook.body).foregroundStyle(NativeLook.secondary)
+                    .accessibilityAddTraits(.updatesFrequently)
+                    .lineLimit(1)
+            } else {
+                StyledText(count.map { "\(label) · \($0) \(model.view == .completed ? "done" : "open")" } ?? label, "header.subtitle")
+                    .accessibilityAddTraits(.updatesFrequently)
+                    .lineLimit(1)
+            }
             Spacer(minLength: 0)
             PlannerButton("Calendar", icon: .calendarDays, style: "header.calendar") { frame.open(.calendar(nil)) }
             PlannerButton("Add task", icon: .plus, style: "header.add", hover: nil) { frame.showQuickAdd(in: tasks.window) }

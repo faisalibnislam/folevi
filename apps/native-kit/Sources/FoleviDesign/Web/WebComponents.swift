@@ -25,6 +25,7 @@ public struct WebButton: View {
     let action: () -> Void
     @Environment(\.isEnabled) private var enabled
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
 
     /// `iconSize`: the icon's size where the web gives it one (`<Upload size={14} />`); 15 otherwise.
     /// `styleName`: the button's own measured style where it has one (the top bar's New note), and `iconOpacity`
@@ -52,6 +53,41 @@ public struct WebButton: View {
     }
 
     public var body: some View {
+        if let chrome {
+            nativeBody(chrome)
+        } else {
+            webBody
+        }
+    }
+
+    /// The Mac's native look (NativeChrome): the system's push button. Primary is the one prominent action, in the
+    /// accent; danger a destructive button; secondary a bordered one; ghost and quiet borderless with a hover fill.
+    @ViewBuilder private func nativeBody(_ chrome: NativeChrome) -> some View {
+        let label = HStack(spacing: 5) {
+            if let icon { WebIconView(icon, size: min(iconSize, 14)).opacity(iconOpacity) }
+            Text(title).lineLimit(1).fixedSize()
+        }
+        Group {
+            switch variant {
+            case .primary:
+                Button(action: action) { label.modifier(NativeAccentInk(chrome)) }
+                    .buttonStyle(.borderedProminent)
+                    .tint(chrome.accent)
+            case .danger:
+                Button(role: .destructive, action: action) { label }
+                    .buttonStyle(.bordered)
+            case .secondary:
+                Button(action: action) { label }
+                    .buttonStyle(.bordered)
+            case .ghost, .quiet:
+                Button(action: action) { label.foregroundStyle(variant == .quiet ? .secondary : .primary) }
+                    .buttonStyle(NativeBorderlessStyle(chrome))
+            }
+        }
+        .controlSize(size == .sm ? .small : .regular)
+    }
+
+    @ViewBuilder private var webBody: some View {
         Button(action: action) {
             WebButtonLabel(title: title, icon: icon, style: style, iconSize: iconSize, iconOpacity: iconOpacity)
         }
@@ -258,6 +294,7 @@ public struct WebTextField: View {
     let width: CGFloat?
     @Environment(\.colorScheme) private var scheme
     @Environment(\.webSnapshot) private var asText
+    @Environment(\.nativeChrome) private var chrome
 
     public init(_ placeholder: String = "", text: Binding<String>, width: CGFloat? = nil) {
         self.placeholder = placeholder
@@ -266,6 +303,17 @@ public struct WebTextField: View {
     }
 
     public var body: some View {
+        if chrome != nil, !asText {
+            // The Mac's native look (NativeChrome): the system's rounded text field.
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: width)
+        } else {
+            webBody
+        }
+    }
+
+    @ViewBuilder private var webBody: some View {
         let style = WebStyles.named("input")
         let s = style.resolve(scheme)
         Group {

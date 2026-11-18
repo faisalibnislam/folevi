@@ -30,7 +30,10 @@ public struct HomeScreen: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 if showsHeader { HomeHeader(eyebrow: model.eyebrow, sync: model.syncIndicator).padding(.horizontal, gutter).padding(.top, 12) }
+                // (Not on the Mac: its search is the window's top bar, with Find, ⌘F; docs/MAC_NATIVE_LOOK.md.)
+                #if !os(macOS)
                 searchEntry.padding(.horizontal, gutter).padding(.top, showsHeader ? 14 : 6)
+                #endif
                 if model.locked {
                     EmptyState(systemImage: "lock", title: "\(model.spaceName) is locked", message: "Unlock this device to see its notes.")
                         .padding(.top, 30)

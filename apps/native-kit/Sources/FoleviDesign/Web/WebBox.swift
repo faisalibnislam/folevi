@@ -144,10 +144,23 @@ struct WebElementModifier: ViewModifier {
 
 struct WebBoxModifier: ViewModifier {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.nativeChrome) private var chrome
     let pair: WebStylePair
 
+    /// The style in this theme. The Mac's native look (NativeChrome): fills, borders and hairline edges stay, as
+    /// does a floating surface's elevation (an outer shadow blurred 16 pt or more: a tip or panel over the page);
+    /// the web's card lifts, inset shadows and gradients go.
+    private var resolved: WebComputedStyle {
+        var s = pair.resolve(scheme)
+        if chrome != nil {
+            s.shadows = s.shadows.filter { !$0.inset && ($0.blur >= 16 || ($0.blur == 0 && $0.spread <= 1)) }
+            s.gradient = nil
+        }
+        return s
+    }
+
     func body(content: Content) -> some View {
-        let s = pair.resolve(scheme)
+        let s = resolved
         let outer = Array(s.shadows.enumerated().filter { !$0.element.inset })
         let inner = Array(s.shadows.enumerated().filter { $0.element.inset })
         content.background {

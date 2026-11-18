@@ -287,6 +287,37 @@ struct ScreenRoot: View {
     let models: ScreenModels
     let route: FrameRoute
     @Environment(\.colorScheme) private var scheme
+    #if os(macOS)
+    /// The Mac's native look (docs/MAC_NATIVE_LOOK.md): false only where this stands for the iPad's layout in tests.
+    @Environment(\.macNativeLook) private var native
+    #endif
+
+    /// The room the card's top bar takes: the screen starts below it.
+    private var barRoom: CGFloat {
+        #if os(macOS)
+        native ? MacLook.barHeight : ContentViewController.barHeight
+        #else
+        ContentViewController.barHeight
+        #endif
+    }
+
+    /// The screen's own fill, under the bar too. The native look: the card's opaque fill (controlBackgroundColor).
+    @ViewBuilder private var fill: some View {
+        #if os(macOS)
+        if native {
+            MacLook.Colors.container
+        } else {
+            webFill
+        }
+        #else
+        webFill
+        #endif
+    }
+
+    @ViewBuilder private var webFill: some View {
+        Folevi.color.canvas
+        if MoreScreen.clear(route) { WebStyles.named("frame.content").resolve(scheme).background.color }
+    }
 
     var body: some View {
         Group {
@@ -313,9 +344,9 @@ struct ScreenRoot: View {
             }
         }
         .id(route.tabKey)
-        // The glass bar's room (the web's main: padding-top 56): a screen starts below the bar and its scrolling
-        // content runs on under it.
-        .safeAreaPadding(.top, ContentViewController.barHeight)
+        // The bar's room (the web's main: padding-top 56; the native look's MacLook.barHeight): a screen starts below
+        // the bar and its scrolling content runs on under it.
+        .safeAreaPadding(.top, barRoom)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         // Help, Graph, Reviews and shared folders show the content card through (the web's main is clear): the card's
         // own fill drawn here, since the note page waiting behind the screens has its own canvas over the card's.
@@ -324,18 +355,19 @@ struct ScreenRoot: View {
         // The card's fill is 90% opaque (the web's glass), so it's laid over the canvas: on its own the note page
         // waiting behind showed through (Foli DNA over a note's title, body and floating bar, November 2026).
         .background {
-            ZStack {
-                Folevi.color.canvas
-                if MoreScreen.clear(route) { WebStyles.named("frame.content").resolve(scheme).background.color }
-            }
-            .ignoresSafeArea()
-            .contentShape(Rectangle())
+            ZStack { fill }
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
         }
         // Another place or space: the screen crossfades instead of cutting.
         .placeCrossfade("\(model.session.value?.place ?? "")|\(model.session.value?.space ?? "")")
         .environment(\.screenNavigator, FrameNavigation.navigator(model))
         .environment(\.screenIntents, FrameNavigation.intents(model))
         .environment(\.screenFeedback, models.feedback)
+        #if os(macOS)
+        // System chrome, Folevi content: the screens' interface parts draw natively (note cards opt out).
+        .macNativeChrome()
+        #endif
     }
 }
 
@@ -343,6 +375,7 @@ struct ScreenRoot: View {
 
 struct CatchUpScreen: View {
     let model: FrameModel
+    @Environment(\.nativeChrome) private var chrome
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -354,8 +387,16 @@ struct CatchUpScreen: View {
                     CatchUpCardView(phase: .ready(brief), onRefresh: { model.runCatchUp() }, onClose: { model.open(.home) }, onSource: { id in model.open(.note(id)) })
                 } else {
                     Text(card?.error?.message ?? "Foli AI reads what changed this week and sums it up.").foleviFont(.callout).foregroundStyle(Folevi.color.inkMuted)
-                    Button("Catch me up") { model.runCatchUp() }.buttonStyle(.folevi(.primary, size: .medium))
-                        .accessibilityIdentifier("catchup.run")
+                    if let chrome {
+                        // The Mac's native look: the page's one prominent action.
+                        Button { model.runCatchUp() } label: { Text("Catch me up").modifier(NativeAccentInk(chrome)) }
+                            .buttonStyle(.borderedProminent)
+                            .tint(chrome.accent)
+                            .accessibilityIdentifier("catchup.run")
+                    } else {
+                        Button("Catch me up") { model.runCatchUp() }.buttonStyle(.folevi(.primary, size: .medium))
+                            .accessibilityIdentifier("catchup.run")
+                    }
                 }
             }
             .padding(32)

@@ -47,6 +47,8 @@ struct DnaSnapshotTests {
                 let root = ZStack {
                     NoteBehind()
                     ScreenRoot(model: frame, models: models, route: .web("/graph"))
+                        // (The iPad's and iPhone's layouts keep the web's look: the native look is the Mac's only.)
+                        .environment(\.macNativeLook, name == "mac")
                 }
                 .environment(\.colorScheme, scheme)
                 .frame(width: size.width, height: size.height)

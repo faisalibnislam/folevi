@@ -76,6 +76,8 @@ public enum WebFontFamily: Sendable {
     case display
     /// JetBrains Mono: code.
     case mono
+    /// The system UI font: interface text under Folevi for Mac's native look (NativeChrome).
+    case system
 }
 
 public enum WebFont {
@@ -145,6 +147,8 @@ public enum WebFont {
         case .mono:
             name = "JetBrainsMono-Regular"
             variable = true
+        case .system:
+            return CTFontCreateWithFontDescriptor(systemFallback(size: size, weight: weight), size, nil)
         case .display:
             // Spectral ships as static faces (400, 500, 600, 700): the browser picks the nearest, as here.
             name = FoleviFonts.postScriptName(.display, nearestStatic(weight), italic: italic)
@@ -299,6 +303,7 @@ struct WebTextModifier: ViewModifier {
     let style: WebTextStyle
     @Environment(\.lineLimit) private var lineLimit
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.nativeChrome) private var chrome
 
     /// A font metric as SwiftUI rounds it when it lays out a line.
     private func snapped(_ v: CGFloat) -> CGFloat {
@@ -310,6 +315,16 @@ struct WebTextModifier: ViewModifier {
     }
 
     func body(content: Content) -> some View {
+        let style = chrome?.text(self.style) ?? self.style
+        if style.family == .system {
+            // Interface text under the native look: the system font with its own line height, as AppKit sets it.
+            content.font(NativeChrome.font(style))
+        } else {
+            webBody(content, style: style)
+        }
+    }
+
+    private func webBody(_ content: Content, style: WebTextStyle) -> some View {
         let font = style.ctFont
         let ascent = CTFontGetAscent(font), descent = CTFontGetDescent(font)
         let cssBaseline = (style.leading - ascent - descent) / 2 + ascent

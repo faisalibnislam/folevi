@@ -200,6 +200,10 @@ public final class FrameModel {
     public var noteToolsShown = true
     /// Asks the top bar's search field for the keyboard (⌘K, Edit > Search All Notes): each ask counts up.
     public var barSearchFocus = 0
+    /// The tab bar shows under the toolbar while two or more tabs are open (Home counts).
+    public var showsTabRow: Bool { tabs.tabs.count >= 2 }
+    /// The room the top bar takes at the card's top now (MacLook.barHeight, with the tab bar while it shows).
+    public var barHeight: CGFloat { MacLook.barHeight(tabRow: showsTabRow) }
     #endif
     /// This Mac's Touch ID for its encryption keys (the app sets it from E2eeKeys; nil in tests and the demo).
     public var touchId: TouchIdHook?

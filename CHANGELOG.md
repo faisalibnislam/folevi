@@ -4,6 +4,27 @@ Every Folevi release, newest first, written by `node scripts/version.mjs` from `
 
 Versions are MAJOR.UPDATE.PATCH, PATCH at least two digits: a Major release (2.0.00), a Big update (1.1.05 after 1.0.05) or a Small update (1.0.06 after 1.0.05).
 
+## Version 1.4.46: Small update
+
+Released 2026-11-18 20:55:50+06:00 (build 60, tag v1.4.46)
+
+Notes look cleaner and the Mac works more like the web: a plain note is one flat page, every tab is the same width, and the note's tools sit in the sidebar.
+
+### Improved
+
+- A note with no style is one flat page with no card around it; with page breaks, its pages become cards on a light grey background
+- Softer shadows under note pages
+- The space around a note grows and shrinks smoothly with the window
+- Mac: every tab in the title bar is the same width, and together they fill the bar
+- Mac: Show All Tabs shows each tab as you last saw it, notes in their colors and folders with their notes
+- Mac: on a note the sidebar shows its contents, comments, tasks, attachments and find, with a switch back to your folders beside the sidebar button; Style, Format, Insert and Foli AI stay on the right
+- Mac: Sort comes before the view switch on folder pages, as on the web
+
+### Fixed
+
+- Mac: the sync status opened its details far below its button
+- Mac: the view switch, Sort and More buttons on folder pages did nothing when clicked
+
 ## Version 1.4.45: Small update
 
 Released 2026-11-18 18:36:09+06:00 (build 59, tag v1.4.45)

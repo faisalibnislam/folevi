@@ -1,6 +1,27 @@
 {
   "releases": [
     {
+      "version": "1.4.46",
+      "build": 60,
+      "released": "2026-11-18T20:55:50+06:00",
+      "type": "patch",
+      "summary": "Notes look cleaner and the Mac works more like the web: a plain note is one flat page, every tab is the same width, and the note's tools sit in the sidebar.",
+      "improved": [
+        "A note with no style is one flat page with no card around it; with page breaks, its pages become cards on a light grey background",
+        "Softer shadows under note pages",
+        "The space around a note grows and shrinks smoothly with the window",
+        "Mac: every tab in the title bar is the same width, and together they fill the bar",
+        "Mac: Show All Tabs shows each tab as you last saw it, notes in their colors and folders with their notes",
+        "Mac: on a note the sidebar shows its contents, comments, tasks, attachments and find, with a switch back to your folders beside the sidebar button; Style, Format, Insert and Foli AI stay on the right",
+        "Mac: Sort comes before the view switch on folder pages, as on the web"
+      ],
+      "fixed": [
+        "Mac: the sync status opened its details far below its button",
+        "Mac: the view switch, Sort and More buttons on folder pages did nothing when clicked"
+      ],
+      "tag": "v1.4.46"
+    },
+    {
       "version": "1.4.45",
       "build": 59,
       "released": "2026-11-18T18:36:09+06:00",

@@ -67,7 +67,7 @@ private struct PrivacySettings: View {
                 VStack(alignment: .leading, spacing: 12) {
                     SettingsTerms(rows: [("Level", space?.encrypted == true ? "End-to-end encrypted" : "Standard", nil), ("Status", space?.locked == true ? "Locked on this \(ThisDevice.noun)" : "Open on this \(ThisDevice.noun)", nil)])
                     if space?.canLock == true || workspace == nil {
-                        WebButton(space?.encrypted == true ? "Lock a folder…" : "Turn on end-to-end encryption…") { model.frame.open(.web(workspace == nil ? "/settings/privacy" : "/settings/workspace-privacy")); model.frame.toast("Choose a folder and Lock it from its menu, or set encryption up when Folevi asks.") }
+                        SButton(space?.encrypted == true ? "Lock a folder…" : "Turn on end-to-end encryption…") { model.frame.open(.web(workspace == nil ? "/settings/privacy" : "/settings/workspace-privacy")); model.frame.toast("Choose a folder and Lock it from its menu, or set encryption up when Folevi asks.") }
                     }
                 }
             }
@@ -95,8 +95,8 @@ private struct BillingSettings: View {
                     SText("Plans are changed on the web, at folevi.com.", "row.hint")
                     #else
                     SettingsButtons {
-                        if d?.plan?.paid == true { WebButton("Manage billing…") { Task { await openURL("billing.portal") } } }
-                        WebButton("See plans…", variant: d?.plan?.paid == true ? .secondary : .primary) { if let u = URL(string: "https://folevi.com/settings/billing") { model.frame.host?.frameOpenExternal(u) } }
+                        if d?.plan?.paid == true { SButton("Manage billing…") { Task { await openURL("billing.portal") } } }
+                        SButton("See plans…", variant: d?.plan?.paid == true ? .secondary : .primary) { if let u = URL(string: "https://folevi.com/settings/billing") { model.frame.host?.frameOpenExternal(u) } }
                     }
                     #endif
                 }
@@ -147,7 +147,7 @@ private struct WorkspaceBillingSettings: View {
                     #if os(iOS)
                     SText("Plans are changed on the web, at folevi.com.", "row.hint")
                     #else
-                    WebButton("Manage billing…") {
+                    SButton("Manage billing…") {
                         Task { if let r = await model.mutate("workspaceBilling.portal", ["workspaceId": .string(w.id)], action: true), let u = J(r)["url"].string.flatMap(URL.init(string:)) { NSWorkspace.shared.open(u) } }
                     }
                     #endif
@@ -181,7 +181,7 @@ private struct ConnectedAppsSettings: View {
                                 SText("\(r.j["canWrite"].bool == true ? "Reads and writes" : "Reads") · Connected \(when(r.j["connectedAt"].number))", "row.hint")
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            WebButton("Disconnect", size: .sm) { Task { await model.mutate("mcp.revokeGrant", ["grantId": .string(r.id)], done: "Disconnected") } }
+                            SButton("Disconnect", size: .sm) { Task { await model.mutate("mcp.revokeGrant", ["grantId": .string(r.id)], done: "Disconnected") } }
                         }
                     }
                 }
@@ -197,7 +197,7 @@ private struct ConnectedAppsSettings: View {
                                     SText("\(r.j["hint"].string.map { "…\($0) · " } ?? "")Last used \(when(r.j["lastUsedAt"].number).lowercased())", "row.hint")
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                WebButton("Revoke", variant: .ghost, size: .sm) {
+                                SButton("Revoke", variant: .ghost, size: .sm) {
                                     settingsConfirm("Revoke \(r.j["name"].string ?? "this token")?", message: "Anything using it stops working at once.", confirm: "Revoke", in: NSApp.keyWindow) {
                                         Task { await model.mutate("apiTokens.revoke", ["tokenId": .string(r.id)], done: "Token revoked") }
                                     }
@@ -207,13 +207,13 @@ private struct ConnectedAppsSettings: View {
                     }
                     HStack(spacing: 8) {
                         SettingsField(placeholder: "Token name", text: $tokenName)
-                        WebButton("Create token") { createToken() }.disabled(tokenName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        SButton("Create token") { createToken() }.disabled(tokenName.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                     .frame(maxWidth: 448)
                     if let shown {
                         HStack(spacing: 8) {
-                            Text(shown).font(WebFont.font(.mono, size: 12)).textSelection(.enabled).lineLimit(1).truncationMode(.middle)
-                            WebButton("Copy", icon: .copy, size: .sm) { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(shown, forType: .string) }
+                            Text(shown).sMono().textSelection(.enabled).lineLimit(1).truncationMode(.middle)
+                            SButton("Copy", icon: .copy, size: .sm) { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(shown, forType: .string) }
                         }
                         SText("Copy it now: it isn't shown again.", "row.hint")
                     }
@@ -226,15 +226,16 @@ private struct ConnectedAppsSettings: View {
                         SettingsDivided(rows(list), gap: 10, line: "row") { r in
                             HStack(spacing: 12) {
                                 SText(r.j["url"].string ?? r.j["name"].string ?? "Webhook", "row.label", lines: 1).frame(maxWidth: .infinity, alignment: .leading)
+                                    .help(r.j["url"].string ?? "")
                                 SettingsSwitch(isOn: r.j["enabled"].bool ?? true, label: "Enabled") { on in await model.mutate("webhooks.setEnabled", ["webhookId": .string(r.id), "enabled": .bool(on)]) != nil }
-                                WebButton("Send test", size: .sm) { Task { await model.mutate("webhooks.sendTest", ["webhookId": .string(r.id)], done: "Test sent") } }
-                                WebButton("Remove", variant: .ghost, size: .sm) { Task { await model.mutate("webhooks.remove", ["webhookId": .string(r.id)], done: "Removed") } }
+                                SButton("Send test", size: .sm) { Task { await model.mutate("webhooks.sendTest", ["webhookId": .string(r.id)], done: "Test sent") } }
+                                SButton("Remove", variant: .ghost, size: .sm) { Task { await model.mutate("webhooks.remove", ["webhookId": .string(r.id)], done: "Removed") } }
                             }
                         }
                     }
                     HStack(spacing: 8) {
                         SettingsField(placeholder: "https://example.com/hooks/folevi", text: $hookURL)
-                        WebButton("Add webhook") { addHook() }.disabled(!hookURL.hasPrefix("https://"))
+                        SButton("Add webhook") { addHook() }.disabled(!hookURL.hasPrefix("https://"))
                     }
                     .frame(maxWidth: 448)
                 }
@@ -274,14 +275,14 @@ private struct WorkspaceGeneralSettings: View {
                         SettingsLabelled(label: "Name") {
                             SettingsField(placeholder: "", text: Binding(get: { name ?? w.name }, set: { name = $0 })).disabled(!w.canManage)
                         }
-                        if w.canManage { WebButton("Save", variant: .primary) { Task { await model.mutate("workspaces.rename", ["workspaceId": .string(w.id), "name": .string((name ?? w.name).trimmingCharacters(in: .whitespaces))], done: "Saved") } } }
+                        if w.canManage { SButton("Save", variant: .primary) { Task { await model.mutate("workspaces.rename", ["workspaceId": .string(w.id), "name": .string((name ?? w.name).trimmingCharacters(in: .whitespaces))], done: "Saved") } } }
                     }
                     .frame(maxWidth: 448, alignment: .leading)
                 }
                 if w.role == "owner" {
                     SettingsCard("Leave workspace", description: "You own this workspace, so you can’t leave it. Make another member the owner first (Members → Make owner), or delete the workspace below.") { EmptyView() }
                     SettingsCard("Delete workspace", description: "Deletes this workspace and everything in it (pages, folders, tasks, files and comments) for everyone, after a 7-day grace period. Export it first if you want to keep it.") {
-                        WebButton("Delete workspace…", variant: .danger) {
+                        SButton("Delete workspace…", variant: .danger) {
                             settingsConfirm("Delete \(w.name)?", message: "It's deleted for everyone after 7 days. Until then you can cancel.", confirm: "Delete workspace", in: NSApp.keyWindow) {
                                 Task { await model.mutate("workspaces.scheduleDeletion", ["workspaceId": .string(w.id)], done: "Deletion scheduled") }
                             }
@@ -289,7 +290,7 @@ private struct WorkspaceGeneralSettings: View {
                     }
                 } else {
                     SettingsCard("Leave workspace", description: "You’ll lose access to its pages, folders and tasks. Pages you wrote stay in the workspace. Your Personal isn’t affected.") {
-                        WebButton("Leave workspace…", variant: .danger) {
+                        SButton("Leave workspace…", variant: .danger) {
                             settingsConfirm("Leave \(w.name)?", message: nil, confirm: "Leave", in: NSApp.keyWindow) {
                                 Task { await model.mutate("workspaces.removeMember", ["workspaceId": .string(w.id), "profileId": .string(model.session?.profile.id ?? "")], done: "You left the workspace") }
                             }
@@ -321,7 +322,7 @@ private struct MembersSettings: View {
                         HStack(spacing: 8) {
                             SettingsField(placeholder: "name@example.com", text: $email) { invite(w) }
                             SettingsSelect(options: Self.roles, value: role, width: 144) { role = $0 }
-                            WebButton("Invite", variant: .primary) { invite(w) }.disabled(!email.contains("@"))
+                            SButton("Invite", variant: .primary) { invite(w) }.disabled(!email.contains("@"))
                         }
                         .settingsRowWidth(576, alignment: .center)
                     }
@@ -338,7 +339,7 @@ private struct MembersSettings: View {
                                 SettingsSelect(options: Self.roles, value: r.j["role"].string == "admin" ? "admin" : "member:\(r.j["memberAccess"].string ?? "edit")", width: 144) { v in
                                     Task { await model.mutate("workspaces.changeRole", ["workspaceId": .string(w.id), "profileId": .string(r.id)].merging(Self.roleArgs(v)) { a, _ in a }, done: "Saved") }
                                 }
-                                WebButton("Remove", variant: .ghost, size: .sm) {
+                                SButton("Remove", variant: .ghost, size: .sm) {
                                     settingsConfirm("Remove \(r.j["displayName"].string ?? "them")?", message: "They lose access to this workspace at once.", confirm: "Remove", in: NSApp.keyWindow) {
                                         Task { await model.mutate("workspaces.removeMember", ["workspaceId": .string(w.id), "profileId": .string(r.id)], done: "Removed") }
                                     }
@@ -355,7 +356,7 @@ private struct MembersSettings: View {
                             HStack {
                                 SText(r.j["email"].string ?? "", "row.label").frame(maxWidth: .infinity, alignment: .leading)
                                 SText(r.j["expired"].bool == true ? "Expired" : (r.j["role"].string ?? "").capitalized, "row.hint")
-                                if w.canManage { WebButton("Revoke", variant: .ghost, size: .sm) { Task { await model.mutate("workspaces.revokeInvite", ["inviteId": .string(r.id)], done: "Invitation revoked") } } }
+                                if w.canManage { SButton("Revoke", variant: .ghost, size: .sm) { Task { await model.mutate("workspaces.revokeInvite", ["inviteId": .string(r.id)], done: "Invitation revoked") } } }
                             }
                         }
                     }
@@ -386,8 +387,8 @@ private struct GuestsSettings: View {
                                 SText("\(r.j["email"].string ?? "") · \(r.j["pages"].array.count) \(r.j["pages"].array.count == 1 ? "page" : "pages")", "row.hint")
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            WebButton("Make member", size: .sm) { Task { await model.mutate("workspaces.convertGuestToMember", ["workspaceId": .string(w.id), "profileId": .string(r.id)], done: "Now a member") } }
-                            WebButton("Remove", variant: .ghost, size: .sm) { Task { await model.mutate("workspaces.removeGuest", ["workspaceId": .string(w.id), "profileId": .string(r.id)], done: "Removed") } }
+                            SButton("Make member", size: .sm) { Task { await model.mutate("workspaces.convertGuestToMember", ["workspaceId": .string(w.id), "profileId": .string(r.id)], done: "Now a member") } }
+                            SButton("Remove", variant: .ghost, size: .sm) { Task { await model.mutate("workspaces.removeGuest", ["workspaceId": .string(w.id), "profileId": .string(r.id)], done: "Removed") } }
                         }
                     }
                 }

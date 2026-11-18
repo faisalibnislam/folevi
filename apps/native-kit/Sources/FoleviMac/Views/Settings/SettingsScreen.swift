@@ -245,6 +245,16 @@ public struct SettingsScreen: View {
     @Environment(\.colorScheme) private var scheme
 
     public var body: some View {
+        #if os(macOS)
+        // The Mac's Settings are their own window (docs/MAC_NATIVE_LOOK.md): a /settings route in a main window (a
+        // tab restored from before, a link) opens the window at its section and says so here.
+        if windowed { page } else { SettingsInItsWindow(model: model, section: model.shown(section)) }
+        #else
+        page
+        #endif
+    }
+
+    @ViewBuilder private var page: some View {
         let shown = model.shown(section)
         let grid = SettingsStyle.pair("grid").light
         let navWidth = SettingsStyle.pair("nav").light.width
@@ -279,6 +289,30 @@ public struct SettingsScreen: View {
         .accessibilityIdentifier("screen.settings")
     }
 }
+
+#if os(macOS)
+/// A main window's Settings route on the Mac: Settings opens in its window (at once, and from the button).
+struct SettingsInItsWindow: View {
+    let model: MacSettingsModel
+    let section: MacSettingsSection
+
+    var body: some View {
+        VStack(spacing: MacLook.Space.m) {
+            Image(systemName: "gearshape").font(.system(size: 28, weight: .regular)).foregroundStyle(MacLook.Colors.secondary)
+            Text("Settings are in their own window").font(MacLook.Text.title3Strong).foregroundStyle(MacLook.Colors.label)
+            Button("Open Settings") { open() }
+                .buttonStyle(.bordered)
+                .keyboardShortcut(.defaultAction)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear { open() }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("screen.settings")
+    }
+
+    private func open() { model.frame.host?.frameOpenSettings(section: section.rawValue) }
+}
+#endif
 
 /// The list of sections (the web's `nav[aria-label="Settings sections"]`): You, the workspace's, Support.
 struct SettingsNav: View {

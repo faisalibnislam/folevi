@@ -70,8 +70,34 @@ struct SettingsTimeZoneSelect: View {
     @State private var pending = SettingsPending<String>()
     @State private var anchor = PlannerAnchor()
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.settingsNative) private var native
 
     var body: some View {
+        if native { nativeBody } else { webBody }
+    }
+
+    /// The Settings window: a pop-up button's look (the zone, its offset, the pop-up chevrons); the searchable list
+    /// opens under it as before.
+    private var nativeBody: some View {
+        let c = TimeZoneChoices.choice(pending.shown(value), at: Date())
+        return Button { open() } label: {
+            HStack(spacing: MacLook.Space.xs + 2) {
+                Text(c.name).lineLimit(1).truncationMode(.tail)
+                Text(c.offset).lineLimit(1).foregroundStyle(MacLook.Colors.secondary)
+                Spacer(minLength: MacLook.Space.xs)
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(MacLook.Colors.secondary)
+            }
+            .font(MacLook.Text.body)
+            .frame(minWidth: 200, maxWidth: 280)
+            .plannerAnchor(anchor)
+        }
+        .buttonStyle(.bordered)
+        .fixedSize()
+        .onChange(of: value) { _, v in pending.stored(v) }
+        .accessibilityLabel("Time zone: \(c.name), \(c.offset)")
+    }
+
+    @ViewBuilder private var webBody: some View {
         let pair = SettingsStyle.pair("select")
         let s = pair.resolve(scheme)
         let label = SettingsStyle.pair("select.label").resolve(scheme)

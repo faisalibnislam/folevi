@@ -1,18 +1,18 @@
-// Settings in a window of its own for ⌘, (decision M2, docs/MAC_POLISH_PLAN.md §3.10). Since 6 November 2026 (the
-// owner): a list of the sections down the left, as System Settings has (Folevi's own line icons, the web's Settings
-// list's; Foli AI's flower), and the section's page on the right, from the open place (/settings/<section>?window=1;
-// the page draws the section alone there, WM4). A fixed size that always fits the screen above the Dock (a long
-// page scrolls inside it); it remembers its last section and its place on screen; Escape or ⌘W closes it.
+// Settings in a window of its own for ⌘, (decision M2, docs/MAC_POLISH_PLAN.md §3.10), in the Mac's native look
+// since 18 November 2026 (docs/MAC_NATIVE_LOOK.md; FoleviMac MacSettingsWindow.swift): real traffic lights, the
+// categories down the left on the window's translucent material with a working search field under the traffic
+// lights, the open category's compact title in line with the traffic lights, and its grouped native controls in a
+// readable column. Every way in lands here: Folevi > Settings… (⌘,), the menu bar icon's Settings…, the account
+// menu, the command palette, File > Import, Invite people…, Foli AI's links, the notifications' gear, and any
+// /settings link in a main window (FrameModel.open sends those here). It remembers its last category, its place
+// and its size; Escape (on an empty search) or ⌘W closes it.
 //
-// With the native frame (NativeFrame.enabled) the common sections are native (N13, FoleviScreens'
-// SettingsSectionScreen on the front main window's engine client): Account, Appearance, Notifications, Foli AI,
-// Security and Devices. General (the Mac's own settings), Privacy (encryption), Offline & Sync, Library and Import &
-// Export stay the page's until the bridge has them.
+// The page is native (FoleviMac's sections on the front main window's engine). While no main window has the native
+// frame (all closed, or the web frame on), the page is the web's (/settings/<section>?window=1) under the same list.
 import AppKit
 import SwiftUI
 import WebKit
 import FoleviEngine
-import FoleviScreens
 import FoleviMac
 import FoleviDesign
 
@@ -32,11 +32,11 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         var icon: WebIcon
     }
 
-    /// The sections for a mode (and Foli AI on or off). Pure (ChromeTests).
+    /// The web page's sections for a mode (and Foli AI on or off): the list while the page is the web's. Pure
+    /// (ChromeTests).
     nonisolated static func sections(mode: String, ai: Bool) -> [Section] {
         let general = Section(id: "desktop", title: "General", icon: .settings)
         let appearance = Section(id: "appearance", title: "Appearance", icon: .palette)
-        // (Its icon stands in for the flower the list draws; see SettingsList.)
         let foli = Section(id: "ai", title: "Foli AI", icon: .messageCircle)
         let data = Section(id: "data", title: "Import & Export", icon: .arrowDownUp)
         var out: [Section]
@@ -60,18 +60,19 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         return out
     }
 
-    /// The window's size: 880 by 640, or less on a smaller screen (its room above the Dock, less a margin).
+    /// The window's first size: 880 by 640, or less on a smaller screen (its room above the Dock, less a margin).
+    /// It can be resized from there, down to MacSettingsWindowStyle.minSize.
     nonisolated static func size(room: NSSize) -> NSSize {
         NSSize(width: min(880, room.width - 40), height: min(640, room.height - 40))
     }
 
     private(set) var window: SettingsNSWindow?
-    /// The list of sections on the left, and the pane on the right that holds the page or the native section.
-    private let list = SettingsListState()
-    private var pane: NSView?
+    /// The web page, while the page is the web's.
     private(set) var view: FoleviWebView?
-    private var native: NSHostingView<AnyView>?
-    private var nativeModel: SettingsModel?
+    /// The list, the search and the open category (FoleviMac MacSettingsShell draws them).
+    private let state = MacSettingsState()
+    private var host: ClickThroughHostingView<AnyView>?
+    private var macModel: MacSettingsModel?
     private var sections: [Section] = []
     private var urlObservation: NSKeyValueObservation?
     private static let sectionKey = "folevi.settings.section"
@@ -81,22 +82,22 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         set { Paths.defaults.set(newValue, forKey: Self.sectionKey) }
     }
 
+    override init() {
+        super.init()
+        state.onSelect = { [weak self] id in self?.selected(id) }
+        state.onAction = { [weak self] id in self?.action(id) }
+    }
+
     /// Opens Settings (or brings it forward), at `section` when given.
     func show(section: String? = nil) {
         let window = self.window ?? make()
-        let place = WindowManager.shared.currentPlace()
-        let mode = WindowManager.shared.modeOf(place)
-        let ai = view.flatMap { Chrome.states[ObjectIdentifier($0)]?.ai } ?? (Chrome.keyMainView.flatMap { Chrome.states[ObjectIdentifier($0)]?.ai } ?? true)
-        sections = Self.sections(mode: mode, ai: ai)
         if let section { current = section }
-        if !sections.contains(where: { $0.id == Self.toolbarID(current) }) { current = sections.first?.id ?? "desktop" }
-        rebuildList()
-        if view == nil || view?.place != place {
-            load(place: place)
-            updateNative()
+        if let frame = nativeFrame() {
+            showNative(frame)
         } else {
-            go(to: current)
+            showPage()
         }
+        window.title = state.title
         window.makeKeyAndOrderFront(nil)
         NSApp.activate()
     }
@@ -104,59 +105,93 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private func make() -> SettingsNSWindow {
         let room = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame.size ?? NSSize(width: 1440, height: 900)
         let size = Self.size(room: room)
-        let window = SettingsNSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+        let window = SettingsNSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
-        window.tabbingMode = .disallowed
-        window.collectionBehavior.insert(.fullScreenNone)
         window.delegate = self
-        // The list on the left, a hairline, the pane on the right.
-        let content = NSView(frame: NSRect(origin: .zero, size: size))
-        let sidebar = ClickThroughHostingView(rootView: SettingsList(state: list) { SettingsWindow.shared.go(to: $0) }.macClickThrough())
-        sidebar.translatesAutoresizingMaskIntoConstraints = false
-        let pane = NSView()
-        pane.translatesAutoresizingMaskIntoConstraints = false
-        content.addSubview(sidebar)
-        content.addSubview(pane)
-        NSLayoutConstraint.activate([
-            sidebar.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            sidebar.topAnchor.constraint(equalTo: content.topAnchor),
-            sidebar.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-            sidebar.widthAnchor.constraint(equalToConstant: SettingsList.width),
-            pane.leadingAnchor.constraint(equalTo: sidebar.trailingAnchor),
-            pane.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            pane.topAnchor.constraint(equalTo: content.topAnchor),
-            pane.bottomAnchor.constraint(equalTo: content.bottomAnchor),
-        ])
-        window.contentView = content
-        self.pane = pane
-        // Its place on screen is remembered; its size is always the one that fits this screen.
-        if !window.setFrameUsingName("FoleviSettings") { window.center() }
-        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: size))
-        frame.origin = NSPoint(x: window.frame.minX, y: window.frame.maxY - frame.height)
+        let host = ClickThroughHostingView(rootView: AnyView(EmptyView()))
+        // (The window's size is the person's: the page never pushes it, only the shell's least size holds.)
+        host.sizingOptions = [.minSize]
+        window.contentView = host
+        // (After the content view: a hosting view resets the window's least size when it becomes the content.)
+        MacSettingsWindowStyle.apply(window)
+        self.host = host
+        // Its place and size on screen are remembered, inside this screen.
+        if !window.setFrameUsingName("FoleviSettings") {
+            window.setContentSize(size)
+            window.center()
+        }
         if let screen = (window.screen ?? NSScreen.main)?.visibleFrame {
+            var frame = window.frame
+            frame.size.width = min(max(frame.width, MacSettingsWindowStyle.minSize.width), screen.width)
+            frame.size.height = min(max(frame.height, MacSettingsWindowStyle.minSize.height), screen.height)
             frame.origin.x = min(max(frame.origin.x, screen.minX), screen.maxX - frame.width)
             frame.origin.y = min(max(frame.origin.y, screen.minY), screen.maxY - frame.height)
+            window.setFrame(frame, display: false)
         }
-        window.setFrame(frame, display: false)
         window.setFrameAutosaveName("FoleviSettings")
         self.window = window
         return window
     }
 
+    // MARK: The native page
+
+    private func showNative(_ frame: FrameModel) {
+        if macModel?.frame !== frame { macModel = MacSettingsModel(frame: frame) }
+        guard let model = macModel else { return }
+        dropPage()
+        state.groups = MacSettingsCategories.groups(model)
+        state.local = MacSettingsCategories.isLocal(model)
+        // A section this place lacks shows the nearest it has (MacSettingsModel.shown: a library's Library).
+        let shown = MacSettingsCategories.resolve(current, model: model)
+        // (Opened at a section: the page starts at its top, nothing lit from an earlier search.)
+        state.select(shown)
+        host?.rootView = AnyView(MacSettingsShell(state: state) {
+            MacSettingsNativePane(model: model, state: state)
+        }.macClickThrough())
+    }
+
+    // MARK: The web page (no main window with the native frame)
+
+    private func showPage() {
+        macModel = nil
+        let place = WindowManager.shared.currentPlace()
+        let ai = view.flatMap { Chrome.states[ObjectIdentifier($0)]?.ai } ?? (Chrome.keyMainView.flatMap { Chrome.states[ObjectIdentifier($0)]?.ai } ?? true)
+        sections = Self.sections(mode: WindowManager.shared.modeOf(place), ai: ai)
+        if !sections.contains(where: { $0.id == Self.toolbarID(current) }) { current = sections.first?.id ?? "desktop" }
+        rebuildList()
+        state.selection = current
+        if view == nil || view?.place != place {
+            load(place: place)
+        } else {
+            navigatePage(to: current)
+        }
+        if let view {
+            host?.rootView = AnyView(MacSettingsShell(state: state) { SettingsWebPane(view: view) }.macClickThrough())
+        }
+    }
+
     private func load(place: String?) {
-        guard let window, let content = pane else { return }
         let old = view
-        let next = WebViewFactory.make(place: place, role: .main, bootstrap: WindowManager.shared.bootstrapOf(place, .main), frame: content.bounds, window: { [weak window] in window })
+        let next = WebViewFactory.make(place: place, role: .main, bootstrap: WindowManager.shared.bootstrapOf(place, .main), frame: NSRect(origin: .zero, size: window?.contentLayoutRect.size ?? .zero), window: { [weak self] in self?.window })
         next.setValue(true, forKey: "drawsBackground")
         next.autoresizingMask = [.width, .height]
         old?.load(URLRequest(url: URL(string: "about:blank")!))
         old?.removeFromSuperview()
-        content.addSubview(next)
         view = next
         urlObservation = next.observe(\.url, options: [.new]) { view, _ in
             MainActor.assumeIsolated { SettingsWindow.shared.urlChanged(view.url) }
         }
         next.load(URLRequest(url: Links.appURL(Self.path(current))))
+    }
+
+    /// The page goes (it would keep a second copy of the place's data open for nothing).
+    private func dropPage() {
+        guard let view else { return }
+        Chrome.states.removeValue(forKey: ObjectIdentifier(view))
+        view.load(URLRequest(url: URL(string: "about:blank")!))
+        view.removeFromSuperview()
+        self.view = nil
+        urlObservation = nil
     }
 
     nonisolated static func path(_ section: String) -> String { "/settings/\(section)?window=1" }
@@ -173,11 +208,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         return "workspace-data"
     }
 
-    private func go(to section: String) {
-        current = section
-        list.selected = Self.toolbarID(section)
-        window?.title = sections.first { $0.id == Self.toolbarID(section) }?.title ?? "Settings"
-        updateNative()
+    private func navigatePage(to section: String) {
         guard let view else { return }
         if view.url.map(WindowRestore.restorablePath) == Self.path(section) { return }
         WindowManager.shared.navigate(view, to: Self.path(section))
@@ -190,8 +221,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         guard parts.first == "settings", parts.count >= 2 else { return }
         let id = String(parts[1])
         current = id
-        if sections.contains(where: { $0.id == Self.toolbarID(id) }) { list.selected = Self.toolbarID(id) }
-        window?.title = sections.first { $0.id == Self.toolbarID(id) }?.title ?? "Settings"
+        state.selection = id
+        window?.title = state.title
     }
 
     /// The page said whether Foli AI is on: its item comes or goes.
@@ -204,21 +235,31 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     }
 
     private func rebuildList() {
-        list.sections = sections
-        list.selected = Self.toolbarID(current)
-        window?.title = sections.first { $0.id == Self.toolbarID(current) }?.title ?? "Settings"
+        state.groups = [MacSettingsGroup(label: nil, items: sections.map { MacSettingsCategory(id: $0.id, title: $0.title, symbol: MacSettingsCategories.symbol($0.id)) })]
+        state.local = WindowManager.shared.modeOf(WindowManager.shared.currentPlace()) != "account"
     }
 
-    // MARK: Native sections
+    // MARK: The list
 
-    /// The Mac's section ids drawn natively (SettingsSection(macId:) maps them).
-    nonisolated static let nativeSections: Set<String> = ["account", "appearance", "notifications", "ai", "security", "devices"]
+    /// A category opened in the list, by the keyboard or from search.
+    private func selected(_ id: String) {
+        current = id
+        window?.title = state.title
+        navigatePage(to: id)
+    }
 
-    /// The front main window's engine client for the open place, when its window has the native frame.
-    private func nativeClient() -> EngineClient? {
-        guard NativeFrame.enabled else { return nil }
-        let place = WindowManager.shared.currentPlace()
-        return WindowManager.shared.mains.first { $0.place == place && $0.frame != nil }?.frame?.model.client
+    /// Help and Contact support.
+    private func action(_ id: String) {
+        let host = macModel?.frame.host ?? nativeFrame()?.host
+        switch id {
+        case MacSettingsCategories.help:
+            if let host { host.frameOpenHelp() } else { WindowManager.shared.showMain(path: "/help") }
+        case MacSettingsCategories.contact:
+            // Without an account there's no support form: an email, as the web opens.
+            if state.local { NSWorkspace.shared.open(URL(string: "mailto:support@folevi.com")!) } else if let host { host.frameOpenHelp() } else { WindowManager.shared.showMain(path: "/help") }
+        default:
+            break
+        }
     }
 
     /// The front main window's frame (its engine, toasts and routes), when it has the native frame.
@@ -227,153 +268,35 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         let place = WindowManager.shared.currentPlace()
         return WindowManager.shared.mains.first { $0.place == place && $0.frame != nil }?.frame?.model
     }
-    private var macModel: MacSettingsModel?
-
-    /// Shows the native section over the page, or the page. With the native frame every section is native and
-    /// drawn as the web's (FoleviMac SettingsScreen, the section alone as at /settings/<section>?window=1).
-    private func updateNative() {
-        if let content = pane, let frame = nativeFrame(), let section = MacSettingsSection(rawValue: current) {
-            if macModel?.frame !== frame { macModel = MacSettingsModel(frame: frame) }
-            // (After the layout pass that measured it: resizing inside it would lay the page out again mid-pass.)
-            let root = AnyView(SettingsScreen(model: macModel!, section: section, windowed: true)
-                .frame(maxWidth: .infinity, maxHeight: .infinity))
-            if let native {
-                native.rootView = AnyView(root.macClickThrough())
-            } else {
-                let host = ClickThroughHostingView(rootView: AnyView(root.macClickThrough()))
-                host.frame = content.bounds
-                host.autoresizingMask = [.width, .height]
-                content.addSubview(host)
-                native = host
-            }
-            native?.isHidden = false
-            view?.isHidden = true
-            return
-        }
-        guard let content = pane, Self.nativeSections.contains(current), let section = SettingsSection(macId: current), let client = nativeClient() else {
-            native?.isHidden = true
-            view?.isHidden = false
-            return
-        }
-        if nativeModel?.client !== client {
-            nativeModel = SettingsModel(client: client, host: SettingsHost(
-                version: Paths.version,
-                openURL: { NSWorkspace.shared.open($0) },
-                pickAvatar: { await SettingsWindow.pickImage() }
-            ), feedback: ScreenFeedback(toast: { t in
-                guard t.tone == .error, let w = SettingsWindow.shared.window else { return }
-                let alert = NSAlert()
-                alert.messageText = t.message
-                alert.beginSheetModal(for: w)
-            }), platform: .mac)
-        }
-        guard let model = nativeModel else { return }
-        let root = AnyView(SettingsSectionScreen(model: model, section: section).frame(maxWidth: .infinity, maxHeight: .infinity))
-        if let native {
-            native.rootView = AnyView(root.macClickThrough())
-        } else {
-            let host = ClickThroughHostingView(rootView: AnyView(root.macClickThrough()))
-            host.frame = content.bounds
-            host.autoresizingMask = [.width, .height]
-            content.addSubview(host)
-            native = host
-        }
-        native?.isHidden = false
-        view?.isHidden = true
-    }
-
-    /// A profile picture from disk: JPEG, PNG, WebP or GIF.
-    static func pickImage() async -> (data: Data, mimeType: String)? {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.jpeg, .png, .webP, .gif]
-        panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url, let data = try? Data(contentsOf: url) else { return nil }
-        let types = ["jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp", "gif": "image/gif"]
-        return (data, types[url.pathExtension.lowercased()] ?? "image/jpeg")
-    }
 
     // MARK: NSWindowDelegate
 
     func windowWillClose(_ notification: Notification) {
-        // The page goes (it would keep a second copy of the place's data open for nothing).
-        if let view { Chrome.states.removeValue(forKey: ObjectIdentifier(view)) }
-        view?.load(URLRequest(url: URL(string: "about:blank")!))
-        view?.removeFromSuperview()
-        view = nil
-        urlObservation = nil
-        native?.removeFromSuperview()
-        native = nil
-        nativeModel = nil
+        dropPage()
+        host?.rootView = AnyView(EmptyView())
         macModel = nil
+        state.query = ""
     }
 }
 
-/// What the list of sections shows: the sections and the one open.
-@MainActor @Observable
-final class SettingsListState {
-    var sections: [SettingsWindow.Section] = []
-    var selected = ""
-}
+/// The web page as the Settings window's page (while no main window has the native frame).
+private struct SettingsWebPane: NSViewRepresentable {
+    let view: NSView
 
-/// The Settings window's list of sections, drawn as the main window's sidebar rows are (frame.sidebar.item): a Folevi
-/// line icon (Foli AI's flower) and the name, the open one filled.
-struct SettingsList: View {
-    static let width: CGFloat = 220
-    let state: SettingsListState
-    let pick: @MainActor (String) -> Void
-    @Environment(\.colorScheme) private var scheme
-
-    var body: some View {
-        ScrollView(.vertical) {
-            VStack(spacing: 2) {
-                ForEach(state.sections, id: \.id) { row($0) }
-            }
-            .padding(EdgeInsets(top: 12, leading: 10, bottom: 12, trailing: 10))
-        }
-        .scrollIndicators(.never)
-        .frame(width: Self.width)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .background((WebStyles.vars["color-sidebar"]?.resolve(scheme).color ?? .clear))
-        .overlay(alignment: .trailing) {
-            Rectangle().fill(WebStyles.vars["color-line"]?.resolve(scheme).color ?? .clear).frame(width: 1)
-        }
+    func makeNSView(context: Context) -> NSView {
+        let box = NSView()
+        embed(in: box)
+        return box
     }
 
-    private func row(_ s: SettingsWindow.Section) -> some View {
-        let on = state.selected == s.id
-        let st = WebStyles.named(on ? "frame.sidebar.item.active" : "frame.sidebar.item").resolve(scheme)
-        let fill = WebStyles.vars["mac-selected"]?.resolve(scheme).color ?? .clear
-        let hover = WebStyles.vars["mac-hover"]?.resolve(scheme).color ?? .clear
-        let iconInk = on ? st.color.color : (WebStyles.vars["color-ink-muted"]?.resolve(scheme).color ?? st.color.color)
-        return Button { pick(s.id) } label: {
-            HStack(spacing: st.gap) {
-                Group {
-                    if s.id == "ai" { AiMarkGlyph(size: 18) } else { WebIconView(s.icon, size: 18).foregroundStyle(iconInk) }
-                }
-                .frame(width: 20, height: 20)
-                Text(s.title).webText(st.text).lineLimit(1).foregroundStyle(st.color.color)
-                Spacer(minLength: 0)
-            }
-            .padding(st.padding.edgeInsets)
-            .frame(height: st.height)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(SettingsRowStyle(selected: on, fill: fill, hover: hover, radius: st.radius))
-        .accessibilityAddTraits(on ? .isSelected : [])
+    func updateNSView(_ box: NSView, context: Context) {
+        if view.superview !== box { embed(in: box) }
     }
-}
 
-/// A row's fill: the open one's, a lighter one under the pointer.
-private struct SettingsRowStyle: ButtonStyle {
-    let selected: Bool
-    let fill: Color
-    let hover: Color
-    let radius: CGFloat
-    @State private var hovering = false
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(RoundedRectangle(cornerRadius: radius, style: .circular).fill(selected || configuration.isPressed ? fill : hovering ? hover : .clear))
-            .onHover { hovering = $0 }
+    private func embed(in box: NSView) {
+        view.removeFromSuperview()
+        view.frame = box.bounds
+        view.autoresizingMask = [.width, .height]
+        box.addSubview(view)
     }
 }

@@ -35,7 +35,31 @@ extension View {
 
 /// The colour variables Settings uses (`--color-danger`, `--color-line`).
 enum SettingsColor {
-    static func v(_ name: String, _ scheme: ColorScheme) -> Color { (WebStyles.vars[name]?.resolve(scheme) ?? RGBA(0, 0, 0, 1)).color }
+    static func v(_ name: String, _ scheme: ColorScheme) -> Color {
+        #if os(macOS)
+        // The Mac's Settings are native (docs/MAC_NATIVE_LOOK.md): the words' and lines' colours are the system's.
+        if let system = Self.system(name) { return system }
+        #endif
+        return (WebStyles.vars[name]?.resolve(scheme) ?? RGBA(0, 0, 0, 1)).color
+    }
+
+    #if os(macOS)
+    /// The system's semantic colour for a colour the sections name (nil: a fill the web's controls draw).
+    static func system(_ name: String) -> Color? {
+        switch name {
+        case "color-danger": MacLook.Colors.red
+        case "color-heading", "color-ink": MacLook.Colors.label
+        case "color-ink-muted": MacLook.Colors.secondary
+        case "color-ink-faint": MacLook.Colors.tertiary
+        case "color-line": MacLook.Colors.separator
+        case "color-surface": MacLook.Colors.window
+        case "color-focus": MacLook.Colors.accent
+        case "color-accent-soft": MacLook.Colors.selection
+        case "glass-hover": MacLook.Colors.hover.opacity(0.6)
+        default: nil
+        }
+    }
+    #endif
 }
 
 /// Where the web breaks paragraphs (`p { text-wrap: pretty }`): asked of the page (settings.run text.lines), kept
@@ -119,6 +143,7 @@ struct SText: View {
     var lines: Int?
     @Environment(\.colorScheme) private var scheme
     @Environment(\.settingsLineBreaks) private var breaker
+    @Environment(\.settingsNative) private var native
     @State private var width: CGFloat = 0
 
     init(_ text: String, _ style: String, weight: CGFloat? = nil, color: Color? = nil, lines: Int? = nil) {
@@ -130,6 +155,23 @@ struct SText: View {
     }
 
     var body: some View {
+        #if os(macOS)
+        if native {
+            Text(text)
+                .font(SettingsNativeText.font(style, weight: weight))
+                .lineLimit(lines)
+                .foregroundStyle(color ?? SettingsNativeText.color(style))
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: lines != 1 && text.count > 60 ? .infinity : nil, alignment: .leading)
+        } else {
+            web
+        }
+        #else
+        web
+        #endif
+    }
+
+    private var web: some View {
         let s = SettingsStyle.pair(style).resolve(scheme)
         var t = s.text
         if let weight { t = t.weight(weight) }
@@ -153,17 +195,33 @@ struct SText: View {
 struct SettingsCard<Content: View>: View {
     let title: String
     let description: String?
+    /// Where Settings' search scrolls to (the title, unless the title changes with the space or the version).
+    let anchor: String
     let content: Content
 
-    init(_ title: String, description: String? = nil, @ViewBuilder content: () -> Content) {
+    init(_ title: String, anchor: String? = nil, description: String? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
         self.description = description
+        self.anchor = anchor ?? title
         self.content = content()
     }
 
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.settingsNative) private var native
 
     var body: some View {
+        #if os(macOS)
+        if native {
+            NativeSettingsCard(title: title, description: description, anchor: anchor, content: content)
+        } else {
+            web
+        }
+        #else
+        web
+        #endif
+    }
+
+    @ViewBuilder private var web: some View {
         let card = SettingsStyle.pair("card")
         let c = card.resolve(scheme)
         VStack(alignment: .leading, spacing: 0) {
@@ -306,11 +364,13 @@ struct SettingsLink: View {
         self.action = action
     }
 
+    @Environment(\.settingsNative) private var native
+
     var body: some View {
         let s = SettingsStyle.pair(style).resolve(scheme)
         let color = over ? SettingsColor.v("color-heading", scheme) : s.color.color
         Button(action: action) {
-            Text(title).webText(weight.map { s.text.weight($0) } ?? s.text)
+            Text(title).sFont(weight.map { s.text.weight($0) } ?? s.text, nativeFont)
                 .foregroundStyle(color)
                 .underline(true, color: color.opacity(over ? 1 : 0.4))
                 .fixedSize(horizontal: false, vertical: true)
@@ -318,6 +378,14 @@ struct SettingsLink: View {
         .buttonStyle(SettingsNoHighlight())
         .onHover { over = $0 }
         .accessibilityAddTraits(.isLink)
+    }
+
+    private var nativeFont: Font {
+        #if os(macOS)
+        SettingsNativeText.font(style, weight: weight)
+        #else
+        .body
+        #endif
     }
 }
 
@@ -342,8 +410,13 @@ struct SettingsLinkedText: View {
         l.underlineStyle = .single
         text += l
         text += AttributedString(after)
+        #if os(macOS)
+        let font = SettingsNativeText.font("muted", weight: nil)
+        #else
+        let font = Font.body
+        #endif
         return Text(text)
-            .webText(s.text)
+            .sFont(s.text, font)
             .foregroundStyle(s.color.color)
             .tint(SettingsColor.v("color-ink", scheme))
             .fixedSize(horizontal: false, vertical: true)
@@ -371,9 +444,28 @@ struct SettingsSwitch: View {
         self.save = save
     }
 
+    @Environment(\.settingsNative) private var native
+
     var body: some View {
+        #if os(macOS)
+        if native {
+            NativeSettingsSwitch(isOn: Binding(get: { pending.shown(isOn) }, set: { v in
+                let shown = pending.shown(isOn)
+                if v != shown { settingsFlip(shown, stored: { isOn }, pending: $pending, save: save) }
+            }), label: label)
+            .disabled(disabled)
+            .onChange(of: isOn) { _, v in pending.stored(v) }
+        } else {
+            web
+        }
+        #else
+        web
+        #endif
+    }
+
+    private var web: some View {
         let shown = pending.shown(isOn)
-        Button { settingsFlip(shown, stored: { isOn }, pending: $pending, save: save) } label: {
+        return Button { settingsFlip(shown, stored: { isOn }, pending: $pending, save: save) } label: {
             SettingsSwitchKnob(isOn: shown, over: over && !disabled)
         }
         .buttonStyle(SettingsNoHighlight())
@@ -401,8 +493,35 @@ struct SettingsToggleRow<Words: View>: View {
     @State private var pending = SettingsPending<Bool>()
     @State private var over = false
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.settingsNative) private var native
 
     var body: some View {
+        #if os(macOS)
+        if native {
+            // The words and a native switch: a click on the words flips it too (MAC-27), the switch takes its own.
+            HStack(alignment: alignment == .top ? .firstTextBaseline : .center, spacing: MacLook.Space.l) {
+                words
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture { if !disabled { settingsFlip(pending.shown(isOn), stored: { isOn }, pending: $pending, save: save) } }
+                NativeSettingsSwitch(isOn: Binding(get: { pending.shown(isOn) }, set: { v in
+                    let shown = pending.shown(isOn)
+                    if v != shown { settingsFlip(shown, stored: { isOn }, pending: $pending, save: save) }
+                }), label: label)
+                .disabled(disabled)
+            }
+            .opacity(disabled ? 0.55 : 1)
+            .onChange(of: isOn) { _, v in pending.stored(v) }
+            .modifier(SettingsFoundHighlight(anchor: SettingsAnchor.row(label), radius: 6))
+        } else {
+            web
+        }
+        #else
+        web
+        #endif
+    }
+
+    @ViewBuilder private var web: some View {
         let shown = pending.shown(isOn)
         Button { settingsFlip(shown, stored: { isOn }, pending: $pending, save: save) } label: {
             HStack(alignment: alignment, spacing: spacing) {
@@ -460,7 +579,29 @@ struct SettingsSelect: View {
         self.save = save
     }
 
+    @Environment(\.settingsNative) private var native
+
     var body: some View {
+        #if os(macOS)
+        if native {
+            Picker("", selection: Binding(get: { pending.shown(value) }, set: { choose($0) })) {
+                ForEach(options, id: \.value) { o in Text(o.label).tag(o.value) }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .fixedSize()
+            .frame(minWidth: width.map { min($0, 160) }, alignment: .leading)
+            .disabled(disabled)
+            .onChange(of: value) { _, v in pending.stored(v) }
+        } else {
+            web
+        }
+        #else
+        web
+        #endif
+    }
+
+    @ViewBuilder private var web: some View {
         let pair = SettingsStyle.pair(style)
         let s = pair.resolve(scheme)
         let label = SettingsStyle.pair("select.label").resolve(scheme)
@@ -508,8 +649,28 @@ struct SettingsField: View {
     var onSubmit: () -> Void = {}
     @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.settingsNative) private var native
 
     var body: some View {
+        #if os(macOS)
+        if native {
+            Group {
+                if secure { SecureField(placeholder, text: $text) } else { TextField(placeholder, text: $text) }
+            }
+            .textFieldStyle(.roundedBorder)
+            .font(MacLook.Text.body)
+            .lineLimit(1)
+            .onSubmit(onSubmit)
+            .frame(maxWidth: .infinity)
+        } else {
+            web
+        }
+        #else
+        web
+        #endif
+    }
+
+    @ViewBuilder private var web: some View {
         let pair = SettingsStyle.pair("input")
         let s = pair.resolve(scheme)
         Group {
@@ -569,8 +730,15 @@ struct SettingsDivided<Item: Identifiable, Row: View>: View {
         self.row = row
     }
 
+    @Environment(\.settingsNative) private var native
+
     var body: some View {
-        let color = SettingsStyle.pair(line).resolve(scheme).borderColor.color
+        let color: Color = {
+            #if os(macOS)
+            if native { return MacLook.Colors.separator }
+            #endif
+            return SettingsStyle.pair(line).resolve(scheme).borderColor.color
+        }()
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
                 row(item)
@@ -588,7 +756,32 @@ struct SettingsTerms: View {
     let rows: [(String, String, Color?)]
     @Environment(\.colorScheme) private var scheme
 
+    @Environment(\.settingsNative) private var native
+
     var body: some View {
+        #if os(macOS)
+        if native {
+            Grid(alignment: .topLeading, horizontalSpacing: MacLook.Space.m, verticalSpacing: MacLook.Space.s) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, r in
+                    GridRow {
+                        Text(r.0).font(MacLook.Text.body).foregroundStyle(MacLook.Colors.secondary)
+                            .frame(width: MacSettingsLook.termWidth, alignment: .leading)
+                        Text(r.1).font(MacLook.Text.body).foregroundStyle(r.2 ?? MacLook.Colors.label)
+                            .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+        } else {
+            web
+        }
+        #else
+        web
+        #endif
+    }
+
+    @ViewBuilder private var web: some View {
         let dl = SettingsStyle.pair("dl").light
         let dt = SettingsStyle.pair("dt").light
         Grid(alignment: .topLeading, horizontalSpacing: dl.gap, verticalSpacing: 8) {
@@ -606,8 +799,21 @@ struct SettingsTerms: View {
 /// The card's buttons in a row, 8 pt apart.
 struct SettingsButtons<Content: View>: View {
     @ViewBuilder let content: Content
+    @Environment(\.settingsNative) private var native
     var body: some View {
+        #if os(macOS)
+        if native {
+            // A narrow window stacks them rather than clip one (the guide's planned reflow).
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: MacLook.Space.s) { content }
+                VStack(alignment: .leading, spacing: MacLook.Space.s) { content }
+            }
+        } else {
+            HStack(spacing: SettingsStyle.pair("buttons").light.gap) { content }
+        }
+        #else
         HStack(spacing: SettingsStyle.pair("buttons").light.gap) { content }
+        #endif
     }
 }
 
@@ -623,8 +829,40 @@ struct SettingsDialogView<Body: View, Footer: View>: View {
     @ViewBuilder let content: Body
     @ViewBuilder let footer: Footer
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.settingsNative) private var native
 
     var body: some View {
+        #if os(macOS)
+        if native {
+            // A sheet's content: the title and what it does, the body, the buttons trailing (Escape cancels).
+            VStack(alignment: .leading, spacing: MacLook.Space.m) {
+                VStack(alignment: .leading, spacing: MacLook.Space.xs) {
+                    Text(title).font(MacLook.Text.title3Strong).foregroundStyle(MacLook.Colors.label)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    if let description {
+                        Text(description).font(MacLook.Text.body).foregroundStyle(MacLook.Colors.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                content.frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: MacLook.Space.s) {
+                    Spacer(minLength: 0)
+                    footer
+                }
+                .padding(.top, MacLook.Space.xs)
+            }
+            .padding(MacLook.Space.xl - 4)
+            .frame(width: min(width, 460))
+        } else {
+            web
+        }
+        #else
+        web
+        #endif
+    }
+
+    @ViewBuilder private var web: some View {
         let panel = WebStyles.named("dialog.panel")
         let p = panel.resolve(scheme)
         let header = WebStyles.named("dialog.header").resolve(scheme)
@@ -663,49 +901,34 @@ struct SettingsDialogView<Body: View, Footer: View>: View {
 }
 
 #if os(macOS)
-/// A borderless panel over a window holding one dialog (one at a time), centred on the window. It covers the whole
-/// window with a clear backdrop that takes every click (MAC-23), as the Mac's other dialogs do (FrameSheets): the
-/// Settings behind stay put until it closes, the panel stays the key window, and Escape and ⌘. close it.
+/// One dialog at a time as a sheet on the window that asked (the Settings window): the system's presentation in the
+/// native look (docs/MAC_NATIVE_LOOK.md: dialogs are stock macOS parts). Escape and ⌘. close it, as Cancel does.
 @MainActor
 final class SettingsDialogWindow: NSPanel {
     private static weak var current: SettingsDialogWindow?
-    private var monitor: Any?
     private var onClose: (() -> Void)?
-    static let margin: CGFloat = 60
 
-    /// Shows `content` (a SettingsDialogView) over `window`.
+    /// Shows `content` (a SettingsDialogView) as a sheet on `window`.
     @discardableResult
     static func show<V: View>(over window: NSWindow, onClose: (() -> Void)? = nil, @ViewBuilder content: () -> V) -> SettingsDialogWindow {
         current?.dismiss()
-        let panel = SettingsDialogWindow(contentRect: .zero, styleMask: [.borderless], backing: .buffered, defer: true)
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = false
+        // A sheet on a sheet waits for it: present on the window under any sheet already showing.
+        let parent = window.sheetParent ?? window
+        let host = ClickThroughHostingView(rootView: content()
+            .environment(\.settingsNative, true)
+            .environment(\.settingsWindowed, true)
+            .macClickThrough())
+        let size = host.fittingSize
+        let panel = SettingsDialogWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: true)
         panel.isReleasedWhenClosed = false
+        panel.titlebarAppearsTransparent = true
+        panel.titleVisibility = .hidden
         panel.onClose = onClose
-        let scheme: ColorScheme = window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light
-        let dialog = content().webSheetIn().padding(margin).environment(\.colorScheme, scheme)
-        // The dialog's own size, then a panel over the whole window (and past it, should the dialog be taller).
-        let size = NSHostingView(rootView: dialog).fittingSize
-        let f = window.frame
-        let dialogRect = NSRect(x: f.midX - size.width / 2, y: f.midY - size.height / 2, width: size.width, height: size.height)
-        let frame = f.union(dialogRect)
-        let host = ClickThroughHostingView(rootView: SettingsDialogBackdrop(dialog: dialog, size: size, offset: CGSize(width: dialogRect.midX - frame.midX, height: frame.midY - dialogRect.midY)))
-        host.safeAreaRegions = []
+        host.frame = NSRect(origin: .zero, size: size)
+        host.autoresizingMask = [.width, .height]
         panel.contentView = host
-        panel.setFrame(frame, display: false)
-        panel.appearance = window.appearance
-        window.addChildWindow(panel, ordered: .above)
-        panel.makeKeyAndOrderFront(nil)
-        panel.monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak panel, weak window] e in
-            guard let panel, e.window === panel || e.window === window else { return e }
-            if e.keyCode == 53 || (e.modifierFlags.contains(.command) && e.charactersIgnoringModifiers == ".") {
-                panel.dismiss()
-                return nil
-            }
-            return e
-        }
         current = panel
+        parent.beginSheet(panel)
         return panel
     }
 
@@ -716,54 +939,50 @@ final class SettingsDialogWindow: NSPanel {
 
     override var canBecomeKey: Bool { true }
 
+    /// Escape and ⌘. (the system sends both here).
+    override func cancelOperation(_ sender: Any?) { dismiss() }
+
     private var closing = false
 
     func dismiss() {
         guard !closing else { return }
         closing = true
-        if let monitor { NSEvent.removeMonitor(monitor) }
-        monitor = nil
         let done = onClose
         onClose = nil
         done?()
-        // A short fade, as a sheet goes on macOS.
-        fadeAway { [weak self] in
-            guard let self else { return }
-            self.parent?.removeChildWindow(self)
-            self.close()
-        }
+        if let parent = sheetParent { parent.endSheet(self) } else { close() }
+        if Self.current === self { Self.current = nil }
     }
 }
 
-/// The panel's content: a clear backdrop over the window that takes the clicks (nothing behind reacts), and the
-/// dialog over the window's middle.
-private struct SettingsDialogBackdrop<Dialog: View>: View {
-    let dialog: Dialog
-    let size: CGSize
-    let offset: CGSize
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.0001)
-                .contentShape(Rectangle())
-                .onTapGesture {}
-                .accessibilityHidden(true)
-            dialog.frame(width: size.width, height: size.height).offset(offset)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .macClickThrough()
-    }
-}
-
-/// A confirmation as the Mac app asks it: Folevi's own dialog (ui/Dialog.tsx with `confirm`), never the system's
-/// alert (MAC-03). Cancel answers Return and Escape; a destructive action takes a click (a non-destructive one is the
-/// default and answers Return).
+/// A confirmation as the Mac asks it in the native look: the system's alert, as a sheet on the window that asked.
+/// A destructive action's alert keeps Cancel as the default (Return) and marks the action destructive; a
+/// non-destructive action is the default. Escape is Cancel.
 @MainActor
 func settingsConfirm(_ title: String, message: String?, confirm: String, destructive: Bool = true, in window: NSWindow?, then run: @escaping () -> Void) {
     guard let window = window ?? NSApp.keyWindow ?? NSApp.mainWindow else { return }
-    SettingsDialogWindow.show(over: window) {
-        SettingsConfirmDialog(title: title, message: message, confirm: confirm, destructive: destructive, run: run)
+    let alert = settingsConfirmAlert(title, message: message, confirm: confirm, destructive: destructive)
+    let confirmed: NSApplication.ModalResponse = destructive ? .alertSecondButtonReturn : .alertFirstButtonReturn
+    alert.beginSheetModal(for: window.sheetParent ?? window) { response in
+        if response == confirmed { run() }
     }
+}
+
+/// settingsConfirm's alert (tests read it).
+@MainActor
+func settingsConfirmAlert(_ title: String, message: String?, confirm: String, destructive: Bool) -> NSAlert {
+    let alert = NSAlert()
+    alert.messageText = title
+    alert.informativeText = message ?? ""
+    alert.alertStyle = destructive ? .warning : .informational
+    if destructive {
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: confirm).hasDestructiveAction = true
+    } else {
+        alert.addButton(withTitle: confirm)
+        alert.addButton(withTitle: "Cancel")
+    }
+    return alert
 }
 
 /// settingsConfirm's dialog: the title, what will happen, Cancel and the action.

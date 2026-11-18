@@ -133,8 +133,7 @@ struct WebTasksScreen: View {
         let label = WebTaskView.label(model.view)
         return HStack(spacing: h.gap) {
             if chrome != nil {
-                // The Mac's native look: the page's title (22 pt semibold), then the view's facts, secondary.
-                Text("Tasks").font(NativeLook.pageTitle).foregroundStyle(NativeLook.label).lineLimit(1).accessibilityAddTraits(.isHeader)
+                // The Mac's native look: the page's title is the toolbar's (HIG toolbars); the view's facts stay.
                 Text(count.map { "\(label) · \($0) \(model.view == .completed ? "done" : "open")" } ?? label).font(NativeLook.body).foregroundStyle(NativeLook.secondary)
                     .accessibilityAddTraits(.updatesFrequently)
                     .lineLimit(1)

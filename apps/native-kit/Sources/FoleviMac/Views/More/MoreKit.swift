@@ -62,10 +62,8 @@ struct WebFactsRow<Actions: View>: View {
         let row = moreStyle("more.review.header", scheme)
         let sub = moreStyle("more.review.subtitle", scheme)
         HStack(spacing: row.gap) {
-            if chrome != nil, let title {
-                // The Mac's native look: the page's title (22 pt semibold), its facts secondary after it.
-                Text(verbatim: title).font(NativeLook.pageTitle).foregroundStyle(NativeLook.label).lineLimit(1).accessibilityAddTraits(.isHeader)
-                    .layoutPriority(1)
+            if chrome != nil, title != nil {
+                // The Mac's native look: the page's title is the toolbar's (HIG toolbars); its facts stay.
                 Text(verbatim: subtitle ?? "").font(NativeLook.body).lineLimit(1).foregroundStyle(NativeLook.secondary)
             } else {
                 Text(verbatim: subtitle ?? "").webText(sub.text).lineLimit(1).foregroundStyle(sub.color.color)

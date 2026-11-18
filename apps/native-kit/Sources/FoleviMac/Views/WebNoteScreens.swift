@@ -622,11 +622,8 @@ struct WebHomeScreen: View {
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     if chrome != nil {
-                        // The Mac's native look: the page's title, as every page has (22 pt semibold).
-                        Text("Home").font(NativeLook.pageTitle).foregroundStyle(NativeLook.label).lineLimit(1)
-                            .accessibilityAddTraits(.isHeader)
-                            .frame(height: 32)
-                            .padding(.top, 20)
+                        // The Mac's native look: the page's title is the toolbar's (HIG toolbars), not repeated here.
+                        Color.clear.frame(height: 12)
                     }
                     catchUp
                     reviews
@@ -2086,13 +2083,9 @@ struct WebListPageHeader<Controls: View>: View {
     /// The glyph, the way up, the name and the count.
     private var name: some View {
         HStack(alignment: .center, spacing: 10) {
-            if let mark { FolderGlyph(colorId: mark, size: 22) }
+            if let mark, chrome == nil { FolderGlyph(colorId: mark, size: 22) }
             if chrome != nil {
-                // The Mac's native look: every page title is 22 pt semibold in the system font, its count secondary.
-                Text(title).font(NativeLook.pageTitle).lineLimit(1).truncationMode(.tail)
-                    .foregroundStyle(NativeLook.label)
-                    .accessibilityAddTraits(.isHeader)
-                    .layoutPriority(1)
+                // The Mac's native look: the page's title is the toolbar's (HIG toolbars); the count stays here.
                 if !count.isEmpty {
                     Text(count).font(NativeLook.body).monospacedDigit().lineLimit(1).fixedSize()
                         .foregroundStyle(NativeLook.secondary)

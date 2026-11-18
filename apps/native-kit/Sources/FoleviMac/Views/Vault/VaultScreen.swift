@@ -154,10 +154,7 @@ private struct VaultHeader: View {
         let header = VS.style("vault.header", scheme)
         let sub = VS.style("vault.header.subtitle", scheme)
         HStack(spacing: header.gap) {
-            if chrome != nil {
-                // The Mac's native look: the page's title (22 pt semibold), then its state.
-                Text("Vault").font(NativeLook.pageTitle).lineLimit(1).accessibilityAddTraits(.isHeader)
-            }
+            // (The Mac's native look: the page's title is the toolbar's, HIG toolbars; its state stays.)
             Text(subtitle).webText(sub.text).lineLimit(1).foregroundStyle(sub.color.color)
             Spacer(minLength: 0)
             if model.isOpen {

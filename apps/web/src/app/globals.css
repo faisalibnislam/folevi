@@ -851,16 +851,19 @@
 :root[data-mac-native] .ui-canvas { background: transparent; }
 :root[data-mac-native] .ui-canvas::before,
 :root[data-mac-native] .ui-canvas::after { display: none; }
+/* Layout v2 (the owner's reference, 2026-11-18): the native frame draws no card behind a note; the page draws it.
+   The note panel is the rounded card (the Mac's control background), flush with the web view's edges; the page's
+   own tools panel (Style, Format, Insert, Foli AI) sits beside it, transparent, on the window's material. */
+:root[data-mac-native] { --mac-card: #ffffff; }
+:root[data-mac-native][data-theme="dark"] { --mac-card: #1e1e1e; }
+@media (prefers-color-scheme: dark) { :root[data-mac-native]:not([data-theme="light"]) { --mac-card: #1e1e1e; } }
+:root[data-mac-native] div:has(> [data-note-panel]) { padding: 0; }
+:root[data-mac-native] [data-note-panel] { padding: 0; border-radius: 12px; overflow: hidden; background: var(--mac-card); }
 :root[data-mac-native] .fb-page { border-radius: 0; box-shadow: none; }
 :root[data-mac-native] .fb-page:not([data-backdrop]) { background: transparent !important; }
-/* The note runs under the glass top bar (Shell's underBars) and keeps the bar's room inside, so a cover or
-   backdrop reaches the card's top edge (HIG Liquid Glass: content extends beneath toolbars). The page's own
-   panel (Style, Info, Foli AI) keeps clear of the bar. */
-:root[data-mac-native] .fb-page { padding-top: calc(var(--native-inset-top, 0px) + 2rem); scroll-padding-top: var(--native-inset-top, 0px); }
-:root[data-mac-native] aside[aria-label="Page tools"]:not(.ui-pop) {
-  height: auto; margin: var(--native-inset-top, 0px) 10px 10px 0; border-radius: 18px;
-  background: color-mix(in srgb, var(--color-ink) 5%, transparent); overflow: hidden;
-}
+/* The page keeps the room of the floating controls at the card's top (--native-inset-top). */
+:root[data-mac-native] .fb-page { padding-top: calc(var(--native-inset-top, 0px) + 1.5rem); scroll-padding-top: var(--native-inset-top, 0px); }
+:root[data-mac-native] aside[aria-label="Page tools"]:not(.ui-pop) { height: 100%; margin: 0 0 0 8px; background: transparent; }
 /* Interface text in the page (the page tools, its panels, menus) is the system font; note text keeps the note's
    own fonts (--editor-font, --note-*). Small headings are sentence case, as on the Mac. */
 :root[data-mac-native] { --font-sans: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }

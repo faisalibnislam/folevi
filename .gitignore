@@ -80,3 +80,6 @@ xcuserdata/
 *.xcuserstate
 # Local Claude Code worktrees
 .claude/worktrees/
+
+# graphify knowledge graph (local build output, rebuilt with `graphify update .`)
+graphify-out/

@@ -334,7 +334,7 @@ final class FrameController: FrameHost {
 
     func frameFloatNote(_ id: String) { FloatingNotes.float(id, place: place) }
 
-    /// The window's sidebar (menus: ⌘K focuses the top bar's search through it).
+    /// The window's sidebar (menus: ⌘K focuses the card's search through it, View > Hide Sidebar).
     var sidebar: WebSidebarController { root.split.sidebar }
 }
 
@@ -472,6 +472,7 @@ enum FrameCommands {
         case "edit.find-next", "edit.find-previous":
             guard noteOpen else { return true }
             if m.stepSidebarFind?(id == "edit.find-next" ? 1 : -1) != true { sendToPage(id, frame: frame) }
+        case "view.sidebar": frame.root.split.toggleSidebar(nil)
         case "view.inspector":
             if noteOpen { if m.editorPanel == .info { m.editor(.panelClose) } else { m.editor(.panelOpen(panel: .info)) } }
         case "go.back": m.goBack()

@@ -4,6 +4,9 @@
 // window's EngineClient (its Page View); native holds no authority. The views (FrameViews) only draw this and
 // call its actions; the app (apps/mac) implements `FrameHost` for what belongs to the app (places, Settings,
 // windows, sign-in).
+#if os(macOS)
+import AppKit
+#endif
 import Foundation
 import Observation
 import FoleviEngine
@@ -193,17 +196,19 @@ public final class FrameModel {
     }
 
     #if os(macOS)
-    /// The Mac's sidebar is always shown (docs/MAC_NATIVE_LOOK.md); only Focus mode on a note hides it.
+    /// The sidebar is hidden: by its button, ⌘\ or View > Hide Sidebar (`sidebarCollapsed`), or by Focus mode on a
+    /// note.
     public var sidebarHidden: Bool { sidebarCollapsed || (route.isNote && focusMode) }
     /// The note's tools (its outline, comments, tasks, attachments, Find) in the inspector on the card's right.
     /// The top bar's Note Tools button shows or hides them; the frame keeps the choice.
     public var noteToolsShown = true
     /// Asks the top bar's search field for the keyboard (⌘K, Edit > Search All Notes): each ask counts up.
     public var barSearchFocus = 0
-    /// The tab bar shows under the toolbar while two or more tabs are open (Home counts).
-    public var showsTabRow: Bool { tabs.tabs.count >= 2 }
-    /// The room the top bar takes at the card's top now (MacLook.barHeight, with the tab bar while it shows).
-    public var barHeight: CGFloat { MacLook.barHeight(tabRow: showsTabRow) }
+    /// The room the card's floating controls take at its top (MacLook.barHeight): screens and the note page start
+    /// below it and run on under it.
+    public var barHeight: CGFloat { MacLook.barHeight }
+    /// The title bar's bell: the notifications popover, anchored to it (the sidebar's controller shows it).
+    @ObservationIgnored public var showNotifications: (@MainActor (AppKit.NSView?) -> Void)?
     #endif
     /// This Mac's Touch ID for its encryption keys (the app sets it from E2eeKeys; nil in tests and the demo).
     public var touchId: TouchIdHook?

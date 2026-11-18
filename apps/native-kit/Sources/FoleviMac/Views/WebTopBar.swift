@@ -38,6 +38,8 @@ public struct WebTopBar: View {
     #if os(macOS)
     /// Whether the window is active (the prominent New note follows the system's inactive look).
     @Environment(\.controlActiveState) var barActive
+    /// The title bar's bell, for the notifications popover's place.
+    @State var bellAnchor: NSView?
     #endif
 
     public init(model: FrameModel) { self.model = model }

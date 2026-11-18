@@ -62,8 +62,8 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
   its preview (the note's fonts); a folder card's name (Spectral) and the notes pictured in it. A card's dates,
   folder or tag chip and a folder's count line are the system font (`WebTextStyle.cardInterface`). Text set
   straight in a font goes through `WebFont.interface(chrome, ...)`.
-- **Controls**: one size everywhere (`MacLook.controlSize`, the system's large: 28 pt push buttons, pop-up buttons
-  and fields, 13 pt labels) and one shape for push buttons (a capsule). A compact action inside a row is 24 pt,
+- **Controls**: one size everywhere (`MacLook.controlSize`, the system's large: 28 pt push buttons and pop-up
+  buttons, 13 pt labels; text fields are 32 pt, see "One text field") and one shape for push buttons (a capsule). A compact action inside a row is 24 pt,
   never the system's small or mini. Icon-only buttons are 28 pt with a 15 pt symbol outside the glass controls.
   `macNativeChrome()` sets both the native chrome and the control size; a new hosted view tree needs it.
 - **Icons**: Folevi's own, the web app's set, so the Mac and the web match (the owner, 2026-11-18); the Foli AI
@@ -122,8 +122,14 @@ uneven"):
   (`narrowWindowQuery` in `panelLayout.ts`: the Mac's page is the card, without the web's sidebar), so a 1280 pt
   window docks it; only a small window lays it over the note.
 - **Push buttons in the page are capsules** (a dialog's Done, "Use your own image…"), as the native dialogs' are.
-- **Fields in one dialog are one height**: a secret or one-time-code field is the same system field as the plain
-  ones, in the fixed-width font.
+- **One text field** (the owner, 2026-11-18: "form fields look tiny and weird"): `NativeField` in
+  `FoleviDesign/Web/NativeChrome.swift`, used with `.nativeTextField()` on a `TextField` or `SecureField` and
+  `NativeFieldBox` round a text area or a menu that sits in a form. 32 pt tall, 8 pt continuous corners, 10 pt
+  before its words, 13 pt text; its own surface (white in light, white at 7% in dark) with a hairline edge in both
+  themes; a 1.5 pt edge and a 3 pt ring outside it while it has the cursor, so it never changes size. The system's
+  `.roundedBorder` field is not used: it came out 22 to 28 pt depending on where it sat and had no edge on a dark
+  surface. A secret or one-time-code field is the same field in the fixed-width font. Search fields keep their own
+  shapes (the card's glass search, the Vault's, Foli DNA's, Settings').
 
 ## Checks before calling a part done
 

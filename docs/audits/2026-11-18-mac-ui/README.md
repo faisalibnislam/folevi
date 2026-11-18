@@ -56,6 +56,33 @@ account or Keychain). Branch `mac-ui-audit`, from `main` at 1.4.47. Not released
 
 ![small-window](small-window.jpg)
 
+## Form fields (second pass, the owner: "form fields look tiny and weird")
+
+The system's rounded field came out 22 to 28 pt tall depending on where it sat, and on a dark surface it had no
+edge, so a dialog's fields read as thin slabs. Every text field of the native look is now one field (`NativeField`:
+32 pt, a surface and a hairline edge in both themes, a ring while it has the cursor): the Vault's dialogs, New
+folder and Rename, the Tasks filter and the add-task and event dialogs, and Settings' fields. The Vault dialog's
+Kind menu sits on the same surface.
+
+### Form fields: one proper field everywhere (32 pt, a visible edge, a clear focus ring), here in Add to the Vault
+
+![fields-vault](fields-vault.jpg)
+
+### The same dialog with the Mac in dark mode
+
+![fields-vault-dark](fields-vault-dark.jpg)
+
+### The Tasks filter field
+
+![fields-tasks](fields-tasks.jpg)
+
+### Rename folder
+
+![fields-rename](fields-rename.jpg)
+
+Not pictured: Settings' own fields (a key, a passphrase) open from buttons in the Settings window, which the test
+tools can't click. They use the same field.
+
 Also fixed, without a picture: the Import card in Settings had more padding under its buttons than above them; the
 Vault's Add dialog took its height from whichever window was key, so it cut off its Notes field when Settings was
 open or the app was behind another.

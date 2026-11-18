@@ -306,9 +306,9 @@ public struct WebTextField: View {
 
     public var body: some View {
         if chrome != nil, !asText {
-            // The Mac's native look (NativeChrome): the system's rounded text field.
+            // The Mac's native look (NativeChrome): the Mac app's one field (NativeField).
             TextField(placeholder, text: $text)
-                .textFieldStyle(.roundedBorder)
+                .nativeTextField()
                 .frame(width: width)
         } else {
             webBody

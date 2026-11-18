@@ -657,10 +657,9 @@ struct SettingsField: View {
             Group {
                 if secure { SecureField(placeholder, text: $text) } else { TextField(placeholder, text: $text) }
             }
-            .textFieldStyle(.roundedBorder)
-            .font(MacLook.Text.body)
-            .lineLimit(1)
             .onSubmit(onSubmit)
+            // (One height for every field in Settings, whatever the web gave this one.)
+            .nativeTextField()
             .frame(maxWidth: .infinity)
         } else {
             web

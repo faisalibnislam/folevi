@@ -65,7 +65,16 @@ private struct DialogField: View {
         let box = focused ? webFocused(VS.pair("vault.gate.input")) : VS.pair("vault.gate.input")
         VStack(alignment: .leading, spacing: 4) {
             Text(label).webText(l.text).foregroundStyle(l.color.color)
-            if multiline {
+            if multiline, chrome != nil {
+                // The Mac's native look: a text area on the same surface as the fields beside it.
+                TextEditor(text: $text)
+                    .font(WebFont.interface(chrome, mono ? .mono : .sans, size: 13))
+                    .scrollContentBackground(.hidden)
+                    .focused($focused)
+                    // (A text editor keeps 5 pt of its own before its words: 10 in all, as a field's.)
+                    .padding(.horizontal, -5)
+                    .modifier(NativeFieldBox(focused: focused, height: CGFloat(rows) * 18 + 16, vertical: 7))
+            } else if multiline {
                 TextEditor(text: $text)
                     .font(WebFont.interface(chrome, mono ? .mono : .sans, size: 13))
                     .scrollContentBackground(.hidden)
@@ -76,8 +85,8 @@ private struct DialogField: View {
             } else if mono, chrome != nil {
                 // The Mac's native look: the same system field as the plain ones beside it, its text in the fixed-width
                 // font. (It was a box of its own, 8 pt taller than Title and Username in the same dialog.)
-                TextField("", text: $text).textFieldStyle(.roundedBorder).font(WebFont.interface(chrome, .mono, size: 13))
-                    .focused($focused)
+                TextField("", text: $text).font(WebFont.interface(chrome, .mono, size: 13))
+                    .nativeTextField()
             } else if mono {
                 TextField("", text: $text).textFieldStyle(.plain).font(WebFont.interface(chrome, .mono, size: 13))
                     .focused($focused)
@@ -141,7 +150,7 @@ private struct ItemDialog: View {
                     if existing == nil {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Kind").webText(VS.style("vault.gate.label", scheme).text)
-                            VaultSelect(style: "vault.pw.kind", label: def?.label ?? "Login", options: kinds.map { ($0.kind, $0.label) }, selected: kind, fill: true, height: MacLook.controlHeight) { kind = $0 }
+                            VaultSelect(style: "vault.pw.kind", label: def?.label ?? "Login", options: kinds.map { ($0.kind, $0.label) }, selected: kind, fill: true, height: NativeField.height) { kind = $0 }
                         }
                     }
                     DialogField(label: "Title", text: $title)

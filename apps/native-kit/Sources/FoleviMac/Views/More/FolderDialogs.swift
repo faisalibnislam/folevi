@@ -204,10 +204,10 @@ struct PromptSheet: View {
                 Text(verbatim: label).webText(l.text).lineLimit(1).foregroundStyle(l.color.color)
                 if native {
                     TextField("", text: $value)
-                        .textFieldStyle(.roundedBorder)
                         .focused($focused)
                         .onSubmit(submit)
                         .onChange(of: value) { _, v in if v.count > 80 { value = String(v.prefix(80)) } }
+                        .nativeTextField()
                         .padding(.top, 6)
                         .accessibilityLabel(label)
                 } else {

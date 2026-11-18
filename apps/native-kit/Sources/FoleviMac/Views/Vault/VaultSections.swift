@@ -138,12 +138,14 @@ struct VaultSelect: View {
     var body: some View {
         let s = VS.style(style, scheme)
         WebMenuButton(select: true, hover: s.radius, entries: { options.map { o in WebMenuEntry(.item(o.1, checked: o.0 == selected)) { onSelect(o.0) } } }) {
+            // In a form (`height`): the form's own field surface, so the menu reads as one of its fields.
+            let inForm = height != nil
             let row = HStack(spacing: s.gap) {
                 Text(label).webText(s.text).lineLimit(1)
                 Spacer(minLength: 0)
                 WebIconView(.chevronDown, size: 14).opacity(0.6)
             }
-            .padding(s.padding.edgeInsets)
+            .padding(inForm ? EdgeInsets() : s.padding.edgeInsets)
             .frame(height: height ?? s.height)
             Group {
                 // The web's trigger is as wide as its label, chevron and padding: the captured width for that label.
@@ -154,8 +156,21 @@ struct VaultSelect: View {
                 }
             }
             .foregroundStyle(s.color.color)
-            .webBox(VS.pair(style))
+            .modifier(VaultSelectSurface(style: style, field: inForm))
             .contentShape(Rectangle())
+        }
+    }
+}
+
+/// The select's box: the web's trigger, or a form's field surface (NativeField).
+private struct VaultSelectSurface: ViewModifier {
+    let style: String
+    let field: Bool
+    func body(content: Content) -> some View {
+        if field {
+            content.modifier(NativeFieldBox(focused: false, height: nil))
+        } else {
+            content.webBox(VS.pair(style))
         }
     }
 }

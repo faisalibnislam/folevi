@@ -401,10 +401,10 @@ struct PlannerField: View {
 
     var body: some View {
         if chrome != nil {
-            // The Mac's native look: the system's rounded text field, its placeholder the prompt.
+            // The Mac's native look: the Mac app's one field (NativeField), its placeholder the prompt.
             nativeField
-                .textFieldStyle(.roundedBorder)
                 .onSubmit(onSubmit)
+                .nativeTextField()
                 .accessibilityHint(hint ?? "")
         } else {
             web

@@ -172,3 +172,83 @@ public struct NativeAccentInk: ViewModifier {
         #endif
     }
 }
+
+// MARK: - The Mac's text field
+
+/// The one text field of Folevi for Mac's native look (the owner, 2026-11-18: "form fields look tiny and weird").
+/// The system's rounded field came out 22 to 28 pt tall depending on where it sat, with no edge to speak of on a
+/// dark surface, so a dialog's fields read as thin slabs. Every field is now this one: 32 pt, 8 pt corners, a
+/// surface of its own with a hairline edge in both themes, 10 pt of room before its words, and a ring while it has
+/// the cursor.
+public enum NativeField {
+    public static let height: CGFloat = 32
+    public static let radius: CGFloat = 8
+    public static let inset: CGFloat = 10
+    public static let textSize: CGFloat = 13
+
+    static func fill(_ scheme: ColorScheme) -> Color { scheme == .dark ? Color.white.opacity(0.07) : Color.white }
+    static func edge(_ scheme: ColorScheme, focused: Bool) -> Color {
+        let ink = scheme == .dark ? Color.white : Color.black
+        return ink.opacity(focused ? (scheme == .dark ? 0.62 : 0.55) : (scheme == .dark ? 0.16 : 0.14))
+    }
+    static func ring(_ scheme: ColorScheme) -> Color { (scheme == .dark ? Color.white : Color.black).opacity(scheme == .dark ? 0.22 : 0.14) }
+}
+
+/// The field's surface round its text: `height` nil for a text area, which keeps its own height.
+public struct NativeFieldBox: ViewModifier {
+    var focused: Bool
+    var height: CGFloat?
+    var vertical: CGFloat
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.isEnabled) private var enabled
+
+    public init(focused: Bool, height: CGFloat? = NativeField.height, vertical: CGFloat = 0) {
+        self.focused = focused
+        self.height = height
+        self.vertical = vertical
+    }
+
+    public func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: NativeField.radius, style: .continuous)
+        content
+            .padding(.horizontal, NativeField.inset)
+            .padding(.vertical, vertical)
+            .frame(height: height)
+            .background(shape.fill(NativeField.fill(scheme)))
+            .overlay(shape.strokeBorder(NativeField.edge(scheme, focused: focused), lineWidth: focused ? 1.5 : 1))
+            // The ring sits outside the field, so the field never changes size as the cursor comes and goes.
+            .overlay {
+                if focused {
+                    RoundedRectangle(cornerRadius: NativeField.radius + 1.5, style: .continuous)
+                        .stroke(NativeField.ring(scheme), lineWidth: 3)
+                        .padding(-1.5)
+                        .allowsHitTesting(false)
+                }
+            }
+            .opacity(enabled ? 1 : 0.5)
+            .animation(.easeOut(duration: 0.12), value: focused)
+    }
+}
+
+struct NativeTextFieldModifier: ViewModifier {
+    var height: CGFloat
+    @FocusState private var focused: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .textFieldStyle(.plain)
+            .font(.system(size: NativeField.textSize))
+            .lineLimit(1)
+            .focused($focused)
+            .modifier(NativeFieldBox(focused: focused, height: height))
+            // A click anywhere in the field puts the cursor in it (the padding round the text is the field too).
+            .contentShape(Rectangle())
+            .onTapGesture { focused = true } // (no hover: a field, the click puts the cursor in it)
+    }
+}
+
+public extension View {
+    /// A one-line `TextField` or `SecureField` drawn as the Mac app's field (NativeField). A font set on the field
+    /// itself (a fixed-width one for a secret) is kept.
+    func nativeTextField(height: CGFloat = NativeField.height) -> some View { modifier(NativeTextFieldModifier(height: height)) }
+}

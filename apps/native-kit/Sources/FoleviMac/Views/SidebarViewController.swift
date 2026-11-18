@@ -322,6 +322,7 @@ public final class SidebarViewController: NSViewController {
             item.image = NSImage(systemSymbolName: space.kind == .personal ? "person" : "person.3", accessibilityDescription: nil)
             menu.addItem(item)
         }
+        NativeMenu.comfortable(menu)
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 4), in: sender)
     }
 
@@ -386,6 +387,7 @@ public final class SidebarViewController: NSViewController {
         default:
             return nil
         }
+        NativeMenu.comfortable(menu)
         return menu
     }
 }

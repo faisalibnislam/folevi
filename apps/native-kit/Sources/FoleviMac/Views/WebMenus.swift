@@ -127,8 +127,66 @@ public enum NativeMenu {
                 menu.addItem(item(e))
             }
         }
+        comfortable(menu)
         return menu
     }
+
+    // MARK: Comfortable rows (the owner, 2026-11-18: "context menu looks too compressed")
+
+    /// A row's height in every pop-up and context menu: 32 pt, the note's own menu's, not the system's 24.
+    public static let rowHeight: CGFloat = 32
+    /// What the system adds to a title's line to make its row (measured: a 26 pt line gives a 32 pt row).
+    static let rowPadding: CGFloat = 6
+    /// A row's icon, in points (the note's menu draws its icons at 16).
+    static let iconSize: CGFloat = 16
+
+    /// Makes a system menu comfortable, as the note's own menu is: every row 32 pt tall with its title centred in
+    /// it, its icon shown (macOS 27 hides menu pictures unless a row asks for its own), and Folevi's icon for a
+    /// row that came without one. Submenus too. Separators, section headers and rows with a view of their own are
+    /// left as they are. Safe to run twice.
+    public static func comfortable(_ menu: NSMenu) {
+        for item in menu.items {
+            if let sub = item.submenu { comfortable(sub) }
+            guard !item.isSeparatorItem, !item.isSectionHeader, item.view == nil else { continue }
+            if item.image == nil, let icon = defaultIcon(for: item.title) {
+                item.image = icon.nsImage(size: iconSize, strokeWidth: 1.75)
+            }
+            if #available(macOS 27.0, *), item.image != nil { item.preferredImageVisibility = .visible }
+            item.attributedTitle = roomy(item.attributedTitle ?? NSAttributedString(string: item.title))
+        }
+    }
+
+    /// A title set on a line as tall as the row less the system's padding, centred in it.
+    static func roomy(_ title: NSAttributedString) -> NSAttributedString {
+        let out = NSMutableAttributedString(attributedString: title)
+        guard out.length > 0 else { return out }
+        let font = out.attribute(.font, at: 0, effectiveRange: nil) as? NSFont ?? NSFont.menuFont(ofSize: 0)
+        let line = rowHeight - rowPadding
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.minimumLineHeight = line
+        paragraph.maximumLineHeight = line
+        paragraph.lineBreakMode = .byTruncatingTail
+        // (A taller line puts its extra room above the words: half of it goes back under them.)
+        let natural = font.ascender - font.descender + font.leading
+        out.addAttributes([.font: font, .paragraphStyle: paragraph, .baselineOffset: ((line - natural) / 2).rounded(.down)], range: NSRange(location: 0, length: out.length))
+        return out
+    }
+
+    /// Folevi's icon for a row that was built without one (the tab's and the sidebar's menus), by what it says.
+    static func defaultIcon(for title: String) -> WebIcon? {
+        let key = title.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "… ."))
+        return defaultIcons[key]
+    }
+
+    static let defaultIcons: [String: WebIcon] = [
+        "open": .externalLink, "open in new tab": .appWindow, "open in new window": .appWindowMac,
+        "new note": .filePlusCorner, "new note here": .filePlusCorner, "new note in folder": .filePlusCorner,
+        "new folder": .folderPlus, "new folder inside": .folderPlus, "rename": .pencil, "duplicate": .copy,
+        "close tab": .x, "close other tabs": .x, "close tabs to the right": .arrowRightToLine,
+        "pin tab": .pin, "unpin tab": .pinOff, "move to top level": .arrowUpToLine, "delete": .trash,
+        "move to trash": .trash, "back": .arrowLeft, "forward": .arrowRight, "reload": .refreshCw,
+        "copy link": .link, "search": .search,
+    ]
 
     /// One row as a menu item.
     public static func item(_ e: WebMenuEntry) -> NSMenuItem {
@@ -155,7 +213,9 @@ public enum NativeMenu {
         if let swatch = w.swatch { return swatchImage(NSColor(swatch)) }
         if w.aiMark { return aiImage }
         guard let icon = w.icon else { return nil }
-        let base = symbolImage(icon) ?? icon.nsImage(size: 15, strokeWidth: 1.75, label: w.title)
+        // Folevi's own icon, as the note's menu and the rest of the app draw it (the owner, 2026-11-18: the web's
+        // icons wherever the web has one), not the nearest SF Symbol.
+        let base = icon.nsImage(size: iconSize, strokeWidth: 1.75, label: w.title)
         guard w.danger else { return base }
         if base.isTemplate, let red = base.withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [.systemRed])) { return red }
         return base
@@ -338,6 +398,8 @@ public final class WebMenuWindow: NSObject, NSMenuDelegate {
     private init(entries: [WebMenuEntry], menu: NSMenu? = nil) {
         self.entries = entries
         self.menu = menu ?? NativeMenu.build(entries)
+        // (A menu handed in, a right click's with the system's Share submenu, gets the same rows.)
+        NativeMenu.comfortable(self.menu)
         super.init()
         self.menu.delegate = self
     }

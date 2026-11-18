@@ -87,6 +87,15 @@ Branch: `mac-native-look`. Not released: the owner approves the look first.
   line height, which set paragraphs over each other), in a quiet filled bubble; the floating chat is a Liquid Glass
   panel; the composer has a hairline focus and a round accent send button.
 - **Menus and popovers** are the system's (`NSMenu`, `NSPopover`), not Folevi's own drawn menus.
+  Every pop-up and context menu is comfortable (the owner, 2026-11-18: "too compressed"): `NativeMenu.comfortable`
+  makes each row 32 pt, as the note's own menu, shows its icon (macOS 27 hides menu pictures unless a row sets
+  `preferredImageVisibility`), draws Folevi's own icon at 16 pt (not the nearest SF Symbol), and gives a row built
+  without an icon one by what it says. A new `NSMenu` built by hand must pass through it; the menu bar doesn't.
+- **What floats over a note is Liquid Glass** (the owner, 2026-11-18: the note's menu was "pure white"): the page's
+  menus, its floating bar (a capsule) and its popovers share one material in `globals.css`
+  (`:root[data-mac-native] .ui-pop`): a cool tint at 66% that blurs and saturates what's behind, a sheen from the
+  top edge, a bright rim inside, a hairline and two soft shadows outside; menus have 13 pt corners and 7 pt rows.
+  Dialogs stay nearly opaque (glass is never content). Reduce Transparency makes them solid.
 - **Other windows** (Settings, Quick Add, floating notes, sheets, alerts) keep their own native presentation and are
   never wrapped in the main window's shell.
 

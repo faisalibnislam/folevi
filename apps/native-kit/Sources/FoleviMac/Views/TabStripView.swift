@@ -157,6 +157,7 @@ public final class TabStripView: NSView {
         menu.addItem(Self.action("Close Tabs to the Right") { [weak self] in self?.delegate?.tabStrip(closeToTheRight: id) })
         menu.addItem(.separator())
         menu.addItem(Self.action("Open in New Window") { [weak self] in self?.delegate?.tabStrip(openInNewWindow: id) })
+        NativeMenu.comfortable(menu)
         return menu
     }
 

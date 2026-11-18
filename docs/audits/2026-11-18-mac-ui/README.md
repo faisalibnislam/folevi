@@ -100,6 +100,33 @@ chosen one ringed in the accent and checked. `ThemeTiles.swift`.
 Not checked by a click: the test tools can't click inside the Settings window. The tiles call the same function
 the segmented control did.
 
+## Menus (fourth pass, the owner: the note's menu is "pure white", other menus "too compressed")
+
+The owner chose: Liquid Glass for the note's menus, floating bar and popovers; the real macOS menu elsewhere with
+taller rows and icons; 32 pt rows everywhere.
+
+### The note's menu and floating bar: Liquid Glass, not flat white
+
+![menus-note](menus-note.jpg)
+
+### The same in dark mode
+
+![menus-note-dark](menus-note-dark.jpg)
+
+### A note card's right-click menu: 32 pt rows with icons (was 24 pt, no icons)
+
+![menus-card](menus-card.jpg)
+
+### A tab's right-click menu
+
+![menus-tab](menus-tab.jpg)
+
+### The account menu
+
+![menus-account](menus-account.jpg)
+
+Not pictured: a row lit under the pointer (the test tools can't move the pointer over a system menu).
+
 Also fixed, without a picture: the Import card in Settings had more padding under its buttons than above them; the
 Vault's Add dialog took its height from whichever window was key, so it cut off its Notes field when Settings was
 open or the app was behind another.

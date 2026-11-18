@@ -46,6 +46,7 @@ public enum AccountMenu {
                 menu.addItem(item)
             }
         }
+        NativeMenu.comfortable(menu)
         return menu
     }
 
@@ -54,7 +55,7 @@ public enum AccountMenu {
     private static func image(_ mark: AccountMenuRow.Mark, for item: NSMenuItem) {
         switch mark {
         case .none: break
-        case .icon(let icon): item.image = NativeMenu.symbolImage(icon) ?? icon.nsImage(size: 15)
+        case .icon(let icon): item.image = icon.nsImage(size: NativeMenu.iconSize, strokeWidth: 1.75)
         case .plus: item.image = NSImage(systemSymbolName: "plus", accessibilityDescription: nil)
         case .library: item.image = NSImage(systemSymbolName: "laptopcomputer", accessibilityDescription: nil)
         case .avatar(let name, let url, let size):
@@ -130,6 +131,7 @@ public enum NoteMenu {
         let archived = meta?.archived ?? false
         add(archived ? "Unarchive" : "Archive", "archivebox", enabled: canEdit) { model.archive([id], !archived) }
         add("Move to Trash", "trash", enabled: canEdit) { model.trash([id]) }
+        NativeMenu.comfortable(menu)
         return menu
     }
 }

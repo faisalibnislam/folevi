@@ -14,48 +14,54 @@ import SwiftUI
 
 public enum MacLook {
     // MARK: Window
+    //
+    // The owner's layout (2026-11-18, after the HIG pass): the window's top strip is the title bar and holds the
+    // traffic lights, the sidebar's button and Folevi's tabs; under it the sidebar on the window's material, the
+    // content card, and on a note the inspector on the material at the right. The card's own controls float in
+    // Liquid Glass at its top, with no bar behind them.
 
-    /// The sidebar's fixed width. It is always visible; only Focus mode hides it.
-    public static let sidebarWidth: CGFloat = 228
-    /// The content card's margin on its top, trailing and bottom edges (the sidebar is its leading edge).
-    public static let containerMargin: CGFloat = 12
+    /// The title bar strip at the window's top: the traffic lights, the sidebar's button, the tabs, the bell.
+    public static let titleBarHeight: CGFloat = 52
+    /// Where the traffic lights' first button starts (they're centred on the strip).
+    public static let trafficLightsX: CGFloat = 18
+    /// The traffic lights' room in the strip, the sidebar's button after it.
+    public static let trafficLightsRoom: CGFloat = 78
+    /// The sidebar's width (under the strip). The sidebar's button, ⌘\ and View > Hide Sidebar hide it; so does
+    /// Focus mode on a note.
+    public static let sidebarWidth: CGFloat = 240
+    /// The content card's margin on its trailing and bottom edges (the sidebar, or the margin when it's hidden, is
+    /// its leading edge; the strip its top).
+    public static let containerMargin: CGFloat = 8
     public static let containerRadius: CGFloat = 12
-    /// Where the sidebar's content starts, under the traffic lights.
-    public static let sidebarTop: CGFloat = 46
+    /// Where the sidebar's content starts, under the strip.
+    public static let sidebarTop: CGFloat = 4
     /// The sidebar's outer horizontal inset.
     public static let sidebarInset: CGFloat = 12
-    /// The smallest window: sidebar, a usable card, and the top bar's essential controls without clipping.
+    /// The smallest window: sidebar, a usable card, and the card's controls without clipping.
     public static let minWindowSize = CGSize(width: 820, height: 520)
-    /// The strip above the card while the sidebar is hidden (Focus mode): the traffic lights' room, and where the
-    /// window is dragged from (the guide's no-sidebar profile).
-    public static let titlebarStrip: CGFloat = 28
 
-    // MARK: Top bar (drawn inside the card, first thing in it)
-    //
-    // Two rows (the HIG's toolbars.md): the toolbar (Back and Forward, the view's title, New note, search, the
-    // inspector's button), and under it, with two or more tabs open, the tab bar (macOS's own tab bar, Safari's).
+    // MARK: The title bar's tabs
 
-    public static let barPaddingTop: CGFloat = 14
-    public static let barPaddingSides: CGFloat = 14
-    public static let barPaddingBottom: CGFloat = 8
-    /// Every toolbar control is a capsule this tall.
-    public static let barControlHeight: CGFloat = 36
-    /// The gap between top bar groups.
-    public static let barSpacing: CGFloat = 10
-    /// The toolbar row's room: its padding and its controls.
-    public static var toolbarHeight: CGFloat { barPaddingTop + barControlHeight + barPaddingBottom }
-    /// The tab bar row: its track this tall, then `tabRowPaddingBottom` under it.
-    public static let tabRowHeight: CGFloat = 30
-    public static let tabRowPaddingBottom: CGFloat = 8
-    /// A tab in the tab bar's track (the track's height less a 1 pt inset on each side).
+    /// A tab: a capsule this tall, an SF Symbol and a 13 pt title.
     public static let tabHeight: CGFloat = 28
-    /// The least a tab shrinks to before the tab bar scrolls (Home and pinned tabs are their icon's width).
-    public static let tabMinWidth: CGFloat = 120
-    /// The room the bar takes at the card's top, with the tab bar or without: the note page and the screens leave
-    /// this much space (their top inset). FrameModel.barHeight is the live one.
-    public static func barHeight(tabRow: Bool) -> CGFloat {
-        toolbarHeight + (tabRow ? tabRowHeight + tabRowPaddingBottom : 0)
-    }
+    /// A tab's width: its own up to `tabMaxWidth`, shrinking to `tabMinWidth` before the strip scrolls (Home and
+    /// pinned tabs are their icon's width).
+    public static let tabMinWidth: CGFloat = 90
+    public static let tabMaxWidth: CGFloat = 180
+
+    // MARK: The card's floating controls (Liquid Glass, no bar behind them)
+
+    /// The controls' inset from the card's top and sides.
+    public static let barPaddingTop: CGFloat = 12
+    public static let barPaddingSides: CGFloat = 12
+    public static let barPaddingBottom: CGFloat = 12
+    /// Every card control is a circle or a capsule this tall.
+    public static let barControlHeight: CGFloat = 36
+    /// The gap between controls.
+    public static let barSpacing: CGFloat = 8
+    /// The room the controls take at the card's top: screens and the note page leave this much space (their top
+    /// inset) and run on under the controls.
+    public static var barHeight: CGFloat { barPaddingTop + barControlHeight + barPaddingBottom }
     /// The inset of a selected capsule inside its capsule track (selectedHeight = trackHeight - 2 * inset).
     public static let capsuleInset: CGFloat = 3
 
@@ -71,10 +77,12 @@ public enum MacLook {
 
     // MARK: Panels
 
-    /// A side panel inside the card (the note's inspector): a flat fill with these corners, no glass, no shadow.
+    /// A side panel's corners (a flat fill, no glass, no shadow).
     public static let panelRadius: CGFloat = 18
     /// The gutter between the card's content and a side panel, and the panel's inset from the card's edges.
     public static let panelGutter: CGFloat = 10
+    /// The note's inspector: a column on the window's material at the right, under the strip (the page's own
+    /// panel takes the same column while it's open).
     public static let inspectorWidth: CGFloat = 272
     /// The least room the content keeps beside the inspector: in a narrower card the inspector steps aside until
     /// the window is wider again (the page never runs under it).
@@ -181,9 +189,9 @@ extension EnvironmentValues {
     /// The native look (true on the Mac). False where FoleviMac's SwiftUI stands for the iPad's wide layout or the
     /// iPhone's (the tests that picture those layouts on the Mac): they keep the web's look until the owner decides.
     @Entry public var macNativeLook = true
-    /// The room the card's top bar takes now (FrameModel.barHeight: the toolbar, and the tab bar while it shows),
-    /// for a screen's own views that reach up under it.
-    @Entry public var macBarRoom: CGFloat = MacLook.barHeight(tabRow: false)
+    /// The room the card's floating controls take at its top (FrameModel.barHeight), for a screen's own views that
+    /// reach up under them.
+    @Entry public var macBarRoom: CGFloat = MacLook.barHeight
 }
 
 public extension View {

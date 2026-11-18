@@ -1,12 +1,13 @@
-// The Mac window's native frame, put together (docs/MAC_NATIVE_LOOK.md, the owner's window profile):
+// The Mac window's native frame, put together (docs/MAC_NATIVE_LOOK.md; the owner's layout, 2026-11-18):
 //
 //   FrameRootViewController
-//   ├── FrameSplitViewController (the window's translucent material, the sidebar on it, the content card)
+//   ├── FrameSplitViewController (the window's translucent material and everything on it)
+//   │   ├── the title bar strip: WebTopBar (traffic lights, the sidebar's button, the tabs, the bell, the inspector's)
 //   │   ├── WebSidebarController: WebSidebar (SwiftUI; on the Mac its native body, WebSidebar+Mac.swift)
-//   │   └── ContentViewController: the opaque rounded card
-//   │       ├── WebTopBar (the card's top bar: Back and Forward, the tabs, New note, search)
-//   │       ├── the note tools inspector on a note (WebNoteSidebar in a SidePanel, its width kept from the page)
-//   │       └── body: the native screen (SwiftUI) over the Page View, or the Page View (a note)
+//   │   ├── ContentViewController: the content card, its controls floating in glass at its top (CardControls)
+//   │   │   └── body: the native screen (SwiftUI) over the Page View, or the Page View (a note draws its own card)
+//   │   ├── the note's inspector on the material at the right (NoteInspector)
+//   │   └── a tab's picture under the pointer (TabPreviewLayer)
 //   └── the Page View full window while the engine isn't up (the web's sign-in, onboarding and lock gates)
 //
 // One Page View per window (plan 2.1): the window's FoleviWebView, both the engine and the note page. It never
@@ -115,26 +116,35 @@ public final class FrameRootViewController: NSViewController {
     public var showsNativeGate: Bool { gateHost != nil }
 }
 
-/// The window's frame (the owner's window profile): one translucent surface (the sidebar material, behind the
-/// window) under everything, the sidebar on it at the window's leading edge with no divider, and the content as one
-/// opaque rounded card, `MacLook.containerMargin` from the top, trailing and bottom edges. Focus mode on a note
-/// hides the sidebar: the card then keeps the margin on its leading edge too, and a taller strip above it for the
-/// traffic lights. (The name is kept from the split view it replaced: menus and the eval hook reach the sidebar
-/// and the content through it.)
+/// The window's frame (the owner's layout): one translucent surface (the sidebar material, behind the window) under
+/// everything; on it the title bar strip at the top, the sidebar under it at the leading edge, the content card
+/// beside the sidebar (`MacLook.containerMargin` from the trailing and bottom edges, the margin on its leading edge
+/// too while the sidebar is hidden), and on a note the inspector column at the trailing edge. The sidebar's button,
+/// ⌘\ and View > Hide Sidebar hide the sidebar; so does Focus mode on a note. While a note's page has its own panel
+/// open (Style, Format, Insert, Foli AI), the page takes the inspector's column too and draws the panel there.
+/// (The name is kept from the split view it replaced: menus and the eval hook reach the sidebar and the content
+/// through it.)
 @MainActor
 public final class FrameSplitViewController: NSViewController {
     public let model: FrameModel
     public let sidebar: WebSidebarController
     public let content: ContentViewController
+    /// The title bar strip: the tabs and the strip's buttons (the traffic lights sit on it).
+    public let titleBar: NSHostingView<WebTopBar>
     private var observers: [Observer] = []
-    /// The strip above the card: the window moves from here (never `isMovableByWindowBackground`).
+    /// Under the strip's SwiftUI: the window moves from here too (never `isMovableByWindowBackground`).
     private let strip = WindowDragStrip()
-    private var sidebarWasHidden = false
+    /// The note's tools on the window's material at the right (NoteInspector).
+    private var inspector: NSHostingView<AnyView>?
+    /// Whether the inspector is on screen (asked for, and the window wide enough beside the card).
+    public private(set) var showsInspector = false
+    private var laidOut: (hidden: Bool, wanted: Bool, panel: Bool)?
 
     init(model: FrameModel, pageView: NSView) {
         self.model = model
         sidebar = WebSidebarController(model: model)
         content = ContentViewController(model: model, pageView: pageView)
+        titleBar = ClickThroughHostingView(rootView: WebTopBar(model: model))
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -151,20 +161,37 @@ public final class FrameSplitViewController: NSViewController {
         addChild(content)
         root.addSubview(sidebar.view)
         root.addSubview(content.view)
+        let tools = ClickThroughHostingView(rootView: AnyView(NoteInspector(model: model).defaultAppStorage(WebSidebarController.defaults).macClickThrough()))
+        tools.safeAreaRegions = []
+        tools.sizingOptions = []
+        tools.isHidden = true
+        root.addSubview(tools)
+        inspector = tools
         root.addSubview(strip)
+        titleBar.safeAreaRegions = []
+        titleBar.sizingOptions = []
+        root.addSubview(titleBar)
+        // A tab's picture under the pointer, over everything (the strip starts at the window's top left, so its
+        // tabs' frames are the layer's).
+        let preview = PassThroughHostingView(rootView: TabPreviewLayer(model: model, barOrigin: .zero))
+        preview.safeAreaRegions = []
+        preview.frame = root.bounds
+        preview.autoresizingMask = [.width, .height]
+        root.addSubview(preview)
+        WebSidebarController.loadNoteToolsChoice(model)
     }
 
     public override func viewDidLoad() {
         super.viewDidLoad()
-        sidebarWasHidden = model.sidebarHidden
         observers.append(Observer { [weak self] in
             guard let self else { return }
-            let hidden = self.model.sidebarHidden
-            guard hidden != self.sidebarWasHidden else { return }
-            self.sidebarWasHidden = hidden
+            let now = (self.model.sidebarHidden, self.inspectorWanted, self.pagePanel)
+            guard self.laidOut.map({ $0 != now }) ?? true else { return }
+            let first = self.laidOut == nil
+            self.laidOut = now
             self.view.needsLayout = true
-            // (Focus mode coming or going: the card eases to its new edges; none with Reduce Motion.)
-            if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, self.view.window != nil {
+            // (The sidebar or the inspector coming or going: the card eases to its new edges; none with Reduce Motion.)
+            if !first, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, self.view.window != nil {
                 NSAnimationContext.runAnimationGroup { ctx in
                     ctx.duration = 0.18
                     ctx.allowsImplicitAnimation = true
@@ -174,29 +201,60 @@ public final class FrameSplitViewController: NSViewController {
         })
     }
 
+    /// Whether a note's tools are asked for now (the inspector shows when the window also has the room).
+    private var inspectorWanted: Bool {
+        model.route.isNote && model.noteToolsShown && model.editorPanel == nil && !model.focusMode
+    }
+
+    /// A note's page has its own panel open: the page takes the inspector's column for it.
+    private var pagePanel: Bool { model.route.isNote && model.editorPanel != nil }
+
     public override func viewDidLayout() {
         super.viewDidLayout()
-        let f = Self.layout(bounds: view.bounds, sidebarHidden: model.sidebarHidden)
+        let f = Self.layout(bounds: view.bounds, sidebarHidden: model.sidebarHidden, inspector: inspectorWanted, pagePanel: pagePanel)
         sidebar.view.isHidden = model.sidebarHidden
         sidebar.view.frame = f.sidebar
         content.view.frame = f.card
         strip.frame = f.strip
+        titleBar.frame = f.strip
+        if let inspector {
+            inspector.isHidden = f.inspector == nil
+            if let r = f.inspector { inspector.frame = r }
+        }
+        if showsInspector != (f.inspector != nil) { showsInspector = f.inspector != nil }
     }
 
-    /// Where the sidebar, the card and the drag strip go in the window's content (AppKit's origin, bottom left).
-    /// A pure function (tests).
-    nonisolated public static func layout(bounds b: CGRect, sidebarHidden: Bool) -> (sidebar: CGRect, card: CGRect, strip: CGRect) {
+    /// Where the strip, the sidebar, the card and the inspector go in the window's content (AppKit's origin, bottom
+    /// left). `inspector`: a note's tools are asked for (they show if the card keeps `inspectorMinContent` beside
+    /// them); `pagePanel`: the note's page has its own panel open and takes the inspector's column. A pure function
+    /// (tests).
+    nonisolated public static func layout(bounds b: CGRect, sidebarHidden: Bool, inspector: Bool = false, pagePanel: Bool = false)
+        -> (sidebar: CGRect, card: CGRect, inspector: CGRect?, strip: CGRect) {
         let m = MacLook.containerMargin
-        let side = CGRect(x: 0, y: 0, width: MacLook.sidebarWidth, height: b.height)
+        let top = MacLook.titleBarHeight
+        let below = max(0, b.height - top)
+        let strip = CGRect(x: 0, y: below, width: b.width, height: top)
+        let side = CGRect(x: 0, y: 0, width: MacLook.sidebarWidth, height: below)
         let left = sidebarHidden ? m : MacLook.sidebarWidth
-        let top = sidebarHidden ? MacLook.titlebarStrip : m
-        let card = CGRect(x: left, y: m, width: max(0, b.width - left - m), height: max(0, b.height - top - m))
-        let strip = CGRect(x: 0, y: b.height - top, width: b.width, height: top)
-        return (side, card, strip)
+        let column = CGRect(x: b.width - MacLook.inspectorWidth, y: 0, width: MacLook.inspectorWidth, height: below)
+        if pagePanel, column.minX - left >= MacLook.inspectorMinContent {
+            // (The page draws its card in all but its last `inspectorWidth` points, and its panel there. Narrower,
+            // the card keeps its margin and the page lays its panel over the note.)
+            return (side, CGRect(x: left, y: m, width: max(0, b.width - left), height: max(0, below - m)), nil, strip)
+        }
+        if inspector, column.minX - left >= MacLook.inspectorMinContent {
+            return (side, CGRect(x: left, y: m, width: max(0, column.minX - left), height: max(0, below - m)), column, strip)
+        }
+        return (side, CGRect(x: left, y: m, width: max(0, b.width - left - m), height: max(0, below - m)), nil, strip)
     }
 
-    /// Whether the sidebar is hidden now (Focus mode on a note).
+    /// Whether the sidebar is hidden now (its button, ⌘\, or Focus mode on a note).
     public var isSidebarCollapsed: Bool { model.sidebarHidden }
+
+    /// ⌘\, View > Hide Sidebar.
+    @objc public func toggleSidebar(_ sender: Any?) {
+        model.sidebarCollapsed.toggle()
+    }
 }
 
 /// The window's root: the translucent material behind the sidebar and the card.
@@ -265,6 +323,8 @@ public final class WebSidebarController: NSViewController {
     /// keys wait for it (EarlyKeys, QA audit F04) instead of reaching the note.
     public func focusSearch() {
         FrameSheets.attach(model, window: view.window)
+        // On a note (no search control in its card) the palette itself, at once, as ⌘K always opened it.
+        if model.route.isNote { return CommandPalette.show(model) }
         if FrameSheets.isShowing(model) { FrameSheets.dismiss(model, returnKeyboard: false) }
         if let window = view.window { EarlyKeys.start(in: window) }
         model.barSearchFocus += 1
@@ -274,6 +334,8 @@ public final class WebSidebarController: NSViewController {
         super.viewDidAppear()
         FrameSheets.attach(model, window: view.window)
         AppContextMenu.attach(model, window: view.window)
+        // The title bar's bell opens the notifications here.
+        model.showNotifications = { [weak self] anchor in self?.showNotifications(anchor) }
         // A search link opens ⌘K with its query, not a search tab (MAC-61).
         model.searchInPalette = { [weak self] q in
             guard let self else { return }
@@ -322,15 +384,12 @@ public final class WebSidebarController: NSViewController {
 public final class ContentViewController: NSViewController {
     let model: FrameModel
     let pageView: NSView
-    public let topBar: NSHostingView<WebTopBar>
     private let body = NSView()
-    /// The card's clipped inside: the Page View and the native screens (`body`) fill it under the top bar (they
-    /// leave the bar's room at their top), and the note tools inspector sits at its right on a note.
+    /// The card's clipped inside: the Page View and the native screens (`body`) fill it (they leave the controls'
+    /// room at their top and run on under them). On a note it neither fills nor clips: the page draws its own card.
     private let clip = CardClipView()
-    /// The note's tools in a flat side panel (the owner's inspector profile), on a note only.
-    private var inspector: NSHostingView<AnyView>?
-    /// Whether the inspector is on screen (it is asked for and the card is wide enough for it beside the note).
-    public private(set) var showsInspector = false
+    /// The card's own controls, floating in glass at its top (CardControls).
+    private var controls: NSView?
     private var screen: NSHostingView<ClickThrough<ScreenRoot>>?
     private lazy var models = ScreenModels(frame: model)
     private var toasts: NSHostingView<ToastStack>?
@@ -342,20 +401,15 @@ public final class ContentViewController: NSViewController {
     private var overviewView: NSView?
     private var shownRoute: FrameRoute?
     /// The web frame's bar room (the web's main: padding-top 56), as the iPad's frame keeps it (Platform.swift): for
-    /// the iPad's layout pictured on the Mac (`macNativeLook` false). The Mac's own bar is FrameModel.barHeight.
+    /// the iPad's layout pictured on the Mac (`macNativeLook` false). The Mac's own is FrameModel.barHeight.
     static var barHeight: CGFloat { WebStyles.named("frame.main").light.padding.top }
-    /// The top bar's height, following the tab bar as it comes and goes.
-    private var barHeightConstraint: NSLayoutConstraint?
-    /// The soft scroll edge effect under the bar while a note's page runs beneath it.
+    /// The soft scroll edge effect under the card's controls, where a screen's content runs beneath its title.
     private let edge = ScrollEdgeBand()
-    private var edgeTrailing: NSLayoutConstraint?
-    private var barShown: CGFloat = 0
 
     init(model: FrameModel, pageView: NSView) {
         self.model = model
         self.pageView = pageView
         FrameSheets.attach(model, page: pageView)
-        topBar = ClickThroughHostingView(rootView: WebTopBar(model: model))
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -366,11 +420,6 @@ public final class ContentViewController: NSViewController {
     public override func loadView() {
         let root = ContentCard()
         view = root
-        // (The frame draws under the title bar: no safe area anywhere in it.)
-        topBar.safeAreaRegions = []
-        // Its size comes from the constraints below. Without this the hosting view also lays the bar out at its ideal
-        // width to measure itself, and the tab strip (sized to what's left it) would take that pass for real.
-        topBar.sizingOptions = []
         clip.wantsLayer = true
         clip.layer?.cornerRadius = MacLook.containerRadius
         clip.layer?.cornerCurve = .continuous
@@ -378,20 +427,17 @@ public final class ContentViewController: NSViewController {
         clip.translatesAutoresizingMaskIntoConstraints = false
         clip.onLayout = { [weak self] in self?.layoutPage() }
         root.addSubview(clip)
-        topBar.translatesAutoresizingMaskIntoConstraints = false
         body.translatesAutoresizingMaskIntoConstraints = false
         clip.addSubview(body)
-        let tools = ClickThroughHostingView(rootView: AnyView(NoteInspector(model: model).defaultAppStorage(WebSidebarController.defaults).macClickThrough()))
-        tools.safeAreaRegions = []
-        tools.sizingOptions = []
-        tools.isHidden = true
-        clip.addSubview(tools)
-        inspector = tools
-        // A note runs under the bar: the scroll edge effect keeps the bar's title and tabs legible over it.
         edge.translatesAutoresizingMaskIntoConstraints = false
         edge.isHidden = true
         clip.addSubview(edge)
-        clip.addSubview(topBar)
+        let bar = PassThroughControlsHostingView(rootView: CardControls(model: model))
+        bar.safeAreaRegions = []
+        bar.sizingOptions = []
+        bar.translatesAutoresizingMaskIntoConstraints = false
+        clip.addSubview(bar)
+        controls = bar
         let toastView = ToastHostingView(rootView: ToastStack(model: model))
         toastView.safeAreaRegions = []
         toastView.translatesAutoresizingMaskIntoConstraints = false
@@ -403,19 +449,14 @@ public final class ContentViewController: NSViewController {
         askAiView = ask
         clip.addSubview(toastView)
         toasts = toastView
-        // A tab's picture under the pointer, and the Tab Overview, over everything in the card. (The bar starts at
-        // the card's own top left, so its tabs' frames are the layer's.)
-        let previewLayer = PassThroughHostingView(rootView: TabPreviewLayer(model: model, barOrigin: .zero))
-        previewLayer.safeAreaRegions = []
-        previewLayer.translatesAutoresizingMaskIntoConstraints = false
-        clip.addSubview(previewLayer)
+        // The Tab Overview, over everything in the card.
         let overview = ClickThroughHostingView(rootView: TabOverviewHost(model: model).macClickThrough())
         overview.safeAreaRegions = []
         overview.translatesAutoresizingMaskIntoConstraints = false
         overview.isHidden = true
         clip.addSubview(overview)
         overviewView = overview
-        for v in [previewLayer, overview] as [NSView] {
+        for v in [overview, bar] as [NSView] {
             NSLayoutConstraint.activate([
                 v.topAnchor.constraint(equalTo: clip.topAnchor), v.bottomAnchor.constraint(equalTo: clip.bottomAnchor),
                 v.leadingAnchor.constraint(equalTo: clip.leadingAnchor), v.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
@@ -426,13 +467,10 @@ public final class ContentViewController: NSViewController {
             clip.bottomAnchor.constraint(equalTo: root.bottomAnchor),
             clip.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             clip.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            // The bar is the first thing in the card, across all of it (TopBar keeps its own 14 / 10 pt padding).
-            topBar.topAnchor.constraint(equalTo: clip.topAnchor),
-            topBar.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
-            topBar.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
             edge.topAnchor.constraint(equalTo: clip.topAnchor),
             edge.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
-            edge.bottomAnchor.constraint(equalTo: topBar.bottomAnchor, constant: ScrollEdgeBand.fade),
+            edge.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
+            edge.heightAnchor.constraint(equalToConstant: MacLook.barHeight + ScrollEdgeBand.fade),
             body.topAnchor.constraint(equalTo: clip.topAnchor),
             body.leadingAnchor.constraint(equalTo: clip.leadingAnchor),
             body.trailingAnchor.constraint(equalTo: clip.trailingAnchor),
@@ -448,45 +486,17 @@ public final class ContentViewController: NSViewController {
         ])
         toastCentre = toastView.centerXAnchor.constraint(equalTo: clip.centerXAnchor)
         toastCentre?.isActive = true
-        barShown = model.barHeight
-        barHeightConstraint = topBar.heightAnchor.constraint(equalToConstant: barShown)
-        barHeightConstraint?.isActive = true
-        WebSidebarController.loadNoteToolsChoice(model)
     }
 
-    /// The note's page and the inspector beside it: on a note with its tools asked for (and the page's own panel
-    /// closed, Focus mode off), the inspector takes `inspectorWidth` at the card's right below the bar, inset by the
-    /// gutter, and the page keeps the rest (its width is reserved, so the note never runs under the panel). In a
-    /// card too narrow for both, the inspector steps aside.
+    /// The note's page fills the card (on a note the card is the page's: it draws its own rounded card, and its own
+    /// panel in the inspector's column while that's open). The card draws its fill, shadow and clip only for a native
+    /// screen, and the scroll edge effect only where a screen's content runs under its title.
     private func layoutPage() {
-        let b = clip.bounds
-        let f = Self.pageLayout(card: b.size, wanted: inspectorWanted, bar: model.barHeight)
-        if let inspector {
-            if inspector.isHidden == (f.inspector != nil) { inspector.isHidden = f.inspector == nil }
-            if let r = f.inspector, inspector.frame != r { inspector.frame = r }
-        }
-        if showsInspector != (f.inspector != nil) { showsInspector = f.inspector != nil }
-        if pageView.superview === clip, pageView.frame != f.page { pageView.frame = f.page }
-        // The edge effect spans the page only (the inspector has its own top below the bar).
-        edgeTrailing?.isActive = false
-        edgeTrailing = edge.widthAnchor.constraint(equalToConstant: f.page.width)
-        edgeTrailing?.isActive = true
-        edge.isHidden = !(model.route.isNote && pageView.superview === clip && body.isHidden)
-    }
-
-    /// Whether a note's tools are asked for now (the inspector shows when the card also has the room).
-    private var inspectorWanted: Bool {
-        model.route.isNote && model.noteToolsShown && model.editorPanel == nil && !model.focusMode
-    }
-
-    /// The page's and the inspector's frames in the card (AppKit's origin, bottom left). A pure function (tests).
-    nonisolated public static func pageLayout(card: CGSize, wanted: Bool, bar: CGFloat) -> (page: CGRect, inspector: CGRect?) {
-        let full = CGRect(origin: .zero, size: card)
-        let g = MacLook.panelGutter
-        let reserve = MacLook.inspectorWidth + g * 2
-        guard wanted, card.width - reserve >= MacLook.inspectorMinContent else { return (full, nil) }
-        let panel = CGRect(x: card.width - g - MacLook.inspectorWidth, y: g, width: MacLook.inspectorWidth, height: max(0, card.height - bar - g))
-        return (CGRect(x: 0, y: 0, width: card.width - reserve, height: card.height), panel)
+        if pageView.superview === clip, pageView.frame != clip.bounds { pageView.frame = clip.bounds }
+        let note = model.route.isNote && body.isHidden
+        (view as? ContentCard)?.drawsCard = !note
+        clip.layer?.masksToBounds = !note
+        edge.isHidden = note || model.route.isNote
     }
 
     /// Toasts sit at the bottom centre of the window, as the web's fixed toast region (not of the content card).
@@ -525,22 +535,6 @@ public final class ContentViewController: NSViewController {
         })
         observers.append(Observer { [weak self] in
             guard let self else { return }
-            _ = self.inspectorWanted
-            self.clip.needsLayout = true
-        })
-        // The tab bar coming or going: the bar's height, the note page's top inset and the inspector's top follow
-        // (the screens read FrameModel.barHeight themselves).
-        observers.append(Observer { [weak self] in
-            guard let self else { return }
-            let h = self.model.barHeight
-            guard h != self.barShown else { return }
-            self.barShown = h
-            self.barHeightConstraint?.constant = h
-            if self.model.route.isNote { self.sendInsets() }
-            self.clip.needsLayout = true
-        })
-        observers.append(Observer { [weak self] in
-            guard let self else { return }
             let shown = self.model.overviewShown
             self.overviewView?.isHidden = !shown
             if !shown, self.model.route.isNote { self.view.window?.makeFirstResponder(self.pageView) }
@@ -554,7 +548,7 @@ public final class ContentViewController: NSViewController {
         pageView.removeFromSuperview()
         // (Laid out with the inspector beside it: layoutPage.)
         pageView.autoresizingMask = []
-        pageView.frame = Self.pageLayout(card: clip.bounds.size, wanted: inspectorWanted, bar: model.barHeight).page
+        pageView.frame = clip.bounds
         clip.addSubview(pageView, positioned: .below, relativeTo: body)
         sendInsets()
         if model.route.isNote { view.window?.makeFirstResponder(pageView) }
@@ -676,9 +670,9 @@ public final class ContentViewController: NSViewController {
     public var showsNativeScreen: Bool { screen.map { !$0.isHidden } ?? false }
 }
 
-/// The soft scroll edge effect behind the card's top bar (HIG Liquid Glass: "use a scroll edge effect instead of a
-/// solid or semi-opaque background color beneath them"): what runs under the bar (a note's cover, its text) is
-/// blurred within the window, fading out `fade` points below the bar so there is no hard line.
+/// The soft scroll edge effect under the card's floating controls on a screen (HIG Liquid Glass: "use a scroll edge
+/// effect instead of a solid or semi-opaque background color beneath them"): what scrolls under the screen's title
+/// is blurred within the window, fading out `fade` points below the controls so there is no hard line.
 @MainActor
 final class ScrollEdgeBand: NSVisualEffectView {
     static let fade: CGFloat = 18
@@ -686,7 +680,8 @@ final class ScrollEdgeBand: NSVisualEffectView {
 
     override init(frame: NSRect) {
         super.init(frame: frame)
-        material = .headerView
+        // (The card's own content background, so it reads as the card under the title, not as a bar.)
+        material = .contentBackground
         blendingMode = .withinWindow
         state = .active
         wantsLayer = true
@@ -763,12 +758,21 @@ final class ContentCard: NSView {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not from a nib") }
 
+    /// Off on a note: the note's page draws its own card (and its panel beside it) on the window's material.
+    var drawsCard = true {
+        didSet {
+            guard drawsCard != oldValue else { return }
+            layer?.shadowOpacity = drawsCard ? 0.02 : 0
+            needsDisplay = true
+        }
+    }
+
     override var wantsUpdateLayer: Bool { true }
 
     override func updateLayer() {
         var fill = NSColor.controlBackgroundColor.cgColor
         effectiveAppearance.performAsCurrentDrawingAppearance { fill = NSColor.controlBackgroundColor.cgColor }
-        layer?.backgroundColor = fill
+        layer?.backgroundColor = drawsCard ? fill : NSColor.clear.cgColor
     }
 
     override func layout() {

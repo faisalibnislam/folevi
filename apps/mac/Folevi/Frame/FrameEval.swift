@@ -6,7 +6,7 @@
 //   cmd frame {"do":"close","tab":"<id>"}           close a tab (the one on screen without "tab")
 //   cmd frame {"do":"next"} / {"do":"previous"}     ⌃Tab / ⌃⇧Tab
 //   cmd frame {"do":"back"} / {"do":"forward"}
-//   cmd frame {"do":"newNote"} / {"do":"noteTools"} ⌘N / the top bar's Note Tools; {"do":"moveOrCopy"} the Move or copy sheet
+//   cmd frame {"do":"newNote"} / {"do":"sidebar"}   ⌘N / ⌘\ ; {"do":"noteTools"} the inspector's button; {"do":"moveOrCopy"}
 //   cmd frame {"do":"search"}                       ⌘K: the top bar's search field takes the keyboard
 //   cmd frame {"do":"popover","which":"sync"|"notifications"|"account"|"none"}
 //   cmd frame {"do":"menu","item":"go.next-tab"}    a menu bar item as if chosen
@@ -95,6 +95,7 @@ extension NativeFrame {
             case "forward": m.goForward()
             case "newNote": m.newNote()
             case "moveOrCopy": frame.frameMoveOrCopy()
+            case "sidebar": frame.root.split.toggleSidebar(nil)
             case "noteTools": WebSidebarController.setNoteTools(m, shown: !m.noteToolsShown)
             case "search": frame.sidebar.focusSearch()
             case "popover":
@@ -155,8 +156,8 @@ extension NativeFrame {
             case "preview":
                 // (Shown after the 300 ms rest: the answer comes 350 ms after.) The strip's frames are the window's
                 // (top-left points); the hover reports them in the bar's own space.
-                if let t = req["tab"] as? String, let f = m.debugTabFrames[t], let cv = frame.root.split.content.topBar.window?.contentView {
-                    let bar = frame.root.split.content.topBar
+                if let t = req["tab"] as? String, let f = m.debugTabFrames[t], let cv = frame.root.split.titleBar.window?.contentView {
+                    let bar = frame.root.split.titleBar
                     let r = bar.convert(bar.bounds, to: cv)
                     let top = cv.isFlipped ? r.minY : cv.bounds.height - r.maxY
                     m.preview.hide()
@@ -246,7 +247,7 @@ extension NativeFrame {
             "strip": m.debugStrip.mapValues { Double($0) },
             "sidebar": rows(m.sidebar),
             "sidebarCollapsed": m.sidebarHidden,
-            "noteTools": frame.root.split.content.showsInspector,
+            "noteTools": frame.root.split.showsInspector,
             "gate": frame.root.showsGate,
             "nativeGate": frame.root.showsNativeGate,
             "gateKind": m.gateEvent?.gate ?? NSNull(),

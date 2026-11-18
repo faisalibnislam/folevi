@@ -1,17 +1,16 @@
-// The Mac's sidebar in the native look (docs/MAC_NATIVE_LOOK.md, the owner's window profile): drawn straight on the
-// window's translucent material (no card of its own, no divider), always shown (Focus mode alone hides it), its
-// content from `MacLook.sidebarTop` under the traffic lights, compact rows (SidebarRow, SidebarHeading):
+// The Mac's sidebar in the native look (docs/MAC_NATIVE_LOOK.md; the owner's layout, 2026-11-18): drawn straight on
+// the window's translucent material under the title bar strip (no card of its own, no divider), compact rows
+// (SidebarRow, SidebarHeading) with quiet monochrome symbols:
 //
-//   Home, Work with Foli AI, Foli DNA (and its saved views), Bookmarks (and the first bookmarked notes), Drafts,
-//   All notes, Tasks, Calendar, Reviews, Shared with Me, Vault, Changes, Templates; Folders (the tree, sorting, New
-//   folder); Tags; Archive and Trash. The account, the sync status and the notifications pinned at the bottom, the
-//   list scrolling behind them with its last row reachable.
+//   the place and account switcher; New note; Home, Work with Foli AI, Foli DNA (and its saved views), Bookmarks (and
+//   the first bookmarked notes), Drafts, All notes, Tasks, Calendar, Reviews, Shared with Me, Vault, Changes,
+//   Templates; Folders (the tree, sorting, New folder); Tags; Archive and Trash. At the bottom, small buttons: the
+//   sync status, Settings and Help, the list scrolling behind them with its last row reachable.
 //
 // Every row's behaviour is WebSidebar's (WebSidebar.swift): opening in place or in a tab behind (⌘-click, the middle
 // button), the folder tree's drag and drop (notes into a folder, folders above, below or inside one, onto the Folders
-// heading for the top level), the rows' menus, the counts. Search moved to the top bar (WebTopBar+Mac.swift), and
-// the sidebar has no hide button: the web's sidebar menu (hide it, Focus mode, folders or the note's tools) became
-// View > Focus Mode and the top bar's Note Tools button.
+// heading for the top level), the rows' menus, the counts. The title bar's button, ⌘\ and View > Hide Sidebar hide
+// it (so does Focus mode on a note); the bell is in the title bar, search in the card's controls.
 #if os(macOS)
 import AppKit
 import SwiftUI
@@ -21,12 +20,18 @@ import FoleviScreens
 
 extension WebSidebar {
     var macBody: some View {
-        VStack(spacing: 0) {
-            // The room under the traffic lights: the window moves from here.
-            Color.clear
-                .frame(height: MacLook.sidebarTop)
-                .contentShape(Rectangle())
-                .windowDrag()
+        VStack(alignment: .leading, spacing: 0) {
+            macAccount
+                .padding(.horizontal, MacLook.sidebarInset)
+                .padding(.top, MacLook.sidebarTop)
+            Button { model.newNote() } label: {
+                SidebarRow("New note", symbol: "square.and.pencil")
+            }
+            .buttonStyle(SidebarRowButtonStyle())
+            .foleviTooltip("New Note (⌘N)")
+            .accessibilityLabel("New note")
+            .padding(.horizontal, MacLook.sidebarInset)
+            .padding(.bottom, MacLook.Space.xs)
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     macDestinations
@@ -64,7 +69,7 @@ extension WebSidebar {
         return VStack(alignment: .leading, spacing: 0) {
             macItem(.home, symbol: "house", title: "Home")
             if caps?.ai ?? false {
-                macItem(.web("/ai"), title: "Work with Foli AI") { AiMarkGlyph(size: MacLook.rowSymbolSize + 1) }
+                macItem(.web("/ai"), symbol: "sparkles", title: "Work with Foli AI")
             }
             // Foli DNA (/graph), where this place has it, and its saved views under it.
             if caps?.graph ?? false {
@@ -326,7 +331,7 @@ extension WebSidebar {
             if tags.isEmpty { note("Tag documents from the inspector") }
             ForEach(Array(tags.prefix(Self.limit)), id: \.id) { t in
                 let row = macItem(.tag(t.id), title: t.name) {
-                    Image(systemName: "number").foregroundStyle(Self.tagColor(t.color))
+                    Image(systemName: "number").foregroundStyle(isSelected(.tag(t.id)) ? MacLook.Colors.label : MacLook.Colors.secondary)
                 }
                 if canEdit {
                     HoverReveal { hovered in
@@ -346,49 +351,48 @@ extension WebSidebar {
         }
     }
 
-    // MARK: the footer: the account, the sync status, notifications
+    // MARK: the place and account switcher, the footer
 
-    private var macFooter: some View {
+    /// The place and the account (WorkspaceMenu.tsx): the picture or logo, the place's name, a chevron; it opens the
+    /// account menu (places, workspaces, the account).
+    private var macAccount: some View {
         let name = model.accountName.isEmpty ? "You" : model.accountName
         let foot = accountFoot(name)
-        let local = model.session.value?.mode == .local
-        return HStack(spacing: 2) {
-            Button { actions.account(accountAnchor) } label: {
-                HStack(spacing: MacLook.rowIconGap) {
-                    WebAvatar(name: foot.markName, url: foot.markUrl, size: 24)
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(foot.title).font(MacLook.Text.headline).foregroundStyle(MacLook.Colors.label).lineLimit(1)
-                        if !foot.detail.isEmpty {
-                            Text(foot.detail).font(MacLook.Text.small).foregroundStyle(MacLook.Colors.secondary).lineLimit(1)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 10, weight: .medium)).foregroundStyle(MacLook.Colors.tertiary)
-                }
-                .padding(.horizontal, 6)
-                .frame(height: 40)
-                .contentShape(Rectangle())
-                .background(MenuAnchor { accountAnchor = $0 })
+        return Button { actions.account(accountAnchor) } label: {
+            HStack(spacing: MacLook.rowIconGap) {
+                WebAvatar(name: foot.markName, url: foot.markUrl, size: 20)
+                    .frame(width: MacLook.rowIconSlot + 2)
+                Text(foot.title).font(MacLook.Text.headline).foregroundStyle(MacLook.Colors.label).lineLimit(1)
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(MacLook.Colors.secondary)
+                Spacer(minLength: 0)
             }
-            .buttonStyle(SidebarRowButtonStyle(hoverFill: true))
-            .foleviTooltip("Account, Places and Workspaces")
-            .accessibilityLabel("Account: \(foot.title)")
-            MacSyncStatus(model: model) { actions.sync($0) }
-            if !local {
-                MacFooterButton(symbol: "bell", label: "Notifications") { actions.notifications($0) }
-            }
+            .padding(.horizontal, 6)
+            .frame(height: 32)
+            .contentShape(Rectangle())
+            .background(MenuAnchor { accountAnchor = $0 })
         }
-        .padding(.horizontal, MacLook.sidebarInset - 4)
-        .padding(.top, 6)
-        .padding(.bottom, 8)
+        .buttonStyle(SidebarRowButtonStyle(hoverFill: true))
+        .foleviTooltip(foot.detail.isEmpty ? "Account, places and workspaces" : foot.detail)
+        .accessibilityLabel("Account: \(foot.title)\(foot.detail.isEmpty ? "" : ", \(foot.detail)")")
+    }
+
+    /// Small buttons at the bottom: the sync status, Settings, Help.
+    private var macFooter: some View {
+        HStack(spacing: 2) {
+            MacSyncStatus(model: model) { actions.sync($0) }
+            MacFooterButton(symbol: "gearshape", label: "Settings", help: "Settings (⌘,)") { _ in model.host?.frameOpenSettings(section: nil) }
+            MacFooterButton(symbol: "questionmark.circle", label: "Help", help: "Help") { _ in model.host?.frameOpenHelp() }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, MacLook.sidebarInset - 2)
+        .padding(.vertical, 6)
         .background {
             // The window's own material, so the list scrolls away under the footer rather than through it.
             WindowMaterial().allowsHitTesting(false)
         }
         .overlay(alignment: .top) {
-            if moreBelow {
-                Rectangle().fill(MacLook.Colors.separator).frame(height: 1).padding(.horizontal, MacLook.sidebarInset).allowsHitTesting(false)
-            }
+            Rectangle().fill(MacLook.Colors.separator.opacity(moreBelow ? 1 : 0.6)).frame(height: 1)
+                .padding(.horizontal, MacLook.sidebarInset).allowsHitTesting(false)
         }
     }
 }
@@ -420,6 +424,7 @@ private struct MacSyncStatus: View {
 private struct MacFooterButton: View {
     let symbol: String
     let label: String
+    var help: String? = nil
     let action: (NSView?) -> Void
     @State private var anchor: NSView?
 
@@ -432,7 +437,7 @@ private struct MacFooterButton: View {
         }
         .buttonStyle(QuietHoverStyle(shape: AnyShape(RoundedRectangle(cornerRadius: 6, style: .continuous))))
         .foregroundStyle(MacLook.Colors.secondary)
-        .foleviTooltip(label)
+        .foleviTooltip(help ?? label)
         .accessibilityLabel(label)
     }
 }

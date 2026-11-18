@@ -49,7 +49,7 @@ final class MenuTests: XCTestCase {
             "format.link": "⌥⌘K", "format.heading-1": "⌥⌘1", "format.heading-2": "⌥⌘2", "format.heading-3": "⌥⌘3", "format.body": "⌥⌘0",
             "format.bulleted-list": "⇧⌘8", "format.numbered-list": "⇧⌘7", "format.checklist": "⇧⌘9", "format.move-up": "⌥⇧↑", "format.move-down": "⌥⇧↓", "format.duplicate": "⌘D",
             "note.move": "⇧⌘M", "note.copy-link": "⌃⌘C", "note.trash": "⌘⌫",
-            "view.inspector": "⌥⌘I", "view.focus": "⌥⌘\\", "file.tab-overview": "⇧⌘\\", "view.actual-size": "⌘0", "view.zoom-in": "⌘+", "view.zoom-out": "⌘-", "view.full-screen": "⌃⌘F",
+            "view.sidebar": "⌘\\", "view.sidebar.alt": "⌃⌘S", "view.inspector": "⌥⌘I", "view.focus": "⌥⌘\\", "file.tab-overview": "⇧⌘\\", "view.actual-size": "⌘0", "view.zoom-in": "⌘+", "view.zoom-out": "⌘-", "view.full-screen": "⌃⌘F",
             "go.back": "⌘[", "go.forward": "⌘]", "go.today": "⌥⌘T", "go.calendar": "⌥⌘C", "go.ask-ai": "⌘J",
             "go.next-tab": "⌃⇥", "go.next-tab.alt": "⇧⌘]", "go.previous-tab": "⌃⇧⇥", "go.previous-tab.alt": "⇧⌘[", "go.tab-1": "⌘1", "go.tab-9": "⌘9",
             "window.minimize": "⌘M", "help.shortcuts": "⌘/",
@@ -60,9 +60,6 @@ final class MenuTests: XCTestCase {
         }
         // Settled conflicts: ⌘E stays inline code, so Use Selection for Find has none; ⇧⌘H stays Highlight, so
         // Home has none; ⌘S does nothing (Folevi saves itself).
-        // The sidebar is always shown (docs/MAC_NATIVE_LOOK.md): no Hide Sidebar, and ⌘\ is nobody's.
-        XCTAssertNil(byId["view.sidebar"])
-        XCTAssertFalse(items.contains { $0.key == MenuKey(key: "\\", mods: .cmd) })
         XCTAssertNil(byId["edit.find-selection"]?.key)
         XCTAssertNil(byId["go.home"]?.key)
         XCTAssertFalse(items.contains { $0.key == MenuKey(key: "s", mods: .cmd) })
@@ -89,7 +86,7 @@ final class MenuTests: XCTestCase {
         XCTAssertNil(MainMenu.shared.itemsById["edit.copy"]?.target)
         XCTAssertEqual(MainMenu.shared.itemsById["edit.copy"]?.action, #selector(NSText.copy(_:)))
         // The hidden second shortcuts still work.
-        let alt = MainMenu.shared.itemsById["go.next-tab.alt"]
+        let alt = MainMenu.shared.itemsById["view.sidebar.alt"]
         XCTAssertEqual(alt?.isHidden, true)
         XCTAssertEqual(alt?.allowsKeyEquivalentWhenHidden, true)
         XCTAssertTrue(NSApp.windowsMenu === MainMenu.shared.menusById["window"])

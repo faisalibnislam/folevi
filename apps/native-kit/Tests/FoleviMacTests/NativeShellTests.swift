@@ -1,6 +1,6 @@
-// The native look's window frame (docs/MAC_NATIVE_LOOK.md): the sidebar at the window's leading edge with the card
-// beside it, the card's margins, Focus mode's no-sidebar profile, and the note tools inspector's width kept out of
-// the note page's.
+// The native look's window frame (docs/MAC_NATIVE_LOOK.md; the owner's layout, 2026-11-18): the title bar strip at
+// the top, the sidebar under it, the content card beside it, the note's inspector in a column at the right (or the
+// page's own panel in that column), and the room the card's floating controls take.
 #if os(macOS)
 import Foundation
 import Testing
@@ -8,74 +8,67 @@ import Testing
 
 @Suite("Native shell geometry") @MainActor
 struct NativeShellTests {
-    @Test func sidebarAndCard() {
-        let b = CGRect(x: 0, y: 0, width: 1280, height: 820)
+    let b = CGRect(x: 0, y: 0, width: 1280, height: 820)
+
+    @Test func stripSidebarAndCard() {
         let f = FrameSplitViewController.layout(bounds: b, sidebarHidden: false)
-        // The sidebar from the window's edge, full height; the card from its edge (no gap, no divider).
-        #expect(f.sidebar == CGRect(x: 0, y: 0, width: MacLook.sidebarWidth, height: 820))
+        // The strip across the window's top (AppKit's origin is the bottom left).
+        #expect(f.strip == CGRect(x: 0, y: 820 - MacLook.titleBarHeight, width: 1280, height: MacLook.titleBarHeight))
+        // The sidebar under it, from the window's edge; the card from the sidebar's edge (no gap, no divider).
+        #expect(f.sidebar == CGRect(x: 0, y: 0, width: MacLook.sidebarWidth, height: 820 - MacLook.titleBarHeight))
         #expect(f.card.minX == MacLook.sidebarWidth)
-        // Equal margins on the card's top, trailing and bottom edges (AppKit's origin is the bottom left).
+        // The card from the strip's bottom, the margin on its trailing and bottom edges.
+        #expect(f.card.maxY == f.strip.minY)
         #expect(f.card.minY == MacLook.containerMargin)
         #expect(b.maxX - f.card.maxX == MacLook.containerMargin)
-        #expect(b.maxY - f.card.maxY == MacLook.containerMargin)
-        // The drag strip is the room above the card.
-        #expect(f.strip.minY == f.card.maxY && f.strip.maxY == b.maxY)
+        #expect(f.inspector == nil)
     }
 
-    @Test func focusModeHidesTheSidebar() {
-        let b = CGRect(x: 0, y: 0, width: 1280, height: 820)
+    @Test func hiddenSidebarKeepsTheMargin() {
         let f = FrameSplitViewController.layout(bounds: b, sidebarHidden: true)
         #expect(f.card.minX == MacLook.containerMargin)
-        #expect(b.maxY - f.card.maxY == MacLook.titlebarStrip)
-        #expect(f.strip.height == MacLook.titlebarStrip)
+        #expect(f.card.maxY == f.strip.minY)
     }
 
-    @Test func inspectorKeepsItsWidthOutOfThePage() {
-        let card = CGSize(width: 1040, height: 796)
-        let f = ContentViewController.pageLayout(card: card, wanted: true, bar: MacLook.barHeight(tabRow: true))
-        let panel = try! #require(f.inspector)
-        #expect(panel.width == MacLook.inspectorWidth)
-        // Inset by the gutter on the right and bottom, below the top bar.
-        #expect(card.width - panel.maxX == MacLook.panelGutter)
-        #expect(panel.minY == MacLook.panelGutter)
-        #expect(card.height - panel.maxY == MacLook.barHeight(tabRow: true))
-        // The page ends a gutter before the panel: it never runs under it.
-        #expect(panel.minX - f.page.maxX == MacLook.panelGutter)
-        #expect(f.page.height == card.height)
-        // Not asked for: the page has the whole card.
-        #expect(ContentViewController.pageLayout(card: card, wanted: false, bar: MacLook.barHeight(tabRow: false)).inspector == nil)
-        #expect(ContentViewController.pageLayout(card: card, wanted: false, bar: MacLook.barHeight(tabRow: false)).page.width == card.width)
+    @Test func inspectorIsAColumnBesideTheCard() {
+        let f = FrameSplitViewController.layout(bounds: b, sidebarHidden: false, inspector: true)
+        let column = try! #require(f.inspector)
+        #expect(column == CGRect(x: 1280 - MacLook.inspectorWidth, y: 0, width: MacLook.inspectorWidth, height: 820 - MacLook.titleBarHeight))
+        // The card ends where the column starts: the page never runs under the inspector.
+        #expect(f.card.maxX == column.minX)
+        #expect(f.card.width >= MacLook.inspectorMinContent)
     }
 
-    @Test func narrowCardsLetTheInspectorStepAside() {
-        // The narrowest window: 820 wide leaves the card 580, too little for a note beside the inspector.
-        let narrow = CGSize(width: MacLook.minWindowSize.width - MacLook.sidebarWidth - MacLook.containerMargin, height: 496)
-        let f = ContentViewController.pageLayout(card: narrow, wanted: true, bar: MacLook.barHeight(tabRow: false))
+    @Test func thePagesOwnPanelTakesTheColumn() {
+        let f = FrameSplitViewController.layout(bounds: b, sidebarHidden: false, inspector: true, pagePanel: true)
+        // No native inspector; the page (its card and its panel) reaches the window's trailing edge.
         #expect(f.inspector == nil)
-        #expect(f.page.width == narrow.width)
+        #expect(f.card.maxX == b.maxX)
+        #expect(f.card.minX == MacLook.sidebarWidth)
     }
 
-    /// The toolbar row (14 + 36 + 8), and the tab bar row under it (30 + 8) while two or more tabs are open.
-    @Test func theBarsRoomFollowsTheTabBar() async {
-        #expect(MacLook.barHeight(tabRow: false) == 58)
-        #expect(MacLook.barHeight(tabRow: true) == 96)
+    @Test func narrowWindowsLetTheInspectorStepAside() {
+        let narrow = CGRect(origin: .zero, size: MacLook.minWindowSize)
+        let f = FrameSplitViewController.layout(bounds: narrow, sidebarHidden: false, inspector: true)
+        #expect(f.inspector == nil)
+        #expect(narrow.maxX - f.card.maxX == MacLook.containerMargin)
+        // The page's own panel too: the card keeps its margin, the page lays the panel over the note.
+        let p = FrameSplitViewController.layout(bounds: narrow, sidebarHidden: false, pagePanel: true)
+        #expect(narrow.maxX - p.card.maxX == MacLook.containerMargin)
+    }
+
+    /// The card's floating controls: 12 pt from its top, 36 pt tall, 12 pt under them.
+    @Test func theControlsRoom() async {
+        #expect(MacLook.barHeight == 60)
         let model = FrameModel(client: DemoEngine().client())
         await eventually("ready") { model.isEngineReady }
-        #expect(model.tabs.tabs.count == 1)
-        #expect(!model.showsTabRow && model.barHeight == 58)
+        #expect(model.barHeight == MacLook.barHeight)
         model.open(.notes(.all), .newTab)
-        #expect(model.showsTabRow && model.barHeight == 96)
+        #expect(model.barHeight == MacLook.barHeight)
+        #expect(!CardControls.title(model).isEmpty)
     }
 
-    @Test func theTitleSaysWhereANoteLives() async {
-        let model = FrameModel(client: DemoEngine().client())
-        await eventually("ready") { model.isEngineReady }
-        model.open(.notes(.all))
-        #expect(WebTopBar.title(model).subtitle == nil)
-        #expect(!WebTopBar.title(model).title.isEmpty)
-    }
-
-    @Test func focusModeOnANoteHidesTheSidebar() async {
+    @Test func theSidebarHides() async {
         let model = FrameModel(client: DemoEngine().client())
         #expect(!model.sidebarHidden)
         model.sidebarCollapsed = true
